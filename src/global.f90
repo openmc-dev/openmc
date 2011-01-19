@@ -38,9 +38,9 @@ module global
        & SURF_CYL_Y  =  6, & ! Cylinder along y-axis
        & SURF_CYL_Z  =  7, & ! Cylinder along z-axis
        & SURF_SPHERE =  8, & ! Sphere
-       & SURF_BOX_X  =  9, & ! Box extending infinity in x-direction
-       & SURF_BOX_Y  = 10, & ! Box extending infinity in y-direction
-       & SURF_BOX_Z  = 11, & ! Box extending infinity in z-direction
+       & SURF_BOX_X  =  9, & ! Box extending infinitely in x-direction
+       & SURF_BOX_Y  = 10, & ! Box extending infinitely in y-direction
+       & SURF_BOX_Z  = 11, & ! Box extending infinitely in z-direction
        & SURF_BOX    = 12, & ! Rectangular prism
        & SURF_GQ     = 13    ! General quadratic surface
 

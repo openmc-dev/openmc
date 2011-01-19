@@ -1,9 +1,7 @@
 module output
 
   use ISO_FORTRAN_ENV
-  use global,  only: PATHLENGTH, COLLISION, ABSORPTION, FISSION, &
-       &             NUFISSION, nhist, ncycle, localmesh, ijk_to_n, &
-       &             nprocs, verbosity, VERSION_MAJOR, VERSION_MINOR, &
+  use global,  only: verbosity, VERSION_MAJOR, VERSION_MINOR, &
        &             VERSION_RELEASE, free_memory
 
   implicit none

@@ -3,15 +3,16 @@ module geometry
   use global
   use types,  only: Cell, Surface
   use output, only: error
-  use string, only: int_to_string
 
   implicit none
      
 contains
 
-!------------------------------------------------------------------------------
+!=====================================================================
+! CELL_CONTAINS determines whether a given point is inside a cell
+!=====================================================================
 
-  subroutine cell_contains( c, xyz, on_surface)
+  subroutine cell_contains( c, xyz, on_surface )
 
     type(Cell), intent(in)  :: c
     real(8),    intent(in)  :: xyz(3)
@@ -40,9 +41,9 @@ contains
           ! Lookup surface
           surf_num = abs(expression(i))
           ! TODO: replace this loop with a hash since this lookup is O(N)
-          do j = 1,nsurf
+          do j = 1, n_surfaces
              surf => surfaces(j)
-             if ( surf%id == surf_num ) then
+             if ( surf%uid == surf_num ) then
                 surface_found = .true.
                 exit
              end if
@@ -51,8 +52,8 @@ contains
           ! Report error if can't find specified surface
           if ( .not. surface_found ) then
              deallocate( expression )
-             msg = "Count not find surface " // trim(int_to_string(surf_num)) // & 
-                  & " specified on cell " // int_to_string(c%id)
+             msg = "Count not find surface " // trim(int_to_str(surf_num)) // & 
+                  & " specified on cell " // int_to_str(c%uid)
              call error( msg )
           end if
           
@@ -73,7 +74,11 @@ contains
 
   end subroutine cell_contains
 
-!------------------------------------------------------------------------------
+!=====================================================================
+! DIST_TO_BOUNDARY calculates the distance to the nearest boundary of
+! the cell 'cl' for a particle 'neut' traveling in a certain
+! direction.
+!=====================================================================
 
   subroutine dist_to_boundary( cl, neut, dist )
 
@@ -82,7 +87,7 @@ contains
     real(8),       intent(out) :: dist
 
     integer :: i
-    integer :: n_surfaces
+    integer :: n_cell_surfaces
     integer, allocatable :: expression(:)
     integer :: surf_num
     type(Surface), pointer :: surf => null()
@@ -102,8 +107,8 @@ contains
     z = neut%uvw(3)
 
     dist = INFINITY
-    n_surfaces = size(cl%boundary_list)
-    do i = 1, n_surfaces
+    n_cell_surfaces = size(cl%boundary_list)
+    do i = 1, n_cell_surfaces
        surf_num = abs(expression(i))
        if ( surf_num >= OP_DIFFERENCE ) cycle
 
@@ -310,7 +315,11 @@ contains
 
   end subroutine dist_to_boundary
 
-!------------------------------------------------------------------------------
+!=====================================================================
+! SENSE determines whether a point is on the 'positive' or 'negative'
+! side of a surface. This routine is crucial for determining what cell
+! a particular point is in.
+!=====================================================================
 
   subroutine sense( surf, xyz, s )
 

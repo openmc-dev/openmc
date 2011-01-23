@@ -7,21 +7,23 @@ module string
 
 contains
 
-!-------------------------------------------------------------------------------
+!=====================================================================
+! SPLIT_STRING takes a sentence and splits it into separate words much
+! the Python string.split() method.
+!
+! Arguments:
+!   string = input line
+!   words  = array of words
+!   n      = total number of words
+!=====================================================================
 
   subroutine split_string(string, words, n)
-    ! SPLIT_STRING takes a sentence and splits it into separate words
-    ! much the Python string.split() method.
-    !
-    ! Arguments:
-    !   string = input line
-    !   words  = array of words
-    !   n      = total number of words
 
     character(*), intent(in)  :: string
     character(*), intent(out) :: words(max_words)
     integer,      intent(out) :: n
 
+    character(1)  :: char    ! current character
     integer       :: i       ! current index
     integer       :: i_start ! starting index of word
     integer       :: i_end   ! ending index of word
@@ -30,11 +32,14 @@ contains
     i_end = 0
     n = 0
     do i = 1, len(string)
-       if ((i_start == 0) .and. (string(i:i) /= ' ')) then
+       char = string(i:i)
+
+       ! Note that ACHAR(9) is a horizontal tab
+       if ((i_start == 0) .and. (char /= ' ') .and. (char /= achar(9))) then
           i_start = i
        end if
        if (i_start > 0) then
-          if (string(i:i) == ' ') i_end = i - 1
+          if ((char == ' ') .or. (char == achar(9))) i_end = i - 1
           if (i == len(string))   i_end = i
           if (i_end > 0) then
              n = n + 1
@@ -48,18 +53,19 @@ contains
 
   end subroutine split_string
 
-!-------------------------------------------------------------------------------
+!=====================================================================
+! SPLIT_STRING_WL takes a string that includes logical expressions for
+! a list of bounding surfaces in a cell and splits it into separate
+! words. The characters (, ), :, and # count as separate words since
+! they represent operators.
+!
+! Arguments:
+!   string  = input line
+!   words   = array of words
+!   n       = number of words
+!=====================================================================
 
   subroutine split_string_wl(string, words, n)
-    ! SPLIT_STRING_WL takes a string that includes logical expressions
-    ! for a list of bounding surfaces in a cell and splits it into
-    ! separate words. The characters (, ), :, and # count as separate
-    ! words since they represent operators.
-    !
-    ! Arguments:
-    !   string  = input line
-    !   words   = array of words
-    !   n       = number of words
 
     character(*), intent(in)  :: string
     character(*), intent(out) :: words(max_words)
@@ -107,16 +113,17 @@ contains
     end do
   end subroutine split_string_wl
 
-!-------------------------------------------------------------------------------
+!=====================================================================
+! CONCATENATE takes an array of words and concatenates them
+! together in one string with a single space between words
+!
+! Arguments:
+!   words   = array of words
+!   n_words = total number of words
+!   string  = concatenated string
+!=====================================================================
 
   subroutine concatenate( words, n_words, string )
-    ! CONCATENATE takes an array of words and concatenates them
-    ! together in one string with a single space between words
-    !
-    ! Arguments:
-    !   words   = array of words
-    !   n_words = total number of words
-    !   string  = concatenated string
 
     character(*),   intent(in)  :: words(n_words)
     integer,        intent(in)  :: n_words
@@ -132,7 +139,9 @@ contains
 
   end subroutine concatenate
 
-!-------------------------------------------------------------------------------
+!=====================================================================
+! LOWER_CASE converts a string to all lower case characters
+!=====================================================================
 
   elemental subroutine lower_case(word)
     ! convert a word to lower case
@@ -149,16 +158,21 @@ contains
 
   end subroutine lower_case
 
-!-------------------------------------------------------------------------------
+!=====================================================================
+! STR_TO_REAL converts an arbitrary string to a real(8). Generally
+! this function is intended for strings for which the exact format is
+! not known. If the format of the number is known a priori, the
+! appropriate format descriptor should be used in lieu of this routine
+! because of the extra overhead.
+!
+! Arguments:
+!   string = character(*) containing number to convert
+!=====================================================================
 
-  function string_to_real( string )
-    ! STRING_TO_REAL converts an arbitrary string to a real(8)
-    !
-    ! Arguments:
-    !   string = character(*) containing number to convert
+  function str_to_real( string )
 
     character(*), intent(in) :: string
-    real(8) :: string_to_real
+    real(8) :: str_to_real
 
     integer :: index_decimal  ! index of decimal point
     integer :: index_exponent ! index of exponent character
@@ -190,26 +204,12 @@ contains
     write( fmt, '("(E",I2,".",I2,")")') w, d
 
     ! Read string
-    read( string, fmt, iostat=readError ) string_to_real
+    read( string, fmt, iostat=readError ) str_to_real
     if ( readError > 0 ) then
        msg = "Could not read value: " // string
        call error( msg )
     end if
 
-  end function string_to_real
-
-!-------------------------------------------------------------------------------
-
-  function int_to_string( num )
-
-    integer, intent(in) :: num
-    character(10) :: int_to_string
-
-    write ( int_to_string, '(I10)' ) num
-    int_to_string = adjustl(int_to_string)
-
-  end function int_to_string
-
-!-------------------------------------------------------------------------------
+  end function str_to_real
 
 end module string

@@ -1,0 +1,19 @@
+2011-01-22 Paul Romano <romano7@mit.edu>
+
+	* input_sample: Added a sample input file
+	* main.f90: Added run_problem subroutine
+	* mcnp_random.f90: Added random number generator based on MCNP's
+	linear congruential generator
+	* fileio.f90: Completely changed how cells, surfaces, and
+	materials are allocated. Now there is a first pass through the
+	input file made by read_count which allows the arrays to be
+	pre-allocated, then read_input actually parses the input data.
+	* geometry.f90: Only formatting changes
+	* output.f90: Added the echo_input subroutine, made formatting
+	changes
+	* string.f90: Moved int_to_str to the global module, changed
+	string splitting to recognize tab characters
+	* types.f90: Deleted List types, added Isotope, Material, and
+	Source
+	* source.f90: Added init_source routine which initializes source
+	particles

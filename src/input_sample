@@ -1,0 +1,14 @@
+# test input file
+
+cell 1 1    -2  1
+cell 2 1  -22 6
+
+surface 1  px 3.0
+surface 2 sph 0 0.0 0.0 5
+
+material 1 U235 1.00
+
+source 1 box 0. 0. 0. 1. 1. 1.
+
+xs_library endfb7
+criticality 1000 100 1

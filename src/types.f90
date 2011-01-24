@@ -19,10 +19,13 @@ module types
   end type Cell
 
   type :: Neutron
-    integer  :: uid    ! Unique ID
-    real(8)  :: xyz(3) ! location
-    real(8)  :: uvw(3) ! directional cosines
-    real(8)  :: wgt    ! particle weight
+    integer  :: uid     ! Unique ID
+    real(8)  :: xyz(3)  ! location
+    real(8)  :: uvw(3)  ! directional cosines
+    integer  :: cell    ! current cell
+    integer  :: surface ! current surface
+    real(8)  :: wgt     ! particle weight
+    logical  :: alive   ! is particle alive?
   end type Neutron
 
   type :: Bank
@@ -44,7 +47,6 @@ module types
   end type Material
 
   type :: ExtSource
-     integer :: uid                     ! unique identifier
      integer :: type                    ! type of source, e.g. 'box' or 'cell'
      real(8), allocatable :: values(:)  ! values for particular source type
   end type ExtSource

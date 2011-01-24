@@ -8,16 +8,17 @@ module global
   type(Cell),      allocatable, target :: cells(:)
   type(Surface),   allocatable, target :: surfaces(:)
   type(Material),  allocatable, target :: materials(:)
-  type(ExtSource), allocatable, target :: sources(:)
   integer :: n_cells     ! # of cells
   integer :: n_surfaces  ! # of surfaces
   integer :: n_materials ! # of materials
-  integer :: n_sources   ! # of sources
 
   ! Histories/cycles/etc for both external source and criticality
   integer :: n_particles ! # of particles (per cycle for criticality)
   integer :: n_cycles    ! # of cycles
   integer :: n_inactive  ! # of inactive cycles
+
+  ! External source
+  type(ExtSource), target :: external_source
 
   ! Source and fission bank
   type(Neutron), allocatable, target :: source_bank(:)
@@ -69,10 +70,10 @@ module global
        & SRC_SURFACE = 3    ! Source on a surface
 
   ! Problem type
-  integer :: problem_type = 0
+  integer :: problem_type
   integer, parameter ::        &
-       & PROB_CRITICALITY = 1, & ! Criticality problem
-       & PROB_SOURCE      = 2    ! External source problem
+       & PROB_SOURCE      = 1, & ! External source problem
+       & PROB_CRITICALITY = 2    ! Criticality problem
 
   ! Particle type
   integer, parameter :: &
@@ -91,6 +92,20 @@ module global
   integer, parameter :: VERSION_RELEASE = 1
 
 contains
+
+!=====================================================================
+! SET_DEFAULTS gives default values for many global parameters
+!=====================================================================
+
+  subroutine set_defaults()
+
+    ! Default problem type is external source
+    problem_type = PROB_SOURCE
+    
+    ! Default number of particles
+    n_particles = 10000
+
+  end subroutine set_defaults
 
 !=====================================================================
 ! FREE_MEMORY deallocates all allocatable arrays in the program,

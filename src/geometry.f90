@@ -12,67 +12,168 @@ contains
 ! CELL_CONTAINS determines whether a given point is inside a cell
 !=====================================================================
 
-  subroutine cell_contains( c, xyz, on_surface )
+  function cell_contains( c, xyz )
 
     type(Cell), intent(in)  :: c
     real(8),    intent(in)  :: xyz(3)
-    logical,    intent(in)  :: on_surface
+    logical :: cell_contains
 
     integer, allocatable :: expression(:)
     integer :: specified_sense
     integer :: actual_sense
-    integer :: n
+    integer :: n_boundaries
     integer :: i, j
     integer :: surf_num
     type(Surface), pointer :: surf => null()
     logical :: surface_found
     character(250) :: msg
 
-    if ( on_surface ) then
-       n = size(c%boundary_list)
-       allocate( expression(n) )
-       expression = c%boundary_list
-       do i = 1,n
-          ! Don't change logical operator
-          if ( expression(i) >= OP_DIFFERENCE ) then
-             cycle
-          end if
+    n_boundaries = size(c%boundary_list)
+    allocate( expression(n_boundaries) )
+    expression = c%boundary_list
+    do i = 1, n_boundaries
+       surface_found = .false.
 
-          ! Lookup surface
-          surf_num = abs(expression(i))
-          ! TODO: replace this loop with a hash since this lookup is O(N)
-          do j = 1, n_surfaces
-             surf => surfaces(j)
-             if ( surf%uid == surf_num ) then
-                surface_found = .true.
-                exit
-             end if
-          end do
+       ! Don't change logical operator
+       if ( expression(i) >= OP_DIFFERENCE ) then
+          cycle
+       end if
 
-          ! Report error if can't find specified surface
-          if ( .not. surface_found ) then
-             deallocate( expression )
-             msg = "Count not find surface " // trim(int_to_str(surf_num)) // & 
-                  & " specified on cell " // int_to_str(c%uid)
-             call error( msg )
+       ! Lookup surface
+       surf_num = abs(expression(i))
+       ! TODO: replace this loop with a hash since this lookup is O(N)
+       do j = 1, n_surfaces
+          surf => surfaces(j)
+          if ( surf%uid == surf_num ) then
+             surface_found = .true.
+             exit
           end if
-          
-          ! Compare sense of point to specified sense
-          specified_sense = sign(1,expression(i))
-          call sense( surf, xyz, actual_sense )
-          if ( actual_sense == specified_sense ) then
-             expression(i) = 1
-          else
-             expression(i) = 0
+       end do
+
+       ! Report error if can't find specified surface
+       if ( .not. surface_found ) then
+          deallocate( expression )
+          msg = "Count not find surface " // trim(int_to_str(surf_num)) // & 
+               & " specified on cell " // int_to_str(c%uid)
+          call error( msg )
+       end if
+
+       ! Compare sense of point to specified sense
+       specified_sense = sign(1,expression(i))
+       call sense( surf, xyz, actual_sense )
+       if ( actual_sense == specified_sense ) then
+          expression(i) = 1
+       else
+          expression(i) = 0
+       end if
+
+    end do
+
+    ! TODO: Need to replace this with a 'lgeval' like subroutine that
+    ! can actually test expressions with unions and parentheses
+    if ( all( expression == 1 ) ) then
+       cell_contains = .true.
+    else
+       cell_contains = .false.
+    end if
+
+    ! Free up memory from expression
+    deallocate( expression )
+
+  end function cell_contains
+
+!=====================================================================
+! FIND_CELL determines what cell a source neutron is in
+!=====================================================================
+
+  subroutine find_cell( neut )
+
+    type(Neutron), pointer, intent(inout) :: neut
+
+    logical :: found_cell
+    character(250) :: msg
+    integer :: i
+
+    ! determine what region in
+    do i = 1, n_cells
+       if ( cell_contains(cells(i), neut%xyz) ) then
+          neut%cell = i
+          found_cell = .true.
+          exit
+       end if
+    end do
+
+    ! if neutron couldn't be located, print error
+    if ( .not. found_cell ) then
+       write(msg, 100) "Could not locate cell for neutron at: ", neut%xyz
+100    format (A,3ES11.3)
+       call error( msg )
+    end if
+
+  end subroutine find_cell
+
+!=====================================================================
+! CROSS_BOUNDARY moves a neutron into a new cell
+!=====================================================================
+
+  subroutine cross_boundary( neut )
+
+    type(Neutron), pointer, intent(in) :: neut
+
+    type(Surface), pointer :: surf
+    type(Cell), pointer :: c
+    integer :: i
+    integer :: index_cell
+    character(100) :: msg
+
+    surf => surfaces(abs(neut%surface))
+
+    ! check for leakage
+    if ( surf%bc == BC_VACUUM ) then
+       neut%alive = .false.
+       return
+    end if
+
+    if ( neut%surface < 0 ) then
+       ! If coming from negative side of surface, search all the
+       ! neighboring cells on the positive side
+       do i = 1, size(surf%neighbor_pos(:))
+          index_cell = surf%neighbor_pos(i)
+          c = cells(index_cell)
+          if ( cell_contains(c, neut%xyz) ) then
+             neut%cell = index_cell
+             return
           end if
-       
+       end do
+    elseif ( neut%surface > 0 ) then
+       ! If coming from positive side of surface, search all the
+       ! neighboring cells on the negative side
+       do i = 1, size(surf%neighbor_neg(:))
+          index_cell = surf%neighbor_neg(i)
+          c = cells(index_cell)
+          if ( cell_contains(c, neut%xyz) ) then
+             neut%cell = index_cell
+             return
+          end if
        end do
     end if
 
-    ! Need to deallocate expression
-    print *, expression
+    ! Couldn't find particle in neighboring cells, search through all
+    ! cells
+    do i = 1, size(cells)
+       c = cells(i)
+       if ( cell_contains(c, neut%xyz) ) then
+          neut%cell = i
+          return
+       end if
+    end do
 
-  end subroutine cell_contains
+    ! Couldn't find next cell anywhere!
+    msg = "After neutron crossed surface " // int_to_str(neut%surface) // &
+         & ", it could not be located in any cell and it did not leak."
+    call error( msg )
+       
+  end subroutine cross_boundary
 
 !=====================================================================
 ! DIST_TO_BOUNDARY calculates the distance to the nearest boundary of
@@ -80,17 +181,19 @@ contains
 ! direction.
 !=====================================================================
 
-  subroutine dist_to_boundary( cl, neut, dist )
+  subroutine dist_to_boundary( neut, dist, surf, other_cell )
 
-    type(Cell),    intent(in)  :: cl
-    type(Neutron), intent(in)  :: neut
-    real(8),       intent(out) :: dist
+    type(Neutron),     intent(in)  :: neut
+    real(8),           intent(out) :: dist
+    integer,           intent(out) :: surf
+    integer, optional, intent(in)  :: other_cell
 
+    type(Cell),    pointer :: cl => null()
+    type(Surface), pointer :: surf => null()
     integer :: i
-    integer :: n_cell_surfaces
+    integer :: n_boundaries
     integer, allocatable :: expression(:)
     integer :: surf_num
-    type(Surface), pointer :: surf => null()
     real(8) :: x,y,z,u,v,w
     real(8) :: d
     real(8) :: x0,y0,z0,r
@@ -98,6 +201,12 @@ contains
     real(8) :: a,b,c,k
     real(8) :: quad
     character(250) :: msg
+
+    if ( present(other_cell) ) then
+       cl => cells(other_cell)
+    else
+       cl => cells(neut%cell)
+    end if
 
     x = neut%xyz(1)
     y = neut%xyz(2)
@@ -107,8 +216,8 @@ contains
     z = neut%uvw(3)
 
     dist = INFINITY
-    n_cell_surfaces = size(cl%boundary_list)
-    do i = 1, n_cell_surfaces
+    n_boundaries = size(cl%boundary_list)
+    do i = 1, n_boundaries
        surf_num = abs(expression(i))
        if ( surf_num >= OP_DIFFERENCE ) cycle
 
@@ -309,7 +418,10 @@ contains
        end select
 
        ! Check is calculated distance is new minimum
-       dist = min(d,dist)
+       if ( d < dist ) then
+          dist = d
+          surf = expression(i)
+       end if
 
     end do
 
@@ -449,5 +561,3 @@ contains
   end subroutine sense
 
 end module geometry
-
-    

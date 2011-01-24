@@ -57,10 +57,9 @@ contains
     integer :: readError
     integer :: n
 
-    n_cells   = 0
-    n_surfaces   = 0
-    n_materials    = 0
-    n_sources = 0
+    n_cells     = 0
+    n_surfaces  = 0
+    n_materials = 0
 
     open(file=filename, unit=in, status='old', action='read')
 
@@ -77,13 +76,11 @@ contains
           n_surfaces = n_surfaces + 1
        case ( 'material' ) 
           n_materials = n_materials + 1
-       case ( 'source' ) 
-          n_sources = n_sources + 1
        end select
     end do
 
-    ! Check to make sure there are cells, surface, materials, and
-    ! sources defined for the problem
+    ! Check to make sure there are cells, surface, and materials
+    ! defined for the problem
     if ( n_cells == 0 ) then
        msg = "No cells specified!"
        call error( msg )
@@ -93,9 +90,6 @@ contains
     elseif ( n_materials == 0 ) then
        msg = "No materials specified!"
        call error( msg )
-    elseif ( n_sources == 0 ) then
-       msg = "No source specified!"
-       call error( msg ) 
     end if
 
     close(unit=in)
@@ -104,7 +98,6 @@ contains
     allocate( cells(n_cells)         )
     allocate( surfaces(n_surfaces)   )
     allocate( materials(n_materials) )
-    allocate( sources(n_sources)     )
     
   end subroutine read_count
 
@@ -157,8 +150,7 @@ contains
        case ( 'material' )
 
        case ( 'source' )
-          index_source = index_source + 1
-          call read_source( index_source, words, n )
+          call read_source( words, n )
 
        case ( 'criticality' )
           call read_criticality( words, n )
@@ -312,50 +304,39 @@ contains
 ! READ_SOURCE parses the data on a source card.
 !=====================================================================
 
-  subroutine read_source( index, words, n_words )
+  subroutine read_source( words, n_words )
 
-    integer, intent(in) :: index
     character(*), intent(in) :: words(max_words)
     integer, intent(in) :: n_words
 
     character(250) :: msg
     character(32) :: word
-    type(ExtSource), pointer :: this_source => null()
     integer :: readError
     integer :: values_reqd
     integer :: i
 
-    this_source => sources(index)
-
-    ! Read source identifier
-    read(words(2), fmt='(I8)', iostat=readError) this_source%uid
-    if ( readError > 0 ) then
-       msg = "Invalid surface name: " // words(2)
-       call error( msg )
-    end if
-
     ! Read source type
-    word = words(3)
+    word = words(2)
     call lower_case(word)
     select case ( trim(word) )
     case ( 'box' )
-       this_source%type = SRC_BOX
+       external_source%type = SRC_BOX
        values_reqd = 6
     case default
-       msg = "Invalid source type: " // words(3)
+       msg = "Invalid source type: " // words(2)
        call error( msg )
     end select
 
     ! Make sure there are enough values for this source type
-    if ( n_words-3 < values_reqd ) then
-       msg = "Not enough values for source: " // words(2)
+    if ( n_words-2 < values_reqd ) then
+       msg = "Not enough values for source of type: " // words(2)
        call error( msg )
     end if
     
     ! Read list of surfaces
-    allocate( this_source%values(n_words-3) )
-    do i = 1, n_words-3
-       this_source%values(i) = str_to_real(words(i+3))
+    allocate( external_source%values(n_words-2) )
+    do i = 1, n_words-2
+       external_source%values(i) = str_to_real(words(i+2))
     end do
     
   end subroutine read_source

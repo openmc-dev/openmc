@@ -1,3 +1,16 @@
+2011-01-23 Paul Romano <romano7@mit.edu>
+
+	* types.f90: Added cell, surface, and alive attributes to Neutron
+	* fileio.f90: External source no longer array
+	* geometry.f90: Changed cell_contains slightly so that it can
+	evaluate simple cell logical expressions. Added find_cell and
+	cross_boundary subroutines. Changed dist_to_boundary to also give
+	back closest surface
+	* global.f90: Added set_defaults subroutine
+	* source.f90: Isotropic angle is now sampled in init_source, fixed
+	sampling in box, checks for external source type. Added
+	get_source_particle function.
+
 2011-01-22 Paul Romano <romano7@mit.edu>
 
 	* input_sample: Added a sample input file

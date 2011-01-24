@@ -5,7 +5,8 @@ program main
   use output,      only: title, echo_input, message, warning, error
   use geometry,    only: sense, cell_contains
   use mcnp_random, only: RN_init_problem, rang, RN_init_particle
-  use source,      only: init_source
+  use source,      only: init_source, get_source_particle
+  use physics,     only: transport
 
   implicit none
 
@@ -21,6 +22,9 @@ program main
   ! Initialize random number generator
   call RN_init_problem( 3, 0_8, 0_8, 0_8, 0 )
 
+  ! Set default values for settings
+  call set_defaults()
+
   ! Read command line arguments
   call read_command_line()
 
@@ -35,7 +39,7 @@ program main
   call init_source()
 
   ! start problem
-  ! call run_problem()
+  call run_problem()
 
 
 contains
@@ -59,14 +63,18 @@ contains
        HISTORY_LOOP: do j = 1, n_particles
 
           ! grab source particle from bank
-          ! particle => get_source_particle()
+          particle => get_source_particle()
+          if ( .not. associated(particle) ) then
+             ! no particles left in source bank
+             exit HISTORY_LOOP
+          end if
 
           ! set random number seed
           i_particle = (i-1)*n_particles + j
           call RN_init_particle(int(i_particle,8))
 
           ! transport particle
-          ! call transport(particle)
+          call transport(particle)
 
        end do HISTORY_LOOP
 

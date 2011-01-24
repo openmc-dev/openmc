@@ -1,9 +1,9 @@
 # test input file
 
 cell 1 1    -2
-cell 2 1    2 -22
+cell 2 1    2 -1
 
-surface 1 sph 0 0 0 1
+surface 1 sph 0 0 0 5
 surface 2 sph 0 0.0 0.0 3
 
 material 1 U235 1.00

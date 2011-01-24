@@ -35,7 +35,7 @@ global.o: types.o
 string.o: global.o output.o
 output.o: global.o
 source.o: global.o mcnp_random.o
-physics.o: types.o global.o
+physics.o: types.o global.o mcnp_random.o geometry.o output.o
 geometry.o: types.o global.o output.o string.o
 fileio.o: types.o global.o string.o output.o
 main.o: global.o fileio.o output.o geometry.o mcnp_random.o \

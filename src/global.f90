@@ -30,10 +30,10 @@ module global
        & INFINITY = huge(0.0_8)      ! positive infinity
 
   ! Boundary conditions
-  integer, parameter :: &
-       & TRANSMIT = 0,  & ! Transmission boundary condition (default)
-       & VACUUM   = 1,  & ! Vacuum boundary condition
-       & REFLECT  = 2     ! Reflecting boundary condition
+  integer, parameter ::    &
+       & BC_TRANSMIT = 0,  & ! Transmission boundary condition (default)
+       & BC_VACUUM   = 1,  & ! Vacuum boundary condition
+       & BC_REFLECT  = 2     ! Reflecting boundary condition
 
   ! Logical operators for cell definitions
   integer, parameter ::                &

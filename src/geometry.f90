@@ -188,12 +188,12 @@ contains
     integer,           intent(out) :: surf
     integer, optional, intent(in)  :: other_cell
 
-    type(Cell),    pointer :: cl => null()
-    type(Surface), pointer :: surf => null()
+    type(Cell),    pointer :: cell_p => null()
+    type(Surface), pointer :: surf_p => null()
     integer :: i
     integer :: n_boundaries
     integer, allocatable :: expression(:)
-    integer :: surf_num
+    integer :: index_surf
     real(8) :: x,y,z,u,v,w
     real(8) :: d
     real(8) :: x0,y0,z0,r
@@ -203,9 +203,9 @@ contains
     character(250) :: msg
 
     if ( present(other_cell) ) then
-       cl => cells(other_cell)
+       cell_p => cells(other_cell)
     else
-       cl => cells(neut%cell)
+       cell_p => cells(neut%cell)
     end if
 
     x = neut%xyz(1)
@@ -216,18 +216,20 @@ contains
     z = neut%uvw(3)
 
     dist = INFINITY
-    n_boundaries = size(cl%boundary_list)
+    n_boundaries = size(cell_p%boundary_list)
+    allocate( expression(n_boundaries) )
+    expression = cell_p%boundary_list
     do i = 1, n_boundaries
-       surf_num = abs(expression(i))
-       if ( surf_num >= OP_DIFFERENCE ) cycle
+       index_surf = abs(expression(i))
+       if ( index_surf >= OP_DIFFERENCE ) cycle
 
-       surf => surfaces(surf_num)
-       select case ( surf%type )
+       surf_p => surfaces(index_surf)
+       select case ( surf_p%type )
        case ( SURF_PX )
           if ( u == 0.0 ) then
              d = INFINITY
           else
-             x0 = surf%coeffs(1)
+             x0 = surf_p%coeffs(1)
              d = (x0 - x)/u
              if ( d < 0 ) d = INFINITY
           end if
@@ -236,7 +238,7 @@ contains
           if ( v == 0.0 ) then
              d = INFINITY
           else
-             y0 = surf%coeffs(1)
+             y0 = surf_p%coeffs(1)
              d = (y0 - y)/v
              if ( d < 0 ) d = INFINITY
           end if
@@ -245,16 +247,16 @@ contains
           if ( w == 0.0 ) then
              d = INFINITY
           else
-             z0 = surf%coeffs(1)
+             z0 = surf_p%coeffs(1)
              d = (z0 - z)/w
              if ( d < 0.0 ) d = INFINITY
           end if
           
        case ( SURF_PLANE )
-          A = surf%coeffs(1)
-          B = surf%coeffs(2)
-          C = surf%coeffs(3)
-          D = surf%coeffs(4)
+          A = surf_p%coeffs(1)
+          B = surf_p%coeffs(2)
+          C = surf_p%coeffs(3)
+          D = surf_p%coeffs(4)
           
           tmp = A*u + B*v + C*w
           if ( tmp == 0.0 ) then
@@ -269,9 +271,9 @@ contains
           if ( a == 0.0 ) then
              d = INFINITY
           else
-             y0 = surf%coeffs(1)
-             z0 = surf%coeffs(2)
-             r = surf%coeffs(3)
+             y0 = surf_p%coeffs(1)
+             z0 = surf_p%coeffs(2)
+             r = surf_p%coeffs(3)
 
              y = y - y0
              z = z - z0
@@ -304,9 +306,9 @@ contains
           if ( a == 0.0 ) then
              d = INFINITY
           else
-             x0 = surf%coeffs(1)
-             z0 = surf%coeffs(2)
-             r = surf%coeffs(3)
+             x0 = surf_p%coeffs(1)
+             z0 = surf_p%coeffs(2)
+             r = surf_p%coeffs(3)
 
              x = x - x0
              z = z - z0
@@ -339,9 +341,9 @@ contains
           if ( a == 0.0 ) then
              d = INFINITY
           else
-             x0 = surf%coeffs(1)
-             y0 = surf%coeffs(2)
-             r = surf%coeffs(3)
+             x0 = surf_p%coeffs(1)
+             y0 = surf_p%coeffs(2)
+             r = surf_p%coeffs(3)
 
              x = x - x0
              y = y - y0
@@ -375,10 +377,10 @@ contains
           end if
 
        case ( SURF_SPHERE )
-          x0 = surf%coeffs(1)
-          y0 = surf%coeffs(2)
-          z0 = surf%coeffs(3)
-          r = surf%coeffs(4)
+          x0 = surf_p%coeffs(1)
+          y0 = surf_p%coeffs(2)
+          z0 = surf_p%coeffs(3)
+          r = surf_p%coeffs(4)
 
           x = x - x0
           y = y - y0
@@ -424,6 +426,9 @@ contains
        end if
 
     end do
+
+    ! deallocate expression
+    deallocate( expression )
 
   end subroutine dist_to_boundary
 

@@ -1,8 +1,10 @@
 module physics
 
   use global
-  use geometry, only: find_cell, dist_to_boundary
-  use types, only: Neutron
+  use geometry,    only: find_cell, dist_to_boundary, cross_boundary
+  use types,       only: Neutron
+  use mcnp_random, only: rang
+  use output,      only: error
 
   implicit none
 
@@ -33,12 +35,11 @@ contains
 
        ! Determine distance neutron moves
        call dist_to_boundary( neut, d_to_boundary, surf )
-       print *, d_to_boundary, surf
        d_to_collision = -log(rang()) / 1.0
        distance = min( d_to_boundary, d_to_collision )
 
        ! Advance neutron
-       neut%xyz = p%xyz + distance*p%uvw
+       neut%xyz = neut%xyz + distance*neut%uvw
 
        ! Add pathlength tallies
 
@@ -48,6 +49,8 @@ contains
           call cross_boundary( neut )
        else
           ! collision
+          msg = "Collision not implemented yet!"
+          call error( msg )
        end if
        
     end do

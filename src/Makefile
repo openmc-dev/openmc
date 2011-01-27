@@ -1,8 +1,17 @@
 program = openmc
 
-src = main.f90 types.f90 global.f90 fileio.f90 output.f90 \
-	string.f90 geometry.f90 mcnp_random.f90 source.f90 \
-	physics.f90
+src = 	data_structures.f90 \
+		fileio.f90 \
+		geometry.f90 \
+		global.f90 \
+		main.f90 \
+		mcnp_random.f90 \
+		output.f90 \
+		physics.f90 \
+		source.f90 \
+		string.f90 \
+		types.f90
+
 objects = $(src:.f90=.o)
 
 #--------------------------------------------------------------------
@@ -30,13 +39,14 @@ neat:
 
 #--------------------------------------------------------------------
 # Dependencies
-types.o:
-global.o: types.o
-string.o: global.o output.o
-output.o: global.o
-source.o: global.o mcnp_random.o
-physics.o: types.o global.o mcnp_random.o geometry.o output.o
-geometry.o: types.o global.o output.o string.o
+data_structures.o: global.o
 fileio.o: types.o global.o string.o output.o
+geometry.o: types.o global.o output.o string.o
+global.o: types.o
 main.o: global.o fileio.o output.o geometry.o mcnp_random.o \
 		source.o physics.o
+output.o: global.o
+physics.o: types.o global.o mcnp_random.o geometry.o output.o
+source.o: global.o mcnp_random.o
+string.o: global.o output.o
+types.o:

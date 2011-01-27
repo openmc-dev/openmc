@@ -102,8 +102,18 @@ module output
       character(*), intent(in) :: msg
       integer, intent(in) :: level
 
+      integer :: ou
+      integer :: n_lines
+      integer :: i
+
       if ( level <= verbosity ) then
-         write (OUTPUT_UNIT,*) trim(msg)
+         ou = OUTPUT_UNIT
+         
+         n_lines = (len_trim(msg)-1)/79 + 1
+         do i = 1, n_lines
+            write(ou, fmt='(1X,A79)') msg(79*(i-1)+1:79*i)
+         end do
+
       end if
 
     end subroutine message

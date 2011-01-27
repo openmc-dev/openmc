@@ -1,3 +1,13 @@
+2011-01-26 Paul Romano <romano7@mit.edu>
+
+	* physics.f90: Added collision routine, still segfaults though.
+	* geometry.f90: Added messages for high verbosities
+	* global.f90: Added verbosity parameter, key length for
+	dictionaries
+	* output.f90: Implemented verbosity for messages.
+	* data_structures.f90: Added implementations of linked list and
+	dictionaries based on the flib open source package
+
 2011-01-23 Paul Romano <romano7@mit.edu>
 
 	* types.f90: Added cell, surface, and alive attributes to Neutron

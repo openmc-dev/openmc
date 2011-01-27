@@ -7,14 +7,13 @@ program main
   use mcnp_random, only: RN_init_problem, rang, RN_init_particle
   use source,      only: init_source, get_source_particle
   use physics,     only: transport
+  use data_structures, only: Dictionary, dict_create, dict_add_key, & 
+       &                     dict_get_key
 
   implicit none
 
   character(16) :: filename
   character(250) :: msg
-
-  real(8) :: point(3)
-  integer :: s(4)
 
   ! Print the OpenMC title and version/date/time information
   call title()
@@ -39,6 +38,8 @@ program main
   call init_source()
 
   ! start problem
+  verbosity = 10
+  surfaces(1)%bc = BC_VACUUM
   call run_problem()
 
 

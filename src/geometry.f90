@@ -2,7 +2,7 @@ module geometry
 
   use global
   use types,  only: Cell, Surface
-  use output, only: error
+  use output, only: error, message
 
   implicit none
      
@@ -131,6 +131,9 @@ contains
     ! check for leakage
     if ( surf%bc == BC_VACUUM ) then
        neut%alive = .false.
+       msg = "Particle " // trim(int_to_str(neut%uid)) // " leaked out of surface " &
+            & // trim(int_to_str(surf%uid))
+       call message( msg, 10 )
        return
     end if
 

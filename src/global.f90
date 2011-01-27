@@ -83,13 +83,16 @@ module global
 
   character(32) :: inputfile
 
-  integer, parameter :: verbosity = 5
+  integer :: verbosity = 5
   integer, parameter :: max_words = 100
 
   ! Versioning numbers
   integer, parameter :: VERSION_MAJOR = 0
   integer, parameter :: VERSION_MINOR = 1
   integer, parameter :: VERSION_RELEASE = 1
+
+  ! Key length for dictionary
+  integer, parameter :: DICT_KEY_LENGTH = 20
 
 contains
 

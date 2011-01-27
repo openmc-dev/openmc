@@ -4,7 +4,7 @@ module physics
   use geometry,    only: find_cell, dist_to_boundary, cross_boundary
   use types,       only: Neutron
   use mcnp_random, only: rang
-  use output,      only: error
+  use output,      only: error, message
 
   implicit none
 
@@ -49,12 +49,45 @@ contains
           call cross_boundary( neut )
        else
           ! collision
-          msg = "Collision not implemented yet!"
-          call error( msg )
+          call collision( neut )
        end if
        
     end do
 
   end subroutine transport
+
+!=====================================================================
+! COLLISION
+!=====================================================================
+
+  subroutine collision( neut )
+
+    type(Neutron), pointer, intent(inout) :: neut
+
+    real(8) :: r1
+    real(8) :: phi ! azimuthal angle
+    real(8) :: mu  ! cosine of polar angle
+    character(250) :: msg
+
+    ! tallies
+    
+    ! select collision type
+    r1 = rang()
+    if ( r1 <= 0.5 ) then
+       ! scatter
+       phi = 2.*pi*rang()
+       mu = 2.*rang() - 1
+       neut%uvw(1) = mu
+       neut%uvw(2) = sqrt(1. - mu**2) * cos(phi)
+       neut%uvw(3) = sqrt(1. - mu**2) * sin(phi)
+    else
+       neut%alive = .false.
+       msg = "Particle " // trim(int_to_str(neut%uid)) // " was absorbed in cell " &
+            & // trim(int_to_str(neut%cell))
+       call message( msg, 10 )
+       return
+    end if
+    
+  end subroutine collision
 
 end module physics

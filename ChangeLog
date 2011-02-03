@@ -1,3 +1,27 @@
+2011-02-03 Paul Romano <romano7@mit.edu>
+
+	* ace.f90: Added initial routines for reading continuous-energy
+	ACE cross section tables. No secondary energy/angle distributions
+	or nu data is read.
+	* cross_section.f90: Added read_xsdata routine which reads
+	information from an xsdata file from SERPENT.
+	* data_structures.f90: Moved derived types to the types module and
+	change dict_create so that one doesn't need to add a (key,value)
+	pair on initialization.
+	* energy_grid.f90: First routines for energy grid unionization
+	based on insertion sorts.
+	* fileio.f90: Added routines for reading integer and real data,
+	particularly from cross-section libraries. Made an interface so
+	that a single routine can be called regardless of type. Ability to
+	read material cards and added subroutine for normalization of
+	atom/weight percents.
+	* Makefile: Added 'unittest' target
+	* output.f90: Fixed bug in get_today subroutine whereby the day
+	was displayed wrong.
+	* search.f90: Added binary search which will eventually be used
+	for energy grid searches
+	* unittest.f90: Added this program for unit testing.
+
 2011-01-26 Paul Romano <romano7@mit.edu>
 
 	* physics.f90: Added collision routine, still segfaults though.

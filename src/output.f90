@@ -203,13 +203,13 @@ module output
       
       if ( val(2) < 10 ) then
          if ( val(3) < 10 ) then
-            today_date = date(6:6) // "/" // date(7:7) // "/" // date(1:4)
+            today_date = date(6:6) // "/" // date(8:8) // "/" // date(1:4)
          else
             today_date = date(6:6) // "/" // date(7:8) // "/" // date(1:4)
          end if
       else
          if ( val(3) < 10 ) then
-            today_date = date(5:6) // "/" // date(7:7) // "/" // date(1:4)
+            today_date = date(5:6) // "/" // date(8:8) // "/" // date(1:4)
          else
             today_date = date(5:6) // "/" // date(7:8) // "/" // date(1:4)
          end if

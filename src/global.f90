@@ -5,12 +5,27 @@ module global
   implicit none
 
   ! Main arrays for cells, surfaces, materials
-  type(Cell),      allocatable, target :: cells(:)
-  type(Surface),   allocatable, target :: surfaces(:)
-  type(Material),  allocatable, target :: materials(:)
+  type(Cell),     allocatable, target :: cells(:)
+  type(Surface),  allocatable, target :: surfaces(:)
+  type(Material), allocatable, target :: materials(:)
+  type(Isotope),  allocatable, target :: isotopes(:)
+  type(xsData),   allocatable, target :: xsdatas(:)
   integer :: n_cells     ! # of cells
   integer :: n_surfaces  ! # of surfaces
   integer :: n_materials ! # of materials
+
+  type(Dictionary), pointer :: cell_dict
+  type(Dictionary), pointer :: surface_dict
+  type(Dictionary), pointer :: xsdata_dict
+  type(Dictionary), pointer :: isotope_dict
+  type(Dictionary), pointer :: ace_dict
+
+  ! Cross section arrays
+  type(AceContinuous), pointer :: xs_continuous(:)
+  type(AceThermal),    allocatable, target :: xs_thermal(:)
+
+  ! unionized energy grid
+  real(8), allocatable :: energy_grid(:)
 
   ! Histories/cycles/etc for both external source and criticality
   integer :: n_particles ! # of particles (per cycle for criticality)
@@ -24,10 +39,19 @@ module global
   type(Neutron), allocatable, target :: source_bank(:)
   type(Bank),    allocatable, target :: fission_bank(:)
 
+  ! Paths to input file, cross section data, etc
+  character(100) :: & 
+       & path_input,    &
+       & path_xsdata
+
   ! Physical constants
-  real(8), parameter ::           &
-       & PI       = 2.*acos(0.0), &  ! pi
-       & INFINITY = huge(0.0_8)      ! positive infinity
+  real(8), parameter ::            &
+       & PI           = 2.*acos(0.0),   & ! pi
+       & MASS_NEUTRON = 1.0086649156,   & ! mass of a neutron
+       & MASS_PROTON  = 1.00727646677,  & ! mass of a proton
+       & AMU          = 1.66053873e-27, & ! 1 amu in kg
+       & K_BOLTZMANN  = 8.617342e-5,    & ! Boltzmann constant in eV/K
+       & INFINITY  = huge(0.0_8)          ! positive infinity
 
   ! Boundary conditions
   integer, parameter ::    &
@@ -81,18 +105,14 @@ module global
        & PHOTON_   = 2, &
        & ELECTRON_ = 3
 
-  character(32) :: inputfile
-
   integer :: verbosity = 5
   integer, parameter :: max_words = 100
+  integer, parameter :: max_line  = 250
 
   ! Versioning numbers
   integer, parameter :: VERSION_MAJOR = 0
   integer, parameter :: VERSION_MINOR = 1
-  integer, parameter :: VERSION_RELEASE = 1
-
-  ! Key length for dictionary
-  integer, parameter :: DICT_KEY_LENGTH = 20
+  integer, parameter :: VERSION_RELEASE = 2
 
 contains
 
@@ -118,23 +138,16 @@ contains
   subroutine free_memory()
 
     ! Deallocate cells, surfaces, materials
-    if (allocated(cells)) then
-       deallocate(cells)
-    end if
-    if (allocated(surfaces)) then
-       deallocate(surfaces)
-    end if
-    if (allocated(materials)) then
-       deallocate(materials)
-    end if
+    if (allocated(cells)) deallocate(cells)
+    if (allocated(surfaces)) deallocate(surfaces)
+    if (allocated(materials)) deallocate(materials)
+
+    ! Deallocate xsdata list
+    if (allocated(xsdatas)) deallocate(xsdatas)
 
     ! Deallocate fission and source bank
-    if (allocated(fission_bank)) then
-       deallocate(fission_bank)
-    end if
-    if (allocated(source_bank)) then
-       deallocate(source_bank)
-    end if
+    if (allocated(fission_bank)) deallocate(fission_bank)
+    if (allocated(source_bank)) deallocate(source_bank)
 
     ! End program
     stop
@@ -146,14 +159,36 @@ contains
 ! to integers less than 10 billion.
 !=====================================================================
 
-  function int_to_str( num )
+  function int_to_str(num) result(str)
 
     integer, intent(in) :: num
-    character(10) :: int_to_str
+    character(10) :: str
 
-    write ( int_to_str, '(I10)' ) num
-    int_to_str = adjustl(int_to_str)
+    write ( str, '(I10)' ) num
+    str = adjustl(str)
 
   end function int_to_str
+
+!=====================================================================
+! INT_TO_STR converts a string to an integer. 
+!=====================================================================
+
+  function str_to_int(str) result(num)
+
+    character(*), intent(in) :: str
+    integer :: num
+    
+    character(5) :: fmt
+    integer :: w
+
+    w = len_trim(str)
+    
+    ! Create format specifier for reading string
+    write(fmt, '("(I",I2,")")') w
+
+    ! read string into integer
+    read(str,fmt) num
+
+  end function str_to_int
 
 end module global

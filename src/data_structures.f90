@@ -14,33 +14,9 @@ module data_structures
 ! to ListData, dict_create, dict_add_key, and dict_get_key).
 !=====================================================================
 
-  use global, only: DICT_KEY_LENGTH
+  use types, only: ListData, LinkedList, HashList, Dictionary
 
   implicit none
-
-  ! Data stored in a linked list. In this case, we store the
-  ! (key,value) pair for a dictionary. Note that we need to store the
-  ! key in addition to the value for collision resolution.
-  type ListData
-     character(len=DICT_KEY_LENGTH) :: key
-     integer                        :: value
-  end type ListData
-
-  ! A simple linked list
-  type LinkedList
-     type(LinkedList), pointer :: next
-     type(ListData)            :: data
-  end type LinkedList
-
-  type HashList
-     type(LinkedList), pointer :: list
-  end type HashList
-
-  ! A dictionary of (key,value) pairs
-  type Dictionary
-     private
-     type(HashList), pointer, dimension(:) :: table
-  end type Dictionary
 
   ! Hide objects that do not need to be publicly accessible
   private :: ListData
@@ -281,15 +257,15 @@ contains
 !     destroy up an old list.
 !=====================================================================
 
-  subroutine dict_create( dict, key, value )
+  subroutine dict_create( dict ) !, key, value )
 
     type(Dictionary), pointer   :: dict
-    character(len=*), intent(in) :: key
-    integer,  intent(in) :: value
+!!$    character(len=*), intent(in) :: key
+!!$    integer,  intent(in) :: value
 
-    type(ListData)              :: data
+!!$    type(ListData)              :: data
     integer                      :: i
-    integer                      :: hash
+!!$    integer                      :: hash
 
     allocate( dict )
     allocate( dict%table(hash_size) )
@@ -298,11 +274,11 @@ contains
        dict%table(i)%list => null()
     enddo
 
-    data%key   = key
-    data%value = value
-
-    hash = dict_hashkey( trim(key ) )
-    call list_create( dict%table(hash)%list, data )
+!!$    data%key   = key
+!!$    data%value = value
+!!$
+!!$    hash = dict_hashkey( trim(key ) )
+!!$    call list_create( dict%table(hash)%list, data )
 
   end subroutine dict_create
 

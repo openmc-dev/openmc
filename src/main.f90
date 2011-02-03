@@ -1,7 +1,8 @@
 program main
 
   use global
-  use fileio,      only: read_input, read_command_line, read_count
+  use fileio,      only: read_input, read_command_line, read_count, &
+       &                 normalize_ao
   use output,      only: title, echo_input, message, warning, error
   use geometry,    only: sense, cell_contains
   use mcnp_random, only: RN_init_problem, rang, RN_init_particle
@@ -9,6 +10,9 @@ program main
   use physics,     only: transport
   use data_structures, only: Dictionary, dict_create, dict_add_key, & 
        &                     dict_get_key
+  use cross_section, only: read_xsdata
+  use ace, only: read_xs
+  use energy_grid, only: unionized_grid
 
   implicit none
 
@@ -17,6 +21,7 @@ program main
 
   ! Print the OpenMC title and version/date/time information
   call title()
+  verbosity = 10
 
   ! Initialize random number generator
   call RN_init_problem( 3, 0_8, 0_8, 0_8, 0 )
@@ -30,15 +35,21 @@ program main
   ! Read input file -- make a first pass through the file to count
   ! cells, surfaces, etc in order to allocate arrays, then do a second
   ! pass to actually read values
-  call read_count(inputfile)
-  call read_input(inputfile)
+  call read_count(path_input)
+  call read_input(path_input)
+  call read_xsdata(path_xsdata)
+  call normalize_ao()
+  call read_xs()
+  call unionized_grid()
+
+  stop
+  
   call echo_input()
 
   ! create source particles
   call init_source()
 
   ! start problem
-  verbosity = 10
   surfaces(1)%bc = BC_VACUUM
   call run_problem()
 

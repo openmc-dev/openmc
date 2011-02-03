@@ -1,7 +1,7 @@
 module string
 
   use global, only: max_words
-  use output, only: error
+  use output, only: error, warning
 
   implicit none
 
@@ -27,6 +27,7 @@ contains
     integer       :: i       ! current index
     integer       :: i_start ! starting index of word
     integer       :: i_end   ! ending index of word
+    character(250) :: msg
 
     i_start = 0
     i_end = 0
@@ -43,6 +44,11 @@ contains
           if (i == len(string))   i_end = i
           if (i_end > 0) then
              n = n + 1
+             if ( i_end - i_start + 1 > len(words(n)) ) then
+                msg = "The word '" // string(i_start:i_end) // "' is longer than " &
+                     & // "the space allocated for it."
+                call warning( msg )
+             end if
              words(n) = string(i_start:i_end)
              ! reset indices
              i_start = 0

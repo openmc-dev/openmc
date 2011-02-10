@@ -41,8 +41,8 @@ contains
        source_bank(i)%xyz = p_min + r*(p_max - p_min)
 
        ! angle
-       phi = 2.*PI*rang()
-       mu = 2.*rang() - 1
+       phi = 2.0_8*PI*rang()
+       mu = 2.0_8*rang() - 1.0_8
        source_bank(i)%uvw(1) = mu
        source_bank(i)%uvw(2) = sqrt(1. - mu**2) * cos(phi)
        source_bank(i)%uvw(3) = sqrt(1. - mu**2) * sin(phi)

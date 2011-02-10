@@ -32,68 +32,59 @@ contains
     type(AceThermal),    pointer :: ace_thermal => null()
     integer :: i, j
     integer :: index
-    character(10) :: table
+    character(10) :: key
     character(250) :: msg
     integer :: n
-    integer :: n_continuous
-    integer :: n_thermal
     integer :: index_continuous
     integer :: index_thermal
+    type(ListKeyValueCI), pointer :: elem
+
+    call dict_create(ace_dict)
 
     ! determine how many continuous-energy tables and how many S(a,b)
     ! thermal scattering tables there are
-    n_continuous = 0
-    n_thermal = 0
-    do i = 1, n_materials
-       mat => materials(i)
-       do j = 1, mat%n_isotopes
-          index = mat%isotopes(j)
-          table = xsdatas(index)%id
-          n = len_trim(table)
-          call lower_case(table)
-          select case (table(n:n))
-          case ('c')
-             n_continuous = n_continuous + 1
-          case ('t')
-             n_thermal = n_thermal + 1
-          case default
-             msg = "Unknown cross section table type: " // table
-             call error(msg)
-          end select
-       end do
-    end do
-
-    ! allocate arrays for ACE table storage
-    allocate(xs_continuous(n_continuous))
-    allocate(xs_thermal(n_thermal))
-
-    ! loop over all materials
-    call dict_create(ace_dict)
     index_continuous = 0
     index_thermal = 0
     do i = 1, n_materials
        mat => materials(i)
        do j = 1, mat%n_isotopes
           index = mat%isotopes(j)
-          table = xsdatas(index)%id
-          n = len_trim(table)
-          call lower_case(table)
-          select case (table(n:n))
+          key = xsdatas(index)%id
+          n = len_trim(key)
+          call lower_case(key)
+          select case (key(n:n))
           case ('c')
-             if (.not. dict_has_key(ace_dict, table)) then
+             if (.not. dict_has_key(ace_dict, key)) then
                 index_continuous = index_continuous + 1
-                call dict_add_key(ace_dict, table, index_continuous)
-                call read_ACE_continuous(index_continuous, index)
+                call dict_add_key(ace_dict, key, index_continuous)
                 mat%table(j) = index_continuous
+             else
+                mat%table(j) = dict_get_key(ace_dict, key)
              end if
           case ('t')
-             index_thermal = index_thermal + 1
              n_thermal = n_thermal + 1
           case default
-             msg = "Unknown cross section table type: " // table
+             msg = "Unknown cross section table type: " // key
              call error(msg)
           end select
        end do
+    end do
+
+    n_continuous = index_continuous
+    n_thermal = index_thermal
+
+    ! allocate arrays for ACE table storage
+    allocate(xs_continuous(n_continuous))
+    allocate(xs_thermal(n_thermal))
+
+    ! loop over all nuclides in xsdata
+    index_continuous = 0
+    do i = 1, size(xsdatas)
+       key = xsdatas(i)%alias
+       if (dict_has_key(ace_dict, key)) then
+          index_continuous = index_continuous + 1
+          call read_ACE_continuous(index_continuous, i)
+       end if
     end do
        
   end subroutine read_xs
@@ -130,14 +121,14 @@ contains
     table => xs_continuous(index_table)
 
     ! Check if input file exists and is readable
-    inquire( FILE=filename, EXIST=file_exists, READ=readable )
-    if ( .not. file_exists ) then
+    inquire(FILE=filename, EXIST=file_exists, READ=readable)
+    if (.not. file_exists) then
        msg = "ACE library '" // trim(filename) // "' does not exist!"
-       call error( msg )
-    elseif ( readable(1:3) /= 'YES' ) then
+       call error(msg)
+    elseif (readable(1:3) == 'NO') then
        msg = "ACE library '" // trim(filename) // "' is not readable! &
             &Change file permissions with chmod command."
-       call error( msg )
+       call error(msg)
     end if
 
     ! display message
@@ -145,7 +136,12 @@ contains
     call message(msg, 6)
 
     ! open file
-    open(file=filename, unit=in, status='old', action='read')
+    open(file=filename, unit=in, status='old', & 
+         & action='read', iostat=ioError)
+    if (ioError /= 0) then
+       msg = "Error while opening file: " // filename
+       call error(msg)
+    end if
 
     found_xs = .false.
     do while (.not. found_xs)
@@ -217,6 +213,7 @@ contains
 
     ! determine number of energy points
     NE = NXS(3)
+    table%n_grid = NE
 
     ! allocate storage for arrays
     allocate(table%energy(NE))
@@ -319,7 +316,7 @@ contains
 ! cross section table
 !=====================================================================
 
-  subroutine read_ACE_thermal( filename )
+  subroutine read_ACE_thermal(filename)
 
     character(*), intent(in) :: filename
 

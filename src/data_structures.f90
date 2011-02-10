@@ -14,138 +14,321 @@ module data_structures
 ! to ListData, dict_create, dict_add_key, and dict_get_key).
 !=====================================================================
 
-  use types, only: ListData, LinkedList, HashList, Dictionary
+  use types
 
   implicit none
 
-  ! Hide objects that do not need to be publicly accessible
-  private :: ListData
-  private :: HashList
-  private :: LinkedList
-  private :: list_create
-  private :: list_destroy
-  private :: list_count
-  private :: list_next
-  private :: list_insert
-  private :: list_insert_head
-  private :: list_delete_element
-  private :: list_get_data
-  private :: list_put_data
-  private :: dict_get_elem
-  private :: dict_hashkey
-  
   integer, parameter, private :: hash_size  = 4993
   integer, parameter, private :: multiplier = 31
   integer, parameter :: DICT_NULL = 0
 
+!=====================================================================
+! LIST Interfaces -- these allow one to use a single subroutine or
+! function for various types of lists, namely those consisting of
+! integers, reals, or (key,value) pairs.
+!=====================================================================
+
+  interface list_create
+     module procedure list_real_create, list_int_create
+     module procedure list_kvci_create, list_kvii_create
+  end interface
+  interface list_insert
+     module procedure list_int_insert, list_real_insert
+     module procedure list_kvci_insert, list_kvii_insert
+  end interface
+  interface list_delete
+     module procedure list_int_delete, list_real_delete
+     module procedure list_kvci_delete, list_kvii_delete
+  end interface
+  interface list_size
+     module procedure list_int_size, list_real_size
+     module procedure list_kvci_size, list_kvii_size
+  end interface
+  interface list_insert_head
+     module procedure list_int_insert_head, list_real_insert_head
+     module procedure list_kvci_insert_head, list_kvii_insert_head
+  end interface
+  interface list_delete_element
+     module procedure list_int_del_element, list_real_del_element
+     module procedure list_kvci_del_element, list_kvii_del_element
+  end interface
+
+!=====================================================================
+! DICTIONARY Interfaces -- these allow one to use a single subroutine
+! or function for dictionaries with varying types of (key,value) pairs
+!=====================================================================
+
+  interface dict_create
+     module procedure dict_ci_create, dict_ii_create
+  end interface
+  interface dict_delete
+     module procedure dict_ci_delete, dict_ii_delete
+  end interface
+  interface dict_add_key
+     module procedure dict_ci_add_key, dict_ii_add_key
+  end interface
+  interface dict_delete_key
+     module procedure dict_ci_delete_key, dict_ii_delete_key
+  end interface
+  interface dict_get_key
+     module procedure dict_ci_get_key, dict_ii_get_key
+  end interface
+  interface dict_has_key
+     module procedure dict_ci_has_key, dict_ii_has_key
+  end interface
+  interface dict_get_elem
+     module procedure dict_ci_get_elem, dict_ii_get_elem
+  end interface
+  interface dict_hashkey
+     module procedure dict_ci_hashkey, dict_ii_hashkey
+  end interface
+
 contains
 
 !=====================================================================
-! LIST_CREATE creates and initializes a list
-! Arguments:
-!     list       Pointer to new linked list
-!     data       The data for the first element
-! Note:
-!     This version assumes a shallow copy is enough
-!     (that is, there are no pointers within the data
-!     to be stored)
-!     It also assumes the argument list does not already
-!     refer to a list. Use list_destroy first to
-!     destroy up an old list.
+! LIST_INT_CREATE creates and initializes a list of integers
 !=====================================================================
 
-  subroutine list_create( list, data )
+  subroutine list_int_create(list, data)
 
-    type(LinkedList), pointer  :: list
-    type(ListData), intent(in) :: data
+    type(ListInt), pointer    :: list
+    integer,       intent(in) :: data
 
-    allocate( list )
+    allocate(list)
     list%next => null()
     list%data =  data
 
-  end subroutine list_create
+  end subroutine list_int_create
 
 !=====================================================================
-! LIST_DESTROY destroys an entire list
-! Arguments:
-!     list       Pointer to the list to be destroyed
-! Note:
-!     This version assumes that there are no
-!     pointers within the data that need deallocation
+! LIST_REAL_CREATE creates and initializes a list of real(8)s
 !=====================================================================
 
-  subroutine list_destroy( list )
+  subroutine list_real_create(list, data)
 
-    type(LinkedList), pointer  :: list
+    type(ListReal), pointer    :: list
+    real(8),        intent(in) :: data
 
-    type(LinkedList), pointer  :: current
-    type(LinkedList), pointer  :: next
+    allocate(list)
+    list%next => null()
+    list%data =  data
+
+  end subroutine list_real_create
+
+!=====================================================================
+! LIST_KVCI_CREATE creates and initializes a list of (key,value) pairs
+!=====================================================================
+
+  subroutine list_kvci_create(list, data)
+
+    type(ListKeyValueCI), pointer    :: list
+    type(KeyValueCI),     intent(in) :: data
+
+    allocate(list)
+    list%next => null()
+    list%data =  data
+
+  end subroutine list_kvci_create
+
+!=====================================================================
+! LIST_KVII_CREATE creates and initializes a list of (key,value) pairs
+!=====================================================================
+
+  subroutine list_kvii_create(list, data)
+
+    type(ListKeyValueII), pointer    :: list
+    type(KeyValueII),     intent(in) :: data
+
+    allocate(list)
+    list%next => null()
+    list%data =  data
+
+  end subroutine list_kvii_create
+
+!=====================================================================
+! LIST_INT_DELETE deallocates all data in a list of integers
+!=====================================================================
+
+  subroutine list_int_delete(list)
+
+    type(ListInt), pointer :: list
+    type(ListInt), pointer :: current
+    type(ListInt), pointer :: next
 
     current => list
-    do while ( associated(current%next) )
+    do while (associated(current%next))
        next => current%next
-       deallocate( current )
+       deallocate(current)
        current => next
     enddo
 
-  end subroutine list_destroy
+  end subroutine list_int_delete
 
 !=====================================================================
-! LIST_COUNT count the number of items in the list
-! Arguments:
-!     list       Pointer to the list
+! LIST_REAL_DELETE deallocates all data in a list of real(8)s
 !=====================================================================
 
-  integer function list_count( list )
+  subroutine list_real_delete(list)
 
-    type(LinkedList), pointer  :: list
+    type(ListReal), pointer :: list
+    type(ListReal), pointer :: current
+    type(ListReal), pointer :: next
 
-    type(LinkedList), pointer  :: current
-    type(LinkedList), pointer  :: next
+    current => list
+    do while (associated(current%next))
+       next => current%next
+       deallocate(current)
+       current => next
+    enddo
 
-    if ( associated(list) ) then
-       list_count = 1
+  end subroutine list_real_delete
+
+!=====================================================================
+! LIST_KVCI_DELETE deallocates all data in a list of (key,value) pairs
+!=====================================================================
+
+  subroutine list_kvci_delete(list)
+
+    type(ListKeyValueCI), pointer  :: list
+    type(ListKeyValueCI), pointer  :: current
+    type(ListKeyValueCI), pointer  :: next
+
+    current => list
+    do while (associated(current%next))
+       next => current%next
+       deallocate(current)
+       current => next
+    enddo
+
+  end subroutine list_kvci_delete
+
+!=====================================================================
+! LIST_KVII_DELETE deallocates all data in a list of (key,value) pairs
+!=====================================================================
+
+  subroutine list_kvii_delete(list)
+
+    type(ListKeyValueII), pointer  :: list
+    type(ListKeyValueII), pointer  :: current
+    type(ListKeyValueII), pointer  :: next
+
+    current => list
+    do while (associated(current%next))
+       next => current%next
+       deallocate(current)
+       current => next
+    enddo
+
+  end subroutine list_kvii_delete
+
+!=====================================================================
+! LIST_INT_SIZE counts the number of items in a list of integers
+!=====================================================================
+
+  function list_int_size(list) result(n)
+
+    type(ListInt), pointer  :: list
+    type(ListInt), pointer  :: current
+    integer                 :: n
+
+    if (associated(list)) then
+       n = 1
        current => list
-       do while ( associated(current%next) )
+       do while (associated(current%next))
           current => current%next
-          list_count = list_count + 1
+          n = n + 1
        enddo
     else
-       list_count = 0
+       n = 0
     endif
 
-  end function list_count
+  end function list_int_size
 
 !=====================================================================
-! LIST_NEXT returns the next element (if any)
-! Arguments:
-!     elem       Element in the linked list
-! Result:
+! LIST_REAL_SIZE counts the number of items in a list of real(8)s
 !=====================================================================
 
-  function list_next( elem ) result(next)
+  function list_real_size(list) result(n)
 
-    type(LinkedList), pointer :: elem
-    type(LinkedList), pointer :: next
+    type(ListReal), pointer  :: list
+    type(ListReal), pointer  :: current
+    integer                  :: n
 
-    next => elem%next
+    if (associated(list)) then
+       n = 1
+       current => list
+       do while (associated(current%next))
+          current => current%next
+          n = n + 1
+       enddo
+    else
+       n = 0
+    endif
 
-  end function list_next
+  end function list_real_size
 
 !=====================================================================
-! LIST_INSERT inserts a new element
+! LIST_KVCI_SIZE counts the number of items in a list of (key,value)
+! pairs
+!=====================================================================
+
+  function list_kvci_size(list) result(n)
+
+    type(ListKeyValueCI), pointer  :: list
+    type(ListKeyValueCI), pointer  :: current
+    integer                        :: n
+
+    if (associated(list)) then
+       n = 1
+       current => list
+       do while (associated(current%next))
+          current => current%next
+          n = n + 1
+       enddo
+    else
+       n = 0
+    endif
+
+  end function list_kvci_size
+
+!=====================================================================
+! LIST_KVII_SIZE counts the number of items in a list of (key,value)
+! pairs
+!=====================================================================
+
+  function list_kvii_size(list) result(n)
+
+    type(ListKeyValueII), pointer  :: list
+    type(ListKeyValueII), pointer  :: current
+    integer                        :: n
+
+    if (associated(list)) then
+       n = 1
+       current => list
+       do while (associated(current%next))
+          current => current%next
+          n = n + 1
+       enddo
+    else
+       n = 0
+    endif
+
+  end function list_kvii_size
+
+!=====================================================================
+! LIST_INT_INSERT inserts a new element
 ! Arguments:
 !     elem       Element in the linked list after
 !                which to insert the new element
 !     data       The data for the new element
 !=====================================================================
 
-  subroutine list_insert( elem, data )
+  subroutine list_int_insert(elem, data)
 
-    type(LinkedList), pointer  :: elem
-    type(ListData), intent(in) :: data
+    type(ListInt), pointer    :: elem
+    integer,       intent(in) :: data
 
-    type(LinkedList), pointer :: next
+    type(ListInt), pointer    :: next
 
     allocate(next)
 
@@ -153,21 +336,90 @@ contains
     elem%next => next
     next%data =  data
 
-  end subroutine list_insert
+  end subroutine list_int_insert
 
 !=====================================================================
-! LIST_INSERT_HEAD inserts a new element before the first element
+! LIST_REAL_INSERT inserts a new element
+! Arguments:
+!     elem       Element in the linked list after
+!                which to insert the new element
+!     data       The data for the new element
+!=====================================================================
+
+  subroutine list_real_insert(elem, data)
+
+    type(ListReal), pointer    :: elem
+    real(8),        intent(in) :: data
+
+    type(ListReal), pointer    :: next
+
+    allocate(next)
+
+    next%next => elem%next
+    elem%next => next
+    next%data =  data
+
+  end subroutine list_real_insert
+
+!=====================================================================
+! LIST_KVCI_INSERT inserts a new element
+! Arguments:
+!     elem       Element in the linked list after
+!                which to insert the new element
+!     data       The data for the new element
+!=====================================================================
+
+  subroutine list_kvci_insert(elem, data)
+
+    type(ListKeyValueCI), pointer    :: elem
+    type(KeyValueCI),     intent(in) :: data
+
+    type(ListKeyValueCI), pointer    :: next
+
+    allocate(next)
+
+    next%next => elem%next
+    elem%next => next
+    next%data =  data
+
+  end subroutine list_kvci_insert
+
+!=====================================================================
+! LIST_KVII_INSERT inserts a new element
+! Arguments:
+!     elem       Element in the linked list after
+!                which to insert the new element
+!     data       The data for the new element
+!=====================================================================
+
+  subroutine list_kvii_insert(elem, data)
+
+    type(ListKeyValueII), pointer    :: elem
+    type(KeyValueII),     intent(in) :: data
+
+    type(ListKeyValueII), pointer    :: next
+
+    allocate(next)
+
+    next%next => elem%next
+    elem%next => next
+    next%data =  data
+
+  end subroutine list_kvii_insert
+
+!=====================================================================
+! LIST_INT_INSERT_HEAD inserts a new element before the first element
 ! Arguments:
 !     list       Start of the list
 !     data       The data for the new element
 !=====================================================================
 
-  subroutine list_insert_head( list, data )
+  subroutine list_int_insert_head(list, data)
 
-    type(LinkedList), pointer  :: list
-    type(ListData), intent(in) :: data
+    type(ListInt), pointer    :: list
+    integer,       intent(in) :: data
 
-    type(LinkedList), pointer :: elem
+    type(ListInt), pointer    :: elem
 
     allocate(elem)
     elem%data =  data
@@ -175,33 +427,99 @@ contains
     elem%next => list
     list      => elem
 
-  end subroutine list_insert_head
+  end subroutine list_int_insert_head
 
 !=====================================================================
-! LIST_DELETE_ELEMENT deletes an element from the list
+! LIST_REAL_INSERT_HEAD inserts a new element before the first element
+! Arguments:
+!     list       Start of the list
+!     data       The data for the new element
+!=====================================================================
+
+  subroutine list_real_insert_head(list, data)
+
+    type(ListReal), pointer    :: list
+    real(8),        intent(in) :: data
+
+    type(ListReal), pointer    :: elem
+
+    allocate(elem)
+    elem%data =  data
+
+    elem%next => list
+    list      => elem
+
+  end subroutine list_real_insert_head
+
+!=====================================================================
+! LIST_KVCI_INSERT_HEAD inserts a new element before the first element
+! Arguments:
+!     list       Start of the list
+!     data       The data for the new element
+!=====================================================================
+
+  subroutine list_kvci_insert_head(list, data)
+
+    type(ListKeyValueCI), pointer    :: list
+    type(KeyValueCI),     intent(in) :: data
+
+    type(ListKeyValueCI), pointer    :: elem
+
+    allocate(elem)
+    elem%data =  data
+
+    elem%next => list
+    list      => elem
+
+  end subroutine list_kvci_insert_head
+
+!=====================================================================
+! LIST_KVII_INSERT_HEAD inserts a new element before the first element
+! Arguments:
+!     list       Start of the list
+!     data       The data for the new element
+!=====================================================================
+
+  subroutine list_kvii_insert_head(list, data)
+
+    type(ListKeyValueII), pointer    :: list
+    type(KeyValueII),     intent(in) :: data
+
+    type(ListKeyValueII), pointer    :: elem
+
+    allocate(elem)
+    elem%data =  data
+
+    elem%next => list
+    list      => elem
+
+  end subroutine list_kvii_insert_head
+
+!=====================================================================
+! LIST_INT_DEL_ELEMENT deletes an element from the list
 ! Arguments:
 !     list       Header of the list
 !     elem       Element in the linked list to be removed
 !=====================================================================
 
-  subroutine list_delete_element( list, elem )
+  subroutine list_int_del_element(list, elem)
 
-    type(LinkedList), pointer  :: list
-    type(LinkedList), pointer  :: elem
+    type(ListInt), pointer  :: list
+    type(ListInt), pointer  :: elem
 
-    type(LinkedList), pointer  :: current
-    type(LinkedList), pointer  :: prev
+    type(ListInt), pointer  :: current
+    type(ListInt), pointer  :: prev
 
-    if ( associated(list,elem) ) then
+    if (associated(list,elem)) then
        list => elem%next
-       deallocate( elem )
+       deallocate(elem)
     else
        current => list
        prev    => list
-       do while ( associated(current) )
-          if ( associated(current,elem) ) then
+       do while (associated(current))
+          if (associated(current,elem)) then
              prev%next => current%next
-             deallocate( current ) ! Is also "elem"
+             deallocate(current) ! Is also "elem"
              exit
           endif
           prev    => current
@@ -209,106 +527,190 @@ contains
        enddo
     endif
 
-  end subroutine list_delete_element
+  end subroutine list_int_del_element
 
 !=====================================================================
-! LIST_GET_DATA gets the data stored with a list element
+! LIST_REAL_DEL_ELEMENT deletes an element from the list
 ! Arguments:
-!     elem       Element in the linked list
+!     list       Header of the list
+!     elem       Element in the linked list to be removed
 !=====================================================================
 
-  function list_get_data( elem ) result(data)
+  subroutine list_real_del_element(list, elem)
 
-    type(LinkedList), pointer :: elem
-    type(ListData)            :: data
+    type(ListReal), pointer  :: list
+    type(ListReal), pointer  :: elem
 
-    data = elem%data
+    type(ListReal), pointer  :: current
+    type(ListReal), pointer  :: prev
 
-  end function list_get_data
+    if (associated(list,elem)) then
+       list => elem%next
+       deallocate(elem)
+    else
+       current => list
+       prev    => list
+       do while (associated(current))
+          if (associated(current,elem)) then
+             prev%next => current%next
+             deallocate(current) ! Is also "elem"
+             exit
+          endif
+          prev    => current
+          current => current%next
+       enddo
+    endif
+
+  end subroutine list_real_del_element
 
 !=====================================================================
-! LIST_PUT_DATA stores new data with a list element
+! LIST_KVCI_DEL_ELEMENT deletes an element from the list
 ! Arguments:
-!     elem       Element in the linked list
-!     data       The data to be stored
+!     list       Header of the list
+!     elem       Element in the linked list to be removed
 !=====================================================================
 
-  subroutine list_put_data( elem, data )
+  subroutine list_kvci_del_element(list, elem)
 
-    type(LinkedList), pointer  :: elem
-    type(ListData), intent(in) :: data
+    type(ListKeyValueCI), pointer  :: list
+    type(ListKeyValueCI), pointer  :: elem
 
-    elem%data = data
+    type(ListKeyValueCI), pointer  :: current
+    type(ListKeyValueCI), pointer  :: prev
 
-  end subroutine list_put_data
+    if (associated(list,elem)) then
+       list => elem%next
+       deallocate(elem)
+    else
+       current => list
+       prev    => list
+       do while (associated(current))
+          if (associated(current,elem)) then
+             prev%next => current%next
+             deallocate(current) ! Is also "elem"
+             exit
+          endif
+          prev    => current
+          current => current%next
+       enddo
+    endif
+
+  end subroutine list_kvci_del_element
 
 !=====================================================================
-! DICT_CREATE creates and initializes a dictionary
+! LIST_KVII_DEL_ELEMENT deletes an element from the list
 ! Arguments:
-!     dict       Pointer to new dictionary
-!     key        Key for the first element
-!     value      Value for the first element
-! Note:
-!     This version assumes a shallow copy is enough
-!     (that is, there are no pointers within the data
-!     to be stored)
-!     It also assumes the argument list does not already
-!     refer to a list. Use dict_destroy first to
-!     destroy up an old list.
+!     list       Header of the list
+!     elem       Element in the linked list to be removed
 !=====================================================================
 
-  subroutine dict_create( dict ) !, key, value )
+  subroutine list_kvii_del_element(list, elem)
 
-    type(Dictionary), pointer   :: dict
-!!$    character(len=*), intent(in) :: key
-!!$    integer,  intent(in) :: value
+    type(ListKeyValueII), pointer  :: list
+    type(ListKeyValueII), pointer  :: elem
 
-!!$    type(ListData)              :: data
-    integer                      :: i
-!!$    integer                      :: hash
+    type(ListKeyValueII), pointer  :: current
+    type(ListKeyValueII), pointer  :: prev
 
-    allocate( dict )
-    allocate( dict%table(hash_size) )
+    if (associated(list,elem)) then
+       list => elem%next
+       deallocate(elem)
+    else
+       current => list
+       prev    => list
+       do while (associated(current))
+          if (associated(current,elem)) then
+             prev%next => current%next
+             deallocate(current) ! Is also "elem"
+             exit
+          endif
+          prev    => current
+          current => current%next
+       enddo
+    endif
+
+  end subroutine list_kvii_del_element
+
+!=====================================================================
+! DICT_CI_CREATE creates and initializes a dictionary
+!=====================================================================
+
+  subroutine dict_ci_create(dict)
+
+    type(DictionaryCI), pointer   :: dict
+
+    integer :: i
+
+    allocate(dict)
+    allocate(dict%table(hash_size))
 
     do i = 1,hash_size
        dict%table(i)%list => null()
     enddo
 
-!!$    data%key   = key
-!!$    data%value = value
-!!$
-!!$    hash = dict_hashkey( trim(key ) )
-!!$    call list_create( dict%table(hash)%list, data )
-
-  end subroutine dict_create
+  end subroutine dict_ci_create
 
 !=====================================================================
-! DICT_DESTROY destroys an entire dictionary
-! Arguments:
-!     dict       Pointer to the dictionary to be destroyed
-! Note:
-!     This version assumes that there are no
-!     pointers within the data that need deallocation
+! DICT_II_CREATE creates and initializes a dictionary
 !=====================================================================
 
-  subroutine dict_destroy( dict )
+  subroutine dict_ii_create(dict)
 
-    type(Dictionary), pointer  :: dict
+    type(DictionaryII), pointer   :: dict
 
-    integer                     :: i
+    integer :: i
+
+    allocate(dict)
+    allocate(dict%table(hash_size))
+
+    do i = 1,hash_size
+       dict%table(i)%list => null()
+    enddo
+
+  end subroutine dict_ii_create
+
+!=====================================================================
+! DICT_CI_DELETE destroys an entire dictionary
+!=====================================================================
+
+  subroutine dict_ci_delete(dict)
+
+    type(DictionaryCI), pointer  :: dict
+
+    integer :: i
 
     do i = 1,size(dict%table)
-       if ( associated( dict%table(i)%list ) ) then
-          call list_destroy( dict%table(i)%list )
+       if (associated(dict%table(i)%list)) then
+          call list_delete(dict%table(i)%list)
        endif
     enddo
-    deallocate( dict%table )
-    deallocate( dict )
+    deallocate(dict%table)
+    deallocate(dict)
 
-  end subroutine dict_destroy
+  end subroutine dict_ci_delete
 
 !=====================================================================
-! DICT_ADD_KEY add a new keys
+! DICT_II_DELETE destroys an entire dictionary
+!=====================================================================
+
+  subroutine dict_ii_delete(dict)
+
+    type(DictionaryII), pointer  :: dict
+
+    integer :: i
+
+    do i = 1,size(dict%table)
+       if (associated(dict%table(i)%list)) then
+          call list_delete(dict%table(i)%list)
+       endif
+    enddo
+    deallocate(dict%table)
+    deallocate(dict)
+
+  end subroutine dict_ii_delete
+
+!=====================================================================
+! DICT_CI_ADD_KEY add a new keys
 ! Arguments:
 !     dict       Pointer to the dictionary
 !     key        Key for the new element
@@ -318,154 +720,313 @@ contains
 !     key's value is simply replaced
 !=====================================================================
 
-  subroutine dict_add_key( dict, key, value )
+  subroutine dict_ci_add_key(dict, key, value)
 
-    type(Dictionary), pointer   :: dict
-    character(len=*), intent(in) :: key
-    integer,  intent(in) :: value
+    type(DictionaryCI), pointer    :: dict
+    character(len=*),   intent(in) :: key
+    integer,            intent(in) :: value
 
-    type(ListData)              :: data
-    type(LinkedList), pointer   :: elem
-    integer                      :: hash
+    type(KeyValueCI)               :: data
+    type(ListKeyValueCI), pointer  :: elem
+    integer                        :: hash
 
-    elem => dict_get_elem( dict, key )
+    elem => dict_get_elem(dict, key)
 
-    if ( associated(elem) ) then
+    if (associated(elem)) then
        elem%data%value = value
     else
        data%key   = key
        data%value = value
-       hash       = dict_hashkey( trim(key) )
-       if ( associated( dict%table(hash)%list ) ) then
-          call list_insert( dict%table(hash)%list, data )
+       hash       = dict_hashkey(trim(key))
+       if (associated(dict%table(hash)%list)) then
+          call list_insert(dict%table(hash)%list, data)
        else
-          call list_create( dict%table(hash)%list, data )
+          call list_create(dict%table(hash)%list, data)
        endif
     endif
 
-  end subroutine dict_add_key
+  end subroutine dict_ci_add_key
 
 !=====================================================================
-! DICT_DELETE_KEY deletes a key-value pair from the dictionary
+! DICT_II_ADD_KEY add a new keys
+! Arguments:
+!     dict       Pointer to the dictionary
+!     key        Key for the new element
+!     value      Value for the new element
+! Note:
+!     If the key already exists, the
+!     key's value is simply replaced
+!=====================================================================
+
+  subroutine dict_ii_add_key(dict, key, value)
+
+    type(DictionaryII), pointer :: dict
+    integer, intent(in) :: key
+    integer, intent(in) :: value
+
+    type(KeyValueII)              :: data
+    type(ListKeyValueII), pointer :: elem
+    integer                       :: hash
+
+    elem => dict_get_elem(dict, key)
+
+    if (associated(elem)) then
+       elem%data%value = value
+    else
+       data%key   = key
+       data%value = value
+       hash       = dict_hashkey(key)
+       if (associated(dict%table(hash)%list)) then
+          call list_insert(dict%table(hash)%list, data)
+       else
+          call list_create(dict%table(hash)%list, data)
+       endif
+    endif
+
+  end subroutine dict_ii_add_key
+
+!=====================================================================
+! DICT_CI_DELETE_KEY deletes a key-value pair from the dictionary
 ! Arguments:
 !     dict       Dictionary in question
 !     key        Key to be removed
 !=====================================================================
 
-  subroutine dict_delete_key( dict, key )
+  subroutine dict_ci_delete_key(dict, key)
 
-    type(Dictionary), pointer   :: dict
+    type(DictionaryCI), pointer    :: dict
     character(len=*), intent(in) :: key
 
-    type(LinkedList), pointer   :: elem
-    integer                      :: hash
+    type(ListKeyValueCI), pointer  :: elem
+    integer                        :: hash
 
-    elem => dict_get_elem( dict, key )
+    elem => dict_get_elem(dict, key)
 
-    if ( associated(elem) ) then
-       hash = dict_hashkey( trim(key) )
-       call list_delete_element( dict%table(hash)%list, elem )
+    if (associated(elem)) then
+       hash = dict_hashkey(trim(key))
+       call list_delete_element(dict%table(hash)%list, elem)
     endif
 
-  end subroutine dict_delete_key
+  end subroutine dict_ci_delete_key
 
 !=====================================================================
-! DICT_GET_KEY gets the value belonging to a key
+! DICT_II_DELETE_KEY deletes a key-value pair from the dictionary
+! Arguments:
+!     dict       Dictionary in question
+!     key        Key to be removed
+!=====================================================================
+
+  subroutine dict_ii_delete_key(dict, key)
+
+    type(DictionaryII), pointer :: dict
+    integer, intent(in) :: key
+
+    type(ListKeyValueII), pointer :: elem
+    integer                       :: hash
+
+    elem => dict_get_elem(dict, key)
+
+    if (associated(elem)) then
+       hash = dict_hashkey(key)
+       call list_delete_element(dict%table(hash)%list, elem)
+    endif
+
+  end subroutine dict_ii_delete_key
+
+!=====================================================================
+! DICT_CI_GET_KEY gets the value belonging to a key
 ! Arguments:
 !     dict       Pointer to the dictionary
 !     key        Key for which the values are sought
 !=====================================================================
 
-  function dict_get_key( dict, key ) result(value)
+  function dict_ci_get_key(dict, key) result(value)
 
-    type(Dictionary), pointer   :: dict
-    character(len=*), intent(in) :: key
-    integer                     :: value
+    type(DictionaryCI), pointer    :: dict
+    character(len=*),   intent(in) :: key
+    integer                        :: value
 
-    type(ListData)              :: data
-    type(LinkedList), pointer   :: elem
+    type(KeyValueCI)               :: data
+    type(ListKeyValueCI), pointer  :: elem
 
-    elem => dict_get_elem( dict, key )
+    elem => dict_get_elem(dict, key)
 
-    if ( associated(elem) ) then
+    if (associated(elem)) then
        value = elem%data%value
     else
        value = DICT_NULL
     endif
 
-  end function dict_get_key
+  end function dict_ci_get_key
 
 !=====================================================================
-! DICT_HAS_KEY checks if the dictionary has a particular key
+! DICT_II_GET_KEY gets the value belonging to a key
+! Arguments:
+!     dict       Pointer to the dictionary
+!     key        Key for which the values are sought
+!=====================================================================
+
+  function dict_ii_get_key(dict, key) result(value)
+
+    type(DictionaryII), pointer    :: dict
+    integer,            intent(in) :: key
+    integer                        :: value
+
+    type(KeyValueII)               :: data
+    type(ListKeyValueII), pointer  :: elem
+
+    elem => dict_get_elem(dict, key)
+
+    if (associated(elem)) then
+       value = elem%data%value
+    else
+       value = DICT_NULL
+    endif
+
+  end function dict_ii_get_key
+
+!=====================================================================
+! DICT_CI_HAS_KEY checks if the dictionary has a particular key
 ! Arguments:
 !     dict       Pointer to the dictionary
 !     key        Key to be sought
 !=====================================================================
 
-  function dict_has_key( dict, key ) result(has)
+  function dict_ci_has_key(dict, key) result(has)
 
-    type(Dictionary), pointer   :: dict
-    character(len=*), intent(in) :: key
-    logical                      :: has
+    type(DictionaryCI), pointer    :: dict
+    character(len=*),   intent(in) :: key
+    logical                        :: has
 
-    type(LinkedList), pointer   :: elem
+    type(ListKeyValueCI), pointer  :: elem
 
-    elem => dict_get_elem( dict, key )
+    elem => dict_get_elem(dict, key)
 
     has = associated(elem)
 
-  end function dict_has_key
+  end function dict_ci_has_key
 
 !=====================================================================
-! DICT_GET_ELEM finds the element with a particular key
+! DICT_II_HAS_KEY checks if the dictionary has a particular key
 ! Arguments:
 !     dict       Pointer to the dictionary
 !     key        Key to be sought
 !=====================================================================
 
-  function dict_get_elem( dict, key ) result(elem)
+  function dict_ii_has_key(dict, key) result(has)
 
-    type(Dictionary), pointer   :: dict
-    character(len=*), intent(in) :: key
+    type(DictionaryII), pointer    :: dict
+    integer,            intent(in) :: key
+    logical                        :: has
 
-    type(LinkedList), pointer   :: elem
-    integer                      :: hash
+    type(ListKeyValueII), pointer  :: elem
 
-    hash = dict_hashkey( trim(key) )
+    elem => dict_get_elem(dict, key)
+
+    has = associated(elem)
+
+  end function dict_ii_has_key
+
+!=====================================================================
+! DICT_CI_GET_ELEM finds the element with a particular key
+! Arguments:
+!     dict       Pointer to the dictionary
+!     key        Key to be sought
+!=====================================================================
+
+  function dict_ci_get_elem(dict, key) result(elem)
+
+    type(DictionaryCI), pointer    :: dict
+    character(len=*),   intent(in) :: key
+
+    type(ListKeyValueCI), pointer  :: elem
+    integer                        :: hash
+
+    hash = dict_hashkey(trim(key))
     elem => dict%table(hash)%list
-    do while ( associated(elem) )
-       if ( elem%data%key .eq. key ) then
+    do while (associated(elem))
+       if (elem%data%key .eq. key) then
           exit
        else
-          elem => list_next( elem )
+          elem => elem%next
        endif
     enddo
 
-  end function dict_get_elem
+  end function dict_ci_get_elem
 
 !=====================================================================
-! DICT_HASHKEY determine the hash value from the string
+! DICT_II_GET_ELEM finds the element with a particular key
+! Arguments:
+!     dict       Pointer to the dictionary
+!     key        Key to be sought
+!=====================================================================
+
+  function dict_ii_get_elem(dict, key) result(elem)
+
+    type(DictionaryII), pointer    :: dict
+    integer,            intent(in) :: key
+
+    type(ListKeyValueII), pointer  :: elem
+    integer                        :: hash
+
+    hash = dict_hashkey(key)
+    elem => dict%table(hash)%list
+    do while (associated(elem))
+       if (elem%data%key .eq. key) then
+          exit
+       else
+          elem => elem%next
+       endif
+    enddo
+
+  end function dict_ii_get_elem
+
+!=====================================================================
+! DICT_CI_HASHKEY determine the hash value from the string
 ! Arguments:
 !     key        String to be examined
 !=====================================================================
 
-  integer function dict_hashkey( key )
+  function dict_ci_hashkey(key) result(val)
 
     character(len=*), intent(in) :: key
 
-    integer                      :: hash
-    integer                      :: i
+    integer :: val
+    integer :: hash
+    integer :: i
 
-    dict_hashkey = 0
+    val = 0
 
     do i = 1,len(key)
-       dict_hashkey = multiplier * dict_hashkey + ichar(key(i:i))
+       val = multiplier * val + ichar(key(i:i))
     enddo
 
-    ! Added the absolute value on dict_hashkey-1 since the sum in the
-    ! do loop is susceptible to integer overflow
-    dict_hashkey = 1 + mod( abs(dict_hashkey-1), hash_size )
+    ! Added the absolute val on val-1 since the sum in the do loop is
+    ! susceptible to integer overflow
+    val = 1 + mod(abs(val-1), hash_size)
 
-  end function dict_hashkey
+  end function dict_ci_hashkey
+
+!=====================================================================
+! DICT_II_HASHKEY determine the hash value from the string
+! Arguments:
+!     key        String to be examined
+!=====================================================================
+
+  function dict_ii_hashkey(key) result(val)
+
+    integer, intent(in) :: key
+
+    integer :: val
+    integer :: hash
+    integer :: i
+
+    val = 0
+
+    ! Added the absolute val on val-1 since the sum in the do loop is
+    ! susceptible to integer overflow
+    val = 1 + mod(abs(key-1), hash_size)
+
+  end function dict_ii_hashkey
 
 end module data_structures

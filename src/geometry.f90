@@ -3,6 +3,7 @@ module geometry
   use global
   use types,  only: Cell, Surface
   use output, only: error, message
+  use data_structures, only: dict_get_key
 
   implicit none
      
@@ -12,11 +13,11 @@ contains
 ! CELL_CONTAINS determines whether a given point is inside a cell
 !=====================================================================
 
-  function cell_contains( c, xyz )
+  function cell_contains(c, neut) result(in_cell)
 
-    type(Cell), intent(in)  :: c
-    real(8),    intent(in)  :: xyz(3)
-    logical :: cell_contains
+    type(Cell),    pointer :: c
+    type(Neutron), pointer :: neut
+    logical                :: in_cell
 
     integer, allocatable :: expression(:)
     integer :: specified_sense
@@ -24,44 +25,42 @@ contains
     integer :: n_boundaries
     integer :: i, j
     integer :: surf_num
+    integer :: current_surface
     type(Surface), pointer :: surf => null()
-    logical :: surface_found
     character(250) :: msg
 
+    current_surface = neut%surface
+
     n_boundaries = size(c%boundary_list)
-    allocate( expression(n_boundaries) )
+    allocate(expression(n_boundaries))
     expression = c%boundary_list
     do i = 1, n_boundaries
-       surface_found = .false.
 
        ! Don't change logical operator
-       if ( expression(i) >= OP_DIFFERENCE ) then
+       if (expression(i) >= OP_DIFFERENCE) then
           cycle
        end if
 
        ! Lookup surface
-       surf_num = abs(expression(i))
-       ! TODO: replace this loop with a hash since this lookup is O(N)
-       do j = 1, n_surfaces
-          surf => surfaces(j)
-          if ( surf%uid == surf_num ) then
-             surface_found = .true.
-             exit
-          end if
-       end do
+       surf_num = expression(i)
+       surf => surfaces(abs(surf_num))
 
-       ! Report error if can't find specified surface
-       if ( .not. surface_found ) then
-          deallocate( expression )
-          msg = "Count not find surface " // trim(int_to_str(surf_num)) // & 
-               & " specified on cell " // int_to_str(c%uid)
-          call error( msg )
+       ! Check if the particle is currently on the specified surface
+       if (surf_num == current_surface) then
+          ! neutron is on specified surface heading into cell
+          expression(i) = 1
+          cycle
+       elseif (surf_num == -current_surface) then
+          ! neutron is on specified surface, but heading other
+          ! direction
+          expression(i) = 0
+          cycle
        end if
 
        ! Compare sense of point to specified sense
        specified_sense = sign(1,expression(i))
-       call sense( surf, xyz, actual_sense )
-       if ( actual_sense == specified_sense ) then
+       call sense(surf, neut%xyz, actual_sense)
+       if (actual_sense == specified_sense) then
           expression(i) = 1
        else
           expression(i) = 0
@@ -71,14 +70,14 @@ contains
 
     ! TODO: Need to replace this with a 'lgeval' like subroutine that
     ! can actually test expressions with unions and parentheses
-    if ( all( expression == 1 ) ) then
-       cell_contains = .true.
+    if (all(expression == 1)) then
+       in_cell = .true.
     else
-       cell_contains = .false.
+       in_cell = .false.
     end if
 
     ! Free up memory from expression
-    deallocate( expression )
+    deallocate(expression)
 
   end function cell_contains
 
@@ -86,28 +85,34 @@ contains
 ! FIND_CELL determines what cell a source neutron is in
 !=====================================================================
 
-  subroutine find_cell( neut )
+  subroutine find_cell(neut)
 
     type(Neutron), pointer, intent(inout) :: neut
 
+    type(Cell), pointer :: this_cell
     logical :: found_cell
     character(250) :: msg
     integer :: i
 
     ! determine what region in
     do i = 1, n_cells
-       if ( cell_contains(cells(i), neut%xyz) ) then
+       this_cell => cells(i)
+       if (cell_contains(this_cell, neut)) then
           neut%cell = i
           found_cell = .true.
+
+          ! set current pointers
+          cCell => this_cell
+          cMaterial => materials(cCell%material)
           exit
        end if
     end do
 
     ! if neutron couldn't be located, print error
-    if ( .not. found_cell ) then
+    if (.not. found_cell) then
        write(msg, 100) "Could not locate cell for neutron at: ", neut%xyz
 100    format (A,3ES11.3)
-       call error( msg )
+       call error(msg)
     end if
 
   end subroutine find_cell
@@ -116,45 +121,50 @@ contains
 ! CROSS_BOUNDARY moves a neutron into a new cell
 !=====================================================================
 
-  subroutine cross_boundary( neut )
+  subroutine cross_boundary(neut)
 
     type(Neutron), pointer, intent(in) :: neut
 
     type(Surface), pointer :: surf
-    type(Cell), pointer :: c
+    type(Cell),    pointer :: c
     integer :: i
     integer :: index_cell
-    character(100) :: msg
+    character(250) :: msg
 
     surf => surfaces(abs(neut%surface))
+    if (verbosity >= 10) then
+       msg = "    Crossing surface " // trim(int_to_str(neut%surface))
+       call message(msg, 10)
+    end if
 
     ! check for leakage
-    if ( surf%bc == BC_VACUUM ) then
+    if (surf%bc == BC_VACUUM) then
        neut%alive = .false.
-       msg = "Particle " // trim(int_to_str(neut%uid)) // " leaked out of surface " &
-            & // trim(int_to_str(surf%uid))
-       call message( msg, 10 )
+       if (verbosity >= 10) then
+          msg = "    Leaked out of surface " // trim(int_to_str(surf%uid))
+          call message(msg, 10)
+       end if
        return
     end if
 
-    if ( neut%surface < 0 ) then
+    if (neut%surface < 0 .and. allocated(surf%neighbor_pos)) then
        ! If coming from negative side of surface, search all the
        ! neighboring cells on the positive side
-       do i = 1, size(surf%neighbor_pos(:))
+       do i = 1, size(surf%neighbor_pos)
           index_cell = surf%neighbor_pos(i)
-          c = cells(index_cell)
-          if ( cell_contains(c, neut%xyz) ) then
+          c => cells(index_cell)
+          if (cell_contains(c, neut)) then
              neut%cell = index_cell
              return
           end if
        end do
-    elseif ( neut%surface > 0 ) then
+    elseif (neut%surface > 0  .and. allocated(surf%neighbor_neg)) then
        ! If coming from positive side of surface, search all the
        ! neighboring cells on the negative side
-       do i = 1, size(surf%neighbor_neg(:))
+       do i = 1, size(surf%neighbor_neg)
           index_cell = surf%neighbor_neg(i)
-          c = cells(index_cell)
-          if ( cell_contains(c, neut%xyz) ) then
+          c => cells(index_cell)
+          if (cell_contains(c, neut)) then
              neut%cell = index_cell
              return
           end if
@@ -164,17 +174,17 @@ contains
     ! Couldn't find particle in neighboring cells, search through all
     ! cells
     do i = 1, size(cells)
-       c = cells(i)
-       if ( cell_contains(c, neut%xyz) ) then
+       c => cells(i)
+       if (cell_contains(c, neut)) then
           neut%cell = i
           return
        end if
     end do
 
     ! Couldn't find next cell anywhere!
-    msg = "After neutron crossed surface " // int_to_str(neut%surface) // &
+    msg = "After neutron crossed surface " // trim(int_to_str(neut%surface)) // &
          & ", it could not be located in any cell and it did not leak."
-    call error( msg )
+    call error(msg)
        
   end subroutine cross_boundary
 
@@ -184,7 +194,7 @@ contains
 ! direction.
 !=====================================================================
 
-  subroutine dist_to_boundary( neut, dist, surf, other_cell )
+  subroutine dist_to_boundary(neut, dist, surf, other_cell)
 
     type(Neutron),     intent(in)  :: neut
     real(8),           intent(out) :: dist
@@ -197,6 +207,7 @@ contains
     integer :: n_boundaries
     integer, allocatable :: expression(:)
     integer :: index_surf
+    integer :: current_surf
     real(8) :: x,y,z,u,v,w
     real(8) :: d
     real(8) :: x0,y0,z0,r
@@ -205,11 +216,13 @@ contains
     real(8) :: quad
     character(250) :: msg
 
-    if ( present(other_cell) ) then
+    if (present(other_cell)) then
        cell_p => cells(other_cell)
     else
        cell_p => cells(neut%cell)
     end if
+
+    current_surf = neut%surface
 
     x = neut%xyz(1)
     y = neut%xyz(2)
@@ -220,58 +233,63 @@ contains
 
     dist = INFINITY
     n_boundaries = size(cell_p%boundary_list)
-    allocate( expression(n_boundaries) )
+    allocate(expression(n_boundaries))
     expression = cell_p%boundary_list
     do i = 1, n_boundaries
-       index_surf = abs(expression(i))
-       if ( index_surf >= OP_DIFFERENCE ) cycle
+       ! check for coincident surfaec
+       index_surf = expression(i)
+       if (index_surf == current_surf) cycle
+
+       ! check for operators
+       index_surf = abs(index_surf)
+       if (index_surf >= OP_DIFFERENCE) cycle
 
        surf_p => surfaces(index_surf)
-       select case ( surf_p%type )
-       case ( SURF_PX )
-          if ( u == 0.0 ) then
+       select case (surf_p%type)
+       case (SURF_PX)
+          if (u == 0.0) then
              d = INFINITY
           else
              x0 = surf_p%coeffs(1)
              d = (x0 - x)/u
-             if ( d < 0 ) d = INFINITY
+             if (d < 0) d = INFINITY
           end if
           
-       case ( SURF_PY )
-          if ( v == 0.0 ) then
+       case (SURF_PY)
+          if (v == 0.0) then
              d = INFINITY
           else
              y0 = surf_p%coeffs(1)
              d = (y0 - y)/v
-             if ( d < 0 ) d = INFINITY
+             if (d < 0) d = INFINITY
           end if
           
-       case ( SURF_PZ )
-          if ( w == 0.0 ) then
+       case (SURF_PZ)
+          if (w == 0.0) then
              d = INFINITY
           else
              z0 = surf_p%coeffs(1)
              d = (z0 - z)/w
-             if ( d < 0.0 ) d = INFINITY
+             if (d < 0.0) d = INFINITY
           end if
           
-       case ( SURF_PLANE )
+       case (SURF_PLANE)
           A = surf_p%coeffs(1)
           B = surf_p%coeffs(2)
           C = surf_p%coeffs(3)
           D = surf_p%coeffs(4)
           
           tmp = A*u + B*v + C*w
-          if ( tmp == 0.0 ) then
+          if (tmp == 0.0) then
              d = INFINITY
           else
              d = -(A*x + B*y + C*w - D)/tmp
-             if ( d < 0.0 ) d = INFINITY
+             if (d < 0.0) d = INFINITY
           end if
 
-       case ( SURF_CYL_X )
+       case (SURF_CYL_X)
           a = 1.0 - u**2  ! v^2 + w^2
-          if ( a == 0.0 ) then
+          if (a == 0.0) then
              d = INFINITY
           else
              y0 = surf_p%coeffs(1)
@@ -284,7 +302,7 @@ contains
              c = y**2 + z**2 - r**2
              quad = k**2 - a*c
 
-             if ( c < 0 ) then
+             if (c < 0) then
                 ! particle is inside the cylinder, thus one distance
                 ! must be negative and one must be positive. The
                 ! positive distance will be the one with negative sign
@@ -299,14 +317,14 @@ contains
                 ! positive sign on sqrt(quad)
 
                 d = -(k + sqrt(quad))/a
-                if ( d < 0 ) d = INFINITY
+                if (d < 0) d = INFINITY
 
              end if
           end if
 
-       case ( SURF_CYL_Y )
+       case (SURF_CYL_Y)
           a = 1.0 - v**2  ! u^2 + w^2
-          if ( a == 0.0 ) then
+          if (a == 0.0) then
              d = INFINITY
           else
              x0 = surf_p%coeffs(1)
@@ -319,7 +337,7 @@ contains
              c = x**2 + z**2 - r**2
              quad = k**2 - a*c
 
-             if ( c < 0 ) then
+             if (c < 0) then
                 ! particle is inside the cylinder, thus one distance
                 ! must be negative and one must be positive. The
                 ! positive distance will be the one with negative sign
@@ -334,14 +352,14 @@ contains
                 ! positive sign on sqrt(quad)
 
                 d = -(k + sqrt(quad))/a
-                if ( d < 0 ) d = INFINITY
+                if (d < 0) d = INFINITY
 
              end if
           end if
 
-       case ( SURF_CYL_Z )
+       case (SURF_CYL_Z)
           a = 1.0 - w**2  ! u^2 + v^2
-          if ( a == 0.0 ) then
+          if (a == 0.0) then
              d = INFINITY
           else
              x0 = surf_p%coeffs(1)
@@ -354,12 +372,12 @@ contains
              c = x**2 + y**2 - r**2
              quad = k**2 - a*c
              
-             if ( quad < 0 ) then
+             if (quad < 0) then
                 ! no intersection with cylinder
 
                 d = INFINITY 
 
-             elseif ( c < 0 ) then
+             elseif (c < 0) then
                 ! particle is inside the cylinder, thus one distance
                 ! must be negative and one must be positive. The
                 ! positive distance will be the one with negative sign
@@ -374,12 +392,12 @@ contains
                 ! positive sign on sqrt(quad)
 
                 d = -(k + sqrt(quad))/a
-                if ( d < 0 ) d = INFINITY
+                if (d < 0) d = INFINITY
 
              end if
           end if
 
-       case ( SURF_SPHERE )
+       case (SURF_SPHERE)
           x0 = surf_p%coeffs(1)
           y0 = surf_p%coeffs(2)
           z0 = surf_p%coeffs(3)
@@ -392,12 +410,12 @@ contains
           c = x**2 + y**2 + z**2 - r**2
           quad = k**2 - c
 
-          if ( quad < 0 ) then
+          if (quad < 0) then
              ! no intersection with sphere
 
              d = INFINITY 
 
-          elseif ( c < 0 ) then
+          elseif (c < 0) then
              ! particle is inside the sphere, thus one distance
              ! must be negative and one must be positive. The
              ! positive distance will be the one with negative sign
@@ -412,26 +430,26 @@ contains
              ! positive sign on sqrt(quad)
 
              d = -(k + sqrt(quad))
-             if ( d < 0 ) d = INFINITY
+             if (d < 0) d = INFINITY
 
           end if
 
-       case ( SURF_GQ )
+       case (SURF_GQ)
           msg = "Surface distance not yet implement for general quadratic."
-          call error( msg )
+          call error(msg)
 
        end select
 
        ! Check is calculated distance is new minimum
-       if ( d < dist ) then
+       if (d < dist) then
           dist = d
-          surf = expression(i)
+          surf = -expression(i)
        end if
 
     end do
 
     ! deallocate expression
-    deallocate( expression )
+    deallocate(expression)
 
   end subroutine dist_to_boundary
 
@@ -441,7 +459,7 @@ contains
 ! a particular point is in.
 !=====================================================================
 
-  subroutine sense( surf, xyz, s )
+  subroutine sense(surf, xyz, s)
 
     type(Surface), intent(in) :: surf
     real(8), intent(in) :: xyz(3)
@@ -457,115 +475,194 @@ contains
     y = xyz(2)
     z = xyz(3)
 
-    select case ( surf%type )
-    case ( SURF_PX )
+    select case (surf%type)
+    case (SURF_PX)
        x0 = surf%coeffs(1)
        func = x - x0
        
-    case ( SURF_PY )
+    case (SURF_PY)
        y0 = surf%coeffs(1)
        func = y - y0
        
-    case ( SURF_PZ )
+    case (SURF_PZ)
        z0 = surf%coeffs(1)
        func = z - z0
        
-    case ( SURF_PLANE )
+    case (SURF_PLANE)
        A = surf%coeffs(1)
        B = surf%coeffs(2)
        C = surf%coeffs(3)
        D = surf%coeffs(4)
        func = A*x + B*y + C*z - D
 
-    case ( SURF_CYL_X )
+    case (SURF_CYL_X)
        y0 = surf%coeffs(1)
        z0 = surf%coeffs(2)
        r = surf%coeffs(3)
        func = (y-y0)**2 + (z-z0)**2 - r**2
 
-    case ( SURF_CYL_Y )
+    case (SURF_CYL_Y)
        x0 = surf%coeffs(1)
        z0 = surf%coeffs(2)
        r = surf%coeffs(3)
        func = (x-x0)**2 + (z-z0)**2 - r**2
 
-    case ( SURF_CYL_Z )
+    case (SURF_CYL_Z)
        x0 = surf%coeffs(1)
        y0 = surf%coeffs(2)
        r = surf%coeffs(3)
        func = (x-x0)**2 + (y-y0)**2 - r**2
 
-    case ( SURF_SPHERE )
+    case (SURF_SPHERE)
        x0 = surf%coeffs(1)
        y0 = surf%coeffs(2)
        z0 = surf%coeffs(3)
        r = surf%coeffs(4)
        func = (x-x0)**2 + (y-y0)**2 + (z-z0)**2 - r**2
 
-    case ( SURF_BOX_X )
+    case (SURF_BOX_X)
        y0 = surf%coeffs(1)
        z0 = surf%coeffs(2)
        y1 = surf%coeffs(3)
        z1 = surf%coeffs(4)
-       if ( y >= y0 .and. y < y1 .and. z >= z0 .and. z < z1 ) then
+       if (y >= y0 .and. y < y1 .and. z >= z0 .and. z < z1) then
           s = SENSE_NEGATIVE
        else
           s = SENSE_POSITIVE
        end if
        return
 
-    case ( SURF_BOX_Y )
+    case (SURF_BOX_Y)
        x0 = surf%coeffs(1)
        z0 = surf%coeffs(2)
        x1 = surf%coeffs(3)
        z1 = surf%coeffs(4)
-       if ( x >= x0 .and. x < x1 .and. z >= z0 .and. z < z1 ) then
+       if (x >= x0 .and. x < x1 .and. z >= z0 .and. z < z1) then
           s = SENSE_NEGATIVE
        else
           s = SENSE_POSITIVE
        end if
        return
 
-    case ( SURF_BOX_Z )
+    case (SURF_BOX_Z)
        x0 = surf%coeffs(1)
        y0 = surf%coeffs(2)
        x1 = surf%coeffs(3)
        y1 = surf%coeffs(4)
-       if ( x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1 ) then
+       if (x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1) then
           s = SENSE_NEGATIVE
        else
           s = SENSE_POSITIVE
        end if
        return
 
-    case ( SURF_BOX )
+    case (SURF_BOX)
        x0 = surf%coeffs(1)
        y0 = surf%coeffs(2)
        z0 = surf%coeffs(3)
        x1 = surf%coeffs(4)
        y1 = surf%coeffs(5)
        z1 = surf%coeffs(6)
-       if ( x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1 .and. & 
-            & z >= z0 .and. z < z1 ) then
+       if (x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1 .and. & 
+            & z >= z0 .and. z < z1) then
           s = SENSE_NEGATIVE
        else
           s = SENSE_POSITIVE
        end if
        return
 
-    case ( SURF_GQ )
+    case (SURF_GQ)
        func = A*x**2 + B*y**2 + C*z**2 + D*x*y + E*y*z + F*x*z + G*x &
             & + H*y + I*z + J
 
     end select
 
     ! Check which side of surface the point is on
-    if ( func > 0 ) then
+    if (func > 0) then
        s = SENSE_POSITIVE
     else
        s = SENSE_NEGATIVE
     end if
 
   end subroutine sense
+
+!=====================================================================
+! NEIGHBOR_LISTS builds a list of neighboring cells to each surface to
+! speed up searches when a cell boundary is crossed.
+!=====================================================================
+
+  subroutine neighbor_lists()
+
+    type(Cell),    pointer :: c
+    type(Surface), pointer :: surf
+    integer :: i, j
+    integer :: index
+    integer :: surf_num
+    logical :: positive
+    character(250) :: msg
+
+    integer, allocatable :: count_positive(:)
+    integer, allocatable :: count_negative(:)
+
+    msg = "Building neighboring cells lists for each surface..."
+    call message(msg, 4)
+
+    allocate(count_positive(n_surfaces))
+    allocate(count_negative(n_surfaces))
+    count_positive = 0
+    count_negative = 0
+
+    do i = 1, n_cells
+       c => cells(i)
+
+       ! loop over each surface specification
+       do j = 1, c%n_items
+          index = c%boundary_list(j)
+          positive = (index > 0)
+          index = abs(index)
+          if (positive) then
+             count_positive(index) = count_positive(index) + 1
+          else
+             count_negative(index) = count_negative(index) + 1
+          end if
+       end do
+    end do
+
+    ! allocate neighbor lists for each surface
+    do i = 1, n_surfaces
+       surf => surfaces(i)
+       if (count_positive(i) > 0) then
+          allocate(surf%neighbor_pos(count_positive(i)))
+       end if
+       if (count_negative(i) > 0) then
+          allocate(surf%neighbor_neg(count_negative(i)))
+       end if
+    end do
+
+    count_positive = 0
+    count_negative = 0
+
+    ! loop over all cells
+    do i = 1, n_cells
+       c => cells(i)
+
+       ! loop over each surface specification
+       do j = 1, c%n_items
+          index = c%boundary_list(j)
+          positive = (index > 0)
+          index = abs(index)
+
+          surf => surfaces(index)
+          if (positive) then
+             count_positive(index) = count_positive(index) + 1
+             surf%neighbor_pos(count_positive(index)) = i
+          else
+             count_negative(index) = count_negative(index) + 1
+             surf%neighbor_neg(count_negative(index)) = i
+          end if
+       end do
+    end do
+
+  end subroutine neighbor_lists
 
 end module geometry

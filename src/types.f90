@@ -33,13 +33,16 @@ module types
 !=====================================================================
 
   type Neutron
-    integer  :: uid     ! Unique ID
-    real(8)  :: xyz(3)  ! location
-    real(8)  :: uvw(3)  ! directional cosines
-    integer  :: cell    ! current cell
-    integer  :: surface ! current surface
-    real(8)  :: wgt     ! particle weight
-    logical  :: alive   ! is particle alive?
+    integer :: uid     ! Unique ID
+    real(8) :: xyz(3)  ! location
+    real(8) :: uvw(3)  ! directional cosines
+    real(8) :: E       ! energy
+    integer :: IE      ! index on energy grid
+    real(8) :: interp  ! interpolation factor for energy grid
+    integer :: cell    ! current cell
+    integer :: surface ! current surface
+    real(8) :: wgt     ! particle weight
+    logical :: alive   ! is particle alive?
   end type Neutron
 
 !=====================================================================
@@ -74,10 +77,12 @@ module types
   type Material
      integer :: uid
      integer :: n_isotopes
-     character(10), allocatable :: names(:)
-     integer, allocatable :: isotopes(:)
-     integer, allocatable :: table(:)
+     character(10), allocatable :: names(:)  ! isotope names
+     integer, allocatable :: isotopes(:)     ! index in xsdata list
+     integer, allocatable :: table(:)        ! index in xs array
+     real(8)              :: atom_density    ! total atom density in atom/b-cm
      real(8), allocatable :: atom_percent(:)
+     real(8), allocatable :: total_xs(:)     ! macroscopic cross-section
      integer :: sab_table
   end type Material
 
@@ -119,6 +124,8 @@ module types
      character(20) :: name
      real(8) :: awr
      real(8) :: temp
+     integer :: n_grid
+     integer, allocatable :: grid_index(:)
      real(8), allocatable :: energy(:)
      real(8), allocatable :: sigma_t(:)
      real(8), allocatable :: sigma_a(:)
@@ -161,56 +168,6 @@ module types
   end type AceThermal
 
 !=====================================================================
-! LISTDATA Data stored in a linked list. In this case, we store the
-! (key,value) pair for a dictionary. Note that we need to store the
-! key in addition to the value for collision resolution.
-!=====================================================================
-
-  ! Key length for dictionary
-  integer, parameter :: DICT_KEY_LENGTH = 20
-
-  type ListData
-     character(len=DICT_KEY_LENGTH) :: key
-     integer                        :: value
-  end type ListData
-
-!=====================================================================
-! LINKEDLIST stores a simple linked list
-!=====================================================================
-
-  type LinkedList
-     type(LinkedList), pointer :: next
-     type(ListData)            :: data
-  end type LinkedList
-
-!=====================================================================
-! LINKEDLISTGRID stores a sorted list of energies for the unionized
-! energy grid as a linked list
-!=====================================================================
-
-  type LinkedListGrid
-     type(LinkedListGrid), pointer :: next
-     real(8)                   :: energy
-  end type LinkedListGrid
-
-!=====================================================================
-! HASHLIST - Since it's not possible to directly do an array of
-! pointers, this derived type provides a pointer
-!=====================================================================
-
-  type HashList
-     type(LinkedList), pointer :: list
-  end type HashList
-
-!=====================================================================
-! DICTIONARY provides a dictionary data structure of (key,value) pairs
-!=====================================================================
-
-  type Dictionary
-     type(HashList), pointer :: table(:)
-  end type Dictionary
-
-!=====================================================================
 ! XSDATA contains data read in from a SERPENT xsdata file
 !=====================================================================
 
@@ -225,5 +182,105 @@ module types
      integer :: binary
      character(100) :: path
   end type xsData
+
+!=====================================================================
+! KEYVALUECI stores the (key,value) pair for a dictionary where the
+! key is a string and the value is an integer. Note that we need to
+! store the key in addition to the value for collision resolution.
+!=====================================================================
+
+  ! Key length for dictionary
+  integer, parameter :: DICT_KEY_LENGTH = 20
+
+  type KeyValueCI
+     character(len=DICT_KEY_LENGTH) :: key
+     integer                        :: value
+  end type KeyValueCI
+
+!=====================================================================
+! KEYVALUEII stores the (key,value) pair for a dictionary where the
+! key is an integer and the value is an integer. Note that we need to
+! store the key in addition to the value for collision resolution.
+!=====================================================================
+
+  type KeyValueII
+     integer :: key
+     integer :: value
+  end type KeyValueII
+
+!=====================================================================
+! LISTKEYVALUECI stores a linked list of (key,value) pairs where the
+! key is a character and the value is an integer
+!=====================================================================
+
+  type ListKeyValueCI
+     type(ListKeyValueCI), pointer :: next
+     type(KeyValueCI)              :: data
+  end type ListKeyValueCI
+
+!=====================================================================
+! LISTKEYVALUEII stores a linked list of (key,value) pairs where the
+! key is a character and the value is an integer
+!=====================================================================
+
+  type ListKeyValueII
+     type(ListKeyValueII), pointer :: next
+     type(KeyValueII)              :: data
+  end type ListKeyValueII
+
+!=====================================================================
+! LISTREAL stores a linked list of real values. This is used for
+! constructing a unionized energy grid.
+!=====================================================================
+
+  type ListReal
+     type(ListReal), pointer :: next
+     real(8)                 :: data
+  end type ListReal
+
+!=====================================================================
+! LISTINT stores a linked list of integer values.
+!=====================================================================
+
+  type ListInt
+     type(ListInt), pointer :: next
+     integer                :: data
+  end type ListInt
+
+!=====================================================================
+! HASHLISTCI - Since it's not possible to directly do an array of
+! pointers, this derived type provides a pointer
+!=====================================================================
+
+  type HashListCI
+     type(ListKeyValueCI), pointer :: list
+  end type HashListCI
+
+!=====================================================================
+! HASHLISTII - Since it's not possible to directly do an array of
+! pointers, this derived type provides a pointer
+!=====================================================================
+
+  type HashListII
+     type(ListKeyValueII), pointer :: list
+  end type HashListII
+
+!=====================================================================
+! DICTIONARYCI provides a dictionary data structure of (key,value)
+! pairs where the keys are strings and values are integers.
+!=====================================================================
+
+  type DictionaryCI
+     type(HashListCI), pointer :: table(:)
+  end type DictionaryCI
+
+!=====================================================================
+! DICTIONARYII provides a dictionary data structure of (key,value)
+! pairs where the keys and values are both integers.
+!=====================================================================
+
+  type DictionaryII
+     type(HashListII), pointer :: table(:)
+  end type DictionaryII
 
 end module types

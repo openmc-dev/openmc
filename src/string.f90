@@ -129,11 +129,11 @@ contains
 !   string  = concatenated string
 !=====================================================================
 
-  subroutine concatenate( words, n_words, string )
+  function concatenate(words, n_words) result(string)
 
     character(*),   intent(in)  :: words(n_words)
     integer,        intent(in)  :: n_words
-    character(250), intent(out) :: string
+    character(250)              :: string
 
     integer :: i ! index
 
@@ -143,7 +143,7 @@ contains
        string = trim(string) // ' ' // words(i)
     end do
 
-  end subroutine concatenate
+  end function concatenate
 
 !=====================================================================
 ! LOWER_CASE converts a string to all lower case characters

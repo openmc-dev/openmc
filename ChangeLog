@@ -1,3 +1,34 @@
+2011-02-09 Paul Romano <romano7@mit.edu>
+
+	* ace.f90: Fixed bug in the way xs_continuous was allocated. If,
+	e.g., 92235.03c was listed twice in a file, two spots would be
+	allocated in the array instead of one.
+	* cross_section.f90: Added calculation of total material
+	cross-section.
+	* data_structures.f90: Added list routines for each different
+	type (integer, real, key/value pairs) and an interface for
+	them. Dictionaries can now take character keys or integer
+	keys. New hash function for integers is simple mod function.
+	* energy_grid.f90: Removed grid_count since we now have a generic
+	list_size routine in data_structures. Added original_indices
+	routine in order to do SERPENT-style double-indexing.
+	* fileio.f90: Fixed normalize_ao routine to include calculations
+	based on atom or gram density (this should probably be moved to
+	different module). Added get_next_line routine that reads a full
+	line of input including any continuation lines marked by an
+	ampersand.
+	* global.f90: Added separate dictionary types (CI and II), added
+	pointers for current cell, surface, and material. Added e_grid and
+	n_grid
+	* physics.f90: Neutron energy sampled at beginning of
+	transport. Added watt_spectrum and maxwell_spectrum
+	routines. Changed collision routine so that actual nuclide is
+	sampled.
+	* search.f90: Fixed binary_search routine
+	* string.f90: Changed concatenate subroutine into a function
+	* types.f90: Moved List and Dictionary types from data_structures
+	to here (including new types). LinkedListGrid is now ListReal.
+
 2011-02-03 Paul Romano <romano7@mit.edu>
 
 	* ace.f90: Added initial routines for reading continuous-energy

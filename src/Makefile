@@ -15,7 +15,7 @@ modules = 	ace.f90 \
 		search.f90 \
 		source.f90 \
 		string.f90 \
-		types.f90 \
+		types.f90
 
 main_objects = $(modules:.f90=.o) $(main:.f90=.o)
 test_objects = $(modules:.f90=.o) $(test:.f90=.o)
@@ -50,16 +50,17 @@ unittest: $(test_objects)
 ace.o: global.o output.o string.o fileio.o string.o
 cross_section.o: global.o string.o data_structures.o output.o
 data_structures.o: global.o
-energy_grid.o: global.o
+energy_grid.o: global.o output.o data_structures.o
 fileio.o: types.o global.o string.o output.o data_structures.o
-geometry.o: types.o global.o output.o string.o
+geometry.o: types.o global.o output.o string.o data_structures.o
 global.o: types.o
 main.o: global.o fileio.o output.o geometry.o mcnp_random.o \
 		source.o physics.o cross_section.o data_structures.o \
 		ace.o energy_grid.o
 output.o: global.o
-physics.o: types.o global.o mcnp_random.o geometry.o output.o
-search.o:
+physics.o: types.o global.o mcnp_random.o geometry.o output.o \
+		search.o
+search.o: output.o
 source.o: global.o mcnp_random.o
 string.o: global.o output.o
 types.o:

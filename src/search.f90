@@ -1,5 +1,7 @@
 module search
 
+  use output, only: error
+
 contains
 
 !=====================================================================
@@ -8,7 +10,7 @@ contains
 ! energy grid searching
 !=====================================================================
 
-  function binary_search( array, n, val ) result( index )
+  function binary_search(array, n, val) result(index)
 
     real(8), intent(in) :: array(n)
     integer, intent(in) :: n
@@ -18,12 +20,14 @@ contains
     integer :: L
     integer :: R
     real(8) :: testval
+    character(250) :: msg
 
     L = 1
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-       ! error
+       msg = "Value outside of array during binary search"
+       call error(msg)
     end if
     
     do while (R - L > 1)
@@ -32,8 +36,8 @@ contains
        if (val > array(L) .and. val < array(L+1)) then
           index = L
           return
-       elseif (val > array(R+1) .and. val < array(R)) then
-          index = R
+       elseif (val > array(R-1) .and. val < array(R)) then
+          index = R-1
           return
        end if
 
@@ -41,9 +45,9 @@ contains
        index = L + (R - L)/2
        testval = array(index)
        if (val > testval) then
-          L = index + 1
+          L = index
        elseif (val < testval) then
-          R = index - 1
+          R = index
        end if
     end do
 

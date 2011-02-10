@@ -4,15 +4,14 @@ program main
   use fileio,      only: read_input, read_command_line, read_count, &
        &                 normalize_ao
   use output,      only: title, echo_input, message, warning, error
-  use geometry,    only: sense, cell_contains
+  use geometry,    only: sense, cell_contains, neighbor_lists
   use mcnp_random, only: RN_init_problem, rang, RN_init_particle
   use source,      only: init_source, get_source_particle
   use physics,     only: transport
-  use data_structures, only: Dictionary, dict_create, dict_add_key, & 
-       &                     dict_get_key
-  use cross_section, only: read_xsdata
+  use data_structures, only: dict_create, dict_add_key, dict_get_key
+  use cross_section, only: read_xsdata, material_total_xs
   use ace, only: read_xs
-  use energy_grid, only: unionized_grid
+  use energy_grid, only: unionized_grid, original_indices
 
   implicit none
 
@@ -21,7 +20,7 @@ program main
 
   ! Print the OpenMC title and version/date/time information
   call title()
-  verbosity = 10
+  verbosity = 9
 
   ! Initialize random number generator
   call RN_init_problem( 3, 0_8, 0_8, 0_8, 0 )
@@ -37,20 +36,36 @@ program main
   ! pass to actually read values
   call read_count(path_input)
   call read_input(path_input)
-  call read_xsdata(path_xsdata)
-  call normalize_ao()
-  call read_xs()
-  call unionized_grid()
 
-  stop
-  
+  ! After reading input and basic geometry setup is complete, build
+  ! lists of neighboring cells for efficient tracking
+  call neighbor_lists()
+
+  ! Read cross section summary file to determine what files contain
+  ! cross-sections
+  call read_xsdata(path_xsdata)
+
+  ! With the AWRs from the xsdata, change all material specifications
+  ! so that they contain atom percents summing to 1
+  call normalize_ao()
+
+  ! Read ACE-format cross sections
+  call read_xs()
+
+  ! Construct unionized energy grid from cross-sections
+  call unionized_grid()
+  call original_indices()
+
+  ! calculate total material cross-sections for sampling path lenghts
+  call material_total_xs()
+
   call echo_input()
 
   ! create source particles
   call init_source()
 
   ! start problem
-  surfaces(1)%bc = BC_VACUUM
+  surfaces(2)%bc = BC_VACUUM
   call run_problem()
 
 

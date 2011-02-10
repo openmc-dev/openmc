@@ -2,9 +2,11 @@ module fileio
 
   use global
   use types,  only: Cell, Surface, ExtSource
-  use string, only: split_string_wl, lower_case, str_to_real, split_string
+  use string, only: split_string_wl, lower_case, str_to_real, split_string, &
+       &            concatenate
   use output, only: message, warning, error
-  use data_structures, only: Dictionary, dict_create, dict_add_key, dict_get_key
+  use data_structures, only: dict_create, dict_add_key, dict_get_key, &
+       &                     DICT_NULL
 
   implicit none
 
@@ -45,7 +47,10 @@ contains
     if (.not. file_exists) then
        msg = "Input file '" // trim(path_input) // "' does not exist!"
        call error(msg)
-    elseif (readable(1:3) /= 'YES') then
+    elseif (readable(1:3) == 'NO') then
+       ! Need to explicitly check for a NO status -- Intel compiler
+       ! looks at file attributes only if the file is open on a
+       ! unit. Therefore, it will always return UNKNOWN
        msg = "Input file '" // trim(path_input) // "' is not readable! &
             &Change file permissions with chmod command."
        call error(msg)
@@ -66,21 +71,26 @@ contains
     character(250) :: line, msg
     character(32) :: words(max_words)
     integer :: in = 7
-    integer :: readError
+    integer :: ioError
     integer :: n
+
+    msg = "First pass through input file..."
+    call message(msg, 5)
 
     n_cells     = 0
     n_surfaces  = 0
     n_materials = 0
 
-    open(file=filename, unit=in, status='old', action='read')
+    open(FILE=filename, UNIT=in, STATUS='old', & 
+         & ACTION='read', IOSTAT=ioError)
+    if (ioError /= 0) then
+       msg = "Error while opening file: " // filename
+       call error(msg)
+    end if
 
     do
-       read(unit=in, fmt='(A250)', iostat=readError) line
-       if (readError /= 0) exit
-       ! TODO: don't really need to split entire string, this could be
-       ! replaced by just finding first word
-       call split_string(line, words, n)
+       call get_next_line(in, words, n, ioError)
+       if (ioError /= 0) exit
        if (n == 0) cycle
 
        select case (trim(words(1)))
@@ -97,19 +107,19 @@ contains
     ! defined for the problem
     if (n_cells == 0) then
        msg = "No cells specified!"
-       close(unit=in)
+       close(UNIT=in)
        call error(msg)
     elseif (n_surfaces == 0) then
        msg = "No surfaces specified!"
-       close(unit=in)
+       close(UNIT=in)
        call error(msg)
     elseif (n_materials == 0) then
        msg = "No materials specified!"
-       close(unit=in)
+       close(UNIT=in)
        call error(msg)
     end if
 
-    close(unit=in)
+    close(UNIT=in)
 
     ! Allocate arrays for cells, surfaces, etc.
     allocate(cells(n_cells))
@@ -119,6 +129,7 @@ contains
     ! Set up dictionaries
     call dict_create(cell_dict)
     call dict_create(surface_dict)
+    call dict_create(material_dict)
 
   end subroutine read_count
 
@@ -132,7 +143,7 @@ contains
 
     character(*), intent(in) :: filename
 
-    character(250) :: line
+    character(250) :: line, msg
     character(32) :: words(max_words)
     integer :: in = 7
     integer :: ioError
@@ -142,17 +153,24 @@ contains
     integer :: index_material
     integer :: index_source
 
+    msg = "Second pass through input file..."
+    call message(msg, 5)
+
     index_cell     = 0
     index_surface  = 0
     index_material = 0
     index_source   = 0
 
-    open(file=filename, unit=in, status='old', action='read')
+    open(FILE=filename, UNIT=in, STATUS='old', & 
+         & ACTION='read', IOSTAT=ioError)
+    if (ioError /= 0) then
+       msg = "Error while opening file: " // filename
+       call error(msg)
+    end if
 
     do
-       read(unit=in, fmt='(A250)', iostat=ioError) line
+       call get_next_line(in, words, n, ioError)
        if ( ioError /= 0 ) exit
-       call split_string_wl(line, words, n)
 
        ! skip comments
        if (n==0 .or. words(1)(1:1) == '#') cycle
@@ -187,11 +205,56 @@ contains
 
     end do
 
-    close(unit=in)
+    close(UNIT=in)
 
-    ! call adjust_cell_index
+    call adjust_indices()
 
   end subroutine read_input
+
+!=====================================================================
+! ADJUST_INDICES changes the boundary_list values for each cell and
+! the material index assigned to each to the indices in the surfaces
+! and material array rather than the unique IDs assigned to each
+! surface and material
+!=====================================================================
+
+  subroutine adjust_indices()
+
+    type(Cell), pointer :: c
+
+    integer :: i, j
+    integer :: index
+    integer :: surf_num
+    character(250) :: msg
+    
+    do i = 1, n_cells
+       ! adjust boundary list
+       c => cells(i)
+       do j = 1, c%n_items
+          surf_num = c%boundary_list(j)
+          if (surf_num < OP_DIFFERENCE) then
+             index = dict_get_key(surface_dict, abs(surf_num))
+             if (index == DICT_NULL) then
+                surf_num = abs(surf_num)
+                msg = "Could not find surface " // trim(int_to_str(surf_num)) // &
+                     & " specified on cell " // trim(int_to_str(c%uid))
+                call error(msg)
+             end if
+             c%boundary_list(j) = sign(index, surf_num)
+          end if
+       end do
+
+       ! adjust material indices
+       index = dict_get_key(material_dict, c%material)
+       if (index == DICT_NULL) then
+          msg = "Could not find material " // trim(int_to_str(c%material)) // &
+               & " specified on cell " // trim(int_to_str(c%uid))
+          call error(msg)
+       end if
+       c%material = index
+    end do
+
+  end subroutine adjust_indices
 
 !=====================================================================
 ! READ_CELL parses the data on a cell card.
@@ -203,8 +266,9 @@ contains
     character(*), intent(in) :: words(max_words)
     integer,      intent(in) :: n_words
 
-    integer :: readError
+    integer :: ioError
     integer :: i
+    integer :: n_items
     character(250) :: msg
     character(32) :: word
     type(Cell), pointer :: this_cell => null()
@@ -212,19 +276,23 @@ contains
     this_cell => cells(index)
 
     ! Read cell identifier
-    read(words(2), fmt='(I8)', iostat=readError) this_cell%uid
-    if (readError > 0) then
+    read(words(2), FMT='(I8)', IOSTAT=ioError) this_cell%uid
+    if (ioError > 0) then
        msg = "Invalid cell name: " // words(2)
        call error(msg)
     end if
-    call dict_add_key(cell_dict, words(2), index)
+    call dict_add_key(cell_dict, this_cell%uid, index)
 
     ! Read cell material
-    read(words(3), fmt='(I8)', iostat=readError) this_cell%material
+    read(words(3), FMT='(I8)', IOSTAT=ioError) this_cell%material
+
+    ! Assign number of items
+    n_items = n_words - 3
+    this_cell%n_items = n_items
 
     ! Read list of surfaces
-    allocate(this_cell%boundary_list(n_words-3))
-    do i = 1, n_words-3
+    allocate(this_cell%boundary_list(n_items))
+    do i = 1, n_items
        word = words(i+3)
        if (word(1:1) == '(') then
           this_cell%boundary_list(i) = OP_LEFT_PAREN
@@ -235,7 +303,7 @@ contains
        elseif (word(1:1) == '#') then
           this_cell%boundary_list(i) = OP_DIFFERENCE
        else
-          read(word, fmt='(I8)', iostat=readError) this_cell%boundary_list(i)
+          read(word, FMT='(I8)', IOSTAT=ioError) this_cell%boundary_list(i)
        end if
     end do
 
@@ -251,7 +319,7 @@ contains
     character(*), intent(in) :: words(max_words)
     integer, intent(in) :: n_words
 
-    integer :: readError
+    integer :: ioError
     integer :: i
     integer :: coeffs_reqd
     character(250) :: msg
@@ -261,11 +329,12 @@ contains
     this_surface => surfaces(index)
 
     ! Read surface identifier
-    read(words(2), fmt='(I8)', iostat=readError) this_surface%uid
-    if (readError > 0) then
+    read(words(2), FMT='(I8)', IOSTAT=ioError) this_surface%uid
+    if (ioError > 0) then
        msg = "Invalid surface name: " // words(2)
        call error(msg)
     end if
+    call dict_add_key(surface_dict, this_surface%uid, index)
 
     ! Read surface type
     word = words(3)
@@ -340,7 +409,7 @@ contains
 
     character(250) :: msg
     character(32) :: word
-    integer :: readError
+    integer :: ioError
     integer :: values_reqd
     integer :: i
 
@@ -371,8 +440,8 @@ contains
   end subroutine read_source
 
 !=====================================================================
-! READ_MATERIAL parses a material card, creating the appropriate
-! <Isotope>s and <Material>s.
+! READ_MATERIAL parses a material card. Note that atom percents and
+! densities are normalized in a separate routine
 !=====================================================================
 
   subroutine read_material(index, words, n_words)
@@ -383,17 +452,29 @@ contains
 
     character(100) :: msg
     integer :: i
+    integer :: ioError
     integer :: n_isotopes
     type(Material), pointer :: mat
 
-    if (mod(n_words,2) /= 0) then
+    if (mod(n_words,2) == 0 .or. n_words < 5) then
        msg = "Invalid number of arguments for material: " // words(2)
        call error(msg)
     end if
 
-    n_isotopes = (n_words-2)/2
+    n_isotopes = (n_words-3)/2
     mat => materials(index)
     mat%n_isotopes = n_isotopes
+
+    ! Read surface identifier
+    read(words(2), FMT='(I8)', IOSTAT=ioError) mat%uid
+    if (ioError > 0) then
+       msg = "Invalid surface name: " // words(2)
+       call error(msg)
+    end if
+    call dict_add_key(material_dict, mat%uid, index)
+
+    ! Read atom density
+    mat%atom_density = str_to_real(words(3))
 
     ! allocate isotope and density list
     allocate(mat%names(n_isotopes))
@@ -403,8 +484,8 @@ contains
 
     ! read names and percentage
     do i = 1, n_isotopes
-       mat%names(i) = words(2*i+1)
-       mat%atom_percent(i) = str_to_real(words(2*i+2))
+       mat%names(i) = words(2*i+2)
+       mat%atom_percent(i) = str_to_real(words(2*i+3))
     end do
 
   end subroutine read_material
@@ -420,9 +501,13 @@ contains
     type(Material), pointer :: mat
     integer :: index
     integer :: i, j
-    character(10) :: key
     real(8) :: sum_percent
-    real(8) :: awr, w
+    real(8) :: awr              ! atomic weight ratio
+    real(8) :: w                ! weight percent
+    real(8) :: x                ! atom percent
+    logical :: percent_in_atom
+    logical :: density_in_atom
+    character(10) :: key
     character(100) :: msg
     
     ! first find the index in the xsdata array for each isotope in
@@ -439,39 +524,48 @@ contains
           call error(msg)
        end if
 
-       ! If data given in a/o, normalize it by sum
-       if (mat%atom_percent(1) > 0) then
-          sum_percent = sum(mat%atom_percent)
-          mat%atom_percent = mat%atom_percent / sum_percent
-          do j = 1, mat%n_isotopes
-             key = mat%names(j)
-             index = dict_get_key(xsdata_dict, key)
-             mat%isotopes(j) = index
-          end do
-          cycle
-       end if
+       percent_in_atom = (mat%atom_percent(1) > 0)
+       density_in_atom = (mat%atom_density > 0)
 
-       ! Otherwise, need to find atomic weight ratios for each isotope
-       ! in order to normalize to a/o. To convert weight percent to
-       ! atom percent, the formula is: x = (w/awr) / sum(w/awr)
        sum_percent = 0
        do j = 1, mat%n_isotopes
+          ! Set indices for isotopes
           key = mat%names(j)
           index = dict_get_key(xsdata_dict, key)
           mat%isotopes(j) = index
-          awr = xsdatas(index)%awr
-          w = mat%atom_percent(j)
 
-          sum_percent = sum_percent + w/awr
-       end do
-       
-       ! change each isotope from w/o to a/o
-       do j = 1, mat%n_isotopes
-          index = mat%isotopes(j)
+          ! determine atomic weight ratio
           awr = xsdatas(index)%awr
-          w = mat%atom_percent(j)
-          mat%atom_percent(j) = (w/awr)/sum_percent
+
+          ! if given weight percent, convert all values so that they
+          ! are divided by awr. thus, when a sum is done over the
+          ! values, it's actually sum(w/awr)
+          if (.not. percent_in_atom) then
+             mat%atom_percent(j) = -mat%atom_percent(j) / awr
+          end if
        end do
+
+       ! determine normalized atom percents. if given atom percents,
+       ! this is straightforward. if given weight percents, the value
+       ! is w/awr and is divided by sum(w/awr)
+       sum_percent = sum(mat%atom_percent)
+       mat%atom_percent = mat%atom_percent / sum_percent
+
+       ! Change density in g/cm^3 to atom/b-cm. Since all values are
+       ! now in atom percent, the sum needs to be re-evaluated as
+       ! 1/sum(x*awr)
+       if (.not. density_in_atom) then
+          sum_percent = 0
+          do j = 1, mat%n_isotopes
+             index = mat%isotopes(j)
+             awr = xsdatas(index)%awr
+             x = mat%atom_percent(j)
+             sum_percent = sum_percent + x*awr
+          end do
+          sum_percent = 1.0_8 / sum_percent
+          mat%atom_density = -mat%atom_density * N_AVOGADRO & 
+               & / MASS_NEUTRON * sum_percent
+       end if
     end do
 
   end subroutine normalize_ao
@@ -501,28 +595,28 @@ contains
     integer, intent(in) :: n_words
 
     character(250) :: msg
-    integer :: readError
+    integer :: ioError
 
     ! Set problem type to criticality
     problem_type = PROB_CRITICALITY
 
     ! Read number of cycles
-    read(words(2), fmt='(I8)', iostat=readError) n_cycles
-    if (readError > 0) then
+    read(words(2), FMT='(I8)', IOSTAT=ioError) n_cycles
+    if (ioError > 0) then
        msg = "Invalid number of cycles: " // words(2)
        call error(msg)
     end if
 
     ! Read number of inactive cycles
-    read(words(3), fmt='(I8)', iostat=readError) n_inactive
-    if (readError > 0) then
+    read(words(3), FMT='(I8)', IOSTAT=ioError) n_inactive
+    if (ioError > 0) then
        msg = "Invalid number of inactive cycles: " // words(2)
        call error(msg)
     end if
 
     ! Read number of particles
-    read(words(4), fmt='(I8)', iostat=readError) n_particles
-    if ( readError > 0 ) then
+    read(words(4), FMT='(I8)', IOSTAT=ioError) n_particles
+    if (ioError > 0) then
        msg = "Invalid number of particles: " // words(2)
        call error(msg)
     end if
@@ -544,6 +638,43 @@ contains
   end subroutine read_line
 
 !=====================================================================
+! GET_NEXT_LINE reads the next line to the file connected on the
+! specified unit including any continuation lines. If a line ends in
+! an ampersand, the next line is read and its words are appended to
+! the final array
+!=====================================================================
+
+  subroutine get_next_line(unit, words, n, ioError)
+
+    integer,      intent(in)  :: unit
+    character(*), intent(out) :: words(max_words)
+    integer,      intent(out) :: n
+    integer,      intent(out) :: ioError
+
+    character(250) :: line 
+    character(32)  :: local_words(max_words)
+    integer        :: index
+
+    index = 0
+    do     
+       read(UNIT=unit, FMT='(A250)', IOSTAT=ioError) line
+       if (ioError /= 0) return
+       call split_string_wl(line, local_words, n)
+       if (n == 0) exit
+       if (local_words(n) == '&') then
+          words(index+1:index+n-1) = local_words(1:n-1)
+          index = index + n-1
+       else
+          words(index+1:index+n) = local_words(1:n)
+          index = index + n
+          exit
+       end if
+    end do
+    n = index
+
+  end subroutine get_next_line
+
+!=====================================================================
 ! SKIP_LINES skips 'n_lines' lines from a file open on a unit
 !=====================================================================
 
@@ -557,7 +688,7 @@ contains
     character(max_line) :: tmp
 
     do i = 1, n_lines
-       read(UNIT=unit, fmt='(A250)', IOSTAT=ioError) tmp
+       read(UNIT=unit, FMT='(A250)', IOSTAT=ioError) tmp
     end do
 
   end subroutine skip_lines

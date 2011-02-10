@@ -1,9 +1,9 @@
 module cross_section
 
+  use global
   use string, only: split_string, str_to_real
-  use global, only: str_to_int, max_words, xsdata_dict, xsdatas
-  use data_structures, only: Dictionary, dict_create, dict_add_key, dict_get_key
-  use output, only: error
+  use data_structures, only: dict_create, dict_add_key, dict_get_key
+  use output, only: error, message
   use types, only: xsData
 
   implicit none
@@ -31,6 +31,9 @@ contains
     integer :: index
     integer :: ioError
 
+    msg = "Reading cross-section summary file..."
+    call message(msg, 5)
+
     ! Construct filename
     n = len(path)
     if (path(n:n) == '/') then
@@ -44,14 +47,19 @@ contains
     if ( .not. file_exists ) then
        msg = "Cross section summary '" // trim(filename) // "' does not exist!"
        call error( msg )
-    elseif ( readable(1:3) /= 'YES' ) then
+    elseif ( readable(1:3) == 'NO' ) then
        msg = "Cross section summary '" // trim(filename) // "' is not readable!" &
             & // "Change file permissions with chmod command."
        call error( msg )
     end if
 
-    ! open file
-    open(file=filename, unit=in, status='old', action='read')
+    ! open xsdata file
+    open(file=filename, unit=in, status='old', &
+         & action='read', iostat=ioError)
+    if (ioError /= 0) then
+       msg = "Error while opening file: " // filename
+       call error(msg)
+    end if
 
     ! determine how many lines
     count = 0
@@ -109,5 +117,51 @@ contains
     close(unit=in)
 
   end subroutine read_xsdata
+
+!=====================================================================
+! MATERIAL_TOTAL_XS calculates the total macroscopic cross section of
+! each material for use in sampling path lengths
+!=====================================================================
+
+  subroutine material_total_xs()
+
+    type(Material), pointer :: mat => null()
+    type(AceContinuous), pointer :: acecont => null()
+    integer :: i, j, k
+    integer :: index
+    real(8) :: xs
+    real(8) :: density
+    character(250) :: msg
+
+    msg = "Creating material total cross-sections..."
+    call message(msg, 4)
+
+    ! loop over all materials
+    do i = 1, n_materials
+
+       ! allocate storage for total xs
+       mat => materials(i)
+       density = mat%atom_density
+       allocate(mat%total_xs(n_grid))
+       
+       ! loop over each energy on grid
+       do j = 1, n_grid
+        
+          mat%total_xs(j) = 0.0_8
+
+          ! loop over each isotope in material
+          do k = 1, mat%n_isotopes
+             ! find ACE cross section table for this isotope
+             index = mat%table(k)
+             acecont => xs_continuous(index)
+             
+             ! add contribution to total cross-section
+             mat%total_xs(j) = mat%total_xs(j) + density * & 
+                  mat%atom_percent(j) * acecont%sigma_t(index)
+          end do
+       end do
+    end do
+
+  end subroutine material_total_xs
 
 end module cross_section

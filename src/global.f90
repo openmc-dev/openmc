@@ -14,18 +14,28 @@ module global
   integer :: n_surfaces  ! # of surfaces
   integer :: n_materials ! # of materials
 
-  type(Dictionary), pointer :: cell_dict
-  type(Dictionary), pointer :: surface_dict
-  type(Dictionary), pointer :: xsdata_dict
-  type(Dictionary), pointer :: isotope_dict
-  type(Dictionary), pointer :: ace_dict
+  ! These dictionaries provide a fast lookup mechanism
+  type(DictionaryII), pointer :: cell_dict
+  type(DictionaryII), pointer :: surface_dict
+  type(DictionaryII), pointer :: material_dict
+  type(DictionaryII), pointer :: isotope_dict
+  type(DictionaryCI), pointer :: xsdata_dict
+  type(DictionaryCI), pointer :: ace_dict
 
   ! Cross section arrays
-  type(AceContinuous), pointer :: xs_continuous(:)
+  type(AceContinuous), allocatable, target :: xs_continuous(:)
   type(AceThermal),    allocatable, target :: xs_thermal(:)
+  integer :: n_continuous
+  integer :: n_thermal
+
+  ! Current cell, surface, material
+  type(Cell),     pointer :: cCell
+  type(Surface),  pointer :: cSurface
+  type(Material), pointer :: cMaterial
 
   ! unionized energy grid
-  real(8), allocatable :: energy_grid(:)
+  integer              :: n_grid    ! number of points on unionized grid
+  real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
   ! Histories/cycles/etc for both external source and criticality
   integer :: n_particles ! # of particles (per cycle for criticality)
@@ -50,6 +60,7 @@ module global
        & MASS_NEUTRON = 1.0086649156,   & ! mass of a neutron
        & MASS_PROTON  = 1.00727646677,  & ! mass of a proton
        & AMU          = 1.66053873e-27, & ! 1 amu in kg
+       & N_AVOGADRO   = 0.602214179,    & ! Avogadro's number in 10^24/mol
        & K_BOLTZMANN  = 8.617342e-5,    & ! Boltzmann constant in eV/K
        & INFINITY  = huge(0.0_8)          ! positive infinity
 
@@ -106,13 +117,13 @@ module global
        & ELECTRON_ = 3
 
   integer :: verbosity = 5
-  integer, parameter :: max_words = 100
+  integer, parameter :: max_words = 500
   integer, parameter :: max_line  = 250
 
   ! Versioning numbers
   integer, parameter :: VERSION_MAJOR = 0
   integer, parameter :: VERSION_MINOR = 1
-  integer, parameter :: VERSION_RELEASE = 2
+  integer, parameter :: VERSION_RELEASE = 3
 
 contains
 

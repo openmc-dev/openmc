@@ -2,6 +2,8 @@ module energy_grid
 
   use global
   use output, only: message
+  use data_structures, only: list_insert, list_size, list_delete, &
+       &                     list_size
 
 contains
 
@@ -15,8 +17,8 @@ contains
 
   subroutine unionized_grid()
 
-    type(LinkedListGrid), pointer :: list => null()
-    type(LinkedListGrid), pointer :: current => null()
+    type(ListReal), pointer :: list => null()
+    type(ListReal), pointer :: current => null()
 
     type(Material),       pointer :: mat => null()
     type(AceContinuous),  pointer :: table => null()
@@ -25,7 +27,7 @@ contains
     integer :: n
     character(100) :: msg
 
-    msg = "Creating unionized energy grid"
+    msg = "Creating unionized energy grid..."
     call message(msg, 5)
 
     ! loop over all materials
@@ -42,6 +44,18 @@ contains
        end do
     end do
 
+    ! create allocated array from linked list
+    n_grid = list_size(list)
+    allocate(e_grid(n_grid))
+    current => list
+    do i = 1,n_grid
+       e_grid(i) = current%data
+       current => current%next
+    end do
+
+    ! delete linked list
+    call list_delete(list)
+
   end subroutine unionized_grid
 
 !=====================================================================
@@ -51,14 +65,14 @@ contains
 
   subroutine add_grid_points(list, energy, n_energy)
 
-    type(LinkedListGrid), pointer :: list
+    type(ListReal), pointer :: list
     real(8), intent(in) :: energy(n_energy)
     integer, intent(in) :: n_energy
 
-    type(LinkedListGrid), pointer :: current => null()
-    type(LinkedListGrid), pointer :: previous => null()
-    type(LinkedListGrid), pointer :: head => null()
-    type(LinkedListGrid), pointer :: tmp => null()
+    type(ListReal), pointer :: current => null()
+    type(ListReal), pointer :: previous => null()
+    type(ListReal), pointer :: head => null()
+    type(ListReal), pointer :: tmp => null()
     integer :: index
     real(8) :: E
 
@@ -66,11 +80,11 @@ contains
 
     ! if the original list is empty, we need to allocate the first
     ! element and store first energy point
-    if (grid_count(list) == 0) then
+    if (list_size(list) == 0) then
        allocate(list)
        current => list
        do index = 1, n_energy
-          current%energy = energy(index)
+          current%data = energy(index)
           if (index == n_energy) then
              current%next => null()
              return
@@ -93,7 +107,7 @@ contains
           do while (index <= n_energy)
              allocate(previous%next)
              current => previous%next
-             current%energy = energy(index)
+             current%data = energy(index)
              previous => current
              index = index + 1
           end do
@@ -101,10 +115,10 @@ contains
           exit
        end if
        
-       if (E < current%energy) then
+       if (E < current%data) then
           ! create new element and insert it in energy grid list
           allocate(tmp)
-          tmp%energy = E
+          tmp%data = E
           tmp%next => current
           if (associated(previous)) then
              previous%next => tmp
@@ -119,7 +133,7 @@ contains
           index = index + 1
           E = energy(index)
 
-       elseif (E == current%energy) then
+       elseif (E == current%data) then
           ! found the exact same energy, no need to store duplicates
           ! so just skip and move to next index
           index = index + 1
@@ -139,29 +153,37 @@ contains
   end subroutine add_grid_points
 
 !=====================================================================
-! GRID_COUNT gives the number of energy points in list. This should
-! eventually be replaced with a generic list function.
+! ORIGINAL_INDICES
 !=====================================================================
 
-  function grid_count(list) result(count)
+  subroutine original_indices()
 
-    type(LinkedListGrid), pointer :: list
-    integer :: count
+    integer :: i, j
+    integer :: index
+    type(AceContinuous), pointer :: acecont
 
-    type(LinkedListGrid), pointer :: current
+    real(8) :: union_energy
+    real(8) :: energy
+    
 
-    ! determine size of list
-    if (associated(list)) then
-       count = 1
-       current => list
-       do while (associated(current%next))
-          current => current%next
-          count = count + 1
-       enddo
-    else
-       count = 0
-    end if
+    do i = 1, n_continuous
+       acecont => xs_continuous(i)
+       allocate(acecont%grid_index(n_grid))
 
-  end function grid_count
+       index = 1
+       energy = acecont%energy(index)
+
+       do j = 1, n_grid
+          union_energy = e_grid(j)
+          if (union_energy >= energy) then
+             index = index + 1
+             energy = acecont%energy(index)
+          end if
+          acecont%grid_index(j) = index-1
+       end do
+
+    end do
+
+  end subroutine original_indices
 
 end module energy_grid

@@ -20,7 +20,7 @@ program main
 
   ! Print the OpenMC title and version/date/time information
   call title()
-  verbosity = 9
+  verbosity = 10
 
   ! Initialize random number generator
   call RN_init_problem( 3, 0_8, 0_8, 0_8, 0 )
@@ -68,7 +68,9 @@ program main
   surfaces(2)%bc = BC_VACUUM
   call run_problem()
 
-
+  ! deallocate arrays
+  call free_memory()
+  
 contains
 
 !=====================================================================
@@ -115,8 +117,6 @@ contains
 
     ! print run time
 
-    call free_memory()
-    
   end subroutine run_problem
 
 end program main

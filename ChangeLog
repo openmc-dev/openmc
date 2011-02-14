@@ -1,3 +1,22 @@
+2011-02-13 Paul Romano <romano7@mit.edu>
+
+	* ace.f90: Fixed xs_continuous allocation again -- cross sections
+	were not being assigned correctly to materials. Added elastic
+	scattering in list of reactions. Changed name of rxn %
+	energy_index to IE.
+	* endf.f90: New module. Includes subroutine reaction_name which
+	returns the name of a reaction for a given ENDF MT value.
+	* geometry.f90: Fixed bug in dist_to_boundary (the 'w' in uvw was
+	actually being set to 'z', not 'w'). Changed 0's and 1's to ZEROs
+	and ONEs.
+	* global.f90: Added ZERO and ONE.
+	* physics.f90: Can now sample reactions once nuclide is
+	selected. Added subroutines elastic_scatter, level_inelastic, and
+	n_gamma (level_inelastic is just a stub), and significantly
+	changed elastic scattering (currently based on stationary target).
+	* types.f90: Added n_reaction attribute on AceContinuous, changed
+	AceReaction % energy_index to IE.
+
 2011-02-09 Paul Romano <romano7@mit.edu>
 
 	* ace.f90: Fixed bug in the way xs_continuous was allocated. If,

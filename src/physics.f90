@@ -6,6 +6,7 @@ module physics
   use mcnp_random, only: rang
   use output,      only: error, message
   use search,      only: binary_search
+  use endf,        only: reaction_name
 
   implicit none
 
@@ -29,6 +30,7 @@ contains
     real(8) :: distance
     real(8) :: Sigma          ! total cross-section
     real(8) :: f              ! interpolation factor
+    real(8) :: tmp(3)
     integer :: IE             ! index on energy grid
 
     ! determine what cell the particle is in
@@ -91,18 +93,14 @@ contains
 
     type(Neutron), pointer :: neut
 
-
     type(AceContinuous), pointer :: table
+    type(AceReaction),   pointer :: rxn
     real(8) :: r1
-    real(8) :: phi ! azimuthal angle
-    real(8) :: mu  ! cosine of polar angle
     character(250) :: msg
-    integer :: cell_num
     integer :: i,j
     integer :: n_isotopes
     integer :: IE
-
-    real(8) :: f, Sigma
+    real(8) :: f, Sigma, total
     real(8) :: density, density_i
     real(8) :: p
     real(8), allocatable :: Sigma_t(:)
@@ -127,39 +125,148 @@ contains
        Sigma_t(i) = Sigma
     end do
 
-    ! normalize to create a discrete pdf
-    Sigma_t = Sigma_t / sum(Sigma_t)
-
     ! sample nuclide
     r1 = rang()
     p = 0.0_8
+    total = sum(Sigma_t)
     do i = 1, n_isotopes
-       p = p + Sigma_t(i)
+       p = p + Sigma_t(i) / total
        if (r1 < p) exit
     end do
-    table => xs_continuous(cMaterial%table(i))
-    ! print *, 'sampled nuclide ', i
 
-    ! select collision type
-    r1 = rang()
-    if (r1 <= 0.5) then
-       ! scatter
-       phi = 2.*pi*rang()
-       mu = 2.*rang() - 1
-       neut%uvw(1) = mu
-       neut%uvw(2) = sqrt(1. - mu**2) * cos(phi)
-       neut%uvw(3) = sqrt(1. - mu**2) * sin(phi)
-    else
-       neut%alive = .false.
-       if (verbosity >= 10) then
-          cell_num = cells(neut%cell)%uid
-          msg = "    Absorbed in cell " // trim(int_to_str(cell_num))
-          call message(msg, 10)
-       end if
-       return
+    ! Get table, total xs, interpolation factor
+    table => xs_continuous(cMaterial%table(i))
+    Sigma = Sigma_t(i)
+    IE = table%grid_index(neut%IE)
+    f = (neut%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
+    density = cMaterial%atom_percent(i)*density
+
+    ! free memory
+    deallocate(Sigma_t)
+
+    ! sample reaction channel
+    r1 = rang()*Sigma
+    p = 0.0_8
+    do i = 1, table%n_reaction
+       rxn => table%reactions(i)
+       if (rxn%MT >= 200) cycle
+       if (IE < rxn%IE) cycle
+       p = p + density * (f*rxn%sigma(IE-rxn%IE+1) + (1-f)*(rxn%sigma(IE-rxn%IE+2)))
+       if (r1 < p) exit
+    end do
+    if (verbosity >= 10) then
+       msg = "    " // trim(reaction_name(rxn%MT)) // " with nuclide " // &
+            & trim(table%name)
+       call message(msg, 10)
     end if
+
+    ! call appropriate subroutine
+    select case (rxn%MT)
+    case (2)
+       call elastic_scatter(neut, table%awr)
+    case (102)
+       call n_gamma(neut)
+    case default
+       call elastic_scatter(neut, table%awr)
+    end select
     
   end subroutine collision
+
+!=====================================================================
+! ELASTIC_SCATTER
+!=====================================================================
+
+  subroutine elastic_scatter(neut, awr)
+
+    type(Neutron), pointer :: neut
+    real(8), intent(in) :: awr
+
+    real(8) :: phi ! azimuthal angle
+    real(8) :: mu  ! cosine of polar angle
+    real(8) :: vx, vy, vz
+    real(8) :: vcx, vcy ,vcz
+    real(8) :: vel
+    real(8) :: u, v, w
+    real(8) :: E
+    integer :: IE
+
+    vel = sqrt(neut%E)
+
+    vx = vel*neut%uvw(1)
+    vy = vel*neut%uvw(2)
+    vz = vel*neut%uvw(3)
+
+
+    vcx = vx/(awr + 1.0_8)
+    vcy = vy/(awr + 1.0_8)
+    vcz = vz/(awr + 1.0_8)
+
+    ! Transform to CM frame
+    vx = vx - vcx
+    vy = vy - vcy
+    vz = vz - vcz
+
+    vel = sqrt(vx*vx + vy*vy + vz*vz)
+
+    ! Select isotropic direcion -- this is only valid for s-wave
+    ! scattering
+    phi = 2.0_8*PI*rang()
+    mu = 2.0_8*rang() - 1.0_8
+    u = mu
+    v = sqrt(1.0_8 - mu**2) * cos(phi)
+    w = sqrt(1.0_8 - mu**2) * sin(phi)
+
+    vx = u*vel
+    vy = v*vel
+    vz = w*vel
+
+    ! Transform back to LAB frame
+    vx = vx + vcx
+    vy = vy + vcy
+    vz = vz + vcz
+
+    E = vx*vx + vy*vy + vz*vz
+    vel = sqrt(E)
+
+    neut%E = E
+    neut%uvw(1) = vx/vel
+    neut%uvw(2) = vy/vel
+    neut%uvw(3) = vz/vel
+
+    ! find energy index, interpolation factor
+    IE = binary_search(e_grid, n_grid, E)
+    neut%IE = IE
+    neut%interp = (E - e_grid(IE))/(e_grid(IE+1) - e_grid(IE))
+
+  end subroutine elastic_scatter
+
+!=====================================================================
+! LEVEL_INELASTIC
+!=====================================================================
+
+  subroutine level_inelastic
+
+  end subroutine level_inelastic
+
+!=====================================================================
+! N_GAMMA
+!=====================================================================
+
+  subroutine n_gamma(neut)
+
+    type(Neutron), pointer :: neut
+
+    integer :: cell_num
+    character(250) :: msg
+
+    neut%alive = .false.
+    if (verbosity >= 10) then
+       cell_num = cells(neut%cell)%uid
+       msg = "    Absorbed in cell " // trim(int_to_str(cell_num))
+       call message(msg, 10)
+    end if
+
+  end subroutine n_gamma
 
 !=====================================================================
 ! MAXWELL_SPECTRUM samples an energy from the Maxwell fission

@@ -6,7 +6,7 @@ module ace
   use fileio, only: read_line, read_data, skip_lines
   use string, only: split_string, str_to_real
   use data_structures, only: dict_create, dict_add_key, dict_has_key, &
-       &                     dict_get_key
+       &                     dict_get_key, dict_delete
 
   integer :: NXS(16)
   integer :: JXS(32)
@@ -37,7 +37,7 @@ contains
     integer :: n
     integer :: index_continuous
     integer :: index_thermal
-    type(ListKeyValueCI), pointer :: elem
+    type(DictionaryCI),   pointer :: temp_dict
 
     call dict_create(ace_dict)
 
@@ -78,14 +78,31 @@ contains
     allocate(xs_thermal(n_thermal))
 
     ! loop over all nuclides in xsdata
+    call dict_create(temp_dict)
+
     index_continuous = 0
-    do i = 1, size(xsdatas)
-       key = xsdatas(i)%alias
-       if (dict_has_key(ace_dict, key)) then
-          index_continuous = index_continuous + 1
-          call read_ACE_continuous(index_continuous, i)
-       end if
+    index_thermal = 0
+    do i = 1, n_materials
+       mat => materials(i)
+       do j = 1, mat%n_isotopes
+          index = mat%isotopes(j)
+          key = xsdatas(index)%id
+          n = len_trim(key)
+          call lower_case(key)
+          select case (key(n:n))
+          case ('c')
+             if (.not. dict_has_key(temp_dict, key)) then
+                index_continuous = index_continuous + 1
+                call read_ACE_continuous(index_continuous, index)
+             end if
+          case ('t')
+             n_thermal = n_thermal + 1
+          end select
+       end do
     end do
+
+    ! delete dictionary
+    call dict_delete(temp_dict)
        
   end subroutine read_xs
 
@@ -222,7 +239,11 @@ contains
     allocate(table%sigma_el(NE))
     allocate(table%heating(NE))
 
-    ! read data from XSS
+    ! read data from XSS -- right now the total, absorption and
+    ! elastic scattering are read in to these special arrays, but in
+    ! reality, it should be necessary to only store elastic scattering
+    ! and possible total cross-section for total material xs
+    ! generation.
     XSS_index = 1
     table%energy = get_real(NE)
     table%sigma_t = get_real(NE)
@@ -259,11 +280,22 @@ contains
     JXS7 = JXS(7)
     NMT = NXS(4)
 
-    ! allocate array of reactions
-    allocate(table%reactions(NMT))
+    ! allocate array of reactions. Add one since we need to include an
+    ! elastic scattering channel
+    table%n_reaction = NMT + 1
+    allocate(table%reactions(NMT+1))
+
+    ! Store elastic scattering cross-section on reaction one
+    rxn => table%reactions(1)
+    rxn%MT      = 2
+    rxn%Q_value = 0.0_8
+    rxn%TY      = 1
+    rxn%IE      = 1
+    allocate(rxn%sigma(table%n_grid))
+    rxn%sigma = table%sigma_el
 
     do i = 1, NMT
-       rxn => table%reactions(i)
+       rxn => table%reactions(i+1)
 
        ! read MT number, Q-value, and neutrons produced
        rxn%MT      = XSS(LMT+i-1)
@@ -272,7 +304,7 @@ contains
 
        ! read cross section values
        LOCA = XSS(LXS+i-1)
-       rxn%energy_index = XSS(JXS7 + LOCA - 1)
+       rxn%IE = XSS(JXS7 + LOCA - 1)
        NE = XSS(JXS7 + LOCA)
        allocate(rxn%sigma(NE))
        XSS_index = JXS7 + LOCA + 1

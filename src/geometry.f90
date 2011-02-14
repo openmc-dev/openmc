@@ -87,7 +87,7 @@ contains
 
   subroutine find_cell(neut)
 
-    type(Neutron), pointer, intent(inout) :: neut
+    type(Neutron), pointer :: neut
 
     type(Cell), pointer :: this_cell
     logical :: found_cell
@@ -123,7 +123,7 @@ contains
 
   subroutine cross_boundary(neut)
 
-    type(Neutron), pointer, intent(in) :: neut
+    type(Neutron), pointer :: neut
 
     type(Surface), pointer :: surf
     type(Cell),    pointer :: c
@@ -155,6 +155,8 @@ contains
           c => cells(index_cell)
           if (cell_contains(c, neut)) then
              neut%cell = index_cell
+             cCell => cells(index_cell)
+             cMaterial => materials(cCell%material)
              return
           end if
        end do
@@ -166,6 +168,8 @@ contains
           c => cells(index_cell)
           if (cell_contains(c, neut)) then
              neut%cell = index_cell
+             cCell => cells(index_cell)
+             cMaterial => materials(cCell%material)
              return
           end if
        end do
@@ -177,6 +181,8 @@ contains
        c => cells(i)
        if (cell_contains(c, neut)) then
           neut%cell = i
+          cCell => cells(i)
+          cMaterial => materials(cCell%material)
           return
        end if
     end do
@@ -196,7 +202,7 @@ contains
 
   subroutine dist_to_boundary(neut, dist, surf, other_cell)
 
-    type(Neutron),     intent(in)  :: neut
+    type(Neutron),     pointer  :: neut
     real(8),           intent(out) :: dist
     integer,           intent(out) :: surf
     integer, optional, intent(in)  :: other_cell
@@ -224,18 +230,18 @@ contains
 
     current_surf = neut%surface
 
-    x = neut%xyz(1)
-    y = neut%xyz(2)
-    z = neut%xyz(3)
-    u = neut%uvw(1)
-    v = neut%uvw(2)
-    z = neut%uvw(3)
-
     dist = INFINITY
     n_boundaries = size(cell_p%boundary_list)
     allocate(expression(n_boundaries))
     expression = cell_p%boundary_list
     do i = 1, n_boundaries
+       x = neut%xyz(1)
+       y = neut%xyz(2)
+       z = neut%xyz(3)
+       u = neut%uvw(1)
+       v = neut%uvw(2)
+       w = neut%uvw(3)
+
        ! check for coincident surfaec
        index_surf = expression(i)
        if (index_surf == current_surf) cycle
@@ -247,30 +253,30 @@ contains
        surf_p => surfaces(index_surf)
        select case (surf_p%type)
        case (SURF_PX)
-          if (u == 0.0) then
+          if (u == ZERO) then
              d = INFINITY
           else
              x0 = surf_p%coeffs(1)
              d = (x0 - x)/u
-             if (d < 0) d = INFINITY
+             if (d < ZERO) d = INFINITY
           end if
           
        case (SURF_PY)
-          if (v == 0.0) then
+          if (v == ZERO) then
              d = INFINITY
           else
              y0 = surf_p%coeffs(1)
              d = (y0 - y)/v
-             if (d < 0) d = INFINITY
+             if (d < ZERO) d = INFINITY
           end if
           
        case (SURF_PZ)
-          if (w == 0.0) then
+          if (w == ZERO) then
              d = INFINITY
           else
              z0 = surf_p%coeffs(1)
              d = (z0 - z)/w
-             if (d < 0.0) d = INFINITY
+             if (d < ZERO) d = INFINITY
           end if
           
        case (SURF_PLANE)
@@ -280,16 +286,16 @@ contains
           D = surf_p%coeffs(4)
           
           tmp = A*u + B*v + C*w
-          if (tmp == 0.0) then
+          if (tmp == ZERO) then
              d = INFINITY
           else
              d = -(A*x + B*y + C*w - D)/tmp
-             if (d < 0.0) d = INFINITY
+             if (d < ZERO) d = INFINITY
           end if
 
        case (SURF_CYL_X)
-          a = 1.0 - u**2  ! v^2 + w^2
-          if (a == 0.0) then
+          a = ONE - u**2  ! v^2 + w^2
+          if (a == ZERO) then
              d = INFINITY
           else
              y0 = surf_p%coeffs(1)
@@ -302,7 +308,7 @@ contains
              c = y**2 + z**2 - r**2
              quad = k**2 - a*c
 
-             if (c < 0) then
+             if (c < ZERO) then
                 ! particle is inside the cylinder, thus one distance
                 ! must be negative and one must be positive. The
                 ! positive distance will be the one with negative sign
@@ -317,14 +323,14 @@ contains
                 ! positive sign on sqrt(quad)
 
                 d = -(k + sqrt(quad))/a
-                if (d < 0) d = INFINITY
+                if (d < ZERO) d = INFINITY
 
              end if
           end if
 
        case (SURF_CYL_Y)
-          a = 1.0 - v**2  ! u^2 + w^2
-          if (a == 0.0) then
+          a = ONE - v**2  ! u^2 + w^2
+          if (a == ZERO) then
              d = INFINITY
           else
              x0 = surf_p%coeffs(1)
@@ -337,7 +343,7 @@ contains
              c = x**2 + z**2 - r**2
              quad = k**2 - a*c
 
-             if (c < 0) then
+             if (c < ZERO) then
                 ! particle is inside the cylinder, thus one distance
                 ! must be negative and one must be positive. The
                 ! positive distance will be the one with negative sign
@@ -352,14 +358,14 @@ contains
                 ! positive sign on sqrt(quad)
 
                 d = -(k + sqrt(quad))/a
-                if (d < 0) d = INFINITY
+                if (d < ZERO) d = INFINITY
 
              end if
           end if
 
        case (SURF_CYL_Z)
-          a = 1.0 - w**2  ! u^2 + v^2
-          if (a == 0.0) then
+          a = ONE - w**2  ! u^2 + v^2
+          if (a == ZERO) then
              d = INFINITY
           else
              x0 = surf_p%coeffs(1)
@@ -372,12 +378,12 @@ contains
              c = x**2 + y**2 - r**2
              quad = k**2 - a*c
              
-             if (quad < 0) then
+             if (quad < ZERO) then
                 ! no intersection with cylinder
 
                 d = INFINITY 
 
-             elseif (c < 0) then
+             elseif (c < ZERO) then
                 ! particle is inside the cylinder, thus one distance
                 ! must be negative and one must be positive. The
                 ! positive distance will be the one with negative sign
@@ -392,7 +398,7 @@ contains
                 ! positive sign on sqrt(quad)
 
                 d = -(k + sqrt(quad))/a
-                if (d < 0) d = INFINITY
+                if (d < ZERO) d = INFINITY
 
              end if
           end if
@@ -410,12 +416,12 @@ contains
           c = x**2 + y**2 + z**2 - r**2
           quad = k**2 - c
 
-          if (quad < 0) then
+          if (quad < ZERO) then
              ! no intersection with sphere
 
              d = INFINITY 
 
-          elseif (c < 0) then
+          elseif (c < ZERO) then
              ! particle is inside the sphere, thus one distance
              ! must be negative and one must be positive. The
              ! positive distance will be the one with negative sign
@@ -430,7 +436,7 @@ contains
              ! positive sign on sqrt(quad)
 
              d = -(k + sqrt(quad))
-             if (d < 0) d = INFINITY
+             if (d < ZERO) d = INFINITY
 
           end if
 

@@ -107,7 +107,7 @@ module types
      integer :: MT
      real(8) :: Q_value
      real(8) :: TY
-     integer :: energy_index
+     integer :: IE
      real(8), allocatable :: sigma(:)
      real(8), allocatable :: ang_cos(:,:)
      real(8), allocatable :: ang_pdf(:,:)
@@ -145,7 +145,8 @@ module types
      real(8), allocatable :: nu_d_precursor_const(:,:)
      real(8), allocatable :: nu_d_precursor_energy(:,:)
      real(8), allocatable :: nu_d_precursor_prob(:,:)
-     type(AceReaction), pointer :: reactions(:)
+     integer :: n_reaction
+     type(AceReaction), pointer :: reactions(:) => null()
 
   end type AceContinuous
 
@@ -214,7 +215,7 @@ module types
 !=====================================================================
 
   type ListKeyValueCI
-     type(ListKeyValueCI), pointer :: next
+     type(ListKeyValueCI), pointer :: next => null()
      type(KeyValueCI)              :: data
   end type ListKeyValueCI
 
@@ -224,7 +225,7 @@ module types
 !=====================================================================
 
   type ListKeyValueII
-     type(ListKeyValueII), pointer :: next
+     type(ListKeyValueII), pointer :: next => null()
      type(KeyValueII)              :: data
   end type ListKeyValueII
 
@@ -234,7 +235,7 @@ module types
 !=====================================================================
 
   type ListReal
-     type(ListReal), pointer :: next
+     type(ListReal), pointer :: next => null()
      real(8)                 :: data
   end type ListReal
 
@@ -243,7 +244,7 @@ module types
 !=====================================================================
 
   type ListInt
-     type(ListInt), pointer :: next
+     type(ListInt), pointer :: next => null()
      integer                :: data
   end type ListInt
 
@@ -253,7 +254,7 @@ module types
 !=====================================================================
 
   type HashListCI
-     type(ListKeyValueCI), pointer :: list
+     type(ListKeyValueCI), pointer :: list => null()
   end type HashListCI
 
 !=====================================================================
@@ -262,7 +263,7 @@ module types
 !=====================================================================
 
   type HashListII
-     type(ListKeyValueII), pointer :: list
+     type(ListKeyValueII), pointer :: list => null()
   end type HashListII
 
 !=====================================================================
@@ -271,7 +272,7 @@ module types
 !=====================================================================
 
   type DictionaryCI
-     type(HashListCI), pointer :: table(:)
+     type(HashListCI), pointer :: table(:) => null()
   end type DictionaryCI
 
 !=====================================================================
@@ -280,7 +281,7 @@ module types
 !=====================================================================
 
   type DictionaryII
-     type(HashListII), pointer :: table(:)
+     type(HashListII), pointer :: table(:) => null()
   end type DictionaryII
 
 end module types

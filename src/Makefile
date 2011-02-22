@@ -48,7 +48,7 @@ unittest: $(test_objects)
 
 #--------------------------------------------------------------------
 # Dependencies
-ace.o: global.o output.o string.o fileio.o string.o
+ace.o: global.o output.o string.o fileio.o string.o endf.o
 cross_section.o: global.o string.o data_structures.o output.o
 data_structures.o: global.o
 endf.o: global.o

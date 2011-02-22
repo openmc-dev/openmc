@@ -124,8 +124,8 @@ module global
 
   ! Versioning numbers
   integer, parameter :: VERSION_MAJOR = 0
-  integer, parameter :: VERSION_MINOR = 1
-  integer, parameter :: VERSION_RELEASE = 3
+  integer, parameter :: VERSION_MINOR = 2
+  integer, parameter :: VERSION_RELEASE = 0
 
 contains
 

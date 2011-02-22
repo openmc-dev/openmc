@@ -104,14 +104,29 @@ module types
 !=====================================================================
 
   type AceReaction
-     integer :: MT
-     real(8) :: Q_value
-     real(8) :: TY
-     integer :: IE
-     real(8), allocatable :: sigma(:)
-     real(8), allocatable :: ang_cos(:,:)
-     real(8), allocatable :: ang_pdf(:,:)
-     real(8), allocatable :: ang_cdf(:,:)
+     integer :: MT                     ! ENDF MT value
+     real(8) :: Q_value                ! Reaction Q value
+     real(8) :: TY                     ! Number of neutrons released
+     integer :: IE                     ! Starting energy grid index
+     real(8), allocatable :: sigma(:)  ! Cross section values
+     logical :: has_angle_dist
+     logical :: has_energy_dist
+
+     ! Secondary angle distribution
+     integer              :: adist_n_energy    ! # of incoming energies
+     real(8), allocatable :: adist_energy(:)   ! incoming energy grid
+     integer, allocatable :: adist_location(:) ! location of each table
+     real(8), allocatable :: adist_data(:)     ! angular distribution data
+
+     ! Secondary energy distribution
+     integer :: edist_law                    ! secondary distribution law
+     integer :: edist_n_interp               ! # of interpolation regions
+     integer, allocatable :: edist_nbt(:)    ! ENDF interpolation parameters
+     integer, allocatable :: edist_int(:)    ! ''
+     integer :: edist_n_energy               ! # of incoming energies
+     real(8), allocatable :: edist_energy(:) ! energy grid for law validity
+     real(8), allocatable :: edist_pvalid(:) ! probability of law validity
+     real(8), allocatable :: edist_data(:)   ! energy distribution data
   end type AceReaction
 
 !=====================================================================
@@ -167,6 +182,27 @@ module types
      real(8), allocatable :: elastic_P(:)
      real(8), allocatable :: elastic_mu_out(:)
   end type AceThermal
+
+!=====================================================================
+! ACEDISTANGLE contains data for a tabular secondary angle
+! distribution whether it be tabular or 32 equiprobable cosine bins
+!=====================================================================
+
+!!$  type AceDistAngle
+!!$     integer :: n_energy
+!!$     real(8), allocatable :: energy
+!!$     integer, allocatable :: location
+!!$     real(8), allocatable :: data
+!!$  end type AceDistAngle
+
+!=====================================================================
+! ACEDISTTAB contains data for a tabular secondary energy distribution
+! according to MCNP Law 4 (ENDF Law 1)
+!=====================================================================
+
+  type AceDistEnergy
+     integer :: law
+  end type AceDistEnergy
 
 !=====================================================================
 ! XSDATA contains data read in from a SERPENT xsdata file

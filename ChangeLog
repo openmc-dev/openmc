@@ -1,3 +1,14 @@
+2011-02-22 Paul Romano <romano7@mit.edu>
+
+	* ace.f90: Added read_angular_dist and read_energy_dist
+	subroutines that read the energy and angle distributions for
+	secondary neutrons for reactions with MT < 100. Note that these
+	routines don't actually parse the distributions since their form
+	will depend on the secondary law is for that particle reaction.
+	* global.f90: Incremented minor version
+	* types.f90: Put angular and energy distribution information
+	within AceReaction since it is unique to each reaction
+
 2011-02-13 Paul Romano <romano7@mit.edu>
 
 	* ace.f90: Fixed xs_continuous allocation again -- cross sections

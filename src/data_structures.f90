@@ -18,8 +18,8 @@ module data_structures
 
   implicit none
 
-  integer, parameter, private :: hash_size  = 4993
-  integer, parameter, private :: multiplier = 31
+  integer, parameter :: hash_size  = 4993
+  integer, parameter :: multiplier = 31
   integer, parameter :: DICT_NULL = 0
 
 !=====================================================================
@@ -81,6 +81,9 @@ module data_structures
   end interface
   interface dict_hashkey
      module procedure dict_ci_hashkey, dict_ii_hashkey
+  end interface
+  interface dict_keys
+     module procedure dict_ci_keys, dict_ii_keys
   end interface
 
 contains
@@ -1028,5 +1031,69 @@ contains
     val = 1 + mod(abs(key-1), hash_size)
 
   end function dict_ii_hashkey
+
+!=====================================================================
+! DICT_CI_KEYS
+!=====================================================================
+
+  function dict_ci_keys(dict) result(head)
+
+    type(DictionaryCI),   pointer :: dict
+    type(ListKeyValueCI), pointer :: head
+    type(ListKeyValueCI), pointer :: current => null()
+    type(ListKeyValueCI), pointer :: elem => null()
+
+    integer :: i, j
+
+    head => null()
+
+    do i = 1, size(dict%table)
+       elem => dict%table(i)%list
+       do while (associated(elem))
+          if (.not. associated(head)) then
+             allocate(head)
+             current => head
+          else
+             allocate(current%next)
+             current => current%next
+          end if
+          current%data = elem%data
+          elem => elem%next
+       end do
+    end do
+
+  end function dict_ci_keys
+
+!=====================================================================
+! DICT_II_KEYS
+!=====================================================================
+
+  function dict_ii_keys(dict) result(head)
+
+    type(DictionaryII),   pointer :: dict
+    type(ListKeyValueII), pointer :: head
+    type(ListKeyValueII), pointer :: current => null()
+    type(ListKeyValueII), pointer :: elem => null()
+
+    integer :: i, j
+
+    head => null()
+
+    do i = 1, size(dict%table)
+       elem => dict%table(i)%list
+       do while (associated(elem))
+          if (.not. associated(head)) then
+             allocate(head)
+             current => head
+          else
+             allocate(current%next)
+             current => current%next
+          end if
+          current%data = elem%data
+          elem => elem%next
+       end do
+    end do
+
+  end function dict_ii_keys
 
 end module data_structures

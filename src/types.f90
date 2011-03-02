@@ -3,6 +3,21 @@ module types
   implicit none
 
 !=====================================================================
+! UNIVERSE
+!=====================================================================
+
+  type Universe
+     integer :: uid
+     integer :: type
+     integer :: level
+     integer :: n_cells
+     integer, allocatable :: cells(:)
+     real(8) :: x0
+     real(8) :: y0
+     real(8) :: z0
+  end type Universe
+
+!=====================================================================
 ! SURFACE type defines a first- or second-order surface that can be
 ! used to construct closed volumes (cells)
 !=====================================================================
@@ -22,9 +37,12 @@ module types
 
   type Cell
      integer :: uid
+     integer :: type
+     integer :: universe
+     integer :: fill
+     integer :: material
      integer :: n_items
      integer, allocatable :: boundary_list(:)
-     integer :: material
   end type Cell
 
 !=====================================================================
@@ -33,16 +51,17 @@ module types
 !=====================================================================
 
   type Neutron
-    integer :: uid     ! Unique ID
-    real(8) :: xyz(3)  ! location
-    real(8) :: uvw(3)  ! directional cosines
-    real(8) :: E       ! energy
-    integer :: IE      ! index on energy grid
-    real(8) :: interp  ! interpolation factor for energy grid
-    integer :: cell    ! current cell
-    integer :: surface ! current surface
-    real(8) :: wgt     ! particle weight
-    logical :: alive   ! is particle alive?
+    integer :: uid      ! Unique ID
+    real(8) :: xyz(3)   ! location
+    real(8) :: uvw(3)   ! directional cosines
+    real(8) :: E        ! energy
+    integer :: IE       ! index on energy grid
+    real(8) :: interp   ! interpolation factor for energy grid
+    integer :: cell     ! current cell
+    integer :: universe ! current universe
+    integer :: surface  ! current surface
+    real(8) :: wgt      ! particle weight
+    logical :: alive    ! is particle alive?
   end type Neutron
 
 !=====================================================================
@@ -115,6 +134,7 @@ module types
      ! Secondary angle distribution
      integer              :: adist_n_energy    ! # of incoming energies
      real(8), allocatable :: adist_energy(:)   ! incoming energy grid
+     integer, allocatable :: adist_type(:)     ! type of distribution
      integer, allocatable :: adist_location(:) ! location of each table
      real(8), allocatable :: adist_data(:)     ! angular distribution data
 

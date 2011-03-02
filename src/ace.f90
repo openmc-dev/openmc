@@ -365,6 +365,7 @@ contains
        NE = XSS(JXS9 + LOCB - 1)
        rxn % adist_n_energy = NE
        allocate(rxn % adist_energy(NE))
+       allocate(rxn % adist_type(NE))
        allocate(rxn % adist_location(NE))
 
        ! read incoming energy grid and location of tables
@@ -376,11 +377,16 @@ contains
        size = 0
        do j = 1, NE
           LC = rxn % adist_location(j)
-          if (LC > 0) then
+          if (LC == 0) then
+             ! isotropic
+             rxn % adist_type(j) = ANGLE_ISOTROPIC
+          elseif (LC > 0) then
              ! 32 equiprobable bins
-             size = size + 32
+             rxn % adist_type(j) = ANGLE_32_EQUI
+             size = size + 33
           elseif (LC < 0) then
              ! tabular distribution
+             rxn % adist_type(j) = ANGLE_TABULAR
              NP = XSS(JXS9 + abs(LC))
              size = size + 2 + 3*NP
           end if
@@ -396,7 +402,10 @@ contains
        XSS_index = JXS9 + abs(LC) - 1
        rxn % adist_data = get_real(size)
 
-!       print *, trim(table%name), rxn%MT, size
+       ! change location pointers since they are currently relative to
+       ! JXS(9)
+       LC = abs(rxn % adist_location(1))
+       rxn % adist_location = abs(rxn % adist_location) - LC + 1
 
     end do
 

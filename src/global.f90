@@ -6,16 +6,19 @@ module global
 
   ! Main arrays for cells, surfaces, materials
   type(Cell),     allocatable, target :: cells(:)
+  type(Universe), allocatable, target :: universes(:)
   type(Surface),  allocatable, target :: surfaces(:)
   type(Material), allocatable, target :: materials(:)
   type(Isotope),  allocatable, target :: isotopes(:)
   type(xsData),   allocatable, target :: xsdatas(:)
   integer :: n_cells     ! # of cells
+  integer :: n_universes ! # of universes
   integer :: n_surfaces  ! # of surfaces
   integer :: n_materials ! # of materials
 
   ! These dictionaries provide a fast lookup mechanism
   type(DictionaryII), pointer :: cell_dict
+  type(DictionaryII), pointer :: universe_dict
   type(DictionaryII), pointer :: surface_dict
   type(DictionaryII), pointer :: material_dict
   type(DictionaryII), pointer :: isotope_dict
@@ -30,6 +33,7 @@ module global
 
   ! Current cell, surface, material
   type(Cell),     pointer :: cCell
+  type(Universe), pointer :: cUniverse
   type(Surface),  pointer :: cSurface
   type(Material), pointer :: cMaterial
 
@@ -79,6 +83,15 @@ module global
        & OP_UNION       = huge(0) - 2, & ! Union operator
        & OP_DIFFERENCE  = huge(0) - 3    ! Difference operator
 
+  ! Cell types
+  integer, parameter ::    &
+       & CELL_NORMAL  = 1, & ! Cell with a specified material
+       & CELL_FILL    = 2, & ! Cell filled by a separate universe
+       & CELL_LATTICE = 3    ! Cell filled with a lattice
+
+  ! array index of universe 0
+  integer :: BASE_UNIVERSE
+
   ! Surface types
   integer, parameter ::    &
        & SURF_PX     =  1, & ! Plane parallel to x-plane 
@@ -112,11 +125,27 @@ module global
        & PROB_SOURCE      = 1, & ! External source problem
        & PROB_CRITICALITY = 2    ! Criticality problem
 
+  ! Angular distribution type
+  integer, parameter :: & 
+       & ANGLE_ISOTROPIC = 1, & ! Isotropic angular distribution
+       & ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins
+       & ANGLE_TABULAR   = 3    ! Tabular angular distribution
+
+  ! Interpolation flag
+  integer, parameter :: &
+       & HISTOGRAM    = 1, & ! Histogram interpolation on angle
+       & LINEARLINEAR = 2    ! Linear-linear interpolation on angle
+
   ! Particle type
   integer, parameter :: &
        & NEUTRON_  = 1, &
        & PHOTON_   = 2, &
        & ELECTRON_ = 3
+
+  ! Integer code for read error -- better hope this number is never
+  ! used in an input file!
+  integer, parameter :: &
+       & ERROR_CODE = -huge(0)
 
   integer :: verbosity = 5
   integer, parameter :: max_words = 500
@@ -192,15 +221,18 @@ contains
     integer :: num
     
     character(5) :: fmt
-    integer :: w
+    integer      :: w
+    integer      :: ioError
 
+    ! Determine width of string
     w = len_trim(str)
     
     ! Create format specifier for reading string
-    write(fmt, '("(I",I2,")")') w
+    write(UNIT=fmt, FMT='("(I",I2,")")') w
 
     ! read string into integer
-    read(str,fmt) num
+    read(UNIT=str, FMT=fmt, IOSTAT=ioError) num
+    if (ioError > 0) num = ERROR_CODE
 
   end function str_to_int
 

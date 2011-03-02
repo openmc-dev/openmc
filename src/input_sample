@@ -1,10 +1,13 @@
 # test input file
 
-cell 100 40   -1
-cell 200 41    1 -2
+cell 1   0  fill 37  -2
+cell 100 37  40      -1
+cell 101 37  41       1
+cell 2   0   40       2 -3
 
 surface 1 sph 0 0 0 3
 surface 2 sph 0 0 0 5
+surface 3 sph 0 0 0 8
 
 material 40 -4.5 &
       92238.03c 1.0
@@ -13,7 +16,7 @@ material 41 -1.0  &
       1001.03c 2.0 &
       8016.03c 1.0
 
-source box -1 -1 -1  1 1 1
+source box -4 -4 -4  4 4 4
 
 xs_library endfb7
 xs_data /opt/serpent/xsdata/endfb7

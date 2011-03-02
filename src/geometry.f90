@@ -85,35 +85,47 @@ contains
 ! FIND_CELL determines what cell a source neutron is in
 !=====================================================================
 
-  subroutine find_cell(neut)
+  recursive subroutine find_cell(univ, neut, found)
 
-    type(Neutron), pointer :: neut
+    type(Universe), pointer :: univ
+    type(Neutron),  pointer :: neut
+    logical,  intent(inout) :: found
 
-    type(Cell), pointer :: this_cell
-    logical :: found_cell
-    character(250) :: msg
-    integer :: i
+    character(250) :: msg                 ! error message
+    integer        :: i                   ! index over cells
+    type(Cell),     pointer :: this_cell  ! 
+    type(Universe), pointer :: lower_univ
+
+    found = .false.
 
     ! determine what region in
-    do i = 1, n_cells
-       this_cell => cells(i)
+    do i = 1, univ % n_cells
+       this_cell => cells(univ % cells(i))
+       
        if (cell_contains(this_cell, neut)) then
-          neut%cell = i
-          found_cell = .true.
+          neut%cell = dict_get_key(cell_dict, this_cell % uid)
 
-          ! set current pointers
-          cCell => this_cell
-          cMaterial => materials(cCell%material)
-          exit
+          ! If this cell contains a universe of lattice, search for
+          ! the particle in that universe/lattice
+          if (this_cell % fill > 0) then
+             lower_univ => universes(this_cell % fill)
+             call find_cell(lower_univ, neut, found)
+             if (found) then
+                exit
+             else
+                msg = "Could not locate neutron in universe: "
+                call error(msg)
+             end if
+          else
+             ! set current pointers
+             found = .true.         
+             cCell => this_cell
+             cMaterial => materials(cCell%material)
+             exit
+          end if
        end if
-    end do
 
-    ! if neutron couldn't be located, print error
-    if (.not. found_cell) then
-       write(msg, 100) "Could not locate cell for neutron at: ", neut%xyz
-100    format (A,3ES11.3)
-       call error(msg)
-    end if
+    end do
 
   end subroutine find_cell
 

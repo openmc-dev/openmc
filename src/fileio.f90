@@ -1,14 +1,21 @@
 module fileio
 
   use global
-  use types,  only: Cell, Surface, ExtSource
+  use types,  only: Cell, Surface, ExtSource, ListKeyValueCI
   use string, only: split_string_wl, lower_case, str_to_real, split_string, &
        &            concatenate
   use output, only: message, warning, error
   use data_structures, only: dict_create, dict_add_key, dict_get_key, &
-       &                     DICT_NULL
+       &                     dict_has_key, DICT_NULL, dict_keys, list_size
 
   implicit none
+
+  type(DictionaryII), pointer :: & ! this dictionary is used to count
+       & ucount_dict => null()     ! the number of universes as well
+                                   ! as how many cells each universe
+                                   ! contains
+
+  integer, allocatable :: index_cell_in_univ(:)
 
 !=====================================================================
 ! READ_DATA interface allows data to be read with one function
@@ -60,8 +67,8 @@ contains
 
 !=====================================================================
 ! READ_COUNT makes a first pass through the input file to determine
-! how many cells, surfaces, materials, sources, etc there are in the
-! problem.
+! how many cells, universes, surfaces, materials, sources, etc there
+! are in the problem.
 !=====================================================================
 
   subroutine read_count(filename)
@@ -73,13 +80,22 @@ contains
     integer :: in = 7
     integer :: ioError
     integer :: n
+    integer :: count
+    integer :: universe_num
+    type(ListKeyValueII), pointer :: key_list
+    type(Universe),       pointer :: univ
+    integer :: index
 
     msg = "First pass through input file..."
     call message(msg, 5)
 
     n_cells     = 0
+    n_universes = 0
     n_surfaces  = 0
     n_materials = 0
+
+    call dict_create(ucount_dict)
+    call dict_create(universe_dict)
 
     open(FILE=filename, UNIT=in, STATUS='old', & 
          & ACTION='read', IOSTAT=ioError)
@@ -96,6 +112,20 @@ contains
        select case (trim(words(1)))
        case ('cell')
           n_cells = n_cells + 1
+          
+          ! For cells, we also need to check if there's a new universe
+          ! -- also for every cell add 1 to the count of cells for the
+          ! specified universe
+          universe_num = str_to_int(words(3))
+          if (.not. dict_has_key(ucount_dict, universe_num)) then
+             n_universes = n_universes + 1
+             count = 1
+             call dict_add_key(universe_dict, universe_num, n_universes)
+          else
+             count = 1 + dict_get_key(ucount_dict, universe_num)
+          end if
+          call dict_add_key(ucount_dict, universe_num, count)
+
        case ('surface')
           n_surfaces = n_surfaces + 1
        case ('material') 
@@ -123,13 +153,46 @@ contains
 
     ! Allocate arrays for cells, surfaces, etc.
     allocate(cells(n_cells))
+    allocate(universes(n_universes))
     allocate(surfaces(n_surfaces))
     allocate(materials(n_materials))
+
+    ! Also allocate a list for keeping track of where cells have been
+    ! assigned in each universe
+    allocate(index_cell_in_univ(n_universes))
+    index_cell_in_univ = 0
 
     ! Set up dictionaries
     call dict_create(cell_dict)
     call dict_create(surface_dict)
     call dict_create(material_dict)
+
+    ! We also need to allocate the cell count lists for each
+    ! universe. The logic for this is a little more convoluted. In
+    ! universe_dict, the (key,value) pairs are the uid of the universe
+    ! and the index in the array. In ucount_dict, it's the uid of the
+    ! universe and the number of cells.
+
+    key_list => dict_keys(universe_dict)
+    do while (associated(key_list))
+       ! find index of universe in universes array
+       index = key_list%data%value
+       univ => universes(index)
+       univ % uid = key_list%data%key
+
+       ! check for lowest level universe
+       if (univ % uid == 0) BASE_UNIVERSE = index
+       
+       ! find cell count for this universe
+       count = dict_get_key(ucount_dict, key_list%data%key)
+
+       ! allocate cell list for universe
+       allocate(univ % cells(count))
+       univ % n_cells = count
+       
+       ! move to next universe
+       key_list => key_list%next
+    end do
 
   end subroutine read_count
 
@@ -149,6 +212,7 @@ contains
     integer :: ioError
     integer :: n, i
     integer :: index_cell
+    integer :: index_universe
     integer :: index_surface
     integer :: index_material
     integer :: index_source
@@ -157,6 +221,7 @@ contains
     call message(msg, 5)
 
     index_cell     = 0
+    index_universe = 0
     index_surface  = 0
     index_material = 0
     index_source   = 0
@@ -205,6 +270,9 @@ contains
 
     end do
 
+    ! deallocate array
+    deallocate(index_cell_in_univ)
+
     close(UNIT=in)
 
     call adjust_indices()
@@ -245,13 +313,17 @@ contains
        end do
 
        ! adjust material indices
-       index = dict_get_key(material_dict, c%material)
-       if (index == DICT_NULL) then
-          msg = "Could not find material " // trim(int_to_str(c%material)) // &
-               & " specified on cell " // trim(int_to_str(c%uid))
-          call error(msg)
+       if (c % fill /= 0) then
+          ! cell is filled with universe -- do nothing
+       else
+          index = dict_get_key(material_dict, c%material)
+          if (index == DICT_NULL) then
+             msg = "Could not find material " // trim(int_to_str(c%material)) // &
+                  & " specified on cell " // trim(int_to_str(c%uid))
+             call error(msg)
+          end if
+          c%material = index
        end if
-       c%material = index
     end do
 
   end subroutine adjust_indices
@@ -268,32 +340,63 @@ contains
 
     integer :: ioError
     integer :: i
+    integer :: universe_num
     integer :: n_items
     character(250) :: msg
     character(32) :: word
     type(Cell), pointer :: this_cell => null()
+    type(Universe), pointer :: this_univ => null()
 
     this_cell => cells(index)
 
     ! Read cell identifier
-    read(words(2), FMT='(I8)', IOSTAT=ioError) this_cell%uid
-    if (ioError > 0) then
+    this_cell % uid = str_to_int(words(2))
+    if (this_cell % uid == ERROR_CODE) then
        msg = "Invalid cell name: " // words(2)
        call error(msg)
     end if
     call dict_add_key(cell_dict, this_cell%uid, index)
+ 
+    ! Read cell universe
+    universe_num = str_to_int(words(3))
+    if (universe_num == ERROR_CODE) then
+       msg = "Invalid universe: " // words(3)
+       call error(msg)
+    end if
+    this_cell % universe = dict_get_key(universe_dict, universe_num)
 
     ! Read cell material
-    read(words(3), FMT='(I8)', IOSTAT=ioError) this_cell%material
+    if (trim(words(4)) == 'fill') then
+       this_cell % type     = CELL_FILL
+       this_cell % material = 0
+       n_items = n_words - 5
+
+       ! find universe
+       universe_num = str_to_int(words(5))
+       if (universe_num == ERROR_CODE) then
+          msg = "Invalid universe fill: " // words(5)
+          call error(msg)
+       end if
+       this_cell % fill = dict_get_key(universe_dict, universe_num)
+
+    else
+       this_cell % type     = CELL_NORMAL
+       this_cell % material = str_to_int(words(4))
+       this_cell % fill     = 0
+       if (this_cell % material == ERROR_CODE) then
+          msg = "Invalid material number: " // words(4)
+          call error(msg)
+       end if
+       n_items = n_words - 4
+    end if
 
     ! Assign number of items
-    n_items = n_words - 3
     this_cell%n_items = n_items
 
     ! Read list of surfaces
     allocate(this_cell%boundary_list(n_items))
     do i = 1, n_items
-       word = words(i+3)
+       word = words(i+n_words-n_items)
        if (word(1:1) == '(') then
           this_cell%boundary_list(i) = OP_LEFT_PAREN
        elseif (word(1:1) == ')') then
@@ -303,9 +406,15 @@ contains
        elseif (word(1:1) == '#') then
           this_cell%boundary_list(i) = OP_DIFFERENCE
        else
-          read(word, FMT='(I8)', IOSTAT=ioError) this_cell%boundary_list(i)
+          this_cell%boundary_list(i) = str_to_int(word)
        end if
     end do
+
+    ! Add cell to the cell list in the corresponding universe
+    i = this_cell % universe
+    this_univ => universes(i)
+    index_cell_in_univ(i) = index_cell_in_univ(i) + 1
+    this_univ % cells(index_cell_in_univ(i)) = index
 
   end subroutine read_cell
 

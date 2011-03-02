@@ -4,7 +4,7 @@ module physics
   use geometry,    only: find_cell, dist_to_boundary, cross_boundary
   use types,       only: Neutron
   use mcnp_random, only: rang
-  use output,      only: error, message
+  use output,      only: error, message, print_universe
   use search,      only: binary_search
   use endf,        only: reaction_name
 
@@ -19,11 +19,12 @@ contains
 
   subroutine transport(neut)
 
-    type(Neutron), pointer, intent(inout) :: neut
+    type(Neutron), pointer :: neut
 
     character(250) :: msg
     integer :: i, surf
     logical :: alive
+    logical :: found_cell
  
     real(8) :: d_to_boundary
     real(8) :: d_to_collision
@@ -32,11 +33,23 @@ contains
     real(8) :: f              ! interpolation factor
     real(8) :: tmp(3)
     integer :: IE             ! index on energy grid
+    type(Universe), pointer :: univ
 
-    ! determine what cell the particle is in
     if (neut%cell == 0) then
-       call find_cell(neut)
+       univ => universes(BASE_UNIVERSE)
+       call find_cell(univ, neut, found_cell)
+       print *, sqrt(neut%xyz(1)**2 + neut%xyz(2)**2 + neut%xyz(3)**2), cells(neut%cell) % uid
+
+       ! if neutron couldn't be located, print error
+       if (.not. found_cell) then
+          write(msg, 100) "Could not locate cell for neutron at: ", neut%xyz
+100       format (A,3ES11.3)
+          call error(msg)
+       end if
     end if
+
+    return
+
     if (verbosity >= 10) then
        msg = "=== Particle " // trim(int_to_str(neut%uid)) // " ==="
        call message(msg, 10)
@@ -268,6 +281,158 @@ contains
 
   end subroutine n_gamma
 
+!=====================================================================
+! SAMPLE_ANGLE samples the cosine of the angle between incident and
+! exiting particle directions either from 32 equiprobable bins or from
+! a tabular distribution.
+!=====================================================================
+
+  subroutine sample_angle(rxn, E)
+
+    type(AceReaction), pointer    :: rxn ! reaction
+    real(8),           intent(in) :: E   ! incoming energy
+
+    real(8)        :: xi      ! random number on [0,1)
+    integer        :: interp  ! type of interpolation
+    integer        :: type    ! angular distribution type
+    integer        :: i       ! incoming energy bin
+    integer        :: n       ! number of incoming energy bins
+    integer        :: loc     ! location in data array
+    integer        :: np      ! number of points in cos distribution
+    integer        :: bin     ! cosine bin
+    real(8)        :: f       ! interpolation factor
+    real(8)        :: mu0     ! cosine in bin b
+    real(8)        :: mu1     ! cosine in bin b+1
+    real(8)        :: mu      ! final cosine sampled
+    real(8)        :: c       ! cumulative distribution frequency
+    real(8)        :: p0,p1   ! probability distribution
+    character(250) :: msg     ! error message
+
+    ! determine number of incoming energies
+    n = rxn % adist_n_energy
+
+    ! find energy bin and calculate interpolation factor -- if the
+    ! energy is outside the range of the tabulated energies, choose
+    ! the first or last bins
+    if (E < rxn%adist_energy(1)) then
+       i = 1
+       f = 0.0
+    elseif (E > rxn%adist_energy(n)) then
+       i = n - 1
+       f = 1.0
+    else
+       i = binary_search(rxn%adist_energy, n, E)
+       f = (E - rxn % adist_energy(i)) / & 
+            & (rxn % adist_energy(i+1) - rxn % adist_energy(i))
+    end if
+
+    ! Sample between the ith and (i+1)th bin
+    if (f > rang()) i = i + 1
+
+    ! check whether this is a 32-equiprobable bin or a tabular
+    ! distribution
+    loc  = rxn % adist_location(i)
+    type = rxn % adist_type(i)
+    if (type == ANGLE_ISOTROPIC) then
+       mu = 2.0_8 * rang() - 1
+    elseif (type == ANGLE_32_EQUI) then
+       ! sample cosine bin
+       xi = rang()
+       bin = 1 + int(32.0_8*xi)
+
+       ! calculate cosine
+       mu0 = rxn % adist_data(loc + bin - 1)
+       mu1 = rxn % adist_data(loc + bin)
+       mu = mu0 + (32.0_8 * xi - bin) * (mu1 - mu0)
+
+    elseif (type == ANGLE_TABULAR) then
+       interp = rxn % adist_data(loc)
+       np     = rxn % adist_data(loc+1)
+
+       ! determine outgoing cosine bin
+       xi = rang()
+       do bin = loc+2, loc+1+NP
+          c = rxn % adist_data(bin+2*np)
+          if (xi > c) exit
+       end do
+
+       p0  = rxn % adist_data(bin+np)
+       mu0 = rxn % adist_data(bin)
+       if (interp == HISTOGRAM) then
+          ! Histogram interpolation
+          mu = mu0 + (xi - c)/p0
+
+       elseif (interp == LINEARLINEAR) then
+          ! Linear-linear interpolation -- not sure how you come about
+          ! the formula given in the MCNP manual
+          p1  = rxn % adist_data(bin+np+1)
+          mu1 = rxn % adist_data(bin+1)
+          
+          f = (p1 - p0)/(mu1 - mu0)
+          if (f == ZERO) then
+             mu = mu0 + (xi - c)/p0
+          else
+             mu = mu0 + (sqrt(p0*p0 + 2*f*(xi - c))-p0)/f
+          end if
+       else
+          msg = "Unknown interpolation type: " // trim(int_to_str(interp))
+          call error(msg)
+       end if
+          
+    else
+       msg = "Unknown angular distribution type: " // trim(int_to_str(type))
+       call error(msg)
+    end if
+    
+  end subroutine sample_angle
+
+!=====================================================================
+! ROTATE_ANGLE rotates direction cosines through a polar angle whose
+! cosine is mu and through an azimuthal angle sampled uniformly. Note
+! that this is done with direct sampling rather than rejection as is
+! done in MCNP and SERPENT.
+!=====================================================================
+
+  subroutine rotate_angle(mu, u, v, w)
+
+    real(8), intent(in)    :: mu ! cosine of angle
+    real(8), intent(inout) :: u
+    real(8), intent(inout) :: v
+    real(8), intent(inout) :: w
+
+    real(8) :: phi, sinphi, cosphi
+    real(8) :: a,b
+    real(8) :: u0, v0, w0
+
+    ! Copy original directional cosines
+    u0 = u
+    v0 = v
+    w0 = w
+
+    ! Sample azimuthal angle in [0,2pi)
+    phi = 2.0_8 * PI * rang()
+
+    ! Precompute factors to save flops
+    sinphi = sin(phi)
+    cosphi = cos(phi)
+    a = sqrt(1.0_8 - mu*mu)
+    b = sqrt(1.0_8 - w*w)
+
+    ! Need to treat special case where sqrt(1 - w**2) is close to zero
+    ! by expanding about the v component rather than the w component
+    if (b > 1e-10) then
+       u = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
+       v = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
+       w = mu*w0 - a*b*cosphi
+    else
+       b = sqrt(1.0_8 - v*v)
+       u = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b
+       v = mu*v0 - a*b*cosphi
+       w = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
+    end if
+
+  end subroutine rotate_angle
+    
 !=====================================================================
 ! MAXWELL_SPECTRUM samples an energy from the Maxwell fission
 ! distribution based on a rejection sampling scheme. This is described

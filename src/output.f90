@@ -2,6 +2,8 @@ module output
 
   use ISO_FORTRAN_ENV
   use global
+  use types, only: Cell, Universe, Surface
+  use data_structures, only: dict_get_key
 
   implicit none
 
@@ -217,5 +219,133 @@ module output
       today_time = time(1:2) // ":" // time(3:4) // ":" // time(5:6)
 
     end subroutine get_today
+
+!=====================================================================
+! PRINT_CELL displays the attributes of a cell
+!=====================================================================
+
+    subroutine print_cell(c)
+
+      type(Cell), pointer :: c
+
+      integer :: ou
+      integer :: temp
+      integer :: i
+      type(Universe), pointer :: u => null()
+      type(Material), pointer :: m => null()
+      character(250) :: string
+
+      ou = OUTPUT_UNIT
+
+      write(ou,*) 'Cell ' // int_to_str(c % uid)
+      temp = dict_get_key(cell_dict, c % uid)
+      write(ou,*) '    Array Index = ' // int_to_str(temp)
+      u => universes(c % universe)
+      write(ou,*) '    Universe = ' // int_to_str(u % uid)
+      if (c % fill == 0) then
+         write(ou,*) '    Fill = NONE'
+      else
+         u => universes(c % fill)
+         write(ou,*) '    Fill = ' // int_to_str(u % uid)
+      end if
+      if (c % material == 0) then
+         write(ou,*) '    Material = NONE'
+      else
+         m => materials(c % material)
+         write(ou,*) '    Material = ' // int_to_str(m % uid)
+      end if
+      string = ""
+      do i = 1, c % n_items
+         select case (c % boundary_List(i))
+         case (OP_LEFT_PAREN)
+            string = trim(string) // ' ('
+         case (OP_RIGHT_PAREN)
+            string = trim(string) // ' )'
+         case (OP_UNION)
+            string = trim(string) // ' :'
+         case (OP_DIFFERENCE)
+            string = trim(string) // ' !'
+         case default
+            string = trim(string) // ' ' // int_to_str(c % boundary_list(i))
+         end select
+      end do
+      write(ou,*) '    Surface Specification:' // trim(string)
+      write(ou,*)
+
+      ! nullify associated pointers
+      nullify(u)
+      nullify(m)
+
+    end subroutine print_cell
+
+!=====================================================================
+! PRINT_UNIVERSE displays the attributes of a universe
+!=====================================================================
+
+    subroutine print_universe(univ)
+
+      type(Universe), pointer :: univ
+
+      integer :: ou
+      integer :: i
+      character(250) :: string
+      type(Cell), pointer :: c
+
+      ou = OUTPUT_UNIT
+
+      write(ou,*) 'Universe ' // int_to_str(univ % uid)
+      write(ou,*) '    Level = ' // int_to_str(univ % level)
+      string = ""
+      do i = 1, univ % n_cells
+         c => cells(univ % cells(i))
+         string = trim(string) // ' ' // int_to_str(c % uid)
+      end do
+      write(ou,*) '    Cells =' // trim(string)
+      write(ou,*)
+
+    end subroutine print_universe
+
+!=====================================================================
+! PRINT_SUMMARY displays the attributes of all cells, universes,
+! surfaces and materials read in the input file. Very useful for
+! debugging!
+!=====================================================================
+
+    subroutine print_summary()
+
+      type(Surface),  pointer :: s
+      type(Cell),     pointer :: c
+      type(Universe), pointer :: u
+      type(Material), pointer :: m
+      integer :: i
+      integer :: ou
+
+      ou = OUTPUT_UNIT
+
+      ! print summary of cells
+      write(ou,*) '============================================='
+      write(ou,*) '=>              CELL SUMMARY               <='
+      write(ou,*) '============================================='
+      write(ou,*)
+      do i = 1, n_cells
+         c => cells(i)
+         call print_cell(c)
+      end do
+
+      ! print summary of universes
+      write(ou,*) '============================================='
+      write(ou,*) '=>             UNIVERSE SUMMARY            <='
+      write(ou,*) '============================================='
+      write(ou,*)
+      do i = 1, n_universes
+         u => universes(i)
+         call print_universe(u)
+      end do
+
+      ! print summary of surfaces
+
+      ! print summary of materials
+
+    end subroutine print_summary
 
 end module output

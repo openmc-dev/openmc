@@ -59,7 +59,7 @@ global.o: types.o
 main.o: global.o fileio.o output.o geometry.o mcnp_random.o \
 		source.o physics.o cross_section.o data_structures.o \
 		ace.o energy_grid.o
-output.o: global.o
+output.o: global.o types.o data_structures.o
 physics.o: types.o global.o mcnp_random.o geometry.o output.o \
 		search.o endf.o
 search.o: output.o

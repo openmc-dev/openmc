@@ -214,6 +214,7 @@ contains
     integer :: index_cell
     integer :: index_universe
     integer :: index_surface
+    integer :: index_lattice
     integer :: index_material
     integer :: index_source
 
@@ -223,6 +224,7 @@ contains
     index_cell     = 0
     index_universe = 0
     index_surface  = 0
+    index_lattice  = 0
     index_material = 0
     index_source   = 0
 
@@ -250,6 +252,11 @@ contains
           ! Read data
           index_surface = index_surface + 1
           call read_surface(index_surface, words, n)
+
+       case ('lattice')
+          ! Read data from lattice entry
+          index_lattice = index_lattice + 1
+          call read_lattice(index_lattice, words, n)
 
        case ('material')
           index_material = index_material + 1
@@ -288,7 +295,7 @@ contains
 
   subroutine adjust_indices()
 
-    type(Cell), pointer :: c
+    type(Cell), pointer :: c => null()
 
     integer :: i, j
     integer :: index
@@ -327,6 +334,41 @@ contains
     end do
 
   end subroutine adjust_indices
+
+!=====================================================================
+! BUILD_UNIVERSE determines what level each universe is at and
+! determines what the parent cell of each cell in a subuniverse is.
+!=====================================================================
+
+  recursive subroutine build_universe(univ, parent, level)
+
+    type(Universe), pointer :: univ
+    integer, intent(in) :: parent
+    integer, intent(in) :: level
+
+    integer :: i
+    integer :: index
+    type(Cell),     pointer :: c => null()
+    type(Universe), pointer :: subuniverse => null()
+
+    ! set level of the universe
+    univ % level = level
+
+    ! loop over all cells in the universe
+    do i = 1, univ % n_cells
+       index = univ % cells(i)
+       c => cells(index)
+       c%parent = parent
+
+       ! if this cell is filled with another universe, recursive call
+       ! this subroutine
+       if (c % fill > 0) then
+          subuniverse => universes(c % fill)
+          call build_universe(subuniverse, index, level + 1)
+       end if
+    end do
+
+  end subroutine build_universe
 
 !=====================================================================
 ! READ_CELL parses the data on a cell card.
@@ -508,7 +550,19 @@ contains
   end subroutine read_surface
 
 !=====================================================================
-! READ_SOURCE parses the data on a source card.
+! READ_LATTICE parses the data on a lattice entry.
+!=====================================================================
+
+  subroutine read_lattice(index, words, n_words)
+
+    integer, intent(in) :: index
+    character(*), intent(in) :: words(max_words)
+    integer, intent(in) :: n_words
+
+  end subroutine read_lattice
+
+!=====================================================================
+! READ_SOURCE parses the data on a source entry.
 !=====================================================================
 
   subroutine read_source(words, n_words)
@@ -563,7 +617,7 @@ contains
     integer :: i
     integer :: ioError
     integer :: n_isotopes
-    type(Material), pointer :: mat
+    type(Material), pointer :: mat => null()
 
     if (mod(n_words,2) == 0 .or. n_words < 5) then
        msg = "Invalid number of arguments for material: " // words(2)
@@ -606,8 +660,8 @@ contains
 
   subroutine normalize_ao()
 
-    type(xsData), pointer :: iso
-    type(Material), pointer :: mat
+    type(xsData),   pointer :: iso => null()
+    type(Material), pointer :: mat => null()
     integer :: index
     integer :: i, j
     real(8) :: sum_percent

@@ -254,6 +254,7 @@ module output
          m => materials(c % material)
          write(ou,*) '    Material = ' // int_to_str(m % uid)
       end if
+      write(ou,*) '    Parent Cell = ' // int_to_str(c % parent)
       string = ""
       do i = 1, c % n_items
          select case (c % boundary_List(i))
@@ -306,6 +307,105 @@ module output
     end subroutine print_universe
 
 !=====================================================================
+! PRINT_SURFACE displays the attributes of a surface
+!=====================================================================
+
+    subroutine print_surface(surf)
+
+      type(Surface), pointer :: surf
+
+      integer :: ou
+      integer :: i
+      character(80) :: string
+
+      ou = OUTPUT_UNIT
+
+      write(ou,*) 'Surface ' // int_to_str(surf % uid)
+      select case (surf % type)
+      case (SURF_PX)
+         string = "X Plane"
+      case (SURF_PY)
+         string = "Y Plane"
+      case (SURF_PZ)
+         string = "Z Plane"
+      case (SURF_PLANE)
+         string = "Plane"
+      case (SURF_CYL_X)
+         string = "X Cylinder"
+      case (SURF_CYL_Y)
+         string = "Y Cylinder"
+      case (SURF_CYL_Z)
+         string = "Z Cylinder"
+      case (SURF_SPHERE)
+         string = "Sphere"
+      case (SURF_BOX_X)
+      case (SURF_BOX_Y)
+      case (SURF_BOX_Z)
+      case (SURF_BOX)
+      case (SURF_GQ)
+         string = "General Quadratic"
+      end select
+      write(ou,*) '    Type = ' // trim(string)
+      write(ou,*) '    Coefficients = ', surf % coeffs
+
+      string = ""
+      if (allocated(surf % neighbor_pos)) then
+         do i = 1, size(surf % neighbor_pos)
+            string = trim(string) // ' ' // int_to_str(surf % neighbor_pos(i))
+         end do
+      end if
+      write(ou,*) '    Positive Neighbors = ', string
+
+      string = ""
+      if (allocated(surf % neighbor_neg)) then
+         do i = 1, size(surf % neighbor_neg)
+            string = trim(string) // ' ' // int_to_str(surf % neighbor_neg(i))
+         end do
+      end if
+      write(ou,*) '    Negative Neighbors =', string
+
+    end subroutine print_surface
+
+!=====================================================================
+! PRINT_MATERIAL displays the attributes of a material
+!=====================================================================
+
+    subroutine print_material(mat)
+
+      type(Material), pointer :: mat
+
+      integer :: ou
+      integer :: i
+      integer :: n_lines
+      type(AceContinuous), pointer :: table
+      character(250) :: string
+
+      ou = OUTPUT_UNIT
+
+      write(ou,*) 'Material ' // int_to_str(mat % uid)
+      ! Make string of all isotopes
+      string = ""
+      do i = 1, mat % n_isotopes
+         table => xs_continuous(mat % table(i))
+         string = trim(string) // ' ' // table % name
+      end do
+      ! Print isotopes with word wrap
+      ! TODO: Change this to generic word wrap subroutine?
+      n_lines = (len_trim(string)-1)/75 + 1
+      do i = 1, n_lines
+         if ( i == 1 ) then
+            write(ou, fmt='(5X,A75)') 'Isotopes =' // string(75*(i-1)+1:75*i)
+         else
+            write(ou, fmt='(5X,A75)') string(75*(i-1)+1:75*i)
+         end if
+      end do
+      write(ou,'(5X,A,G12.4,A)') 'Atom Density = ', mat % atom_density, & 
+           & ' atom/b-cm'
+      write(ou,*)
+
+    end subroutine print_material
+
+!=====================================================================
 ! PRINT_SUMMARY displays the attributes of all cells, universes,
 ! surfaces and materials read in the input file. Very useful for
 ! debugging!
@@ -343,8 +443,24 @@ module output
       end do
 
       ! print summary of surfaces
+      write(ou,*) '============================================='
+      write(ou,*) '=>              SURFACE SUMMARY            <='
+      write(ou,*) '============================================='
+      write(ou,*)
+      do i = 1, n_surfaces
+         s => surfaces(i)
+         call print_surface(s)
+      end do
 
       ! print summary of materials
+      write(ou,*) '============================================='
+      write(ou,*) '=>             MATERIAL SUMMARY            <='
+      write(ou,*) '============================================='
+      write(ou,*)
+      do i = 1, n_materials
+         m => materials(i)
+         call print_material(m)
+      end do
 
     end subroutine print_summary
 

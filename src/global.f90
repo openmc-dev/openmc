@@ -7,18 +7,21 @@ module global
   ! Main arrays for cells, surfaces, materials
   type(Cell),     allocatable, target :: cells(:)
   type(Universe), allocatable, target :: universes(:)
+  type(Lattice),  allocatable, target :: lattices(:)
   type(Surface),  allocatable, target :: surfaces(:)
   type(Material), allocatable, target :: materials(:)
   type(Isotope),  allocatable, target :: isotopes(:)
   type(xsData),   allocatable, target :: xsdatas(:)
   integer :: n_cells     ! # of cells
   integer :: n_universes ! # of universes
+  integer :: n_lattices  ! # of lattices
   integer :: n_surfaces  ! # of surfaces
   integer :: n_materials ! # of materials
 
   ! These dictionaries provide a fast lookup mechanism
   type(DictionaryII), pointer :: cell_dict
   type(DictionaryII), pointer :: universe_dict
+  type(DictionaryII), pointer :: lattice_dict
   type(DictionaryII), pointer :: surface_dict
   type(DictionaryII), pointer :: material_dict
   type(DictionaryII), pointer :: isotope_dict
@@ -34,6 +37,7 @@ module global
   ! Current cell, surface, material
   type(Cell),     pointer :: cCell
   type(Universe), pointer :: cUniverse
+  type(Lattice),  pointer :: cLattice
   type(Surface),  pointer :: cSurface
   type(Material), pointer :: cMaterial
 

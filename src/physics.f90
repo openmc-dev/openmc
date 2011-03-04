@@ -4,7 +4,7 @@ module physics
   use geometry,    only: find_cell, dist_to_boundary, cross_boundary
   use types,       only: Neutron
   use mcnp_random, only: rang
-  use output,      only: error, message, print_universe
+  use output,      only: error, message
   use search,      only: binary_search
   use endf,        only: reaction_name
 
@@ -38,7 +38,6 @@ contains
     if (neut%cell == 0) then
        univ => universes(BASE_UNIVERSE)
        call find_cell(univ, neut, found_cell)
-       print *, sqrt(neut%xyz(1)**2 + neut%xyz(2)**2 + neut%xyz(3)**2), cells(neut%cell) % uid
 
        ! if neutron couldn't be located, print error
        if (.not. found_cell) then
@@ -47,8 +46,6 @@ contains
           call error(msg)
        end if
     end if
-
-    return
 
     if (verbosity >= 10) then
        msg = "=== Particle " // trim(int_to_str(neut%uid)) // " ==="
@@ -63,13 +60,12 @@ contains
     neut%E = watt_spectrum(0.988_8, 2.249_8)
 
     ! find energy index, interpolation factor
-    IE = binary_search(e_grid, n_grid, neut%E)
-    f = (neut%E - e_grid(IE))/(e_grid(IE+1) - e_grid(IE))
+    call find_energy_index(neut)
+    IE = neut % IE
+    f  = neut % interp
 
     ! Determine material total cross-section
     Sigma = f*cMaterial%total_xs(IE) + (1-f)*cMaterial%total_xs(IE+1)
-    neut%IE = IE
-    neut%interp = f
 
     do while (neut%alive)
 
@@ -78,6 +74,8 @@ contains
 
        ! Sample a distance to collision
        d_to_collision = -log(rang()) / 1.0 ! Sigma
+       
+       ! Select smaller of the two distances
        distance = min(d_to_boundary, d_to_collision)
 
        ! Advance neutron
@@ -97,6 +95,44 @@ contains
     end do
 
   end subroutine transport
+
+!=====================================================================
+! FIND_ENERGY_INDEX determines the index on the union energy grid and
+! the interpolation factor for a particle at a certain energy
+!=====================================================================
+
+  subroutine find_energy_index(neut)
+
+    type(Neutron), pointer :: neut
+
+    integer :: IE
+    real(8) :: E
+    real(8) :: interp
+
+    ! copy particle's energy
+    E = neut%E
+
+    ! if particle's energy is outside of energy grid range, set to
+    ! first or last index. Otherwise, do a binary search through the
+    ! union energy grid.
+    if (E < e_grid(1)) then
+       IE = 1
+    elseif (E > e_grid(n_grid)) then
+       IE = n_grid
+    else
+       IE = binary_search(e_grid, n_grid, E)
+    end if
+    
+    ! calculate the interpolation factor -- note this will be outside
+    ! of [0,1) for a particle outside the energy range of the union
+    ! grid
+    interp = (E - e_grid(IE))/(e_grid(IE+1) - e_grid(IE))
+
+    ! set particle attributes
+    neut % IE     = IE
+    neut % interp = interp
+    
+  end subroutine find_energy_index
 
 !=====================================================================
 ! COLLISION
@@ -247,9 +283,7 @@ contains
     neut%uvw(3) = vz/vel
 
     ! find energy index, interpolation factor
-    IE = binary_search(e_grid, n_grid, E)
-    neut%IE = IE
-    neut%interp = (E - e_grid(IE))/(e_grid(IE+1) - e_grid(IE))
+    call find_energy_index(neut)
 
   end subroutine elastic_scatter
 

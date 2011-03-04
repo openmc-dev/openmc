@@ -2,7 +2,7 @@ program main
 
   use global
   use fileio,        only: read_input, read_command_line, read_count, &
-       &                   normalize_ao
+       &                   normalize_ao, build_universe
   use output,        only: title, echo_input, message, warning, error, &
        &                   print_summary
   use geometry,      only: sense, cell_contains, neighbor_lists
@@ -17,6 +17,7 @@ program main
 
   character(16) :: filename
   character(250) :: msg
+  type(Universe), pointer :: univ
 
   ! Print the OpenMC title and version/date/time information
   call title()
@@ -36,6 +37,11 @@ program main
   ! pass to actually read values
   call read_count(path_input)
   call read_input(path_input)
+
+  ! determine at which level universes are and link cells to parenting
+  ! cells
+  univ => universes(BASE_UNIVERSE)
+  call build_universe(univ, 0, 0)
 
   ! After reading input and basic geometry setup is complete, build
   ! lists of neighboring cells for efficient tracking
@@ -66,7 +72,7 @@ program main
   call init_source()
 
   ! start problem
-  surfaces(2)%bc = BC_VACUUM
+  surfaces(3)%bc = BC_VACUUM
   call run_problem()
 
   ! deallocate arrays

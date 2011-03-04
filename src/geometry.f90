@@ -142,10 +142,12 @@ contains
     integer :: i
     integer :: index_cell
     character(250) :: msg
+    logical :: found
+    type(Universe), pointer :: lower_univ => null()
 
     surf => surfaces(abs(neut%surface))
     if (verbosity >= 10) then
-       msg = "    Crossing surface " // trim(int_to_str(neut%surface))
+       msg = "    Crossing surface " // trim(int_to_str(surf%uid))
        call message(msg, 10)
     end if
 
@@ -159,29 +161,49 @@ contains
        return
     end if
 
-    if (neut%surface < 0 .and. allocated(surf%neighbor_pos)) then
+    if (neut%surface > 0 .and. allocated(surf%neighbor_pos)) then
        ! If coming from negative side of surface, search all the
        ! neighboring cells on the positive side
        do i = 1, size(surf%neighbor_pos)
           index_cell = surf%neighbor_pos(i)
           c => cells(index_cell)
           if (cell_contains(c, neut)) then
-             neut%cell = index_cell
-             cCell => cells(index_cell)
-             cMaterial => materials(cCell%material)
+             if (c % fill > 0) then
+                lower_univ => universes(c % fill)
+                call find_cell(lower_univ, neut, found)
+                if (.not. found) then
+                   msg = "Could not locate neutron in universe: "
+                   call error(msg)
+                end if
+             else
+                ! set current pointers
+                neut%cell = index_cell
+                cCell => c
+                cMaterial => materials(cCell%material)
+             end if
              return
           end if
        end do
-    elseif (neut%surface > 0  .and. allocated(surf%neighbor_neg)) then
+    elseif (neut%surface < 0  .and. allocated(surf%neighbor_neg)) then
        ! If coming from positive side of surface, search all the
        ! neighboring cells on the negative side
        do i = 1, size(surf%neighbor_neg)
           index_cell = surf%neighbor_neg(i)
           c => cells(index_cell)
           if (cell_contains(c, neut)) then
-             neut%cell = index_cell
-             cCell => cells(index_cell)
-             cMaterial => materials(cCell%material)
+             if (c % fill > 0) then
+                lower_univ => universes(c % fill)
+                call find_cell(lower_univ, neut, found)
+                if (.not. found) then
+                   msg = "Could not locate neutron in universe: "
+                   call error(msg)
+                end if
+             else
+                ! set current pointers
+                neut%cell = index_cell
+                cCell => c
+                cMaterial => materials(cCell%material)
+             end if
              return
           end if
        end do
@@ -193,7 +215,7 @@ contains
        c => cells(i)
        if (cell_contains(c, neut)) then
           neut%cell = i
-          cCell => cells(i)
+          cCell => c
           cMaterial => materials(cCell%material)
           return
        end if
@@ -209,7 +231,8 @@ contains
 !=====================================================================
 ! DIST_TO_BOUNDARY calculates the distance to the nearest boundary of
 ! the cell 'cl' for a particle 'neut' traveling in a certain
-! direction.
+! direction. For a cell in a subuniverse that has a parent cell, also
+! include the surfaces of the edge of the universe.
 !=====================================================================
 
   subroutine dist_to_boundary(neut, dist, surf, other_cell)
@@ -220,9 +243,10 @@ contains
     integer, optional, intent(in)  :: other_cell
 
     type(Cell),    pointer :: cell_p => null()
+    type(Cell),    pointer :: parent_p => null()
     type(Surface), pointer :: surf_p => null()
     integer :: i
-    integer :: n_boundaries
+    integer :: n_boundaries, n1, n2
     integer, allocatable :: expression(:)
     integer :: index_surf
     integer :: current_surf
@@ -242,10 +266,24 @@ contains
 
     current_surf = neut%surface
 
-    dist = INFINITY
-    n_boundaries = size(cell_p%boundary_list)
+    ! determine number of surfaces to check
+    n1 = cell_p % n_items
+    n2 = 0
+    if (cell_p % parent > 0) then
+       parent_p => cells(cell_p % parent)
+       n2 = parent_p % n_items
+    end if
+    n_boundaries = n1 + n2
+
+    ! allocate space and assign expression
     allocate(expression(n_boundaries))
-    expression = cell_p%boundary_list
+    expression(1:n1) = cell_p%boundary_list
+    if (cell_p % parent > 0) then
+       expression(n1+1:n1+n2) = parent_p % boundary_list
+    end if
+
+    ! loop over all surfaces
+    dist = INFINITY
     do i = 1, n_boundaries
        x = neut%xyz(1)
        y = neut%xyz(2)
@@ -254,7 +292,7 @@ contains
        v = neut%uvw(2)
        w = neut%uvw(3)
 
-       ! check for coincident surfaec
+       ! check for coincident surface
        index_surf = expression(i)
        if (index_surf == current_surf) cycle
 

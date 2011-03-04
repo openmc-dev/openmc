@@ -18,6 +18,17 @@ module types
   end type Universe
 
 !=====================================================================
+! LATTICE
+!=====================================================================
+
+  type Lattice
+     integer :: uid
+     integer :: type
+     integer :: level
+     real(8) :: pitch
+  end type Lattice
+
+!=====================================================================
 ! SURFACE type defines a first- or second-order surface that can be
 ! used to construct closed volumes (cells)
 !=====================================================================
@@ -38,8 +49,9 @@ module types
   type Cell
      integer :: uid
      integer :: type
-     integer :: universe
-     integer :: fill
+     integer :: universe  ! universe # this cell is in
+     integer :: fill      ! universe # filling this cell
+     integer :: parent    ! cell within which this cell resides
      integer :: material
      integer :: n_items
      integer, allocatable :: boundary_list(:)

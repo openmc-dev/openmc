@@ -54,8 +54,8 @@ module global
   type(ExtSource), target :: external_source
 
   ! Source and fission bank
-  type(Neutron), allocatable, target :: source_bank(:)
-  type(Bank),    allocatable, target :: fission_bank(:)
+  type(Particle), allocatable, target :: source_bank(:)
+  type(Bank),     allocatable, target :: fission_bank(:)
 
   ! Paths to input file, cross section data, etc
   character(100) :: & 
@@ -142,9 +142,9 @@ module global
 
   ! Particle type
   integer, parameter :: &
-       & NEUTRON_  = 1, &
-       & PHOTON_   = 2, &
-       & ELECTRON_ = 3
+       & NEUTRON  = 1, &
+       & PHOTON   = 2, &
+       & ELECTRON = 3
 
   ! Integer code for read error -- better hope this number is never
   ! used in an input file!

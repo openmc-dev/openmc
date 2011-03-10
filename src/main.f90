@@ -90,7 +90,7 @@ contains
     integer :: i, j
     integer :: i_cycle
     integer :: i_particle
-    type(Neutron), pointer :: particle => null()
+    type(Particle), pointer :: p => null()
 
     CYCLE_LOOP: do i_cycle = 1, n_cycles
        
@@ -99,8 +99,8 @@ contains
        HISTORY_LOOP: do j = 1, n_particles
 
           ! grab source particle from bank
-          particle => get_source_particle()
-          if ( .not. associated(particle) ) then
+          p => get_source_particle()
+          if ( .not. associated(p) ) then
              ! no particles left in source bank
              exit HISTORY_LOOP
           end if
@@ -110,7 +110,7 @@ contains
           call RN_init_particle(int(i_particle,8))
 
           ! transport particle
-          call transport(particle)
+          call transport(p)
 
        end do HISTORY_LOOP
 

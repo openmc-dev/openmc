@@ -2,7 +2,7 @@ module physics
 
   use global
   use geometry,    only: find_cell, dist_to_boundary, cross_boundary
-  use types,       only: Neutron
+  use types,       only: Particle
   use mcnp_random, only: rang
   use output,      only: error, message
   use search,      only: binary_search
@@ -17,9 +17,9 @@ contains
 ! geometry.
 !=====================================================================
 
-  subroutine transport(neut)
+  subroutine transport(p)
 
-    type(Neutron), pointer :: neut
+    type(Particle), pointer :: p
 
     character(250) :: msg
     integer :: i, surf
@@ -31,46 +31,45 @@ contains
     real(8) :: distance
     real(8) :: Sigma          ! total cross-section
     real(8) :: f              ! interpolation factor
-    real(8) :: tmp(3)
     integer :: IE             ! index on energy grid
     type(Universe), pointer :: univ
 
-    if (neut%cell == 0) then
+    if (p % cell == 0) then
        univ => universes(BASE_UNIVERSE)
-       call find_cell(univ, neut, found_cell)
+       call find_cell(univ, p, found_cell)
 
-       ! if neutron couldn't be located, print error
+       ! if particle couldn't be located, print error
        if (.not. found_cell) then
-          write(msg, 100) "Could not locate cell for neutron at: ", neut%xyz
+          write(msg, 100) "Could not locate cell for particle at: ", p % xyz
 100       format (A,3ES11.3)
           call error(msg)
        end if
     end if
 
     if (verbosity >= 10) then
-       msg = "=== Particle " // trim(int_to_str(neut%uid)) // " ==="
+       msg = "=== Particle " // trim(int_to_str(p % uid)) // " ==="
        call message(msg, 10)
 
-       i = cells(neut%cell)%uid
+       i = cells(p % cell)%uid
        msg = "    Born in cell " // trim(int_to_str(i))
        call message(msg, 10)
     end if
 
     ! sample energy from Watt fission energy spectrum for U-235
-    neut%E = watt_spectrum(0.988_8, 2.249_8)
+    p % E = watt_spectrum(0.988_8, 2.249_8)
 
     ! find energy index, interpolation factor
-    call find_energy_index(neut)
-    IE = neut % IE
-    f  = neut % interp
+    call find_energy_index(p)
+    IE = p % IE
+    f  = p % interp
 
     ! Determine material total cross-section
     Sigma = f*cMaterial%total_xs(IE) + (1-f)*cMaterial%total_xs(IE+1)
 
-    do while (neut%alive)
+    do while (p % alive)
 
        ! Find the distance to the nearest boundary
-       call dist_to_boundary(neut, d_to_boundary, surf)
+       call dist_to_boundary(p, d_to_boundary, surf)
 
        ! Sample a distance to collision
        d_to_collision = -log(rang()) / 1.0 ! Sigma
@@ -78,18 +77,18 @@ contains
        ! Select smaller of the two distances
        distance = min(d_to_boundary, d_to_collision)
 
-       ! Advance neutron
-       neut%xyz = neut%xyz + distance*neut%uvw
+       ! Advance particle
+       p%xyz = p%xyz + distance * p%uvw
 
        ! Add pathlength tallies
 
        if (d_to_collision > d_to_boundary) then
-          neut%surface = surf
-          neut%cell = 0
-          call cross_boundary(neut)
+          p % surface = surf
+          p % cell = 0
+          call cross_boundary(p)
        else
           ! collision
-          call collision(neut)
+          call collision(p)
        end if
        
     end do
@@ -101,16 +100,16 @@ contains
 ! the interpolation factor for a particle at a certain energy
 !=====================================================================
 
-  subroutine find_energy_index(neut)
+  subroutine find_energy_index(p)
 
-    type(Neutron), pointer :: neut
+    type(Particle), pointer :: p
 
     integer :: IE
     real(8) :: E
     real(8) :: interp
 
     ! copy particle's energy
-    E = neut%E
+    E = p % E
 
     ! if particle's energy is outside of energy grid range, set to
     ! first or last index. Otherwise, do a binary search through the
@@ -129,8 +128,8 @@ contains
     interp = (E - e_grid(IE))/(e_grid(IE+1) - e_grid(IE))
 
     ! set particle attributes
-    neut % IE     = IE
-    neut % interp = interp
+    p % IE     = IE
+    p % interp = interp
     
   end subroutine find_energy_index
 
@@ -138,9 +137,9 @@ contains
 ! COLLISION
 !=====================================================================
 
-  subroutine collision(neut)
+  subroutine collision(p)
 
-    type(Neutron), pointer :: neut
+    type(Particle), pointer :: p
 
     type(AceContinuous), pointer :: table
     type(AceReaction),   pointer :: rxn
@@ -151,7 +150,7 @@ contains
     integer :: IE
     real(8) :: f, Sigma, total
     real(8) :: density, density_i
-    real(8) :: p
+    real(8) :: prob
     real(8), allocatable :: Sigma_t(:)
 
     ! tallies
@@ -167,8 +166,8 @@ contains
        density_i = cMaterial%atom_percent(i)*density
 
        ! search nuclide energy grid
-       IE = table%grid_index(neut%IE)
-       f = (neut%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
+       IE = table%grid_index(p % IE)
+       f = (p%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
 
        Sigma = density_i*(f*table%sigma_t(IE) + (1-f)*(table%sigma_t(IE+1)))
        Sigma_t(i) = Sigma
@@ -176,18 +175,18 @@ contains
 
     ! sample nuclide
     r1 = rang()
-    p = 0.0_8
+    prob = 0.0_8
     total = sum(Sigma_t)
     do i = 1, n_isotopes
-       p = p + Sigma_t(i) / total
-       if (r1 < p) exit
+       prob = prob + Sigma_t(i) / total
+       if (r1 < prob) exit
     end do
 
     ! Get table, total xs, interpolation factor
     table => xs_continuous(cMaterial%table(i))
     Sigma = Sigma_t(i)
-    IE = table%grid_index(neut%IE)
-    f = (neut%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
+    IE = table%grid_index(p % IE)
+    f = (p%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
     density = cMaterial%atom_percent(i)*density
 
     ! free memory
@@ -195,13 +194,14 @@ contains
 
     ! sample reaction channel
     r1 = rang()*Sigma
-    p = 0.0_8
+    prob = 0.0_8
     do i = 1, table%n_reaction
        rxn => table%reactions(i)
        if (rxn%MT >= 200) cycle
        if (IE < rxn%IE) cycle
-       p = p + density * (f*rxn%sigma(IE-rxn%IE+1) + (1-f)*(rxn%sigma(IE-rxn%IE+2)))
-       if (r1 < p) exit
+       prob = prob + density * (f*rxn%sigma(IE-rxn%IE+1) & 
+            & + (1-f)*(rxn%sigma(IE-rxn%IE+2)))
+       if (r1 < prob) exit
     end do
     if (verbosity >= 10) then
        msg = "    " // trim(reaction_name(rxn%MT)) // " with nuclide " // &
@@ -212,11 +212,11 @@ contains
     ! call appropriate subroutine
     select case (rxn%MT)
     case (2)
-       call elastic_scatter(neut, table%awr)
+       call elastic_scatter(p, table%awr)
     case (102)
-       call n_gamma(neut)
+       call n_gamma(p)
     case default
-       call elastic_scatter(neut, table%awr)
+       call elastic_scatter(p, table%awr)
     end select
     
   end subroutine collision
@@ -225,9 +225,9 @@ contains
 ! ELASTIC_SCATTER
 !=====================================================================
 
-  subroutine elastic_scatter(neut, awr)
+  subroutine elastic_scatter(p, awr)
 
-    type(Neutron), pointer :: neut
+    type(Particle), pointer :: p
     real(8), intent(in) :: awr
 
     real(8) :: phi ! azimuthal angle
@@ -239,11 +239,11 @@ contains
     real(8) :: E
     integer :: IE
 
-    vel = sqrt(neut%E)
+    vel = sqrt(p % E)
 
-    vx = vel*neut%uvw(1)
-    vy = vel*neut%uvw(2)
-    vz = vel*neut%uvw(3)
+    vx = vel*p % uvw(1)
+    vy = vel*p % uvw(2)
+    vz = vel*p % uvw(3)
 
 
     vcx = vx/(awr + 1.0_8)
@@ -277,13 +277,13 @@ contains
     E = vx*vx + vy*vy + vz*vz
     vel = sqrt(E)
 
-    neut%E = E
-    neut%uvw(1) = vx/vel
-    neut%uvw(2) = vy/vel
-    neut%uvw(3) = vz/vel
+    p % E = E
+    p % uvw(1) = vx/vel
+    p % uvw(2) = vy/vel
+    p % uvw(3) = vz/vel
 
     ! find energy index, interpolation factor
-    call find_energy_index(neut)
+    call find_energy_index(p)
 
   end subroutine elastic_scatter
 
@@ -299,16 +299,16 @@ contains
 ! N_GAMMA
 !=====================================================================
 
-  subroutine n_gamma(neut)
+  subroutine n_gamma(p)
 
-    type(Neutron), pointer :: neut
+    type(Particle), pointer :: p
 
     integer :: cell_num
     character(250) :: msg
 
-    neut%alive = .false.
+    p % alive = .false.
     if (verbosity >= 10) then
-       cell_num = cells(neut%cell)%uid
+       cell_num = cells(p % cell)%uid
        msg = "    Absorbed in cell " // trim(int_to_str(cell_num))
        call message(msg, 10)
     end if

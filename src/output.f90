@@ -256,8 +256,8 @@ module output
       end if
       write(ou,*) '    Parent Cell = ' // int_to_str(c % parent)
       string = ""
-      do i = 1, c % n_items
-         select case (c % boundary_List(i))
+      do i = 1, c % n_surfaces
+         select case (c % surfaces(i))
          case (OP_LEFT_PAREN)
             string = trim(string) // ' ('
          case (OP_RIGHT_PAREN)
@@ -267,7 +267,7 @@ module output
          case (OP_DIFFERENCE)
             string = trim(string) // ' !'
          case default
-            string = trim(string) // ' ' // int_to_str(c % boundary_list(i))
+            string = trim(string) // ' ' // int_to_str(c % surfaces(i))
          end select
       end do
       write(ou,*) '    Surface Specification:' // trim(string)

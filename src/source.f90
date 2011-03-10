@@ -65,13 +65,13 @@ contains
 
   function get_source_particle()
 
-    type(Neutron), pointer :: get_source_particle
+    type(Particle), pointer :: get_source_particle
 
     ! increment index
     source_index = source_index + 1
 
     ! if at end of bank, return null pointer
-    if ( source_index > size(source_bank) ) then
+    if (source_index > size(source_bank)) then
        get_source_particle => null()
        return
     end if

@@ -305,8 +305,8 @@ contains
     do i = 1, n_cells
        ! adjust boundary list
        c => cells(i)
-       do j = 1, c%n_items
-          surf_num = c%boundary_list(j)
+       do j = 1, c%n_surfaces
+          surf_num = c%surfaces(j)
           if (surf_num < OP_DIFFERENCE) then
              index = dict_get_key(surface_dict, abs(surf_num))
              if (index == DICT_NULL) then
@@ -315,7 +315,7 @@ contains
                      & " specified on cell " // trim(int_to_str(c%uid))
                 call error(msg)
              end if
-             c%boundary_list(j) = sign(index, surf_num)
+             c%surfaces(j) = sign(index, surf_num)
           end if
        end do
 
@@ -383,21 +383,20 @@ contains
     integer :: ioError
     integer :: i
     integer :: universe_num
-    integer :: n_items
+    integer :: n_surfaces
     character(250) :: msg
-    character(32) :: word
-    type(Cell), pointer :: this_cell => null()
-    type(Universe), pointer :: this_univ => null()
+    character(32)  :: word
+    type(Cell), pointer :: c => null()
 
-    this_cell => cells(index)
+    c => cells(index)
 
     ! Read cell identifier
-    this_cell % uid = str_to_int(words(2))
-    if (this_cell % uid == ERROR_CODE) then
+    c % uid = str_to_int(words(2))
+    if (c % uid == ERROR_CODE) then
        msg = "Invalid cell name: " // words(2)
        call error(msg)
     end if
-    call dict_add_key(cell_dict, this_cell%uid, index)
+    call dict_add_key(cell_dict, c%uid, index)
  
     ! Read cell universe
     universe_num = str_to_int(words(3))
@@ -405,13 +404,13 @@ contains
        msg = "Invalid universe: " // words(3)
        call error(msg)
     end if
-    this_cell % universe = dict_get_key(universe_dict, universe_num)
+    c % universe = dict_get_key(universe_dict, universe_num)
 
     ! Read cell material
     if (trim(words(4)) == 'fill') then
-       this_cell % type     = CELL_FILL
-       this_cell % material = 0
-       n_items = n_words - 5
+       c % type     = CELL_FILL
+       c % material = 0
+       n_surfaces = n_words - 5
 
        ! find universe
        universe_num = str_to_int(words(5))
@@ -419,44 +418,43 @@ contains
           msg = "Invalid universe fill: " // words(5)
           call error(msg)
        end if
-       this_cell % fill = dict_get_key(universe_dict, universe_num)
+       c % fill = dict_get_key(universe_dict, universe_num)
 
     else
-       this_cell % type     = CELL_NORMAL
-       this_cell % material = str_to_int(words(4))
-       this_cell % fill     = 0
-       if (this_cell % material == ERROR_CODE) then
+       c % type     = CELL_NORMAL
+       c % material = str_to_int(words(4))
+       c % fill     = 0
+       if (c % material == ERROR_CODE) then
           msg = "Invalid material number: " // words(4)
           call error(msg)
        end if
-       n_items = n_words - 4
+       n_surfaces = n_words - 4
     end if
 
     ! Assign number of items
-    this_cell%n_items = n_items
+    c%n_surfaces = n_surfaces
 
     ! Read list of surfaces
-    allocate(this_cell%boundary_list(n_items))
-    do i = 1, n_items
-       word = words(i+n_words-n_items)
+    allocate(c%surfaces(n_surfaces))
+    do i = 1, n_surfaces
+       word = words(i+n_words-n_surfaces)
        if (word(1:1) == '(') then
-          this_cell%boundary_list(i) = OP_LEFT_PAREN
+          c % surfaces(i) = OP_LEFT_PAREN
        elseif (word(1:1) == ')') then
-          this_cell%boundary_list(i) = OP_RIGHT_PAREN
+          c % surfaces(i) = OP_RIGHT_PAREN
        elseif (word(1:1) == ':') then
-          this_cell%boundary_list(i) = OP_UNION
+          c % surfaces(i) = OP_UNION
        elseif (word(1:1) == '#') then
-          this_cell%boundary_list(i) = OP_DIFFERENCE
+          c % surfaces(i) = OP_DIFFERENCE
        else
-          this_cell%boundary_list(i) = str_to_int(word)
+          c % surfaces(i) = str_to_int(word)
        end if
     end do
 
     ! Add cell to the cell list in the corresponding universe
-    i = this_cell % universe
-    this_univ => universes(i)
+    i = c % universe
     index_cell_in_univ(i) = index_cell_in_univ(i) + 1
-    this_univ % cells(index_cell_in_univ(i)) = index
+    universes(i) % cells(index_cell_in_univ(i)) = index
 
   end subroutine read_cell
 

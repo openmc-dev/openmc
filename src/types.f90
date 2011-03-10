@@ -7,14 +7,14 @@ module types
 !=====================================================================
 
   type Universe
-     integer :: uid
-     integer :: type
-     integer :: level
-     integer :: n_cells
-     integer, allocatable :: cells(:)
-     real(8) :: x0
-     real(8) :: y0
-     real(8) :: z0
+     integer :: uid                   ! Unique ID
+     integer :: type                  ! Type
+     integer :: level                 ! Level of universe (0=base)
+     integer :: n_cells               ! # of cells within
+     integer, allocatable :: cells(:) ! List of cells within
+     real(8) :: x0                    ! Translation in x-coordinate
+     real(8) :: y0                    ! Translation in y-coordinate
+     real(8) :: z0                    ! Translation in z-coordinate
   end type Universe
 
 !=====================================================================
@@ -22,10 +22,10 @@ module types
 !=====================================================================
 
   type Lattice
-     integer :: uid
-     integer :: type
-     integer :: level
-     real(8) :: pitch
+     integer :: uid   ! Unique ID
+     integer :: type  ! Type of lattice (square, hex, etc)
+     integer :: level ! Level of lattice
+     real(8) :: pitch ! Lattice pitch in cm
   end type Lattice
 
 !=====================================================================
@@ -34,12 +34,13 @@ module types
 !=====================================================================
 
   type Surface
-     integer :: uid
-     integer :: type
-     real(8), allocatable :: coeffs(:)
-     integer, allocatable :: neighbor_pos(:)
-     integer, allocatable :: neighbor_neg(:)
-     integer :: bc
+     integer :: uid                    ! Unique ID
+     integer :: type                   ! Type of surface
+     real(8), allocatable :: coeffs(:) ! Definition of surface
+     integer, allocatable :: & 
+          & neighbor_pos(:), &         ! List of cells on positive side
+          & neighbor_neg(:)            ! List of cells on negative side
+     integer :: bc                     ! Boundary condition
   end type Surface
 
 !=====================================================================
@@ -47,23 +48,27 @@ module types
 !=====================================================================
 
   type Cell
-     integer :: uid
-     integer :: type
-     integer :: universe  ! universe # this cell is in
-     integer :: fill      ! universe # filling this cell
-     integer :: parent    ! cell within which this cell resides
-     integer :: material
-     integer :: n_items
-     integer, allocatable :: boundary_list(:)
+     integer :: uid        ! Unique ID
+     integer :: type       ! Type of cell (normal, universe, lattice)
+     integer :: universe   ! universe # this cell is in
+     integer :: fill       ! universe # filling this cell
+     integer :: parent     ! cell within which this cell resides
+     integer :: material   ! Material within cell (0 for universe)
+     integer :: n_surfaces ! Number of surfaces within
+     integer, allocatable :: & 
+          & surfaces(:)    ! List of surfaces bounding cell -- note
+                           ! that parentheses, union, etc operators
+                           ! will be listed here too
   end type Cell
 
 !=====================================================================
-! NEUTRON describes the state of a neutron being transported through
+! PARTICLE describes the state of a particle being transported through
 ! the geometry
 !=====================================================================
 
-  type Neutron
+  type Particle
     integer :: uid      ! Unique ID
+    integer :: type     ! Particle type (n, p, e, etc)
     real(8) :: xyz(3)   ! location
     real(8) :: uvw(3)   ! directional cosines
     real(8) :: E        ! energy
@@ -74,7 +79,7 @@ module types
     integer :: surface  ! current surface
     real(8) :: wgt      ! particle weight
     logical :: alive    ! is particle alive?
-  end type Neutron
+  end type Particle
 
 !=====================================================================
 ! BANK is used for storing fission sites in criticality

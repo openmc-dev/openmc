@@ -1,3 +1,20 @@
+2011-03-10 Paul Romano <romano7@mit.edu>
+
+	* types.f90: The major changes are that the n_items and
+	boundary_list attributes of 'Cell' are now n_surfaces and
+	surfaces. Even though this doesn't quite make sense since
+	parentheses and union operators are not surfaces per-se, it is
+	easier to understand within other modules with these names. The
+	'Neutron' type is now called 'Particle' and will be used for all
+	different particles (eventually).
+	* fileio.f90: Changed aforementioned names.
+	* geometry.f90: Changed aforementioned names.
+	* global.f90: Changed aforementioned names.
+	* main.f90: Changed aforementioned names.
+	* output.f90: Changed aforementioned names.
+	* physics.f90: Changed aforementioned names.
+	* source.f90: Changed aforementioned names.
+
 2011-03-04 Paul Romano <romano7@mit.edu>
 
 	* fileio.f90: Added build_universe routine which sets pointers

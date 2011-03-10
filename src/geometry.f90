@@ -13,28 +13,28 @@ contains
 ! CELL_CONTAINS determines whether a given point is inside a cell
 !=====================================================================
 
-  function cell_contains(c, neut) result(in_cell)
+  function cell_contains(c, p) result(in_cell)
 
-    type(Cell),    pointer :: c
-    type(Neutron), pointer :: neut
-    logical                :: in_cell
+    type(Cell),     pointer :: c
+    type(Particle), pointer :: p
+    logical                 :: in_cell
 
     integer, allocatable :: expression(:)
     integer :: specified_sense
     integer :: actual_sense
-    integer :: n_boundaries
+    integer :: n_surfaces
     integer :: i, j
     integer :: surf_num
     integer :: current_surface
     type(Surface), pointer :: surf => null()
     character(250) :: msg
 
-    current_surface = neut%surface
+    current_surface = p%surface
 
-    n_boundaries = size(c%boundary_list)
-    allocate(expression(n_boundaries))
-    expression = c%boundary_list
-    do i = 1, n_boundaries
+    n_surfaces = size(c%surfaces)
+    allocate(expression(n_surfaces))
+    expression = c%surfaces
+    do i = 1, n_surfaces
 
        ! Don't change logical operator
        if (expression(i) >= OP_DIFFERENCE) then
@@ -47,11 +47,11 @@ contains
 
        ! Check if the particle is currently on the specified surface
        if (surf_num == current_surface) then
-          ! neutron is on specified surface heading into cell
+          ! particle is on specified surface heading into cell
           expression(i) = 1
           cycle
        elseif (surf_num == -current_surface) then
-          ! neutron is on specified surface, but heading other
+          ! particle is on specified surface, but heading other
           ! direction
           expression(i) = 0
           cycle
@@ -59,7 +59,7 @@ contains
 
        ! Compare sense of point to specified sense
        specified_sense = sign(1,expression(i))
-       call sense(surf, neut%xyz, actual_sense)
+       call sense(surf, p%xyz, actual_sense)
        if (actual_sense == specified_sense) then
           expression(i) = 1
        else
@@ -82,44 +82,48 @@ contains
   end function cell_contains
 
 !=====================================================================
-! FIND_CELL determines what cell a source neutron is in
+! FIND_CELL determines what cell a source particle is in within a
+! particular universe. If the base universe is passed, the particle
+! should be found as long as it's within the geometry
 !=====================================================================
 
-  recursive subroutine find_cell(univ, neut, found)
+  recursive subroutine find_cell(univ, p, found)
 
-    type(Universe), pointer :: univ
-    type(Neutron),  pointer :: neut
-    logical,  intent(inout) :: found
+    type(Universe), pointer :: univ       ! universe to search in
+    type(Particle), pointer :: p          ! pointer to particle
+    logical,  intent(inout) :: found      ! particle found?
 
     character(250) :: msg                 ! error message
     integer        :: i                   ! index over cells
-    type(Cell),     pointer :: this_cell  ! 
-    type(Universe), pointer :: lower_univ
+    type(Cell),     pointer :: c          ! pointer to cell
+    type(Universe), pointer :: lower_univ ! if particle is in lower
+                                          ! universe, use this pointer
+                                          ! to call recursively
 
     found = .false.
 
     ! determine what region in
     do i = 1, univ % n_cells
-       this_cell => cells(univ % cells(i))
+       c => cells(univ % cells(i))
        
-       if (cell_contains(this_cell, neut)) then
-          neut%cell = dict_get_key(cell_dict, this_cell % uid)
+       if (cell_contains(c, p)) then
+          p%cell = dict_get_key(cell_dict, c % uid)
 
           ! If this cell contains a universe of lattice, search for
           ! the particle in that universe/lattice
-          if (this_cell % fill > 0) then
-             lower_univ => universes(this_cell % fill)
-             call find_cell(lower_univ, neut, found)
+          if (c % fill > 0) then
+             lower_univ => universes(c % fill)
+             call find_cell(lower_univ, p, found)
              if (found) then
                 exit
              else
-                msg = "Could not locate neutron in universe: "
+                msg = "Could not locate particle in universe: "
                 call error(msg)
              end if
           else
              ! set current pointers
              found = .true.         
-             cCell => this_cell
+             cCell => c
              cMaterial => materials(cCell%material)
              exit
           end if
@@ -130,12 +134,12 @@ contains
   end subroutine find_cell
 
 !=====================================================================
-! CROSS_BOUNDARY moves a neutron into a new cell
+! CROSS_BOUNDARY moves a particle into a new cell
 !=====================================================================
 
-  subroutine cross_boundary(neut)
+  subroutine cross_boundary(p)
 
-    type(Neutron), pointer :: neut
+    type(Particle), pointer :: p
 
     type(Surface), pointer :: surf
     type(Cell),    pointer :: c
@@ -145,7 +149,7 @@ contains
     logical :: found
     type(Universe), pointer :: lower_univ => null()
 
-    surf => surfaces(abs(neut%surface))
+    surf => surfaces(abs(p%surface))
     if (verbosity >= 10) then
        msg = "    Crossing surface " // trim(int_to_str(surf%uid))
        call message(msg, 10)
@@ -153,7 +157,7 @@ contains
 
     ! check for leakage
     if (surf%bc == BC_VACUUM) then
-       neut%alive = .false.
+       p%alive = .false.
        if (verbosity >= 10) then
           msg = "    Leaked out of surface " // trim(int_to_str(surf%uid))
           call message(msg, 10)
@@ -161,46 +165,46 @@ contains
        return
     end if
 
-    if (neut%surface > 0 .and. allocated(surf%neighbor_pos)) then
+    if (p%surface > 0 .and. allocated(surf%neighbor_pos)) then
        ! If coming from negative side of surface, search all the
        ! neighboring cells on the positive side
        do i = 1, size(surf%neighbor_pos)
           index_cell = surf%neighbor_pos(i)
           c => cells(index_cell)
-          if (cell_contains(c, neut)) then
+          if (cell_contains(c, p)) then
              if (c % fill > 0) then
                 lower_univ => universes(c % fill)
-                call find_cell(lower_univ, neut, found)
+                call find_cell(lower_univ, p, found)
                 if (.not. found) then
-                   msg = "Could not locate neutron in universe: "
+                   msg = "Could not locate particle in universe: "
                    call error(msg)
                 end if
              else
                 ! set current pointers
-                neut%cell = index_cell
+                p%cell = index_cell
                 cCell => c
                 cMaterial => materials(cCell%material)
              end if
              return
           end if
        end do
-    elseif (neut%surface < 0  .and. allocated(surf%neighbor_neg)) then
+    elseif (p%surface < 0  .and. allocated(surf%neighbor_neg)) then
        ! If coming from positive side of surface, search all the
        ! neighboring cells on the negative side
        do i = 1, size(surf%neighbor_neg)
           index_cell = surf%neighbor_neg(i)
           c => cells(index_cell)
-          if (cell_contains(c, neut)) then
+          if (cell_contains(c, p)) then
              if (c % fill > 0) then
                 lower_univ => universes(c % fill)
-                call find_cell(lower_univ, neut, found)
+                call find_cell(lower_univ, p, found)
                 if (.not. found) then
-                   msg = "Could not locate neutron in universe: "
+                   msg = "Could not locate particle in universe: "
                    call error(msg)
                 end if
              else
                 ! set current pointers
-                neut%cell = index_cell
+                p%cell = index_cell
                 cCell => c
                 cMaterial => materials(cCell%material)
              end if
@@ -213,8 +217,8 @@ contains
     ! cells
     do i = 1, size(cells)
        c => cells(i)
-       if (cell_contains(c, neut)) then
-          neut%cell = i
+       if (cell_contains(c, p)) then
+          p%cell = i
           cCell => c
           cMaterial => materials(cCell%material)
           return
@@ -222,7 +226,7 @@ contains
     end do
 
     ! Couldn't find next cell anywhere!
-    msg = "After neutron crossed surface " // trim(int_to_str(neut%surface)) // &
+    msg = "After particle crossed surface " // trim(int_to_str(p%surface)) // &
          & ", it could not be located in any cell and it did not leak."
     call error(msg)
        
@@ -230,14 +234,14 @@ contains
 
 !=====================================================================
 ! DIST_TO_BOUNDARY calculates the distance to the nearest boundary of
-! the cell 'cl' for a particle 'neut' traveling in a certain
+! the cell 'cl' for a particle 'p' traveling in a certain
 ! direction. For a cell in a subuniverse that has a parent cell, also
 ! include the surfaces of the edge of the universe.
 !=====================================================================
 
-  subroutine dist_to_boundary(neut, dist, surf, other_cell)
+  subroutine dist_to_boundary(p, dist, surf, other_cell)
 
-    type(Neutron),     pointer  :: neut
+    type(Particle),    pointer     :: p
     real(8),           intent(out) :: dist
     integer,           intent(out) :: surf
     integer, optional, intent(in)  :: other_cell
@@ -246,7 +250,7 @@ contains
     type(Cell),    pointer :: parent_p => null()
     type(Surface), pointer :: surf_p => null()
     integer :: i
-    integer :: n_boundaries, n1, n2
+    integer :: n_surfaces, n1, n2
     integer, allocatable :: expression(:)
     integer :: index_surf
     integer :: current_surf
@@ -261,36 +265,36 @@ contains
     if (present(other_cell)) then
        cell_p => cells(other_cell)
     else
-       cell_p => cells(neut%cell)
+       cell_p => cells(p%cell)
     end if
 
-    current_surf = neut%surface
+    current_surf = p%surface
 
     ! determine number of surfaces to check
-    n1 = cell_p % n_items
+    n1 = cell_p % n_surfaces
     n2 = 0
     if (cell_p % parent > 0) then
        parent_p => cells(cell_p % parent)
-       n2 = parent_p % n_items
+       n2 = parent_p % n_surfaces
     end if
-    n_boundaries = n1 + n2
+    n_surfaces = n1 + n2
 
     ! allocate space and assign expression
-    allocate(expression(n_boundaries))
-    expression(1:n1) = cell_p%boundary_list
+    allocate(expression(n_surfaces))
+    expression(1:n1) = cell_p % surfaces
     if (cell_p % parent > 0) then
-       expression(n1+1:n1+n2) = parent_p % boundary_list
+       expression(n1+1:n1+n2) = parent_p % surfaces
     end if
 
     ! loop over all surfaces
     dist = INFINITY
-    do i = 1, n_boundaries
-       x = neut%xyz(1)
-       y = neut%xyz(2)
-       z = neut%xyz(3)
-       u = neut%uvw(1)
-       v = neut%uvw(2)
-       w = neut%uvw(3)
+    do i = 1, n_surfaces
+       x = p % xyz(1)
+       y = p % xyz(2)
+       z = p % xyz(3)
+       u = p % uvw(1)
+       v = p % uvw(2)
+       w = p % uvw(3)
 
        ! check for coincident surface
        index_surf = expression(i)
@@ -306,7 +310,7 @@ contains
           if (u == ZERO) then
              d = INFINITY
           else
-             x0 = surf_p%coeffs(1)
+             x0 = surf_p % coeffs(1)
              d = (x0 - x)/u
              if (d < ZERO) d = INFINITY
           end if
@@ -315,7 +319,7 @@ contains
           if (v == ZERO) then
              d = INFINITY
           else
-             y0 = surf_p%coeffs(1)
+             y0 = surf_p % coeffs(1)
              d = (y0 - y)/v
              if (d < ZERO) d = INFINITY
           end if
@@ -324,16 +328,16 @@ contains
           if (w == ZERO) then
              d = INFINITY
           else
-             z0 = surf_p%coeffs(1)
+             z0 = surf_p % coeffs(1)
              d = (z0 - z)/w
              if (d < ZERO) d = INFINITY
           end if
           
        case (SURF_PLANE)
-          A = surf_p%coeffs(1)
-          B = surf_p%coeffs(2)
-          C = surf_p%coeffs(3)
-          D = surf_p%coeffs(4)
+          A = surf_p % coeffs(1)
+          B = surf_p % coeffs(2)
+          C = surf_p % coeffs(3)
+          D = surf_p % coeffs(4)
           
           tmp = A*u + B*v + C*w
           if (tmp == ZERO) then
@@ -348,9 +352,9 @@ contains
           if (a == ZERO) then
              d = INFINITY
           else
-             y0 = surf_p%coeffs(1)
-             z0 = surf_p%coeffs(2)
-             r = surf_p%coeffs(3)
+             y0 = surf_p % coeffs(1)
+             z0 = surf_p % coeffs(2)
+             r = surf_p % coeffs(3)
 
              y = y - y0
              z = z - z0
@@ -383,9 +387,9 @@ contains
           if (a == ZERO) then
              d = INFINITY
           else
-             x0 = surf_p%coeffs(1)
-             z0 = surf_p%coeffs(2)
-             r = surf_p%coeffs(3)
+             x0 = surf_p % coeffs(1)
+             z0 = surf_p % coeffs(2)
+             r = surf_p % coeffs(3)
 
              x = x - x0
              z = z - z0
@@ -418,9 +422,9 @@ contains
           if (a == ZERO) then
              d = INFINITY
           else
-             x0 = surf_p%coeffs(1)
-             y0 = surf_p%coeffs(2)
-             r = surf_p%coeffs(3)
+             x0 = surf_p % coeffs(1)
+             y0 = surf_p % coeffs(2)
+             r = surf_p % coeffs(3)
 
              x = x - x0
              y = y - y0
@@ -454,10 +458,10 @@ contains
           end if
 
        case (SURF_SPHERE)
-          x0 = surf_p%coeffs(1)
-          y0 = surf_p%coeffs(2)
-          z0 = surf_p%coeffs(3)
-          r = surf_p%coeffs(4)
+          x0 = surf_p % coeffs(1)
+          y0 = surf_p % coeffs(2)
+          z0 = surf_p % coeffs(3)
+          r = surf_p % coeffs(4)
 
           x = x - x0
           y = y - y0
@@ -531,56 +535,56 @@ contains
     y = xyz(2)
     z = xyz(3)
 
-    select case (surf%type)
+    select case (surf % type)
     case (SURF_PX)
-       x0 = surf%coeffs(1)
+       x0 = surf % coeffs(1)
        func = x - x0
        
     case (SURF_PY)
-       y0 = surf%coeffs(1)
+       y0 = surf % coeffs(1)
        func = y - y0
        
     case (SURF_PZ)
-       z0 = surf%coeffs(1)
+       z0 = surf % coeffs(1)
        func = z - z0
        
     case (SURF_PLANE)
-       A = surf%coeffs(1)
-       B = surf%coeffs(2)
-       C = surf%coeffs(3)
-       D = surf%coeffs(4)
+       A = surf % coeffs(1)
+       B = surf % coeffs(2)
+       C = surf % coeffs(3)
+       D = surf % coeffs(4)
        func = A*x + B*y + C*z - D
 
     case (SURF_CYL_X)
-       y0 = surf%coeffs(1)
-       z0 = surf%coeffs(2)
-       r = surf%coeffs(3)
+       y0 = surf % coeffs(1)
+       z0 = surf % coeffs(2)
+       r = surf % coeffs(3)
        func = (y-y0)**2 + (z-z0)**2 - r**2
 
     case (SURF_CYL_Y)
-       x0 = surf%coeffs(1)
-       z0 = surf%coeffs(2)
-       r = surf%coeffs(3)
+       x0 = surf % coeffs(1)
+       z0 = surf % coeffs(2)
+       r = surf % coeffs(3)
        func = (x-x0)**2 + (z-z0)**2 - r**2
 
     case (SURF_CYL_Z)
-       x0 = surf%coeffs(1)
-       y0 = surf%coeffs(2)
-       r = surf%coeffs(3)
+       x0 = surf % coeffs(1)
+       y0 = surf % coeffs(2)
+       r = surf % coeffs(3)
        func = (x-x0)**2 + (y-y0)**2 - r**2
 
     case (SURF_SPHERE)
-       x0 = surf%coeffs(1)
-       y0 = surf%coeffs(2)
-       z0 = surf%coeffs(3)
-       r = surf%coeffs(4)
+       x0 = surf % coeffs(1)
+       y0 = surf % coeffs(2)
+       z0 = surf % coeffs(3)
+       r = surf % coeffs(4)
        func = (x-x0)**2 + (y-y0)**2 + (z-z0)**2 - r**2
 
     case (SURF_BOX_X)
-       y0 = surf%coeffs(1)
-       z0 = surf%coeffs(2)
-       y1 = surf%coeffs(3)
-       z1 = surf%coeffs(4)
+       y0 = surf % coeffs(1)
+       z0 = surf % coeffs(2)
+       y1 = surf % coeffs(3)
+       z1 = surf % coeffs(4)
        if (y >= y0 .and. y < y1 .and. z >= z0 .and. z < z1) then
           s = SENSE_NEGATIVE
        else
@@ -589,10 +593,10 @@ contains
        return
 
     case (SURF_BOX_Y)
-       x0 = surf%coeffs(1)
-       z0 = surf%coeffs(2)
-       x1 = surf%coeffs(3)
-       z1 = surf%coeffs(4)
+       x0 = surf % coeffs(1)
+       z0 = surf % coeffs(2)
+       x1 = surf % coeffs(3)
+       z1 = surf % coeffs(4)
        if (x >= x0 .and. x < x1 .and. z >= z0 .and. z < z1) then
           s = SENSE_NEGATIVE
        else
@@ -601,10 +605,10 @@ contains
        return
 
     case (SURF_BOX_Z)
-       x0 = surf%coeffs(1)
-       y0 = surf%coeffs(2)
-       x1 = surf%coeffs(3)
-       y1 = surf%coeffs(4)
+       x0 = surf % coeffs(1)
+       y0 = surf % coeffs(2)
+       x1 = surf % coeffs(3)
+       y1 = surf % coeffs(4)
        if (x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1) then
           s = SENSE_NEGATIVE
        else
@@ -613,12 +617,12 @@ contains
        return
 
     case (SURF_BOX)
-       x0 = surf%coeffs(1)
-       y0 = surf%coeffs(2)
-       z0 = surf%coeffs(3)
-       x1 = surf%coeffs(4)
-       y1 = surf%coeffs(5)
-       z1 = surf%coeffs(6)
+       x0 = surf % coeffs(1)
+       y0 = surf % coeffs(2)
+       z0 = surf % coeffs(3)
+       x1 = surf % coeffs(4)
+       y1 = surf % coeffs(5)
+       z1 = surf % coeffs(6)
        if (x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1 .and. & 
             & z >= z0 .and. z < z1) then
           s = SENSE_NEGATIVE
@@ -672,8 +676,8 @@ contains
        c => cells(i)
 
        ! loop over each surface specification
-       do j = 1, c%n_items
-          index = c%boundary_list(j)
+       do j = 1, c % n_surfaces
+          index = c % surfaces(j)
           positive = (index > 0)
           index = abs(index)
           if (positive) then
@@ -703,8 +707,8 @@ contains
        c => cells(i)
 
        ! loop over each surface specification
-       do j = 1, c%n_items
-          index = c%boundary_list(j)
+       do j = 1, c % n_surfaces
+          index = c % surfaces(j)
           positive = (index > 0)
           index = abs(index)
 

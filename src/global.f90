@@ -56,6 +56,18 @@ module global
   ! Source and fission bank
   type(Particle), allocatable, target :: source_bank(:)
   type(Bank),     allocatable, target :: fission_bank(:)
+  integer :: n_bank      ! # of sites in fission bank
+  integer :: bank_first  ! index of first particle in bank
+  integer :: bank_last   ! index of last particle in bank
+
+  ! cycle keff
+  real(8) :: keff
+
+  ! Parallel processing variables
+  integer :: n_procs     ! number of processes
+  integer :: rank        ! rank of process
+  logical :: master      ! master process?
+  logical :: mpi_enabled ! is MPI in use and initialized?
 
   ! Paths to input file, cross section data, etc
   character(100) :: & 
@@ -72,7 +84,8 @@ module global
        & K_BOLTZMANN  = 8.617342e-5,       & ! Boltzmann constant in eV/K
        & INFINITY     = huge(0.0_8),       & ! positive infinity
        & ZERO         = 0.0_8,             &
-       & ONE          = 1.0_8
+       & ONE          = 1.0_8,             &
+       & TWO          = 2.0_8
 
   ! Boundary conditions
   integer, parameter ::    &
@@ -146,19 +159,28 @@ module global
        & PHOTON   = 2, &
        & ELECTRON = 3
 
+  ! Fission neutron emission (nu) type
+  integer, parameter ::     &
+       & NU_NONE       = 0, & ! No nu values (non-fissionable)
+       & NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
+       & NU_TABULAR    = 2    ! Nu values given by tabular distribution
+
   ! Integer code for read error -- better hope this number is never
   ! used in an input file!
   integer, parameter :: &
        & ERROR_CODE = -huge(0)
 
-  integer :: verbosity = 5
+  ! The verbosity controls how much information will be printed to the
+  ! screen and in logs
+  integer :: verbosity
+
   integer, parameter :: max_words = 500
   integer, parameter :: max_line  = 250
 
   ! Versioning numbers
   integer, parameter :: VERSION_MAJOR = 0
   integer, parameter :: VERSION_MINOR = 2
-  integer, parameter :: VERSION_RELEASE = 0
+  integer, parameter :: VERSION_RELEASE = 1
 
 contains
 
@@ -174,6 +196,9 @@ contains
     ! Default number of particles
     n_particles = 10000
 
+    ! Default verbosity
+    verbosity = 5
+
   end subroutine set_defaults
 
 !=====================================================================
@@ -182,6 +207,8 @@ contains
 !=====================================================================
 
   subroutine free_memory()
+
+    integer :: ierr
 
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)
@@ -194,6 +221,9 @@ contains
     ! Deallocate fission and source bank
     if (allocated(fission_bank)) deallocate(fission_bank)
     if (allocated(source_bank)) deallocate(source_bank)
+
+    ! If MPI is in use and enabled, terminate it
+    call MPI_FINALIZE(ierr)
 
     ! End program
     stop

@@ -38,7 +38,7 @@ contains
     integer :: n
     integer :: index_continuous
     integer :: index_thermal
-    type(DictionaryCI),   pointer :: temp_dict
+    type(DictionaryCI),   pointer :: temp_dict => null()
 
     call dict_create(ace_dict)
 
@@ -206,8 +206,9 @@ contains
 
     end do
 
-    call parse_ESZ(table)
-    call parse_MTR(table)
+    call read_esz(table)
+    call read_nu_data(table)
+    call read_reactions(table)
     call read_angular_dist(table)
     call read_energy_dist(table)
 
@@ -220,14 +221,14 @@ contains
   end subroutine read_ACE_continuous
 
 !=====================================================================
-! PARSE_ESZ - reads through the ESZ block. This block contains the
+! READ_ESZ - reads through the ESZ block. This block contains the
 ! energy grid, total xs, absorption xs, elastic scattering xs, and
 ! heating numbers.
 !=====================================================================
 
-  subroutine parse_ESZ(table)
+  subroutine read_esz(table)
 
-    type(AceContinuous), pointer, intent(inout) :: table
+    type(AceContinuous), pointer :: table
 
     integer :: NE
 
@@ -254,19 +255,170 @@ contains
     table%sigma_el = get_real(NE)
     table%heating = get_real(NE)
     
-  end subroutine parse_ESZ
+  end subroutine read_esz
 
 !=====================================================================
-! PARSE_MTR - Get the list of reaction MTs for this cross-section
-! table. The MT values are somewhat arbitrary. Also read in Q-values,
-! neutron multiplicities, and cross-sections.
-! =====================================================================
+! READ_NU_DATA reads data given on the number of neutrons emitted from
+! fission as a function of the incoming energy of a neutron. This data
+! may be broken down into prompt and delayed neutrons emitted as well.
+!=====================================================================
 
-  subroutine parse_MTR(table)
+  subroutine read_nu_data(table)
 
     type(AceContinuous), pointer :: table
 
-    type(AceReaction), pointer :: rxn
+    integer :: JXS2
+    integer :: KNU    ! Location for nu data
+    integer :: LNU    ! Type of nu data (polynomial or tabular)
+    integer :: NC     ! Number of polynomial coefficients
+    integer :: NR     ! Number of interpolation regions
+    integer :: NE     ! Number of energies 
+    integer :: length   ! Length of data block to allocate
+
+    integer :: JXS24
+    integer :: DEC1
+    integer :: DEC2
+
+    JXS2 = JXS(2)
+    JXS24 = JXS(24)
+
+    if (JXS2 == 0) then
+       ! =============================================================
+       ! No prompt/total nu data is present
+       table % nu_t_type = NU_NONE
+       table % nu_p_type = NU_NONE
+
+    elseif (XSS(JXS2) > 0) then
+       ! =============================================================
+       ! Prompt or total nu data is present
+       KNU = JXS2
+       LNU = int(XSS(KNU))
+       if (LNU == 1) then
+          ! Polynomial data
+          table % nu_t_type = NU_POLYNOMIAL
+          table % nu_p_type = NU_NONE
+
+          ! allocate determine how many coefficients for polynomial
+          NC = int(XSS(KNU+1))
+          length = NC + 1
+       elseif (LNU == 2) then
+          ! Tabular data
+          table % nu_t_type = NU_TABULAR
+          table % nu_p_type = NU_NONE
+
+          ! determine number of interpolation regions and number of
+          ! energies
+          NR = int(XSS(KNU+1))
+          NE = int(XSS(KNU+2+2*NR))
+          length = 2 + 2*NR + 2*NE
+       end if
+
+       ! allocate space for nu data storage
+       allocate(table % nu_t_data(length))
+
+       ! read data -- for polynomial, this is the number of
+       ! coefficients and the coefficients themselves, and for
+       ! tabular, this is interpolation data and tabular E/nu
+       XSS_index = KNU + 1
+       table % nu_t_data = get_real(length)
+
+    elseif (XSS(JXS2) < 0) then
+       ! =============================================================
+       ! Prompt and total nu data is present -- read prompt data first
+       KNU = JXS2 + 1
+       LNU = XSS(KNU)
+       if (LNU == 1) then
+          ! Polynomial data
+          table % nu_p_type = NU_POLYNOMIAL
+
+          ! allocate determine how many coefficients for polynomial
+          NC = XSS(KNU+1)
+          length = NC + 1
+       elseif (LNU == 2) then
+          ! Tabular data
+          table % nu_p_type = NU_TABULAR
+
+          ! determine number of interpolation regions and number of
+          ! energies
+          NR = XSS(KNU+1)
+          NE = XSS(KNU+2+2*NR)
+          length = 2 + 2*NR + 2*NE
+       end if
+
+       ! allocate space for nu data storage
+       allocate(table % nu_p_data(length))
+
+       ! read data
+       XSS_index = KNU + 1
+       table % nu_p_data = get_real(length)
+
+       ! Now read total nu data
+       KNU = JXS2 + abs(XSS(JXS2)) + 1
+       LNU = XSS(KNU)
+       if (LNU == 1) then
+          ! Polynomial data
+          table % nu_t_type = NU_POLYNOMIAL
+
+          ! allocate determine how many coefficients for polynomial
+          NC = int(XSS(KNU+1))
+          length = NC + 1
+       elseif (LNU == 2) then
+          ! Tabular data
+          table % nu_t_type = NU_TABULAR
+
+          ! determine number of interpolation regions and number of
+          ! energies
+          NR = int(XSS(KNU+1))
+          NE = int(XSS(KNU+2+2*NR))
+          length = 2 + 2*NR + 2*NE
+       end if
+
+       ! allocate space for nu data storage
+       allocate(table % nu_t_data(length))
+
+       ! read data
+       XSS_index = KNU + 1
+       table % nu_t_data = get_real(length)
+    end if
+
+    if (JXS24 > 0) then
+       ! =============================================================
+       ! Delayed nu data is present
+
+       table % nu_d_type = NU_TABULAR
+       KNU = JXS24
+
+       ! determine size of tabular delayed nu data
+       NR = int(XSS(KNU+1))
+       NE = int(XSS(KNU+2+2*NR))
+       length = 2 + 2*NR + 2*NE
+
+       ! allocate space for delayed nu data
+       allocate(table % nu_d_data(length))
+       
+       ! read delayed nu data
+       XSS_index = KNU + 1
+       table % nu_d_data = get_real(length)
+
+       ! TODO: Read secondary energy distribution
+       ! TODO: Read precursor data
+    else
+       table % nu_d_type = NU_NONE
+    end if
+
+  end subroutine read_nu_data
+
+!=====================================================================
+! READ_REACTIONS - Get the list of reaction MTs for this cross-section
+! table. The MT values are somewhat arbitrary. Also read in Q-values,
+! neutron multiplicities, and cross-sections.
+!=====================================================================
+
+  subroutine read_reactions(table)
+
+    type(AceContinuous), pointer :: table
+
+    type(AceReaction), pointer :: rxn => null()
     integer :: LMT   ! index of MT list in XSS
     integer :: NMT   ! Number of reactions
     integer :: JXS4  ! index of Q values in XSS
@@ -291,7 +443,7 @@ contains
     ! Store elastic scattering cross-section on reaction one
     rxn => table%reactions(1)
     rxn%MT      = 2
-    rxn%Q_value = 0.0_8
+    rxn%Q_value = ZERO
     rxn%TY      = 1
     rxn%IE      = 1
     allocate(rxn%sigma(table%n_grid))
@@ -318,7 +470,7 @@ contains
        rxn % has_energy_dist = .false.
     end do
 
-  end subroutine parse_MTR
+  end subroutine read_reactions
 
 !=====================================================================
 ! READ_ANGULAR_DIST parses the angular distribution for each reaction
@@ -328,7 +480,7 @@ contains
 
     type(AceContinuous), pointer :: table
 
-    type(AceReaction), pointer :: rxn
+    type(AceReaction), pointer :: rxn => null()
     integer :: JXS8
     integer :: JXS9
     integer :: NMT
@@ -337,7 +489,7 @@ contains
     integer :: NP
     integer :: LC
     integer :: i, j
-    integer :: size
+    integer :: length
 
     JXS8 = JXS(8)
     JXS9 = JXS(9)
@@ -363,49 +515,49 @@ contains
 
        ! allocate space for incoming energies and locations
        NE = XSS(JXS9 + LOCB - 1)
-       rxn % adist_n_energy = NE
-       allocate(rxn % adist_energy(NE))
-       allocate(rxn % adist_type(NE))
-       allocate(rxn % adist_location(NE))
+       rxn % adist % n_energy = NE
+       allocate(rxn % adist % energy(NE))
+       allocate(rxn % adist % type(NE))
+       allocate(rxn % adist % location(NE))
 
        ! read incoming energy grid and location of tables
        XSS_index = JXS9 + LOCB
-       rxn % adist_energy   = get_real(NE)
-       rxn % adist_location = get_int(NE)
+       rxn % adist % energy   = get_real(NE)
+       rxn % adist % location = get_int(NE)
 
        ! determine dize of data block
-       size = 0
+       length = 0
        do j = 1, NE
-          LC = rxn % adist_location(j)
+          LC = rxn % adist % location(j)
           if (LC == 0) then
              ! isotropic
-             rxn % adist_type(j) = ANGLE_ISOTROPIC
+             rxn % adist % type(j) = ANGLE_ISOTROPIC
           elseif (LC > 0) then
              ! 32 equiprobable bins
-             rxn % adist_type(j) = ANGLE_32_EQUI
-             size = size + 33
+             rxn % adist % type(j) = ANGLE_32_EQUI
+             length = length + 33
           elseif (LC < 0) then
              ! tabular distribution
-             rxn % adist_type(j) = ANGLE_TABULAR
+             rxn % adist % type(j) = ANGLE_TABULAR
              NP = XSS(JXS9 + abs(LC))
-             size = size + 2 + 3*NP
+             length = length + 2 + 3*NP
           end if
        end do
        
        ! allocate angular distribution data and read
-       allocate(rxn % adist_data(size))
+       allocate(rxn % adist % data(length))
 
        ! read angular distribution -- currently this does not actually
        ! parse the angular distribution tables for each incoming
        ! energy, that must be done on-the-fly
-       LC = rxn % adist_location(1)
+       LC = rxn % adist % location(1)
        XSS_index = JXS9 + abs(LC) - 1
-       rxn % adist_data = get_real(size)
+       rxn % adist % data = get_real(length)
 
        ! change location pointers since they are currently relative to
        ! JXS(9)
-       LC = abs(rxn % adist_location(1))
-       rxn % adist_location = abs(rxn % adist_location) - LC + 1
+       LC = abs(rxn % adist % location(1))
+       rxn % adist % location = abs(rxn % adist % location) - LC
 
     end do
 
@@ -419,7 +571,7 @@ contains
 
     type(AceContinuous), pointer :: table
 
-    type(AceReaction), pointer :: rxn
+    type(AceReaction), pointer :: rxn => null()
     integer :: LOCC
     integer :: LED   ! location of LDLW block
     integer :: LDIS  ! location of DLW block
@@ -431,7 +583,7 @@ contains
     integer :: NP2
     integer :: NRa, NEa, NRb, NEb
     integer :: IDAT
-    integer :: start, size, size_interp_data
+    integer :: start, length, length_interp_data
     integer :: i, j, k
 
     LED = JXS(10)
@@ -440,6 +592,7 @@ contains
     ! Loop over all reactions 
     do i = 1, NXS(5)
        rxn => table % reactions(i+1) ! skip over elastic scattering
+       rxn % has_energy_dist = .true.
 
        ! find location of energy distribution data
        LOCC = XSS(LED + i - 1)
@@ -448,80 +601,87 @@ contains
        LAW  = XSS(LDIS + LOCC)
        IDAT = XSS(LDIS + LOCC + 1)
        NR   = XSS(LDIS + LOCC + 2)
+       rxn % edist % law = LAW
 
        ! allocate space for ENDF interpolation parameters
        if (NR > 0) then
-          allocate(rxn % edist_nbt(NR))
-          allocate(rxn % edist_int(NR))
+          allocate(rxn % edist % nbt(NR))
+          allocate(rxn % edist % int(NR))
        end if
        
        ! read ENDF interpolation parameters
        XSS_index = LDIS + LOCC + 3
-       rxn % edist_nbt = get_real(NR)
-       rxn % edist_int = get_real(NR)
+       rxn % edist % nbt = get_real(NR)
+       rxn % edist % int = get_real(NR)
 
        ! allocate space for law validity data
        NE = XSS(LDIS + LOCC + 3 + 2*NR)
-       allocate(rxn % edist_energy(NE))
-       allocate(rxn % edist_pvalid(NE))
+       allocate(rxn % edist % energy(NE))
+       allocate(rxn % edist % pvalid(NE))
        
-       size_interp_data = 5 + 2*(NR + NE)
+       length_interp_data = 5 + 2*(NR + NE)
        
        ! read law validity data
        XSS_index = LDIS + LOCC + 4 + 2*NR
-       rxn % edist_energy = get_real(NE)
-       rxn % edist_pvalid = get_real(NE)
+       rxn % edist % energy = get_real(NE)
+       rxn % edist % pvalid = get_real(NE)
 
        ! Set index to beginning of IDAT array
        start = LDIS + IDAT - 2
 
        ! Determine size of LDAT array based on which secondary energy
        ! law it is
-       size = 0
+       length = 0
        select case (LAW)
        case (1)
           ! Tabular equiprobable energy bins
           NR = XSS(start + 1)
           NE = XSS(start + 2 + 2*NR)
           NET = XSS(start + 3 + 2*NR + NE)
-          size = 3 + 2*NR + NE + 3*NET*NE
+          length = 3 + 2*NR + NE + 3*NET*NE
 
        case (2)
           ! Discrete photon energy
-          size = 2
+          length = 2
           
        case (3)
           ! Level scattering
-          size = 2
+          length = 2
          
        case (4)
           ! Continuous tabular distribution
           NR = XSS(start + 1)
           NE = XSS(start + 2 + 2*NR)
-          size = size + 2 + 2*NR + 2*NE
+          length = length + 2 + 2*NR + 2*NE
           do j = 1,NE
-             NP = XSS(start + size + 2)
-             size = size + 2 + 3*NP
+             ! determine length
+             NP = XSS(start + length + 2)
+             length = length + 2 + 3*NP
+
+             ! adjust location for this block
+             k = start + 2 + 2*NR + NE + j
+             XSS(k) = XSS(k) - LOCC - length_interp_data
           end do
+          k = start + 2 + 2*NR + NE
 
        case (5)
           ! General evaporation spectrum
           NR = XSS(start + 1)
           NE = XSS(start + 2 + 2*NR)
           NET = XSS(start + 3 + 2*NR + 2*NE)
-          size = 3 + 2*NR + 2*NE + NET
+          length = 3 + 2*NR + 2*NE + NET
           
        case (7)
           ! Maxwell fission spectrum
           NR = XSS(start + 1)
           NE = XSS(start + 2 + 2*NR)
-          size = 3 + 2*NR + 2*NE
+          length = 3 + 2*NR + 2*NE
 
        case (9)
           ! Evaporation spectrum
           NR = XSS(start + 1)
           NE = XSS(start + 2 + 2*NR)
-          size = 3 + 2*NR + 2*NE
+          length = 3 + 2*NR + 2*NE
 
        case (11)
           ! Watt spectrum
@@ -529,53 +689,57 @@ contains
           NEa = XSS(start + 2 + 2*NRa)
           NRb = XSS(start + 3 + 2*(NRa+NEa))
           NEb = XSS(start + 4 + 2*(NRa+NEa+NRb))
-          size = 5 + 2*(NRa + NEa + NRb + NEb)
+          length = 5 + 2*(NRa + NEa + NRb + NEb)
 
        case (44)
           ! Kalbach-Mann correlated scattering
           NR = XSS(start + 1)
           NE = XSS(start + 2 + 2*NR)
-          size = size + 2 + 2*NR + 2*NE
+          length = length + 2 + 2*NR + 2*NE
           do j = 1,NE
-             NP = XSS(start + size + 2)
-             size = size + 2 + 5*NP
+             NP = XSS(start + length + 2)
+             length = length + 2 + 5*NP
+
+             ! adjust location for this block
+             k = start + 2 + 2*NR + NE + j
+             XSS(k) = XSS(k) - LOCC - length_interp_data
           end do
 
        case (61)
           ! Correlated energy and angle distribution
           NR = XSS(start + 1)
           NE = XSS(start + 2 + 2*NR)
-          size = size + 2 + 2*NR + 2*NE
+          length = length + 2 + 2*NR + 2*NE
           do j = 1,NE
              ! outgoing energy distribution
-             NP = XSS(start + size + 2)
-             size = size + 2 + 4*NP
+             NP = XSS(start + length + 2)
+             length = length + 2 + 4*NP
              do k = 1, NP
                 ! outgoing angle distribution
-                NP2 = XSS(start + size + 2)
-                size = size + 2 + 3*NP2
+                NP2 = XSS(start + length + 2)
+                length = length + 2 + 3*NP2
              end do
           end do
 
        case (66)
           ! N-body phase space distribution
-          size = 2
+          length = 2
 
        case (67)
           ! Laboratory energy-angle law
           NR = XSS(start + 1)
           NE = XSS(start + 2 + 2*NR)
           NMU = XSS(start + 4 + 2*NR + 2*NE)
-          size = 4 + 2*(NR + NE + NMU)
+          length = 4 + 2*(NR + NE + NMU)
           
        end select
 
        ! allocate secondary energy distribution array
-       allocate(rxn % edist_data(size))
+       allocate(rxn % edist % data(length))
 
        ! read secondary energy distribution
        XSS_index = start + 1
-       rxn % edist_data = get_real(size)
+       rxn % edist % data = get_real(length)
 
     end do
 

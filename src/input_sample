@@ -20,4 +20,5 @@ source box -4 -4 -4  4 4 4
 
 xs_library endfb7
 xs_data /opt/serpent/xsdata/endfb7
-criticality 1 1 15
+criticality 1 1 100
+verbosity 8

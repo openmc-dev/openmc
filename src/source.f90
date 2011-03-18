@@ -20,6 +20,7 @@ contains
     real(8) :: phi ! azimuthal angle
     real(8) :: mu  ! cosine of polar angle
     real(8) :: p_min(3), p_max(3)
+    type(Particle), pointer :: p => null()
 
     ! Allocate fission and source banks
     allocate( source_bank(n_particles)    )
@@ -34,24 +35,28 @@ contains
     ! Initialize first cycle source bank
     do i = 1, n_particles
        call RN_init_particle(int(i,8))
+       p => source_bank(i)
 
        ! position
        r = (/ (rang(), j = 1,3) /)
-       source_bank(i)%uid = i
-       source_bank(i)%xyz = p_min + r*(p_max - p_min)
+       p % uid = i
+       p % xyz = p_min + r*(p_max - p_min)
 
        ! angle
-       phi = 2.0_8*PI*rang()
-       mu = 2.0_8*rang() - 1.0_8
-       source_bank(i)%uvw(1) = mu
-       source_bank(i)%uvw(2) = sqrt(1. - mu**2) * cos(phi)
-       source_bank(i)%uvw(3) = sqrt(1. - mu**2) * sin(phi)
+       phi = TWO*PI*rang()
+       mu = TWO*rang() - ONE
+       p % uvw(1) = mu
+       p % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+       p % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
-       ! cell
-       source_bank(i)%cell = 0
+       ! set defaults
+       p % type = NEUTRON
+       p % cell = 0
+       p % surface = 0
+       p % universe = 0
+       p % wgt = ONE
+       p % alive = .true.
 
-       ! set particle to be alive
-       source_bank(i)%alive = .true.
     end do
 
     ! Reset source index
@@ -80,5 +85,29 @@ contains
     get_source_particle => source_bank(source_index)
 
   end function get_source_particle
+
+!=====================================================================
+! ADD_BANK_SITES
+!=====================================================================
+
+  subroutine add_bank_sites(p, table, n)
+
+    type(Particle),      pointer    :: p
+    type(AceContinuous), pointer    :: table
+    integer,             intent(in) :: n
+
+    integer :: i
+
+    if (n == 0 .or. n_bank == 3*n_particles) return
+    do i = n_bank + 1, min(n_bank + n, 3*n_particles)
+      ! Copy particle data
+      fission_bank(i)%uid = p%uid
+      fission_bank(i)%xyz = p%xyz
+
+      ! TODO: Sample angle and energy from secondary distribution
+    end do
+    n_bank = min(n_bank + n, 3*n_particles)
+
+  end subroutine add_bank_sites
 
 end module source

@@ -271,6 +271,13 @@ contains
        case ('xs_data')
           path_xsdata = words(2)
 
+       case ('verbosity')
+          verbosity = str_to_int(words(2))
+          if (verbosity == ERROR_CODE) then
+             msg = "Invalid verbosity: " // words(2)
+             call error(msg)
+          end if
+
        case default
           ! do nothing
        end select

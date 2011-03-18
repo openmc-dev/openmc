@@ -12,6 +12,7 @@ program main
   use cross_section, only: read_xsdata, material_total_xs
   use ace,           only: read_xs
   use energy_grid,   only: unionized_grid, original_indices
+  use mpi_routines
 
   implicit none
 
@@ -19,12 +20,16 @@ program main
   character(250) :: msg
   type(Universe), pointer :: univ
 
-  ! Print the OpenMC title and version/date/time information
-  call title()
-  verbosity = 10
+  ! Setup MPI
+  call setup_mpi()
 
-  ! Initialize random number generator
-  call RN_init_problem( 3, 0_8, 0_8, 0_8, 0 )
+  ! Print the OpenMC title and version/date/time information
+  if (master) call title()
+
+  ! Initialize random number generator. The first argument corresponds
+  ! to which random number generator to use- in this case one of the
+  ! L'Ecuyer 63-bit RNGs.
+  call RN_init_problem(3, 0_8, 0_8, 0_8, 0)
 
   ! Set default values for settings
   call set_defaults()
@@ -65,8 +70,10 @@ program main
   ! calculate total material cross-sections for sampling path lenghts
   call material_total_xs()
 
-  call echo_input()
-  call print_summary()
+  if (master) then
+     ! call echo_input()
+     ! call print_summary()
+  end if
 
   ! create source particles
   call init_source()
@@ -95,6 +102,7 @@ contains
     CYCLE_LOOP: do i_cycle = 1, n_cycles
        
        ! Set all tallies to zero
+       n_bank = 0
 
        HISTORY_LOOP: do j = 1, n_particles
 
@@ -115,6 +123,7 @@ contains
        end do HISTORY_LOOP
 
        ! Collect results and statistics
+       print *, n_bank
 
        ! print cycle information
 

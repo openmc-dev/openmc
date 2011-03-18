@@ -4,8 +4,12 @@ module output
   use global
   use types, only: Cell, Universe, Surface
   use data_structures, only: dict_get_key
+  use endf, only: reaction_name
 
   implicit none
+
+  integer :: ou = OUTPUT_UNIT
+  integer :: eu = ERROR_UNIT
 
   contains
 
@@ -19,9 +23,6 @@ module output
 
       character(10) :: date
       character(8)  :: time
-      integer       :: ou
-
-      ou = OUTPUT_UNIT
 
       write(ou,*)
       write(ou,*) ' .d88888b.                             888b     d888  .d8888b. '
@@ -61,9 +62,6 @@ module output
     subroutine echo_input()
 
       character(32) :: string
-      integer :: ou
-
-      ou = OUTPUT_UNIT
 
       ! Display problem summary
       write(ou,*) '============================================='
@@ -104,18 +102,17 @@ module output
       character(*), intent(in) :: msg
       integer, intent(in) :: level
 
-      integer :: ou
       integer :: n_lines
       integer :: i
 
+      ! Only allow master to print to screen
+      if (.not. master) return
+
       if ( level <= verbosity ) then
-         ou = OUTPUT_UNIT
-         
          n_lines = (len_trim(msg)-1)/79 + 1
          do i = 1, n_lines
             write(ou, fmt='(1X,A79)') msg(79*(i-1)+1:79*i)
          end do
-
       end if
 
     end subroutine message
@@ -130,9 +127,10 @@ module output
       character(*), intent(in) :: msg
 
       integer :: n_lines
-      integer :: i, ou
+      integer :: i
 
-      ou = OUTPUT_UNIT
+      ! Only allow master to print to screen
+      if (.not. master) return
 
       write(ou, fmt='(1X,A9)', advance='no') 'WARNING: '
 
@@ -158,9 +156,10 @@ module output
       character(*), intent(in) :: msg
 
       integer :: n_lines
-      integer :: i, eu
+      integer :: i
 
-      eu = ERROR_UNIT
+      ! Only allow master to print to screen
+      if (.not. master) return
 
       write(eu, fmt='(1X,A7)', advance='no') 'ERROR: '
 
@@ -183,7 +182,7 @@ module output
 ! execution and returns it in a readable format
 !=====================================================================
 
-    subroutine get_today( today_date, today_time )
+    subroutine get_today(today_date, today_time)
 
       character(10), intent(out) :: today_date
       character(8),  intent(out) :: today_time
@@ -221,6 +220,91 @@ module output
     end subroutine get_today
 
 !=====================================================================
+! PRINT_PARTICLE displays the attributes of a particle
+!=====================================================================
+
+    subroutine print_particle(p)
+
+      type(Particle), pointer :: p
+
+      integer :: i
+      type(Cell),     pointer :: c => null()
+      type(Surface),  pointer :: s => null()
+      type(Universe), pointer :: u => null()
+      character(250) :: string
+
+      select case (p % type)
+      case (NEUTRON)
+         write(ou,*) 'Neutron ' // int_to_str(p % uid)
+      case (PHOTON)
+         write(ou,*) 'Photon ' // int_to_str(p % uid)
+      case (ELECTRON)
+         write(ou,*) 'Electron ' // int_to_str(p % uid)
+      case default
+         write(ou,*) 'Unknown Particle ' // int_to_str(p % uid)
+      end select
+      write(ou,100) 'x = ', p % xyz(1)
+      write(ou,100) 'y = ', p % xyz(2)
+      write(ou,100) 'z = ', p % xyz(3)
+      write(ou,100) 'u = ', p % uvw(1)
+      write(ou,100) 'v = ', p % uvw(2)
+      write(ou,100) 'w = ', p % uvw(3)
+      write(ou,100) 'Weight = ', p % wgt
+      write(ou,100) 'Energy = ', p % E
+      write(ou,*) '    IE = ' // int_to_str(p % IE)
+      write(ou,100) 'Interpolation factor = ', p % interp
+      
+      if (p % cell > 0) then
+         c => cells(p % cell)
+         write(ou,*) '    Cell = ' // int_to_str(c % uid)
+      else
+         write(ou,*) '    Cell not determined'
+      end if
+
+      if (p % surface > 0) then
+         s => surfaces(p % surface)
+         write(ou,*) '    Surface = ' // int_to_str(s % uid)
+      else
+         write(ou,*) '    Surface = None'
+      end if
+
+      u => universes(p % universe)
+      write(ou,*) '    Universe = ' // int_to_str(u % uid)
+      write(ou,*)
+
+      ! Format for a single real
+      100 format (5X,A,G10.3)
+
+      nullify(c)
+      nullify(s)
+      nullify(u)
+
+    end subroutine print_particle
+
+!=====================================================================
+! PRINT_REACTION displays the attributes of a reaction
+!=====================================================================
+
+    subroutine print_reaction(rxn)
+
+      type(AceReaction), pointer :: rxn
+
+      write(ou,*) 'Reaction ' // reaction_name(rxn % MT)
+      write(ou,*) '    MT = ' // int_to_str(rxn % MT)
+      write(ou,100) 'Q-value = ', rxn % Q_value
+      write(ou,*) '    TY = ' // int_to_str(rxn % TY)
+      write(ou,*) '    Starting index = ' // int_to_str(rxn % IE)
+      if (rxn % has_energy_dist) then
+         write(ou,*) '    Energy: Law ' // int_to_str(rxn % edist % law)
+      end if
+      write(ou,*)
+
+      ! Format for a single real
+      100 format (5X,A,G10.3)
+
+    end subroutine print_reaction
+
+!=====================================================================
 ! PRINT_CELL displays the attributes of a cell
 !=====================================================================
 
@@ -228,14 +312,11 @@ module output
 
       type(Cell), pointer :: c
 
-      integer :: ou
       integer :: temp
       integer :: i
       type(Universe), pointer :: u => null()
       type(Material), pointer :: m => null()
       character(250) :: string
-
-      ou = OUTPUT_UNIT
 
       write(ou,*) 'Cell ' // int_to_str(c % uid)
       temp = dict_get_key(cell_dict, c % uid)
@@ -287,12 +368,9 @@ module output
 
       type(Universe), pointer :: univ
 
-      integer :: ou
       integer :: i
       character(250) :: string
-      type(Cell), pointer :: c
-
-      ou = OUTPUT_UNIT
+      type(Cell), pointer :: c => null()
 
       write(ou,*) 'Universe ' // int_to_str(univ % uid)
       write(ou,*) '    Level = ' // int_to_str(univ % level)
@@ -304,6 +382,8 @@ module output
       write(ou,*) '    Cells =' // trim(string)
       write(ou,*)
 
+      nullify(c)
+
     end subroutine print_universe
 
 !=====================================================================
@@ -314,11 +394,8 @@ module output
 
       type(Surface), pointer :: surf
 
-      integer :: ou
       integer :: i
       character(80) :: string
-
-      ou = OUTPUT_UNIT
 
       write(ou,*) 'Surface ' // int_to_str(surf % uid)
       select case (surf % type)
@@ -354,7 +431,7 @@ module output
             string = trim(string) // ' ' // int_to_str(surf % neighbor_pos(i))
          end do
       end if
-      write(ou,*) '    Positive Neighbors = ', string
+      write(ou,*) '    Positive Neighbors = ', trim(string)
 
       string = ""
       if (allocated(surf % neighbor_neg)) then
@@ -362,7 +439,7 @@ module output
             string = trim(string) // ' ' // int_to_str(surf % neighbor_neg(i))
          end do
       end if
-      write(ou,*) '    Negative Neighbors =', string
+      write(ou,*) '    Negative Neighbors =', trim(string)
 
     end subroutine print_surface
 
@@ -374,13 +451,10 @@ module output
 
       type(Material), pointer :: mat
 
-      integer :: ou
       integer :: i
       integer :: n_lines
       type(AceContinuous), pointer :: table
       character(250) :: string
-
-      ou = OUTPUT_UNIT
 
       write(ou,*) 'Material ' // int_to_str(mat % uid)
       ! Make string of all isotopes
@@ -403,6 +477,8 @@ module output
            & ' atom/b-cm'
       write(ou,*)
 
+      nullify(table)
+
     end subroutine print_material
 
 !=====================================================================
@@ -418,9 +494,6 @@ module output
       type(Universe), pointer :: u
       type(Material), pointer :: m
       integer :: i
-      integer :: ou
-
-      ou = OUTPUT_UNIT
 
       ! print summary of cells
       write(ou,*) '============================================='
@@ -461,6 +534,11 @@ module output
          m => materials(i)
          call print_material(m)
       end do
+
+      nullify(s)
+      nullify(c)
+      nullify(u)
+      nullify(m)
 
     end subroutine print_summary
 

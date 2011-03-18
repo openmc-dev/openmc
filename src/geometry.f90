@@ -107,8 +107,6 @@ contains
        c => cells(univ % cells(i))
        
        if (cell_contains(c, p)) then
-          p%cell = dict_get_key(cell_dict, c % uid)
-
           ! If this cell contains a universe of lattice, search for
           ! the particle in that universe/lattice
           if (c % fill > 0) then
@@ -125,6 +123,11 @@ contains
              found = .true.         
              cCell => c
              cMaterial => materials(cCell%material)
+             cUniverse => univ
+             
+             ! set particle attributes
+             p%cell = dict_get_key(cell_dict, c % uid)
+             p%universe = dict_get_key(universe_dict, univ % uid)
              exit
           end if
        end if

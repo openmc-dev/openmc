@@ -11,6 +11,7 @@ modules = 	ace.f90 \
 		geometry.f90 \
 		global.f90 \
 		mcnp_random.f90 \
+		mpi_routines.f90 \
 		output.f90 \
 		physics.f90 \
 		search.f90 \
@@ -23,20 +24,24 @@ test_objects = $(modules:.f90=.o) $(test:.f90=.o)
 
 #--------------------------------------------------------------------
 # Compiler Options
-F90 = gfortran
-F90FLAGS = -g
+F90 = ifort
+F90FLAGS = -g -fpp
+MPI = /opt/mpich2/1.3.3-gcc
+MPIF90 = $(MPI)/bin/mpif90
+MPI_COMPILE_FLAGS = $(shell mpif90 -f90='' -compile_info)
+MPI_LINK_FLAGS = $(shell mpif90 -f90='' -link_info)
 
 #--------------------------------------------------------------------
 # Targets
 all:	$(program)
 $(program): $(main_objects)
-	$(F90) $(F90FLAGS) $(main_objects) -o $@
+	$(MPIF90) -f90=$(F90) $(MPI_LINK_FLAGS) $(F90FLAGS) $(main_objects) -o $@
 clean:
 	@rm -f *.o *.mod $(program)
 neat:
 	@rm -f *.o *.mod
 unittest: $(test_objects)
-	$(F90) $(F90FLAGS) $(test_objects) -o $@
+	$(F90) $(F90FLAGS) $(MPI_COMPILE_FLAGS) $(test_objects) -o $@
 
 #--------------------------------------------------------------------
 # Rules & misc
@@ -59,7 +64,8 @@ global.o: types.o
 main.o: global.o fileio.o output.o geometry.o mcnp_random.o \
 		source.o physics.o cross_section.o data_structures.o \
 		ace.o energy_grid.o
-output.o: global.o types.o data_structures.o
+mpi_routines.o: global.o output.o types.o
+output.o: global.o types.o data_structures.o endf.o
 physics.o: types.o global.o mcnp_random.o geometry.o output.o \
 		search.o endf.o
 search.o: output.o

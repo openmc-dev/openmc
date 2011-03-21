@@ -584,7 +584,7 @@ contains
     integer :: NRa, NEa, NRb, NEb
     integer :: IDAT
     integer :: start, length, length_interp_data
-    integer :: i, j, k
+    integer :: i, j, k, l
 
     LED = JXS(10)
     LDIS = JXS(11)
@@ -713,12 +713,23 @@ contains
           do j = 1,NE
              ! outgoing energy distribution
              NP = XSS(start + length + 2)
+
+             ! adjust locators for angular distribution
+             do k = 1, NP
+                l = start + length + 2 + 3*NP + k
+                if (XSS(l) /= 0) XSS(l) = XSS(l) - LOCC - length_interp_data
+             end do
+
              length = length + 2 + 4*NP
              do k = 1, NP
                 ! outgoing angle distribution
                 NP2 = XSS(start + length + 2)
                 length = length + 2 + 3*NP2
              end do
+
+             ! adjust locators for energy distribution
+             k = start + 2 + 2*NR + NE + j
+             XSS(k) = XSS(k) - LOCC - length_interp_data
           end do
 
        case (66)

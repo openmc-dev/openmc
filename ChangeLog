@@ -1,3 +1,55 @@
+2011-03-21 Paul Romano <romano7@mit.edu>
+
+	* ace.f90: Adjusted locators energy and angle distributions for
+	Law 61.
+	* global.f90: Added 'work' variable.
+	* main.f90: History loop is generalized. Added call to
+	synchronize_bank.
+	* mpi_routines.f90: Added fission bank synchronization from prior
+	code. Introduced MPI_bank type in setup_mpi.
+	* physics.f90: Added ability to simulate (n,xn), inelastic
+	scattering reactions. Further extended energy sampling to include
+	Law 61 (correlated energy-angle distributions). Fixed cases where
+	nu values outside of array for binary_search are treated
+	correctly. Fixed bugs in energy sampling (changed %energy to
+	%data).
+	* source.f90: Changed init_source to work in parallel. Minor
+	changes to get_source_particle. Added copy_from_bank for fission
+	bank synchronization.
+
+2011-03-18 Paul Romano <romano7@mit.edu>
+
+	* ace.f90: Added ability to read nu data through the read_nu_data
+	subroutine. Changed names of subroutines with 'parse' to
+	'read'. Change 'size' variable to 'length' to prevent conflict
+	with SIZE intrinsic. Adjusted angle and energy distributions to
+	fit new types. Adjusted locator arrays within energy and angle
+	distribution data array.
+	* fileio.f90: Can now read verbosity from input file rather than
+	setting it arbitrarily in my source.
+	* geometry.f90: Set current pointers particle attributes in
+	find_cell.
+	* global.f90: Added keff, bank indices, parallel processing
+	variables, nu types.  Moved default verbosity to set_defults.
+	* mpi_routines.f90: First addition on MPI parallelization
+	* output.f90: Added print_particle and print_reaction routines,
+	moved ou and eu to be module variables so that every routine
+	doesn't have to define them.
+	* physics.f90: Added n_fission and level_scatter
+	subroutines. Fixed bugs in sample_angle subroutine. Changed
+	rotate_angle to operate on particle. Added sample_energy
+	subroutine -- currently includes tabular equiprobable bins,
+	inelastic level scattering, continuous tabular distribution,
+	Maxwell spectrum, evaporation spectrum, Watt spectrum, and
+	Kalbach-Mann correlated scattering.
+	* source.f90: Added default values for source particles. Temporary
+	add_bank_sites routine written -- not sure if it will be used here
+	or elsewhere.
+	* types.f90: Added n_coll attribite to particle. Extended Bank
+	type to include direction and energy. Added AceDistAngle and
+	AceDistEnergy types and changed AceReaction accordingly. Changed
+	how nu data is stored in AceContinuous.
+
 2011-03-10 Paul Romano <romano7@mit.edu>
 
 	* types.f90: The major changes are that the n_items and

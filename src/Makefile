@@ -64,12 +64,12 @@ global.o: types.o
 main.o: global.o fileio.o output.o geometry.o mcnp_random.o \
 		source.o physics.o cross_section.o data_structures.o \
 		ace.o energy_grid.o
-mpi_routines.o: global.o output.o types.o
+mpi_routines.o: global.o output.o types.o mcnp_random.o source.o
 output.o: global.o types.o data_structures.o endf.o
 physics.o: types.o global.o mcnp_random.o geometry.o output.o \
 		search.o endf.o
 search.o: output.o
-source.o: global.o mcnp_random.o
+source.o: global.o mcnp_random.o output.o
 string.o: global.o output.o
 types.o:
 unittest.o: global.o energy_grid.o

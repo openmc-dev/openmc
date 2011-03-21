@@ -12,7 +12,8 @@ program main
   use cross_section, only: read_xsdata, material_total_xs
   use ace,           only: read_xs
   use energy_grid,   only: unionized_grid, original_indices
-  use mpi_routines
+  use mpi_routines,  only: setup_mpi, synchronize_bank
+  use mpi
 
   implicit none
 
@@ -95,16 +96,22 @@ contains
   subroutine run_problem()
 
     integer :: i, j
-    integer :: i_cycle
-    integer :: i_particle
+    integer :: ierr
+    integer :: i_cycle    ! cycle index
+    integer :: i_particle ! history index
+    integer :: total_bank ! total number of particles banked
     type(Particle), pointer :: p => null()
+    character(250) :: msg
+
+    msg = "Running problem..."
+    call message(msg, 6)
 
     CYCLE_LOOP: do i_cycle = 1, n_cycles
        
        ! Set all tallies to zero
        n_bank = 0
 
-       HISTORY_LOOP: do j = 1, n_particles
+       HISTORY_LOOP: do
 
           ! grab source particle from bank
           p => get_source_particle()
@@ -114,7 +121,7 @@ contains
           end if
 
           ! set random number seed
-          i_particle = (i-1)*n_particles + j
+          i_particle = (i_cycle-1)*n_particles + p % uid
           call RN_init_particle(int(i_particle,8))
 
           ! transport particle
@@ -122,8 +129,10 @@ contains
 
        end do HISTORY_LOOP
 
+       call RN_init_particle(int(i_cycle,8))
+       call synchronize_bank()
+
        ! Collect results and statistics
-       print *, n_bank
 
        ! print cycle information
 

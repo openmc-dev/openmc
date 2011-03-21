@@ -4,7 +4,7 @@ module physics
   use geometry,    only: find_cell, dist_to_boundary, cross_boundary
   use types,       only: Particle
   use mcnp_random, only: rang
-  use output,      only: error, message
+  use output,      only: error, message, print_particle
   use search,      only: binary_search
   use endf,        only: reaction_name
 
@@ -213,6 +213,10 @@ contains
     select case (rxn%MT)
     case (2)
        call elastic_scatter(p, table%awr)
+    case (11, 16, 17, 24, 25, 30, 37, 41, 42)
+       call n_xn(p, table, rxn)
+    case (22, 23, 28, 29, 32:36, 43, 44, 91)
+       call inelastic_scatter(p, table, rxn)
     case (18:21, 38)
        call n_fission(p, table, rxn)
     case (51:90)
@@ -359,9 +363,17 @@ contains
 
        ! do binary search over tabuled energies to determine
        ! appropriate index and interpolation factor
-       j = binary_search(table % nu_t_data(loc+1), NE, E)
-       f = (E - table % nu_t_data(loc+j)) / &
-            & (table % nu_t_data(loc+j+1) - table % nu_t_data(loc+j))
+       if (E < table % nu_t_data(loc+1)) then
+          j = 1
+          f = 0.0
+       elseif (E > table % nu_t_data(loc+NE)) then
+          j = NE - 1
+          f = 1.0
+       else
+          j = binary_search(table % nu_t_data(loc+1), NE, E)
+          f = (E - table % nu_t_data(loc+j)) / &
+               & (table % nu_t_data(loc+j+1) - table % nu_t_data(loc+j))
+       end if
 
        ! determine nu total
        loc = loc + NE
@@ -400,9 +412,17 @@ contains
 
        ! do binary search over tabuled energies to determine
        ! appropriate index and interpolation factor
-       j = binary_search(table % nu_p_data(loc+1), NE, E)
-       f = (E - table % nu_p_data(loc+j)) / &
-            & (table % nu_p_data(loc+j+1) - table % nu_p_data(loc+j))
+       if (E < table % nu_p_data(loc+1)) then
+          j = 1
+          f = 0.0
+       elseif (E > table % nu_p_data(loc+NE)) then
+          j = NE - 1
+          f = 1.0
+       else
+          j = binary_search(table % nu_p_data(loc+1), NE, E)
+          f = (E - table % nu_p_data(loc+j)) / &
+               & (table % nu_p_data(loc+j+1) - table % nu_p_data(loc+j))
+       end if
 
        ! determine nu total
        loc = loc + NE
@@ -429,9 +449,17 @@ contains
 
        ! do binary search over tabuled energies to determine
        ! appropriate index and interpolation factor
-       j = binary_search(table % nu_d_data(loc+1), NE, E)
-       f = (E - table % nu_d_data(loc+j)) / &
-            & (table % nu_d_data(loc+j+1) - table % nu_d_data(loc+j))
+       if (E < table % nu_d_data(loc+1)) then
+          j = 1
+          f = 0.0
+       elseif (E > table % nu_d_data(loc+NE)) then
+          j = NE - 1
+          f = 1.0
+       else
+          j = binary_search(table % nu_d_data(loc+1), NE, E)
+          f = (E - table % nu_d_data(loc+j)) / &
+               & (table % nu_d_data(loc+j+1) - table % nu_d_data(loc+j))
+       end if
 
        ! determine nu total
        loc = loc + NE
@@ -539,6 +567,140 @@ contains
     call find_energy_index(p)
 
   end subroutine level_scatter
+
+!=====================================================================
+! INELASTIC_SCATTER
+!=====================================================================
+
+  subroutine inelastic_scatter(p, table, rxn)
+
+    type(Particle),      pointer :: p
+    type(AceContinuous), pointer :: table
+    type(AceReaction),   pointer :: rxn
+
+    integer :: law
+    real(8) :: A          ! atomic weight ratio of nuclide
+    real(8) :: E_in       ! incoming energy
+    real(8) :: mu         ! cosine of scattering angle
+    real(8) :: E          ! outgoing energy in laboratory
+    real(8) :: E_cm       ! outgoing energy in center-of-mass
+    character(250) :: msg ! error message
+    
+    ! copy energy of neutron
+    E_in = p % E
+
+    ! determine A
+    A = table % awr
+
+    ! determine secondary energy distribution law
+    law = rxn % edist % law
+
+    ! sample scattering angle
+    if (rxn % has_angle_dist) then
+       mu = sample_angle(rxn, E_in)
+    end if
+
+    ! sample outgoing energy
+    if (law == 44 .or. law == 61) then
+       call sample_energy(rxn, E_in, E, mu)
+    else
+       call sample_energy(rxn, E_in, E)
+    end if
+
+    ! if scattering system is in center-of-mass, transfer cosine of
+    ! scattering angle and outgoing energy from CM to LAB
+    if (rxn % TY < 0) then
+       E_cm = E
+
+       ! determine outgoing energy in lab
+       E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) & 
+            & / ((A+ONE)*(A+ONE))
+
+       ! determine outgoing angle in lab
+       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
+    end if
+
+    ! change direction of particle
+    call rotate_angle(p, mu)
+
+    ! change energy of particle
+    p % E = E
+
+    ! find energy index, interpolation factor
+    call find_energy_index(p)
+
+  end subroutine inelastic_scatter
+
+!=====================================================================
+! N_XN
+!=====================================================================
+
+  subroutine n_xn(p, table, rxn)
+
+    type(Particle),      pointer :: p
+    type(AceContinuous), pointer :: table
+    type(AceReaction),   pointer :: rxn
+
+    integer :: i           ! loop index
+    integer :: n_secondary ! number of secondary particles
+    integer :: law
+    real(8) :: A           ! atomic weight ratio of nuclide
+    real(8) :: E_in        ! incoming energy
+    real(8) :: mu          ! cosine of scattering angle
+    real(8) :: E           ! outgoing energy in laboratory
+    real(8) :: E_cm        ! outgoing energy in center-of-mass
+    character(250) :: msg  ! error message
+    
+    ! copy energy of neutron
+    E_in = p % E
+
+    ! determine A
+    A = table % awr
+    
+    ! determine secondary energy distribution law
+    law = rxn % edist % law
+
+    ! sample scattering angle
+    if (rxn % has_angle_dist) then
+       mu = sample_angle(rxn, E_in)
+    end if
+
+    ! sample outgoing energy
+    if (law == 44 .or. law == 61) then
+       call sample_energy(rxn, E_in, E, mu)
+    else
+       call sample_energy(rxn, E_in, E)
+    end if
+
+    ! if scattering system is in center-of-mass, transfer cosine of
+    ! scattering angle and outgoing energy from CM to LAB
+    if (rxn % TY < 0) then
+       E_cm = E
+
+       ! determine outgoing energy in lab
+       E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) & 
+            & / ((A+ONE)*(A+ONE))
+
+       ! determine outgoing angle in lab
+       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
+    end if
+
+    ! change direction of particle
+    call rotate_angle(p, mu)
+
+    ! change energy of particle
+    p % E = E
+
+    ! find energy index, interpolation factor
+    call find_energy_index(p)
+
+    ! produce secondary particles in source bank
+    n_secondary = abs(rxn % TY) - 1
+    do i = 1, n_secondary
+       ! create particle in source bank
+    end do
+
+  end subroutine n_xn
 
 !=====================================================================
 ! N_GAMMA
@@ -735,6 +897,7 @@ contains
     integer :: NET         ! number of outgoing energies
     integer :: INTTp       ! combination of INTT and ND
     integer :: INTT        ! 1 = histogram, 2 = linear-linear
+    integer :: JJ          ! 1 = histogram, 2 = linear-linear
     integer :: ND          ! number of discrete lines
     integer :: NP          ! number of points in distribution
 
@@ -752,6 +915,11 @@ contains
     real(8) :: R_k, R_k1      ! Kalbach-Mann R on outgoing grid l
 
     real(8) :: Watt_a, Watt_b ! Watt spectrum parameters
+
+    real(8) :: mu_k    ! angular cosine in bin k
+    real(8) :: mu_k1   ! angular cosine in bin k+1
+    real(8) :: p_k     ! angular pdf in bin k
+    real(8) :: p_k1    ! angular pdf in bin k+1
 
     real(8) :: E_cm
     real(8) :: xi1, xi2, xi3, xi4
@@ -843,13 +1011,13 @@ contains
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
           r = 0.0
-       elseif (E_in > rxn % edist % energy(loc+NE)) then
+       elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
           r = 1.0
        else
-          i = binary_search(rxn % edist % energy(loc+1), NE, E_in)
-          r = (E_in - rxn%edist%energy(loc+i)) / & 
-               & (rxn%edist%energy(loc+i+1) - rxn%edist%energy(loc+i))
+          i = binary_search(rxn % edist % data(loc+1), NE, E_in)
+          r = (E_in - rxn%edist%data(loc+i)) / & 
+               & (rxn%edist%data(loc+i+1) - rxn%edist%data(loc+i))
        end if
 
        ! Sample between the ith and (i+1)th bin
@@ -861,11 +1029,11 @@ contains
        end if
 
        ! interpolation on grid i for energy E1
-       loc = rxn % edist % data(2 + 2*NR + NE + i) + 2 ! start of EOUT(i)
+       loc   = rxn%edist%data(2 + 2*NR + NE + i) + 2 ! start of EOUT(i)
        E_i_1 = rxn%edist%data(loc + 1)
        E_i_K = rxn%edist%data(loc + NE)
 
-       loc = rxn % edist % data(2 + 2*NR + NE + i + 1) + 2 ! start of EOUT(i+1)
+       loc    = rxn%edist%data(2 + 2*NR + NE + i + 1) + 2 ! start of EOUT(i+1)
        E_i1_1 = rxn%edist%data(loc + 1)
        E_i1_K = rxn%edist%data(loc + NE)
 
@@ -927,7 +1095,7 @@ contains
           call error(msg)
        end if
 
-       ! Now interpolate between incident enregy bins i and i + 1
+       ! Now interpolate between incident energy bins i and i + 1
        if (l == i) then
           E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
        else
@@ -956,13 +1124,13 @@ contains
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
           r = 0.0
-       elseif (E_in > rxn % edist % energy(loc+NE)) then
+       elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
           r = 1.0
        else
-          i = binary_search(rxn % edist % energy(loc+1), NE, E_in)
-          r = (E_in - rxn%edist%energy(loc+i)) / & 
-               & (rxn%edist%energy(loc+i+1) - rxn%edist%energy(loc+i))
+          i = binary_search(rxn % edist % data(loc+1), NE, E_in)
+          r = (E_in - rxn%edist%data(loc+i)) / & 
+               & (rxn%edist%data(loc+i+1) - rxn%edist%data(loc+i))
        end if
 
        ! determine nuclear temperature from tabulated function
@@ -993,13 +1161,13 @@ contains
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
           r = 0.0
-       elseif (E_in > rxn % edist % energy(loc+NE)) then
+       elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
           r = 1.0
        else
-          i = binary_search(rxn % edist % energy(loc+1), NE, E_in)
-          r = (E_in - rxn%edist%energy(loc+i)) / & 
-               & (rxn%edist%energy(loc+i+1) - rxn%edist%energy(loc+i))
+          i = binary_search(rxn % edist % data(loc+1), NE, E_in)
+          r = (E_in - rxn%edist%data(loc+i)) / & 
+               & (rxn%edist%data(loc+i+1) - rxn%edist%data(loc+i))
        end if
 
        ! determine nuclear temperature from tabulated function
@@ -1035,13 +1203,13 @@ contains
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
           r = 0.0
-       elseif (E_in > rxn % edist % energy(loc+NE)) then
+       elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
           r = 1.0
        else
-          i = binary_search(rxn % edist % energy(loc+1), NE, E_in)
-          r = (E_in - rxn%edist%energy(loc+i)) / & 
-               & (rxn%edist%energy(loc+i+1) - rxn%edist%energy(loc+i))
+          i = binary_search(rxn % edist % data(loc+1), NE, E_in)
+          r = (E_in - rxn%edist%data(loc+i)) / & 
+               & (rxn%edist%data(loc+i+1) - rxn%edist%data(loc+i))
        end if
 
        ! determine Watt parameter 'a' from tabulated function
@@ -1065,13 +1233,13 @@ contains
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
           r = 0.0
-       elseif (E_in > rxn % edist % energy(loc+NE)) then
+       elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
           r = 1.0
        else
-          i = binary_search(rxn % edist % energy(loc+1), NE, E_in)
-          r = (E_in - rxn%edist%energy(loc+i)) / & 
-               & (rxn%edist%energy(loc+i+1) - rxn%edist%energy(loc+i))
+          i = binary_search(rxn % edist % data(loc+1), NE, E_in)
+          r = (E_in - rxn%edist%data(loc+i)) / & 
+               & (rxn%edist%data(loc+i+1) - rxn%edist%data(loc+i))
        end if
 
        ! determine Watt parameter 'b' from tabulated function
@@ -1107,13 +1275,13 @@ contains
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
           r = 0.0
-       elseif (E_in > rxn % edist % energy(loc+NE)) then
+       elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
           r = 1.0
        else
-          i = binary_search(rxn % edist % energy(loc+1), NE, E_in)
-          r = (E_in - rxn%edist%energy(loc+i)) / & 
-               & (rxn%edist%energy(loc+i+1) - rxn%edist%energy(loc+i))
+          i = binary_search(rxn % edist % data(loc+1), NE, E_in)
+          r = (E_in - rxn%edist%data(loc+i)) / & 
+               & (rxn%edist%data(loc+i+1) - rxn%edist%data(loc+i))
        end if
 
        ! Sample between the ith and (i+1)th bin
@@ -1124,14 +1292,19 @@ contains
           l = i
        end if
 
-       ! interpolation on grid i for energy E1
-       loc = rxn % edist % data(2 + 2*NR + NE + i) + 2 ! start of EOUT(i)
+       ! determine endpoints on grid i
+       loc   = rxn%edist%data(2+2*NR+NE + i) ! start of LDAT for i
+       NP    = rxn%edist%data(loc + 2)
+       loc   = loc + 2
        E_i_1 = rxn%edist%data(loc + 1)
-       E_i_K = rxn%edist%data(loc + NE)
+       E_i_K = rxn%edist%data(loc + NP)
 
-       loc = rxn % edist % data(2 + 2*NR + NE + i + 1) + 2 ! start of EOUT(i+1)
+       ! determine endpoints on grid i+1
+       loc    = rxn%edist%data(2+2*NR+NE + i+1) ! start of LDAT for i+1
+       NP    = rxn%edist%data(loc + 2)
+       loc   = loc + 2
        E_i1_1 = rxn%edist%data(loc + 1)
-       E_i1_K = rxn%edist%data(loc + NE)
+       E_i1_K = rxn%edist%data(loc + NP)
 
        E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
        E_K = E_i_K + r*(E_i1_K - E_i_K)
@@ -1205,7 +1378,7 @@ contains
           call error(msg)
        end if
 
-       ! Now interpolate between incident enregy bins i and i + 1
+       ! Now interpolate between incident energy bins i and i + 1
        if (l == i) then
           E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
        else
@@ -1228,6 +1401,165 @@ contains
 
        if (.not. present(mu_out)) then
           msg = "Law 44 called without giving mu_out as argument."
+          call error(msg)
+       end if
+
+       ! read number of interpolation regions and incoming energies 
+       NR  = rxn % edist % data(1)
+       NE  = rxn % edist % data(2 + 2*NR)
+       if (NR > 0) then
+          msg = "Multiple interpolation regions not supported while &
+               &attempting to sample correlated energy-angle distribution."
+          call error(msg)
+       end if
+
+       ! find energy bin and calculate interpolation factor -- if the
+       ! energy is outside the range of the tabulated energies, choose
+       ! the first or last bins
+       loc = 2 + 2*NR
+       if (E_in < rxn % edist % data(loc+1)) then
+          i = 1
+          r = 0.0
+       elseif (E_in > rxn % edist % data(loc+NE)) then
+          i = NE - 1
+          r = 1.0
+       else
+          i = binary_search(rxn % edist % data(loc+1), NE, E_in)
+          r = (E_in - rxn%edist%data(loc+i)) / & 
+               & (rxn%edist%data(loc+i+1) - rxn%edist%data(loc+i))
+       end if
+
+       ! Sample between the ith and (i+1)th bin
+       xi2 = rang()
+       if (r > xi2) then
+          l = i + 1
+       else
+          l = i
+       end if
+
+       ! determine endpoints on grid i
+       loc   = rxn%edist%data(2+2*NR+NE + i) ! start of LDAT for i
+       NP    = rxn%edist%data(loc + 2)
+       loc   = loc + 2
+       E_i_1 = rxn%edist%data(loc + 1)
+       E_i_K = rxn%edist%data(loc + NP)
+
+       ! determine endpoints on grid i+1
+       loc    = rxn%edist%data(2+2*NR+NE + i+1) ! start of LDAT for i+1
+       NP    = rxn%edist%data(loc + 2)
+       loc   = loc + 2
+       E_i1_1 = rxn%edist%data(loc + 1)
+       E_i1_K = rxn%edist%data(loc + NP)
+
+       E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
+       E_K = E_i_K + r*(E_i1_K - E_i_K)
+
+       ! determine location of outgoing energies, pdf, cdf for E(l)
+       loc = rxn % edist % data(2 + 2*NR + NE + l)
+
+       ! determine type of interpolation and number of discrete lines
+       INTTp = rxn % edist % data(loc + 1)
+       NP    = rxn % edist % data(loc + 2)
+       if (INTTp > 10) then
+          INTT = mod(INTTp,10)
+          ND = (INTTp - INTT)/10
+       else
+          INTT = INTTp
+          ND = 0
+       end if
+
+       if (ND > 0) then
+          ! discrete lines present
+          msg = "Discrete lines in continuous tabular distributed not &
+               &yet supported"
+          call error(msg)
+       end if
+
+       ! determine outgoing energy bin
+       xi1 = rang()
+       loc = loc + 2 ! start of EOUT
+       c_k = rxn % edist % data(loc + 2*NP + 1)
+       do k = 1, NP-1
+          c_k1 = rxn % edist % data(loc + 2*NP + k+1)
+          if (xi1 < c_k1) exit
+          c_k = c_k1
+       end do
+
+       E_l_k = rxn % edist % data(loc+k)
+       p_l_k = rxn % edist % data(loc+NP+k)
+       if (INTT == HISTOGRAM) then
+          ! Histogram interpolation
+          E_out = E_l_k + (xi1 - c_k)/p_l_k
+
+       elseif (INTT == LINEARLINEAR) then
+          ! Linear-linear interpolation -- not sure how you come about
+          ! the formula given in the MCNP manual
+          E_l_k1 = rxn % edist % data(loc+k+1)
+          p_l_k1 = rxn % edist % data(loc+NP+k+1)
+
+          ! Find E prime
+          frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
+          if (frac == ZERO) then
+             E_out = E_l_k + (xi1 - c_k)/p_l_k
+          else
+             E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(xi1 - c_k)) - & 
+                  & p_l_k)/frac
+          end if
+       else
+          msg = "Unknown interpolation type: " // trim(int_to_str(INTT))
+          call error(msg)
+       end if
+
+       ! Now interpolate between incident energy bins i and i + 1
+       if (l == i) then
+          E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
+       else
+          E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+       end if
+
+       ! Find location of correlated angular distribution
+       loc = rxn % edist % data(loc+3*NP+k)
+
+       ! Check if angular distribution is isotropic
+       if (loc == 0) then
+          mu_out = TWO * rang() - ONE
+          return
+       end if
+
+       ! interpolation type and number of points in angular distribution
+       JJ = rxn % edist % data(loc + 1)
+       NP = rxn % edist % data(loc + 2)
+
+       ! determine outgoing cosine bin
+       xi3 = rang()
+       loc = loc + 2
+       c_k = rxn % edist % data(loc + 2*NP + 1)
+       do k = 1, NP-1
+          c_k1 = rxn % edist % data(loc + 2*NP + k+1)
+          if (xi3 < c_k1) exit
+          c_k = c_k1
+       end do
+
+       p_k  = rxn % edist % data(loc + NP + k)
+       mu_k = rxn % edist % data(loc + k)
+       if (JJ == HISTOGRAM) then
+          ! Histogram interpolation
+          mu_out = mu_k + (xi3 - c_k)/p_k
+
+       elseif (JJ == LINEARLINEAR) then
+          ! Linear-linear interpolation -- not sure how you come about
+          ! the formula given in the MCNP manual
+          p_k1  = rxn % edist % data(loc + NP + k+1)
+          mu_k1 = rxn % edist % data(loc + k+1)
+
+          frac = (p_k1 - p_k)/(mu_k1 - mu_k)
+          if (frac == ZERO) then
+             mu_out = mu_k + (xi3 - c_k)/p_k
+          else
+             mu_out = mu_k + (sqrt(p_k*p_k + 2*frac*(xi3 - c_k))-p_k)/frac
+          end if
+       else
+          msg = "Unknown interpolation type: " // trim(int_to_str(JJ))
           call error(msg)
        end if
 

@@ -51,7 +51,7 @@ contains
     case (33)
        string = '(n,nt)'
     case (34)
-       string = '(n,n He-3)'
+       string = '(n,nHe-3)'
     case (35)
        string = '(n,nd3a)'
     case (36)

@@ -59,6 +59,7 @@ module global
   integer :: n_bank      ! # of sites in fission bank
   integer :: bank_first  ! index of first particle in bank
   integer :: bank_last   ! index of last particle in bank
+  integer :: work        ! number of particles per processor
 
   ! cycle keff
   real(8) :: keff

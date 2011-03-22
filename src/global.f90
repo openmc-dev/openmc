@@ -200,6 +200,9 @@ contains
     ! Default verbosity
     verbosity = 5
 
+    ! Defualt multiplication factor
+    keff = ONE
+
   end subroutine set_defaults
 
 !=====================================================================

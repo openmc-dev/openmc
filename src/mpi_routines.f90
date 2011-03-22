@@ -4,11 +4,11 @@ module mpi_routines
   use global
   use output, only: message, error
   use mcnp_random, only: rang
-  use source, only: copy_from_bank
+  use source, only: copy_from_bank, source_index
 
   implicit none
 
-  integer    :: MPI_bank   ! MPI datatype for fission bank
+  integer    :: MPI_BANK   ! MPI datatype for fission bank
   integer(8) :: bank_index ! Fission bank site unique identifier
 
 contains
@@ -21,11 +21,14 @@ contains
 
   subroutine setup_mpi()
 
-    integer         :: ierr           ! Error status
-    integer         :: bank_blocks(2) ! Count for each datatype
-    integer         :: bank_types(2)  ! Datatypes
-    integer(kind=8) :: bank_disp(2)   ! Displacements
-    character(250)  :: msg            ! Error message
+    integer        :: i
+    integer        :: ierr           ! Error status
+    integer        :: bank_blocks(4) ! Count for each datatype
+    integer        :: bank_types(4)  ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: bank_disp(4)   ! Displacements
+    integer(MPI_ADDRESS_KIND) :: base
+    character(250) :: msg            ! Error message
+    type(Bank)     :: b
 
     ! Initialize MPI
     call MPI_INIT(ierr)
@@ -56,13 +59,24 @@ contains
        master = .false.
     end if
 
-    ! Define MPI_bank for fission sites
-    bank_blocks = (/ 1, 7 /)
-    bank_disp = (/ 0_8, 4_8 /)
-    bank_types = (/ MPI_INTEGER, MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(2, bank_blocks, bank_disp, & 
-         & bank_types, MPI_bank, ierr)
-    call MPI_TYPE_COMMIT(MPI_bank, ierr)
+    ! Determine displacements for MPI_BANK type
+    call MPI_GET_ADDRESS(b % uid, bank_disp(1), ierr)
+    call MPI_GET_ADDRESS(b % xyz, bank_disp(2), ierr)
+    call MPI_GET_ADDRESS(b % uvw, bank_disp(3), ierr)
+    call MPI_GET_ADDRESS(b % E,   bank_disp(4), ierr)
+
+    ! Adjust displacements 
+    base = bank_disp(1)
+    do i = 1, 4
+       bank_disp(i) = bank_disp(i) - base
+    end do
+    
+    ! Define MPI_BANK for fission sites
+    bank_blocks = (/ 1, 3, 3, 1 /)
+    bank_types = (/ MPI_INTEGER, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
+    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
+         & bank_types, MPI_BANK, ierr)
+    call MPI_TYPE_COMMIT(MPI_BANK, ierr)
 
   end subroutine setup_mpi
 
@@ -90,6 +104,10 @@ contains
          & temp_sites(:),      & ! local array of extra sites on each node
          & left_bank(:),       & ! bank sites to send/recv to or from left node
          & right_bank(:)         ! bank sites to send/recv to or fram right node
+    character(250) :: msg
+
+    msg = "Synchronizing fission bank..."
+    call message(msg, 8)
 
     ! Determine starting index for fission bank and total sites in
     ! fission bank
@@ -115,8 +133,11 @@ contains
     ! SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
     do i = 1, total
 
-       ! If there are less than n_particles particles banked, automatically
-       ! add int(n_particles/total) sites to temp_sites
+       ! If there are less than n_particles particles banked,
+       ! automatically add int(n_particles/total) sites to
+       ! temp_sites. For example, if you need 1000 and 300 were
+       ! banked, this would add 3 source sites per banked site and the
+       ! remaining 100 would be randomly sampled.
        if (total < n_particles) then
           do j = 1,int(n_particles/total)
              index = index + 1
@@ -139,7 +160,7 @@ contains
              temp_sites(count) = fission_bank(i-start)
              temp_sites(count) % uid = index
           end if
-          sites_needed = sites_needed-1
+          sites_needed = sites_needed - 1
        end if
     end do
 
@@ -154,18 +175,18 @@ contains
 
     if (send_to_right > 0) then
        i = count - send_to_right + 1
-       call MPI_SEND(temp_sites(i), send_to_right, MPI_bank, rank+1, 0, &
+       call MPI_SEND(temp_sites(i), send_to_right, MPI_BANK, rank+1, 0, &
             & MPI_COMM_WORLD, ierr)
     else if (send_to_right < 0) then
-       call MPI_RECV(right_bank, -send_to_right, MPI_bank, rank+1, 1, &
+       call MPI_RECV(right_bank, -send_to_right, MPI_BANK, rank+1, 1, &
             & MPI_COMM_WORLD, status, ierr)
     end if
 
     if (send_to_left < 0) then
-       call MPI_RECV(left_bank, -send_to_left, MPI_bank, rank-1, 0, &
+       call MPI_RECV(left_bank, -send_to_left, MPI_BANK, rank-1, 0, &
             & MPI_COMM_WORLD, status, ierr)
     else if (send_to_left > 0) then
-       call MPI_SEND(temp_sites(1), send_to_left, MPI_bank, rank-1, 1, &
+       call MPI_SEND(temp_sites(1), send_to_left, MPI_BANK, rank-1, 1, &
             & MPI_COMM_WORLD, ierr)
     end if
 
@@ -192,6 +213,9 @@ contains
        call copy_from_bank(temp_sites, i+1, j)
        call copy_from_bank(right_bank, i+j+1, k)
     end if
+
+    ! Reset source index
+    source_index = 0
     
     deallocate(left_bank )
     deallocate(right_bank)

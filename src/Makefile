@@ -17,6 +17,7 @@ modules = 	ace.f90 \
 		search.f90 \
 		source.f90 \
 		string.f90 \
+		tallies.f90 \
 		types.f90
 
 main_objects = $(modules:.f90=.o) $(main:.f90=.o)
@@ -41,7 +42,7 @@ clean:
 neat:
 	@rm -f *.o *.mod
 unittest: $(test_objects)
-	$(F90) $(F90FLAGS) $(MPI_COMPILE_FLAGS) $(test_objects) -o $@
+	$(MPIF90) -f90=$(F90) $(MPI_LINK_FLAGS) $(F90FLAGS) $(test_objects) -o $@
 
 #--------------------------------------------------------------------
 # Rules & misc
@@ -63,13 +64,14 @@ geometry.o: types.o global.o output.o string.o data_structures.o
 global.o: types.o
 main.o: global.o fileio.o output.o geometry.o mcnp_random.o \
 		source.o physics.o cross_section.o data_structures.o \
-		ace.o energy_grid.o
+		ace.o energy_grid.o tallies.o
 mpi_routines.o: global.o output.o types.o mcnp_random.o source.o
 output.o: global.o types.o data_structures.o endf.o
 physics.o: types.o global.o mcnp_random.o geometry.o output.o \
 		search.o endf.o
 search.o: output.o
-source.o: global.o mcnp_random.o output.o
+source.o: global.o mcnp_random.o output.o physics.o
 string.o: global.o output.o
+tallies.o: global.o output.o
 types.o:
-unittest.o: global.o energy_grid.o
+unittest.o: global.o energy_grid.o mpi_routines.o

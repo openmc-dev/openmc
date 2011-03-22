@@ -1,3 +1,25 @@
+2011-03-22 Paul Romano <romano7@mit.edu>
+
+	* cross_section.f90: Calculation of material total cross section
+	was completely wrong -- fixed it up.
+	* global.f90: Added default keff.
+	* mpi_routines.f90: Fixed major bug in how MPI_BANK type was
+	created. Solution should be machine independent. Parallel fission
+	bank now works.
+	* physics.f90: Combined level_scatter into inelastic_scatter since
+	the physics is the same. Simplifying sampling of angle (isotropic
+	cases handled inside sample_angle). Fixed interpolation in many
+	places (f and (1-f) were swapped). Fixed distance to
+	collision. Fixed major bug in evaporation spectrum (restriction
+	energy was wrong).
+	* source.f90: Moved initial sampling of Watt spectrum for first
+	cycle particles to init_source inside of being in physics module.
+	* tallies.f90: Initial addition of tallies module. Only has one
+	routine, calculate_keff, that is used to do end-of-cycle keff
+	calculations. This will probably change significantly.
+	* unittest.f90: Added test_mpi_bank useful for debugging the
+	MPI_BANK type.
+
 2011-03-21 Paul Romano <romano7@mit.edu>
 
 	* ace.f90: Adjusted locators energy and angle distributions for

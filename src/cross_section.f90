@@ -125,12 +125,20 @@ contains
 
   subroutine material_total_xs()
 
-    type(Material), pointer :: mat => null()
-    type(AceContinuous), pointer :: acecont => null()
+    type(Material),      pointer :: mat => null()
+    type(AceContinuous), pointer :: table => null()
     integer :: i, j, k
     integer :: index
+    integer :: IE
     real(8) :: xs
     real(8) :: density
+    real(8) :: density_i
+    real(8) :: val
+    real(8) :: r
+    real(8) :: E_i
+    real(8) :: E_i1
+    real(8) :: sigma_i
+    real(8) :: sigma_i1
     character(250) :: msg
 
     msg = "Creating material total cross-sections..."
@@ -143,21 +151,40 @@ contains
        mat => materials(i)
        density = mat%atom_density
        allocate(mat%total_xs(n_grid))
-       
-       ! loop over each energy on grid
-       do j = 1, n_grid
-        
-          mat%total_xs(j) = 0.0_8
 
-          ! loop over each isotope in material
-          do k = 1, mat%n_isotopes
-             ! find ACE cross section table for this isotope
-             index = mat%table(k)
-             acecont => xs_continuous(index)
-             
+       ! initialize total cross-section
+       mat % total_xs = ZERO
+
+       ! loop over each isotope
+       do j = 1, mat%n_isotopes
+          index = mat % table(j)
+          table => xs_continuous(index)
+
+          ! find atom density of isotope
+          density_i = density * mat % atom_percent(j)
+
+          ! loop over points in union energy grid
+          do k = 1, n_grid
+             ! find nuclide grid index
+             IE      = table % grid_index(k)
+
+             ! get nuclide grid energy and cross-section value
+             E_i     = table % energy(IE)
+             sigma_i = table % sigma_t(IE)
+
+             ! interpolate as necessary
+             if (E_i < e_grid(k)) then
+                E_i1     = table % energy(IE + 1)
+                sigma_i1 = table % sigma_t(IE + 1)
+
+                r = (e_grid(k) - E_i)/(E_i1 - E_i)
+                val = (ONE - r)*sigma_i + r*sigma_i1
+             else
+                val = sigma_i
+             end if
+
              ! add contribution to total cross-section
-             mat%total_xs(j) = mat%total_xs(j) + density * & 
-                  mat%atom_percent(j) * acecont%sigma_t(index)
+             mat%total_xs(k) = mat%total_xs(k) + density_i * val
           end do
        end do
     end do

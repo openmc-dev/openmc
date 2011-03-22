@@ -46,33 +46,34 @@ contains
        end if
     end if
 
-    if (verbosity >= 10) then
+    if (verbosity >= 9) then
        msg = "=== Particle " // trim(int_to_str(p % uid)) // " ==="
        call message(msg, 10)
+    end if
 
+    if (verbosity >= 10) then
        i = cells(p % cell)%uid
        msg = "    Born in cell " // trim(int_to_str(i))
        call message(msg, 10)
     end if
 
-    ! sample energy from Watt fission energy spectrum for U-235
-    p % E = watt_spectrum(0.988_8, 2.249_8)
-
     ! find energy index, interpolation factor
     call find_energy_index(p)
-    IE = p % IE
-    f  = p % interp
-
-    ! Determine material total cross-section
-    Sigma = f*cMaterial%total_xs(IE) + (1-f)*cMaterial%total_xs(IE+1)
 
     do while (p % alive)
+
+       ! Copy energy index and interpolation factor
+       IE = p % IE
+       f  = p % interp
+    
+       ! Determine material total cross-section
+       Sigma = (1-f)*cMaterial%total_xs(IE) + f*cMaterial%total_xs(IE+1)
 
        ! Find the distance to the nearest boundary
        call dist_to_boundary(p, d_to_boundary, surf)
 
        ! Sample a distance to collision
-       d_to_collision = -log(rang()) / 1.0 ! Sigma
+       d_to_collision = -log(rang()) / Sigma
        
        ! Select smaller of the two distances
        distance = min(d_to_boundary, d_to_collision)
@@ -169,7 +170,7 @@ contains
        IE = table%grid_index(p % IE)
        f = (p%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
 
-       Sigma = density_i*(f*table%sigma_t(IE) + (1-f)*(table%sigma_t(IE+1)))
+       Sigma = density_i*((ONE-f)*table%Sigma_t(IE) + f*(table%Sigma_t(IE+1)))
        Sigma_t(i) = Sigma
     end do
 
@@ -199,8 +200,8 @@ contains
        rxn => table%reactions(i)
        if (rxn%MT >= 200) cycle
        if (IE < rxn%IE) cycle
-       prob = prob + density * (f*rxn%sigma(IE-rxn%IE+1) & 
-            & + (1-f)*(rxn%sigma(IE-rxn%IE+2)))
+       prob = prob + density * ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
+            & + f*(rxn%sigma(IE-rxn%IE+2)))
        if (r1 < prob) exit
     end do
     if (verbosity >= 10) then
@@ -215,18 +216,19 @@ contains
        call elastic_scatter(p, table%awr)
     case (11, 16, 17, 24, 25, 30, 37, 41, 42)
        call n_xn(p, table, rxn)
-    case (22, 23, 28, 29, 32:36, 43, 44, 91)
+    case (22, 23, 28, 29, 32:36, 43, 44, 51:91)
        call inelastic_scatter(p, table, rxn)
     case (18:21, 38)
        call n_fission(p, table, rxn)
-    case (51:90)
-       call level_scatter(p, table, rxn)
     case (102)
        call n_gamma(p)
     case default
        call elastic_scatter(p, table%awr)
     end select
-    
+
+    ! find energy index, interpolation factor
+    call find_energy_index(p)
+
   end subroutine collision
 
 !=====================================================================
@@ -289,9 +291,6 @@ contains
     p % uvw(1) = vx/vel
     p % uvw(2) = vy/vel
     p % uvw(3) = vz/vel
-
-    ! find energy index, interpolation factor
-    call find_energy_index(p)
 
   end subroutine elastic_scatter
 
@@ -365,10 +364,10 @@ contains
        ! appropriate index and interpolation factor
        if (E < table % nu_t_data(loc+1)) then
           j = 1
-          f = 0.0
+          f = ZERO
        elseif (E > table % nu_t_data(loc+NE)) then
           j = NE - 1
-          f = 1.0
+          f = ONE
        else
           j = binary_search(table % nu_t_data(loc+1), NE, E)
           f = (E - table % nu_t_data(loc+j)) / &
@@ -414,10 +413,10 @@ contains
        ! appropriate index and interpolation factor
        if (E < table % nu_p_data(loc+1)) then
           j = 1
-          f = 0.0
+          f = ZERO
        elseif (E > table % nu_p_data(loc+NE)) then
           j = NE - 1
-          f = 1.0
+          f = ONE
        else
           j = binary_search(table % nu_p_data(loc+1), NE, E)
           f = (E - table % nu_p_data(loc+j)) / &
@@ -451,10 +450,10 @@ contains
        ! appropriate index and interpolation factor
        if (E < table % nu_d_data(loc+1)) then
           j = 1
-          f = 0.0
+          f = ZERO
        elseif (E > table % nu_d_data(loc+NE)) then
           j = NE - 1
-          f = 1.0
+          f = ONE
        else
           j = binary_search(table % nu_d_data(loc+1), NE, E)
           f = (E - table % nu_d_data(loc+j)) / &
@@ -472,7 +471,7 @@ contains
     ! TODO: Heat generation from fission
 
     ! Sample number of neutrons produced
-    nu_total = p % wgt * nu_total
+    nu_total = p%wgt / keff * nu_total
     if (rang() > nu_total - int(nu_total)) then
        nu = int(nu_total)
     else
@@ -487,17 +486,13 @@ contains
        fission_bank(i) % xyz = p % xyz
 
        ! sample cosine of angle
-       if (rxn % has_angle_dist) then
-          mu = sample_angle(rxn, E)
-       else
-          mu = TWO * rang() - ONE
-       end if
+       mu = sample_angle(rxn, E)
 
        ! Sample azimuthal angle uniformly in [0,2*pi)
        phi = TWO*PI*rang()
        fission_bank(i) % uvw(1) = mu
-       fission_bank(i) % uvw(2) = sqrt(1. - mu**2) * cos(phi)
-       fission_bank(i) % uvw(3) = sqrt(1. - mu**2) * sin(phi)
+       fission_bank(i) % uvw(2) = sqrt(ONE - mu**2) * cos(phi)
+       fission_bank(i) % uvw(3) = sqrt(ONE - mu**2) * sin(phi)
 
        ! determine energy of fission neutron
        call sample_energy(rxn, E, E_out, mu_out)
@@ -511,62 +506,6 @@ contains
     p % alive = .false.
 
   end subroutine n_fission
-
-!=====================================================================
-! LEVEL_SCATTER
-!=====================================================================
-
-  subroutine level_scatter(p, table, rxn)
-
-    type(Particle),      pointer :: p
-    type(AceContinuous), pointer :: table
-    type(AceReaction),   pointer :: rxn
-
-    real(8) :: A          ! atomic weight ratio of nuclide
-    real(8) :: E_in       ! incoming energy
-    real(8) :: mu_cm      ! cosine of scattering angle in center-of-mass
-    real(8) :: mu_lab     ! cosine of scattering angle in laboratory
-    real(8) :: E_cm       ! outgoing energy in center-of-mass
-    real(8) :: E_lab      ! outgoing energy in laboratory
-    character(250) :: msg ! error message
-    
-
-    ! copy energy of neutron
-    E_in = p % E
-
-    ! determine A
-    A = table % awr
-
-    ! determine if scattering is in CM (it should be!)
-    if (rxn % TY < 0) then
-       ! scattering angle in center-of-mass
-       mu_cm = sample_angle(rxn, E_in)
-    else
-       msg = "Level inelastic scattering should not sample angle &
-            &in laboratory system!"
-       call error(msg)
-    end if
-
-    ! sample outgoing energy in center-of-mass
-    call sample_energy(rxn, E_in, E_cm)
-
-    ! determine outgoing energy in lab
-    E_lab = E_cm + (E_in + TWO * mu_cm * (A+ONE) * sqrt(E_in * E_cm)) & 
-         & / ((A+ONE)*(A+ONE))
-
-    ! determine outgoing angle in lab
-    mu_lab = mu_cm * sqrt(E_cm/E_lab) + ONE/(A+ONE) * sqrt(E_in/E_lab)
-
-    ! change direction of particle
-    call rotate_angle(p, mu_lab)
-
-    ! change energy of particle
-    p % E = E_lab
-
-    ! find energy index, interpolation factor
-    call find_energy_index(p)
-
-  end subroutine level_scatter
 
 !=====================================================================
 ! INELASTIC_SCATTER
@@ -596,9 +535,7 @@ contains
     law = rxn % edist % law
 
     ! sample scattering angle
-    if (rxn % has_angle_dist) then
-       mu = sample_angle(rxn, E_in)
-    end if
+    mu = sample_angle(rxn, E_in)
 
     ! sample outgoing energy
     if (law == 44 .or. law == 61) then
@@ -625,9 +562,6 @@ contains
 
     ! change energy of particle
     p % E = E
-
-    ! find energy index, interpolation factor
-    call find_energy_index(p)
 
   end subroutine inelastic_scatter
 
@@ -661,9 +595,7 @@ contains
     law = rxn % edist % law
 
     ! sample scattering angle
-    if (rxn % has_angle_dist) then
-       mu = sample_angle(rxn, E_in)
-    end if
+    mu = sample_angle(rxn, E_in)
 
     ! sample outgoing energy
     if (law == 44 .or. law == 61) then
@@ -690,9 +622,6 @@ contains
 
     ! change energy of particle
     p % E = E
-
-    ! find energy index, interpolation factor
-    call find_energy_index(p)
 
     ! produce secondary particles in source bank
     n_secondary = abs(rxn % TY) - 1
@@ -751,6 +680,13 @@ contains
     real(8)        :: p0,p1   ! probability distribution
     character(250) :: msg     ! error message
 
+    ! check if reaction has angular distribution -- if not, sample
+    ! outgoing angle isotropically
+    if (.not. rxn % has_angle_dist) then
+       mu = TWO * rang() - ONE
+       return
+    end if
+
     ! determine number of incoming energies
     n = rxn % adist % n_energy
 
@@ -759,10 +695,10 @@ contains
     ! the first or last bins
     if (E < rxn % adist % energy(1)) then
        i = 1
-       r = 0.0
+       r = ZERO
     elseif (E > rxn % adist % energy(n)) then
        i = n - 1
-       r = 1.0
+       r = ONE
     else
        i = binary_search(rxn % adist % energy, n, E)
        r = (E - rxn % adist % energy(i)) / & 
@@ -1010,10 +946,10 @@ contains
        loc = 2 + 2*NR
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
-          r = 0.0
+          r = ZERO
        elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
-          r = 1.0
+          r = ONE
        else
           i = binary_search(rxn % edist % data(loc+1), NE, E_in)
           r = (E_in - rxn%edist%data(loc+i)) / & 
@@ -1123,10 +1059,10 @@ contains
        loc = 2 + 2*NR
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
-          r = 0.0
+          r = ZERO
        elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
-          r = 1.0
+          r = ONE
        else
           i = binary_search(rxn % edist % data(loc+1), NE, E_in)
           r = (E_in - rxn%edist%data(loc+i)) / & 
@@ -1160,10 +1096,10 @@ contains
        loc = 2 + 2*NR
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
-          r = 0.0
+          r = ZERO
        elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
-          r = 1.0
+          r = ONE
        else
           i = binary_search(rxn % edist % data(loc+1), NE, E_in)
           r = (E_in - rxn%edist%data(loc+i)) / & 
@@ -1174,6 +1110,10 @@ contains
        loc = loc + NE
        T = rxn%edist%data(loc+i) + r * &
             & (rxn%edist%data(loc+i+1) - rxn%edist%data(loc+i))
+
+       ! determine restriction energy
+       loc = loc + NE
+       U = rxn % edist % data(loc + 1)
 
        ! sample outgoing energy based on evaporation spectrum
        ! probability density function
@@ -1202,10 +1142,10 @@ contains
        loc = 2 + 2*NR
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
-          r = 0.0
+          r = ZERO
        elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
-          r = 1.0
+          r = ONE
        else
           i = binary_search(rxn % edist % data(loc+1), NE, E_in)
           r = (E_in - rxn%edist%data(loc+i)) / & 
@@ -1232,10 +1172,10 @@ contains
        loc = loc + 2 + 2*NR
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
-          r = 0.0
+          r = ZERO
        elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
-          r = 1.0
+          r = ONE
        else
           i = binary_search(rxn % edist % data(loc+1), NE, E_in)
           r = (E_in - rxn%edist%data(loc+i)) / & 
@@ -1274,10 +1214,10 @@ contains
        loc = 2 + 2*NR
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
-          r = 0.0
+          r = ZERO
        elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
-          r = 1.0
+          r = ONE
        else
           i = binary_search(rxn % edist % data(loc+1), NE, E_in)
           r = (E_in - rxn%edist%data(loc+i)) / & 
@@ -1419,10 +1359,10 @@ contains
        loc = 2 + 2*NR
        if (E_in < rxn % edist % data(loc+1)) then
           i = 1
-          r = 0.0
+          r = ZERO
        elseif (E_in > rxn % edist % data(loc+NE)) then
           i = NE - 1
-          r = 1.0
+          r = ONE
        else
           i = binary_search(rxn % edist % data(loc+1), NE, E_in)
           r = (E_in - rxn%edist%data(loc+i)) / & 

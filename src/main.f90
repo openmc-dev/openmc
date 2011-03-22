@@ -4,7 +4,7 @@ program main
   use fileio,        only: read_input, read_command_line, read_count, &
        &                   normalize_ao, build_universe
   use output,        only: title, echo_input, message, warning, error, &
-       &                   print_summary
+       &                   print_summary, print_particle
   use geometry,      only: sense, cell_contains, neighbor_lists
   use mcnp_random,   only: RN_init_problem, rang, RN_init_particle
   use source,        only: init_source, get_source_particle
@@ -13,6 +13,7 @@ program main
   use ace,           only: read_xs
   use energy_grid,   only: unionized_grid, original_indices
   use mpi_routines,  only: setup_mpi, synchronize_bank
+  use tallies,       only: calculate_keff
   use mpi
 
   implicit none
@@ -72,15 +73,15 @@ program main
   call material_total_xs()
 
   if (master) then
-     ! call echo_input()
-     ! call print_summary()
+     call echo_input()
+     call print_summary()
   end if
 
   ! create source particles
   call init_source()
 
   ! start problem
-  surfaces(3)%bc = BC_VACUUM
+  surfaces(1)%bc = BC_VACUUM
   call run_problem()
 
   ! deallocate arrays
@@ -133,6 +134,7 @@ contains
        call synchronize_bank()
 
        ! Collect results and statistics
+       call calculate_keff(i_cycle)
 
        ! print cycle information
 

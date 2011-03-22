@@ -3,6 +3,7 @@ module source
   use global
   use mcnp_random, only: rang, RN_init_particle
   use output, only: message
+  use physics, only: watt_spectrum
 
   implicit none
 
@@ -78,6 +79,9 @@ contains
              p % universe = 0
              p % wgt      = ONE
              p % alive    = .true.
+
+             ! sample energy from Watt fission energy spectrum for U-235
+             p % E = watt_spectrum(0.988_8, 2.249_8)
           end do
        end if
     end do

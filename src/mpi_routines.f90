@@ -119,6 +119,12 @@ contains
     call MPI_BCAST(total, 1, MPI_INTEGER, n_procs - 1, & 
          & MPI_COMM_WORLD, ierr)
 
+    ! Check if there are no fission sites
+    if (total == 0) then
+       msg = "No fission sites banked!"
+       call error(msg)
+    end if
+
     allocate(temp_sites(2*work))
     count = 0 ! Index for source_bank
     index = 0 ! Index for uid -- must account for all nodes

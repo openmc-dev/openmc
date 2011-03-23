@@ -159,20 +159,21 @@ module output
       integer :: i
 
       ! Only allow master to print to screen
-      if (.not. master) return
+      if (master) then
+         write(eu, fmt='(1X,A7)', advance='no') 'ERROR: '
 
-      write(eu, fmt='(1X,A7)', advance='no') 'ERROR: '
+         n_lines = (len_trim(msg)-1)/72 + 1
+         do i = 1, n_lines
+            if ( i == 1 ) then
+               write(eu, fmt='(A72)') msg(72*(i-1)+1:72*i)
+            else
+               write(eu, fmt='(7X,A72)') msg(72*(i-1)+1:72*i)
+            end if
+         end do
+         write(eu,*)
+      end if
 
-      n_lines = (len_trim(msg)-1)/72 + 1
-      do i = 1, n_lines
-         if ( i == 1 ) then
-            write(eu, fmt='(A72)') msg(72*(i-1)+1:72*i)
-         else
-            write(eu, fmt='(7X,A72)') msg(72*(i-1)+1:72*i)
-         end if
-      end do
-      write(eu,*)
-
+      ! All processors abort
       call free_memory()
       
     end subroutine error

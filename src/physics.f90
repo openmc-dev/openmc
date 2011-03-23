@@ -22,7 +22,8 @@ contains
     type(Particle), pointer :: p
 
     character(250) :: msg
-    integer :: i, surf
+    integer :: i
+    integer :: surf
     logical :: alive
     logical :: found_cell
  
@@ -184,11 +185,11 @@ contains
     end do
 
     ! Get table, total xs, interpolation factor
+    density_i = cMaterial%atom_percent(i)*density
     table => xs_continuous(cMaterial%table(i))
-    Sigma = Sigma_t(i)
+    Sigma = Sigma_t(i) / density_i
     IE = table%grid_index(p % IE)
     f = (p%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
-    density = cMaterial%atom_percent(i)*density
 
     ! free memory
     deallocate(Sigma_t)
@@ -198,9 +199,9 @@ contains
     prob = ZERO
     do i = 1, table%n_reaction
        rxn => table%reactions(i)
-       if (rxn%MT >= 200) cycle
+       if (rxn%MT >= 200 .or. rxn%MT == 4) cycle
        if (IE < rxn%IE) cycle
-       prob = prob + density * ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
+       prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
             & + f*(rxn%sigma(IE-rxn%IE+2)))
        if (r1 < prob) exit
     end do
@@ -213,17 +214,17 @@ contains
     ! call appropriate subroutine
     select case (rxn%MT)
     case (2)
-       call elastic_scatter(p, table%awr)
+       call elastic_scatter(p, table, rxn)
     case (11, 16, 17, 24, 25, 30, 37, 41, 42)
        call n_xn(p, table, rxn)
     case (22, 23, 28, 29, 32:36, 43, 44, 51:91)
        call inelastic_scatter(p, table, rxn)
     case (18:21, 38)
        call n_fission(p, table, rxn)
-    case (102)
-       call n_gamma(p)
+    case (102:117)
+       call n_absorption(p)
     case default
-       call elastic_scatter(p, table%awr)
+       print *, 'warning: cant simulate reaction: ', rxn % MT
     end select
 
     ! find energy index, interpolation factor
@@ -235,11 +236,13 @@ contains
 ! ELASTIC_SCATTER
 !=====================================================================
 
-  subroutine elastic_scatter(p, awr)
+  subroutine elastic_scatter(p, table, rxn)
 
-    type(Particle), pointer :: p
-    real(8), intent(in) :: awr
+    type(Particle),      pointer :: p
+    type(AceContinuous), pointer :: table
+    type(AceReaction),   pointer :: rxn
 
+    real(8) :: awr
     real(8) :: phi ! azimuthal angle
     real(8) :: mu  ! cosine of polar angle
     real(8) :: vx, vy, vz
@@ -250,11 +253,11 @@ contains
     integer :: IE
 
     vel = sqrt(p % E)
+    awr = table % awr
 
     vx = vel*p % uvw(1)
     vy = vel*p % uvw(2)
     vz = vel*p % uvw(3)
-
 
     vcx = vx/(awr + ONE)
     vcy = vy/(awr + ONE)
@@ -267,13 +270,16 @@ contains
 
     vel = sqrt(vx*vx + vy*vy + vz*vz)
 
-    ! Select isotropic direcion -- this is only valid for s-wave
-    ! scattering
-    phi = TWO*PI*rang()
-    mu = TWO*rang() - ONE
-    u = mu
-    v = sqrt(ONE - mu**2) * cos(phi)
-    w = sqrt(ONE - mu**2) * sin(phi)
+    ! Sample scattering angle
+    mu = sample_angle(rxn, p % E)
+
+    ! Determine direction cosines
+    u = vx/vel
+    v = vy/vel
+    w = vz/vel
+
+    ! Change direction cosines according to mu
+    call rotate_angle(u, v, w, mu)
 
     vx = u*vel
     vy = v*vel
@@ -523,6 +529,7 @@ contains
     real(8) :: mu         ! cosine of scattering angle
     real(8) :: E          ! outgoing energy in laboratory
     real(8) :: E_cm       ! outgoing energy in center-of-mass
+    real(8) :: u,v,w      ! direction cosines
     character(250) :: msg ! error message
     
     ! copy energy of neutron
@@ -557,8 +564,14 @@ contains
        mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
     end if
 
+    ! copy directional cosines
+    u = p % uvw(1)
+    v = p % uvw(2)
+    w = p % uvw(3)
+
     ! change direction of particle
-    call rotate_angle(p, mu)
+    call rotate_angle(u, v, w, mu)
+    p % uvw = (/ u, v, w /)
 
     ! change energy of particle
     p % E = E
@@ -583,6 +596,7 @@ contains
     real(8) :: mu          ! cosine of scattering angle
     real(8) :: E           ! outgoing energy in laboratory
     real(8) :: E_cm        ! outgoing energy in center-of-mass
+    real(8) :: u,v,w       ! direction cosines
     character(250) :: msg  ! error message
     
     ! copy energy of neutron
@@ -617,8 +631,14 @@ contains
        mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
     end if
 
+    ! copy directional cosines
+    u = p % uvw(1)
+    v = p % uvw(2)
+    w = p % uvw(3)
+
     ! change direction of particle
-    call rotate_angle(p, mu)
+    call rotate_angle(u, v, w, mu)
+    p % uvw = (/ u, v, w /)
 
     ! change energy of particle
     p % E = E
@@ -632,10 +652,10 @@ contains
   end subroutine n_xn
 
 !=====================================================================
-! N_GAMMA
+! N_ABSORPTION
 !=====================================================================
 
-  subroutine n_gamma(p)
+  subroutine n_absorption(p)
 
     type(Particle), pointer :: p
 
@@ -649,7 +669,7 @@ contains
        call message(msg, 10)
     end if
 
-  end subroutine n_gamma
+  end subroutine n_absorption
 
 !=====================================================================
 ! SAMPLE_ANGLE samples the cosine of the angle between incident and
@@ -775,19 +795,22 @@ contains
 ! done in MCNP and SERPENT.
 !=====================================================================
 
-  subroutine rotate_angle(p, mu)
+  subroutine rotate_angle(u, v, w, mu)
 
-    type(Particle), pointer :: p
-    real(8), intent(in)     :: mu ! cosine of angle in lab
+!    type(Particle), pointer :: p
+    real(8), intent(inout) :: u
+    real(8), intent(inout) :: v
+    real(8), intent(inout) :: w
+    real(8), intent(in)    :: mu ! cosine of angle in lab
 
     real(8) :: phi, sinphi, cosphi
     real(8) :: a,b
     real(8) :: u0, v0, w0
 
     ! Copy original directional cosines
-    u0 = p % uvw(1)
-    v0 = p % uvw(2)
-    w0 = p % uvw(3)
+    u0 = u
+    v0 = v
+    w0 = w
 
     ! Sample azimuthal angle in [0,2pi)
     phi = TWO * PI * rang()
@@ -801,14 +824,14 @@ contains
     ! Need to treat special case where sqrt(1 - w**2) is close to zero
     ! by expanding about the v component rather than the w component
     if (b > 1e-10) then
-       p % uvw(1) = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
-       p % uvw(2) = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
-       p % uvw(3) = mu*w0 - a*b*cosphi
+       u = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
+       v = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
+       w = mu*w0 - a*b*cosphi
     else
        b = sqrt(ONE - v0*v0)
-       p % uvw(1) = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b
-       p % uvw(2) = mu*v0 - a*b*cosphi
-       p % uvw(3) = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
+       u = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b
+       v = mu*v0 - a*b*cosphi
+       w = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
     end if
 
   end subroutine rotate_angle

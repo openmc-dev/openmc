@@ -1,22 +1,23 @@
 # ====================================================================
-# Description: Bare Pu-239 Jezebel Benchmark
-# Case:        PU-MET-FAST-001
+# Description: Bare Pu-240 Jezebel Benchmark
+# Case:        PU-MET-FAST-002
 # Written By:  Paul Romano
-# Date:        3/21/2011
+# Date:        3/22/2011
 # ====================================================================
 
 #    cell no.   universe   material   surfaces
 cell 1          0          1          -1
 
-surface 1 sph 0. 0. 0. 6.3849
+surface 1 sph 0. 0. 0. 6.6595
 
 source_box -1 -1 -1  1  1  1
 
-material 1    0.04029014 &
-    94239.03c 0.037047   &
-    94240.03c 0.0017512  &
-    94241.03c 0.00011674 &
-    31000.03c 0.0013752
+material 1    0.04055292 &
+    94239.03c 0.029934   &
+    94240.03c 0.0078754  &
+    94241.03c 0.0012146  &
+    94242.03c 0.00015672 &
+    31000.03c 0.0013722
 
 xs_library endfb7
 xs_data /opt/serpent/xsdata/endfb7

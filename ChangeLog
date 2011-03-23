@@ -1,5 +1,17 @@
 2011-03-22 Paul Romano <romano7@mit.edu>
 
+	* benchmarks: Added PU-MET-FAST-002 and PU-MET-FAST-005 benchmark
+	problems.
+	* mpi_routines.f90: Added check for no fission bank sites.
+	* output.f90: Changed error subroutine to work when run in
+	parallel.
+	* physics.f90: Fixed sampling of seconary angle for elastic
+	scattering. Changed sampling of reaction. Changed n_gamma to
+	n_absorption and now includes (n,p), etc. Reverted sample_angle
+	routine to arguments u,v,w,mu.
+
+2011-03-22 Paul Romano <romano7@mit.edu>
+
 	* cross_section.f90: Calculation of material total cross section
 	was completely wrong -- fixed it up.
 	* global.f90: Added default keff.

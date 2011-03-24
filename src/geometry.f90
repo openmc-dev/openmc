@@ -264,6 +264,7 @@ contains
     real(8) :: a,b,c,k
     real(8) :: quad
     character(250) :: msg
+    logical :: on_surface
 
     if (present(other_cell)) then
        cell_p => cells(other_cell)
@@ -301,7 +302,11 @@ contains
 
        ! check for coincident surface
        index_surf = expression(i)
-       if (index_surf == current_surf) cycle
+       if (index_surf == current_surf) then
+          on_surface = .true.
+       else
+          on_surface = .false.
+       end if
 
        ! check for operators
        index_surf = abs(index_surf)
@@ -351,7 +356,7 @@ contains
           end if
 
        case (SURF_CYL_X)
-          a = ONE - u**2  ! v^2 + w^2
+          a = ONE - u*u  ! v^2 + w^2
           if (a == ZERO) then
              d = INFINITY
           else
@@ -362,16 +367,32 @@ contains
              y = y - y0
              z = z - z0
              k = y*v + z*w
-             c = y**2 + z**2 - r**2
-             quad = k**2 - a*c
+             c = y*y + z*z - r*r
+             quad = k*k - a*c
 
-             if (c < ZERO) then
+             if (quad < ZERO) then
+                ! no intersection with cylinder
+
+                d = INFINITY 
+
+             elseif (on_surface) then
+                ! particle is on the cylinder, thus one distance is
+                ! positive/negative and the other is zero. The sign of
+                ! k determines if we are facing in or out
+
+                if (k >= ZERO) then
+                   d = INFINITY
+                else
+                   d = (-k + sqrt(quad))/a
+                end if
+
+             elseif (c < ZERO) then
                 ! particle is inside the cylinder, thus one distance
                 ! must be negative and one must be positive. The
                 ! positive distance will be the one with negative sign
                 ! on sqrt(quad)
 
-                d = -(k - sqrt(quad))/a
+                d = (-k + sqrt(quad))/a
 
              else
                 ! particle is outside the cylinder, thus both
@@ -379,14 +400,14 @@ contains
                 ! positive, the smaller distance is the one with
                 ! positive sign on sqrt(quad)
 
-                d = -(k + sqrt(quad))/a
+                d = (-k - sqrt(quad))/a
                 if (d < ZERO) d = INFINITY
 
              end if
           end if
 
        case (SURF_CYL_Y)
-          a = ONE - v**2  ! u^2 + w^2
+          a = ONE - v*v  ! u^2 + w^2
           if (a == ZERO) then
              d = INFINITY
           else
@@ -397,16 +418,32 @@ contains
              x = x - x0
              z = z - z0
              k = x*u + z*w
-             c = x**2 + z**2 - r**2
-             quad = k**2 - a*c
+             c = x*x + z*z - r*r
+             quad = k*k - a*c
 
-             if (c < ZERO) then
+             if (quad < ZERO) then
+                ! no intersection with cylinder
+
+                d = INFINITY 
+
+             elseif (on_surface) then
+                ! particle is on the cylinder, thus one distance is
+                ! positive/negative and the other is zero. The sign of
+                ! k determines if we are facing in or out
+
+                if (k >= ZERO) then
+                   d = INFINITY
+                else
+                   d = (-k + sqrt(quad))/a
+                end if
+
+             elseif (c < ZERO) then
                 ! particle is inside the cylinder, thus one distance
                 ! must be negative and one must be positive. The
                 ! positive distance will be the one with negative sign
                 ! on sqrt(quad)
 
-                d = -(k - sqrt(quad))/a
+                d = (-k + sqrt(quad))/a
 
              else
                 ! particle is outside the cylinder, thus both
@@ -414,14 +451,14 @@ contains
                 ! positive, the smaller distance is the one with
                 ! positive sign on sqrt(quad)
 
-                d = -(k + sqrt(quad))/a
+                d = (-k - sqrt(quad))/a
                 if (d < ZERO) d = INFINITY
 
              end if
           end if
 
        case (SURF_CYL_Z)
-          a = ONE - w**2  ! u^2 + v^2
+          a = ONE - w*w  ! u^2 + v^2
           if (a == ZERO) then
              d = INFINITY
           else
@@ -432,13 +469,24 @@ contains
              x = x - x0
              y = y - y0
              k = x*u + y*v
-             c = x**2 + y**2 - r**2
-             quad = k**2 - a*c
-             
+             c = x*x + y*y - r*r
+             quad = k*k - a*c
+
              if (quad < ZERO) then
                 ! no intersection with cylinder
 
                 d = INFINITY 
+
+             elseif (on_surface) then
+                ! particle is on the cylinder, thus one distance is
+                ! positive/negative and the other is zero. The sign of
+                ! k determines if we are facing in or out
+
+                if (k >= ZERO) then
+                   d = INFINITY
+                else
+                   d = (-k + sqrt(quad))/a
+                end if
 
              elseif (c < ZERO) then
                 ! particle is inside the cylinder, thus one distance
@@ -446,7 +494,7 @@ contains
                 ! positive distance will be the one with negative sign
                 ! on sqrt(quad)
 
-                d = -(k - sqrt(quad))/a
+                d = (-k + sqrt(quad))/a
 
              else
                 ! particle is outside the cylinder, thus both
@@ -454,8 +502,8 @@ contains
                 ! positive, the smaller distance is the one with
                 ! positive sign on sqrt(quad)
 
-                d = -(k + sqrt(quad))/a
-                if (d < ZERO) d = INFINITY
+                d = (-k - sqrt(quad))/a
+                if (d <= ZERO) d = INFINITY
 
              end if
           end if
@@ -470,13 +518,24 @@ contains
           y = y - y0
           z = z - z0
           k = x*u + y*v + z*w
-          c = x**2 + y**2 + z**2 - r**2
-          quad = k**2 - c
-
+          c = x*x + y*y + z*z - r*r
+          quad = k*k - c
+          
           if (quad < ZERO) then
              ! no intersection with sphere
 
              d = INFINITY 
+
+          elseif (on_surface) then
+             ! particle is on the sphere, thus one distance is
+             ! positive/negative and the other is zero. The sign of k
+             ! determines if we are facing in or out
+             
+             if (k >= ZERO) then
+                d = INFINITY
+             else
+                d = -k + sqrt(quad)
+             end if
 
           elseif (c < ZERO) then
              ! particle is inside the sphere, thus one distance
@@ -484,7 +543,7 @@ contains
              ! positive distance will be the one with negative sign
              ! on sqrt(quad)
 
-             d = -(k - sqrt(quad))
+             d = -k + sqrt(quad)
 
           else
              ! particle is outside the sphere, thus both
@@ -492,7 +551,7 @@ contains
              ! positive, the smaller distance is the one with
              ! positive sign on sqrt(quad)
 
-             d = -(k + sqrt(quad))
+             d = -k - sqrt(quad)
              if (d < ZERO) d = INFINITY
 
           end if
@@ -562,26 +621,35 @@ contains
        y0 = surf % coeffs(1)
        z0 = surf % coeffs(2)
        r = surf % coeffs(3)
-       func = (y-y0)**2 + (z-z0)**2 - r**2
+       y = y - y0
+       z = z - z0
+       func = y*y + z*z - r*r
 
     case (SURF_CYL_Y)
        x0 = surf % coeffs(1)
        z0 = surf % coeffs(2)
        r = surf % coeffs(3)
-       func = (x-x0)**2 + (z-z0)**2 - r**2
+       x = x - x0
+       z = z - z0
+       func = x*x + z*z - r*r
 
     case (SURF_CYL_Z)
        x0 = surf % coeffs(1)
        y0 = surf % coeffs(2)
        r = surf % coeffs(3)
-       func = (x-x0)**2 + (y-y0)**2 - r**2
+       x = x - x0
+       y = y - y0
+       func = x*x + y*y - r*r
 
     case (SURF_SPHERE)
        x0 = surf % coeffs(1)
        y0 = surf % coeffs(2)
        z0 = surf % coeffs(3)
        r = surf % coeffs(4)
-       func = (x-x0)**2 + (y-y0)**2 + (z-z0)**2 - r**2
+       x = x - x0
+       y = y - y0
+       z = z - z0
+       func = x*x + y*y + z*z - r*r
 
     case (SURF_BOX_X)
        y0 = surf % coeffs(1)
@@ -635,7 +703,7 @@ contains
        return
 
     case (SURF_GQ)
-       func = A*x**2 + B*y**2 + C*z**2 + D*x*y + E*y*z + F*x*z + G*x &
+       func = A*x*x + B*y*y + C*z*z + D*x*y + E*y*z + F*x*z + G*x &
             & + H*y + I*z + J
 
     end select

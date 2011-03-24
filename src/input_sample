@@ -5,9 +5,9 @@ cell 100 37  40      -1
 cell 101 37  41       1
 cell 2   0   41       2 -3
 
-surface 1 cylz 0 0 3
-surface 2 cylz 0 0 5
-surface 3 cylz 0 0 7
+surface 1 cylz 0 0 7
+surface 2 cylz 0 0 9
+surface 3 cylz 0 0 11
 
 material 40 -4.5 &
       92235.03c 1.0
@@ -21,4 +21,4 @@ source box -4 -4 -4  4 4 4
 xs_library endfb7
 xs_data /opt/serpent/xsdata/endfb7
 criticality 15 5 10000
-verbosity 8
+verbosity 7

@@ -150,9 +150,12 @@ module global
        & ANGLE_TABULAR   = 3    ! Tabular angular distribution
 
   ! Interpolation flag
-  integer, parameter :: &
-       & HISTOGRAM    = 1, & ! Histogram interpolation on angle
-       & LINEARLINEAR = 2    ! Linear-linear interpolation on angle
+  integer, parameter ::     &
+       & HISTOGRAM     = 1, & ! y is constant in x
+       & LINEAR_LINEAR = 2, & ! y is linear in x
+       & LINEAR_LOG    = 3, & ! y is linear in ln(x)
+       & LOG_LINEAR    = 4, & ! ln(y) is linear in x
+       & LOG_LOG       = 5    ! ln(y) is linear in ln(x)
 
   ! Particle type
   integer, parameter :: &

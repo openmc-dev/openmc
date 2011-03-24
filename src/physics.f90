@@ -4,7 +4,7 @@ module physics
   use geometry,    only: find_cell, dist_to_boundary, cross_boundary
   use types,       only: Particle
   use mcnp_random, only: rang
-  use output,      only: error, message, print_particle
+  use output,      only: error, warning, message, print_particle
   use search,      only: binary_search
   use endf,        only: reaction_name
 
@@ -49,7 +49,7 @@ contains
 
     if (verbosity >= 9) then
        msg = "=== Particle " // trim(int_to_str(p % uid)) // " ==="
-       call message(msg, 10)
+       call message(msg, 9)
     end if
 
     if (verbosity >= 10) then
@@ -90,6 +90,7 @@ contains
           call cross_boundary(p)
        else
           ! collision
+          p % surface = 0
           call collision(p)
        end if
        
@@ -205,10 +206,10 @@ contains
             & + f*(rxn%sigma(IE-rxn%IE+2)))
        if (r1 < prob) exit
     end do
-    if (verbosity >= 10) then
+    if (verbosity >= 10 .or. p % uid == 4593) then
        msg = "    " // trim(reaction_name(rxn%MT)) // " with nuclide " // &
             & trim(table%name)
-       call message(msg, 10)
+       call message(msg, 8)
     end if
 
     ! call appropriate subroutine
@@ -226,6 +227,13 @@ contains
     case default
        print *, 'warning: cant simulate reaction: ', rxn % MT
     end select
+
+    ! check for very low energy
+    if (p % E < 1.0e-100_8) then
+       p % alive = .false.
+       msg = "Killing neutron with extremely low energy"
+       call warning(msg)
+    end if
 
     ! find energy index, interpolation factor
     call find_energy_index(p)
@@ -764,7 +772,7 @@ contains
           ! Histogram interpolation
           mu = mu0 + (xi - c_k)/p0
 
-       elseif (interp == LINEARLINEAR) then
+       elseif (interp == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about
           ! the formula given in the MCNP manual
           p1  = rxn % adist % data(loc + NP + k+1)
@@ -987,14 +995,16 @@ contains
           l = i
        end if
 
-       ! interpolation on grid i for energy E1
-       loc   = rxn%edist%data(2 + 2*NR + NE + i) + 2 ! start of EOUT(i)
-       E_i_1 = rxn%edist%data(loc + 1)
-       E_i_K = rxn%edist%data(loc + NE)
+       ! interpolation for energy E1 and EK
+       loc   = rxn%edist%data(2 + 2*NR + NE + i)
+       NP    = rxn%edist%data(loc + 2)
+       E_i_1 = rxn%edist%data(loc + 2 + 1)
+       E_i_K = rxn%edist%data(loc + 2 + NP)
 
-       loc    = rxn%edist%data(2 + 2*NR + NE + i + 1) + 2 ! start of EOUT(i+1)
-       E_i1_1 = rxn%edist%data(loc + 1)
-       E_i1_K = rxn%edist%data(loc + NE)
+       loc    = rxn%edist%data(2 + 2*NR + NE + i + 1)
+       NP     = rxn%edist%data(loc + 2)
+       E_i1_1 = rxn%edist%data(loc + 2 + 1)
+       E_i1_K = rxn%edist%data(loc + 2 + NP)
 
        E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
        E_K = E_i_K + r*(E_i1_K - E_i_K)
@@ -1036,7 +1046,7 @@ contains
           ! Histogram interpolation
           E_out = E_l_k + (xi1 - c_k)/p_l_k
 
-       elseif (INTT == LINEARLINEAR) then
+       elseif (INTT == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about
           ! the formula given in the MCNP manual
           E_l_k1 = rxn % edist % data(loc+k+1)
@@ -1258,16 +1268,14 @@ contains
        ! determine endpoints on grid i
        loc   = rxn%edist%data(2+2*NR+NE + i) ! start of LDAT for i
        NP    = rxn%edist%data(loc + 2)
-       loc   = loc + 2
-       E_i_1 = rxn%edist%data(loc + 1)
-       E_i_K = rxn%edist%data(loc + NP)
+       E_i_1 = rxn%edist%data(loc + 2 + 1)
+       E_i_K = rxn%edist%data(loc + 2 + NP)
 
        ! determine endpoints on grid i+1
        loc    = rxn%edist%data(2+2*NR+NE + i+1) ! start of LDAT for i+1
-       NP    = rxn%edist%data(loc + 2)
-       loc   = loc + 2
-       E_i1_1 = rxn%edist%data(loc + 1)
-       E_i1_K = rxn%edist%data(loc + NP)
+       NP     = rxn%edist%data(loc + 2)
+       E_i1_1 = rxn%edist%data(loc + 2 + 1)
+       E_i1_K = rxn%edist%data(loc + 2 + NP)
 
        E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
        E_K = E_i_K + r*(E_i1_K - E_i_K)
@@ -1313,7 +1321,7 @@ contains
           KM_R = rxn % edist % data(loc + 3*NP + k)
           KM_A = rxn % edist % data(loc + 4*NP + k)
 
-       elseif (INTT == LINEARLINEAR) then
+       elseif (INTT == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about
           ! the formula given in the MCNP manual
           E_l_k1 = rxn % edist % data(loc+k+1)
@@ -1403,16 +1411,14 @@ contains
        ! determine endpoints on grid i
        loc   = rxn%edist%data(2+2*NR+NE + i) ! start of LDAT for i
        NP    = rxn%edist%data(loc + 2)
-       loc   = loc + 2
-       E_i_1 = rxn%edist%data(loc + 1)
-       E_i_K = rxn%edist%data(loc + NP)
+       E_i_1 = rxn%edist%data(loc + 2 + 1)
+       E_i_K = rxn%edist%data(loc + 2 + NP)
 
        ! determine endpoints on grid i+1
        loc    = rxn%edist%data(2+2*NR+NE + i+1) ! start of LDAT for i+1
-       NP    = rxn%edist%data(loc + 2)
-       loc   = loc + 2
-       E_i1_1 = rxn%edist%data(loc + 1)
-       E_i1_K = rxn%edist%data(loc + NP)
+       NP     = rxn%edist%data(loc + 2)
+       E_i1_1 = rxn%edist%data(loc + 2 + 1)
+       E_i1_K = rxn%edist%data(loc + 2 + NP)
 
        E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
        E_K = E_i_K + r*(E_i1_K - E_i_K)
@@ -1454,7 +1460,7 @@ contains
           ! Histogram interpolation
           E_out = E_l_k + (xi1 - c_k)/p_l_k
 
-       elseif (INTT == LINEARLINEAR) then
+       elseif (INTT == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about
           ! the formula given in the MCNP manual
           E_l_k1 = rxn % edist % data(loc+k+1)
@@ -1509,7 +1515,7 @@ contains
           ! Histogram interpolation
           mu_out = mu_k + (xi3 - c_k)/p_k
 
-       elseif (JJ == LINEARLINEAR) then
+       elseif (JJ == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about
           ! the formula given in the MCNP manual
           p_k1  = rxn % edist % data(loc + NP + k+1)

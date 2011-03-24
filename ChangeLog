@@ -1,3 +1,12 @@
+2011-03-24 Paul Romano <romano7@mit.edu>
+
+	* geometry.f90: Fixed significant bug in how quadratic surfaces
+	were handled. Changed x**2 to x*x in the interest of efficiency.
+	* global.f90: Added more interpolation types to prepare for
+	interpolation other than histogram or lin-lin.
+	* physics.f90: Fixed bug in E1 and EK energies for Law 4 (used NE
+	instead of NP).
+
 2011-03-22 Paul Romano <romano7@mit.edu>
 
 	* benchmarks: Added PU-MET-FAST-002 and PU-MET-FAST-005 benchmark

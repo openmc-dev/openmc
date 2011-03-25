@@ -1,5 +1,12 @@
 2011-03-25 Paul Romano <romano7@mit.edu>
 
+	* physics.f90: Resample outgoing energy if sampled energy is
+	greater than 20 MeV. Some cross sections go up to 150 MeV but
+	others do not.
+	* source.f90: Resample outgoing energy if >= 20 MeV.
+
+2011-03-25 Paul Romano <romano7@mit.edu>
+
 	* ace.f90: Added ability to read delayed neutron energy
 	distributions and precursor yields/constants. Created function
 	length_energy_dist from inner section of read_energy_dist so that

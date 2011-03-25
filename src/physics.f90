@@ -116,7 +116,7 @@ contains
     if (E < e_grid(1)) then
        IE = 1
     elseif (E > e_grid(n_grid)) then
-       IE = n_grid
+       IE = n_grid - 1
     else
        IE = binary_search(e_grid, n_grid, E)
     end if
@@ -572,11 +572,15 @@ contains
 
           ! sample from energy distribution for group j
           law = table % nu_d_edist(j) % law
-          if (law == 44 .or. law == 61) then
-             call sample_energy(table%nu_d_edist(j), E, E_out, mu)
-          else
-             call sample_energy(table%nu_d_edist(j), E, E_out)
-          end if
+          do
+             if (law == 44 .or. law == 61) then
+                call sample_energy(table%nu_d_edist(j), E, E_out, mu)
+             else
+                call sample_energy(table%nu_d_edist(j), E, E_out)
+             end if
+             ! resample if energy is >= 20 MeV
+             if (E_out < 20) exit
+          end do
 
        else
           ! ==========================================================
@@ -584,11 +588,15 @@ contains
 
           ! sample from prompt neutron energy distribution
           law = rxn % edist % law
-          if (law == 44 .or. law == 61) then
-             call sample_energy(rxn%edist, E, E_out, prob)
-          else
-             call sample_energy(rxn%edist, E, E_out)
-          end if
+          do
+             if (law == 44 .or. law == 61) then
+                call sample_energy(rxn%edist, E, E_out, prob)
+             else
+                call sample_energy(rxn%edist, E, E_out)
+             end if
+             ! resample if energy is >= 20 MeV
+             if (E_out < 20) exit
+          end do
 
        end if
 

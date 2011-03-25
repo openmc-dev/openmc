@@ -23,6 +23,7 @@ contains
     real(8) :: r(3)       ! sampled coordinates
     real(8) :: phi        ! azimuthal angle
     real(8) :: mu         ! cosine of polar angle
+    real(8) :: E          ! outgoing energy
     real(8) :: p_min(3)   ! minimum coordinates of source
     real(8) :: p_max(3)   ! maximum coordinates of source
     character(250) :: msg ! error message
@@ -81,7 +82,14 @@ contains
              p % alive    = .true.
 
              ! sample energy from Watt fission energy spectrum for U-235
-             p % E = watt_spectrum(0.988_8, 2.249_8)
+             do
+                E = watt_spectrum(0.988_8, 2.249_8)
+                ! resample if energy is >= 20 MeV
+                if (E < 20) exit
+             end do
+
+             ! set particle energy
+             p % E = E
           end do
        end if
     end do

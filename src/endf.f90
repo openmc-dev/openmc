@@ -18,6 +18,8 @@ contains
        string = '(n,total)'
     case (2)
        string = '(elastic)'
+    case (4)
+       string = '(n,level)'
     case (11)
        string = '(n,2nd)'
     case (16)

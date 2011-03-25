@@ -159,7 +159,7 @@ module types
      integer :: n_interp               ! # of interpolation regions
      integer, allocatable :: nbt(:)    ! ENDF interpolation parameters
      integer, allocatable :: int(:)    ! ''
-     integer :: n_energy               ! # of incoming energies
+     integer :: n_energy               ! # of energies for law validity
      real(8), allocatable :: energy(:) ! energy grid for law validity
      real(8), allocatable :: pvalid(:) ! probability of law validity
      real(8), allocatable :: data(:)   ! energy distribution data
@@ -211,11 +211,10 @@ module types
      
      ! Delayed fission neutron emission
      integer :: nu_d_type
+     integer :: n_precursor
      real(8), allocatable :: nu_d_data(:)
-     type(AceDistEnergy)  :: nu_d_edist
-     real(8), allocatable :: nu_d_precursor_const(:,:)
-     real(8), allocatable :: nu_d_precursor_energy(:,:)
-     real(8), allocatable :: nu_d_precursor_prob(:,:)
+     real(8), allocatable :: nu_d_precursor_data(:)
+     type(AceDistEnergy), allocatable :: nu_d_edist(:)
 
      ! Reactions
      integer :: n_reaction

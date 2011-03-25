@@ -1,3 +1,18 @@
+2011-03-25 Paul Romano <romano7@mit.edu>
+
+	* ace.f90: Added ability to read delayed neutron energy
+	distributions and precursor yields/constants. Created function
+	length_energy_dist from inner section of read_energy_dist so that
+	it could used for delayed neutrons as well. Added many comments
+	where they were previously missing.
+	* fileio.f90: Added many comments.
+	* global.f90: Added lattice types
+	* physics.f90: Added sampling of delayed neutrons (delayed/prompt,
+	precursor group, outgoing energy). Added many comments.
+	* types.f90: Moved all delayed neutron precursor data into one
+	array. Made delayed neutron energy distribution allocatable (since
+	there are 6 groups, each with a dist). Added many comments.
+
 2011-03-24 Paul Romano <romano7@mit.edu>
 
 	* geometry.f90: Fixed significant bug in how quadratic surfaces

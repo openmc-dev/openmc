@@ -107,6 +107,11 @@ module global
        & CELL_FILL    = 2, & ! Cell filled by a separate universe
        & CELL_LATTICE = 3    ! Cell filled with a lattice
 
+  ! Lattice types
+  integer, parameter :: &
+       & LATTICE_RECT = 1, &
+       & LATTICE_HEX  = 2
+
   ! array index of universe 0
   integer :: BASE_UNIVERSE
 
@@ -247,13 +252,13 @@ contains
     integer, intent(in) :: num
     character(10) :: str
 
-    write ( str, '(I10)' ) num
+    write (str, '(I10)') num
     str = adjustl(str)
 
   end function int_to_str
 
 !=====================================================================
-! INT_TO_STR converts a string to an integer. 
+! STR_TO_INT converts a string to an integer. 
 !=====================================================================
 
   function str_to_int(str) result(num)

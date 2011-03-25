@@ -36,13 +36,13 @@ contains
 
   subroutine read_command_line()
 
-    integer :: argc
-    character(250) :: msg
-    logical :: file_exists
-    character(7) :: readable
+    integer        :: argc        ! number of command line arguments
+    logical        :: file_exists ! does specified input file exist?
+    character(250) :: msg         ! error message
+    character(7)   :: readable    ! is input file readable?
 
     argc = COMMAND_ARGUMENT_COUNT()
-    if ( argc > 0 ) then
+    if (argc > 0) then
        call GET_COMMAND_ARGUMENT(1, path_input)
     else
        msg = "No input file specified!"
@@ -75,16 +75,17 @@ contains
     
     character(*), intent(in) :: filename
 
-    character(250) :: line, msg
-    character(32) :: words(max_words)
-    integer :: in = 7
-    integer :: ioError
-    integer :: n
-    integer :: count
-    integer :: universe_num
-    type(ListKeyValueII), pointer :: key_list
-    type(Universe),       pointer :: univ
-    integer :: index
+    integer        :: in = 7           ! unit # for input file
+    integer        :: index            ! index in universes array
+    integer        :: ioError          ! error status for file access
+    integer        :: n                ! number of words on a line
+    integer        :: count            ! number of cells in a universe
+    integer        :: universe_num     ! user-specified universe #
+    character(250) :: line             ! a line of words in input file
+    character(250) :: msg              ! output/error message
+    character(32)  :: words(max_words) ! words on a line
+    type(ListKeyValueII), pointer :: key_list => null()
+    type(Universe),       pointer :: univ => null()
 
     msg = "First pass through input file..."
     call message(msg, 5)
@@ -206,17 +207,18 @@ contains
 
     character(*), intent(in) :: filename
 
-    character(250) :: line, msg
-    character(32) :: words(max_words)
-    integer :: in = 7
-    integer :: ioError
-    integer :: n, i
-    integer :: index_cell
-    integer :: index_universe
-    integer :: index_surface
-    integer :: index_lattice
-    integer :: index_material
-    integer :: index_source
+    integer :: in = 7                  ! unit # for input file
+    integer :: ioError                 ! error status for file access
+    integer :: n                       ! number of words on a line
+    integer :: index_cell              ! index in cells array
+    integer :: index_universe          ! index in universes array
+    integer :: index_surface           ! index in surfaces array
+    integer :: index_lattice           ! index in lattices array
+    integer :: index_material          ! index in materials array
+    integer :: index_source            ! index in source array (?)
+    character(250) :: line             ! a line of words
+    character(250) :: msg              ! output/error message
+    character(32)  :: words(max_words) ! words on a single line
 
     msg = "Second pass through input file..."
     call message(msg, 5)
@@ -237,7 +239,7 @@ contains
 
     do
        call get_next_line(in, words, n, ioError)
-       if ( ioError /= 0 ) exit
+       if (ioError /= 0) exit
 
        ! skip comments
        if (n==0 .or. words(1)(1:1) == '#') cycle
@@ -294,7 +296,7 @@ contains
   end subroutine read_input
 
 !=====================================================================
-! ADJUST_INDICES changes the boundary_list values for each cell and
+! ADJUST_INDICES changes the values for 'surfaces' for each cell and
 ! the material index assigned to each to the indices in the surfaces
 ! and material array rather than the unique IDs assigned to each
 ! surface and material
@@ -302,12 +304,12 @@ contains
 
   subroutine adjust_indices()
 
-    type(Cell), pointer :: c => null()
-
-    integer :: i, j
-    integer :: index
-    integer :: surf_num
-    character(250) :: msg
+    integer             :: i           ! index in cells array
+    integer             :: j           ! index over surface list
+    integer             :: index       ! index in surfaces/materials array 
+    integer             :: surf_num    ! user-specified surface number
+    character(250)      :: msg         ! output/error message
+    type(Cell), pointer :: c => null() ! cell pointer
     
     do i = 1, n_cells
        ! adjust boundary list
@@ -327,9 +329,7 @@ contains
        end do
 
        ! adjust material indices
-       if (c % fill /= 0) then
-          ! cell is filled with universe -- do nothing
-       else
+       if (c % fill == 0) then
           index = dict_get_key(material_dict, c%material)
           if (index == DICT_NULL) then
              msg = "Could not find material " // trim(int_to_str(c%material)) // &
@@ -349,12 +349,12 @@ contains
 
   recursive subroutine build_universe(univ, parent, level)
 
-    type(Universe), pointer :: univ
-    integer, intent(in) :: parent
-    integer, intent(in) :: level
+    type(Universe), pointer :: univ   ! univese pointer
+    integer,     intent(in) :: parent ! cell containing universe
+    integer,     intent(in) :: level  ! level of universe
 
-    integer :: i
-    integer :: index
+    integer :: i     ! index for cells in universe
+    integer :: index ! index in cells array
     type(Cell),     pointer :: c => null()
     type(Universe), pointer :: subuniverse => null()
 
@@ -367,8 +367,8 @@ contains
        c => cells(index)
        c%parent = parent
 
-       ! if this cell is filled with another universe, recursive call
-       ! this subroutine
+       ! if this cell is filled with another universe, recursively
+       ! call this subroutine
        if (c % fill > 0) then
           subuniverse => universes(c % fill)
           call build_universe(subuniverse, index, level + 1)
@@ -383,16 +383,16 @@ contains
 
   subroutine read_cell(index, words, n_words)
 
-    integer,      intent(in) :: index
-    character(*), intent(in) :: words(max_words)
-    integer,      intent(in) :: n_words
+    integer,      intent(in) :: index          ! index in cells array
+    character(*), intent(in) :: words(n_words) ! words on cell card entry
+    integer,      intent(in) :: n_words        ! number of words
 
-    integer :: ioError
-    integer :: i
-    integer :: universe_num
-    integer :: n_surfaces
-    character(250) :: msg
-    character(32)  :: word
+    integer        :: ioError      ! error status for file access
+    integer        :: i            ! index for surface list in a cell
+    integer        :: universe_num ! user-specified universe number
+    integer        :: n_surfaces   ! number of surfaces in a cell
+    character(250) :: msg          ! output/error message
+    character(32)  :: word         ! single word
     type(Cell), pointer :: c => null()
 
     c => cells(index)
@@ -417,7 +417,7 @@ contains
     if (trim(words(4)) == 'fill') then
        c % type     = CELL_FILL
        c % material = 0
-       n_surfaces = n_words - 5
+       n_surfaces   = n_words - 5
 
        ! find universe
        universe_num = str_to_int(words(5))
@@ -471,69 +471,69 @@ contains
 
   subroutine read_surface(index, words, n_words)
 
-    integer, intent(in) :: index
-    character(*), intent(in) :: words(max_words)
-    integer, intent(in) :: n_words
+    integer,      intent(in) :: index          ! index in surfaces array
+    character(*), intent(in) :: words(n_words) ! words in surface card entry
+    integer,      intent(in) :: n_words        ! number of words
 
-    integer :: ioError
-    integer :: i
-    integer :: coeffs_reqd
-    character(250) :: msg
-    character(32) :: word
-    type(Surface), pointer :: this_surface => null()
+    integer        :: ioError     ! error status for file access
+    integer        :: i           ! index for surface coefficients
+    integer        :: coeffs_reqd ! number of coefficients are required
+    character(250) :: msg         ! output/error message
+    character(32)  :: word        ! single word
+    type(Surface), pointer :: surf => null()
 
-    this_surface => surfaces(index)
+    surf => surfaces(index)
 
     ! Read surface identifier
-    read(words(2), FMT='(I8)', IOSTAT=ioError) this_surface%uid
+    read(words(2), FMT='(I8)', IOSTAT=ioError) surf % uid
     if (ioError > 0) then
        msg = "Invalid surface name: " // words(2)
        call error(msg)
     end if
-    call dict_add_key(surface_dict, this_surface%uid, index)
+    call dict_add_key(surface_dict, surf % uid, index)
 
     ! Read surface type
     word = words(3)
     call lower_case(word)
     select case (trim(word))
        case ('px')
-          this_surface%type = SURF_PX
+          surf % type = SURF_PX
           coeffs_reqd  = 1
        case ('py')
-          this_surface%type = SURF_PY
+          surf % type = SURF_PY
           coeffs_reqd  = 1
        case ('pz')
-          this_surface%type = SURF_PZ
+          surf % type = SURF_PZ
           coeffs_reqd  = 1
        case ('plane')
-          this_surface%type = SURF_PLANE
+          surf % type = SURF_PLANE
           coeffs_reqd  = 4
        case ('cylx')
-          this_surface%type = SURF_CYL_X
+          surf % type = SURF_CYL_X
           coeffs_reqd  = 3
        case ('cyly')
-          this_surface%type = SURF_CYL_Y
+          surf % type = SURF_CYL_Y
           coeffs_reqd  = 3
        case ('cylz')
-          this_surface%type = SURF_CYL_Z
+          surf % type = SURF_CYL_Z
           coeffs_reqd  = 3
        case ('sph')
-          this_surface%type = SURF_SPHERE
+          surf % type = SURF_SPHERE
           coeffs_reqd  = 4
        case ('boxx')
-          this_surface%type = SURF_BOX_X
+          surf % type = SURF_BOX_X
           coeffs_reqd  = 4
        case ('boxy')
-          this_surface%type = SURF_BOX_Y
+          surf % type = SURF_BOX_Y
           coeffs_reqd  = 4
        case ('boxz')
-          this_surface%type = SURF_BOX_Z
+          surf % type = SURF_BOX_Z
           coeffs_reqd  = 4
        case ('box') 
-          this_surface%type = SURF_BOX
+          surf % type = SURF_BOX
           coeffs_reqd  = 6
        case ('gq')
-          this_surface%type = SURF_GQ
+          surf % type = SURF_GQ
           coeffs_reqd  = 10
        case default
           msg = "Invalid surface type: " // words(3)
@@ -547,9 +547,9 @@ contains
     end if
     
     ! Read list of surfaces
-    allocate(this_surface%coeffs(n_words-3))
+    allocate(surf%coeffs(n_words-3))
     do i = 1, n_words-3
-       this_surface%coeffs(i) = str_to_real(words(i+3))
+       surf % coeffs(i) = str_to_real(words(i+3))
     end do
 
   end subroutine read_surface
@@ -560,9 +560,9 @@ contains
 
   subroutine read_lattice(index, words, n_words)
 
-    integer, intent(in) :: index
-    character(*), intent(in) :: words(max_words)
-    integer, intent(in) :: n_words
+    integer,      intent(in) :: index
+    character(*), intent(in) :: words(n_words)
+    integer,      intent(in) :: n_words
 
   end subroutine read_lattice
 
@@ -572,21 +572,21 @@ contains
 
   subroutine read_source(words, n_words)
 
-    character(*), intent(in) :: words(max_words)
-    integer, intent(in) :: n_words
+    character(*), intent(in) :: words(n_words) ! words on source entry
+    integer,      intent(in) :: n_words        ! number of words
 
-    character(250) :: msg
-    character(32) :: word
-    integer :: ioError
-    integer :: values_reqd
-    integer :: i
+    integer :: i           ! index in values list
+    integer :: ioError     ! error status for file access
+    integer :: values_reqd ! number of values required to specify source
+    character(250) :: msg  ! output/error message
+    character(32)  :: word ! single word
 
     ! Read source type
     word = words(2)
     call lower_case(word)
     select case (trim(word))
     case ('box')
-       external_source%type = SRC_BOX
+       external_source % type = SRC_BOX
        values_reqd = 6
     case default
        msg = "Invalid source type: " // words(2)
@@ -599,10 +599,10 @@ contains
        call error(msg)
     end if
     
-    ! Read list of surfaces
+    ! Read values
     allocate(external_source%values(n_words-2))
     do i = 1, n_words-2
-       external_source%values(i) = str_to_real(words(i+2))
+       external_source % values(i) = str_to_real(words(i+2))
     end do
     
   end subroutine read_source
@@ -614,27 +614,29 @@ contains
 
   subroutine read_material(index, words, n_words)
 
-    integer, intent(in) :: index
-    character(*), intent(in) :: words(n_words)
-    integer, intent(in) :: n_words
+    integer,      intent(in) :: index          ! index in materials array
+    character(*), intent(in) :: words(n_words) ! words on material entry
+    integer,      intent(in) :: n_words        ! number of words
 
-    character(100) :: msg
-    integer :: i
-    integer :: ioError
-    integer :: n_isotopes
+    integer        :: i          ! index over isotopes
+    integer        :: ioError    ! error status for file access
+    integer        :: n_isotopes ! number of isotopes in material
+    character(250) :: msg        ! output/error message
     type(Material), pointer :: mat => null()
 
+    ! Check for correct number of arguments
     if (mod(n_words,2) == 0 .or. n_words < 5) then
        msg = "Invalid number of arguments for material: " // words(2)
        call error(msg)
     end if
 
+    ! Determine and set number of isotopes
     n_isotopes = (n_words-3)/2
     mat => materials(index)
-    mat%n_isotopes = n_isotopes
+    mat % n_isotopes = n_isotopes
 
     ! Read surface identifier
-    read(words(2), FMT='(I8)', IOSTAT=ioError) mat%uid
+    read(words(2), FMT='(I8)', IOSTAT=ioError) mat % uid
     if (ioError > 0) then
        msg = "Invalid surface name: " // words(2)
        call error(msg)
@@ -642,7 +644,7 @@ contains
     call dict_add_key(material_dict, mat%uid, index)
 
     ! Read atom density
-    mat%atom_density = str_to_real(words(3))
+    mat % atom_density = str_to_real(words(3))
 
     ! allocate isotope and density list
     allocate(mat%names(n_isotopes))
@@ -652,8 +654,8 @@ contains
 
     ! read names and percentage
     do i = 1, n_isotopes
-       mat%names(i) = words(2*i+2)
-       mat%atom_percent(i) = str_to_real(words(2*i+3))
+       mat % names(i) = words(2*i+2)
+       mat % atom_percent(i) = str_to_real(words(2*i+3))
     end do
 
   end subroutine read_material
@@ -665,18 +667,19 @@ contains
 
   subroutine normalize_ao()
 
+    integer        :: index           ! index used for several purposes
+    integer        :: i               ! index in materials array
+    integer        :: j               ! index over isotopes in material
+    real(8)        :: sum_percent     ! 
+    real(8)        :: awr             ! atomic weight ratio
+    real(8)        :: w               ! weight percent
+    real(8)        :: x               ! atom percent
+    logical        :: percent_in_atom ! isotopes specified in atom percent?
+    logical        :: density_in_atom ! density specified in atom/b-cm?
+    character(10)  :: key             ! name of isotopes, e.g. 92235.03c
+    character(100) :: msg             ! output/error message
     type(xsData),   pointer :: iso => null()
     type(Material), pointer :: mat => null()
-    integer :: index
-    integer :: i, j
-    real(8) :: sum_percent
-    real(8) :: awr              ! atomic weight ratio
-    real(8) :: w                ! weight percent
-    real(8) :: x                ! atom percent
-    logical :: percent_in_atom
-    logical :: density_in_atom
-    character(10) :: key
-    character(100) :: msg
     
     ! first find the index in the xsdata array for each isotope in
     ! each material
@@ -685,31 +688,31 @@ contains
 
        ! Check to make sure either all atom percents or all weight
        ! percents are given
-       if (.not. (all(mat%atom_percent > 0) .or. & 
-            & all(mat%atom_percent < 0))) then
+       if (.not. (all(mat%atom_percent > ZERO) .or. & 
+            & all(mat%atom_percent < ZERO))) then
           msg = "Cannot mix atom and weight percents in material " // &
                & int_to_str(mat%uid)
           call error(msg)
        end if
 
-       percent_in_atom = (mat%atom_percent(1) > 0)
-       density_in_atom = (mat%atom_density > 0)
+       percent_in_atom = (mat%atom_percent(1) > ZERO)
+       density_in_atom = (mat%atom_density > ZERO)
 
-       sum_percent = 0
-       do j = 1, mat%n_isotopes
+       sum_percent = ZERO
+       do j = 1, mat % n_isotopes
           ! Set indices for isotopes
-          key = mat%names(j)
+          key = mat % names(j)
           index = dict_get_key(xsdata_dict, key)
-          mat%isotopes(j) = index
+          mat % isotopes(j) = index
 
           ! determine atomic weight ratio
-          awr = xsdatas(index)%awr
+          awr = xsdatas(index) % awr
 
           ! if given weight percent, convert all values so that they
           ! are divided by awr. thus, when a sum is done over the
           ! values, it's actually sum(w/awr)
           if (.not. percent_in_atom) then
-             mat%atom_percent(j) = -mat%atom_percent(j) / awr
+             mat % atom_percent(j) = -mat % atom_percent(j) / awr
           end if
        end do
 
@@ -717,20 +720,20 @@ contains
        ! this is straightforward. if given weight percents, the value
        ! is w/awr and is divided by sum(w/awr)
        sum_percent = sum(mat%atom_percent)
-       mat%atom_percent = mat%atom_percent / sum_percent
+       mat % atom_percent = mat % atom_percent / sum_percent
 
        ! Change density in g/cm^3 to atom/b-cm. Since all values are
        ! now in atom percent, the sum needs to be re-evaluated as
        ! 1/sum(x*awr)
        if (.not. density_in_atom) then
-          sum_percent = 0
-          do j = 1, mat%n_isotopes
-             index = mat%isotopes(j)
-             awr = xsdatas(index)%awr
-             x = mat%atom_percent(j)
+          sum_percent = ZERO
+          do j = 1, mat % n_isotopes
+             index = mat % isotopes(j)
+             awr = xsdatas(index) % awr
+             x = mat % atom_percent(j)
              sum_percent = sum_percent + x*awr
           end do
-          sum_percent = 1.0_8 / sum_percent
+          sum_percent = ONE / sum_percent
           mat%atom_density = -mat%atom_density * N_AVOGADRO & 
                & / MASS_NEUTRON * sum_percent
        end if
@@ -743,10 +746,10 @@ contains
 ! specifies what cross section library should be used by default
 !=====================================================================
 
-  subroutine read_xs_library( words, n_words )
+  subroutine read_xs_library(words, n_words)
 
-    character(*), intent(in) :: words(max_words)
-    integer, intent(in) :: n_words
+    character(*), intent(in) :: words(n_words)
+    integer,      intent(in) :: n_words
 
   end subroutine read_xs_library
 
@@ -757,34 +760,33 @@ contains
 ! cycle.
 !=====================================================================
 
-  subroutine read_criticality( words, n_words )
+  subroutine read_criticality(words, n_words)
 
-    character(*), intent(in) :: words(max_words)
-    integer, intent(in) :: n_words
+    character(*), intent(in) :: words(n_words) ! words on criticality card
+    integer,      intent(in) :: n_words        ! number of words
 
-    character(250) :: msg
-    integer :: ioError
+    character(250) :: msg ! output/error message
 
     ! Set problem type to criticality
     problem_type = PROB_CRITICALITY
 
     ! Read number of cycles
-    read(words(2), FMT='(I8)', IOSTAT=ioError) n_cycles
-    if (ioError > 0) then
+    n_cycles = str_to_int(words(2))
+    if (n_cycles == ERROR_CODE) then
        msg = "Invalid number of cycles: " // words(2)
        call error(msg)
     end if
 
     ! Read number of inactive cycles
-    read(words(3), FMT='(I8)', IOSTAT=ioError) n_inactive
-    if (ioError > 0) then
+    n_inactive = str_to_int(words(3))
+    if (n_inactive == ERROR_CODE) then
        msg = "Invalid number of inactive cycles: " // words(2)
        call error(msg)
     end if
 
     ! Read number of particles
-    read(words(4), FMT='(I8)', IOSTAT=ioError) n_particles
-    if (ioError > 0) then
+    n_particles = str_to_int(words(4))
+    if (n_particles == ERROR_CODE) then
        msg = "Invalid number of particles: " // words(2)
        call error(msg)
     end if
@@ -797,9 +799,9 @@ contains
 
   subroutine read_line(unit, line, ioError)
 
-    integer,             intent(in)  :: unit
-    character(max_line), intent(out) :: line
-    integer,             intent(out) :: ioError
+    integer,             intent(in)  :: unit    ! unit to read from
+    character(max_line), intent(out) :: line    ! line to return
+    integer,             intent(out) :: ioError ! error status
 
     read(UNIT=unit, FMT='(A250)', IOSTAT=ioError) line
 
@@ -814,30 +816,41 @@ contains
 
   subroutine get_next_line(unit, words, n, ioError)
 
-    integer,      intent(in)  :: unit
-    character(*), intent(out) :: words(max_words)
-    integer,      intent(out) :: n
-    integer,      intent(out) :: ioError
+    integer,      intent(in)  :: unit             ! unit to read from
+    character(*), intent(out) :: words(max_words) ! words read
+    integer,      intent(out) :: n                ! number of words
+    integer,      intent(out) :: ioError          ! error status
 
-    character(250) :: line 
-    character(32)  :: local_words(max_words)
-    integer        :: index
+    character(250) :: line                   ! single line
+    character(32)  :: local_words(max_words) ! words on one line
+    integer        :: index                  ! index of words
 
     index = 0
-    do     
+    do
+       ! read line from file
        read(UNIT=unit, FMT='(A250)', IOSTAT=ioError) line
+
+       ! if we're at the end of the file, return
        if (ioError /= 0) return
+
+       ! split a single line into words
        call split_string_wl(line, local_words, n)
+
+       ! if there are no words, we're done
        if (n == 0) exit
+
+       ! Check whether there is a continuation line
        if (local_words(n) == '&') then
           words(index+1:index+n-1) = local_words(1:n-1)
-          index = index + n-1
+          index = index + n - 1
        else
           words(index+1:index+n) = local_words(1:n)
           index = index + n
           exit
        end if
     end do
+
+    ! set total number of words
     n = index
 
   end subroutine get_next_line
@@ -848,12 +861,12 @@ contains
 
   subroutine skip_lines(unit, n_lines, ioError)
 
-    integer, intent(in) :: unit
-    integer, intent(in) :: n_lines
-    integer, intent(out) :: ioError
+    integer, intent(in)  :: unit    ! unit to read from
+    integer, intent(in)  :: n_lines ! number of lines to skip
+    integer, intent(out) :: ioError ! error status 
 
-    integer :: i
-    character(max_line) :: tmp
+    integer             :: i        ! index for number of lines
+    character(max_line) :: tmp      ! single line
 
     do i = 1, n_lines
        read(UNIT=unit, FMT='(A250)', IOSTAT=ioError) tmp
@@ -862,63 +875,56 @@ contains
   end subroutine skip_lines
 
 !=====================================================================
-! READ_DATA_INT reads integer data into an arrya from a file open
+! READ_DATA_INT reads integer data into an array from a file open
 !=====================================================================
 
-  subroutine read_data_int(in, array, n, lines, words_per_line)
+  subroutine read_data_int(unit, array, n, lines, words_per_line)
 
-    integer, intent(in) :: in
-    integer, intent(out) :: array(n)
-    integer, intent(in) :: n
-    integer, intent(in) :: lines
-    integer, intent(in) :: words_per_line
+    integer, intent(in)  :: unit           ! unit to read from
+    integer, intent(out) :: array(n)       ! ints read from file
+    integer, intent(in)  :: n              ! total number of ints
+    integer, intent(in)  :: lines          ! total number of lines
+    integer, intent(in)  :: words_per_line ! number of words per line
 
-    integer :: i, j
-    character(250) :: line
-    character(32) :: words(max_words)
-    integer :: ioError
-    integer :: n_words
-    integer :: index
-    integer :: n_last
+    integer :: i       ! line index
+    integer :: loc     ! locator for array
+    integer :: ioError ! error status
 
-    index = 1
+    loc = 0
     do i = 1, lines
        if (i == lines) then
-          read(in,*) array(index:n)
+          read(UNIT=unit,FMT=*) array(loc+1:n)
        else
-          read(in,*) array(index:index+words_per_line-1)
-          index = index + words_per_line
+          read(UNIT=unit,FMT=*) array(loc+1:loc+words_per_line)
+          loc = loc + words_per_line
        end if
     end do
 
   end subroutine read_data_int
 
 !=====================================================================
-! READ_DATA_REAL reads real(8) data into an arrya from a file open
+! READ_DATA_REAL reads real(8) data into an array from a file open
 !=====================================================================
 
-  subroutine read_data_real(in, array, n, lines, words_per_line)
+  subroutine read_data_real(unit, array, n, lines, words_per_line)
 
-    integer, intent(in)  :: in
-    real(8), intent(out) :: array(n)
-    integer, intent(in)  :: n
-    integer, intent(in)  :: lines
-    integer, intent(in)  :: words_per_line
+    integer, intent(in)  :: unit           ! unit to read from
+    real(8), intent(out) :: array(n)       ! real(8)s read from file
+    integer, intent(in)  :: n              ! total number of ints
+    integer, intent(in)  :: lines          ! total number of lines
+    integer, intent(in)  :: words_per_line ! number of words per line
 
-    integer :: i, j
-    character(250) :: line
-    character(32) :: words(max_words)
-    integer :: ioError
-    integer :: n_words
-    integer :: index
+    integer :: i       ! line index
+    integer :: loc     ! locator for array
+    integer :: ioError ! error status
 
-    index = 1
+    loc = 0
     do i = 1, lines
        if (i == lines) then
-          read(in,*) array(index:n)
+          read(UNIT=unit,FMT=*) array(loc+1:n)
        else
-          read(in,*) array(index:index+words_per_line-1)
-          index = index + words_per_line
+          read(UNIT=unit,FMT=*) array(loc+1:loc+words_per_line)
+          loc = loc + words_per_line
        end if
     end do
 

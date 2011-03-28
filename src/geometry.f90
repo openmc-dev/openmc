@@ -19,15 +19,15 @@ contains
     type(Particle), pointer :: p
     logical                 :: in_cell
 
-    integer, allocatable :: expression(:)
-    integer :: specified_sense
-    integer :: actual_sense
-    integer :: n_surfaces
-    integer :: i, j
-    integer :: surf_num
-    integer :: current_surface
+    integer, allocatable :: expression(:) ! copy of surfaces list
+    integer :: specified_sense ! specified sense of surface in list
+    integer :: actual_sense    ! sense of particle wrt surface
+    integer :: n_surfaces      ! number of surfaces in cell
+    integer :: i               ! index of surfaces in cell
+    integer :: surf_num        ! index in surfaces array (with sign)
+    integer :: current_surface ! current surface of particle (with sign)
+    character(250) :: msg      ! output/error message
     type(Surface), pointer :: surf => null()
-    character(250) :: msg
 
     current_surface = p%surface
 
@@ -59,7 +59,7 @@ contains
 
        ! Compare sense of point to specified sense
        specified_sense = sign(1,expression(i))
-       call sense(surf, p%xyz, actual_sense)
+       actual_sense = sense(surf, p%xyz_local)
        if (actual_sense == specified_sense) then
           expression(i) = 1
        else
@@ -95,7 +95,9 @@ contains
 
     character(250) :: msg                 ! error message
     integer        :: i                   ! index over cells
+    integer        :: x, y
     type(Cell),     pointer :: c          ! pointer to cell
+    type(Lattice),  pointer :: lat        ! pointer to lattice
     type(Universe), pointer :: lower_univ ! if particle is in lower
                                           ! universe, use this pointer
                                           ! to call recursively
@@ -107,9 +109,20 @@ contains
        c => cells(univ % cells(i))
        
        if (cell_contains(c, p)) then
-          ! If this cell contains a universe of lattice, search for
+          ! If this cell contains a universe or lattice, search for
           ! the particle in that universe/lattice
-          if (c % fill > 0) then
+          if (c % type == CELL_NORMAL) then
+             ! set current pointers
+             found = .true.         
+             cCell => c
+             cMaterial => materials(cCell%material)
+             cUniverse => univ
+             
+             ! set particle attributes
+             p%cell = univ % cells(i)
+             p%universe = dict_get_key(universe_dict, univ % uid)
+             exit
+          elseif (c % type == CELL_FILL) then
              lower_univ => universes(c % fill)
              call find_cell(lower_univ, p, found)
              if (found) then
@@ -118,17 +131,34 @@ contains
                 msg = "Could not locate particle in universe: "
                 call error(msg)
              end if
-          else
-             ! set current pointers
-             found = .true.         
-             cCell => c
-             cMaterial => materials(cCell%material)
-             cUniverse => univ
+          elseif (c % type == CELL_LATTICE) then
+             ! Set current lattice
+             lat => lattices(c % fill)
+             cLattice => lat
+             p % lattice = c % fill
+
+             ! determine universe based on lattice position
+             x = ceiling((p%xyz(1) - lat%x0)/lat%width_x)
+             y = ceiling((p%xyz(2) - lat%y0)/lat%width_y)
+             lower_univ => universes(lat % element(x,y))
+
+             ! adjust local position of particle
+             p%xyz_local(1) = p%xyz(1) - (lat%x0 + (x-0.5)*lat%width_x)
+             p%xyz_local(2) = p%xyz(2) - (lat%y0 + (y-0.5)*lat%width_y)
+             p%xyz_local(3) = p%xyz(3)
              
-             ! set particle attributes
-             p%cell = dict_get_key(cell_dict, c % uid)
-             p%universe = dict_get_key(universe_dict, univ % uid)
-             exit
+             ! set particle lattice indices
+             p % index_x = x
+             p % index_y = y
+
+             call find_cell(lower_univ, p, found)
+             if (found) then
+                exit
+             else
+                msg = "Could not locate particle in lattice: " & 
+                     & // int_to_str(lat % uid)
+                call error(msg)
+             end if
           end if
        end if
 
@@ -137,19 +167,19 @@ contains
   end subroutine find_cell
 
 !=====================================================================
-! CROSS_BOUNDARY moves a particle into a new cell
+! CROSS_SURFACE moves a particle into a new cell
 !=====================================================================
 
-  subroutine cross_boundary(p)
+  subroutine cross_surface(p)
 
     type(Particle), pointer :: p
 
-    type(Surface), pointer :: surf
-    type(Cell),    pointer :: c
-    integer :: i
-    integer :: index_cell
-    character(250) :: msg
-    logical :: found
+    integer        :: i          ! index of neighbors
+    integer        :: index_cell ! index in cells array
+    logical        :: found      ! particle found in universe?
+    character(250) :: msg        ! output/error message?
+    type(Surface),  pointer :: surf
+    type(Cell),     pointer :: c
     type(Universe), pointer :: lower_univ => null()
 
     surf => surfaces(abs(p%surface))
@@ -175,7 +205,7 @@ contains
           index_cell = surf%neighbor_pos(i)
           c => cells(index_cell)
           if (cell_contains(c, p)) then
-             if (c % fill > 0) then
+             if (c % type == CELL_FILL) then
                 lower_univ => universes(c % fill)
                 call find_cell(lower_univ, p, found)
                 if (.not. found) then
@@ -198,7 +228,7 @@ contains
           index_cell = surf%neighbor_neg(i)
           c => cells(index_cell)
           if (cell_contains(c, p)) then
-             if (c % fill > 0) then
+             if (c % type == CELL_FILL) then
                 lower_univ => universes(c % fill)
                 call find_cell(lower_univ, p, found)
                 if (.not. found) then
@@ -233,44 +263,158 @@ contains
          & ", it could not be located in any cell and it did not leak."
     call error(msg)
        
-  end subroutine cross_boundary
+  end subroutine cross_surface
 
 !=====================================================================
-! DIST_TO_BOUNDARY calculates the distance to the nearest boundary of
-! the cell 'cl' for a particle 'p' traveling in a certain
-! direction. For a cell in a subuniverse that has a parent cell, also
-! include the surfaces of the edge of the universe.
+! CROSS_LATTICE moves a particle into a new lattice element
 !=====================================================================
 
-  subroutine dist_to_boundary(p, dist, surf, other_cell)
+  subroutine cross_lattice(p)
 
-    type(Particle),    pointer     :: p
-    real(8),           intent(out) :: dist
-    integer,           intent(out) :: surf
-    integer, optional, intent(in)  :: other_cell
+    type(Particle), pointer :: p
 
+    integer        :: i_x      ! x index in lattice
+    integer        :: i_y      ! y index in lattice
+    real(8)        :: d_left   ! distance to left side
+    real(8)        :: d_right  ! distance to right side
+    real(8)        :: d_bottom ! distance to bottom side
+    real(8)        :: d_top    ! distance to top side
+    real(8)        :: dist     ! shortest distance
+    real(8)        :: x        ! x coordinate in local lattice element
+    real(8)        :: y        ! y coordinate in local lattice element
+    real(8)        :: z        ! z coordinate in local lattice element
+    real(8)        :: u        ! cosine of angle with x axis
+    real(8)        :: v        ! cosine of angle with y axis
+    real(8)        :: x0       ! half the width of lattice element
+    real(8)        :: y0       ! half the height of lattice element
+    logical        :: found    ! particle found in cell?
+    character(250) :: msg      ! output/error message
+    type(Lattice),  pointer :: lat
+    type(Universe), pointer :: univ
+
+    if (verbosity >= 10) then
+       msg = "    Crossing lattice"
+       call message(msg, 10)
+    end if
+
+    lat => lattices(p % lattice)
+
+    u = p % uvw(1)
+    v = p % uvw(2)
+
+    if (lat % type == LATTICE_RECT) then
+       x = p % xyz_local(1)
+       y = p % xyz_local(2)
+       z = p % xyz_local(3)
+       x0 = lat % width_x * 0.5
+       y0 = lat % width_y * 0.5
+       
+       dist = INFINITY
+
+       ! left and right sides
+       if (u > 0) then
+          d_left = INFINITY
+          d_right = (x0 - x)/u
+       else
+          d_left = -(x0 + x)/u
+          d_right = INFINITY
+       end if
+
+       ! top and bottom sides
+       if (v > 0) then
+          d_bottom = INFINITY
+          d_top = (y0 - y)/v
+       else
+          d_bottom = -(y0 + y)/v
+          d_top = INFINITY
+       end if
+
+       dist = min(d_left, d_right, d_top, d_bottom)
+       if (dist == d_left) then
+          ! Move particle to left element
+          p % index_x = p % index_x - 1
+          p % xyz_local(1) = x0
+          
+       elseif (dist == d_right) then
+          ! Move particle to right element
+          p % index_x = p % index_x + 1
+          p % xyz_local(1) = -x0
+
+       elseif (dist == d_bottom) then
+          ! Move particle to bottom element
+          p % index_y = p % index_y - 1
+          p % xyz_local(2) = y0
+
+       elseif (dist == d_top) then
+          ! Move particle to top element
+          p % index_y = p % index_y + 1
+          p % xyz_local(2) = -y0
+
+       end if
+    elseif (lat % type == LATTICE_HEX) then
+       ! TODO: Add hex lattice support
+    end if
+    
+    ! Check to make sure still in lattice
+    i_x = p % index_x
+    i_y = p % index_y
+    if (i_x < 1 .or. i_x > lat % n_x) then
+       msg = "Reached edge of lattice."
+       call error(msg)
+    elseif (i_y < 1 .or. i_y > lat % n_y) then
+       msg = "Reached edge of lattice."
+       call error(msg)
+    end if
+
+    ! Find universe for next lattice element
+    univ => universes(lat % element(i_x,i_y))
+
+    ! Find cell in next lattice element
+    call find_cell(univ, p, found)
+    if (.not. found) then
+       msg = "Could not locate particle in universe: "
+       call error(msg)
+    end if
+
+  end subroutine cross_lattice
+
+!=====================================================================
+! DIST_TO_BOUNDARY calculates the distance to the nearest boundary for
+! a particle 'p' traveling in a certain direction. For a cell in a
+! subuniverse that has a parent cell, also include the surfaces of the
+! edge of the universe.
+!=====================================================================
+
+  subroutine dist_to_boundary(p, dist, surf, in_lattice)
+
+    type(Particle), pointer     :: p
+    real(8),        intent(out) :: dist
+    integer,        intent(out) :: surf
+    logical,        intent(out) :: in_lattice
+
+    integer, allocatable :: expression(:) ! copy of surface list
+    integer :: i            ! index for surface in cell
+    integer :: n_surfaces   ! total number of surfaces to check
+    integer :: n1           ! number of surfaces in current cell
+    integer :: n2           ! number of surfaces in parent cell
+    integer :: index_surf   ! index in surfaces array (with sign)
+    integer :: current_surf ! current surface 
+    real(8) :: x,y,z        ! particle coordinates
+    real(8) :: u,v,w        ! particle directions
+    real(8) :: d            ! evaluated distance
+    real(8) :: x0,y0,z0     ! coefficients for surface
+    real(8) :: r            ! radius for quadratic surfaces
+    real(8) :: tmp          ! dot product of surface normal with direction
+    real(8) :: a,b,c,k      ! quadratic equation coefficients
+    real(8) :: quad         ! discriminant of quadratic equation
+    logical :: on_surface   ! is particle on surface?
+    character(250) :: msg   ! output/error message
     type(Cell),    pointer :: cell_p => null()
     type(Cell),    pointer :: parent_p => null()
     type(Surface), pointer :: surf_p => null()
-    integer :: i
-    integer :: n_surfaces, n1, n2
-    integer, allocatable :: expression(:)
-    integer :: index_surf
-    integer :: current_surf
-    real(8) :: x,y,z,u,v,w
-    real(8) :: d
-    real(8) :: x0,y0,z0,r
-    real(8) :: tmp
-    real(8) :: a,b,c,k
-    real(8) :: quad
-    character(250) :: msg
-    logical :: on_surface
+    type(LatticE), pointer :: lat => null()
 
-    if (present(other_cell)) then
-       cell_p => cells(other_cell)
-    else
-       cell_p => cells(p%cell)
-    end if
+    cell_p => cells(p%cell)
 
     current_surf = p%surface
 
@@ -290,16 +434,24 @@ contains
        expression(n1+1:n1+n2) = parent_p % surfaces
     end if
 
+    u = p % uvw(1)
+    v = p % uvw(2)
+    w = p % uvw(3)
+
     ! loop over all surfaces
     dist = INFINITY
     do i = 1, n_surfaces
-       x = p % xyz(1)
-       y = p % xyz(2)
-       z = p % xyz(3)
-       u = p % uvw(1)
-       v = p % uvw(2)
-       w = p % uvw(3)
-
+       if (i <= n1) then
+          ! in local cell, so use xyz_local
+          x = p % xyz_local(1)
+          y = p % xyz_local(2)
+          z = p % xyz_local(3)
+       else
+          ! in parent cell, so use xyz
+          x = p % xyz(1)
+          y = p % xyz(2)
+          z = p % xyz(3)
+       end if
        ! check for coincident surface
        index_surf = expression(i)
        if (index_surf == current_surf) then
@@ -570,6 +722,45 @@ contains
 
     end do
 
+    ! Check lattice surfaces
+    in_lattice = .false.
+    if (p % lattice > 0) then
+       lat => lattices(p % lattice)
+       if (lat % type == LATTICE_RECT) then
+          x = p % xyz_local(1)
+          y = p % xyz_local(2)
+          z = p % xyz_local(3)
+          x0 = lat % width_x * 0.5
+          y0 = lat % width_y * 0.5
+          
+          
+          ! left and right sides
+          if (u > 0) then
+             d = (x0 - x)/u
+          else
+             d = -(x + x0)/u
+          end if
+          if (d < dist) then
+             dist = d
+             in_lattice = .true.
+          end if
+
+          ! top and bottom sides
+          if (v > 0) then
+             d = (y0 - y)/v
+          else
+             d = -(y + y0)/v
+          end if
+          if (d < dist) then
+             dist = d
+             in_lattice = .true.
+          end if
+
+       elseif (lat % type == LATTICE_HEX) then
+          ! TODO: Add hex lattice support
+       end if
+    end if
+
     ! deallocate expression
     deallocate(expression)
 
@@ -581,17 +772,27 @@ contains
 ! a particular point is in.
 !=====================================================================
 
-  subroutine sense(surf, xyz, s)
+  function sense(surf, xyz) result(s)
 
-    type(Surface), intent(in) :: surf
-    real(8), intent(in) :: xyz(3)
-    integer, intent(out) :: s
+    type(Surface), pointer    :: surf   ! surface
+    real(8),       intent(in) :: xyz(3) ! coordinates of particle
+    integer                   :: s      ! sense of particle
 
-    real(8) :: x,y,z
-    real(8) :: func
-    real(8) :: A,B,C,D,E,F,G,H,I,J
-    real(8) :: x0, y0, z0, r
-    real(8) :: x1, y1, z1
+    real(8) :: x,y,z    ! coordinates of particle
+    real(8) :: func     ! surface function evaluated at point
+    real(8) :: A        ! coefficient on x**2 term in GQ
+    real(8) :: B        ! coefficient on y**2 term in GQ
+    real(8) :: C        ! coefficient on z**2 term in GQ
+    real(8) :: D        ! coefficient on x*y term in GQ
+    real(8) :: E        ! coefficient on y*z term in GQ
+    real(8) :: F        ! coefficient on x*z term in GQ
+    real(8) :: G        ! coefficient on x term in GQ
+    real(8) :: H        ! coefficient on y term in GQ
+    real(8) :: I        ! coefficient on z term in GQ
+    real(8) :: J        ! coefficient on constant term in GQ
+    real(8) :: x0,y0,z0 ! coefficients for quadratic surfaces / box
+    real(8) :: r        ! radius for quadratic surfaces
+    real(8) :: x1,y1,z1 ! upper-right corner of box
 
     x = xyz(1)
     y = xyz(2)
@@ -715,7 +916,7 @@ contains
        s = SENSE_NEGATIVE
     end if
 
-  end subroutine sense
+  end function sense
 
 !=====================================================================
 ! NEIGHBOR_LISTS builds a list of neighboring cells to each surface to
@@ -724,16 +925,15 @@ contains
 
   subroutine neighbor_lists()
 
+    integer :: i          ! index in cells/surfaces array
+    integer :: j          ! index of surface in cell
+    integer :: index      ! index in count arrays
+    integer, allocatable :: count_positive(:) ! # of cells on positive side
+    integer, allocatable :: count_negative(:) ! # of cells on negative side
+    logical :: positive   ! positive side specified in surface list
+    character(250) :: msg ! output/error message
     type(Cell),    pointer :: c
     type(Surface), pointer :: surf
-    integer :: i, j
-    integer :: index
-    integer :: surf_num
-    logical :: positive
-    character(250) :: msg
-
-    integer, allocatable :: count_positive(:)
-    integer, allocatable :: count_negative(:)
 
     msg = "Building neighboring cells lists for each surface..."
     call message(msg, 4)

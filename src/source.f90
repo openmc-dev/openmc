@@ -65,6 +65,7 @@ contains
              r = (/ (rang(), k = 1,3) /)
              p % uid = j
              p % xyz = p_min + r*(p_max - p_min)
+             p % xyz_local = p % xyz
 
              ! angle
              phi = TWO*PI*rang()
@@ -78,8 +79,11 @@ contains
              p % cell     = 0
              p % surface  = 0
              p % universe = 0
+             p % lattice  = 0
              p % wgt      = ONE
              p % alive    = .true.
+             p % index_x  = 0
+             p % index_y  = 0
 
              ! sample energy from Watt fission energy spectrum for U-235
              do
@@ -160,10 +164,11 @@ contains
     
     do i = 1, n_sites
        j = index + i - 1
-       source_bank(j) % uid  = temp_bank(i) % uid
-       source_bank(j) % xyz  = temp_bank(i) % xyz
-       source_bank(j) % uvw  = temp_bank(i) % uvw
-       source_bank(j) % E    = temp_bank(i) % E
+       source_bank(j) % uid       = temp_bank(i) % uid
+       source_bank(j) % xyz       = temp_bank(i) % xyz
+       source_bank(j) % xyz_local = temp_bank(i) % xyz
+       source_bank(j) % uvw       = temp_bank(i) % uvw
+       source_bank(j) % E         = temp_bank(i) % E
 
        ! set defaults
        source_bank(j) % type     = NEUTRON

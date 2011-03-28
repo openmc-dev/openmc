@@ -1,7 +1,8 @@
 module physics
 
   use global
-  use geometry,    only: find_cell, dist_to_boundary, cross_boundary
+  use geometry,    only: find_cell, dist_to_boundary, cross_surface, &
+       &                 cross_lattice
   use types,       only: Particle
   use mcnp_random, only: rang
   use output,      only: error, warning, message, print_particle
@@ -29,6 +30,7 @@ contains
     real(8)        :: Sigma          ! total cross-section
     real(8)        :: f              ! interpolation factor
     logical        :: found_cell     ! found cell which particle is in?
+    logical        :: in_lattice     ! is surface crossing in lattice?
     character(250) :: msg            ! output/error message
     type(Universe), pointer :: univ
 
@@ -67,7 +69,7 @@ contains
        Sigma = (1-f)*cMaterial%total_xs(IE) + f*cMaterial%total_xs(IE+1)
 
        ! Find the distance to the nearest boundary
-       call dist_to_boundary(p, d_to_boundary, surf)
+       call dist_to_boundary(p, d_to_boundary, surf, in_lattice)
 
        ! Sample a distance to collision
        d_to_collision = -log(rang()) / Sigma
@@ -77,13 +79,19 @@ contains
 
        ! Advance particle
        p%xyz = p%xyz + distance * p%uvw
+       p%xyz_local = p%xyz_local + distance * p%uvw
 
        ! Add pathlength tallies
 
        if (d_to_collision > d_to_boundary) then
-          p % surface = surf
           p % cell = 0
-          call cross_boundary(p)
+          if (in_lattice) then
+             p % surface = 0
+             call cross_lattice(p)
+          else
+             p % surface = surf
+             call cross_surface(p)
+          end if
        else
           ! collision
           p % surface = 0

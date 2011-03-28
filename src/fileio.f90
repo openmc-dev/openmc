@@ -97,6 +97,7 @@ contains
 
     call dict_create(ucount_dict)
     call dict_create(universe_dict)
+    call dict_create(lattice_dict)
 
     open(FILE=filename, UNIT=in, STATUS='old', & 
          & ACTION='read', IOSTAT=ioError)
@@ -131,6 +132,15 @@ contains
           n_surfaces = n_surfaces + 1
        case ('material') 
           n_materials = n_materials + 1
+       case ('lattice')
+          n_lattices = n_lattices + 1
+
+          ! For lattices, we also need to check if there's a new universe
+          ! -- also for every cell add 1 to the count of cells for the
+          ! specified universe
+          universe_num = str_to_int(words(2))
+          call dict_add_key(lattice_dict, universe_num, n_lattices)
+
        end select
     end do
 
@@ -155,6 +165,7 @@ contains
     ! Allocate arrays for cells, surfaces, etc.
     allocate(cells(n_cells))
     allocate(universes(n_universes))
+    allocate(lattices(n_lattices))
     allocate(surfaces(n_surfaces))
     allocate(materials(n_materials))
 
@@ -251,7 +262,7 @@ contains
           call read_cell(index_cell, words, n)
           
        case ('surface')
-          ! Read data
+          ! Read data from surface entry
           index_surface = index_surface + 1
           call read_surface(index_surface, words, n)
 
@@ -261,6 +272,7 @@ contains
           call read_lattice(index_lattice, words, n)
 
        case ('material')
+          ! Read data from material entry
           index_material = index_material + 1
           call read_material(index_material, words, n)
 
@@ -329,7 +341,7 @@ contains
        end do
 
        ! adjust material indices
-       if (c % fill == 0) then
+       if (c % type == CELL_NORMAL) then
           index = dict_get_key(material_dict, c%material)
           if (index == DICT_NULL) then
              msg = "Could not find material " // trim(int_to_str(c%material)) // &
@@ -354,9 +366,13 @@ contains
     integer,     intent(in) :: level  ! level of universe
 
     integer :: i     ! index for cells in universe
+    integer :: x,y   ! indices for lattice positions
     integer :: index ! index in cells array
+    integer :: universe_num
     type(Cell),     pointer :: c => null()
     type(Universe), pointer :: subuniverse => null()
+    type(Lattice),  pointer :: lat => null()
+    type(DictionaryII), pointer :: dict => null()
 
     ! set level of the universe
     univ % level = level
@@ -369,10 +385,31 @@ contains
 
        ! if this cell is filled with another universe, recursively
        ! call this subroutine
-       if (c % fill > 0) then
+       if (c % type == CELL_FILL) then
           subuniverse => universes(c % fill)
           call build_universe(subuniverse, index, level + 1)
        end if
+
+       ! if this cell is filled by a lattice, need to build the
+       ! universe for each unique lattice element
+       if (c % type == CELL_LATTICE) then
+          lat => lattices(c % fill)
+          call dict_create(dict)
+          do x = 1, lat % n_x
+             do y = 1, lat % n_y
+                universe_num = lat % element(x,y)
+                if (dict_has_key(dict, universe_num)) then
+                   cycle
+                else
+                   call dict_add_key(dict, universe_num, 0)
+
+                   subuniverse => universes(universe_num)
+                   call build_universe(subuniverse, index, level + 1)
+                end if
+             end do
+          end do
+       end if
+
     end do
 
   end subroutine build_universe
@@ -415,7 +452,6 @@ contains
 
     ! Read cell material
     if (trim(words(4)) == 'fill') then
-       c % type     = CELL_FILL
        c % material = 0
        n_surfaces   = n_words - 5
 
@@ -425,8 +461,15 @@ contains
           msg = "Invalid universe fill: " // words(5)
           call error(msg)
        end if
-       c % fill = dict_get_key(universe_dict, universe_num)
 
+       ! check whether universe or lattice
+       if (dict_has_key(universe_dict, universe_num)) then
+          c % type = CELL_FILL
+          c % fill = dict_get_key(universe_dict, universe_num)
+       elseif (dict_has_key(lattice_dict, universe_num)) then
+          c % type = CELL_LATTICE
+          c % fill = dict_get_key(lattice_dict, universe_num)
+       end if
     else
        c % type     = CELL_NORMAL
        c % material = str_to_int(words(4))
@@ -439,7 +482,7 @@ contains
     end if
 
     ! Assign number of items
-    c%n_surfaces = n_surfaces
+    c % n_surfaces = n_surfaces
 
     ! Read list of surfaces
     allocate(c%surfaces(n_surfaces))
@@ -560,9 +603,83 @@ contains
 
   subroutine read_lattice(index, words, n_words)
 
-    integer,      intent(in) :: index
-    character(*), intent(in) :: words(n_words)
-    integer,      intent(in) :: n_words
+    integer,      intent(in) :: index          ! index in lattices array
+    character(*), intent(in) :: words(n_words) ! words in lattice entry
+    integer,      intent(in) :: n_words        ! number of words
+
+    integer        :: universe_num ! user-specified universe number
+    integer        :: n_x          ! number of lattice cells in x direction
+    integer        :: n_y          ! number of lattice cells in y direction
+    integer        :: i,j          ! loop indices for Lattice % universes
+    integer        :: index_word   ! index in words array
+    character(250) :: msg          ! output/error/message
+    character(32)  :: word         ! single word
+    type(Lattice), pointer :: lat => null()
+    
+    lat => lattices(index)
+
+    ! Read lattice universe
+    universe_num = str_to_int(words(2))
+    if (universe_num == ERROR_CODE) then
+       msg = "Invalid universe: " // words(2)
+       call error(msg)
+    end if
+    lat % uid = universe_num
+
+    ! Read lattice type
+    word = words(3)
+    call lower_case(word)
+    select case(trim(word))
+    case ('rect')
+       lat % type = LATTICE_RECT
+    case ('hex')
+       lat % type = LATTICE_HEX
+    case default
+       msg = "Invalid lattice type: " // words(3)
+       call error(msg)
+    end select
+
+    ! Read number of lattice cells in each direction
+    n_x = str_to_int(words(4))
+    n_y = str_to_int(words(5))
+    if (n_x == ERROR_CODE) then
+       msg = "Invalid number of lattice cells in x-direction: " // words(4)
+       call error(msg)
+    elseif (n_y == ERROR_CODE) then
+       msg = "Invalid number of lattice cells in y-direction: " // words(5)
+       call error(msg)
+    end if
+    lat % n_x = n_x
+    lat % n_y = n_y
+
+    ! Read lattice origin coordinates
+    lat % x0 = str_to_real(words(6))
+    lat % y0 = str_to_real(words(7))
+
+    ! Read lattice cell widths
+    lat % width_x = str_to_real(words(8))
+    lat % width_y = str_to_real(words(9))
+
+    ! Make sure enough lattice positions specified
+    if (n_words - 9 < n_x * n_y) then
+       print *, n_words, n_x, n_y
+       msg = "Not enough lattice positions specified."
+       call error(msg)
+    end if
+
+    ! Read lattice positions
+    allocate(lat % element(n_x,n_y))
+    do j = 0, n_y - 1
+       do i = 1, n_x
+          index_word = 9 + j*n_x + i
+          universe_num = str_to_int(words(index_word))
+          if (universe_num == ERROR_CODE) then
+             msg = "Invalid universe number: " // words(index_word)
+             call error(msg)
+          end if
+          lat % element(i, n_y-j) = dict_get_key(universe_dict, universe_num)
+       end do
+    end do
 
   end subroutine read_lattice
 

@@ -26,7 +26,7 @@ test_objects = $(modules:.f90=.o) $(test:.f90=.o)
 #--------------------------------------------------------------------
 # Compiler Options
 F90 = ifort
-F90FLAGS = -g -fpp
+F90FLAGS = -g -fpp -traceback
 MPI = /opt/mpich2/1.3.3-gcc
 MPIF90 = $(MPI)/bin/mpif90
 MPI_COMPILE_FLAGS = $(shell mpif90 -f90='' -compile_info)

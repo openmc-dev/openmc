@@ -1,3 +1,19 @@
+2011-03-28 Paul Romano <romano7@mit.edu>
+
+	* fileio.f90: Ability to read lattice entries.
+	* geometry.f90: Added lattice capabilities. Changed cross_boundary
+	to cross_surface. Added many comments. In many places, changed
+	testing of c%fill to c%type instead since fill could be universe
+	or lattice.
+	* Makefile: Added -traceback
+	* output.f90: Added print_lattice, other minor changes. (Fixed
+	indentation so looks like everything changed)
+	* physics.f90: Call cross_lattice if crossing lattice boundary
+	instead of surface.
+	* source.f90: Set values for xyz_local, lattice indices
+	* types.f90: Extending Lattice type, modified Particle type to
+	include local coordinates, current lattice, and lattice indices.
+
 2011-03-25 Paul Romano <romano7@mit.edu>
 
 	* physics.f90: Resample outgoing energy if sampled energy is

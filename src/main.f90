@@ -5,7 +5,7 @@ program main
        &                   normalize_ao, build_universe
   use output,        only: title, echo_input, message, warning, error, &
        &                   print_summary, print_particle
-  use geometry,      only: sense, cell_contains, neighbor_lists
+  use geometry,      only: neighbor_lists
   use mcnp_random,   only: RN_init_problem, rang, RN_init_particle
   use source,        only: init_source, get_source_particle
   use physics,       only: transport
@@ -81,7 +81,10 @@ program main
   call init_source()
 
   ! start problem
+!  surfaces(1)%bc = BC_VACUUM
+!  surfaces(2)%bc = BC_VACUUM
   surfaces(1)%bc = BC_VACUUM
+!  surfaces(4)%bc = BC_VACUUM
   call run_problem()
 
   ! deallocate arrays

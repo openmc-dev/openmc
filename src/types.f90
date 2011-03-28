@@ -3,7 +3,7 @@ module types
   implicit none
 
 !=====================================================================
-! UNIVERSE
+! UNIVERSE defines a geometry that fills all phase space
 !=====================================================================
 
   type Universe
@@ -18,14 +18,21 @@ module types
   end type Universe
 
 !=====================================================================
-! LATTICE
+! LATTICE is an ordered array of elements (either rectangular,
+! hexagonal, or triangular)
 !=====================================================================
 
   type Lattice
-     integer :: uid   ! Unique ID
-     integer :: type  ! Type of lattice (square, hex, etc)
-     integer :: level ! Level of lattice
-     real(8) :: pitch ! Lattice pitch in cm
+     integer :: uid      ! Universe number for lattice
+     integer :: type     ! Type of lattice (rectangular, hex, etc)
+     integer :: level    ! Level of lattice
+     integer :: n_x      ! number of lattice cells in x-direction
+     integer :: n_y      ! number of lattice cells in y-direction
+     real(8) :: x0       ! x-coordinate of lattice origin
+     real(8) :: y0       ! y-coordinate of lattice origin
+     real(8) :: width_x  ! width of lattice cell 
+     real(8) :: width_y  ! width of lattice cell
+     integer, allocatable :: element(:,:) ! specified universes
   end type Lattice
 
 !=====================================================================
@@ -67,19 +74,23 @@ module types
 !=====================================================================
 
   type Particle
-    integer :: uid      ! Unique ID
-    integer :: type     ! Particle type (n, p, e, etc)
-    real(8) :: xyz(3)   ! location
-    real(8) :: uvw(3)   ! directional cosines
-    real(8) :: wgt      ! particle weight
-    real(8) :: E        ! energy
-    integer :: IE       ! index on energy grid
-    real(8) :: interp   ! interpolation factor for energy grid
-    integer :: cell     ! current cell
-    integer :: universe ! current universe
-    integer :: surface  ! current surface
-    logical :: alive    ! is particle alive?
-    integer :: n_coll   ! # of collisions
+    integer :: uid          ! Unique ID
+    integer :: type         ! Particle type (n, p, e, etc)
+    real(8) :: xyz(3)       ! location
+    real(8) :: xyz_local(3) ! local location (after transformations)
+    real(8) :: uvw(3)       ! directional cosines
+    real(8) :: wgt          ! particle weight
+    real(8) :: E            ! energy
+    integer :: IE           ! index on energy grid
+    real(8) :: interp       ! interpolation factor for energy grid
+    integer :: cell         ! current cell
+    integer :: universe     ! current universe
+    integer :: lattice      ! current lattice
+    integer :: surface      ! current surface
+    integer :: index_x      ! lattice index for x direction
+    integer :: index_y      ! lattice index for y direction
+    logical :: alive        ! is particle alive?
+    integer :: n_coll       ! # of collisions
   end type Particle
 
 !=====================================================================

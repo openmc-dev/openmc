@@ -471,6 +471,16 @@ contains
        end do
     end if
     write(ou,*) '    Negative Neighbors =', trim(string)
+    select case (surf % bc)
+    case (BC_TRANSMIT)
+       write(ou,*) '    Boundary Condition = Transmission'
+    case (BC_VACUUM)
+       write(ou,*) '    Boundary Condition = Vacuum'
+    case (BC_REFLECT)
+       write(ou,*) '    Boundary Condition = Reflective'
+    case (BC_PERIODIC)
+       write(ou,*) '    Boundary Condition = Periodic'
+    end select
     write(ou,*)
 
   end subroutine print_surface

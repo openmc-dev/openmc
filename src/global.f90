@@ -92,7 +92,8 @@ module global
   integer, parameter ::    &
        & BC_TRANSMIT = 0,  & ! Transmission boundary condition (default)
        & BC_VACUUM   = 1,  & ! Vacuum boundary condition
-       & BC_REFLECT  = 2     ! Reflecting boundary condition
+       & BC_REFLECT  = 2,  & ! Reflecting boundary condition
+       & BC_PERIODIC = 3     ! Periodic boundary condition
 
   ! Logical operators for cell definitions
   integer, parameter ::                &

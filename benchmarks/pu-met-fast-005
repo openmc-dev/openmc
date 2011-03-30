@@ -2,7 +2,7 @@
 # Description: Unmoderated Plutonium Metal Button Array Benchmark
 # Case:        PU-MET-FAST-005
 # Written By:  Paul Romano
-# Date:        3/22/2011
+# Date:        3/30/2011
 # ====================================================================
 
 #    cell no.   universe   material   surfaces
@@ -11,6 +11,7 @@ cell 2          0          2           1 -2
 
 surface 1 sph 0. 0. 0. 5.0419
 surface 2 sph 0. 0. 0. 9.7409
+bc      2 vacuum
 
 source_box -1 -1 -1  1  1  1
 
@@ -26,7 +27,6 @@ material 2    0.06605308 &
     29000.03c 0.0040774  &
     40000.03c 0.00079528
  
-xs_library endfb7
 xs_data /opt/serpent/xsdata/endfb7
 criticality 3000 20 10000
 verbosity 7

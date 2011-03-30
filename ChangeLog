@@ -1,3 +1,14 @@
+2011-03-30 Paul Romano <romano7@mit.edu>
+
+	* benchmarks: Added boundary conditions to PU-MET-FAST-001, 002,
+	and 005.
+	* fileio.f90: Added ability to read boundary conditions through
+	the new read_bc subroutine and a modification to adjust_indices.
+	* global.f90: Added parameter for periodic boundary conditions.
+	* input_sample: Added boundary conditions.
+	* lattice_sample: Sample lattice geometry file added.
+	* output.f90: Modified print_surface to show boundary condition.
+
 2011-03-28 Paul Romano <romano7@mit.edu>
 
 	* fileio.f90: Ability to read lattice entries.

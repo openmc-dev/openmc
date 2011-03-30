@@ -10,10 +10,10 @@ module fileio
 
   implicit none
 
-  type(DictionaryII), pointer :: & ! this dictionary is used to count
-       & ucount_dict => null()     ! the number of universes as well
-                                   ! as how many cells each universe
-                                   ! contains
+  type(DictionaryII), pointer :: & ! used to count how many cells each
+       & ucount_dict => null(),  & ! universe contains
+       & bc_dict => null()         ! store boundary conditions
+                                  
 
   integer, allocatable :: index_cell_in_univ(:)
 
@@ -177,6 +177,7 @@ contains
     ! Set up dictionaries
     call dict_create(cell_dict)
     call dict_create(surface_dict)
+    call dict_create(bc_dict)
     call dict_create(material_dict)
 
     ! We also need to allocate the cell count lists for each
@@ -257,22 +258,26 @@ contains
 
        select case (trim(words(1)))
        case ('cell')
-          ! Read data from cell entry
+          ! Read cell entry
           index_cell = index_cell + 1
           call read_cell(index_cell, words, n)
           
        case ('surface')
-          ! Read data from surface entry
+          ! Read surface entry
           index_surface = index_surface + 1
           call read_surface(index_surface, words, n)
 
+       case ('bc')
+          ! Read boundary condition entry
+          call read_bc(words, n)
+
        case ('lattice')
-          ! Read data from lattice entry
+          ! Read lattice entry
           index_lattice = index_lattice + 1
           call read_lattice(index_lattice, words, n)
 
        case ('material')
-          ! Read data from material entry
+          ! Read material entry
           index_material = index_material + 1
           call read_material(index_material, words, n)
 
@@ -311,7 +316,8 @@ contains
 ! ADJUST_INDICES changes the values for 'surfaces' for each cell and
 ! the material index assigned to each to the indices in the surfaces
 ! and material array rather than the unique IDs assigned to each
-! surface and material
+! surface and material. Also assigns boundary conditions to surfaces
+! based on those read into the bc_dict dictionary
 !=====================================================================
 
   subroutine adjust_indices()
@@ -320,8 +326,11 @@ contains
     integer             :: j           ! index over surface list
     integer             :: index       ! index in surfaces/materials array 
     integer             :: surf_num    ! user-specified surface number
+    integer             :: bc          ! boundary condition
     character(250)      :: msg         ! output/error message
-    type(Cell), pointer :: c => null() ! cell pointer
+    type(Cell),           pointer :: c => null()
+    type(Surface),        pointer :: surf => null()
+    type(ListKeyValueII), pointer :: key_list => null()
     
     do i = 1, n_cells
        ! adjust boundary list
@@ -350,6 +359,24 @@ contains
           end if
           c%material = index
        end if
+    end do
+
+    ! Set boundary conditions for surfaces
+    key_list => dict_keys(bc_dict)
+    do while (associated(key_list))
+       ! find index of universe in universes array
+       surf_num = key_list%data%key
+       bc       = key_list%data%value
+
+       ! establish pointer to surface
+       index = dict_get_key(surface_dict, surf_num)
+       surf => surfaces(index)
+
+       ! set boundary condition
+       surf % bc = bc
+       
+       ! move to next universe
+       key_list => key_list%next
     end do
 
   end subroutine adjust_indices
@@ -596,6 +623,49 @@ contains
     end do
 
   end subroutine read_surface
+
+!=====================================================================
+! READ_BC creates a dictionary whose (key,value) pairs are the uids of
+! surfaces and specified boundary conditions, respectively. This is
+! later used in adjust_indices to set the surface boundary conditions.
+!=====================================================================
+
+  subroutine read_bc(words, n_words)
+
+    character(*), intent(in) :: words(n_words) ! words in bc entry
+    integer,      intent(in) :: n_words        ! number of words
+
+    integer        :: surface_uid ! User-specified uid of surface
+    integer        :: bc          ! Boundary condition
+    character(32)  :: word        ! Boundary condition (in input file)
+    character(250) :: msg         ! Output/error message
+
+    ! Read surface identifier
+    surface_uid = str_to_int(words(2))
+    if (surface_uid == ERROR_CODE) then
+       msg = "Invalid surface name: " // words(2)
+       call error(msg)
+    end if
+
+    ! Read boundary condition
+    word = words(3)
+    call lower_case(word)
+    select case (trim(word))
+    case ('transmit')
+       bc = BC_TRANSMIT
+    case ('vacuum')
+       bc = BC_VACUUM
+    case ('reflect')
+       bc = BC_REFLECT
+    case default
+       msg = "Invalid boundary condition: " // words(3)
+       call error(msg)
+    end select
+
+    ! Add (uid, bc) to dictionary
+    call dict_add_key(bc_dict, surface_uid, bc)
+
+  end subroutine read_bc
 
 !=====================================================================
 ! READ_LATTICE parses the data on a lattice entry.

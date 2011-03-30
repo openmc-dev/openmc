@@ -2,13 +2,14 @@
 # Description: Bare Pu-240 Jezebel Benchmark
 # Case:        PU-MET-FAST-002
 # Written By:  Paul Romano
-# Date:        3/22/2011
+# Date:        3/30/2011
 # ====================================================================
 
 #    cell no.   universe   material   surfaces
 cell 1          0          1          -1
 
 surface 1 sph 0. 0. 0. 6.6595
+bc      1 vacuum
 
 source_box -1 -1 -1  1  1  1
 
@@ -19,7 +20,6 @@ material 1    0.04055292 &
     94242.03c 0.00015672 &
     31000.03c 0.0013722
 
-xs_library endfb7
 xs_data /opt/serpent/xsdata/endfb7
 criticality 3000 20 10000
 verbosity 7

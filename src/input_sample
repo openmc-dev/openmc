@@ -9,6 +9,8 @@ surface 1 cylz 0 0 7
 surface 2 cylz 0 0 9
 surface 3 cylz 0 0 11
 
+bc 3 vacuum
+
 material 40 -4.5 &
       92235.03c 1.0
 
@@ -18,7 +20,6 @@ material 41 -1.0  &
 
 source box -4 -4 -4  4 4 4
 
-xs_library endfb7
 xs_data /opt/serpent/xsdata/endfb7
 criticality 15 5 10000
 verbosity 7

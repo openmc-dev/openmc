@@ -81,10 +81,6 @@ program main
   call init_source()
 
   ! start problem
-!  surfaces(1)%bc = BC_VACUUM
-!  surfaces(2)%bc = BC_VACUUM
-  surfaces(1)%bc = BC_VACUUM
-!  surfaces(4)%bc = BC_VACUUM
   call run_problem()
 
   ! deallocate arrays

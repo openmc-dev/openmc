@@ -1,0 +1,41 @@
+# test lattice input file
+
+cell 1   0  fill 111  1 -2  3 -4
+cell 100 3   40      -5
+cell 101 3   41       5
+
+lattice 111 rect 10 10  -5.0 -5.0 1.0 1.0  &
+       3 3 3 3 3 3 3 3 3 3               &
+       3 3 3 3 3 3 3 3 3 3               &
+       3 3 3 3 3 3 3 3 3 3               &
+       3 3 3 3 3 3 3 3 3 3               &
+       3 3 3 3 3 3 3 3 3 3               &
+       3 3 3 3 3 3 3 3 3 3               &
+       3 3 3 3 3 3 3 3 3 3               &
+       3 3 3 3 3 3 3 3 3 3               &
+       3 3 3 3 3 3 3 3 3 3               &
+       3 3 3 3 3 3 3 3 3 3
+
+surface 1 px -4.9
+surface 2 px  4.9
+surface 3 py -4.9
+surface 4 py  4.9
+surface 5 cylz 0 0 0.4
+
+bc      1 vacuum
+bc      2 vacuum
+bc      3 vacuum
+bc      4 vacuum
+
+material 40 -4.5 &
+      92235.03c 1.0
+
+material 41 -1.0  & 
+      1001.03c 2.0 &
+      8016.03c 1.0
+
+source box -4 -4 -4  4 4 4
+
+xs_data /opt/serpent/xsdata/endfb7
+criticality 150 25 10000
+verbosity 7

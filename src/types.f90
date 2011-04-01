@@ -107,6 +107,37 @@ module types
   end type Bank
 
 !=====================================================================
+! TALLYSCORE
+!=====================================================================
+
+  type TallyScore
+     integer :: n_events
+     real(8) :: val
+     real(8) :: val_sq
+  end type TallyScore
+
+!=====================================================================
+! TALLY
+!=====================================================================
+
+  type Tally
+     integer :: uid
+     integer :: type
+     real(8) :: volume
+     integer, allocatable :: reactions(:)
+     integer, allocatable :: cells(:)
+     integer, allocatable :: materials(:)
+     integer, allocatable :: universes(:)
+     real(8), allocatable :: energies(:)
+     real(8) :: xyz_min(3)
+     real(8) :: xyz_max(3)
+     integer :: n_x
+     integer :: n_y
+     integer :: n_z
+     type(TallyScore), allocatable :: score(:)
+  end type Tally
+
+!=====================================================================
 ! ISOTOPE describes an isotope, e.g. U-235, within a material. Note
 ! that two separate variables must be used for the same isotope in two
 ! different materials since they will generally have different
@@ -241,14 +272,20 @@ module types
   type AceThermal
      character(20) :: name
      real(8) :: awr
-     real(8) :: temperature
+     real(8) :: temp
+     integer :: n_inelastic_e_in
+     integer :: n_inelastic_e_out
+     integer :: n_inelastic_mu
      real(8), allocatable :: inelastic_e_in(:)
      real(8), allocatable :: inelastic_sigma(:) 
      real(8), allocatable :: inelastic_e_out(:,:)
-     real(8), allocatable :: inelastic_mu_out(:,:)
+     real(8), allocatable :: inelastic_mu(:,:,:)
+     integer :: n_elastic_e_in
+     integer :: n_elastic_type
+     integer :: n_elastic_mu
      real(8), allocatable :: elastic_e_in(:)
      real(8), allocatable :: elastic_P(:)
-     real(8), allocatable :: elastic_mu_out(:)
+     real(8), allocatable :: elastic_mu(:,:)
   end type AceThermal
 
 !=====================================================================

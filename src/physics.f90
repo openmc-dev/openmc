@@ -232,15 +232,16 @@ contains
 
     ! call appropriate subroutine
     select case (rxn % MT)
-    case (2)
+    case (ELASTIC)
        call elastic_scatter(p, table, rxn)
-    case (11, 16, 17, 24, 25, 30, 37, 41, 42)
+    case (N_2ND, N_2N, N_3N, N_2NA, N_3NA, N_2N2A, N_4N, N_2NP, N_3NP)
        call n_xn(p, table, rxn)
-    case (22, 23, 28, 29, 32:36, 43, 44, 51:91)
+    case (N_NA, N_N3A, N_NP, N_N2A, N_ND, N_NT, N_N3HE, &
+         & N_NT2A, N_N2P, N_NPA, N_N1 : N_NC)
        call inelastic_scatter(p, table, rxn)
-    case (18:21, 38)
+    case (FISSION, N_F, N_NF, N_2NF, N_3NF)
        call n_fission(p, table, rxn)
-    case (102:117)
+    case (N_GAMMA : N_DA)
        call n_absorption(p)
     case default
        msg = "Cannot simulate reaction with MT " // int_to_str(rxn%MT)

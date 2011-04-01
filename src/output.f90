@@ -2,9 +2,9 @@ module output
 
   use ISO_FORTRAN_ENV
   use global
-  use types, only: Cell, Universe, Surface
+  use types,           only: Cell, Universe, Surface
   use data_structures, only: dict_get_key
-  use endf, only: reaction_name
+  use endf,            only: reaction_name
 
   implicit none
 
@@ -45,7 +45,7 @@ contains
 100 format (6X,"Version:",9X,I1,".",I1,".",I1)
 
     ! Write the date and time
-    call get_today( date, time )
+    call get_today(date, time)
     write(ou,101) trim(date), trim(time)
 101 format (6X,"Date/Time:",7X,A,1X,A)
     write(ou,*)
@@ -66,11 +66,11 @@ contains
     write(ou,*) '=>             PROBLEM SUMMARY             <='
     write(ou,*) '============================================='
     write(ou,*)
-    if ( problem_type == PROB_CRITICALITY ) then
+    if (problem_type == PROB_CRITICALITY) then
        write(ou,100) 'Problem type:', 'Criticality'
        write(ou,100) 'Number of Cycles:', int_to_str(n_cycles)
        write(ou,100) 'Number of Inactive Cycles:', int_to_str(n_inactive) 
-    elseif ( problem_type == PROB_SOURCE ) then
+    elseif (problem_type == PROB_SOURCE) then
        write(ou,100) 'Problem type:', 'External Source'
     end if
     write(ou,100) 'Number of Particles:', int_to_str(n_particles)
@@ -95,7 +95,7 @@ contains
 ! standard output stream.
 !=====================================================================
 
-  subroutine message( msg, level )
+  subroutine message(msg, level)
 
     character(*), intent(in) :: msg
     integer, intent(in) :: level
@@ -106,7 +106,7 @@ contains
     ! Only allow master to print to screen
     if (.not. master) return
 
-    if ( level <= verbosity ) then
+    if (level <= verbosity) then
        n_lines = (len_trim(msg)-1)/79 + 1
        do i = 1, n_lines
           write(ou, fmt='(1X,A79)') msg(79*(i-1)+1:79*i)
@@ -120,7 +120,7 @@ contains
 ! standard output stream.
 !=====================================================================
 
-  subroutine warning( msg )
+  subroutine warning(msg)
 
     character(*), intent(in) :: msg
 
@@ -134,7 +134,7 @@ contains
 
     n_lines = (len_trim(msg)-1)/70 + 1
     do i = 1, n_lines
-       if ( i == 1 ) then
+       if (i == 1) then
           write(ou, fmt='(A70)') msg(70*(i-1)+1:70*i)
        else
           write(ou, fmt='(10X,A70)') msg(70*(i-1)+1:70*i)
@@ -149,7 +149,7 @@ contains
 ! considered 'fatal' and hence the program is aborted.
 !=====================================================================
 
-  subroutine error( msg )
+  subroutine error(msg)
 
     character(*), intent(in) :: msg
 
@@ -162,7 +162,7 @@ contains
 
        n_lines = (len_trim(msg)-1)/72 + 1
        do i = 1, n_lines
-          if ( i == 1 ) then
+          if (i == 1) then
              write(eu, fmt='(A72)') msg(72*(i-1)+1:72*i)
           else
              write(eu, fmt='(7X,A72)') msg(72*(i-1)+1:72*i)
@@ -186,10 +186,10 @@ contains
     character(10), intent(out) :: today_date
     character(8),  intent(out) :: today_time
 
+    integer       :: val(8)
     character(8)  :: date
     character(10) :: time
     character(5)  :: zone
-    integer       :: val(8)
 
     call date_and_time(date, time, zone, val)
     ! val(1) = year (YYYY)
@@ -201,14 +201,14 @@ contains
     ! val(7) = seconds (SS)
     ! val(8) = milliseconds
 
-    if ( val(2) < 10 ) then
-       if ( val(3) < 10 ) then
+    if (val(2) < 10) then
+       if (val(3) < 10) then
           today_date = date(6:6) // "/" // date(8:8) // "/" // date(1:4)
        else
           today_date = date(6:6) // "/" // date(7:8) // "/" // date(1:4)
        end if
     else
-       if ( val(3) < 10 ) then
+       if (val(3) < 10) then
           today_date = date(5:6) // "/" // date(8:8) // "/" // date(1:4)
        else
           today_date = date(5:6) // "/" // date(7:8) // "/" // date(1:4)
@@ -227,10 +227,10 @@ contains
     type(Particle), pointer :: p
 
     integer :: i
+    character(250) :: string
     type(Cell),     pointer :: c => null()
     type(Surface),  pointer :: s => null()
     type(Universe), pointer :: u => null()
-    character(250) :: string
 
     select case (p % type)
     case (NEUTRON)
@@ -242,21 +242,21 @@ contains
     case default
        write(ou,*) 'Unknown Particle ' // int_to_str(p % uid)
     end select
-    write(ou,100) 'x = ', p % xyz(1)
-    write(ou,100) 'y = ', p % xyz(2)
-    write(ou,100) 'z = ', p % xyz(3)
-    write(ou,100) 'x local = ', p % xyz_local(1)
-    write(ou,100) 'y local = ', p % xyz_local(2)
-    write(ou,100) 'z local = ', p % xyz_local(3)
-    write(ou,100) 'u = ', p % uvw(1)
-    write(ou,100) 'v = ', p % uvw(2)
-    write(ou,100) 'w = ', p % uvw(3)
-    write(ou,100) 'Weight = ', p % wgt
-    write(ou,100) 'Energy = ', p % E
+    write(ou,*) '    x = ' // real_to_str(p % xyz(1))
+    write(ou,*) '    y = ' // real_to_str(p % xyz(2))
+    write(ou,*) '    z = ' // real_to_str(p % xyz(3))
+    write(ou,*) '    x local = ' // real_to_str(p % xyz_local(1))
+    write(ou,*) '    y local = ' // real_to_str(p % xyz_local(2))
+    write(ou,*) '    z local = ' // real_to_str(p % xyz_local(3))
+    write(ou,*) '    u = ' // real_to_str(p % uvw(1))
+    write(ou,*) '    v = ' // real_to_str(p % uvw(2))
+    write(ou,*) '    w = ' // real_to_str(p % uvw(3))
+    write(ou,*) '    Weight = ' // real_to_str(p % wgt)
+    write(ou,*) '    Energy = ' // real_to_str(p % E)
     write(ou,*) '    x index = ' // int_to_str(p % index_x)
     write(ou,*) '    y index = ' // int_to_str(p % index_y)
     write(ou,*) '    IE = ' // int_to_str(p % IE)
-    write(ou,100) 'Interpolation factor = ', p % interp
+    write(ou,*) '    Interpolation factor = ' // real_to_str(p % interp)
 
     if (p % cell > 0) then
        c => cells(p % cell)
@@ -276,9 +276,6 @@ contains
     write(ou,*) '    Universe = ' // int_to_str(u % uid)
     write(ou,*)
 
-    ! Format for a single real
-100 format (5X,A,G10.3)
-
     nullify(c)
     nullify(s)
     nullify(u)
@@ -295,16 +292,13 @@ contains
 
     write(ou,*) 'Reaction ' // reaction_name(rxn % MT)
     write(ou,*) '    MT = ' // int_to_str(rxn % MT)
-    write(ou,100) 'Q-value = ', rxn % Q_value
+    write(ou,*) '    Q-value = ' // real_to_str(rxn % Q_value)
     write(ou,*) '    TY = ' // int_to_str(rxn % TY)
     write(ou,*) '    Starting index = ' // int_to_str(rxn % IE)
     if (rxn % has_energy_dist) then
        write(ou,*) '    Energy: Law ' // int_to_str(rxn % edist % law)
     end if
     write(ou,*)
-
-    ! Format for a single real
-100 format (5X,A,G10.3)
 
   end subroutine print_reaction
 
@@ -318,10 +312,10 @@ contains
 
     integer :: temp
     integer :: i
+    character(250) :: string
     type(Universe), pointer :: u => null()
     type(Lattice),  pointer :: l => null()
     type(Material), pointer :: m => null()
-    character(250) :: string
 
     write(ou,*) 'Cell ' // int_to_str(c % uid)
     temp = dict_get_key(cell_dict, c % uid)
@@ -406,14 +400,11 @@ contains
     write(ou,*) 'Lattice ' // int_to_str(lat % uid)
     write(ou,*) '    n_x = ' // int_to_str(lat % n_x)
     write(ou,*) '    n_y = ' // int_to_str(lat % n_y)
-    write(ou,100) 'x0 = ', lat % x0
-    write(ou,100) 'y0 = ', lat % y0
-    write(ou,100) 'width_x = ', lat % width_x
-    write(ou,100) 'width_y = ', lat % width_y
+    write(ou,*) '    x0 = ' // real_to_str(lat % x0)
+    write(ou,*) '    y0 = ' // real_to_str(lat % y0)
+    write(ou,*) '    width_x = ' // real_to_str(lat % width_x)
+    write(ou,*) '    width_y = ' // real_to_str(lat % width_y)
     write(ou,*)
-
-    ! Format for a single real
-100 format (5X,A,G10.3)
 
   end subroutine print_lattice
 
@@ -454,7 +445,12 @@ contains
        string = "General Quadratic"
     end select
     write(ou,*) '    Type = ' // trim(string)
-    write(ou,*) '    Coefficients = ', surf % coeffs
+
+    string = ""
+    do i = 1, size(surf % coeffs)
+       string = trim(string) // ' ' // real_to_str(surf % coeffs(i), 4)
+    end do
+    write(ou,*) '    Coefficients = ' // trim(string)
 
     string = ""
     if (allocated(surf % neighbor_pos)) then
@@ -462,7 +458,7 @@ contains
           string = trim(string) // ' ' // int_to_str(surf % neighbor_pos(i))
        end do
     end if
-    write(ou,*) '    Positive Neighbors = ', trim(string)
+    write(ou,*) '    Positive Neighbors = ' // trim(string)
 
     string = ""
     if (allocated(surf % neighbor_neg)) then
@@ -470,7 +466,7 @@ contains
           string = trim(string) // ' ' // int_to_str(surf % neighbor_neg(i))
        end do
     end if
-    write(ou,*) '    Negative Neighbors =', trim(string)
+    write(ou,*) '    Negative Neighbors =' // trim(string)
     select case (surf % bc)
     case (BC_TRANSMIT)
        write(ou,*) '    Boundary Condition = Transmission'
@@ -493,30 +489,22 @@ contains
 
     type(Material), pointer :: mat
 
-    integer :: i
-    integer :: n_lines
-    type(AceContinuous), pointer :: table
+    integer        :: i
+    integer        :: n_lines
+    real(8)        :: density
     character(250) :: string
+    type(AceContinuous), pointer :: table => null()
 
     write(ou,*) 'Material ' // int_to_str(mat % uid)
-    ! Make string of all isotopes
-    string = ""
+    write(ou,*) '    Atom Density = ' // trim(real_to_str(mat % atom_density)) &
+         & // ' atom/b-cm'
     do i = 1, mat % n_isotopes
        table => xs_continuous(mat % table(i))
-       string = trim(string) // ' ' // table % name
+       density = mat % atom_density * mat % atom_percent(i)
+       string = '    ' // trim(table % name) // ' = ' // &
+            & trim(real_to_str(density)) // ' atom/b-cm'
+       write(ou,*) trim(string)
     end do
-    ! Print isotopes with word wrap
-    ! TODO: Change this to generic word wrap subroutine?
-    n_lines = (len_trim(string)-1)/75 + 1
-    do i = 1, n_lines
-       if ( i == 1 ) then
-          write(ou, fmt='(5X,A75)') 'Isotopes =' // string(75*(i-1)+1:75*i)
-       else
-          write(ou, fmt='(5X,A75)') string(75*(i-1)+1:75*i)
-       end if
-    end do
-    write(ou,'(5X,A,G12.4,A)') 'Atom Density = ', mat % atom_density, & 
-         & ' atom/b-cm'
     write(ou,*)
 
     nullify(table)

@@ -1,3 +1,19 @@
+2011-04-01 Paul Romano <romano7@mit.edu>
+
+	* ace.f90: Added ability to read S(a,b) data through the
+	read_ACE_thermal and read_thermal_data subroutines.
+	* endf.f90: Replaced many integer values of MTs with constants
+	introduced in global module
+	* fileio.f90: Added check for no boundary conditions.
+	* global.f90: Introduced parameters to represent different
+	reactions. Added real_to_str function and moved str_to_real
+	function here instead of being in string module.
+	* output.f90: Changed printing of real(8)s to use the real_to_str
+	function. Changed print_material to show density of each nuclide.
+	* physics.f90: Replaced actual integer values of MTs with
+	constants introduced in global module
+	* string.f90: Moved str_to_real function to global module.
+
 2011-03-30 Paul Romano <romano7@mit.edu>
 
 	* benchmarks: Added boundary conditions to PU-MET-FAST-001, 002,

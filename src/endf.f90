@@ -1,6 +1,6 @@
 module endf
 
-  use global, only: int_to_str
+  use global
 
 contains
 
@@ -14,95 +14,95 @@ contains
     character(20)       :: string
 
     select case (MT)
-    case (1)
+    case (TOTAL_XS)
        string = '(n,total)'
-    case (2)
+    case (ELASTIC)
        string = '(elastic)'
-    case (4)
+    case (N_LEVEL)
        string = '(n,level)'
-    case (11)
+    case (N_2ND)
        string = '(n,2nd)'
-    case (16)
+    case (N_2N)
        string = '(n,2n)'
-    case (17)
+    case (N_3N)
        string = '(n,3n)'
-    case (18)
+    case (FISSION)
        string = '(n,fission)'
-    case (19)
+    case (N_F)
        string = '(n,f)'
-    case (20)
+    case (N_NF)
+       string = '(n,nf)'
+    case (N_2NF)
        string = '(n,2nf)'
-    case (21)
-       string = '(n,2nf)'
-    case (22)
+    case (N_NA)
        string = '(n,na)'
-    case (23)
+    case (N_N3A)
        string = '(n,n3a)'
-    case (24)
+    case (N_2NA)
        string = '(n,2na)'
-    case (25)
+    case (N_3NA)
        string = '(n,3na)'
-    case (28)
+    case (N_NP)
        string = '(n,np)'
-    case (29)
+    case (N_N2A)
        string = '(n,n2a)'
-    case (30)
+    case (N_2N2A)
        string = '(n,2n2a)'
-    case (32)
+    case (N_ND)
        string = '(n,nd)'
-    case (33)
+    case (N_NT)
        string = '(n,nt)'
-    case (34)
+    case (N_N3HE)
        string = '(n,nHe-3)'
-    case (35)
-       string = '(n,nd3a)'
-    case (36)
+    case (N_ND2A)
+       string = '(n,nd2a)'
+    case (N_NT2A)
        string = '(n,nt2a)'
-    case (37)
+    case (N_4N)
        string = '(n,4n)'
-    case (38)
+    case (N_3NF)
        string = '(n,3nf)'
-    case (41)
+    case (N_2NP)
        string = '(n,2np)'
-    case (42)
+    case (N_3NP)
        string = '(n,3np)'
-    case (44)
-       string = '(n,2np)'
-    case (45)
+    case (N_N2P)
+       string = '(n,n2p)'
+    case (N_NPA)
        string = '(n,npa)'
-    case (51 : 90)
+    case (N_N1 : N_N40)
        string = '(n,n' // trim(int_to_str(MT-50)) // ')'
-    case (91)
+    case (N_NC)
        string = '(n,nc)'
-    case (102)
+    case (N_GAMMA)
        string = '(n,gamma)'
-    case (103)
+    case (N_P)
        string = '(n,p)'
-    case (104)
+    case (N_D)
        string = '(n,d)'
-    case (105)
+    case (N_T)
        string = '(n,t)'
-    case (106)
+    case (N_3HE)
        string = '(n,3He)'
-    case (107)
+    case (N_A)
        string = '(n,a)'
-    case (108)
+    case (N_2A)
        string = '(n,2a)'
-    case (109)
+    case (N_3A)
        string = '(n,3a)'
-    case (111)
+    case (N_2P)
        string = '(n,2p)'
-    case (112)
+    case (N_PA)
        string = '(n,pa)'
-    case (113)
+    case (N_T2A)
        string = '(n,t2a)'
-    case (114)
+    case (N_D2A)
        string = '(n,d2a)'
-    case (115)
+    case (N_PD)
        string = '(n,pd)'
-    case (116)
+    case (N_PT)
        string = '(n,pt)'
-    case (117)
+    case (N_DA)
        string = '(n,da)'
     case (201)
        string = '(n,Xn)'

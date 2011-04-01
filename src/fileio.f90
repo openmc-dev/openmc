@@ -361,8 +361,14 @@ contains
        end if
     end do
 
-    ! Set boundary conditions for surfaces
+    ! Check to make sure boundary conditions were specified
     key_list => dict_keys(bc_dict)
+    if (.not. associated(key_list)) then
+       msg = "No boundary conditions specified!"
+       call error(msg)
+    end if
+
+    ! Set boundary conditions for surfaces
     do while (associated(key_list))
        ! find index of universe in universes array
        surf_num = key_list%data%key

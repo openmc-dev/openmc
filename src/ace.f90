@@ -109,8 +109,9 @@ contains
   end subroutine read_xs
 
 !=====================================================================
-! READ_ACE_CONTINUOUS reads in a single ACE continuous-energy cross
-! section table
+! READ_ACE_CONTINUOUS reads in a single ACE continuous-energy neutron
+! cross section table. This routine reads the header data and then
+! calls appropriate subroutines to parse the actual data.
 !=====================================================================
 
   subroutine read_ACE_continuous(index_table, index)
@@ -870,6 +871,206 @@ contains
   end function length_energy_dist
 
 !=====================================================================
+! READ_ACE_THERMAL reads in a single ACE thermal scattering S(a,b)
+! table. This routine in particular reads the header data and then
+! calls read_thermal_data to parse the actual data blocks.
+!=====================================================================
+
+  subroutine read_ACE_thermal(index_table, index)
+
+    integer, intent(in) :: index_table ! index in xs_thermal array
+    integer, intent(in) :: index       ! index in xsdatas array
+
+    integer        :: in = 7           ! unit to read from
+    integer        :: ioError          ! error status for file access
+    integer        :: words_per_line   ! number of words per line (data)
+    integer        :: lines            ! number of lines (data
+    integer        :: n                ! number of data values
+    real(8)        :: kT               ! ACE table temperature
+    logical        :: file_exists      ! does ACE library exist?
+    logical        :: found_xs         ! did we find table in library?
+    character(7)   :: readable         ! is ACE library readable?
+    character(250) :: msg              ! output/error message
+    character(250) :: line             ! single line to read
+    character(32)  :: words(max_words) ! words on a line
+    character(100) :: filename         ! name of ACE library file
+    character(10)  :: tablename        ! name of cross section table
+    type(AceThermal), pointer :: table => null()
+
+    filename = xsdatas(index)%path
+    tablename = xsdatas(index)%id
+
+    table => xs_thermal(index_table)
+
+    ! Check if input file exists and is readable
+    inquire(FILE=filename, EXIST=file_exists, READ=readable)
+    if (.not. file_exists) then
+       msg = "ACE library '" // trim(filename) // "' does not exist!"
+       call error(msg)
+    elseif (readable(1:3) == 'NO') then
+       msg = "ACE library '" // trim(filename) // "' is not readable! &
+            &Change file permissions with chmod command."
+       call error(msg)
+    end if
+
+    ! display message
+    msg = "Loading ACE cross section table: " // tablename
+    call message(msg, 6)
+
+    ! open file
+    open(file=filename, unit=in, status='old', & 
+         & action='read', iostat=ioError)
+    if (ioError /= 0) then
+       msg = "Error while opening file: " // filename
+       call error(msg)
+    end if
+
+    found_xs = .false.
+    do while (.not. found_xs)
+       call read_line(in, line, ioError)
+       if (ioError < 0) then
+          msg = "Could not find ACE table " // tablename // "."
+          call error(msg)
+       end if
+       call split_string(line, words, n)
+       if (trim(words(1)) == trim(tablename)) then
+          found_xs = .true.
+          table%name = words(1)
+          table%awr = str_to_real(words(2))
+          kT = str_to_real(words(3))
+          table%temp = kT / K_BOLTZMANN
+       end if
+       
+       ! Skip 5 lines
+       call skip_lines(in, 5, ioError)
+
+       ! Read NXS data
+       lines = 2
+       words_per_line = 8
+       call read_data(in, NXS, 16, lines, words_per_line)
+
+       ! Read JXS data
+       lines = 4
+       call read_data(in, JXS, 32, lines, words_per_line)
+
+       ! Calculate how many data points and lines in the XSS array
+       n = NXS(1)
+       lines = (n + 3)/4
+
+       if (found_xs) then
+          ! allocate storage for XSS array
+          allocate(XSS(n))
+          
+          ! Read XSS
+          words_per_line = 4
+          call read_data(in, XSS, n, lines, words_per_line)
+       else
+          call skip_lines(in, lines, ioError)
+       end if
+
+    end do
+
+    call read_thermal_data(table)
+
+    ! Free memory from XSS array
+    if(allocated(XSS)) deallocate(XSS)
+    if(associated(table)) nullify(table)
+
+    close(unit=in)
+
+  end subroutine read_ACE_thermal
+
+!=====================================================================
+! READ_THERMAL_DATA reads elastic and inelastic cross sections and
+! corresponding secondary energy/angle distributions derived from
+! experimental S(a,b) data. Namely, in MCNP language, this routine
+! reads the ITIE, ITCE, ITXE, and ITCA blocks.
+!=====================================================================
+
+  subroutine read_thermal_data(table)
+
+    type(AceThermal), pointer :: table
+
+    integer :: i      ! index for incoming energies
+    integer :: j      ! index for outgoing energies
+    integer :: k      ! index for outoging angles
+    integer :: loc    ! location in XSS array
+    integer :: NE_in  ! number of incoming energies
+    integer :: NE_out ! number of outgoing energies
+    integer :: NMU    ! number of outgoing angles
+    integer :: JXS4   ! location of elastic energy table
+
+    ! read number of inelastic energies and allocate arrays
+    NE_in = XSS(JXS(1))
+    table % n_inelastic_e_in = NE_in
+    allocate(table % inelastic_e_in(NE_in))
+    allocate(table % inelastic_sigma(NE_in))
+
+    ! read inelastic energies and cross-sections
+    XSS_index = JXS(1) + 1
+    table % inelastic_e_in = get_real(NE_in)
+    table % inelastic_sigma = get_real(NE_in)
+
+    ! allocate space for outgoing energy/angle for inelastic
+    ! scattering
+    NE_out = NXS(4)
+    NMU = NXS(3) + 1
+    allocate(table % inelastic_e_out(NE_out, NE_in))
+    allocate(table % inelastic_mu(NMU, NE_out, NE_in))
+
+    ! read outgoing energy/angle distribution for inelastic scattering
+    loc = JXS(3) - 1
+    do i = 1, NE_in
+       do j = 1, NE_out
+          ! read outgoing energy
+          table % inelastic_e_out(j,i) = XSS(loc + 1)
+
+          ! read outgoing angles for this outgoing energy
+          do k = 1, NMU
+             table % inelastic_mu(k,j,i) = XSS(loc + 1 + k)
+          end do
+
+          ! advance pointer
+          loc = loc + 1 + NMU
+       end do
+    end do
+
+    ! read number of elastic energies and allocate arrays
+    JXS4 = JXS(4)
+    if (JXS4 /= 0) then
+       NE_in = XSS(JXS4)
+       table % n_elastic_e_in = NE_in
+       allocate(table % elastic_e_in(NE_in))
+       allocate(table % elastic_P(NE_in))
+
+       ! determine whether sigma=P or sigma = P/E
+       table % n_elastic_type = NXS(5)
+    else
+       table % n_elastic_e_in = 0
+    end if
+
+    ! allocate space for outgoing energy/angle for elastic scattering
+    NMU = NXS(6) + 1
+    table % n_elastic_mu = NMU
+    if (NMU > 0) then
+       allocate(table % elastic_mu(NMU, NE_in))
+    end if
+
+    ! read equiprobable outgoing cosines for elastic scattering each
+    ! incoming energy
+    if (JXS4 /= 0 .and. NMU /= 0) then
+       loc = JXS(6) - 1
+       do i = 1, NE_in
+          do j = 1, NMU
+             table % elastic_mu(j,i) = XSS(loc + j)
+          end do
+          loc = loc + NMU
+       end do
+    end if
+    
+  end subroutine read_thermal_data
+
+!=====================================================================
 ! GET_INT returns an array of integers read from the current position
 ! in the XSS array
 !=====================================================================
@@ -898,16 +1099,5 @@ contains
       XSS_index = XSS_index + n_values
 
     end function get_real
-
-!=====================================================================
-! READ_ACE_THERMAL reads in a single ACE S(a,b) thermal scattering
-! cross section table
-!=====================================================================
-
-  subroutine read_ACE_thermal(filename)
-
-    character(*), intent(in) :: filename
-
-  end subroutine read_ACE_thermal
 
 end module ace

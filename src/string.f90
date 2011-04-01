@@ -44,10 +44,10 @@ contains
           if (i == len(string))   i_end = i
           if (i_end > 0) then
              n = n + 1
-             if ( i_end - i_start + 1 > len(words(n)) ) then
+             if (i_end - i_start + 1 > len(words(n))) then
                 msg = "The word '" // string(i_start:i_end) // "' is longer than " &
                      & // "the space allocated for it."
-                call warning( msg )
+                call warning(msg)
              end if
              words(n) = string(i_start:i_end)
              ! reset indices
@@ -90,7 +90,7 @@ contains
 
        ! Check for special characters
        if (index('():#', char) > 0) then
-          if (i_start > 0 ) then
+          if (i_start > 0) then
              i_end = i - 1
              n = n + 1
              words(n) = string(i_start:i_end)
@@ -138,7 +138,7 @@ contains
     integer :: i ! index
 
     string = words(1)
-    if ( n_words == 1 ) return
+    if (n_words == 1) return
     do i = 2, n_words
        string = trim(string) // ' ' // words(i)
     end do
@@ -163,59 +163,5 @@ contains
     end do
 
   end subroutine lower_case
-
-!=====================================================================
-! STR_TO_REAL converts an arbitrary string to a real(8). Generally
-! this function is intended for strings for which the exact format is
-! not known. If the format of the number is known a priori, the
-! appropriate format descriptor should be used in lieu of this routine
-! because of the extra overhead.
-!
-! Arguments:
-!   string = character(*) containing number to convert
-!=====================================================================
-
-  function str_to_real( string )
-
-    character(*), intent(in) :: string
-    real(8) :: str_to_real
-
-    integer :: index_decimal  ! index of decimal point
-    integer :: index_exponent ! index of exponent character
-    integer :: w              ! total field width
-    integer :: d              ! number of digits to right of decimal point
-    integer :: readError
-
-    character(8) :: fmt   ! format for reading string
-    character(250) :: msg ! error message
-
-    ! Determine total field width
-    w = len_trim(string)
-
-    ! Determine number of digits to right of decimal point
-    index_decimal = index(string, '.')
-    index_exponent = max(index(string, 'd'), index(string, 'D'), &
-         & index(string, 'e'), index(string, 'E'))
-    if ( index_decimal > 0 ) then
-       if ( index_exponent > 0 ) then
-          d = index_exponent - index_decimal - 1
-       else
-          d = w - index_decimal
-       end if
-    else
-       d = 0
-    end if
-
-    ! Create format specifier for reading string
-    write( fmt, '("(E",I2,".",I2,")")') w, d
-
-    ! Read string
-    read( string, fmt, iostat=readError ) str_to_real
-    if ( readError > 0 ) then
-       msg = "Could not read value: " // string
-       call error( msg )
-    end if
-
-  end function str_to_real
 
 end module string

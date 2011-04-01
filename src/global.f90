@@ -169,6 +169,56 @@ module global
        & PHOTON   = 2, &
        & ELECTRON = 3
 
+  ! Reaction types
+  integer, parameter :: &
+       & TOTAL_XS  = 1, &
+       & ELASTIC   = 2, &
+       & N_LEVEL   = 4, &
+       & MISC      = 5, &
+       & N_2ND     = 11, &
+       & N_2N      = 16, &
+       & N_3N      = 17, &
+       & FISSION   = 18, &
+       & N_F       = 19, &
+       & N_NF      = 20, &
+       & N_2NF     = 21, &
+       & N_NA      = 22, &
+       & N_N3A     = 23, &
+       & N_2NA     = 24, &
+       & N_3NA     = 25, &
+       & N_NP      = 28, &
+       & N_N2A     = 29, &
+       & N_2N2A    = 30, &
+       & N_ND      = 32, &
+       & N_NT      = 33, &
+       & N_N3HE    = 34, &
+       & N_ND2A    = 35, &
+       & N_NT2A    = 36, &
+       & N_4N      = 37, &
+       & N_3NF     = 38, &
+       & N_2NP     = 41, &
+       & N_3NP     = 42, &
+       & N_N2P     = 44, &
+       & N_NPA     = 45, &
+       & N_N1      = 51, &
+       & N_N40     = 90, &
+       & N_NC      = 91, &
+       & N_GAMMA   = 102, &
+       & N_P       = 103, &
+       & N_D       = 104, &
+       & N_T       = 105, &
+       & N_3HE     = 106, &
+       & N_A       = 107, &
+       & N_2A      = 108, &
+       & N_3A      = 109, &
+       & N_2P      = 111, &
+       & N_PA      = 112, &
+       & N_T2A     = 113, &
+       & N_D2A     = 114, &
+       & N_PD      = 115, &
+       & N_PT      = 116, &
+       & N_DA      = 117
+
   ! Fission neutron emission (nu) type
   integer, parameter ::     &
        & NU_NONE       = 0, & ! No nu values (non-fissionable)
@@ -190,7 +240,7 @@ module global
   ! Versioning numbers
   integer, parameter :: VERSION_MAJOR = 0
   integer, parameter :: VERSION_MINOR = 2
-  integer, parameter :: VERSION_RELEASE = 1
+  integer, parameter :: VERSION_RELEASE = 2
 
 contains
 
@@ -282,5 +332,113 @@ contains
     if (ioError > 0) num = ERROR_CODE
 
   end function str_to_int
+
+!=====================================================================
+! STR_TO_REAL converts an arbitrary string to a real(8). Generally
+! this function is intended for strings for which the exact format is
+! not known. If the format of the number is known a priori, the
+! appropriate format descriptor should be used in lieu of this routine
+! because of the extra overhead.
+!
+! Arguments:
+!   string = character(*) containing number to convert
+!=====================================================================
+
+  function str_to_real(string) result(num)
+
+    character(*), intent(in) :: string
+    real(8) :: num
+
+    integer :: index_decimal  ! index of decimal point
+    integer :: index_exponent ! index of exponent character
+    integer :: w              ! total field width
+    integer :: d              ! number of digits to right of decimal point
+    integer :: readError
+
+    character(8) :: fmt   ! format for reading string
+    character(250) :: msg ! error message
+
+    ! Determine total field width
+    w = len_trim(string)
+
+    ! Determine number of digits to right of decimal point
+    index_decimal = index(string, '.')
+    index_exponent = max(index(string, 'd'), index(string, 'D'), &
+         & index(string, 'e'), index(string, 'E'))
+    if (index_decimal > 0) then
+       if (index_exponent > 0) then
+          d = index_exponent - index_decimal - 1
+       else
+          d = w - index_decimal
+       end if
+    else
+       d = 0
+    end if
+
+    ! Create format specifier for reading string
+    write(fmt, '("(E",I2,".",I2,")")') w, d
+
+    ! Read string
+    read(string, fmt, iostat=readError) num
+    if (readError > 0) then
+       ! return error code for real?
+    end if
+
+  end function str_to_real
+
+!=====================================================================
+! REAL_TO_STR converts a real(8) to a string based on how large the
+! value is and how many significant digits are desired. By default,
+! six significants digits are used.
+!=====================================================================
+
+  function real_to_str(num, sig_digits) result(string)
+
+    real(8),           intent(in) :: num        ! number to convert
+    integer, optional, intent(in) :: sig_digits ! # of significant digits
+    character(15)                 :: string     ! string returned
+
+    integer      :: decimal ! number of places after decimal
+    integer      :: width   ! total field width
+    real(8)      :: num2    ! absolute value of number 
+    character(9) :: fmt     ! format specifier for writing number
+
+    ! set default field width
+    width = 15
+
+    ! set number of places after decimal
+    if (present(sig_digits)) then
+       decimal = sig_digits
+    else
+       decimal = 6
+    end if
+
+    ! Create format specifier for writing character
+    num2 = abs(num)
+    if (num2 == ZERO) then
+       write(fmt, '("(F",I2,".",I2,")")') width, 1
+    elseif (num2 < 1.0e-1_8) then
+       write(fmt, '("(ES",I2,".",I2,")")') width, decimal - 1
+    elseif (num2 >= 1.0e-1_8 .and. num2 < 1.0_8) then
+       write(fmt, '("(F",I2,".",I2,")")') width, decimal
+    elseif (num2 >= 1.0_8 .and. num2 < 10.0_8) then
+       write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-1, 0)
+    elseif (num2 >= 10.0_8 .and. num2 < 100.0_8) then
+       write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-2, 0)
+    elseif (num2 >= 100.0_8 .and. num2 < 1000.0_8) then
+       write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-3, 0)
+    elseif (num2 >= 100.0_8 .and. num2 < 10000.0_8) then
+       write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-4, 0)
+    elseif (num2 >= 10000.0_8 .and. num2 < 100000.0_8) then
+       write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-5, 0)
+    else
+       write(fmt, '("(ES",I2,".",I2,")")') width, decimal - 1
+    end if
+
+    ! Write string and left adjust
+    write(string, fmt) num
+    string = adjustl(string)
+
+  end function real_to_str
 
 end module global

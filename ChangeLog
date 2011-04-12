@@ -1,3 +1,12 @@
+2011-04-12 Paul Romano <romano7@mit.edu>
+
+	* ace.f90: Fixed bug relating to 'use' of str_to_real from wrong
+	module
+	* cross_section.f90: Fixed bug relating to 'use' of str_to_real
+	from wrong module
+	* fileio.f90: Fixed bug relating to 'use' of str_to_real from wrong
+	module
+
 2011-04-01 Paul Romano <romano7@mit.edu>
 
 	* ace.f90: Added ability to read S(a,b) data through the

@@ -1,7 +1,7 @@
 module cross_section
 
   use global
-  use string, only: split_string, str_to_real
+  use string, only: split_string
   use data_structures, only: dict_create, dict_add_key, dict_get_key
   use output, only: error, message
   use types, only: xsData

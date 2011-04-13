@@ -14,6 +14,8 @@ module mpi_routines
   integer    :: MPI_BANK   ! MPI datatype for fission bank
   integer(8) :: bank_index ! Fission bank site unique identifier
 
+  real(8) :: t_assemble
+
 contains
 
 !=====================================================================
@@ -115,6 +117,8 @@ contains
     integer :: send_to_right     ! # of bank sites to send/recv to or from right
     integer :: sites_needed      ! # of sites to be sampled
     integer :: sites_remaining   ! # of sites left in fission bank
+    real(8) :: t0
+    real(8) :: t1
     type(Bank), allocatable :: &
          & temp_sites(:),      & ! local array of extra sites on each node
          & left_bank(:),       & ! bank sites to send/recv to or from left node
@@ -125,6 +129,9 @@ contains
     call message(msg, 8)
 
 #ifdef MPI
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+    t0 = MPI_WTIME()
+
     ! Determine starting index for fission bank and total sites in
     ! fission bank
     start = 0
@@ -247,6 +254,9 @@ contains
     source_index = 0
     
 #ifdef MPI
+    t1 = MPI_WTIME()
+    t_assemble = t_assemble + (t1 - t0)
+
     deallocate(left_bank )
     deallocate(right_bank)
 #endif

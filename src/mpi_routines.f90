@@ -1,10 +1,13 @@
 module mpi_routines
 
-  use mpi
   use global
   use output, only: message, error
   use mcnp_random, only: rang
   use source, only: copy_from_bank, source_index
+
+#ifdef MPI
+  use mpi
+#endif
 
   implicit none
 
@@ -21,6 +24,7 @@ contains
 
   subroutine setup_mpi()
 
+#ifdef MPI
     integer        :: i
     integer        :: ierr           ! Error status
     integer        :: bank_blocks(4) ! Count for each datatype
@@ -30,13 +34,14 @@ contains
     character(250) :: msg            ! Error message
     type(Bank)     :: b
 
+    mpi_enabled = .true.
+
     ! Initialize MPI
     call MPI_INIT(ierr)
     if (ierr /= MPI_SUCCESS) then
        msg = "Failed to initialize MPI."
        call error(msg)
     end if
-    mpi_enabled = .true.
 
     ! Determine number of processors
     call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, ierr)
@@ -78,6 +83,14 @@ contains
          & bank_types, MPI_BANK, ierr)
     call MPI_TYPE_COMMIT(MPI_BANK, ierr)
 
+#else
+    ! if no MPI, set processor to master
+    mpi_enabled = .false.
+    rank = 0
+    n_procs = 1
+    master = .true.
+#endif
+
   end subroutine setup_mpi
 
 !=====================================================================
@@ -89,7 +102,9 @@ contains
     implicit none
 
     integer :: i, j, k                 ! loop indices
+#ifdef MPI
     integer :: status(MPI_STATUS_SIZE) ! message status
+#endif
     integer :: ierr
     integer :: start             ! starting index in local fission bank
     integer :: finish            ! ending index in local fission bank
@@ -109,6 +124,7 @@ contains
     msg = "Synchronizing fission bank..."
     call message(msg, 8)
 
+#ifdef MPI
     ! Determine starting index for fission bank and total sites in
     ! fission bank
     start = 0
@@ -124,6 +140,11 @@ contains
        msg = "No fission sites banked!"
        call error(msg)
     end if
+#else
+    start  = 0
+    finish = n_bank
+    total  = n_bank
+#endif
 
     allocate(temp_sites(2*work))
     count = 0 ! Index for source_bank
@@ -174,6 +195,7 @@ contains
     send_to_left  = bank_first - temp_sites(1)%uid
     send_to_right = temp_sites(1)%uid + (count-1) - bank_last
 
+#ifdef MPI
     ! ================================================================
     ! SEND BANK SITES TO NEIGHBORS
     allocate(left_bank(abs(send_to_left)))
@@ -195,6 +217,7 @@ contains
        call MPI_SEND(temp_sites(1), send_to_left, MPI_BANK, rank-1, 1, &
             & MPI_COMM_WORLD, ierr)
     end if
+#endif
 
     ! ================================================================
     ! RECONSTRUCT SOURCE BANK
@@ -223,8 +246,10 @@ contains
     ! Reset source index
     source_index = 0
     
+#ifdef MPI
     deallocate(left_bank )
     deallocate(right_bank)
+#endif
     deallocate(temp_sites)
 
   end subroutine synchronize_bank

@@ -2,6 +2,10 @@ module global
 
   use types
 
+#ifdef MPI
+  use mpi
+#endif
+
   implicit none
 
   ! Main arrays for cells, surfaces, materials
@@ -285,8 +289,10 @@ contains
     if (allocated(fission_bank)) deallocate(fission_bank)
     if (allocated(source_bank)) deallocate(source_bank)
 
+#ifdef MPI
     ! If MPI is in use and enabled, terminate it
     call MPI_FINALIZE(ierr)
+#endif
 
     ! End program
     stop

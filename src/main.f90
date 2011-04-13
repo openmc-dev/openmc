@@ -14,7 +14,10 @@ program main
   use energy_grid,   only: unionized_grid, original_indices
   use mpi_routines,  only: setup_mpi, synchronize_bank
   use tallies,       only: calculate_keff
+
+#ifdef MPI
   use mpi
+#endif
 
   implicit none
 

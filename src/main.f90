@@ -12,7 +12,7 @@ program main
   use cross_section, only: read_xsdata, material_total_xs
   use ace,           only: read_xs
   use energy_grid,   only: unionized_grid, original_indices
-  use mpi_routines,  only: setup_mpi, synchronize_bank
+  use mpi_routines,  only: setup_mpi, synchronize_bank, t_assemble
   use tallies,       only: calculate_keff
 
 #ifdef MPI
@@ -103,11 +103,17 @@ contains
     integer :: i_cycle    ! cycle index
     integer :: i_particle ! history index
     integer :: total_bank ! total number of particles banked
+    real(8) :: t0
+    real(8) :: t1
     type(Particle), pointer :: p => null()
     character(250) :: msg
 
     msg = "Running problem..."
     call message(msg, 6)
+
+#ifdef MPI
+    t0 = MPI_WTIME()
+#endif
 
     CYCLE_LOOP: do i_cycle = 1, n_cycles
        
@@ -144,7 +150,14 @@ contains
 
     ! Collect all tallies and print
 
+#ifdef MPI
     ! print run time
+    t1 = MPI_WTIME()
+    if (master) then
+       write(6,"(A,F8.2,A)") "Time elapsed = ", t1 - t0, " s"
+       write(6,"(A,G10.4)") "Assemble time = ", t_assemble
+    end if
+#endif
 
   end subroutine run_problem
 

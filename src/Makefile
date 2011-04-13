@@ -28,11 +28,15 @@ test_objects = $(modules:.f90=.o) $(test:.f90=.o)
 F90 = ifort
 F90FLAGS = -g -fpp -traceback
 
-MPI = /opt/mpich2/1.3.3-gcc
-MPI_COMPILE_FLAGS = $(shell $(MPI)/bin/mpif90 -f90='' -compile_info)
-MPI_LINK_FLAGS = $(shell $(MPI)/bin/mpif90 -f90='' -link_info)
-F90 = $(MPI)/bin/mpif90
-F90FLAGS += -DMPI -f90=ifort
+USE_MPI = yes
+
+ifeq ($(USE_MPI),yes)
+  MPI = /opt/mpich2/1.3.3-gcc
+  MPI_COMPILE_FLAGS = $(shell $(MPI)/bin/mpif90 -f90='' -compile_info)
+  MPI_LINK_FLAGS = $(shell $(MPI)/bin/mpif90 -f90='' -link_info)
+  F90 = $(MPI)/bin/mpif90
+  F90FLAGS += -DMPI -f90=ifort
+endif
 
 #--------------------------------------------------------------------
 # Targets

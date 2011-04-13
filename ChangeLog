@@ -1,3 +1,10 @@
+2011-04-13 Paul Romano <romano7@mit.edu>
+
+	* main.f90: Simple timing for total time elapsed and bank
+	synchronization.
+	* Makefile: Added USE_MPI flag and ifeq block.
+	* mpi_routines.f90: Timing of fission bank synchronization.
+
 2011-04-12 Paul Romano <romano7@mit.edu>
 
 	* global.f90: Added ifdef MPI sections

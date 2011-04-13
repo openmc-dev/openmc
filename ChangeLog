@@ -1,5 +1,14 @@
 2011-04-12 Paul Romano <romano7@mit.edu>
 
+	* global.f90: Added ifdef MPI sections
+	* main.f90: Added ifdef MPI sections
+	* Makefile: Made switching between compiling with or without MPI
+	more seamless by adding -DMPI flag on F90FLAGS.
+	* mpi_routines.f90: Added ifdef MPI sections
+	* tallies.f90: Added ifdef MPI sections
+
+2011-04-12 Paul Romano <romano7@mit.edu>
+
 	* ace.f90: Fixed bug relating to 'use' of str_to_real from wrong
 	module
 	* cross_section.f90: Fixed bug relating to 'use' of str_to_real

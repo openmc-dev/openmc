@@ -1,8 +1,11 @@
 module tallies
 
   use global
-  use mpi
   use output, only: message, error
+
+#ifdef MPI
+  use mpi
+#endif
 
   implicit none
 
@@ -35,9 +38,13 @@ contains
        k2 = ZERO
     end if
 
+#ifdef MPI
     ! Collect number bank sites onto master process
     call MPI_REDUCE(n_bank, total_bank, 1, MPI_INTEGER, MPI_SUM, 0, &
          & MPI_COMM_WORLD, ierr)
+#else
+    total_bank = n_bank
+#endif
 
     ! Collect statistics and print output
     if (master) then
@@ -58,7 +65,10 @@ contains
           keff = kcoll
        end if
     end if
+
+#ifdef MPI
     call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+#endif
 
 100 format (2X,I4,3X,F7.5)
 101 format (2X,I4,3X,F7.5,10X,F7.5,2X,F7.5)

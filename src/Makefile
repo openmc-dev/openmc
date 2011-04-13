@@ -27,22 +27,24 @@ test_objects = $(modules:.f90=.o) $(test:.f90=.o)
 # Compiler Options
 F90 = ifort
 F90FLAGS = -g -fpp -traceback
+
 MPI = /opt/mpich2/1.3.3-gcc
-MPIF90 = $(MPI)/bin/mpif90
-MPI_COMPILE_FLAGS = $(shell mpif90 -f90='' -compile_info)
-MPI_LINK_FLAGS = $(shell mpif90 -f90='' -link_info)
+MPI_COMPILE_FLAGS = $(shell $(MPI)/bin/mpif90 -f90='' -compile_info)
+MPI_LINK_FLAGS = $(shell $(MPI)/bin/mpif90 -f90='' -link_info)
+F90 = $(MPI)/bin/mpif90
+F90FLAGS += -DMPI -f90=ifort
 
 #--------------------------------------------------------------------
 # Targets
 all:	$(program)
 $(program): $(main_objects)
-	$(MPIF90) -f90=$(F90) $(MPI_LINK_FLAGS) $(F90FLAGS) $(main_objects) -o $@
+	$(F90) $(F90FLAGS) $(MPI_LINK_FLAGS) $(main_objects) -o $@
 clean:
 	@rm -f *.o *.mod $(program)
 neat:
 	@rm -f *.o *.mod
 unittest: $(test_objects)
-	$(MPIF90) -f90=$(F90) $(MPI_LINK_FLAGS) $(F90FLAGS) $(test_objects) -o $@
+	$(F90) $(F90FLAGS) $(MPI_LINK_FLAGS) $(test_objects) -o $@
 
 #--------------------------------------------------------------------
 # Rules & misc

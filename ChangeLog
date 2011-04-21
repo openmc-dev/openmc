@@ -1,5 +1,22 @@
 2011-04-21 Paul Romano <romano7@mit.edu>
 
+	* main.f90: Moved RN_init_particle at end of cycle to
+	synchronize_bank routine.
+	* mcnp_random.f90: Added RN_skip subroutine since RN_skip_ahead
+	was private and needed a specific seed. RN_skip is used in
+	synchronize_bank.
+	* mpi_routines.f90: Dramatically overhauled the fission bank
+	synchronization algorithm. The algorithm was non-scalable due to
+	each processor needing to iterate over the global list of fission
+	sites when sampling. This has been modified so that each processor
+	samples sites locally without knowledge of how many sites other
+	processors have sampled. Essentially, this requires an extra
+	MPI_EXSCAN and MPI_BCAST, but should be much faster than what was
+	there before.
+	* source.f90: Set uid of particle during get_source_particle
+
+2011-04-21 Paul Romano <romano7@mit.edu>
+
 	* geometry.f90: Removed level on calls to message().
 	* global.f90: Adjustments to make necessary integers into 8-byte
 	integers. Changed PI to non-compiler dependent constant.

@@ -60,6 +60,7 @@ module mcnp_random
   PUBLIC ::  RN_test_basic
   PUBLIC ::  RN_test_skip
   PUBLIC ::  RN_test_mixed
+  PUBLIC ::  RN_skip
 
   !-------------------------------------
   ! Constants for standard RN generators
@@ -186,6 +187,21 @@ CONTAINS
 
     return
   end function rang
+
+  !-------------------------------------------------------------------
+
+  subroutine RN_skip( skip )
+    ! initialize MCNP random number parameters for particle "nps"
+    !
+    !     * generate a new particle seed from the base seed
+    !       & particle index
+    !     * set the RN count to zero
+    implicit none
+    integer(I8), intent(in) :: skip
+
+    RN_SEED = RN_skip_ahead( RN_SEED, skip )
+
+  end subroutine RN_skip
 
   !-------------------------------------------------------------------
 

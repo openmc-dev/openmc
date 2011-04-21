@@ -6,7 +6,7 @@ program main
   use output,        only: title, echo_input, message, warning, error, &
        &                   print_summary, print_particle
   use geometry,      only: neighbor_lists
-  use mcnp_random,   only: RN_init_problem, rang, RN_init_particle
+  use mcnp_random,   only: RN_init_problem, RN_init_particle
   use source,        only: init_source, get_source_particle
   use physics,       only: transport
   use cross_section, only: read_xsdata, material_total_xs
@@ -141,8 +141,7 @@ contains
 
        end do HISTORY_LOOP
 
-       call RN_init_particle(int(i_cycle,8))
-       call synchronize_bank()
+       call synchronize_bank(i_cycle)
 
        ! Collect results and statistics
        call calculate_keff(i_cycle)

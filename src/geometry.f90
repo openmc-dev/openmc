@@ -185,7 +185,7 @@ contains
     surf => surfaces(abs(p%surface))
     if (verbosity >= 10) then
        msg = "    Crossing surface " // trim(int_to_str(surf%uid))
-       call message(msg, 10)
+       call message(msg)
     end if
 
     ! check for leakage
@@ -193,7 +193,7 @@ contains
        p%alive = .false.
        if (verbosity >= 10) then
           msg = "    Leaked out of surface " // trim(int_to_str(surf%uid))
-          call message(msg, 10)
+          call message(msg)
        end if
        return
     end if
@@ -294,7 +294,7 @@ contains
 
     if (verbosity >= 10) then
        msg = "    Crossing lattice"
-       call message(msg, 10)
+       call message(msg)
     end if
 
     lat => lattices(p % lattice)

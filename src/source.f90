@@ -18,15 +18,17 @@ contains
   subroutine init_source()
 
     type(Particle), pointer :: p => null()
-    integer :: i,j,k
-    integer :: maxwork    ! maxinum # of particles per processor
-    real(8) :: r(3)       ! sampled coordinates
-    real(8) :: phi        ! azimuthal angle
-    real(8) :: mu         ! cosine of polar angle
-    real(8) :: E          ! outgoing energy
-    real(8) :: p_min(3)   ! minimum coordinates of source
-    real(8) :: p_max(3)   ! maximum coordinates of source
-    character(250) :: msg ! error message
+    integer    :: i          ! loop index over processors
+    integer(8) :: j          ! loop index over bank sites
+    integer    :: k          ! dummy loop index
+    integer    :: maxwork    ! maxinum # of particles per processor
+    real(8)    :: r(3)       ! sampled coordinates
+    real(8)    :: phi        ! azimuthal angle
+    real(8)    :: mu         ! cosine of polar angle
+    real(8)    :: E          ! outgoing energy
+    real(8)    :: p_min(3)   ! minimum coordinates of source
+    real(8)    :: p_max(3)   ! maximum coordinates of source
+    character(250) :: msg    ! error message
 
     msg = 'Initializing source particles...'
     call message(msg, 6)

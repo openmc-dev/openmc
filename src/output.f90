@@ -98,15 +98,15 @@ contains
   subroutine message(msg, level)
 
     character(*), intent(in) :: msg
-    integer, intent(in) :: level
+    integer,      optional   :: level
 
     integer :: n_lines
     integer :: i
 
     ! Only allow master to print to screen
-    if (.not. master) return
+    if (.not. master .and. present(level)) return
 
-    if (level <= verbosity) then
+    if (.not. present(level) .or. level <= verbosity) then
        n_lines = (len_trim(msg)-1)/79 + 1
        do i = 1, n_lines
           write(ou, fmt='(1X,A79)') msg(79*(i-1)+1:79*i)

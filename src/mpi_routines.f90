@@ -14,7 +14,7 @@ module mpi_routines
   integer    :: MPI_BANK   ! MPI datatype for fission bank
   integer(8) :: bank_index ! Fission bank site unique identifier
 
-  real(8) :: t_assemble
+  real(8) :: t_sync(4)
 
 contains
 
@@ -80,11 +80,12 @@ contains
     
     ! Define MPI_BANK for fission sites
     bank_blocks = (/ 1, 3, 3, 1 /)
-    bank_types = (/ MPI_INTEGER, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
+    bank_types = (/ MPI_INTEGER8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
     call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
          & bank_types, MPI_BANK, ierr)
     call MPI_TYPE_COMMIT(MPI_BANK, ierr)
 
+    t_sync    = ZERO
 #else
     ! if no MPI, set processor to master
     mpi_enabled = .false.
@@ -107,25 +108,24 @@ contains
 #ifdef MPI
     integer :: status(MPI_STATUS_SIZE) ! message status
 #endif
-    integer :: ierr
-    integer :: start             ! starting index in local fission bank
-    integer :: finish            ! ending index in local fission bank
-    integer :: total             ! total sites in global fission bank
-    integer :: count             ! index for source bank
-    integer :: index             ! index for uid -- accounts for all nodes
-    integer :: send_to_left      ! # of bank sites to send/recv to or from left
-    integer :: send_to_right     ! # of bank sites to send/recv to or from right
-    integer :: sites_needed      ! # of sites to be sampled
-    integer :: sites_remaining   ! # of sites left in fission bank
-    real(8) :: t0
-    real(8) :: t1
+    integer    :: ierr
+    integer(8) :: start           ! starting index in local fission bank
+    integer(8) :: finish          ! ending index in local fission bank
+    integer(8) :: total           ! total sites in global fission bank
+    integer(8) :: count           ! index for source bank
+    integer(8) :: index           ! index for uid -- accounts for all nodes
+    integer    :: send_to_left    ! # of bank sites to send/recv to or from left
+    integer    :: send_to_right   ! # of bank sites to send/recv to or from right
+    integer(8) :: sites_needed    ! # of sites to be sampled
+    integer(8) :: sites_remaining ! # of sites left in fission bank
+    real(8)    :: t0, t1, t2, t3, t4
     type(Bank), allocatable :: &
          & temp_sites(:),      & ! local array of extra sites on each node
          & left_bank(:),       & ! bank sites to send/recv to or from left node
          & right_bank(:)         ! bank sites to send/recv to or fram right node
     character(250) :: msg
 
-    msg = "Synchronizing fission bank..."
+    msg = "Collecting number of fission sites..."
     call message(msg, 8)
 
 #ifdef MPI
@@ -135,11 +135,11 @@ contains
     ! Determine starting index for fission bank and total sites in
     ! fission bank
     start = 0
-    call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER, MPI_SUM, & 
+    call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
          & MPI_COMM_WORLD, ierr)
     finish = start + n_bank
     total = finish
-    call MPI_BCAST(total, 1, MPI_INTEGER, n_procs - 1, & 
+    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
          & MPI_COMM_WORLD, ierr)
 
     ! Check if there are no fission sites
@@ -147,21 +147,27 @@ contains
        msg = "No fission sites banked!"
        call error(msg)
     end if
+
+    t1 = MPI_WTIME()
+    t_sync(1) = t_sync(1) + (t1 - t0)
 #else
-    start  = 0
+    start  = 0_8
     finish = n_bank
     total  = n_bank
 #endif
 
     allocate(temp_sites(2*work))
-    count = 0 ! Index for source_bank
-    index = 0 ! Index for uid -- must account for all nodes
+    count = 0_8 ! Index for local source_bank
+    index = 0_8 ! Index for global source uid -- must account for all nodes
 
     if (total < n_particles) then
        sites_needed = mod(n_particles,total)
     else
        sites_needed = n_particles
     end if
+
+    msg = "Sampling fission sites..."
+    call message(msg, 8)
 
     ! ================================================================
     ! SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
@@ -203,6 +209,12 @@ contains
     send_to_right = temp_sites(1)%uid + (count-1) - bank_last
 
 #ifdef MPI
+    t2 = MPI_WTIME()
+    t_sync(2) = t_sync(2) + (t2 - t1)
+
+    msg = "Sending fission sites..."
+    call message(msg, 8)
+
     ! ================================================================
     ! SEND BANK SITES TO NEIGHBORS
     allocate(left_bank(abs(send_to_left)))
@@ -224,7 +236,13 @@ contains
        call MPI_SEND(temp_sites(1), send_to_left, MPI_BANK, rank-1, 1, &
             & MPI_COMM_WORLD, ierr)
     end if
+
+    t3 = MPI_WTIME()
+    t_sync(3) = t_sync(3) + (t3 - t2)
 #endif
+
+    msg = "Constructing source bank..."
+    call message(msg, 8)
 
     ! ================================================================
     ! RECONSTRUCT SOURCE BANK
@@ -254,8 +272,8 @@ contains
     source_index = 0
     
 #ifdef MPI
-    t1 = MPI_WTIME()
-    t_assemble = t_assemble + (t1 - t0)
+    t4 = MPI_WTIME()
+    t_sync(4) = t_sync(4) + (t4 - t3)
 
     deallocate(left_bank )
     deallocate(right_bank)

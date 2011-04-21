@@ -50,9 +50,9 @@ module global
   real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
   ! Histories/cycles/etc for both external source and criticality
-  integer :: n_particles ! # of particles (per cycle for criticality)
-  integer :: n_cycles    ! # of cycles
-  integer :: n_inactive  ! # of inactive cycles
+  integer(8) :: n_particles ! # of particles (per cycle for criticality)
+  integer    :: n_cycles    ! # of cycles
+  integer    :: n_inactive  ! # of inactive cycles
 
   ! External source
   type(ExtSource), target :: external_source
@@ -60,10 +60,10 @@ module global
   ! Source and fission bank
   type(Particle), allocatable, target :: source_bank(:)
   type(Bank),     allocatable, target :: fission_bank(:)
-  integer :: n_bank      ! # of sites in fission bank
-  integer :: bank_first  ! index of first particle in bank
-  integer :: bank_last   ! index of last particle in bank
-  integer :: work        ! number of particles per processor
+  integer(8) :: n_bank      ! # of sites in fission bank
+  integer(8) :: bank_first  ! index of first particle in bank
+  integer(8) :: bank_last   ! index of last particle in bank
+  integer    :: work        ! number of particles per processor
 
   ! cycle keff
   real(8) :: keff
@@ -81,7 +81,7 @@ module global
 
   ! Physical constants
   real(8), parameter ::            &
-       & PI           = 2.0_8*acos(0.0_8), & ! pi
+       & PI           = 3.1415926535898_8, & ! pi
        & MASS_NEUTRON = 1.0086649156,      & ! mass of a neutron
        & MASS_PROTON  = 1.00727646677,     & ! mass of a proton
        & AMU          = 1.66053873e-27,    & ! 1 amu in kg
@@ -246,6 +246,10 @@ module global
   integer, parameter :: VERSION_MINOR = 2
   integer, parameter :: VERSION_RELEASE = 2
 
+  interface int_to_str
+     module procedure int4_to_str, int8_to_str
+  end interface
+
 contains
 
 !=====================================================================
@@ -300,19 +304,32 @@ contains
   end subroutine free_memory
 
 !=====================================================================
-! INT_TO_STR converts an integer to a string. Right now, it is limited
-! to integers less than 10 billion.
+! INT4_TO_STR converts an integer(4) to a string.
 !=====================================================================
 
-  function int_to_str(num) result(str)
+  function int4_to_str(num) result(str)
 
     integer, intent(in) :: num
-    character(10) :: str
+    character(11) :: str
 
-    write (str, '(I10)') num
+    write (str, '(I11)') num
     str = adjustl(str)
 
-  end function int_to_str
+  end function int4_to_str
+
+!=====================================================================
+! INT8_TO_STR converts an integer(8) to a string.
+!=====================================================================
+
+  function int8_to_str(num) result(str)
+
+    integer(8), intent(in) :: num
+    character(21) :: str
+
+    write (str, '(I21)') num
+    str = adjustl(str)
+
+  end function int8_to_str
 
 !=====================================================================
 ! STR_TO_INT converts a string to an integer. 

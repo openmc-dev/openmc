@@ -19,7 +19,7 @@ contains
 
     integer, intent(in) :: i_cycle ! index of current cycle
 
-    integer :: total_bank
+    integer(8) :: total_bank
     integer :: n
     integer :: ierr
     real(8) :: kcoll   ! keff collision estimator         
@@ -40,7 +40,7 @@ contains
 
 #ifdef MPI
     ! Collect number bank sites onto master process
-    call MPI_REDUCE(n_bank, total_bank, 1, MPI_INTEGER, MPI_SUM, 0, &
+    call MPI_REDUCE(n_bank, total_bank, 1, MPI_INTEGER8, MPI_SUM, 0, &
          & MPI_COMM_WORLD, ierr)
 #else
     total_bank = n_bank

@@ -12,7 +12,7 @@ program main
   use cross_section, only: read_xsdata, material_total_xs
   use ace,           only: read_xs
   use energy_grid,   only: unionized_grid, original_indices
-  use mpi_routines,  only: setup_mpi, synchronize_bank, t_assemble
+  use mpi_routines,  only: setup_mpi, synchronize_bank, t_sync
   use tallies,       only: calculate_keff
 
 #ifdef MPI
@@ -116,6 +116,9 @@ contains
 #endif
 
     CYCLE_LOOP: do i_cycle = 1, n_cycles
+
+       msg = "Simulating cycle " // trim(int_to_str(i_cycle)) // "..."
+       call message(msg, 8)
        
        ! Set all tallies to zero
        n_bank = 0
@@ -154,8 +157,11 @@ contains
     ! print run time
     t1 = MPI_WTIME()
     if (master) then
-       write(6,"(A,F8.2,A)") "Time elapsed = ", t1 - t0, " s"
-       write(6,"(A,G10.4)") "Assemble time = ", t_assemble
+       print *, "Time elapsed   = " // real_to_str(t1 - t0)
+       print *, "Init time      = " // real_to_str(t_sync(1))
+       print *, "Sample time    = " // real_to_str(t_sync(2))
+       print *, "Send/recv time = " // real_to_str(t_sync(3))
+       print *, "Rebuild time   = " // real_to_str(t_sync(4))
     end if
 #endif
 

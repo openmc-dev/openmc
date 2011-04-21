@@ -48,12 +48,12 @@ contains
 
     if (verbosity >= 9) then
        msg = "Simulating Particle " // trim(int_to_str(p % uid))
-       call message(msg, 9)
+       call message(msg)
     end if
 
     if (verbosity >= 10) then
        msg = "    Born in cell " // trim(int_to_str(cells(p%cell)%uid))
-       call message(msg, 10)
+       call message(msg)
     end if
 
     ! find energy index, interpolation factor
@@ -224,10 +224,10 @@ contains
        if (r1 < prob) exit
     end do
 
-    if (verbosity >= 10 .or. p % uid == 4593) then
+    if (verbosity >= 10) then
        msg = "    " // trim(reaction_name(rxn%MT)) // " with nuclide " // &
             & trim(table%name)
-       call message(msg, 8)
+       call message(msg)
     end if
 
     ! call appropriate subroutine
@@ -783,7 +783,7 @@ contains
     if (verbosity >= 10) then
        cell_num = cells(p % cell)%uid
        msg = "    Absorbed in cell " // trim(int_to_str(cell_num))
-       call message(msg, 10)
+       call message(msg)
     end if
 
   end subroutine n_absorption
@@ -897,7 +897,14 @@ contains
           msg = "Unknown interpolation type: " // trim(int_to_str(interp))
           call error(msg)
        end if
-          
+
+       if (abs(mu) > ONE) then
+          msg = "Sampled cosine of angle outside [-1, 1)."
+          call warning(msg)
+
+          mu = sign(ONE,mu)
+       end if
+         
     else
        msg = "Unknown angular distribution type: " // trim(int_to_str(type))
        call error(msg)

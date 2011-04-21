@@ -1,3 +1,21 @@
+2011-04-21 Paul Romano <romano7@mit.edu>
+
+	* geometry.f90: Removed level on calls to message().
+	* global.f90: Adjustments to make necessary integers into 8-byte
+	integers. Changed PI to non-compiler dependent constant.
+	* lattice_sample: Changed lattice to 20 x 20.
+	* main.f90: New timing data from fission bank synchronization
+	* mpi_routines.f90: Switching to 8-byte integers, more comments,
+	changed timing variables.
+	* output.f90: Made the level argument in message subroutine
+	optional.
+	* physics.f90: Fixed bug in sample_angle whereby mu could possibly
+	be greater than one (very rarely). This caused rotate_angle to
+	fail when given mu>1. Removed level from message calls.
+	* source.f90: Change necessary variables to integer(8)
+	* tallies.f90: Change MPI_REDUCE to use MPI_INTEGER8
+	* types.f90: Change Bank type to use integer(8) for uid.
+
 2011-04-13 Paul Romano <romano7@mit.edu>
 
 	* main.f90: Simple timing for total time elapsed and bank

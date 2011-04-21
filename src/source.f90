@@ -7,7 +7,7 @@ module source
 
   implicit none
 
-  integer :: source_index
+  integer(8) :: source_index
 
 contains
 
@@ -101,7 +101,7 @@ contains
     end do
 
     ! Reset source index
-    source_index = 0
+    source_index = 0_8
 
   end subroutine init_source
 
@@ -124,6 +124,9 @@ contains
 
     ! point to next source particle
     p => source_bank(source_index)
+
+    ! set uid
+    p % uid = bank_first + source_index
 
   end function get_source_particle
 
@@ -166,7 +169,6 @@ contains
     
     do i = 1, n_sites
        j = index + i - 1
-       source_bank(j) % uid       = temp_bank(i) % uid
        source_bank(j) % xyz       = temp_bank(i) % xyz
        source_bank(j) % xyz_local = temp_bank(i) % xyz
        source_bank(j) % uvw       = temp_bank(i) % uvw

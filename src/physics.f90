@@ -251,8 +251,8 @@ contains
     ! check for very low energy
     if (p % E < 1.0e-100_8) then
        p % alive = .false.
-       msg = "Killing neutron with extremely low energy"
-       call warning(msg)
+       ! msg = "Killing neutron with extremely low energy"
+       ! call warning(msg)
     end if
 
     ! find energy index, interpolation factor

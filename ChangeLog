@@ -1,3 +1,14 @@
+2011-04-22 Paul Romano <romano7@mit.edu>
+
+	* geometry.f90: Deallocated count lists in neighbor_lists.
+	* global.f90: Deallocate arrays that were not previously
+	deallocated (xs_continuous, xs_thermal, e_grid, lattices).
+	* mpi_routines.f90: Added variable p_sample to lessen calculation
+	inside of sampling loop.
+	* physics.f90: Commented warning about low particle energy.
+	* source.f90: Changed source and fission banks to be allocated
+	maxwork instead of n_particles.
+
 2011-04-21 Paul Romano <romano7@mit.edu>
 
 	* main.f90: Moved RN_init_particle at end of cycle to

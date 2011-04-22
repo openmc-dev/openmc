@@ -285,9 +285,15 @@ contains
     if (allocated(cells)) deallocate(cells)
     if (allocated(surfaces)) deallocate(surfaces)
     if (allocated(materials)) deallocate(materials)
+    if (allocated(lattices)) deallocate(lattices)
 
-    ! Deallocate xsdata list
+    ! Deallocate cross section data
     if (allocated(xsdatas)) deallocate(xsdatas)
+    if (allocated(xs_continuous)) deallocate(xs_continuous)
+    if (allocated(xs_thermal)) deallocate(xs_thermal)
+
+    ! Deallocate energy grid
+    if (allocated(e_grid)) deallocate(e_grid)
 
     ! Deallocate fission and source bank
     if (allocated(fission_bank)) deallocate(fission_bank)

@@ -33,13 +33,13 @@ contains
     msg = 'Initializing source particles...'
     call message(msg, 6)
 
-    ! Allocate fission and source banks
-    allocate(source_bank(n_particles))
-    allocate(fission_bank(3*n_particles))
-
     ! Determine maximum amount of particles to simulate on each
     ! processor
     maxwork = ceiling(real(n_particles)/n_procs)
+
+    ! Allocate fission and source banks
+    allocate(source_bank(maxwork))
+    allocate(fission_bank(3*maxwork))
 
     ! Check external source type
     if (external_source%type == SRC_BOX) then

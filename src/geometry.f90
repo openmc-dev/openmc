@@ -994,6 +994,9 @@ contains
        end do
     end do
 
+    deallocate(count_positive)
+    deallocate(count_negative)
+
   end subroutine neighbor_lists
 
 end module geometry

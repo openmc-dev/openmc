@@ -120,6 +120,7 @@ contains
     integer    :: send_to_right   ! # of bank sites to send/recv to or from right
     integer(8) :: sites_needed    ! # of sites to be sampled
     integer(8) :: sites_remaining ! # of sites left in fission bank
+    real(8)    :: p_sample        ! probability of sampling a site
     real(8)    :: t0, t1, t2, t3, t4
     type(Bank), allocatable :: &
          & temp_sites(:),      & ! local array of extra sites on each node
@@ -174,6 +175,7 @@ contains
     else
        sites_needed = n_particles
     end if
+    p_sample = real(sites_needed,8)/real(total,8)
 
     msg = "Sampling fission sites..."
     call message(msg, 8)
@@ -196,7 +198,7 @@ contains
        end if
 
        ! Randomly sample sites needed
-       if (rang() < real(sites_needed)/real(total)) then
+       if (rang() < p_sample) then
           count = count + 1
           temp_sites(count) = fission_bank(i)
        end if

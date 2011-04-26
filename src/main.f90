@@ -13,7 +13,7 @@ program main
   use ace,           only: read_xs
   use energy_grid,   only: unionized_grid, original_indices
   use mpi_routines,  only: setup_mpi, synchronize_bank, t_sync
-  use tallies,       only: calculate_keff
+  use score,         only: calculate_keff
 
 #ifdef MPI
   use mpi
@@ -111,6 +111,8 @@ contains
     msg = "Running problem..."
     call message(msg, 6)
 
+    tallies_on = .false.
+
 #ifdef MPI
     t0 = MPI_WTIME()
 #endif
@@ -148,9 +150,10 @@ contains
 
        ! print cycle information
 
-    end do CYCLE_LOOP
+       ! Turn tallies on once inactive cycles are complete
+       if (i_cycle == n_inactive) tallies_on = .true.
 
-    ! Collect all tallies and print
+    end do CYCLE_LOOP
 
 #ifdef MPI
     ! print run time

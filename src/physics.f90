@@ -8,6 +8,7 @@ module physics
   use output,      only: error, warning, message, print_particle
   use search,      only: binary_search
   use endf,        only: reaction_name
+  use score,       only: score_tally
 
   implicit none
 
@@ -80,8 +81,6 @@ contains
        ! Advance particle
        p%xyz = p%xyz + distance * p%uvw
        p%xyz_local = p%xyz_local + distance * p%uvw
-
-       ! Add pathlength tallies
 
        if (d_to_collision > d_to_boundary) then
           p % cell = 0
@@ -159,50 +158,51 @@ contains
     real(8) :: density_i  ! atom density of nuclide
     real(8) :: prob       ! cumulative probability
     real(8) :: r1         ! random number
-    real(8), allocatable :: Sigma_t(:) ! macroscopic xs for each nuclide
+    real(8) :: flux       ! collision estimator of flux
+    real(8), allocatable :: Sigma_rxn(:) ! macroscopic xs for each nuclide
     character(250) :: msg ! output/error message
     type(AceContinuous), pointer :: table
     type(AceReaction),   pointer :: rxn
-
-    ! TODO: tallies
 
     density = cMaterial%atom_density
 
     ! calculate total cross-section for each nuclide at current energy
     ! in order to create discrete pdf for sampling nuclide
     n_isotopes = cMaterial%n_isotopes
-    allocate(Sigma_t(n_isotopes))
+    allocate(Sigma_rxn(n_isotopes))
     do i = 1, n_isotopes
        table => xs_continuous(cMaterial%table(i))
-       density_i = cMaterial%atom_percent(i)*density
+
+       ! determine nuclide atom density
+       density_i = cMaterial%atom_percent(i) * density
 
        ! search nuclide energy grid
        IE = table%grid_index(p % IE)
        f = (p%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
 
-       ! calculate macroscopic xs for this nuclide
-       Sigma_t(i) = density_i*((ONE-f)*table%Sigma_t(IE) + & 
+       ! calculate nuclide macroscopic cross-section
+       Sigma_rxn(i) = density_i*((ONE-f)*table%Sigma_t(IE) + & 
             & f*(table%Sigma_t(IE+1)))
     end do
-    total = sum(Sigma_t)
+    total = sum(Sigma_rxn)
 
     ! sample nuclide
     r1 = rang()
     prob = ZERO
     do i = 1, n_isotopes
-       prob = prob + Sigma_t(i) / total
+       prob = prob + Sigma_rxn(i) / total
        if (r1 < prob) exit
     end do
 
     ! Get table, total xs, interpolation factor
     density_i = cMaterial%atom_percent(i)*density
     table => xs_continuous(cMaterial%table(i))
-    sigma = Sigma_t(i) / density_i
+    sigma = Sigma_rxn(i) / density_i
     IE = table%grid_index(p % IE)
     f = (p%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
 
     ! free memory
-    deallocate(Sigma_t)
+    deallocate(Sigma_rxn)
 
     ! sample reaction channel
     r1 = rang()*sigma
@@ -247,6 +247,12 @@ contains
        msg = "Cannot simulate reaction with MT " // int_to_str(rxn%MT)
        call warning(msg)
     end select
+
+    ! Add collision estimator tallies
+    if (tallies_on) then
+       flux = p%wgt / SIGMA
+       call score_tally(p, flux)
+    end if
 
     ! check for very low energy
     if (p % E < 1.0e-100_8) then

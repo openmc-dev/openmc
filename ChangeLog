@@ -1,3 +1,24 @@
+2011-04-25 Paul Romano <romano7@mit.edu>
+
+	* ace.f90: Fixed indentation of get_int and get_real. Added
+	subroutine get_macro_xs.
+	* fileio.f90: Added ability to read tally cards through read_tally
+	subroutine. Changed ERROR_CODE to ERROR_INT.
+	* global.f90: Added variables for tallies. Changed ERROR_CODE to
+	ERROR_INT and added ERROR_REAL.
+	* input_sample: Added tally card.
+	* main.f90: Use tallies_on variable when appropriate.
+	* output.f90: Add preliminary tally printing capabilites through
+	print_tally subroutine.
+	* physics.f90: Add call to score_tally for tallies. Changed
+	Sigma_t to Sigam_rxn.
+	* score.f90: Added score_tally and add_to_score subroutine.
+	* search.f90: Added interpolate subroutine.
+	* string.f90: Added is_number function.
+	* tallies.f90: CHANGED NAME TO score.f90
+	* types.f90: Added list of tallies to Universe, Lattice and
+	Cell. Modified Tally type.
+
 2011-04-22 Paul Romano <romano7@mit.edu>
 
 	* geometry.f90: Deallocated count lists in neighbor_lists.

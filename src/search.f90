@@ -55,4 +55,20 @@ contains
 
   end function binary_search
 
+!=====================================================================
+! INTERPOLATE
+!=====================================================================
+
+  function interpolate(array, n, index, f) result(val)
+
+    real(8), intent(in) :: array(n)
+    integer, intent(in) :: n
+    integer, intent(in) :: index
+    real(8), intent(in) :: f
+    real(8)             :: val
+
+    val = (ONE-f) * array(index) + f * array(index+1)
+    
+  end function interpolate
+
 end module search

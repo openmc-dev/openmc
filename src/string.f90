@@ -150,7 +150,6 @@ contains
 !=====================================================================
 
   elemental subroutine lower_case(word)
-    ! convert a word to lower case
 
     character(*), intent(inout) :: word
 
@@ -163,5 +162,26 @@ contains
     end do
 
   end subroutine lower_case
+
+!=====================================================================
+! IS_NUMBER determines whether a string of characters is all 0-9
+! characters
+!=====================================================================
+
+  function is_number(word) result(number)
+
+    character(*), intent(in) :: word
+    logical                  :: number
+
+    integer :: i
+    integer :: ic
+
+    number = .true.
+    do i = 1, len_trim(word)
+       ic = ichar(word(i:i))
+       if (ic < 48 .or. ic >= 58) number = .false.
+    end do
+    
+  end function is_number
 
 end module string

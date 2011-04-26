@@ -1075,29 +1075,96 @@ contains
 ! in the XSS array
 !=====================================================================
 
-    function get_int(n_values) result(array)
+  function get_int(n_values) result(array)
 
-      integer, intent(in) :: n_values        ! number of values to read
-      integer             :: array(n_values) ! array of values
+    integer, intent(in) :: n_values        ! number of values to read
+    integer             :: array(n_values) ! array of values
 
-      array = int(XSS(XSS_index:XSS_index + n_values - 1))
-      XSS_index = XSS_index + n_values
-      
-    end function get_int
+    array = int(XSS(XSS_index:XSS_index + n_values - 1))
+    XSS_index = XSS_index + n_values
+
+  end function get_int
 
 !=====================================================================
 ! GET_REAL returns an array of real(8)s read from the current position
 ! in the XSS array
 !=====================================================================
 
-    function get_real(n_values) result(array)
+  function get_real(n_values) result(array)
 
-      integer, intent(in) :: n_values        ! number of values to read
-      real(8)             :: array(n_values) ! array of values
+    integer, intent(in) :: n_values        ! number of values to read
+    real(8)             :: array(n_values) ! array of values
 
-      array = XSS(XSS_index:XSS_index + n_values - 1)
-      XSS_index = XSS_index + n_values
+    array = XSS(XSS_index:XSS_index + n_values - 1)
+    XSS_index = XSS_index + n_values
 
-    end function get_real
+  end function get_real
+
+!=====================================================================
+! GET_MACRO_XS
+!=====================================================================
+
+  function get_macro_xs(p, mat, MT) result(xs)
+
+    type(Particle), pointer    :: p
+    type(Material), pointer    :: mat
+    integer,        intent(in) :: MT
+    real(8)                    :: xs
+
+    integer :: i
+    integer :: n_isotopes
+    integer :: IE
+    real(8) :: density
+    real(8) :: density_i
+    real(8) :: sigma_i
+    real(8) :: f
+    type(AceContinuous), pointer :: table => null()
+    type(AceReaction),   pointer :: rxn => null()
+
+    ! initialize xs
+    xs = ZERO
+
+    ! find material atom density
+    density = cMaterial%atom_density
+
+    ! loop over all isotopes in material
+    n_isotopes = cMaterial % n_isotopes
+    do i = 1, n_isotopes
+       table => xs_continuous(cMaterial % table(i))
+
+       ! determine nuclide atom density
+       density_i = cMaterial%atom_percent(i) * density
+
+       ! search nuclide energy grid
+       IE = table%grid_index(p % IE)
+       f = (p%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
+       
+       ! handle special case of total cross section
+       if (MT == 1) then
+          xs = xs + density * (ONE-f) * table%sigma_t(IE) + & 
+               & f * (table%sigma_t(IE+1))
+          cycle
+       end if
+
+       ! loop over reactions in isotope
+       do j = 1, table % n_reaction
+          rxn => table % reactions(i)
+
+          ! check for matching MT
+          if (MT /= rxn % MT) cycle
+
+          ! if energy is below threshold for this reaction, skip it
+          if (IE < rxn % IE) cycle
+
+          ! add to cumulative probability
+          sigma_i = (ONE-f) * rxn%sigma(IE-rxn%IE+1) + & 
+               & f * (rxn%sigma(IE-rxn%IE+2))
+       end do
+
+       ! calculate nuclide macroscopic cross-section
+       xs = xs + density_i * sigma_i
+    end do
+
+  end function get_macro_xs
 
 end module ace

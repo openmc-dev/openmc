@@ -16,11 +16,15 @@ module global
   type(Material), allocatable, target :: materials(:)
   type(Isotope),  allocatable, target :: isotopes(:)
   type(xsData),   allocatable, target :: xsdatas(:)
-  integer :: n_cells     ! # of cells
-  integer :: n_universes ! # of universes
-  integer :: n_lattices  ! # of lattices
-  integer :: n_surfaces  ! # of surfaces
-  integer :: n_materials ! # of materials
+  type(Tally),    allocatable, target :: tallies(:)
+  type(Tally),    allocatable, target :: tallies_global(:)
+  integer :: n_cells          ! # of cells
+  integer :: n_universes      ! # of universes
+  integer :: n_lattices       ! # of lattices
+  integer :: n_surfaces       ! # of surfaces
+  integer :: n_materials      ! # of materials
+  integer :: n_tallies        ! # of tallies
+  integer :: n_tallies_global ! # of global tallies
 
   ! These dictionaries provide a fast lookup mechanism
   type(DictionaryII), pointer :: cell_dict
@@ -29,6 +33,7 @@ module global
   type(DictionaryII), pointer :: surface_dict
   type(DictionaryII), pointer :: material_dict
   type(DictionaryII), pointer :: isotope_dict
+  type(DictionaryII), pointer :: tally_dict
   type(DictionaryCI), pointer :: xsdata_dict
   type(DictionaryCI), pointer :: ace_dict
 
@@ -67,6 +72,8 @@ module global
 
   ! cycle keff
   real(8) :: keff
+
+  logical :: tallies_on
 
   ! Parallel processing variables
   integer :: n_procs     ! number of processes
@@ -223,6 +230,13 @@ module global
        & N_PT      = 116, &
        & N_DA      = 117
 
+  ! Tally distinguishers
+  integer, parameter :: &
+       & TALLY_FLUX = -1, & ! tally the flux only
+       & TALLY_ALL  =  0, & ! tally all reactions
+       & TALLY_BINS =  1, & ! tally individual (reactions, cells)
+       & TALLY_SUM  =  2    ! tally sum of specified (reactions, cells)
+
   ! Fission neutron emission (nu) type
   integer, parameter ::     &
        & NU_NONE       = 0, & ! No nu values (non-fissionable)
@@ -232,7 +246,10 @@ module global
   ! Integer code for read error -- better hope this number is never
   ! used in an input file!
   integer, parameter :: &
-       & ERROR_CODE = -huge(0)
+       & ERROR_INT = -huge(0)
+
+  real(8), parameter :: &
+       & ERROR_REAL = -huge(0.0_8) * 0.917826354_8
 
   ! The verbosity controls how much information will be printed to the
   ! screen and in logs
@@ -358,7 +375,7 @@ contains
 
     ! read string into integer
     read(UNIT=str, FMT=fmt, IOSTAT=ioError) num
-    if (ioError > 0) num = ERROR_CODE
+    if (ioError > 0) num = ERROR_INT
 
   end function str_to_int
 
@@ -409,9 +426,7 @@ contains
 
     ! Read string
     read(string, fmt, iostat=readError) num
-    if (readError > 0) then
-       ! return error code for real?
-    end if
+    if (readError > 0) num = ERROR_REAL
 
   end function str_to_real
 

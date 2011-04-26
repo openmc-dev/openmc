@@ -2,7 +2,8 @@ module fileio
 
   use global
   use types,  only: Cell, Surface, ExtSource, ListKeyValueCI
-  use string, only: split_string_wl, lower_case, split_string, concatenate
+  use string, only: split_string_wl, lower_case, split_string, &
+       &            concatenate, is_number
   use output, only: message, warning, error
   use data_structures, only: dict_create, dict_add_key, dict_get_key, &
        &                     dict_has_key, DICT_NULL, dict_keys, list_size
@@ -12,7 +13,6 @@ module fileio
   type(DictionaryII), pointer :: & ! used to count how many cells each
        & ucount_dict => null(),  & ! universe contains
        & bc_dict => null()         ! store boundary conditions
-                                  
 
   integer, allocatable :: index_cell_in_univ(:)
 
@@ -93,6 +93,7 @@ contains
     n_universes = 0
     n_surfaces  = 0
     n_materials = 0
+    n_tallies   = 0
 
     call dict_create(ucount_dict)
     call dict_create(universe_dict)
@@ -131,6 +132,8 @@ contains
           n_surfaces = n_surfaces + 1
        case ('material') 
           n_materials = n_materials + 1
+       case ('tally')
+          n_tallies = n_tallies + 1
        case ('lattice')
           n_lattices = n_lattices + 1
 
@@ -167,6 +170,7 @@ contains
     allocate(lattices(n_lattices))
     allocate(surfaces(n_surfaces))
     allocate(materials(n_materials))
+    allocate(tallies(n_tallies))
 
     ! Also allocate a list for keeping track of where cells have been
     ! assigned in each universe
@@ -178,6 +182,7 @@ contains
     call dict_create(surface_dict)
     call dict_create(bc_dict)
     call dict_create(material_dict)
+    call dict_create(tally_dict)
 
     ! We also need to allocate the cell count lists for each
     ! universe. The logic for this is a little more convoluted. In
@@ -227,6 +232,7 @@ contains
     integer :: index_lattice           ! index in lattices array
     integer :: index_material          ! index in materials array
     integer :: index_source            ! index in source array (?)
+    integer :: index_tally             ! index in tally array
     character(250) :: line             ! a line of words
     character(250) :: msg              ! output/error message
     character(32)  :: words(max_words) ! words on a single line
@@ -239,6 +245,7 @@ contains
     index_surface  = 0
     index_lattice  = 0
     index_material = 0
+    index_tally    = 0
     index_source   = 0
 
     open(FILE=filename, UNIT=in, STATUS='old', & 
@@ -280,6 +287,11 @@ contains
           index_material = index_material + 1
           call read_material(index_material, words, n)
 
+       case ('tally')
+          ! Read tally entry
+          index_tally = index_tally + 1
+          call read_tally(index_tally, words, n)
+
        case ('source')
           call read_source(words, n)
 
@@ -291,7 +303,7 @@ contains
 
        case ('verbosity')
           verbosity = str_to_int(words(2))
-          if (verbosity == ERROR_CODE) then
+          if (verbosity == ERROR_INT) then
              msg = "Invalid verbosity: " // words(2)
              call error(msg)
           end if
@@ -468,7 +480,7 @@ contains
 
     ! Read cell identifier
     c % uid = str_to_int(words(2))
-    if (c % uid == ERROR_CODE) then
+    if (c % uid == ERROR_INT) then
        msg = "Invalid cell name: " // words(2)
        call error(msg)
     end if
@@ -476,7 +488,7 @@ contains
  
     ! Read cell universe
     universe_num = str_to_int(words(3))
-    if (universe_num == ERROR_CODE) then
+    if (universe_num == ERROR_INT) then
        msg = "Invalid universe: " // words(3)
        call error(msg)
     end if
@@ -489,7 +501,7 @@ contains
 
        ! find universe
        universe_num = str_to_int(words(5))
-       if (universe_num == ERROR_CODE) then
+       if (universe_num == ERROR_INT) then
           msg = "Invalid universe fill: " // words(5)
           call error(msg)
        end if
@@ -506,7 +518,7 @@ contains
        c % type     = CELL_NORMAL
        c % material = str_to_int(words(4))
        c % fill     = 0
-       if (c % material == ERROR_CODE) then
+       if (c % material == ERROR_INT) then
           msg = "Invalid material number: " // words(4)
           call error(msg)
        end if
@@ -647,7 +659,7 @@ contains
 
     ! Read surface identifier
     surface_uid = str_to_int(words(2))
-    if (surface_uid == ERROR_CODE) then
+    if (surface_uid == ERROR_INT) then
        msg = "Invalid surface name: " // words(2)
        call error(msg)
     end if
@@ -695,7 +707,7 @@ contains
 
     ! Read lattice universe
     universe_num = str_to_int(words(2))
-    if (universe_num == ERROR_CODE) then
+    if (universe_num == ERROR_INT) then
        msg = "Invalid universe: " // words(2)
        call error(msg)
     end if
@@ -717,10 +729,10 @@ contains
     ! Read number of lattice cells in each direction
     n_x = str_to_int(words(4))
     n_y = str_to_int(words(5))
-    if (n_x == ERROR_CODE) then
+    if (n_x == ERROR_INT) then
        msg = "Invalid number of lattice cells in x-direction: " // words(4)
        call error(msg)
-    elseif (n_y == ERROR_CODE) then
+    elseif (n_y == ERROR_INT) then
        msg = "Invalid number of lattice cells in y-direction: " // words(5)
        call error(msg)
     end if
@@ -748,7 +760,7 @@ contains
        do i = 1, n_x
           index_word = 9 + j*n_x + i
           universe_num = str_to_int(words(index_word))
-          if (universe_num == ERROR_CODE) then
+          if (universe_num == ERROR_INT) then
              msg = "Invalid universe number: " // words(index_word)
              call error(msg)
           end if
@@ -798,6 +810,161 @@ contains
     end do
     
   end subroutine read_source
+
+!=====================================================================
+! READ_TALLY
+!=====================================================================
+
+  subroutine read_tally(index, words, n_words)
+
+    integer,      intent(in) :: index          ! index in materials array
+    character(*), intent(in) :: words(n_words) ! words on material entry
+    integer,      intent(in) :: n_words        ! number of words
+
+    integer :: i  ! index in words array
+    integer :: j
+    integer :: k
+    integer :: count
+    integer :: MT
+    integer :: cell_uid
+    integer :: r_bins, c_bins, e_bins
+    real(8) :: E
+    character(32) :: word
+    character(250) :: msg
+    type(Tally), pointer :: t => null()
+
+    t => tallies(index)
+
+    ! Read tally identifier
+    t % uid = str_to_int(words(2))
+    if (t % uid == ERROR_INT) then
+       msg = "Invalid tally name: " // words(2)
+       call error(msg)
+    end if
+    call dict_add_key(tally_dict, t % uid, index)
+
+    i = 3
+    do while (i <= n_words)
+       word = words(i)
+       call lower_case(word)
+       
+       select case (trim(word))
+       case ('reaction')
+          ! ==========================================================
+          ! READ REACTION LIST
+
+          ! Determine how many reactions are listed
+          do j = i+1, n_words
+             if (.not. is_number(words(j))) exit
+          end do
+          count = j - (i+1)
+
+          ! Allocate space to store reactions
+          allocate(t % reactions(count))
+          
+          ! Read reaction MT values
+          do j = 1, count
+             MT = str_to_int(words(i+j))
+             if (MT == ERROR_INT) then
+                msg = "Invalid reaction MT on tally: " // int_to_str(t%uid)
+                call error(msg)
+             end if
+             t % reactions(j) = MT
+          end do
+
+          ! Determine whether to sum reactions or individually bin
+          if (trim(words(i+count+1)) == 'sum') then
+             t % reaction_type = TALLY_SUM
+             r_bins = 1
+          else
+             t % reaction_type = TALLY_BINS
+             r_bins = count
+          end if
+
+       case ('cell')
+          ! ==========================================================
+          ! READ CELL LIST
+
+          ! Determine how many reactions are listed
+          do j = i+1, n_words
+             if (.not. is_number(words(j))) exit
+          end do
+          count = j - (i+1)
+
+          ! Allocate space to store reactions
+          allocate(t % cells(count))
+          
+          ! Read reaction MT values
+          do j = 1, count
+             cell_uid = str_to_int(words(i+j))
+             if (cell_uid == ERROR_INT) then
+                msg = "Invalid cell number on tally: " // int_to_str(t%uid)
+                call error(msg)
+             end if
+             t % cells(j) = cell_uid
+          end do
+
+          ! Determine whether to sum reactions or individually bin
+          if (trim(words(i+count+1)) == 'sum') then
+             t % cell_type = TALLY_SUM
+             c_bins = 1
+          else
+             t % cell_type = TALLY_BINS
+             c_bins = count
+          end if
+
+       case ('energy')
+          ! ==========================================================
+          ! READ ENERGY LIST
+
+          ! Determine how many energies are listed
+          do j = i+1, n_words
+             if (.not. is_number(words(j)(1:1))) exit
+          end do
+          count = j - (i+1)
+
+          ! Allocate space to store energies
+          allocate(t % energies(count))
+          
+          ! Read reaction MT values
+          do j = 1, count
+             E = str_to_real(words(i+j))
+             if (E == ERROR_REAL) then
+                msg = "Invalid energy on tally: " // int_to_str(t % uid)
+                call error(msg)
+             end if
+             t % energies(j) = E
+          end do
+
+          e_bins = count - 1
+
+       case ('material')
+          ! TODO: Add ability to read material lists
+
+       case ('universe')
+          ! TODO: Add ability to read universe lists
+
+       case ('lattice')
+          ! TODO: Add lattice tally ability
+
+       end select
+       
+       ! Move index in words forward
+       i = i + 1 + count
+
+    end do
+
+    ! allocate tally scores
+    allocate(t % score(r_bins, c_bins, e_bins))
+
+    ! initialize tallies
+    forall (i=1:r_bins, j=1:c_bins, k=1:e_bins)
+       t % score(i,j,k) % n_events = 0
+       t % score(i,j,k) % val      = ZERO
+       t % score(i,j,k) % val_sq   = ZERO
+    end forall
+
+  end subroutine read_tally
 
 !=====================================================================
 ! READ_MATERIAL parses a material card. Note that atom percents and
@@ -964,21 +1131,21 @@ contains
 
     ! Read number of cycles
     n_cycles = str_to_int(words(2))
-    if (n_cycles == ERROR_CODE) then
+    if (n_cycles == ERROR_INT) then
        msg = "Invalid number of cycles: " // words(2)
        call error(msg)
     end if
 
     ! Read number of inactive cycles
     n_inactive = str_to_int(words(3))
-    if (n_inactive == ERROR_CODE) then
+    if (n_inactive == ERROR_INT) then
        msg = "Invalid number of inactive cycles: " // words(2)
        call error(msg)
     end if
 
     ! Read number of particles
     n_particles = str_to_int(words(4))
-    if (n_particles == ERROR_CODE) then
+    if (n_particles == ERROR_INT) then
        msg = "Invalid number of particles: " // words(2)
        call error(msg)
     end if

@@ -20,6 +20,8 @@ material 41 -1.0  &
 
 source box -4 -4 -4  4 4 4
 
+tally 1 reaction 2 cell 2 energy limits
+
 xs_data /opt/serpent/xsdata/endfb7
 criticality 15 5 10000
 verbosity 7

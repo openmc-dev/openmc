@@ -15,6 +15,7 @@ module types
      real(8) :: x0                    ! Translation in x-coordinate
      real(8) :: y0                    ! Translation in y-coordinate
      real(8) :: z0                    ! Translation in z-coordinate
+     integer, allocatable :: tallies(:)
   end type Universe
 
 !=====================================================================
@@ -33,6 +34,7 @@ module types
      real(8) :: width_x  ! width of lattice cell 
      real(8) :: width_y  ! width of lattice cell
      integer, allocatable :: element(:,:) ! specified universes
+     integer, allocatable :: tallies(:)
   end type Lattice
 
 !=====================================================================
@@ -66,6 +68,7 @@ module types
           & surfaces(:)    ! List of surfaces bounding cell -- note
                            ! that parentheses, union, etc operators
                            ! will be listed here too
+     integer, allocatable :: tallies(:)
   end type Cell
 
 !=====================================================================
@@ -124,6 +127,9 @@ module types
      integer :: uid
      integer :: type
      real(8) :: volume
+     integer :: cell_type
+     integer :: reaction_type
+     integer :: material_type
      integer, allocatable :: reactions(:)
      integer, allocatable :: cells(:)
      integer, allocatable :: materials(:)
@@ -134,7 +140,7 @@ module types
      integer :: n_x
      integer :: n_y
      integer :: n_z
-     type(TallyScore), allocatable :: score(:)
+     type(TallyScore), allocatable :: score(:,:,:)
   end type Tally
 
 !=====================================================================

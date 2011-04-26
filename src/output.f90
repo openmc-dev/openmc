@@ -512,6 +512,66 @@ contains
   end subroutine print_material
 
 !=====================================================================
+! PRINT_TALLY displays the attributes of a tally
+!=====================================================================
+
+  subroutine print_tally(tal)
+
+    type(Tally), pointer :: tal
+
+    integer :: i
+    integer :: MT
+    character(250) :: string
+
+    write(ou,*) 'Tally ' // int_to_str(tal % uid)
+
+    select case (tal % reaction_type)
+    case (TALLY_FLUX)
+       write(ou,*) '    Type: Flux'
+    case (TALLY_ALL)
+       write(ou,*) '    Type: Total Collision Rate'
+    case (TALLY_BINS)
+       write(ou,*) '    Type: Partial reactions'
+    case (TALLY_SUM)
+       write(ou,*) '    Type: Partial reactions (summed)'
+    end select
+
+    select case (tal % cell_type)
+    case (TALLY_BINS)
+       write(ou,*) '    Cell Type: Separate bins'
+    case (TALLY_SUM)
+       write(ou,*) '    Cell Type: Sum over cells'
+    end select
+
+    if (allocated(tal % reactions)) then
+       string = ""
+       do i = 1, size(tal % reactions)
+          MT = tal % reactions(i)
+          string = trim(string) // ' ' // trim(reaction_name(MT))
+       end do
+       write(ou,*) '    Reactions:' // trim(string)
+    end if
+
+    if (allocated(cells)) then
+       string = ""
+       do i = 1, size(tal % cells)
+          string = trim(string) // ' ' // trim(int_to_str(tal % cells(i)))
+       end do
+       write(ou,*) '    Cells:' // trim(string)
+    end if
+    
+    if (allocated(tal % energies)) then
+       string = ""
+       do i = 1, size(tal % energies)
+          string = trim(string) // ' ' // trim(real_to_str(tal % energies(i)))
+       end do
+       write(ou,*) '    Energies:' // trim(string)
+    end if
+    write(ou,*)
+
+  end subroutine print_tally
+
+!=====================================================================
 ! PRINT_SUMMARY displays the attributes of all cells, universes,
 ! surfaces and materials read in the input file. Very useful for
 ! debugging!
@@ -524,6 +584,7 @@ contains
     type(Universe), pointer :: u => null()
     type(Lattice),  pointer :: l => null()
     type(Material), pointer :: m => null()
+    type(Tally),    pointer :: t => null()
     integer :: i
 
     ! print summary of cells
@@ -578,11 +639,24 @@ contains
        call print_material(m)
     end do
 
+    ! print summary of tallies
+    if (n_tallies > 0) then
+       write(ou,*) '============================================='
+       write(ou,*) '=>               TALLY SUMMARY             <='
+       write(ou,*) '============================================='
+       write(ou,*)
+       do i = 1, n_tallies
+          t=> tallies(i)
+          call print_tally(t)
+       end do
+    end if
+
     nullify(s)
     nullify(c)
     nullify(u)
     nullify(l)
     nullify(m)
+    nullify(t)
 
   end subroutine print_summary
 

@@ -264,6 +264,12 @@ module types
      real(8), allocatable :: nu_d_precursor_data(:)
      type(AceDistEnergy), allocatable :: nu_d_edist(:)
 
+     ! Unresolved resonance data
+     logical :: urr_present
+     integer, allocatable :: urr_params(:)
+     real(8), allocatable :: urr_energy(:)
+     real(8), allocatable :: urr_prob(:,:,:)
+
      ! Reactions
      integer :: n_reaction
      type(AceReaction), pointer :: reactions(:) => null()

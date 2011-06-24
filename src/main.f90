@@ -14,6 +14,7 @@ program main
   use energy_grid,   only: unionized_grid, original_indices
   use mpi_routines,  only: setup_mpi, synchronize_bank, t_sync
   use score,         only: calculate_keff
+  use logging,       only: create_log
 
 #ifdef MPI
   use mpi
@@ -28,9 +29,12 @@ program main
   ! Setup MPI
   call setup_mpi()
 
+  ! Read command line arguments
+  call read_command_line()
+  if (master) call create_log()
+
   ! Print the OpenMC title and version/date/time information
   if (master) call title()
-
   ! Initialize random number generator. The first argument corresponds
   ! to which random number generator to use- in this case one of the
   ! L'Ecuyer 63-bit RNGs.
@@ -38,9 +42,6 @@ program main
 
   ! Set default values for settings
   call set_defaults()
-
-  ! Read command line arguments
-  call read_command_line()
 
   ! Read input file -- make a first pass through the file to count
   ! cells, surfaces, etc in order to allocate arrays, then do a second

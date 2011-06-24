@@ -1,3 +1,15 @@
+2011-06-22 Paul Romano <romano7@mit.edu>
+
+	* .gitignore: Specifies intentionally untracked files for git
+	version control
+	* src/ace.f90: Added capability to read unresolved resonance
+	probability tables.
+	* src/global.f90: Added log file unit.
+	* src/logging.f90: Added module for handling a log file.
+	* src/main.f90: Added call to create log.
+	* src/types.f90: Extended AceContinuous to handle unresolved
+	resonance probability table data.
+
 2011-04-25 Paul Romano <romano7@mit.edu>
 
 	* ace.f90: Fixed indentation of get_int and get_real. Added

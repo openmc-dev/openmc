@@ -64,6 +64,7 @@ contains
                 mat%table(j) = dict_get_key(ace_dict, key)
              end if
           case ('t')
+             ! Need same logic as for continuous tables
              n_thermal = n_thermal + 1
           case default
              msg = "Unknown cross section table type: " // key
@@ -213,6 +214,7 @@ contains
     call read_reactions(table)
     call read_angular_dist(table)
     call read_energy_dist(table)
+    call read_unr_res(table)
 
     ! Free memory from XSS array
     if(allocated(XSS)) deallocate(XSS)
@@ -869,6 +871,63 @@ contains
     end select
 
   end function length_energy_dist
+
+!=====================================================================
+! READ_UNR_RES reads in unresolved resonance probability tables if
+! present.
+!=====================================================================
+
+  subroutine read_unr_res(table)
+
+    type(AceContinuous), pointer :: table
+
+    integer :: JXS23 ! location of URR data
+    integer :: loc   ! locator
+    integer :: N     ! # of incident energies
+    integer :: M     ! # of probabilities
+    integer :: i     ! index over incoming energies
+    integer :: j     ! index over values
+    integer :: k     ! index over cumulative probabilities
+
+    ! determine locator for URR data
+    JXS23 = JXS(23)
+
+    ! check if URR data is present
+    if (JXS23 /= 0) then
+       table % urr_present = .true.
+       allocate(table % urr_params(6))
+       loc = JXS23
+    else
+       table % urr_present = .false.
+       return
+    end if
+
+    ! read parameters
+    table % urr_params(1) = XSS(loc)     ! # of incident energies
+    table % urr_params(2) = XSS(loc + 1) ! # of probabilities
+    table % urr_params(3) = XSS(loc + 2) ! interpolation parameter
+    table % urr_params(4) = XSS(loc + 3) ! inelastic competition flag
+    table % urr_params(5) = XSS(loc + 4) ! other absorption flag
+    table % urr_params(6) = XSS(loc + 5) ! factors flag
+
+    ! allocate incident energies and probability tables
+    N = table % urr_params(1)
+    M = table % urr_params(2)
+    allocate(table % urr_energy(N))
+    allocate(table % urr_prob(N,6,M))
+
+    ! read incident energies
+    XSS_index = loc + 6
+    table % urr_energy = get_real(N)
+
+    ! read probability tables
+    do i = 1, N
+       do j = 1, 6
+          table % urr_prob(i,j,1:M) = get_real(M)
+       end do
+    end do
+
+  end subroutine read_unr_res
 
 !=====================================================================
 ! READ_ACE_THERMAL reads in a single ACE thermal scattering S(a,b)

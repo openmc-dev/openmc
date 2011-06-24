@@ -10,6 +10,7 @@ modules = 	ace.f90 \
 		fileio.f90 \
 		geometry.f90 \
 		global.f90 \
+		logging.f90 \
 		mcnp_random.f90 \
 		mpi_routines.f90 \
 		output.f90 \
@@ -28,7 +29,7 @@ test_objects = $(modules:.f90=.o) $(test:.f90=.o)
 F90 = ifort
 F90FLAGS = -g -fpp -traceback
 
-USE_MPI = yes
+USE_MPI = no
 
 ifeq ($(USE_MPI),yes)
   MPI = /opt/mpich2/1.3.3-gcc
@@ -68,9 +69,10 @@ energy_grid.o: global.o output.o data_structures.o
 fileio.o: types.o global.o string.o output.o data_structures.o
 geometry.o: types.o global.o output.o string.o data_structures.o
 global.o: types.o
+logging.o: global.o
 main.o: global.o fileio.o output.o geometry.o mcnp_random.o \
 		source.o physics.o cross_section.o data_structures.o \
-		ace.o energy_grid.o score.o
+		ace.o energy_grid.o score.o logging.o
 mpi_routines.o: global.o output.o types.o mcnp_random.o source.o
 output.o: global.o types.o data_structures.o endf.o
 physics.o: types.o global.o mcnp_random.o geometry.o output.o \

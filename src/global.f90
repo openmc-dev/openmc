@@ -85,6 +85,7 @@ module global
   character(100) :: & 
        & path_input,    &
        & path_xsdata
+  integer, parameter :: UNIT_LOG = 9 ! unit # for writing log file
 
   ! Physical constants
   real(8), parameter ::            &

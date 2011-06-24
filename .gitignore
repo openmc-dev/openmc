@@ -1,0 +1,5 @@
+# Compiled objects and modules
+*.o
+*.mod
+# emacs backups
+*~

@@ -1024,7 +1024,7 @@ contains
     ! Check for multiple interpolation regions
     if (edist % n_interp > 0) then
        msg = "Multiple interpolation regions not supported while &
-            &attempting to sampling secondary energy distribution."
+            &attempting to sample secondary energy distribution."
        call error(msg)
     end if
        

@@ -690,6 +690,7 @@ contains
        IDAT = XSS(LDIS + LOCC + 1)
        NR   = XSS(LDIS + LOCC + 2)
        rxn % edist % law = LAW
+       rxn % edist % n_interp = NR
 
        ! allocate space for ENDF interpolation parameters
        if (NR > 0) then

@@ -126,7 +126,7 @@ contains
     p => source_bank(source_index)
 
     ! set uid
-    p % uid = bank_first + source_index
+    p % uid = bank_first + source_index - 1
 
   end function get_source_particle
 

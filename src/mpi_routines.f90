@@ -120,6 +120,9 @@ contains
     integer    :: send_to_right   ! # of bank sites to send/recv to or from right
     integer(8) :: sites_needed    ! # of sites to be sampled
     integer(8) :: sites_remaining ! # of sites left in fission bank
+    integer    :: request         ! communication request for sending sites
+    integer    :: request_left    ! communication request for recv sites from left
+    integer    :: request_right   ! communication request for recv sites from right
     real(8)    :: p_sample        ! probability of sampling a site
     real(8)    :: t0, t1, t2, t3, t4
     type(Bank), allocatable :: &
@@ -260,19 +263,19 @@ contains
 
     if (send_to_right > 0) then
        i = count - send_to_right + 1
-       call MPI_SEND(temp_sites(i), send_to_right, MPI_BANK, rank+1, 0, &
-            & MPI_COMM_WORLD, ierr)
+       call MPI_ISEND(temp_sites(i), send_to_right, MPI_BANK, rank+1, 0, &
+            & MPI_COMM_WORLD, request, ierr)
     else if (send_to_right < 0) then
-       call MPI_RECV(right_bank, -send_to_right, MPI_BANK, rank+1, 1, &
-            & MPI_COMM_WORLD, status, ierr)
+       call MPI_IRECV(right_bank, -send_to_right, MPI_BANK, rank+1, 1, &
+            & MPI_COMM_WORLD, request_right, ierr)
     end if
 
     if (send_to_left < 0) then
-       call MPI_RECV(left_bank, -send_to_left, MPI_BANK, rank-1, 0, &
-            & MPI_COMM_WORLD, status, ierr)
+       call MPI_IRECV(left_bank, -send_to_left, MPI_BANK, rank-1, 0, &
+            & MPI_COMM_WORLD, request_left, ierr)
     else if (send_to_left > 0) then
-       call MPI_SEND(temp_sites(1), send_to_left, MPI_BANK, rank-1, 1, &
-            & MPI_COMM_WORLD, ierr)
+       call MPI_ISEND(temp_sites(1), send_to_left, MPI_BANK, rank-1, 1, &
+            & MPI_COMM_WORLD, request, ierr)
     end if
 
     t3 = MPI_WTIME()
@@ -287,12 +290,18 @@ contains
     if (send_to_left < 0 .and. send_to_right >= 0) then
        i = -send_to_left         ! size of first block
        j = count - send_to_right ! size of second block
-       call copy_from_bank(left_bank, 1, i)
        call copy_from_bank(temp_sites, i+1, j)
+#ifdef MPI
+       call MPI_WAIT(request_left, status, ierr)
+#endif
+       call copy_from_bank(left_bank, 1, i)
     else if (send_to_left >= 0 .and. send_to_right < 0) then
        i = count - send_to_left ! size of first block
        j = -send_to_right       ! size of second block
        call copy_from_bank(temp_sites(1+send_to_left), 1, i)
+#ifdef MPI
+       call MPI_WAIT(request_right, status, ierr)
+#endif
        call copy_from_bank(right_bank, i+1, j)
     else if (send_to_left >= 0 .and. send_to_right >= 0) then
        i = count - send_to_left - send_to_right
@@ -301,8 +310,14 @@ contains
        i = -send_to_left
        j = count
        k = -send_to_right
-       call copy_from_bank(left_bank, 1, i)
        call copy_from_bank(temp_sites, i+1, j)
+#ifdef MPI
+       call MPI_WAIT(request_left, status, ierr)
+#endif
+       call copy_from_bank(left_bank, 1, i)
+#ifdef MPI
+       call MPI_WAIT(request_right, status, ierr)
+#endif
        call copy_from_bank(right_bank, i+j+1, k)
     end if
 

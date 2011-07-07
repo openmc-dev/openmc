@@ -32,9 +32,7 @@ F90FLAGS = -g -fpp -traceback
 USE_MPI = no
 
 ifeq ($(USE_MPI),yes)
-  MPI = /opt/mpich2/1.3.3-gcc
-  MPI_COMPILE_FLAGS = $(shell $(MPI)/bin/mpif90 -f90='' -compile_info)
-  MPI_LINK_FLAGS = $(shell $(MPI)/bin/mpif90 -f90='' -link_info)
+  MPI = /opt/mpich2/1.4-intel
   F90 = $(MPI)/bin/mpif90
   F90FLAGS += -DMPI -f90=ifort
 endif
@@ -43,13 +41,13 @@ endif
 # Targets
 all:	$(program)
 $(program): $(main_objects)
-	$(F90) $(F90FLAGS) $(MPI_LINK_FLAGS) $(main_objects) -o $@
+	$(F90) $(F90FLAGS) $(main_objects) -o $@
 clean:
 	@rm -f *.o *.mod $(program)
 neat:
 	@rm -f *.o *.mod
 unittest: $(test_objects)
-	$(F90) $(F90FLAGS) $(MPI_LINK_FLAGS) $(test_objects) -o $@
+	$(F90) $(F90FLAGS) $(test_objects) -o $@
 
 #--------------------------------------------------------------------
 # Rules & misc
@@ -57,7 +55,7 @@ unittest: $(test_objects)
 .PHONY: all clean neat
 
 %.o: %.f90
-	$(F90) -c $(F90FLAGS) $(MPI_COMPILE_FLAGS) $<
+	$(F90) -c $(F90FLAGS) $<
 
 #--------------------------------------------------------------------
 # Dependencies

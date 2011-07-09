@@ -21,7 +21,7 @@ contains
     integer    :: i          ! loop index over processors
     integer(8) :: j          ! loop index over bank sites
     integer    :: k          ! dummy loop index
-    integer    :: maxwork    ! maxinum # of particles per processor
+    integer(8) :: maxwork    ! maxinum # of particles per processor
     real(8)    :: r(3)       ! sampled coordinates
     real(8)    :: phi        ! azimuthal angle
     real(8)    :: mu         ! cosine of polar angle
@@ -35,7 +35,7 @@ contains
 
     ! Determine maximum amount of particles to simulate on each
     ! processor
-    maxwork = ceiling(real(n_particles)/n_procs)
+    maxwork = ceiling(real(n_particles)/n_procs,8)
 
     ! Allocate fission and source banks
     allocate(source_bank(maxwork))

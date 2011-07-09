@@ -68,7 +68,7 @@ module global
   integer(8) :: n_bank      ! # of sites in fission bank
   integer(8) :: bank_first  ! index of first particle in bank
   integer(8) :: bank_last   ! index of last particle in bank
-  integer    :: work        ! number of particles per processor
+  integer(8) :: work        ! number of particles per processor
 
   ! cycle keff
   real(8) :: keff
@@ -362,7 +362,7 @@ contains
   function str_to_int(str) result(num)
 
     character(*), intent(in) :: str
-    integer :: num
+    integer(8) :: num
     
     character(5) :: fmt
     integer      :: w

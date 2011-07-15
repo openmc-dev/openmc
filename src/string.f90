@@ -9,7 +9,7 @@ contains
 
 !=====================================================================
 ! SPLIT_STRING takes a sentence and splits it into separate words much
-! the Python string.split() method.
+! like the Python string.split() method.
 !
 ! Arguments:
 !   string = input line

@@ -26,16 +26,8 @@ test_objects = $(modules:.f90=.o) $(test:.f90=.o)
 
 #--------------------------------------------------------------------
 # Compiler Options
-F90 = ifort
-F90FLAGS = -fpp -g -traceback
-
-USE_MPI = no
-
-ifeq ($(USE_MPI),yes)
-  MPI = /opt/mpich2/1.4-intel
-  F90 = $(MPI)/bin/mpif90
-  F90FLAGS += -DMPI -f90=ifort
-endif
+F90 = ftn
+F90FLAGS = -fpp -O3 -DMPI
 
 #--------------------------------------------------------------------
 # Targets

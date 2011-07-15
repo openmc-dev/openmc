@@ -99,13 +99,13 @@ contains
 
   subroutine run_problem()
 
-    integer :: i, j
-    integer :: ierr
-    integer :: i_cycle    ! cycle index
-    integer :: i_particle ! history index
-    integer :: total_bank ! total number of particles banked
-    real(8) :: t0
-    real(8) :: t1
+    integer    :: i, j
+    integer    :: ierr
+    integer    :: i_cycle    ! cycle index
+    integer(8) :: i_particle ! history index
+    integer    :: total_bank ! total number of particles banked
+    real(8)    :: t0
+    real(8)    :: t1
     type(Particle), pointer :: p => null()
     character(250) :: msg
 
@@ -137,7 +137,7 @@ contains
 
           ! set random number seed
           i_particle = (i_cycle-1)*n_particles + p % uid
-          call RN_init_particle(int(i_particle,8))
+          call RN_init_particle(i_particle)
 
           ! transport particle
           call transport(p)

@@ -15,7 +15,7 @@ contains
 ! dictionary to find cross-section information later on.
 !=====================================================================
 
-  subroutine read_xsdata( path )
+  subroutine read_xsdata(path)
 
     character(*), intent(in) :: path
 
@@ -43,14 +43,14 @@ contains
     end if
 
     ! Check if xsdata exists and is readable
-    inquire( FILE=filename, EXIST=file_exists, READ=readable )
-    if ( .not. file_exists ) then
+    inquire(FILE=filename, EXIST=file_exists, READ=readable)
+    if (.not. file_exists) then
        msg = "Cross section summary '" // trim(filename) // "' does not exist!"
-       call error( msg )
-    elseif ( readable(1:3) == 'NO' ) then
+       call error(msg)
+    elseif (readable(1:3) == 'NO') then
        msg = "Cross section summary '" // trim(filename) // "' is not readable!" &
             & // "Change file permissions with chmod command."
-       call error( msg )
+       call error(msg)
     end if
 
     ! open xsdata file
@@ -65,13 +65,13 @@ contains
     count = 0
     do
        read(unit=in, fmt='(A250)', iostat=ioError) line
-       if ( ioError < 0 ) then
+       if (ioError < 0) then
           ! reached end of file
           exit
-       elseif ( ioError > 0 ) then
+       elseif (ioError > 0) then
           msg = "Unknown error while reading file: " // filename
           close(unit=in)
-          call error( msg )
+          call error(msg)
        end if
        count = count + 1
     end do
@@ -85,16 +85,16 @@ contains
     rewind(in)
     do
        read(unit=in, fmt='(A250)', iostat=ioError) line
-       if ( ioError < 0 ) exit
+       if (ioError < 0) exit
        index = index + 1
        call split_string(line, words, n)
-       if ( n == 0 ) cycle ! skip blank line
+       if (n == 0) cycle ! skip blank line
 
        ! Check to make sure there are enough arguments
-       if ( n < 9 ) then
+       if (n < 9) then
           msg = "Not enough arguments on xsdata line: " // line
           close(unit=in)
-          call error( msg )
+          call error(msg)
        end if
 
        iso => xsdatas(index)

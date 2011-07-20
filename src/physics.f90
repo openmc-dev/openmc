@@ -1722,4 +1722,22 @@ contains
 
   end function watt_spectrum
 
+!=====================================================================
+! WIGNER samples a Wigner distribution of energy level spacings. Note
+! that this scheme is C50 in the Monte Carlo Sampler from Los Alamos
+! (LA-9721-MS).
+!=====================================================================
+
+  function wigner(D_avg) result (D)
+
+    real(8), intent(in) :: D_avg ! average level spacing
+    real(8)             :: D     ! sampled level spacing
+
+    real(8) :: c
+
+    c = -4.0*D_avg*D_avg/PI * log(rang())
+    D = sqrt(c)
+
+  end function wigner
+
 end module physics

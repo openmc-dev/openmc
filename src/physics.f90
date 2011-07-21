@@ -1740,4 +1740,63 @@ contains
 
   end function wigner
 
+!=====================================================================
+! CHI_SQUARED samples a chi-squared distribution with n degrees of
+! freedom. The distribution of resonance widths in the unresolved
+! region is given by a chi-squared distribution. For the special case
+! of n=1, this is a Porter-Thomas distribution. This currently
+! hardwires cases for n = 1 to 4, but could be made more general by
+! treating all n odd with rule C64 and all n even with rule C45.
+!=====================================================================
+
+  function chi_squared(n, G_avg) result(G)
+
+    real(8), intent(in)           :: n     ! number of degrees of freedom
+    real(8), intent(in), optional :: G_avg ! average resonance width
+
+    real(8) :: G          ! sampled random variable (or resonance width)
+    real(8) :: x, y       ! dummy variables
+    real(8) :: r1, r2, r3 ! psuedorandom numbers
+
+    select case (n)
+    case (1)
+       ! For this case, we get p(x) = c*x^(-1/2)*exp(-x). This can be
+       ! sampled with rule C64
+       r1 = rang()
+       r2 = rang()
+       y = cos(PI/2*r2)
+       x = -2*log(r1)*y*y
+       G = x * G_avg
+    case (2)
+       ! This case corresponds to a simple exponential distribution
+       ! p(x) = exp(-x) whose CDF can be directly inverted.
+       r1 = rang()
+       x = -log(r1)
+    case (3)
+       ! For this case, we get p(x) = c*x^(1/2)*exp(-x). This can be
+       ! sampled with rule C64
+       r1 = rang()
+       r2 = rang()
+       r3 = rang()
+       y = cos(PI/2*r2)
+       x = -2.0/3.0*(log(r1)*y*y + log(r3))
+    case (4)
+       ! For this case, we get p(x) = c*x*exp(-x). This can be sampled
+       ! with rule C45.
+       r1 = rang()
+       r2 = rang()
+       x = -0.5*log(r1*r2)
+    end select
+
+    ! If sampling a chi-squared distribution for a resonance width and
+    ! the average resonance width has been given, return the sampled
+    ! resonance width.
+    if (present(G_avg)) then
+       G = x * G_avg
+    else
+       G = x
+    end if
+
+  end function chi_squared
+
 end module physics

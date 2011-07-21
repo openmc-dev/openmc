@@ -4,11 +4,10 @@ module search
 
 contains
 
-!=====================================================================
-! BINARY_SEARCH performs a binary search of an array to find where a
-! specific value lies in the array. This is used extensively for
-! energy grid searching
-!=====================================================================
+!===============================================================================
+! BINARY_SEARCH performs a binary search of an array to find where a specific
+! value lies in the array. This is used extensively for energy grid searching
+!===============================================================================
 
   function binary_search(array, n, val) result(index)
 
@@ -55,9 +54,9 @@ contains
 
   end function binary_search
 
-!=====================================================================
+!===============================================================================
 ! INTERPOLATE
-!=====================================================================
+!===============================================================================
 
   function interpolate(array, n, index, f) result(val)
 

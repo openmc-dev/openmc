@@ -1,18 +1,16 @@
 module data_structures
 
-!=====================================================================
+!===============================================================================
 ! DATA_STRUCTURES module
 !
-! This module implements a dictionary that has (key,value) pairs. This
-! data structure is used to provide lookup features, e.g. cells and
-! surfaces by name.
+! This module implements a dictionary that has (key,value) pairs. This data
+! structure is used to provide lookup features, e.g. cells and surfaces by name.
 !
-! The original version from the 'flibs' open source package
-! implemented another derived type called DICT_DATA that has been
-! replaced here by a simple integer in ListData. If used in the
-! original form , the dictionary can store derived types (changes made
-! to ListData, dict_create, dict_add_key, and dict_get_key).
-!=====================================================================
+! The original version from the 'flibs' open source package implemented another
+! derived type called DICT_DATA that has been replaced here by a simple integer
+! in ListData. If used in the original form , the dictionary can store derived
+! types (changes made to ListData, dict_create, dict_add_key, and dict_get_key).
+!===============================================================================
 
   use types
 
@@ -22,11 +20,11 @@ module data_structures
   integer, parameter :: multiplier = 31
   integer, parameter :: DICT_NULL = 0
 
-!=====================================================================
-! LIST Interfaces -- these allow one to use a single subroutine or
-! function for various types of lists, namely those consisting of
-! integers, reals, or (key,value) pairs.
-!=====================================================================
+!===============================================================================
+! LIST Interfaces -- these allow one to use a single subroutine or function for
+! various types of lists, namely those consisting of integers, reals, or
+! (key,value) pairs.
+!===============================================================================
 
   interface list_create
      module procedure list_real_create, list_int_create
@@ -53,10 +51,10 @@ module data_structures
      module procedure list_kvci_del_element, list_kvii_del_element
   end interface
 
-!=====================================================================
-! DICTIONARY Interfaces -- these allow one to use a single subroutine
-! or function for dictionaries with varying types of (key,value) pairs
-!=====================================================================
+!===============================================================================
+! DICTIONARY Interfaces -- these allow one to use a single subroutine or
+! function for dictionaries with varying types of (key,value) pairs
+!===============================================================================
 
   interface dict_create
      module procedure dict_ci_create, dict_ii_create
@@ -88,9 +86,9 @@ module data_structures
 
 contains
 
-!=====================================================================
+!===============================================================================
 ! LIST_INT_CREATE creates and initializes a list of integers
-!=====================================================================
+!===============================================================================
 
   subroutine list_int_create(list, data)
 
@@ -103,9 +101,9 @@ contains
 
   end subroutine list_int_create
 
-!=====================================================================
+!===============================================================================
 ! LIST_REAL_CREATE creates and initializes a list of real(8)s
-!=====================================================================
+!===============================================================================
 
   subroutine list_real_create(list, data)
 
@@ -118,9 +116,9 @@ contains
 
   end subroutine list_real_create
 
-!=====================================================================
+!===============================================================================
 ! LIST_KVCI_CREATE creates and initializes a list of (key,value) pairs
-!=====================================================================
+!===============================================================================
 
   subroutine list_kvci_create(list, data)
 
@@ -133,9 +131,9 @@ contains
 
   end subroutine list_kvci_create
 
-!=====================================================================
+!===============================================================================
 ! LIST_KVII_CREATE creates and initializes a list of (key,value) pairs
-!=====================================================================
+!===============================================================================
 
   subroutine list_kvii_create(list, data)
 
@@ -148,9 +146,9 @@ contains
 
   end subroutine list_kvii_create
 
-!=====================================================================
+!===============================================================================
 ! LIST_INT_DELETE deallocates all data in a list of integers
-!=====================================================================
+!===============================================================================
 
   subroutine list_int_delete(list)
 
@@ -167,9 +165,9 @@ contains
 
   end subroutine list_int_delete
 
-!=====================================================================
+!===============================================================================
 ! LIST_REAL_DELETE deallocates all data in a list of real(8)s
-!=====================================================================
+!===============================================================================
 
   subroutine list_real_delete(list)
 
@@ -186,9 +184,9 @@ contains
 
   end subroutine list_real_delete
 
-!=====================================================================
+!===============================================================================
 ! LIST_KVCI_DELETE deallocates all data in a list of (key,value) pairs
-!=====================================================================
+!===============================================================================
 
   subroutine list_kvci_delete(list)
 
@@ -205,9 +203,9 @@ contains
 
   end subroutine list_kvci_delete
 
-!=====================================================================
+!===============================================================================
 ! LIST_KVII_DELETE deallocates all data in a list of (key,value) pairs
-!=====================================================================
+!===============================================================================
 
   subroutine list_kvii_delete(list)
 
@@ -224,9 +222,9 @@ contains
 
   end subroutine list_kvii_delete
 
-!=====================================================================
+!===============================================================================
 ! LIST_INT_SIZE counts the number of items in a list of integers
-!=====================================================================
+!===============================================================================
 
   function list_int_size(list) result(n)
 
@@ -247,9 +245,9 @@ contains
 
   end function list_int_size
 
-!=====================================================================
+!===============================================================================
 ! LIST_REAL_SIZE counts the number of items in a list of real(8)s
-!=====================================================================
+!===============================================================================
 
   function list_real_size(list) result(n)
 
@@ -270,10 +268,10 @@ contains
 
   end function list_real_size
 
-!=====================================================================
+!===============================================================================
 ! LIST_KVCI_SIZE counts the number of items in a list of (key,value)
 ! pairs
-!=====================================================================
+!===============================================================================
 
   function list_kvci_size(list) result(n)
 
@@ -294,10 +292,9 @@ contains
 
   end function list_kvci_size
 
-!=====================================================================
-! LIST_KVII_SIZE counts the number of items in a list of (key,value)
-! pairs
-!=====================================================================
+!===============================================================================
+! LIST_KVII_SIZE counts the number of items in a list of (key,value) pairs
+!===============================================================================
 
   function list_kvii_size(list) result(n)
 
@@ -318,13 +315,13 @@ contains
 
   end function list_kvii_size
 
-!=====================================================================
+!===============================================================================
 ! LIST_INT_INSERT inserts a new element
 ! Arguments:
 !     elem       Element in the linked list after
 !                which to insert the new element
 !     data       The data for the new element
-!=====================================================================
+!===============================================================================
 
   subroutine list_int_insert(elem, data)
 
@@ -341,13 +338,13 @@ contains
 
   end subroutine list_int_insert
 
-!=====================================================================
+!===============================================================================
 ! LIST_REAL_INSERT inserts a new element
 ! Arguments:
 !     elem       Element in the linked list after
 !                which to insert the new element
 !     data       The data for the new element
-!=====================================================================
+!===============================================================================
 
   subroutine list_real_insert(elem, data)
 
@@ -364,13 +361,13 @@ contains
 
   end subroutine list_real_insert
 
-!=====================================================================
+!===============================================================================
 ! LIST_KVCI_INSERT inserts a new element
 ! Arguments:
 !     elem       Element in the linked list after
 !                which to insert the new element
 !     data       The data for the new element
-!=====================================================================
+!===============================================================================
 
   subroutine list_kvci_insert(elem, data)
 
@@ -387,13 +384,13 @@ contains
 
   end subroutine list_kvci_insert
 
-!=====================================================================
+!===============================================================================
 ! LIST_KVII_INSERT inserts a new element
 ! Arguments:
 !     elem       Element in the linked list after
 !                which to insert the new element
 !     data       The data for the new element
-!=====================================================================
+!===============================================================================
 
   subroutine list_kvii_insert(elem, data)
 
@@ -410,12 +407,12 @@ contains
 
   end subroutine list_kvii_insert
 
-!=====================================================================
+!===============================================================================
 ! LIST_INT_INSERT_HEAD inserts a new element before the first element
 ! Arguments:
 !     list       Start of the list
 !     data       The data for the new element
-!=====================================================================
+!===============================================================================
 
   subroutine list_int_insert_head(list, data)
 
@@ -432,12 +429,12 @@ contains
 
   end subroutine list_int_insert_head
 
-!=====================================================================
+!===============================================================================
 ! LIST_REAL_INSERT_HEAD inserts a new element before the first element
 ! Arguments:
 !     list       Start of the list
 !     data       The data for the new element
-!=====================================================================
+!===============================================================================
 
   subroutine list_real_insert_head(list, data)
 
@@ -454,12 +451,12 @@ contains
 
   end subroutine list_real_insert_head
 
-!=====================================================================
+!===============================================================================
 ! LIST_KVCI_INSERT_HEAD inserts a new element before the first element
 ! Arguments:
 !     list       Start of the list
 !     data       The data for the new element
-!=====================================================================
+!===============================================================================
 
   subroutine list_kvci_insert_head(list, data)
 
@@ -476,12 +473,12 @@ contains
 
   end subroutine list_kvci_insert_head
 
-!=====================================================================
+!===============================================================================
 ! LIST_KVII_INSERT_HEAD inserts a new element before the first element
 ! Arguments:
 !     list       Start of the list
 !     data       The data for the new element
-!=====================================================================
+!===============================================================================
 
   subroutine list_kvii_insert_head(list, data)
 
@@ -498,12 +495,12 @@ contains
 
   end subroutine list_kvii_insert_head
 
-!=====================================================================
+!===============================================================================
 ! LIST_INT_DEL_ELEMENT deletes an element from the list
 ! Arguments:
 !     list       Header of the list
 !     elem       Element in the linked list to be removed
-!=====================================================================
+!===============================================================================
 
   subroutine list_int_del_element(list, elem)
 
@@ -532,12 +529,12 @@ contains
 
   end subroutine list_int_del_element
 
-!=====================================================================
+!===============================================================================
 ! LIST_REAL_DEL_ELEMENT deletes an element from the list
 ! Arguments:
 !     list       Header of the list
 !     elem       Element in the linked list to be removed
-!=====================================================================
+!===============================================================================
 
   subroutine list_real_del_element(list, elem)
 
@@ -566,12 +563,12 @@ contains
 
   end subroutine list_real_del_element
 
-!=====================================================================
+!===============================================================================
 ! LIST_KVCI_DEL_ELEMENT deletes an element from the list
 ! Arguments:
 !     list       Header of the list
 !     elem       Element in the linked list to be removed
-!=====================================================================
+!===============================================================================
 
   subroutine list_kvci_del_element(list, elem)
 
@@ -600,12 +597,12 @@ contains
 
   end subroutine list_kvci_del_element
 
-!=====================================================================
+!===============================================================================
 ! LIST_KVII_DEL_ELEMENT deletes an element from the list
 ! Arguments:
 !     list       Header of the list
 !     elem       Element in the linked list to be removed
-!=====================================================================
+!===============================================================================
 
   subroutine list_kvii_del_element(list, elem)
 
@@ -634,9 +631,9 @@ contains
 
   end subroutine list_kvii_del_element
 
-!=====================================================================
+!===============================================================================
 ! DICT_CI_CREATE creates and initializes a dictionary
-!=====================================================================
+!===============================================================================
 
   subroutine dict_ci_create(dict)
 
@@ -653,9 +650,9 @@ contains
 
   end subroutine dict_ci_create
 
-!=====================================================================
+!===============================================================================
 ! DICT_II_CREATE creates and initializes a dictionary
-!=====================================================================
+!===============================================================================
 
   subroutine dict_ii_create(dict)
 
@@ -672,9 +669,9 @@ contains
 
   end subroutine dict_ii_create
 
-!=====================================================================
+!===============================================================================
 ! DICT_CI_DELETE destroys an entire dictionary
-!=====================================================================
+!===============================================================================
 
   subroutine dict_ci_delete(dict)
 
@@ -692,9 +689,9 @@ contains
 
   end subroutine dict_ci_delete
 
-!=====================================================================
+!===============================================================================
 ! DICT_II_DELETE destroys an entire dictionary
-!=====================================================================
+!===============================================================================
 
   subroutine dict_ii_delete(dict)
 
@@ -712,7 +709,7 @@ contains
 
   end subroutine dict_ii_delete
 
-!=====================================================================
+!===============================================================================
 ! DICT_CI_ADD_KEY add a new keys
 ! Arguments:
 !     dict       Pointer to the dictionary
@@ -721,7 +718,7 @@ contains
 ! Note:
 !     If the key already exists, the
 !     key's value is simply replaced
-!=====================================================================
+!===============================================================================
 
   subroutine dict_ci_add_key(dict, key, value)
 
@@ -750,7 +747,7 @@ contains
 
   end subroutine dict_ci_add_key
 
-!=====================================================================
+!===============================================================================
 ! DICT_II_ADD_KEY add a new keys
 ! Arguments:
 !     dict       Pointer to the dictionary
@@ -759,7 +756,7 @@ contains
 ! Note:
 !     If the key already exists, the
 !     key's value is simply replaced
-!=====================================================================
+!===============================================================================
 
   subroutine dict_ii_add_key(dict, key, value)
 
@@ -788,12 +785,12 @@ contains
 
   end subroutine dict_ii_add_key
 
-!=====================================================================
+!===============================================================================
 ! DICT_CI_DELETE_KEY deletes a key-value pair from the dictionary
 ! Arguments:
 !     dict       Dictionary in question
 !     key        Key to be removed
-!=====================================================================
+!===============================================================================
 
   subroutine dict_ci_delete_key(dict, key)
 
@@ -812,12 +809,12 @@ contains
 
   end subroutine dict_ci_delete_key
 
-!=====================================================================
+!===============================================================================
 ! DICT_II_DELETE_KEY deletes a key-value pair from the dictionary
 ! Arguments:
 !     dict       Dictionary in question
 !     key        Key to be removed
-!=====================================================================
+!===============================================================================
 
   subroutine dict_ii_delete_key(dict, key)
 
@@ -836,12 +833,12 @@ contains
 
   end subroutine dict_ii_delete_key
 
-!=====================================================================
+!===============================================================================
 ! DICT_CI_GET_KEY gets the value belonging to a key
 ! Arguments:
 !     dict       Pointer to the dictionary
 !     key        Key for which the values are sought
-!=====================================================================
+!===============================================================================
 
   function dict_ci_get_key(dict, key) result(value)
 
@@ -862,12 +859,12 @@ contains
 
   end function dict_ci_get_key
 
-!=====================================================================
+!===============================================================================
 ! DICT_II_GET_KEY gets the value belonging to a key
 ! Arguments:
 !     dict       Pointer to the dictionary
 !     key        Key for which the values are sought
-!=====================================================================
+!===============================================================================
 
   function dict_ii_get_key(dict, key) result(value)
 
@@ -888,12 +885,12 @@ contains
 
   end function dict_ii_get_key
 
-!=====================================================================
+!===============================================================================
 ! DICT_CI_HAS_KEY checks if the dictionary has a particular key
 ! Arguments:
 !     dict       Pointer to the dictionary
 !     key        Key to be sought
-!=====================================================================
+!===============================================================================
 
   function dict_ci_has_key(dict, key) result(has)
 
@@ -909,12 +906,12 @@ contains
 
   end function dict_ci_has_key
 
-!=====================================================================
+!===============================================================================
 ! DICT_II_HAS_KEY checks if the dictionary has a particular key
 ! Arguments:
 !     dict       Pointer to the dictionary
 !     key        Key to be sought
-!=====================================================================
+!===============================================================================
 
   function dict_ii_has_key(dict, key) result(has)
 
@@ -930,12 +927,12 @@ contains
 
   end function dict_ii_has_key
 
-!=====================================================================
+!===============================================================================
 ! DICT_CI_GET_ELEM finds the element with a particular key
 ! Arguments:
 !     dict       Pointer to the dictionary
 !     key        Key to be sought
-!=====================================================================
+!===============================================================================
 
   function dict_ci_get_elem(dict, key) result(elem)
 
@@ -957,12 +954,12 @@ contains
 
   end function dict_ci_get_elem
 
-!=====================================================================
+!===============================================================================
 ! DICT_II_GET_ELEM finds the element with a particular key
 ! Arguments:
 !     dict       Pointer to the dictionary
 !     key        Key to be sought
-!=====================================================================
+!===============================================================================
 
   function dict_ii_get_elem(dict, key) result(elem)
 
@@ -984,11 +981,11 @@ contains
 
   end function dict_ii_get_elem
 
-!=====================================================================
+!===============================================================================
 ! DICT_CI_HASHKEY determine the hash value from the string
 ! Arguments:
 !     key        String to be examined
-!=====================================================================
+!===============================================================================
 
   function dict_ci_hashkey(key) result(val)
 
@@ -1010,11 +1007,11 @@ contains
 
   end function dict_ci_hashkey
 
-!=====================================================================
+!===============================================================================
 ! DICT_II_HASHKEY determine the hash value from the string
 ! Arguments:
 !     key        String to be examined
-!=====================================================================
+!===============================================================================
 
   function dict_ii_hashkey(key) result(val)
 
@@ -1032,9 +1029,9 @@ contains
 
   end function dict_ii_hashkey
 
-!=====================================================================
+!===============================================================================
 ! DICT_CI_KEYS
-!=====================================================================
+!===============================================================================
 
   function dict_ci_keys(dict) result(head)
 
@@ -1064,9 +1061,9 @@ contains
 
   end function dict_ci_keys
 
-!=====================================================================
+!===============================================================================
 ! DICT_II_KEYS
-!=====================================================================
+!===============================================================================
 
   function dict_ii_keys(dict) result(head)
 

@@ -16,12 +16,11 @@ module fileio
 
   integer, allocatable :: index_cell_in_univ(:)
 
-!=====================================================================
-! READ_DATA interface allows data to be read with one function
-! regardless of whether it is integer or real data. E.g. NXS and JXS
-! can be read with the integer version and XSS can be read with the
-! real version
-!=====================================================================
+!===============================================================================
+! READ_DATA interface allows data to be read with one function regardless of
+! whether it is integer or real data. E.g. NXS and JXS can be read with the
+! integer version and XSS can be read with the real version
+!===============================================================================
 
   interface read_data
      module procedure read_data_int, read_data_real
@@ -29,9 +28,9 @@ module fileio
 
 contains
 
-!=====================================================================
+!===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line
-!=====================================================================
+!===============================================================================
 
   subroutine read_command_line()
 
@@ -54,9 +53,9 @@ contains
        msg = "Input file '" // trim(path_input) // "' does not exist!"
        call error(msg)
     elseif (readable(1:3) == 'NO') then
-       ! Need to explicitly check for a NO status -- Intel compiler
-       ! looks at file attributes only if the file is open on a
-       ! unit. Therefore, it will always return UNKNOWN
+       ! Need to explicitly check for a NO status -- Intel compiler looks at
+       ! file attributes only if the file is open on a unit. Therefore, it will
+       ! always return UNKNOWN
        msg = "Input file '" // trim(path_input) // "' is not readable! &
             &Change file permissions with chmod command."
        call error(msg)
@@ -64,11 +63,10 @@ contains
 
   end subroutine read_command_line
 
-!=====================================================================
-! READ_COUNT makes a first pass through the input file to determine
-! how many cells, universes, surfaces, materials, sources, etc there
-! are in the problem.
-!=====================================================================
+!===============================================================================
+! READ_COUNT makes a first pass through the input file to determine how many
+! cells, universes, surfaces, materials, sources, etc there are in the problem.
+!===============================================================================
 
   subroutine read_count(filename)
     
@@ -115,9 +113,9 @@ contains
        case ('cell')
           n_cells = n_cells + 1
           
-          ! For cells, we also need to check if there's a new universe
-          ! -- also for every cell add 1 to the count of cells for the
-          ! specified universe
+          ! For cells, we also need to check if there's a new universe -- also
+          ! for every cell add 1 to the count of cells for the specified
+          ! universe
           universe_num = str_to_int(words(3))
           if (.not. dict_has_key(ucount_dict, universe_num)) then
              n_universes = n_universes + 1
@@ -137,17 +135,17 @@ contains
        case ('lattice')
           n_lattices = n_lattices + 1
 
-          ! For lattices, we also need to check if there's a new universe
-          ! -- also for every cell add 1 to the count of cells for the
-          ! specified universe
+          ! For lattices, we also need to check if there's a new universe --
+          ! also for every cell add 1 to the count of cells for the specified
+          ! universe
           universe_num = str_to_int(words(2))
           call dict_add_key(lattice_dict, universe_num, n_lattices)
 
        end select
     end do
 
-    ! Check to make sure there are cells, surface, and materials
-    ! defined for the problem
+    ! Check to make sure there are cells, surface, and materials defined for the
+    ! problem
     if (n_cells == 0) then
        msg = "No cells specified!"
        close(UNIT=in)
@@ -172,8 +170,8 @@ contains
     allocate(materials(n_materials))
     allocate(tallies(n_tallies))
 
-    ! Also allocate a list for keeping track of where cells have been
-    ! assigned in each universe
+    ! Also allocate a list for keeping track of where cells have been assigned
+    ! in each universe
     allocate(index_cell_in_univ(n_universes))
     index_cell_in_univ = 0
 
@@ -184,11 +182,10 @@ contains
     call dict_create(material_dict)
     call dict_create(tally_dict)
 
-    ! We also need to allocate the cell count lists for each
-    ! universe. The logic for this is a little more convoluted. In
-    ! universe_dict, the (key,value) pairs are the uid of the universe
-    ! and the index in the array. In ucount_dict, it's the uid of the
-    ! universe and the number of cells.
+    ! We also need to allocate the cell count lists for each universe. The logic
+    ! for this is a little more convoluted. In universe_dict, the (key,value)
+    ! pairs are the uid of the universe and the index in the array. In
+    ! ucount_dict, it's the uid of the universe and the number of cells.
 
     key_list => dict_keys(universe_dict)
     do while (associated(key_list))
@@ -213,11 +210,10 @@ contains
 
   end subroutine read_count
 
-!=====================================================================
-! READ_INPUT takes a second pass through the input file and parses all
-! the data on each line, calling the appropriate subroutine for each
-! type of data item.
-!=====================================================================
+!===============================================================================
+! READ_INPUT takes a second pass through the input file and parses all the data
+! on each line, calling the appropriate subroutine for each type of data item.
+!===============================================================================
 
   subroutine read_input(filename)
 
@@ -323,13 +319,13 @@ contains
 
   end subroutine read_input
 
-!=====================================================================
-! ADJUST_INDICES changes the values for 'surfaces' for each cell and
-! the material index assigned to each to the indices in the surfaces
-! and material array rather than the unique IDs assigned to each
-! surface and material. Also assigns boundary conditions to surfaces
-! based on those read into the bc_dict dictionary
-!=====================================================================
+!===============================================================================
+! ADJUST_INDICES changes the values for 'surfaces' for each cell and the
+! material index assigned to each to the indices in the surfaces and material
+! array rather than the unique IDs assigned to each surface and material. Also
+! assigns boundary conditions to surfaces based on those read into the bc_dict
+! dictionary
+!===============================================================================
 
   subroutine adjust_indices()
 
@@ -398,10 +394,10 @@ contains
 
   end subroutine adjust_indices
 
-!=====================================================================
-! BUILD_UNIVERSE determines what level each universe is at and
-! determines what the parent cell of each cell in a subuniverse is.
-!=====================================================================
+!===============================================================================
+! BUILD_UNIVERSE determines what level each universe is at and determines what
+! the parent cell of each cell in a subuniverse is.
+!===============================================================================
 
   recursive subroutine build_universe(univ, parent, level)
 
@@ -458,9 +454,9 @@ contains
 
   end subroutine build_universe
 
-!=====================================================================
+!===============================================================================
 ! READ_CELL parses the data on a cell card.
-!=====================================================================
+!===============================================================================
 
   subroutine read_cell(index, words, n_words)
 
@@ -552,9 +548,9 @@ contains
 
   end subroutine read_cell
 
-!=====================================================================
+!===============================================================================
 ! READ_SURFACE parses the data on a surface card.
-!=====================================================================
+!===============================================================================
 
   subroutine read_surface(index, words, n_words)
 
@@ -641,11 +637,11 @@ contains
 
   end subroutine read_surface
 
-!=====================================================================
-! READ_BC creates a dictionary whose (key,value) pairs are the uids of
-! surfaces and specified boundary conditions, respectively. This is
-! later used in adjust_indices to set the surface boundary conditions.
-!=====================================================================
+!===============================================================================
+! READ_BC creates a dictionary whose (key,value) pairs are the uids of surfaces
+! and specified boundary conditions, respectively. This is later used in
+! adjust_indices to set the surface boundary conditions.
+!===============================================================================
 
   subroutine read_bc(words, n_words)
 
@@ -684,9 +680,9 @@ contains
 
   end subroutine read_bc
 
-!=====================================================================
+!===============================================================================
 ! READ_LATTICE parses the data on a lattice entry.
-!=====================================================================
+!===============================================================================
 
   subroutine read_lattice(index, words, n_words)
 
@@ -770,9 +766,9 @@ contains
 
   end subroutine read_lattice
 
-!=====================================================================
+!===============================================================================
 ! READ_SOURCE parses the data on a source entry.
-!=====================================================================
+!===============================================================================
 
   subroutine read_source(words, n_words)
 
@@ -811,9 +807,9 @@ contains
     
   end subroutine read_source
 
-!=====================================================================
+!===============================================================================
 ! READ_TALLY
-!=====================================================================
+!===============================================================================
 
   subroutine read_tally(index, words, n_words)
 
@@ -850,7 +846,7 @@ contains
        
        select case (trim(word))
        case ('reaction')
-          ! ==========================================================
+          ! ====================================================================
           ! READ REACTION LIST
 
           ! Determine how many reactions are listed
@@ -882,7 +878,7 @@ contains
           end if
 
        case ('cell')
-          ! ==========================================================
+          ! ====================================================================
           ! READ CELL LIST
 
           ! Determine how many reactions are listed
@@ -914,7 +910,7 @@ contains
           end if
 
        case ('energy')
-          ! ==========================================================
+          ! ====================================================================
           ! READ ENERGY LIST
 
           ! Determine how many energies are listed
@@ -966,10 +962,10 @@ contains
 
   end subroutine read_tally
 
-!=====================================================================
-! READ_MATERIAL parses a material card. Note that atom percents and
-! densities are normalized in a separate routine
-!=====================================================================
+!===============================================================================
+! READ_MATERIAL parses a material card. Note that atom percents and densities
+! are normalized in a separate routine
+!===============================================================================
 
   subroutine read_material(index, words, n_words)
 
@@ -1019,10 +1015,9 @@ contains
 
   end subroutine read_material
 
-!=====================================================================
-! NORMALIZE_AO normalizes the atom or weight percentages for each
-! material
-!=====================================================================
+!===============================================================================
+! NORMALIZE_AO normalizes the atom or weight percentages for each material
+!===============================================================================
 
   subroutine normalize_ao()
 
@@ -1040,13 +1035,12 @@ contains
     type(xsData),   pointer :: iso => null()
     type(Material), pointer :: mat => null()
     
-    ! first find the index in the xsdata array for each isotope in
-    ! each material
+    ! first find the index in the xsdata array for each isotope in each material
     do i = 1, n_materials
        mat => materials(i)
 
-       ! Check to make sure either all atom percents or all weight
-       ! percents are given
+       ! Check to make sure either all atom percents or all weight percents are
+       ! given
        if (.not. (all(mat%atom_percent > ZERO) .or. & 
             & all(mat%atom_percent < ZERO))) then
           msg = "Cannot mix atom and weight percents in material " // &
@@ -1067,23 +1061,22 @@ contains
           ! determine atomic weight ratio
           awr = xsdatas(index) % awr
 
-          ! if given weight percent, convert all values so that they
-          ! are divided by awr. thus, when a sum is done over the
-          ! values, it's actually sum(w/awr)
+          ! if given weight percent, convert all values so that they are divided
+          ! by awr. thus, when a sum is done over the values, it's actually
+          ! sum(w/awr)
           if (.not. percent_in_atom) then
              mat % atom_percent(j) = -mat % atom_percent(j) / awr
           end if
        end do
 
-       ! determine normalized atom percents. if given atom percents,
-       ! this is straightforward. if given weight percents, the value
-       ! is w/awr and is divided by sum(w/awr)
+       ! determine normalized atom percents. if given atom percents, this is
+       ! straightforward. if given weight percents, the value is w/awr and is
+       ! divided by sum(w/awr)
        sum_percent = sum(mat%atom_percent)
        mat % atom_percent = mat % atom_percent / sum_percent
 
-       ! Change density in g/cm^3 to atom/b-cm. Since all values are
-       ! now in atom percent, the sum needs to be re-evaluated as
-       ! 1/sum(x*awr)
+       ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
+       ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
        if (.not. density_in_atom) then
           sum_percent = ZERO
           do j = 1, mat % n_isotopes
@@ -1100,10 +1093,10 @@ contains
 
   end subroutine normalize_ao
 
-!=====================================================================
-! READ_XS_LIBRARY parses the data on a xs_library card. This card
-! specifies what cross section library should be used by default
-!=====================================================================
+!===============================================================================
+! READ_XS_LIBRARY parses the data on a xs_library card. This card specifies what
+! cross section library should be used by default
+!===============================================================================
 
   subroutine read_xs_library(words, n_words)
 
@@ -1112,12 +1105,11 @@ contains
 
   end subroutine read_xs_library
 
-!=====================================================================
-! READ_CRITICALITY parses the data on a criticality card. This card
-! specifies that the problem at hand is a criticality calculation and
-! gives the number of cycles, inactive cycles, and particles per
-! cycle.
-!=====================================================================
+!===============================================================================
+! READ_CRITICALITY parses the data on a criticality card. This card specifies
+! that the problem at hand is a criticality calculation and gives the number of
+! cycles, inactive cycles, and particles per cycle.
+!===============================================================================
 
   subroutine read_criticality(words, n_words)
 
@@ -1152,9 +1144,9 @@ contains
 
   end subroutine read_criticality
 
-!=====================================================================
+!===============================================================================
 ! READ_LINE reads a line from a file open on a unit
-!=====================================================================
+!===============================================================================
 
   subroutine read_line(unit, line, ioError)
 
@@ -1166,12 +1158,11 @@ contains
 
   end subroutine read_line
 
-!=====================================================================
-! GET_NEXT_LINE reads the next line to the file connected on the
-! specified unit including any continuation lines. If a line ends in
-! an ampersand, the next line is read and its words are appended to
-! the final array
-!=====================================================================
+!===============================================================================
+! GET_NEXT_LINE reads the next line to the file connected on the specified unit
+! including any continuation lines. If a line ends in an ampersand, the next
+! line is read and its words are appended to the final array
+!===============================================================================
 
   subroutine get_next_line(unit, words, n, ioError)
 
@@ -1214,9 +1205,9 @@ contains
 
   end subroutine get_next_line
 
-!=====================================================================
+!===============================================================================
 ! SKIP_LINES skips 'n_lines' lines from a file open on a unit
-!=====================================================================
+!===============================================================================
 
   subroutine skip_lines(unit, n_lines, ioError)
 
@@ -1233,9 +1224,9 @@ contains
 
   end subroutine skip_lines
 
-!=====================================================================
+!===============================================================================
 ! READ_DATA_INT reads integer data into an array from a file open
-!=====================================================================
+!===============================================================================
 
   subroutine read_data_int(unit, array, n, lines, words_per_line)
 
@@ -1261,9 +1252,9 @@ contains
 
   end subroutine read_data_int
 
-!=====================================================================
+!===============================================================================
 ! READ_DATA_REAL reads real(8) data into an array from a file open
-!=====================================================================
+!===============================================================================
 
   subroutine read_data_real(unit, array, n, lines, words_per_line)
 

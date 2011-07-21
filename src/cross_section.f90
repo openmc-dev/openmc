@@ -1,19 +1,19 @@
 module cross_section
 
   use global
-  use string, only: split_string
+  use string,          only: split_string
   use data_structures, only: dict_create, dict_add_key, dict_get_key
-  use output, only: error, message
-  use types, only: xsData
+  use output,          only: error, message
+  use types,           only: xsData
 
   implicit none
 
 contains
 
-!=====================================================================
-! READ_XSDATA reads the data in a SERPENT xsdata file and builds a
-! dictionary to find cross-section information later on.
-!=====================================================================
+!===============================================================================
+! READ_XSDATA reads the data in a SERPENT xsdata file and builds a dictionary to
+! find cross-section information later on.
+!===============================================================================
 
   subroutine read_xsdata(path)
 
@@ -118,10 +118,10 @@ contains
 
   end subroutine read_xsdata
 
-!=====================================================================
-! MATERIAL_TOTAL_XS calculates the total macroscopic cross section of
-! each material for use in sampling path lengths
-!=====================================================================
+!===============================================================================
+! MATERIAL_TOTAL_XS calculates the total macroscopic cross section of each
+! material for use in sampling path lengths
+!===============================================================================
 
   subroutine material_total_xs()
 

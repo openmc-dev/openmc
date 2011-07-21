@@ -17,11 +17,11 @@ module mpi_routines
 
 contains
 
-!=====================================================================
-! SETUP_MPI initilizes the Message Passing Interface (MPI) and
-! determines the number of processors the problem is being run with as
-! well as the rank of each processor.
-!=====================================================================
+!===============================================================================
+! SETUP_MPI initilizes the Message Passing Interface (MPI) and determines the
+! number of processors the problem is being run with as well as the rank of each
+! processor.
+!===============================================================================
 
   subroutine setup_mpi()
 
@@ -95,12 +95,11 @@ contains
 
   end subroutine setup_mpi
 
-!=====================================================================
-! SYNCHRONIZE_BANK samples source sites from the fission sites that
-! were accumulated during the cycle. This routine is what allows this
-! Monte Carlo to scale to large numbers of processors where other
-! codes cannot.
-! =====================================================================
+!===============================================================================
+! SYNCHRONIZE_BANK samples source sites from the fission sites that were
+! accumulated during the cycle. This routine is what allows this Monte Carlo to
+! scale to large numbers of processors where other codes cannot.
+!===============================================================================
 
   subroutine synchronize_bank(i_cycle)
 
@@ -138,8 +137,7 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     t0 = MPI_WTIME()
 
-    ! Determine starting index for fission bank and total sites in
-    ! fission bank
+    ! Determine starting index for fission bank and total sites in fission bank
     start = 0_8
     call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
          & MPI_COMM_WORLD, ierr)
@@ -162,8 +160,7 @@ contains
        call error(msg)
     end if
 
-    ! Make sure all processors start at the same point for random
-    ! sampling
+    ! Make sure all processors start at the same point for random sampling
     call RN_init_particle(int(i_cycle,8))
 
     ! Skip ahead however many random numbers are needed
@@ -183,15 +180,14 @@ contains
     msg = "Sampling fission sites..."
     call message(msg, 8)
 
-    ! ================================================================
+    ! ==========================================================================
     ! SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
     do i = 1, n_bank
 
-       ! If there are less than n_particles particles banked,
-       ! automatically add int(n_particles/total) sites to
-       ! temp_sites. For example, if you need 1000 and 300 were
-       ! banked, this would add 3 source sites per banked site and the
-       ! remaining 100 would be randomly sampled.
+       ! If there are less than n_particles particles banked, automatically add
+       ! int(n_particles/total) sites to temp_sites. For example, if you need
+       ! 1000 and 300 were banked, this would add 3 source sites per banked site
+       ! and the remaining 100 would be randomly sampled.
        if (total < n_particles) then
           do j = 1,int(n_particles/total)
              ! If index is within this node's range, add site to source
@@ -207,8 +203,8 @@ contains
        end if
     end do
 
-    ! Now that we've sampled sites, check where the boundaries of data
-    ! are for the source bank
+    ! Now that we've sampled sites, check where the boundaries of data are for
+    ! the source bank
 #ifdef MPI
     start = 0_8
     call MPI_EXSCAN(count, start, 1, MPI_INTEGER8, MPI_SUM, & 
@@ -229,15 +225,15 @@ contains
 
     if (rank == n_procs - 1) then
        if (total > n_particles) then
-          ! If we have extra sites sampled, we will simply discard the
-          ! extra ones on the last processor
+          ! If we have extra sites sampled, we will simply discard the extra
+          ! ones on the last processor
           if (rank == n_procs - 1) then
              count = count - send_to_right
           end if
 
        elseif (total < n_particles) then
-          ! If we have too few sites, grab sites from the very end of
-          ! the fission bank
+          ! If we have too few sites, grab sites from the very end of the
+          ! fission bank
           sites_needed = n_particles - total
           do i = 1, sites_needed
              count = count + 1
@@ -256,7 +252,7 @@ contains
     msg = "Sending fission sites..."
     call message(msg, 8)
 
-    ! ================================================================
+    ! ==========================================================================
     ! SEND BANK SITES TO NEIGHBORS
     allocate(left_bank(abs(send_to_left)))
     allocate(right_bank(abs(send_to_right)))
@@ -285,7 +281,7 @@ contains
     msg = "Constructing source bank..."
     call message(msg, 8)
 
-    ! ================================================================
+    ! ==========================================================================
     ! RECONSTRUCT SOURCE BANK
     if (send_to_left < 0 .and. send_to_right >= 0) then
        i = -send_to_left         ! size of first block

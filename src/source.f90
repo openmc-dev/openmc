@@ -11,9 +11,9 @@ module source
 
 contains
 
-!=====================================================================
+!===============================================================================
 ! INIT_SOURCE initializes particles in the source bank
-!=====================================================================
+!===============================================================================
 
   subroutine init_source()
 
@@ -33,8 +33,7 @@ contains
     msg = 'Initializing source particles...'
     call message(msg, 6)
 
-    ! Determine maximum amount of particles to simulate on each
-    ! processor
+    ! Determine maximum amount of particles to simulate on each processor
     maxwork = ceiling(real(n_particles)/n_procs,8)
 
     ! Allocate fission and source banks
@@ -105,9 +104,9 @@ contains
 
   end subroutine init_source
 
-!=====================================================================
+!===============================================================================
 ! GET_SOURCE_PARTICLE returns the next source particle 
-!=====================================================================
+!===============================================================================
 
   function get_source_particle() result(p)
 
@@ -130,9 +129,9 @@ contains
 
   end function get_source_particle
 
-!=====================================================================
+!===============================================================================
 ! ADD_BANK_SITES
-!=====================================================================
+!===============================================================================
 
   subroutine add_bank_sites(p, table, n)
 
@@ -154,9 +153,9 @@ contains
 
   end subroutine add_bank_sites
 
-!=====================================================================
+!===============================================================================
 ! COPY_FROM_BANK
-!=====================================================================
+!===============================================================================
 
   subroutine copy_from_bank(temp_bank, index, n_sites)
 

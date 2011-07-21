@@ -35,35 +35,34 @@ program main
 
   ! Print the OpenMC title and version/date/time information
   if (master) call title()
-  ! Initialize random number generator. The first argument corresponds
-  ! to which random number generator to use- in this case one of the
-  ! L'Ecuyer 63-bit RNGs.
+  ! Initialize random number generator. The first argument corresponds to which
+  ! random number generator to use- in this case one of the L'Ecuyer 63-bit
+  ! RNGs.
   call RN_init_problem(3, 0_8, 0_8, 0_8, 0)
 
   ! Set default values for settings
   call set_defaults()
 
-  ! Read input file -- make a first pass through the file to count
-  ! cells, surfaces, etc in order to allocate arrays, then do a second
-  ! pass to actually read values
+  ! Read input file -- make a first pass through the file to count cells,
+  ! surfaces, etc in order to allocate arrays, then do a second pass to actually
+  ! read values
   call read_count(path_input)
   call read_input(path_input)
 
-  ! determine at which level universes are and link cells to parenting
-  ! cells
+  ! determine at which level universes are and link cells to parenting cells
   univ => universes(BASE_UNIVERSE)
   call build_universe(univ, 0, 0)
 
-  ! After reading input and basic geometry setup is complete, build
-  ! lists of neighboring cells for efficient tracking
+  ! After reading input and basic geometry setup is complete, build lists of
+  ! neighboring cells for efficient tracking
   call neighbor_lists()
 
   ! Read cross section summary file to determine what files contain
   ! cross-sections
   call read_xsdata(path_xsdata)
 
-  ! With the AWRs from the xsdata, change all material specifications
-  ! so that they contain atom percents summing to 1
+  ! With the AWRs from the xsdata, change all material specifications so that
+  ! they contain atom percents summing to 1
   call normalize_ao()
 
   ! Read ACE-format cross sections
@@ -92,10 +91,10 @@ program main
   
 contains
 
-!=====================================================================
-! RUN_PROBLEM encompasses all the main logic where iterations are
-! performed over the cycles and histories.
-!=====================================================================
+!===============================================================================
+! RUN_PROBLEM encompasses all the main logic where iterations are performed over
+! the cycles and histories.
+!===============================================================================
 
   subroutine run_problem()
 

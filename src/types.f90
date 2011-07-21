@@ -2,9 +2,9 @@ module types
 
   implicit none
 
-!=====================================================================
+!===============================================================================
 ! UNIVERSE defines a geometry that fills all phase space
-!=====================================================================
+!===============================================================================
 
   type Universe
      integer :: uid                   ! Unique ID
@@ -18,10 +18,10 @@ module types
      integer, allocatable :: tallies(:)
   end type Universe
 
-!=====================================================================
-! LATTICE is an ordered array of elements (either rectangular,
-! hexagonal, or triangular)
-!=====================================================================
+!===============================================================================
+! LATTICE is an ordered array of elements (either rectangular, hexagonal, or
+! triangular)
+!===============================================================================
 
   type Lattice
      integer :: uid      ! Universe number for lattice
@@ -37,10 +37,10 @@ module types
      integer, allocatable :: tallies(:)
   end type Lattice
 
-!=====================================================================
-! SURFACE type defines a first- or second-order surface that can be
-! used to construct closed volumes (cells)
-!=====================================================================
+!===============================================================================
+! SURFACE type defines a first- or second-order surface that can be used to
+! construct closed volumes (cells)
+!===============================================================================
 
   type Surface
      integer :: uid                    ! Unique ID
@@ -52,9 +52,9 @@ module types
      integer :: bc                     ! Boundary condition
   end type Surface
 
-!=====================================================================
+!===============================================================================
 ! CELL defines a closed volume by its bounding surfaces
-!=====================================================================
+!===============================================================================
 
   type Cell
      integer :: uid        ! Unique ID
@@ -65,16 +65,16 @@ module types
      integer :: material   ! Material within cell (0 for universe)
      integer :: n_surfaces ! Number of surfaces within
      integer, allocatable :: & 
-          & surfaces(:)    ! List of surfaces bounding cell -- note
-                           ! that parentheses, union, etc operators
-                           ! will be listed here too
+          & surfaces(:)    ! List of surfaces bounding cell -- note that
+                           ! parentheses, union, etc operators will be listed
+                           ! here too
      integer, allocatable :: tallies(:)
   end type Cell
 
-!=====================================================================
-! PARTICLE describes the state of a particle being transported through
-! the geometry
-!=====================================================================
+!===============================================================================
+! PARTICLE describes the state of a particle being transported through the
+! geometry
+!===============================================================================
 
   type Particle
     integer(8) :: uid          ! Unique ID
@@ -96,11 +96,11 @@ module types
     integer    :: n_coll       ! # of collisions
   end type Particle
 
-!=====================================================================
-! BANK is used for storing fission sites in criticality
-! calculations. Since all the state information of a neutron is not
-! needed, this type allows sites to be stored with less memory
-!=====================================================================
+!===============================================================================
+! BANK is used for storing fission sites in criticality calculations. Since all
+! the state information of a neutron is not needed, this type allows sites to be
+! stored with less memory
+!===============================================================================
 
   type Bank
      integer(8) :: uid    ! Unique ID
@@ -109,9 +109,9 @@ module types
      real(8)    :: E      ! energy
   end type Bank
 
-!=====================================================================
+!===============================================================================
 ! TALLYSCORE
-!=====================================================================
+!===============================================================================
 
   type TallyScore
      integer :: n_events
@@ -119,9 +119,9 @@ module types
      real(8) :: val_sq
   end type TallyScore
 
-!=====================================================================
+!===============================================================================
 ! TALLY
-!=====================================================================
+!===============================================================================
 
   type Tally
      integer :: uid
@@ -143,12 +143,11 @@ module types
      type(TallyScore), allocatable :: score(:,:,:)
   end type Tally
 
-!=====================================================================
-! ISOTOPE describes an isotope, e.g. U-235, within a material. Note
-! that two separate variables must be used for the same isotope in two
-! different materials since they will generally have different
-! densities
-!=====================================================================
+!===============================================================================
+! ISOTOPE describes an isotope, e.g. U-235, within a material. Note that two
+! separate variables must be used for the same isotope in two different
+! materials since they will generally have different densities
+!===============================================================================
 
   type Isotope
      integer :: uid     ! unique identifier
@@ -157,9 +156,9 @@ module types
      real(8) :: density ! density in atom/b-cm
   end type Isotope
 
-!=====================================================================
+!===============================================================================
 ! MATERIAL describes a material by its constituent isotopes
-!=====================================================================
+!===============================================================================
 
   type Material
      integer :: uid
@@ -173,21 +172,20 @@ module types
      integer :: sab_table
   end type Material
 
-!=====================================================================
-! EXTSOURCE describes an external source of neutrons for a
-! fixed-source problem or for the starting source in a criticality
-! problem
-!=====================================================================
+!===============================================================================
+! EXTSOURCE describes an external source of neutrons for a fixed-source problem
+! or for the starting source in a criticality problem
+!===============================================================================
 
   type ExtSource
      integer :: type                    ! type of source, e.g. 'box' or 'cell'
      real(8), allocatable :: values(:)  ! values for particular source type
   end type ExtSource
 
-!=====================================================================
-! ACEDISTANGLE contains data for a tabular secondary angle
-! distribution whether it be tabular or 32 equiprobable cosine bins
-!=====================================================================
+!===============================================================================
+! ACEDISTANGLE contains data for a tabular secondary angle distribution whether
+! it be tabular or 32 equiprobable cosine bins
+!===============================================================================
 
   type AceDistAngle
      integer              :: n_energy    ! # of incoming energies
@@ -197,10 +195,10 @@ module types
      real(8), allocatable :: data(:)     ! angular distribution data
   end type AceDistAngle
 
-!=====================================================================
-! ACEDISTENERGY contains data for a secondary energy distribution for
-! all scattering laws
-!=====================================================================
+!===============================================================================
+! ACEDISTENERGY contains data for a secondary energy distribution for all
+! scattering laws
+!===============================================================================
 
   type AceDistEnergy
      integer :: law                    ! secondary distribution law
@@ -213,11 +211,10 @@ module types
      real(8), allocatable :: data(:)   ! energy distribution data
   end type AceDistEnergy
 
-!=====================================================================
-! ACEREACTION contains the cross-section and secondary energy and
-! angle distributions for a single reaction in a continuous-energy
-! ACE-format table
-!=====================================================================
+!===============================================================================
+! ACEREACTION contains the cross-section and secondary energy and angle
+! distributions for a single reaction in a continuous-energy ACE-format table
+!===============================================================================
 
   type AceReaction
      integer :: MT                     ! ENDF MT value
@@ -231,11 +228,11 @@ module types
      type(AceDistEnergy) :: edist      ! Secondary energy distribution
   end type AceReaction
 
-!=====================================================================
-! ACECONTINUOUS contains all the data for an ACE-format
-! continuous-energy cross section. The ACE format (A Compact ENDF
-! format) is used in MCNP and several other Monte Carlo codes.
-!=====================================================================
+!===============================================================================
+! ACECONTINUOUS contains all the data for an ACE-format continuous-energy cross
+! section. The ACE format (A Compact ENDF format) is used in MCNP and several
+! other Monte Carlo codes.
+!===============================================================================
 
   type AceContinuous
      character(20) :: name
@@ -276,10 +273,10 @@ module types
 
   end type AceContinuous
 
-!=====================================================================
-! ACETHERMAL contains S(a,b) data for thermal neutron scattering,
-! typically off of light isotopes such as water, graphite, Be, etc
-!=====================================================================
+!===============================================================================
+! ACETHERMAL contains S(a,b) data for thermal neutron scattering, typically off
+! of light isotopes such as water, graphite, Be, etc
+!===============================================================================
      
   type AceThermal
      character(20) :: name
@@ -300,9 +297,9 @@ module types
      real(8), allocatable :: elastic_mu(:,:)
   end type AceThermal
 
-!=====================================================================
+!===============================================================================
 ! XSDATA contains data read in from a SERPENT xsdata file
-!=====================================================================
+!===============================================================================
 
   type xsData
      character(10) :: alias
@@ -316,11 +313,11 @@ module types
      character(100) :: path
   end type xsData
 
-!=====================================================================
-! KEYVALUECI stores the (key,value) pair for a dictionary where the
-! key is a string and the value is an integer. Note that we need to
-! store the key in addition to the value for collision resolution.
-!=====================================================================
+!===============================================================================
+! KEYVALUECI stores the (key,value) pair for a dictionary where the key is a
+! string and the value is an integer. Note that we need to store the key in
+! addition to the value for collision resolution.
+!===============================================================================
 
   ! Key length for dictionary
   integer, parameter :: DICT_KEY_LENGTH = 20
@@ -330,87 +327,87 @@ module types
      integer                        :: value
   end type KeyValueCI
 
-!=====================================================================
-! KEYVALUEII stores the (key,value) pair for a dictionary where the
-! key is an integer and the value is an integer. Note that we need to
-! store the key in addition to the value for collision resolution.
-!=====================================================================
+!===============================================================================
+! KEYVALUEII stores the (key,value) pair for a dictionary where the key is an
+! integer and the value is an integer. Note that we need to store the key in
+! addition to the value for collision resolution.
+!===============================================================================
 
   type KeyValueII
      integer :: key
      integer :: value
   end type KeyValueII
 
-!=====================================================================
-! LISTKEYVALUECI stores a linked list of (key,value) pairs where the
-! key is a character and the value is an integer
-!=====================================================================
+!===============================================================================
+! LISTKEYVALUECI stores a linked list of (key,value) pairs where the key is a
+! character and the value is an integer
+!===============================================================================
 
   type ListKeyValueCI
      type(ListKeyValueCI), pointer :: next => null()
      type(KeyValueCI)              :: data
   end type ListKeyValueCI
 
-!=====================================================================
-! LISTKEYVALUEII stores a linked list of (key,value) pairs where the
-! key is a character and the value is an integer
-!=====================================================================
+!===============================================================================
+! LISTKEYVALUEII stores a linked list of (key,value) pairs where the key is a
+! character and the value is an integer
+!===============================================================================
 
   type ListKeyValueII
      type(ListKeyValueII), pointer :: next => null()
      type(KeyValueII)              :: data
   end type ListKeyValueII
 
-!=====================================================================
-! LISTREAL stores a linked list of real values. This is used for
-! constructing a unionized energy grid.
-!=====================================================================
+!===============================================================================
+! LISTREAL stores a linked list of real values. This is used for constructing a
+! unionized energy grid.
+!===============================================================================
 
   type ListReal
      type(ListReal), pointer :: next => null()
      real(8)                 :: data
   end type ListReal
 
-!=====================================================================
+!===============================================================================
 ! LISTINT stores a linked list of integer values.
-!=====================================================================
+!===============================================================================
 
   type ListInt
      type(ListInt), pointer :: next => null()
      integer                :: data
   end type ListInt
 
-!=====================================================================
-! HASHLISTCI - Since it's not possible to directly do an array of
-! pointers, this derived type provides a pointer
-!=====================================================================
+!===============================================================================
+! HASHLISTCI - Since it's not possible to directly do an array of pointers, this
+! derived type provides a pointer
+!===============================================================================
 
   type HashListCI
      type(ListKeyValueCI), pointer :: list => null()
   end type HashListCI
 
-!=====================================================================
-! HASHLISTII - Since it's not possible to directly do an array of
-! pointers, this derived type provides a pointer
-!=====================================================================
+!===============================================================================
+! HASHLISTII - Since it's not possible to directly do an array of pointers, this
+! derived type provides a pointer
+!===============================================================================
 
   type HashListII
      type(ListKeyValueII), pointer :: list => null()
   end type HashListII
 
-!=====================================================================
-! DICTIONARYCI provides a dictionary data structure of (key,value)
-! pairs where the keys are strings and values are integers.
-!=====================================================================
+!===============================================================================
+! DICTIONARYCI provides a dictionary data structure of (key,value) pairs where
+! the keys are strings and values are integers.
+!===============================================================================
 
   type DictionaryCI
      type(HashListCI), pointer :: table(:) => null()
   end type DictionaryCI
 
-!=====================================================================
-! DICTIONARYII provides a dictionary data structure of (key,value)
-! pairs where the keys and values are both integers.
-!=====================================================================
+!===============================================================================
+! DICTIONARYII provides a dictionary data structure of (key,value) pairs where
+! the keys and values are both integers.
+!===============================================================================
 
   type DictionaryII
      type(HashListII), pointer :: table(:) => null()

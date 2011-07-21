@@ -14,10 +14,9 @@ module physics
 
 contains
 
-!=====================================================================
-! TRANSPORT encompasses the main logic for moving a particle through
-! geometry.
-!=====================================================================
+!===============================================================================
+! TRANSPORT encompasses the main logic for moving a particle through geometry.
+!===============================================================================
 
   subroutine transport(p)
 
@@ -101,10 +100,10 @@ contains
 
   end subroutine transport
 
-!=====================================================================
-! FIND_ENERGY_INDEX determines the index on the union energy grid and
-! the interpolation factor for a particle at a certain energy
-!=====================================================================
+!===============================================================================
+! FIND_ENERGY_INDEX determines the index on the union energy grid and the
+! interpolation factor for a particle at a certain energy
+!===============================================================================
 
   subroutine find_energy_index(p)
 
@@ -117,9 +116,8 @@ contains
     ! copy particle's energy
     E = p % E
 
-    ! if particle's energy is outside of energy grid range, set to
-    ! first or last index. Otherwise, do a binary search through the
-    ! union energy grid.
+    ! if particle's energy is outside of energy grid range, set to first or last
+    ! index. Otherwise, do a binary search through the union energy grid.
     if (E < e_grid(1)) then
        IE = 1
     elseif (E > e_grid(n_grid)) then
@@ -128,9 +126,8 @@ contains
        IE = binary_search(e_grid, n_grid, E)
     end if
     
-    ! calculate the interpolation factor -- note this will be outside
-    ! of [0,1) for a particle outside the energy range of the union
-    ! grid
+    ! calculate the interpolation factor -- note this will be outside of [0,1)
+    ! for a particle outside the energy range of the union grid
     interp = (E - e_grid(IE))/(e_grid(IE+1) - e_grid(IE))
 
     ! set particle attributes
@@ -139,10 +136,10 @@ contains
     
   end subroutine find_energy_index
 
-!=====================================================================
-! COLLISION samples a nuclide and reaction and then calls the
-! appropriate routine for that reaction
-!=====================================================================
+!===============================================================================
+! COLLISION samples a nuclide and reaction and then calls the appropriate
+! routine for that reaction
+!===============================================================================
 
   subroutine collision(p)
 
@@ -166,8 +163,8 @@ contains
 
     density = cMaterial%atom_density
 
-    ! calculate total cross-section for each nuclide at current energy
-    ! in order to create discrete pdf for sampling nuclide
+    ! calculate total cross-section for each nuclide at current energy in order
+    ! to create discrete pdf for sampling nuclide
     n_isotopes = cMaterial%n_isotopes
     allocate(Sigma_rxn(n_isotopes))
     do i = 1, n_isotopes
@@ -210,9 +207,9 @@ contains
     do i = 1, table%n_reaction
        rxn => table%reactions(i)
 
-       ! some materials have gas production cross sections with MT >
-       ! 200 that are duplicates. Also MT=4 is total level inelastic
-       ! scattering which should be skipped
+       ! some materials have gas production cross sections with MT > 200 that
+       ! are duplicates. Also MT=4 is total level inelastic scattering which
+       ! should be skipped
        if (rxn%MT >= 200 .or. rxn%MT == 4) cycle
 
        ! if energy is below threshold for this reaction, skip it
@@ -266,11 +263,11 @@ contains
 
   end subroutine collision
 
-!=====================================================================
+!===============================================================================
 ! ELASTIC_SCATTER treats the elastic scattering of a neutron with a
-! target. Currently this assumes target-at-rest kinematics --
-! obviously will need to be fixed
-!=====================================================================
+! target. Currently this assumes target-at-rest kinematics -- obviously will
+! need to be fixed
+!===============================================================================
 
   subroutine elastic_scatter(p, table, rxn)
 
@@ -341,12 +338,11 @@ contains
 
   end subroutine elastic_scatter
 
-!=====================================================================
-! N_FISSION determines the average total, prompt, and delayed neutrons
-! produced from fission and creates appropriate bank sites. This
-! routine will not work with implicit absorption, namely sampling of
-! the number of neutrons!
-!=====================================================================
+!===============================================================================
+! N_FISSION determines the average total, prompt, and delayed neutrons produced
+! from fission and creates appropriate bank sites. This routine will not work
+! with implicit absorption, namely sampling of the number of neutrons!
+!===============================================================================
 
   subroutine n_fission(p, table, rxn)
 
@@ -381,7 +377,7 @@ contains
     ! copy energy of neutron
     E = p % E
 
-    ! ================================================================
+    ! ==========================================================================
     ! DETERMINE TOTAL NU
     if (table % nu_t_type == NU_NONE) then
        msg = "No neutron emission data for table: " // table % name
@@ -397,9 +393,9 @@ contains
           nu_total = nu_total + c * E**i
        end do
     elseif (table % nu_t_type == NU_TABULAR) then
-       ! determine number of interpolation regions -- as far as I can
-       ! tell, no nu data has multiple interpolation
-       ! regions. Furthermore, it seems all are lin-lin.
+       ! determine number of interpolation regions -- as far as I can tell, no
+       ! nu data has multiple interpolation regions. Furthermore, it seems all
+       ! are lin-lin.
        NR = int(table % nu_t_data(1))
        if (NR /= 0) then
           msg = "Multiple interpolation regions not supported while &
@@ -411,8 +407,8 @@ contains
        loc = 2 + 2*NR
        NE = int(table % nu_t_data(loc))
 
-       ! do binary search over tabuled energies to determine
-       ! appropriate index and interpolation factor
+       ! do binary search over tabuled energies to determine appropriate index
+       ! and interpolation factor
        if (E < table % nu_t_data(loc+1)) then
           j = 1
           f = ZERO
@@ -431,11 +427,11 @@ contains
             & (table % nu_t_data(loc+j+1) - table % nu_t_data(loc+j))
     end if
           
-    ! ================================================================
+    ! ==========================================================================
     ! DETERMINE PROMPT NU
     if (table % nu_p_type == NU_NONE) then
-       ! since no prompt or delayed data is present, this means all
-       ! neutron emission is prompt
+       ! since no prompt or delayed data is present, this means all neutron
+       ! emission is prompt
        nu_prompt = nu_total
     elseif (table % nu_p_type == NU_POLYNOMIAL) then
        ! determine number of coefficients
@@ -460,8 +456,8 @@ contains
        loc = 2 + 2*NR
        NE = int(table % nu_p_data(loc))
 
-       ! do binary search over tabuled energies to determine
-       ! appropriate index and interpolation factor
+       ! do binary search over tabuled energies to determine appropriate index
+       ! and interpolation factor
        if (E < table % nu_p_data(loc+1)) then
           j = 1
           f = ZERO
@@ -480,7 +476,7 @@ contains
             & (table % nu_p_data(loc+j+1) - table % nu_p_data(loc+j))
     end if
        
-    ! ================================================================
+    ! ==========================================================================
     ! DETERMINE DELAYED NU
     if (table % nu_d_type == NU_NONE) then
        nu_delay = ZERO
@@ -497,8 +493,8 @@ contains
        loc = 2 + 2*NR
        NE = int(table % nu_d_data(loc))
 
-       ! do binary search over tabuled energies to determine
-       ! appropriate index and interpolation factor
+       ! do binary search over tabuled energies to determine appropriate index
+       ! and interpolation factor
        if (E < table % nu_d_data(loc+1)) then
           j = 1
           f = ZERO
@@ -541,7 +537,7 @@ contains
 
        ! sample between delayed and prompt neutrons
        if (rang() < beta) then
-          ! ==========================================================
+          ! ====================================================================
           ! DELAYED NEUTRON SAMPLED
 
           ! sampled delayed precursor group
@@ -598,7 +594,7 @@ contains
           end do
 
        else
-          ! ==========================================================
+          ! ====================================================================
           ! PROMPT NEUTRON SAMPLED
 
           ! sample from prompt neutron energy distribution
@@ -633,11 +629,10 @@ contains
 
   end subroutine n_fission
 
-!=====================================================================
-! INELASTIC_SCATTER handles all reactions with a single secondary
-! neutron (other than fission), i.e. level scattering, (n,np), (n,na),
-! etc.
-!=====================================================================
+!===============================================================================
+! INELASTIC_SCATTER handles all reactions with a single secondary neutron (other
+! than fission), i.e. level scattering, (n,np), (n,na), etc.
+!===============================================================================
 
   subroutine inelastic_scatter(p, table, rxn)
 
@@ -673,8 +668,8 @@ contains
        call sample_energy(rxn%edist, E_in, E)
     end if
 
-    ! if scattering system is in center-of-mass, transfer cosine of
-    ! scattering angle and outgoing energy from CM to LAB
+    ! if scattering system is in center-of-mass, transfer cosine of scattering
+    ! angle and outgoing energy from CM to LAB
     if (rxn % TY < 0) then
        E_cm = E
 
@@ -700,9 +695,9 @@ contains
 
   end subroutine inelastic_scatter
 
-!=====================================================================
+!===============================================================================
 ! N_XN
-!=====================================================================
+!===============================================================================
 
   subroutine n_xn(p, table, rxn)
 
@@ -740,8 +735,8 @@ contains
        call sample_energy(rxn%edist, E_in, E)
     end if
 
-    ! if scattering system is in center-of-mass, transfer cosine of
-    ! scattering angle and outgoing energy from CM to LAB
+    ! if scattering system is in center-of-mass, transfer cosine of scattering
+    ! angle and outgoing energy from CM to LAB
     if (rxn % TY < 0) then
        E_cm = E
 
@@ -773,10 +768,10 @@ contains
 
   end subroutine n_xn
 
-!=====================================================================
-! N_ABSORPTION handles all absorbing reactions, i.e. (n,gamma), (n,p),
-! (n,a), etc.
-!=====================================================================
+!===============================================================================
+! N_ABSORPTION handles all absorbing reactions, i.e. (n,gamma), (n,p), (n,a),
+! etc.
+!===============================================================================
 
   subroutine n_absorption(p)
 
@@ -794,11 +789,11 @@ contains
 
   end subroutine n_absorption
 
-!=====================================================================
-! SAMPLE_ANGLE samples the cosine of the angle between incident and
-! exiting particle directions either from 32 equiprobable bins or from
-! a tabular distribution.
-!=====================================================================
+!===============================================================================
+! SAMPLE_ANGLE samples the cosine of the angle between incident and exiting
+! particle directions either from 32 equiprobable bins or from a tabular
+! distribution.
+!===============================================================================
 
   function sample_angle(rxn, E) result(mu)
 
@@ -823,8 +818,8 @@ contains
     real(8)        :: p0,p1   ! probability distribution
     character(250) :: msg     ! error message
 
-    ! check if reaction has angular distribution -- if not, sample
-    ! outgoing angle isotropically
+    ! check if reaction has angular distribution -- if not, sample outgoing
+    ! angle isotropically
     if (.not. rxn % has_angle_dist) then
        mu = TWO * rang() - ONE
        return
@@ -833,9 +828,8 @@ contains
     ! determine number of incoming energies
     n = rxn % adist % n_energy
 
-    ! find energy bin and calculate interpolation factor -- if the
-    ! energy is outside the range of the tabulated energies, choose
-    ! the first or last bins
+    ! find energy bin and calculate interpolation factor -- if the energy is
+    ! outside the range of the tabulated energies, choose the first or last bins
     if (E < rxn % adist % energy(1)) then
        i = 1
        r = ZERO
@@ -851,8 +845,7 @@ contains
     ! Sample between the ith and (i+1)th bin
     if (r > rang()) i = i + 1
 
-    ! check whether this is a 32-equiprobable bin or a tabular
-    ! distribution
+    ! check whether this is a 32-equiprobable bin or a tabular distribution
     loc  = rxn % adist % location(i)
     type = rxn % adist % type(i)
     if (type == ANGLE_ISOTROPIC) then
@@ -888,8 +881,8 @@ contains
           mu = mu0 + (xi - c_k)/p0
 
        elseif (interp == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about
-          ! the formula given in the MCNP manual
+          ! Linear-linear interpolation -- not sure how you come about the
+          ! formula given in the MCNP manual
           p1  = rxn % adist % data(loc + NP + k+1)
           mu1 = rxn % adist % data(loc + k+1)
 
@@ -918,12 +911,11 @@ contains
     
   end function sample_angle
 
-!=====================================================================
-! ROTATE_ANGLE rotates direction cosines through a polar angle whose
-! cosine is mu and through an azimuthal angle sampled uniformly. Note
-! that this is done with direct sampling rather than rejection as is
-! done in MCNP and SERPENT.
-!=====================================================================
+!===============================================================================
+! ROTATE_ANGLE rotates direction cosines through a polar angle whose cosine is
+! mu and through an azimuthal angle sampled uniformly. Note that this is done
+! with direct sampling rather than rejection as is done in MCNP and SERPENT.
+!===============================================================================
 
   subroutine rotate_angle(u, v, w, mu)
 
@@ -951,8 +943,8 @@ contains
     a = sqrt(ONE - mu*mu)
     b = sqrt(ONE - w0*w0)
 
-    ! Need to treat special case where sqrt(1 - w**2) is close to zero
-    ! by expanding about the v component rather than the w component
+    ! Need to treat special case where sqrt(1 - w**2) is close to zero by
+    ! expanding about the v component rather than the w component
     if (b > 1e-10) then
        u = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
        v = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
@@ -966,9 +958,9 @@ contains
 
   end subroutine rotate_angle
     
-!=====================================================================
+!===============================================================================
 ! SAMPLE_ENERGY
-!=====================================================================
+!===============================================================================
 
   subroutine sample_energy(edist, E_in, E_out, mu_out)
 
@@ -1018,8 +1010,7 @@ contains
     real(8) :: T           ! nuclear temperature
     character(250) :: msg  ! error message
 
-    ! TODO: If there are multiple scattering laws, sample scattering
-    ! law
+    ! TODO: If there are multiple scattering laws, sample scattering law
 
     ! Check for multiple interpolation regions
     if (edist % n_interp > 0) then
@@ -1031,11 +1022,11 @@ contains
     ! Determine which secondary energy distribution law to use
     select case (edist % law)
     case (1)
-       ! =============================================================
+       ! =======================================================================
        ! TABULAR EQUIPROBABLE ENERGY BINS
 
-       ! read number of interpolation regions, incoming energies, and
-       ! outgoing energies
+       ! read number of interpolation regions, incoming energies, and outgoing
+       ! energies
        NR  = edist % data(1)
        NE  = edist % data(2 + 2*NR)
        NET = edist % data(3 + 2*NR + NE)
@@ -1045,8 +1036,7 @@ contains
           call error(msg)
        end if
 
-       ! determine index on incoming energy grid and interpolation
-       ! factor
+       ! determine index on incoming energy grid and interpolation factor
        loc = 2 + 2*NR
        i = binary_search(edist % data(loc+1), NE, E_in)
        r = (E_in - edist%data(loc+i)) / &
@@ -1056,8 +1046,8 @@ contains
        xi1 = rang()
        k = 1 + int(NET * xi1)
 
-       ! Randomly select between the outgoing table for incoming
-       ! energy E_i and E_(i+1)
+       ! Randomly select between the outgoing table for incoming energy E_i and
+       ! E_(i+1)
        if (rang() < r) then
           l = i + 1
        else
@@ -1073,7 +1063,7 @@ contains
        ! TODO: Add scaled interpolation
 
     case (3)
-       ! =============================================================
+       ! =======================================================================
        ! INELASTIC LEVEL SCATTERING
 
        E_cm = edist%data(2) * (E_in - edist%data(1))
@@ -1081,7 +1071,7 @@ contains
        E_out = E_cm
 
     case (4)
-       ! =============================================================
+       ! =======================================================================
        ! CONTINUOUS TABULAR DISTRIBUTION
 
        ! read number of interpolation regions and incoming energies 
@@ -1093,9 +1083,9 @@ contains
           call error(msg)
        end if
 
-       ! find energy bin and calculate interpolation factor -- if the
-       ! energy is outside the range of the tabulated energies, choose
-       ! the first or last bins
+       ! find energy bin and calculate interpolation factor -- if the energy is
+       ! outside the range of the tabulated energies, choose the first or last
+       ! bins
        loc = 2 + 2*NR
        if (E_in < edist % data(loc+1)) then
           i = 1
@@ -1169,8 +1159,8 @@ contains
           E_out = E_l_k + (xi1 - c_k)/p_l_k
 
        elseif (INTT == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about
-          ! the formula given in the MCNP manual
+          ! Linear-linear interpolation -- not sure how you come about the
+          ! formula given in the MCNP manual
           E_l_k1 = edist % data(loc+k+1)
           p_l_k1 = edist % data(loc+NP+k+1)
 
@@ -1194,11 +1184,11 @@ contains
        end if
 
     case (5)
-       ! =============================================================
+       ! =======================================================================
        ! GENERAL EVAPORATION SPECTRUM
 
     case (7)
-       ! =============================================================
+       ! =======================================================================
        ! MAXWELL FISSION SPECTRUM
 
        ! read number of interpolation regions and incoming energies 
@@ -1233,7 +1223,7 @@ contains
        E_out = maxwell_spectrum(T)
        
     case (9)
-       ! =============================================================
+       ! =======================================================================
        ! EVAPORATION SPECTRUM
 
        ! read number of interpolation regions and incoming energies 
@@ -1245,9 +1235,9 @@ contains
           call error(msg)
        end if
 
-       ! find energy bin and calculate interpolation factor -- if the
-       ! energy is outside the range of the tabulated energies, choose
-       ! the first or last bins
+       ! find energy bin and calculate interpolation factor -- if the energy is
+       ! outside the range of the tabulated energies, choose the first or last
+       ! bins
        loc = 2 + 2*NR
        if (E_in < edist % data(loc+1)) then
           i = 1
@@ -1270,8 +1260,8 @@ contains
        loc = loc + NE
        U = edist % data(loc + 1)
 
-       ! sample outgoing energy based on evaporation spectrum
-       ! probability density function
+       ! sample outgoing energy based on evaporation spectrum probability
+       ! density function
        do
           xi1 = rang()
           xi2 = rang()
@@ -1280,11 +1270,11 @@ contains
        end do
        
     case (11)
-       ! =============================================================
+       ! =======================================================================
        ! ENERGY-DEPENDENT WATT SPECTRUM
 
-       ! read number of interpolation regions and incoming energies
-       ! for parameter 'a'
+       ! read number of interpolation regions and incoming energies for
+       ! parameter 'a'
        NR  = edist % data(1)
        NE  = edist % data(2 + 2*NR)
        if (NR > 0) then
@@ -1312,8 +1302,8 @@ contains
        Watt_a = edist%data(loc+i) + r * &
             & (edist%data(loc+i+1) - edist%data(loc+i))
 
-       ! read number of interpolation regions and incoming energies
-       ! for parameter 'b'
+       ! read number of interpolation regions and incoming energies for
+       ! parameter 'b'
        loc = loc + NE
        NR  = edist % data(loc + 1)
        NE  = edist % data(loc + 2 + 2*NR)
@@ -1346,7 +1336,7 @@ contains
        E_out = watt_spectrum(Watt_a, Watt_b)
 
     case (44)
-       ! =============================================================
+       ! =======================================================================
        ! KALBACH-MANN CORRELATED SCATTERING
 
        if (.not. present(mu_out)) then
@@ -1363,9 +1353,9 @@ contains
           call error(msg)
        end if
 
-       ! find energy bin and calculate interpolation factor -- if the
-       ! energy is outside the range of the tabulated energies, choose
-       ! the first or last bins
+       ! find energy bin and calculate interpolation factor -- if the energy is
+       ! outside the range of the tabulated energies, choose the first or last
+       ! bins
        loc = 2 + 2*NR
        if (E_in < edist % data(loc+1)) then
           i = 1
@@ -1444,8 +1434,8 @@ contains
           KM_A = edist % data(loc + 4*NP + k)
 
        elseif (INTT == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about
-          ! the formula given in the MCNP manual
+          ! Linear-linear interpolation -- not sure how you come about the
+          ! formula given in the MCNP manual
           E_l_k1 = edist % data(loc+k+1)
           p_l_k1 = edist % data(loc+NP+k+1)
 
@@ -1489,7 +1479,7 @@ contains
        end if
 
     case (61)
-       ! =============================================================
+       ! =======================================================================
        ! CORRELATED ENERGY AND ANGLE DISTRIBUTION
 
        if (.not. present(mu_out)) then
@@ -1506,9 +1496,9 @@ contains
           call error(msg)
        end if
 
-       ! find energy bin and calculate interpolation factor -- if the
-       ! energy is outside the range of the tabulated energies, choose
-       ! the first or last bins
+       ! find energy bin and calculate interpolation factor -- if the energy is
+       ! outside the range of the tabulated energies, choose the first or last
+       ! bins
        loc = 2 + 2*NR
        if (E_in < edist % data(loc+1)) then
           i = 1
@@ -1583,8 +1573,8 @@ contains
           E_out = E_l_k + (xi1 - c_k)/p_l_k
 
        elseif (INTT == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about
-          ! the formula given in the MCNP manual
+          ! Linear-linear interpolation -- not sure how you come about the
+          ! formula given in the MCNP manual
           E_l_k1 = edist % data(loc+k+1)
           p_l_k1 = edist % data(loc+NP+k+1)
 
@@ -1638,8 +1628,8 @@ contains
           mu_out = mu_k + (xi3 - c_k)/p_k
 
        elseif (JJ == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about
-          ! the formula given in the MCNP manual
+          ! Linear-linear interpolation -- not sure how you come about the
+          ! formula given in the MCNP manual
           p_k1  = edist % data(loc + NP + k+1)
           mu_k1 = edist % data(loc + k+1)
 
@@ -1655,22 +1645,22 @@ contains
        end if
 
     case (66)
-       ! =============================================================
+       ! =======================================================================
        ! N-BODY PHASE SPACE DISTRIBUTION
 
     case (67)
-       ! =============================================================
+       ! =======================================================================
        ! LABORATORY ENERGY-ANGLE LAW
 
     end select
     
   end subroutine sample_energy
 
-!=====================================================================
-! MAXWELL_SPECTRUM samples an energy from the Maxwell fission
-! distribution based on a rejection sampling scheme. This is described
-! in the MCNP manual volume I -- need to verify formula
-!=====================================================================
+!===============================================================================
+! MAXWELL_SPECTRUM samples an energy from the Maxwell fission distribution based
+! on a rejection sampling scheme. This is described in the MCNP manual volume I
+! -- need to verify formula
+!===============================================================================
 
   function maxwell_spectrum(T) result(E_out)
 
@@ -1696,12 +1686,12 @@ contains
 
   end function maxwell_spectrum
 
-!=====================================================================
-! WATT_SPECTRUM samples the outgoing energy from a Watt
-! energy-dependent fission spectrum. Although fitted parameters exist
-! for many nuclides, generally the continuous tabular distributions
-! (LAW 4) should be used in lieu of the Watt spectrum
-!=====================================================================
+!===============================================================================
+! WATT_SPECTRUM samples the outgoing energy from a Watt energy-dependent fission
+! spectrum. Although fitted parameters exist for many nuclides, generally the
+! continuous tabular distributions (LAW 4) should be used in lieu of the Watt
+! spectrum
+!===============================================================================
 
   function watt_spectrum(a, b) result(E_out)
 
@@ -1722,11 +1712,10 @@ contains
 
   end function watt_spectrum
 
-!=====================================================================
-! WIGNER samples a Wigner distribution of energy level spacings. Note
-! that this scheme is C50 in the Monte Carlo Sampler from Los Alamos
-! (LA-9721-MS).
-!=====================================================================
+!===============================================================================
+! WIGNER samples a Wigner distribution of energy level spacings. Note that this
+! scheme is C50 in the Monte Carlo Sampler from Los Alamos (LA-9721-MS).
+!===============================================================================
 
   function wigner(D_avg) result (D)
 
@@ -1740,18 +1729,17 @@ contains
 
   end function wigner
 
-!=====================================================================
-! CHI_SQUARED samples a chi-squared distribution with n degrees of
-! freedom. The distribution of resonance widths in the unresolved
-! region is given by a chi-squared distribution. For the special case
-! of n=1, this is a Porter-Thomas distribution. This currently
-! hardwires cases for n = 1 to 4, but could be made more general by
-! treating all n odd with rule C64 and all n even with rule C45.
-!=====================================================================
+!===============================================================================
+! CHI_SQUARED samples a chi-squared distribution with n degrees of freedom. The
+! distribution of resonance widths in the unresolved region is given by a
+! chi-squared distribution. For the special case of n=1, this is a Porter-Thomas
+! distribution. This currently hardwires cases for n = 1 to 4, but could be made
+! more general by treating all n odd with rule C64 and all n even with rule C45.
+!===============================================================================
 
   function chi_squared(n, G_avg) result(G)
 
-    real(8), intent(in)           :: n     ! number of degrees of freedom
+    integer, intent(in)           :: n     ! number of degrees of freedom
     real(8), intent(in), optional :: G_avg ! average resonance width
 
     real(8) :: G          ! sampled random variable (or resonance width)
@@ -1760,37 +1748,37 @@ contains
 
     select case (n)
     case (1)
-       ! For this case, we get p(x) = c*x^(-1/2)*exp(-x). This can be
-       ! sampled with rule C64
+       ! For this case, we get p(x) = c*x^(-1/2)*exp(-x). This can be sampled
+       ! with rule C64
        r1 = rang()
        r2 = rang()
        y = cos(PI/2*r2)
        x = -2*log(r1)*y*y
        G = x * G_avg
     case (2)
-       ! This case corresponds to a simple exponential distribution
-       ! p(x) = exp(-x) whose CDF can be directly inverted.
+       ! This case corresponds to a simple exponential distribution p(x) =
+       ! exp(-x) whose CDF can be directly inverted.
        r1 = rang()
        x = -log(r1)
     case (3)
-       ! For this case, we get p(x) = c*x^(1/2)*exp(-x). This can be
-       ! sampled with rule C64
+       ! For this case, we get p(x) = c*x^(1/2)*exp(-x). This can be sampled
+       ! with rule C64
        r1 = rang()
        r2 = rang()
        r3 = rang()
        y = cos(PI/2*r2)
        x = -2.0/3.0*(log(r1)*y*y + log(r3))
     case (4)
-       ! For this case, we get p(x) = c*x*exp(-x). This can be sampled
-       ! with rule C45.
+       ! For this case, we get p(x) = c*x*exp(-x). This can be sampled with rule
+       ! C45.
        r1 = rang()
        r2 = rang()
        x = -0.5*log(r1*r2)
     end select
 
-    ! If sampling a chi-squared distribution for a resonance width and
-    ! the average resonance width has been given, return the sampled
-    ! resonance width.
+    ! If sampling a chi-squared distribution for a resonance width and the
+    ! average resonance width has been given, return the sampled resonance
+    ! width.
     if (present(G_avg)) then
        G = x * G_avg
     else

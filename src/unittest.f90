@@ -10,10 +10,10 @@ program unittest
 
 contains
 
-!=====================================================================
-! TEST_ENERGY_GRID is a test of the energy grid unionization
-! subroutine on a simplified set of data
-!=====================================================================
+!===============================================================================
+! TEST_ENERGY_GRID is a test of the energy grid unionization subroutine on a
+! simplified set of data
+!===============================================================================
 
   subroutine test_energy_grid()
 
@@ -49,10 +49,10 @@ contains
 
   end subroutine test_energy_grid
 
-!=====================================================================
-! TEST_MPI_BANK is a test of the derived datatype MPI_BANK that is
-! used to send fission bank sites during synchronization
-!=====================================================================
+!===============================================================================
+! TEST_MPI_BANK is a test of the derived datatype MPI_BANK that is used to send
+! fission bank sites during synchronization
+!===============================================================================
 
   subroutine test_mpi_bank()
 

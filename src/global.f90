@@ -270,9 +270,9 @@ module global
 
 contains
 
-!=====================================================================
+!===============================================================================
 ! SET_DEFAULTS gives default values for many global parameters
-!=====================================================================
+!===============================================================================
 
   subroutine set_defaults()
 
@@ -290,10 +290,10 @@ contains
 
   end subroutine set_defaults
 
-!=====================================================================
-! FREE_MEMORY deallocates all allocatable arrays in the program,
-! namely the cells, surfaces, materials, and sources
-!=====================================================================
+!===============================================================================
+! FREE_MEMORY deallocates all allocatable arrays in the program, namely the
+! cells, surfaces, materials, and sources
+!===============================================================================
 
   subroutine free_memory()
 
@@ -327,9 +327,9 @@ contains
    
   end subroutine free_memory
 
-!=====================================================================
+!===============================================================================
 ! INT4_TO_STR converts an integer(4) to a string.
-!=====================================================================
+!===============================================================================
 
   function int4_to_str(num) result(str)
 
@@ -341,9 +341,9 @@ contains
 
   end function int4_to_str
 
-!=====================================================================
+!===============================================================================
 ! INT8_TO_STR converts an integer(8) to a string.
-!=====================================================================
+!===============================================================================
 
   function int8_to_str(num) result(str)
 
@@ -355,9 +355,9 @@ contains
 
   end function int8_to_str
 
-!=====================================================================
+!===============================================================================
 ! STR_TO_INT converts a string to an integer. 
-!=====================================================================
+!===============================================================================
 
   function str_to_int(str) result(num)
 
@@ -380,16 +380,15 @@ contains
 
   end function str_to_int
 
-!=====================================================================
-! STR_TO_REAL converts an arbitrary string to a real(8). Generally
-! this function is intended for strings for which the exact format is
-! not known. If the format of the number is known a priori, the
-! appropriate format descriptor should be used in lieu of this routine
-! because of the extra overhead.
+!===============================================================================
+! STR_TO_REAL converts an arbitrary string to a real(8). Generally this function
+! is intended for strings for which the exact format is not known. If the format
+! of the number is known a priori, the appropriate format descriptor should be
+! used in lieu of this routine because of the extra overhead.
 !
 ! Arguments:
 !   string = character(*) containing number to convert
-!=====================================================================
+!===============================================================================
 
   function str_to_real(string) result(num)
 
@@ -431,11 +430,11 @@ contains
 
   end function str_to_real
 
-!=====================================================================
-! REAL_TO_STR converts a real(8) to a string based on how large the
-! value is and how many significant digits are desired. By default,
-! six significants digits are used.
-!=====================================================================
+!===============================================================================
+! REAL_TO_STR converts a real(8) to a string based on how large the value is and
+! how many significant digits are desired. By default, six significants digits
+! are used.
+!===============================================================================
 
   function real_to_str(num, sig_digits) result(string)
 

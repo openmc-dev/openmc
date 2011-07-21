@@ -1,13 +1,13 @@
 module ace
 
   use global
-  use output, only: error, message
-  use string, only: lower_case
-  use fileio, only: read_line, read_data, skip_lines
-  use string, only: split_string
+  use output,          only: error, message
+  use string,          only: lower_case
+  use fileio,          only: read_line, read_data, skip_lines
+  use string,          only: split_string
   use data_structures, only: dict_create, dict_add_key, dict_has_key, &
        &                     dict_get_key, dict_delete
-  use endf,   only: reaction_name
+  use endf,            only: reaction_name
 
   integer :: NXS(16)             ! Descriptors for ACE XSS tables
   integer :: JXS(32)             ! Pointers into ACE XSS tables
@@ -20,10 +20,10 @@ module ace
 
 contains
 
-!=====================================================================
-! READ_XS reads all the cross sections for the problem and stores them
-! in xs_continuous and xs_thermal arrays
-!=====================================================================
+!===============================================================================
+! READ_XS reads all the cross sections for the problem and stores them in
+! xs_continuous and xs_thermal arrays
+!===============================================================================
 
   subroutine read_xs()
 
@@ -43,8 +43,8 @@ contains
 
     call dict_create(ace_dict)
 
-    ! determine how many continuous-energy tables and how many S(a,b)
-    ! thermal scattering tables there are
+    ! determine how many continuous-energy tables and how many S(a,b) thermal
+    ! scattering tables there are
     index_continuous = 0
     index_thermal = 0
     do i = 1, n_materials
@@ -109,11 +109,11 @@ contains
        
   end subroutine read_xs
 
-!=====================================================================
-! READ_ACE_CONTINUOUS reads in a single ACE continuous-energy neutron
-! cross section table. This routine reads the header data and then
-! calls appropriate subroutines to parse the actual data.
-!=====================================================================
+!===============================================================================
+! READ_ACE_CONTINUOUS reads in a single ACE continuous-energy neutron cross
+! section table. This routine reads the header data and then calls appropriate
+! subroutines to parse the actual data.
+!===============================================================================
 
   subroutine read_ACE_continuous(index_table, index)
 
@@ -224,18 +224,16 @@ contains
 
   end subroutine read_ACE_continuous
 
-!=====================================================================
-! READ_ESZ - reads through the ESZ block. This block contains the
-! energy grid, total xs, absorption xs, elastic scattering xs, and
-! heating numbers.
-!=====================================================================
+!===============================================================================
+! READ_ESZ - reads through the ESZ block. This block contains the energy grid,
+! total xs, absorption xs, elastic scattering xs, and heating numbers.
+!===============================================================================
 
   subroutine read_esz(table)
 
     type(AceContinuous), pointer :: table
 
-    integer :: NE ! number of energy points for total and elastic
-                  ! cross sections
+    integer :: NE ! number of energy points for total and elastic cross sections
 
     ! determine number of energy points
     NE = NXS(3)
@@ -248,11 +246,10 @@ contains
     allocate(table%sigma_el(NE))
     allocate(table%heating(NE))
 
-    ! read data from XSS -- right now the total, absorption and
-    ! elastic scattering are read in to these special arrays, but in
-    ! reality, it should be necessary to only store elastic scattering
-    ! and possibly total cross-section for total material xs
-    ! generation.
+    ! read data from XSS -- right now the total, absorption and elastic
+    ! scattering are read in to these special arrays, but in reality, it should
+    ! be necessary to only store elastic scattering and possibly total
+    ! cross-section for total material xs generation.
     XSS_index = 1
     table%energy = get_real(NE)
     table%sigma_t = get_real(NE)
@@ -262,11 +259,11 @@ contains
     
   end subroutine read_esz
 
-!=====================================================================
-! READ_NU_DATA reads data given on the number of neutrons emitted from
-! fission as a function of the incoming energy of a neutron. This data
-! may be broken down into prompt and delayed neutrons emitted as well.
-!=====================================================================
+!===============================================================================
+! READ_NU_DATA reads data given on the number of neutrons emitted from fission
+! as a function of the incoming energy of a neutron. This data may be broken
+! down into prompt and delayed neutrons emitted as well.
+!===============================================================================
 
   subroutine read_nu_data(table)
 
@@ -294,13 +291,13 @@ contains
     JXS24 = JXS(24)
 
     if (JXS2 == 0) then
-       ! =============================================================
+       ! =======================================================================
        ! NO PROMPT/TOTAL NU DATA
        table % nu_t_type = NU_NONE
        table % nu_p_type = NU_NONE
 
     elseif (XSS(JXS2) > 0) then
-       ! =============================================================
+       ! =======================================================================
        ! PROMPT OR TOTAL NU DATA
        KNU = JXS2
        LNU = int(XSS(KNU))
@@ -317,8 +314,7 @@ contains
           table % nu_t_type = NU_TABULAR
           table % nu_p_type = NU_NONE
 
-          ! determine number of interpolation regions and number of
-          ! energies
+          ! determine number of interpolation regions and number of energies
           NR = int(XSS(KNU+1))
           NE = int(XSS(KNU+2+2*NR))
           length = 2 + 2*NR + 2*NE
@@ -327,14 +323,14 @@ contains
        ! allocate space for nu data storage
        allocate(table % nu_t_data(length))
 
-       ! read data -- for polynomial, this is the number of
-       ! coefficients and the coefficients themselves, and for
-       ! tabular, this is interpolation data and tabular E/nu
+       ! read data -- for polynomial, this is the number of coefficients and the
+       ! coefficients themselves, and for tabular, this is interpolation data
+       ! and tabular E/nu
        XSS_index = KNU + 1
        table % nu_t_data = get_real(length)
 
     elseif (XSS(JXS2) < 0) then
-       ! =============================================================
+       ! =======================================================================
        ! PROMPT AND TOTAL NU DATA -- read prompt data first
        KNU = JXS2 + 1
        LNU = XSS(KNU)
@@ -349,8 +345,7 @@ contains
           ! Tabular data
           table % nu_p_type = NU_TABULAR
 
-          ! determine number of interpolation regions and number of
-          ! energies
+          ! determine number of interpolation regions and number of energies
           NR = XSS(KNU+1)
           NE = XSS(KNU+2+2*NR)
           length = 2 + 2*NR + 2*NE
@@ -377,8 +372,7 @@ contains
           ! Tabular data
           table % nu_t_type = NU_TABULAR
 
-          ! determine number of interpolation regions and number of
-          ! energies
+          ! determine number of interpolation regions and number of energies
           NR = int(XSS(KNU+1))
           NE = int(XSS(KNU+2+2*NR))
           length = 2 + 2*NR + 2*NE
@@ -393,7 +387,7 @@ contains
     end if
 
     if (JXS24 > 0) then
-       ! =============================================================
+       ! =======================================================================
        ! DELAYED NU DATA
 
        table % nu_d_type = NU_TABULAR
@@ -411,7 +405,7 @@ contains
        XSS_index = KNU + 1
        table % nu_d_data = get_real(length)
  
-       ! =============================================================
+       ! =======================================================================
        ! DELAYED NEUTRON ENERGY DISTRIBUTION
 
        ! Allocate space for secondary energy distribution
@@ -470,7 +464,7 @@ contains
           table % nu_d_edist(i) % data = get_real(length)
        end do
 
-       ! =============================================================
+       ! =======================================================================
        ! DELAYED NEUTRON PRECUSOR YIELDS AND CONSTANTS
 
        ! determine length of all precursor constants/yields/interp data
@@ -495,11 +489,11 @@ contains
 
   end subroutine read_nu_data
 
-!=====================================================================
+!===============================================================================
 ! READ_REACTIONS - Get the list of reaction MTs for this cross-section
-! table. The MT values are somewhat arbitrary. Also read in Q-values,
-! neutron multiplicities, and cross-sections.
-!=====================================================================
+! table. The MT values are somewhat arbitrary. Also read in Q-values, neutron
+! multiplicities, and cross-sections.
+!===============================================================================
 
   subroutine read_reactions(table)
 
@@ -522,8 +516,8 @@ contains
     JXS7 = JXS(7)
     NMT  = NXS(4)
 
-    ! allocate array of reactions. Add one since we need to include an
-    ! elastic scattering channel
+    ! allocate array of reactions. Add one since we need to include an elastic
+    ! scattering channel
     table%n_reaction = NMT + 1
     allocate(table%reactions(NMT+1))
 
@@ -559,10 +553,10 @@ contains
 
   end subroutine read_reactions
 
-!=====================================================================
-! READ_ANGULAR_DIST parses the angular distribution for each reaction
-! with secondary neutrons
-!=====================================================================
+!===============================================================================
+! READ_ANGULAR_DIST parses the angular distribution for each reaction with
+! secondary neutrons
+!===============================================================================
 
   subroutine read_angular_dist(table)
 
@@ -582,21 +576,20 @@ contains
     JXS8 = JXS(8)
     JXS9 = JXS(9)
 
-    ! loop over all reactions with secondary neutrons -- NXS(5) does
-    ! not include elastic scattering
+    ! loop over all reactions with secondary neutrons -- NXS(5) does not include
+    ! elastic scattering
     do i = 1, NXS(5) + 1
        rxn => table%reactions(i)
 
        ! find location of angular distribution
        LOCB = XSS(JXS8 + i - 1)
        if (LOCB == -1) then
-          ! Angular distribution data are specified through LAWi = 44
-          ! in the DLW block
+          ! Angular distribution data are specified through LAWi = 44 in the DLW
+          ! block
           cycle
        elseif (LOCB == 0) then
-          ! No angular distribution data are given for this reaction,
-          ! isotropic scattering is asssumed (in CM if TY < 0 and in
-          ! LAB if TY > 0)
+          ! No angular distribution data are given for this reaction, isotropic
+          ! scattering is asssumed (in CM if TY < 0 and in LAB if TY > 0)
           cycle
        end if
        rxn % has_angle_dist = .true.
@@ -635,15 +628,14 @@ contains
        ! allocate angular distribution data and read
        allocate(rxn % adist % data(length))
 
-       ! read angular distribution -- currently this does not actually
-       ! parse the angular distribution tables for each incoming
-       ! energy, that must be done on-the-fly
+       ! read angular distribution -- currently this does not actually parse the
+       ! angular distribution tables for each incoming energy, that must be done
+       ! on-the-fly
        LC = rxn % adist % location(1)
        XSS_index = JXS9 + abs(LC) - 1
        rxn % adist % data = get_real(length)
 
-       ! change location pointers since they are currently relative to
-       ! JXS(9)
+       ! change location pointers since they are currently relative to JXS(9)
        LC = abs(rxn % adist % location(1))
        rxn % adist % location = abs(rxn % adist % location) - LC
 
@@ -651,10 +643,10 @@ contains
 
   end subroutine read_angular_dist
 
-!=====================================================================
-! READ_ENERGY_DIST parses the secondary energy distribution for each
-! reaction with seconary neutrons (except elastic scattering)
-!=====================================================================
+!===============================================================================
+! READ_ENERGY_DIST parses the secondary energy distribution for each reaction
+! with seconary neutrons (except elastic scattering)
+!===============================================================================
 
   subroutine read_energy_dist(table)
 
@@ -731,11 +723,10 @@ contains
 
   end subroutine read_energy_dist
 
-!=====================================================================
-! LENGTH_ENERGY_DIST determines how many values are contained in an
-! LDAT energy distribution array based on the secondary energy law and
-! location in XSS
-!=====================================================================
+!===============================================================================
+! LENGTH_ENERGY_DIST determines how many values are contained in an LDAT energy
+! distribution array based on the secondary energy law and location in XSS
+!===============================================================================
 
   function length_energy_dist(loc, law, LOCC, lid) result(length)
 
@@ -873,10 +864,9 @@ contains
 
   end function length_energy_dist
 
-!=====================================================================
-! READ_UNR_RES reads in unresolved resonance probability tables if
-! present.
-!=====================================================================
+!===============================================================================
+! READ_UNR_RES reads in unresolved resonance probability tables if present.
+!===============================================================================
 
   subroutine read_unr_res(table)
 
@@ -930,11 +920,11 @@ contains
 
   end subroutine read_unr_res
 
-!=====================================================================
-! READ_ACE_THERMAL reads in a single ACE thermal scattering S(a,b)
-! table. This routine in particular reads the header data and then
-! calls read_thermal_data to parse the actual data blocks.
-!=====================================================================
+!===============================================================================
+! READ_ACE_THERMAL reads in a single ACE thermal scattering S(a,b) table. This
+! routine in particular reads the header data and then calls read_thermal_data
+! to parse the actual data blocks.
+!===============================================================================
 
   subroutine read_ACE_thermal(index_table, index)
 
@@ -1040,12 +1030,12 @@ contains
 
   end subroutine read_ACE_thermal
 
-!=====================================================================
-! READ_THERMAL_DATA reads elastic and inelastic cross sections and
-! corresponding secondary energy/angle distributions derived from
-! experimental S(a,b) data. Namely, in MCNP language, this routine
-! reads the ITIE, ITCE, ITXE, and ITCA blocks.
-!=====================================================================
+!===============================================================================
+! READ_THERMAL_DATA reads elastic and inelastic cross sections and corresponding
+! secondary energy/angle distributions derived from experimental S(a,b)
+! data. Namely, in MCNP language, this routine reads the ITIE, ITCE, ITXE, and
+! ITCA blocks.
+!===============================================================================
 
   subroutine read_thermal_data(table)
 
@@ -1130,10 +1120,10 @@ contains
     
   end subroutine read_thermal_data
 
-!=====================================================================
-! GET_INT returns an array of integers read from the current position
-! in the XSS array
-!=====================================================================
+!===============================================================================
+! GET_INT returns an array of integers read from the current position in the XSS
+! array
+!===============================================================================
 
   function get_int(n_values) result(array)
 
@@ -1145,10 +1135,10 @@ contains
 
   end function get_int
 
-!=====================================================================
-! GET_REAL returns an array of real(8)s read from the current position
-! in the XSS array
-!=====================================================================
+!===============================================================================
+! GET_REAL returns an array of real(8)s read from the current position in the
+! XSS array
+!===============================================================================
 
   function get_real(n_values) result(array)
 
@@ -1160,9 +1150,9 @@ contains
 
   end function get_real
 
-!=====================================================================
+!===============================================================================
 ! GET_MACRO_XS
-!=====================================================================
+!===============================================================================
 
   function get_macro_xs(p, mat, MT) result(xs)
 

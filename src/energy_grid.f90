@@ -7,13 +7,13 @@ module energy_grid
 
 contains
 
-!=====================================================================
-! UNIONIZED_GRID creates a single unionized energy grid combined from
-! each nuclide of each material. Right now, the grid for each nuclide
-! is added into a linked list one at a time with an effective
-! insertion sort. Could be done with a hash for all energy points and
-! then a quicksort at the end (what hash function to use?)
-!=====================================================================
+!===============================================================================
+! UNIONIZED_GRID creates a single unionized energy grid combined from each
+! nuclide of each material. Right now, the grid for each nuclide is added into a
+! linked list one at a time with an effective insertion sort. Could be done with
+! a hash for all energy points and then a quicksort at the end (what hash
+! function to use?)
+!===============================================================================
 
   subroutine unionized_grid()
 
@@ -58,10 +58,10 @@ contains
 
   end subroutine unionized_grid
 
-!=====================================================================
-! ADD_GRID_POINTS adds energy points from the 'energy' array into a
-! linked list of points already stored from previous arrays. 
-!=====================================================================
+!===============================================================================
+! ADD_GRID_POINTS adds energy points from the 'energy' array into a linked list
+! of points already stored from previous arrays.
+!===============================================================================
 
   subroutine add_grid_points(list, energy, n_energy)
 
@@ -78,8 +78,8 @@ contains
 
     index = 1
 
-    ! if the original list is empty, we need to allocate the first
-    ! element and store first energy point
+    ! if the original list is empty, we need to allocate the first element and
+    ! store first energy point
     if (list_size(list) == 0) then
        allocate(list)
        current => list
@@ -100,8 +100,8 @@ contains
     E = energy(index)
     do while (index <= n_energy)
 
-       ! If we've reached the end of the grid energy list, add the
-       ! remaining energy points to the end
+       ! If we've reached the end of the grid energy list, add the remaining
+       ! energy points to the end
        if (.not. associated(current)) then
           ! finish remaining energies
           do while (index <= n_energy)
@@ -134,8 +134,8 @@ contains
           E = energy(index)
 
        elseif (E == current%data) then
-          ! found the exact same energy, no need to store duplicates
-          ! so just skip and move to next index
+          ! found the exact same energy, no need to store duplicates so just
+          ! skip and move to next index
           index = index + 1
           E = energy(index)
        else
@@ -145,16 +145,15 @@ contains
        
     end do
 
-    ! It's possible that an element was inserted at the front of the
-    ! list, so we need to move the list pointer back to the start of
-    ! the list
+    ! It's possible that an element was inserted at the front of the list, so we
+    ! need to move the list pointer back to the start of the list
     list => head
 
   end subroutine add_grid_points
 
-!=====================================================================
+!===============================================================================
 ! ORIGINAL_INDICES
-!=====================================================================
+!===============================================================================
 
   subroutine original_indices()
 

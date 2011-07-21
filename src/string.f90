@@ -7,15 +7,15 @@ module string
 
 contains
 
-!=====================================================================
-! SPLIT_STRING takes a sentence and splits it into separate words much
-! like the Python string.split() method.
+!===============================================================================
+! SPLIT_STRING takes a sentence and splits it into separate words much like the
+! Python string.split() method.
 !
 ! Arguments:
 !   string = input line
 !   words  = array of words
 !   n      = total number of words
-!=====================================================================
+!===============================================================================
 
   subroutine split_string(string, words, n)
 
@@ -59,17 +59,16 @@ contains
 
   end subroutine split_string
 
-!=====================================================================
-! SPLIT_STRING_WL takes a string that includes logical expressions for
-! a list of bounding surfaces in a cell and splits it into separate
-! words. The characters (, ), :, and # count as separate words since
-! they represent operators.
+!===============================================================================
+! SPLIT_STRING_WL takes a string that includes logical expressions for a list of
+! bounding surfaces in a cell and splits it into separate words. The characters
+! (, ), :, and # count as separate words since they represent operators.
 !
 ! Arguments:
 !   string  = input line
 !   words   = array of words
 !   n       = number of words
-!=====================================================================
+!===============================================================================
 
   subroutine split_string_wl(string, words, n)
 
@@ -119,15 +118,15 @@ contains
     end do
   end subroutine split_string_wl
 
-!=====================================================================
-! CONCATENATE takes an array of words and concatenates them
-! together in one string with a single space between words
+!===============================================================================
+! CONCATENATE takes an array of words and concatenates them together in one
+! string with a single space between words
 !
 ! Arguments:
 !   words   = array of words
 !   n_words = total number of words
 !   string  = concatenated string
-!=====================================================================
+!===============================================================================
 
   function concatenate(words, n_words) result(string)
 
@@ -145,9 +144,9 @@ contains
 
   end function concatenate
 
-!=====================================================================
+!===============================================================================
 ! LOWER_CASE converts a string to all lower case characters
-!=====================================================================
+!===============================================================================
 
   elemental subroutine lower_case(word)
 
@@ -163,10 +162,9 @@ contains
 
   end subroutine lower_case
 
-!=====================================================================
-! IS_NUMBER determines whether a string of characters is all 0-9
-! characters
-!=====================================================================
+!===============================================================================
+! IS_NUMBER determines whether a string of characters is all 0-9 characters
+!===============================================================================
 
   function is_number(word) result(number)
 

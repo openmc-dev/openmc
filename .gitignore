@@ -1,5 +1,6 @@
 # Compiled objects and modules
 *.o
 *.mod
+*.log
 # emacs backups
 *~

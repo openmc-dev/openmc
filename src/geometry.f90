@@ -9,9 +9,9 @@ module geometry
      
 contains
 
-!=====================================================================
+!===============================================================================
 ! CELL_CONTAINS determines whether a given point is inside a cell
-!=====================================================================
+!===============================================================================
 
   function cell_contains(c, p) result(in_cell)
 
@@ -51,8 +51,7 @@ contains
           expression(i) = 1
           cycle
        elseif (surf_num == -current_surface) then
-          ! particle is on specified surface, but heading other
-          ! direction
+          ! particle is on specified surface, but heading other direction
           expression(i) = 0
           cycle
        end if
@@ -68,8 +67,8 @@ contains
 
     end do
 
-    ! TODO: Need to replace this with a 'lgeval' like subroutine that
-    ! can actually test expressions with unions and parentheses
+    ! TODO: Need to replace this with a 'lgeval' like subroutine that can
+    ! actually test expressions with unions and parentheses
     if (all(expression == 1)) then
        in_cell = .true.
     else
@@ -81,11 +80,11 @@ contains
 
   end function cell_contains
 
-!=====================================================================
-! FIND_CELL determines what cell a source particle is in within a
-! particular universe. If the base universe is passed, the particle
-! should be found as long as it's within the geometry
-!=====================================================================
+!===============================================================================
+! FIND_CELL determines what cell a source particle is in within a particular
+! universe. If the base universe is passed, the particle should be found as long
+! as it's within the geometry
+!===============================================================================
 
   recursive subroutine find_cell(univ, p, found)
 
@@ -109,8 +108,8 @@ contains
        c => cells(univ % cells(i))
        
        if (cell_contains(c, p)) then
-          ! If this cell contains a universe or lattice, search for
-          ! the particle in that universe/lattice
+          ! If this cell contains a universe or lattice, search for the particle
+          ! in that universe/lattice
           if (c % type == CELL_NORMAL) then
              ! set current pointers
              found = .true.         
@@ -166,9 +165,9 @@ contains
 
   end subroutine find_cell
 
-!=====================================================================
+!===============================================================================
 ! CROSS_SURFACE moves a particle into a new cell
-!=====================================================================
+!===============================================================================
 
   subroutine cross_surface(p)
 
@@ -199,8 +198,8 @@ contains
     end if
 
     if (p%surface > 0 .and. allocated(surf%neighbor_pos)) then
-       ! If coming from negative side of surface, search all the
-       ! neighboring cells on the positive side
+       ! If coming from negative side of surface, search all the neighboring
+       ! cells on the positive side
        do i = 1, size(surf%neighbor_pos)
           index_cell = surf%neighbor_pos(i)
           c => cells(index_cell)
@@ -222,8 +221,8 @@ contains
           end if
        end do
     elseif (p%surface < 0  .and. allocated(surf%neighbor_neg)) then
-       ! If coming from positive side of surface, search all the
-       ! neighboring cells on the negative side
+       ! If coming from positive side of surface, search all the neighboring
+       ! cells on the negative side
        do i = 1, size(surf%neighbor_neg)
           index_cell = surf%neighbor_neg(i)
           c => cells(index_cell)
@@ -246,8 +245,7 @@ contains
        end do
     end if
 
-    ! Couldn't find particle in neighboring cells, search through all
-    ! cells
+    ! Couldn't find particle in neighboring cells, search through all cells
     do i = 1, size(cells)
        c => cells(i)
        if (cell_contains(c, p)) then
@@ -265,9 +263,9 @@ contains
        
   end subroutine cross_surface
 
-!=====================================================================
+!===============================================================================
 ! CROSS_LATTICE moves a particle into a new lattice element
-!=====================================================================
+!===============================================================================
 
   subroutine cross_lattice(p)
 
@@ -378,12 +376,11 @@ contains
 
   end subroutine cross_lattice
 
-!=====================================================================
-! DIST_TO_BOUNDARY calculates the distance to the nearest boundary for
-! a particle 'p' traveling in a certain direction. For a cell in a
-! subuniverse that has a parent cell, also include the surfaces of the
-! edge of the universe.
-!=====================================================================
+!===============================================================================
+! DIST_TO_BOUNDARY calculates the distance to the nearest boundary for a
+! particle 'p' traveling in a certain direction. For a cell in a subuniverse
+! that has a parent cell, also include the surfaces of the edge of the universe.
+!===============================================================================
 
   subroutine dist_to_boundary(p, dist, surf, in_lattice)
 
@@ -529,8 +526,8 @@ contains
 
              elseif (on_surface) then
                 ! particle is on the cylinder, thus one distance is
-                ! positive/negative and the other is zero. The sign of
-                ! k determines if we are facing in or out
+                ! positive/negative and the other is zero. The sign of k
+                ! determines if we are facing in or out
 
                 if (k >= ZERO) then
                    d = INFINITY
@@ -539,18 +536,16 @@ contains
                 end if
 
              elseif (c < ZERO) then
-                ! particle is inside the cylinder, thus one distance
-                ! must be negative and one must be positive. The
-                ! positive distance will be the one with negative sign
-                ! on sqrt(quad)
+                ! particle is inside the cylinder, thus one distance must be
+                ! negative and one must be positive. The positive distance will
+                ! be the one with negative sign on sqrt(quad)
 
                 d = (-k + sqrt(quad))/a
 
              else
-                ! particle is outside the cylinder, thus both
-                ! distances are either positive or negative. If
-                ! positive, the smaller distance is the one with
-                ! positive sign on sqrt(quad)
+                ! particle is outside the cylinder, thus both distances are
+                ! either positive or negative. If positive, the smaller distance
+                ! is the one with positive sign on sqrt(quad)
 
                 d = (-k - sqrt(quad))/a
                 if (d < ZERO) d = INFINITY
@@ -580,8 +575,8 @@ contains
 
              elseif (on_surface) then
                 ! particle is on the cylinder, thus one distance is
-                ! positive/negative and the other is zero. The sign of
-                ! k determines if we are facing in or out
+                ! positive/negative and the other is zero. The sign of k
+                ! determines if we are facing in or out
 
                 if (k >= ZERO) then
                    d = INFINITY
@@ -590,18 +585,16 @@ contains
                 end if
 
              elseif (c < ZERO) then
-                ! particle is inside the cylinder, thus one distance
-                ! must be negative and one must be positive. The
-                ! positive distance will be the one with negative sign
-                ! on sqrt(quad)
+                ! particle is inside the cylinder, thus one distance must be
+                ! negative and one must be positive. The positive distance will
+                ! be the one with negative sign on sqrt(quad)
 
                 d = (-k + sqrt(quad))/a
 
              else
-                ! particle is outside the cylinder, thus both
-                ! distances are either positive or negative. If
-                ! positive, the smaller distance is the one with
-                ! positive sign on sqrt(quad)
+                ! particle is outside the cylinder, thus both distances are
+                ! either positive or negative. If positive, the smaller distance
+                ! is the one with positive sign on sqrt(quad)
 
                 d = (-k - sqrt(quad))/a
                 if (d < ZERO) d = INFINITY
@@ -631,8 +624,8 @@ contains
 
              elseif (on_surface) then
                 ! particle is on the cylinder, thus one distance is
-                ! positive/negative and the other is zero. The sign of
-                ! k determines if we are facing in or out
+                ! positive/negative and the other is zero. The sign of k
+                ! determines if we are facing in or out
 
                 if (k >= ZERO) then
                    d = INFINITY
@@ -641,18 +634,16 @@ contains
                 end if
 
              elseif (c < ZERO) then
-                ! particle is inside the cylinder, thus one distance
-                ! must be negative and one must be positive. The
-                ! positive distance will be the one with negative sign
-                ! on sqrt(quad)
+                ! particle is inside the cylinder, thus one distance must be
+                ! negative and one must be positive. The positive distance will
+                ! be the one with negative sign on sqrt(quad)
 
                 d = (-k + sqrt(quad))/a
 
              else
-                ! particle is outside the cylinder, thus both
-                ! distances are either positive or negative. If
-                ! positive, the smaller distance is the one with
-                ! positive sign on sqrt(quad)
+                ! particle is outside the cylinder, thus both distances are
+                ! either positive or negative. If positive, the smaller distance
+                ! is the one with positive sign on sqrt(quad)
 
                 d = (-k - sqrt(quad))/a
                 if (d <= ZERO) d = INFINITY
@@ -679,9 +670,9 @@ contains
              d = INFINITY 
 
           elseif (on_surface) then
-             ! particle is on the sphere, thus one distance is
-             ! positive/negative and the other is zero. The sign of k
-             ! determines if we are facing in or out
+             ! particle is on the sphere, thus one distance is positive/negative
+             ! and the other is zero. The sign of k determines if we are facing
+             ! in or out
              
              if (k >= ZERO) then
                 d = INFINITY
@@ -690,18 +681,16 @@ contains
              end if
 
           elseif (c < ZERO) then
-             ! particle is inside the sphere, thus one distance
-             ! must be negative and one must be positive. The
-             ! positive distance will be the one with negative sign
-             ! on sqrt(quad)
+             ! particle is inside the sphere, thus one distance must be negative
+             ! and one must be positive. The positive distance will be the one
+             ! with negative sign on sqrt(quad)
 
              d = -k + sqrt(quad)
 
           else
-             ! particle is outside the sphere, thus both
-             ! distances are either positive or negative. If
-             ! positive, the smaller distance is the one with
-             ! positive sign on sqrt(quad)
+             ! particle is outside the sphere, thus both distances are either
+             ! positive or negative. If positive, the smaller distance is the
+             ! one with positive sign on sqrt(quad)
 
              d = -k - sqrt(quad)
              if (d < ZERO) d = INFINITY
@@ -766,11 +755,11 @@ contains
 
   end subroutine dist_to_boundary
 
-!=====================================================================
-! SENSE determines whether a point is on the 'positive' or 'negative'
-! side of a surface. This routine is crucial for determining what cell
-! a particular point is in.
-!=====================================================================
+!===============================================================================
+! SENSE determines whether a point is on the 'positive' or 'negative' side of a
+! surface. This routine is crucial for determining what cell a particular point
+! is in.
+!===============================================================================
 
   function sense(surf, xyz) result(s)
 
@@ -918,10 +907,10 @@ contains
 
   end function sense
 
-!=====================================================================
-! NEIGHBOR_LISTS builds a list of neighboring cells to each surface to
-! speed up searches when a cell boundary is crossed.
-!=====================================================================
+!===============================================================================
+! NEIGHBOR_LISTS builds a list of neighboring cells to each surface to speed up
+! searches when a cell boundary is crossed.
+!===============================================================================
 
   subroutine neighbor_lists()
 

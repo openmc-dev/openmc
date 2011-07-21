@@ -13,11 +13,10 @@ module output
 
 contains
 
-!=====================================================================
-! TITLE prints the main title banner as well as information about the
-! program developers, version, and date/time which the problem was
-! run.
-!=====================================================================
+!===============================================================================
+! TITLE prints the main title banner as well as information about the program
+! developers, version, and date/time which the problem was run.
+!===============================================================================
 
   subroutine title()
 
@@ -52,10 +51,10 @@ contains
 
   end subroutine title
 
-!=====================================================================
-! ECHO_INPUT displays summary information about the problem about to
-! be run after reading all the input.
-!=====================================================================
+!===============================================================================
+! ECHO_INPUT displays summary information about the problem about to be run
+! after reading all the input.
+!===============================================================================
 
   subroutine echo_input()
 
@@ -90,10 +89,10 @@ contains
 
   end subroutine echo_input
 
-!=====================================================================
-! MESSAGE displays an informational message to the log file and the
-! standard output stream.
-!=====================================================================
+!===============================================================================
+! MESSAGE displays an informational message to the log file and the standard
+! output stream.
+!===============================================================================
 
   subroutine message(msg, level)
 
@@ -109,16 +108,16 @@ contains
     if (.not. present(level) .or. level <= verbosity) then
        n_lines = (len_trim(msg)-1)/79 + 1
        do i = 1, n_lines
-          write(ou, fmt='(1X,A79)') msg(79*(i-1)+1:79*i)
+          write(ou, fmt='(1X,A)') trim(msg(79*(i-1)+1:79*i))
        end do
     end if
 
   end subroutine message
 
-!=====================================================================
-! WARNING issues a warning to the user in the log file and the
-! standard output stream.
-!=====================================================================
+!===============================================================================
+! WARNING issues a warning to the user in the log file and the standard output
+! stream.
+!===============================================================================
 
   subroutine warning(msg)
 
@@ -143,11 +142,11 @@ contains
 
   end subroutine warning
 
-!=====================================================================
-! ERROR alerts the user that an error has been encountered and
-! displays a message about the particular problem. Errors are
-! considered 'fatal' and hence the program is aborted.
-!=====================================================================
+!===============================================================================
+! ERROR alerts the user that an error has been encountered and displays a
+! message about the particular problem. Errors are considered 'fatal' and hence
+! the program is aborted.
+!===============================================================================
 
   subroutine error(msg)
 
@@ -176,10 +175,10 @@ contains
 
   end subroutine error
 
-!=====================================================================
-! GET_TODAY determines the date and time at which the program began
-! execution and returns it in a readable format
-!=====================================================================
+!===============================================================================
+! GET_TODAY determines the date and time at which the program began execution
+! and returns it in a readable format
+!===============================================================================
 
   subroutine get_today(today_date, today_time)
 
@@ -218,9 +217,9 @@ contains
 
   end subroutine get_today
 
-!=====================================================================
+!===============================================================================
 ! PRINT_PARTICLE displays the attributes of a particle
-!=====================================================================
+!===============================================================================
 
   subroutine print_particle(p)
 
@@ -282,9 +281,9 @@ contains
 
   end subroutine print_particle
 
-!=====================================================================
+!===============================================================================
 ! PRINT_REACTION displays the attributes of a reaction
-!=====================================================================
+!===============================================================================
 
   subroutine print_reaction(rxn)
 
@@ -302,9 +301,9 @@ contains
 
   end subroutine print_reaction
 
-!=====================================================================
+!===============================================================================
 ! PRINT_CELL displays the attributes of a cell
-!=====================================================================
+!===============================================================================
 
   subroutine print_cell(c)
 
@@ -363,9 +362,9 @@ contains
 
   end subroutine print_cell
 
-!=====================================================================
+!===============================================================================
 ! PRINT_UNIVERSE displays the attributes of a universe
-!=====================================================================
+!===============================================================================
 
   subroutine print_universe(univ)
 
@@ -389,9 +388,9 @@ contains
 
   end subroutine print_universe
 
-!=====================================================================
+!===============================================================================
 ! PRINT_LATTICE displays the attributes of a lattice
-!=====================================================================
+!===============================================================================
 
   subroutine print_lattice(lat)
 
@@ -408,9 +407,9 @@ contains
 
   end subroutine print_lattice
 
-!=====================================================================
+!===============================================================================
 ! PRINT_SURFACE displays the attributes of a surface
-!=====================================================================
+!===============================================================================
 
   subroutine print_surface(surf)
 
@@ -481,9 +480,9 @@ contains
 
   end subroutine print_surface
 
-!=====================================================================
+!===============================================================================
 ! PRINT_MATERIAL displays the attributes of a material
-!=====================================================================
+!===============================================================================
 
   subroutine print_material(mat)
 
@@ -511,9 +510,9 @@ contains
 
   end subroutine print_material
 
-!=====================================================================
+!===============================================================================
 ! PRINT_TALLY displays the attributes of a tally
-!=====================================================================
+!===============================================================================
 
   subroutine print_tally(tal)
 
@@ -571,11 +570,11 @@ contains
 
   end subroutine print_tally
 
-!=====================================================================
+!===============================================================================
 ! PRINT_SUMMARY displays the attributes of all cells, universes,
 ! surfaces and materials read in the input file. Very useful for
 ! debugging!
-!=====================================================================
+!===============================================================================
 
   subroutine print_summary()
 

@@ -1658,8 +1658,9 @@ contains
 
 !===============================================================================
 ! MAXWELL_SPECTRUM samples an energy from the Maxwell fission distribution based
-! on a rejection sampling scheme. This is described in the MCNP manual volume I
-! -- need to verify formula
+! on a direct sampling scheme. The probability distribution function for a
+! Maxwellian is given as p(x) = 2/(T*sqrt(pi))*sqrt(x/T)*exp(-x/T). This PDF can
+! be sampled using rule C64 in the Monte Carlo Sampler LA-9721-MS.
 !===============================================================================
 
   function maxwell_spectrum(T) result(E_out)
@@ -1667,22 +1668,18 @@ contains
     real(8), intent(in)  :: T     ! tabulated function of incoming E
     real(8)              :: E_out ! sampled energy
 
-    real(8) :: r1, r2, r3, r4  ! random numbers
-    real(8) :: d               ! r1^2 + r2^2
-
-    ! TODO: Change this to direct sampling
+    real(8) :: r1, r2, r3  ! random numbers
+    real(8) :: c           ! cosine of pi/2*r3
 
     r1 = rang()
-    do
-       r2 = rang()
-       d = r1*r1 + r2*r2
-       if (d < ONE) exit
-       r1 = r2
-    end do
-
+    r2 = rang()
     r3 = rang()
-    r4 = rang()
-    E_out = -T*(r1*r1 * log(r3) / d + log(r4))
+
+    ! determine cosine of pi/2*r
+    c = cos(PI/2.0*r3)
+
+    ! determine outgoing energy
+    E_out = -T*(log(r1) + log(r2)*c*c)
 
   end function maxwell_spectrum
 

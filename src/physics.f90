@@ -1730,8 +1730,8 @@ contains
 ! CHI_SQUARED samples a chi-squared distribution with n degrees of freedom. The
 ! distribution of resonance widths in the unresolved region is given by a
 ! chi-squared distribution. For the special case of n=1, this is a Porter-Thomas
-! distribution. This currently hardwires cases for n = 1 to 4, but could be made
-! more general by treating all n odd with rule C64 and all n even with rule C45.
+! distribution. For cases with n odd, rule C64 is used whereas for cases with n
+! even, rule C45 is used.
 !===============================================================================
 
   function chi_squared(n, G_avg) result(G)
@@ -1739,38 +1739,36 @@ contains
     integer, intent(in)           :: n     ! number of degrees of freedom
     real(8), intent(in), optional :: G_avg ! average resonance width
 
-    real(8) :: G          ! sampled random variable (or resonance width)
-    real(8) :: x, y       ! dummy variables
-    real(8) :: r1, r2, r3 ! psuedorandom numbers
+    integer :: i       ! loop index
+    real(8) :: G       ! sampled random variable (or resonance width)
+    real(8) :: x, y, c ! dummy variables
+    real(8) :: r1, r2  ! psuedorandom numbers
 
-    select case (n)
+    select case (mod(n,2))
+    case (0)
+       ! Even number of degrees of freedom can be sampled via rule C45. We can
+       ! sample x as -2/n*log(product(r_i, i = 1 to n/2))
+       x = ONE
+       do i = 1, n/2
+          x = x * rang()
+       end do
+       x = -2.0/n * log(x)
+
     case (1)
-       ! For this case, we get p(x) = c*x^(-1/2)*exp(-x). This can be sampled
-       ! with rule C64
+       ! Odd number of degrees of freedom can be sampled via rule C64. We can
+       ! sample x as -2/n*(log(r)*cos^2(pi/2*r) + log(product(r_i, i = 1 to
+       ! floor(n/2)))
+
+       ! Note that we take advantage of integer division on n/2
+       y = ONE
+       do i = 1, n/2
+          y = y * rang()
+       end do
+
        r1 = rang()
        r2 = rang()
-       y = cos(PI/2*r2)
-       x = -2*log(r1)*y*y
-       G = x * G_avg
-    case (2)
-       ! This case corresponds to a simple exponential distribution p(x) =
-       ! exp(-x) whose CDF can be directly inverted.
-       r1 = rang()
-       x = -log(r1)
-    case (3)
-       ! For this case, we get p(x) = c*x^(1/2)*exp(-x). This can be sampled
-       ! with rule C64
-       r1 = rang()
-       r2 = rang()
-       r3 = rang()
-       y = cos(PI/2*r2)
-       x = -2.0/3.0*(log(r1)*y*y + log(r3))
-    case (4)
-       ! For this case, we get p(x) = c*x*exp(-x). This can be sampled with rule
-       ! C45.
-       r1 = rang()
-       r2 = rang()
-       x = -0.5*log(r1*r2)
+       c = cos(PI/2.0*r2)
+       x = -2.0/n * (log(y) + log(r1)*c*c)
     end select
 
     ! If sampling a chi-squared distribution for a resonance width and the

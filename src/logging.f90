@@ -12,9 +12,9 @@ contains
 
   subroutine create_log()
 
-    character(100) :: path_log     ! path of log file
-    logical        :: file_exists  ! does log file already exist?
-    integer        :: ioError      ! error status for file access
+    character(max_word_len) :: path_log     ! path of log file
+    logical                 :: file_exists  ! does log file already exist?
+    integer                 :: ioError      ! error status for file access
 
     ! Create filename for log file
     path_log = trim(path_input) // ".log"

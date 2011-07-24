@@ -723,7 +723,7 @@ contains
   subroutine dict_ci_add_key(dict, key, value)
 
     type(DictionaryCI), pointer    :: dict
-    character(len=*),   intent(in) :: key
+    character(*),       intent(in) :: key
     integer,            intent(in) :: value
 
     type(KeyValueCI)               :: data
@@ -795,7 +795,7 @@ contains
   subroutine dict_ci_delete_key(dict, key)
 
     type(DictionaryCI), pointer    :: dict
-    character(len=*), intent(in) :: key
+    character(*),       intent(in) :: key
 
     type(ListKeyValueCI), pointer  :: elem
     integer                        :: hash
@@ -843,7 +843,7 @@ contains
   function dict_ci_get_key(dict, key) result(value)
 
     type(DictionaryCI), pointer    :: dict
-    character(len=*),   intent(in) :: key
+    character(*),       intent(in) :: key
     integer                        :: value
 
     type(KeyValueCI)               :: data
@@ -895,7 +895,7 @@ contains
   function dict_ci_has_key(dict, key) result(has)
 
     type(DictionaryCI), pointer    :: dict
-    character(len=*),   intent(in) :: key
+    character(*),       intent(in) :: key
     logical                        :: has
 
     type(ListKeyValueCI), pointer  :: elem
@@ -937,7 +937,7 @@ contains
   function dict_ci_get_elem(dict, key) result(elem)
 
     type(DictionaryCI), pointer    :: dict
-    character(len=*),   intent(in) :: key
+    character(*),       intent(in) :: key
 
     type(ListKeyValueCI), pointer  :: elem
     integer                        :: hash
@@ -989,7 +989,7 @@ contains
 
   function dict_ci_hashkey(key) result(val)
 
-    character(len=*), intent(in) :: key
+    character(*), intent(in) :: key
 
     integer :: val
     integer :: hash

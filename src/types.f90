@@ -310,7 +310,7 @@ module types
      real(8) :: awr
      real(8) :: temp
      integer :: binary
-     character(100) :: path
+     character(150) :: path
   end type xsData
 
 !===============================================================================

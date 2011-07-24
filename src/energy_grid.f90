@@ -25,7 +25,7 @@ contains
     type(AceReaction),    pointer :: rxn => null()
     integer :: i, j
     integer :: n
-    character(100) :: msg
+    character(max_line_len) :: msg
 
     msg = "Creating unionized energy grid..."
     call message(msg, 5)

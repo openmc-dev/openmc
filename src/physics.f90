@@ -31,7 +31,7 @@ contains
     real(8)        :: f              ! interpolation factor
     logical        :: found_cell     ! found cell which particle is in?
     logical        :: in_lattice     ! is surface crossing in lattice?
-    character(250) :: msg            ! output/error message
+    character(max_line_len) :: msg   ! output/error message
     type(Universe), pointer :: univ
 
     if (p % cell == 0) then
@@ -157,7 +157,7 @@ contains
     real(8) :: r1         ! random number
     real(8) :: flux       ! collision estimator of flux
     real(8), allocatable :: Sigma_rxn(:) ! macroscopic xs for each nuclide
-    character(250) :: msg ! output/error message
+    character(max_line_len)       :: msg ! output/error message
     type(AceContinuous), pointer :: table
     type(AceReaction),   pointer :: rxn
 
@@ -372,7 +372,7 @@ contains
     real(8) :: xi          ! random number
     real(8) :: yield       ! delayed neutron precursor yield
     real(8) :: prob        ! cumulative probability
-    character(250) :: msg  ! error message
+    character(max_line_len) :: msg  ! error message
 
     ! copy energy of neutron
     E = p % E
@@ -647,7 +647,7 @@ contains
     real(8) :: E          ! outgoing energy in laboratory
     real(8) :: E_cm       ! outgoing energy in center-of-mass
     real(8) :: u,v,w      ! direction cosines
-    character(250) :: msg ! error message
+    character(max_line_len) :: msg ! error message
     
     ! copy energy of neutron
     E_in = p % E
@@ -714,7 +714,7 @@ contains
     real(8) :: E           ! outgoing energy in laboratory
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: u,v,w       ! direction cosines
-    character(250) :: msg  ! error message
+    character(max_line_len) :: msg  ! error message
     
     ! copy energy of neutron
     E_in = p % E
@@ -777,8 +777,8 @@ contains
 
     type(Particle), pointer :: p
 
-    integer        :: cell_num ! user-specified cell number
-    character(250) :: msg      ! output/error message
+    integer                 :: cell_num ! user-specified cell number
+    character(max_line_len) :: msg      ! output/error message
 
     p % alive = .false.
     if (verbosity >= 10) then
@@ -816,7 +816,7 @@ contains
     real(8)        :: c_k     ! cumulative frequency at k
     real(8)        :: c_k1    ! cumulative frequency at k+1
     real(8)        :: p0,p1   ! probability distribution
-    character(250) :: msg     ! error message
+    character(max_line_len) :: msg     ! error message
 
     ! check if reaction has angular distribution -- if not, sample outgoing
     ! angle isotropically
@@ -1008,7 +1008,7 @@ contains
     real(8) :: frac        ! interpolation factor on outgoing energy
     real(8) :: U           ! restriction energy
     real(8) :: T           ! nuclear temperature
-    character(250) :: msg  ! error message
+    character(max_line_len) :: msg  ! error message
 
     ! TODO: If there are multiple scattering laws, sample scattering law
 

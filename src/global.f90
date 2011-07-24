@@ -8,6 +8,12 @@ module global
 
   implicit none
 
+  ! Maximum number of words in a single line, length of line, and length of
+  ! single word
+  integer, parameter :: max_words    = 500
+  integer, parameter :: max_line_len = 250
+  integer, parameter :: max_word_len = 150
+
   ! Main arrays for cells, surfaces, materials
   type(Cell),     allocatable, target :: cells(:)
   type(Universe), allocatable, target :: universes(:)
@@ -82,8 +88,8 @@ module global
   logical :: mpi_enabled ! is MPI in use and initialized?
 
   ! Paths to input file, cross section data, etc
-  character(100) :: & 
-       & path_input,    &
+  character(max_word_len) :: & 
+       & path_input,         &
        & path_xsdata
   integer, parameter :: UNIT_LOG = 9 ! unit # for writing log file
 
@@ -256,9 +262,6 @@ module global
   ! screen and in logs
   integer :: verbosity
 
-  integer, parameter :: max_words = 500
-  integer, parameter :: max_line  = 250
-
   ! Versioning numbers
   integer, parameter :: VERSION_MAJOR = 0
   integer, parameter :: VERSION_MINOR = 2
@@ -399,10 +402,10 @@ contains
     integer :: index_exponent ! index of exponent character
     integer :: w              ! total field width
     integer :: d              ! number of digits to right of decimal point
-    integer :: readError
+    integer :: ioError
 
-    character(8) :: fmt   ! format for reading string
-    character(250) :: msg ! error message
+    character(8)            :: fmt ! format for reading string
+    character(max_line_len) :: msg ! error message
 
     ! Determine total field width
     w = len_trim(string)
@@ -425,8 +428,8 @@ contains
     write(fmt, '("(E",I2,".",I2,")")') w, d
 
     ! Read string
-    read(string, fmt, iostat=readError) num
-    if (readError > 0) num = ERROR_REAL
+    read(UNIT=string, FMT=fmt, IOSTAT=ioError) num
+    if (ioError > 0) num = ERROR_REAL
 
   end function str_to_real
 

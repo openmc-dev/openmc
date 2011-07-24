@@ -58,8 +58,6 @@ contains
 
   subroutine echo_input()
 
-    character(32) :: string
-
     ! Display problem summary
     write(ou,*) '============================================='
     write(ou,*) '=>             PROBLEM SUMMARY             <='
@@ -225,8 +223,8 @@ contains
 
     type(Particle), pointer :: p
 
-    integer :: i
-    character(250) :: string
+    integer                 :: i
+    character(max_line_len) :: string
     type(Cell),     pointer :: c => null()
     type(Surface),  pointer :: s => null()
     type(Universe), pointer :: u => null()
@@ -309,9 +307,9 @@ contains
 
     type(Cell), pointer :: c
 
-    integer :: temp
-    integer :: i
-    character(250) :: string
+    integer                 :: temp
+    integer                 :: i
+    character(max_line_len) :: string
     type(Universe), pointer :: u => null()
     type(Lattice),  pointer :: l => null()
     type(Material), pointer :: m => null()
@@ -370,9 +368,9 @@ contains
 
     type(Universe), pointer :: univ
 
-    integer :: i
-    character(250) :: string
-    type(Cell), pointer :: c => null()
+    integer                 :: i
+    character(max_line_len) :: string
+    type(Cell), pointer     :: c => null()
 
     write(ou,*) 'Universe ' // int_to_str(univ % uid)
     write(ou,*) '    Level = ' // int_to_str(univ % level)
@@ -416,7 +414,7 @@ contains
     type(Surface), pointer :: surf
 
     integer :: i
-    character(80) :: string
+    character(max_line_len) :: string
 
     write(ou,*) 'Surface ' // int_to_str(surf % uid)
     select case (surf % type)
@@ -488,10 +486,10 @@ contains
 
     type(Material), pointer :: mat
 
-    integer        :: i
-    integer        :: n_lines
-    real(8)        :: density
-    character(250) :: string
+    integer                      :: i
+    integer                      :: n_lines
+    real(8)                      :: density
+    character(max_line_len)      :: string
     type(AceContinuous), pointer :: table => null()
 
     write(ou,*) 'Material ' // int_to_str(mat % uid)
@@ -518,9 +516,9 @@ contains
 
     type(Tally), pointer :: tal
 
-    integer :: i
-    integer :: MT
-    character(250) :: string
+    integer                 :: i
+    integer                 :: MT
+    character(max_line_len) :: string
 
     write(ou,*) 'Tally ' // int_to_str(tal % uid)
 

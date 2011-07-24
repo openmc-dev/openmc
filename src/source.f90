@@ -28,7 +28,7 @@ contains
     real(8)    :: E          ! outgoing energy
     real(8)    :: p_min(3)   ! minimum coordinates of source
     real(8)    :: p_max(3)   ! maximum coordinates of source
-    character(250) :: msg    ! error message
+    character(max_line_len) :: msg    ! error message
 
     msg = 'Initializing source particles...'
     call message(msg, 6)

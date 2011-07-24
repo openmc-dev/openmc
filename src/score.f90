@@ -29,7 +29,7 @@ contains
     real(8), save :: k1 = 0. ! accumulated keff
     real(8), save :: k2 = 0. ! accumulated keff**2
     real(8) :: std     ! stdev of keff over active cycles
-    character(250) :: msg
+    character(max_line_len) :: msg
 
     msg = "Calculate cycle keff..."
     call message(msg, 8)
@@ -98,9 +98,9 @@ contains
     real(8) :: E          ! energy of particle
     real(8) :: val        ! value to score
     real(8) :: Sigma      ! macroscopic cross section of reaction
-    character(250) :: msg ! output/error message
-    type(Cell),  pointer :: c => null()
-    type(Tally), pointer :: t => null()
+    character(max_line_len) :: msg ! output/error message
+    type(Cell),  pointer    :: c => null()
+    type(Tally), pointer    :: t => null()
 
     ! ==========================================================================
     ! HANDLE LOCAL TALLIES

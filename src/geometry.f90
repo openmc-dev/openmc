@@ -26,8 +26,8 @@ contains
     integer :: i               ! index of surfaces in cell
     integer :: surf_num        ! index in surfaces array (with sign)
     integer :: current_surface ! current surface of particle (with sign)
-    character(250) :: msg      ! output/error message
-    type(Surface), pointer :: surf => null()
+    character(max_line_len) :: msg      ! output/error message
+    type(Surface), pointer  :: surf => null()
 
     current_surface = p%surface
 
@@ -92,9 +92,9 @@ contains
     type(Particle), pointer :: p          ! pointer to particle
     logical,  intent(inout) :: found      ! particle found?
 
-    character(250) :: msg                 ! error message
-    integer        :: i                   ! index over cells
-    integer        :: x, y
+    character(max_line_len) :: msg        ! error message
+    integer                 :: i          ! index over cells
+    integer                 :: x, y
     type(Cell),     pointer :: c          ! pointer to cell
     type(Lattice),  pointer :: lat        ! pointer to lattice
     type(Universe), pointer :: lower_univ ! if particle is in lower
@@ -173,10 +173,10 @@ contains
 
     type(Particle), pointer :: p
 
-    integer        :: i          ! index of neighbors
-    integer        :: index_cell ! index in cells array
-    logical        :: found      ! particle found in universe?
-    character(250) :: msg        ! output/error message?
+    integer                 :: i          ! index of neighbors
+    integer                 :: index_cell ! index in cells array
+    logical                 :: found      ! particle found in universe?
+    character(max_line_len) :: msg        ! output/error message?
     type(Surface),  pointer :: surf
     type(Cell),     pointer :: c
     type(Universe), pointer :: lower_univ => null()
@@ -286,7 +286,7 @@ contains
     real(8)        :: x0       ! half the width of lattice element
     real(8)        :: y0       ! half the height of lattice element
     logical        :: found    ! particle found in cell?
-    character(250) :: msg      ! output/error message
+    character(max_line_len) :: msg  ! output/error message
     type(Lattice),  pointer :: lat
     type(Universe), pointer :: univ
 
@@ -405,11 +405,11 @@ contains
     real(8) :: a,b,c,k      ! quadratic equation coefficients
     real(8) :: quad         ! discriminant of quadratic equation
     logical :: on_surface   ! is particle on surface?
-    character(250) :: msg   ! output/error message
-    type(Cell),    pointer :: cell_p => null()
-    type(Cell),    pointer :: parent_p => null()
-    type(Surface), pointer :: surf_p => null()
-    type(LatticE), pointer :: lat => null()
+    character(max_line_len) :: msg   ! output/error message
+    type(Cell),    pointer  :: cell_p => null()
+    type(Cell),    pointer  :: parent_p => null()
+    type(Surface), pointer  :: surf_p => null()
+    type(LatticE), pointer  :: lat => null()
 
     cell_p => cells(p%cell)
 
@@ -920,9 +920,9 @@ contains
     integer, allocatable :: count_positive(:) ! # of cells on positive side
     integer, allocatable :: count_negative(:) ! # of cells on negative side
     logical :: positive   ! positive side specified in surface list
-    character(250) :: msg ! output/error message
-    type(Cell),    pointer :: c
-    type(Surface), pointer :: surf
+    character(max_line_len) :: msg ! output/error message
+    type(Cell),    pointer  :: c
+    type(Surface), pointer  :: surf
 
     msg = "Building neighboring cells lists for each surface..."
     call message(msg, 4)

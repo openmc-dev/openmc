@@ -34,10 +34,10 @@ contains
 
   subroutine read_command_line()
 
-    integer        :: argc        ! number of command line arguments
-    logical        :: file_exists ! does specified input file exist?
-    character(250) :: msg         ! error message
-    character(7)   :: readable    ! is input file readable?
+    integer                 :: argc        ! number of command line arguments
+    logical                 :: file_exists ! does specified input file exist?
+    character(max_line_len) :: msg         ! error message
+    character(7)            :: readable    ! is input file readable?
 
     argc = COMMAND_ARGUMENT_COUNT()
     if (argc > 0) then
@@ -72,15 +72,15 @@ contains
     
     character(*), intent(in) :: filename
 
-    integer        :: in = 7           ! unit # for input file
-    integer        :: index            ! index in universes array
-    integer        :: ioError          ! error status for file access
-    integer        :: n                ! number of words on a line
-    integer        :: count            ! number of cells in a universe
-    integer        :: universe_num     ! user-specified universe #
-    character(250) :: line             ! a line of words in input file
-    character(250) :: msg              ! output/error message
-    character(32)  :: words(max_words) ! words on a line
+    integer                 :: in = 7           ! unit # for input file
+    integer                 :: index            ! index in universes array
+    integer                 :: ioError          ! error status for file access
+    integer                 :: n                ! number of words on a line
+    integer                 :: count            ! number of cells in a universe
+    integer                 :: universe_num     ! user-specified universe #
+    character(max_line_len) :: line             ! a line of words in input file
+    character(max_line_len) :: msg              ! output/error message
+    character(max_word_len) :: words(max_words) ! words on a line
     type(ListKeyValueII), pointer :: key_list => null()
     type(Universe),       pointer :: univ => null()
 
@@ -229,9 +229,9 @@ contains
     integer :: index_material          ! index in materials array
     integer :: index_source            ! index in source array (?)
     integer :: index_tally             ! index in tally array
-    character(250) :: line             ! a line of words
-    character(250) :: msg              ! output/error message
-    character(32)  :: words(max_words) ! words on a single line
+    character(max_line_len) :: line             ! a line of words
+    character(max_line_len) :: msg              ! output/error message
+    character(max_word_len) :: words(max_words) ! words on a single line
 
     msg = "Second pass through input file..."
     call message(msg, 5)
@@ -300,7 +300,7 @@ contains
        case ('verbosity')
           verbosity = str_to_int(words(2))
           if (verbosity == ERROR_INT) then
-             msg = "Invalid verbosity: " // words(2)
+             msg = "Invalid verbosity: " // trim(words(2))
              call error(msg)
           end if
 
@@ -329,12 +329,12 @@ contains
 
   subroutine adjust_indices()
 
-    integer             :: i           ! index in cells array
-    integer             :: j           ! index over surface list
-    integer             :: index       ! index in surfaces/materials array 
-    integer             :: surf_num    ! user-specified surface number
-    integer             :: bc          ! boundary condition
-    character(250)      :: msg         ! output/error message
+    integer                 :: i        ! index in cells array
+    integer                 :: j        ! index over surface list
+    integer                 :: index    ! index in surfaces/materials array 
+    integer                 :: surf_num ! user-specified surface number
+    integer                 :: bc       ! boundary condition
+    character(max_line_len) :: msg      ! output/error message
     type(Cell),           pointer :: c => null()
     type(Surface),        pointer :: surf => null()
     type(ListKeyValueII), pointer :: key_list => null()
@@ -464,20 +464,20 @@ contains
     character(*), intent(in) :: words(n_words) ! words on cell card entry
     integer,      intent(in) :: n_words        ! number of words
 
-    integer        :: ioError      ! error status for file access
-    integer        :: i            ! index for surface list in a cell
-    integer        :: universe_num ! user-specified universe number
-    integer        :: n_surfaces   ! number of surfaces in a cell
-    character(250) :: msg          ! output/error message
-    character(32)  :: word         ! single word
-    type(Cell), pointer :: c => null()
+    integer                 :: ioError      ! error status for file access
+    integer                 :: i            ! index for surface list in a cell
+    integer                 :: universe_num ! user-specified universe number
+    integer                 :: n_surfaces   ! number of surfaces in a cell
+    character(max_line_len) :: msg          ! output/error message
+    character(max_word_len) :: word         ! single word
+    type(Cell), pointer     :: c => null()
 
     c => cells(index)
 
     ! Read cell identifier
     c % uid = str_to_int(words(2))
     if (c % uid == ERROR_INT) then
-       msg = "Invalid cell name: " // words(2)
+       msg = "Invalid cell name: " // trim(words(2))
        call error(msg)
     end if
     call dict_add_key(cell_dict, c%uid, index)
@@ -485,7 +485,7 @@ contains
     ! Read cell universe
     universe_num = str_to_int(words(3))
     if (universe_num == ERROR_INT) then
-       msg = "Invalid universe: " // words(3)
+       msg = "Invalid universe: " // trim(words(3))
        call error(msg)
     end if
     c % universe = dict_get_key(universe_dict, universe_num)
@@ -498,7 +498,7 @@ contains
        ! find universe
        universe_num = str_to_int(words(5))
        if (universe_num == ERROR_INT) then
-          msg = "Invalid universe fill: " // words(5)
+          msg = "Invalid universe fill: " // trim(words(5))
           call error(msg)
        end if
 
@@ -515,7 +515,7 @@ contains
        c % material = str_to_int(words(4))
        c % fill     = 0
        if (c % material == ERROR_INT) then
-          msg = "Invalid material number: " // words(4)
+          msg = "Invalid material number: " // trim(words(4))
           call error(msg)
        end if
        n_surfaces = n_words - 4
@@ -558,19 +558,19 @@ contains
     character(*), intent(in) :: words(n_words) ! words in surface card entry
     integer,      intent(in) :: n_words        ! number of words
 
-    integer        :: ioError     ! error status for file access
-    integer        :: i           ! index for surface coefficients
-    integer        :: coeffs_reqd ! number of coefficients are required
-    character(250) :: msg         ! output/error message
-    character(32)  :: word        ! single word
-    type(Surface), pointer :: surf => null()
+    integer                 :: ioError     ! error status for file access
+    integer                 :: i           ! index for surface coefficients
+    integer                 :: coeffs_reqd ! number of coefficients are required
+    character(max_line_len) :: msg         ! output/error message
+    character(max_word_len) :: word        ! single word
+    type(Surface), pointer  :: surf => null()
 
     surf => surfaces(index)
 
     ! Read surface identifier
     read(words(2), FMT='(I8)', IOSTAT=ioError) surf % uid
     if (ioError > 0) then
-       msg = "Invalid surface name: " // words(2)
+       msg = "Invalid surface name: " // trim(words(2))
        call error(msg)
     end if
     call dict_add_key(surface_dict, surf % uid, index)
@@ -619,13 +619,13 @@ contains
           surf % type = SURF_GQ
           coeffs_reqd  = 10
        case default
-          msg = "Invalid surface type: " // words(3)
+          msg = "Invalid surface type: " // trim(words(3))
           call error(msg)
     end select
 
     ! Make sure there are enough coefficients for surface type
     if (n_words-3 < coeffs_reqd) then
-       msg = "Not enough coefficients for surface: " // words(2)
+       msg = "Not enough coefficients for surface: " // trim(words(2))
        call error(msg)
     end if
     
@@ -648,15 +648,15 @@ contains
     character(*), intent(in) :: words(n_words) ! words in bc entry
     integer,      intent(in) :: n_words        ! number of words
 
-    integer        :: surface_uid ! User-specified uid of surface
-    integer        :: bc          ! Boundary condition
-    character(32)  :: word        ! Boundary condition (in input file)
-    character(250) :: msg         ! Output/error message
+    integer                 :: surface_uid ! User-specified uid of surface
+    integer                 :: bc          ! Boundary condition
+    character(max_word_len) :: word        ! Boundary condition (in input file)
+    character(max_line_len) :: msg         ! Output/error message
 
     ! Read surface identifier
     surface_uid = str_to_int(words(2))
     if (surface_uid == ERROR_INT) then
-       msg = "Invalid surface name: " // words(2)
+       msg = "Invalid surface name: " // trim(words(2))
        call error(msg)
     end if
 
@@ -671,7 +671,7 @@ contains
     case ('reflect')
        bc = BC_REFLECT
     case default
-       msg = "Invalid boundary condition: " // words(3)
+       msg = "Invalid boundary condition: " // trim(words(3))
        call error(msg)
     end select
 
@@ -690,21 +690,21 @@ contains
     character(*), intent(in) :: words(n_words) ! words in lattice entry
     integer,      intent(in) :: n_words        ! number of words
 
-    integer        :: universe_num ! user-specified universe number
-    integer        :: n_x          ! number of lattice cells in x direction
-    integer        :: n_y          ! number of lattice cells in y direction
-    integer        :: i,j          ! loop indices for Lattice % universes
-    integer        :: index_word   ! index in words array
-    character(250) :: msg          ! output/error/message
-    character(32)  :: word         ! single word
-    type(Lattice), pointer :: lat => null()
+    integer                 :: universe_num ! user-specified universe number
+    integer                 :: n_x          ! number of lattice cells in x direction
+    integer                 :: n_y          ! number of lattice cells in y direction
+    integer                 :: i,j          ! loop indices for Lattice % universes
+    integer                 :: index_word   ! index in words array
+    character(max_line_len) :: msg          ! output/error/message
+    character(max_word_len) :: word         ! single word
+    type(Lattice), pointer  :: lat => null()
     
     lat => lattices(index)
 
     ! Read lattice universe
     universe_num = str_to_int(words(2))
     if (universe_num == ERROR_INT) then
-       msg = "Invalid universe: " // words(2)
+       msg = "Invalid universe: " // trim(words(2))
        call error(msg)
     end if
     lat % uid = universe_num
@@ -718,7 +718,7 @@ contains
     case ('hex')
        lat % type = LATTICE_HEX
     case default
-       msg = "Invalid lattice type: " // words(3)
+       msg = "Invalid lattice type: " // trim(words(3))
        call error(msg)
     end select
 
@@ -726,10 +726,10 @@ contains
     n_x = str_to_int(words(4))
     n_y = str_to_int(words(5))
     if (n_x == ERROR_INT) then
-       msg = "Invalid number of lattice cells in x-direction: " // words(4)
+       msg = "Invalid number of lattice cells in x-direction: " // trim(words(4))
        call error(msg)
     elseif (n_y == ERROR_INT) then
-       msg = "Invalid number of lattice cells in y-direction: " // words(5)
+       msg = "Invalid number of lattice cells in y-direction: " // trim(words(5))
        call error(msg)
     end if
     lat % n_x = n_x
@@ -757,7 +757,7 @@ contains
           index_word = 9 + j*n_x + i
           universe_num = str_to_int(words(index_word))
           if (universe_num == ERROR_INT) then
-             msg = "Invalid universe number: " // words(index_word)
+             msg = "Invalid universe number: " // trim(words(index_word))
              call error(msg)
           end if
           lat % element(i, n_y-j) = dict_get_key(universe_dict, universe_num)
@@ -775,11 +775,11 @@ contains
     character(*), intent(in) :: words(n_words) ! words on source entry
     integer,      intent(in) :: n_words        ! number of words
 
-    integer :: i           ! index in values list
-    integer :: ioError     ! error status for file access
-    integer :: values_reqd ! number of values required to specify source
-    character(250) :: msg  ! output/error message
-    character(32)  :: word ! single word
+    integer                 :: i           ! index in values list
+    integer                 :: ioError     ! error status for file access
+    integer                 :: values_reqd ! # of values required to specify source
+    character(max_line_len) :: msg  ! output/error message
+    character(max_word_len) :: word ! single word
 
     ! Read source type
     word = words(2)
@@ -789,13 +789,13 @@ contains
        external_source % type = SRC_BOX
        values_reqd = 6
     case default
-       msg = "Invalid source type: " // words(2)
+       msg = "Invalid source type: " // trim(words(2))
        call error(msg)
     end select
 
     ! Make sure there are enough values for this source type
     if (n_words-2 < values_reqd) then
-       msg = "Not enough values for source of type: " // words(2)
+       msg = "Not enough values for source of type: " // trim(words(2))
        call error(msg)
     end if
     
@@ -825,8 +825,8 @@ contains
     integer :: cell_uid
     integer :: r_bins, c_bins, e_bins
     real(8) :: E
-    character(32) :: word
-    character(250) :: msg
+    character(max_word_len) :: word
+    character(max_line_len) :: msg
     type(Tally), pointer :: t => null()
 
     t => tallies(index)
@@ -834,7 +834,7 @@ contains
     ! Read tally identifier
     t % uid = str_to_int(words(2))
     if (t % uid == ERROR_INT) then
-       msg = "Invalid tally name: " // words(2)
+       msg = "Invalid tally name: " // trim(words(2))
        call error(msg)
     end if
     call dict_add_key(tally_dict, t % uid, index)
@@ -973,15 +973,15 @@ contains
     character(*), intent(in) :: words(n_words) ! words on material entry
     integer,      intent(in) :: n_words        ! number of words
 
-    integer        :: i          ! index over isotopes
-    integer        :: ioError    ! error status for file access
-    integer        :: n_isotopes ! number of isotopes in material
-    character(250) :: msg        ! output/error message
+    integer                 :: i          ! index over isotopes
+    integer                 :: ioError    ! error status for file access
+    integer                 :: n_isotopes ! number of isotopes in material
+    character(max_line_len) :: msg        ! output/error message
     type(Material), pointer :: mat => null()
 
     ! Check for correct number of arguments
     if (mod(n_words,2) == 0 .or. n_words < 5) then
-       msg = "Invalid number of arguments for material: " // words(2)
+       msg = "Invalid number of arguments for material: " // trim(words(2))
        call error(msg)
     end if
 
@@ -993,7 +993,7 @@ contains
     ! Read surface identifier
     read(words(2), FMT='(I8)', IOSTAT=ioError) mat % uid
     if (ioError > 0) then
-       msg = "Invalid surface name: " // words(2)
+       msg = "Invalid surface name: " // trim(words(2))
        call error(msg)
     end if
     call dict_add_key(material_dict, mat%uid, index)
@@ -1031,7 +1031,7 @@ contains
     logical        :: percent_in_atom ! isotopes specified in atom percent?
     logical        :: density_in_atom ! density specified in atom/b-cm?
     character(10)  :: key             ! name of isotopes, e.g. 92235.03c
-    character(100) :: msg             ! output/error message
+    character(max_line_len) :: msg    ! output/error message
     type(xsData),   pointer :: iso => null()
     type(Material), pointer :: mat => null()
     
@@ -1116,7 +1116,7 @@ contains
     character(*), intent(in) :: words(n_words) ! words on criticality card
     integer,      intent(in) :: n_words        ! number of words
 
-    character(250) :: msg ! output/error message
+    character(max_line_len) :: msg ! output/error message
 
     ! Set problem type to criticality
     problem_type = PROB_CRITICALITY
@@ -1124,21 +1124,21 @@ contains
     ! Read number of cycles
     n_cycles = str_to_int(words(2))
     if (n_cycles == ERROR_INT) then
-       msg = "Invalid number of cycles: " // words(2)
+       msg = "Invalid number of cycles: " // trim(words(2))
        call error(msg)
     end if
 
     ! Read number of inactive cycles
     n_inactive = str_to_int(words(3))
     if (n_inactive == ERROR_INT) then
-       msg = "Invalid number of inactive cycles: " // words(2)
+       msg = "Invalid number of inactive cycles: " // trim(words(2))
        call error(msg)
     end if
 
     ! Read number of particles
     n_particles = str_to_int(words(4))
     if (n_particles == ERROR_INT) then
-       msg = "Invalid number of particles: " // words(2)
+       msg = "Invalid number of particles: " // trim(words(2))
        call error(msg)
     end if
 
@@ -1150,11 +1150,11 @@ contains
 
   subroutine read_line(unit, line, ioError)
 
-    integer,             intent(in)  :: unit    ! unit to read from
-    character(max_line), intent(out) :: line    ! line to return
-    integer,             intent(out) :: ioError ! error status
+    integer,      intent(in)  :: unit    ! unit to read from
+    character(*), intent(out) :: line    ! line to return
+    integer,      intent(out) :: ioError ! error status
 
-    read(UNIT=unit, FMT='(A250)', IOSTAT=ioError) line
+    read(UNIT=unit, FMT='(A)', IOSTAT=ioError) line
 
   end subroutine read_line
 
@@ -1171,14 +1171,14 @@ contains
     integer,      intent(out) :: n                ! number of words
     integer,      intent(out) :: ioError          ! error status
 
-    character(250) :: line                   ! single line
-    character(32)  :: local_words(max_words) ! words on one line
-    integer        :: index                  ! index of words
+    character(max_line_len) :: line                   ! single line
+    character(max_word_len) :: local_words(max_words) ! words on one line
+    integer                 :: index                  ! index of words
 
     index = 0
     do
        ! read line from file
-       read(UNIT=unit, FMT='(A250)', IOSTAT=ioError) line
+       read(UNIT=unit, FMT='(A100)', IOSTAT=ioError) line
 
        ! if we're at the end of the file, return
        if (ioError /= 0) return
@@ -1215,11 +1215,11 @@ contains
     integer, intent(in)  :: n_lines ! number of lines to skip
     integer, intent(out) :: ioError ! error status 
 
-    integer             :: i        ! index for number of lines
-    character(max_line) :: tmp      ! single line
+    integer                 :: i        ! index for number of lines
+    character(max_line_len) :: tmp      ! single line
 
     do i = 1, n_lines
-       read(UNIT=unit, FMT='(A250)', IOSTAT=ioError) tmp
+       read(UNIT=unit, FMT='(A)', IOSTAT=ioError) tmp
     end do
 
   end subroutine skip_lines

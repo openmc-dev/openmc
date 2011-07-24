@@ -19,17 +19,18 @@ contains
 
     character(*), intent(in) :: path
 
-    type(xsData), pointer :: iso => null()
-    character(250) :: line, msg
-    character(100) :: words(max_words)
-    character(100) :: filename
-    integer :: i, n
-    integer :: in = 7
-    logical :: file_exists
-    character(7) :: readable
-    integer :: count
-    integer :: index
-    integer :: ioError
+    type(xsData), pointer    :: iso => null()
+    character(max_line_len)  :: line
+    character(max_line_len)  :: msg
+    character(max_word_len)  :: words(max_words)
+    character(max_word_len)  :: filename
+    integer                  :: i, n
+    integer                  :: in = 7
+    logical                  :: file_exists
+    character(7)             :: readable
+    integer                  :: count
+    integer                  :: index
+    integer                  :: ioError
 
     msg = "Reading cross-section summary file..."
     call message(msg, 5)
@@ -54,8 +55,8 @@ contains
     end if
 
     ! open xsdata file
-    open(file=filename, unit=in, status='old', &
-         & action='read', iostat=ioError)
+    open(FILE=filename, UNIT=in, STATUS='old', &
+         & ACTION='read', IOSTAT=ioError)
     if (ioError /= 0) then
        msg = "Error while opening file: " // filename
        call error(msg)
@@ -64,13 +65,13 @@ contains
     ! determine how many lines
     count = 0
     do
-       read(unit=in, fmt='(A250)', iostat=ioError) line
+       read(UNIT=in, FMT='(A)', IOSTAT=ioError) line
        if (ioError < 0) then
           ! reached end of file
           exit
        elseif (ioError > 0) then
           msg = "Unknown error while reading file: " // filename
-          close(unit=in)
+          close(UNIT=in)
           call error(msg)
        end if
        count = count + 1
@@ -84,7 +85,7 @@ contains
     index = 0
     rewind(in)
     do
-       read(unit=in, fmt='(A250)', iostat=ioError) line
+       read(UNIT=in, FMT='(A)', IOSTAT=ioError) line
        if (ioError < 0) exit
        index = index + 1
        call split_string(line, words, n)
@@ -93,7 +94,7 @@ contains
        ! Check to make sure there are enough arguments
        if (n < 9) then
           msg = "Not enough arguments on xsdata line: " // line
-          close(unit=in)
+          close(UNIT=in)
           call error(msg)
        end if
 
@@ -114,7 +115,7 @@ contains
        call dict_add_key(xsdata_dict, iso%alias, index)
     end do
 
-    close(unit=in)
+    close(UNIT=in)
 
   end subroutine read_xsdata
 
@@ -139,7 +140,7 @@ contains
     real(8) :: E_i1
     real(8) :: sigma_i
     real(8) :: sigma_i1
-    character(250) :: msg
+    character(max_line_len) :: msg
 
     msg = "Creating material total cross-sections..."
     call message(msg, 4)

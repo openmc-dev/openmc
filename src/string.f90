@@ -1,6 +1,6 @@
 module string
 
-  use global, only: max_words
+  use global
   use output, only: error, warning
 
   implicit none
@@ -27,12 +27,12 @@ contains
     integer       :: i       ! current index
     integer       :: i_start ! starting index of word
     integer       :: i_end   ! ending index of word
-    character(250) :: msg
+    character(max_line_len) :: msg
 
     i_start = 0
     i_end = 0
     n = 0
-    do i = 1, len(string)
+    do i = 1, len_trim(string)
        char = string(i:i)
 
        ! Note that ACHAR(9) is a horizontal tab
@@ -41,7 +41,7 @@ contains
        end if
        if (i_start > 0) then
           if ((char == ' ') .or. (char == achar(9))) i_end = i - 1
-          if (i == len(string))   i_end = i
+          if (i == len_trim(string))   i_end = i
           if (i_end > 0) then
              n = n + 1
              if (i_end - i_start + 1 > len(words(n))) then
@@ -132,7 +132,7 @@ contains
 
     character(*),   intent(in)  :: words(n_words)
     integer,        intent(in)  :: n_words
-    character(250)              :: string
+    character(max_line_len)     :: string
 
     integer :: i ! index
 

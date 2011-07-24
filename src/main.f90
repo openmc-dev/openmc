@@ -22,8 +22,8 @@ program main
 
   implicit none
 
-  character(16) :: filename
-  character(250) :: msg
+  character(max_word_len) :: filename
+  character(max_line_len) :: msg
   type(Universe), pointer :: univ
 
   ! Setup MPI
@@ -106,7 +106,7 @@ contains
     real(8)    :: t0
     real(8)    :: t1
     type(Particle), pointer :: p => null()
-    character(250) :: msg
+    character(max_line_len) :: msg
 
     msg = "Running problem..."
     call message(msg, 6)

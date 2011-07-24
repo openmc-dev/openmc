@@ -34,7 +34,7 @@ contains
     integer        :: index_continuous ! index in xs_continuous
     integer        :: index_thermal    ! index in xs_thermal
     character(10)  :: key              ! name of isotope, e.g. 92235.03c
-    character(250) :: msg              ! output/error message
+    character(max_line_len) :: msg              ! output/error message
     type(Material),      pointer :: mat => null()
     type(xsData),        pointer :: iso => null()
     type(AceContinuous), pointer :: ace_cont => null()
@@ -120,20 +120,20 @@ contains
     integer, intent(in) :: index_table ! index in xs_continuous array
     integer, intent(in) :: index       ! index in xsdatas array
 
-    integer        :: in = 7           ! unit to read from
-    integer        :: ioError          ! error status for file access
-    integer        :: words_per_line   ! number of words per line (data)
-    integer        :: lines            ! number of lines (data
-    integer        :: n                ! number of data values
-    real(8)        :: kT               ! ACE table temperature
-    logical        :: file_exists      ! does ACE library exist?
-    logical        :: found_xs         ! did we find table in library?
-    character(7)   :: readable         ! is ACE library readable?
-    character(250) :: msg              ! output/error message
-    character(250) :: line             ! single line to read
-    character(32)  :: words(max_words) ! words on a line
-    character(100) :: filename         ! name of ACE library file
-    character(10)  :: tablename        ! name of cross section table
+    integer                 :: in = 7           ! unit to read from
+    integer                 :: ioError          ! error status for file access
+    integer                 :: words_per_line   ! number of words per line (data)
+    integer                 :: lines            ! number of lines (data
+    integer                 :: n                ! number of data values
+    real(8)                 :: kT               ! ACE table temperature
+    logical                 :: file_exists      ! does ACE library exist?
+    logical                 :: found_xs         ! did we find table in library?
+    character(7)            :: readable         ! is ACE library readable?
+    character(max_line_len) :: msg              ! output/error message
+    character(max_line_len) :: line             ! single line to read
+    character(max_word_len) :: words(max_words) ! words on a line
+    character(max_word_len) :: filename         ! name of ACE library file
+    character(10)           :: tablename        ! name of cross section table
     type(AceContinuous), pointer :: table => null()
 
     filename = xsdatas(index)%path
@@ -931,20 +931,20 @@ contains
     integer, intent(in) :: index_table ! index in xs_thermal array
     integer, intent(in) :: index       ! index in xsdatas array
 
-    integer        :: in = 7           ! unit to read from
-    integer        :: ioError          ! error status for file access
-    integer        :: words_per_line   ! number of words per line (data)
-    integer        :: lines            ! number of lines (data
-    integer        :: n                ! number of data values
-    real(8)        :: kT               ! ACE table temperature
-    logical        :: file_exists      ! does ACE library exist?
-    logical        :: found_xs         ! did we find table in library?
-    character(7)   :: readable         ! is ACE library readable?
-    character(250) :: msg              ! output/error message
-    character(250) :: line             ! single line to read
-    character(32)  :: words(max_words) ! words on a line
-    character(100) :: filename         ! name of ACE library file
-    character(10)  :: tablename        ! name of cross section table
+    integer                 :: in = 7           ! unit to read from
+    integer                 :: ioError          ! error status for file access
+    integer                 :: words_per_line   ! number of words per line (data)
+    integer                 :: lines            ! number of lines (data
+    integer                 :: n                ! number of data values
+    real(8)                 :: kT               ! ACE table temperature
+    logical                 :: file_exists      ! does ACE library exist?
+    logical                 :: found_xs         ! did we find table in library?
+    character(7)            :: readable         ! is ACE library readable?
+    character(max_line_len) :: msg              ! output/error message
+    character(max_line_len) :: line             ! single line to read
+    character(max_word_len) :: words(max_words) ! words on a line
+    character(max_word_len) :: filename         ! name of ACE library file
+    character(10)           :: tablename        ! name of cross section table
     type(AceThermal), pointer :: table => null()
 
     filename = xsdatas(index)%path

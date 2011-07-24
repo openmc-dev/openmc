@@ -1,5 +1,6 @@
 module search
 
+  use global
   use output, only: error
 
 contains
@@ -19,7 +20,7 @@ contains
     integer :: L
     integer :: R
     real(8) :: testval
-    character(250) :: msg
+    character(max_line_len) :: msg
 
     L = 1
     R = n

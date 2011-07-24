@@ -32,7 +32,7 @@ contains
     integer        :: bank_types(4)  ! Datatypes
     integer(MPI_ADDRESS_KIND) :: bank_disp(4)   ! Displacements
     integer(MPI_ADDRESS_KIND) :: base
-    character(250) :: msg            ! Error message
+    character(max_line_len) :: msg            ! Error message
     type(Bank)     :: b
 
     mpi_enabled = .true.
@@ -128,7 +128,7 @@ contains
          & temp_sites(:),      & ! local array of extra sites on each node
          & left_bank(:),       & ! bank sites to send/recv to or from left node
          & right_bank(:)         ! bank sites to send/recv to or fram right node
-    character(250) :: msg
+    character(max_line_len) :: msg
 
     msg = "Collecting number of fission sites..."
     call message(msg, 8)

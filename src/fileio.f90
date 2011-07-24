@@ -1056,6 +1056,11 @@ contains
           ! Set indices for isotopes
           key = mat % names(j)
           index = dict_get_key(xsdata_dict, key)
+          if (index == DICT_NULL) then
+             msg = "Cannot find cross-section " // trim(key) // " in specified &
+                   &xsdata file."
+             call error(msg)
+          end if
           mat % isotopes(j) = index
 
           ! determine atomic weight ratio

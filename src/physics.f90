@@ -1734,7 +1734,8 @@ contains
 ! WATT_SPECTRUM samples the outgoing energy from a Watt energy-dependent fission
 ! spectrum. Although fitted parameters exist for many nuclides, generally the
 ! continuous tabular distributions (LAW 4) should be used in lieu of the Watt
-! spectrum
+! spectrum. This direct sampling scheme is an unpublished scheme based on the
+! original Watt spectrum derivation (See F. Brown's MC lectures).
 !===============================================================================
 
   function watt_spectrum(a, b) result(E_out)
@@ -1743,16 +1744,10 @@ contains
     real(8), intent(in) :: b     ! Watt parameter b
     real(8)             :: E_out ! energy of emitted neutron
 
-    real(8) :: g      ! from sampling scheme R28
-    real(8) :: r1, r2 ! random numbers
+    real(8) :: w ! sampled from Maxwellian
 
-    g = sqrt((1 + a*b/8)**2 - 1) + (1 + a*b/8)
-    do
-       r1 = log(rang())
-       r2 = log(rang())
-       E_out = -a*g*r1
-       if (((1 - g)*(1 - r1) - r2)**2 < b*E_out) exit
-    end do
+    w     = maxwell_spectrum(a)
+    E_out = w + a*a*b/4. + (2.*rang() - ONE)*sqrt(a*a*b*w)
 
   end function watt_spectrum
 

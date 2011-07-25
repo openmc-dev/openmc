@@ -647,13 +647,15 @@ contains
     real(8) :: E          ! outgoing energy in laboratory
     real(8) :: E_cm       ! outgoing energy in center-of-mass
     real(8) :: u,v,w      ! direction cosines
+    real(8) :: Q          ! Q-value of reaction
     character(max_line_len) :: msg ! error message
     
     ! copy energy of neutron
     E_in = p % E
 
-    ! determine A
+    ! determine A and Q
     A = table % awr
+    Q = rxn % Q_value
 
     ! determine secondary energy distribution law
     law = rxn % edist % law
@@ -664,6 +666,8 @@ contains
     ! sample outgoing energy
     if (law == 44 .or. law == 61) then
        call sample_energy(rxn%edist, E_in, E, mu)
+    elseif (law == 66) then
+       call sample_energy(rxn%edist, E_in, E, A=A, Q=Q)
     else
        call sample_energy(rxn%edist, E_in, E)
     end if
@@ -714,13 +718,15 @@ contains
     real(8) :: E           ! outgoing energy in laboratory
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: u,v,w       ! direction cosines
+    real(8) :: Q           ! Q-value of reaction
     character(max_line_len) :: msg  ! error message
     
     ! copy energy of neutron
     E_in = p % E
 
-    ! determine A
+    ! determine A and Q
     A = table % awr
+    Q = rxn % Q_value
     
     ! determine secondary energy distribution law
     law = rxn % edist % law
@@ -731,6 +737,8 @@ contains
     ! sample outgoing energy
     if (law == 44 .or. law == 61) then
        call sample_energy(rxn%edist, E_in, E, mu)
+    elseif (law == 66) then
+       call sample_energy(rxn%edist, E_in, E, A=A, Q=Q)
     else
        call sample_energy(rxn%edist, E_in, E)
     end if
@@ -962,12 +970,14 @@ contains
 ! SAMPLE_ENERGY
 !===============================================================================
 
-  subroutine sample_energy(edist, E_in, E_out, mu_out)
+  subroutine sample_energy(edist, E_in, E_out, mu_out, A, Q)
 
-    type(AceDistEnergy), intent(inout):: edist
-    real(8), intent(in)               :: E_in
-    real(8), intent(out)              :: E_out
-    real(8), intent(inout), optional  :: mu_out
+    type(AceDistEnergy), intent(inout) :: edist
+    real(8), intent(in)                :: E_in
+    real(8), intent(out)               :: E_out
+    real(8), intent(inout), optional   :: mu_out
+    real(8), intent(in),    optional   :: A
+    real(8), intent(in),    optional   :: Q
 
     integer :: i           ! index on incoming energy grid
     integer :: k           ! sampled index on outgoing grid
@@ -1003,11 +1013,16 @@ contains
     real(8) :: p_k1    ! angular pdf in bin k+1
 
     real(8) :: E_cm
-    real(8) :: xi1, xi2, xi3, xi4
     real(8) :: r           ! interpolation factor on incoming energy
     real(8) :: frac        ! interpolation factor on outgoing energy
     real(8) :: U           ! restriction energy
     real(8) :: T           ! nuclear temperature
+
+    real(8) :: Ap          ! total mass ratio for n-body dist
+    integer :: n_bodies    ! number of bodies for n-body dist
+    real(8) :: E_max       ! parameter for n-body dist
+    real(8) :: x, y, v     ! intermediate variables for n-body dist
+    real(8) :: r1, r2, r3, r4, r5, r6
     character(max_line_len) :: msg  ! error message
 
     ! TODO: If there are multiple scattering laws, sample scattering law
@@ -1043,8 +1058,8 @@ contains
             & (edist%data(loc+i+1) - edist%data(loc+i))
 
        ! Sample outgoing energy bin
-       xi1 = rang()
-       k = 1 + int(NET * xi1)
+       r1 = rang()
+       k = 1 + int(NET * r1)
 
        ! Randomly select between the outgoing table for incoming energy E_i and
        ! E_(i+1)
@@ -1057,8 +1072,8 @@ contains
        loc    = 3 + 2*NR + NE + (l-1)*NET
        E_l_k  = edist % data(loc+k)
        E_l_k1 = edist % data(loc+k+1)
-       xi2 = rang()
-       E_out  = E_l_k + xi2*(E_l_k1 - E_l_k)
+       r2 = rang()
+       E_out  = E_l_k + r2*(E_l_k1 - E_l_k)
 
        ! TODO: Add scaled interpolation
 
@@ -1100,8 +1115,8 @@ contains
        end if
 
        ! Sample between the ith and (i+1)th bin
-       xi2 = rang()
-       if (r > xi2) then
+       r2 = rang()
+       if (r > r2) then
           l = i + 1
        else
           l = i
@@ -1143,12 +1158,12 @@ contains
        end if
 
        ! determine outgoing energy bin
-       xi1 = rang()
+       r1 = rang()
        loc = loc + 2 ! start of EOUT
        c_k = edist % data(loc + 2*NP + 1)
        do k = 1, NP-1
           c_k1 = edist % data(loc + 2*NP + k+1)
-          if (xi1 < c_k1) exit
+          if (r1 < c_k1) exit
           c_k = c_k1
        end do
 
@@ -1156,7 +1171,7 @@ contains
        p_l_k = edist % data(loc+NP+k)
        if (INTT == HISTOGRAM) then
           ! Histogram interpolation
-          E_out = E_l_k + (xi1 - c_k)/p_l_k
+          E_out = E_l_k + (r1 - c_k)/p_l_k
 
        elseif (INTT == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about the
@@ -1166,9 +1181,9 @@ contains
 
           frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
           if (frac == ZERO) then
-             E_out = E_l_k + (xi1 - c_k)/p_l_k
+             E_out = E_l_k + (r1 - c_k)/p_l_k
           else
-             E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(xi1 - c_k)) - & 
+             E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
                   & p_l_k)/frac
           end if
        else
@@ -1263,9 +1278,9 @@ contains
        ! sample outgoing energy based on evaporation spectrum probability
        ! density function
        do
-          xi1 = rang()
-          xi2 = rang()
-          E_out = -T * log(xi1*xi2)
+          r1 = rang()
+          r2 = rang()
+          E_out = -T * log(r1*r2)
           if (E_out <= E_in - U) exit
        end do
        
@@ -1370,8 +1385,8 @@ contains
        end if
 
        ! Sample between the ith and (i+1)th bin
-       xi2 = rang()
-       if (r > xi2) then
+       r2 = rang()
+       if (r > r2) then
           l = i + 1
        else
           l = i
@@ -1414,12 +1429,12 @@ contains
        end if
 
        ! determine outgoing energy bin
-       xi1 = rang()
+       r1 = rang()
        loc = loc + 2 ! start of EOUT
        c_k = edist % data(loc + 2*NP + 1)
        do k = 1, NP-1
           c_k1 = edist % data(loc + 2*NP + k+1)
-          if (xi1 < c_k1) exit
+          if (r1 < c_k1) exit
           c_k = c_k1
        end do
 
@@ -1427,7 +1442,7 @@ contains
        p_l_k = edist % data(loc+NP+k)
        if (INTT == HISTOGRAM) then
           ! Histogram interpolation
-          E_out = E_l_k + (xi1 - c_k)/p_l_k
+          E_out = E_l_k + (r1 - c_k)/p_l_k
 
           ! Determine Kalbach-Mann parameters
           KM_R = edist % data(loc + 3*NP + k)
@@ -1442,9 +1457,9 @@ contains
           ! Find E prime
           frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
           if (frac == ZERO) then
-             E_out = E_l_k + (xi1 - c_k)/p_l_k
+             E_out = E_l_k + (r1 - c_k)/p_l_k
           else
-             E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(xi1 - c_k)) - & 
+             E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
                   & p_l_k)/frac
           end if
 
@@ -1469,13 +1484,13 @@ contains
        end if
 
        ! Sampled correlated angle from Kalbach-Mann parameters
-       xi3 = rang()
-       xi4 = rang()
-       T = (TWO*xi4 - ONE) * sinh(KM_A)
-       if (xi3 > KM_R) then
+       r3 = rang()
+       r4 = rang()
+       T = (TWO*r4 - ONE) * sinh(KM_A)
+       if (r3 > KM_R) then
           mu_out = log(T + sqrt(T*T + ONE))/KM_A
        else
-          mu_out = log(xi4*exp(KM_A) + (ONE - xi4)*exp(-KM_A))/KM_A
+          mu_out = log(r4*exp(KM_A) + (ONE - r4)*exp(-KM_A))/KM_A
        end if
 
     case (61)
@@ -1513,8 +1528,8 @@ contains
        end if
 
        ! Sample between the ith and (i+1)th bin
-       xi2 = rang()
-       if (r > xi2) then
+       r2 = rang()
+       if (r > r2) then
           l = i + 1
        else
           l = i
@@ -1557,12 +1572,12 @@ contains
        end if
 
        ! determine outgoing energy bin
-       xi1 = rang()
+       r1 = rang()
        loc = loc + 2 ! start of EOUT
        c_k = edist % data(loc + 2*NP + 1)
        do k = 1, NP-1
           c_k1 = edist % data(loc + 2*NP + k+1)
-          if (xi1 < c_k1) exit
+          if (r1 < c_k1) exit
           c_k = c_k1
        end do
 
@@ -1570,7 +1585,7 @@ contains
        p_l_k = edist % data(loc+NP+k)
        if (INTT == HISTOGRAM) then
           ! Histogram interpolation
-          E_out = E_l_k + (xi1 - c_k)/p_l_k
+          E_out = E_l_k + (r1 - c_k)/p_l_k
 
        elseif (INTT == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about the
@@ -1581,9 +1596,9 @@ contains
           ! Find E prime
           frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
           if (frac == ZERO) then
-             E_out = E_l_k + (xi1 - c_k)/p_l_k
+             E_out = E_l_k + (r1 - c_k)/p_l_k
           else
-             E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(xi1 - c_k)) - & 
+             E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
                   & p_l_k)/frac
           end if
        else
@@ -1612,12 +1627,12 @@ contains
        NP = edist % data(loc + 2)
 
        ! determine outgoing cosine bin
-       xi3 = rang()
+       r3 = rang()
        loc = loc + 2
        c_k = edist % data(loc + 2*NP + 1)
        do k = 1, NP-1
           c_k1 = edist % data(loc + 2*NP + k+1)
-          if (xi3 < c_k1) exit
+          if (r3 < c_k1) exit
           c_k = c_k1
        end do
 
@@ -1625,7 +1640,7 @@ contains
        mu_k = edist % data(loc + k)
        if (JJ == HISTOGRAM) then
           ! Histogram interpolation
-          mu_out = mu_k + (xi3 - c_k)/p_k
+          mu_out = mu_k + (r3 - c_k)/p_k
 
        elseif (JJ == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about the
@@ -1635,9 +1650,9 @@ contains
 
           frac = (p_k1 - p_k)/(mu_k1 - mu_k)
           if (frac == ZERO) then
-             mu_out = mu_k + (xi3 - c_k)/p_k
+             mu_out = mu_k + (r3 - c_k)/p_k
           else
-             mu_out = mu_k + (sqrt(p_k*p_k + 2*frac*(xi3 - c_k))-p_k)/frac
+             mu_out = mu_k + (sqrt(p_k*p_k + 2*frac*(r3 - c_k))-p_k)/frac
           end if
        else
           msg = "Unknown interpolation type: " // trim(int_to_str(JJ))
@@ -1647,6 +1662,38 @@ contains
     case (66)
        ! =======================================================================
        ! N-BODY PHASE SPACE DISTRIBUTION
+
+       ! read number of bodies in phase space and total mass ratio
+       n_bodies = edist % data(1)
+       Ap       = edist % data(2)
+
+       ! determine E_max parameter
+       E_max = (Ap - ONE)/Ap * (A/(A+ONE)*E_in + Q)
+
+       ! x is essentially a Maxwellian distribution
+       x = maxwell_spectrum(ONE)
+
+       select case (n_bodies)
+       case (3)
+          y = maxwell_spectrum(ONE)
+       case (4)
+          r1 = rang()
+          r2 = rang()
+          r3 = rang()
+          y = -log(r1*r2*r3)
+       case (5)
+          r1 = rang()
+          r2 = rang()
+          r3 = rang()
+          r4 = rang()
+          r5 = rang()
+          r6 = rang()
+          y = -log(r1*r2*r3*r4) - log(r5) * cos(PI/2.*r6)**2
+       end select
+
+       ! now determine v and E_out
+       v = x/(x+y)
+       E_out = E_max * v
 
     case (67)
        ! =======================================================================
@@ -1676,7 +1723,7 @@ contains
     r3 = rang()
 
     ! determine cosine of pi/2*r
-    c = cos(PI/2.0*r3)
+    c = cos(PI/2.*r3)
 
     ! determine outgoing energy
     E_out = -T*(log(r1) + log(r2)*c*c)
@@ -1721,7 +1768,7 @@ contains
 
     real(8) :: c
 
-    c = -4.0*D_avg*D_avg/PI * log(rang())
+    c = -4.*D_avg*D_avg/PI * log(rang())
     D = sqrt(c)
 
   end function wigner
@@ -1752,7 +1799,7 @@ contains
        do i = 1, n/2
           x = x * rang()
        end do
-       x = -2.0/n * log(x)
+       x = -2./n * log(x)
 
     case (1)
        ! Odd number of degrees of freedom can be sampled via rule C64. We can
@@ -1767,8 +1814,8 @@ contains
 
        r1 = rang()
        r2 = rang()
-       c = cos(PI/2.0*r2)
-       x = -2.0/n * (log(y) + log(r1)*c*c)
+       c = cos(PI/2.*r2)
+       x = -2./n * (log(y) + log(r1)*c*c)
     end select
 
     ! If sampling a chi-squared distribution for a resonance width and the

@@ -1,7 +1,7 @@
 module search
 
   use global
-  use output, only: error
+  use error, only: fatal_error
 
 contains
 
@@ -27,7 +27,7 @@ contains
 
     if (val < array(L) .or. val > array(R)) then
        msg = "Value outside of array during binary search"
-       call error(msg)
+       call fatal_error(msg)
     end if
     
     do while (R - L > 1)

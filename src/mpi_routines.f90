@@ -1,7 +1,8 @@
 module mpi_routines
 
   use global
-  use output,      only: message, error
+  use error,       only: fatal_error
+  use output,      only: message
   use mcnp_random, only: rang, RN_init_particle, RN_skip
   use source,      only: copy_from_bank, source_index
 
@@ -41,21 +42,21 @@ contains
     call MPI_INIT(ierr)
     if (ierr /= MPI_SUCCESS) then
        msg = "Failed to initialize MPI."
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Determine number of processors
     call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, ierr)
     if (ierr /= MPI_SUCCESS) then
        msg = "Could not determine number of processors."
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Determine rank of each processor
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
     if (ierr /= MPI_SUCCESS) then
        msg = "Could not determine MPI rank."
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Determine master
@@ -157,7 +158,7 @@ contains
     ! Check if there are no fission sites
     if (total == 0) then
        msg = "No fission sites banked!"
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Make sure all processors start at the same point for random sampling

@@ -2,7 +2,8 @@ module geometry
 
   use global
   use types,  only: Cell, Surface
-  use output, only: error, message
+  use output, only: message
+  use error,  only: fatal_error
   use data_structures, only: dict_get_key
 
   implicit none
@@ -128,7 +129,7 @@ contains
                 exit
              else
                 msg = "Could not locate particle in universe: "
-                call error(msg)
+                call fatal_error(msg)
              end if
           elseif (c % type == CELL_LATTICE) then
              ! Set current lattice
@@ -156,7 +157,7 @@ contains
              else
                 msg = "Could not locate particle in lattice: " & 
                      & // int_to_str(lat % uid)
-                call error(msg)
+                call fatal_error(msg)
              end if
           end if
        end if
@@ -209,7 +210,7 @@ contains
                 call find_cell(lower_univ, p, found)
                 if (.not. found) then
                    msg = "Could not locate particle in universe: "
-                   call error(msg)
+                   call fatal_error(msg)
                 end if
              else
                 ! set current pointers
@@ -232,7 +233,7 @@ contains
                 call find_cell(lower_univ, p, found)
                 if (.not. found) then
                    msg = "Could not locate particle in universe: "
-                   call error(msg)
+                   call fatal_error(msg)
                 end if
              else
                 ! set current pointers
@@ -259,7 +260,7 @@ contains
     ! Couldn't find next cell anywhere!
     msg = "After particle crossed surface " // trim(int_to_str(p%surface)) // &
          & ", it could not be located in any cell and it did not leak."
-    call error(msg)
+    call fatal_error(msg)
        
   end subroutine cross_surface
 
@@ -358,10 +359,10 @@ contains
     i_y = p % index_y
     if (i_x < 1 .or. i_x > lat % n_x) then
        msg = "Reached edge of lattice."
-       call error(msg)
+       call fatal_error(msg)
     elseif (i_y < 1 .or. i_y > lat % n_y) then
        msg = "Reached edge of lattice."
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Find universe for next lattice element
@@ -371,7 +372,7 @@ contains
     call find_cell(univ, p, found)
     if (.not. found) then
        msg = "Could not locate particle in universe: "
-       call error(msg)
+       call fatal_error(msg)
     end if
 
   end subroutine cross_lattice
@@ -699,7 +700,7 @@ contains
 
        case (SURF_GQ)
           msg = "Surface distance not yet implement for general quadratic."
-          call error(msg)
+          call fatal_error(msg)
 
        end select
 

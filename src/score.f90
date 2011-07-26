@@ -1,7 +1,8 @@
 module score
 
   use global
-  use output, only: message, error
+  use output, only: message
+  use error,  only: fatal_error
   use ace,    only: get_macro_xs
   use search, only: binary_search
 
@@ -141,7 +142,7 @@ contains
           end do
        else
           msg = "Invalid type for cell bins in tally " // int_to_str(t % uid)
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! =======================================================================

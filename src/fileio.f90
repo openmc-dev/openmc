@@ -4,7 +4,8 @@ module fileio
   use types,  only: Cell, Surface, ExtSource, ListKeyValueCI
   use string, only: split_string_wl, lower_case, split_string, &
        &            concatenate, is_number
-  use output, only: message, warning, error
+  use error,  only: fatal_error, warning
+  use output, only: message
   use data_structures, only: dict_create, dict_add_key, dict_get_key, &
        &                     dict_has_key, DICT_NULL, dict_keys, list_size
 
@@ -44,21 +45,21 @@ contains
        call GET_COMMAND_ARGUMENT(1, path_input)
     else
        msg = "No input file specified!"
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Check if input file exists and is readable
     inquire(FILE=path_input, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
        msg = "Input file '" // trim(path_input) // "' does not exist!"
-       call error(msg)
+       call fatal_error(msg)
     elseif (readable(1:3) == 'NO') then
        ! Need to explicitly check for a NO status -- Intel compiler looks at
        ! file attributes only if the file is open on a unit. Therefore, it will
        ! always return UNKNOWN
        msg = "Input file '" // trim(path_input) // "' is not readable! &
             &Change file permissions with chmod command."
-       call error(msg)
+       call fatal_error(msg)
     end if
 
   end subroutine read_command_line
@@ -101,7 +102,7 @@ contains
          & ACTION='read', IOSTAT=ioError)
     if (ioError /= 0) then
        msg = "Error while opening file: " // filename
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     do
@@ -149,15 +150,15 @@ contains
     if (n_cells == 0) then
        msg = "No cells specified!"
        close(UNIT=in)
-       call error(msg)
+       call fatal_error(msg)
     elseif (n_surfaces == 0) then
        msg = "No surfaces specified!"
        close(UNIT=in)
-       call error(msg)
+       call fatal_error(msg)
     elseif (n_materials == 0) then
        msg = "No materials specified!"
        close(UNIT=in)
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     close(UNIT=in)
@@ -248,7 +249,7 @@ contains
          & ACTION='read', IOSTAT=ioError)
     if (ioError /= 0) then
        msg = "Error while opening file: " // filename
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     do
@@ -301,7 +302,7 @@ contains
           verbosity = str_to_int(words(2))
           if (verbosity == ERROR_INT) then
              msg = "Invalid verbosity: " // trim(words(2))
-             call error(msg)
+             call fatal_error(msg)
           end if
 
        case default
@@ -350,7 +351,7 @@ contains
                 surf_num = abs(surf_num)
                 msg = "Could not find surface " // trim(int_to_str(surf_num)) // &
                      & " specified on cell " // trim(int_to_str(c%uid))
-                call error(msg)
+                call fatal_error(msg)
              end if
              c%surfaces(j) = sign(index, surf_num)
           end if
@@ -362,7 +363,7 @@ contains
           if (index == DICT_NULL) then
              msg = "Could not find material " // trim(int_to_str(c%material)) // &
                   & " specified on cell " // trim(int_to_str(c%uid))
-             call error(msg)
+             call fatal_error(msg)
           end if
           c%material = index
        end if
@@ -372,7 +373,7 @@ contains
     key_list => dict_keys(bc_dict)
     if (.not. associated(key_list)) then
        msg = "No boundary conditions specified!"
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Set boundary conditions for surfaces
@@ -478,7 +479,7 @@ contains
     c % uid = str_to_int(words(2))
     if (c % uid == ERROR_INT) then
        msg = "Invalid cell name: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
     call dict_add_key(cell_dict, c%uid, index)
  
@@ -486,7 +487,7 @@ contains
     universe_num = str_to_int(words(3))
     if (universe_num == ERROR_INT) then
        msg = "Invalid universe: " // trim(words(3))
-       call error(msg)
+       call fatal_error(msg)
     end if
     c % universe = dict_get_key(universe_dict, universe_num)
 
@@ -499,7 +500,7 @@ contains
        universe_num = str_to_int(words(5))
        if (universe_num == ERROR_INT) then
           msg = "Invalid universe fill: " // trim(words(5))
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! check whether universe or lattice
@@ -516,7 +517,7 @@ contains
        c % fill     = 0
        if (c % material == ERROR_INT) then
           msg = "Invalid material number: " // trim(words(4))
-          call error(msg)
+          call fatal_error(msg)
        end if
        n_surfaces = n_words - 4
     end if
@@ -571,7 +572,7 @@ contains
     read(words(2), FMT='(I8)', IOSTAT=ioError) surf % uid
     if (ioError > 0) then
        msg = "Invalid surface name: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
     call dict_add_key(surface_dict, surf % uid, index)
 
@@ -620,13 +621,13 @@ contains
           coeffs_reqd  = 10
        case default
           msg = "Invalid surface type: " // trim(words(3))
-          call error(msg)
+          call fatal_error(msg)
     end select
 
     ! Make sure there are enough coefficients for surface type
     if (n_words-3 < coeffs_reqd) then
        msg = "Not enough coefficients for surface: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
     
     ! Read list of surfaces
@@ -657,7 +658,7 @@ contains
     surface_uid = str_to_int(words(2))
     if (surface_uid == ERROR_INT) then
        msg = "Invalid surface name: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Read boundary condition
@@ -672,7 +673,7 @@ contains
        bc = BC_REFLECT
     case default
        msg = "Invalid boundary condition: " // trim(words(3))
-       call error(msg)
+       call fatal_error(msg)
     end select
 
     ! Add (uid, bc) to dictionary
@@ -705,7 +706,7 @@ contains
     universe_num = str_to_int(words(2))
     if (universe_num == ERROR_INT) then
        msg = "Invalid universe: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
     lat % uid = universe_num
 
@@ -719,7 +720,7 @@ contains
        lat % type = LATTICE_HEX
     case default
        msg = "Invalid lattice type: " // trim(words(3))
-       call error(msg)
+       call fatal_error(msg)
     end select
 
     ! Read number of lattice cells in each direction
@@ -727,10 +728,10 @@ contains
     n_y = str_to_int(words(5))
     if (n_x == ERROR_INT) then
        msg = "Invalid number of lattice cells in x-direction: " // trim(words(4))
-       call error(msg)
+       call fatal_error(msg)
     elseif (n_y == ERROR_INT) then
        msg = "Invalid number of lattice cells in y-direction: " // trim(words(5))
-       call error(msg)
+       call fatal_error(msg)
     end if
     lat % n_x = n_x
     lat % n_y = n_y
@@ -747,7 +748,7 @@ contains
     if (n_words - 9 < n_x * n_y) then
        print *, n_words, n_x, n_y
        msg = "Not enough lattice positions specified."
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Read lattice positions
@@ -758,7 +759,7 @@ contains
           universe_num = str_to_int(words(index_word))
           if (universe_num == ERROR_INT) then
              msg = "Invalid universe number: " // trim(words(index_word))
-             call error(msg)
+             call fatal_error(msg)
           end if
           lat % element(i, n_y-j) = dict_get_key(universe_dict, universe_num)
        end do
@@ -790,13 +791,13 @@ contains
        values_reqd = 6
     case default
        msg = "Invalid source type: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end select
 
     ! Make sure there are enough values for this source type
     if (n_words-2 < values_reqd) then
        msg = "Not enough values for source of type: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
     
     ! Read values
@@ -835,7 +836,7 @@ contains
     t % uid = str_to_int(words(2))
     if (t % uid == ERROR_INT) then
        msg = "Invalid tally name: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
     call dict_add_key(tally_dict, t % uid, index)
 
@@ -863,7 +864,7 @@ contains
              MT = str_to_int(words(i+j))
              if (MT == ERROR_INT) then
                 msg = "Invalid reaction MT on tally: " // int_to_str(t%uid)
-                call error(msg)
+                call fatal_error(msg)
              end if
              t % reactions(j) = MT
           end do
@@ -895,7 +896,7 @@ contains
              cell_uid = str_to_int(words(i+j))
              if (cell_uid == ERROR_INT) then
                 msg = "Invalid cell number on tally: " // int_to_str(t%uid)
-                call error(msg)
+                call fatal_error(msg)
              end if
              t % cells(j) = cell_uid
           end do
@@ -927,7 +928,7 @@ contains
              E = str_to_real(words(i+j))
              if (E == ERROR_REAL) then
                 msg = "Invalid energy on tally: " // int_to_str(t % uid)
-                call error(msg)
+                call fatal_error(msg)
              end if
              t % energies(j) = E
           end do
@@ -982,7 +983,7 @@ contains
     ! Check for correct number of arguments
     if (mod(n_words,2) == 0 .or. n_words < 5) then
        msg = "Invalid number of arguments for material: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Determine and set number of isotopes
@@ -994,7 +995,7 @@ contains
     read(words(2), FMT='(I8)', IOSTAT=ioError) mat % uid
     if (ioError > 0) then
        msg = "Invalid surface name: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
     call dict_add_key(material_dict, mat%uid, index)
 
@@ -1045,7 +1046,7 @@ contains
             & all(mat%atom_percent < ZERO))) then
           msg = "Cannot mix atom and weight percents in material " // &
                & int_to_str(mat%uid)
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        percent_in_atom = (mat%atom_percent(1) > ZERO)
@@ -1059,7 +1060,7 @@ contains
           if (index == DICT_NULL) then
              msg = "Cannot find cross-section " // trim(key) // " in specified &
                    &xsdata file."
-             call error(msg)
+             call fatal_error(msg)
           end if
           mat % isotopes(j) = index
 
@@ -1130,21 +1131,21 @@ contains
     n_cycles = str_to_int(words(2))
     if (n_cycles == ERROR_INT) then
        msg = "Invalid number of cycles: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Read number of inactive cycles
     n_inactive = str_to_int(words(3))
     if (n_inactive == ERROR_INT) then
        msg = "Invalid number of inactive cycles: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! Read number of particles
     n_particles = str_to_int(words(4))
     if (n_particles == ERROR_INT) then
        msg = "Invalid number of particles: " // trim(words(2))
-       call error(msg)
+       call fatal_error(msg)
     end if
 
   end subroutine read_criticality

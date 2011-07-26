@@ -3,7 +3,8 @@ module cross_section
   use global
   use string,          only: split_string
   use data_structures, only: dict_create, dict_add_key, dict_get_key
-  use output,          only: error, message
+  use output,          only: message
+  use error,           only: fatal_error
   use types,           only: xsData
 
   implicit none
@@ -47,11 +48,11 @@ contains
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
        msg = "Cross section summary '" // trim(filename) // "' does not exist!"
-       call error(msg)
+       call fatal_error(msg)
     elseif (readable(1:3) == 'NO') then
        msg = "Cross section summary '" // trim(filename) // "' is not readable!" &
             & // "Change file permissions with chmod command."
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! open xsdata file
@@ -59,7 +60,7 @@ contains
          & ACTION='read', IOSTAT=ioError)
     if (ioError /= 0) then
        msg = "Error while opening file: " // filename
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! determine how many lines
@@ -72,7 +73,7 @@ contains
        elseif (ioError > 0) then
           msg = "Unknown error while reading file: " // filename
           close(UNIT=in)
-          call error(msg)
+          call fatal_error(msg)
        end if
        count = count + 1
     end do
@@ -95,7 +96,7 @@ contains
        if (n < 9) then
           msg = "Not enough arguments on xsdata line: " // line
           close(UNIT=in)
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        iso => xsdatas(index)

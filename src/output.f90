@@ -5,6 +5,7 @@ module output
   use types,           only: Cell, Universe, Surface
   use data_structures, only: dict_get_key
   use endf,            only: reaction_name
+  use string,          only: upper_case
 
   implicit none
 
@@ -24,17 +25,17 @@ contains
     character(8)  :: time
 
     write(ou,*)
-    write(ou,*) ' .d88888b.                             888b     d888  .d8888b. '
-    write(ou,*) 'd88P" "Y88b                            8888b   d8888 d88P  Y88b'
-    write(ou,*) '888     888                            88888b.d88888 888    888'
-    write(ou,*) '888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       '
-    write(ou,*) '888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       '
-    write(ou,*) '888     888 888  888 88888888 888  888 888  Y8P  888 888    888'
-    write(ou,*) 'Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P'
-    write(ou,*) ' "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P" '
-    write(ou,*) '____________888________________________________________________'
-    write(ou,*) '            888                                                '
-    write(ou,*) '            888                                                '
+    write(ou,*) '       .d88888b.                             888b     d888  .d8888b.'
+    write(ou,*) '      d88P" "Y88b                            8888b   d8888 d88P  Y88b'
+    write(ou,*) '      888     888                            88888b.d88888 888    888'
+    write(ou,*) '      888     888 88888b.   .d88b.  88888b.  888Y88888P888 888       '
+    write(ou,*) '      888     888 888 "88b d8P  Y8b 888 "88b 888 Y888P 888 888       '
+    write(ou,*) '      888     888 888  888 88888888 888  888 888  Y8P  888 888    888'
+    write(ou,*) '      Y88b. .d88P 888 d88P Y8b.     888  888 888   "   888 Y88b  d88P'
+    write(ou,*) '       "Y88888P"  88888P"   "Y8888  888  888 888       888  "Y8888P"'
+    write(ou,*) '__________________888______________________________________________________'
+    write(ou,*) '                  888'
+    write(ou,*) '                  888'
     write(ou,*)
 
     ! Write version information
@@ -59,10 +60,7 @@ contains
   subroutine echo_input()
 
     ! Display problem summary
-    write(ou,*) '============================================='
-    write(ou,*) '=>             PROBLEM SUMMARY             <='
-    write(ou,*) '============================================='
-    write(ou,*)
+    call header("PROBLEM SUMMARY")
     if (problem_type == PROB_CRITICALITY) then
        write(ou,100) 'Problem type:', 'Criticality'
        write(ou,100) 'Number of Cycles:', int_to_str(n_cycles)
@@ -71,21 +69,72 @@ contains
        write(ou,100) 'Problem type:', 'External Source'
     end if
     write(ou,100) 'Number of Particles:', int_to_str(n_particles)
-    write(ou,*)      
+
     ! Display geometry summary
-    write(ou,*) '============================================='
-    write(ou,*) '=>              GEOMETRY SUMMARY           <='
-    write(ou,*) '============================================='
-    write(ou,*)
+    call header("GEOMETRY SUMMARY")
     write(ou,100) 'Number of Cells:', int_to_str(n_cells)
     write(ou,100) 'Number of Surfaces:', int_to_str(n_surfaces)
     write(ou,100) 'Number of Materials:', int_to_str(n_materials)
-    write(ou,*)
 
     ! Format descriptor for columns
 100 format (1X,A,T35,A)
 
   end subroutine echo_input
+
+!===============================================================================
+! HEADER displays a header block according to a specified level. If no level is
+! specified, it is assumed to be a minor header block (H3).
+!===============================================================================
+
+  subroutine header(msg, level)
+
+    character(*), intent(in) :: msg
+    integer,      optional   :: level
+
+    integer :: header_level
+    integer :: n, m
+    character(75) :: line
+
+    ! set default header level
+    if (.not. present(level)) then
+       header_level = 3
+    else
+       header_level = level
+    end if
+
+    ! Print first blank line
+    write(ou,*)
+
+    ! determine how many times to repeat '=' character
+    n = (63 - len_trim(msg))/2
+    m = n
+    if (mod(len_trim(msg),2) == 0) m = m + 1
+
+    ! convert line to upper case
+    line = msg
+    call upper_case(line)
+
+    ! print header based on level
+    select case (header_level)
+    case (1)
+       ! determine number of spaces to put in from of header
+       write(ou,*) repeat('=', 75)
+       write(ou,*) repeat('=', n) // '>     ' // trim(line) // '     <' // &
+            & repeat('=', m)
+       write(ou,*) repeat('=', 75)
+    case (2)
+       write(ou,*) trim(line)
+       write(ou,*) repeat('-', 75)
+    case (3)
+       n = (63 - len_trim(line))/2
+       write(ou,*) repeat('=', n) // '>     ' // trim(line) // '     <' // &
+            & repeat('=', m)
+    end select
+
+    ! Print trailing blank line
+    write(ou, *)
+
+  end subroutine header
 
 !===============================================================================
 ! MESSAGE displays an informational message to the log file and the standard
@@ -111,67 +160,6 @@ contains
     end if
 
   end subroutine message
-
-!===============================================================================
-! WARNING issues a warning to the user in the log file and the standard output
-! stream.
-!===============================================================================
-
-  subroutine warning(msg)
-
-    character(*), intent(in) :: msg
-
-    integer :: n_lines
-    integer :: i
-
-    ! Only allow master to print to screen
-    if (.not. master) return
-
-    write(ou, fmt='(1X,A9)', advance='no') 'WARNING: '
-
-    n_lines = (len_trim(msg)-1)/70 + 1
-    do i = 1, n_lines
-       if (i == 1) then
-          write(ou, fmt='(A70)') msg(70*(i-1)+1:70*i)
-       else
-          write(ou, fmt='(10X,A70)') msg(70*(i-1)+1:70*i)
-       end if
-    end do
-
-  end subroutine warning
-
-!===============================================================================
-! ERROR alerts the user that an error has been encountered and displays a
-! message about the particular problem. Errors are considered 'fatal' and hence
-! the program is aborted.
-!===============================================================================
-
-  subroutine error(msg)
-
-    character(*), intent(in) :: msg
-
-    integer :: n_lines
-    integer :: i
-
-    ! Only allow master to print to screen
-    if (master) then
-       write(eu, fmt='(1X,A7)', advance='no') 'ERROR: '
-
-       n_lines = (len_trim(msg)-1)/72 + 1
-       do i = 1, n_lines
-          if (i == 1) then
-             write(eu, fmt='(A72)') msg(72*(i-1)+1:72*i)
-          else
-             write(eu, fmt='(7X,A72)') msg(72*(i-1)+1:72*i)
-          end if
-       end do
-       write(eu,*)
-    end if
-
-    ! All processors abort
-    call free_memory()
-
-  end subroutine error
 
 !===============================================================================
 ! GET_TODAY determines the date and time at which the program began execution
@@ -585,20 +573,14 @@ contains
     integer :: i
 
     ! print summary of cells
-    write(ou,*) '============================================='
-    write(ou,*) '=>              CELL SUMMARY               <='
-    write(ou,*) '============================================='
-    write(ou,*)
+    call header("CELL SUMMARY")
     do i = 1, n_cells
        c => cells(i)
        call print_cell(c)
     end do
 
     ! print summary of universes
-    write(ou,*) '============================================='
-    write(ou,*) '=>             UNIVERSE SUMMARY            <='
-    write(ou,*) '============================================='
-    write(ou,*)
+    call header("UNIVERSE SUMMARY")
     do i = 1, n_universes
        u => universes(i)
        call print_universe(u)
@@ -606,10 +588,7 @@ contains
 
     ! print summary of lattices
     if (n_lattices > 0) then
-       write(ou,*) '============================================='
-       write(ou,*) '=>              LATTICE SUMMARY            <='
-       write(ou,*) '============================================='
-       write(ou,*)
+       call header("LATTICE SUMMARY")
        do i = 1, n_lattices
           l => lattices(i)
           call print_lattice(l)
@@ -617,20 +596,14 @@ contains
     end if
 
     ! print summary of surfaces
-    write(ou,*) '============================================='
-    write(ou,*) '=>              SURFACE SUMMARY            <='
-    write(ou,*) '============================================='
-    write(ou,*)
+    call header("SURFACE SUMMARY")
     do i = 1, n_surfaces
        s => surfaces(i)
        call print_surface(s)
     end do
 
     ! print summary of materials
-    write(ou,*) '============================================='
-    write(ou,*) '=>             MATERIAL SUMMARY            <='
-    write(ou,*) '============================================='
-    write(ou,*)
+    call header("MATERIAL SUMMARY")
     do i = 1, n_materials
        m => materials(i)
        call print_material(m)
@@ -638,10 +611,7 @@ contains
 
     ! print summary of tallies
     if (n_tallies > 0) then
-       write(ou,*) '============================================='
-       write(ou,*) '=>               TALLY SUMMARY             <='
-       write(ou,*) '============================================='
-       write(ou,*)
+       call header("TALLY SUMMARY")
        do i = 1, n_tallies
           t=> tallies(i)
           call print_tally(t)
@@ -656,5 +626,26 @@ contains
     nullify(t)
 
   end subroutine print_summary
+
+!===============================================================================
+! PRINT_RUNTIME displays the total time elapsed for the entire run, for
+! initialization, for computation, and for intercycle synchronization.
+!===============================================================================
+
+  subroutine print_runtime()
+
+    ! display header block
+    call header("Time Elapsed")
+
+    ! display time elapsed for various sections
+    write(ou,100) "Total time elapsed", real_to_str(time_total % elapsed)
+    write(ou,100) "Total time for initialization", real_to_str(time_init % elapsed)
+    write(ou,100) "Total time in computation", real_to_str(time_compute % elapsed)
+    write(ou,100) "Total time between cycles", real_to_str(time_intercycle % elapsed)
+
+    ! format for write statments
+100 format (1X,A,T33,"= ",A,"seconds")
+ 
+  end subroutine print_runtime
 
 end module output

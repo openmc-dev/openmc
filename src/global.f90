@@ -87,6 +87,12 @@ module global
   logical :: master      ! master process?
   logical :: mpi_enabled ! is MPI in use and initialized?
 
+  ! Timing variables
+  type(TimerObj) :: time_total       ! timer for total run
+  type(TimerObj) :: time_init        ! timer for initialization
+  type(TimerObj) :: time_intercycle  ! timer for intercycle synchronization
+  type(TimerObj) :: time_compute     ! timer for computation
+
   ! Paths to input file, cross section data, etc
   character(max_word_len) :: & 
        & path_input,         &

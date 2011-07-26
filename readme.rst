@@ -21,20 +21,27 @@ Compiling for multiple processors can be controlled with the USE_MPI and MPI
 variables. The MPI variable should be set to the base directory of the MPI
 implementation installed on your computer.
 
+OpenMC has been tested on Linux platforms with Intel, GNU, PGI, and Cray
+compilers. It is recommended to use the latest version of whatever compiler you
+should choose to use as there are a number of Fortran 2003 and 2008 intrinsics
+that are used in OpenMC. While no testing has been done on Mac or Windows
+platforms, there is no reason to believe it should not compile on any platform.
+
 --------------
 Running OpenMC
 --------------
 
 To run OpenMC after building, you'll need to write an input file according to
-the specifications in this documentation. With your input file complete, simply run::
+the specifications in this documentation. With your input file complete, simply
+run::
 
-	openmc *inputFile*
+	openmc inputFile
 
 where *inputFile* is the name of your input file. To run in parallel, use the
 mpiexec or mpirun script provided by your MPI implementation. Assuming this is
 on your PATH, you may run::
 
-   mpiexec -n *numProcs* openmc *inputFile*
+   mpiexec -n numProcs openmc inputFile
 
 where *numProcs* is the number of processors you desire to run on.
 

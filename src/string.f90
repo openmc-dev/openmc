@@ -1,7 +1,7 @@
 module string
 
   use global
-  use output, only: error, warning
+  use error, only: warning
 
   implicit none
 
@@ -161,6 +161,24 @@ contains
     end do
 
   end subroutine lower_case
+
+!===============================================================================
+! UPPER_CASE converts a string to all upper case characters
+!===============================================================================
+
+  elemental subroutine upper_case(word)
+
+    character(*), intent(inout) :: word
+
+    integer :: i
+    integer :: ic
+
+    do i = 1,len(word)
+       ic = ichar(word(i:i))
+       if (ic >= 97 .and. ic < 122) word(i:i) = char(ic-32)
+    end do
+
+  end subroutine upper_case
 
 !===============================================================================
 ! IS_NUMBER determines whether a string of characters is all 0-9 characters

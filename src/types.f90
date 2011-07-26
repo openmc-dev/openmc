@@ -314,6 +314,18 @@ module types
   end type xsData
 
 !===============================================================================
+! TIMEROBJ represents a timer that can be started and stopped to measure how
+! long different routines run. The intrinsic routine system_clock is used to
+! measure time rather than cpu_time.
+!===============================================================================
+
+  type TimerObj
+     logical :: running      = .false. ! is timer running?
+     integer :: start_counts = 0       ! counts when started
+     real(8) :: elapsed      = 0.      ! total time elapsed in seconds
+  end type TimerObj
+
+!===============================================================================
 ! KEYVALUECI stores the (key,value) pair for a dictionary where the key is a
 ! string and the value is an integer. Note that we need to store the key in
 ! addition to the value for collision resolution.

@@ -1,7 +1,8 @@
 module ace
 
   use global
-  use output,          only: error, message
+  use error,           only: fatal_error
+  use output,          only: message
   use string,          only: lower_case
   use fileio,          only: read_line, read_data, skip_lines
   use string,          only: split_string
@@ -68,7 +69,7 @@ contains
              n_thermal = n_thermal + 1
           case default
              msg = "Unknown cross section table type: " // key
-             call error(msg)
+             call fatal_error(msg)
           end select
        end do
     end do
@@ -145,11 +146,11 @@ contains
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
        msg = "ACE library '" // trim(filename) // "' does not exist!"
-       call error(msg)
+       call fatal_error(msg)
     elseif (readable(1:3) == 'NO') then
        msg = "ACE library '" // trim(filename) // "' is not readable! &
             &Change file permissions with chmod command."
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! display message
@@ -161,7 +162,7 @@ contains
          & action='read', iostat=ioError)
     if (ioError /= 0) then
        msg = "Error while opening file: " // filename
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     found_xs = .false.
@@ -169,7 +170,7 @@ contains
        call read_line(in, line, ioError)
        if (ioError < 0) then
           msg = "Could not find ACE table " // tablename // "."
-          call error(msg)
+          call fatal_error(msg)
        end if
        call split_string(line, words, n)
        if (trim(words(1)) == trim(tablename)) then
@@ -956,11 +957,11 @@ contains
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
        msg = "ACE library '" // trim(filename) // "' does not exist!"
-       call error(msg)
+       call fatal_error(msg)
     elseif (readable(1:3) == 'NO') then
        msg = "ACE library '" // trim(filename) // "' is not readable! &
             &Change file permissions with chmod command."
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     ! display message
@@ -972,7 +973,7 @@ contains
          & action='read', iostat=ioError)
     if (ioError /= 0) then
        msg = "Error while opening file: " // filename
-       call error(msg)
+       call fatal_error(msg)
     end if
 
     found_xs = .false.
@@ -980,7 +981,7 @@ contains
        call read_line(in, line, ioError)
        if (ioError < 0) then
           msg = "Could not find ACE table " // tablename // "."
-          call error(msg)
+          call fatal_error(msg)
        end if
        call split_string(line, words, n)
        if (trim(words(1)) == trim(tablename)) then

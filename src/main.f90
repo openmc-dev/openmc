@@ -2,9 +2,9 @@ program main
 
   use global
   use fileio,        only: read_input, read_command_line, read_count, &
-       &                   normalize_ao, build_universe
-  use output,        only: title, echo_input, message, warning, error, &
-       &                   print_summary, print_particle
+                           normalize_ao, build_universe
+  use output,        only: title, echo_input, message, print_summary, &
+                           print_particle, header, print_runtime
   use geometry,      only: neighbor_lists
   use mcnp_random,   only: RN_init_problem, RN_init_particle
   use source,        only: init_source, get_source_particle
@@ -12,9 +12,10 @@ program main
   use cross_section, only: read_xsdata, material_total_xs
   use ace,           only: read_xs
   use energy_grid,   only: unionized_grid, original_indices
-  use mpi_routines,  only: setup_mpi, synchronize_bank, t_sync
+  use mpi_routines,  only: setup_mpi, synchronize_bank
   use score,         only: calculate_keff
   use logging,       only: create_log
+  use timing,        only: timer_start, timer_stop
 
 #ifdef MPI
   use mpi
@@ -25,6 +26,10 @@ program main
   character(max_word_len) :: filename
   character(max_line_len) :: msg
   type(Universe), pointer :: univ
+
+  ! Start timers
+  call timer_start(time_total)
+  call timer_start(time_init)
 
   ! Setup MPI
   call setup_mpi()
@@ -38,6 +43,11 @@ program main
   ! Initialize random number generator. The first argument corresponds to which
   ! random number generator to use- in this case one of the L'Ecuyer 63-bit
   ! RNGs.
+
+  ! Print initialization header block
+  if (master) call header("INITIALIZATION", 1)
+
+  ! initialize random number generator
   call RN_init_problem(3, 0_8, 0_8, 0_8, 0)
 
   ! Set default values for settings
@@ -75,16 +85,22 @@ program main
   ! calculate total material cross-sections for sampling path lenghts
   call material_total_xs()
 
+  ! create source particles
+  call init_source()
+
+  ! stop timer for initialization
+  call timer_stop(time_init)
   if (master) then
      call echo_input()
      call print_summary()
   end if
 
-  ! create source particles
-  call init_source()
-
   ! start problem
   call run_problem()
+
+  ! show timing statistics
+  call timer_stop(time_total)
+  if (master) call print_runtime()
 
   ! deallocate arrays
   call free_memory()
@@ -108,16 +124,16 @@ contains
     type(Particle), pointer :: p => null()
     character(max_line_len) :: msg
 
-    msg = "Running problem..."
-    call message(msg, 6)
+    if (master) call header("BEGIN SIMULATION", 1)
 
     tallies_on = .false.
 
-#ifdef MPI
-    t0 = MPI_WTIME()
-#endif
-
+    ! ==========================================================================
+    ! LOOP OVER CYCLES
     CYCLE_LOOP: do i_cycle = 1, n_cycles
+
+       ! Start timer for computation
+       call timer_start(time_compute)
 
        msg = "Simulating cycle " // trim(int_to_str(i_cycle)) // "..."
        call message(msg, 8)
@@ -125,6 +141,8 @@ contains
        ! Set all tallies to zero
        n_bank = 0
 
+       ! =======================================================================
+       ! LOOP OVER HISTORIES
        HISTORY_LOOP: do
 
           ! grab source particle from bank
@@ -143,6 +161,16 @@ contains
 
        end do HISTORY_LOOP
 
+       ! Accumulate time for computation
+       call timer_stop(time_compute)
+
+       ! =======================================================================
+       ! WRAP UP FISSION BANK AND COMPUTE TALLIES, KEFF, ETC
+
+       ! Start timer for inter-cycle synchronization
+       call timer_start(time_intercycle)
+
+       ! Distribute fission bank across processors evenly
        call synchronize_bank(i_cycle)
 
        ! Collect results and statistics
@@ -153,19 +181,10 @@ contains
        ! Turn tallies on once inactive cycles are complete
        if (i_cycle == n_inactive) tallies_on = .true.
 
-    end do CYCLE_LOOP
+       ! Stop timer for inter-cycle synchronization
+       call timer_stop(time_intercycle)
 
-#ifdef MPI
-    ! print run time
-    t1 = MPI_WTIME()
-    if (master) then
-       print *, "Time elapsed   = " // real_to_str(t1 - t0)
-       print *, "Init time      = " // real_to_str(t_sync(1))
-       print *, "Sample time    = " // real_to_str(t_sync(2))
-       print *, "Send/recv time = " // real_to_str(t_sync(3))
-       print *, "Rebuild time   = " // real_to_str(t_sync(4))
-    end if
-#endif
+    end do CYCLE_LOOP
 
   end subroutine run_problem
 

@@ -5,7 +5,8 @@ module physics
        &                 cross_lattice
   use types,       only: Particle
   use mcnp_random, only: rang
-  use output,      only: error, warning, message, print_particle
+  use output,      only: message, print_particle
+  use error,       only: fatal_error, warning
   use search,      only: binary_search
   use endf,        only: reaction_name
   use score,       only: score_tally
@@ -42,7 +43,7 @@ contains
        if (.not. found_cell) then
           write(msg, 100) "Could not locate cell for particle at: ", p % xyz
 100       format (A,3ES11.3)
-          call error(msg)
+          call fatal_error(msg)
        end if
     end if
 
@@ -381,7 +382,7 @@ contains
     ! DETERMINE TOTAL NU
     if (table % nu_t_type == NU_NONE) then
        msg = "No neutron emission data for table: " // table % name
-       call error(msg)
+       call fatal_error(msg)
     elseif (table % nu_t_type == NU_POLYNOMIAL) then
        ! determine number of coefficients
        NC = int(table % nu_t_data(1))
@@ -400,7 +401,7 @@ contains
        if (NR /= 0) then
           msg = "Multiple interpolation regions not supported while &
                &attempting to determine total nu."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! determine number of energies
@@ -449,7 +450,7 @@ contains
        if (NR /= 0) then
           msg = "Multiple interpolation regions not supported while & 
                &attempting to determine prompt nu."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! determine number of energies
@@ -486,7 +487,7 @@ contains
        if (NR /= 0) then
           msg = "Multiple interpolation regions not supported while & 
                &attempting to determine delayed nu."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! determine number of energies
@@ -551,7 +552,7 @@ contains
              if (NR > 0) then
                 msg = "Multiple interpolation regions not supported while & 
                      &sampling delayed neutron precursor yield."
-                call error(msg)
+                call fatal_error(msg)
              end if
 
              ! interpolate on energy grid
@@ -902,7 +903,7 @@ contains
           end if
        else
           msg = "Unknown interpolation type: " // trim(int_to_str(interp))
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        if (abs(mu) > ONE) then
@@ -914,7 +915,7 @@ contains
          
     else
        msg = "Unknown angular distribution type: " // trim(int_to_str(type))
-       call error(msg)
+       call fatal_error(msg)
     end if
     
   end function sample_angle
@@ -1031,7 +1032,7 @@ contains
     if (edist % n_interp > 0) then
        msg = "Multiple interpolation regions not supported while &
             &attempting to sample secondary energy distribution."
-       call error(msg)
+       call fatal_error(msg)
     end if
        
     ! Determine which secondary energy distribution law to use
@@ -1048,7 +1049,7 @@ contains
        if (NR > 0) then
           msg = "Multiple interpolation regions not supported while &
                &attempting to sample equiprobable energy bins."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! determine index on incoming energy grid and interpolation factor
@@ -1095,7 +1096,7 @@ contains
        if (NR > 0) then
           msg = "Multiple interpolation regions not supported while &
                &attempting to sample continuous tabular distribution."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1154,7 +1155,7 @@ contains
           ! discrete lines present
           msg = "Discrete lines in continuous tabular distributed not &
                &yet supported"
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! determine outgoing energy bin
@@ -1188,7 +1189,7 @@ contains
           end if
        else
           msg = "Unknown interpolation type: " // trim(int_to_str(INTT))
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! Now interpolate between incident energy bins i and i + 1
@@ -1212,7 +1213,7 @@ contains
        if (NR > 0) then
           msg = "Multiple interpolation regions not supported while &
                &attempting to sample Maxwell fission spectrum."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! find incident energy bin and calculate interpolation factor
@@ -1247,7 +1248,7 @@ contains
        if (NR > 0) then
           msg = "Multiple interpolation regions not supported while &
                &attempting to sample evaporation spectrum."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1295,7 +1296,7 @@ contains
        if (NR > 0) then
           msg = "Multiple interpolation regions not supported while &
                &attempting to sample Watt fission spectrum."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! find incident energy bin and calculate interpolation factor
@@ -1325,7 +1326,7 @@ contains
        if (NR > 0) then
           msg = "Multiple interpolation regions not supported while &
                &attempting to sample Watt fission spectrum."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! find incident energy bin and calculate interpolation factor
@@ -1356,7 +1357,7 @@ contains
 
        if (.not. present(mu_out)) then
           msg = "Law 44 called without giving mu_out as argument."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! read number of interpolation regions and incoming energies 
@@ -1365,7 +1366,7 @@ contains
        if (NR > 0) then
           msg = "Multiple interpolation regions not supported while &
                &attempting to sample Kalbach-Mann distribution."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1425,7 +1426,7 @@ contains
           ! discrete lines present
           msg = "Discrete lines in continuous tabular distributed not &
                &yet supported"
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! determine outgoing energy bin
@@ -1473,7 +1474,7 @@ contains
           KM_A = A_k + (A_k1 - A_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
        else
           msg = "Unknown interpolation type: " // trim(int_to_str(INTT))
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! Now interpolate between incident energy bins i and i + 1
@@ -1499,7 +1500,7 @@ contains
 
        if (.not. present(mu_out)) then
           msg = "Law 44 called without giving mu_out as argument."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! read number of interpolation regions and incoming energies 
@@ -1508,7 +1509,7 @@ contains
        if (NR > 0) then
           msg = "Multiple interpolation regions not supported while &
                &attempting to sample correlated energy-angle distribution."
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1568,7 +1569,7 @@ contains
           ! discrete lines present
           msg = "Discrete lines in continuous tabular distributed not &
                &yet supported"
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! determine outgoing energy bin
@@ -1603,7 +1604,7 @@ contains
           end if
        else
           msg = "Unknown interpolation type: " // trim(int_to_str(INTT))
-          call error(msg)
+          call fatal_error(msg)
        end if
 
        ! Now interpolate between incident energy bins i and i + 1
@@ -1656,7 +1657,7 @@ contains
           end if
        else
           msg = "Unknown interpolation type: " // trim(int_to_str(JJ))
-          call error(msg)
+          call fatal_error(msg)
        end if
 
     case (66)

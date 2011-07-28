@@ -7,6 +7,7 @@ modules = 	ace.f90 \
 		data_structures.f90 \
 		endf.f90 \
 		energy_grid.f90 \
+		error.f90 \
 		fileio.f90 \
 		geometry.f90 \
 		global.f90 \
@@ -19,6 +20,7 @@ modules = 	ace.f90 \
 		source.f90 \
 		string.f90 \
 		score.f90 \
+		timing.f90 \
 		types.f90
 
 main_objects = $(modules:.f90=.o) $(main:.f90=.o)
@@ -51,25 +53,30 @@ unittest: $(test_objects)
 
 #--------------------------------------------------------------------
 # Dependencies
-ace.o: global.o output.o string.o fileio.o string.o endf.o
-cross_section.o: global.o string.o data_structures.o output.o
+ace.o: global.o output.o string.o fileio.o string.o endf.o error.o
+cross_section.o: global.o string.o data_structures.o output.o error.o
 data_structures.o: global.o
 endf.o: global.o
 energy_grid.o: global.o output.o data_structures.o
-fileio.o: types.o global.o string.o output.o data_structures.o
-geometry.o: types.o global.o output.o string.o data_structures.o
+error.o: global.o
+fileio.o: types.o global.o string.o output.o data_structures.o \
+          error.o
+geometry.o: types.o global.o output.o string.o data_structures.o \
+            error.o
 global.o: types.o
 logging.o: global.o
 main.o: global.o fileio.o output.o geometry.o mcnp_random.o \
 		source.o physics.o cross_section.o data_structures.o \
 		ace.o energy_grid.o score.o logging.o
-mpi_routines.o: global.o output.o types.o mcnp_random.o source.o
-output.o: global.o types.o data_structures.o endf.o
+mpi_routines.o: global.o output.o types.o mcnp_random.o source.o \
+                error.o
+output.o: global.o types.o data_structures.o endf.o string.o
 physics.o: types.o global.o mcnp_random.o geometry.o output.o \
-		search.o endf.o score.o
-score.o: global.o output.o ace.o
-search.o: output.o
+		search.o endf.o score.o error.o
+score.o: global.o output.o ace.o error.o
+search.o: global.o error.o
 source.o: global.o mcnp_random.o output.o physics.o
-string.o: global.o output.o
+string.o: global.o error.o
+timing.o: global.o types.o error.o
 types.o:
 unittest.o: global.o energy_grid.o mpi_routines.o

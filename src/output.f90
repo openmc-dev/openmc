@@ -638,13 +638,13 @@ contains
     call header("Time Elapsed")
 
     ! display time elapsed for various sections
-    write(ou,100) "Total time elapsed", real_to_str(time_total % elapsed)
-    write(ou,100) "Total time for initialization", real_to_str(time_init % elapsed)
-    write(ou,100) "Total time in computation", real_to_str(time_compute % elapsed)
-    write(ou,100) "Total time between cycles", real_to_str(time_intercycle % elapsed)
+    write(ou,100) "Total time elapsed", trim(real_to_str(time_total % elapsed))
+    write(ou,100) "Total time for initialization", trim(real_to_str(time_init % elapsed))
+    write(ou,100) "Total time in computation", trim(real_to_str(time_compute % elapsed))
+    write(ou,100) "Total time between cycles", trim(real_to_str(time_intercycle % elapsed))
 
     ! format for write statments
-100 format (1X,A,T33,"= ",A,"seconds")
+100 format (1X,A,T33,"= ",A," seconds")
  
   end subroutine print_runtime
 

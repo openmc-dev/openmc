@@ -20,7 +20,6 @@ module global
   type(Lattice),  allocatable, target :: lattices(:)
   type(Surface),  allocatable, target :: surfaces(:)
   type(Material), allocatable, target :: materials(:)
-  type(Isotope),  allocatable, target :: isotopes(:)
   type(xsData),   allocatable, target :: xsdatas(:)
   type(Tally),    allocatable, target :: tallies(:)
   type(Tally),    allocatable, target :: tallies_global(:)

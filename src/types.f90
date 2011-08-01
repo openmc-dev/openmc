@@ -144,19 +144,6 @@ module types
   end type Tally
 
 !===============================================================================
-! ISOTOPE describes an isotope, e.g. U-235, within a material. Note that two
-! separate variables must be used for the same isotope in two different
-! materials since they will generally have different densities
-!===============================================================================
-
-  type Isotope
-     integer :: uid     ! unique identifier
-     integer :: zaid    ! ZAID, e.g. 92235
-     character(3) :: xs ! cross section identifier, e.g. 70c
-     real(8) :: density ! density in atom/b-cm
-  end type Isotope
-
-!===============================================================================
 ! MATERIAL describes a material by its constituent isotopes
 !===============================================================================
 

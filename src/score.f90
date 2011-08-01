@@ -5,6 +5,7 @@ module score
   use error,  only: fatal_error
   use ace,    only: get_macro_xs
   use search, only: binary_search
+  use string, only: int_to_str
 
 #ifdef MPI
   use mpi
@@ -73,8 +74,8 @@ contains
     call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
 #endif
 
-100 format (2X,I4,3X,F7.5)
-101 format (2X,I4,3X,F7.5,10X,F7.5,2X,F7.5)
+100 format (2X,I4,2X,F8.5)
+101 format (2X,I4,2X,F8.5,9X,F8.5,1X,F8.5)
 
   end subroutine calculate_keff
 

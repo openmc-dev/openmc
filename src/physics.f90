@@ -10,6 +10,7 @@ module physics
   use search,      only: binary_search
   use endf,        only: reaction_name
   use score,       only: score_tally
+  use string,      only: int_to_str
 
   implicit none
 

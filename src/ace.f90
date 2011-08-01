@@ -5,7 +5,7 @@ module ace
   use output,          only: message
   use string,          only: lower_case
   use fileio,          only: read_line, read_data, skip_lines
-  use string,          only: split_string
+  use string,          only: split_string, str_to_real
   use data_structures, only: dict_create, dict_add_key, dict_has_key, &
        &                     dict_get_key, dict_delete
   use endf,            only: reaction_name

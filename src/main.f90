@@ -16,6 +16,7 @@ program main
   use score,         only: calculate_keff
   use logging,       only: create_log
   use timing,        only: timer_start, timer_stop
+  use string,        only: int_to_str
 
 #ifdef MPI
   use mpi

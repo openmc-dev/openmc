@@ -5,7 +5,7 @@ module output
   use types,           only: Cell, Universe, Surface
   use data_structures, only: dict_get_key
   use endf,            only: reaction_name
-  use string,          only: upper_case
+  use string,          only: upper_case, int_to_str, real_to_str
 
   implicit none
 

@@ -5,6 +5,7 @@ module geometry
   use output, only: message
   use error,  only: fatal_error
   use data_structures, only: dict_get_key
+  use string, only: int_to_str
 
   implicit none
      

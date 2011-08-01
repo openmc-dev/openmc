@@ -2,12 +2,12 @@ module fileio
 
   use global
   use types,  only: Cell, Surface, ExtSource, ListKeyValueCI
-  use string, only: split_string_wl, lower_case, split_string, &
-       &            concatenate, is_number
+  use string, only: split_string_wl, lower_case, split_string, concatenate, &
+                    is_number, str_to_int, int_to_str, str_to_real
   use error,  only: fatal_error, warning
   use output, only: message
   use data_structures, only: dict_create, dict_add_key, dict_get_key, &
-       &                     dict_has_key, DICT_NULL, dict_keys, list_size
+                             dict_has_key, DICT_NULL, dict_keys, list_size
 
   implicit none
 

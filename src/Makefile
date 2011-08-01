@@ -64,7 +64,7 @@ unittest: $(test_objects)
 ace.o: global.o output.o string.o fileio.o string.o endf.o error.o
 cross_section.o: global.o string.o data_structures.o output.o error.o
 data_structures.o: global.o
-endf.o: global.o
+endf.o: global.o string.o
 energy_grid.o: global.o output.o data_structures.o
 error.o: global.o
 fileio.o: types.o global.o string.o output.o data_structures.o \
@@ -75,13 +75,13 @@ global.o: types.o
 logging.o: global.o
 main.o: global.o fileio.o output.o geometry.o mcnp_random.o \
 		source.o physics.o cross_section.o data_structures.o \
-		ace.o energy_grid.o score.o logging.o
+		ace.o energy_grid.o score.o logging.o string.o
 mpi_routines.o: global.o output.o types.o mcnp_random.o source.o \
                 error.o
 output.o: global.o types.o data_structures.o endf.o string.o
 physics.o: types.o global.o mcnp_random.o geometry.o output.o \
-		search.o endf.o score.o error.o
-score.o: global.o output.o ace.o error.o
+		search.o endf.o score.o error.o string.o
+score.o: global.o output.o ace.o error.o string.o
 search.o: global.o error.o
 source.o: global.o mcnp_random.o output.o physics.o
 string.o: global.o error.o

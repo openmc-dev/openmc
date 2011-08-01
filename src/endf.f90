@@ -1,6 +1,7 @@
 module endf
 
   use global
+  use string, only: int_to_str
 
 contains
 

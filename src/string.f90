@@ -272,14 +272,12 @@ contains
     character(*), intent(in) :: string
     real(8) :: num
 
-    integer :: index_decimal  ! index of decimal point
-    integer :: index_exponent ! index of exponent character
-    integer :: w              ! total field width
-    integer :: d              ! number of digits to right of decimal point
-    integer :: ioError
-
-    character(8)            :: fmt ! format for reading string
-    character(MAX_LINE_LEN) :: msg ! error message
+    integer      :: index_decimal  ! index of decimal point
+    integer      :: index_exponent ! index of exponent character
+    integer      :: w              ! total field width
+    integer      :: d              ! number of digits to right of decimal point
+    integer      :: ioError
+    character(8) :: fmt            ! format for reading string
 
     ! Determine total field width
     w = len_trim(string)

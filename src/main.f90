@@ -26,8 +26,6 @@ program main
 
   implicit none
 
-  character(max_word_len) :: filename
-  character(max_line_len) :: msg
   type(Universe), pointer :: univ
 
   ! Start timers
@@ -117,15 +115,10 @@ contains
 
   subroutine run_problem()
 
-    integer    :: i, j
-    integer    :: ierr
-    integer    :: i_cycle    ! cycle index
-    integer(8) :: i_particle ! history index
-    integer    :: total_bank ! total number of particles banked
-    real(8)    :: t0
-    real(8)    :: t1
+    integer                 :: i_cycle     ! cycle index
+    integer(8)              :: i_particle  ! history index
+    character(MAX_LINE_LEN) :: msg         ! output/error message
     type(Particle), pointer :: p => null()
-    character(max_line_len) :: msg
 
     if (master) call header("BEGIN SIMULATION", 1)
 

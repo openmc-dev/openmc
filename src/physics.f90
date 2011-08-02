@@ -281,7 +281,6 @@ contains
     type(Reaction), pointer :: rxn
 
     real(8) :: awr ! atomic weight ratio of target
-    real(8) :: phi ! azimuthal angle
     real(8) :: mu  ! cosine of polar angle
     real(8) :: vx  ! velocity of neutron in x-direction
     real(8) :: vy  ! velocity of neutron in y-direction
@@ -653,7 +652,6 @@ contains
     real(8) :: E_cm       ! outgoing energy in center-of-mass
     real(8) :: u,v,w      ! direction cosines
     real(8) :: Q          ! Q-value of reaction
-    character(MAX_LINE_LEN) :: msg ! error message
     
     ! copy energy of neutron
     E_in = p % E
@@ -724,7 +722,6 @@ contains
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: u,v,w       ! direction cosines
     real(8) :: Q           ! Q-value of reaction
-    character(MAX_LINE_LEN) :: msg  ! error message
     
     ! copy energy of neutron
     E_in = p % E

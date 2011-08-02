@@ -214,8 +214,6 @@ contains
 
     type(Particle), pointer :: p
 
-    integer                 :: i
-    character(max_line_len) :: string
     type(Cell),     pointer :: c => null()
     type(Surface),  pointer :: s => null()
     type(Universe), pointer :: u => null()
@@ -478,7 +476,6 @@ contains
     type(Material), pointer :: mat
 
     integer                 :: i
-    integer                 :: n_lines
     real(8)                 :: density
     character(max_line_len) :: string
     type(Nuclide),  pointer :: nuc => null()

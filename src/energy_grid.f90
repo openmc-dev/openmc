@@ -22,7 +22,6 @@ contains
     type(ListReal), pointer :: current => null()
     type(Material), pointer :: mat => null()
     type(Nuclide),  pointer :: nuc => null()
-    type(Reaction), pointer :: rxn => null()
     integer :: i, j
     integer :: n
     character(MAX_LINE_LEN) :: msg

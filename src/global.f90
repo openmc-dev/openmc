@@ -47,7 +47,7 @@ module global
   ! Cross section arrays
   type(Nuclide),   allocatable, target :: nuclides(:)
   type(SAB_Table), allocatable, target :: sab_tables(:)
-  integer :: n_nuclides
+  integer :: n_nuclides_total
   integer :: n_sab_tables
 
   ! Current cell, surface, material

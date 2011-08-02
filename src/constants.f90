@@ -161,8 +161,8 @@ module constants
 
   ! Versioning numbers
   integer, parameter :: VERSION_MAJOR = 0
-  integer, parameter :: VERSION_MINOR = 2
-  integer, parameter :: VERSION_RELEASE = 2
+  integer, parameter :: VERSION_MINOR = 3
+  integer, parameter :: VERSION_RELEASE = 0
 
   ! Maximum number of words in a single line, length of line, and length of
   ! single word

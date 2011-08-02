@@ -481,21 +481,21 @@ contains
     integer                 :: n_lines
     real(8)                 :: density
     character(max_line_len) :: string
-    type(Nuclide),  pointer :: table => null()
+    type(Nuclide),  pointer :: nuc => null()
 
     write(ou,*) 'Material ' // int_to_str(mat % uid)
     write(ou,*) '    Atom Density = ' // trim(real_to_str(mat % atom_density)) &
          & // ' atom/b-cm'
-    do i = 1, mat % n_isotopes
-       table => nuclides(mat % table(i))
+    do i = 1, mat % n_nuclides
+       nuc => nuclides(mat % nuclide(i))
        density = mat % atom_density * mat % atom_percent(i)
-       string = '    ' // trim(table % name) // ' = ' // &
+       string = '    ' // trim(nuc % name) // ' = ' // &
             & trim(real_to_str(density)) // ' atom/b-cm'
        write(ou,*) trim(string)
     end do
     write(ou,*)
 
-    nullify(table)
+    nullify(nuc)
 
   end subroutine print_material
 

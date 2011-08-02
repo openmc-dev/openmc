@@ -8,10 +8,10 @@ module material_header
 
   type Material
      integer :: uid
-     integer :: n_isotopes
+     integer :: n_nuclides
      character(10), allocatable :: names(:)  ! isotope names
-     integer, allocatable :: isotopes(:)     ! index in xsdata list
-     integer, allocatable :: table(:)        ! index in nuclides array
+     integer, allocatable :: xsdata(:)       ! index in xsdata list
+     integer, allocatable :: nuclide(:)      ! index in nuclides array
      real(8)              :: atom_density    ! total atom density in atom/b-cm
      real(8), allocatable :: atom_percent(:)
      real(8), allocatable :: total_xs(:)     ! macroscopic cross-section

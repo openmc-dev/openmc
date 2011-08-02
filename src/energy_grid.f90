@@ -1,9 +1,10 @@
 module energy_grid
 
+  use constants,        only: MAX_LINE_LEN
+  use datatypes,        only: list_insert, list_size, list_delete
+  use datatypes_header, only: ListReal
   use global
-  use output, only: message
-  use data_structures, only: list_insert, list_size, list_delete, &
-       &                     list_size
+  use output,           only: message
 
 contains
 
@@ -19,13 +20,12 @@ contains
 
     type(ListReal), pointer :: list => null()
     type(ListReal), pointer :: current => null()
-
-    type(Material),       pointer :: mat => null()
-    type(AceContinuous),  pointer :: table => null()
-    type(AceReaction),    pointer :: rxn => null()
+    type(Material), pointer :: mat => null()
+    type(Nuclide),  pointer :: table => null()
+    type(Reaction), pointer :: rxn => null()
     integer :: i, j
     integer :: n
-    character(max_line_len) :: msg
+    character(MAX_LINE_LEN) :: msg
 
     msg = "Creating unionized energy grid..."
     call message(msg, 5)
@@ -36,7 +36,7 @@ contains
        
        ! loop over all isotopes
        do j = 1, mat%n_isotopes
-          table => xs_continuous(mat%table(j))
+          table => nuclides(mat%table(j))
 
           ! loop over energy points
           n = size(table%energy)
@@ -159,26 +159,26 @@ contains
 
     integer :: i, j
     integer :: index
-    type(AceContinuous), pointer :: acecont
+    type(Nuclide), pointer :: nuc
 
     real(8) :: union_energy
     real(8) :: energy
     
 
-    do i = 1, n_continuous
-       acecont => xs_continuous(i)
-       allocate(acecont%grid_index(n_grid))
+    do i = 1, n_nuclides
+       nuc => nuclides(i)
+       allocate(nuc%grid_index(n_grid))
 
        index = 1
-       energy = acecont%energy(index)
+       energy = nuc%energy(index)
 
        do j = 1, n_grid
           union_energy = e_grid(j)
           if (union_energy >= energy) then
              index = index + 1
-             energy = acecont%energy(index)
+             energy = nuc%energy(index)
           end if
-          acecont%grid_index(j) = index-1
+          nuc%grid_index(j) = index-1
        end do
 
     end do

@@ -1,11 +1,13 @@
 module geometry
 
+  use constants
+  use datatypes,       only: dict_get_key
+  use error,           only: fatal_error
+  use geometry_header, only: Cell, Surface, Universe, Lattice
   use global
-  use types,  only: Cell, Surface
-  use output, only: message
-  use error,  only: fatal_error
-  use data_structures, only: dict_get_key
-  use string, only: int_to_str
+  use output,          only: message
+  use particle_header, only: Particle
+  use string,          only: int_to_str
 
   implicit none
      
@@ -28,7 +30,7 @@ contains
     integer :: i               ! index of surfaces in cell
     integer :: surf_num        ! index in surfaces array (with sign)
     integer :: current_surface ! current surface of particle (with sign)
-    character(max_line_len) :: msg      ! output/error message
+    character(MAX_LINE_LEN) :: msg      ! output/error message
     type(Surface), pointer  :: surf => null()
 
     current_surface = p%surface
@@ -94,7 +96,7 @@ contains
     type(Particle), pointer :: p          ! pointer to particle
     logical,  intent(inout) :: found      ! particle found?
 
-    character(max_line_len) :: msg        ! error message
+    character(MAX_LINE_LEN) :: msg        ! error message
     integer                 :: i          ! index over cells
     integer                 :: x, y
     type(Cell),     pointer :: c          ! pointer to cell
@@ -178,7 +180,7 @@ contains
     integer                 :: i          ! index of neighbors
     integer                 :: index_cell ! index in cells array
     logical                 :: found      ! particle found in universe?
-    character(max_line_len) :: msg        ! output/error message?
+    character(MAX_LINE_LEN) :: msg        ! output/error message?
     type(Surface),  pointer :: surf
     type(Cell),     pointer :: c
     type(Universe), pointer :: lower_univ => null()
@@ -288,7 +290,7 @@ contains
     real(8)        :: x0       ! half the width of lattice element
     real(8)        :: y0       ! half the height of lattice element
     logical        :: found    ! particle found in cell?
-    character(max_line_len) :: msg  ! output/error message
+    character(MAX_LINE_LEN) :: msg  ! output/error message
     type(Lattice),  pointer :: lat
     type(Universe), pointer :: univ
 
@@ -407,11 +409,11 @@ contains
     real(8) :: a,b,c,k      ! quadratic equation coefficients
     real(8) :: quad         ! discriminant of quadratic equation
     logical :: on_surface   ! is particle on surface?
-    character(max_line_len) :: msg   ! output/error message
+    character(MAX_LINE_LEN) :: msg   ! output/error message
     type(Cell),    pointer  :: cell_p => null()
     type(Cell),    pointer  :: parent_p => null()
     type(Surface), pointer  :: surf_p => null()
-    type(LatticE), pointer  :: lat => null()
+    type(Lattice), pointer  :: lat => null()
 
     cell_p => cells(p%cell)
 
@@ -922,7 +924,7 @@ contains
     integer, allocatable :: count_positive(:) ! # of cells on positive side
     integer, allocatable :: count_negative(:) ! # of cells on negative side
     logical :: positive   ! positive side specified in surface list
-    character(max_line_len) :: msg ! output/error message
+    character(MAX_LINE_LEN) :: msg ! output/error message
     type(Cell),    pointer  :: c
     type(Surface), pointer  :: surf
 

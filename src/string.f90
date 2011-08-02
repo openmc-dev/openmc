@@ -1,7 +1,7 @@
 module string
 
-  use global
-  use error, only: warning
+  use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL
+  use error,     only: warning
 
   implicit none
 
@@ -24,14 +24,14 @@ contains
   subroutine split_string(string, words, n)
 
     character(*), intent(in)  :: string
-    character(*), intent(out) :: words(max_words)
+    character(*), intent(out) :: words(MAX_WORDS)
     integer,      intent(out) :: n
 
     character(1)  :: char    ! current character
     integer       :: i       ! current index
     integer       :: i_start ! starting index of word
     integer       :: i_end   ! ending index of word
-    character(max_line_len) :: msg
+    character(MAX_LINE_LEN) :: msg
 
     i_start = 0
     i_end = 0
@@ -77,7 +77,7 @@ contains
   subroutine split_string_wl(string, words, n)
 
     character(*), intent(in)  :: string
-    character(*), intent(out) :: words(max_words)
+    character(*), intent(out) :: words(MAX_WORDS)
     integer,      intent(out) :: n
 
     character(1)  :: char    ! current character
@@ -136,7 +136,7 @@ contains
 
     character(*),   intent(in)  :: words(n_words)
     integer,        intent(in)  :: n_words
-    character(max_line_len)     :: string
+    character(MAX_LINE_LEN)     :: string
 
     integer :: i ! index
 
@@ -279,7 +279,7 @@ contains
     integer :: ioError
 
     character(8)            :: fmt ! format for reading string
-    character(max_line_len) :: msg ! error message
+    character(MAX_LINE_LEN) :: msg ! error message
 
     ! Determine total field width
     w = len_trim(string)
@@ -336,7 +336,7 @@ contains
 
     ! Create format specifier for writing character
     num2 = abs(num)
-    if (num2 == ZERO) then
+    if (num2 == 0.0_8) then
        write(fmt, '("(F",I2,".",I2,")")') width, 1
     elseif (num2 < 1.0e-1_8) then
        write(fmt, '("(ES",I2,".",I2,")")') width, decimal - 1

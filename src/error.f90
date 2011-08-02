@@ -1,10 +1,12 @@
 module error
 
   use ISO_FORTRAN_ENV
-  use global
+
+  use global, only: master, free_memory
 
   implicit none
 
+  ! Short names for output and error units
   integer :: ou = OUTPUT_UNIT
   integer :: eu = ERROR_UNIT
 

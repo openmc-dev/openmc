@@ -1,13 +1,18 @@
 module fileio
 
+  use constants
+  use cross_section_header, only: xsData
+  use datatypes,            only: dict_create, dict_add_key, dict_get_key, &
+                                  dict_has_key, DICT_NULL, dict_keys, list_size
+  use datatypes_header,     only: DictionaryII, ListKeyValueII, ListKeyValueCI
+  use error,                only: fatal_error, warning, ERROR_INT, ERROR_REAL
+  use geometry_header,      only: Cell, Surface, BASE_UNIVERSE
   use global
-  use types,  only: Cell, Surface, ExtSource, ListKeyValueCI
-  use string, only: split_string_wl, lower_case, split_string, concatenate, &
-                    is_number, str_to_int, int_to_str, str_to_real
-  use error,  only: fatal_error, warning
-  use output, only: message
-  use data_structures, only: dict_create, dict_add_key, dict_get_key, &
-                             dict_has_key, DICT_NULL, dict_keys, list_size
+  use output,               only: message
+  use source_header,        only: ExtSource
+  use string,               only: split_string_wl, lower_case, split_string, &
+                                  concatenate, is_number, str_to_int, & 
+                                  int_to_str, str_to_real
 
   implicit none
 
@@ -37,7 +42,7 @@ contains
 
     integer                 :: argc        ! number of command line arguments
     logical                 :: file_exists ! does specified input file exist?
-    character(max_line_len) :: msg         ! error message
+    character(MAX_LINE_LEN) :: msg         ! error message
     character(7)            :: readable    ! is input file readable?
 
     argc = COMMAND_ARGUMENT_COUNT()
@@ -79,9 +84,9 @@ contains
     integer                 :: n                ! number of words on a line
     integer                 :: count            ! number of cells in a universe
     integer                 :: universe_num     ! user-specified universe #
-    character(max_line_len) :: line             ! a line of words in input file
-    character(max_line_len) :: msg              ! output/error message
-    character(max_word_len) :: words(max_words) ! words on a line
+    character(MAX_LINE_LEN) :: line             ! a line of words in input file
+    character(MAX_LINE_LEN) :: msg              ! output/error message
+    character(MAX_WORD_LEN) :: words(MAX_WORDS) ! words on a line
     type(ListKeyValueII), pointer :: key_list => null()
     type(Universe),       pointer :: univ => null()
 
@@ -230,9 +235,9 @@ contains
     integer :: index_material          ! index in materials array
     integer :: index_source            ! index in source array (?)
     integer :: index_tally             ! index in tally array
-    character(max_line_len) :: line             ! a line of words
-    character(max_line_len) :: msg              ! output/error message
-    character(max_word_len) :: words(max_words) ! words on a single line
+    character(MAX_LINE_LEN) :: line             ! a line of words
+    character(MAX_LINE_LEN) :: msg              ! output/error message
+    character(MAX_WORD_LEN) :: words(MAX_WORDS) ! words on a single line
 
     msg = "Second pass through input file..."
     call message(msg, 5)
@@ -335,7 +340,7 @@ contains
     integer                 :: index    ! index in surfaces/materials array 
     integer                 :: surf_num ! user-specified surface number
     integer                 :: bc       ! boundary condition
-    character(max_line_len) :: msg      ! output/error message
+    character(MAX_LINE_LEN) :: msg      ! output/error message
     type(Cell),           pointer :: c => null()
     type(Surface),        pointer :: surf => null()
     type(ListKeyValueII), pointer :: key_list => null()
@@ -469,8 +474,8 @@ contains
     integer                 :: i            ! index for surface list in a cell
     integer                 :: universe_num ! user-specified universe number
     integer                 :: n_surfaces   ! number of surfaces in a cell
-    character(max_line_len) :: msg          ! output/error message
-    character(max_word_len) :: word         ! single word
+    character(MAX_LINE_LEN) :: msg          ! output/error message
+    character(MAX_WORD_LEN) :: word         ! single word
     type(Cell), pointer     :: c => null()
 
     c => cells(index)
@@ -562,8 +567,8 @@ contains
     integer                 :: ioError     ! error status for file access
     integer                 :: i           ! index for surface coefficients
     integer                 :: coeffs_reqd ! number of coefficients are required
-    character(max_line_len) :: msg         ! output/error message
-    character(max_word_len) :: word        ! single word
+    character(MAX_LINE_LEN) :: msg         ! output/error message
+    character(MAX_WORD_LEN) :: word        ! single word
     type(Surface), pointer  :: surf => null()
 
     surf => surfaces(index)
@@ -651,8 +656,8 @@ contains
 
     integer                 :: surface_uid ! User-specified uid of surface
     integer                 :: bc          ! Boundary condition
-    character(max_word_len) :: word        ! Boundary condition (in input file)
-    character(max_line_len) :: msg         ! Output/error message
+    character(MAX_WORD_LEN) :: word        ! Boundary condition (in input file)
+    character(MAX_LINE_LEN) :: msg         ! Output/error message
 
     ! Read surface identifier
     surface_uid = str_to_int(words(2))
@@ -696,8 +701,8 @@ contains
     integer                 :: n_y          ! number of lattice cells in y direction
     integer                 :: i,j          ! loop indices for Lattice % universes
     integer                 :: index_word   ! index in words array
-    character(max_line_len) :: msg          ! output/error/message
-    character(max_word_len) :: word         ! single word
+    character(MAX_LINE_LEN) :: msg          ! output/error/message
+    character(MAX_WORD_LEN) :: word         ! single word
     type(Lattice), pointer  :: lat => null()
     
     lat => lattices(index)
@@ -779,8 +784,8 @@ contains
     integer                 :: i           ! index in values list
     integer                 :: ioError     ! error status for file access
     integer                 :: values_reqd ! # of values required to specify source
-    character(max_line_len) :: msg  ! output/error message
-    character(max_word_len) :: word ! single word
+    character(MAX_LINE_LEN) :: msg  ! output/error message
+    character(MAX_WORD_LEN) :: word ! single word
 
     ! Read source type
     word = words(2)
@@ -826,8 +831,8 @@ contains
     integer :: cell_uid
     integer :: r_bins, c_bins, e_bins
     real(8) :: E
-    character(max_word_len) :: word
-    character(max_line_len) :: msg
+    character(MAX_WORD_LEN) :: word
+    character(MAX_LINE_LEN) :: msg
     type(Tally), pointer :: t => null()
 
     t => tallies(index)
@@ -977,7 +982,7 @@ contains
     integer                 :: i          ! index over isotopes
     integer                 :: ioError    ! error status for file access
     integer                 :: n_isotopes ! number of isotopes in material
-    character(max_line_len) :: msg        ! output/error message
+    character(MAX_LINE_LEN) :: msg        ! output/error message
     type(Material), pointer :: mat => null()
 
     ! Check for correct number of arguments
@@ -1032,7 +1037,7 @@ contains
     logical        :: percent_in_atom ! isotopes specified in atom percent?
     logical        :: density_in_atom ! density specified in atom/b-cm?
     character(10)  :: key             ! name of isotopes, e.g. 92235.03c
-    character(max_line_len) :: msg    ! output/error message
+    character(MAX_LINE_LEN) :: msg    ! output/error message
     type(xsData),   pointer :: iso => null()
     type(Material), pointer :: mat => null()
     
@@ -1122,7 +1127,7 @@ contains
     character(*), intent(in) :: words(n_words) ! words on criticality card
     integer,      intent(in) :: n_words        ! number of words
 
-    character(max_line_len) :: msg ! output/error message
+    character(MAX_LINE_LEN) :: msg ! output/error message
 
     ! Set problem type to criticality
     problem_type = PROB_CRITICALITY
@@ -1173,12 +1178,12 @@ contains
   subroutine get_next_line(unit, words, n, ioError)
 
     integer,      intent(in)  :: unit             ! unit to read from
-    character(*), intent(out) :: words(max_words) ! words read
+    character(*), intent(out) :: words(MAX_WORDS) ! words read
     integer,      intent(out) :: n                ! number of words
     integer,      intent(out) :: ioError          ! error status
 
-    character(max_line_len) :: line                   ! single line
-    character(max_word_len) :: local_words(max_words) ! words on one line
+    character(MAX_LINE_LEN) :: line                   ! single line
+    character(MAX_WORD_LEN) :: local_words(MAX_WORDS) ! words on one line
     integer                 :: index                  ! index of words
 
     index = 0
@@ -1222,7 +1227,7 @@ contains
     integer, intent(out) :: ioError ! error status 
 
     integer                 :: i        ! index for number of lines
-    character(max_line_len) :: tmp      ! single line
+    character(MAX_LINE_LEN) :: tmp      ! single line
 
     do i = 1, n_lines
        read(UNIT=unit, FMT='(A)', IOSTAT=ioError) tmp

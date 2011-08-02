@@ -150,8 +150,8 @@ contains
 
     type(Particle), pointer :: p
 
-    integer :: i          ! index over isotopes in a material
-    integer :: n_isotopes ! number of isotopes in material
+    integer :: i          ! index over nuclides in a material
+    integer :: n_nuclides ! number of nuclides in material
     integer :: IE         ! index on nuclide energy grid
     real(8) :: f          ! interpolation factor
     real(8) :: sigma      ! microscopic total xs for nuclide
@@ -163,45 +163,45 @@ contains
     real(8) :: flux       ! collision estimator of flux
     real(8), allocatable :: Sigma_rxn(:) ! macroscopic xs for each nuclide
     character(MAX_LINE_LEN)       :: msg ! output/error message
-    type(Nuclide),  pointer :: table
+    type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
     density = cMaterial%atom_density
 
     ! calculate total cross-section for each nuclide at current energy in order
     ! to create discrete pdf for sampling nuclide
-    n_isotopes = cMaterial%n_isotopes
-    allocate(Sigma_rxn(n_isotopes))
-    do i = 1, n_isotopes
-       table => nuclides(cMaterial%table(i))
+    n_nuclides = cMaterial % n_nuclides
+    allocate(Sigma_rxn(n_nuclides))
+    do i = 1, n_nuclides
+       nuc => nuclides(cMaterial % nuclide(i))
 
        ! determine nuclide atom density
-       density_i = cMaterial%atom_percent(i) * density
+       density_i = cMaterial % atom_percent(i) * density
 
        ! search nuclide energy grid
-       IE = table%grid_index(p % IE)
-       f = (p%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
+       IE = nuc%grid_index(p % IE)
+       f = (p%E - nuc%energy(IE))/(nuc%energy(IE+1) - nuc%energy(IE))
 
        ! calculate nuclide macroscopic cross-section
-       Sigma_rxn(i) = density_i*((ONE-f)*table%Sigma_t(IE) + & 
-            & f*(table%Sigma_t(IE+1)))
+       Sigma_rxn(i) = density_i*((ONE-f)*nuc%Sigma_t(IE) + & 
+            & f*(nuc%Sigma_t(IE+1)))
     end do
     total = sum(Sigma_rxn)
 
     ! sample nuclide
     r1 = rang()
     prob = ZERO
-    do i = 1, n_isotopes
+    do i = 1, n_nuclides
        prob = prob + Sigma_rxn(i) / total
        if (r1 < prob) exit
     end do
 
     ! Get table, total xs, interpolation factor
     density_i = cMaterial%atom_percent(i)*density
-    table => nuclides(cMaterial%table(i))
+    nuc => nuclides(cMaterial%nuclide(i))
     sigma = Sigma_rxn(i) / density_i
-    IE = table%grid_index(p % IE)
-    f = (p%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
+    IE = nuc%grid_index(p % IE)
+    f = (p%E - nuc%energy(IE))/(nuc%energy(IE+1) - nuc%energy(IE))
 
     ! free memory
     deallocate(Sigma_rxn)
@@ -209,8 +209,8 @@ contains
     ! sample reaction channel
     r1 = rang()*sigma
     prob = ZERO
-    do i = 1, table%n_reaction
-       rxn => table%reactions(i)
+    do i = 1, nuc%n_reaction
+       rxn => nuc%reactions(i)
 
        ! some materials have gas production cross sections with MT > 200 that
        ! are duplicates. Also MT=4 is total level inelastic scattering which
@@ -228,21 +228,21 @@ contains
 
     if (verbosity >= 10) then
        msg = "    " // trim(reaction_name(rxn%MT)) // " with nuclide " // &
-            & trim(table%name)
+            & trim(nuc%name)
        call message(msg)
     end if
 
     ! call appropriate subroutine
     select case (rxn % MT)
     case (ELASTIC)
-       call elastic_scatter(p, table, rxn)
+       call elastic_scatter(p, nuc, rxn)
     case (N_2ND, N_2N, N_3N, N_2NA, N_3NA, N_2N2A, N_4N, N_2NP, N_3NP)
-       call n_xn(p, table, rxn)
+       call n_xn(p, nuc, rxn)
     case (N_NA, N_N3A, N_NP, N_N2A, N_ND, N_NT, N_N3HE, &
          & N_NT2A, N_N2P, N_NPA, N_N1 : N_NC)
-       call inelastic_scatter(p, table, rxn)
+       call inelastic_scatter(p, nuc, rxn)
     case (FISSION, N_F, N_NF, N_2NF, N_3NF)
-       call n_fission(p, table, rxn)
+       call n_fission(p, nuc, rxn)
     case (N_GAMMA : N_DA)
        call n_absorption(p)
     case default
@@ -274,10 +274,10 @@ contains
 ! need to be fixed
 !===============================================================================
 
-  subroutine elastic_scatter(p, table, rxn)
+  subroutine elastic_scatter(p, nuc, rxn)
 
     type(Particle), pointer :: p
-    type(Nuclide),  pointer :: table
+    type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
     real(8) :: awr ! atomic weight ratio of target
@@ -296,7 +296,7 @@ contains
     real(8) :: E   ! energy
 
     vel = sqrt(p % E)
-    awr = table % awr
+    awr = nuc % awr
 
     vx = vel * p%uvw(1)
     vy = vel * p%uvw(2)
@@ -349,10 +349,10 @@ contains
 ! with implicit absorption, namely sampling of the number of neutrons!
 !===============================================================================
 
-  subroutine n_fission(p, table, rxn)
+  subroutine n_fission(p, nuc, rxn)
 
     type(Particle), pointer :: p
-    type(Nuclide),  pointer :: table
+    type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
     integer :: i           ! loop index
@@ -384,24 +384,24 @@ contains
 
     ! ==========================================================================
     ! DETERMINE TOTAL NU
-    if (table % nu_t_type == NU_NONE) then
-       msg = "No neutron emission data for table: " // table % name
+    if (nuc % nu_t_type == NU_NONE) then
+       msg = "No neutron emission data for table: " // nuc % name
        call fatal_error(msg)
-    elseif (table % nu_t_type == NU_POLYNOMIAL) then
+    elseif (nuc % nu_t_type == NU_POLYNOMIAL) then
        ! determine number of coefficients
-       NC = int(table % nu_t_data(1))
+       NC = int(nuc % nu_t_data(1))
 
        ! sum up polynomial in energy
        nu_total = ZERO
        do i = 0, NC - 1
-          c = table % nu_t_data(i+2)
+          c = nuc % nu_t_data(i+2)
           nu_total = nu_total + c * E**i
        end do
-    elseif (table % nu_t_type == NU_TABULAR) then
+    elseif (nuc % nu_t_type == NU_TABULAR) then
        ! determine number of interpolation regions -- as far as I can tell, no
        ! nu data has multiple interpolation regions. Furthermore, it seems all
        ! are lin-lin.
-       NR = int(table % nu_t_data(1))
+       NR = int(nuc % nu_t_data(1))
        if (NR /= 0) then
           msg = "Multiple interpolation regions not supported while &
                &attempting to determine total nu."
@@ -410,47 +410,47 @@ contains
 
        ! determine number of energies
        loc = 2 + 2*NR
-       NE = int(table % nu_t_data(loc))
+       NE = int(nuc % nu_t_data(loc))
 
        ! do binary search over tabuled energies to determine appropriate index
        ! and interpolation factor
-       if (E < table % nu_t_data(loc+1)) then
+       if (E < nuc % nu_t_data(loc+1)) then
           j = 1
           f = ZERO
-       elseif (E > table % nu_t_data(loc+NE)) then
+       elseif (E > nuc % nu_t_data(loc+NE)) then
           j = NE - 1
           f = ONE
        else
-          j = binary_search(table % nu_t_data(loc+1), NE, E)
-          f = (E - table % nu_t_data(loc+j)) / &
-               & (table % nu_t_data(loc+j+1) - table % nu_t_data(loc+j))
+          j = binary_search(nuc % nu_t_data(loc+1), NE, E)
+          f = (E - nuc % nu_t_data(loc+j)) / &
+               & (nuc % nu_t_data(loc+j+1) - nuc % nu_t_data(loc+j))
        end if
 
        ! determine nu total
        loc = loc + NE
-       nu_total = table % nu_t_data(loc+j) + f * & 
-            & (table % nu_t_data(loc+j+1) - table % nu_t_data(loc+j))
+       nu_total = nuc % nu_t_data(loc+j) + f * & 
+            & (nuc % nu_t_data(loc+j+1) - nuc % nu_t_data(loc+j))
     end if
           
     ! ==========================================================================
     ! DETERMINE PROMPT NU
-    if (table % nu_p_type == NU_NONE) then
+    if (nuc % nu_p_type == NU_NONE) then
        ! since no prompt or delayed data is present, this means all neutron
        ! emission is prompt
        nu_prompt = nu_total
-    elseif (table % nu_p_type == NU_POLYNOMIAL) then
+    elseif (nuc % nu_p_type == NU_POLYNOMIAL) then
        ! determine number of coefficients
-       NC = int(table % nu_p_data(1))
+       NC = int(nuc % nu_p_data(1))
 
        ! sum up polynomial in energy
        nu_prompt = ZERO
        do i = 0, NC - 1
-          c = table % nu_p_data(i+2)
+          c = nuc % nu_p_data(i+2)
           nu_prompt = nu_prompt + c * E**i
        end do
-    elseif (table % nu_p_type == NU_TABULAR) then
+    elseif (nuc % nu_p_type == NU_TABULAR) then
        ! determine number of interpolation regions
-       NR = int(table % nu_p_data(1))
+       NR = int(nuc % nu_p_data(1))
        if (NR /= 0) then
           msg = "Multiple interpolation regions not supported while & 
                &attempting to determine prompt nu."
@@ -459,35 +459,35 @@ contains
 
        ! determine number of energies
        loc = 2 + 2*NR
-       NE = int(table % nu_p_data(loc))
+       NE = int(nuc % nu_p_data(loc))
 
        ! do binary search over tabuled energies to determine appropriate index
        ! and interpolation factor
-       if (E < table % nu_p_data(loc+1)) then
+       if (E < nuc % nu_p_data(loc+1)) then
           j = 1
           f = ZERO
-       elseif (E > table % nu_p_data(loc+NE)) then
+       elseif (E > nuc % nu_p_data(loc+NE)) then
           j = NE - 1
           f = ONE
        else
-          j = binary_search(table % nu_p_data(loc+1), NE, E)
-          f = (E - table % nu_p_data(loc+j)) / &
-               & (table % nu_p_data(loc+j+1) - table % nu_p_data(loc+j))
+          j = binary_search(nuc % nu_p_data(loc+1), NE, E)
+          f = (E - nuc % nu_p_data(loc+j)) / &
+               & (nuc % nu_p_data(loc+j+1) - nuc % nu_p_data(loc+j))
        end if
 
        ! determine nu total
        loc = loc + NE
-       nu_prompt = table % nu_p_data(loc+j) + f * & 
-            & (table % nu_p_data(loc+j+1) - table % nu_p_data(loc+j))
+       nu_prompt = nuc % nu_p_data(loc+j) + f * & 
+            & (nuc % nu_p_data(loc+j+1) - nuc % nu_p_data(loc+j))
     end if
        
     ! ==========================================================================
     ! DETERMINE DELAYED NU
-    if (table % nu_d_type == NU_NONE) then
+    if (nuc % nu_d_type == NU_NONE) then
        nu_delay = ZERO
-    elseif (table % nu_d_type == NU_TABULAR) then
+    elseif (nuc % nu_d_type == NU_TABULAR) then
        ! determine number of interpolation regions
-       NR = int(table % nu_d_data(1))
+       NR = int(nuc % nu_d_data(1))
        if (NR /= 0) then
           msg = "Multiple interpolation regions not supported while & 
                &attempting to determine delayed nu."
@@ -496,26 +496,26 @@ contains
 
        ! determine number of energies
        loc = 2 + 2*NR
-       NE = int(table % nu_d_data(loc))
+       NE = int(nuc % nu_d_data(loc))
 
        ! do binary search over tabuled energies to determine appropriate index
        ! and interpolation factor
-       if (E < table % nu_d_data(loc+1)) then
+       if (E < nuc % nu_d_data(loc+1)) then
           j = 1
           f = ZERO
-       elseif (E > table % nu_d_data(loc+NE)) then
+       elseif (E > nuc % nu_d_data(loc+NE)) then
           j = NE - 1
           f = ONE
        else
-          j = binary_search(table % nu_d_data(loc+1), NE, E)
-          f = (E - table % nu_d_data(loc+j)) / &
-               & (table % nu_d_data(loc+j+1) - table % nu_d_data(loc+j))
+          j = binary_search(nuc % nu_d_data(loc+1), NE, E)
+          f = (E - nuc % nu_d_data(loc+j)) / &
+               & (nuc % nu_d_data(loc+j+1) - nuc % nu_d_data(loc+j))
        end if
 
        ! determine nu total
        loc = loc + NE
-       nu_delay = table % nu_d_data(loc+j) + f * & 
-            & (table % nu_d_data(loc+j+1) - table % nu_d_data(loc+j))
+       nu_delay = nuc % nu_d_data(loc+j) + f * & 
+            & (nuc % nu_d_data(loc+j+1) - nuc % nu_d_data(loc+j))
     end if
 
     beta = nu_delay / nu_total
@@ -549,10 +549,10 @@ contains
           xi = rang()
           loc = 1
           prob = ZERO
-          do j = 1, table % n_precursor
+          do j = 1, nuc % n_precursor
              ! determine number of interpolation regions and energies
-             NR  = table % nu_d_precursor_data(loc + 1)
-             NE  = table % nu_d_precursor_data(loc + 2 + 2*NR)
+             NR  = nuc % nu_d_precursor_data(loc + 1)
+             NE  = nuc % nu_d_precursor_data(loc + 2 + 2*NR)
              if (NR > 0) then
                 msg = "Multiple interpolation regions not supported while & 
                      &sampling delayed neutron precursor yield."
@@ -561,24 +561,24 @@ contains
 
              ! interpolate on energy grid
              loc = loc + 2 + 2*NR
-             if (E < table%nu_d_precursor_data(loc+1)) then
+             if (E < nuc%nu_d_precursor_data(loc+1)) then
                 k = 1
                 f = ZERO
-             elseif (E > table%nu_d_precursor_data(loc+NE)) then
+             elseif (E > nuc%nu_d_precursor_data(loc+NE)) then
                 k = NE - 1
                 f = ONE
              else
-                k = binary_search(table%nu_d_precursor_data(loc+1), NE, E)
-                f = (E - table%nu_d_precursor_data(loc+k)) / & 
-                     & (table%nu_d_precursor_data(loc+k+1) - &
-                     & table%nu_d_precursor_data(loc+k))
+                k = binary_search(nuc%nu_d_precursor_data(loc+1), NE, E)
+                f = (E - nuc%nu_d_precursor_data(loc+k)) / & 
+                     & (nuc%nu_d_precursor_data(loc+k+1) - &
+                     & nuc%nu_d_precursor_data(loc+k))
              end if
 
              ! determine delayed neutron precursor yield for group j
              loc = loc + NE
-             yield = table%nu_d_precursor_data(loc+k) + f * &
-                  (table%nu_d_precursor_data(loc+k+1) - &
-                  & table%nu_d_precursor_data(loc+k))
+             yield = nuc%nu_d_precursor_data(loc+k) + f * &
+                  (nuc%nu_d_precursor_data(loc+k+1) - &
+                  & nuc%nu_d_precursor_data(loc+k))
              prob = prob + yield
              if (xi < prob) exit
 
@@ -587,12 +587,12 @@ contains
           end do
 
           ! sample from energy distribution for group j
-          law = table % nu_d_edist(j) % law
+          law = nuc % nu_d_edist(j) % law
           do
              if (law == 44 .or. law == 61) then
-                call sample_energy(table%nu_d_edist(j), E, E_out, mu)
+                call sample_energy(nuc%nu_d_edist(j), E, E_out, mu)
              else
-                call sample_energy(table%nu_d_edist(j), E, E_out)
+                call sample_energy(nuc%nu_d_edist(j), E, E_out)
              end if
              ! resample if energy is >= 20 MeV
              if (E_out < 20) exit
@@ -639,10 +639,10 @@ contains
 ! than fission), i.e. level scattering, (n,np), (n,na), etc.
 !===============================================================================
 
-  subroutine inelastic_scatter(p, table, rxn)
+  subroutine inelastic_scatter(p, nuc, rxn)
 
     type(Particle), pointer :: p
-    type(Nuclide),  pointer :: table
+    type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
     integer :: law
@@ -659,7 +659,7 @@ contains
     E_in = p % E
 
     ! determine A and Q
-    A = table % awr
+    A = nuc % awr
     Q = rxn % Q_value
 
     ! determine secondary energy distribution law
@@ -708,10 +708,10 @@ contains
 ! N_XN
 !===============================================================================
 
-  subroutine n_xn(p, table, rxn)
+  subroutine n_xn(p, nuc, rxn)
 
     type(Particle), pointer :: p
-    type(Nuclide),  pointer :: table
+    type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
     integer :: i           ! loop index
@@ -730,7 +730,7 @@ contains
     E_in = p % E
 
     ! determine A and Q
-    A = table % awr
+    A = nuc % awr
     Q = rxn % Q_value
     
     ! determine secondary energy distribution law

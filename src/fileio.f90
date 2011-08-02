@@ -979,9 +979,9 @@ contains
     character(*), intent(in) :: words(n_words) ! words on material entry
     integer,      intent(in) :: n_words        ! number of words
 
-    integer                 :: i          ! index over isotopes
+    integer                 :: i          ! index over nuclides
     integer                 :: ioError    ! error status for file access
-    integer                 :: n_isotopes ! number of isotopes in material
+    integer                 :: n_nuclides ! number of nuclides in material
     character(MAX_LINE_LEN) :: msg        ! output/error message
     type(Material), pointer :: mat => null()
 
@@ -991,10 +991,10 @@ contains
        call fatal_error(msg)
     end if
 
-    ! Determine and set number of isotopes
-    n_isotopes = (n_words-3)/2
+    ! Determine and set number of nuclides
+    n_nuclides = (n_words-3)/2
     mat => materials(index)
-    mat % n_isotopes = n_isotopes
+    mat % n_nuclides = n_nuclides
 
     ! Read surface identifier
     read(words(2), FMT='(I8)', IOSTAT=ioError) mat % uid
@@ -1008,13 +1008,13 @@ contains
     mat % atom_density = str_to_real(words(3))
 
     ! allocate isotope and density list
-    allocate(mat%names(n_isotopes))
-    allocate(mat%isotopes(n_isotopes))
-    allocate(mat%table(n_isotopes))
-    allocate(mat%atom_percent(n_isotopes))
+    allocate(mat%names(n_nuclides))
+    allocate(mat%xsdata(n_nuclides))
+    allocate(mat%nuclide(n_nuclides))
+    allocate(mat%atom_percent(n_nuclides))
 
     ! read names and percentage
-    do i = 1, n_isotopes
+    do i = 1, n_nuclides
        mat % names(i) = words(2*i+2)
        mat % atom_percent(i) = str_to_real(words(2*i+3))
     end do
@@ -1029,14 +1029,14 @@ contains
 
     integer        :: index           ! index used for several purposes
     integer        :: i               ! index in materials array
-    integer        :: j               ! index over isotopes in material
+    integer        :: j               ! index over nuclides in material
     real(8)        :: sum_percent     ! 
     real(8)        :: awr             ! atomic weight ratio
     real(8)        :: w               ! weight percent
     real(8)        :: x               ! atom percent
-    logical        :: percent_in_atom ! isotopes specified in atom percent?
+    logical        :: percent_in_atom ! nuclides specified in atom percent?
     logical        :: density_in_atom ! density specified in atom/b-cm?
-    character(10)  :: key             ! name of isotopes, e.g. 92235.03c
+    character(10)  :: key             ! name of nuclide, e.g. 92235.03c
     character(MAX_LINE_LEN) :: msg    ! output/error message
     type(xsData),   pointer :: iso => null()
     type(Material), pointer :: mat => null()
@@ -1058,8 +1058,8 @@ contains
        density_in_atom = (mat%atom_density > ZERO)
 
        sum_percent = ZERO
-       do j = 1, mat % n_isotopes
-          ! Set indices for isotopes
+       do j = 1, mat % n_nuclides
+          ! Set indices for nuclides
           key = mat % names(j)
           index = dict_get_key(xsdata_dict, key)
           if (index == DICT_NULL) then
@@ -1067,7 +1067,7 @@ contains
                    &xsdata file."
              call fatal_error(msg)
           end if
-          mat % isotopes(j) = index
+          mat % xsdata(j) = index
 
           ! determine atomic weight ratio
           awr = xsdatas(index) % awr
@@ -1090,8 +1090,8 @@ contains
        ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
        if (.not. density_in_atom) then
           sum_percent = ZERO
-          do j = 1, mat % n_isotopes
-             index = mat % isotopes(j)
+          do j = 1, mat % n_nuclides
+             index = mat % xsdata(j)
              awr = xsdatas(index) % awr
              x = mat % atom_percent(j)
              sum_percent = sum_percent + x*awr

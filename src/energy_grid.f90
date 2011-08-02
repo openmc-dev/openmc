@@ -21,7 +21,7 @@ contains
     type(ListReal), pointer :: list => null()
     type(ListReal), pointer :: current => null()
     type(Material), pointer :: mat => null()
-    type(Nuclide),  pointer :: table => null()
+    type(Nuclide),  pointer :: nuc => null()
     type(Reaction), pointer :: rxn => null()
     integer :: i, j
     integer :: n
@@ -35,12 +35,12 @@ contains
        mat => materials(i)
        
        ! loop over all isotopes
-       do j = 1, mat%n_isotopes
-          table => nuclides(mat%table(j))
+       do j = 1, mat % n_nuclides
+          nuc => nuclides(mat % nuclide(j))
 
           ! loop over energy points
-          n = size(table%energy)
-          call add_grid_points(list, table%energy, n)
+          n = size(nuc % energy)
+          call add_grid_points(list, nuc % energy, n)
        end do
     end do
 
@@ -49,8 +49,8 @@ contains
     allocate(e_grid(n_grid))
     current => list
     do i = 1,n_grid
-       e_grid(i) = current%data
-       current => current%next
+       e_grid(i) = current % data
+       current => current % next
     end do
 
     ! delete linked list
@@ -84,13 +84,13 @@ contains
        allocate(list)
        current => list
        do index = 1, n_energy
-          current%data = energy(index)
+          current % data = energy(index)
           if (index == n_energy) then
-             current%next => null()
+             current % next => null()
              return
           end if
-          allocate(current%next)
-          current => current%next
+          allocate(current % next)
+          current => current % next
        end do
     end if
 
@@ -105,9 +105,9 @@ contains
        if (.not. associated(current)) then
           ! finish remaining energies
           do while (index <= n_energy)
-             allocate(previous%next)
-             current => previous%next
-             current%data = energy(index)
+             allocate(previous % next)
+             current => previous % next
+             current % data = energy(index)
              previous => current
              index = index + 1
           end do
@@ -115,13 +115,13 @@ contains
           exit
        end if
        
-       if (E < current%data) then
+       if (E < current % data) then
           ! create new element and insert it in energy grid list
           allocate(tmp)
-          tmp%data = E
-          tmp%next => current
+          tmp % data = E
+          tmp % next => current
           if (associated(previous)) then
-             previous%next => tmp
+             previous % next => tmp
              previous => tmp
           else
              previous => tmp
@@ -133,14 +133,14 @@ contains
           index = index + 1
           E = energy(index)
 
-       elseif (E == current%data) then
+       elseif (E == current % data) then
           ! found the exact same energy, no need to store duplicates so just
           ! skip and move to next index
           index = index + 1
           E = energy(index)
        else
           previous => current
-          current => current%next
+          current => current % next
        end if
        
     end do
@@ -165,20 +165,20 @@ contains
     real(8) :: energy
     
 
-    do i = 1, n_nuclides
+    do i = 1, n_nuclides_total
        nuc => nuclides(i)
-       allocate(nuc%grid_index(n_grid))
+       allocate(nuc % grid_index(n_grid))
 
        index = 1
-       energy = nuc%energy(index)
+       energy = nuc % energy(index)
 
        do j = 1, n_grid
           union_energy = e_grid(j)
           if (union_energy >= energy) then
              index = index + 1
-             energy = nuc%energy(index)
+             energy = nuc % energy(index)
           end if
-          nuc%grid_index(j) = index-1
+          nuc % grid_index(j) = index-1
        end do
 
     end do

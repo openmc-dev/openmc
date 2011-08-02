@@ -84,7 +84,6 @@ contains
     integer                 :: n                ! number of words on a line
     integer                 :: count            ! number of cells in a universe
     integer                 :: universe_num     ! user-specified universe #
-    character(MAX_LINE_LEN) :: line             ! a line of words in input file
     character(MAX_LINE_LEN) :: msg              ! output/error message
     character(MAX_WORD_LEN) :: words(MAX_WORDS) ! words on a line
     type(ListKeyValueII), pointer :: key_list => null()
@@ -235,7 +234,6 @@ contains
     integer :: index_material          ! index in materials array
     integer :: index_source            ! index in source array (?)
     integer :: index_tally             ! index in tally array
-    character(MAX_LINE_LEN) :: line             ! a line of words
     character(MAX_LINE_LEN) :: msg              ! output/error message
     character(MAX_WORD_LEN) :: words(MAX_WORDS) ! words on a single line
 
@@ -470,7 +468,6 @@ contains
     character(*), intent(in) :: words(n_words) ! words on cell card entry
     integer,      intent(in) :: n_words        ! number of words
 
-    integer                 :: ioError      ! error status for file access
     integer                 :: i            ! index for surface list in a cell
     integer                 :: universe_num ! user-specified universe number
     integer                 :: n_surfaces   ! number of surfaces in a cell
@@ -564,7 +561,6 @@ contains
     character(*), intent(in) :: words(n_words) ! words in surface card entry
     integer,      intent(in) :: n_words        ! number of words
 
-    integer                 :: ioError     ! error status for file access
     integer                 :: i           ! index for surface coefficients
     integer                 :: coeffs_reqd ! number of coefficients are required
     character(MAX_LINE_LEN) :: msg         ! output/error message
@@ -574,8 +570,8 @@ contains
     surf => surfaces(index)
 
     ! Read surface identifier
-    read(words(2), FMT='(I8)', IOSTAT=ioError) surf % uid
-    if (ioError > 0) then
+    surf % uid = str_to_int(words(2))
+    if (surf % uid == ERROR_INT) then
        msg = "Invalid surface name: " // trim(words(2))
        call fatal_error(msg)
     end if
@@ -782,7 +778,6 @@ contains
     integer,      intent(in) :: n_words        ! number of words
 
     integer                 :: i           ! index in values list
-    integer                 :: ioError     ! error status for file access
     integer                 :: values_reqd ! # of values required to specify source
     character(MAX_LINE_LEN) :: msg  ! output/error message
     character(MAX_WORD_LEN) :: word ! single word
@@ -980,7 +975,6 @@ contains
     integer,      intent(in) :: n_words        ! number of words
 
     integer                 :: i          ! index over nuclides
-    integer                 :: ioError    ! error status for file access
     integer                 :: n_nuclides ! number of nuclides in material
     character(MAX_LINE_LEN) :: msg        ! output/error message
     type(Material), pointer :: mat => null()
@@ -997,8 +991,8 @@ contains
     mat % n_nuclides = n_nuclides
 
     ! Read surface identifier
-    read(words(2), FMT='(I8)', IOSTAT=ioError) mat % uid
-    if (ioError > 0) then
+    mat % uid = str_to_int(words(2))
+    if (mat % uid == ERROR_INT) then
        msg = "Invalid surface name: " // trim(words(2))
        call fatal_error(msg)
     end if
@@ -1032,16 +1026,14 @@ contains
     integer        :: j               ! index over nuclides in material
     real(8)        :: sum_percent     ! 
     real(8)        :: awr             ! atomic weight ratio
-    real(8)        :: w               ! weight percent
     real(8)        :: x               ! atom percent
     logical        :: percent_in_atom ! nuclides specified in atom percent?
     logical        :: density_in_atom ! density specified in atom/b-cm?
     character(10)  :: key             ! name of nuclide, e.g. 92235.03c
     character(MAX_LINE_LEN) :: msg    ! output/error message
-    type(xsData),   pointer :: iso => null()
     type(Material), pointer :: mat => null()
     
-    ! first find the index in the xsdata array for each isotope in each material
+    ! first find the index in the xsdata array for each nuclide in each material
     do i = 1, n_materials
        mat => materials(i)
 
@@ -1249,7 +1241,6 @@ contains
 
     integer :: i       ! line index
     integer :: loc     ! locator for array
-    integer :: ioError ! error status
 
     loc = 0
     do i = 1, lines
@@ -1277,7 +1268,6 @@ contains
 
     integer :: i       ! line index
     integer :: loc     ! locator for array
-    integer :: ioError ! error status
 
     loc = 0
     do i = 1, lines

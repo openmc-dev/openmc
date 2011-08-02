@@ -43,9 +43,6 @@ contains
     character(10)  :: key              ! name of isotope, e.g. 92235.03c
     character(MAX_LINE_LEN) :: msg     ! output/error message
     type(Material),     pointer :: mat => null()
-    type(xsData),       pointer :: iso => null()
-    type(Nuclide),      pointer :: ace_cont => null()
-    type(SAB_Table),    pointer :: ace_thermal => null()
     type(DictionaryCI), pointer :: temp_dict => null()
 
     call dict_create(nuclide_dict)
@@ -276,7 +273,7 @@ contains
 
     type(Nuclide), pointer :: nuc
 
-    integer :: i, j   ! loop indices
+    integer :: i      ! loop index
     integer :: JXS2   ! location for fission nu data
     integer :: JXS24  ! location for delayed neutron data
     integer :: KNU    ! location for nu data
@@ -672,7 +669,7 @@ contains
     integer :: loc   ! locator
     integer :: length             ! length of data to allocate
     integer :: length_interp_data ! length of interpolation data
-    integer :: i, j, k, l         ! indices
+    integer :: i                  ! loop index
     type(Reaction), pointer :: rxn => null()
 
     LED  = JXS(10)
@@ -887,7 +884,6 @@ contains
     integer :: M     ! # of probabilities
     integer :: i     ! index over incoming energies
     integer :: j     ! index over values
-    integer :: k     ! index over cumulative probabilities
 
     ! determine locator for URR data
     JXS23 = JXS(23)
@@ -1184,15 +1180,15 @@ contains
     xs = ZERO
 
     ! find material atom density
-    density = cMaterial%atom_density
+    density = mat % atom_density
 
     ! loop over all nuclides in material
-    n_nuclides = cMaterial % n_nuclides
+    n_nuclides = mat % n_nuclides
     do i = 1, n_nuclides
-       nuc => nuclides(cMaterial % nuclide(i))
+       nuc => nuclides(mat % nuclide(i))
 
        ! determine nuclide atom density
-       density_i = cMaterial%atom_percent(i) * density
+       density_i = mat % atom_percent(i) * density
 
        ! search nuclide energy grid
        IE = nuc%grid_index(p % IE)
@@ -1240,7 +1236,7 @@ contains
     character(MAX_LINE_LEN)  :: msg
     character(MAX_WORD_LEN)  :: words(MAX_WORDS)
     character(MAX_WORD_LEN)  :: filename
-    integer                  :: i, n
+    integer                  :: n
     integer                  :: in = 7
     logical                  :: file_exists
     character(7)             :: readable
@@ -1347,7 +1343,6 @@ contains
     integer :: i, j, k
     integer :: index
     integer :: IE
-    real(8) :: xs
     real(8) :: density
     real(8) :: density_i
     real(8) :: val

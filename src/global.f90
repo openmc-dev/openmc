@@ -135,7 +135,9 @@ contains
 
   subroutine free_memory()
 
+#ifdef MPI
     integer :: ierr
+#endif
 
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)

@@ -846,7 +846,6 @@ contains
     character(*),       intent(in) :: key
     integer                        :: value
 
-    type(KeyValueCI)               :: data
     type(ListKeyValueCI), pointer  :: elem
 
     elem => dict_get_elem(dict, key)
@@ -872,7 +871,6 @@ contains
     integer,            intent(in) :: key
     integer                        :: value
 
-    type(KeyValueII)               :: data
     type(ListKeyValueII), pointer  :: elem
 
     elem => dict_get_elem(dict, key)
@@ -990,14 +988,13 @@ contains
   function dict_ci_hashkey(key) result(val)
 
     character(*), intent(in) :: key
+    integer                  :: val
 
-    integer :: val
-    integer :: hash
     integer :: i
 
     val = 0
 
-    do i = 1,len(key)
+    do i = 1, len(key)
        val = HASH_MULTIPLIER * val + ichar(key(i:i))
     enddo
 
@@ -1016,10 +1013,7 @@ contains
   function dict_ii_hashkey(key) result(val)
 
     integer, intent(in) :: key
-
-    integer :: val
-    integer :: hash
-    integer :: i
+    integer             :: val
 
     val = 0
 
@@ -1040,7 +1034,7 @@ contains
     type(ListKeyValueCI), pointer :: current => null()
     type(ListKeyValueCI), pointer :: elem => null()
 
-    integer :: i, j
+    integer :: i
 
     head => null()
 
@@ -1072,7 +1066,7 @@ contains
     type(ListKeyValueII), pointer :: current => null()
     type(ListKeyValueII), pointer :: elem => null()
 
-    integer :: i, j
+    integer :: i
 
     head => null()
 

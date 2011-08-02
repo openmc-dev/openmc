@@ -137,10 +137,10 @@ contains
 ! ADD_BANK_SITES
 !===============================================================================
 
-  subroutine add_bank_sites(p, table, n)
+  subroutine add_bank_sites(p, nuc, n)
 
     type(Particle), pointer    :: p
-    type(Nuclide),  pointer    :: table
+    type(Nuclide),  pointer    :: nuc
     integer,        intent(in) :: n
 
     integer :: i

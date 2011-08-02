@@ -30,7 +30,6 @@ contains
     integer :: i               ! index of surfaces in cell
     integer :: surf_num        ! index in surfaces array (with sign)
     integer :: current_surface ! current surface of particle (with sign)
-    character(MAX_LINE_LEN) :: msg      ! output/error message
     type(Surface), pointer  :: surf => null()
 
     current_surface = p%surface

@@ -107,11 +107,7 @@ contains
 
     integer, intent(in) :: i_cycle
 
-    integer :: i, j, k                 ! loop indices
-#ifdef MPI
-    integer :: status(MPI_STATUS_SIZE) ! message status
-#endif
-    integer    :: ierr
+    integer    :: i, j, k         ! loop indices
     integer(8) :: start           ! starting index in local fission bank
     integer(8) :: finish          ! ending index in local fission bank
     integer(8) :: total           ! total sites in global fission bank
@@ -120,17 +116,21 @@ contains
     integer    :: send_to_left    ! # of bank sites to send/recv to or from left
     integer    :: send_to_right   ! # of bank sites to send/recv to or from right
     integer(8) :: sites_needed    ! # of sites to be sampled
-    integer(8) :: sites_remaining ! # of sites left in fission bank
-    integer    :: request         ! communication request for sending sites
-    integer    :: request_left    ! communication request for recv sites from left
-    integer    :: request_right   ! communication request for recv sites from right
     real(8)    :: p_sample        ! probability of sampling a site
-    real(8)    :: t0, t1, t2, t3, t4
     type(Bank), allocatable :: &
          & temp_sites(:),      & ! local array of extra sites on each node
          & left_bank(:),       & ! bank sites to send/recv to or from left node
          & right_bank(:)         ! bank sites to send/recv to or fram right node
     character(MAX_LINE_LEN) :: msg
+
+#ifdef MPI
+    integer    :: ierr
+    integer    :: status(MPI_STATUS_SIZE) ! message status
+    integer    :: request         ! communication request for sending sites
+    integer    :: request_left    ! communication request for recv sites from left
+    integer    :: request_right   ! communication request for recv sites from right
+    real(8)    :: t0, t1, t2, t3, t4
+#endif
 
     msg = "Collecting number of fission sites..."
     call message(msg, 8)

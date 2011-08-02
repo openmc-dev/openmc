@@ -24,15 +24,16 @@ contains
 
     integer, intent(in) :: i_cycle ! index of current cycle
 
-    integer(8) :: total_bank
-    integer :: n
+    integer(8)              :: total_bank ! total number of source sites
+    integer                 :: n          ! active cycle number
+    real(8)                 :: kcoll      ! keff collision estimator         
+    real(8), save           :: k1 = 0.    ! accumulated keff
+    real(8), save           :: k2 = 0.    ! accumulated keff**2
+    real(8)                 :: std        ! stdev of keff over active cycles
+    character(MAX_LINE_LEN) :: msg        ! output/error message
+#ifdef MPI
     integer :: ierr
-    real(8) :: kcoll   ! keff collision estimator         
-    real(8) :: ktemp   ! MPI-reduced keff and stdev
-    real(8), save :: k1 = 0. ! accumulated keff
-    real(8), save :: k2 = 0. ! accumulated keff**2
-    real(8) :: std     ! stdev of keff over active cycles
-    character(max_line_len) :: msg
+#endif
 
     msg = "Calculate cycle keff..."
     call message(msg, 8)
@@ -101,7 +102,7 @@ contains
     real(8) :: E          ! energy of particle
     real(8) :: val        ! value to score
     real(8) :: Sigma      ! macroscopic cross section of reaction
-    character(max_line_len) :: msg ! output/error message
+    character(MAX_LINE_LEN) :: msg ! output/error message
     type(Cell),  pointer    :: c => null()
     type(Tally), pointer    :: t => null()
 

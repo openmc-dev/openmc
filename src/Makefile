@@ -7,13 +7,35 @@ program = openmc
 include OBJECTS
 
 #===============================================================================
+# User Options
+#===============================================================================
+
+USE_MPI  = no
+DEBUG    = no
+PROFILE  = no
+OPTIMIZE = no
+
+#===============================================================================
 # Compiler Options
 #===============================================================================
 
-F90 = ifort
-F90FLAGS = -fpp -g -traceback
+F90      = ifort
+F90FLAGS = -cpp -warn
+LDFLAGS  =
 
-USE_MPI = no
+ifeq ($(DEBUG),yes)
+  F90FLAGS += -g -traceback -ftrapuv -fp-stack-check -check all
+  LDFLAGS  += -g
+endif
+
+ifeq ($(PROFILE),yes)
+  F90FLAGS += -pg
+  LDFLAGS  += -pg
+endif
+
+ifeq ($(OPTIMIZE),yes)
+  F90FLAGS += -ipo -O3
+endif
 
 ifeq ($(USE_MPI),yes)
   MPI = /opt/mpich2/1.4-intel
@@ -27,7 +49,7 @@ endif
 
 all:	$(program)
 $(program): $(objects)
-	$(F90) $(objects) -o $@
+	$(F90) $(objects) -o $@ $(LDFLAGS)
 clean:
 	@rm -f *.o *.mod $(program)
 neat:

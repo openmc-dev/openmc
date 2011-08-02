@@ -1,11 +1,12 @@
 module score
 
+  use constants
+  use cross_section, only: get_macro_xs
+  use error,         only: fatal_error
   use global
-  use output, only: message
-  use error,  only: fatal_error
-  use ace,    only: get_macro_xs
-  use search, only: binary_search
-  use string, only: int_to_str
+  use output,        only: message
+  use search,        only: binary_search
+  use string,        only: int_to_str
 
 #ifdef MPI
   use mpi

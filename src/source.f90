@@ -1,9 +1,13 @@
 module source
 
+  use bank_header,          only: Bank
+  use constants,            only: ONE, MAX_LINE_LEN
+  use cross_section_header, only: Nuclide
   use global
-  use mcnp_random, only: rang, RN_init_particle
-  use output, only: message
-  use physics, only: watt_spectrum
+  use mcnp_random,          only: rang, RN_init_particle
+  use output,               only: message
+  use particle_header,      only: Particle
+  use physics,              only: watt_spectrum
 
   implicit none
 
@@ -28,7 +32,7 @@ contains
     real(8)    :: E          ! outgoing energy
     real(8)    :: p_min(3)   ! minimum coordinates of source
     real(8)    :: p_max(3)   ! maximum coordinates of source
-    character(max_line_len) :: msg    ! error message
+    character(MAX_LINE_LEN) :: msg    ! error message
 
     msg = 'Initializing source particles...'
     call message(msg, 6)
@@ -135,9 +139,9 @@ contains
 
   subroutine add_bank_sites(p, table, n)
 
-    type(Particle),      pointer    :: p
-    type(AceContinuous), pointer    :: table
-    integer,             intent(in) :: n
+    type(Particle), pointer    :: p
+    type(Nuclide),  pointer    :: table
+    integer,        intent(in) :: n
 
     integer :: i
 

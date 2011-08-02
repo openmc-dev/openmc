@@ -1,7 +1,7 @@
-module data_structures
+module datatypes
 
 !===============================================================================
-! DATA_STRUCTURES module
+! DATATYPES module
 !
 ! This module implements a dictionary that has (key,value) pairs. This data
 ! structure is used to provide lookup features, e.g. cells and surfaces by name.
@@ -12,13 +12,13 @@ module data_structures
 ! types (changes made to ListData, dict_create, dict_add_key, and dict_get_key).
 !===============================================================================
 
-  use types
+  use datatypes_header
 
   implicit none
 
-  integer, parameter :: hash_size  = 4993
-  integer, parameter :: multiplier = 31
-  integer, parameter :: DICT_NULL = 0
+  integer, parameter :: HASH_SIZE       = 4993
+  integer, parameter :: HASH_MULTIPLIER = 31
+  integer, parameter :: DICT_NULL       = 0
 
 !===============================================================================
 ! LIST Interfaces -- these allow one to use a single subroutine or function for
@@ -642,9 +642,9 @@ contains
     integer :: i
 
     allocate(dict)
-    allocate(dict%table(hash_size))
+    allocate(dict%table(HASH_SIZE))
 
-    do i = 1,hash_size
+    do i = 1,HASH_SIZE
        dict%table(i)%list => null()
     enddo
 
@@ -661,9 +661,9 @@ contains
     integer :: i
 
     allocate(dict)
-    allocate(dict%table(hash_size))
+    allocate(dict%table(HASH_SIZE))
 
-    do i = 1,hash_size
+    do i = 1,HASH_SIZE
        dict%table(i)%list => null()
     enddo
 
@@ -998,12 +998,12 @@ contains
     val = 0
 
     do i = 1,len(key)
-       val = multiplier * val + ichar(key(i:i))
+       val = HASH_MULTIPLIER * val + ichar(key(i:i))
     enddo
 
     ! Added the absolute val on val-1 since the sum in the do loop is
     ! susceptible to integer overflow
-    val = 1 + mod(abs(val-1), hash_size)
+    val = 1 + mod(abs(val-1), HASH_SIZE)
 
   end function dict_ci_hashkey
 
@@ -1025,7 +1025,7 @@ contains
 
     ! Added the absolute val on val-1 since the sum in the do loop is
     ! susceptible to integer overflow
-    val = 1 + mod(abs(key-1), hash_size)
+    val = 1 + mod(abs(key-1), HASH_SIZE)
 
   end function dict_ii_hashkey
 
@@ -1093,4 +1093,4 @@ contains
 
   end function dict_ii_keys
 
-end module data_structures
+end module datatypes

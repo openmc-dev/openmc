@@ -1,10 +1,25 @@
 module timing
 
-  use global
-  use types, only: TimerObj
-  use error, only: warning
+  use constants, only: ZERO
 
   implicit none
+
+!===============================================================================
+! TIMER represents a timer that can be started and stopped to measure how long
+! different routines run. The intrinsic routine system_clock is used to measure
+! time rather than cpu_time.
+!===============================================================================
+
+  type Timer
+     logical :: running      = .false. ! is timer running?
+     integer :: start_counts = 0       ! counts when started
+     real(8) :: elapsed      = 0.      ! total time elapsed in seconds
+   contains
+     procedure :: start     => timer_start
+     procedure :: get_value => timer_get_value
+     procedure :: stop      => timer_stop
+     procedure :: reset     => timer_reset
+  end type Timer
 
 contains
 
@@ -12,22 +27,13 @@ contains
 ! TIMER_START
 !===============================================================================
 
-  subroutine timer_start(timer)
+  subroutine timer_start(self)
 
-    type(TimerObj), intent(inout) :: timer
-
-    character(max_line_len) :: msg ! warning message
-
-    ! Check if timer is already running
-    if (timer % running) then
-       msg = "Tried to start a timer that was already running!"
-       call warning(msg)
-       return
-    end if
+    class(Timer), intent(inout) :: self
 
     ! Turn timer on and measure starting time
-    timer % running = .true.
-    call system_clock(timer % start_counts)
+    self % running = .true.
+    call system_clock(self % start_counts)
 
   end subroutine timer_start
 
@@ -35,21 +41,21 @@ contains
 ! TIMER_GET_VALUE
 !===============================================================================
 
-  function timer_get_value(timer) result(elapsed)
+  function timer_get_value(self) result(elapsed)
 
-    type(TimerObj), intent(in) :: timer   ! the timer
-    real(8)                    :: elapsed ! total elapsed time
+    class(Timer), intent(in) :: self   ! the timer
+    real(8)                 :: elapsed ! total elapsed time
 
     integer :: end_counts   ! current number of counts
     integer :: count_rate   ! system-dependent counting rate
     real    :: elapsed_time ! elapsed time since last start
 
-    if (timer % running) then
+    if (self % running) then
        call system_clock(end_counts, count_rate)
-       elapsed_time = real(end_counts - timer % start_counts)/real(count_rate)
-       elapsed = timer % elapsed + elapsed_time
+       elapsed_time = real(end_counts - self % start_counts)/real(count_rate)
+       elapsed = self % elapsed + elapsed_time
     else
-       elapsed = timer % elapsed
+       elapsed = self % elapsed
     end if
 
   end function timer_get_value
@@ -58,22 +64,16 @@ contains
 ! TIMER_STOP
 !===============================================================================
 
-  subroutine timer_stop(timer)
+  subroutine timer_stop(self)
 
-    type(TimerObj), intent(inout) :: timer
-
-    character(max_line_len) :: msg
+    class(Timer), intent(inout) :: self
 
     ! Check to make sure timer was running
-    if (.not. timer % running) then
-       msg = "Tried to stop a timer that was not running!"
-       call warning(msg)
-       return
-    end if
+    if (.not. self % running) return
 
     ! Stop timer and add time
-    timer % elapsed = timer_get_value(timer)
-    timer % running = .false.
+    self % elapsed = self % get_value()
+    self % running = .false.
 
   end subroutine timer_stop
 
@@ -81,13 +81,13 @@ contains
 ! TIMER_RESET
 !===============================================================================
 
-  subroutine timer_reset(timer)
+  subroutine timer_reset(self)
 
-    type(TimerObj), intent(inout) :: timer
+    class(Timer), intent(inout) :: self
 
-    timer % running      = .false.
-    timer % start_counts = 0
-    timer % elapsed      = ZERO
+    self % running      = .false.
+    self % start_counts = 0
+    self % elapsed      = ZERO
 
   end subroutine timer_reset
 

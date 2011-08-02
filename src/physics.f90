@@ -1,16 +1,19 @@
 module physics
 
+  use constants
+  use cross_section_header, only: Nuclide, Reaction, DistEnergy
+  use endf,                 only: reaction_name
+  use error,                only: fatal_error, warning
+  use geometry,             only: find_cell, dist_to_boundary, cross_surface, &
+                                  cross_lattice
+  use geometry_header,      only: Universe, BASE_UNIVERSE
   use global
-  use geometry,    only: find_cell, dist_to_boundary, cross_surface, &
-       &                 cross_lattice
-  use types,       only: Particle
-  use mcnp_random, only: rang
-  use output,      only: message, print_particle
-  use error,       only: fatal_error, warning
-  use search,      only: binary_search
-  use endf,        only: reaction_name
-  use score,       only: score_tally
-  use string,      only: int_to_str
+  use mcnp_random,          only: rang
+  use output,               only: message, print_particle
+  use particle_header,      only: Particle
+  use score,                only: score_tally
+  use search,               only: binary_search
+  use string,               only: int_to_str
 
   implicit none
 
@@ -33,7 +36,7 @@ contains
     real(8)        :: f              ! interpolation factor
     logical        :: found_cell     ! found cell which particle is in?
     logical        :: in_lattice     ! is surface crossing in lattice?
-    character(max_line_len) :: msg   ! output/error message
+    character(MAX_LINE_LEN) :: msg   ! output/error message
     type(Universe), pointer :: univ
 
     if (p % cell == 0) then
@@ -159,9 +162,9 @@ contains
     real(8) :: r1         ! random number
     real(8) :: flux       ! collision estimator of flux
     real(8), allocatable :: Sigma_rxn(:) ! macroscopic xs for each nuclide
-    character(max_line_len)       :: msg ! output/error message
-    type(AceContinuous), pointer :: table
-    type(AceReaction),   pointer :: rxn
+    character(MAX_LINE_LEN)       :: msg ! output/error message
+    type(Nuclide),  pointer :: table
+    type(Reaction), pointer :: rxn
 
     density = cMaterial%atom_density
 
@@ -170,7 +173,7 @@ contains
     n_isotopes = cMaterial%n_isotopes
     allocate(Sigma_rxn(n_isotopes))
     do i = 1, n_isotopes
-       table => xs_continuous(cMaterial%table(i))
+       table => nuclides(cMaterial%table(i))
 
        ! determine nuclide atom density
        density_i = cMaterial%atom_percent(i) * density
@@ -195,7 +198,7 @@ contains
 
     ! Get table, total xs, interpolation factor
     density_i = cMaterial%atom_percent(i)*density
-    table => xs_continuous(cMaterial%table(i))
+    table => nuclides(cMaterial%table(i))
     sigma = Sigma_rxn(i) / density_i
     IE = table%grid_index(p % IE)
     f = (p%E - table%energy(IE))/(table%energy(IE+1) - table%energy(IE))
@@ -273,9 +276,9 @@ contains
 
   subroutine elastic_scatter(p, table, rxn)
 
-    type(Particle),      pointer :: p
-    type(AceContinuous), pointer :: table
-    type(AceReaction),   pointer :: rxn
+    type(Particle), pointer :: p
+    type(Nuclide),  pointer :: table
+    type(Reaction), pointer :: rxn
 
     real(8) :: awr ! atomic weight ratio of target
     real(8) :: phi ! azimuthal angle
@@ -348,9 +351,9 @@ contains
 
   subroutine n_fission(p, table, rxn)
 
-    type(Particle),      pointer :: p
-    type(AceContinuous), pointer :: table
-    type(AceReaction),   pointer :: rxn
+    type(Particle), pointer :: p
+    type(Nuclide),  pointer :: table
+    type(Reaction), pointer :: rxn
 
     integer :: i           ! loop index
     integer :: j           ! index on nu energy grid / precursor group
@@ -374,7 +377,7 @@ contains
     real(8) :: xi          ! random number
     real(8) :: yield       ! delayed neutron precursor yield
     real(8) :: prob        ! cumulative probability
-    character(max_line_len) :: msg  ! error message
+    character(MAX_LINE_LEN) :: msg  ! error message
 
     ! copy energy of neutron
     E = p % E
@@ -638,9 +641,9 @@ contains
 
   subroutine inelastic_scatter(p, table, rxn)
 
-    type(Particle),      pointer :: p
-    type(AceContinuous), pointer :: table
-    type(AceReaction),   pointer :: rxn
+    type(Particle), pointer :: p
+    type(Nuclide),  pointer :: table
+    type(Reaction), pointer :: rxn
 
     integer :: law
     real(8) :: A          ! atomic weight ratio of nuclide
@@ -650,7 +653,7 @@ contains
     real(8) :: E_cm       ! outgoing energy in center-of-mass
     real(8) :: u,v,w      ! direction cosines
     real(8) :: Q          ! Q-value of reaction
-    character(max_line_len) :: msg ! error message
+    character(MAX_LINE_LEN) :: msg ! error message
     
     ! copy energy of neutron
     E_in = p % E
@@ -707,9 +710,9 @@ contains
 
   subroutine n_xn(p, table, rxn)
 
-    type(Particle),      pointer :: p
-    type(AceContinuous), pointer :: table
-    type(AceReaction),   pointer :: rxn
+    type(Particle), pointer :: p
+    type(Nuclide),  pointer :: table
+    type(Reaction), pointer :: rxn
 
     integer :: i           ! loop index
     integer :: n_secondary ! number of secondary particles
@@ -721,7 +724,7 @@ contains
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: u,v,w       ! direction cosines
     real(8) :: Q           ! Q-value of reaction
-    character(max_line_len) :: msg  ! error message
+    character(MAX_LINE_LEN) :: msg  ! error message
     
     ! copy energy of neutron
     E_in = p % E
@@ -788,7 +791,7 @@ contains
     type(Particle), pointer :: p
 
     integer                 :: cell_num ! user-specified cell number
-    character(max_line_len) :: msg      ! output/error message
+    character(MAX_LINE_LEN) :: msg      ! output/error message
 
     p % alive = .false.
     if (verbosity >= 10) then
@@ -807,8 +810,8 @@ contains
 
   function sample_angle(rxn, E) result(mu)
 
-    type(AceReaction), pointer    :: rxn ! reaction
-    real(8),           intent(in) :: E   ! incoming energy
+    type(Reaction), pointer    :: rxn ! reaction
+    real(8),        intent(in) :: E   ! incoming energy
 
     real(8)        :: xi      ! random number on [0,1)
     integer        :: interp  ! type of interpolation
@@ -826,7 +829,7 @@ contains
     real(8)        :: c_k     ! cumulative frequency at k
     real(8)        :: c_k1    ! cumulative frequency at k+1
     real(8)        :: p0,p1   ! probability distribution
-    character(max_line_len) :: msg     ! error message
+    character(MAX_LINE_LEN) :: msg     ! error message
 
     ! check if reaction has angular distribution -- if not, sample outgoing
     ! angle isotropically
@@ -974,12 +977,12 @@ contains
 
   subroutine sample_energy(edist, E_in, E_out, mu_out, A, Q)
 
-    type(AceDistEnergy), intent(inout) :: edist
-    real(8), intent(in)                :: E_in
-    real(8), intent(out)               :: E_out
-    real(8), intent(inout), optional   :: mu_out
-    real(8), intent(in),    optional   :: A
-    real(8), intent(in),    optional   :: Q
+    type(DistEnergy),  intent(inout) :: edist
+    real(8), intent(in)              :: E_in
+    real(8), intent(out)             :: E_out
+    real(8), intent(inout), optional :: mu_out
+    real(8), intent(in),    optional :: A
+    real(8), intent(in),    optional :: Q
 
     integer :: i           ! index on incoming energy grid
     integer :: k           ! sampled index on outgoing grid
@@ -1025,7 +1028,7 @@ contains
     real(8) :: E_max       ! parameter for n-body dist
     real(8) :: x, y, v     ! intermediate variables for n-body dist
     real(8) :: r1, r2, r3, r4, r5, r6
-    character(max_line_len) :: msg  ! error message
+    character(MAX_LINE_LEN) :: msg  ! error message
 
     ! TODO: If there are multiple scattering laws, sample scattering law
 

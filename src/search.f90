@@ -1,7 +1,7 @@
 module search
 
-  use global
-  use error, only: fatal_error
+  use constants, only: ONE, MAX_LINE_LEN
+  use error,     only: fatal_error
 
 contains
 
@@ -20,7 +20,7 @@ contains
     integer :: L
     integer :: R
     real(8) :: testval
-    character(max_line_len) :: msg
+    character(MAX_LINE_LEN) :: msg
 
     L = 1
     R = n

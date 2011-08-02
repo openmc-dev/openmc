@@ -1,0 +1,28 @@
+objects = \
+bank_header.o \
+cross_section_header.o \
+cross_section.o \
+datatypes.o \
+datatypes_header.o \
+endf.o \
+energy_grid.o \
+error.o \
+fileio.o \
+geometry.o \
+geometry_header.o \
+global.o \
+logging.o \
+main.o \
+material_header.o \
+mcnp_random.o \
+mpi_routines.o \
+output.o \
+particle_header.o \
+physics.o \
+score.o \
+search.o \
+source.o \
+source_header.o \
+string.o \
+tally_header.o \
+timing.o

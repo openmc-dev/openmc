@@ -1,0 +1,129 @@
+cross_section.o: constants.o
+cross_section.o: cross_section_header.o
+cross_section.o: datatypes.o
+cross_section.o: datatypes_header.o
+cross_section.o: endf.o
+cross_section.o: error.o
+cross_section.o: fileio.o
+cross_section.o: global.o 
+cross_section.o: material_header.o
+cross_section.o: output.o 
+cross_section.o: string.o 
+
+datatypes.o: datatypes_header.o
+
+endf.o: constants.o 
+endf.o: string.o
+
+error.o: global.o
+
+energy_grid.o: constants.o
+energy_grid.o: datatypes.o
+energy_grid.o: datatypes_header.o
+energy_grid.o: global.o
+energy_grid.o: output.o
+
+fileio.o: constants.o
+fileio.o: cross_section_header.o
+fileio.o: datatypes.o
+fileio.o: datatypes_header.o
+fileio.o: error.o
+fileio.o: geometry_header.o
+fileio.o: global.o
+fileio.o: output.o
+fileio.o: source_header.o
+fileio.o: string.o
+
+geometry.o: constants.o
+geometry.o: datatypes.o
+geometry.o: error.o
+geometry.o: geometry_header.o
+geometry.o: global.o
+geometry.o: output.o
+geometry.o: particle_header.o
+geometry.o: string.o
+
+global.o: bank_header.o
+global.o: constants.o
+global.o: cross_section_header.o
+global.o: datatypes_header.o
+global.o: geometry_header.o
+global.o: material_header.o
+global.o: particle_header.o
+global.o: source_header.o
+global.o: tally_header.o
+global.o: timing.o
+
+logging.o: constants.o
+logging.o: global.o
+
+main.o: constants.o
+main.o: cross_section.o
+main.o: energy_grid.o
+main.o: fileio.o
+main.o: geometry.o
+main.o: geometry_header.o
+main.o: global.o
+main.o: logging.o
+main.o: mcnp_random.o
+main.o: mpi_routines.o
+main.o: output.o
+main.o: particle_header.o
+main.o: physics.o
+main.o: score.o
+main.o: source.o
+main.o: string.o
+main.o: timing.o
+
+mpi_routines.o: constants.o
+mpi_routines.o: error.o
+mpi_routines.o: global.o
+mpi_routines.o: mcnp_random.o
+mpi_routines.o: output.o
+mpi_routines.o: source.o
+
+output.o: constants.o
+output.o: datatypes.o
+output.o: endf.o
+output.o: geometry_header.o
+output.o: global.o
+output.o: string.o
+
+physics.o: constants.o
+physics.o: cross_section_header.o
+physics.o: endf.o
+physics.o: error.o
+physics.o: geometry.o
+physics.o: geometry_header.o
+physics.o: global.o
+physics.o: mcnp_random.o
+physics.o: output.o
+physics.o: particle_header.o
+physics.o: score.o
+physics.o: search.o
+physics.o: string.o
+
+score.o: constants.o
+score.o: cross_section.o
+score.o: error.o
+score.o: global.o
+score.o: output.o
+score.o: search.o
+score.o: string.o
+
+search.o: constants.o
+search.o: error.o
+
+source.o: bank_header.o
+source.o: constants.o
+source.o: cross_section_header.o
+source.o: global.o
+source.o: mcnp_random.o
+source.o: output.o
+source.o: particle_header.o
+source.o: physics.o
+
+string.o: constants.o
+string.o: error.o
+
+timing.o: constants.o

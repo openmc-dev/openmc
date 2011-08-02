@@ -1,33 +1,15 @@
 program = openmc
 
-main = main.f90
-test = unittest.f90
-modules = 	ace.f90 \
-		cross_section.f90 \
-		data_structures.f90 \
-		endf.f90 \
-		energy_grid.f90 \
-		error.f90 \
-		fileio.f90 \
-		geometry.f90 \
-		global.f90 \
-		logging.f90 \
-		mcnp_random.f90 \
-		mpi_routines.f90 \
-		output.f90 \
-		physics.f90 \
-		search.f90 \
-		source.f90 \
-		string.f90 \
-		score.f90 \
-		timing.f90 \
-		types.f90
+#===============================================================================
+# Object Files
+#===============================================================================
 
-main_objects = $(modules:.f90=.o) $(main:.f90=.o)
-test_objects = $(modules:.f90=.o) $(test:.f90=.o)
+include OBJECTS
 
-#--------------------------------------------------------------------
+#===============================================================================
 # Compiler Options
+#===============================================================================
+
 F90 = ifort
 F90FLAGS = -fpp -g -traceback
 
@@ -39,52 +21,30 @@ ifeq ($(USE_MPI),yes)
   F90FLAGS += -DMPI -f90=ifort
 endif
 
-#--------------------------------------------------------------------
+#===============================================================================
 # Targets
+#===============================================================================
+
 all:	$(program)
-$(program): $(main_objects)
-	$(F90) $(main_objects) -o $@
+$(program): $(objects)
+	$(F90) $(objects) -o $@
 clean:
 	@rm -f *.o *.mod $(program)
 neat:
 	@rm -f *.o *.mod
-unittest: $(test_objects)
-	$(F90) $(test_objects) -o $@
 
-#--------------------------------------------------------------------
-# Rules & misc
+#===============================================================================
+# Rules
+#===============================================================================
+
 .SUFFIXES: .f90 .o
 .PHONY: all clean neat
 
 %.o: %.f90
 	$(F90) -c $(F90FLAGS) $<
 
-#--------------------------------------------------------------------
+#===============================================================================
 # Dependencies
-ace.o: global.o output.o string.o fileio.o string.o endf.o error.o
-cross_section.o: global.o string.o data_structures.o output.o error.o
-data_structures.o: global.o
-endf.o: global.o string.o
-energy_grid.o: global.o output.o data_structures.o
-error.o: global.o
-fileio.o: types.o global.o string.o output.o data_structures.o \
-          error.o
-geometry.o: types.o global.o output.o string.o data_structures.o \
-            error.o
-global.o: types.o
-logging.o: global.o
-main.o: global.o fileio.o output.o geometry.o mcnp_random.o \
-		source.o physics.o cross_section.o data_structures.o \
-		ace.o energy_grid.o score.o logging.o string.o
-mpi_routines.o: global.o output.o types.o mcnp_random.o source.o \
-                error.o
-output.o: global.o types.o data_structures.o endf.o string.o
-physics.o: types.o global.o mcnp_random.o geometry.o output.o \
-		search.o endf.o score.o error.o string.o
-score.o: global.o output.o ace.o error.o string.o
-search.o: global.o error.o
-source.o: global.o mcnp_random.o output.o physics.o
-string.o: global.o error.o
-timing.o: global.o types.o error.o
-types.o:
-unittest.o: global.o energy_grid.o mpi_routines.o
+#===============================================================================
+
+include DEPENDENCIES

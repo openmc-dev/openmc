@@ -1,14 +1,17 @@
 module output
 
   use ISO_FORTRAN_ENV
-  use global
-  use types,           only: Cell, Universe, Surface
-  use data_structures, only: dict_get_key
+
+  use constants
+  use datatypes,       only: dict_get_key
   use endf,            only: reaction_name
+  use geometry_header, only: Cell, Universe, Surface
+  use global
   use string,          only: upper_case, int_to_str, real_to_str
 
   implicit none
 
+  ! Short names for output and error units
   integer :: ou = OUTPUT_UNIT
   integer :: eu = ERROR_UNIT
 
@@ -273,7 +276,7 @@ contains
 
   subroutine print_reaction(rxn)
 
-    type(AceReaction), pointer :: rxn
+    type(Reaction), pointer :: rxn
 
     write(ou,*) 'Reaction ' // reaction_name(rxn % MT)
     write(ou,*) '    MT = ' // int_to_str(rxn % MT)
@@ -474,17 +477,17 @@ contains
 
     type(Material), pointer :: mat
 
-    integer                      :: i
-    integer                      :: n_lines
-    real(8)                      :: density
-    character(max_line_len)      :: string
-    type(AceContinuous), pointer :: table => null()
+    integer                 :: i
+    integer                 :: n_lines
+    real(8)                 :: density
+    character(max_line_len) :: string
+    type(Nuclide),  pointer :: table => null()
 
     write(ou,*) 'Material ' // int_to_str(mat % uid)
     write(ou,*) '    Atom Density = ' // trim(real_to_str(mat % atom_density)) &
          & // ' atom/b-cm'
     do i = 1, mat % n_isotopes
-       table => xs_continuous(mat % table(i))
+       table => nuclides(mat % table(i))
        density = mat % atom_density * mat % atom_percent(i)
        string = '    ' // trim(table % name) // ' = ' // &
             & trim(real_to_str(density)) // ' atom/b-cm'

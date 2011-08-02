@@ -1,22 +1,24 @@
 program main
 
+  use constants
+  use cross_section,   only: read_xs, read_xsdata, material_total_xs
+  use energy_grid,     only: unionized_grid, original_indices
+  use fileio,          only: read_input, read_command_line, read_count, &
+                             normalize_ao, build_universe
+  use geometry,        only: neighbor_lists
+  use geometry_header, only: Universe, BASE_UNIVERSE
   use global
-  use fileio,        only: read_input, read_command_line, read_count, &
-                           normalize_ao, build_universe
-  use output,        only: title, echo_input, message, print_summary, &
-                           print_particle, header, print_runtime
-  use geometry,      only: neighbor_lists
-  use mcnp_random,   only: RN_init_problem, RN_init_particle
-  use source,        only: init_source, get_source_particle
-  use physics,       only: transport
-  use cross_section, only: read_xsdata, material_total_xs
-  use ace,           only: read_xs
-  use energy_grid,   only: unionized_grid, original_indices
-  use mpi_routines,  only: setup_mpi, synchronize_bank
-  use score,         only: calculate_keff
-  use logging,       only: create_log
-  use timing,        only: timer_start, timer_stop
-  use string,        only: int_to_str
+  use logging,         only: create_log
+  use mcnp_random,     only: RN_init_problem, RN_init_particle
+  use mpi_routines,    only: setup_mpi, synchronize_bank
+  use output,          only: title, echo_input, message, print_summary, &
+                             print_particle, header, print_runtime
+  use particle_header, only: Particle
+  use physics,         only: transport
+  use score,           only: calculate_keff
+  use source,          only: init_source, get_source_particle
+  use string,          only: int_to_str
+  use timing,          only: timer_start, timer_stop
 
 #ifdef MPI
   use mpi

@@ -1,6 +1,7 @@
 module logging
 
-  use global
+  use constants, only: MAX_WORD_LEN, UNIT_LOG
+  use global,    only: path_input
 
   implicit none
 
@@ -12,7 +13,7 @@ contains
 
   subroutine create_log()
 
-    character(max_word_len) :: path_log     ! path of log file
+    character(MAX_WORD_LEN) :: path_log     ! path of log file
     logical                 :: file_exists  ! does log file already exist?
     integer                 :: ioError      ! error status for file access
 

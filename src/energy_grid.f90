@@ -23,7 +23,6 @@ contains
     type(Material), pointer :: mat => null()
     type(Nuclide),  pointer :: nuc => null()
     integer :: i, j
-    integer :: n
     character(MAX_LINE_LEN) :: msg
 
     msg = "Creating unionized energy grid..."
@@ -38,8 +37,7 @@ contains
           nuc => nuclides(mat % nuclide(j))
 
           ! loop over energy points
-          n = size(nuc % energy)
-          call add_grid_points(list, nuc % energy, n)
+          call add_grid_points(list, nuc % energy)
        end do
     end do
 
@@ -47,7 +45,7 @@ contains
     n_grid = list_size(list)
     allocate(e_grid(n_grid))
     current => list
-    do i = 1,n_grid
+    do i = 1, n_grid
        e_grid(i) = current % data
        current => current % next
     end do
@@ -62,29 +60,30 @@ contains
 ! of points already stored from previous arrays.
 !===============================================================================
 
-  subroutine add_grid_points(list, energy, n_energy)
+  subroutine add_grid_points(list, energy)
 
     type(ListReal), pointer :: list
-    real(8), intent(in) :: energy(n_energy)
-    integer, intent(in) :: n_energy
+    real(8), intent(in) :: energy(:)
 
+    integer :: index
+    integer :: n
+    real(8) :: E
     type(ListReal), pointer :: current => null()
     type(ListReal), pointer :: previous => null()
     type(ListReal), pointer :: head => null()
     type(ListReal), pointer :: tmp => null()
-    integer :: index
-    real(8) :: E
 
     index = 1
+    n = size(energy)
 
     ! if the original list is empty, we need to allocate the first element and
     ! store first energy point
     if (list_size(list) == 0) then
        allocate(list)
        current => list
-       do index = 1, n_energy
+       do index = 1, n
           current % data = energy(index)
-          if (index == n_energy) then
+          if (index == n) then
              current % next => null()
              return
           end if
@@ -97,13 +96,13 @@ contains
     head => list
 
     E = energy(index)
-    do while (index <= n_energy)
+    do while (index <= n)
 
        ! If we've reached the end of the grid energy list, add the remaining
        ! energy points to the end
        if (.not. associated(current)) then
           ! finish remaining energies
-          do while (index <= n_energy)
+          do while (index <= n)
              allocate(previous % next)
              current => previous % next
              current % data = energy(index)

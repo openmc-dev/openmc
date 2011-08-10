@@ -298,7 +298,7 @@ contains
 
     integer                 :: temp
     integer                 :: i
-    character(max_line_len) :: string
+    character(MAX_LINE_LEN) :: string
     type(Universe), pointer :: u => null()
     type(Lattice),  pointer :: l => null()
     type(Material), pointer :: m => null()
@@ -358,7 +358,7 @@ contains
     type(Universe), pointer :: univ
 
     integer                 :: i
-    character(max_line_len) :: string
+    character(MAX_LINE_LEN) :: string
     type(Cell), pointer     :: c => null()
 
     write(ou,*) 'Universe ' // int_to_str(univ % uid)
@@ -403,7 +403,7 @@ contains
     type(Surface), pointer :: surf
 
     integer :: i
-    character(max_line_len) :: string
+    character(MAX_LINE_LEN) :: string
 
     write(ou,*) 'Surface ' // int_to_str(surf % uid)
     select case (surf % type)
@@ -477,7 +477,7 @@ contains
 
     integer                 :: i
     real(8)                 :: density
-    character(max_line_len) :: string
+    character(MAX_LINE_LEN) :: string
     type(Nuclide),  pointer :: nuc => null()
 
     write(ou,*) 'Material ' // int_to_str(mat % uid)
@@ -506,7 +506,7 @@ contains
 
     integer                 :: i
     integer                 :: MT
-    character(max_line_len) :: string
+    character(MAX_LINE_LEN) :: string
 
     write(ou,*) 'Tally ' // int_to_str(tal % uid)
 

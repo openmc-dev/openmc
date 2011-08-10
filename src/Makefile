@@ -10,10 +10,12 @@ include OBJECTS
 # User Options
 #===============================================================================
 
-USE_MPI  = no
-DEBUG    = no
-PROFILE  = no
-OPTIMIZE = no
+DEBUG       = no
+PROFILE     = no
+OPTIMIZE    = no
+USE_MPI     = no
+USE_OPENMP  = no
+USE_COARRAY = no
 
 #===============================================================================
 # Compiler Options
@@ -41,6 +43,15 @@ ifeq ($(USE_MPI),yes)
   MPI = /opt/mpich2/1.4-intel
   F90 = $(MPI)/bin/mpif90
   F90FLAGS += -DMPI
+endif
+
+ifeq ($(USE_OPENMP),yes)
+  F90FLAGS += -openmp
+  LDFLAGS += -openmp
+endif
+
+ifeq ($(USE_COARRAY),yes)
+  F90FLAGS += -coarray
 endif
 
 #===============================================================================

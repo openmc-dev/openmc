@@ -1,6 +1,6 @@
 module mpi_routines
 
-  use constants,   only: max_line_len
+  use constants,   only: MAX_LINE_LEN
   use error,       only: fatal_error
   use global
   use mcnp_random, only: rang, RN_init_particle, RN_skip

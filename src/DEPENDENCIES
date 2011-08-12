@@ -12,6 +12,8 @@ cross_section.o: string.o
 
 datatypes.o: datatypes_header.o
 
+doppler.o: constants.o
+
 endf.o: constants.o 
 endf.o: string.o
 

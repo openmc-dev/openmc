@@ -4,6 +4,7 @@ cross_section_header.o \
 cross_section.o \
 datatypes.o \
 datatypes_header.o \
+doppler.o \
 endf.o \
 energy_grid.o \
 error.o \

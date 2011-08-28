@@ -12,8 +12,8 @@ contains
 
   function binary_search(array, n, val) result(index)
 
-    real(8), intent(in) :: array(n)
     integer, intent(in) :: n
+    real(8), intent(in) :: array(n)
     real(8), intent(in) :: val
     integer :: index
 
@@ -60,9 +60,9 @@ contains
 !===============================================================================
 
   function interpolate(array, n, index, f) result(val)
-
-    real(8), intent(in) :: array(n)
+ 
     integer, intent(in) :: n
+    real(8), intent(in) :: array(n)
     integer, intent(in) :: index
     real(8), intent(in) :: f
     real(8)             :: val

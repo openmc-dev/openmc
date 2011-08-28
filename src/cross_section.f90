@@ -440,8 +440,10 @@ contains
 
           ! read ENDF interpolation parameters
           XSS_index = LDIS + LOCC + 3
-          nuc % nu_d_edist(i) % nbt = get_real(NR)
-          nuc % nu_d_edist(i) % int = get_real(NR)
+          if (NR > 0) then
+             nuc % nu_d_edist(i) % nbt = get_real(NR)
+             nuc % nu_d_edist(i) % int = get_real(NR)
+          end if
 
           ! allocate space for law validity data
           NE = XSS(LDIS + LOCC + 3 + 2*NR)
@@ -698,8 +700,10 @@ contains
        
        ! read ENDF interpolation parameters
        XSS_index = LDIS + LOCC + 3
-       rxn % edist % nbt = get_real(NR)
-       rxn % edist % int = get_real(NR)
+       if (NR > 0) then
+          rxn % edist % nbt = get_real(NR)
+          rxn % edist % int = get_real(NR)
+       end if
 
        ! allocate space for law validity data
        NE = XSS(LDIS + LOCC + 3 + 2*NR)

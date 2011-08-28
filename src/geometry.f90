@@ -896,6 +896,16 @@ contains
        return
 
     case (SURF_GQ)
+       A = surf % coeffs(1)
+       B = surf % coeffs(2)
+       C = surf % coeffs(3)
+       D = surf % coeffs(4)
+       E = surf % coeffs(5)
+       F = surf % coeffs(6)
+       G = surf % coeffs(7)
+       H = surf % coeffs(8)
+       I = surf % coeffs(9)
+       J = surf % coeffs(10)
        func = A*x*x + B*y*y + C*z*z + D*x*y + E*y*z + F*x*z + G*x &
             & + H*y + I*z + J
 

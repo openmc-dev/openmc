@@ -10,6 +10,7 @@ include OBJECTS
 # User Options
 #===============================================================================
 
+COMPILER    = intel
 DEBUG       = no
 PROFILE     = no
 OPTIMIZE    = no
@@ -21,23 +22,56 @@ USE_COARRAY = no
 # Compiler Options
 #===============================================================================
 
-F90      = ifort
-F90FLAGS = -cpp -warn
-LDFLAGS  =
+# Set default compiler options
+
+F90 = gfortran
+F90FLAGS = -cpp
+
+# Intel Fortran compiler options
+
+ifeq ($(COMPILER),intel)
+  F90 = ifort
+  F90FLAGS = -fpp -warn
+endif
+
+# GNU Fortran compiler options
+
+ifeq ($(COMPILER),gfortran)
+  F90 = gfortran
+  F90FLAGS = -cpp -Wall
+endif
+
+# Set compiler flags for debugging
 
 ifeq ($(DEBUG),yes)
-  F90FLAGS += -g -traceback -ftrapuv -fp-stack-check -check all
+  F90FLAGS += -g 
   LDFLAGS  += -g
+  ifeq ($(COMPILER),intel)
+    F90FLAGS += -traceback -ftrapuv -fp-stack-check -check all
+  endif
+  ifeq ($(COMPILER),gfortran)
+    F90FLAGS += -pedantic -std=f2003 -fbacktrace -fbounds-check \
+                -ffpe-trap=invalid,zero,overflow,underflow
+  endif
 endif
+
+# Set compiler flags for profiling
 
 ifeq ($(PROFILE),yes)
   F90FLAGS += -pg
   LDFLAGS  += -pg
 endif
 
+# Set compiler flags for high optimization
+
 ifeq ($(OPTIMIZE),yes)
-  F90FLAGS += -ipo -O3
+  F90FLAGS += -O3
+  ifeq ($(COMPILER),intel)
+    F90FLAGS += -ipo
+  endif
 endif
+
+# Use MPI for parallelism
 
 ifeq ($(USE_MPI),yes)
   MPI = /opt/mpich2/1.4-intel
@@ -45,10 +79,14 @@ ifeq ($(USE_MPI),yes)
   F90FLAGS += -DMPI
 endif
 
+# Use OpenMP for shared-memory parallelism
+
 ifeq ($(USE_OPENMP),yes)
   F90FLAGS += -openmp
   LDFLAGS += -openmp
 endif
+
+# Use Fortran 2008 Coarrays for parallelism
 
 ifeq ($(USE_COARRAY),yes)
   F90FLAGS += -coarray
@@ -74,7 +112,7 @@ neat:
 .PHONY: all clean neat
 
 %.o: %.f90
-	$(F90) -c $(F90FLAGS) $<
+	$(F90) $(F90FLAGS) -c $<
 
 #===============================================================================
 # Dependencies

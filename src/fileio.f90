@@ -5,7 +5,7 @@ module fileio
   use datatypes,            only: dict_create, dict_add_key, dict_get_key, &
                                   dict_has_key, DICT_NULL, dict_keys, list_size
   use datatypes_header,     only: DictionaryII, ListKeyValueII, ListKeyValueCI
-  use error,                only: fatal_error, warning, ERROR_INT, ERROR_REAL
+  use error,                only: fatal_error, warning
   use geometry_header,      only: Cell, Surface, BASE_UNIVERSE
   use global
   use output,               only: message

@@ -7,6 +7,7 @@ module score
   use output,        only: message
   use search,        only: binary_search
   use string,        only: int_to_str
+  use tally_header,  only: TallyScore
 
 #ifdef MPI
   use mpi

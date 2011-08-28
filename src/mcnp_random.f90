@@ -109,13 +109,11 @@ module mcnp_random
   !------------------------------------
   ! Private data for a single particle
   !------------------------------------
-  integer(I8) :: RN_SEED   = 19073486328125_I8 ! current seed
-  integer(I8) :: RN_COUNT  = 0_I8              ! current counter
-  integer(I8) :: RN_NPS    = 0_I8              ! current particle number
+  integer(I8), save :: RN_SEED   = 19073486328125_I8 ! current seed
+  integer(I8), save :: RN_COUNT  = 0_I8              ! current counter
+  integer(I8), save :: RN_NPS    = 0_I8              ! current particle number
 
-  common                /RN_THREAD/   RN_SEED, RN_COUNT, RN_NPS
-  save                  /RN_THREAD/
-  !$OMP THREADprivate ( /RN_THREAD/ )
+  !$OMP THREADPRIVATE (RN_SEED, RN_COUNT, RN_NPS)
 
   !------------------------------------------
   ! Shared data, to collect info on RN usage

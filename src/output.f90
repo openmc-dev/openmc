@@ -3,11 +3,12 @@ module output
   use ISO_FORTRAN_ENV
 
   use constants
-  use datatypes,       only: dict_get_key
-  use endf,            only: reaction_name
-  use geometry_header, only: Cell, Universe, Surface
+  use cross_section_header, only: Reaction
+  use datatypes,            only: dict_get_key
+  use endf,                 only: reaction_name
+  use geometry_header,      only: Cell, Universe, Surface
   use global
-  use string,          only: upper_case, int_to_str, real_to_str
+  use string,               only: upper_case, int_to_str, real_to_str
 
   implicit none
 

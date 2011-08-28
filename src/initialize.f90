@@ -1,0 +1,266 @@
+module initialize
+
+  use constants
+  use datatypes,        only: dict_create, dict_add_key, dict_get_key,         &
+                              dict_has_key, DICT_NULL, dict_keys
+  use datatypes_header, only: ListKeyValueII, DictionaryII
+  use error,            only: fatal_error
+  use geometry_header,  only: Cell, Surface, Universe, Lattice
+  use global
+  use input_old,        only: bc_dict
+  use string,           only: int_to_str
+
+contains
+
+!===============================================================================
+! READ_COMMAND_LINE reads all parameters from the command line
+!===============================================================================
+
+  subroutine read_command_line()
+
+    integer                 :: argc        ! number of command line arguments
+    logical                 :: file_exists ! does specified input file exist?
+    character(MAX_LINE_LEN) :: msg         ! error message
+    character(7)            :: readable    ! is input file readable?
+
+    argc = COMMAND_ARGUMENT_COUNT()
+    if (argc > 0) then
+       call GET_COMMAND_ARGUMENT(1, path_input)
+    else
+       msg = "No input file specified!"
+       call fatal_error(msg)
+    end if
+
+    ! Check if input file exists and is readable
+    inquire(FILE=path_input, EXIST=file_exists, READ=readable)
+    if (.not. file_exists) then
+       msg = "Input file '" // trim(path_input) // "' does not exist!"
+       call fatal_error(msg)
+    elseif (readable(1:3) == 'NO') then
+       ! Need to explicitly check for a NO status -- Intel compiler looks at
+       ! file attributes only if the file is open on a unit. Therefore, it will
+       ! always return UNKNOWN
+       msg = "Input file '" // trim(path_input) // "' is not readable! &
+            &Change file permissions with chmod command."
+       call fatal_error(msg)
+    end if
+
+  end subroutine read_command_line
+
+!===============================================================================
+! ADJUST_INDICES changes the values for 'surfaces' for each cell and the
+! material index assigned to each to the indices in the surfaces and material
+! array rather than the unique IDs assigned to each surface and material. Also
+! assigns boundary conditions to surfaces based on those read into the bc_dict
+! dictionary
+!===============================================================================
+
+  subroutine adjust_indices()
+
+    integer                 :: i        ! index in cells array
+    integer                 :: j        ! index over surface list
+    integer                 :: index    ! index in surfaces/materials array 
+    integer                 :: surf_num ! user-specified surface number
+    integer                 :: bc       ! boundary condition
+    character(MAX_LINE_LEN) :: msg      ! output/error message
+    type(Cell),           pointer :: c => null()
+    type(Surface),        pointer :: surf => null()
+    type(ListKeyValueII), pointer :: key_list => null()
+    
+    do i = 1, n_cells
+       ! adjust boundary list
+       c => cells(i)
+       do j = 1, c%n_surfaces
+          surf_num = c%surfaces(j)
+          if (surf_num < OP_DIFFERENCE) then
+             index = dict_get_key(surface_dict, abs(surf_num))
+             if (index == DICT_NULL) then
+                surf_num = abs(surf_num)
+                msg = "Could not find surface " // trim(int_to_str(surf_num)) // &
+                     & " specified on cell " // trim(int_to_str(c%uid))
+                call fatal_error(msg)
+             end if
+             c%surfaces(j) = sign(index, surf_num)
+          end if
+       end do
+
+       ! adjust material indices
+       if (c % type == CELL_NORMAL) then
+          index = dict_get_key(material_dict, c%material)
+          if (index == DICT_NULL) then
+             msg = "Could not find material " // trim(int_to_str(c%material)) // &
+                  & " specified on cell " // trim(int_to_str(c%uid))
+             call fatal_error(msg)
+          end if
+          c%material = index
+       end if
+    end do
+
+    ! Check to make sure boundary conditions were specified
+    key_list => dict_keys(bc_dict)
+    if (.not. associated(key_list)) then
+       msg = "No boundary conditions specified!"
+       call fatal_error(msg)
+    end if
+
+    ! Set boundary conditions for surfaces
+    do while (associated(key_list))
+       ! find index of universe in universes array
+       surf_num = key_list%data%key
+       bc       = key_list%data%value
+
+       ! establish pointer to surface
+       index = dict_get_key(surface_dict, surf_num)
+       surf => surfaces(index)
+
+       ! set boundary condition
+       surf % bc = bc
+       
+       ! move to next universe
+       key_list => key_list%next
+    end do
+
+  end subroutine adjust_indices
+
+!===============================================================================
+! BUILD_UNIVERSE determines what level each universe is at and determines what
+! the parent cell of each cell in a subuniverse is.
+!===============================================================================
+
+  recursive subroutine build_universe(univ, parent, level)
+
+    type(Universe), pointer :: univ   ! univese pointer
+    integer,     intent(in) :: parent ! cell containing universe
+    integer,     intent(in) :: level  ! level of universe
+
+    integer :: i     ! index for cells in universe
+    integer :: x,y   ! indices for lattice positions
+    integer :: index ! index in cells array
+    integer :: universe_num
+    type(Cell),     pointer :: c => null()
+    type(Universe), pointer :: subuniverse => null()
+    type(Lattice),  pointer :: lat => null()
+    type(DictionaryII), pointer :: dict => null()
+
+    ! set level of the universe
+    univ % level = level
+
+    ! loop over all cells in the universe
+    do i = 1, univ % n_cells
+       index = univ % cells(i)
+       c => cells(index)
+       c%parent = parent
+
+       ! if this cell is filled with another universe, recursively
+       ! call this subroutine
+       if (c % type == CELL_FILL) then
+          subuniverse => universes(c % fill)
+          call build_universe(subuniverse, index, level + 1)
+       end if
+
+       ! if this cell is filled by a lattice, need to build the
+       ! universe for each unique lattice element
+       if (c % type == CELL_LATTICE) then
+          lat => lattices(c % fill)
+          call dict_create(dict)
+          do x = 1, lat % n_x
+             do y = 1, lat % n_y
+                universe_num = lat % element(x,y)
+                if (dict_has_key(dict, universe_num)) then
+                   cycle
+                else
+                   call dict_add_key(dict, universe_num, 0)
+
+                   subuniverse => universes(universe_num)
+                   call build_universe(subuniverse, index, level + 1)
+                end if
+             end do
+          end do
+       end if
+
+    end do
+
+  end subroutine build_universe
+
+!===============================================================================
+! NORMALIZE_AO normalizes the atom or weight percentages for each material
+!===============================================================================
+
+  subroutine normalize_ao()
+
+    integer        :: index           ! index used for several purposes
+    integer        :: i               ! index in materials array
+    integer        :: j               ! index over nuclides in material
+    real(8)        :: sum_percent     ! 
+    real(8)        :: awr             ! atomic weight ratio
+    real(8)        :: x               ! atom percent
+    logical        :: percent_in_atom ! nuclides specified in atom percent?
+    logical        :: density_in_atom ! density specified in atom/b-cm?
+    character(10)  :: key             ! name of nuclide, e.g. 92235.03c
+    character(MAX_LINE_LEN) :: msg    ! output/error message
+    type(Material), pointer :: mat => null()
+    
+    ! first find the index in the xsdata array for each nuclide in each material
+    do i = 1, n_materials
+       mat => materials(i)
+
+       ! Check to make sure either all atom percents or all weight percents are
+       ! given
+       if (.not. (all(mat%atom_percent > ZERO) .or. & 
+            & all(mat%atom_percent < ZERO))) then
+          msg = "Cannot mix atom and weight percents in material " // &
+               & int_to_str(mat%uid)
+          call fatal_error(msg)
+       end if
+
+       percent_in_atom = (mat%atom_percent(1) > ZERO)
+       density_in_atom = (mat%atom_density > ZERO)
+
+       sum_percent = ZERO
+       do j = 1, mat % n_nuclides
+          ! Set indices for nuclides
+          key = mat % names(j)
+          index = dict_get_key(xsdata_dict, key)
+          if (index == DICT_NULL) then
+             msg = "Cannot find cross-section " // trim(key) // " in specified &
+                   &xsdata file."
+             call fatal_error(msg)
+          end if
+          mat % xsdata(j) = index
+
+          ! determine atomic weight ratio
+          awr = xsdatas(index) % awr
+
+          ! if given weight percent, convert all values so that they are divided
+          ! by awr. thus, when a sum is done over the values, it's actually
+          ! sum(w/awr)
+          if (.not. percent_in_atom) then
+             mat % atom_percent(j) = -mat % atom_percent(j) / awr
+          end if
+       end do
+
+       ! determine normalized atom percents. if given atom percents, this is
+       ! straightforward. if given weight percents, the value is w/awr and is
+       ! divided by sum(w/awr)
+       sum_percent = sum(mat%atom_percent)
+       mat % atom_percent = mat % atom_percent / sum_percent
+
+       ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
+       ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
+       if (.not. density_in_atom) then
+          sum_percent = ZERO
+          do j = 1, mat % n_nuclides
+             index = mat % xsdata(j)
+             awr = xsdatas(index) % awr
+             x = mat % atom_percent(j)
+             sum_percent = sum_percent + x*awr
+          end do
+          sum_percent = ONE / sum_percent
+          mat%atom_density = -mat%atom_density * N_AVOGADRO & 
+               & / MASS_NEUTRON * sum_percent
+       end if
+    end do
+
+  end subroutine normalize_ao
+
+end module initialize

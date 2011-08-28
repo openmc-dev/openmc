@@ -50,7 +50,7 @@ ifeq ($(DEBUG),yes)
     F90FLAGS += -traceback -ftrapuv -fp-stack-check -check all
   endif
   ifeq ($(COMPILER),gfortran)
-    F90FLAGS += -pedantic -std=f2003 -fbacktrace -fbounds-check \
+    F90FLAGS += -pedantic -std=f2008 -fbacktrace -fbounds-check \
                 -ffpe-trap=invalid,zero,overflow,underflow
   endif
 endif

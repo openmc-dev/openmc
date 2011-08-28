@@ -3,11 +3,12 @@ program main
   use constants
   use cross_section,   only: read_xs, read_xsdata, material_total_xs
   use energy_grid,     only: unionized_grid, original_indices
-  use fileio,          only: read_input, read_command_line, read_count, &
-                             normalize_ao, build_universe
   use geometry,        only: neighbor_lists
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
+  use initialize,      only: read_command_line, build_universe, normalize_ao,  &
+                             adjust_indices
+  use input_old,       only: read_count, read_input
   use logging,         only: create_log
   use mcnp_random,     only: RN_init_problem, RN_init_particle
   use mpi_routines,    only: setup_mpi, synchronize_bank
@@ -59,6 +60,9 @@ program main
   ! read values
   call read_count(path_input)
   call read_input(path_input)
+
+  ! Use dictionaries to redefine index pointers
+  call adjust_indices()
 
   ! determine at which level universes are and link cells to parenting cells
   univ => universes(BASE_UNIVERSE)

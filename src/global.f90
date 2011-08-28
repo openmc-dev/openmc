@@ -16,6 +16,7 @@ module global
 #endif
 
   implicit none
+  save
 
   ! Main arrays for cells, surfaces, materials
   type(Cell),     allocatable, target :: cells(:)

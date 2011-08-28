@@ -95,8 +95,8 @@ contains
     current => list
     head => list
 
-    E = energy(index)
     do while (index <= n)
+       E = energy(index)
 
        ! If we've reached the end of the grid energy list, add the remaining
        ! energy points to the end
@@ -129,13 +129,11 @@ contains
 
           ! advance index
           index = index + 1
-          E = energy(index)
 
        elseif (E == current % data) then
           ! found the exact same energy, no need to store duplicates so just
           ! skip and move to next index
           index = index + 1
-          E = energy(index)
        else
           previous => current
           current => current % next
@@ -157,6 +155,7 @@ contains
 
     integer :: i, j
     integer :: index
+    integer :: n_grid_nuclide
     type(Nuclide), pointer :: nuc
 
     real(8) :: union_energy
@@ -165,6 +164,7 @@ contains
 
     do i = 1, n_nuclides_total
        nuc => nuclides(i)
+       n_grid_nuclide = size(nuc % energy)
        allocate(nuc % grid_index(n_grid))
 
        index = 1
@@ -172,7 +172,7 @@ contains
 
        do j = 1, n_grid
           union_energy = e_grid(j)
-          if (union_energy >= energy) then
+          if (union_energy >= energy .and. index < n_grid_nuclide) then
              index = index + 1
              energy = nuc % energy(index)
           end if

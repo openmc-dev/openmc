@@ -134,8 +134,8 @@ contains
 
   function concatenate(words, n_words) result(string)
 
-    character(*),   intent(in)  :: words(n_words)
     integer,        intent(in)  :: n_words
+    character(*),   intent(in)  :: words(n_words)
     character(MAX_LINE_LEN)     :: string
 
     integer :: i ! index

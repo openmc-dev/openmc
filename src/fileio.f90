@@ -465,8 +465,8 @@ contains
   subroutine read_cell(index, words, n_words)
 
     integer,      intent(in) :: index          ! index in cells array
-    character(*), intent(in) :: words(n_words) ! words on cell card entry
     integer,      intent(in) :: n_words        ! number of words
+    character(*), intent(in) :: words(n_words) ! words on cell card entry
 
     integer                 :: i            ! index for surface list in a cell
     integer                 :: universe_num ! user-specified universe number
@@ -558,8 +558,8 @@ contains
   subroutine read_surface(index, words, n_words)
 
     integer,      intent(in) :: index          ! index in surfaces array
-    character(*), intent(in) :: words(n_words) ! words in surface card entry
     integer,      intent(in) :: n_words        ! number of words
+    character(*), intent(in) :: words(n_words) ! words in surface card entry
 
     integer                 :: i           ! index for surface coefficients
     integer                 :: coeffs_reqd ! number of coefficients are required
@@ -647,8 +647,8 @@ contains
 
   subroutine read_bc(words, n_words)
 
-    character(*), intent(in) :: words(n_words) ! words in bc entry
     integer,      intent(in) :: n_words        ! number of words
+    character(*), intent(in) :: words(n_words) ! words in bc entry
 
     integer                 :: surface_uid ! User-specified uid of surface
     integer                 :: bc          ! Boundary condition
@@ -689,8 +689,8 @@ contains
   subroutine read_lattice(index, words, n_words)
 
     integer,      intent(in) :: index          ! index in lattices array
-    character(*), intent(in) :: words(n_words) ! words in lattice entry
     integer,      intent(in) :: n_words        ! number of words
+    character(*), intent(in) :: words(n_words) ! words in lattice entry
 
     integer                 :: universe_num ! user-specified universe number
     integer                 :: n_x          ! number of lattice cells in x direction
@@ -774,8 +774,8 @@ contains
 
   subroutine read_source(words, n_words)
 
-    character(*), intent(in) :: words(n_words) ! words on source entry
     integer,      intent(in) :: n_words        ! number of words
+    character(*), intent(in) :: words(n_words) ! words on source entry
 
     integer                 :: i           ! index in values list
     integer                 :: values_reqd ! # of values required to specify source
@@ -815,8 +815,8 @@ contains
   subroutine read_tally(index, words, n_words)
 
     integer,      intent(in) :: index          ! index in materials array
-    character(*), intent(in) :: words(n_words) ! words on material entry
     integer,      intent(in) :: n_words        ! number of words
+    character(*), intent(in) :: words(n_words) ! words on material entry
 
     integer :: i  ! index in words array
     integer :: j
@@ -971,8 +971,8 @@ contains
   subroutine read_material(index, words, n_words)
 
     integer,      intent(in) :: index          ! index in materials array
-    character(*), intent(in) :: words(n_words) ! words on material entry
     integer,      intent(in) :: n_words        ! number of words
+    character(*), intent(in) :: words(n_words) ! words on material entry
 
     integer                 :: i          ! index over nuclides
     integer                 :: n_nuclides ! number of nuclides in material
@@ -1103,8 +1103,8 @@ contains
 
   subroutine read_xs_library(words, n_words)
 
-    character(*), intent(in) :: words(n_words)
     integer,      intent(in) :: n_words
+    character(*), intent(in) :: words(n_words)
 
   end subroutine read_xs_library
 
@@ -1116,8 +1116,8 @@ contains
 
   subroutine read_criticality(words, n_words)
 
-    character(*), intent(in) :: words(n_words) ! words on criticality card
     integer,      intent(in) :: n_words        ! number of words
+    character(*), intent(in) :: words(n_words) ! words on criticality card
 
     character(MAX_LINE_LEN) :: msg ! output/error message
 
@@ -1234,8 +1234,8 @@ contains
   subroutine read_data_int(unit, array, n, lines, words_per_line)
 
     integer, intent(in)  :: unit           ! unit to read from
-    integer, intent(out) :: array(n)       ! ints read from file
     integer, intent(in)  :: n              ! total number of ints
+    integer, intent(out) :: array(n)       ! ints read from file
     integer, intent(in)  :: lines          ! total number of lines
     integer, intent(in)  :: words_per_line ! number of words per line
 
@@ -1261,8 +1261,8 @@ contains
   subroutine read_data_real(unit, array, n, lines, words_per_line)
 
     integer, intent(in)  :: unit           ! unit to read from
-    real(8), intent(out) :: array(n)       ! real(8)s read from file
     integer, intent(in)  :: n              ! total number of ints
+    real(8), intent(out) :: array(n)       ! real(8)s read from file
     integer, intent(in)  :: lines          ! total number of lines
     integer, intent(in)  :: words_per_line ! number of words per line
 

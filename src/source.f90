@@ -163,9 +163,9 @@ contains
 
   subroutine copy_from_bank(temp_bank, index, n_sites)
 
+    integer,    intent(in) :: n_sites  ! # of bank sites to copy
     type(Bank), intent(in) :: temp_bank(n_sites)
     integer,    intent(in) :: index    ! starting index in source_bank
-    integer,    intent(in) :: n_sites  ! # of bank sites to copy
 
     integer :: i ! index in temp_bank
     integer :: j ! index in source_bank

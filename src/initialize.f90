@@ -18,6 +18,7 @@ module initialize
                               print_particle, header
   use source,           only: init_source
   use string,           only: int_to_str
+  use timing,           only: timer_start, timer_stop
 
 contains
 
@@ -29,8 +30,11 @@ contains
 !===============================================================================
 
   subroutine initialize_run()
-    
+
     type(Universe), pointer :: univ
+
+    ! Start initialization timer
+    call timer_start(time_init)
 
     ! Setup MPI
     call setup_mpi()
@@ -97,6 +101,9 @@ contains
        call echo_input()
        call print_summary()
     end if
+
+    ! Stop initialization timer
+    call timer_stop(time_init)
 
   end subroutine initialize_run
 

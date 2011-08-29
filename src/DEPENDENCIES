@@ -65,6 +65,7 @@ initialize.o: mpi_routines.o
 initialize.o: output.o
 initialize.o: source.o
 initialize.o: string.o
+initialize.o: timing.o
 
 input_old.o: constants.o
 input_old.o: datatypes.o

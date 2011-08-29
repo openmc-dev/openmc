@@ -205,6 +205,69 @@ contains
   end function is_number
 
 !===============================================================================
+! STARTS_WITH determines whether a string starts with a certain
+! sequence of characters
+!===============================================================================
+
+  logical function starts_with(str, seq)
+
+    character(*) :: str ! string to check
+    character(*) :: seq ! sequence of characters
+
+    integer :: i, i_start
+    integer :: str_len
+    integer :: seq_len
+
+    str_len = len_trim(str)
+    seq_len = len_trim(seq)
+
+    ! determine how many spaces are at beginning of string
+    i_start = 0
+    do i = 1, str_len
+       if (str(i:i) == ' ' .or. str(i:i) == achar(9)) cycle
+       i_start = i
+       exit
+    end do
+
+    ! Check if string starts with sequence using INDEX intrinsic
+    if (index(str(1:str_len), seq(1:seq_len)) == i_start) then
+       starts_with = .true.
+    else
+       starts_with = .false.
+    end if
+
+  end function starts_with
+
+!===============================================================================
+! ENDS_WITH determines whether a string ends with a certain sequence
+! of characters
+!===============================================================================
+
+  logical function ends_with(str, seq)
+
+    character(*) :: str ! string to check
+    character(*) :: seq ! sequence of characters
+
+    integer :: i_start
+    integer :: str_len
+    integer :: seq_len
+
+    str_len = len_trim(str)
+    seq_len = len_trim(seq)
+
+    ! determine how many spaces are at beginning of string
+    i_start = str_len - seq_len + 1
+
+    ! Check if string starts with sequence using INDEX intrinsic
+    if (index(str(1:str_len), seq(1:seq_len), .true.) == i_start) then
+       ends_with = .true.
+    else
+       ends_with = .false.
+    end if
+
+  end function ends_with
+
+!===============================================================================
 ! INT4_TO_STR converts an integer(4) to a string.
 !===============================================================================
 

@@ -22,23 +22,20 @@ USE_COARRAY = no
 # Compiler Options
 #===============================================================================
 
-# Set default compiler options
-
-F90 = gfortran
-F90FLAGS = -cpp
-
 # Intel Fortran compiler options
 
 ifeq ($(COMPILER),intel)
   F90 = ifort
-  F90FLAGS = -fpp -warn
+  F90FLAGS = -I../lib/intel -fpp -warn
+  LDFLAGS = -L../lib/intel -lxmlparse
 endif
 
 # GNU Fortran compiler options
 
 ifeq ($(COMPILER),gfortran)
   F90 = gfortran
-  F90FLAGS = -cpp -Wall
+  F90FLAGS = -I../lib/gfortran -cpp -Wall
+  LDFLAGS = -L../lib/gfortran -lxmlparse
 endif
 
 # Set compiler flags for debugging

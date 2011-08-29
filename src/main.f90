@@ -23,9 +23,7 @@ program main
   call timer_start(time_total)
 
   ! set up problem
-  call timer_start(time_init)
   call initialize_run()
-  call timer_stop(time_init)
 
   ! start problem
   call run_problem()

@@ -1,23 +1,15 @@
 program main
 
   use constants
-  use cross_section,   only: read_xs, read_xsdata, material_total_xs
-  use energy_grid,     only: unionized_grid, original_indices
-  use geometry,        only: neighbor_lists
-  use geometry_header, only: Universe, BASE_UNIVERSE
   use global
-  use initialize,      only: read_command_line, build_universe, normalize_ao,  &
-                             adjust_indices
-  use input_old,       only: read_count, read_input
-  use logging,         only: create_log
-  use mcnp_random,     only: RN_init_problem, RN_init_particle
-  use mpi_routines,    only: setup_mpi, synchronize_bank
-  use output,          only: title, echo_input, message, print_summary, &
-                             print_particle, header, print_runtime
+  use initialize,      only: initialize_run
+  use mcnp_random,     only: RN_init_particle
+  use mpi_routines,    only: synchronize_bank
+  use output,          only: message, header, print_runtime
   use particle_header, only: Particle
   use physics,         only: transport
   use score,           only: calculate_keff
-  use source,          only: init_source, get_source_particle
+  use source,          only: get_source_particle
   use string,          only: int_to_str
   use timing,          only: timer_start, timer_stop
 
@@ -27,78 +19,13 @@ program main
 
   implicit none
 
-  type(Universe), pointer :: univ
-
-  ! Start timers
+  ! start timer for total run time
   call timer_start(time_total)
+
+  ! set up problem
   call timer_start(time_init)
-
-  ! Setup MPI
-  call setup_mpi()
-
-  ! Read command line arguments
-  call read_command_line()
-  if (master) call create_log()
-
-  ! Print the OpenMC title and version/date/time information
-  if (master) call title()
-  ! Initialize random number generator. The first argument corresponds to which
-  ! random number generator to use- in this case one of the L'Ecuyer 63-bit
-  ! RNGs.
-
-  ! Print initialization header block
-  if (master) call header("INITIALIZATION", 1)
-
-  ! initialize random number generator
-  call RN_init_problem(3, 0_8, 0_8, 0_8, 0)
-
-  ! Set default values for settings
-  call set_defaults()
-
-  ! Read input file -- make a first pass through the file to count cells,
-  ! surfaces, etc in order to allocate arrays, then do a second pass to actually
-  ! read values
-  call read_count(path_input)
-  call read_input(path_input)
-
-  ! Use dictionaries to redefine index pointers
-  call adjust_indices()
-
-  ! determine at which level universes are and link cells to parenting cells
-  univ => universes(BASE_UNIVERSE)
-  call build_universe(univ, 0, 0)
-
-  ! After reading input and basic geometry setup is complete, build lists of
-  ! neighboring cells for efficient tracking
-  call neighbor_lists()
-
-  ! Read cross section summary file to determine what files contain
-  ! cross-sections
-  call read_xsdata(path_xsdata)
-
-  ! With the AWRs from the xsdata, change all material specifications so that
-  ! they contain atom percents summing to 1
-  call normalize_ao()
-
-  ! Read ACE-format cross sections
-  call read_xs()
-
-  ! Construct unionized energy grid from cross-sections
-  call unionized_grid()
-  call original_indices()
-
-  ! calculate total material cross-sections for sampling path lenghts
-  call material_total_xs()
-
-  ! create source particles
-  call init_source()
-
-  ! stop timer for initialization
+  call initialize_run()
   call timer_stop(time_init)
-  if (master) then
-     call echo_input()
-     call print_summary()
-  end if
 
   ! start problem
   call run_problem()

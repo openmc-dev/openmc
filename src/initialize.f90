@@ -1,16 +1,104 @@
 module initialize
 
   use constants
+  use cross_section,    only: read_xs, read_xsdata, material_total_xs
   use datatypes,        only: dict_create, dict_add_key, dict_get_key,         &
                               dict_has_key, DICT_NULL, dict_keys
   use datatypes_header, only: ListKeyValueII, DictionaryII
+  use energy_grid,      only: unionized_grid, original_indices
   use error,            only: fatal_error
-  use geometry_header,  only: Cell, Surface, Universe, Lattice
+  use geometry,         only: neighbor_lists
+  use geometry_header,  only: Cell, Surface, Universe, Lattice, BASE_UNIVERSE
   use global
-  use input_old,        only: bc_dict
+  use input_old,        only: read_count, read_input, bc_dict
+  use logging,          only: create_log
+  use mcnp_random,      only: RN_init_problem
+  use mpi_routines,     only: setup_mpi
+  use output,           only: title, echo_input, message, print_summary,       &
+                              print_particle, header
+  use source,           only: init_source
   use string,           only: int_to_str
 
 contains
+
+!===============================================================================
+! INITIALIZE_RUN takes care of all initialization tasks, i.e. reading
+! from command line, reading xml input files, initializing random
+! number seeds, reading cross sections, initializing starting source,
+! setting up timers, etc.
+!===============================================================================
+
+  subroutine initialize_run()
+    
+    type(Universe), pointer :: univ
+
+    ! Setup MPI
+    call setup_mpi()
+
+    ! Read command line arguments
+    call read_command_line()
+    if (master) call create_log()
+
+    ! Print the OpenMC title and version/date/time information
+    if (master) call title()
+
+    ! Print initialization header block
+    if (master) call header("INITIALIZATION", 1)
+
+    ! Initialize random number generator. The first argument
+    ! corresponds to which random number generator to use- in this
+    ! case one of the L'Ecuyer 63-bit RNGs.
+    call RN_init_problem(3, 0_8, 0_8, 0_8, 0)
+
+    ! Set default values for settings
+    call set_defaults()
+
+    ! Read input file -- make a first pass through the file to count
+    ! cells, surfaces, etc in order to allocate arrays, then do a
+    ! second pass to actually read values
+    call read_count(path_input)
+    call read_input(path_input)
+
+    ! Use dictionaries to redefine index pointers
+    call adjust_indices()
+
+    ! determine at which level universes are and link cells to
+    ! parenting cells
+    univ => universes(BASE_UNIVERSE)
+    call build_universe(univ, 0, 0)
+
+    ! After reading input and basic geometry setup is complete, build
+    ! lists of neighboring cells for efficient tracking
+    call neighbor_lists()
+
+    ! Read cross section summary file to determine what files contain
+    ! cross-sections
+    call read_xsdata(path_xsdata)
+
+    ! With the AWRs from the xsdata, change all material
+    ! specifications so that they contain atom percents summing to 1
+    call normalize_ao()
+
+    ! Read ACE-format cross sections
+    call read_xs()
+
+    ! Construct unionized energy grid from cross-sections
+    call unionized_grid()
+    call original_indices()
+
+    ! calculate total material cross-sections for sampling path lenghts
+    call material_total_xs()
+
+    ! create source particles
+    call init_source()
+
+    ! stop timer for initialization
+    if (master) then
+       call echo_input()
+       call print_summary()
+    end if
+
+  end subroutine initialize_run
 
 !===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line

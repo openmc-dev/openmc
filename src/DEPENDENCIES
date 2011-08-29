@@ -50,12 +50,20 @@ global.o: tally_header.o
 global.o: timing.o
 
 initialize.o: constants.o
+initialize.o: cross_section.o
 initialize.o: datatypes.o
 initialize.o: datatypes_header.o
+initialize.o: energy_grid.o
 initialize.o: error.o
+initialize.o: geometry.o
 initialize.o: geometry_header.o
 initialize.o: global.o
 initialize.o: input_old.o
+initialize.o: logging.o
+initialize.o: mcnp_random.o
+initialize.o: mpi_routines.o
+initialize.o: output.o
+initialize.o: source.o
 initialize.o: string.o
 
 input_old.o: constants.o
@@ -72,14 +80,8 @@ logging.o: constants.o
 logging.o: global.o
 
 main.o: constants.o
-main.o: cross_section.o
-main.o: energy_grid.o
-main.o: geometry.o
-main.o: geometry_header.o
 main.o: global.o
 main.o: initialize.o
-main.o: input_old.o
-main.o: logging.o
 main.o: mcnp_random.o
 main.o: mpi_routines.o
 main.o: output.o

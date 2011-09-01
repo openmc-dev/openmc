@@ -47,5 +47,5 @@ material 41 -1.0  &
 source box -4 -4 -4  4 4 4
 
 xs_data /opt/serpent/xsdata/endfb7
-criticality 20 10 100000
+criticality 20 10 10000
 verbosity 7

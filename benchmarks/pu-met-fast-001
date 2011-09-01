@@ -11,7 +11,7 @@ cell 1          0          1          -1
 surface 1 sph 0. 0. 0. 6.3849
 bc      1 vacuum
 
-source_box -1 -1 -1  1  1  1
+source box -1 -1 -1  1  1  1
 
 material 1    0.04029014 &
     94239.03c 0.037047   &

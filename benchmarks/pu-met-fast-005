@@ -13,7 +13,7 @@ surface 1 sph 0. 0. 0. 5.0419
 surface 2 sph 0. 0. 0. 9.7409
 bc      2 vacuum
 
-source_box -1 -1 -1  1  1  1
+source box -1 -1 -1  1  1  1
 
 material 1    0.04070346 &
     94239.03c 0.037291   &

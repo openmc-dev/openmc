@@ -1,4 +1,4 @@
-module xml_data_material_t
+module xml_data_materials_t
    use READ_XML_PRIMITIVES
    use WRITE_XML_PRIMITIVES
    use XMLPARSE
@@ -715,7 +715,7 @@ subroutine write_xml_type_material_xml( &
        '</' //trim(tag) // '>'
 end subroutine write_xml_type_material_xml
 
-subroutine read_xml_file_material_t(fname, lurep, errout)
+subroutine read_xml_file_materials_t(fname, lurep, errout)
    character(len=*), intent(in)           :: fname
    integer, intent(in), optional          :: lurep
    logical, intent(out), optional         :: errout
@@ -733,7 +733,7 @@ subroutine read_xml_file_material_t(fname, lurep, errout)
    has_material_                        = .false.
    allocate(material_(0))
 
-   call init_xml_file_material_t
+   call init_xml_file_materials_t
    call xml_open( info, fname, .true. )
    call xml_options( info, report_errors=.true., ignore_whitespace=.true.)
    lurep_ = 0
@@ -796,7 +796,7 @@ subroutine read_xml_file_material_t(fname, lurep, errout)
    if ( present(errout) ) errout = error
 end subroutine
 
-subroutine write_xml_file_material_t(fname, lurep)
+subroutine write_xml_file_materials_t(fname, lurep)
    character(len=*), intent(in)           :: fname
    integer, intent(in), optional          :: lurep
 
@@ -815,7 +815,7 @@ subroutine write_xml_file_material_t(fname, lurep)
    call xml_close(info)
 end subroutine
 
-subroutine init_xml_file_material_t
+subroutine init_xml_file_materials_t
 
 end subroutine
 

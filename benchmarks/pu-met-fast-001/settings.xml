@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<settings>
+
+  <!--
+  ==========================================
+  Description: Bare Pu-239 Jezebel Benchmark
+  Case:        PU-MET-FAST-001
+  Written By:  Paul Romano
+  Date:        9/1/2011
+  ==========================================
+  -->
+
+  <xslibrary path="/opt/serpent/xsdata/endfb7" />
+
+  <criticality>
+    <cycles>3000</cycles>
+    <inactive>20</inactive>
+    <particles>10000</particles>
+  </criticality>
+
+  <verbosity value="7" />
+
+  <source>
+    <type>box</type>
+    <coeffs>-1 -1 -1  1  1  1</coeffs>
+  </source>
+
+</settings>

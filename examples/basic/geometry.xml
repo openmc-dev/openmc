@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<geometry>
+
+<!-- Definition of Cells -->
+  <cell uid="1">
+    <universe>0</universe>
+    <fill>37</fill>
+    <surfaces>-2</surfaces>
+  </cell>
+  <cell uid="100">
+    <universe>37</universe>
+    <material>40</material>
+    <surfaces>-1</surfaces>
+  </cell>
+  <cell uid="101">
+    <universe>37</universe>
+    <material>41</material>
+    <surfaces>1</surfaces>
+  </cell>
+  <cell uid="2">
+    <universe>0</universe>
+    <material>41</material>
+    <surfaces>2 -3</surfaces>
+  </cell>
+
+<!-- Defition of Surfaces -->
+  <surface uid="1">
+    <type>z-cylinder</type>
+    <coeffs>0 0 7</coeffs>
+  </surface>
+  <surface uid="2">
+    <type>z-cylinder</type>
+    <coeffs>0 0 9</coeffs>
+  </surface>
+  <surface uid="3">
+    <type>z-cylinder</type>
+    <coeffs>0 0 11</coeffs>
+    <boundary>vacuum</boundary>
+  </surface>
+    
+</geometry>

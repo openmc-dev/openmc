@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <tally id="1">
+    <!-- this is where you specify filters -->
+    <filters>
+      <region>1</region>
+      <energy>0.0 0.625 20.0e6</energy>
+    </filters>
+
+    <!-- which reactions to score -->
+    <reactions>1 2 -4 -8</reactions>
+
+    <!-- which nuclides to score -->
+    <nuclides>U-238</nuclides>
+  </tally>
+
+</tallies>

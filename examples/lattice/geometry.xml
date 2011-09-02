@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <cell uid="1">
+    <universe>0</universe>
+    <fill>111</fill>
+    <surfaces>1 -2 3 -4</surfaces>
+  </cell>
+  <cell uid="100">
+    <universe>3</universe>
+    <material>40</material>
+    <surfaces>-5</surfaces>
+  </cell>
+  <cell uid="101">
+    <universe>3</universe>
+    <material>41</material>
+    <surfaces>5</surfaces>
+  </cell>
+
+  <lattice uid="111">
+    <type>rectangular</type>
+    <dimension>20 20</dimension>
+    <origin>-10.0 -10.0</origin>
+    <width>1.0 1.0</width>
+    <universes>
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+    </universes>
+  </lattice>
+
+  <surface uid="1" type="x-plane" coeffs="-9.9" boundary="vacuum" />
+  <surface uid="2" type="x-plane" coeffs="9.9" boundary="vacuum" />
+  <surface uid="3" type="y-plane" coeffs="-9.9" boundary="vacuum" />
+  <surface uid="4" type="y-plane" coeffs="9.9" boundary="vacuum" />
+  <surface uid="5">
+    <type>z-cylinder</type>
+    <coeffs>0.0 0.0 0.4</coeffs>
+  </surface>
+
+</geometry>

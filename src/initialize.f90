@@ -10,14 +10,14 @@ module initialize
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Surface, Universe, Lattice, BASE_UNIVERSE
   use global
-  use input_old,        only: read_count, read_input, bc_dict
+  use input_xml,        only: read_input_xml, cells_in_univ_dict
   use logging,          only: create_log
   use mcnp_random,      only: RN_init_problem
   use mpi_routines,     only: setup_mpi
   use output,           only: title, echo_input, message, print_summary,       &
                               print_particle, header
   use source,           only: init_source
-  use string,           only: int_to_str
+  use string,           only: int_to_str, starts_with, ends_with
   use timing,           only: timer_start, timer_stop
 
 contains
@@ -57,11 +57,16 @@ contains
     ! Set default values for settings
     call set_defaults()
 
+    ! set up dictionaries
+    call create_dictionaries()
+
     ! Read input file -- make a first pass through the file to count
     ! cells, surfaces, etc in order to allocate arrays, then do a
     ! second pass to actually read values
-    call read_count(path_input)
-    call read_input(path_input)
+    call read_input_xml()
+
+    ! Set up universe structures
+    call prepare_universes()
 
     ! Use dictionaries to redefine index pointers
     call adjust_indices()
@@ -113,34 +118,119 @@ contains
 
   subroutine read_command_line()
 
-    integer                 :: argc        ! number of command line arguments
-    logical                 :: file_exists ! does specified input file exist?
-    character(MAX_LINE_LEN) :: msg         ! error message
-    character(7)            :: readable    ! is input file readable?
+    integer                 :: argc ! number of command line arguments
+    character(MAX_LINE_LEN) :: pwd  ! present working directory
+    
+    ! Get working directory
+    call GET_ENVIRONMENT_VARIABLE("PWD", pwd)
 
+    ! Check number of command line arguments
     argc = COMMAND_ARGUMENT_COUNT()
+
+    ! Determine directory where XML input files are
     if (argc > 0) then
        call GET_COMMAND_ARGUMENT(1, path_input)
+       ! Need to add working directory if the given path is a relative
+       ! path
+       if (.not. starts_with(path_input, "/")) then
+          path_input = trim(pwd) // "/" // trim(path_input)
+       end if
     else
-       msg = "No input file specified!"
-       call fatal_error(msg)
+       path_input = pwd
     end if
 
-    ! Check if input file exists and is readable
-    inquire(FILE=path_input, EXIST=file_exists, READ=readable)
-    if (.not. file_exists) then
-       msg = "Input file '" // trim(path_input) // "' does not exist!"
-       call fatal_error(msg)
-    elseif (readable(1:3) == 'NO') then
-       ! Need to explicitly check for a NO status -- Intel compiler looks at
-       ! file attributes only if the file is open on a unit. Therefore, it will
-       ! always return UNKNOWN
-       msg = "Input file '" // trim(path_input) // "' is not readable! &
-            &Change file permissions with chmod command."
-       call fatal_error(msg)
+    ! Add slash at end of directory if it isn't there
+    if (.not. ends_with(path_input, "/")) then
+       path_input = trim(path_input) // "/"
     end if
+
+    ! TODO: Check that directory exists
 
   end subroutine read_command_line
+
+!===============================================================================
+! CREATE_DICTIONARIES initializes the various dictionary variables. It would be
+! nice to avoid this and just have a check at the beginning of
+! dictionary_add_key.
+!===============================================================================
+
+  subroutine create_dictionaries()
+
+    ! Create cell dictionary
+    call dict_create(cell_dict)
+    call dict_create(universe_dict)
+    call dict_create(lattice_dict)
+    call dict_create(surface_dict)
+    call dict_create(material_dict)
+    call dict_create(tally_dict)
+    call dict_create(cells_in_univ_dict)
+    
+  end subroutine create_dictionaries
+
+!===============================================================================
+! PREPARE_UNIVERSES allocates the universes array and determines the cells array
+! for each universe.
+!===============================================================================
+
+  subroutine prepare_universes()
+
+    integer              :: i     ! index in cells array
+    integer              :: index ! index in universes array
+    integer              :: count ! number of cells in a universe
+    integer, allocatable :: index_cell_in_univ(:) ! the index in the univ%cells
+                                                  ! array for each universe
+    type(ListKeyValueII), pointer :: key_list => null()
+    type(Universe),       pointer :: univ => null()
+    type(Cell),           pointer :: c => null()
+
+    allocate(universes(n_universes))
+
+    ! We also need to allocate the cell count lists for each universe. The logic
+    ! for this is a little more convoluted. In universe_dict, the (key,value)
+    ! pairs are the uid of the universe and the index in the array. In
+    ! ucount_dict, it's the uid of the universe and the number of cells.
+
+    key_list => dict_keys(universe_dict)
+    do while (associated(key_list))
+       ! find index of universe in universes array
+       index = key_list%data%value
+       univ => universes(index)
+       univ % uid = key_list%data%key
+
+       ! check for lowest level universe
+       if (univ % uid == 0) BASE_UNIVERSE = index
+       
+       ! find cell count for this universe
+       count = dict_get_key(cells_in_univ_dict, key_list%data%key)
+
+       ! allocate cell list for universe
+       allocate(univ % cells(count))
+       univ % n_cells = count
+       
+       ! move to next universe
+       key_list => key_list%next
+    end do
+
+    ! Also allocate a list for keeping track of where cells have been assigned
+    ! in each universe
+
+    allocate(index_cell_in_univ(n_universes))
+    index_cell_in_univ = 0
+
+    do i = 1, n_cells
+       c => cells(i)
+
+       ! get pointer to corresponding universe
+       index = dict_get_key(universe_dict, c % universe)
+       univ => universes(index)
+
+       ! increment the index for the cells array within the Universe object and
+       ! then store the index of the Cell object in that array
+       index_cell_in_univ(index) = index_cell_in_univ(index) + 1
+       univ % cells(index_cell_in_univ(index)) = i
+    end do
+
+  end subroutine prepare_universes
 
 !===============================================================================
 ! ADJUST_INDICES changes the values for 'surfaces' for each cell and the
@@ -152,67 +242,91 @@ contains
 
   subroutine adjust_indices()
 
-    integer                 :: i        ! index in cells array
-    integer                 :: j        ! index over surface list
-    integer                 :: index    ! index in surfaces/materials array 
-    integer                 :: surf_num ! user-specified surface number
-    integer                 :: bc       ! boundary condition
-    character(MAX_LINE_LEN) :: msg      ! output/error message
-    type(Cell),           pointer :: c => null()
-    type(Surface),        pointer :: surf => null()
-    type(ListKeyValueII), pointer :: key_list => null()
+    integer                 :: i            ! index in cells array
+    integer                 :: j            ! index over surface list
+    integer                 :: k
+    integer                 :: index        ! index in surfaces/materials array 
+    integer                 :: universe_num ! user-specified universe number
+    integer                 :: surf_num     ! user-specified surface number
+    character(MAX_LINE_LEN) :: msg          ! output/error message
+    type(Cell),     pointer :: c => null()
+    type(Lattice),  pointer :: l => null()
     
     do i = 1, n_cells
-       ! adjust boundary list
+       ! =======================================================================
+       ! ADJUST SURFACE LIST FOR EACH CELL
+
        c => cells(i)
-       do j = 1, c%n_surfaces
-          surf_num = c%surfaces(j)
+       do j = 1, c % n_surfaces
+          surf_num = c % surfaces(j)
           if (surf_num < OP_DIFFERENCE) then
              index = dict_get_key(surface_dict, abs(surf_num))
              if (index == DICT_NULL) then
                 surf_num = abs(surf_num)
                 msg = "Could not find surface " // trim(int_to_str(surf_num)) // &
-                     & " specified on cell " // trim(int_to_str(c%uid))
+                     & " specified on cell " // trim(int_to_str(c % uid))
                 call fatal_error(msg)
              end if
-             c%surfaces(j) = sign(index, surf_num)
+             c % surfaces(j) = sign(index, surf_num)
           end if
        end do
 
-       ! adjust material indices
-       if (c % type == CELL_NORMAL) then
-          index = dict_get_key(material_dict, c%material)
-          if (index == DICT_NULL) then
-             msg = "Could not find material " // trim(int_to_str(c%material)) // &
-                  & " specified on cell " // trim(int_to_str(c%uid))
+       ! =======================================================================
+       ! ADJUST UNIVERSE INDEX FOR EACH CELL
+
+       if (dict_has_key(universe_dict, c % universe)) then
+          c % universe = dict_get_key(universe_dict, c % universe)
+       else
+          msg = "Could not find universe " // trim(int_to_str(c % universe)) // &
+               " specified on cell " // trim(int_to_str(c % uid))
+          call fatal_error(msg)
+       end if
+
+       ! =======================================================================
+       ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
+
+       if (c % material /= 0) then
+          if (dict_has_key(material_dict, c % material)) then
+             c % type = CELL_NORMAL
+             c % material = dict_get_key(material_dict, c % material)
+          else
+             msg = "Could not find material " // trim(int_to_str(c % material)) // &
+                   " specified on cell " // trim(int_to_str(c % uid))
              call fatal_error(msg)
           end if
-          c%material = index
+       else
+          universe_num = c % fill
+          if (dict_has_key(universe_dict, universe_num)) then
+             c % type = CELL_FILL
+             c % fill = dict_get_key(universe_dict, universe_num)
+          elseif (dict_has_key(lattice_dict, universe_num)) then
+             c % type = CELL_LATTICE
+             c % fill = dict_get_key(lattice_dict, universe_num)
+          else
+             msg = "Specified fill " // trim(int_to_str(c % fill)) // " on cell " // &
+                  trim(int_to_str(c % uid)) // " is neither a universe nor a lattice."
+             call fatal_error(msg)
+          end if
        end if
     end do
 
-    ! Check to make sure boundary conditions were specified
-    key_list => dict_keys(bc_dict)
-    if (.not. associated(key_list)) then
-       msg = "No boundary conditions specified!"
-       call fatal_error(msg)
-    end if
+    ! ==========================================================================
+    ! ADJUST UNIVERSE INDICES FOR EACH LATTICE
 
-    ! Set boundary conditions for surfaces
-    do while (associated(key_list))
-       ! find index of universe in universes array
-       surf_num = key_list%data%key
-       bc       = key_list%data%value
-
-       ! establish pointer to surface
-       index = dict_get_key(surface_dict, surf_num)
-       surf => surfaces(index)
-
-       ! set boundary condition
-       surf % bc = bc
-       
-       ! move to next universe
-       key_list => key_list%next
+    do i = 1, n_lattices
+       l => lattices(i)
+       do j = 1, l % n_x
+          do k = 1, l % n_y
+             universe_num = l % element(j,k)
+             if (dict_has_key(universe_dict, universe_num)) then
+                l % element(j,k) = dict_get_key(universe_dict, universe_num)
+             else
+                msg = "Invalid universe number " // trim(int_to_str(universe_num)) &
+                     // " specified on lattice " // trim(int_to_str(l % uid))
+                call fatal_error(msg)
+             end if
+          end do
+       end do
     end do
 
   end subroutine adjust_indices

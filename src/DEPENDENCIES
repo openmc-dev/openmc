@@ -58,7 +58,7 @@ initialize.o: error.o
 initialize.o: geometry.o
 initialize.o: geometry_header.o
 initialize.o: global.o
-initialize.o: input_old.o
+initialize.o: input_xml.o
 initialize.o: logging.o
 initialize.o: mcnp_random.o
 initialize.o: mpi_routines.o
@@ -67,15 +67,16 @@ initialize.o: source.o
 initialize.o: string.o
 initialize.o: timing.o
 
-input_old.o: constants.o
-input_old.o: datatypes.o
-input_old.o: datatypes_header.o
-input_old.o: geometry_header.o
-input_old.o: global.o
-input_old.o: error.o
-input_old.o: fileio.o
-input_old.o: output.o
-input_old.o: string.o
+input_xml.o: constants.o
+input_xml.o: datatypes.o
+input_xml.o: error.o
+input_xml.o: geometry_header.o
+input_xml.o: global.o
+input_xml.o: string.o
+input_xml.o: xml_geometry.o
+input_xml.o: xml_material.o
+input_xml.o: xml_settings.o
+input_xml.o: xml_tallies.o
 
 logging.o: constants.o
 logging.o: global.o

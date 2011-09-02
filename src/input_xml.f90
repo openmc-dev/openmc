@@ -24,7 +24,7 @@ contains
 
     call read_settings_xml()
     call read_geometry_xml()
-    call read_material_xml()
+    call read_materials_xml()
 
   end subroutine read_input_xml
 
@@ -343,13 +343,13 @@ contains
   end subroutine read_geometry_xml
 
 !===============================================================================
-! READ_MATERIAL_XML reads data from a material.xml file and parses it, checking
+! READ_MATERIAL_XML reads data from a materials.xml file and parses it, checking
 ! for errors and placing properly-formatted data in the right data structures
 !===============================================================================
 
-  subroutine read_material_xml
+  subroutine read_materials_xml
 
-    use xml_data_material_t
+    use xml_data_materials_t
 
     integer :: i, j
     integer :: n
@@ -361,8 +361,8 @@ contains
     type(Material),    pointer :: m => null()
     type(nuclide_xml), pointer :: nuc => null()
 
-    filename = trim(path_input) // "material.xml"
-    call read_xml_file_material_t(filename)
+    filename = trim(path_input) // "materials.xml"
+    call read_xml_file_materials_t(filename)
 
     ! Allocate cells array
     n_materials = size(material_)
@@ -439,7 +439,7 @@ contains
 
     end do
 
-  end subroutine read_material_xml
+  end subroutine read_materials_xml
 
 !===============================================================================
 ! READ_TALLIES_XML reads data from a tallies.xml file and parses it, checking

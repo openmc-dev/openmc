@@ -74,7 +74,7 @@ input_xml.o: geometry_header.o
 input_xml.o: global.o
 input_xml.o: string.o
 input_xml.o: xml_geometry.o
-input_xml.o: xml_material.o
+input_xml.o: xml_materials.o
 input_xml.o: xml_settings.o
 input_xml.o: xml_tallies.o
 

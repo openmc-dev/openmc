@@ -30,6 +30,6 @@ string.o \
 tally_header.o \
 timing.o \
 xml_geometry.o \
-xml_material.o \
+xml_materials.o \
 xml_settings.o \
 xml_tallies.o

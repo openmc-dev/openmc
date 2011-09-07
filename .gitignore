@@ -2,5 +2,10 @@
 *.o
 *.mod
 *.log
+src/openmc
+
 # emacs backups
 *~
+
+# Documentation builds
+docs/build

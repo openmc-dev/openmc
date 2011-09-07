@@ -182,8 +182,8 @@ htmlhelp_basename = 'openmcdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'bright.tex', u'OpenMC Documentation',
-   u'The OpenMC Development Team', 'manual'),
+  ('index', 'openmc.tex', u'OpenMC Documentation',
+   u'Massachusetts Institute of Technology', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

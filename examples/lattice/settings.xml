@@ -2,7 +2,7 @@
 <settings>
 
   <!-- Path for cross section library -->
-  <xslibrary path="/opt/serpent/xsdata/endfb7" />
+  <xslibrary path="/opt/serpent/xsdata/endfb7/xsdata" />
 
   <!-- Parameters for criticality calculation -->
   <criticality>

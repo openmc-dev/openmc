@@ -10,7 +10,7 @@
   ===============================================================
   -->
 
-  <xslibrary path="/opt/serpent/xsdata/endfb7" />
+  <xslibrary path="/opt/serpent/xsdata/endfb7/xsdata" />
 
   <criticality>
     <cycles>3000</cycles>

@@ -1253,12 +1253,7 @@ contains
     call message(msg, 5)
 
     ! Construct filename
-    n = len(path)
-    if (path(n:n) == '/') then
-       filename = trim(path) // 'xsdata'
-    else
-       filename = trim(path) // '/xsdata'
-    end if
+    filename = trim(path)
 
     ! Check if xsdata exists and is readable
     inquire(FILE=filename, EXIST=file_exists, READ=readable)

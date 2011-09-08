@@ -132,6 +132,13 @@ contains
        c % material = cell_(i) % material
        c % fill     = cell_(i) % fill
 
+       ! Check to make sure that either material or fill was specified
+       if (c % material == 0 .and. c % fill == 0) then
+          msg = "Neither material nor fill was specified for cell " // & 
+               trim(int_to_str(c % uid))
+          call fatal_error(msg)
+       end if
+
        ! Check to make sure that both material and fill haven't been
        ! specified simultaneously
        if (c % material /= 0 .and. c % fill /= 0) then

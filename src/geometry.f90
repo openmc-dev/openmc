@@ -178,6 +178,13 @@ contains
 
     integer                 :: i          ! index of neighbors
     integer                 :: index_cell ! index in cells array
+    real(8)                 :: u          ! x-component of direction
+    real(8)                 :: v          ! y-component of direction
+    real(8)                 :: w          ! z-component of direction
+    real(8)                 :: n1         ! x-component of surface normal
+    real(8)                 :: n2         ! y-component of surface normal
+    real(8)                 :: n3         ! z-component of surface normal
+    real(8)                 :: norm       ! "norm" of surface normal
     logical                 :: found      ! particle found in universe?
     character(MAX_LINE_LEN) :: msg        ! output/error message?
     type(Surface),  pointer :: surf
@@ -190,11 +197,55 @@ contains
        call message(msg)
     end if
 
-    ! check for leakage
     if (surf%bc == BC_VACUUM) then
+       ! =======================================================================
+       ! PARTICLE LEAKS OUT OF PROBLEM
+
        p%alive = .false.
        if (verbosity >= 10) then
           msg = "    Leaked out of surface " // trim(int_to_str(surf%uid))
+          call message(msg)
+       end if
+       return
+
+    elseif (surf%bc == BC_REFLECT) then
+       ! =======================================================================
+       ! PARTICLE REFLECTS FROM SURFACE
+
+       ! Copy particle's direction cosines
+       u = p % uvw(1)
+       v = p % uvw(2)
+       w = p % uvw(3)
+
+       select case (surf%type)
+       case (SURF_PX)
+          p % uvw = (/ -u, v, w /)
+       case (SURF_PY)
+          p % uvw = (/ u, -v, w /)
+       case (SURF_PZ)
+          p % uvw = (/ u, v, -w /)
+       case (SURF_PLANE)
+          ! Find surface coefficients and norm of vector normal to surface
+          n1 = surf % coeffs(1)
+          n2 = surf % coeffs(2)
+          n3 = surf % coeffs(3)
+          norm = n1*n1 + n2*n2 + n3*n3
+
+          ! Reflect direction according to normal
+          u = u - 2*u*n1*n1/norm
+          v = v - 2*v*n2*n2/norm
+          w = w - 2*w*n3*n3/norm
+
+          ! Set vector
+          p % uvw = (/ u, v, w /)
+       case default
+          msg = "Reflection not supported for surface " // &
+               trim(int_to_str(surf % uid))
+          call fatal_error(msg)
+       end select
+
+       if (verbosity >= 10) then
+          msg = "    Reflected from surface " // trim(int_to_str(surf%uid))
           call message(msg)
        end if
        return
@@ -452,7 +503,11 @@ contains
           y = p % xyz(2)
           z = p % xyz(3)
        end if
-       ! check for coincident surface
+
+       ! check for coincident surface -- note that we can't skip the calculation
+       ! in general because a particle could be on one side of a cylinder and
+       ! still have a positive distance to the other
+
        index_surf = expression(i)
        if (index_surf == current_surf) then
           on_surface = .true.

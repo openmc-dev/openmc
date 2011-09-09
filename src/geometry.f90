@@ -179,6 +179,10 @@ contains
 
     integer                 :: i          ! index of neighbors
     integer                 :: index_cell ! index in cells array
+    real(8)                 :: x          ! x-x0 for sphere
+    real(8)                 :: y          ! y-y0 for sphere
+    real(8)                 :: z          ! z-z0 for sphere
+    real(8)                 :: R          ! radius of sphere
     real(8)                 :: u          ! x-component of direction
     real(8)                 :: v          ! y-component of direction
     real(8)                 :: w          ! z-component of direction
@@ -238,6 +242,22 @@ contains
           u = u - 2*dot_prod*n1/norm
           v = v - 2*dot_prod*n2/norm
           w = w - 2*dot_prod*n3/norm
+
+          ! Set vector
+          p % uvw = (/ u, v, w /)
+       case (SURF_SPHERE)
+          ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
+          ! normal
+          x = p % xyz(1) - surf % coeffs(1)
+          y = p % xyz(2) - surf % coeffs(2)
+          z = p % xyz(3) - surf % coeffs(3)
+          R = surf % coeffs(4)
+          dot_prod = u*x + v*y + w*z
+
+          ! Reflect direction according to normal
+          u = u - 2*dot_prod*x/(R*R)
+          v = v - 2*dot_prod*y/(R*R)
+          w = w - 2*dot_prod*z/(R*R)
 
           ! Set vector
           p % uvw = (/ u, v, w /)

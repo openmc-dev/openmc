@@ -172,9 +172,10 @@ contains
 ! CROSS_SURFACE moves a particle into a new cell
 !===============================================================================
 
-  subroutine cross_surface(p)
+  subroutine cross_surface(p, last_cell)
 
     type(Particle), pointer :: p
+    integer, intent(in)     :: last_cell  ! last cell particle was in
 
     integer                 :: i          ! index of neighbors
     integer                 :: index_cell ! index in cells array
@@ -244,6 +245,11 @@ contains
           call fatal_error(msg)
        end select
 
+       ! Reassign particle's cell and surface
+       p % cell = last_cell
+       p % surface = -p % surface
+
+       ! Diagnostic message
        if (verbosity >= 10) then
           msg = "    Reflected from surface " // trim(int_to_str(surf%uid))
           call message(msg)
@@ -522,7 +528,7 @@ contains
        surf_p => surfaces(index_surf)
        select case (surf_p%type)
        case (SURF_PX)
-          if (u == ZERO) then
+          if (on_surface .or. u == ZERO) then
              d = INFINITY
           else
              x0 = surf_p % coeffs(1)
@@ -531,7 +537,7 @@ contains
           end if
           
        case (SURF_PY)
-          if (v == ZERO) then
+          if (on_surface .or. v == ZERO) then
              d = INFINITY
           else
              y0 = surf_p % coeffs(1)
@@ -540,7 +546,7 @@ contains
           end if
           
        case (SURF_PZ)
-          if (w == ZERO) then
+          if (on_surface .or. w == ZERO) then
              d = INFINITY
           else
              z0 = surf_p % coeffs(1)
@@ -555,7 +561,7 @@ contains
           D = surf_p % coeffs(4)
           
           tmp = A*u + B*v + C*w
-          if (tmp == ZERO) then
+          if (on_surface .or. tmp == ZERO) then
              d = INFINITY
           else
              d = -(A*x + B*y + C*w - D)/tmp

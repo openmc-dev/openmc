@@ -28,6 +28,7 @@ contains
     type(Particle), pointer :: p
 
     integer        :: surf           ! surface which particle is on
+    integer        :: last_cell      ! most recent cell particle was in
     integer        :: IE             ! index on energy grid
     real(8)        :: d_to_boundary  ! distance to nearest boundary
     real(8)        :: d_to_collision ! sampled distance to collision
@@ -87,13 +88,14 @@ contains
        p%xyz_local = p%xyz_local + distance * p%uvw
 
        if (d_to_collision > d_to_boundary) then
+          last_cell = p % cell
           p % cell = 0
           if (in_lattice) then
              p % surface = 0
              call cross_lattice(p)
           else
              p % surface = surf
-             call cross_surface(p)
+             call cross_surface(p, last_cell)
           end if
        else
           ! collision

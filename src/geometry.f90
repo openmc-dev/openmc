@@ -185,6 +185,7 @@ contains
     real(8)                 :: n1         ! x-component of surface normal
     real(8)                 :: n2         ! y-component of surface normal
     real(8)                 :: n3         ! z-component of surface normal
+    real(8)                 :: dot_prod   ! dot product of direction and normal
     real(8)                 :: norm       ! "norm" of surface normal
     logical                 :: found      ! particle found in universe?
     character(MAX_LINE_LEN) :: msg        ! output/error message?
@@ -231,11 +232,12 @@ contains
           n2 = surf % coeffs(2)
           n3 = surf % coeffs(3)
           norm = n1*n1 + n2*n2 + n3*n3
+          dot_prod = u*n1 + v*n2 + w*n3
 
           ! Reflect direction according to normal
-          u = u - 2*u*n1*n1/norm
-          v = v - 2*v*n2*n2/norm
-          w = w - 2*w*n3*n3/norm
+          u = u - 2*dot_prod*n1/norm
+          v = v - 2*dot_prod*n2/norm
+          w = w - 2*dot_prod*n3/norm
 
           ! Set vector
           p % uvw = (/ u, v, w /)

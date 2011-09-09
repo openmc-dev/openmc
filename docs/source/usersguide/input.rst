@@ -50,40 +50,40 @@ Geometry Specification -- geometry.xml
 
 Types of surfaces:
 
-x-plane
-  A plane perpendicular to the x axis, i.e. a surface of the form x - x0
-  = 0. The coefficients specified are "x0".
+``x-plane``
+  A plane perpendicular to the x axis, i.e. a surface of the form :math:`x - x_0
+  = 0`. The coefficients specified are ":math:`x_0`".
 
-y-plane
-  A plane perpendicular to the y axis, i.e. a surface of the form y - y0
-  = 0. The coefficients specified are "y0".
+``y-plane``
+  A plane perpendicular to the y axis, i.e. a surface of the form :math:`y - y_0
+  = 0`. The coefficients specified are ":math:`y_0`".
 
-z-plane
-  A plane perpendicular to the z axis, i.e. a surface of the form z - z0
-  = 0. The coefficients specified are "z0".
+``z-plane``
+  A plane perpendicular to the z axis, i.e. a surface of the form :math:`z - z_0
+  = 0`. The coefficients specified are ":math:`z_0`".
 
-plane
-  An arbitrary plane of the form A*x + B*y + C*z = D. The coefficients
-  specified are "A B C D".
+``plane``
+  An arbitrary plane of the form :math:`Ax + By + Cz = D`. The coefficients
+  specified are ":math:`A \: B \: C \: D`".
 
-x-cylinder
+``x-cylinder``
   An infinite cylinder whose length is paralle to the x-axis. This is a
-  quadratic surface of the form (y - y0)^2 + (z - z0)^2 = R^2. The coefficients
-  specified are "y0 z0 R".
+  quadratic surface of the form :math:`(y - y_0)^2 + (z - z_0)^2 = R^2`. The
+  coefficients specified are ":math:`y_0 \: z_0 \: R`".
 
-y-cylinder
+``y-cylinder``
   An infinite cylinder whose length is paralle to the y-axis. This is a
-  quadratic surface of the form (x - x0)^2 + (z - z0)^2 = R^2. The coefficients
-  specified are "x0 z0 R".
+  quadratic surface of the form :math:`(x - x_0)^2 + (z - z_0)^2 = R^2`. The
+  coefficients specified are ":math:`x_0 \: z_0 \: R`".
 
-z-cylinder
+``z-cylinder``
   An infinite cylinder whose length is paralle to the z-axis. This is a
-  quadratic surface of the form (x - x0)^2 + (y - y0)^2 = R^2. The coefficients
-  specified are "x0 y0 R".
+  quadratic surface of the form :math:`(x - x_0)^2 + (y - y_0)^2 = R^2`. The
+  coefficients specified are ":math:`x_0 \: y_0 \: R`".
 
-sphere 
-  A sphere of the form (x - x0)^2 + (y - y0)^2 + (z - z0)^2 = R^2. The
-  coefficients specified are "x0 y0 z0 R".
+``sphere``
+  A sphere of the form :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
+  R^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0 \: R`".
 
 ----------------------------------------
 Materials Specification -- materials.xml

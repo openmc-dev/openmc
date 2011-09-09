@@ -9,3 +9,5 @@ essential aspects of using OpenMC to perform neutronic simulations.
 
 .. toctree::
     :maxdepth: 1
+
+    input

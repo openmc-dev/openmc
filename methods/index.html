@@ -53,6 +53,20 @@
 <p>The OpenMC code solves the neutron transport equation using the Monte Carlo
 method whereby particles are tracked as they randomly move through a geometry,
 undergoing collisions, and creating secondary particles.</p>
+<div class="section" id="reflective-surfaces">
+<h2>Reflective Surfaces<a class="headerlink" href="#reflective-surfaces" title="Permalink to this headline">¶</a></h2>
+<p>In general, a surface can be written in the form <img class="math" src="../_images/math/7a618bda1847d33ede0ff905641965782665226a.png" alt="f(x,y,z) = 0"/>. If a
+neutron is traveling in direction <img class="math" src="../_images/math/0e25809cc8ec81373d3c46ff247a7c6d3a63dcaf.png" alt="\vec{v}"/> and crosses a reflective
+surface of the above form, it can be shown that the velocity vector will then
+become</p>
+<div class="math">
+<p><img src="../_images/math/ec1573ce905ac3e6758c191cd5c52441ed093cf8.png" alt="\mathbf{v'} = \mathbf{v} - 2 (\mathbf{v} \cdot \hat{\mathbf{n}})
+\hat{\mathbf{n}}" /></p>
+</div><p>where <img class="math" src="../_images/math/c784dcc2598753df9d694c4439b2320311b94dca.png" alt="\hat{\mathbf{n}}"/> is a unit vector normal to the surface at the
+point of the surface crossing. The direction of the surface normal will be the
+gradient to the surface at the point of crossing, i.e. <img class="math" src="../_images/math/c4301d4bf1894216758b926b70a378c73b059d9a.png" alt="\mathbf{n} =
+\nabla f(x,y,z)"/>.</p>
+</div>
 </div>
 
 
@@ -61,6 +75,14 @@ undergoing collisions, and creating secondary particles.</p>
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Methodology</a><ul>
+<li><a class="reference internal" href="#reflective-surfaces">Reflective Surfaces</a></li>
+</ul>
+</li>
+</ul>
+
   <h4>Previous topic</h4>
   <p class="topless"><a href="../install.html"
                         title="previous chapter">Installation</a></p>

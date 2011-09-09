@@ -27,7 +27,7 @@ your own risk.
 Configuration
 -------------
 
-All configuration for OpenMC is done within the Makefile located
+All configuration for OpenMC is done within the Makefile located in
 ``src/Makefile``. In the Makefile, you will see that there are a number of User
 Options which can be changed. It is recommended that you do not change anything
 else in the Makefile unless you are experienced with compiling and building

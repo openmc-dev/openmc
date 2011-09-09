@@ -1,0 +1,199 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Creating XML Input Files &mdash; OpenMC v0.3.1 documentation</title>
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.3.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="OpenMC v0.3.1 documentation" href="../index.html" />
+    <link rel="up" title="User’s Guide" href="index.html" />
+    <link rel="next" title="Development Team" href="../developers.html" />
+    <link rel="prev" title="User’s Guide" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../developers.html" title="Development Team"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="User’s Guide"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">OpenMC v0.3.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">User&#8217;s Guide</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="creating-xml-input-files">
+<span id="usersguide-input"></span><h1>Creating XML Input Files<a class="headerlink" href="#creating-xml-input-files" title="Permalink to this headline">¶</a></h1>
+<p>Unlike many other Monte Carlo codes which use an arbitrary-format ASCII file
+with &#8220;cards&#8221; to specify a particular geometry, materials, and associated run
+settings, the input files for OpenMC are structured in a set of <a class="reference external" href="http://www.w3.org/XML/">XML</a> files. XML,
+which stands for eXtensible Markup Language, is a simple format that allows data
+to be exchanged efficiently between different programs and interfaces.</p>
+<p>Anyone who has ever seen webpages written in HTML will be familiar with the
+structure of XML whereby &#8220;tags&#8221; enclosed in angle brackets denote that a
+particular piece of data will follow. Let us examine the follow example:</p>
+<div class="highlight-python"><pre>&lt;person&gt;
+  &lt;firstname&gt;John&lt;/firstname&gt;
+  &lt;lastname&gt;Smith&lt;/lastname&gt;
+  &lt;age&gt;27&lt;/age&gt;
+  &lt;occupation&gt;Health Physicist&lt;/occupation&gt;
+&lt;/person&gt;</pre>
+</div>
+<p>Here we see that the first tag indicates that the following data will describe a
+person. The nested tags <em>firstname</em>, <em>lastname</em>, <em>age</em>, and <em>occupation</em>
+indicate characteristics about the person being described.</p>
+<p>In much the same way, OpenMC input uses XML tags to describe the geometry, the
+materials, and settings for a Monte Carlo simulation.</p>
+<div class="section" id="files">
+<h2>Files<a class="headerlink" href="#files" title="Permalink to this headline">¶</a></h2>
+<p>To assemble a complete model for OpenMC, one needs to create separate XML files
+for the geometry, materails, and settings. Additionally, an optional tallies XML
+file specifies physical quantities to be tallied. OpenMC expects that these
+files are called:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">geometry.xml</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">materials.xml</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">setings.xml</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">tallies.xml</span></tt></li>
+</ul>
+</div>
+<div class="section" id="geometry-specification-geometry-xml">
+<h2>Geometry Specification &#8211; geometry.xml<a class="headerlink" href="#geometry-specification-geometry-xml" title="Permalink to this headline">¶</a></h2>
+<p>Types of surfaces:</p>
+<dl class="docutils">
+<dt><tt class="docutils literal"><span class="pre">x-plane</span></tt></dt>
+<dd>A plane perpendicular to the x axis, i.e. a surface of the form <img class="math" src="../_images/math/c97be2c5d5ea73f3537be247c4cbb9d842dd0567.png" alt="x - x_0
+= 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/17f1249ad95b7682b8316ad21de8ce4ee9fdcf93.png" alt="x_0"/>&#8221;.</dd>
+<dt><tt class="docutils literal"><span class="pre">y-plane</span></tt></dt>
+<dd>A plane perpendicular to the y axis, i.e. a surface of the form <img class="math" src="../_images/math/ce995bc4e617a85ac28c2d3c238d362a1f38bb34.png" alt="y - y_0
+= 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/721e40b7e0ac4359611aebe48cfb63122a347798.png" alt="y_0"/>&#8221;.</dd>
+<dt><tt class="docutils literal"><span class="pre">z-plane</span></tt></dt>
+<dd>A plane perpendicular to the z axis, i.e. a surface of the form <img class="math" src="../_images/math/309c87ef1ad84c2412670454fac9aea8f52c0481.png" alt="z - z_0
+= 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/bab9abe98679312d2a3308c76188cf2cbc492f68.png" alt="z_0"/>&#8221;.</dd>
+<dt><tt class="docutils literal"><span class="pre">plane</span></tt></dt>
+<dd>An arbitrary plane of the form <img class="math" src="../_images/math/eb8661ea00d3e9e10ef23de03755960eec4b554f.png" alt="Ax + By + Cz = D"/>. The coefficients
+specified are &#8220;<img class="math" src="../_images/math/5d687cb5bc98aa30d5460e4d0f34feaa8ec52008.png" alt="A \: B \: C \: D"/>&#8221;.</dd>
+<dt><tt class="docutils literal"><span class="pre">x-cylinder</span></tt></dt>
+<dd>An infinite cylinder whose length is paralle to the x-axis. This is a
+quadratic surface of the form <img class="math" src="../_images/math/c70e001674ec3ce487852ca76aab6d872c634cbf.png" alt="(y - y_0)^2 + (z - z_0)^2 = R^2"/>. The
+coefficients specified are &#8220;<img class="math" src="../_images/math/8f0dd3d5d7c73c87564b7aa9d05b3b933a107e6c.png" alt="y_0 \: z_0 \: R"/>&#8221;.</dd>
+<dt><tt class="docutils literal"><span class="pre">y-cylinder</span></tt></dt>
+<dd>An infinite cylinder whose length is paralle to the y-axis. This is a
+quadratic surface of the form <img class="math" src="../_images/math/883b49d218bf8cf809fae9decb62b4231ecf964f.png" alt="(x - x_0)^2 + (z - z_0)^2 = R^2"/>. The
+coefficients specified are &#8220;<img class="math" src="../_images/math/c495d88c348c2f010641c13f26fdd9d841973a6b.png" alt="x_0 \: z_0 \: R"/>&#8221;.</dd>
+<dt><tt class="docutils literal"><span class="pre">z-cylinder</span></tt></dt>
+<dd>An infinite cylinder whose length is paralle to the z-axis. This is a
+quadratic surface of the form <img class="math" src="../_images/math/9486fcc643d149a10bc21b05ac1e123031f400da.png" alt="(x - x_0)^2 + (y - y_0)^2 = R^2"/>. The
+coefficients specified are &#8220;<img class="math" src="../_images/math/d9efe2f18fee6e45486f86bf704b28646bcc2867.png" alt="x_0 \: y_0 \: R"/>&#8221;.</dd>
+<dt><tt class="docutils literal"><span class="pre">sphere</span></tt></dt>
+<dd>A sphere of the form <img class="math" src="../_images/math/62a745995df775198e16354b6b1ed9887e88c8a2.png" alt="(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
+R^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/e13d971231512283e81d8480a218782f7d68b585.png" alt="x_0 \: y_0 \: z_0 \: R"/>&#8221;.</dd>
+</dl>
+</div>
+<div class="section" id="materials-specification-materials-xml">
+<h2>Materials Specification &#8211; materials.xml<a class="headerlink" href="#materials-specification-materials-xml" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="settings-specification-settings-xml">
+<h2>Settings Specification &#8211; settings.xml<a class="headerlink" href="#settings-specification-settings-xml" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="tallies-specification-tallies-xml">
+<h2>Tallies Specification &#8211; tallies.xml<a class="headerlink" href="#tallies-specification-tallies-xml" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Creating XML Input Files</a><ul>
+<li><a class="reference internal" href="#files">Files</a></li>
+<li><a class="reference internal" href="#geometry-specification-geometry-xml">Geometry Specification &#8211; geometry.xml</a></li>
+<li><a class="reference internal" href="#materials-specification-materials-xml">Materials Specification &#8211; materials.xml</a></li>
+<li><a class="reference internal" href="#settings-specification-settings-xml">Settings Specification &#8211; settings.xml</a></li>
+<li><a class="reference internal" href="#tallies-specification-tallies-xml">Tallies Specification &#8211; tallies.xml</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">User&#8217;s Guide</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../developers.html"
+                        title="next chapter">Development Team</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/usersguide/input.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../developers.html" title="Development Team"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="User’s Guide"
+             >previous</a> |</li>
+        <li><a href="../index.html">OpenMC v0.3.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >User&#8217;s Guide</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

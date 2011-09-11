@@ -536,7 +536,7 @@ subroutine read_xml_file_settings_t(fname, lurep, errout)
 
    call init_xml_file_settings_t
    call xml_open( info, fname, .true. )
-   call xml_options( info, report_errors=.true., ignore_whitespace=.true.)
+   call xml_options( info, report_errors=.false., ignore_whitespace=.true.)
    lurep_ = 0
    if ( present(lurep) ) then
       lurep_ = lurep

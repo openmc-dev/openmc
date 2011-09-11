@@ -245,6 +245,45 @@ contains
 
           ! Set vector
           p % uvw = (/ u, v, w /)
+       case (SURF_CYL_X)
+          ! Find y-y0, z-z0 and dot product of direction and surface normal
+          y = p % xyz(2) - surf % coeffs(2)
+          z = p % xyz(3) - surf % coeffs(3)
+          R = surf % coeffs(4)
+          dot_prod = v*y + w*z
+
+          ! Reflect direction according to normal
+          v = v - 2*dot_prod*y/(R*R)
+          w = w - 2*dot_prod*z/(R*R)
+
+          ! Set vector
+          p % uvw = (/ u, v, w /)
+       case (SURF_CYL_Y)
+          ! Find x-x0, z-z0 and dot product of direction and surface normal
+          x = p % xyz(1) - surf % coeffs(1)
+          z = p % xyz(3) - surf % coeffs(3)
+          R = surf % coeffs(4)
+          dot_prod = u*x + w*z
+
+          ! Reflect direction according to normal
+          u = u - 2*dot_prod*x/(R*R)
+          w = w - 2*dot_prod*z/(R*R)
+
+          ! Set vector
+          p % uvw = (/ u, v, w /)
+       case (SURF_CYL_Z)
+          ! Find x-x0, y-y0 and dot product of direction and surface normal
+          x = p % xyz(1) - surf % coeffs(1)
+          y = p % xyz(2) - surf % coeffs(2)
+          R = surf % coeffs(4)
+          dot_prod = u*x + v*y
+
+          ! Reflect direction according to normal
+          u = u - 2*dot_prod*x/(R*R)
+          v = v - 2*dot_prod*y/(R*R)
+
+          ! Set vector
+          p % uvw = (/ u, v, w /)
        case (SURF_SPHERE)
           ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
           ! normal
@@ -278,6 +317,9 @@ contains
        end if
        return
     end if
+
+    ! ==========================================================================
+    ! SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
     if (p%surface > 0 .and. allocated(surf%neighbor_pos)) then
        ! If coming from negative side of surface, search all the neighboring
@@ -327,7 +369,9 @@ contains
        end do
     end if
 
-    ! Couldn't find particle in neighboring cells, search through all cells
+    ! ==========================================================================
+    ! COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
+
     do i = 1, size(cells)
        c => cells(i)
        if (cell_contains(c, p)) then

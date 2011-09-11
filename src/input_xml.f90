@@ -6,6 +6,7 @@ module input_xml
   use error,           only: fatal_error
   use geometry_header, only: Cell, Surface, Lattice
   use global
+  use output,          only: message
   use string,          only: lower_case, int_to_str
 
   implicit none
@@ -43,6 +44,11 @@ contains
     character(MAX_LINE_LEN) :: msg
     character(MAX_LINE_LEN) :: filename
 
+    ! Display output message
+    msg = "Reading settings XML file..."
+    call message(msg, 5)
+
+    ! Parse settings.xml file
     filename = trim(path_input) // "settings.xml"
     call read_xml_file_settings_t(filename)
 
@@ -112,9 +118,14 @@ contains
     type(Surface), pointer :: s => null()
     type(Lattice), pointer :: l => null()
 
+    ! Display output message
+    msg = "Reading geometry XML file..."
+    call message(msg, 5)
+
     ! ==========================================================================
     ! READ CELLS FROM GEOMETRY.XML
 
+    ! Parse geometry.xml file
     filename = trim(path_input) // "geometry.xml"
     call read_xml_file_geometry_t(filename)
 
@@ -368,6 +379,11 @@ contains
     type(Material),    pointer :: m => null()
     type(nuclide_xml), pointer :: nuc => null()
 
+    ! Display output message
+    msg = "Reading materials XML file..."
+    call message(msg, 5)
+
+    ! Parse materials.xml file
     filename = trim(path_input) // "materials.xml"
     call read_xml_file_materials_t(filename)
 
@@ -462,6 +478,11 @@ contains
     character(MAX_LINE_LEN) :: msg
     type(Tally),    pointer :: t => null()
 
+    ! Display output message
+    msg = "Reading tallies XML file..."
+    call message(msg, 5)
+
+    ! Parse tallies.xml file
     filename = trim(path_input) // "tallies.xml"
     call read_xml_file_tallies_t(filename)
 

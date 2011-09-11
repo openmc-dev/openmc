@@ -72,6 +72,7 @@ input_xml.o: datatypes.o
 input_xml.o: error.o
 input_xml.o: geometry_header.o
 input_xml.o: global.o
+input_xml.o: output.o
 input_xml.o: string.o
 input_xml.o: xml_geometry.o
 input_xml.o: xml_materials.o

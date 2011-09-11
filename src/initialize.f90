@@ -49,9 +49,9 @@ contains
     ! Print initialization header block
     if (master) call header("INITIALIZATION", 1)
 
-    ! Initialize random number generator. The first argument
-    ! corresponds to which random number generator to use- in this
-    ! case one of the L'Ecuyer 63-bit RNGs.
+    ! Initialize random number generator. The first argument corresponds to
+    ! which random number generator to use- in this case one of the L'Ecuyer
+    ! 63-bit RNGs.
     call RN_init_problem(3, 0_8, 0_8, 0_8, 0)
 
     ! Set default values for settings
@@ -60,9 +60,7 @@ contains
     ! set up dictionaries
     call create_dictionaries()
 
-    ! Read input file -- make a first pass through the file to count
-    ! cells, surfaces, etc in order to allocate arrays, then do a
-    ! second pass to actually read values
+    ! Read XML input files
     call read_input_xml()
 
     ! Set up universe structures
@@ -71,21 +69,20 @@ contains
     ! Use dictionaries to redefine index pointers
     call adjust_indices()
 
-    ! determine at which level universes are and link cells to
-    ! parenting cells
+    ! determine at which level universes are and link cells to parenting cells
     univ => universes(BASE_UNIVERSE)
     call build_universe(univ, 0, 0)
 
-    ! After reading input and basic geometry setup is complete, build
-    ! lists of neighboring cells for efficient tracking
+    ! After reading input and basic geometry setup is complete, build lists of
+    ! neighboring cells for efficient tracking
     call neighbor_lists()
 
     ! Read cross section summary file to determine what files contain
     ! cross-sections
     call read_xsdata(path_xsdata)
 
-    ! With the AWRs from the xsdata, change all material
-    ! specifications so that they contain atom percents summing to 1
+    ! With the AWRs from the xsdata, change all material specifications so that
+    ! they contain atom percents summing to 1
     call normalize_ao()
 
     ! Read ACE-format cross sections

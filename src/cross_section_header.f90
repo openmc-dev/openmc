@@ -44,8 +44,8 @@ module cross_section_header
      real(8), allocatable :: sigma(:)  ! Cross section values
      logical :: has_angle_dist         ! Angle distribution present?
      logical :: has_energy_dist        ! Energy distribution present?
-     type(DistAngle)  :: adist      ! Secondary angular distribution
-     type(DistEnergy) :: edist      ! Secondary energy distribution
+     type(DistAngle)  :: adist         ! Secondary angular distribution
+     type(DistEnergy) :: edist         ! Secondary energy distribution
   end type Reaction
 
 !===============================================================================

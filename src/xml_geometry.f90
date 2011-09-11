@@ -632,7 +632,7 @@ subroutine read_xml_file_geometry_t(fname, lurep, errout)
 
    call init_xml_file_geometry_t
    call xml_open( info, fname, .true. )
-   call xml_options( info, report_errors=.true., ignore_whitespace=.true.)
+   call xml_options( info, report_errors=.false., ignore_whitespace=.true.)
    lurep_ = 0
    if ( present(lurep) ) then
       lurep_ = lurep
@@ -650,7 +650,7 @@ subroutine read_xml_file_geometry_t(fname, lurep, errout)
       call xml_close(info)
       return
    endif
-   strict_ = .true.
+   strict_ = .false.
    error = .false.
    do
       call xml_get( info, tag, endtag, attribs, noattribs, data, nodata )

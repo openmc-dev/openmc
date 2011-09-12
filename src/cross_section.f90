@@ -1174,7 +1174,6 @@ contains
     integer :: i, j
     integer :: n_nuclides
     integer :: IE
-    real(8) :: density
     real(8) :: density_i
     real(8) :: sigma_i
     real(8) :: f
@@ -1184,16 +1183,13 @@ contains
     ! initialize xs
     xs = ZERO
 
-    ! find material atom density
-    density = mat % atom_density
-
     ! loop over all nuclides in material
     n_nuclides = mat % n_nuclides
     do i = 1, n_nuclides
        nuc => nuclides(mat % nuclide(i))
 
        ! determine nuclide atom density
-       density_i = mat % atom_percent(i) * density
+       density_i = mat % atom_density(i)
 
        ! search nuclide energy grid
        IE = nuc%grid_index(p % IE)
@@ -1201,7 +1197,7 @@ contains
        
        ! handle special case of total cross section
        if (MT == 1) then
-          xs = xs + density * (ONE-f) * nuc%sigma_t(IE) + & 
+          xs = xs + mat % density * (ONE-f) * nuc%sigma_t(IE) + & 
                & f * (nuc%sigma_t(IE+1))
           cycle
        end if
@@ -1343,7 +1339,6 @@ contains
     integer :: i, j, k
     integer :: index
     integer :: IE
-    real(8) :: density
     real(8) :: density_i
     real(8) :: val
     real(8) :: r
@@ -1361,7 +1356,6 @@ contains
 
        ! allocate storage for total xs
        mat => materials(i)
-       density = mat%atom_density
        allocate(mat%total_xs(n_grid))
 
        ! initialize total cross-section
@@ -1373,7 +1367,7 @@ contains
           nuc => nuclides(index)
 
           ! find atom density of isotope
-          density_i = density * mat % atom_percent(j)
+          density_i = mat % atom_density(j)
 
           ! loop over points in union energy grid
           do k = 1, n_grid

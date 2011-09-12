@@ -420,7 +420,7 @@ contains
        end if
 
        percent_in_atom = (mat%atom_percent(1) > ZERO)
-       density_in_atom = (mat%atom_density > ZERO)
+       density_in_atom = (mat%density > ZERO)
 
        sum_percent = ZERO
        do j = 1, mat % n_nuclides
@@ -462,9 +462,14 @@ contains
              sum_percent = sum_percent + x*awr
           end do
           sum_percent = ONE / sum_percent
-          mat%atom_density = -mat%atom_density * N_AVOGADRO & 
+          mat % density = -mat % density * N_AVOGADRO & 
                & / MASS_NEUTRON * sum_percent
        end if
+
+       ! Calculate nuclide atom densities and deallocate atom_percent array
+       ! since it is no longer needed past this point
+       mat % atom_density = mat % density * mat % atom_percent
+       deallocate(mat % atom_percent)
     end do
 
   end subroutine normalize_ao

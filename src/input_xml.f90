@@ -405,13 +405,13 @@ contains
        call lower_case(units)
        select case(trim(units))
        case ('g/cc', 'g/cm3')
-          m % atom_density = -val
+          m % density = -val
        case ('kg/m3')
-          m % atom_density = -0.001 * val
+          m % density = -0.001 * val
        case ('atom/b-cm')
-          m % atom_density = val
+          m % density = val
        case ('atom/cm3', 'atom/cc')
-          m % atom_density = 1.0e-24 * val
+          m % density = 1.0e-24 * val
        case default
           msg = "Unkwown units '" // trim(material_(i) % density % units) // &
                "' specified on material " // trim(int_to_str(m % uid))
@@ -430,6 +430,7 @@ contains
        allocate(m % names(n))
        allocate(m % nuclide(n))
        allocate(m % xsdata(n))
+       allocate(m % atom_density(n))
        allocate(m % atom_percent(n))
 
        do j = 1, n

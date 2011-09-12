@@ -158,27 +158,27 @@ contains
     real(8) :: f          ! interpolation factor
     real(8) :: sigma      ! microscopic total xs for nuclide
     real(8) :: total      ! total macroscopic xs for material
-    real(8) :: density    ! atom density of material
     real(8) :: density_i  ! atom density of nuclide
     real(8) :: prob       ! cumulative probability
     real(8) :: r1         ! random number
     real(8) :: flux       ! collision estimator of flux
     real(8), allocatable :: Sigma_rxn(:) ! macroscopic xs for each nuclide
     character(MAX_LINE_LEN)       :: msg ! output/error message
+    type(Material), pointer :: mat
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
-    density = cMaterial%atom_density
+    mat => cMaterial
 
     ! calculate total cross-section for each nuclide at current energy in order
     ! to create discrete pdf for sampling nuclide
-    n_nuclides = cMaterial % n_nuclides
+    n_nuclides = mat % n_nuclides
     allocate(Sigma_rxn(n_nuclides))
     do i = 1, n_nuclides
-       nuc => nuclides(cMaterial % nuclide(i))
+       nuc => nuclides(mat % nuclide(i))
 
        ! determine nuclide atom density
-       density_i = cMaterial % atom_percent(i) * density
+       density_i = mat % atom_density(i)
 
        ! search nuclide energy grid
        IE = nuc%grid_index(p % IE)
@@ -199,8 +199,8 @@ contains
     end do
 
     ! Get table, total xs, interpolation factor
-    density_i = cMaterial%atom_percent(i)*density
-    nuc => nuclides(cMaterial%nuclide(i))
+    density_i = mat % atom_density(i)
+    nuc => nuclides(mat%nuclide(i))
     sigma = Sigma_rxn(i) / density_i
     IE = nuc%grid_index(p % IE)
     f = (p%E - nuc%energy(IE))/(nuc%energy(IE+1) - nuc%energy(IE))
@@ -211,8 +211,8 @@ contains
     ! sample reaction channel
     r1 = rang()*sigma
     prob = ZERO
-    do i = 1, nuc%n_reaction
-       rxn => nuc%reactions(i)
+    do i = 1, nuc % n_reaction
+       rxn => nuc % reactions(i)
 
        ! some materials have gas production cross sections with MT > 200 that
        ! are duplicates. Also MT=4 is total level inelastic scattering which

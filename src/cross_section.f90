@@ -84,6 +84,9 @@ contains
     allocate(nuclides(n_nuclides_total))
     allocate(sab_tables(n_sab_tables))
 
+    ! allocate array for microscopic cross section cache
+    allocate(micro_xs(n_nuclides_total))
+
     ! loop over all nuclides in xsdata
     call dict_create(temp_dict)
 
@@ -241,25 +244,36 @@ contains
 
     ! determine number of energy points
     NE = NXS(3)
-    nuc%n_grid = NE
+    nuc % n_grid = NE
 
-    ! allocate storage for arrays
-    allocate(nuc%energy(NE))
-    allocate(nuc%sigma_t(NE))
-    allocate(nuc%sigma_a(NE))
-    allocate(nuc%sigma_el(NE))
-    allocate(nuc%heating(NE))
+    ! allocate storage for energy grid and cross section arrays
+    allocate(nuc % energy(NE))
+    allocate(nuc % total(NE))
+    allocate(nuc % elastic(NE))
+    allocate(nuc % fission(NE))
+    allocate(nuc % absorption(NE))
+    allocate(nuc % heating(NE))
 
-    ! read data from XSS -- right now the total, absorption and elastic
-    ! scattering are read in to these special arrays, but in reality, it should
-    ! be necessary to only store elastic scattering and possibly total
-    ! cross-section for total material xs generation.
+    ! initialize cross sections
+    nuc % total      = ZERO
+    nuc % elastic    = ZERO
+    nuc % fission    = ZERO
+    nuc % absorption = ZERO
+    nuc % heating    = ZERO
+
+    ! Read data from XSS -- only the energy grid, elastic scattering and heating
+    ! cross section values are actually read from here. The total and absorption
+    ! cross sections are reconstructed from the partial reaction data.
+
     XSS_index = 1
-    nuc%energy = get_real(NE)
-    nuc%sigma_t = get_real(NE)
-    nuc%sigma_a = get_real(NE)
-    nuc%sigma_el = get_real(NE)
-    nuc%heating = get_real(NE)
+    nuc % energy = get_real(NE)
+
+    ! Skip total and absorption
+    XSS_index = XSS_index + 2*NE
+
+    ! Continue reading elastic scattering and heating
+    nuc % elastic = get_real(NE)
+    nuc % heating = get_real(NE)
     
   end subroutine read_esz
 
@@ -515,6 +529,7 @@ contains
     integer :: JXS7  ! index of reactions cross-sections in XSS
     integer :: LXS   ! location of cross-section locators
     integer :: LOCA  ! location of cross-section for given MT
+    integer :: IE    ! reaction's starting index on energy grid
     integer :: NE    ! number of energies for reaction
     type(Reaction), pointer :: rxn => null()
     
@@ -527,33 +542,59 @@ contains
 
     ! allocate array of reactions. Add one since we need to include an elastic
     ! scattering channel
-    nuc%n_reaction = NMT + 1
-    allocate(nuc%reactions(NMT+1))
+    nuc % n_reaction = NMT + 1
+    allocate(nuc % reactions(NMT+1))
 
     ! Store elastic scattering cross-section on reaction one
-    rxn => nuc%reactions(1)
-    rxn%MT      = 2
-    rxn%Q_value = ZERO
-    rxn%TY      = 1
-    rxn%IE      = 1
-    allocate(rxn%sigma(nuc%n_grid))
-    rxn%sigma = nuc%sigma_el
+    rxn => nuc % reactions(1)
+    rxn % MT      = 2
+    rxn % Q_value = ZERO
+    rxn % TY      = 1
+    rxn % IE      = 1
+    allocate(rxn % sigma(nuc % n_grid))
+    rxn % sigma = nuc % elastic
+    
+    ! Add contribution of elastic scattering to total cross section
+    nuc % total = nuc % total + nuc % elastic
 
     do i = 1, NMT
-       rxn => nuc%reactions(i+1)
+       rxn => nuc % reactions(i+1)
 
        ! read MT number, Q-value, and neutrons produced
-       rxn % MT      = XSS(LMT+i-1)
-       rxn % Q_value = XSS(JXS4+i-1)
-       rxn % TY      = XSS(JXS5+i-1)
+       rxn % MT      = XSS(LMT + i - 1)
+       rxn % Q_value = XSS(JXS4 + i - 1)
+       rxn % TY      = XSS(JXS5 + i - 1)
 
-       ! read cross section values
-       LOCA = XSS(LXS+i-1)
-       rxn % IE = XSS(JXS7 + LOCA - 1)
+       ! read starting energy index
+       LOCA = XSS(LXS + i - 1)
+       IE = XSS(JXS7 + LOCA - 1)
+       rxn % IE = IE
+
+       ! read number of energies cross section values
        NE = XSS(JXS7 + LOCA)
-       allocate(rxn%sigma(NE))
+       allocate(rxn % sigma(NE))
        XSS_index = JXS7 + LOCA + 1
        rxn % sigma = get_real(NE)
+
+       ! Skip redundant reactions -- this includes total inelastic level
+       ! scattering, gas production cross sections (MT=200+), and (n,p), (n,d),
+       ! etc. reactions leaving the nucleus in an excited state
+       if (rxn % MT == N_LEVEL .or. rxn % MT > N_DA) cycle
+
+       ! Add contribution to total cross section
+       nuc % total(IE:IE+NE-1) = nuc % total(IE:IE+NE-1) + rxn % sigma
+
+       ! Add contribution to absorption cross section
+       if (rxn % MT >= N_GAMMA .and. rxn % MT <= N_DA) then
+          nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
+       end if
+
+       ! Add contribution to fission cross section
+       if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
+            .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) then
+          nuc % fissionable = .true.
+          nuc % fission(IE:IE+NE-1) = nuc % fission(IE:IE+NE-1) + rxn % sigma
+       end if
 
        ! set defaults
        rxn % has_angle_dist  = .false.
@@ -1197,8 +1238,8 @@ contains
        
        ! handle special case of total cross section
        if (MT == 1) then
-          xs = xs + mat % density * (ONE-f) * nuc%sigma_t(IE) + & 
-               & f * (nuc%sigma_t(IE+1))
+          xs = xs + mat % density * (ONE-f) * nuc%total(IE) + & 
+               & f * (nuc%total(IE+1))
           cycle
        end if
 
@@ -1376,12 +1417,12 @@ contains
 
              ! get nuclide grid energy and cross-section value
              E_i     = nuc % energy(IE)
-             sigma_i = nuc % sigma_t(IE)
+             sigma_i = nuc % total(IE)
 
              ! interpolate as necessary
              if (E_i < e_grid(k)) then
                 E_i1     = nuc % energy(IE + 1)
-                sigma_i1 = nuc % sigma_t(IE + 1)
+                sigma_i1 = nuc % total(IE + 1)
 
                 r = (e_grid(k) - E_i)/(E_i1 - E_i)
                 val = (ONE - r)*sigma_i + r*sigma_i1

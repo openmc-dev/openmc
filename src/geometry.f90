@@ -121,8 +121,9 @@ contains
              cUniverse => univ
              
              ! set particle attributes
-             p%cell = univ % cells(i)
-             p%universe = dict_get_key(universe_dict, univ % uid)
+             p % cell = univ % cells(i)
+             p % universe = dict_get_key(universe_dict, univ % uid)
+             p % material = c % material
              exit
           elseif (c % type == CELL_FILL) then
              lower_univ => universes(c % fill)
@@ -337,7 +338,8 @@ contains
                 end if
              else
                 ! set current pointers
-                p%cell = index_cell
+                p % cell = index_cell
+                p % material = c % material
                 cCell => c
                 cMaterial => materials(cCell%material)
              end if
@@ -360,7 +362,8 @@ contains
                 end if
              else
                 ! set current pointers
-                p%cell = index_cell
+                p % cell = index_cell
+                p % material = c % material
                 cCell => c
                 cMaterial => materials(cCell%material)
              end if
@@ -375,7 +378,8 @@ contains
     do i = 1, size(cells)
        c => cells(i)
        if (cell_contains(c, p)) then
-          p%cell = i
+          p % cell = i
+          p % material = c % material
           cCell => c
           cMaterial => materials(cCell%material)
           return

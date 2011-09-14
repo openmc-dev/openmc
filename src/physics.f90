@@ -4,6 +4,7 @@ module physics
   use cross_section_header, only: Nuclide, Reaction, DistEnergy
   use endf,                 only: reaction_name
   use error,                only: fatal_error, warning
+  use fission,              only: nu_total, nu_prompt, nu_delayed
   use geometry,             only: find_cell, dist_to_boundary, cross_surface, &
                                   cross_lattice
   use geometry_header,      only: Universe, BASE_UNIVERSE
@@ -29,12 +30,9 @@ contains
 
     integer        :: surf           ! surface which particle is on
     integer        :: last_cell      ! most recent cell particle was in
-    integer        :: IE             ! index on energy grid
     real(8)        :: d_to_boundary  ! distance to nearest boundary
     real(8)        :: d_to_collision ! sampled distance to collision
     real(8)        :: distance       ! distance particle travels
-    real(8)        :: Sigma          ! total cross-section
-    real(8)        :: f              ! interpolation factor
     logical        :: found_cell     ! found cell which particle is in?
     logical        :: in_lattice     ! is surface crossing in lattice?
     character(MAX_LINE_LEN) :: msg   ! output/error message
@@ -46,8 +44,8 @@ contains
 
        ! if particle couldn't be located, print error
        if (.not. found_cell) then
-          write(msg, 100) "Could not locate cell for particle at: ", p % xyz
-100       format (A,3ES11.3)
+          write(msg, '(A,3ES11.3)') & 
+               "Could not locate cell for particle at: ", p % xyz
           call fatal_error(msg)
        end if
     end if
@@ -63,22 +61,16 @@ contains
     end if
 
     ! find energy index, interpolation factor
-    call find_energy_index(p)
-
     do while (p % alive)
 
-       ! Copy energy index and interpolation factor
-       IE = p % IE
-       f  = p % interp
-    
-       ! Determine material total cross-section
-       Sigma = (1-f)*cMaterial%total_xs(IE) + f*cMaterial%total_xs(IE+1)
+       ! Calculate microscopic and macroscopic cross sections
+       call calculate_xs(p)
 
        ! Find the distance to the nearest boundary
        call dist_to_boundary(p, d_to_boundary, surf, in_lattice)
 
        ! Sample a distance to collision
-       d_to_collision = -log(rang()) / Sigma
+       d_to_collision = -log(rang()) / material_xs % total
        
        ! Select smaller of the two distances
        distance = min(d_to_boundary, d_to_collision)
@@ -106,6 +98,131 @@ contains
     end do
 
   end subroutine transport
+
+!===============================================================================
+! CALCULATE_XS determines the macroscopic cross sections for the material the
+! particle is currently traveling through.
+!===============================================================================
+
+  subroutine calculate_xs(p)
+
+    type(Particle), pointer :: p
+
+    integer                 :: i             ! loop index over nuclides
+    integer                 :: index_nuclide ! index into nuclides array
+    real(8)                 :: atom_density  ! atom density of a nuclide
+    type(Material), pointer :: mat           ! current material
+
+    ! If the material is the same as the last material and the energy of the
+    ! particle hasn't changed, we don't need to lookup cross sections again.
+
+    if (p % material == p % last_material) return
+
+    ! Set all material macroscopic cross sections to zero
+    material_xs % total      = ZERO
+    material_xs % scatter    = ZERO
+    material_xs % absorption = ZERO
+    material_xs % fission    = ZERO
+    material_xs % nu_fission = ZERO
+
+    mat => materials(p % material)
+
+    ! Find energy index on unionized grid
+    call find_energy_index(p)
+
+    ! Add contribution from each nuclide in material
+    do i = 1, mat % n_nuclides
+       ! Determine microscopic cross sections for this nuclide
+       index_nuclide = mat % nuclide(i)
+       call calculate_nuclide_xs(p, index_nuclide)
+
+       ! Copy atom density of nuclide in material
+       atom_density = mat % atom_density(i)
+
+       ! Add contributions to material macroscopic total cross section
+       material_xs % total = material_xs % total + &
+            atom_density * micro_xs(index_nuclide) % total
+       
+       ! Add contributions to material macroscopic scattering cross section
+       material_xs % elastic = material_xs % elastic + &
+            atom_density * micro_xs(index_nuclide) % elastic
+       
+       ! Add contributions to material macroscopic absorption cross section
+       material_xs % absorption = material_xs % absorption + & 
+            atom_density * micro_xs(index_nuclide) % absorption
+       
+       ! Add contributions to material macroscopic fission cross section
+       material_xs % fission = material_xs % fission + &
+            atom_density * micro_xs(index_nuclide) % fission
+       
+       ! Add contributions to material macroscopic nu-fission cross section
+       material_xs % nu_fission = material_xs % nu_fission + &
+            atom_density * micro_xs(index_nuclide) % nu_fission
+    end do
+
+  end subroutine calculate_xs
+
+!===============================================================================
+! CALCULATE_NUCLIDE_XS determines microscopic cross sections for a nuclide of a
+! given index in the nuclides array at the energy of the given particle
+!===============================================================================
+
+  subroutine calculate_nuclide_xs(p, index_nuclide)
+
+    type(Particle), pointer :: p
+    integer, intent(in)     :: index_nuclide ! index into nuclides array
+
+    integer                :: i    ! index into nuclides array
+    integer                :: IE   ! index on nuclide energy grid
+    real(8)                :: f    ! interpolation factor on nuclide energy grid
+    real(8)                :: nu_t ! total number of neutrons emitted per fission
+    type(Nuclide), pointer :: nuc  ! pointer to nuclide cross section table
+
+    ! Copy index of nuclide
+    i = index_nuclide
+
+    ! Set pointer to nuclide
+    nuc => nuclides(i)
+
+    ! TODO: Check if last energy/temp combination is same as current. If so, we
+    ! can return.
+
+    ! TODO: If not using unionized energy grid, we need to find the index on the
+    ! nuclide energy grid using lethargy mapping or whatever other technique
+
+    ! search nuclide energy grid
+    IE = nuc % grid_index(p % IE)
+    f = (p%E - nuc%energy(IE))/(nuc%energy(IE+1) - nuc%energy(IE))
+
+    micro_xs(i) % index_grid = IE
+    micro_xs(i) % interp_factor = f
+
+    ! Initialize nuclide cross-sections to zero
+    micro_xs(i) % nu_fission = ZERO
+
+    ! Calculate microscopic nuclide total cross section
+    micro_xs(i) % total = &
+         (ONE-f) * nuc % total(IE) + f * nuc % total(IE+1)
+
+    ! Calculate microscopic nuclide total cross section
+    micro_xs(i) % elastic = &
+         (ONE-f) * nuc % elastic(IE) + f * nuc % elastic(IE+1)
+
+    ! Calculate microscopic nuclide absorption cross section
+    micro_xs(i) % absorption = &
+         (ONE-f) * nuc % absorption(IE) + f * nuc % absorption(IE+1)
+
+    if (nuc % fissionable) then
+       ! Calculate microscopic nuclide total cross section
+       micro_xs(i) % fission = &
+            (ONE-f) * nuc % fission(IE) + f * nuc % fission(IE+1)
+
+       ! Calculate microscopic nuclide nu-fission cross section
+       nu_t = nu_total(nuc, p % E)
+       micro_xs(i) % nu_fission = nu_t * micro_xs(i) % fission
+    end if
+
+  end subroutine calculate_nuclide_xs
 
 !===============================================================================
 ! FIND_ENERGY_INDEX determines the index on the union energy grid and the
@@ -153,63 +270,47 @@ contains
     type(Particle), pointer :: p
 
     integer :: i          ! index over nuclides in a material
-    integer :: n_nuclides ! number of nuclides in material
+    integer :: index_nuclide
     integer :: IE         ! index on nuclide energy grid
     real(8) :: f          ! interpolation factor
     real(8) :: sigma      ! microscopic total xs for nuclide
     real(8) :: total      ! total macroscopic xs for material
-    real(8) :: density_i  ! atom density of nuclide
     real(8) :: prob       ! cumulative probability
-    real(8) :: r1         ! random number
+    real(8) :: cutoff     ! random number
     real(8) :: flux       ! collision estimator of flux
-    real(8), allocatable :: Sigma_rxn(:) ! macroscopic xs for each nuclide
-    character(MAX_LINE_LEN)       :: msg ! output/error message
+    real(8) :: atom_density ! atom density of nuclide in atom/b-cm
+    character(MAX_LINE_LEN) :: msg ! output/error message
     type(Material), pointer :: mat
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
-    mat => cMaterial
-
-    ! calculate total cross-section for each nuclide at current energy in order
-    ! to create discrete pdf for sampling nuclide
-    n_nuclides = mat % n_nuclides
-    allocate(Sigma_rxn(n_nuclides))
-    do i = 1, n_nuclides
-       nuc => nuclides(mat % nuclide(i))
-
-       ! determine nuclide atom density
-       density_i = mat % atom_density(i)
-
-       ! search nuclide energy grid
-       IE = nuc%grid_index(p % IE)
-       f = (p%E - nuc%energy(IE))/(nuc%energy(IE+1) - nuc%energy(IE))
-
-       ! calculate nuclide macroscopic cross-section
-       Sigma_rxn(i) = density_i*((ONE-f)*nuc%Sigma_t(IE) + & 
-            & f*(nuc%Sigma_t(IE+1)))
-    end do
-    total = sum(Sigma_rxn)
+    mat => materials(p % material)
 
     ! sample nuclide
-    r1 = rang()
+    i = 0
+    total = material_xs % total
+    cutoff = rang() * total
     prob = ZERO
-    do i = 1, n_nuclides
-       prob = prob + Sigma_rxn(i) / total
-       if (r1 < prob) exit
+    do while (prob < cutoff)
+       i = i + 1
+       if (i > mat % n_nuclides) then
+          msg = "Did not sample any nuclide during collision."
+          call fatal_error(msg)
+       end if
+
+       index_nuclide = mat % nuclide(i)
+       atom_density = mat % atom_density(i)
+       sigma = atom_density * micro_xs(index_nuclide) % total
+       prob = prob + sigma
     end do
 
     ! Get table, total xs, interpolation factor
-    density_i = mat % atom_density(i)
-    nuc => nuclides(mat%nuclide(i))
-    sigma = Sigma_rxn(i) / density_i
+    nuc => nuclides(index_nuclide)
     IE = nuc%grid_index(p % IE)
     f = (p%E - nuc%energy(IE))/(nuc%energy(IE+1) - nuc%energy(IE))
 
-    ! free memory
-    deallocate(Sigma_rxn)
-
     ! sample reaction channel
-    r1 = rang()*sigma
+    cutoff = rang() * sigma / atom_density
     prob = ZERO
     do i = 1, nuc % n_reaction
        rxn => nuc % reactions(i)
@@ -225,7 +326,7 @@ contains
        ! add to cumulative probability
        prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
             & + f*(rxn%sigma(IE-rxn%IE+2)))
-       if (r1 < prob) exit
+       if (cutoff < prob) exit
     end do
 
     if (verbosity >= 10) then
@@ -243,8 +344,8 @@ contains
     case (N_NA, N_N3A, N_NP, N_N2A, N_ND, N_NT, N_N3HE, &
          & N_NT2A, N_N2P, N_NPA, N_N1 : N_NC)
        call inelastic_scatter(p, nuc, rxn)
-    case (FISSION, N_F, N_NF, N_2NF, N_3NF)
-       call n_fission(p, nuc, rxn)
+    case (N_FISSION, N_F, N_NF, N_2NF, N_3NF)
+       call n_fission_event(p, nuc, rxn)
     case (N_GAMMA : N_DA)
        call n_absorption(p)
     case default
@@ -350,7 +451,7 @@ contains
 ! with implicit absorption, namely sampling of the number of neutrons!
 !===============================================================================
 
-  subroutine n_fission(p, nuc, rxn)
+  subroutine n_fission_event(p, nuc, rxn)
 
     type(Particle), pointer :: p
     type(Nuclide),  pointer :: nuc
@@ -360,18 +461,16 @@ contains
     integer :: j           ! index on nu energy grid / precursor group
     integer :: k           ! index on precursor yield grid
     integer :: loc         ! index before start of energies/nu values
-    integer :: NC          ! number of polynomial coefficients
     integer :: NR          ! number of interpolation regions
     integer :: NE          ! number of energies tabulated
     integer :: nu          ! actual number of neutrons produced
     integer :: law         ! energy distribution law
     real(8) :: E           ! incoming energy of neutron
     real(8) :: E_out       ! outgoing energy of fission neutron
-    real(8) :: c           ! polynomial coefficient
     real(8) :: f           ! interpolation factor
-    real(8) :: nu_total    ! total nu
-    real(8) :: nu_prompt   ! prompt nu
-    real(8) :: nu_delay    ! delayed nu
+    real(8) :: nu_t        ! total nu
+    real(8) :: nu_p        ! prompt nu
+    real(8) :: nu_d        ! delayed nu
     real(8) :: mu          ! fission neutron angular cosine
     real(8) :: phi         ! fission neutron azimuthal angle
     real(8) :: beta        ! delayed neutron fraction
@@ -383,152 +482,30 @@ contains
     ! copy energy of neutron
     E = p % E
 
-    ! ==========================================================================
-    ! DETERMINE TOTAL NU
-    if (nuc % nu_t_type == NU_NONE) then
-       msg = "No neutron emission data for table: " // nuc % name
-       call fatal_error(msg)
-    elseif (nuc % nu_t_type == NU_POLYNOMIAL) then
-       ! determine number of coefficients
-       NC = int(nuc % nu_t_data(1))
+    ! Determine total nu
+    nu_t = nu_total(nuc, E)
 
-       ! sum up polynomial in energy
-       nu_total = ZERO
-       do i = 0, NC - 1
-          c = nuc % nu_t_data(i+2)
-          nu_total = nu_total + c * E**i
-       end do
-    elseif (nuc % nu_t_type == NU_TABULAR) then
-       ! determine number of interpolation regions -- as far as I can tell, no
-       ! nu data has multiple interpolation regions. Furthermore, it seems all
-       ! are lin-lin.
-       NR = int(nuc % nu_t_data(1))
-       if (NR /= 0) then
-          msg = "Multiple interpolation regions not supported while &
-               &attempting to determine total nu."
-          call fatal_error(msg)
-       end if
-
-       ! determine number of energies
-       loc = 2 + 2*NR
-       NE = int(nuc % nu_t_data(loc))
-
-       ! do binary search over tabuled energies to determine appropriate index
-       ! and interpolation factor
-       if (E < nuc % nu_t_data(loc+1)) then
-          j = 1
-          f = ZERO
-       elseif (E > nuc % nu_t_data(loc+NE)) then
-          j = NE - 1
-          f = ONE
-       else
-          j = binary_search(nuc % nu_t_data(loc+1), NE, E)
-          f = (E - nuc % nu_t_data(loc+j)) / &
-               & (nuc % nu_t_data(loc+j+1) - nuc % nu_t_data(loc+j))
-       end if
-
-       ! determine nu total
-       loc = loc + NE
-       nu_total = nuc % nu_t_data(loc+j) + f * & 
-            & (nuc % nu_t_data(loc+j+1) - nuc % nu_t_data(loc+j))
+    ! Determine prompt nu
+    if (nuc % nu_p_type == NU_NONE) then
+       nu_p = nu_t
+    else
+       nu_p = nu_prompt(nuc, E)
     end if
           
-    ! ==========================================================================
-    ! DETERMINE PROMPT NU
-    if (nuc % nu_p_type == NU_NONE) then
-       ! since no prompt or delayed data is present, this means all neutron
-       ! emission is prompt
-       nu_prompt = nu_total
-    elseif (nuc % nu_p_type == NU_POLYNOMIAL) then
-       ! determine number of coefficients
-       NC = int(nuc % nu_p_data(1))
+    ! Determine delayed nu
+    nu_d = nu_delayed(nuc, E)
 
-       ! sum up polynomial in energy
-       nu_prompt = ZERO
-       do i = 0, NC - 1
-          c = nuc % nu_p_data(i+2)
-          nu_prompt = nu_prompt + c * E**i
-       end do
-    elseif (nuc % nu_p_type == NU_TABULAR) then
-       ! determine number of interpolation regions
-       NR = int(nuc % nu_p_data(1))
-       if (NR /= 0) then
-          msg = "Multiple interpolation regions not supported while & 
-               &attempting to determine prompt nu."
-          call fatal_error(msg)
-       end if
-
-       ! determine number of energies
-       loc = 2 + 2*NR
-       NE = int(nuc % nu_p_data(loc))
-
-       ! do binary search over tabuled energies to determine appropriate index
-       ! and interpolation factor
-       if (E < nuc % nu_p_data(loc+1)) then
-          j = 1
-          f = ZERO
-       elseif (E > nuc % nu_p_data(loc+NE)) then
-          j = NE - 1
-          f = ONE
-       else
-          j = binary_search(nuc % nu_p_data(loc+1), NE, E)
-          f = (E - nuc % nu_p_data(loc+j)) / &
-               & (nuc % nu_p_data(loc+j+1) - nuc % nu_p_data(loc+j))
-       end if
-
-       ! determine nu total
-       loc = loc + NE
-       nu_prompt = nuc % nu_p_data(loc+j) + f * & 
-            & (nuc % nu_p_data(loc+j+1) - nuc % nu_p_data(loc+j))
-    end if
-       
-    ! ==========================================================================
-    ! DETERMINE DELAYED NU
-    if (nuc % nu_d_type == NU_NONE) then
-       nu_delay = ZERO
-    elseif (nuc % nu_d_type == NU_TABULAR) then
-       ! determine number of interpolation regions
-       NR = int(nuc % nu_d_data(1))
-       if (NR /= 0) then
-          msg = "Multiple interpolation regions not supported while & 
-               &attempting to determine delayed nu."
-          call fatal_error(msg)
-       end if
-
-       ! determine number of energies
-       loc = 2 + 2*NR
-       NE = int(nuc % nu_d_data(loc))
-
-       ! do binary search over tabuled energies to determine appropriate index
-       ! and interpolation factor
-       if (E < nuc % nu_d_data(loc+1)) then
-          j = 1
-          f = ZERO
-       elseif (E > nuc % nu_d_data(loc+NE)) then
-          j = NE - 1
-          f = ONE
-       else
-          j = binary_search(nuc % nu_d_data(loc+1), NE, E)
-          f = (E - nuc % nu_d_data(loc+j)) / &
-               & (nuc % nu_d_data(loc+j+1) - nuc % nu_d_data(loc+j))
-       end if
-
-       ! determine nu total
-       loc = loc + NE
-       nu_delay = nuc % nu_d_data(loc+j) + f * & 
-            & (nuc % nu_d_data(loc+j+1) - nuc % nu_d_data(loc+j))
-    end if
-
-    beta = nu_delay / nu_total
+    ! Determine delayed neutron fraction
+    beta = nu_d / nu_t
 
     ! TODO: Heat generation from fission
 
     ! Sample number of neutrons produced
-    nu_total = p%wgt / keff * nu_total
-    if (rang() > nu_total - int(nu_total)) then
-       nu = int(nu_total)
+    nu_t = p%wgt / keff * nu_t
+    if (rang() > nu_t - int(nu_t)) then
+       nu = int(nu_t)
     else
-       nu = int(nu_total) + 1
+       nu = int(nu_t) + 1
     end if
 
     ! Bank source neutrons
@@ -633,7 +610,7 @@ contains
     ! kill original neutron
     p % alive = .false.
 
-  end subroutine n_fission
+  end subroutine n_fission_event
 
 !===============================================================================
 ! INELASTIC_SCATTER handles all reactions with a single secondary neutron (other

@@ -5,6 +5,8 @@ module fission
   use error,                only: fatal_error
   use search,               only: binary_search
 
+  implicit none
+
 contains
 
 !===============================================================================

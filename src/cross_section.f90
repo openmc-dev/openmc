@@ -937,7 +937,8 @@ contains
     ! check if URR data is present
     if (JXS23 /= 0) then
        nuc % urr_present = .true.
-       allocate(nuc % urr_params(6))
+       allocate(nuc % urr_data)
+       allocate(nuc % urr_data % params(6))
        loc = JXS23
     else
        nuc % urr_present = .false.
@@ -945,27 +946,27 @@ contains
     end if
 
     ! read parameters
-    nuc % urr_params(1) = XSS(loc)     ! # of incident energies
-    nuc % urr_params(2) = XSS(loc + 1) ! # of probabilities
-    nuc % urr_params(3) = XSS(loc + 2) ! interpolation parameter
-    nuc % urr_params(4) = XSS(loc + 3) ! inelastic competition flag
-    nuc % urr_params(5) = XSS(loc + 4) ! other absorption flag
-    nuc % urr_params(6) = XSS(loc + 5) ! factors flag
+    nuc % urr_data % params(1) = XSS(loc)     ! # of incident energies
+    nuc % urr_data % params(2) = XSS(loc + 1) ! # of probabilities
+    nuc % urr_data % params(3) = XSS(loc + 2) ! interpolation parameter
+    nuc % urr_data % params(4) = XSS(loc + 3) ! inelastic competition flag
+    nuc % urr_data % params(5) = XSS(loc + 4) ! other absorption flag
+    nuc % urr_data % params(6) = XSS(loc + 5) ! factors flag
 
     ! allocate incident energies and probability tables
-    N = nuc % urr_params(1)
-    M = nuc % urr_params(2)
-    allocate(nuc % urr_energy(N))
-    allocate(nuc % urr_prob(N,6,M))
+    N = nuc % urr_data % params(1)
+    M = nuc % urr_data % params(2)
+    allocate(nuc % urr_data % energy(N))
+    allocate(nuc % urr_data % prob(N,6,M))
 
     ! read incident energies
     XSS_index = loc + 6
-    nuc % urr_energy = get_real(N)
+    nuc % urr_data % energy = get_real(N)
 
     ! read probability tables
     do i = 1, N
        do j = 1, 6
-          nuc % urr_prob(i,j,1:M) = get_real(M)
+          nuc % urr_data % prob(i,j,1:M) = get_real(M)
        end do
     end do
 

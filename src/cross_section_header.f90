@@ -49,6 +49,16 @@ module cross_section_header
   end type Reaction
 
 !===============================================================================
+! URRDATA contains unresolved resonance data.
+!===============================================================================
+
+  type UrrData
+     integer, allocatable :: params(:)
+     real(8), allocatable :: energy(:)
+     real(8), allocatable :: prob(:,:,:)
+  end type UrrData
+
+!===============================================================================
 ! NUCLIDE contains all the data for an ACE-format continuous-energy cross
 ! section. The ACE format (A Compact ENDF format) is used in MCNP and several
 ! other Monte Carlo codes.
@@ -88,10 +98,8 @@ module cross_section_header
      type(DistEnergy), allocatable :: nu_d_edist(:)
 
      ! Unresolved resonance data
-     logical :: urr_present
-     integer, allocatable :: urr_params(:)
-     real(8), allocatable :: urr_energy(:)
-     real(8), allocatable :: urr_prob(:,:,:)
+     logical                :: urr_present
+     type(UrrData), pointer :: urr_data => null()
 
      ! Reactions
      integer :: n_reaction

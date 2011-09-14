@@ -137,30 +137,6 @@ contains
   end function get_source_particle
 
 !===============================================================================
-! ADD_BANK_SITES
-!===============================================================================
-
-  subroutine add_bank_sites(p, nuc, n)
-
-    type(Particle), pointer    :: p
-    type(Nuclide),  pointer    :: nuc
-    integer,        intent(in) :: n
-
-    integer :: i
-
-    if (n == 0 .or. n_bank == 3*n_particles) return
-    do i = n_bank + 1, min(n_bank + n, 3*n_particles)
-      ! Copy particle data
-      fission_bank(i)%uid = p%uid
-      fission_bank(i)%xyz = p%xyz
-
-      ! TODO: Sample angle and energy from secondary distribution
-    end do
-    n_bank = min(n_bank + n, 3*n_particles)
-
-  end subroutine add_bank_sites
-
-!===============================================================================
 ! COPY_FROM_BANK
 !===============================================================================
 

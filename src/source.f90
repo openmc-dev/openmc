@@ -66,13 +66,13 @@ contains
              ! initialize random number seed
              call RN_init_particle(int(j,8))
 
-             ! position
+             ! sample position
              r = (/ (rang(), k = 1,3) /)
              p % uid = j
              p % xyz = p_min + r*(p_max - p_min)
              p % xyz_local = p % xyz
 
-             ! angle
+             ! sample angle
              phi = TWO*PI*rang()
              mu = TWO*rang() - ONE
              p % uvw(1) = mu
@@ -80,15 +80,18 @@ contains
              p % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
              ! set defaults
-             p % type     = NEUTRON
-             p % cell     = 0
-             p % surface  = 0
-             p % universe = 0
-             p % lattice  = 0
-             p % wgt      = ONE
-             p % alive    = .true.
-             p % index_x  = 0
-             p % index_y  = 0
+             p % type          = NEUTRON
+             p % wgt           = ONE
+             p % alive         = .true.
+             p % cell          = 0
+             p % universe      = 0
+             p % lattice       = 0
+             p % surface       = 0
+             p % material      = 0
+             p % last_material = 0
+             p % index_x       = 0
+             p % index_y       = 0
+             p % n_collision   = 0
 
              ! sample energy from Watt fission energy spectrum for U-235
              do

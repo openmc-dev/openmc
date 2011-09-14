@@ -16,10 +16,10 @@ module source
 contains
 
 !===============================================================================
-! INIT_SOURCE initializes particles in the source bank
+! INITIALIZE_SOURCE initializes particles in the source bank
 !===============================================================================
 
-  subroutine init_source()
+  subroutine initialize_source()
 
     type(Particle), pointer :: p => null()
     integer    :: i          ! loop index over processors
@@ -80,18 +80,7 @@ contains
              p % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
              ! set defaults
-             p % type          = NEUTRON
-             p % wgt           = ONE
-             p % alive         = .true.
-             p % cell          = 0
-             p % universe      = 0
-             p % lattice       = 0
-             p % surface       = 0
-             p % material      = 0
-             p % last_material = 0
-             p % index_x       = 0
-             p % index_y       = 0
-             p % n_collision   = 0
+             call initialize_particle(p)
 
              ! sample energy from Watt fission energy spectrum for U-235
              do
@@ -109,7 +98,7 @@ contains
     ! Reset source index
     source_index = 0_8
 
-  end subroutine init_source
+  end subroutine initialize_source
 
 !===============================================================================
 ! GET_SOURCE_PARTICLE returns the next source particle 
@@ -146,25 +135,52 @@ contains
     type(Bank), intent(in) :: temp_bank(n_sites)
     integer,    intent(in) :: index    ! starting index in source_bank
 
-    integer :: i ! index in temp_bank
-    integer :: j ! index in source_bank
+    integer :: i            ! index in temp_bank
+    integer :: index_source ! index in source_bank
+    type(Particle), pointer :: p
     
     do i = 1, n_sites
-       j = index + i - 1
-       source_bank(j) % xyz       = temp_bank(i) % xyz
-       source_bank(j) % xyz_local = temp_bank(i) % xyz
-       source_bank(j) % uvw       = temp_bank(i) % uvw
-       source_bank(j) % E         = temp_bank(i) % E
+       index_source = index + i - 1
+       p => source_bank(index_source)
+
+       p % xyz       = temp_bank(i) % xyz
+       p % xyz_local = temp_bank(i) % xyz
+       p % uvw       = temp_bank(i) % uvw
+       p % E         = temp_bank(i) % E
 
        ! set defaults
-       source_bank(j) % type     = NEUTRON
-       source_bank(j) % cell     = 0
-       source_bank(j) % surface  = 0
-       source_bank(j) % universe = 0
-       source_bank(j) % wgt      = ONE
-       source_bank(j) % alive    = .true.
+       call initialize_particle(p)
+
     end do
 
   end subroutine copy_from_bank
+
+!===============================================================================
+! INITIALIZE_PARTICLE sets default attributes for a particle from the source
+! bank
+!===============================================================================
+
+  subroutine initialize_particle(p)
+
+    type(Particle), pointer :: p
+
+    ! TODO: if information on the cell, lattice, universe, and material is
+    ! passed through the fission bank to the source bank, no lookup would be
+    ! needed at the beginning of a cycle
+
+    p % type          = NEUTRON
+    p % wgt           = ONE
+    p % alive         = .true.
+    p % cell          = 0
+    p % universe      = 0
+    p % lattice       = 0
+    p % surface       = 0
+    p % material      = 0
+    p % last_material = 0
+    p % index_x       = 0
+    p % index_y       = 0
+    p % n_collision   = 0
+
+  end subroutine initialize_particle
 
 end module source

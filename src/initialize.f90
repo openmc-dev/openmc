@@ -16,7 +16,7 @@ module initialize
   use mpi_routines,     only: setup_mpi
   use output,           only: title, echo_input, message, print_summary,       &
                               print_particle, header
-  use source,           only: init_source
+  use source,           only: initialize_source
   use string,           only: int_to_str, starts_with, ends_with
   use timing,           only: timer_start, timer_stop
 
@@ -96,7 +96,7 @@ contains
     call material_total_xs()
 
     ! create source particles
-    call init_source()
+    call initialize_source()
 
     ! stop timer for initialization
     if (master) then

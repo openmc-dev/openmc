@@ -930,6 +930,7 @@ contains
     integer :: M     ! # of probabilities
     integer :: i     ! index over incoming energies
     integer :: j     ! index over values
+    integer :: k     ! index over probabilities
 
     ! determine locator for URR data
     JXS23 = JXS(23)
@@ -966,7 +967,10 @@ contains
     ! read probability tables
     do i = 1, N
        do j = 1, 6
-          nuc % urr_data % prob(i,j,1:M) = get_real(M)
+          do k = 1, M
+             nuc % urr_data % prob(i,j,k) = XSS(XSS_index)
+             XSS_index = XSS_index + 1
+          end do
        end do
     end do
 

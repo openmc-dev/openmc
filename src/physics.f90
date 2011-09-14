@@ -339,10 +339,9 @@ contains
     select case (rxn % MT)
     case (ELASTIC)
        call elastic_scatter(p, nuc, rxn)
-    case (N_2ND, N_2N, N_3N, N_2NA, N_3NA, N_2N2A, N_4N, N_2NP, N_3NP)
-       call n_xn(p, nuc, rxn)
-    case (N_NA, N_N3A, N_NP, N_N2A, N_ND, N_NT, N_N3HE, &
-         & N_NT2A, N_N2P, N_NPA, N_N1 : N_NC)
+    case (N_NA, N_N3A, N_NP, N_N2A, N_ND, N_NT, N_N3HE, N_NT2A, N_N2P, &
+          N_NPA, N_N1 : N_NC, N_2ND, N_2N, N_3N, N_2NA, N_3NA, N_2N2A, &
+          N_4N, N_2NP, N_3NP)
        call inelastic_scatter(p, nuc, rxn)
     case (N_FISSION, N_F, N_NF, N_2NF, N_3NF)
        call n_fission_event(p, nuc, rxn)
@@ -623,74 +622,6 @@ contains
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
-    integer :: law
-    real(8) :: A          ! atomic weight ratio of nuclide
-    real(8) :: E_in       ! incoming energy
-    real(8) :: mu         ! cosine of scattering angle
-    real(8) :: E          ! outgoing energy in laboratory
-    real(8) :: E_cm       ! outgoing energy in center-of-mass
-    real(8) :: u,v,w      ! direction cosines
-    real(8) :: Q          ! Q-value of reaction
-    
-    ! copy energy of neutron
-    E_in = p % E
-
-    ! determine A and Q
-    A = nuc % awr
-    Q = rxn % Q_value
-
-    ! determine secondary energy distribution law
-    law = rxn % edist % law
-
-    ! sample scattering angle
-    mu = sample_angle(rxn, E_in)
-
-    ! sample outgoing energy
-    if (law == 44 .or. law == 61) then
-       call sample_energy(rxn%edist, E_in, E, mu)
-    elseif (law == 66) then
-       call sample_energy(rxn%edist, E_in, E, A=A, Q=Q)
-    else
-       call sample_energy(rxn%edist, E_in, E)
-    end if
-
-    ! if scattering system is in center-of-mass, transfer cosine of scattering
-    ! angle and outgoing energy from CM to LAB
-    if (rxn % TY < 0) then
-       E_cm = E
-
-       ! determine outgoing energy in lab
-       E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) & 
-            & / ((A+ONE)*(A+ONE))
-
-       ! determine outgoing angle in lab
-       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
-    end if
-
-    ! copy directional cosines
-    u = p % uvw(1)
-    v = p % uvw(2)
-    w = p % uvw(3)
-
-    ! change direction of particle
-    call rotate_angle(u, v, w, mu)
-    p % uvw = (/ u, v, w /)
-
-    ! change energy of particle
-    p % E = E
-
-  end subroutine inelastic_scatter
-
-!===============================================================================
-! N_XN
-!===============================================================================
-
-  subroutine n_xn(p, nuc, rxn)
-
-    type(Particle), pointer :: p
-    type(Nuclide),  pointer :: nuc
-    type(Reaction), pointer :: rxn
-
     integer :: n_secondary ! number of secondary particles
     integer :: law         ! secondary energy distribution law
     real(8) :: A           ! atomic weight ratio of nuclide
@@ -707,7 +638,7 @@ contains
     ! determine A and Q
     A = nuc % awr
     Q = rxn % Q_value
-    
+
     ! determine secondary energy distribution law
     law = rxn % edist % law
 
@@ -752,7 +683,7 @@ contains
     n_secondary = abs(rxn % TY)
     p % wgt = n_secondary * p % wgt
 
-  end subroutine n_xn
+  end subroutine inelastic_scatter
 
 !===============================================================================
 ! N_ABSORPTION handles all absorbing reactions, i.e. (n,gamma), (n,p), (n,a),

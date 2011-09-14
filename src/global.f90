@@ -56,13 +56,6 @@ module global
   type(NuclideMicroXS), allocatable :: micro_xs(:)
   type(MaterialMacroXS)             :: material_xs
 
-  ! Current cell, surface, material
-  type(Cell),     pointer :: cCell
-  type(Universe), pointer :: cUniverse
-  type(Lattice),  pointer :: cLattice
-  type(Surface),  pointer :: cSurface
-  type(Material), pointer :: cMaterial
-
   ! unionized energy grid
   integer              :: n_grid    ! number of points on unionized grid
   real(8), allocatable :: e_grid(:) ! energies on unionized grid

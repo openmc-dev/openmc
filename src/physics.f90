@@ -691,7 +691,6 @@ contains
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
-    integer :: i           ! loop index
     integer :: n_secondary ! number of secondary particles
     integer :: law         ! secondary energy distribution law
     real(8) :: A           ! atomic weight ratio of nuclide
@@ -749,11 +748,9 @@ contains
     ! change energy of particle
     p % E = E
 
-    ! produce secondary particles in source bank
-    n_secondary = abs(rxn % TY) - 1
-    do i = 1, n_secondary
-       ! TODO: create particle in source bank
-    end do
+    ! change weight of particle based on multiplicity
+    n_secondary = abs(rxn % TY)
+    p % wgt = n_secondary * p % wgt
 
   end subroutine n_xn
 

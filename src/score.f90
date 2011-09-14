@@ -104,8 +104,9 @@ contains
     real(8) :: val        ! value to score
     real(8) :: Sigma      ! macroscopic cross section of reaction
     character(MAX_LINE_LEN) :: msg ! output/error message
-    type(Cell),  pointer    :: c => null()
-    type(Tally), pointer    :: t => null()
+    type(Cell),     pointer :: c => null()
+    type(Tally),    pointer :: t => null()
+    type(Material), pointer :: mat => null()
 
     ! ==========================================================================
     ! HANDLE LOCAL TALLIES
@@ -170,7 +171,8 @@ contains
           r_bin = 0
           do j = 1, n_reaction
              MT = t % reactions(j)
-             Sigma = get_macro_xs(p, cMaterial, MT)
+             mat => materials(p % material)
+             Sigma = get_macro_xs(p, mat, MT)
              val = Sigma * flux
              r_bin = r_bin + 1
              call add_to_score(t % score(r_bin, c_bin, e_bin), &
@@ -183,7 +185,8 @@ contains
           r_bin = 1
           do j = 1, n_reaction
              MT = t % reactions(j)
-             Sigma = get_macro_xs(p, cMaterial, MT)
+             mat => materials(p % material)
+             Sigma = get_macro_xs(p, mat, MT)
              val = Sigma * flux
              call add_to_score(t % score(r_bin, c_bin, e_bin), &
                   & val)
@@ -234,7 +237,8 @@ contains
           r_bin = 0
           do j = 1, n_reaction
              MT = t % reactions(j)
-             Sigma = get_macro_xs(p, cMaterial, MT)
+             mat => materials(p % material)
+             Sigma = get_macro_xs(p, mat, MT)
              val = Sigma * flux
              r_bin = r_bin + 1
              call add_to_score(t % score(r_bin, c_bin, e_bin), &
@@ -247,7 +251,8 @@ contains
           r_bin = 1
           do j = 1, n_reaction
              MT = t % reactions(j)
-             Sigma = get_macro_xs(p, cMaterial, MT)
+             mat => materials(p % material)
+             Sigma = get_macro_xs(p, mat, MT)
              val = Sigma * flux
              call add_to_score(t % score(r_bin, c_bin, e_bin), &
                   & val)

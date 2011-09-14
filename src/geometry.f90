@@ -32,11 +32,11 @@ contains
     integer :: current_surface ! current surface of particle (with sign)
     type(Surface), pointer  :: surf => null()
 
-    current_surface = p%surface
+    current_surface = p % surface
 
-    n_surfaces = size(c%surfaces)
+    n_surfaces = size(c % surfaces)
     allocate(expression(n_surfaces))
-    expression = c%surfaces
+    expression = c % surfaces
     do i = 1, n_surfaces
 
        ! Don't change logical operator
@@ -61,7 +61,7 @@ contains
 
        ! Compare sense of point to specified sense
        specified_sense = sign(1,expression(i))
-       actual_sense = sense(surf, p%xyz_local)
+       actual_sense = sense(surf, p % xyz_local)
        if (actual_sense == specified_sense) then
           expression(i) = 1
        else
@@ -114,12 +114,8 @@ contains
           ! If this cell contains a universe or lattice, search for the particle
           ! in that universe/lattice
           if (c % type == CELL_NORMAL) then
-             ! set current pointers
              found = .true.         
-             cCell => c
-             cMaterial => materials(cCell%material)
-             cUniverse => univ
-             
+
              ! set particle attributes
              p % cell = univ % cells(i)
              p % universe = dict_get_key(universe_dict, univ % uid)
@@ -137,7 +133,6 @@ contains
           elseif (c % type == CELL_LATTICE) then
              ! Set current lattice
              lat => lattices(c % fill)
-             cLattice => lat
              p % lattice = c % fill
 
              ! determine universe based on lattice position
@@ -170,7 +165,8 @@ contains
   end subroutine find_cell
 
 !===============================================================================
-! CROSS_SURFACE moves a particle into a new cell
+! CROSS_SURFACE handles all surface crossings, whether the particle leaks out of
+! the geometry, is reflected, or crosses into a new lattice or cell
 !===============================================================================
 
   subroutine cross_surface(p, last_cell)
@@ -198,24 +194,24 @@ contains
     type(Cell),     pointer :: c
     type(Universe), pointer :: lower_univ => null()
 
-    surf => surfaces(abs(p%surface))
+    surf => surfaces(abs(p % surface))
     if (verbosity >= 10) then
-       msg = "    Crossing surface " // trim(int_to_str(surf%uid))
+       msg = "    Crossing surface " // trim(int_to_str(surf % uid))
        call message(msg)
     end if
 
-    if (surf%bc == BC_VACUUM) then
+    if (surf % bc == BC_VACUUM) then
        ! =======================================================================
        ! PARTICLE LEAKS OUT OF PROBLEM
 
-       p%alive = .false.
+       p % alive = .false.
        if (verbosity >= 10) then
-          msg = "    Leaked out of surface " // trim(int_to_str(surf%uid))
+          msg = "    Leaked out of surface " // trim(int_to_str(surf % uid))
           call message(msg)
        end if
        return
 
-    elseif (surf%bc == BC_REFLECT) then
+    elseif (surf % bc == BC_REFLECT) then
        ! =======================================================================
        ! PARTICLE REFLECTS FROM SURFACE
 
@@ -322,11 +318,11 @@ contains
     ! ==========================================================================
     ! SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
-    if (p%surface > 0 .and. allocated(surf%neighbor_pos)) then
+    if (p % surface > 0 .and. allocated(surf % neighbor_pos)) then
        ! If coming from negative side of surface, search all the neighboring
        ! cells on the positive side
-       do i = 1, size(surf%neighbor_pos)
-          index_cell = surf%neighbor_pos(i)
+       do i = 1, size(surf % neighbor_pos)
+          index_cell = surf % neighbor_pos(i)
           c => cells(index_cell)
           if (cell_contains(c, p)) then
              if (c % type == CELL_FILL) then
@@ -340,17 +336,15 @@ contains
                 ! set current pointers
                 p % cell = index_cell
                 p % material = c % material
-                cCell => c
-                cMaterial => materials(cCell%material)
              end if
              return
           end if
        end do
-    elseif (p%surface < 0  .and. allocated(surf%neighbor_neg)) then
+    elseif (p % surface < 0  .and. allocated(surf % neighbor_neg)) then
        ! If coming from positive side of surface, search all the neighboring
        ! cells on the negative side
-       do i = 1, size(surf%neighbor_neg)
-          index_cell = surf%neighbor_neg(i)
+       do i = 1, size(surf % neighbor_neg)
+          index_cell = surf % neighbor_neg(i)
           c => cells(index_cell)
           if (cell_contains(c, p)) then
              if (c % type == CELL_FILL) then
@@ -364,8 +358,6 @@ contains
                 ! set current pointers
                 p % cell = index_cell
                 p % material = c % material
-                cCell => c
-                cMaterial => materials(cCell%material)
              end if
              return
           end if
@@ -380,8 +372,6 @@ contains
        if (cell_contains(c, p)) then
           p % cell = i
           p % material = c % material
-          cCell => c
-          cMaterial => materials(cCell%material)
           return
        end if
     end do

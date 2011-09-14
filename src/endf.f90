@@ -130,11 +130,11 @@ contains
     case (699)
        string = '(n,dc)'
     case (700 : 748)
-       string = '(n,t' // trim(int_to_str(MT-600)) // ')'
+       string = '(n,t' // trim(int_to_str(MT-700)) // ')'
     case (749)
        string = '(n,tc)'
     case (750 : 798)
-       string = '(n,3He' // trim(int_to_str(MT-650)) // ')'
+       string = '(n,3He' // trim(int_to_str(MT-750)) // ')'
     case (799)
        string = '(n,3Hec)'
     case (800 : 848)

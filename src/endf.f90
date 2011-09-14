@@ -27,7 +27,7 @@ contains
        string = '(n,2n)'
     case (N_3N)
        string = '(n,3n)'
-    case (FISSION)
+    case (N_FISSION)
        string = '(n,fission)'
     case (N_F)
        string = '(n,f)'

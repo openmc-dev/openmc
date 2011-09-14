@@ -29,6 +29,11 @@ fileio.o: constants.o
 fileio.o: global.o
 fileio.o: string.o
 
+fission.o: constants.o
+fission.o: cross_section_header.o
+fission.o: error.o
+fission.o: search.o
+
 geometry.o: constants.o
 geometry.o: datatypes.o
 geometry.o: error.o
@@ -113,6 +118,7 @@ physics.o: constants.o
 physics.o: cross_section_header.o
 physics.o: endf.o
 physics.o: error.o
+physics.o: fission.o
 physics.o: geometry.o
 physics.o: geometry_header.o
 physics.o: global.o

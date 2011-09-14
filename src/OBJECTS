@@ -9,6 +9,7 @@ endf.o \
 energy_grid.o \
 error.o \
 fileio.o \
+fission.o \
 geometry.o \
 geometry_header.o \
 global.o \

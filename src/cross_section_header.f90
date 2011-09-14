@@ -56,14 +56,20 @@ module cross_section_header
 
   type Nuclide
      character(20) :: name
-     real(8) :: awr
-     real(8) :: temp
+     real(8)       :: awr
+     real(8)       :: temp
+     logical       :: fissionable
+
+     ! Energy grid information
      integer :: n_grid
      integer, allocatable :: grid_index(:)
      real(8), allocatable :: energy(:)
-     real(8), allocatable :: sigma_t(:)
-     real(8), allocatable :: sigma_a(:)
-     real(8), allocatable :: sigma_el(:)
+
+     ! Cross sections
+     real(8), allocatable :: total(:)
+     real(8), allocatable :: elastic(:)
+     real(8), allocatable :: fission(:)
+     real(8), allocatable :: absorption(:)
      real(8), allocatable :: heating(:)
 
      ! Total fission neutron emission
@@ -132,5 +138,37 @@ module cross_section_header
      integer :: binary
      character(150) :: path
   end type xsData
+
+!===============================================================================
+! NUCLIDEMICROXS contains cached microscopic cross sections for a
+! particular nuclide at the current energy
+!===============================================================================
+
+  type NuclideMicroXS
+     integer :: index_grid
+     integer :: index_temp
+     integer :: last_index_grid
+     integer :: last_index_temp
+     real(8) :: interp_factor
+     real(8) :: total
+     real(8) :: elastic
+     real(8) :: absorption
+     real(8) :: fission
+     real(8) :: nu_fission
+  end type NuclideMicroXS
+
+!===============================================================================
+! MATERIALMACROXS contains cached macroscopic cross sections for the material a
+! particle is traveling through
+!===============================================================================
+
+  type MaterialMacroXS
+     real(8) :: total
+     real(8) :: scatter
+     real(8) :: elastic
+     real(8) :: absorption
+     real(8) :: fission
+     real(8) :: nu_fission
+  end type MaterialMacroXS
 
 end module cross_section_header

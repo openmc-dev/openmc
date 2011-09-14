@@ -2,7 +2,8 @@ module global
 
   use bank_header,          only: Bank
   use constants
-  use cross_section_header, only: Nuclide, SAB_Table, xsData
+  use cross_section_header, only: Nuclide, SAB_Table, xsData, NuclideMicroXS, &
+                                  MaterialMacroXS
   use datatypes_header,     only: DictionaryII, DictionaryCI
   use geometry_header,      only: Cell, Universe, Lattice, Surface
   use material_header,      only: Material
@@ -50,6 +51,10 @@ module global
   type(SAB_Table), allocatable, target :: sab_tables(:)
   integer :: n_nuclides_total
   integer :: n_sab_tables
+
+  ! Cross section caches
+  type(NuclideMicroXS), allocatable :: micro_xs(:)
+  type(MaterialMacroXS)             :: material_xs
 
   ! Current cell, surface, material
   type(Cell),     pointer :: cCell

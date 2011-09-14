@@ -2,6 +2,11 @@ module constants
 
   implicit none
 
+  ! Versioning numbers
+  integer, parameter :: VERSION_MAJOR = 0
+  integer, parameter :: VERSION_MINOR = 3
+  integer, parameter :: VERSION_RELEASE = 2
+
   ! Physical constants
   real(8), parameter ::            &
        PI           = 3.1415926535898_8, & ! pi
@@ -98,53 +103,53 @@ module constants
 
   ! Reaction types
   integer, parameter :: &
-       TOTAL_XS  = 1, &
-       ELASTIC   = 2, &
-       N_LEVEL   = 4, &
-       MISC      = 5, &
-       N_2ND     = 11, &
-       N_2N      = 16, &
-       N_3N      = 17, &
-       FISSION   = 18, &
-       N_F       = 19, &
-       N_NF      = 20, &
-       N_2NF     = 21, &
-       N_NA      = 22, &
-       N_N3A     = 23, &
-       N_2NA     = 24, &
-       N_3NA     = 25, &
-       N_NP      = 28, &
-       N_N2A     = 29, &
-       N_2N2A    = 30, &
-       N_ND      = 32, &
-       N_NT      = 33, &
-       N_N3HE    = 34, &
-       N_ND2A    = 35, &
-       N_NT2A    = 36, &
-       N_4N      = 37, &
-       N_3NF     = 38, &
-       N_2NP     = 41, &
-       N_3NP     = 42, &
-       N_N2P     = 44, &
-       N_NPA     = 45, &
-       N_N1      = 51, &
-       N_N40     = 90, &
-       N_NC      = 91, &
-       N_GAMMA   = 102, &
-       N_P       = 103, &
-       N_D       = 104, &
-       N_T       = 105, &
-       N_3HE     = 106, &
-       N_A       = 107, &
-       N_2A      = 108, &
-       N_3A      = 109, &
-       N_2P      = 111, &
-       N_PA      = 112, &
-       N_T2A     = 113, &
-       N_D2A     = 114, &
-       N_PD      = 115, &
-       N_PT      = 116, &
-       N_DA      = 117
+       TOTAL_XS    = 1, &
+       ELASTIC     = 2, &
+       N_LEVEL     = 4, &
+       MISC        = 5, &
+       N_2ND       = 11, &
+       N_2N        = 16, &
+       N_3N        = 17, &
+       N_FISSION   = 18, &
+       N_F         = 19, &
+       N_NF        = 20, &
+       N_2NF       = 21, &
+       N_NA        = 22, &
+       N_N3A       = 23, &
+       N_2NA       = 24, &
+       N_3NA       = 25, &
+       N_NP        = 28, &
+       N_N2A       = 29, &
+       N_2N2A      = 30, &
+       N_ND        = 32, &
+       N_NT        = 33, &
+       N_N3HE      = 34, &
+       N_ND2A      = 35, &
+       N_NT2A      = 36, &
+       N_4N        = 37, &
+       N_3NF       = 38, &
+       N_2NP       = 41, &
+       N_3NP       = 42, &
+       N_N2P       = 44, &
+       N_NPA       = 45, &
+       N_N1        = 51, &
+       N_N40       = 90, &
+       N_NC        = 91, &
+       N_GAMMA     = 102, &
+       N_P         = 103, &
+       N_D         = 104, &
+       N_T         = 105, &
+       N_3HE       = 106, &
+       N_A         = 107, &
+       N_2A        = 108, &
+       N_3A        = 109, &
+       N_2P        = 111, &
+       N_PA        = 112, &
+       N_T2A       = 113, &
+       N_D2A       = 114, &
+       N_PD        = 115, &
+       N_PT        = 116, &
+       N_DA        = 117
 
   ! Tally distinguishers
   integer, parameter :: &
@@ -158,11 +163,6 @@ module constants
        NU_NONE       = 0, & ! No nu values (non-fissionable)
        NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
        NU_TABULAR    = 2    ! Nu values given by tabular distribution
-
-  ! Versioning numbers
-  integer, parameter :: VERSION_MAJOR = 0
-  integer, parameter :: VERSION_MINOR = 3
-  integer, parameter :: VERSION_RELEASE = 1
 
   ! Maximum number of words in a single line, length of line, and length of
   ! single word

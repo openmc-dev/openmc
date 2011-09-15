@@ -181,10 +181,10 @@ contains
        call split_string(line, words, n)
        if (trim(words(1)) == trim(tablename)) then
           found_xs = .true.
-          nuc%name = words(1)
-          nuc%awr = str_to_real(words(2))
+          nuc % name = words(1)
+          nuc % awr  = str_to_real(words(2))
           kT = str_to_real(words(3))
-          nuc%temp = kT / K_BOLTZMANN
+          nuc % temp = kT / K_BOLTZMANN
        end if
        
        ! Skip 5 lines
@@ -556,6 +556,10 @@ contains
     
     ! Add contribution of elastic scattering to total cross section
     nuc % total = nuc % total + nuc % elastic
+
+    ! By default, set nuclide to not fissionable and then change if fission
+    ! reactions are encountered
+    nuc % fissionable = .false.
 
     do i = 1, NMT
        rxn => nuc % reactions(i+1)

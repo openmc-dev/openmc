@@ -84,6 +84,10 @@ input_xml.o: xml_materials.o
 input_xml.o: xml_settings.o
 input_xml.o: xml_tallies.o
 
+interpolation.o: constants.o
+interpolation.o: error.o
+interpolation.o: search.o
+
 logging.o: constants.o
 logging.o: global.o
 
@@ -122,6 +126,7 @@ physics.o: fission.o
 physics.o: geometry.o
 physics.o: geometry_header.o
 physics.o: global.o
+physics.o: interpolation.o
 physics.o: mcnp_random.o
 physics.o: output.o
 physics.o: particle_header.o

@@ -9,6 +9,7 @@ module physics
                                   cross_lattice
   use geometry_header,      only: Universe, BASE_UNIVERSE
   use global
+  use interpolation,        only: interpolate_tab1
   use mcnp_random,          only: rang
   use output,               only: message, print_particle
   use particle_header,      only: Particle
@@ -1115,36 +1116,13 @@ contains
        ! =======================================================================
        ! MAXWELL FISSION SPECTRUM
 
-       ! read number of interpolation regions and incoming energies 
-       NR  = edist % data(1)
-       NE  = edist % data(2 + 2*NR)
-       if (NR > 0) then
-          msg = "Multiple interpolation regions not supported while &
-               &attempting to sample Maxwell fission spectrum."
-          call fatal_error(msg)
-       end if
-
-       ! find incident energy bin and calculate interpolation factor
-       loc = 2 + 2*NR
-       if (E_in < edist % data(loc+1)) then
-          i = 1
-          r = ZERO
-       elseif (E_in > edist % data(loc+NE)) then
-          i = NE - 1
-          r = ONE
-       else
-          i = binary_search(edist % data(loc+1), NE, E_in)
-          r = (E_in - edist%data(loc+i)) / & 
-               & (edist%data(loc+i+1) - edist%data(loc+i))
-       end if
-
        ! determine nuclear temperature from tabulated function
-       loc = loc + NE
-       T = edist%data(loc+i) + r * &
-            & (edist%data(loc+i+1) - edist%data(loc+i))
+       T = interpolate_tab1(edist % data, E_in)
        
        ! sample maxwell fission spectrum
        E_out = maxwell_spectrum(T)
+
+       ! TODO: Add restriction energy constraint??
        
     case (9)
        ! =======================================================================
@@ -1153,35 +1131,12 @@ contains
        ! read number of interpolation regions and incoming energies 
        NR  = edist % data(1)
        NE  = edist % data(2 + 2*NR)
-       if (NR > 0) then
-          msg = "Multiple interpolation regions not supported while &
-               &attempting to sample evaporation spectrum."
-          call fatal_error(msg)
-       end if
-
-       ! find energy bin and calculate interpolation factor -- if the energy is
-       ! outside the range of the tabulated energies, choose the first or last
-       ! bins
-       loc = 2 + 2*NR
-       if (E_in < edist % data(loc+1)) then
-          i = 1
-          r = ZERO
-       elseif (E_in > edist % data(loc+NE)) then
-          i = NE - 1
-          r = ONE
-       else
-          i = binary_search(edist % data(loc+1), NE, E_in)
-          r = (E_in - edist%data(loc+i)) / & 
-               & (edist%data(loc+i+1) - edist%data(loc+i))
-       end if
 
        ! determine nuclear temperature from tabulated function
-       loc = loc + NE
-       T = edist%data(loc+i) + r * &
-            & (edist%data(loc+i+1) - edist%data(loc+i))
+       T = interpolate_tab1(edist % data, E_in)
 
        ! determine restriction energy
-       loc = loc + NE
+       loc = 2 + 2*NR + 2*NE
        U = edist % data(loc + 1)
 
        ! sample outgoing energy based on evaporation spectrum probability
@@ -1201,63 +1156,18 @@ contains
        ! parameter 'a'
        NR  = edist % data(1)
        NE  = edist % data(2 + 2*NR)
-       if (NR > 0) then
-          msg = "Multiple interpolation regions not supported while &
-               &attempting to sample Watt fission spectrum."
-          call fatal_error(msg)
-       end if
-
-       ! find incident energy bin and calculate interpolation factor
-       loc = 2 + 2*NR
-       if (E_in < edist % data(loc+1)) then
-          i = 1
-          r = ZERO
-       elseif (E_in > edist % data(loc+NE)) then
-          i = NE - 1
-          r = ONE
-       else
-          i = binary_search(edist % data(loc+1), NE, E_in)
-          r = (E_in - edist%data(loc+i)) / & 
-               & (edist%data(loc+i+1) - edist%data(loc+i))
-       end if
 
        ! determine Watt parameter 'a' from tabulated function
-       loc = loc + NE
-       Watt_a = edist%data(loc+i) + r * &
-            & (edist%data(loc+i+1) - edist%data(loc+i))
-
-       ! read number of interpolation regions and incoming energies for
-       ! parameter 'b'
-       loc = loc + NE
-       NR  = edist % data(loc + 1)
-       NE  = edist % data(loc + 2 + 2*NR)
-       if (NR > 0) then
-          msg = "Multiple interpolation regions not supported while &
-               &attempting to sample Watt fission spectrum."
-          call fatal_error(msg)
-       end if
-
-       ! find incident energy bin and calculate interpolation factor
-       loc = loc + 2 + 2*NR
-       if (E_in < edist % data(loc+1)) then
-          i = 1
-          r = ZERO
-       elseif (E_in > edist % data(loc+NE)) then
-          i = NE - 1
-          r = ONE
-       else
-          i = binary_search(edist % data(loc+1), NE, E_in)
-          r = (E_in - edist%data(loc+i)) / & 
-               & (edist%data(loc+i+1) - edist%data(loc+i))
-       end if
+       Watt_a = interpolate_tab1(edist % data, E_in)
 
        ! determine Watt parameter 'b' from tabulated function
-       loc = loc + NE
-       Watt_b = edist%data(loc+i) + r * &
-            & (edist%data(loc+i+1) - edist%data(loc+i))
+       loc = 3 + 2*(NR + NE)
+       Watt_b = interpolate_tab1(edist % data, E_in, loc)
 
        ! Sample energy-dependent Watt fission spectrum
        E_out = watt_spectrum(Watt_a, Watt_b)
+
+       ! TODO: Add restriction energy constraint??
 
     case (44)
        ! =======================================================================

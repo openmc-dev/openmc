@@ -14,6 +14,7 @@ geometry.o \
 geometry_header.o \
 global.o \
 initialize.o \
+interpolation.o \
 input_xml.o \
 logging.o \
 main.o \

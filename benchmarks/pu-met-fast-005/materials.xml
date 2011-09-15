@@ -19,10 +19,10 @@
   </material>
   <material uid="2">
     <density value="0.06605308" units="atom/b-cm" />
-    <nuclide name="74000" xs="03c" ao="0.051468" />
-    <nuclide name="28000" xs="03c" ao="0.0097124" />
-    <nuclide name="29000" xs="03c" ao="0.0040774" />
-    <nuclide name="40000" xs="03c" ao="0.00079528" />
+    <nuclide name="W-nat" xs="03c" ao="0.051468" />
+    <nuclide name="Ni-nat" xs="03c" ao="0.0097124" />
+    <nuclide name="Cu-nat" xs="03c" ao="0.0040774" />
+    <nuclide name="Zr-nat" xs="03c" ao="0.00079528" />
   </material>
 
 </materials>

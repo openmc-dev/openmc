@@ -32,6 +32,7 @@ fileio.o: string.o
 fission.o: constants.o
 fission.o: cross_section_header.o
 fission.o: error.o
+fission.o: interpolation.o
 fission.o: search.o
 
 geometry.o: constants.o

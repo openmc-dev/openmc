@@ -4,15 +4,13 @@
   <tally id="1">
     <!-- this is where you specify filters -->
     <filters>
-      <region>1</region>
+      <cell>1</cell>
       <energy>0.0 0.625 20.0e6</energy>
     </filters>
 
     <!-- which reactions to score -->
-    <reactions>1 2 -4 -8</reactions>
+    <macros>total scatter absorption fission nu-fission</macros>
 
-    <!-- which nuclides to score -->
-    <nuclides>U-238</nuclides>
   </tally>
 
 </tallies>

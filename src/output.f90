@@ -506,52 +506,92 @@ contains
     type(Tally), pointer :: tal
 
     integer                 :: i
-    integer                 :: MT
     character(MAX_LINE_LEN) :: string
 
     write(ou,*) 'Tally ' // int_to_str(tal % uid)
 
-    select case (tal % reaction_type)
-    case (TALLY_FLUX)
-       write(ou,*) '    Type: Flux'
-    case (TALLY_ALL)
-       write(ou,*) '    Type: Total Collision Rate'
-    case (TALLY_BINS)
-       write(ou,*) '    Type: Partial reactions'
-    case (TALLY_SUM)
-       write(ou,*) '    Type: Partial reactions (summed)'
-    end select
-
-    select case (tal % cell_type)
-    case (TALLY_BINS)
-       write(ou,*) '    Cell Type: Separate bins'
-    case (TALLY_SUM)
-       write(ou,*) '    Cell Type: Sum over cells'
-    end select
-
-    if (allocated(tal % reactions)) then
+    if (associated(tal % cell_bins)) then
        string = ""
-       do i = 1, size(tal % reactions)
-          MT = tal % reactions(i)
-          string = trim(string) // ' ' // trim(reaction_name(MT))
+       do i = 1, size(tal % cell_bins)
+          string = trim(string) // ' ' // trim(int_to_str(&
+               tal % cell_bins(i) % scalar))
        end do
-       write(ou,*) '    Reactions:' // trim(string)
+       write(ou, *) '    Cell Bins:' // trim(string)
     end if
 
-    if (allocated(cells)) then
+    if (associated(tal % surface_bins)) then
        string = ""
-       do i = 1, size(tal % cells)
-          string = trim(string) // ' ' // trim(int_to_str(tal % cells(i)))
+       do i = 1, size(tal % surface_bins)
+          string = trim(string) // ' ' // trim(int_to_str(&
+               tal % surface_bins(i) % scalar))
        end do
-       write(ou,*) '    Cells:' // trim(string)
+       write(ou, *) '    Surface Bins:' // trim(string)
     end if
-    
-    if (allocated(tal % energies)) then
+
+    if (associated(tal % material_bins)) then
        string = ""
-       do i = 1, size(tal % energies)
-          string = trim(string) // ' ' // trim(real_to_str(tal % energies(i)))
+       do i = 1, size(tal % material_bins)
+          string = trim(string) // ' ' // trim(int_to_str(&
+               tal % material_bins(i) % scalar))
        end do
-       write(ou,*) '    Energies:' // trim(string)
+       write(ou, *) '    Material Bins:' // trim(string)
+    end if
+
+    if (associated(tal % mesh_bins)) then
+       string = ""
+       do i = 1, size(tal % mesh_bins)
+          string = trim(string) // ' ' // trim(int_to_str(&
+               tal % mesh_bins(i) % scalar))
+       end do
+       write(ou, *) '    Mesh Bins:' // trim(string)
+    end if
+
+    if (associated(tal % bornin_bins)) then
+       string = ""
+       do i = 1, size(tal % bornin_bins)
+          string = trim(string) // ' ' // trim(int_to_str(&
+               tal % bornin_bins(i) % scalar))
+       end do
+       write(ou, *) '    Birth Region Bins:' // trim(string)
+    end if
+
+    if (allocated(tal % energy_in)) then
+       string = ""
+       do i = 1, size(tal % energy_in)
+          string = trim(string) // ' ' // trim(real_to_str(&
+               tal % energy_in(i)))
+       end do
+       write(ou,*) '    Incoming Energy Bins:' // trim(string)
+    end if
+
+    if (allocated(tal % energy_out)) then
+       string = ""
+       do i = 1, size(tal % energy_out)
+          string = trim(string) // ' ' // trim(real_to_str(&
+               tal % energy_out(i)))
+       end do
+       write(ou,*) '    Outgoing Energy Bins:' // trim(string)
+    end if
+
+    if (associated(tal % macro_bins)) then
+       string = ""
+       do i = 1, size(tal % macro_bins)
+          select case (tal % macro_bins(i) % scalar)
+          case (MACRO_FLUX)
+             string = trim(string) // ' flux'
+          case (MACRO_TOTAL)
+             string = trim(string) // ' total'
+          case (MACRO_SCATTER)
+             string = trim(string) // ' scatter'
+          case (MACRO_ABSORPTION)
+             string = trim(string) // ' absorption'
+          case (MACRO_FISSION)
+             string = trim(string) // ' fission'
+          case (MACRO_NU_FISSION)
+             string = trim(string) // ' nu-fission'
+          end select
+       end do
+       write(ou,*) '    Macro Reactions:' // trim(string)
     end if
     write(ou,*)
 

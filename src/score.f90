@@ -91,181 +91,181 @@ contains
     type(Particle), pointer :: p     ! particle
     real(8), intent(in)     :: flux  ! estimator of flux
 
-    integer :: i          ! index for tallies in cell
-    integer :: j          ! index for reactions in tally
-    integer :: e_bin      ! energy bin
-    integer :: c_bin      ! cell bin
-    integer :: r_bin      ! reaction bin
-    integer :: n_energy   ! number of energy bins
-    integer :: n_reaction ! number of reactions
-    integer :: type       ! cell or reaction type
-    integer :: MT         ! reaction MT value
-    real(8) :: E          ! energy of particle
-    real(8) :: val        ! value to score
-    real(8) :: Sigma      ! macroscopic cross section of reaction
-    character(MAX_LINE_LEN) :: msg ! output/error message
-    type(Cell),     pointer :: c => null()
-    type(Tally),    pointer :: t => null()
-    type(Material), pointer :: mat => null()
-
-    ! ==========================================================================
-    ! HANDLE LOCAL TALLIES
-
-    c => cells(p % cell)
-    if (.not. allocated(c % tallies)) return
-
-    ! if so, loop over each tally
-    do i = 1, size(c % tallies)
-       t => tallies(c % tallies(i))
-
-       ! =======================================================================
-       ! DETERMINE ENERGY BIN
-       if (allocated(t % energies)) then
-          E = p % E
-          n_energy = size(t % energies)
-          if (E < t % energies(1) .or. E > t % energies(n_energy)) then
-             ! Energy outside of specified range
-             cycle
-          else
-             e_bin = binary_search(t % energies, n_energy, E)
-          end if
-       end if
- 
-       ! =======================================================================
-       ! DETERMINE CELL BIN
-       type = t % cell_type
-       if (type == TALLY_SUM) then
-          ! Sum tallies from separate cells into one bin
-          c_bin = 1
-       elseif (type == TALLY_BINS) then
-          ! Need to determine cell bin
-          do j = 1, size(t % cells)
-             if (p % cell == t % cells(j)) then
-                c_bin = j
-                exit
-             end if
-          end do
-       else
-          msg = "Invalid type for cell bins in tally " // int_to_str(t % uid)
-          call fatal_error(msg)
-       end if
-
-       ! =======================================================================
-       ! DETERMINE REACTION BIN AND ADD VALUE TO SCORE
-       type = t % reaction_type
-       if (type == TALLY_FLUX) then
-          ! Tally flux only
-          val = flux
-          call add_to_score(t % score(r_bin, c_bin, e_bin), val)
-
-       elseif (type == TALLY_ALL) then
-          ! Tally total reaction rate
-          val = ONE
-          r_bin = 1
-          call add_to_score(t % score(r_bin, c_bin, e_bin), val)
-
-       elseif (type == TALLY_BINS) then
-          ! Individually bin reactions
-          n_reaction = t % reaction_type
-          
-          r_bin = 0
-          do j = 1, n_reaction
-             MT = t % reactions(j)
-             mat => materials(p % material)
-             Sigma = get_macro_xs(p, mat, MT)
-             val = Sigma * flux
-             r_bin = r_bin + 1
-             call add_to_score(t % score(r_bin, c_bin, e_bin), &
-                  & val)
-          end do
-       elseif (type == TALLY_SUM) then
-          ! Tally reactions in one bin
-          n_reaction = t % reaction_type
-          
-          r_bin = 1
-          do j = 1, n_reaction
-             MT = t % reactions(j)
-             mat => materials(p % material)
-             Sigma = get_macro_xs(p, mat, MT)
-             val = Sigma * flux
-             call add_to_score(t % score(r_bin, c_bin, e_bin), &
-                  & val)
-          end do
-       end if
-    end do
-
-    ! ==========================================================================
-    ! HANDLE GLOBAL TALLIES
-
-    do i = 1, n_tallies_global
-       t => tallies_global(i)
-
-       ! =======================================================================
-       ! DETERMINE ENERGY BIN
-       if (allocated(t % energies)) then
-          E = p % E
-          n_energy = size(t % energies)
-          if (E < t % energies(1) .or. E > t % energies(n_energy)) then
-             ! Energy outside of specified range
-             cycle
-          else
-             e_bin = binary_search(t % energies, n_energy, E)
-          end if
-       end if
-
-       ! Since it's a global tally, the cell bin is unity
-       c_bin = 1
-       
-       ! =======================================================================
-       ! DETERMINE REACTION BIN AND ADD VALUE TO SCORE
-       type = t % reaction_type
-       if (type == TALLY_FLUX) then
-          ! Tally flux only
-          val = flux
-          call add_to_score(t % score(r_bin, c_bin, e_bin), val)
-
-       elseif (type == TALLY_ALL) then
-          ! Tally total reaction rate
-          val = ONE
-          r_bin = 1
-          call add_to_score(t % score(r_bin, c_bin, e_bin), val)
-
-       elseif (type == TALLY_BINS) then
-          ! Individually bin reactions
-          n_reaction = t % reaction_type
-          
-          r_bin = 0
-          do j = 1, n_reaction
-             MT = t % reactions(j)
-             mat => materials(p % material)
-             Sigma = get_macro_xs(p, mat, MT)
-             val = Sigma * flux
-             r_bin = r_bin + 1
-             call add_to_score(t % score(r_bin, c_bin, e_bin), &
-                  & val)
-          end do
-       elseif (type == TALLY_SUM) then
-          ! Tally reactions in one bin
-          n_reaction = t % reaction_type
-          
-          r_bin = 1
-          do j = 1, n_reaction
-             MT = t % reactions(j)
-             mat => materials(p % material)
-             Sigma = get_macro_xs(p, mat, MT)
-             val = Sigma * flux
-             call add_to_score(t % score(r_bin, c_bin, e_bin), &
-                  & val)
-          end do
-       end if
-
-    end do
-
-    ! ==========================================================================
-    ! TODO: Add lattice tallies
-
-    ! ==========================================================================
-    ! TODO: Add mesh tallies
+!!$    integer :: i          ! index for tallies in cell
+!!$    integer :: j          ! index for reactions in tally
+!!$    integer :: e_bin      ! energy bin
+!!$    integer :: c_bin      ! cell bin
+!!$    integer :: r_bin      ! reaction bin
+!!$    integer :: n_energy   ! number of energy bins
+!!$    integer :: n_reaction ! number of reactions
+!!$    integer :: type       ! cell or reaction type
+!!$    integer :: MT         ! reaction MT value
+!!$    real(8) :: E          ! energy of particle
+!!$    real(8) :: val        ! value to score
+!!$    real(8) :: Sigma      ! macroscopic cross section of reaction
+!!$    character(MAX_LINE_LEN) :: msg ! output/error message
+!!$    type(Cell),     pointer :: c => null()
+!!$    type(Tally),    pointer :: t => null()
+!!$    type(Material), pointer :: mat => null()
+!!$
+!!$    ! ==========================================================================
+!!$    ! HANDLE LOCAL TALLIES
+!!$
+!!$    c => cells(p % cell)
+!!$    if (.not. allocated(c % tallies)) return
+!!$
+!!$    ! if so, loop over each tally
+!!$    do i = 1, size(c % tallies)
+!!$       t => tallies(c % tallies(i))
+!!$
+!!$       ! =======================================================================
+!!$       ! DETERMINE ENERGY BIN
+!!$       if (allocated(t % energies)) then
+!!$          E = p % E
+!!$          n_energy = size(t % energies)
+!!$          if (E < t % energies(1) .or. E > t % energies(n_energy)) then
+!!$             ! Energy outside of specified range
+!!$             cycle
+!!$          else
+!!$             e_bin = binary_search(t % energies, n_energy, E)
+!!$          end if
+!!$       end if
+!!$ 
+!!$       ! =======================================================================
+!!$       ! DETERMINE CELL BIN
+!!$       type = t % cell_type
+!!$       if (type == TALLY_SUM) then
+!!$          ! Sum tallies from separate cells into one bin
+!!$          c_bin = 1
+!!$       elseif (type == TALLY_BINS) then
+!!$          ! Need to determine cell bin
+!!$          do j = 1, size(t % cells)
+!!$             if (p % cell == t % cells(j)) then
+!!$                c_bin = j
+!!$                exit
+!!$             end if
+!!$          end do
+!!$       else
+!!$          msg = "Invalid type for cell bins in tally " // int_to_str(t % uid)
+!!$          call fatal_error(msg)
+!!$       end if
+!!$
+!!$       ! =======================================================================
+!!$       ! DETERMINE REACTION BIN AND ADD VALUE TO SCORE
+!!$       type = t % reaction_type
+!!$       if (type == TALLY_FLUX) then
+!!$          ! Tally flux only
+!!$          val = flux
+!!$          call add_to_score(t % score(r_bin, c_bin, e_bin), val)
+!!$
+!!$       elseif (type == TALLY_ALL) then
+!!$          ! Tally total reaction rate
+!!$          val = ONE
+!!$          r_bin = 1
+!!$          call add_to_score(t % score(r_bin, c_bin, e_bin), val)
+!!$
+!!$       elseif (type == TALLY_BINS) then
+!!$          ! Individually bin reactions
+!!$          n_reaction = t % reaction_type
+!!$          
+!!$          r_bin = 0
+!!$          do j = 1, n_reaction
+!!$             MT = t % reactions(j)
+!!$             mat => materials(p % material)
+!!$             Sigma = get_macro_xs(p, mat, MT)
+!!$             val = Sigma * flux
+!!$             r_bin = r_bin + 1
+!!$             call add_to_score(t % score(r_bin, c_bin, e_bin), &
+!!$                  & val)
+!!$          end do
+!!$       elseif (type == TALLY_SUM) then
+!!$          ! Tally reactions in one bin
+!!$          n_reaction = t % reaction_type
+!!$          
+!!$          r_bin = 1
+!!$          do j = 1, n_reaction
+!!$             MT = t % reactions(j)
+!!$             mat => materials(p % material)
+!!$             Sigma = get_macro_xs(p, mat, MT)
+!!$             val = Sigma * flux
+!!$             call add_to_score(t % score(r_bin, c_bin, e_bin), &
+!!$                  & val)
+!!$          end do
+!!$       end if
+!!$    end do
+!!$
+!!$    ! ==========================================================================
+!!$    ! HANDLE GLOBAL TALLIES
+!!$
+!!$    do i = 1, n_tallies_global
+!!$       t => tallies_global(i)
+!!$
+!!$       ! =======================================================================
+!!$       ! DETERMINE ENERGY BIN
+!!$       if (allocated(t % energies)) then
+!!$          E = p % E
+!!$          n_energy = size(t % energies)
+!!$          if (E < t % energies(1) .or. E > t % energies(n_energy)) then
+!!$             ! Energy outside of specified range
+!!$             cycle
+!!$          else
+!!$             e_bin = binary_search(t % energies, n_energy, E)
+!!$          end if
+!!$       end if
+!!$
+!!$       ! Since it's a global tally, the cell bin is unity
+!!$       c_bin = 1
+!!$       
+!!$       ! =======================================================================
+!!$       ! DETERMINE REACTION BIN AND ADD VALUE TO SCORE
+!!$       type = t % reaction_type
+!!$       if (type == TALLY_FLUX) then
+!!$          ! Tally flux only
+!!$          val = flux
+!!$          call add_to_score(t % score(r_bin, c_bin, e_bin), val)
+!!$
+!!$       elseif (type == TALLY_ALL) then
+!!$          ! Tally total reaction rate
+!!$          val = ONE
+!!$          r_bin = 1
+!!$          call add_to_score(t % score(r_bin, c_bin, e_bin), val)
+!!$
+!!$       elseif (type == TALLY_BINS) then
+!!$          ! Individually bin reactions
+!!$          n_reaction = t % reaction_type
+!!$          
+!!$          r_bin = 0
+!!$          do j = 1, n_reaction
+!!$             MT = t % reactions(j)
+!!$             mat => materials(p % material)
+!!$             Sigma = get_macro_xs(p, mat, MT)
+!!$             val = Sigma * flux
+!!$             r_bin = r_bin + 1
+!!$             call add_to_score(t % score(r_bin, c_bin, e_bin), &
+!!$                  & val)
+!!$          end do
+!!$       elseif (type == TALLY_SUM) then
+!!$          ! Tally reactions in one bin
+!!$          n_reaction = t % reaction_type
+!!$          
+!!$          r_bin = 1
+!!$          do j = 1, n_reaction
+!!$             MT = t % reactions(j)
+!!$             mat => materials(p % material)
+!!$             Sigma = get_macro_xs(p, mat, MT)
+!!$             val = Sigma * flux
+!!$             call add_to_score(t % score(r_bin, c_bin, e_bin), &
+!!$                  & val)
+!!$          end do
+!!$       end if
+!!$
+!!$    end do
+!!$
+!!$    ! ==========================================================================
+!!$    ! TODO: Add lattice tallies
+!!$
+!!$    ! ==========================================================================
+!!$    ! TODO: Add mesh tallies
 
   end subroutine score_tally
 
@@ -278,9 +278,9 @@ contains
     type(TallyScore), intent(inout) :: score
     real(8),          intent(in)    :: val
     
-    score % n_events = score % n_events + 1
-    score % val      = score % val + val
-    score % val_sq   = score % val_sq + val*val
+!!$    score % n_events = score % n_events + 1
+!!$    score % val      = score % val + val
+!!$    score % val_sq   = score % val_sq + val*val
     
   end subroutine add_to_score
 

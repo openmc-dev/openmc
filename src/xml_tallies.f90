@@ -7,18 +7,20 @@ module xml_data_tallies_t
    logical, private :: strict_
 
 type filter_xml
-   character(len=250)                                :: region
+   character(len=250)                                :: cell
+   character(len=250)                                :: surface
+   character(len=250)                                :: universe
+   character(len=250)                                :: material
+   character(len=250)                                :: mesh
    character(len=250)                                :: bornin
    character(len=250)                                :: energy
    character(len=250)                                :: energyout
-   character(len=250)                                :: material
-   character(len=250)                                :: surface
-   character(len=250)                                :: mesh
 end type filter_xml
 
 type tally_xml
    integer                                         :: id
    type(filter_xml)                                :: filters
+   character(len=250)                                :: macros
    character(len=250)                                :: reactions
    character(len=250)                                :: nuclides
 end type tally_xml
@@ -67,20 +69,22 @@ subroutine read_xml_type_filter_xml( info, starttag, endtag, attribs, noattribs,
    logical                                      :: error
    logical                                      :: endtag_org
    character(len=len(starttag))                 :: tag
-   logical                                         :: has_region
+   logical                                         :: has_cell
+   logical                                         :: has_surface
+   logical                                         :: has_universe
+   logical                                         :: has_material
+   logical                                         :: has_mesh
    logical                                         :: has_bornin
    logical                                         :: has_energy
    logical                                         :: has_energyout
-   logical                                         :: has_material
-   logical                                         :: has_surface
-   logical                                         :: has_mesh
-   has_region                           = .false.
+   has_cell                             = .false.
+   has_surface                          = .false.
+   has_universe                         = .false.
+   has_material                         = .false.
+   has_mesh                             = .false.
    has_bornin                           = .false.
    has_energy                           = .false.
    has_energyout                        = .false.
-   has_material                         = .false.
-   has_surface                          = .false.
-   has_mesh                             = .false.
    call init_xml_type_filter_xml(dvar)
    has_dvar = .true.
    error  = .false.
@@ -129,10 +133,26 @@ subroutine read_xml_type_filter_xml( info, starttag, endtag, attribs, noattribs,
          endif
       endif
       select case( tag )
-      case('region')
+      case('cell')
          call read_xml_word( &
             info, tag, endtag, attribs, noattribs, data, nodata, &
-            dvar%region, has_region )
+            dvar%cell, has_cell )
+      case('surface')
+         call read_xml_word( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%surface, has_surface )
+      case('universe')
+         call read_xml_word( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%universe, has_universe )
+      case('material')
+         call read_xml_word( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%material, has_material )
+      case('mesh')
+         call read_xml_word( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%mesh, has_mesh )
       case('bornin')
          call read_xml_word( &
             info, tag, endtag, attribs, noattribs, data, nodata, &
@@ -145,18 +165,6 @@ subroutine read_xml_type_filter_xml( info, starttag, endtag, attribs, noattribs,
          call read_xml_word( &
             info, tag, endtag, attribs, noattribs, data, nodata, &
             dvar%energyout, has_energyout )
-      case('material')
-         call read_xml_word( &
-            info, tag, endtag, attribs, noattribs, data, nodata, &
-            dvar%material, has_material )
-      case('surface')
-         call read_xml_word( &
-            info, tag, endtag, attribs, noattribs, data, nodata, &
-            dvar%surface, has_surface )
-      case('mesh')
-         call read_xml_word( &
-            info, tag, endtag, attribs, noattribs, data, nodata, &
-            dvar%mesh, has_mesh )
       case ('comment', '!--')
          ! Simply ignore
       case default
@@ -169,34 +177,6 @@ subroutine read_xml_type_filter_xml( info, starttag, endtag, attribs, noattribs,
       nodata = 0
       if ( .not. xml_ok(info) ) exit
    end do
-   if ( .not. has_region ) then
-      has_dvar = .false.
-      call xml_report_errors(info, 'Missing data on region')
-   endif
-   if ( .not. has_bornin ) then
-      has_dvar = .false.
-      call xml_report_errors(info, 'Missing data on bornin')
-   endif
-   if ( .not. has_energy ) then
-      has_dvar = .false.
-      call xml_report_errors(info, 'Missing data on energy')
-   endif
-   if ( .not. has_energyout ) then
-      has_dvar = .false.
-      call xml_report_errors(info, 'Missing data on energyout')
-   endif
-   if ( .not. has_material ) then
-      has_dvar = .false.
-      call xml_report_errors(info, 'Missing data on material')
-   endif
-   if ( .not. has_surface ) then
-      has_dvar = .false.
-      call xml_report_errors(info, 'Missing data on surface')
-   endif
-   if ( .not. has_mesh ) then
-      has_dvar = .false.
-      call xml_report_errors(info, 'Missing data on mesh')
-   endif
 end subroutine read_xml_type_filter_xml
 subroutine init_xml_type_filter_xml_array( dvar )
    type(filter_xml), dimension(:), pointer :: dvar
@@ -207,6 +187,14 @@ subroutine init_xml_type_filter_xml_array( dvar )
 end subroutine init_xml_type_filter_xml_array
 subroutine init_xml_type_filter_xml(dvar)
    type(filter_xml) :: dvar
+   dvar%cell = ''
+   dvar%surface = ''
+   dvar%universe = ''
+   dvar%material = ''
+   dvar%mesh = ''
+   dvar%bornin = ''
+   dvar%energy = ''
+   dvar%energyout = ''
 end subroutine init_xml_type_filter_xml
 subroutine write_xml_type_filter_xml_array( &
       info, tag, indent, dvar )
@@ -230,13 +218,14 @@ subroutine write_xml_type_filter_xml( &
    indentation = ' '
    write(info%lun, '(4a)' ) indentation(1:min(indent,100)),&
        '<',trim(tag), '>'
-   call write_to_xml_word( info, 'region', indent+3, dvar%region)
+   call write_to_xml_word( info, 'cell', indent+3, dvar%cell)
+   call write_to_xml_word( info, 'surface', indent+3, dvar%surface)
+   call write_to_xml_word( info, 'universe', indent+3, dvar%universe)
+   call write_to_xml_word( info, 'material', indent+3, dvar%material)
+   call write_to_xml_word( info, 'mesh', indent+3, dvar%mesh)
    call write_to_xml_word( info, 'bornin', indent+3, dvar%bornin)
    call write_to_xml_word( info, 'energy', indent+3, dvar%energy)
    call write_to_xml_word( info, 'energyout', indent+3, dvar%energyout)
-   call write_to_xml_word( info, 'material', indent+3, dvar%material)
-   call write_to_xml_word( info, 'surface', indent+3, dvar%surface)
-   call write_to_xml_word( info, 'mesh', indent+3, dvar%mesh)
    write(info%lun,'(4a)') indentation(1:min(indent,100)), &
        '</' //trim(tag) // '>'
 end subroutine write_xml_type_filter_xml
@@ -286,10 +275,12 @@ subroutine read_xml_type_tally_xml( info, starttag, endtag, attribs, noattribs, 
    character(len=len(starttag))                 :: tag
    logical                                         :: has_id
    logical                                         :: has_filters
+   logical                                         :: has_macros
    logical                                         :: has_reactions
    logical                                         :: has_nuclides
    has_id                               = .false.
    has_filters                          = .false.
+   has_macros                           = .false.
    has_reactions                        = .false.
    has_nuclides                         = .false.
    call init_xml_type_tally_xml(dvar)
@@ -348,6 +339,10 @@ subroutine read_xml_type_tally_xml( info, starttag, endtag, attribs, noattribs, 
          call read_xml_type_filter_xml( &
             info, tag, endtag, attribs, noattribs, data, nodata, &
             dvar%filters, has_filters )
+      case('macros')
+         call read_xml_word( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%macros, has_macros )
       case('reactions')
          call read_xml_word( &
             info, tag, endtag, attribs, noattribs, data, nodata, &
@@ -376,14 +371,6 @@ subroutine read_xml_type_tally_xml( info, starttag, endtag, attribs, noattribs, 
       has_dvar = .false.
       call xml_report_errors(info, 'Missing data on filters')
    endif
-   if ( .not. has_reactions ) then
-      has_dvar = .false.
-      call xml_report_errors(info, 'Missing data on reactions')
-   endif
-   if ( .not. has_nuclides ) then
-      has_dvar = .false.
-      call xml_report_errors(info, 'Missing data on nuclides')
-   endif
 end subroutine read_xml_type_tally_xml
 subroutine init_xml_type_tally_xml_array( dvar )
    type(tally_xml), dimension(:), pointer :: dvar
@@ -394,6 +381,9 @@ subroutine init_xml_type_tally_xml_array( dvar )
 end subroutine init_xml_type_tally_xml_array
 subroutine init_xml_type_tally_xml(dvar)
    type(tally_xml) :: dvar
+   dvar%macros = ''
+   dvar%reactions = ''
+   dvar%nuclides = ''
 end subroutine init_xml_type_tally_xml
 subroutine write_xml_type_tally_xml_array( &
       info, tag, indent, dvar )
@@ -419,6 +409,7 @@ subroutine write_xml_type_tally_xml( &
        '<',trim(tag), '>'
    call write_to_xml_integer( info, 'id', indent+3, dvar%id)
    call write_xml_type_filter_xml( info, 'filters', indent+3, dvar%filters)
+   call write_to_xml_word( info, 'macros', indent+3, dvar%macros)
    call write_to_xml_word( info, 'reactions', indent+3, dvar%reactions)
    call write_to_xml_word( info, 'nuclides', indent+3, dvar%nuclides)
    write(info%lun,'(4a)') indentation(1:min(indent,100)), &
@@ -445,7 +436,7 @@ subroutine read_xml_file_tallies_t(fname, lurep, errout)
 
    call init_xml_file_tallies_t
    call xml_open( info, fname, .true. )
-   call xml_options( info, report_errors=.true., ignore_whitespace=.true.)
+   call xml_options( info, report_errors=.false., ignore_whitespace=.true.)
    lurep_ = 0
    if ( present(lurep) ) then
       lurep_ = lurep

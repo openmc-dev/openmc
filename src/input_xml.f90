@@ -7,7 +7,8 @@ module input_xml
   use geometry_header, only: Cell, Surface, Lattice
   use global
   use output,          only: message
-  use string,          only: lower_case, int_to_str
+  use string,          only: lower_case, int_to_str, str_to_int, str_to_real,  &
+                             split_string
 
   implicit none
 
@@ -26,6 +27,7 @@ contains
     call read_settings_xml()
     call read_geometry_xml()
     call read_materials_xml()
+    call read_tallies_xml()
 
   end subroutine read_input_xml
 
@@ -40,6 +42,7 @@ contains
 
     integer :: n
     integer :: coeffs_reqd
+    logical :: file_exists
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: msg
     character(MAX_LINE_LEN) :: filename
@@ -48,8 +51,15 @@ contains
     msg = "Reading settings XML file..."
     call message(msg, 5)
 
-    ! Parse settings.xml file
+    ! Check if settings.xml exists
     filename = trim(path_input) // "settings.xml"
+    inquire(FILE=filename, EXIST=file_exists)
+    if (.not. file_exists) then
+       msg = "Settings XML file '" // trim(filename) // "' does not exist!"
+       call fatal_error(msg)
+    end if
+
+    ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
 
     ! Cross-section library path
@@ -111,6 +121,7 @@ contains
     integer :: universe_num
     integer :: count
     integer :: coeffs_reqd
+    logical :: file_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_LINE_LEN) :: msg
     character(MAX_WORD_LEN) :: word
@@ -125,8 +136,15 @@ contains
     ! ==========================================================================
     ! READ CELLS FROM GEOMETRY.XML
 
-    ! Parse geometry.xml file
+    ! Check if geometry.xml exists
     filename = trim(path_input) // "geometry.xml"
+    inquire(FILE=filename, EXIST=file_exists)
+    if (.not. file_exists) then
+       msg = "Geometry XML file '" // trim(filename) // "' does not exist!"
+       call fatal_error(msg)
+    end if
+
+    ! Parse geometry.xml file
     call read_xml_file_geometry_t(filename)
 
     ! Allocate cells array
@@ -372,6 +390,7 @@ contains
     integer :: i, j
     integer :: n
     real(8) :: val
+    logical :: file_exists
     character(MAX_WORD_LEN) :: units
     character(MAX_WORD_LEN) :: name
     character(MAX_LINE_LEN) :: filename
@@ -383,8 +402,15 @@ contains
     msg = "Reading materials XML file..."
     call message(msg, 5)
 
-    ! Parse materials.xml file
+    ! Check is materials.xml exists
     filename = trim(path_input) // "materials.xml"
+    inquire(FILE=filename, EXIST=file_exists)
+    if (.not. file_exists) then
+       msg = "Material XML file '" // trim(filename) // "' does not exist!"
+       call fatal_error(msg)
+    end if
+
+    ! Parse materials.xml file
     call read_xml_file_materials_t(filename)
 
     ! Allocate cells array
@@ -474,17 +500,30 @@ contains
 
     use xml_data_tallies_t
 
-    integer :: i
+    integer :: i       ! loop over user-specified tallies
+    integer :: j       ! loop over words
+    integer :: n_words
     character(MAX_LINE_LEN) :: filename
     character(MAX_LINE_LEN) :: msg
+    character(MAX_WORD_LEN) :: word
+    character(MAX_WORD_LEN) :: words(MAX_WORDS)
+    logical :: file_exists
     type(Tally),    pointer :: t => null()
 
+    ! Check if tallies.xml exists
+    filename = trim(path_input) // "tallies.xml"
+    inquire(FILE=filename, EXIST=file_exists)
+    if (.not. file_exists) then
+       ! Since a tallies.xml file is optional, no error is issued here
+       n_tallies = 0
+       return
+    end if
+    
     ! Display output message
     msg = "Reading tallies XML file..."
     call message(msg, 5)
 
     ! Parse tallies.xml file
-    filename = trim(path_input) // "tallies.xml"
     call read_xml_file_tallies_t(filename)
 
     ! Allocate cells array
@@ -496,6 +535,106 @@ contains
 
        ! Copy material uid
        t % uid = tally_(i) % id
+
+       ! Check to make sure that both cells and surfaces were not specified
+       if (len_trim(tally_(i) % filters % cell) > 0 .and. &
+            len_trim(tally_(i) % filters % surface) > 0) then
+          msg = "Cannot specify both cell and surface filters for tally " &
+               // trim(int_to_str(t % uid))
+          call fatal_error(msg)
+       end if
+
+       ! TODO: Parse logical expressions instead of just each word
+
+       ! Read cell filter bins
+       if (len_trim(tally_(i) % filters % cell) > 0) then
+          call split_string(tally_(i) % filters % cell, words, n_words)
+          allocate(t % cell_bins(n_words))
+          do j = 1, n_words
+             t % cell_bins(j) % scalar = str_to_int(words(j))
+          end do
+       end if
+
+       ! Read surface filter bins
+       if (len_trim(tally_(i) % filters % surface) > 0) then
+          call split_string(tally_(i) % filters % surface, words, n_words)
+          allocate(t % surface_bins(n_words))
+          do j = 1, n_words
+             t % surface_bins(j) % scalar = str_to_int(words(j))
+          end do
+       end if
+
+       ! Read material filter bins
+       if (len_trim(tally_(i) % filters % material) > 0) then
+          call split_string(tally_(i) % filters % material, words, n_words)
+          allocate(t % material_bins(n_words))
+          do j = 1, n_words
+             t % material_bins(j) % scalar = str_to_int(words(j))
+          end do
+       end if
+
+       ! Read mesh filter bins
+       if (len_trim(tally_(i) % filters % mesh) > 0) then
+          call split_string(tally_(i) % filters % mesh, words, n_words)
+          allocate(t % mesh_bins(n_words))
+          do j = 1, n_words
+             t % mesh_bins(j) % scalar = str_to_int(words(j))
+          end do
+       end if
+
+       ! Read birth region filter bins
+       if (len_trim(tally_(i) % filters % bornin) > 0) then
+          call split_string(tally_(i) % filters % bornin, words, n_words)
+          allocate(t % bornin_bins(n_words))
+          do j = 1, n_words
+             t % bornin_bins(j) % scalar = str_to_int(words(j))
+          end do
+       end if
+
+       ! Read incoming energy filter bins
+       if (len_trim(tally_(i) % filters % energy) > 0) then
+          call split_string(tally_(i) % filters % energy, words, n_words)
+          allocate(t % energy_in(n_words))
+          do j = 1, n_words
+             t % energy_in(j) = str_to_real(words(j))
+          end do
+       end if
+
+       ! Read outgoing energy filter bins
+       if (len_trim(tally_(i) % filters % energyout) > 0) then
+          call split_string(tally_(i) % filters % energyout, words, n_words)
+          allocate(t % energy_out(n_words))
+          do j = 1, n_words
+             t % energy_out(j) = str_to_real(words(j))
+          end do
+       end if
+
+       ! Read macro reactions
+       if (len_trim(tally_(i) % macros) > 0) then
+          call split_string(tally_(i) % macros, words, n_words)
+          allocate(t % macro_bins(n_words))
+          do j = 1, n_words
+             word = words(j)
+             call lower_case(word)
+             select case (trim(word))
+             case ('flux')
+                t % macro_bins(j) % scalar = MACRO_FLUX
+             case ('total')
+                t % macro_bins(j) % scalar = MACRO_TOTAL
+             case ('scatter')
+                t % macro_bins(j) % scalar = MACRO_SCATTER
+             case ('absorption')
+                t % macro_bins(j) % scalar = MACRO_ABSORPTION
+             case ('fission')
+                t % macro_bins(j) % scalar = MACRO_FISSION
+             case ('nu-fission')
+                t % macro_bins(j) % scalar = MACRO_NU_FISSION
+             case default
+                msg = "Unknown macro reaction: " // trim(words(j))
+                call fatal_error(msg)
+             end select
+          end do
+       end if
 
     end do
 

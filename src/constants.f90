@@ -151,12 +151,14 @@ module constants
        N_PT        = 116, &
        N_DA        = 117
 
-  ! Tally distinguishers
+  ! Tally macro reactions
   integer, parameter :: &
-       TALLY_FLUX = -1, & ! tally the flux only
-       TALLY_ALL  =  0, & ! tally all reactions
-       TALLY_BINS =  1, & ! tally individual (reactions, cells)
-       TALLY_SUM  =  2    ! tally sum of specified (reactions, cells)
+       MACRO_FLUX       = -1, & ! flux
+       MACRO_TOTAL      = -2, & ! total reaction rate
+       MACRO_SCATTER    = -3, & ! total scattering rate
+       MACRO_ABSORPTION = -4, & ! total absorption rate
+       MACRO_FISSION    = -5, & ! total fission rate
+       MACRO_NU_FISSION = -6    ! total neutron production rate
 
   ! Fission neutron emission (nu) type
   integer, parameter ::     &

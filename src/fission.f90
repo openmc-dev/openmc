@@ -60,7 +60,6 @@ contains
     integer :: i           ! loop index
     integer :: NC          ! number of polynomial coefficients
     real(8) :: c           ! polynomial coefficient
-    character(MAX_LINE_LEN) :: msg ! error message
 
     if (nuc % nu_p_type == NU_NONE) then
        ! since no prompt or delayed data is present, this means all neutron

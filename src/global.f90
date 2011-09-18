@@ -9,7 +9,7 @@ module global
   use material_header,      only: Material
   use particle_header,      only: Particle
   use source_header,        only: ExtSource
-  use tally_header,         only: Tally
+  use tally_header,         only: TallyObject
   use timing,               only: Timer
 
 #ifdef MPI
@@ -20,14 +20,14 @@ module global
   save
 
   ! Main arrays for cells, surfaces, materials
-  type(Cell),     allocatable, target :: cells(:)
-  type(Universe), allocatable, target :: universes(:)
-  type(Lattice),  allocatable, target :: lattices(:)
-  type(Surface),  allocatable, target :: surfaces(:)
-  type(Material), allocatable, target :: materials(:)
-  type(xsData),   allocatable, target :: xsdatas(:)
-  type(Tally),    allocatable, target :: tallies(:)
-  type(Tally),    allocatable, target :: tallies_global(:)
+  type(Cell),        allocatable, target :: cells(:)
+  type(Universe),    allocatable, target :: universes(:)
+  type(Lattice),     allocatable, target :: lattices(:)
+  type(Surface),     allocatable, target :: surfaces(:)
+  type(Material),    allocatable, target :: materials(:)
+  type(xsData),      allocatable, target :: xsdatas(:)
+  type(TallyObject), allocatable, target :: tallies(:)
+  type(TallyObject), allocatable, target :: tallies_global(:)
   integer :: n_cells          ! # of cells
   integer :: n_universes      ! # of universes
   integer :: n_lattices       ! # of lattices

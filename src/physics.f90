@@ -13,7 +13,7 @@ module physics
   use mcnp_random,          only: rang
   use output,               only: message, print_particle
   use particle_header,      only: Particle
-  use score,                only: score_tally
+  use tally,                only: score_tally
   use search,               only: binary_search
   use string,               only: int_to_str
 

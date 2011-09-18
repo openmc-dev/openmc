@@ -9,6 +9,7 @@ module input_xml
   use output,          only: message
   use string,          only: lower_case, int_to_str, str_to_int, str_to_real,  &
                              split_string
+  use tally_header,    only: TallyObject
 
   implicit none
 
@@ -508,7 +509,7 @@ contains
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: words(MAX_WORDS)
     logical :: file_exists
-    type(Tally),    pointer :: t => null()
+    type(TallyObject),    pointer :: t => null()
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"

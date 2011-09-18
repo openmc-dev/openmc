@@ -1,4 +1,4 @@
-module score
+module tally
 
   use constants
   use cross_section, only: get_macro_xs
@@ -284,4 +284,4 @@ contains
     
   end subroutine add_to_score
 
-end module score
+end module tally

@@ -80,6 +80,7 @@ input_xml.o: geometry_header.o
 input_xml.o: global.o
 input_xml.o: output.o
 input_xml.o: string.o
+input_xml.o: tally_header.o
 input_xml.o: xml_geometry.o
 input_xml.o: xml_materials.o
 input_xml.o: xml_settings.o
@@ -100,9 +101,9 @@ main.o: mpi_routines.o
 main.o: output.o
 main.o: particle_header.o
 main.o: physics.o
-main.o: score.o
 main.o: source.o
 main.o: string.o
+main.o: tally.o
 main.o: timing.o
 
 mpi_routines.o: constants.o
@@ -118,6 +119,7 @@ output.o: endf.o
 output.o: geometry_header.o
 output.o: global.o
 output.o: string.o
+output.o: tally_header.o
 
 physics.o: constants.o
 physics.o: cross_section_header.o
@@ -131,17 +133,9 @@ physics.o: interpolation.o
 physics.o: mcnp_random.o
 physics.o: output.o
 physics.o: particle_header.o
-physics.o: score.o
 physics.o: search.o
 physics.o: string.o
-
-score.o: constants.o
-score.o: cross_section.o
-score.o: error.o
-score.o: global.o
-score.o: output.o
-score.o: search.o
-score.o: string.o
+physics.o: tally.o
 
 search.o: constants.o
 search.o: error.o
@@ -157,5 +151,13 @@ source.o: physics.o
 
 string.o: constants.o
 string.o: error.o
+
+tally.o: constants.o
+tally.o: cross_section.o
+tally.o: error.o
+tally.o: global.o
+tally.o: output.o
+tally.o: search.o
+tally.o: string.o
 
 timing.o: constants.o

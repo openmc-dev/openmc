@@ -8,7 +8,7 @@ program main
   use output,          only: message, header, print_runtime
   use particle_header, only: Particle
   use physics,         only: transport
-  use score,           only: calculate_keff
+  use tally,           only: calculate_keff
   use source,          only: get_source_particle
   use string,          only: int_to_str
   use timing,          only: timer_start, timer_stop

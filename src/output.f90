@@ -9,6 +9,7 @@ module output
   use geometry_header,      only: Cell, Universe, Surface
   use global
   use string,               only: upper_case, int_to_str, real_to_str
+  use tally_header,         only: TallyObject
 
   implicit none
 
@@ -503,7 +504,7 @@ contains
 
   subroutine print_tally(tal)
 
-    type(Tally), pointer :: tal
+    type(TallyObject), pointer :: tal
 
     integer                 :: i
     character(MAX_LINE_LEN) :: string
@@ -605,12 +606,12 @@ contains
 
   subroutine print_summary()
 
-    type(Surface),  pointer :: s => null()
-    type(Cell),     pointer :: c => null()
-    type(Universe), pointer :: u => null()
-    type(Lattice),  pointer :: l => null()
-    type(Material), pointer :: m => null()
-    type(Tally),    pointer :: t => null()
+    type(Surface),     pointer :: s => null()
+    type(Cell),        pointer :: c => null()
+    type(Universe),    pointer :: u => null()
+    type(Lattice),     pointer :: l => null()
+    type(Material),    pointer :: m => null()
+    type(TallyObject), pointer :: t => null()
     integer :: i
 
     ! print summary of cells

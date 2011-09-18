@@ -27,7 +27,7 @@ module tally_header
 ! is given by the TallyBins and the scores are stored in a TallyScore array.
 !===============================================================================
 
-  type Tally
+  type TallyObject
      ! Basic data
 
      integer :: uid
@@ -60,6 +60,6 @@ module tally_header
 
      type(TallyScore), allocatable :: score(:)
 
-  end type Tally
+  end type TallyObject
 
 end module tally_header

@@ -7,7 +7,7 @@ module tally
   use output,        only: message
   use search,        only: binary_search
   use string,        only: int_to_str
-  use tally_header,  only: TallyScore
+  use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement
 
 #ifdef MPI
   use mpi
@@ -83,13 +83,17 @@ contains
   end subroutine calculate_keff
 
 !===============================================================================
-! CREATE_TALLY_MAP
+! CREATE_TALLY_MAP creates a map that allows a quick determination of which
+! tallies and bins need to be scored to when a particle makes a collision.
 !===============================================================================
 
   subroutine create_tally_map()
 
     integer :: i
+    integer :: j
+    integer :: index
     type(TallyObject), pointer :: t => null()
+    type(Cell), pointer :: c => null()
 
     ! allocate tally map array
     allocate(tally_maps(TALLY_MAP_TYPES))
@@ -105,9 +109,85 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
+       ! Add map elements for cell bins
+       if (associated(t % cell_bins)) then
+          do j = 1, size(t % cell_bins)
+             index = t % cell_bins(j) % scalar
+             call add_map_element(tally_maps(MAP_CELL) % items(index), i, j)
+          end do
+       end if
+
+       ! Add map elements for surface bins
+       if (associated(t % surface_bins)) then
+          do j = 1, size(t % surface_bins)
+             index = t % surface_bins(j) % scalar
+             call add_map_element(tally_maps(MAP_SURFACE) % items(index), i, j)
+          end do
+       end if
+
+       ! Add map elements for universe bins
+       if (associated(t % universe_bins)) then
+          do j = 1, size(t % universe_bins)
+             index = t % universe_bins(j) % scalar
+             call add_map_element(tally_maps(MAP_UNIVERSE) % items(index), i, j)
+          end do
+       end if
+
+       ! Add map elements for material bins
+       if (associated(t % material_bins)) then
+          do j = 1, size(t % material_bins)
+             index = t % material_bins(j) % scalar
+             call add_map_element(tally_maps(MAP_MATERIAL) % items(index), i, j)
+          end do
+       end if
+
+       ! Add map elements for bornin bins
+       if (associated(t % bornin_bins)) then
+          do j = 1, size(t % bornin_bins)
+             index = t % bornin_bins(j) % scalar
+             call add_map_element(tally_maps(MAP_BORNIN) % items(index), i, j)
+          end do
+       end if
+
     end do
 
   end subroutine create_tally_map
+
+!===============================================================================
+! ADD_MAP_ELEMENT adds a pair of tally and bin indices to the list for a given
+! cell/surface/etc.
+!===============================================================================
+
+  subroutine add_map_element(item, index_tally, index_bin)
+
+    type(TallyMapItem), intent(inout) :: item
+    integer, intent(in) :: index_tally ! index in tallies array
+    integer, intent(in) :: index_bin   ! index in bins array
+
+    integer :: n
+    type(TallyMapElement), allocatable :: temp(:)
+
+    if (.not. allocated(item % elements)) then
+       allocate(item % elements(1))
+       item % elements(1) % index_tally = index_tally
+       item % elements(1) % index_bin   = index_bin
+    else
+       ! determine size of elements array
+       n = size(item % elements)
+
+       ! allocate temporary storage and copy elements
+       allocate(temp(n+1))
+       temp(1:n) = item % elements
+
+       ! move allocation back to main array
+       call move_alloc(FROM=temp, TO=item%elements)
+
+       ! set new element
+       item % elements(n+1) % index_tally = index_tally
+       item % elements(n+1) % index_bin   = index_bin
+    end if
+
+  end subroutine add_map_element
 
 !===============================================================================
 ! SCORE_TALLY

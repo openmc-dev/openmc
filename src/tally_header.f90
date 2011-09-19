@@ -17,7 +17,7 @@ module tally_header
 !===============================================================================
 
   type TallyMapItem
-     type(TallyMapElement), pointer :: elements => null()
+     type(TallyMapElement), allocatable :: elements(:)
   end type TallyMapItem
 
 !===============================================================================

@@ -71,6 +71,7 @@ initialize.o: mpi_routines.o
 initialize.o: output.o
 initialize.o: source.o
 initialize.o: string.o
+initialize.o: tally.o
 initialize.o: timing.o
 
 input_xml.o: constants.o

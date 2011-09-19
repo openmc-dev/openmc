@@ -160,6 +160,16 @@ module constants
        MACRO_FISSION    = -5, & ! total fission rate
        MACRO_NU_FISSION = -6    ! total neutron production rate
 
+  ! Tally map types
+  integer, parameter :: TALLY_MAP_TYPES = 6
+  integer, parameter ::  &
+       MAP_CELL     = 1, &
+       MAP_SURFACE  = 2, &
+       MAP_UNIVERSE = 3, &
+       MAP_MATERIAL = 4, &
+       MAP_MESH     = 5, &
+       MAP_BORNIN   = 6
+
   ! Fission neutron emission (nu) type
   integer, parameter ::     &
        NU_NONE       = 0, & ! No nu values (non-fissionable)

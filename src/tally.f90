@@ -83,6 +83,33 @@ contains
   end subroutine calculate_keff
 
 !===============================================================================
+! CREATE_TALLY_MAP
+!===============================================================================
+
+  subroutine create_tally_map()
+
+    integer :: i
+    type(TallyObject), pointer :: t => null()
+
+    ! allocate tally map array
+    allocate(tally_maps(TALLY_MAP_TYPES))
+
+    ! allocate list of items for each different filter type
+    allocate(tally_maps(MAP_CELL)     % items(n_cells))
+    allocate(tally_maps(MAP_SURFACE)  % items(n_surfaces))
+    allocate(tally_maps(MAP_UNIVERSE) % items(n_universes))
+    allocate(tally_maps(MAP_MATERIAL) % items(n_materials))
+    allocate(tally_maps(MAP_MESH)     % items(100)) ! TODO: Change this
+    allocate(tally_maps(MAP_BORNIN)   % items(n_cells))
+
+    do i = 1, n_tallies
+       t => tallies(i)
+
+    end do
+
+  end subroutine create_tally_map
+
+!===============================================================================
 ! SCORE_TALLY
 !===============================================================================
 

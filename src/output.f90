@@ -507,15 +507,21 @@ contains
     type(TallyObject), pointer :: tal
 
     integer                 :: i
+    integer                 :: uid
     character(MAX_LINE_LEN) :: string
+    type(Cell),     pointer :: c => null()
+    type(Surface),  pointer :: s => null()
+    type(Universe), pointer :: u => null()
+    type(Material), pointer :: m => null()
 
     write(ou,*) 'Tally ' // int_to_str(tal % uid)
 
     if (associated(tal % cell_bins)) then
        string = ""
        do i = 1, size(tal % cell_bins)
-          string = trim(string) // ' ' // trim(int_to_str(&
-               tal % cell_bins(i) % scalar))
+          uid = tal % cell_bins(i) % scalar
+          c => cells(uid)
+          string = trim(string) // ' ' // trim(int_to_str(c % uid))
        end do
        write(ou, *) '    Cell Bins:' // trim(string)
     end if
@@ -523,17 +529,29 @@ contains
     if (associated(tal % surface_bins)) then
        string = ""
        do i = 1, size(tal % surface_bins)
-          string = trim(string) // ' ' // trim(int_to_str(&
-               tal % surface_bins(i) % scalar))
+          uid = tal % surface_bins(i) % scalar
+          s => surfaces(uid)
+          string = trim(string) // ' ' // trim(int_to_str(s % uid))
        end do
        write(ou, *) '    Surface Bins:' // trim(string)
+    end if
+
+    if (associated(tal % universe_bins)) then
+       string = ""
+       do i = 1, size(tal % universe_bins)
+          uid = tal % universe_bins(i) % scalar
+          u => universes(uid)
+          string = trim(string) // ' ' // trim(int_to_str(u % uid))
+       end do
+       write(ou, *) '    Material Bins:' // trim(string)
     end if
 
     if (associated(tal % material_bins)) then
        string = ""
        do i = 1, size(tal % material_bins)
-          string = trim(string) // ' ' // trim(int_to_str(&
-               tal % material_bins(i) % scalar))
+          uid = tal % material_bins(i) % scalar
+          m => materials(uid)
+          string = trim(string) // ' ' // trim(int_to_str(m % uid))
        end do
        write(ou, *) '    Material Bins:' // trim(string)
     end if
@@ -550,8 +568,9 @@ contains
     if (associated(tal % bornin_bins)) then
        string = ""
        do i = 1, size(tal % bornin_bins)
-          string = trim(string) // ' ' // trim(int_to_str(&
-               tal % bornin_bins(i) % scalar))
+          uid = tal % bornin_bins(i) % scalar
+          c => cells(uid)
+          string = trim(string) // ' ' // trim(int_to_str(c % uid))
        end do
        write(ou, *) '    Birth Region Bins:' // trim(string)
     end if

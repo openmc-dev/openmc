@@ -1,7 +1,7 @@
 module initialize
 
   use constants
-  use cross_section,    only: read_xs, read_xsdata, material_total_xs
+  use cross_section,    only: read_xs, read_xsdata
   use datatypes,        only: dict_create, dict_add_key, dict_get_key,         &
                               dict_has_key, DICT_NULL, dict_keys
   use datatypes_header, only: ListKeyValueII, DictionaryII
@@ -91,9 +91,6 @@ contains
     ! Construct unionized energy grid from cross-sections
     call unionized_grid()
     call original_indices()
-
-    ! calculate total material cross-sections for sampling path lenghts
-    call material_total_xs()
 
     ! create source particles
     call initialize_source()

@@ -9,7 +9,7 @@ module global
   use material_header,      only: Material
   use particle_header,      only: Particle
   use source_header,        only: ExtSource
-  use tally_header,         only: TallyObject
+  use tally_header,         only: TallyObject, TallyMap
   use timing,               only: Timer
 
 #ifdef MPI
@@ -55,6 +55,9 @@ module global
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)
   type(MaterialMacroXS)             :: material_xs
+
+  ! Tally map structure
+  type(TallyMap), allocatable :: tally_maps(:)
 
   ! unionized energy grid
   integer              :: n_grid    ! number of points on unionized grid

@@ -3,6 +3,33 @@ module tally_header
   implicit none
 
 !===============================================================================
+! TALLYMAPELEMENT gives an index to a tally which is to be scored and the
+! corresponding bin for the filter variable
+!===============================================================================
+
+  type TallyMapElement
+     integer :: index_tally
+     integer :: index_bin
+  end type TallyMapElement
+
+!===============================================================================
+! TALLYMAPITEM
+!===============================================================================
+
+  type TallyMapItem
+     type(TallyMapElement), pointer :: elements => null()
+  end type TallyMapItem
+
+!===============================================================================
+! TALLYMAP contains a list of pairs of indices to tallies and the corresponding
+! bin for a given filter.
+!===============================================================================
+
+  type TallyMap
+     type(TallyMapItem), allocatable :: items(:)
+  end type TallyMap
+
+!===============================================================================
 ! TALLYSCORE provides accumulation of scores in a particular tally bin
 !===============================================================================
 

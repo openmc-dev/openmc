@@ -278,7 +278,6 @@ contains
     real(8) :: total      ! total macroscopic xs for material
     real(8) :: prob       ! cumulative probability
     real(8) :: cutoff     ! random number
-    real(8) :: flux       ! collision estimator of flux
     real(8) :: atom_density ! atom density of nuclide in atom/b-cm
     character(MAX_LINE_LEN) :: msg ! output/error message
     type(Material), pointer :: mat
@@ -286,6 +285,12 @@ contains
     type(Reaction), pointer :: rxn
 
     mat => materials(p % material)
+
+    ! Score collision estimator tallies for any macro tallies -- we can do this
+    ! before sampling the nuclide since 
+    if (tallies_on) then
+       ! call score_tally(p)
+    end if
 
     ! sample nuclide
     i = 0
@@ -352,12 +357,6 @@ contains
        msg = "Cannot simulate reaction with MT " // int_to_str(rxn%MT)
        call warning(msg)
     end select
-
-    ! Add collision estimator tallies
-    if (tallies_on) then
-       flux = p%wgt / SIGMA
-       call score_tally(p, flux)
-    end if
 
     ! check for very low energy
     if (p % E < 1.0e-100_8) then

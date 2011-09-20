@@ -160,6 +160,9 @@ module constants
        MACRO_FISSION    = -5, & ! total fission rate
        MACRO_NU_FISSION = -6    ! total neutron production rate
 
+  ! Tally map bin finding
+  integer, parameter :: NO_BIN_FOUND = -1
+
   ! Tally map types
   integer, parameter :: TALLY_MAP_TYPES = 6
   integer, parameter ::  &

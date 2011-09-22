@@ -34,9 +34,10 @@ module tally_header
 !===============================================================================
 
   type TallyScore
-     integer :: n_events
-     real(8) :: val
-     real(8) :: val_sq
+     integer :: n_events    = 0
+     real(8) :: val_history = 0.
+     real(8) :: val         = 0.
+     real(8) :: val_sq      = 0.
   end type TallyScore
 
 !===============================================================================
@@ -75,17 +76,29 @@ module tally_header
      real(8), allocatable       :: energy_in(:)
      real(8), allocatable       :: energy_out(:)
 
+     ! Number of bins for each filter
+
+     integer :: n_cell_bins     = 0
+     integer :: n_surface_bins  = 0
+     integer :: n_universe_bins = 0
+     integer :: n_material_bins = 0
+     integer :: n_mesh_bins     = 0
+     integer :: n_bornin_bins   = 0
+     integer :: n_energy_in     = 0
+     integer :: n_energy_out    = 0
+
      ! Macroscopic properties to score
 
      type(TallyFilter), pointer :: macro_bins(:) => null()
+     integer :: n_macro_bins = 0
      
      ! Scores for each bin -- the most natural way to have scores would be to
      ! have a dimension for each different type of bin, but older Fortran
      ! standards are limited to 7 dimensions or less, so instead we map a
-     ! combination of the bins into one integer and have that as the index into
-     ! a one-dimensional array
+     ! combination of the filter bins into one integer and have that as the
+     ! index into a one-dimensional array
 
-     type(TallyScore), allocatable :: score(:)
+     type(TallyScore), allocatable :: scores(:,:)
 
   end type TallyObject
 

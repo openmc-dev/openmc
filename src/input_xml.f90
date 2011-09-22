@@ -554,6 +554,7 @@ contains
           do j = 1, n_words
              t % cell_bins(j) % scalar = str_to_int(words(j))
           end do
+          t % n_cell_bins = n_words
        end if
 
        ! Read surface filter bins
@@ -563,6 +564,17 @@ contains
           do j = 1, n_words
              t % surface_bins(j) % scalar = str_to_int(words(j))
           end do
+          t % n_surface_bins = n_words
+       end if
+
+       ! Read universe filter bins
+       if (len_trim(tally_(i) % filters % universe) > 0) then
+          call split_string(tally_(i) % filters % universe, words, n_words)
+          allocate(t % universe_bins(n_words))
+          do j = 1, n_words
+             t % universe_bins(j) % scalar = str_to_int(words(j))
+          end do
+          t % n_universe_bins = n_words
        end if
 
        ! Read material filter bins
@@ -572,6 +584,7 @@ contains
           do j = 1, n_words
              t % material_bins(j) % scalar = str_to_int(words(j))
           end do
+          t % n_material_bins = n_words
        end if
 
        ! Read mesh filter bins
@@ -590,6 +603,7 @@ contains
           do j = 1, n_words
              t % bornin_bins(j) % scalar = str_to_int(words(j))
           end do
+          t % n_bornin_bins = n_words
        end if
 
        ! Read incoming energy filter bins
@@ -599,6 +613,7 @@ contains
           do j = 1, n_words
              t % energy_in(j) = str_to_real(words(j))
           end do
+          t % n_energy_in = n_words - 1
        end if
 
        ! Read outgoing energy filter bins
@@ -608,6 +623,7 @@ contains
           do j = 1, n_words
              t % energy_out(j) = str_to_real(words(j))
           end do
+          t % n_energy_out = n_words - 1
        end if
 
        ! Read macro reactions
@@ -635,6 +651,7 @@ contains
                 call fatal_error(msg)
              end select
           end do
+          t % n_macro_bins = n_words
        end if
 
     end do

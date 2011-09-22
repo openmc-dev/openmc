@@ -93,7 +93,9 @@ contains
     integer :: j
     integer :: index
     integer :: n
+    integer :: filter_bins
     integer :: score_bins
+    character(MAX_LINE_LEN) :: msg        ! output/error message
     type(TallyObject), pointer :: t => null()
 
     ! allocate tally map array
@@ -111,77 +113,83 @@ contains
        t => tallies(i)
 
        ! initialize number of scoring bins
-       score_bins = 1
+       filter_bins = 1
 
        ! Add map elements for cell bins
-       if (associated(t % cell_bins)) then
-          n = size(t % cell_bins)
+       n = t % n_cell_bins
+       if (n > 0) then
           do j = 1, n
              index = t % cell_bins(j) % scalar
              call add_map_element(tally_maps(MAP_CELL) % items(index), i, j)
           end do
-          score_bins = score_bins * n
+          filter_bins = filter_bins * n
        end if
 
        ! Add map elements for surface bins
-       if (associated(t % surface_bins)) then
-          n = size(t % surface_bins)
+       n = t % n_surface_bins
+       if (n > 0) then
           do j = 1, n
              index = t % surface_bins(j) % scalar
              call add_map_element(tally_maps(MAP_SURFACE) % items(index), i, j)
           end do
-          score_bins = score_bins * n
+          filter_bins = filter_bins * n
        end if
 
        ! Add map elements for universe bins
-       if (associated(t % universe_bins)) then
-          n = size(t % universe_bins)
+       n = t % n_universe_bins
+       if (n > 0) then
           do j = 1, n
              index = t % universe_bins(j) % scalar
              call add_map_element(tally_maps(MAP_UNIVERSE) % items(index), i, j)
           end do
-          score_bins = score_bins * n
+          filter_bins = filter_bins * n
        end if
 
        ! Add map elements for material bins
-       if (associated(t % material_bins)) then
-          n = size(t % material_bins)
+       n = t % n_material_bins
+       if (n > 0) then
           do j = 1, n
              index = t % material_bins(j) % scalar
              call add_map_element(tally_maps(MAP_MATERIAL) % items(index), i, j)
           end do
-          score_bins = score_bins * n
+          filter_bins = filter_bins * n
        end if
 
        ! Add map elements for bornin bins
-       if (associated(t % bornin_bins)) then
-          n = size(t % bornin_bins)
-          do j = 1, size(t % bornin_bins)
+       n = t % n_bornin_bins
+       if (n > 0) then
+          do j = 1, n
              index = t % bornin_bins(j) % scalar
              call add_map_element(tally_maps(MAP_BORNIN) % items(index), i, j)
           end do
-          score_bins = score_bins * n
+          filter_bins = filter_bins * n
        end if
 
        ! TODO: Determine size of mesh to increase number of scoring bins
 
        ! determine if there are subdivisions for incoming or outgoing energy to
        ! adjust the number of scoring bins appropriately
-       if (allocated(t % energy_in)) then
-          score_bins = score_bins * (size(t % energy_in) - 1)
+       n = t % n_energy_in
+       if (n > 0) then
+          filter_bins = filter_bins * n
        end if
 
-       if (allocated(t % energy_out)) then
-          score_bins = score_bins * (size(t % energy_out) - 1)
+       n = t % n_energy_out
+       if (n > 0) then
+          filter_bins = filter_bins * n
        end if
 
        ! Finally add scoring bins for the macro tallies
-       if (associated(t % macro_bins)) then
-          score_bins = score_bins * size(t % macro_bins)
+       n = t % n_macro_bins
+       if (n > 0) then
+          score_bins = n
+       else
+          msg = "Must have macro tally bins!"
+          call fatal_error(msg)
        end if
 
        ! Allocate scores for tally
-       allocate(t % score(score_bins))
+       allocate(t % scores(filter_bins, score_bins))
 
     end do
 
@@ -224,7 +232,7 @@ contains
   end subroutine add_map_element
 
 !===============================================================================
-! SCORE_TALLY
+! SCORE_TALLY contains the main logic for scoring user-specified tallies
 !===============================================================================
 
   subroutine score_tally(p)
@@ -232,6 +240,7 @@ contains
     type(Particle), pointer :: p     ! particle
 
     integer :: i
+    integer :: j
     integer :: n
     integer :: cell_bin
     integer :: surface_bin
@@ -240,6 +249,9 @@ contains
     integer :: bornin_bin
     integer :: energyin_bin
     integer :: energyout_bin
+
+    integer :: score_index
+    real(8) :: score
     type(TallyObject), pointer :: t
 
     ! A loop over all tallies is necessary because we need to simultaneously
@@ -248,8 +260,11 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
        
+       ! =======================================================================
+       ! DETERMINE SCORING BIN COMBINATION
+
        ! determine next cell bin
-       if (associated(t % cell_bins)) then
+       if (t % n_cell_bins > 0) then
           cell_bin = get_next_bin(MAP_CELL, p % cell, i)
           if (cell_bin == NO_BIN_FOUND) cycle
        else
@@ -257,7 +272,7 @@ contains
        end if
 
        ! determine next surface bin
-       if (associated(t % surface_bins)) then
+       if (t % n_surface_bins > 0) then
           surface_bin = get_next_bin(MAP_SURFACE, p % surface, i)
           if (surface_bin == NO_BIN_FOUND) cycle
        else
@@ -265,7 +280,7 @@ contains
        end if
 
        ! determine next universe bin
-       if (associated(t % universe_bins)) then
+       if (t % n_universe_bins > 0) then
           universe_bin = get_next_bin(MAP_UNIVERSE, p % universe, i)
           if (universe_bin == NO_BIN_FOUND) cycle
        else
@@ -273,7 +288,7 @@ contains
        end if
 
        ! determine next material bin
-       if (associated(t % material_bins)) then
+       if (t % n_material_bins > 0) then
           material_bin = get_next_bin(MAP_MATERIAL, p % material, i)
           if (material_bin == NO_BIN_FOUND) cycle
        else
@@ -281,7 +296,7 @@ contains
        end if
 
        ! determine next bornin bin
-       if (associated(t % bornin_bins)) then
+       if (t % n_bornin_bins > 0) then
           ! bornin_bin = get_next_bin(MAP_BORNIN, p % bornin, i)
           if (bornin_bin == NO_BIN_FOUND) cycle
        else
@@ -289,9 +304,9 @@ contains
        end if
 
        ! determine incoming energy bin
-       if (allocated(t % energy_in)) then
+       n = t % n_energy_in
+       if (n > 0) then
           ! check if energy of the particle is within energy bins
-          n = size(t % energy_in)
           if (p % E < t % energy_in(1) .or. p % E > t % energy_in(n)) cycle
 
           ! search to find incoming energy bin
@@ -301,9 +316,9 @@ contains
        end if
 
        ! determine outgoing energy bin
-       if (allocated(t % energy_out)) then
+       n = t % n_energy_out
+       if (n > 0) then
           ! check if energy of the particle is within energy bins
-          n = size(t % energy_out)
           if (p % E < t % energy_out(1) .or. p % E > t % energy_out(n)) cycle
 
           ! search to find incoming energy bin
@@ -312,12 +327,47 @@ contains
           energyout_bin = 1
        end if
 
+       ! =======================================================================
+       ! DETERMINE INDEX IN SCORES ARRAY
+
+       ! If we have made it here, we have a scoring combination of bins for this
+       ! tally -- now we need to determine where in the scores array we should
+       ! be accumulating the tally values
+
+       score_index = bins_to_index(t, cell_bin, surface_bin, universe_bin, &
+            material_bin, bornin_bin, energyin_bin, energyout_bin)
+
+       ! =======================================================================
+       ! CALCULATE SCORES AND ACCUMULATE TALLY
+
+       do j = 1, t % n_macro_bins
+          ! Determine score
+          select case(t % macro_bins(j) % scalar)
+          case (MACRO_FLUX)
+             score = p % wgt / material_xs % total
+          case (MACRO_TOTAL)
+             score = p % wgt
+          case (MACRO_SCATTER)
+             score = p % wgt * material_xs % scatter / material_xs % total
+          case (MACRO_ABSORPTION)
+             score = p % wgt * material_xs % absorption / material_xs % total
+          case (MACRO_FISSION)
+             score = p % wgt * material_xs % fission / material_xs % total
+          case (MACRO_NU_FISSION)
+             score = p % wgt * material_xs % nu_fission / material_xs % total
+          end select
+
+          ! Add score to tally
+          call add_to_score(t % scores(score_index, j), score)
+
+       end do
+
     end do
 
   end subroutine score_tally
 
 !===============================================================================
-! GET_NEXT_BIN
+! GET_NEXT_BIN determines the next scoring bin for a particular filter variable
 !===============================================================================
 
   function get_next_bin(i_map, i_cell, i_tally) result(bin)
@@ -376,7 +426,68 @@ contains
   end function get_next_bin
 
 !===============================================================================
-! ADD_TO_SCORE
+! BINS_TO_INDEX takes a combination of cell/surface/etc bins and returns the
+! index in the scores array for the given tally
+!===============================================================================
+
+  function bins_to_index(t, c_bin, s_bin, u_bin, m_bin, b_bin, &
+       ei_bin, eo_bin) result (index)
+
+    type(TallyObject), pointer :: t
+    integer, intent(in) :: c_bin
+    integer, intent(in) :: s_bin
+    integer, intent(in) :: u_bin
+    integer, intent(in) :: m_bin
+    integer, intent(in) :: b_bin
+    integer, intent(in) :: ei_bin
+    integer, intent(in) :: eo_bin
+    integer             :: index
+
+    integer :: product
+
+    index = 0
+    product = 1
+    
+    index = index + (c_bin - 1)
+    if (t % n_cell_bins > 0) then
+       product = product * t % n_cell_bins
+    end if
+
+    index = index + (s_bin - 1) * product
+    if (t % n_surface_bins > 0) then
+       product = product * t % n_surface_bins
+    end if
+
+    index = index + (u_bin - 1) * product
+    if (t % n_universe_bins > 0) then
+       product = product * t % n_universe_bins
+    end if
+
+    index = index + (m_bin - 1) * product
+    if (t % n_material_bins > 0) then
+       product = product * t % n_material_bins
+    end if
+
+    index = index + (b_bin - 1) * product
+    if (t % n_bornin_bins > 0) then
+       product = product * t % n_bornin_bins
+    end if
+
+    index = index + (ei_bin - 1) * product
+    if (t % n_energy_in > 9) then
+       product = product * t % n_energy_in
+    end if
+
+    ! We need to shift the index by one since the array in fortran starts at
+    ! unity, not zero
+    index = index + (eo_bin - 1) * product + 1
+    
+  end function bins_to_index
+
+!===============================================================================
+! ADD_TO_SCORE accumulates a scoring contribution to a specific tally bin and
+! specific response function. Note that we don't need to add the square of the
+! contribution since that is done at the cycle level, not the history level
 !===============================================================================
 
   subroutine add_to_score(score, val)
@@ -384,9 +495,8 @@ contains
     type(TallyScore), intent(inout) :: score
     real(8),          intent(in)    :: val
     
-!!$    score % n_events = score % n_events + 1
-!!$    score % val      = score % val + val
-!!$    score % val_sq   = score % val_sq + val*val
+    score % n_events    = score % n_events    + 1
+    score % val_history = score % val_history + val
     
   end subroutine add_to_score
 

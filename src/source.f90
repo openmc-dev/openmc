@@ -172,6 +172,7 @@ contains
     p % wgt           = ONE
     p % alive         = .true.
     p % cell          = 0
+    p % cell_born     = 0
     p % universe      = 0
     p % lattice       = 0
     p % surface       = 0

@@ -502,9 +502,9 @@ contains
 ! PRINT_TALLY displays the attributes of a tally
 !===============================================================================
 
-  subroutine print_tally(tal)
+  subroutine print_tally(t)
 
-    type(TallyObject), pointer :: tal
+    type(TallyObject), pointer :: t
 
     integer                 :: i
     integer                 :: uid
@@ -514,89 +514,89 @@ contains
     type(Universe), pointer :: u => null()
     type(Material), pointer :: m => null()
 
-    write(ou,*) 'Tally ' // int_to_str(tal % uid)
+    write(ou,*) 'Tally ' // int_to_str(t % uid)
 
-    if (associated(tal % cell_bins)) then
+    if (t % n_cell_bins > 0) then
        string = ""
-       do i = 1, size(tal % cell_bins)
-          uid = tal % cell_bins(i) % scalar
+       do i = 1, t % n_cell_bins
+          uid = t % cell_bins(i) % scalar
           c => cells(uid)
           string = trim(string) // ' ' // trim(int_to_str(c % uid))
        end do
        write(ou, *) '    Cell Bins:' // trim(string)
     end if
 
-    if (associated(tal % surface_bins)) then
+    if (t % n_surface_bins > 0) then
        string = ""
-       do i = 1, size(tal % surface_bins)
-          uid = tal % surface_bins(i) % scalar
+       do i = 1, t % n_surface_bins
+          uid = t % surface_bins(i) % scalar
           s => surfaces(uid)
           string = trim(string) // ' ' // trim(int_to_str(s % uid))
        end do
        write(ou, *) '    Surface Bins:' // trim(string)
     end if
 
-    if (associated(tal % universe_bins)) then
+    if (t % n_universe_bins) then
        string = ""
-       do i = 1, size(tal % universe_bins)
-          uid = tal % universe_bins(i) % scalar
+       do i = 1, t % n_universe_bins
+          uid = t % universe_bins(i) % scalar
           u => universes(uid)
           string = trim(string) // ' ' // trim(int_to_str(u % uid))
        end do
        write(ou, *) '    Material Bins:' // trim(string)
     end if
 
-    if (associated(tal % material_bins)) then
+    if (t % n_material_bins) then
        string = ""
-       do i = 1, size(tal % material_bins)
-          uid = tal % material_bins(i) % scalar
+       do i = 1, t % n_material_bins
+          uid = t % material_bins(i) % scalar
           m => materials(uid)
           string = trim(string) // ' ' // trim(int_to_str(m % uid))
        end do
        write(ou, *) '    Material Bins:' // trim(string)
     end if
 
-    if (associated(tal % mesh_bins)) then
+    if (associated(t % mesh_bins)) then
        string = ""
-       do i = 1, size(tal % mesh_bins)
+       do i = 1, size(t % mesh_bins)
           string = trim(string) // ' ' // trim(int_to_str(&
-               tal % mesh_bins(i) % scalar))
+               t % mesh_bins(i) % scalar))
        end do
        write(ou, *) '    Mesh Bins:' // trim(string)
     end if
 
-    if (associated(tal % bornin_bins)) then
+    if (t % n_bornin_bins > 0) then
        string = ""
-       do i = 1, size(tal % bornin_bins)
-          uid = tal % bornin_bins(i) % scalar
+       do i = 1, t % n_bornin_bins
+          uid = t % bornin_bins(i) % scalar
           c => cells(uid)
           string = trim(string) // ' ' // trim(int_to_str(c % uid))
        end do
        write(ou, *) '    Birth Region Bins:' // trim(string)
     end if
 
-    if (allocated(tal % energy_in)) then
+    if (t % n_energy_in > 0) then
        string = ""
-       do i = 1, size(tal % energy_in)
+       do i = 1, t % n_energy_in + 1
           string = trim(string) // ' ' // trim(real_to_str(&
-               tal % energy_in(i)))
+               t % energy_in(i)))
        end do
        write(ou,*) '    Incoming Energy Bins:' // trim(string)
     end if
 
-    if (allocated(tal % energy_out)) then
+    if (t % n_energy_out > 0) then
        string = ""
-       do i = 1, size(tal % energy_out)
+       do i = 1, t % n_energy_out + 1
           string = trim(string) // ' ' // trim(real_to_str(&
-               tal % energy_out(i)))
+               t % energy_out(i)))
        end do
        write(ou,*) '    Outgoing Energy Bins:' // trim(string)
     end if
 
-    if (associated(tal % macro_bins)) then
+    if (t % n_macro_bins > 0) then
        string = ""
-       do i = 1, size(tal % macro_bins)
-          select case (tal % macro_bins(i) % scalar)
+       do i = 1, t % n_macro_bins
+          select case (t % macro_bins(i) % scalar)
           case (MACRO_FLUX)
              string = trim(string) // ' flux'
           case (MACRO_TOTAL)

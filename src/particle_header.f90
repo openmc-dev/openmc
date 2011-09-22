@@ -26,6 +26,7 @@ module particle_header
 
      ! Indices for various arrays
      integer    :: cell          ! index for current cell
+     integer    :: cell_born     ! index for cell particle was born in
      integer    :: universe      ! index for current universe
      integer    :: lattice       ! index for current lattice
      integer    :: surface       ! index for current surface

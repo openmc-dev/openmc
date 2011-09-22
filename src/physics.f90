@@ -49,6 +49,9 @@ contains
                "Could not locate cell for particle at: ", p % xyz
           call fatal_error(msg)
        end if
+
+       ! set birth cell attribute
+       p % cell_born = p % cell
     end if
 
     if (verbosity >= 9) then

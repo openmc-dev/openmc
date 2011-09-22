@@ -297,7 +297,7 @@ contains
 
        ! determine next bornin bin
        if (t % n_bornin_bins > 0) then
-          ! bornin_bin = get_next_bin(MAP_BORNIN, p % bornin, i)
+          bornin_bin = get_next_bin(MAP_BORNIN, p % cell_born, i)
           if (bornin_bin == NO_BIN_FOUND) cycle
        else
           bornin_bin = 1

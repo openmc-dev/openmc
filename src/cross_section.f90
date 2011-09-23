@@ -598,6 +598,9 @@ contains
             .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) then
           nuc % fissionable = .true.
           nuc % fission(IE:IE+NE-1) = nuc % fission(IE:IE+NE-1) + rxn % sigma
+
+          ! Also need to add fission cross sections to absorption
+          nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
        end if
 
        ! set defaults

@@ -11,6 +11,7 @@ program main
   use tally,           only: calculate_keff
   use source,          only: get_source_particle
   use string,          only: int_to_str
+  use tally,           only: synchronize_tallies
   use timing,          only: timer_start, timer_stop
 
 #ifdef MPI
@@ -94,6 +95,9 @@ contains
 
        ! Start timer for inter-cycle synchronization
        call timer_start(time_intercycle)
+
+       ! Collect tallies
+       call synchronize_tallies()
 
        ! Distribute fission bank across processors evenly
        call synchronize_bank(i_cycle)

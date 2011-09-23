@@ -202,6 +202,7 @@ contains
     micro_xs(i) % interp_factor = f
 
     ! Initialize nuclide cross-sections to zero
+    micro_xs(i) % fission    = ZERO
     micro_xs(i) % nu_fission = ZERO
 
     ! Calculate microscopic nuclide total cross section
@@ -287,12 +288,16 @@ contains
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
+    ! Add to collision counter for particle
+    p % n_collision = p % n_collision + 1
+
+    ! Get pointer to current material
     mat => materials(p % material)
 
     ! Score collision estimator tallies for any macro tallies -- we can do this
     ! before sampling the nuclide since 
     if (tallies_on) then
-       ! call score_tally(p)
+       call score_tally(p)
     end if
 
     ! sample nuclide

@@ -15,6 +15,8 @@ module tally
 
   implicit none
 
+  integer, allocatable :: position(:)
+
 contains
 
 !===============================================================================
@@ -109,6 +111,10 @@ contains
     allocate(tally_maps(MAP_MESH)     % items(100)) ! TODO: Change this
     allocate(tally_maps(MAP_BORNIN)   % items(n_cells))
 
+    ! Allocate and initialize tally map positioning for finding bins
+    allocate(position(TALLY_MAP_TYPES))
+    position = 0
+
     do i = 1, n_tallies
        t => tallies(i)
 
@@ -189,6 +195,7 @@ contains
        end if
 
        ! Allocate scores for tally
+       t % n_total_bins = filter_bins
        allocate(t % scores(filter_bins, score_bins))
 
     end do
@@ -348,7 +355,8 @@ contains
           case (MACRO_TOTAL)
              score = p % wgt
           case (MACRO_SCATTER)
-             score = p % wgt * material_xs % scatter / material_xs % total
+             score = p % wgt * (material_xs % total - material_xs % absorption) &
+                  / material_xs % total
           case (MACRO_ABSORPTION)
              score = p % wgt * material_xs % absorption / material_xs % total
           case (MACRO_FISSION)
@@ -363,6 +371,9 @@ contains
        end do
 
     end do
+
+    ! Reset tally map positioning
+    position = 0
 
   end subroutine score_tally
 
@@ -379,16 +390,7 @@ contains
 
     integer :: index_tally
     integer :: index_bin
-    integer, allocatable, save :: position(:)
-    logical, save :: first_entry = .true.
-    integer       :: n
-
-    ! initialize position to zero
-    if (first_entry) then
-       allocate(position(TALLY_MAP_TYPES))
-       position = 0
-       first_entry = .false.
-    end if
+    integer :: n
 
     n = size(tally_maps(i_map) % items(i_cell) % elements)
 
@@ -499,5 +501,42 @@ contains
     score % val_history = score % val_history + val
     
   end subroutine add_to_score
+
+!===============================================================================
+! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
+! within the cycle to a new random variable
+!===============================================================================
+
+  subroutine synchronize_tallies()
+
+    integer :: i
+    integer :: j
+    integer :: k
+    real(8) :: val
+    type(TallyObject), pointer :: t
+
+
+    do i = 1, n_tallies
+       t => tallies(i)
+
+       do j = 1, t % n_total_bins
+          do k = 1, t % n_macro_bins
+             ! Add the sum and square of the sum of contributions from each
+             ! history within a cycle to the variables val and val_sq. This will
+             ! later allow us to calculate a variance on the tallies
+
+             val = t % scores(j,k) % val_history / n_particles
+             t % scores(j,k) % val    = t % scores(j,k) % val    + val
+             t % scores(j,k) % val_sq = t % scores(j,k) % val_sq + val*val
+
+             ! Reset the within-cycle accumulation variable
+
+             t % scores(j,k) % val_history = ZERO
+          end do
+       end do
+
+    end do
+
+  end subroutine synchronize_tallies
 
 end module tally

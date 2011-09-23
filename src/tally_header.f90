@@ -86,6 +86,7 @@ module tally_header
      integer :: n_bornin_bins   = 0
      integer :: n_energy_in     = 0
      integer :: n_energy_out    = 0
+     integer :: n_total_bins    = 0
 
      ! Macroscopic properties to score
 

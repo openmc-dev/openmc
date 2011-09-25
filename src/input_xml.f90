@@ -534,6 +534,14 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
+       ! Allocate arrays for number of bins and stride in scores array
+       allocate(t % n_bins(TALLY_TYPES))
+       allocate(t % stride(TALLY_TYPES))
+
+       ! Initialize number of bins and stride
+       t % n_bins = 0
+       t % stride = 0
+
        ! Copy material uid
        t % uid = tally_(i) % id
 
@@ -554,7 +562,7 @@ contains
           do j = 1, n_words
              t % cell_bins(j) % scalar = str_to_int(words(j))
           end do
-          t % n_cell_bins = n_words
+          t % n_bins(T_CELL) = n_words
        end if
 
        ! Read surface filter bins
@@ -564,7 +572,7 @@ contains
           do j = 1, n_words
              t % surface_bins(j) % scalar = str_to_int(words(j))
           end do
-          t % n_surface_bins = n_words
+          t % n_bins(T_SURFACE) = n_words
        end if
 
        ! Read universe filter bins
@@ -574,7 +582,7 @@ contains
           do j = 1, n_words
              t % universe_bins(j) % scalar = str_to_int(words(j))
           end do
-          t % n_universe_bins = n_words
+          t % n_bins(T_UNIVERSE) = n_words
        end if
 
        ! Read material filter bins
@@ -584,7 +592,7 @@ contains
           do j = 1, n_words
              t % material_bins(j) % scalar = str_to_int(words(j))
           end do
-          t % n_material_bins = n_words
+          t % n_bins(T_MATERIAL) = n_words
        end if
 
        ! Read mesh filter bins
@@ -599,11 +607,11 @@ contains
        ! Read birth region filter bins
        if (len_trim(tally_(i) % filters % bornin) > 0) then
           call split_string(tally_(i) % filters % bornin, words, n_words)
-          allocate(t % bornin_bins(n_words))
+          allocate(t % cellborn_bins(n_words))
           do j = 1, n_words
-             t % bornin_bins(j) % scalar = str_to_int(words(j))
+             t % cellborn_bins(j) % scalar = str_to_int(words(j))
           end do
-          t % n_bornin_bins = n_words
+          t % n_bins(T_CELLBORN) = n_words
        end if
 
        ! Read incoming energy filter bins
@@ -613,7 +621,7 @@ contains
           do j = 1, n_words
              t % energy_in(j) = str_to_real(words(j))
           end do
-          t % n_energy_in = n_words - 1
+          t % n_bins(T_ENERGYIN) = n_words - 1
        end if
 
        ! Read outgoing energy filter bins
@@ -623,7 +631,7 @@ contains
           do j = 1, n_words
              t % energy_out(j) = str_to_real(words(j))
           end do
-          t % n_energy_out = n_words - 1
+          t % n_bins(T_ENERGYOUT) = n_words - 1
        end if
 
        ! Read macro reactions

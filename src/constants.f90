@@ -3,8 +3,8 @@ module constants
   implicit none
 
   ! Versioning numbers
-  integer, parameter :: VERSION_MAJOR = 0
-  integer, parameter :: VERSION_MINOR = 3
+  integer, parameter :: VERSION_MAJOR   = 0
+  integer, parameter :: VERSION_MINOR   = 3
   integer, parameter :: VERSION_RELEASE = 2
 
   ! Physical constants
@@ -163,18 +163,20 @@ module constants
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1
 
-  ! Tally map types
-  integer, parameter :: TALLY_MAP_TYPES = 6
-  integer, parameter ::  &
-       MAP_CELL     = 1, &
-       MAP_SURFACE  = 2, &
-       MAP_UNIVERSE = 3, &
-       MAP_MATERIAL = 4, &
-       MAP_MESH     = 5, &
-       MAP_BORNIN   = 6
+  ! Tally filter and map types
+  integer, parameter :: TALLY_TYPES = 8
+  integer, parameter :: &
+       T_UNIVERSE  = 1, &
+       T_MATERIAL  = 2, &
+       T_CELL      = 3, &
+       T_CELLBORN  = 4, &
+       T_SURFACE   = 5, &
+       T_MESH      = 6, &
+       T_ENERGYIN  = 7, &
+       T_ENERGYOUT = 8
 
   ! Fission neutron emission (nu) type
-  integer, parameter ::     &
+  integer, parameter ::   &
        NU_NONE       = 0, & ! No nu values (non-fissionable)
        NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
        NU_TABULAR    = 2    ! Nu values given by tabular distribution
@@ -186,7 +188,8 @@ module constants
   integer, parameter :: MAX_WORD_LEN = 150
 
   ! Unit numbers
-  integer, parameter :: UNIT_LOG = 9 ! unit # for writing log file
+  integer, parameter :: UNIT_LOG   = 11 ! unit # for writing log file
+  integer, parameter :: UNIT_TALLY = 12 ! unit # for writing tally file
 
 end module constants
 

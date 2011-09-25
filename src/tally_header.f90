@@ -67,26 +67,28 @@ module tally_header
 
      ! Tally bin specifications
 
-     type(TallyFilter), pointer :: cell_bins(:) => null()
-     type(TallyFilter), pointer :: surface_bins(:) => null()
      type(TallyFilter), pointer :: universe_bins(:) => null()
      type(TallyFilter), pointer :: material_bins(:) => null()
-     type(TallyFilter), pointer :: mesh_bins(:) => null()
-     type(TallyFilter), pointer :: bornin_bins(:) => null()
+     type(TallyFilter), pointer :: cell_bins(:)     => null()
+     type(TallyFilter), pointer :: cellborn_bins(:) => null()
+     type(TallyFilter), pointer :: surface_bins(:)  => null()
+     type(TallyFilter), pointer :: mesh_bins(:)     => null()
      real(8), allocatable       :: energy_in(:)
      real(8), allocatable       :: energy_out(:)
 
      ! Number of bins for each filter
-
-     integer :: n_cell_bins     = 0
-     integer :: n_surface_bins  = 0
-     integer :: n_universe_bins = 0
-     integer :: n_material_bins = 0
-     integer :: n_mesh_bins     = 0
-     integer :: n_bornin_bins   = 0
-     integer :: n_energy_in     = 0
-     integer :: n_energy_out    = 0
      integer :: n_total_bins    = 0
+
+     ! The following attributes do not necessarily need to be stored but they
+     ! greatly simplify logic in many places. n_bins gives the number of bins
+     ! for each filter type, e.g. n_bins(T_CELL) would be the size of
+     ! cell_bins. The stride attribute is used for determining the index in the
+     ! scores array for a bin combination. Since multiple dimensions are mapped
+     ! onto one dimension in the scores array, the stride attribute gives the
+     ! stride for a given filter type within the scores array
+
+     integer, allocatable :: n_bins(:)
+     integer, allocatable :: stride(:)
 
      ! Macroscopic properties to score
 

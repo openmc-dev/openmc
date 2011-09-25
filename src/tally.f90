@@ -100,19 +100,20 @@ contains
     character(MAX_LINE_LEN) :: msg        ! output/error message
     type(TallyObject), pointer :: t => null()
 
-    ! allocate tally map array
-    allocate(tally_maps(TALLY_MAP_TYPES))
+    ! allocate tally map array -- note that we don't need a tally map for the
+    ! energy_in and energy_out filters
+    allocate(tally_maps(TALLY_TYPES - 2))
 
     ! allocate list of items for each different filter type
-    allocate(tally_maps(MAP_CELL)     % items(n_cells))
-    allocate(tally_maps(MAP_SURFACE)  % items(n_surfaces))
-    allocate(tally_maps(MAP_UNIVERSE) % items(n_universes))
-    allocate(tally_maps(MAP_MATERIAL) % items(n_materials))
-    allocate(tally_maps(MAP_MESH)     % items(100)) ! TODO: Change this
-    allocate(tally_maps(MAP_BORNIN)   % items(n_cells))
+    allocate(tally_maps(T_CELL)     % items(n_cells))
+    allocate(tally_maps(T_SURFACE)  % items(n_surfaces))
+    allocate(tally_maps(T_UNIVERSE) % items(n_universes))
+    allocate(tally_maps(T_MATERIAL) % items(n_materials))
+    allocate(tally_maps(T_MESH)     % items(100)) ! TODO: Change this
+    allocate(tally_maps(T_CELLBORN)   % items(n_cells))
 
     ! Allocate and initialize tally map positioning for finding bins
-    allocate(position(TALLY_MAP_TYPES))
+    allocate(position(TALLY_TYPES))
     position = 0
 
     do i = 1, n_tallies
@@ -121,67 +122,74 @@ contains
        ! initialize number of scoring bins
        filter_bins = 1
 
-       ! Add map elements for cell bins
-       n = t % n_cell_bins
+       ! determine if there are subdivisions for incoming or outgoing energy to
+       ! adjust the number of filter bins appropriately
+       n = t % n_bins(T_ENERGYOUT)
+       t % stride(T_ENERGYOUT) = filter_bins
        if (n > 0) then
-          do j = 1, n
-             index = t % cell_bins(j) % scalar
-             call add_map_element(tally_maps(MAP_CELL) % items(index), i, j)
-          end do
           filter_bins = filter_bins * n
        end if
 
-       ! Add map elements for surface bins
-       n = t % n_surface_bins
+       n = t % n_bins(T_ENERGYIN)
+       t % stride(T_ENERGYIN) = filter_bins
        if (n > 0) then
-          do j = 1, n
-             index = t % surface_bins(j) % scalar
-             call add_map_element(tally_maps(MAP_SURFACE) % items(index), i, j)
-          end do
-          filter_bins = filter_bins * n
-       end if
-
-       ! Add map elements for universe bins
-       n = t % n_universe_bins
-       if (n > 0) then
-          do j = 1, n
-             index = t % universe_bins(j) % scalar
-             call add_map_element(tally_maps(MAP_UNIVERSE) % items(index), i, j)
-          end do
-          filter_bins = filter_bins * n
-       end if
-
-       ! Add map elements for material bins
-       n = t % n_material_bins
-       if (n > 0) then
-          do j = 1, n
-             index = t % material_bins(j) % scalar
-             call add_map_element(tally_maps(MAP_MATERIAL) % items(index), i, j)
-          end do
-          filter_bins = filter_bins * n
-       end if
-
-       ! Add map elements for bornin bins
-       n = t % n_bornin_bins
-       if (n > 0) then
-          do j = 1, n
-             index = t % bornin_bins(j) % scalar
-             call add_map_element(tally_maps(MAP_BORNIN) % items(index), i, j)
-          end do
           filter_bins = filter_bins * n
        end if
 
        ! TODO: Determine size of mesh to increase number of scoring bins
 
-       ! determine if there are subdivisions for incoming or outgoing energy to
-       ! adjust the number of scoring bins appropriately
-       n = t % n_energy_in
+       ! Add map elements for surface bins
+       n = t % n_bins(T_SURFACE)
+       t % stride(T_SURFACE) = filter_bins
        if (n > 0) then
+          do j = 1, n
+             index = t % surface_bins(j) % scalar
+             call add_map_element(tally_maps(T_SURFACE) % items(index), i, j)
+          end do
           filter_bins = filter_bins * n
        end if
 
-       n = t % n_energy_out
+       ! Add map elements for cellborn bins
+       n = t % n_bins(T_CELLBORN)
+       t % stride(T_CELLBORN) = filter_bins
        if (n > 0) then
+          do j = 1, n
+             index = t % cellborn_bins(j) % scalar
+             call add_map_element(tally_maps(T_CELLBORN) % items(index), i, j)
+          end do
+          filter_bins = filter_bins * n
+       end if
+
+       ! Add map elements for cell bins
+       n = t % n_bins(T_CELL)
+       t % stride(T_CELL) = filter_bins
+       if (n > 0) then
+          do j = 1, n
+             index = t % cell_bins(j) % scalar
+             call add_map_element(tally_maps(T_CELL) % items(index), i, j)
+          end do
+          filter_bins = filter_bins * n
+       end if
+
+       ! Add map elements for material bins
+       n = t % n_bins(T_MATERIAL)
+       t % stride(T_MATERIAL) = filter_bins
+       if (n > 0) then
+          do j = 1, n
+             index = t % material_bins(j) % scalar
+             call add_map_element(tally_maps(T_MATERIAL) % items(index), i, j)
+          end do
+          filter_bins = filter_bins * n
+       end if
+
+       ! Add map elements for universe bins
+       n = t % n_bins(T_UNIVERSE)
+       t % stride(T_UNIVERSE) = filter_bins
+       if (n > 0) then
+          do j = 1, n
+             index = t % universe_bins(j) % scalar
+             call add_map_element(tally_maps(T_UNIVERSE) % items(index), i, j)
+          end do
           filter_bins = filter_bins * n
        end if
 
@@ -249,13 +257,7 @@ contains
     integer :: i
     integer :: j
     integer :: n
-    integer :: cell_bin
-    integer :: surface_bin
-    integer :: universe_bin
-    integer :: material_bin
-    integer :: bornin_bin
-    integer :: energyin_bin
-    integer :: energyout_bin
+    integer :: bins(TALLY_TYPES)
 
     integer :: score_index
     real(8) :: score
@@ -271,67 +273,67 @@ contains
        ! DETERMINE SCORING BIN COMBINATION
 
        ! determine next cell bin
-       if (t % n_cell_bins > 0) then
-          cell_bin = get_next_bin(MAP_CELL, p % cell, i)
-          if (cell_bin == NO_BIN_FOUND) cycle
+       if (t % n_bins(T_CELL) > 0) then
+          bins(T_CELL) = get_next_bin(T_CELL, p % cell, i)
+          if (bins(T_CELL) == NO_BIN_FOUND) cycle
        else
-          cell_bin = 1
+          bins(T_CELL) = 1
        end if
 
        ! determine next surface bin
-       if (t % n_surface_bins > 0) then
-          surface_bin = get_next_bin(MAP_SURFACE, p % surface, i)
-          if (surface_bin == NO_BIN_FOUND) cycle
+       if (t % n_bins(T_SURFACE) > 0) then
+          bins(T_SURFACE) = get_next_bin(T_SURFACE, p % surface, i)
+          if (bins(T_SURFACE) == NO_BIN_FOUND) cycle
        else
-          surface_bin = 1
+          bins(T_SURFACE) = 1
        end if
 
        ! determine next universe bin
-       if (t % n_universe_bins > 0) then
-          universe_bin = get_next_bin(MAP_UNIVERSE, p % universe, i)
-          if (universe_bin == NO_BIN_FOUND) cycle
+       if (t % n_bins(T_UNIVERSE) > 0) then
+          bins(T_UNIVERSE) = get_next_bin(T_UNIVERSE, p % universe, i)
+          if (bins(T_UNIVERSE) == NO_BIN_FOUND) cycle
        else
-          universe_bin = 1
+          bins(T_UNIVERSE) = 1
        end if
 
        ! determine next material bin
-       if (t % n_material_bins > 0) then
-          material_bin = get_next_bin(MAP_MATERIAL, p % material, i)
-          if (material_bin == NO_BIN_FOUND) cycle
+       if (t % n_bins(T_MATERIAL) > 0) then
+          bins(T_MATERIAL) = get_next_bin(T_MATERIAL, p % material, i)
+          if (bins(T_MATERIAL) == NO_BIN_FOUND) cycle
        else
-          material_bin = 1
+          bins(T_MATERIAL) = 1
        end if
 
-       ! determine next bornin bin
-       if (t % n_bornin_bins > 0) then
-          bornin_bin = get_next_bin(MAP_BORNIN, p % cell_born, i)
-          if (bornin_bin == NO_BIN_FOUND) cycle
+       ! determine next cellborn bin
+       if (t % n_bins(T_CELLBORN) > 0) then
+          bins(T_CELLBORN) = get_next_bin(T_CELLBORN, p % cell_born, i)
+          if (bins(T_CELLBORN) == NO_BIN_FOUND) cycle
        else
-          bornin_bin = 1
+          bins(T_CELLBORN) = 1
        end if
 
        ! determine incoming energy bin
-       n = t % n_energy_in
+       n = t % n_bins(T_ENERGYIN)
        if (n > 0) then
           ! check if energy of the particle is within energy bins
           if (p % E < t % energy_in(1) .or. p % E > t % energy_in(n)) cycle
 
           ! search to find incoming energy bin
-          energyin_bin = binary_search(t % energy_in, n, p % E)
+          bins(T_ENERGYIN) = binary_search(t % energy_in, n, p % E)
        else
-          energyin_bin = 1
+          bins(T_ENERGYIN) = 1
        end if
 
        ! determine outgoing energy bin
-       n = t % n_energy_out
+       n = t % n_bins(T_ENERGYOUT)
        if (n > 0) then
           ! check if energy of the particle is within energy bins
           if (p % E < t % energy_out(1) .or. p % E > t % energy_out(n)) cycle
 
           ! search to find incoming energy bin
-          energyout_bin = binary_search(t % energy_out, n, p % E)
+          bins(T_ENERGYOUT) = binary_search(t % energy_out, n, p % E)
        else
-          energyout_bin = 1
+          bins(T_ENERGYOUT) = 1
        end if
 
        ! =======================================================================
@@ -341,8 +343,7 @@ contains
        ! tally -- now we need to determine where in the scores array we should
        ! be accumulating the tally values
 
-       score_index = bins_to_index(t, cell_bin, surface_bin, universe_bin, &
-            material_bin, bornin_bin, energyin_bin, energyout_bin)
+       score_index = sum((bins - 1) * t % stride) + 1
 
        ! =======================================================================
        ! CALCULATE SCORES AND ACCUMULATE TALLY
@@ -426,65 +427,6 @@ contains
     end do
 
   end function get_next_bin
-
-!===============================================================================
-! BINS_TO_INDEX takes a combination of cell/surface/etc bins and returns the
-! index in the scores array for the given tally
-!===============================================================================
-
-  function bins_to_index(t, c_bin, s_bin, u_bin, m_bin, b_bin, &
-       ei_bin, eo_bin) result (index)
-
-    type(TallyObject), pointer :: t
-    integer, intent(in) :: c_bin
-    integer, intent(in) :: s_bin
-    integer, intent(in) :: u_bin
-    integer, intent(in) :: m_bin
-    integer, intent(in) :: b_bin
-    integer, intent(in) :: ei_bin
-    integer, intent(in) :: eo_bin
-    integer             :: index
-
-    integer :: product
-
-    index = 0
-    product = 1
-    
-    index = index + (c_bin - 1)
-    if (t % n_cell_bins > 0) then
-       product = product * t % n_cell_bins
-    end if
-
-    index = index + (s_bin - 1) * product
-    if (t % n_surface_bins > 0) then
-       product = product * t % n_surface_bins
-    end if
-
-    index = index + (u_bin - 1) * product
-    if (t % n_universe_bins > 0) then
-       product = product * t % n_universe_bins
-    end if
-
-    index = index + (m_bin - 1) * product
-    if (t % n_material_bins > 0) then
-       product = product * t % n_material_bins
-    end if
-
-    index = index + (b_bin - 1) * product
-    if (t % n_bornin_bins > 0) then
-       product = product * t % n_bornin_bins
-    end if
-
-    index = index + (ei_bin - 1) * product
-    if (t % n_energy_in > 9) then
-       product = product * t % n_energy_in
-    end if
-
-    ! We need to shift the index by one since the array in fortran starts at
-    ! unity, not zero
-    index = index + (eo_bin - 1) * product + 1
-    
-  end function bins_to_index
 
 !===============================================================================
 ! ADD_TO_SCORE accumulates a scoring contribution to a specific tally bin and

@@ -335,8 +335,8 @@ contains
        ! =======================================================================
        ! ADJUST CELL INDICES FOR EACH TALLY
 
-       if (associated(t % cell_bins)) then
-          do j = 1, size(t % cell_bins)
+       if (t % n_bins(T_CELL) > 0) then
+          do j = 1, t % n_bins(T_CELL)
              uid = t % cell_bins(j) % scalar
              if (dict_has_key(cell_dict, uid)) then
                 t % cell_bins(j) % scalar = dict_get_key(cell_dict, uid)
@@ -351,8 +351,8 @@ contains
        ! =======================================================================
        ! ADJUST SURFACE INDICES FOR EACH TALLY
 
-       if (associated(t % surface_bins)) then
-          do j = 1, size(t % surface_bins)
+       if (t % n_bins(T_SURFACE) > 0) then
+          do j = 1, t % n_bins(T_SURFACE)
              uid = t % surface_bins(j) % scalar
              if (dict_has_key(surface_dict, uid)) then
                 t % surface_bins(j) % scalar = dict_get_key(surface_dict, uid)
@@ -367,8 +367,8 @@ contains
        ! =======================================================================
        ! ADJUST UNIVERSE INDICES FOR EACH TALLY
 
-       if (associated(t % universe_bins)) then
-          do j = 1, size(t % universe_bins)
+       if (t % n_bins(T_UNIVERSE) > 0) then
+          do j = 1, t % n_bins(T_UNIVERSE)
              uid = t % universe_bins(j) % scalar
              if (dict_has_key(universe_dict, uid)) then
                 t % universe_bins(j) % scalar = dict_get_key(universe_dict, uid)
@@ -383,8 +383,8 @@ contains
        ! =======================================================================
        ! ADJUST MATERIAL INDICES FOR EACH TALLY
 
-       if (associated(t % material_bins)) then
-          do j = 1, size(t % material_bins)
+       if (t % n_bins(T_MATERIAL) > 0) then
+          do j = 1, t % n_bins(T_MATERIAL)
              uid = t % material_bins(j) % scalar
              if (dict_has_key(material_dict, uid)) then
                 t % material_bins(j) % scalar = dict_get_key(material_dict, uid)
@@ -399,8 +399,8 @@ contains
        ! =======================================================================
        ! ADJUST CELLBORN INDICES FOR EACH TALLY
 
-       if (associated(t % cellborn_bins)) then
-          do j = 1, size(t % cellborn_bins)
+       if (t % n_bins(T_CELLBORN) > 0) then
+          do j = 1, t % n_bins(T_CELLBORN)
              uid = t % cellborn_bins(j) % scalar
              if (dict_has_key(cell_dict, uid)) then
                 t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, uid)

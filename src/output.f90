@@ -536,7 +536,7 @@ contains
        write(ou, *) '    Surface Bins:' // trim(string)
     end if
 
-    if (t % n_bins(T_UNIVERSE)) then
+    if (t % n_bins(T_UNIVERSE) > 0) then
        string = ""
        do i = 1, t % n_bins(T_UNIVERSE)
           uid = t % universe_bins(i) % scalar
@@ -546,7 +546,7 @@ contains
        write(ou, *) '    Material Bins:' // trim(string)
     end if
 
-    if (t % n_bins(T_MATERIAL)) then
+    if (t % n_bins(T_MATERIAL) > 0) then
        string = ""
        do i = 1, t % n_bins(T_MATERIAL)
           uid = t % material_bins(i) % scalar

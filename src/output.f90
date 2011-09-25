@@ -516,9 +516,9 @@ contains
 
     write(ou,*) 'Tally ' // int_to_str(t % uid)
 
-    if (t % n_cell_bins > 0) then
+    if (t % n_bins(T_CELL) > 0) then
        string = ""
-       do i = 1, t % n_cell_bins
+       do i = 1, t % n_bins(T_CELL)
           uid = t % cell_bins(i) % scalar
           c => cells(uid)
           string = trim(string) // ' ' // trim(int_to_str(c % uid))
@@ -526,9 +526,9 @@ contains
        write(ou, *) '    Cell Bins:' // trim(string)
     end if
 
-    if (t % n_surface_bins > 0) then
+    if (t % n_bins(T_SURFACE) > 0) then
        string = ""
-       do i = 1, t % n_surface_bins
+       do i = 1, t % n_bins(T_SURFACE)
           uid = t % surface_bins(i) % scalar
           s => surfaces(uid)
           string = trim(string) // ' ' // trim(int_to_str(s % uid))
@@ -536,9 +536,9 @@ contains
        write(ou, *) '    Surface Bins:' // trim(string)
     end if
 
-    if (t % n_universe_bins) then
+    if (t % n_bins(T_UNIVERSE)) then
        string = ""
-       do i = 1, t % n_universe_bins
+       do i = 1, t % n_bins(T_UNIVERSE)
           uid = t % universe_bins(i) % scalar
           u => universes(uid)
           string = trim(string) // ' ' // trim(int_to_str(u % uid))
@@ -546,9 +546,9 @@ contains
        write(ou, *) '    Material Bins:' // trim(string)
     end if
 
-    if (t % n_material_bins) then
+    if (t % n_bins(T_MATERIAL)) then
        string = ""
-       do i = 1, t % n_material_bins
+       do i = 1, t % n_bins(T_MATERIAL)
           uid = t % material_bins(i) % scalar
           m => materials(uid)
           string = trim(string) // ' ' // trim(int_to_str(m % uid))
@@ -565,28 +565,28 @@ contains
        write(ou, *) '    Mesh Bins:' // trim(string)
     end if
 
-    if (t % n_bornin_bins > 0) then
+    if (t % n_bins(T_CELLBORN) > 0) then
        string = ""
-       do i = 1, t % n_bornin_bins
-          uid = t % bornin_bins(i) % scalar
+       do i = 1, t % n_bins(T_CELLBORN)
+          uid = t % cellborn_bins(i) % scalar
           c => cells(uid)
           string = trim(string) // ' ' // trim(int_to_str(c % uid))
        end do
        write(ou, *) '    Birth Region Bins:' // trim(string)
     end if
 
-    if (t % n_energy_in > 0) then
+    if (t % n_bins(T_ENERGYIN) > 0) then
        string = ""
-       do i = 1, t % n_energy_in + 1
+       do i = 1, t % n_bins(T_ENERGYIN) + 1
           string = trim(string) // ' ' // trim(real_to_str(&
                t % energy_in(i)))
        end do
        write(ou,*) '    Incoming Energy Bins:' // trim(string)
     end if
 
-    if (t % n_energy_out > 0) then
+    if (t % n_bins(T_ENERGYOUT) > 0) then
        string = ""
-       do i = 1, t % n_energy_out + 1
+       do i = 1, t % n_bins(T_ENERGYOUT) + 1
           string = trim(string) // ' ' // trim(real_to_str(&
                t % energy_out(i)))
        end do

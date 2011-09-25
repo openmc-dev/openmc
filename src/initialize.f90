@@ -397,13 +397,13 @@ contains
        end if
 
        ! =======================================================================
-       ! ADJUST BORNIN INDICES FOR EACH TALLY
+       ! ADJUST CELLBORN INDICES FOR EACH TALLY
 
-       if (associated(t % bornin_bins)) then
-          do j = 1, size(t % bornin_bins)
-             uid = t % bornin_bins(j) % scalar
+       if (associated(t % cellborn_bins)) then
+          do j = 1, size(t % cellborn_bins)
+             uid = t % cellborn_bins(j) % scalar
              if (dict_has_key(cell_dict, uid)) then
-                t % bornin_bins(j) % scalar = dict_get_key(cell_dict, uid)
+                t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, uid)
              else
                 msg = "Could not find material " // trim(int_to_str(uid)) // &
                      & " specified on tally " // trim(int_to_str(t % uid))

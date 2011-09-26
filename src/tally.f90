@@ -86,18 +86,20 @@ contains
 
 !===============================================================================
 ! CREATE_TALLY_MAP creates a map that allows a quick determination of which
-! tallies and bins need to be scored to when a particle makes a collision.
+! tallies and bins need to be scored to when a particle makes a collision. This
+! subroutine also sets the stride attribute for each tally as well as allocating
+! storage for the scores array.
 !===============================================================================
 
   subroutine create_tally_map()
 
-    integer :: i
-    integer :: j
-    integer :: index
-    integer :: n
-    integer :: filter_bins
-    integer :: score_bins
-    character(MAX_LINE_LEN) :: msg        ! output/error message
+    integer :: i                   ! loop index for tallies
+    integer :: j                   ! loop index for filter arrays
+    integer :: index               ! filter bin entries
+    integer :: n                   ! number of bins
+    integer :: filter_bins         ! running total of number of filter bins
+    integer :: score_bins          ! number of scoring bins
+    character(MAX_LINE_LEN) :: msg ! output/error message
     type(TallyObject), pointer :: t => null()
 
     ! allocate tally map array -- note that we don't need a tally map for the
@@ -221,7 +223,7 @@ contains
     integer, intent(in) :: index_tally ! index in tallies array
     integer, intent(in) :: index_bin   ! index in bins array
 
-    integer :: n
+    integer :: n                       ! size of elements array
     type(TallyMapElement), allocatable :: temp(:)
 
     if (.not. allocated(item % elements)) then
@@ -337,16 +339,14 @@ contains
        end if
 
        ! =======================================================================
-       ! DETERMINE INDEX IN SCORES ARRAY
+       ! CALCULATE SCORES AND ACCUMULATE TALLY
 
        ! If we have made it here, we have a scoring combination of bins for this
        ! tally -- now we need to determine where in the scores array we should
        ! be accumulating the tally values
 
+       ! Determine scoring index for this filter combination
        score_index = sum((bins - 1) * t % stride) + 1
-
-       ! =======================================================================
-       ! CALCULATE SCORES AND ACCUMULATE TALLY
 
        do j = 1, t % n_macro_bins
           ! Determine score
@@ -382,10 +382,10 @@ contains
 ! GET_NEXT_BIN determines the next scoring bin for a particular filter variable
 !===============================================================================
 
-  function get_next_bin(i_map, i_cell, i_tally) result(bin)
+  function get_next_bin(i_map, i_item, i_tally) result(bin)
 
     integer, intent(in) :: i_map
-    integer, intent(in) :: i_cell
+    integer, intent(in) :: i_item
     integer, intent(in) :: i_tally
     integer             :: bin
 
@@ -393,12 +393,14 @@ contains
     integer :: index_bin
     integer :: n
 
-    if (.not. allocated(tally_maps(i_map) % items(i_cell) % elements)) then
+    ! If there are no scoring bins for this item, then return immediately
+    if (.not. allocated(tally_maps(i_map) % items(i_item) % elements)) then
        bin = NO_BIN_FOUND
        return
     end if
 
-    n = size(tally_maps(i_map) % items(i_cell) % elements)
+    ! Check how many elements there are for this item
+    n = size(tally_maps(i_map) % items(i_item) % elements)
 
     do
        ! Increment position in elements
@@ -411,9 +413,9 @@ contains
           return
        end if
 
-       index_tally = tally_maps(i_map) % items(i_cell) % &
+       index_tally = tally_maps(i_map) % items(i_item) % &
             elements(position(i_map)) % index_tally
-       index_bin = tally_maps(i_map) % items(i_cell) % &
+       index_bin = tally_maps(i_map) % items(i_item) % &
             elements(position(i_map)) % index_bin
 
        if (index_tally > i_tally) then
@@ -456,16 +458,16 @@ contains
 
   subroutine synchronize_tallies()
 
-    integer :: i
-    integer :: j
-    integer :: k
-    real(8) :: val
+    integer :: i   ! index in tallies array
+    integer :: j   ! index over filter bins
+    integer :: k   ! index over scoring bins
+    real(8) :: val ! value of accumulated tally
     type(TallyObject), pointer :: t
-
 
     do i = 1, n_tallies
        t => tallies(i)
 
+       ! Loop over all filter and scoring bins
        do j = 1, t % n_total_bins
           do k = 1, t % n_macro_bins
              ! Add the sum and square of the sum of contributions from each
@@ -487,25 +489,26 @@ contains
   end subroutine synchronize_tallies
 
 !===============================================================================
-! WRITE_TALLIES
+! WRITE_TALLIES creates an output file and writes out the mean values of all
+! tallies and their standard deviations
 !===============================================================================
 
   subroutine write_tallies()
 
-    integer :: i
-    integer :: j
-    integer :: k
-    integer :: bins(TALLY_TYPES) = 0
-    integer :: indent
-    integer :: io_error
-    integer :: last_filter
-    integer :: score_index
-    logical :: file_exists
-    logical :: has_filter(TALLY_TYPES)
-    character(MAX_LINE_LEN) :: filename
-    character(15)           :: filter_name(TALLY_TYPES)
-    character(20)           :: macro_name(6)
-    character(80)           :: space = " "
+    integer :: i                       ! index in tallies array
+    integer :: j                       ! level in tally hierarchy
+    integer :: k                       ! loop index for scoring bins
+    integer :: bins(TALLY_TYPES) = 0   ! bins corresponding to each filter
+    integer :: indent                  ! number of spaces to preceed output
+    integer :: io_error                ! error in opening/writing file
+    integer :: last_filter             ! lowest level filter type
+    integer :: score_index             ! index in scores array for filters
+    logical :: file_exists             ! does tallies.out file already exists? 
+    logical :: has_filter(TALLY_TYPES) ! does tally have this filter?
+    character(MAX_LINE_LEN) :: filename                 ! name of output file
+    character(15)           :: filter_name(TALLY_TYPES) ! names of tally filters
+    character(20)           :: macro_name(6)            ! names of macro scores
+    character(80)           :: space = " "              ! spaces
     type(TallyObject), pointer :: t
 
     ! Initialize names for tally filter types
@@ -552,12 +555,23 @@ contains
           end if
        end do
 
+       ! WARNING: Admittedly, the logic for moving for printing scores is
+       ! extremely confusing and took quite a bit of time to get correct. The
+       ! logic is structured this way since it is not practical to have a do
+       ! loop for each filter variable (given that only a few filters are likely
+       ! to be used for a given tally.
+
+       ! Initialize filter level and indentation
        j = 1
        indent = 0
+
        print_bin: do
           find_bin: do
              ! Increment bin combination
              bins(j) = bins(j) + 1
+
+             ! =================================================================
+             ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
 
              if ((has_filter(j) .and. bins(j) > t % n_bins(j)) .or. &
                   ((.not. has_filter(j)) .and. bins(j) > 1)) then
@@ -569,6 +583,10 @@ contains
                    j = j - 1
                    if (has_filter(j)) indent = indent - 2
                 end if
+
+             ! =================================================================
+             ! VALID BIN -- WRITE FILTER INFORMATION OR EXIT TO WRITE SCORES
+
              else
                 if (j == last_filter) then
                    exit find_bin
@@ -582,13 +600,20 @@ contains
                    j = j + 1
                 end if
              end if
+
           end do find_bin
 
+          ! Print filter information
           write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') space(1:indent), &
                trim(filter_name(j)), trim(get_uid(t, j, bins(j)))
 
+          ! Determine scoring index for this bin combination -- note that unlike
+          ! in the score_tally subroutine, we have to use max(bins,1) since all
+          ! bins below the lowest filter level will be zeros
+
           score_index = sum((max(bins,1) - 1) * t % stride) + 1
 
+          ! Write scores for this filter bin combination
           indent = indent + 2
           do k = 1, t % n_macro_bins
              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
@@ -607,20 +632,22 @@ contains
   end subroutine write_tallies
 
 !===============================================================================
-! GET_UID
+! GET_UID returns the uid for a cell/surface/etc given a tally, filter type, and
+! corresponding bin
 !===============================================================================
 
-  function get_uid(t, filter_index, bin) result(uid)
+  function get_uid(t, filter_type, bin) result(uid)
 
-    type(TallyObject), pointer :: t
-    integer, intent(in)        :: filter_index
-    integer, intent(in)        :: bin
-    character(30)              :: uid
+    type(TallyObject), pointer :: t           ! tally object
+    integer, intent(in)        :: filter_type ! type of filter
+    integer, intent(in)        :: bin         ! bin in filter array
+    character(30)              :: uid         ! user-specified identifier
 
-    integer :: index
-    real(8) :: E0, E1
+    integer :: index ! index in cells/surfaces/etc array
+    real(8) :: E0    ! lower bound for energy bin
+    real(8) :: E1    ! upper bound for energy bin
 
-    select case(filter_index)
+    select case(filter_type)
     case (T_UNIVERSE)
        index = t % universe_bins(bin) % scalar
        uid = int_to_str(universes(index) % uid)
@@ -652,19 +679,21 @@ contains
   end function get_uid
 
 !===============================================================================
-! TALLY_STATISTICS
+! TALLY_STATISTICS computes the mean and standard deviation of the mean of each
+! tally and stores them in the val and val_sq attributes of the TallyScores
+! respectively
 !===============================================================================
 
   subroutine tally_statistics()
 
-    integer :: i
-    integer :: j
-    integer :: k
-    integer :: n
-    real(8) :: val
-    real(8) :: val2
-    real(8) :: mean
-    real(8) :: std
+    integer :: i    ! index in tallies array
+    integer :: j    ! loop index for filter bins
+    integer :: k    ! loop index for scoring bins
+    integer :: n    ! number of active cycles
+    real(8) :: val  ! sum(x)
+    real(8) :: val2 ! sum(x*x)
+    real(8) :: mean ! mean value
+    real(8) :: std  ! standard deviation of the mean
     type(TallyObject), pointer :: t
 
     ! Number of active cycles

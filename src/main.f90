@@ -11,7 +11,7 @@ program main
   use tally,           only: calculate_keff
   use source,          only: get_source_particle
   use string,          only: int_to_str
-  use tally,           only: synchronize_tallies
+  use tally,           only: synchronize_tallies, write_tallies
   use timing,          only: timer_start, timer_stop
 
 #ifdef MPI
@@ -32,6 +32,7 @@ program main
   ! show timing statistics
   call timer_stop(time_total)
   if (master) call print_runtime()
+  if (master) call write_tallies()
 
   ! deallocate arrays
   call free_memory()

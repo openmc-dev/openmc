@@ -6,7 +6,7 @@ module tally
   use global
   use output,        only: message
   use search,        only: binary_search
-  use string,        only: int_to_str
+  use string,        only: int_to_str, real_to_str
   use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement
 
 #ifdef MPI
@@ -105,15 +105,15 @@ contains
     allocate(tally_maps(TALLY_TYPES - 2))
 
     ! allocate list of items for each different filter type
-    allocate(tally_maps(T_CELL)     % items(n_cells))
-    allocate(tally_maps(T_SURFACE)  % items(n_surfaces))
     allocate(tally_maps(T_UNIVERSE) % items(n_universes))
     allocate(tally_maps(T_MATERIAL) % items(n_materials))
+    allocate(tally_maps(T_CELL)     % items(n_cells))
+    allocate(tally_maps(T_CELLBORN) % items(n_cells))
+    allocate(tally_maps(T_SURFACE)  % items(n_surfaces))
     allocate(tally_maps(T_MESH)     % items(100)) ! TODO: Change this
-    allocate(tally_maps(T_CELLBORN)   % items(n_cells))
 
     ! Allocate and initialize tally map positioning for finding bins
-    allocate(position(TALLY_TYPES))
+    allocate(position(TALLY_TYPES - 2))
     position = 0
 
     do i = 1, n_tallies
@@ -371,10 +371,10 @@ contains
 
        end do
 
-    end do
+       ! Reset tally map positioning
+       position = 0
 
-    ! Reset tally map positioning
-    position = 0
+    end do
 
   end subroutine score_tally
 
@@ -392,6 +392,11 @@ contains
     integer :: index_tally
     integer :: index_bin
     integer :: n
+
+    if (.not. allocated(tally_maps(i_map) % items(i_cell) % elements)) then
+       bin = NO_BIN_FOUND
+       return
+    end if
 
     n = size(tally_maps(i_map) % items(i_cell) % elements)
 
@@ -480,5 +485,169 @@ contains
     end do
 
   end subroutine synchronize_tallies
+
+!===============================================================================
+! WRITE_TALLIES
+!===============================================================================
+
+  subroutine write_tallies()
+
+    integer :: i
+    integer :: j
+    integer :: k
+    integer :: bins(TALLY_TYPES) = 0
+    integer :: indent
+    integer :: io_error
+    integer :: last_filter
+    integer :: score_index
+    logical :: file_exists
+    logical :: has_filter(TALLY_TYPES)
+    character(MAX_LINE_LEN) :: filename
+    character(15)           :: filter_name(TALLY_TYPES)
+    character(20)           :: macro_name(6)
+    character(80)           :: space = " "
+    type(TallyObject), pointer :: t
+
+    ! Initialize names for tally filter types
+    filter_name(T_UNIVERSE)  = "Universe"
+    filter_name(T_MATERIAL)  = "Material"
+    filter_name(T_CELL)      = "Cell"
+    filter_name(T_CELLBORN)  = "Birth Cell"
+    filter_name(T_SURFACE)   = "Surface"
+    filter_name(T_MESH)      = "Mesh"
+    filter_name(T_ENERGYIN)  = "Incoming Energy"
+    filter_name(T_ENERGYOUT) = "Outgoing Energy"
+
+    ! Initialize names for macro scores
+    macro_name(abs(MACRO_FLUX))       = "Flux"
+    macro_name(abs(MACRO_TOTAL))      = "Total Reaction Rate"
+    macro_name(abs(MACRO_SCATTER))    = "Scattering Rate"
+    macro_name(abs(MACRO_ABSORPTION)) = "Absorption Rate"
+    macro_name(abs(MACRO_FISSION))    = "Fission Rate"
+    macro_name(abs(MACRO_NU_FISSION)) = "Nu-Fission Rate"
+
+    ! Create filename for tally output
+    filename = trim(path_input) // "tallies.out"
+
+    ! Check if tally file already exists
+    inquire(FILE=filename, EXIST=file_exists)
+    if (file_exists) then
+       ! Possibly make backup of old tally file
+    end if
+
+    ! Open tally file for writing
+    open(FILE=filename, UNIT=UNIT_TALLY, STATUS='replace', &
+         ACTION='write', IOSTAT=io_error)
+
+    do i = 1, n_tallies
+       t => tallies(i)
+
+       ! First determine which filters this tally has
+       do j = 1, TALLY_TYPES
+          if (t % n_bins(j) > 0) then
+             has_filter(j) = .true.
+             last_filter = j
+          else
+             has_filter(j) = .false.
+          end if
+       end do
+
+       j = 1
+       indent = 0
+       print_bin: do
+          find_bin: do
+             ! Increment bin combination
+             bins(j) = bins(j) + 1
+
+             if ((has_filter(j) .and. bins(j) > t % n_bins(j)) .or. &
+                  ((.not. has_filter(j)) .and. bins(j) > 1)) then
+                if (j == 1) then
+                   ! This means we are done with all bin combinations
+                   exit print_bin
+                else
+                   bins(j) = 0
+                   j = j - 1
+                   if (has_filter(j)) indent = indent - 2
+                end if
+             else
+                if (j == last_filter) then
+                   exit find_bin
+                else
+                   if (has_filter(j)) then
+                      ! Print current filter information
+                      write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') space(1:indent), &
+                           trim(filter_name(j)), trim(get_uid(t, j, bins(j)))
+                      indent = indent + 2
+                   end if
+                   j = j + 1
+                end if
+             end if
+          end do find_bin
+
+          write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') space(1:indent), &
+               trim(filter_name(j)), trim(get_uid(t, j, bins(j)))
+
+          score_index = sum((max(bins,1) - 1) * t % stride) + 1
+
+          indent = indent + 2
+          do k = 1, t % n_macro_bins
+             write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') space(1:indent), &
+                  macro_name(abs(t % macro_bins(k) % scalar)), &
+                  trim(real_to_str(t % scores(score_index,k) % val))
+          end do
+          indent = indent - 2
+
+       end do print_bin
+
+    end do
+
+    close(UNIT=UNIT_TALLY)
+
+  end subroutine write_tallies
+
+!===============================================================================
+! GET_UID
+!===============================================================================
+
+  function get_uid(t, filter_index, bin) result(uid)
+
+    type(TallyObject), pointer :: t
+    integer, intent(in)        :: filter_index
+    integer, intent(in)        :: bin
+    character(30)              :: uid
+
+    integer :: index
+    real(8) :: E0, E1
+
+    select case(filter_index)
+    case (T_UNIVERSE)
+       index = t % universe_bins(bin) % scalar
+       uid = int_to_str(universes(index) % uid)
+    case (T_MATERIAL)
+       index = t % material_bins(bin) % scalar
+       uid = int_to_str(materials(index) % uid)
+    case (T_CELL)
+       index = t % cell_bins(bin) % scalar
+       uid = int_to_str(cells(index) % uid)
+    case (T_CELLBORN)
+       index = t % cellborn_bins(bin) % scalar
+       uid = int_to_str(cells(index) % uid)
+    case (T_SURFACE)
+       index = t % surface_bins(bin) % scalar
+       uid = int_to_str(surfaces(index) % uid)
+    case (T_MESH)
+       index = t % mesh_bins(bin) % scalar
+       ! uid = int_to_str(meshs(index) % uid)
+    case (T_ENERGYIN)
+       E0 = t % energy_in(bin)
+       E1 = t % energy_in(bin + 1)
+       uid = "[" // trim(real_to_str(E0)) // ", " // trim(real_to_str(E1)) // ")"
+    case (T_ENERGYOUT)
+       E0 = t % energy_out(bin)
+       E1 = t % energy_out(bin + 1)
+       uid = "[" // trim(real_to_str(E0)) // ", " // trim(real_to_str(E1)) // ")"
+    end select
+
+  end function get_uid
 
 end module tally

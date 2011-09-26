@@ -605,8 +605,8 @@ contains
        end if
 
        ! Read birth region filter bins
-       if (len_trim(tally_(i) % filters % bornin) > 0) then
-          call split_string(tally_(i) % filters % bornin, words, n_words)
+       if (len_trim(tally_(i) % filters % cellborn) > 0) then
+          call split_string(tally_(i) % filters % cellborn, words, n_words)
           allocate(t % cellborn_bins(n_words))
           do j = 1, n_words
              t % cellborn_bins(j) % scalar = str_to_int(words(j))

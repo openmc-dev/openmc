@@ -591,9 +591,10 @@ contains
 
           indent = indent + 2
           do k = 1, t % n_macro_bins
-             write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') space(1:indent), &
-                  macro_name(abs(t % macro_bins(k) % scalar)), &
-                  trim(real_to_str(t % scores(score_index,k) % val))
+             write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+                  space(1:indent), macro_name(abs(t % macro_bins(k) % scalar)), &
+                  real_to_str(t % scores(score_index,k) % val), &
+                  trim(real_to_str(t % scores(score_index,k) % val_sq))
           end do
           indent = indent - 2
 
@@ -649,5 +650,47 @@ contains
     end select
 
   end function get_uid
+
+!===============================================================================
+! TALLY_STATISTICS
+!===============================================================================
+
+  subroutine tally_statistics()
+
+    integer :: i
+    integer :: j
+    integer :: k
+    integer :: n
+    real(8) :: val
+    real(8) :: val2
+    real(8) :: mean
+    real(8) :: std
+    type(TallyObject), pointer :: t
+
+    ! Number of active cycles
+    n = n_cycles - n_inactive
+
+    do i = 1, n_tallies
+       t => tallies(i)
+
+       do j = 1, t % n_total_bins
+          do k = 1, t % n_macro_bins
+             ! Copy values from tallies
+             val  = t % scores(j,k) % val
+             val2 = t % scores(j,k) % val_sq
+
+             ! Calculate mean and standard deviation
+             mean = val/n
+             std = sqrt((val2/n - mean*mean)/n)
+
+             ! Copy back into TallyScore
+             t % scores(j,k) % val    = mean
+             t % scores(j,k) % val_sq = std
+          end do
+       end do
+
+    end do
+
+  end subroutine tally_statistics
 
 end module tally

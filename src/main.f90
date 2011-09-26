@@ -11,7 +11,8 @@ program main
   use tally,           only: calculate_keff
   use source,          only: get_source_particle
   use string,          only: int_to_str
-  use tally,           only: synchronize_tallies, write_tallies
+  use tally,           only: synchronize_tallies, write_tallies, &
+                             tally_statistics
   use timing,          only: timer_start, timer_stop
 
 #ifdef MPI
@@ -115,6 +116,12 @@ contains
        call timer_stop(time_intercycle)
 
     end do CYCLE_LOOP
+
+    ! ==========================================================================
+    ! END OF RUN WRAPUP
+
+    ! Calculate statistics for tallies
+    call tally_statistics()
 
   end subroutine run_problem
 

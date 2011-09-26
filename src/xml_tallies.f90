@@ -12,7 +12,7 @@ type filter_xml
    character(len=250)                                :: universe
    character(len=250)                                :: material
    character(len=250)                                :: mesh
-   character(len=250)                                :: bornin
+   character(len=250)                                :: cellborn
    character(len=250)                                :: energy
    character(len=250)                                :: energyout
 end type filter_xml
@@ -74,7 +74,7 @@ subroutine read_xml_type_filter_xml( info, starttag, endtag, attribs, noattribs,
    logical                                         :: has_universe
    logical                                         :: has_material
    logical                                         :: has_mesh
-   logical                                         :: has_bornin
+   logical                                         :: has_cellborn
    logical                                         :: has_energy
    logical                                         :: has_energyout
    has_cell                             = .false.
@@ -82,7 +82,7 @@ subroutine read_xml_type_filter_xml( info, starttag, endtag, attribs, noattribs,
    has_universe                         = .false.
    has_material                         = .false.
    has_mesh                             = .false.
-   has_bornin                           = .false.
+   has_cellborn                         = .false.
    has_energy                           = .false.
    has_energyout                        = .false.
    call init_xml_type_filter_xml(dvar)
@@ -153,10 +153,10 @@ subroutine read_xml_type_filter_xml( info, starttag, endtag, attribs, noattribs,
          call read_xml_word( &
             info, tag, endtag, attribs, noattribs, data, nodata, &
             dvar%mesh, has_mesh )
-      case('bornin')
+      case('cellborn')
          call read_xml_word( &
             info, tag, endtag, attribs, noattribs, data, nodata, &
-            dvar%bornin, has_bornin )
+            dvar%cellborn, has_cellborn )
       case('energy')
          call read_xml_word( &
             info, tag, endtag, attribs, noattribs, data, nodata, &
@@ -192,7 +192,7 @@ subroutine init_xml_type_filter_xml(dvar)
    dvar%universe = ''
    dvar%material = ''
    dvar%mesh = ''
-   dvar%bornin = ''
+   dvar%cellborn = ''
    dvar%energy = ''
    dvar%energyout = ''
 end subroutine init_xml_type_filter_xml
@@ -223,7 +223,7 @@ subroutine write_xml_type_filter_xml( &
    call write_to_xml_word( info, 'universe', indent+3, dvar%universe)
    call write_to_xml_word( info, 'material', indent+3, dvar%material)
    call write_to_xml_word( info, 'mesh', indent+3, dvar%mesh)
-   call write_to_xml_word( info, 'bornin', indent+3, dvar%bornin)
+   call write_to_xml_word( info, 'cellborn', indent+3, dvar%cellborn)
    call write_to_xml_word( info, 'energy', indent+3, dvar%energy)
    call write_to_xml_word( info, 'energyout', indent+3, dvar%energyout)
    write(info%lun,'(4a)') indentation(1:min(indent,100)), &

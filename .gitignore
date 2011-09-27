@@ -2,6 +2,7 @@
 *.o
 *.mod
 *.log
+*.out
 src/openmc
 
 # emacs backups

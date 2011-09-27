@@ -64,6 +64,7 @@ contains
           k2 = k2 + kcoll**2
           keff = k1/n
           std  = sqrt((k2/n-keff**2)/n)
+          keff_std = std
           if (i_cycle > n_inactive+1) then
              write(6,101) i_cycle, kcoll, keff, std
           else

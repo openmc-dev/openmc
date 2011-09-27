@@ -695,6 +695,9 @@ contains
 
   subroutine print_runtime()
 
+    integer :: total_particles
+    real(8) :: speed
+
     ! display header block
     call header("Time Elapsed")
 
@@ -704,8 +707,20 @@ contains
     write(ou,100) "Total time in computation", trim(real_to_str(time_compute % elapsed))
     write(ou,100) "Total time between cycles", trim(real_to_str(time_intercycle % elapsed))
 
-    ! format for write statments
+    ! display header block
+    call header("Run Statistics")
+
+    ! display calculate rate and final keff
+    total_particles = n_particles * n_cycles
+    speed = real(total_particles) / time_compute % elapsed
+    write(ou,101) "Calculation Rate", trim(real_to_str(speed))
+    write(ou,102) "Final Keff", trim(real_to_str(keff)), trim(real_to_str(keff_std))
+    write(ou,*)
+
+    ! format for write statements
 100 format (1X,A,T33,"= ",A," seconds")
+101 format (1X,A,T20,"= ",A," neutrons/second")
+102 format (1X,A,T20,"= ",A," +/- ",A)
  
   end subroutine print_runtime
 

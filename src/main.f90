@@ -99,7 +99,7 @@ contains
        call timer_start(time_intercycle)
 
        ! Collect tallies
-       call synchronize_tallies()
+       if (tallies_on) call synchronize_tallies()
 
        ! Distribute fission bank across processors evenly
        call synchronize_bank(i_cycle)

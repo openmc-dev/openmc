@@ -318,10 +318,10 @@ contains
        n = t % n_bins(T_ENERGYIN)
        if (n > 0) then
           ! check if energy of the particle is within energy bins
-          if (p % E < t % energy_in(1) .or. p % E > t % energy_in(n)) cycle
+          if (p % E < t % energy_in(1) .or. p % E > t % energy_in(n + 1)) cycle
 
           ! search to find incoming energy bin
-          bins(T_ENERGYIN) = binary_search(t % energy_in, n, p % E)
+          bins(T_ENERGYIN) = binary_search(t % energy_in, n + 1, p % E)
        else
           bins(T_ENERGYIN) = 1
        end if
@@ -330,10 +330,10 @@ contains
        n = t % n_bins(T_ENERGYOUT)
        if (n > 0) then
           ! check if energy of the particle is within energy bins
-          if (p % E < t % energy_out(1) .or. p % E > t % energy_out(n)) cycle
+          if (p % E < t % energy_out(1) .or. p % E > t % energy_out(n + 1)) cycle
 
           ! search to find incoming energy bin
-          bins(T_ENERGYOUT) = binary_search(t % energy_out, n, p % E)
+          bins(T_ENERGYOUT) = binary_search(t % energy_out, n + 1, p % E)
        else
           bins(T_ENERGYOUT) = 1
        end if

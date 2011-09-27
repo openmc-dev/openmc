@@ -1,0 +1,136 @@
+\documentclass{beamer}
+%\documentclass[handout,t]{beamer}
+
+\batchmode
+% \usepackage{pgfpages}
+% \pgfpagesuselayout{4 on 1}[letterpaper,landscape,border shrink=5mm]
+
+\usepackage{amsmath,amssymb,enumerate,epsfig,bbm,calc,color,ifthen,capt-of}
+
+\usetheme{Berlin}
+\usecolortheme{mit}
+
+\title{The OpenMC Monte Carlo Code}
+\author{Paul K. Romano}
+\date{September 30, 2011}
+\pgfdeclareimage[height=0.5cm]{mit-logo}{mit-logo.pdf}
+\logo{\pgfuseimage{mit-logo}\hspace*{0.3cm}}
+
+\AtBeginSection[]
+{
+  \begin{frame}<beamer>
+    \frametitle{Outline}
+    \tableofcontents[currentsection]
+  \end{frame}
+}
+\beamerdefaultoverlayspecification{<+->}
+% -----------------------------------------------------------------------------
+\begin{document}
+% -----------------------------------------------------------------------------
+
+\frame{\titlepage}
+
+\section[Outline]{}
+\begin{frame}{Outline}
+  \tableofcontents
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\section{Introduction}
+
+\begin{frame}{Background}
+  My background:
+  \begin{itemize}
+    \item<1-> B.S. Nuclear Engineering, RPI (2007)
+    \item<1-> M.S. Nuclear Scince and Engineering, MIT (2009)
+  \end{itemize}
+  Origin of OpenMC:
+  \begin{itemize}
+    \item<1-> Working on advanced parallelization for Monte Carlo
+    \item<1-> Needed testing platform - MC21?
+    \item<1-> Ultimately decided to start from scratch
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Goals}
+  Overall objectives of OpenMC:
+  \begin{itemize}
+  \item<1-> Fully featured, capable of realistic physics
+  \item<1-> Written in a modern programming language (F2003)
+  \item<1-> Easy to understand inner workings
+  \item<1-> High performance
+  \item<1-> Extensible for research purposes
+  \item<1-> Open source and freely available
+  \end{itemize}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\section{Methods and Theory}
+
+\begin{frame}{Geometry}
+  \begin{itemize}
+  \item All geometry is described as constructive solid geometry (unions and
+    intersections of second-order surfaces)
+  \item e.g. to construct an annulus
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Cross-Sections}
+  \begin{itemize}
+  \item No need to reinvent the wheel
+  \item ACE (A Compact ENDF) Format
+    \begin{itemize}
+    \item MCNP
+    \item SERPENT
+    \end{itemize}
+  \item Three arrays: NXS, JXS, XSS
+  \item Parse arrays into internal derived types
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Union Energy Grid}
+  \begin{itemize}
+  \item Each nuclide has cross-sections tabulated at different energy points
+  \item To determine collision type, need $\Sigma$ for each collision
+  \end{itemize}
+  % Insert picture of pointer method
+\end{frame}
+
+\begin{frame}{Tallies}
+\end{frame}
+
+\begin{frame}{Parallel Fission Bank}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\section{Using OpenMC}
+
+\begin{frame}{Compiling}
+\end{frame}
+
+\begin{frame}{XML Input Format}
+\end{frame}
+
+\begin{frame}{Running}
+\end{frame}
+
+\begin{frame}{Post-run Analysis}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\section{Development}
+
+\begin{frame}{Version Control}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\section{Conclusions}
+\begin{frame}{Questions?}
+  References:
+  \begin{itemize}
+    \item Github \url{http://github.com/paulromano/openmc}.
+    \item Documentation \url{http://paulromano.github.com/openmc/}.
+  \end{itemize}
+\end{frame}
+% -----------------------------------------------------------------------------
+\end{document}

@@ -4,8 +4,8 @@
   <tally id="1">
     <!-- this is where you specify filters -->
     <filters>
-      <cell>1</cell>
-      <energy>0.0 0.625 20.0e6</energy>
+      <cell>100</cell>
+      <energy>0.0 0.625 5.0 20.0</energy>
     </filters>
 
     <!-- which reactions to score -->

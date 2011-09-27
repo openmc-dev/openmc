@@ -81,6 +81,7 @@ module global
 
   ! cycle keff
   real(8) :: keff
+  real(8) :: keff_std
 
   logical :: tallies_on
 
@@ -94,6 +95,7 @@ module global
   type(Timer) :: time_total       ! timer for total run
   type(Timer) :: time_init        ! timer for initialization
   type(Timer) :: time_intercycle  ! timer for intercycle synchronization
+  type(Timer) :: time_inactive    ! timer for inactive cycles
   type(Timer) :: time_compute     ! timer for computation
 
   ! Paths to input file, cross section data, etc

@@ -55,6 +55,7 @@ contains
     if (master) call header("BEGIN SIMULATION", 1)
 
     tallies_on = .false.
+    call timer_start(time_inactive)
 
     ! ==========================================================================
     ! LOOP OVER CYCLES
@@ -110,7 +111,10 @@ contains
        ! print cycle information
 
        ! Turn tallies on once inactive cycles are complete
-       if (i_cycle == n_inactive) tallies_on = .true.
+       if (i_cycle == n_inactive) then
+          tallies_on = .true.
+          call timer_stop(time_inactive)
+       end if
 
        ! Stop timer for inter-cycle synchronization
        call timer_stop(time_intercycle)
@@ -123,8 +127,8 @@ contains
     ! Calculate statistics for tallies
     call tally_statistics()
 
+    if (master) call header("SIMULATION FINISHED", 1)
+
   end subroutine run_problem
 
 end program main
-
-

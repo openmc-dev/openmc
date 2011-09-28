@@ -7,6 +7,11 @@
 
 \usepackage{amsmath,amssymb,enumerate,epsfig,bbm,calc,color,ifthen,capt-of}
 
+% TikZ packages
+\usepackage{tikz}
+\usetikzlibrary{arrows,decorations.pathmorphing,decorations.footprints,fadings,calc,trees,mindmap,shadows,decorations.text,patterns,positioning,shapes,matrix,fit}
+
+
 \usetheme{Berlin}
 \usecolortheme{mit}
 
@@ -24,6 +29,9 @@
   \end{frame}
 }
 \beamerdefaultoverlayspecification{<+->}
+
+\include{graphical_settings}
+
 % -----------------------------------------------------------------------------
 \begin{document}
 % -----------------------------------------------------------------------------
@@ -69,31 +77,33 @@
 
 \begin{frame}{Geometry}
   \begin{itemize}
-  \item All geometry is described as constructive solid geometry (unions and
+  \item<1-> All geometry is described as constructive solid geometry (unions and
     intersections of second-order surfaces)
-  \item e.g. to construct an annulus
+  \item<1-> e.g. to construct an annulus
   \end{itemize}
+  % Picture of annulus
 \end{frame}
 
 \begin{frame}{Cross-Sections}
   \begin{itemize}
-  \item No need to reinvent the wheel
-  \item ACE (A Compact ENDF) Format
+  \item<1-> No need to reinvent the wheel
+  \item<1-> ACE (A Compact ENDF) Format
     \begin{itemize}
-    \item MCNP
-    \item SERPENT
+    \item<1-> MCNP
+    \item<1-> SERPENT
     \end{itemize}
-  \item Three arrays: NXS, JXS, XSS
-  \item Parse arrays into internal derived types
+  \item<1-> Three arrays: NXS, JXS, XSS
+  \item<1-> Parse arrays into internal derived types
   \end{itemize}
 \end{frame}
 
 \begin{frame}{Union Energy Grid}
   \begin{itemize}
-  \item Each nuclide has cross-sections tabulated at different energy points
-  \item To determine collision type, need $\Sigma$ for each collision
+  \item<1-> Each nuclide has cross-sections tabulated at different energy points
+  \item<1-> To determine collision type, need $\Sigma$ for each collision
   \end{itemize}
-  % Insert picture of pointer method
+  \include{union_energy_grid}
+
 \end{frame}
 
 \begin{frame}{Tallies}
@@ -128,8 +138,8 @@
 \begin{frame}{Questions?}
   References:
   \begin{itemize}
-    \item Github \url{http://github.com/paulromano/openmc}.
-    \item Documentation \url{http://paulromano.github.com/openmc/}.
+    \item<1-> Github: \url{http://github.com/paulromano/openmc}.
+    \item<1-> Documentation: \url{http://paulromano.github.com/openmc/}.
   \end{itemize}
 \end{frame}
 % -----------------------------------------------------------------------------

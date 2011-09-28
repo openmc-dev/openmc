@@ -1,0 +1,45 @@
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}
+[
+  transform canvas = {scale=0.7},
+  xshift = -5.0cm,
+  yshift = 1.0cm
+]
+
+  \node (LabelOne)  [sTextBlockStyle]                      {Union Energy Grid};
+  \node (EOne)      [RectBlue, right of = LabelOne, node distance = 3cm] {$E_1$};
+  \node (ETwo)      [RectBlue, right of = EOne]   {$E_2$};
+  \node (EThree)    [RectBlue, right of = ETwo]   {$E_3$};
+  \node (EFour)     [RectBlue, right of = EThree] {$E_4$};
+  \node (EFive)     [RectBlue, right of = EFour]  {$E_5$};
+  \node (ESix)      [RectBlue, right of = EFive]  {$E_6$};
+  \node (ESeven)    [RectBlue, right of = ESix]   {$E_7$};
+  \node (EEight)    [RectBlue, right of = ESeven] {$E_8$};
+
+  \node (POne)      [RectWhite, below of = EOne,   node distance = 1.5cm]   {0};
+  \node (PTwo)      [RectWhite, below of = ETwo,   node distance = 1.5cm]   {0};
+  \node (PThree)    [RectWhite, below of = EThree, node distance = 1.5cm]   {1};
+  \node (PFour)     [RectWhite, below of = EFour,  node distance = 1.5cm]   {1};
+  \node (PFive)     [RectWhite, below of = EFive,  node distance = 1.5cm]   {1};
+  \node (PSix)      [RectWhite, below of = ESix,   node distance = 1.5cm]   {2};
+  \node (PSeven)    [RectWhite, below of = ESeven, node distance = 1.5cm]   {3};
+  \node (PEight)    [RectWhite, below of = EEight, node distance = 1.5cm]   {3};
+
+  \node (ENucOne)   [RectGreen, below of = PThree, node distance = 1.5cm]   {$E_1$};
+  \node (ENucTwo)   [RectGreen, below of = PSix,   node distance = 1.5cm]   {$E_2$};
+  \node (ENucThree) [RectGreen, below of = PSeven, node distance = 1.5cm]   {$E_3$};
+
+  \draw [-triangle 45, thick] (EOne)   -- (POne);
+  \draw [-triangle 45, thick] (ETwo)   -- (PTwo);
+  \draw [-triangle 45, thick] (EThree) -- (PThree);
+  \draw [-triangle 45, thick] (EFour)  -- (PFour);
+  \draw [-triangle 45, thick] (EFive)  -- (PFive);
+  \draw [-triangle 45, thick] (ESix)   -- (PSix);
+  \draw [-triangle 45, thick] (ESeven) -- (PSeven);
+  \draw [-triangle 45, thick] (EEight) -- (PEight);
+
+\end{tikzpicture}
+\end{center}
+\end{figure}
+

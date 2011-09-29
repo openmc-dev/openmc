@@ -61,9 +61,6 @@ module tally_header
      integer :: uid
      integer :: type
      real(8) :: volume
-     integer :: cell_type
-     integer :: reaction_type
-     integer :: material_type
 
      ! Tally bin specifications
 

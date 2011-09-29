@@ -69,7 +69,7 @@ module tally_header
      type(TallyFilter), pointer :: cell_bins(:)     => null()
      type(TallyFilter), pointer :: cellborn_bins(:) => null()
      type(TallyFilter), pointer :: surface_bins(:)  => null()
-     type(TallyFilter), pointer :: mesh_bins(:)     => null()
+     integer                    :: mesh             = 0
      real(8), allocatable       :: energy_in(:)
      real(8), allocatable       :: energy_out(:)
 

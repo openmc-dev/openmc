@@ -19,7 +19,7 @@ type filter_xml
    character(len=250)                                :: surface
    character(len=250)                                :: universe
    character(len=250)                                :: material
-   character(len=250)                                :: mesh
+   integer                                         :: mesh
    character(len=250)                                :: cellborn
    character(len=250)                                :: energy
    character(len=250)                                :: energyout
@@ -354,7 +354,7 @@ subroutine read_xml_type_filter_xml( info, starttag, endtag, attribs, noattribs,
             info, tag, endtag, attribs, noattribs, data, nodata, &
             dvar%material, has_material )
       case('mesh')
-         call read_xml_word( &
+         call read_xml_integer( &
             info, tag, endtag, attribs, noattribs, data, nodata, &
             dvar%mesh, has_mesh )
       case('cellborn')
@@ -395,7 +395,7 @@ subroutine init_xml_type_filter_xml(dvar)
    dvar%surface = ''
    dvar%universe = ''
    dvar%material = ''
-   dvar%mesh = ''
+   dvar%mesh = 0
    dvar%cellborn = ''
    dvar%energy = ''
    dvar%energyout = ''
@@ -426,7 +426,7 @@ subroutine write_xml_type_filter_xml( &
    call write_to_xml_word( info, 'surface', indent+3, dvar%surface)
    call write_to_xml_word( info, 'universe', indent+3, dvar%universe)
    call write_to_xml_word( info, 'material', indent+3, dvar%material)
-   call write_to_xml_word( info, 'mesh', indent+3, dvar%mesh)
+   call write_to_xml_integer( info, 'mesh', indent+3, dvar%mesh)
    call write_to_xml_word( info, 'cellborn', indent+3, dvar%cellborn)
    call write_to_xml_word( info, 'energy', indent+3, dvar%energy)
    call write_to_xml_word( info, 'energyout', indent+3, dvar%energyout)

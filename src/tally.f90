@@ -105,7 +105,7 @@ contains
 
     ! allocate tally map array -- note that we don't need a tally map for the
     ! energy_in and energy_out filters
-    allocate(tally_maps(TALLY_TYPES - 2))
+    allocate(tally_maps(TALLY_TYPES - 3))
 
     ! allocate list of items for each different filter type
     allocate(tally_maps(T_UNIVERSE) % items(n_universes))
@@ -113,10 +113,9 @@ contains
     allocate(tally_maps(T_CELL)     % items(n_cells))
     allocate(tally_maps(T_CELLBORN) % items(n_cells))
     allocate(tally_maps(T_SURFACE)  % items(n_surfaces))
-    allocate(tally_maps(T_MESH)     % items(100)) ! TODO: Change this
 
     ! Allocate and initialize tally map positioning for finding bins
-    allocate(position(TALLY_TYPES - 2))
+    allocate(position(TALLY_TYPES - 3))
     position = 0
 
     do i = 1, n_tallies
@@ -138,8 +137,6 @@ contains
        if (n > 0) then
           filter_bins = filter_bins * n
        end if
-
-       ! TODO: Determine size of mesh to increase number of scoring bins
 
        ! Add map elements for surface bins
        n = t % n_bins(T_SURFACE)
@@ -275,22 +272,6 @@ contains
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       ! determine next cell bin
-       if (t % n_bins(T_CELL) > 0) then
-          bins(T_CELL) = get_next_bin(T_CELL, p % cell, i)
-          if (bins(T_CELL) == NO_BIN_FOUND) cycle
-       else
-          bins(T_CELL) = 1
-       end if
-
-       ! determine next surface bin
-       if (t % n_bins(T_SURFACE) > 0) then
-          bins(T_SURFACE) = get_next_bin(T_SURFACE, p % surface, i)
-          if (bins(T_SURFACE) == NO_BIN_FOUND) cycle
-       else
-          bins(T_SURFACE) = 1
-       end if
-
        ! determine next universe bin
        if (t % n_bins(T_UNIVERSE) > 0) then
           bins(T_UNIVERSE) = get_next_bin(T_UNIVERSE, p % universe, i)
@@ -307,12 +288,28 @@ contains
           bins(T_MATERIAL) = 1
        end if
 
+       ! determine next cell bin
+       if (t % n_bins(T_CELL) > 0) then
+          bins(T_CELL) = get_next_bin(T_CELL, p % cell, i)
+          if (bins(T_CELL) == NO_BIN_FOUND) cycle
+       else
+          bins(T_CELL) = 1
+       end if
+
        ! determine next cellborn bin
        if (t % n_bins(T_CELLBORN) > 0) then
           bins(T_CELLBORN) = get_next_bin(T_CELLBORN, p % cell_born, i)
           if (bins(T_CELLBORN) == NO_BIN_FOUND) cycle
        else
           bins(T_CELLBORN) = 1
+       end if
+
+       ! determine next surface bin
+       if (t % n_bins(T_SURFACE) > 0) then
+          bins(T_SURFACE) = get_next_bin(T_SURFACE, p % surface, i)
+          if (bins(T_SURFACE) == NO_BIN_FOUND) cycle
+       else
+          bins(T_SURFACE) = 1
        end if
 
        ! determine incoming energy bin
@@ -665,8 +662,8 @@ contains
        index = t % surface_bins(bin) % scalar
        uid = int_to_str(surfaces(index) % uid)
     case (T_MESH)
-       index = t % mesh_bins(bin) % scalar
-       ! uid = int_to_str(meshs(index) % uid)
+       index = t % mesh
+       uid = int_to_str(meshes(index) % uid)
     case (T_ENERGYIN)
        E0 = t % energy_in(bin)
        E1 = t % energy_in(bin + 1)

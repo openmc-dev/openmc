@@ -417,16 +417,14 @@ contains
        ! ADJUST MESH INDICES FOR EACH TALLY
 
        if (t % n_bins(T_MESH) > 0) then
-          do j = 1, size(t % mesh_bins)
-             uid = t % mesh_bins(j) % scalar
-             if (dict_has_key(mesh_dict, uid)) then
-                t % mesh_bins(j) % scalar = dict_get_key(mesh_dict, uid)
-             else
-                msg = "Could not find mesh " // trim(int_to_str(uid)) // &
-                     & " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
-             end if
-          end do
+          uid = t % mesh
+          if (dict_has_key(mesh_dict, uid)) then
+             t % mesh = dict_get_key(mesh_dict, uid)
+          else
+             msg = "Could not find mesh " // trim(int_to_str(uid)) // &
+                  & " specified on tally " // trim(int_to_str(t % uid))
+             call fatal_error(msg)
+          end if
        end if
     end do
 

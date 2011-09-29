@@ -1,11 +1,18 @@
 <?xml version="1.0"?>
 <tallies>
 
+  <mesh id="32">
+    <type>rectangular</type>
+    <dimension>1 1 5</dimension>
+    <origin>-50.0 -50.0 -50.0</origin>
+    <width>100.0 100.0 20.0</width>
+  </mesh>
+
   <tally id="1">
     <!-- this is where you specify filters -->
     <filters>
       <cell>100</cell>
-      <energy>0.0 0.625 5.0 20.0</energy>
+      <mesh>32</mesh>
     </filters>
 
     <!-- which reactions to score -->

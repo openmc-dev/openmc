@@ -560,11 +560,9 @@ contains
 
     if (t % n_bins(T_MESH) > 0) then
        string = ""
-       do i = 1, size(t % mesh_bins)
-          uid = t % mesh_bins(i) % scalar
-          mesh => meshes(uid)
-          string = trim(string) // ' ' // trim(int_to_str(mesh % uid))
-       end do
+       uid = t % mesh
+       mesh => meshes(uid)
+       string = trim(string) // ' ' // trim(int_to_str(mesh % uid))
        write(ou, *) '    Mesh Bins:' // trim(string)
     end if
 

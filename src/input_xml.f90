@@ -679,25 +679,20 @@ contains
        end if
 
        ! Read mesh filter bins
-       if (len_trim(tally_(i) % filters % mesh) > 0) then
-          call split_string(tally_(i) % filters % mesh, words, n_words)
-          allocate(t % mesh_bins(n_words))
-          do j = 1, n_words
-             t % mesh_bins(j) % scalar = str_to_int(words(j))
+       t % mesh = tally_(i) % filters % mesh
+       if (t % mesh > 0) then
+          ! Determine index in mesh array for this bin
+          uid = t % mesh
+          if (dict_has_key(mesh_dict, uid)) then
+             index = dict_get_key(mesh_dict, uid)
+             m => meshes(index)
+          else
+             msg = "Could not find mesh " // trim(int_to_str(uid)) // &
+                  " specified on tally " // trim(int_to_str(t % uid))
+             call fatal_error(msg)
+          end if
 
-             ! Determine index in mesh array for this bin
-             uid = t % mesh_bins(j) % scalar
-             if (dict_has_key(mesh_dict, uid)) then
-                index = dict_get_key(mesh_dict, uid)
-                m => meshes(index)
-             else
-                msg = "Could not find mesh " // trim(int_to_str(uid)) // &
-                     " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
-             end if
-
-             t % n_bins(T_MESH) = t % n_bins(T_MESH) + product(m % dimension)
-          end do
+          t % n_bins(T_MESH) = t % n_bins(T_MESH) + product(m % dimension)
        end if
 
        ! Read birth region filter bins

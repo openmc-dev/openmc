@@ -50,6 +50,7 @@ global.o: cross_section_header.o
 global.o: datatypes_header.o
 global.o: geometry_header.o
 global.o: material_header.o
+global.o: mesh_header.o
 global.o: particle_header.o
 global.o: source_header.o
 global.o: tally_header.o
@@ -79,6 +80,7 @@ input_xml.o: datatypes.o
 input_xml.o: error.o
 input_xml.o: geometry_header.o
 input_xml.o: global.o
+input_xml.o: mesh_header.o
 input_xml.o: output.o
 input_xml.o: string.o
 input_xml.o: tally_header.o
@@ -119,6 +121,7 @@ output.o: datatypes.o
 output.o: endf.o
 output.o: geometry_header.o
 output.o: global.o
+output.o: mesh_header.o
 output.o: string.o
 output.o: tally_header.o
 

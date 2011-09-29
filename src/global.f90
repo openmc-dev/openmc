@@ -7,6 +7,7 @@ module global
   use datatypes_header,     only: DictionaryII, DictionaryCI
   use geometry_header,      only: Cell, Universe, Lattice, Surface
   use material_header,      only: Material
+  use mesh_header,          only: StructuredMesh
   use particle_header,      only: Particle
   use source_header,        only: ExtSource
   use tally_header,         only: TallyObject, TallyMap
@@ -19,29 +20,36 @@ module global
   implicit none
   save
 
-  ! Main arrays for cells, surfaces, materials
-  type(Cell),        allocatable, target :: cells(:)
-  type(Universe),    allocatable, target :: universes(:)
-  type(Lattice),     allocatable, target :: lattices(:)
-  type(Surface),     allocatable, target :: surfaces(:)
-  type(Material),    allocatable, target :: materials(:)
-  type(xsData),      allocatable, target :: xsdatas(:)
-  type(TallyObject), allocatable, target :: tallies(:)
-  type(TallyObject), allocatable, target :: tallies_global(:)
+  ! Main arrays
+  type(Cell),           allocatable, target :: cells(:)
+  type(Universe),       allocatable, target :: universes(:)
+  type(Lattice),        allocatable, target :: lattices(:)
+  type(Surface),        allocatable, target :: surfaces(:)
+  type(Material),       allocatable, target :: materials(:)
+  type(xsData),         allocatable, target :: xsdatas(:)
+  type(StructuredMesh), allocatable, target :: meshes(:)
+  type(TallyObject),    allocatable, target :: tallies(:)
+  type(TallyObject),    allocatable, target :: tallies_global(:)
+
+  ! Size of main arrays
   integer :: n_cells          ! # of cells
   integer :: n_universes      ! # of universes
   integer :: n_lattices       ! # of lattices
   integer :: n_surfaces       ! # of surfaces
   integer :: n_materials      ! # of materials
+  integer :: n_meshes         ! # of structured meshes
   integer :: n_tallies        ! # of tallies
   integer :: n_tallies_global ! # of global tallies
 
-  ! These dictionaries provide a fast lookup mechanism
+  ! These dictionaries provide a fast lookup mechanism -- the key is the
+  ! user-specified identifier and the value is the index in the corresponding
+  ! array
   type(DictionaryII), pointer :: cell_dict
   type(DictionaryII), pointer :: universe_dict
   type(DictionaryII), pointer :: lattice_dict
   type(DictionaryII), pointer :: surface_dict
   type(DictionaryII), pointer :: material_dict
+  type(DictionaryII), pointer :: mesh_dict
   type(DictionaryII), pointer :: tally_dict
   type(DictionaryCI), pointer :: xsdata_dict
   type(DictionaryCI), pointer :: nuclide_dict

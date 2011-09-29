@@ -8,6 +8,7 @@ module output
   use endf,                 only: reaction_name
   use geometry_header,      only: Cell, Universe, Surface
   use global
+  use mesh_header,          only: StructuredMesh
   use string,               only: upper_case, int_to_str, real_to_str
   use tally_header,         only: TallyObject
 
@@ -506,13 +507,14 @@ contains
 
     type(TallyObject), pointer :: t
 
-    integer                 :: i
-    integer                 :: uid
-    character(MAX_LINE_LEN) :: string
-    type(Cell),     pointer :: c => null()
-    type(Surface),  pointer :: s => null()
-    type(Universe), pointer :: u => null()
-    type(Material), pointer :: m => null()
+    integer                       :: i
+    integer                       :: uid
+    character(MAX_LINE_LEN)       :: string
+    type(Cell),           pointer :: c => null()
+    type(Surface),        pointer :: s => null()
+    type(Universe),       pointer :: u => null()
+    type(Material),       pointer :: m => null()
+    type(StructuredMesh), pointer :: mesh => null()
 
     write(ou,*) 'Tally ' // int_to_str(t % uid)
 
@@ -556,11 +558,12 @@ contains
        write(ou, *) '    Material Bins:' // trim(string)
     end if
 
-    if (associated(t % mesh_bins)) then
+    if (t % n_bins(T_MESH) > 0) then
        string = ""
        do i = 1, size(t % mesh_bins)
-          string = trim(string) // ' ' // trim(int_to_str(&
-               t % mesh_bins(i) % scalar))
+          uid = t % mesh_bins(i) % scalar
+          mesh => meshes(uid)
+          string = trim(string) // ' ' // trim(int_to_str(mesh % uid))
        end do
        write(ou, *) '    Mesh Bins:' // trim(string)
     end if

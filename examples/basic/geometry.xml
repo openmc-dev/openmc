@@ -2,40 +2,16 @@
 <geometry>
 
 <!-- Definition of Cells -->
-  <cell uid="1">
-    <universe>0</universe>
-    <fill>37</fill>
-    <surfaces>-2</surfaces>
-  </cell>
-  <cell uid="100">
-    <universe>37</universe>
-    <material>40</material>
-    <surfaces>-1</surfaces>
-  </cell>
-  <cell uid="101">
-    <universe>37</universe>
-    <material>41</material>
-    <surfaces>1</surfaces>
-  </cell>
-  <cell uid="2">
-    <universe>0</universe>
-    <material>41</material>
-    <surfaces>2 -3</surfaces>
-  </cell>
+  <cell uid="1" universe="0" fill="37" surfaces="-2 4 -5" />
+  <cell uid="100" universe="37" material="40" surfaces="-1" />
+  <cell uid="101" universe="37" material="41" surfaces="1" />
+  <cell uid="2" universe="0" material="41" surfaces = "2 -3 4 -5" />
 
 <!-- Defition of Surfaces -->
-  <surface uid="1">
-    <type>z-cylinder</type>
-    <coeffs>0 0 7</coeffs>
-  </surface>
-  <surface uid="2">
-    <type>z-cylinder</type>
-    <coeffs>0 0 9</coeffs>
-  </surface>
-  <surface uid="3">
-    <type>z-cylinder</type>
-    <coeffs>0 0 11</coeffs>
-    <boundary>vacuum</boundary>
-  </surface>
+  <surface uid="1" type="z-cylinder" coeffs="0 0 7" />
+  <surface uid="2" type="z-cylinder" coeffs="0 0 9" />
+  <surface uid="3" type="z-cylinder" coeffs="0 0 11" boundary="vacuum" />
+  <surface uid="4" type="z-plane"    coeffs="-50"    boundary="vacuum" />
+  <surface uid="5" type="z-plane"    coeffs="50"     boundary="vacuum" />
     
 </geometry>

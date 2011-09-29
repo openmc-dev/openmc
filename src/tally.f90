@@ -4,6 +4,7 @@ module tally
   use cross_section, only: get_macro_xs
   use error,         only: fatal_error
   use global
+  use mesh,          only: get_mesh_bin
   use output,        only: message
   use search,        only: binary_search
   use string,        only: int_to_str, real_to_str
@@ -138,6 +139,13 @@ contains
           filter_bins = filter_bins * n
        end if
 
+       ! Add map elements for mesh bins
+       n = t % n_bins(T_MESH)
+       t % stride(T_MESH) = filter_bins
+       if (n > 0) then
+          filter_bins = filter_bins * n
+       end if
+
        ! Add map elements for surface bins
        n = t % n_bins(T_SURFACE)
        t % stride(T_SURFACE) = filter_bins
@@ -258,10 +266,11 @@ contains
     integer :: j
     integer :: n
     integer :: bins(TALLY_TYPES)
-
     integer :: score_index
     real(8) :: score
-    type(TallyObject), pointer :: t
+    logical :: in_mesh
+    type(TallyObject),    pointer :: t
+    type(StructuredMesh), pointer :: m
 
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
@@ -310,6 +319,15 @@ contains
           if (bins(T_SURFACE) == NO_BIN_FOUND) cycle
        else
           bins(T_SURFACE) = 1
+       end if
+
+       ! determine mesh bin
+       if (t % n_bins(T_MESH) > 0) then
+          m => meshes(t % mesh)
+          call get_mesh_bin(m, p % xyz, bins(T_MESH), in_mesh)
+          if (.not. in_mesh) cycle
+       else
+          bins(T_MESH) = 1
        end if
 
        ! determine incoming energy bin
@@ -662,8 +680,7 @@ contains
        index = t % surface_bins(bin) % scalar
        uid = int_to_str(surfaces(index) % uid)
     case (T_MESH)
-       index = t % mesh
-       uid = int_to_str(meshes(index) % uid)
+       uid = "Bin " // int_to_str(bin)
     case (T_ENERGYIN)
        E0 = t % energy_in(bin)
        E1 = t % energy_in(bin + 1)

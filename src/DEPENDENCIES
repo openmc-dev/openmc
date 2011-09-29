@@ -160,6 +160,7 @@ tally.o: constants.o
 tally.o: cross_section.o
 tally.o: error.o
 tally.o: global.o
+tally.o: mesh.o
 tally.o: output.o
 tally.o: search.o
 tally.o: string.o

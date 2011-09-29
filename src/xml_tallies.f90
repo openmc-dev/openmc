@@ -6,6 +6,14 @@ module xml_data_tallies_t
    integer, private :: lurep_
    logical, private :: strict_
 
+type mesh_xml
+   integer                                         :: id
+   character(len=12)                                :: type
+   integer, dimension(:), pointer                  :: dimension => null()
+   real(kind=kind(1.0d0)), dimension(:), pointer   :: origin => null()
+   real(kind=kind(1.0d0)), dimension(:), pointer   :: width => null()
+end type mesh_xml
+
 type filter_xml
    character(len=250)                                :: cell
    character(len=250)                                :: surface
@@ -24,8 +32,204 @@ type tally_xml
    character(len=250)                                :: reactions
    character(len=250)                                :: nuclides
 end type tally_xml
+   type(mesh_xml), dimension(:), pointer           :: mesh_ => null()
    type(tally_xml), dimension(:), pointer          :: tally_ => null()
 contains
+subroutine read_xml_type_mesh_xml_array( &
+      info, tag, endtag, attribs, noattribs, data, nodata, &
+      dvar, has_dvar )
+   type(XML_PARSE)                                 :: info
+   character(len=*), intent(inout)                 :: tag
+   logical, intent(inout)                          :: endtag
+   character(len=*), dimension(:,:), intent(inout) :: attribs
+   integer, intent(inout)                          :: noattribs
+   character(len=*), dimension(:), intent(inout)   :: data
+   integer, intent(inout)                          :: nodata
+   type(mesh_xml), dimension(:), pointer :: dvar
+   logical, intent(inout)                       :: has_dvar
+
+   integer                                      :: newsize
+   type(mesh_xml), dimension(:), pointer :: newvar
+
+   newsize = size(dvar) + 1
+   allocate( newvar(1:newsize) )
+   newvar(1:newsize-1) = dvar
+   deallocate( dvar )
+   dvar => newvar
+
+   call read_xml_type_mesh_xml( info, tag, endtag, attribs, noattribs, data, nodata, &
+              dvar(newsize), has_dvar )
+end subroutine read_xml_type_mesh_xml_array
+
+subroutine read_xml_type_mesh_xml( info, starttag, endtag, attribs, noattribs, data, nodata, &
+              dvar, has_dvar )
+   type(XML_PARSE)                                 :: info
+   character(len=*), intent(in)                    :: starttag
+   logical, intent(inout)                          :: endtag
+   character(len=*), dimension(:,:), intent(inout) :: attribs
+   integer, intent(inout)                          :: noattribs
+   character(len=*), dimension(:), intent(inout)   :: data
+   integer, intent(inout)                          :: nodata
+   type(mesh_xml), intent(inout)  :: dvar
+   logical, intent(inout)                       :: has_dvar
+
+   integer                                      :: att_
+   integer                                      :: noatt_
+   logical                                      :: error
+   logical                                      :: endtag_org
+   character(len=len(starttag))                 :: tag
+   logical                                         :: has_id
+   logical                                         :: has_type
+   logical                                         :: has_dimension
+   logical                                         :: has_origin
+   logical                                         :: has_width
+   has_id                               = .false.
+   has_type                             = .false.
+   has_dimension                        = .false.
+   has_origin                           = .false.
+   has_width                            = .false.
+   call init_xml_type_mesh_xml(dvar)
+   has_dvar = .true.
+   error  = .false.
+   att_   = 0
+   noatt_ = noattribs+1
+   endtag_org = endtag
+   do
+      if ( nodata /= 0 ) then
+         noattribs = 0
+         tag = starttag
+      elseif ( att_ < noatt_ .and. noatt_ > 1 ) then
+         att_      = att_ + 1
+         if ( att_ <= noatt_-1 ) then
+            tag       = attribs(1,att_)
+            data(1)   = attribs(2,att_)
+            noattribs = 0
+            nodata    = 1
+            endtag    = .false.
+         else
+            tag       = starttag
+            noattribs = 0
+            nodata    = 0
+            endtag    = .true.
+            cycle
+         endif
+      else
+         if ( endtag_org ) then
+            return
+         else
+            call xml_get( info, tag, endtag, attribs, noattribs, data, nodata )
+            if ( xml_error(info) ) then
+               write(lurep_,*) 'Error reading input file!'
+               error = .true.
+               return
+            endif
+         endif
+      endif
+      if ( endtag .and. tag == starttag ) then
+         exit
+      endif
+      if ( endtag .and. noattribs == 0 ) then
+         if ( xml_ok(info) ) then
+            cycle
+         else
+            exit
+         endif
+      endif
+      select case( tag )
+      case('id')
+         call read_xml_integer( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%id, has_id )
+      case('type')
+         call read_xml_word( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%type, has_type )
+      case('dimension')
+         call read_xml_integer_array( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%dimension, has_dimension )
+      case('origin')
+         call read_xml_double_array( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%origin, has_origin )
+      case('width')
+         call read_xml_double_array( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%width, has_width )
+      case ('comment', '!--')
+         ! Simply ignore
+      case default
+         if ( strict_ ) then
+            error = .true.
+            call xml_report_errors( info, &
+               'Unknown or wrongly placed tag: ' // trim(tag))
+         endif
+      end select
+      nodata = 0
+      if ( .not. xml_ok(info) ) exit
+   end do
+   if ( .not. has_id ) then
+      has_dvar = .false.
+      call xml_report_errors(info, 'Missing data on id')
+   endif
+   if ( .not. has_type ) then
+      has_dvar = .false.
+      call xml_report_errors(info, 'Missing data on type')
+   endif
+   if ( .not. has_dimension ) then
+      has_dvar = .false.
+      call xml_report_errors(info, 'Missing data on dimension')
+   endif
+   if ( .not. has_origin ) then
+      has_dvar = .false.
+      call xml_report_errors(info, 'Missing data on origin')
+   endif
+   if ( .not. has_width ) then
+      has_dvar = .false.
+      call xml_report_errors(info, 'Missing data on width')
+   endif
+end subroutine read_xml_type_mesh_xml
+subroutine init_xml_type_mesh_xml_array( dvar )
+   type(mesh_xml), dimension(:), pointer :: dvar
+   if ( associated( dvar ) ) then
+      deallocate( dvar )
+   endif
+   allocate( dvar(0) )
+end subroutine init_xml_type_mesh_xml_array
+subroutine init_xml_type_mesh_xml(dvar)
+   type(mesh_xml) :: dvar
+end subroutine init_xml_type_mesh_xml
+subroutine write_xml_type_mesh_xml_array( &
+      info, tag, indent, dvar )
+   type(XML_PARSE)                                 :: info
+   character(len=*), intent(in)                    :: tag
+   integer                                         :: indent
+   type(mesh_xml), dimension(:)        :: dvar
+   integer                                         :: i
+   do i = 1,size(dvar)
+       call write_xml_type_mesh_xml( info, tag, indent, dvar(i) )
+   enddo
+end subroutine write_xml_type_mesh_xml_array
+
+subroutine write_xml_type_mesh_xml( &
+      info, tag, indent, dvar )
+   type(XML_PARSE)                                 :: info
+   character(len=*), intent(in)                    :: tag
+   integer                                         :: indent
+   type(mesh_xml)                      :: dvar
+   character(len=100)                              :: indentation
+   indentation = ' '
+   write(info%lun, '(4a)' ) indentation(1:min(indent,100)),&
+       '<',trim(tag), '>'
+   call write_to_xml_integer( info, 'id', indent+3, dvar%id)
+   call write_to_xml_word( info, 'type', indent+3, dvar%type)
+   call write_to_xml_integer_array( info, 'dimension', indent+3, dvar%dimension)
+   call write_to_xml_double_array( info, 'origin', indent+3, dvar%origin)
+   call write_to_xml_double_array( info, 'width', indent+3, dvar%width)
+   write(info%lun,'(4a)') indentation(1:min(indent,100)), &
+       '</' //trim(tag) // '>'
+end subroutine write_xml_type_mesh_xml
+
 subroutine read_xml_type_filter_xml_array( &
       info, tag, endtag, attribs, noattribs, data, nodata, &
       dvar, has_dvar )
@@ -430,7 +634,10 @@ subroutine read_xml_file_tallies_t(fname, lurep, errout)
    integer                                :: noattribs
    character(len=200), dimension(1:100)   :: data
    integer                                :: nodata
+   logical                                         :: has_mesh_
    logical                                         :: has_tally_
+   has_mesh_                            = .false.
+   allocate(mesh_(0))
    has_tally_                           = .false.
    allocate(tally_(0))
 
@@ -474,6 +681,10 @@ subroutine read_xml_file_tallies_t(fname, lurep, errout)
          endif
       endif
       select case( tag )
+      case('mesh')
+         call read_xml_type_mesh_xml_array( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            mesh_, has_mesh_ )
       case('tally')
          call read_xml_type_tally_xml_array( &
             info, tag, endtag, attribs, noattribs, data, nodata, &
@@ -490,6 +701,10 @@ subroutine read_xml_file_tallies_t(fname, lurep, errout)
       nodata = 0
       if ( .not. xml_ok(info) ) exit
    end do
+   if ( .not. has_mesh_ ) then
+      error = .true.
+      call xml_report_errors(info, 'Missing data on mesh_')
+   endif
    if ( .not. has_tally_ ) then
       error = .true.
       call xml_report_errors(info, 'Missing data on tally_')
@@ -511,6 +726,7 @@ subroutine write_xml_file_tallies_t(fname, lurep)
    endif
    write(info%lun,'(a)') &
       '<tallies>'
+   call write_xml_type_mesh_xml_array( info, 'mesh', indent+3, mesh_)
    call write_xml_type_tally_xml_array( info, 'tally', indent+3, tally_)
    write(info%lun,'(a)') '</tallies>'
    call xml_close(info)

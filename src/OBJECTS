@@ -20,6 +20,7 @@ logging.o \
 main.o \
 material_header.o \
 mcnp_random.o \
+mesh_header.o \
 mpi_routines.o \
 output.o \
 particle_header.o \

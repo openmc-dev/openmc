@@ -160,6 +160,7 @@ contains
     call dict_create(lattice_dict)
     call dict_create(surface_dict)
     call dict_create(material_dict)
+    call dict_create(mesh_dict)
     call dict_create(tally_dict)
     call dict_create(cells_in_univ_dict)
     
@@ -406,6 +407,22 @@ contains
                 t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, uid)
              else
                 msg = "Could not find material " // trim(int_to_str(uid)) // &
+                     & " specified on tally " // trim(int_to_str(t % uid))
+                call fatal_error(msg)
+             end if
+          end do
+       end if
+
+       ! =======================================================================
+       ! ADJUST MESH INDICES FOR EACH TALLY
+
+       if (t % n_bins(T_MESH) > 0) then
+          do j = 1, size(t % mesh_bins)
+             uid = t % mesh_bins(j) % scalar
+             if (dict_has_key(mesh_dict, uid)) then
+                t % mesh_bins(j) % scalar = dict_get_key(mesh_dict, uid)
+             else
+                msg = "Could not find mesh " // trim(int_to_str(uid)) // &
                      & " specified on tally " // trim(int_to_str(t % uid))
                 call fatal_error(msg)
              end if

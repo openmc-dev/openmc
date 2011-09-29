@@ -3,9 +3,10 @@ module input_xml
   use constants
   use datatypes,       only: dict_create, dict_add_key, dict_has_key,          &
                              dict_get_key
-  use error,           only: fatal_error
+  use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Surface, Lattice
   use global
+  use mesh_header,     only: StructuredMesh
   use output,          only: message
   use string,          only: lower_case, int_to_str, str_to_int, str_to_real,  &
                              split_string
@@ -501,15 +502,19 @@ contains
 
     use xml_data_tallies_t
 
-    integer :: i       ! loop over user-specified tallies
-    integer :: j       ! loop over words
-    integer :: n_words
+    integer :: i           ! loop over user-specified tallies
+    integer :: j           ! loop over words
+    integer :: uid         ! user-specified identifier
+    integer :: index       ! index in meshes array
+    integer :: n           ! size of arrays in mesh specification
+    integer :: n_words     ! number of words read
+    logical :: file_exists ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_LINE_LEN) :: msg
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: words(MAX_WORDS)
-    logical :: file_exists
     type(TallyObject),    pointer :: t => null()
+    type(StructuredMesh), pointer :: m => null()
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
@@ -527,9 +532,87 @@ contains
     ! Parse tallies.xml file
     call read_xml_file_tallies_t(filename)
 
-    ! Allocate cells array
-    n_tallies = size(tally_)
-    allocate(tallies(n_tallies))
+    ! ==========================================================================
+    ! DETERMINE SIZE OF ARRAYS AND ALLOCATE
+
+    ! Check for meshes and allocate
+    if (.not. associated(mesh_)) then
+       n_meshes = 0
+    else
+       n_meshes = size(mesh_)
+       allocate(meshes(n_meshes))
+    end if
+
+    ! Allocate tallies array
+    if (.not. associated(tally_)) then
+       n_tallies = 0
+       msg = "No tallies present in tallies.xml file!"
+       call warning(msg)
+    else
+       n_tallies = size(tally_)
+       allocate(tallies(n_tallies))
+    end if
+
+    ! ==========================================================================
+    ! READ MESH DATA
+
+    do i = 1, n_meshes
+       m => meshes(i)
+
+       ! copy mesh uid
+       m % uid = mesh_(i) % id
+
+       ! Read mesh type
+       word = mesh_(i) % type
+       call lower_case(word)
+       select case (trim(word))
+       case ('rect', 'rectangle', 'rectangular')
+          m % type = LATTICE_RECT
+       case ('hex', 'hexagon', 'hexagonal')
+          m % type = LATTICE_HEX
+       case default
+          msg = "Invalid mesh type: " // trim(mesh_(i) % type)
+          call fatal_error(msg)
+       end select
+
+       ! Determine number of dimensions for mesh
+       n = size(mesh_(i) % dimension)
+       if (n /= 2 .and. n /= 3) then
+          msg = "Mesh must be two or three dimensions."
+          call fatal_error(msg)
+       end if
+       m % n_dimension = n
+
+       ! Allocate attribute arrays
+       allocate(m % dimension(n))
+       allocate(m % origin(n))
+       allocate(m % width(n))
+
+       ! Read dimensions in each direction
+       m % dimension = mesh_(i) % dimension
+
+       ! Read mesh origin location
+       if (m % n_dimension /= size(mesh_(i) % origin)) then
+          msg = "Number of entries on <origin> must be the same as the " // &
+               "number of entries on <dimension>."
+          call fatal_error(msg)
+       end if
+       m % origin = mesh_(i) % origin
+
+       ! Read mesh widths
+       if (size(mesh_(i) % width) /= size(mesh_(i) % origin)) then
+          msg = "Number of entries on <width> must be the same as the " // &
+               "number of entries on <origin>."
+          call fatal_error(msg)
+       end if
+       m % width = mesh_(i) % width
+
+       ! Add mesh to dictionary
+       call dict_add_key(mesh_dict, m % uid, i)
+    end do
+
+    ! ==========================================================================
+    ! READ TALLY DATA
 
     do i = 1, n_tallies
        t => tallies(i)
@@ -601,6 +684,19 @@ contains
           allocate(t % mesh_bins(n_words))
           do j = 1, n_words
              t % mesh_bins(j) % scalar = str_to_int(words(j))
+
+             ! Determine index in mesh array for this bin
+             uid = t % mesh_bins(j) % scalar
+             if (dict_has_key(mesh_dict, uid)) then
+                index = dict_get_key(mesh_dict, uid)
+                m => meshes(index)
+             else
+                msg = "Could not find mesh " // trim(int_to_str(uid)) // &
+                     " specified on tally " // trim(int_to_str(t % uid))
+                call fatal_error(msg)
+             end if
+
+             t % n_bins(T_MESH) = t % n_bins(T_MESH) + product(m % dimension)
           end do
        end if
 

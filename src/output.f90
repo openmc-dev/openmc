@@ -514,7 +514,7 @@ contains
     type(Surface),        pointer :: s => null()
     type(Universe),       pointer :: u => null()
     type(Material),       pointer :: m => null()
-    type(StructuredMesh), pointer :: mesh => null()
+    type(StructuredMesh), pointer :: sm => null()
 
     write(ou,*) 'Tally ' // int_to_str(t % uid)
 
@@ -561,8 +561,8 @@ contains
     if (t % n_bins(T_MESH) > 0) then
        string = ""
        uid = t % mesh
-       mesh => meshes(uid)
-       string = trim(string) // ' ' // trim(int_to_str(mesh % uid))
+       sm => meshes(uid)
+       string = trim(string) // ' ' // trim(int_to_str(sm % uid))
        write(ou, *) '    Mesh Bins:' // trim(string)
     end if
 

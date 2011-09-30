@@ -109,6 +109,8 @@ main.o: string.o
 main.o: tally.o
 main.o: timing.o
 
+mesh.o: mesh_header.o
+
 mpi_routines.o: constants.o
 mpi_routines.o: error.o
 mpi_routines.o: global.o

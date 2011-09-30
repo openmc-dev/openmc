@@ -91,6 +91,24 @@ contains
     integer, intent(in)           :: bin
     integer, intent(out)          :: ijk(:)
 
+    integer :: n_y
+    integer :: n_z
+    integer :: temp_bin
+
+    if (m % n_dimension == 2) then
+       n_y = m % dimension(2)
+
+       ijk(1) = (bin - 1)/n_y + 1
+       ijk(2) = mod(bin - 1, n_y) + 1
+    else if (m % n_dimension == 3) then
+       n_y = m % dimension(2)
+       n_z = m % dimension(3)
+
+       ijk(1) = (bin - 1)/(n_y*n_z) + 1
+       ijk(2) = mod(bin - 1, n_y*n_z)/n_z + 1
+       ijk(3) = mod(bin - 1, n_z) + 1
+    end if
+
   end subroutine bin_to_mesh_indices
 
 end module mesh

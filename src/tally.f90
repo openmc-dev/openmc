@@ -5,7 +5,7 @@ module tally
   use error,         only: fatal_error
   use global
   use mesh,          only: get_mesh_bin, bin_to_mesh_indices
-  use output,        only: message
+  use output,        only: message, header
   use search,        only: binary_search
   use string,        only: int_to_str, real_to_str
   use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement
@@ -258,9 +258,10 @@ contains
 ! SCORE_TALLY contains the main logic for scoring user-specified tallies
 !===============================================================================
 
-  subroutine score_tally(p)
+  subroutine score_tally(p, scatter)
 
-    type(Particle), pointer :: p     ! particle
+    type(Particle), pointer :: p
+    logical, intent(in)     :: scatter
 
     integer :: i
     integer :: j
@@ -268,9 +269,16 @@ contains
     integer :: bins(TALLY_TYPES)
     integer :: score_index
     real(8) :: score
+    real(8) :: last_wgt
+    real(8) :: wgt
     logical :: in_mesh
+    logical :: has_outgoing_energy
     type(TallyObject),    pointer :: t
     type(StructuredMesh), pointer :: m
+
+    ! Copy particle's pre- and post-collision weight
+    last_wgt = p % last_wgt
+    wgt = p % wgt
 
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
@@ -334,10 +342,11 @@ contains
        n = t % n_bins(T_ENERGYIN)
        if (n > 0) then
           ! check if energy of the particle is within energy bins
-          if (p % E < t % energy_in(1) .or. p % E > t % energy_in(n + 1)) cycle
+          if (p % last_E < t % energy_in(1) .or. &
+               p % last_E > t % energy_in(n + 1)) cycle
 
           ! search to find incoming energy bin
-          bins(T_ENERGYIN) = binary_search(t % energy_in, n + 1, p % E)
+          bins(T_ENERGYIN) = binary_search(t % energy_in, n + 1, p % last_E)
        else
           bins(T_ENERGYIN) = 1
        end if
@@ -350,8 +359,10 @@ contains
 
           ! search to find incoming energy bin
           bins(T_ENERGYOUT) = binary_search(t % energy_out, n + 1, p % E)
+          has_outgoing_energy = .true.
        else
           bins(T_ENERGYOUT) = 1
+          has_outgoing_energy = .false.
        end if
 
        ! =======================================================================
@@ -364,24 +375,44 @@ contains
        ! Determine scoring index for this filter combination
        score_index = sum((bins - 1) * t % stride) + 1
 
+       ! Determine score for each bin
        do j = 1, t % n_macro_bins
-          ! Determine score
-          select case(t % macro_bins(j) % scalar)
-          case (MACRO_FLUX)
-             score = p % wgt / material_xs % total
-          case (MACRO_TOTAL)
-             score = p % wgt
-          case (MACRO_SCATTER)
-             score = p % wgt * (material_xs % total - material_xs % absorption) &
-                  / material_xs % total
-          case (MACRO_ABSORPTION)
-             score = p % wgt * material_xs % absorption / material_xs % total
-          case (MACRO_FISSION)
-             score = p % wgt * material_xs % fission / material_xs % total
-          case (MACRO_NU_FISSION)
-             score = p % wgt * material_xs % nu_fission / material_xs % total
-          end select
+          if (has_outgoing_energy) then
+             ! If this tally has an outgoing energy filter, the only supported
+             ! reaction is scattering. For all other reactions, about
 
+             if (.not. scatter) return
+             
+             ! Make sure bin is scattering -- since scattering has already
+             ! occured, we do not need to multiply by the scattering cross
+             ! section
+
+             if (t % macro_bins(j) % scalar == MACRO_SCATTER) then
+                score = last_wgt
+             else
+                ! call fatal_error
+             end if
+          else
+             ! For tallies with no outgoing energy filter, the score is
+             ! calculated normally depending on the quantity specified
+
+             select case(t % macro_bins(j) % scalar)
+             case (MACRO_FLUX)
+                score = last_wgt / material_xs % total
+             case (MACRO_TOTAL)
+                score = last_wgt
+             case (MACRO_SCATTER)
+                score = last_wgt * (material_xs % total - material_xs % absorption) &
+                     / material_xs % total
+             case (MACRO_ABSORPTION)
+                score = last_wgt * material_xs % absorption / material_xs % total
+             case (MACRO_FISSION)
+                score = last_wgt * material_xs % fission / material_xs % total
+             case (MACRO_NU_FISSION)
+                score = last_wgt * material_xs % nu_fission / material_xs % total
+             end select
+          end if
+             
           ! Add score to tally
           call add_to_score(t % scores(score_index, j), score)
 
@@ -561,6 +592,9 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
+       ! Write header block
+       call header("TALLY " // trim(int_to_str(t % uid)), 3, UNIT_TALLY)
+
        ! First determine which filters this tally has
        do j = 1, TALLY_TYPES
           if (t % n_bins(j) > 0) then
@@ -577,7 +611,8 @@ contains
        ! loop for each filter variable (given that only a few filters are likely
        ! to be used for a given tally.
 
-       ! Initialize filter level and indentation
+       ! Initialize bins, filter level, and indentation
+       bins = 0
        j = 1
        indent = 0
 

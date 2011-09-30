@@ -283,22 +283,24 @@ contains
     real(8) :: prob       ! cumulative probability
     real(8) :: cutoff     ! random number
     real(8) :: atom_density ! atom density of nuclide in atom/b-cm
+    logical :: scatter      ! was this a scattering reaction?
     character(MAX_LINE_LEN) :: msg ! output/error message
     type(Material), pointer :: mat
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
+
+    ! Set scatter to false by default
+    scatter = .false.
+
+    ! Store pre-collision particle properties
+    p % last_wgt = p % wgt
+    p % last_E   = p % E
 
     ! Add to collision counter for particle
     p % n_collision = p % n_collision + 1
 
     ! Get pointer to current material
     mat => materials(p % material)
-
-    ! Score collision estimator tallies for any macro tallies -- we can do this
-    ! before sampling the nuclide since 
-    if (tallies_on) then
-       call score_tally(p)
-    end if
 
     ! sample nuclide
     i = 0
@@ -353,10 +355,12 @@ contains
     select case (rxn % MT)
     case (ELASTIC)
        call elastic_scatter(p, nuc, rxn)
+       scatter = .true.
     case (N_NA, N_N3A, N_NP, N_N2A, N_ND, N_NT, N_N3HE, N_NT2A, N_N2P, &
           N_NPA, N_N1 : N_NC, N_2ND, N_2N, N_3N, N_2NA, N_3NA, N_2N2A, &
           N_4N, N_2NP, N_3NP)
        call inelastic_scatter(p, nuc, rxn)
+       scatter = .true.
     case (N_FISSION, N_F, N_NF, N_2NF, N_3NF)
        call n_fission_event(p, nuc, rxn)
     case (N_GAMMA : N_DA)
@@ -371,6 +375,12 @@ contains
        p % alive = .false.
        ! msg = "Killing neutron with extremely low energy"
        ! call warning(msg)
+    end if
+
+    ! Score collision estimator tallies for any macro tallies -- we can do this
+    ! before sampling the nuclide since 
+    if (tallies_on) then
+       call score_tally(p, scatter)
     end if
 
     ! find energy index, interpolation factor

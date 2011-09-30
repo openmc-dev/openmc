@@ -21,7 +21,7 @@ all: $(executables)
 $(executables): $(test_objects) $(objects)
 	$(F90) $(LDFLAGS) $@.o $(objects) -o $@
 clean:
-	@rm -f *.o *.mod $(tests)
+	@rm -f *.o *.mod $(executables)
 neat:
 	@rm -f *.o *.mod
 

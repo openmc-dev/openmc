@@ -4,7 +4,7 @@ module tally
   use cross_section, only: get_macro_xs
   use error,         only: fatal_error
   use global
-  use mesh,          only: get_mesh_bin
+  use mesh,          only: get_mesh_bin, bin_to_mesh_indices
   use output,        only: message
   use search,        only: binary_search
   use string,        only: int_to_str, real_to_str
@@ -610,7 +610,7 @@ contains
                    if (has_filter(j)) then
                       ! Print current filter information
                       write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') space(1:indent), &
-                           trim(filter_name(j)), trim(get_uid(t, j, bins(j)))
+                           trim(filter_name(j)), trim(get_label(t, j, bins(j)))
                       indent = indent + 2
                    end if
                    j = j + 1
@@ -621,7 +621,7 @@ contains
 
           ! Print filter information
           write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') space(1:indent), &
-               trim(filter_name(j)), trim(get_uid(t, j, bins(j)))
+               trim(filter_name(j)), trim(get_label(t, j, bins(j)))
 
           ! Determine scoring index for this bin combination -- note that unlike
           ! in the score_tally subroutine, we have to use max(bins,1) since all
@@ -648,50 +648,56 @@ contains
   end subroutine write_tallies
 
 !===============================================================================
-! GET_UID returns the uid for a cell/surface/etc given a tally, filter type, and
-! corresponding bin
+! GET_LABEL returns a label for a cell/surface/etc given a tally, filter type,
+! and corresponding bin
 !===============================================================================
 
-  function get_uid(t, filter_type, bin) result(uid)
+  function get_label(t, filter_type, bin) result(label)
 
     type(TallyObject), pointer :: t           ! tally object
     integer, intent(in)        :: filter_type ! type of filter
     integer, intent(in)        :: bin         ! bin in filter array
-    character(30)              :: uid         ! user-specified identifier
+    character(30)              :: label         ! user-specified identifier
 
-    integer :: index ! index in cells/surfaces/etc array
-    real(8) :: E0    ! lower bound for energy bin
-    real(8) :: E1    ! upper bound for energy bin
+    integer              :: index  ! index in cells/surfaces/etc array
+    integer, allocatable :: ijk(:) ! indices in mesh
+    real(8)              :: E0     ! lower bound for energy bin
+    real(8)              :: E1     ! upper bound for energy bin
+    type(StructuredMesh), pointer :: m
 
     select case(filter_type)
     case (T_UNIVERSE)
        index = t % universe_bins(bin) % scalar
-       uid = int_to_str(universes(index) % uid)
+       label = int_to_str(universes(index) % uid)
     case (T_MATERIAL)
        index = t % material_bins(bin) % scalar
-       uid = int_to_str(materials(index) % uid)
+       label = int_to_str(materials(index) % uid)
     case (T_CELL)
        index = t % cell_bins(bin) % scalar
-       uid = int_to_str(cells(index) % uid)
+       label = int_to_str(cells(index) % uid)
     case (T_CELLBORN)
        index = t % cellborn_bins(bin) % scalar
-       uid = int_to_str(cells(index) % uid)
+       label = int_to_str(cells(index) % uid)
     case (T_SURFACE)
        index = t % surface_bins(bin) % scalar
-       uid = int_to_str(surfaces(index) % uid)
+       label = int_to_str(surfaces(index) % uid)
     case (T_MESH)
-       uid = "Bin " // int_to_str(bin)
+       m => meshes(t % mesh)
+       allocate(ijk(m % n_dimension))
+       call bin_to_mesh_indices(m, bin, ijk)
+       label = "Index (" // trim(int_to_str(ijk(1))) // ", " // &
+            trim(int_to_str(ijk(2))) // ", " // trim(int_to_str(ijk(3))) // ")"
     case (T_ENERGYIN)
        E0 = t % energy_in(bin)
        E1 = t % energy_in(bin + 1)
-       uid = "[" // trim(real_to_str(E0)) // ", " // trim(real_to_str(E1)) // ")"
+       label = "[" // trim(real_to_str(E0)) // ", " // trim(real_to_str(E1)) // ")"
     case (T_ENERGYOUT)
        E0 = t % energy_out(bin)
        E1 = t % energy_out(bin + 1)
-       uid = "[" // trim(real_to_str(E0)) // ", " // trim(real_to_str(E1)) // ")"
+       label = "[" // trim(real_to_str(E0)) // ", " // trim(real_to_str(E1)) // ")"
     end select
 
-  end function get_uid
+  end function get_label
 
 !===============================================================================
 ! TALLY_STATISTICS computes the mean and standard deviation of the mean of each

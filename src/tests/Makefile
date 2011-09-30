@@ -1,8 +1,9 @@
-source = test_binary_search.f90
-objects = $(source:.f90=.o)
-tests = $(basename $(source))
+source = $(wildcard *.f90)
+test_objects = $(source:.f90=.o)
+executables = $(basename $(source))
 
-objects += ../search.o ../constants.o ../error.o ../global.o
+objects = ../search.o ../constants.o ../error.o ../global.o
+objects += ../mesh.o ../mesh_header.o
 
 #===============================================================================
 # Compiler Options
@@ -16,9 +17,9 @@ LDFLAGS =
 # Targets
 #===============================================================================
 
-all: $(tests)
-$(tests): $(objects)
-	$(F90) $(LDFLAGS) $(objects) -o $@
+all: $(executables)
+$(executables): $(test_objects) $(objects)
+	$(F90) $(LDFLAGS) $@.o $(objects) -o $@
 clean:
 	@rm -f *.o *.mod $(tests)
 neat:

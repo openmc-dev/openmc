@@ -20,6 +20,10 @@ module particle_header
      real(8)    :: E             ! energy
      logical    :: alive         ! is particle alive?
 
+     ! Pre-collision physical data
+     real(8)    :: last_wgt      ! last particle weight
+     real(8)    :: last_E        ! last energy
+
      ! Energy grid data
      integer    :: IE            ! index on energy grid
      real(8)    :: interp        ! interpolation factor for energy grid

@@ -92,13 +92,15 @@ contains
 ! specified, it is assumed to be a minor header block (H3).
 !===============================================================================
 
-  subroutine header(msg, level)
+  subroutine header(msg, level, unit_file)
 
     character(*), intent(in) :: msg
     integer,      optional   :: level
+    integer,      optional   :: unit_file
 
     integer :: header_level
     integer :: n, m
+    integer :: unit
     character(75) :: line
 
     ! set default header level
@@ -108,8 +110,15 @@ contains
        header_level = level
     end if
 
+    ! set default unit
+    if (present(unit_file)) then
+       unit = unit_file
+    else
+       unit = ou
+    end if
+
     ! Print first blank line
-    write(ou,*)
+    write(unit,*)
 
     ! determine how many times to repeat '=' character
     n = (63 - len_trim(msg))/2
@@ -124,21 +133,21 @@ contains
     select case (header_level)
     case (1)
        ! determine number of spaces to put in from of header
-       write(ou,*) repeat('=', 75)
-       write(ou,*) repeat('=', n) // '>     ' // trim(line) // '     <' // &
+       write(unit,*) repeat('=', 75)
+       write(unit,*) repeat('=', n) // '>     ' // trim(line) // '     <' // &
             & repeat('=', m)
-       write(ou,*) repeat('=', 75)
+       write(unit,*) repeat('=', 75)
     case (2)
-       write(ou,*) trim(line)
-       write(ou,*) repeat('-', 75)
+       write(unit,*) trim(line)
+       write(unit,*) repeat('-', 75)
     case (3)
        n = (63 - len_trim(line))/2
-       write(ou,*) repeat('=', n) // '>     ' // trim(line) // '     <' // &
+       write(unit,*) repeat('=', n) // '>     ' // trim(line) // '     <' // &
             & repeat('=', m)
     end select
 
     ! Print trailing blank line
-    write(ou, *)
+    write(unit, *)
 
   end subroutine header
 

@@ -562,7 +562,10 @@ contains
        string = ""
        uid = t % mesh
        sm => meshes(uid)
-       string = trim(string) // ' ' // trim(int_to_str(sm % uid))
+       string = trim(string) // ' ' // trim(int_to_str(sm % dimension(1)))
+       do i = 2, sm % n_dimension
+          string = trim(string) // ' x ' // trim(int_to_str(sm % dimension(i)))
+       end do
        write(ou, *) '    Mesh Bins:' // trim(string)
     end if
 

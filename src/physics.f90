@@ -318,10 +318,10 @@ contains
        prob = prob + sigma
     end do
 
-    ! Get table, total xs, interpolation factor
+    ! Get pointer to table, nuclide grid index and interpolation factor
     nuc => nuclides(index_nuclide)
-    IE = nuc%grid_index(p % IE)
-    f = (p%E - nuc%energy(IE))/(nuc%energy(IE+1) - nuc%energy(IE))
+    IE  =  micro_xs(index_nuclide) % index_grid
+    f   =  micro_xs(index_nuclide) % interp_factor
 
     ! sample reaction channel
     cutoff = rang() * sigma / atom_density

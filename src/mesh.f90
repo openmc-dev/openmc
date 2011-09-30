@@ -93,7 +93,6 @@ contains
 
     integer :: n_y
     integer :: n_z
-    integer :: temp_bin
 
     if (m % n_dimension == 2) then
        n_y = m % dimension(2)

@@ -274,16 +274,15 @@ contains
 
     type(Particle), pointer :: p
 
-    integer :: i          ! index over nuclides in a material
-    integer :: index_nuclide
-    integer :: IE         ! index on nuclide energy grid
-    real(8) :: f          ! interpolation factor
-    real(8) :: sigma      ! microscopic total xs for nuclide
-    real(8) :: total      ! total macroscopic xs for material
-    real(8) :: prob       ! cumulative probability
-    real(8) :: cutoff     ! random number
-    real(8) :: atom_density ! atom density of nuclide in atom/b-cm
-    logical :: scatter      ! was this a scattering reaction?
+    integer :: i             ! index over nuclides in a material
+    integer :: index_nuclide ! index in nuclides array
+    integer :: IE            ! index on nuclide energy grid
+    real(8) :: f             ! interpolation factor
+    real(8) :: sigma         ! microscopic total xs for nuclide
+    real(8) :: prob          ! cumulative probability
+    real(8) :: cutoff        ! random number
+    real(8) :: atom_density  ! atom density of nuclide in atom/b-cm
+    logical :: scatter       ! was this a scattering reaction?
     character(MAX_LINE_LEN) :: msg ! output/error message
     type(Material), pointer :: mat
     type(Nuclide),  pointer :: nuc
@@ -302,10 +301,11 @@ contains
     ! Get pointer to current material
     mat => materials(p % material)
 
-    ! sample nuclide
+    ! ==========================================================================
+    ! SAMPLE NUCLIDE WITHIN THE MATERIAL
+
     i = 0
-    total = material_xs % total
-    cutoff = rang() * total
+    cutoff = rang() * material_xs % total
     prob = ZERO
     do while (prob < cutoff)
        i = i + 1
@@ -325,7 +325,9 @@ contains
     IE  =  micro_xs(index_nuclide) % index_grid
     f   =  micro_xs(index_nuclide) % interp_factor
 
-    ! sample reaction channel
+    ! ==========================================================================
+    ! SAMPLE REACTION WITHIN THE NUCLIDE
+
     cutoff = rang() * sigma / atom_density
     prob = ZERO
     do i = 1, nuc % n_reaction
@@ -351,14 +353,16 @@ contains
        call message(msg)
     end if
 
-    ! call appropriate subroutine
+    ! ==========================================================================
+    ! PERFORM APPROPRIATE COLLISION PHYSICS
+
     select case (rxn % MT)
     case (ELASTIC)
        call elastic_scatter(p, nuc, rxn)
        scatter = .true.
     case (N_NA, N_N3A, N_NP, N_N2A, N_ND, N_NT, N_N3HE, N_NT2A, N_N2P, &
           N_NPA, N_N1 : N_NC, N_2ND, N_2N, N_3N, N_2NA, N_3NA, N_2N2A, &
-          N_4N, N_2NP, N_3NP)
+          N_4N, N_2NP, N_3NP, MISC)
        call inelastic_scatter(p, nuc, rxn)
        scatter = .true.
     case (N_FISSION, N_F, N_NF, N_2NF, N_3NF)
@@ -377,8 +381,11 @@ contains
        ! call warning(msg)
     end if
 
-    ! Score collision estimator tallies for any macro tallies -- we can do this
-    ! before sampling the nuclide since 
+    ! Score collision estimator tallies for any macro tallies -- this is done
+    ! after a collision has occurred rather than before because we need
+    ! information on the outgoing energy for any tallies with an outgoing energy
+    ! filter
+
     if (tallies_on) then
        call score_tally(p, scatter)
     end if

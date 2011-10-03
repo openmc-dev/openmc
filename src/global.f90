@@ -119,6 +119,11 @@ module global
   ! screen and in logs
   integer :: verbosity
 
+  ! Variance reduction options
+  logical :: survival_biasing = .false.
+  real(8) :: weight_cutoff = 0.25
+  real(8) :: weight_survive = 1.0
+
 contains
 
 !===============================================================================

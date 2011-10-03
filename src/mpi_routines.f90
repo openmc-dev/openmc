@@ -1,11 +1,12 @@
 module mpi_routines
 
-  use constants,   only: MAX_LINE_LEN
-  use error,       only: fatal_error
+  use constants,       only: MAX_LINE_LEN
+  use error,           only: fatal_error
   use global
-  use mcnp_random, only: rang, RN_init_particle, RN_skip
-  use output,      only: message
-  use source,      only: copy_from_bank, source_index
+  use mcnp_random,     only: rang, RN_init_particle, RN_skip
+  use output,          only: message
+  use particle_header, only: Particle, initialize_particle
+  use tally_header,    only: TallyObject
 
 #ifdef MPI
   use mpi
@@ -332,5 +333,84 @@ contains
     deallocate(temp_sites)
 
   end subroutine synchronize_bank
-  
+
+!===============================================================================
+! COPY_FROM_BANK
+!===============================================================================
+
+  subroutine copy_from_bank(temp_bank, index, n_sites)
+
+    integer,    intent(in) :: n_sites  ! # of bank sites to copy
+    type(Bank), intent(in) :: temp_bank(n_sites)
+    integer,    intent(in) :: index    ! starting index in source_bank
+
+    integer :: i            ! index in temp_bank
+    integer :: index_source ! index in source_bank
+    type(Particle), pointer :: p
+    
+    do i = 1, n_sites
+       index_source = index + i - 1
+       p => source_bank(index_source)
+
+       p % xyz       = temp_bank(i) % xyz
+       p % xyz_local = temp_bank(i) % xyz
+       p % uvw       = temp_bank(i) % uvw
+       p % E         = temp_bank(i) % E
+
+       ! set defaults
+       call initialize_particle(p)
+
+    end do
+
+  end subroutine copy_from_bank
+
+!===============================================================================
+! REDUCE_TALLIES collects all the results from tallies onto one processor
+!===============================================================================
+
+#ifdef MPI
+  subroutine reduce_tallies()
+
+    integer :: i
+    integer :: n
+    integer :: m
+    integer :: count
+    integer :: ierr
+    real(8), allocatable :: tally_temp(:,:)
+    type(TallyObject), pointer :: t
+
+    do i = 1, n_tallies
+       t => tallies(i)
+
+       n = t % n_total_bins
+       m = t % n_macro_bins
+       count = n*m
+
+       allocate(tally_temp(n,m))
+
+       tally_temp = t % scores(:,:) % val_history
+
+       if (master) then
+          ! Description of MPI_IN_PLANE
+          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, count, MPI_REAL8, MPI_SUM, &
+               0, MPI_COMM_WORLD, ierr)
+
+          ! Transfer values to val_history on master
+          t % scores(:,:) % val_history = tally_temp
+       else
+          ! Receive buffer not significant at other processors
+          call MPI_REDUCE(tally_temp, tally_temp, count, MPI_REAL8, MPI_SUM, &
+               0, MPI_COMM_WORLD, ierr)
+
+          ! Reset val_history on other processors
+          t % scores(:,:) % val_history = 0
+       end if
+
+       deallocate(tally_temp)
+
+    end do
+
+  end subroutine reduce_tallies
+#endif
+
 end module mpi_routines

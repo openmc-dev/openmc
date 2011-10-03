@@ -116,7 +116,8 @@ mpi_routines.o: error.o
 mpi_routines.o: global.o
 mpi_routines.o: mcnp_random.o
 mpi_routines.o: output.o
-mpi_routines.o: source.o
+mpi_routines.o: particle_header.o
+mpi_routines.o: tally_header.o
 
 output.o: constants.o
 output.o: datatypes.o
@@ -126,6 +127,8 @@ output.o: global.o
 output.o: mesh_header.o
 output.o: string.o
 output.o: tally_header.o
+
+particle_header.o: constants.o
 
 physics.o: constants.o
 physics.o: cross_section_header.o
@@ -163,6 +166,7 @@ tally.o: cross_section.o
 tally.o: error.o
 tally.o: global.o
 tally.o: mesh.o
+tally.o: mpi_routines.o
 tally.o: output.o
 tally.o: search.o
 tally.o: string.o

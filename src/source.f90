@@ -6,12 +6,10 @@ module source
   use global
   use mcnp_random,          only: rang, RN_init_particle
   use output,               only: message
-  use particle_header,      only: Particle
+  use particle_header,      only: Particle, initialize_particle
   use physics,              only: watt_spectrum
 
   implicit none
-
-  integer(8) :: source_index
 
 contains
 
@@ -124,64 +122,5 @@ contains
     p % uid = bank_first + source_index - 1
 
   end function get_source_particle
-
-!===============================================================================
-! COPY_FROM_BANK
-!===============================================================================
-
-  subroutine copy_from_bank(temp_bank, index, n_sites)
-
-    integer,    intent(in) :: n_sites  ! # of bank sites to copy
-    type(Bank), intent(in) :: temp_bank(n_sites)
-    integer,    intent(in) :: index    ! starting index in source_bank
-
-    integer :: i            ! index in temp_bank
-    integer :: index_source ! index in source_bank
-    type(Particle), pointer :: p
-    
-    do i = 1, n_sites
-       index_source = index + i - 1
-       p => source_bank(index_source)
-
-       p % xyz       = temp_bank(i) % xyz
-       p % xyz_local = temp_bank(i) % xyz
-       p % uvw       = temp_bank(i) % uvw
-       p % E         = temp_bank(i) % E
-
-       ! set defaults
-       call initialize_particle(p)
-
-    end do
-
-  end subroutine copy_from_bank
-
-!===============================================================================
-! INITIALIZE_PARTICLE sets default attributes for a particle from the source
-! bank
-!===============================================================================
-
-  subroutine initialize_particle(p)
-
-    type(Particle), pointer :: p
-
-    ! TODO: if information on the cell, lattice, universe, and material is
-    ! passed through the fission bank to the source bank, no lookup would be
-    ! needed at the beginning of a cycle
-
-    p % type          = NEUTRON
-    p % wgt           = ONE
-    p % alive         = .true.
-    p % cell          = 0
-    p % cell_born     = 0
-    p % universe      = 0
-    p % lattice       = 0
-    p % surface       = 0
-    p % material      = 0
-    p % last_material = 0
-    p % index_x       = 0
-    p % index_y       = 0
-    p % n_collision   = 0
-
-  end subroutine initialize_particle
 
 end module source

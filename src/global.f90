@@ -82,10 +82,11 @@ module global
   ! Source and fission bank
   type(Particle), allocatable, target :: source_bank(:)
   type(Bank),     allocatable, target :: fission_bank(:)
-  integer(8) :: n_bank      ! # of sites in fission bank
-  integer(8) :: bank_first  ! index of first particle in bank
-  integer(8) :: bank_last   ! index of last particle in bank
-  integer(8) :: work        ! number of particles per processor
+  integer(8) :: n_bank       ! # of sites in fission bank
+  integer(8) :: bank_first   ! index of first particle in bank
+  integer(8) :: bank_last    ! index of last particle in bank
+  integer(8) :: work         ! number of particles per processor
+  integer(8) :: source_index ! index for source particles
 
   ! cycle keff
   real(8) :: keff

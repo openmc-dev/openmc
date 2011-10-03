@@ -1,5 +1,7 @@
 module particle_header
 
+  use constants, only: NEUTRON, ONE
+
   implicit none
 
 !===============================================================================
@@ -43,5 +45,36 @@ module particle_header
      integer    :: n_collision   ! # of collisions
 
   end type Particle
+
+contains
+
+!===============================================================================
+! INITIALIZE_PARTICLE sets default attributes for a particle from the source
+! bank
+!===============================================================================
+
+  subroutine initialize_particle(p)
+
+    type(Particle), pointer :: p
+
+    ! TODO: if information on the cell, lattice, universe, and material is
+    ! passed through the fission bank to the source bank, no lookup would be
+    ! needed at the beginning of a cycle
+
+    p % type          = NEUTRON
+    p % wgt           = ONE
+    p % alive         = .true.
+    p % cell          = 0
+    p % cell_born     = 0
+    p % universe      = 0
+    p % lattice       = 0
+    p % surface       = 0
+    p % material      = 0
+    p % last_material = 0
+    p % index_x       = 0
+    p % index_y       = 0
+    p % n_collision   = 0
+
+  end subroutine initialize_particle
 
 end module particle_header

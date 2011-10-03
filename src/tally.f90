@@ -12,6 +12,7 @@ module tally
 
 #ifdef MPI
   use mpi
+  use mpi_routines,  only: reduce_tallies
 #endif
 
   implicit none
@@ -510,6 +511,11 @@ contains
     integer :: k   ! index over scoring bins
     real(8) :: val ! value of accumulated tally
     type(TallyObject), pointer :: t
+
+#ifdef MPI
+    call reduce_tallies()
+    if (.not. master) return
+#endif
 
     do i = 1, n_tallies
        t => tallies(i)

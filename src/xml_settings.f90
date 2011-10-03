@@ -20,10 +20,17 @@ type source_xml
    character(len=10)                                :: type
    real(kind=kind(1.0d0)), dimension(:), pointer   :: coeffs => null()
 end type source_xml
+
+type cutoff_xml
+   real(kind=kind(1.0d0))                          :: weight
+   real(kind=kind(1.0d0))                          :: weight_avg
+end type cutoff_xml
    type(xslibrary_xml)                             :: xslibrary
    type(criticality_xml)                           :: criticality
    integer                                         :: verbosity_
    type(source_xml)                                :: source_
+   character(len=3), dimension(:), pointer         :: survival_ => null()
+   type(cutoff_xml)                                :: cutoff_
 contains
 subroutine read_xml_type_xslibrary_xml_array( &
       info, tag, endtag, attribs, noattribs, data, nodata, &
@@ -511,6 +518,162 @@ subroutine write_xml_type_source_xml( &
        '</' //trim(tag) // '>'
 end subroutine write_xml_type_source_xml
 
+subroutine read_xml_type_cutoff_xml_array( &
+      info, tag, endtag, attribs, noattribs, data, nodata, &
+      dvar, has_dvar )
+   type(XML_PARSE)                                 :: info
+   character(len=*), intent(inout)                 :: tag
+   logical, intent(inout)                          :: endtag
+   character(len=*), dimension(:,:), intent(inout) :: attribs
+   integer, intent(inout)                          :: noattribs
+   character(len=*), dimension(:), intent(inout)   :: data
+   integer, intent(inout)                          :: nodata
+   type(cutoff_xml), dimension(:), pointer :: dvar
+   logical, intent(inout)                       :: has_dvar
+
+   integer                                      :: newsize
+   type(cutoff_xml), dimension(:), pointer :: newvar
+
+   newsize = size(dvar) + 1
+   allocate( newvar(1:newsize) )
+   newvar(1:newsize-1) = dvar
+   deallocate( dvar )
+   dvar => newvar
+
+   call read_xml_type_cutoff_xml( info, tag, endtag, attribs, noattribs, data, nodata, &
+              dvar(newsize), has_dvar )
+end subroutine read_xml_type_cutoff_xml_array
+
+subroutine read_xml_type_cutoff_xml( info, starttag, endtag, attribs, noattribs, data, nodata, &
+              dvar, has_dvar )
+   type(XML_PARSE)                                 :: info
+   character(len=*), intent(in)                    :: starttag
+   logical, intent(inout)                          :: endtag
+   character(len=*), dimension(:,:), intent(inout) :: attribs
+   integer, intent(inout)                          :: noattribs
+   character(len=*), dimension(:), intent(inout)   :: data
+   integer, intent(inout)                          :: nodata
+   type(cutoff_xml), intent(inout)  :: dvar
+   logical, intent(inout)                       :: has_dvar
+
+   integer                                      :: att_
+   integer                                      :: noatt_
+   logical                                      :: error
+   logical                                      :: endtag_org
+   character(len=len(starttag))                 :: tag
+   logical                                         :: has_weight
+   logical                                         :: has_weight_avg
+   has_weight                           = .false.
+   has_weight_avg                       = .false.
+   call init_xml_type_cutoff_xml(dvar)
+   has_dvar = .true.
+   error  = .false.
+   att_   = 0
+   noatt_ = noattribs+1
+   endtag_org = endtag
+   do
+      if ( nodata /= 0 ) then
+         noattribs = 0
+         tag = starttag
+      elseif ( att_ < noatt_ .and. noatt_ > 1 ) then
+         att_      = att_ + 1
+         if ( att_ <= noatt_-1 ) then
+            tag       = attribs(1,att_)
+            data(1)   = attribs(2,att_)
+            noattribs = 0
+            nodata    = 1
+            endtag    = .false.
+         else
+            tag       = starttag
+            noattribs = 0
+            nodata    = 0
+            endtag    = .true.
+            cycle
+         endif
+      else
+         if ( endtag_org ) then
+            return
+         else
+            call xml_get( info, tag, endtag, attribs, noattribs, data, nodata )
+            if ( xml_error(info) ) then
+               write(lurep_,*) 'Error reading input file!'
+               error = .true.
+               return
+            endif
+         endif
+      endif
+      if ( endtag .and. tag == starttag ) then
+         exit
+      endif
+      if ( endtag .and. noattribs == 0 ) then
+         if ( xml_ok(info) ) then
+            cycle
+         else
+            exit
+         endif
+      endif
+      select case( tag )
+      case('weight')
+         call read_xml_double( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%weight, has_weight )
+      case('weight_avg')
+         call read_xml_double( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            dvar%weight_avg, has_weight_avg )
+      case ('comment', '!--')
+         ! Simply ignore
+      case default
+         if ( strict_ ) then
+            error = .true.
+            call xml_report_errors( info, &
+               'Unknown or wrongly placed tag: ' // trim(tag))
+         endif
+      end select
+      nodata = 0
+      if ( .not. xml_ok(info) ) exit
+   end do
+end subroutine read_xml_type_cutoff_xml
+subroutine init_xml_type_cutoff_xml_array( dvar )
+   type(cutoff_xml), dimension(:), pointer :: dvar
+   if ( associated( dvar ) ) then
+      deallocate( dvar )
+   endif
+   allocate( dvar(0) )
+end subroutine init_xml_type_cutoff_xml_array
+subroutine init_xml_type_cutoff_xml(dvar)
+   type(cutoff_xml) :: dvar
+   dvar%weight = 0.25
+   dvar%weight_avg = 1.0
+end subroutine init_xml_type_cutoff_xml
+subroutine write_xml_type_cutoff_xml_array( &
+      info, tag, indent, dvar )
+   type(XML_PARSE)                                 :: info
+   character(len=*), intent(in)                    :: tag
+   integer                                         :: indent
+   type(cutoff_xml), dimension(:)        :: dvar
+   integer                                         :: i
+   do i = 1,size(dvar)
+       call write_xml_type_cutoff_xml( info, tag, indent, dvar(i) )
+   enddo
+end subroutine write_xml_type_cutoff_xml_array
+
+subroutine write_xml_type_cutoff_xml( &
+      info, tag, indent, dvar )
+   type(XML_PARSE)                                 :: info
+   character(len=*), intent(in)                    :: tag
+   integer                                         :: indent
+   type(cutoff_xml)                      :: dvar
+   character(len=100)                              :: indentation
+   indentation = ' '
+   write(info%lun, '(4a)' ) indentation(1:min(indent,100)),&
+       '<',trim(tag), '>'
+   call write_to_xml_double( info, 'weight', indent+3, dvar%weight)
+   call write_to_xml_double( info, 'weight_avg', indent+3, dvar%weight_avg)
+   write(info%lun,'(4a)') indentation(1:min(indent,100)), &
+       '</' //trim(tag) // '>'
+end subroutine write_xml_type_cutoff_xml
+
 subroutine read_xml_file_settings_t(fname, lurep, errout)
    character(len=*), intent(in)           :: fname
    integer, intent(in), optional          :: lurep
@@ -529,10 +692,15 @@ subroutine read_xml_file_settings_t(fname, lurep, errout)
    logical                                         :: has_criticality
    logical                                         :: has_verbosity_
    logical                                         :: has_source_
+   logical                                         :: has_survival_
+   logical                                         :: has_cutoff_
    has_xslibrary                        = .false.
    has_criticality                      = .false.
    has_verbosity_                       = .false.
    has_source_                          = .false.
+   has_survival_                        = .false.
+   allocate(survival_(0))
+   has_cutoff_                          = .false.
 
    call init_xml_file_settings_t
    call xml_open( info, fname, .true. )
@@ -590,6 +758,14 @@ subroutine read_xml_file_settings_t(fname, lurep, errout)
          call read_xml_type_source_xml( &
             info, tag, endtag, attribs, noattribs, data, nodata, &
             source_, has_source_ )
+      case('survival_biasing')
+         call read_xml_word_1dim( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            survival_, has_survival_ )
+      case('cutoff')
+         call read_xml_type_cutoff_xml( &
+            info, tag, endtag, attribs, noattribs, data, nodata, &
+            cutoff_, has_cutoff_ )
       case ('comment', '!--')
          ! Simply ignore
       case default
@@ -618,6 +794,14 @@ subroutine read_xml_file_settings_t(fname, lurep, errout)
       error = .true.
       call xml_report_errors(info, 'Missing data on source_')
    endif
+   if ( .not. has_survival_ ) then
+      error = .true.
+      call xml_report_errors(info, 'Missing data on survival_')
+   endif
+   if ( .not. has_cutoff_ ) then
+      error = .true.
+      call xml_report_errors(info, 'Missing data on cutoff_')
+   endif
    if ( present(errout) ) errout = error
 end subroutine
 
@@ -639,6 +823,8 @@ subroutine write_xml_file_settings_t(fname, lurep)
    call write_xml_type_criticality_xml( info, 'criticality', indent+3, criticality)
    call write_to_xml_integer( info, 'verbosity', indent+3, verbosity_)
    call write_xml_type_source_xml( info, 'source', indent+3, source_)
+   call write_to_xml_word_1dim( info, 'survival_biasing', indent+3, survival_)
+   call write_xml_type_cutoff_xml( info, 'cutoff', indent+3, cutoff_)
    write(info%lun,'(a)') '</settings>'
    call xml_close(info)
 end subroutine

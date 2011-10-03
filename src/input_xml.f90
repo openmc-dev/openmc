@@ -106,6 +106,13 @@ contains
        end if
     end if
 
+    ! Survival biasing
+    if (size(survival_) > 0) survival_biasing = .true.
+
+    ! Cutoffs
+    weight_cutoff = cutoff_ % weight
+    weight_survive = cutoff_ % weight_avg
+
   end subroutine read_settings_xml
 
 !===============================================================================

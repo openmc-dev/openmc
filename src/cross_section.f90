@@ -560,6 +560,7 @@ contains
     ! By default, set nuclide to not fissionable and then change if fission
     ! reactions are encountered
     nuc % fissionable = .false.
+    nuc % has_partial_fission = .false.
 
     do i = 1, NMT
        rxn => nuc % reactions(i+1)
@@ -591,6 +592,13 @@ contains
        ! Add contribution to absorption cross section
        if (rxn % MT >= N_GAMMA .and. rxn % MT <= N_DA) then
           nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
+       end if
+
+       ! Information about fission reactions
+       if (rxn % MT == N_FISSION) then
+          nuc % index_fission = i + 1
+       elseif (rxn % MT == N_F) then
+          nuc % has_partial_fission = .true.
        end if
 
        ! Add contribution to fission cross section

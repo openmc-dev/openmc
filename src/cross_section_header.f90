@@ -68,7 +68,6 @@ module cross_section_header
      character(20) :: name
      real(8)       :: awr
      real(8)       :: temp
-     logical       :: fissionable
 
      ! Energy grid information
      integer :: n_grid
@@ -81,6 +80,11 @@ module cross_section_header
      real(8), allocatable :: fission(:)
      real(8), allocatable :: absorption(:)
      real(8), allocatable :: heating(:)
+
+     ! Fission information
+     logical :: fissionable
+     logical :: has_partial_fission
+     integer :: index_fission
 
      ! Total fission neutron emission
      integer :: nu_t_type

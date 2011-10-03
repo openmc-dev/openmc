@@ -124,7 +124,7 @@ contains
 
     ! Set all material macroscopic cross sections to zero
     material_xs % total      = ZERO
-    material_xs % scatter    = ZERO
+    material_xs % elastic    = ZERO
     material_xs % absorption = ZERO
     material_xs % fission    = ZERO
     material_xs % nu_fission = ZERO
@@ -282,14 +282,16 @@ contains
     real(8) :: prob          ! cumulative probability
     real(8) :: cutoff        ! random number
     real(8) :: atom_density  ! atom density of nuclide in atom/b-cm
-    logical :: scatter       ! was this a scattering reaction?
+    real(8) :: scatter       ! microscopic scattering cross-section
+    real(8) :: inelastic     ! microscopic inelastic scattering cross-section
+    logical :: scattered     ! was this a scattering reaction?
     character(MAX_LINE_LEN) :: msg ! output/error message
     type(Material), pointer :: mat
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
     ! Set scatter to false by default
-    scatter = .false.
+    scattered = .false.
 
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
@@ -325,54 +327,164 @@ contains
     IE  =  micro_xs(index_nuclide) % index_grid
     f   =  micro_xs(index_nuclide) % interp_factor
 
+    if (survival_biasing) then
+       ! =======================================================================
+       ! ADJUST WEIGHT FOR SURVIVAL BIASING (IMPLICIT CAPTURE)
+
+       p % wgt = p % wgt * (ONE - micro_xs(index_nuclide) % absorption / &
+            micro_xs(index_nuclide) % total)
+
+       ! =======================================================================
+       ! BANK EXPECTED FISSION SITES
+
+       if (nuc % fissionable) then
+          if (nuc % has_partial_fission) then
+             ! For fission nuclides with partial fission reactions, we need to sample
+             ! a fission reaction
+             cutoff = rang() * micro_xs(index_nuclide) % fission
+             prob = ZERO
+             do i = 2, nuc % n_reaction
+                rxn => nuc % reactions(i)
+
+                if (rxn%MT == N_FISSION .or. rxn%MT == N_F .or. rxn%MT == N_NF &
+                     .or. rxn%MT == N_2NF .or. rxn%MT == N_3NF) then
+
+                   ! if energy is below threshold for this reaction, skip it
+                   if (IE < rxn%IE) cycle
+
+                   ! add to cumulative probability
+                   prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
+                        & + f*(rxn%sigma(IE-rxn%IE+2)))
+                   if (cutoff < prob) exit
+                end if
+             end do
+          else
+             ! For nuclides with only total fission reaction, get a pointer to
+             ! the fission reaction
+             rxn => nuc % reactions(nuc % index_fission)
+          end if
+
+          ! Bank expected number of fission neutrons
+          call create_fission_sites(p, index_nuclide, rxn)
+       end if
+
+       ! =======================================================================
+       ! WEIGHT CUTOFF
+
+       if (p % wgt < weight_cutoff) then
+          if (rang() < p % wgt / weight_survive) then
+             p % wgt = weight_survive
+          else
+             p % wgt = ZERO
+             p % alive = .false.
+          end if
+       end if
+    end if
+
     ! ==========================================================================
-    ! SAMPLE REACTION WITHIN THE NUCLIDE
+    ! SAMPLE REACTION WITHIN THE NUCLIDE (WITH SURVIVAL BIASING)
 
-    cutoff = rang() * sigma / atom_density
-    prob = ZERO
-    do i = 1, nuc % n_reaction
-       rxn => nuc % reactions(i)
+    if (survival_biasing) then
+       ! Determine microscopic scattering cross-section
+       scatter = micro_xs(index_nuclide) % total - &
+            micro_xs(index_nuclide) % absorption
 
-       ! some materials have gas production cross sections with MT > 200 that
-       ! are duplicates. Also MT=4 is total level inelastic scattering which
-       ! should be skipped
-       if (rxn%MT >= 200 .or. rxn%MT == 4) cycle
+       ! Sample whether reaction is elastic or inelastic scattering
+       if (rang() < micro_xs(index_nuclide) % elastic / scatter) then
+          ! ====================================================================
+          ! ELASTIC SCATTERING
 
-       ! if energy is below threshold for this reaction, skip it
-       if (IE < rxn%IE) cycle
+          ! get pointer to elastic scattering reaction
+          rxn => nuc % reactions(1)
 
-       ! add to cumulative probability
-       prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-            & + f*(rxn%sigma(IE-rxn%IE+2)))
-       if (cutoff < prob) exit
-    end do
+          ! Perform collision physics for elastic scattering
+          call elastic_scatter(p, nuc, rxn)
+       else
+          ! ====================================================================
+          ! INELASTIC SCATTERING
+
+          inelastic = scatter - micro_xs(index_nuclide) % elastic
+          cutoff = rang() * inelastic
+          prob = ZERO
+          
+          ! Sample an inelastic scattering reaction
+          do i = 2, nuc % n_reaction
+             rxn => nuc % reactions(i)
+
+             ! Skip fission reactions
+             if (rxn%MT == N_FISSION .or. rxn%MT == N_F .or. rxn%MT == N_NF &
+                  .or. rxn%MT == N_2NF .or. rxn%MT == N_3NF) cycle
+             
+             ! some materials have gas production cross sections with MT > 200 that
+             ! are duplicates. Also MT=4 is total level inelastic scattering which
+             ! should be skipped
+             if (rxn%MT >= 200 .or. rxn%MT == N_LEVEL) cycle
+          
+             ! if energy is below threshold for this reaction, skip it
+             if (IE < rxn%IE) cycle
+
+             ! add to cumulative probability
+             prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
+                  & + f*(rxn%sigma(IE-rxn%IE+2)))
+             if (cutoff < prob) exit
+          end do
+
+          ! Perform collision physics for inelastics scattering
+          call inelastic_scatter(p, nuc, rxn)
+       end if
+
+
+       ! With survival biasing, the particle will always scatter
+       scattered = .true.
+
+    ! ==========================================================================
+    ! SAMPLE REACTION WITHIN THE NUCLIDE (WITHOUT SURVIVAL BIASING)
+
+    else
+       cutoff = rang() * micro_xs(index_nuclide) % total
+       prob = ZERO
+       do i = 1, nuc % n_reaction
+          rxn => nuc % reactions(i)
+          
+          ! some materials have gas production cross sections with MT > 200 that
+          ! are duplicates. Also MT=4 is total level inelastic scattering which
+          ! should be skipped
+          if (rxn%MT >= 200 .or. rxn%MT == 4) cycle
+          
+          ! if energy is below threshold for this reaction, skip it
+          if (IE < rxn%IE) cycle
+
+          ! add to cumulative probability
+          prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
+               & + f*(rxn%sigma(IE-rxn%IE+2)))
+          if (cutoff < prob) exit
+       end do
+
+       ! Collision physics
+       select case (rxn % MT)
+       case (ELASTIC)
+          call elastic_scatter(p, nuc, rxn)
+          scattered = .true.
+       case (N_NA, N_N3A, N_NP, N_N2A, N_ND, N_NT, N_N3HE, N_NT2A, N_N2P, &
+            N_NPA, N_N1 : N_NC, N_2ND, N_2N, N_3N, N_2NA, N_3NA, N_2N2A, &
+            N_4N, N_2NP, N_3NP, MISC)
+          call inelastic_scatter(p, nuc, rxn)
+          scattered = .true.
+       case (N_FISSION, N_F, N_NF, N_2NF, N_3NF)
+          call create_fission_sites(p, index_nuclide, rxn, .true.)
+       case (N_GAMMA : N_DA)
+          call n_absorption(p)
+       case default
+          msg = "Cannot simulate reaction with MT " // int_to_str(rxn%MT)
+          call warning(msg)
+       end select
+    end if
 
     if (verbosity >= 10) then
        msg = "    " // trim(reaction_name(rxn%MT)) // " with nuclide " // &
             & trim(nuc%name)
        call message(msg)
     end if
-
-    ! ==========================================================================
-    ! PERFORM APPROPRIATE COLLISION PHYSICS
-
-    select case (rxn % MT)
-    case (ELASTIC)
-       call elastic_scatter(p, nuc, rxn)
-       scatter = .true.
-    case (N_NA, N_N3A, N_NP, N_N2A, N_ND, N_NT, N_N3HE, N_NT2A, N_N2P, &
-          N_NPA, N_N1 : N_NC, N_2ND, N_2N, N_3N, N_2NA, N_3NA, N_2N2A, &
-          N_4N, N_2NP, N_3NP, MISC)
-       call inelastic_scatter(p, nuc, rxn)
-       scatter = .true.
-    case (N_FISSION, N_F, N_NF, N_2NF, N_3NF)
-       call n_fission_event(p, nuc, rxn)
-    case (N_GAMMA : N_DA)
-       call n_absorption(p)
-    case default
-       msg = "Cannot simulate reaction with MT " // int_to_str(rxn%MT)
-       call warning(msg)
-    end select
 
     ! check for very low energy
     if (p % E < 1.0e-100_8) then
@@ -387,7 +499,7 @@ contains
     ! filter
 
     if (tallies_on) then
-       call score_tally(p, scatter)
+       call score_tally(p, scattered)
     end if
 
     ! find energy index, interpolation factor
@@ -470,38 +582,53 @@ contains
   end subroutine elastic_scatter
 
 !===============================================================================
-! N_FISSION determines the average total, prompt, and delayed neutrons produced
-! from fission and creates appropriate bank sites. This routine will not work
-! with implicit absorption, namely sampling of the number of neutrons!
+! CREATE_FISSION_SITES determines the average total, prompt, and delayed
+! neutrons produced from fission and creates appropriate bank sites. This
+! routine will not work with implicit absorption, namely sampling of the number
+! of neutrons!
 !===============================================================================
 
-  subroutine n_fission_event(p, nuc, rxn)
+  subroutine create_fission_sites(p, index_nuclide, rxn, event)
 
     type(Particle), pointer :: p
-    type(Nuclide),  pointer :: nuc
+    integer, intent(in)     :: index_nuclide
     type(Reaction), pointer :: rxn
+    logical, optional       :: event
 
-    integer :: i           ! loop index
-    integer :: j           ! index on nu energy grid / precursor group
-    integer :: k           ! index on precursor yield grid
-    integer :: loc         ! index before start of energies/nu values
-    integer :: NR          ! number of interpolation regions
-    integer :: NE          ! number of energies tabulated
-    integer :: nu          ! actual number of neutrons produced
-    integer :: law         ! energy distribution law
-    real(8) :: E           ! incoming energy of neutron
-    real(8) :: E_out       ! outgoing energy of fission neutron
-    real(8) :: f           ! interpolation factor
-    real(8) :: nu_t        ! total nu
-    real(8) :: nu_p        ! prompt nu
-    real(8) :: nu_d        ! delayed nu
-    real(8) :: mu          ! fission neutron angular cosine
-    real(8) :: phi         ! fission neutron azimuthal angle
-    real(8) :: beta        ! delayed neutron fraction
-    real(8) :: xi          ! random number
-    real(8) :: yield       ! delayed neutron precursor yield
-    real(8) :: prob        ! cumulative probability
+    integer :: i            ! loop index
+    integer :: j            ! index on nu energy grid / precursor group
+    integer :: k            ! index on precursor yield grid
+    integer :: loc          ! index before start of energies/nu values
+    integer :: NR           ! number of interpolation regions
+    integer :: NE           ! number of energies tabulated
+    integer :: nu           ! actual number of neutrons produced
+    integer :: law          ! energy distribution law
+    real(8) :: E            ! incoming energy of neutron
+    real(8) :: E_out        ! outgoing energy of fission neutron
+    real(8) :: f            ! interpolation factor
+    real(8) :: nu_t         ! total nu
+    real(8) :: nu_p         ! prompt nu
+    real(8) :: nu_d         ! delayed nu
+    real(8) :: mu           ! fission neutron angular cosine
+    real(8) :: phi          ! fission neutron azimuthal angle
+    real(8) :: beta         ! delayed neutron fraction
+    real(8) :: xi           ! random number
+    real(8) :: yield        ! delayed neutron precursor yield
+    real(8) :: prob         ! cumulative probability
+    logical :: actual_event ! did fission actually occur? (no survival biasing)
     character(MAX_LINE_LEN) :: msg  ! error message
+    type(Nuclide),  pointer :: nuc
+
+    ! Get pointer to nuclide
+    nuc => nuclides(index_nuclide)
+
+    ! check whether actual fission event occurred for when survival biasing is
+    ! turned off -- assume by default that no event occurs
+    if (present(event)) then
+       actual_event = event
+    else
+       actual_event = .false.
+    end if
 
     ! copy energy of neutron
     E = p % E
@@ -525,7 +652,12 @@ contains
     ! TODO: Heat generation from fission
 
     ! Sample number of neutrons produced
-    nu_t = p%wgt / keff * nu_t
+    if (actual_event) then
+       nu_t = p % wgt / keff * nu_t
+    else
+       nu_t = p % last_wgt * micro_xs(index_nuclide) % fission / (keff * &
+            micro_xs(index_nuclide) % total) * nu_t
+    end if
     if (rang() > nu_t - int(nu_t)) then
        nu = int(nu_t)
     else
@@ -631,10 +763,10 @@ contains
     ! increment number of bank sites
     n_bank = min(n_bank + nu, 3*n_particles)
 
-    ! kill original neutron
-    p % alive = .false.
+    ! kill original neutron if no survival biasing
+    if (actual_event) p % alive = .false.
 
-  end subroutine n_fission_event
+  end subroutine create_fission_sites
 
 !===============================================================================
 ! INELASTIC_SCATTER handles all reactions with a single secondary neutron (other

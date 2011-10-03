@@ -71,7 +71,7 @@ endif
 # Use MPI for parallelism
 
 ifeq ($(USE_MPI),yes)
-  MPI = /opt/mpich2/1.4-intel
+  MPI = /opt/mpich2/1.4.1-intel
   F90 = $(MPI)/bin/mpif90
   F90FLAGS += -DMPI
 endif

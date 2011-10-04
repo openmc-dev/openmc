@@ -7,7 +7,10 @@
   yshift = 1.0cm
 ]
 
-  \node (LabelOne)  [sTextBlockStyle]                      {Union Energy Grid};
+  \node (LabelOne)   [sTextBlockStyle]                      {Union Energy Grid};
+  \node (LabelTwo)   [sTextBlockStyle, below of = LabelOne, node distance = 1.5cm] {Nuclide Pointers};
+  \node (LabelThree) [sTextBlockStyle, below of = LabelTwo, node distance = 1.5cm] {Nuclide Energy Grid};
+
   \node (EOne)      [RectBlue, right of = LabelOne, node distance = 3cm] {$E_1$};
   \node (ETwo)      [RectBlue, right of = EOne]   {$E_2$};
   \node (EThree)    [RectBlue, right of = ETwo]   {$E_3$};
@@ -38,6 +41,9 @@
   \draw [-triangle 45, thick] (ESix)   -- (PSix);
   \draw [-triangle 45, thick] (ESeven) -- (PSeven);
   \draw [-triangle 45, thick] (EEight) -- (PEight);
+
+  \draw [dashed] (-2,-0.70) -- (10.5,-0.70);
+  \draw [dashed] (-2,-2.20) -- (10.5,-2.20);
 
 \end{tikzpicture}
 \end{center}

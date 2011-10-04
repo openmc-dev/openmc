@@ -17,7 +17,7 @@
 
 \title{The OpenMC Monte Carlo Code}
 \author{Paul K. Romano}
-\date{September 30, 2011}
+\date{October 6, 2011}
 \pgfdeclareimage[height=0.5cm]{mit-logo}{mit-logo.pdf}
 \logo{\pgfuseimage{mit-logo}\hspace*{0.3cm}}
 
@@ -72,16 +72,46 @@
   \end{itemize}
 \end{frame}
 
+\begin{frame}{Monte Carlo}
+  Rather than solving the transport equation by discretizing the spatial,
+  energy, and angular variables, Monte Carlo solves the transport equation by
+  following individual particles as they move stochastically through a medium.
+  \begin{itemize}
+  \item<1-> Standard deviation $\propto \frac{1}{\sqrt{N}}$
+  \end{itemize}
+\end{frame}
+
 % -----------------------------------------------------------------------------
 \section{Methods and Theory}
+
+\begin{frame}{Solution Algorithm}
+  \begin{itemize}
+  \item<1-> Loop over particles
+    \begin{enumerate}
+    \item<1-> Sample particle from distribution
+    \item<1-> Track particle to next collision
+    \item<1-> Sample nuclide within material
+    \item<1-> Sample reaction within nuclide
+    \item<1-> Repeat from step 2 until particle dies
+    \end{enumerate}
+  \end{itemize}
+
+  While particle is being tracked, keep track of collision rate, fission rate,
+  etc.
+  \begin{equation*}
+    \phi = \frac{1}{NV} \sum\limits_{\text{all collisions} \atop \text{in cell}} \frac{w_i}{\Sigma_t (E_i)}
+  \end{equation*}
+
+\end{frame}
 
 \begin{frame}{Geometry}
   \begin{itemize}
   \item<1-> All geometry is described as constructive solid geometry (unions and
     intersections of second-order surfaces)
+  \item<1-> $Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Iz + J = 0$
   \item<1-> e.g. to construct an annulus
   \end{itemize}
-  % Picture of annulus
+  \include{annulus}
 \end{frame}
 
 \begin{frame}{Cross-Sections}
@@ -100,13 +130,22 @@
 \begin{frame}{Union Energy Grid}
   \begin{itemize}
   \item<1-> Each nuclide has cross-sections tabulated at different energy points
-  \item<1-> To determine collision type, need $\Sigma$ for each collision
+  \item<1-> To determine collision type, need to look up microscopic reaction
+    cross sections
   \end{itemize}
   \include{union_energy_grid}
-
 \end{frame}
 
-\begin{frame}{Tallies}
+\begin{frame}{Tallies}{}
+  {\bf Remember:} In Monte Carlo, the only answer you get is the one you ask
+  for. In general, you don't get the global solution like you do in
+  deterministic land.
+  \begin{itemize}
+  \item<1-> Implemented a robust tally system to calculate user-specified
+    quantities of interest
+  \item<1-> {\bf Filters:} Spatial location, incoming/outgoing energy, birth region, mesh
+  \item<1-> {\bf Responses:} Flux, reaction rates, currents, etc.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Parallel Fission Bank}
@@ -119,6 +158,13 @@
 \end{frame}
 
 \begin{frame}{XML Input Format}
+  Unlike many nuclear codes, OpenMC uses a modular XML input format
+  \begin{itemize}
+  \item<1-> Building a geometric model -- {\bf geometry.xml}
+  \item<1-> Assigning materials to volumes -- {\bf materials.xml}
+  \item<1-> Setting parameters for the simulation -- {\bf settings.xml}
+  \item<1-> Determining which quantities to score -- {\bf tallies.xml}
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Running}

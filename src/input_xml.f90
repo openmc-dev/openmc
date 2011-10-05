@@ -107,7 +107,7 @@ contains
     end if
 
     ! Survival biasing
-    if (size(survival_) > 0) survival_biasing = .true.
+    if (trim(survival_) == 'on') survival_biasing = .true.
 
     ! Cutoffs
     if (size(cutoff_) > 0) then

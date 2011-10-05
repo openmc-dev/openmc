@@ -471,7 +471,7 @@ subroutine write_to_xml_line_array( info, tag, indent, array )
     logical, dimension(:), intent(in)            :: array
 
     character(len=100)                           :: indentation
-    integer                                      :: i, i2, j
+    integer                                      :: i
 
     indentation = ' '
 

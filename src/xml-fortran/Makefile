@@ -1,43 +1,15 @@
 reader = xmlreader
-xml_fortran_source  = $(wildcard *.f90)
-xml_fortran_objects = $(xml_fortran_source:.f90=.o)
-
-#===============================================================================
-# User Options
-#===============================================================================
-
-DEBUG    = no
+source  = $(wildcard *.f90)
+objects = $(source:.f90=.o)
 
 #===============================================================================
 # Compiler Options
 #===============================================================================
 
-# Intel Fortran compiler options
+# Ignore unused variables
 
-ifeq ($(COMPILER),intel)
-  F90 = ifort
-  F90FLAGS += -fpp
-endif
-
-# GNU Fortran compiler options
-
-ifeq ($(COMPILER),gfortran)
-  F90 = gfortran
-  F90FLAGS += -cpp -Wall
-endif
-
-# Set compiler flags for debugging
-
-ifeq ($(DEBUG),yes)
-  F90FLAGS += -g 
-  LDFLAGS  += -g
-  ifeq ($(COMPILER),intel)
-    F90FLAGS += -traceback -ftrapuv -fp-stack-check -check all
-  endif
-  ifeq ($(COMPILER),gfortran)
-    F90FLAGS += -pedantic -std=f2008 -fbacktrace -fbounds-check \
-                -ffpe-trap=invalid,zero,overflow,underflow
-  endif
+ifeq ($(F90),ifort)
+  override F90FLAGS += -warn nounused
 endif
 
 #===============================================================================
@@ -45,8 +17,8 @@ endif
 #===============================================================================
 
 all: $(reader)
-$(reader): $(xml_fortran_objects)
-	$(F90) $(xml_fortran_objects) -o $@ $(LDFLAGS)
+$(reader): $(objects)
+	$(F90) $(objects) -o $@
 clean:
 	@rm -f *.o *.mod $(reader)
 neat:

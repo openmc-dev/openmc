@@ -692,6 +692,20 @@ contains
        end do
     end if
 
+    ! print summary of variance reduction
+    call header("VARIANCE REDUCTION")
+    if (survival_biasing) then
+       write(ou,100) "Survival Biasing:", "on"
+    else
+       write(ou,100) "Survival Biasing:", "off"
+    end if
+    write(ou,100) "Weight Cutoff:", trim(real_to_str(weight_cutoff))
+    write(ou,100) "Survival weight:", trim(real_to_str(weight_survive))
+    write(ou,*)
+
+    ! Format descriptor for columns
+100 format (1X,A,T35,A)
+
     nullify(s)
     nullify(c)
     nullify(u)

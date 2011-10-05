@@ -84,10 +84,10 @@ input_xml.o: mesh_header.o
 input_xml.o: output.o
 input_xml.o: string.o
 input_xml.o: tally_header.o
-input_xml.o: xml_geometry.o
-input_xml.o: xml_materials.o
-input_xml.o: xml_settings.o
-input_xml.o: xml_tallies.o
+input_xml.o: xml-fortran/templates/geometry_t.o
+input_xml.o: xml-fortran/templates/materials_t.o
+input_xml.o: xml-fortran/templates/settings_t.o
+input_xml.o: xml-fortran/templates/tallies_t.o
 
 interpolation.o: constants.o
 interpolation.o: error.o

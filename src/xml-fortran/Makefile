@@ -1,27 +1,13 @@
-program = openmc
-
-templates = $(wildcard xml-fortran/templates/*.o)
-xml_fort = xml-fortran/xmlparse.o \
-           xml-fortran/read_xml_primitives.o \
-           xml-fortran/write_xml_primitives.o
-
-#===============================================================================
-# Object Files
-#===============================================================================
-
-include OBJECTS
+reader = xmlreader
+xml_fortran_source  = $(wildcard *.f90)
+xml_fortran_objects = $(xml_fortran_source:.f90=.o)
 
 #===============================================================================
 # User Options
 #===============================================================================
 
-COMPILER    = intel
-DEBUG       = no
-PROFILE     = no
-OPTIMIZE    = no
-USE_MPI     = no
-USE_OPENMP  = no
-USE_COARRAY = no
+COMPILER = intel
+DEBUG    = no
 
 #===============================================================================
 # Compiler Options
@@ -31,16 +17,14 @@ USE_COARRAY = no
 
 ifeq ($(COMPILER),intel)
   F90 = ifort
-  F90FLAGS = -Ixml-fortran -Ixml-fortran/templates -fpp -warn
-  LDFLAGS = 
+  F90FLAGS += -fpp
 endif
 
 # GNU Fortran compiler options
 
 ifeq ($(COMPILER),gfortran)
   F90 = gfortran
-  F90FLAGS = -cpp -Wall
-  LDFLAGS =
+  F90FLAGS += -cpp -Wall
 endif
 
 # Set compiler flags for debugging
@@ -57,55 +41,15 @@ ifeq ($(DEBUG),yes)
   endif
 endif
 
-# Set compiler flags for profiling
-
-ifeq ($(PROFILE),yes)
-  F90FLAGS += -pg
-  LDFLAGS  += -pg
-endif
-
-# Set compiler flags for high optimization
-
-ifeq ($(OPTIMIZE),yes)
-  F90FLAGS += -O3
-  ifeq ($(COMPILER),intel)
-    F90FLAGS += -ipo
-  endif
-endif
-
-# Use MPI for parallelism
-
-ifeq ($(USE_MPI),yes)
-  MPI = /opt/mpich2/1.4.1-intel
-  F90 = $(MPI)/bin/mpif90
-  F90FLAGS += -DMPI
-endif
-
-# Use OpenMP for shared-memory parallelism
-
-ifeq ($(USE_OPENMP),yes)
-  F90FLAGS += -openmp
-  LDFLAGS += -openmp
-endif
-
-# Use Fortran 2008 Coarrays for parallelism
-
-ifeq ($(USE_COARRAY),yes)
-  F90FLAGS += -coarray
-endif
-
 #===============================================================================
 # Targets
 #===============================================================================
 
-all: xml-fortran $(program)
-xml-fortran:
-	cd xml-fortran; make
-	cd xml-fortran/templates; make
-$(program): $(objects)
-	$(F90) $(objects) $(templates) $(xml_fort) -o $@ $(LDFLAGS)
+all: $(reader)
+$(reader): $(xml_fortran_objects)
+	$(F90) $(xml_fortran_objects) -o $@ $(LDFLAGS)
 clean:
-	@rm -f *.o *.mod $(program)
+	@rm -f *.o *.mod $(reader)
 neat:
 	@rm -f *.o *.mod
 
@@ -114,7 +58,7 @@ neat:
 #===============================================================================
 
 .SUFFIXES: .f90 .o
-.PHONY: all clean neat xml-fortran
+.PHONY: all clean neat
 
 %.o: %.f90
 	$(F90) $(F90FLAGS) -c $<
@@ -123,4 +67,6 @@ neat:
 # Dependencies
 #===============================================================================
 
-include DEPENDENCIES
+read_xml_primitives.o: xmlparse.o
+write_xml_primitives.o: xmlparse.o
+xmlreader.o: xmlparse.o

@@ -15,7 +15,7 @@ include OBJECTS
 # User Options
 #===============================================================================
 
-COMPILER    = gfortran
+COMPILER    = intel
 DEBUG       = no
 PROFILE     = no
 OPTIMIZE    = no
@@ -31,7 +31,7 @@ USE_COARRAY = no
 
 ifeq ($(COMPILER),intel)
   F90 = ifort
-  F90FLAGS = -Ixml-fortran -Ixml-fortran/templates -fpp -warn
+  F90FLAGS := -fpp -warn
   LDFLAGS =
 endif
 
@@ -39,7 +39,7 @@ endif
 
 ifeq ($(COMPILER),gfortran)
   F90 = gfortran
-  F90FLAGS = -Ixml-fortran -Ixml-fortran/templates -cpp -Wall
+  F90FLAGS := -cpp -Wall
   LDFLAGS =
 endif
 
@@ -100,8 +100,8 @@ endif
 
 all: xml-fortran $(program)
 xml-fortran:
-	cd xml-fortran; make COMPILER=$(COMPILER)
-	cd xml-fortran/templates; make COMPILER=$(COMPILER)
+	cd xml-fortran; make F90=$(F90) F90FLAGS="$(F90FLAGS)"
+	cd xml-fortran/templates; make F90=$(F90) F90FLAGS="$(F90FLAGS)"
 $(program): $(objects)
 	$(F90) $(objects) $(templates) $(xml_fort) -o $@ $(LDFLAGS)
 distclean: clean
@@ -120,7 +120,7 @@ neat:
 .PHONY: all xml-fortran clean neat distclean 
 
 %.o: %.f90
-	$(F90) $(F90FLAGS) -c $<
+	$(F90) -Ixml-fortran -Ixml-fortran/templates $(F90FLAGS) -c $<
 
 #===============================================================================
 # Dependencies

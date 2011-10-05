@@ -110,8 +110,10 @@ contains
     if (size(survival_) > 0) survival_biasing = .true.
 
     ! Cutoffs
-    weight_cutoff = cutoff_ % weight
-    weight_survive = cutoff_ % weight_avg
+    if (size(cutoff_) > 0) then
+       weight_cutoff = cutoff_(1) % weight
+       weight_survive = cutoff_(1) % weight_avg
+    end if
 
   end subroutine read_settings_xml
 

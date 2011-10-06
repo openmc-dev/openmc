@@ -30,12 +30,12 @@ materials, and settings for a Monte Carlo simulation.
 
 .. _XML: http://www.w3.org/XML/
 
------
-Files
------
+-----------------
+Overview of Files
+-----------------
 
 To assemble a complete model for OpenMC, one needs to create separate XML files
-for the geometry, materails, and settings. Additionally, an optional tallies XML
+for the geometry, materials, and settings. Additionally, an optional tallies XML
 file specifies physical quantities to be tallied. OpenMC expects that these
 files are called:
 
@@ -47,6 +47,56 @@ files are called:
 --------------------------------------
 Geometry Specification -- geometry.xml
 --------------------------------------
+
+The geometry in OpenMC is described using `constructive solid geometry`_ (CSG),
+also sometimes referred to as combinatorial geometry. CSG allows a user to
+create complex objects using Boolean operators on a set of simpler surfaces. In
+the geometry model, each unique closed volume in defined by its bounding
+surfaces. In OpenMC, most `quadratic surfaces`_ can be modeled and used as
+bounding surfaces.
+
+Every geometry.xml must have an XML declaration at the beginning of the file and
+a root element named geometry. Within the root element the user can define any
+number of cells, surfaces, and lattices. Let us look at the following example::
+
+    <?xml version="1.0">
+    <geometry>
+      <!-- This is a comment -->
+
+      <surface>
+        <uid>1</uid>
+        <type>sphere</type>
+        <coeffs>0.0 0.0 0.0 5.0</coeffs>
+        <boundary>vacuum</boundary>
+      <surface>
+
+      <cell>
+        <uid>1</uid>
+        <universe>0</universe>
+        <material>1</material>
+        <surfaces>-1</surfaces>
+      </cell>
+    </geometry>
+
+At the beginning of this file is a comment, denoted by a tag starting with
+``<!--`` and ending with ``-->``. Comments, as well as any other type of input,
+may span multiple lines. One convenient feature of the XML input format is that
+sub-elements of the ``cell`` and ``surface`` elements can also be equivalently
+expressed of attributes of the original element, e.g. the geometry file above
+could be written as::
+
+    <?xml version="1.0">
+    <geometry>
+      <!-- This is a comment -->
+
+      <surface uid="1" type="sphere" coeffs="0.0 0.0 0.0 5.0" boundary="vacuum" />
+      <cell uid="1" universe="0" material="1" surfaces="-1" />
+
+    </geometry>
+
+.. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
+
+.. _quadratic surfaces: http://en.wikipedia.org/wiki/Quadric
 
 Types of surfaces:
 

@@ -13,11 +13,25 @@ on your machine. Since a number of Fortran 2003 features are used in the code,
 it is recommended that you use the latest version of whatever compiler you
 choose. For gfortran_, it is recommended that you use version 4.5.0 or above.
 
+If you are using Debian or a Debian derivative such as Ubuntu, you can install
+the gfortran compiler using the following command::
+
+    sudo apt-get install gfortran
+
+.. warning:: The runtime preformance with the Intel Fortran compiler and PGI
+ Fortran compiler will likely exceed that of the gfortran compiler. Compiling
+ with high optimization on the gfortran compiler may make up for some of the
+ performance difference
+
 To compile with support for parallel runs on a distributed-memory architecture,
 you will need to have a valid implementation of MPI installed on your
 machine. The code has been tested and is known to work with the latest versions
-of both OpenMPI_ and MPICH2_. You may use older versions of MPI implementations at
-your own risk.
+of both OpenMPI_ and MPICH2_. You may use older versions of MPI implementations
+at your own risk. OpenMPI and/or MPICH2 can be installed on Debian derivatives
+with::
+
+    sudo apt-get install mpich2
+    sudo apt-get install openmpi-bin
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
 .. _OpenMPI: http://www.open-mpi.org
@@ -55,11 +69,14 @@ USE_MPI
   also set the MPI root directory by setting the MPI variable further down in
   the Makefile.
 
-USE_MPI
+USE_OPENMP
   Enables parallel runs on shared-memory architecture using OpenMP threading.
 
 USE_COARRAY
   Enables parallel runs using Fortran 2008 coarrays.
+
+.. note:: OpenMC does not yet support parallelism using OpenMP or Fortran 2008
+ coarrays.
 
 ---------
 Compiling
@@ -69,6 +86,6 @@ To compile the code, run the following commands from within the root directory
 for OpenMC::
 
     cd openmc/src
-    make -f Makefile
+    make
 
 This will build an executable named ``openmc``.

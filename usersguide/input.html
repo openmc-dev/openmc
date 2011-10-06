@@ -7,13 +7,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Creating XML Input Files &mdash; OpenMC v0.3.1 documentation</title>
+    <title>Creating XML Input Files &mdash; OpenMC v0.3.2 documentation</title>
     <link rel="stylesheet" href="../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.3.1',
+        VERSION:     '0.3.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -22,7 +22,7 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="OpenMC v0.3.1 documentation" href="../index.html" />
+    <link rel="top" title="OpenMC v0.3.2 documentation" href="../index.html" />
     <link rel="up" title="User’s Guide" href="index.html" />
     <link rel="next" title="Development Team" href="../developers.html" />
     <link rel="prev" title="User’s Guide" href="index.html" /> 
@@ -40,7 +40,7 @@
         <li class="right" >
           <a href="index.html" title="User’s Guide"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">OpenMC v0.3.1 documentation</a> &raquo;</li>
+        <li><a href="../index.html">OpenMC v0.3.2 documentation</a> &raquo;</li>
           <li><a href="index.html" accesskey="U">User&#8217;s Guide</a> &raquo;</li> 
       </ul>
     </div>  
@@ -72,10 +72,10 @@ person. The nested tags <em>firstname</em>, <em>lastname</em>, <em>age</em>, and
 indicate characteristics about the person being described.</p>
 <p>In much the same way, OpenMC input uses XML tags to describe the geometry, the
 materials, and settings for a Monte Carlo simulation.</p>
-<div class="section" id="files">
-<h2>Files<a class="headerlink" href="#files" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="overview-of-files">
+<h2>Overview of Files<a class="headerlink" href="#overview-of-files" title="Permalink to this headline">¶</a></h2>
 <p>To assemble a complete model for OpenMC, one needs to create separate XML files
-for the geometry, materails, and settings. Additionally, an optional tallies XML
+for the geometry, materials, and settings. Additionally, an optional tallies XML
 file specifies physical quantities to be tallied. OpenMC expects that these
 files are called:</p>
 <ul class="simple">
@@ -87,6 +87,49 @@ files are called:</p>
 </div>
 <div class="section" id="geometry-specification-geometry-xml">
 <h2>Geometry Specification &#8211; geometry.xml<a class="headerlink" href="#geometry-specification-geometry-xml" title="Permalink to this headline">¶</a></h2>
+<p>The geometry in OpenMC is described using <a class="reference external" href="http://en.wikipedia.org/wiki/Constructive_solid_geometry">constructive solid geometry</a> (CSG),
+also sometimes referred to as combinatorial geometry. CSG allows a user to
+create complex objects using Boolean operators on a set of simpler surfaces. In
+the geometry model, each unique closed volume in defined by its bounding
+surfaces. In OpenMC, most <a class="reference external" href="http://en.wikipedia.org/wiki/Quadric">quadratic surfaces</a> can be modeled and used as
+bounding surfaces.</p>
+<p>Every geometry.xml must have an XML declaration at the beginning of the file and
+a root element named geometry. Within the root element the user can define any
+number of cells, surfaces, and lattices. Let us look at the following example:</p>
+<div class="highlight-python"><pre>&lt;?xml version="1.0"&gt;
+&lt;geometry&gt;
+  &lt;!-- This is a comment --&gt;
+
+  &lt;surface&gt;
+    &lt;uid&gt;1&lt;/uid&gt;
+    &lt;type&gt;sphere&lt;/type&gt;
+    &lt;coeffs&gt;0.0 0.0 0.0 5.0&lt;/coeffs&gt;
+    &lt;boundary&gt;vacuum&lt;/boundary&gt;
+  &lt;surface&gt;
+
+  &lt;cell&gt;
+    &lt;uid&gt;1&lt;/uid&gt;
+    &lt;universe&gt;0&lt;/universe&gt;
+    &lt;material&gt;1&lt;/material&gt;
+    &lt;surfaces&gt;-1&lt;/surfaces&gt;
+  &lt;/cell&gt;
+&lt;/geometry&gt;</pre>
+</div>
+<p>At the beginning of this file is a comment, denoted by a tag starting with
+<tt class="docutils literal"><span class="pre">&lt;!--</span></tt> and ending with <tt class="docutils literal"><span class="pre">--&gt;</span></tt>. Comments, as well as any other type of input,
+may span multiple lines. One convenient feature of the XML input format is that
+sub-elements of the <tt class="docutils literal"><span class="pre">cell</span></tt> and <tt class="docutils literal"><span class="pre">surface</span></tt> elements can also be equivalently
+expressed of attributes of the original element, e.g. the geometry file above
+could be written as:</p>
+<div class="highlight-python"><pre>&lt;?xml version="1.0"&gt;
+&lt;geometry&gt;
+  &lt;!-- This is a comment --&gt;
+
+  &lt;surface uid="1" type="sphere" coeffs="0.0 0.0 0.0 5.0" boundary="vacuum" /&gt;
+  &lt;cell uid="1" universe="0" material="1" surfaces="-1" /&gt;
+
+&lt;/geometry&gt;</pre>
+</div>
 <p>Types of surfaces:</p>
 <dl class="docutils">
 <dt><tt class="docutils literal"><span class="pre">x-plane</span></tt></dt>
@@ -138,7 +181,7 @@ R^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Creating XML Input Files</a><ul>
-<li><a class="reference internal" href="#files">Files</a></li>
+<li><a class="reference internal" href="#overview-of-files">Overview of Files</a></li>
 <li><a class="reference internal" href="#geometry-specification-geometry-xml">Geometry Specification &#8211; geometry.xml</a></li>
 <li><a class="reference internal" href="#materials-specification-materials-xml">Materials Specification &#8211; materials.xml</a></li>
 <li><a class="reference internal" href="#settings-specification-settings-xml">Settings Specification &#8211; settings.xml</a></li>
@@ -187,7 +230,7 @@ R^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/
         <li class="right" >
           <a href="index.html" title="User’s Guide"
              >previous</a> |</li>
-        <li><a href="../index.html">OpenMC v0.3.1 documentation</a> &raquo;</li>
+        <li><a href="../index.html">OpenMC v0.3.2 documentation</a> &raquo;</li>
           <li><a href="index.html" >User&#8217;s Guide</a> &raquo;</li> 
       </ul>
     </div>

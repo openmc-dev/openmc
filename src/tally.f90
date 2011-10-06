@@ -564,6 +564,9 @@ contains
     character(80)           :: space = " "              ! spaces
     type(TallyObject), pointer :: t
 
+    ! Skip if there are no tallies
+    if (n_tallies == 0) return
+
     ! Initialize names for tally filter types
     filter_name(T_UNIVERSE)  = "Universe"
     filter_name(T_MATERIAL)  = "Material"

@@ -17,16 +17,23 @@ contains
     integer, intent(out)          :: bin
     logical, intent(out)          :: in_mesh
 
+    integer              :: n
     integer, allocatable :: ijk(:)
 
+    ! Get number of dimensions
+    n = m % n_dimension
+
     ! Create indices array same size as xyz
-    allocate(ijk(size(xyz)))
+    allocate(ijk(n))
     
     ! Determine indices
-    call get_mesh_indices(m, xyz, ijk, in_mesh)
+    call get_mesh_indices(m, xyz(1:n), ijk, in_mesh)
 
     ! Convert indices to bin
     bin = mesh_indices_to_bin(m, ijk)
+
+    ! Release memory for ijk
+    deallocate(ijk)
 
   end subroutine get_mesh_bin
 

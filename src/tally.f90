@@ -726,8 +726,13 @@ contains
        m => meshes(t % mesh)
        allocate(ijk(m % n_dimension))
        call bin_to_mesh_indices(m, bin, ijk)
-       label = "Index (" // trim(int_to_str(ijk(1))) // ", " // &
-            trim(int_to_str(ijk(2))) // ", " // trim(int_to_str(ijk(3))) // ")"
+       if (m % n_dimension == 2) then
+          label = "Index (" // trim(int_to_str(ijk(1))) // ", " // &
+               trim(int_to_str(ijk(2))) // ")"
+       elseif (m % n_dimension == 3) then
+          label = "Index (" // trim(int_to_str(ijk(1))) // ", " // &
+               trim(int_to_str(ijk(2))) // ", " // trim(int_to_str(ijk(3))) // ")"
+       end if
     case (T_ENERGYIN)
        E0 = t % energy_in(bin)
        E1 = t % energy_in(bin + 1)

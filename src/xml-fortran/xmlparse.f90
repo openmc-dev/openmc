@@ -46,7 +46,7 @@ module xmlparse
 
    implicit none
 
-   integer, parameter :: XML_BUFFER_LENGTH = 1000
+   integer, parameter :: XML_BUFFER_LENGTH = 10000
 
 !===============================================================================
 ! XML_PARSE defines the data type that holds the parser information

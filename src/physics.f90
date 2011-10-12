@@ -574,10 +574,14 @@ contains
     E = vx*vx + vy*vy + vz*vz
     vel = sqrt(E)
 
+    ! Set energy and direction of particle in LAB frame
     p % E = E
     p % uvw(1) = vx/vel
     p % uvw(2) = vy/vel
     p % uvw(3) = vz/vel
+
+    ! Copy scattering cosine for tallies
+    p % mu = mu
 
   end subroutine elastic_scatter
 
@@ -835,6 +839,9 @@ contains
 
     ! change energy of particle
     p % E = E
+
+    ! Copy scattering cosine for tallies
+    p % mu = mu
 
     ! change weight of particle based on multiplicity
     n_secondary = abs(rxn % TY)

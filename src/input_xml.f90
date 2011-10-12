@@ -748,6 +748,14 @@ contains
                 t % macro_bins(j) % scalar = MACRO_TOTAL
              case ('scatter')
                 t % macro_bins(j) % scalar = MACRO_SCATTER
+             case ('nu-scatter')
+                t % macro_bins(j) % scalar = MACRO_NU_SCATTER
+             case ('scatter-1')
+                t % macro_bins(j) % scalar = MACRO_SCATTER_1
+             case ('scatter-2')
+                t % macro_bins(j) % scalar = MACRO_SCATTER_2
+             case ('scatter-3')
+                t % macro_bins(j) % scalar = MACRO_SCATTER_3
              case ('absorption')
                 t % macro_bins(j) % scalar = MACRO_ABSORPTION
              case ('fission')

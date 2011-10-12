@@ -20,6 +20,7 @@ module particle_header
      real(8)    :: uvw(3)        ! directional cosines
      real(8)    :: wgt           ! particle weight
      real(8)    :: E             ! energy
+     real(8)    :: mu            ! angle of scatter
      logical    :: alive         ! is particle alive?
 
      ! Pre-collision physical data

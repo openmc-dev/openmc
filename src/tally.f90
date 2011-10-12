@@ -269,17 +269,21 @@ contains
     integer :: n
     integer :: bins(TALLY_TYPES)
     integer :: score_index
+    integer :: macro_bin
     real(8) :: score
     real(8) :: last_wgt
     real(8) :: wgt
+    real(8) :: mu
     logical :: in_mesh
     logical :: has_outgoing_energy
+    logical :: has_outgoing_angle
     type(TallyObject),    pointer :: t
     type(StructuredMesh), pointer :: m
 
-    ! Copy particle's pre- and post-collision weight
+    ! Copy particle's pre- and post-collision weight and angle
     last_wgt = p % last_wgt
     wgt = p % wgt
+    mu = p % mu
 
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
@@ -378,7 +382,16 @@ contains
 
        ! Determine score for each bin
        do j = 1, t % n_macro_bins
-          if (has_outgoing_energy) then
+          ! determine what type of macro bin
+          macro_bin = t % macro_bins(j) % scalar
+
+          ! determine if we need outgoing angle
+          has_outgoing_angle = (macro_bin == MACRO_NU_SCATTER .or. &
+               macro_bin == MACRO_SCATTER_1 .or. &
+               macro_bin == MACRO_SCATTER_2 .or. &
+               macro_bin == MACRO_SCATTER_3)
+
+          if (has_outgoing_energy .or. has_outgoing_angle) then
              ! If this tally has an outgoing energy filter, the only supported
              ! reaction is scattering. For all other reactions, about
 
@@ -388,16 +401,25 @@ contains
              ! occured, we do not need to multiply by the scattering cross
              ! section
 
-             if (t % macro_bins(j) % scalar == MACRO_SCATTER) then
+             select case (macro_bin)
+             case (MACRO_SCATTER)
                 score = last_wgt
-             else
+             case (MACRO_NU_SCATTER)
+                score = wgt
+             case (MACRO_SCATTER_1)
+                score = last_wgt * mu
+             case (MACRO_SCATTER_2)
+                score = last_wgt * 0.5*(3.0*mu*mu - ONE)
+             case (MACRO_SCATTER_3)
+                score = last_wgt * 0.5*(5.0*mu*mu*mu - 3.0*mu)
+             case default
                 ! call fatal_error
-             end if
+             end select
           else
              ! For tallies with no outgoing energy filter, the score is
              ! calculated normally depending on the quantity specified
 
-             select case(t % macro_bins(j) % scalar)
+             select case (macro_bin)
              case (MACRO_FLUX)
                 score = last_wgt / material_xs % total
              case (MACRO_TOTAL)
@@ -558,10 +580,10 @@ contains
     integer :: score_index             ! index in scores array for filters
     logical :: file_exists             ! does tallies.out file already exists? 
     logical :: has_filter(TALLY_TYPES) ! does tally have this filter?
-    character(MAX_LINE_LEN) :: filename                 ! name of output file
-    character(15)           :: filter_name(TALLY_TYPES) ! names of tally filters
-    character(20)           :: macro_name(6)            ! names of macro scores
-    character(80)           :: space = " "              ! spaces
+    character(MAX_LINE_LEN) :: filename                  ! name of output file
+    character(15)           :: filter_name(TALLY_TYPES)  ! names of tally filters
+    character(27)           :: macro_name(N_MACRO_TYPES) ! names of macro scores
+    character(80)           :: space = " "               ! spaces
     type(TallyObject), pointer :: t
 
     ! Skip if there are no tallies
@@ -581,6 +603,10 @@ contains
     macro_name(abs(MACRO_FLUX))       = "Flux"
     macro_name(abs(MACRO_TOTAL))      = "Total Reaction Rate"
     macro_name(abs(MACRO_SCATTER))    = "Scattering Rate"
+    macro_name(abs(MACRO_NU_SCATTER)) = "Scattering Production Rate"
+    macro_name(abs(MACRO_SCATTER_1))  = "First Scattering Moment"
+    macro_name(abs(MACRO_SCATTER_2))  = "Second Scattering Moment"
+    macro_name(abs(MACRO_SCATTER_3))  = "Third Scattering Moment"
     macro_name(abs(MACRO_ABSORPTION)) = "Absorption Rate"
     macro_name(abs(MACRO_FISSION))    = "Fission Rate"
     macro_name(abs(MACRO_NU_FISSION)) = "Nu-Fission Rate"

@@ -94,50 +94,136 @@ could be written as::
 
     </geometry>
 
-.. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
+Each ``surface`` element can have the following attributes or sub-elements:
 
-.. _quadratic surfaces: http://en.wikipedia.org/wiki/Quadric
+  :uid:
+    A unique integer that can be used to identify the surface.
 
-Types of surfaces:
+    *Default*: None
 
-``x-plane``
+  :type:
+    The type of the surfaces. This can be ``x-plane``, ``y-plane``, ``z-plane``,
+    ``plane``, ``x-cylinder``, ``y-cylinder``, ``z-cylinder``, or ``sphere``.
+
+    *Default*: None
+
+  :coeffs:
+    The corresponding coefficients for the given type of surface. See below for
+    a list a what coefficients to specify for a given surface
+
+    *Default*: None
+
+  :boundary:
+    The boundary condition for the surface. This can be ``vacuum`` or ``reflective``.
+
+    *Default*: ``reflective``
+
+Each ``cell`` element can have the following attributes or sub-elements:
+
+  :uid:
+    A unique integer that can be used to identify the surface.
+
+    *Default*: None
+
+  :universe:
+    The ``uid`` of the universe that this cell is contained in.
+
+    *Default*: 0
+
+  :fill:
+    The ``uid`` of the universe that fills this cell.
+
+    .. note:: If a fill is specified, no material should be given.
+
+    *Default*: None
+
+  :material:
+    The ``uid`` of the material that this cell contains.
+
+    .. note:: If a material is specified, no fill should be given.
+
+    *Default*: None
+
+  :surfaces:
+    A list of the ``uids`` for surfaces that bound this cell, e.g. if the cell
+    is on the negative side of surface 3 and the positive side of surface 5, the
+    bounding surfaces would be given as "-3 5".
+
+    *Default*: None
+
+The following quadratic surfaces can be modeled:
+
+:x-plane:
   A plane perpendicular to the x axis, i.e. a surface of the form :math:`x - x_0
   = 0`. The coefficients specified are ":math:`x_0`".
 
-``y-plane``
+:y-plane:
   A plane perpendicular to the y axis, i.e. a surface of the form :math:`y - y_0
   = 0`. The coefficients specified are ":math:`y_0`".
 
-``z-plane``
+:z-plane:
   A plane perpendicular to the z axis, i.e. a surface of the form :math:`z - z_0
   = 0`. The coefficients specified are ":math:`z_0`".
 
-``plane``
+:plane:
   An arbitrary plane of the form :math:`Ax + By + Cz = D`. The coefficients
   specified are ":math:`A \: B \: C \: D`".
 
-``x-cylinder``
+:x-cylinder:
   An infinite cylinder whose length is paralle to the x-axis. This is a
   quadratic surface of the form :math:`(y - y_0)^2 + (z - z_0)^2 = R^2`. The
   coefficients specified are ":math:`y_0 \: z_0 \: R`".
 
-``y-cylinder``
+:y-cylinder:
   An infinite cylinder whose length is paralle to the y-axis. This is a
   quadratic surface of the form :math:`(x - x_0)^2 + (z - z_0)^2 = R^2`. The
   coefficients specified are ":math:`x_0 \: z_0 \: R`".
 
-``z-cylinder``
+:z-cylinder:
   An infinite cylinder whose length is paralle to the z-axis. This is a
   quadratic surface of the form :math:`(x - x_0)^2 + (y - y_0)^2 = R^2`. The
   coefficients specified are ":math:`x_0 \: y_0 \: R`".
 
-``sphere``
+:sphere:
   A sphere of the form :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
   R^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0 \: R`".
+
+.. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
+
+.. _quadratic surfaces: http://en.wikipedia.org/wiki/Quadric
 
 ----------------------------------------
 Materials Specification -- materials.xml
 ----------------------------------------
+
+Each ``material`` element can have the following attributes or sub-elements:
+
+  :density:
+    An element with attributes/sub-elements called ``value`` and ``units``. The
+    ``value`` attribute is the numeric value of the density while the ``units``
+    can be "g/cm3", "kg/m3", "atom/b-cm", or "atom/cm3". For example, this could
+    be specified as::
+
+      <density value="4.5" units="g/cm3" />
+
+    *Default*: None
+
+  :nuclide:
+
+    An element with attributes/sub-elements called ``name``, ``xs``, and ``ao``
+    or ``wo``. The ``name`` attribute is the name of the cross-section for a
+    desired nuclide while the ``xs`` attribute is the cross-section
+    identifier. Finally, the ``ao`` and ``wo`` attributes specify the atom or
+    weight percent of that nuclide within the material, respectively. One
+    example would be as follows::
+
+      <nuclide name="H-1" xs="03c" ao="2.0" />
+      <nuclide name="O-16" xs="03c" ao="1.0" />
+
+    .. note:: If one nuclide is specified in atom percent, all others must also
+              be given in atom percent. The same applies for weight percentages.
+
+    *Default*: None
 
 --------------------------------------
 Settings Specification -- settings.xml

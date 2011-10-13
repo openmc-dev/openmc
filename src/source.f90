@@ -89,6 +89,7 @@ contains
 
              ! set particle energy
              p % E = E
+             p % last_E = E
           end do
        end if
     end do

@@ -217,6 +217,14 @@ contains
 
     end do
 
+    do i = 1, n_cells
+       do j = 1, size(tally_maps(T_CELL) % items(i) % elements)
+          print *, cells(i) % uid, &
+               tally_maps(T_CELL) % items(i) % elements(j) % index_tally, &
+               tally_maps(T_CELL) % items(i) % elements(j) % index_bin
+       end do
+    end do
+
   end subroutine create_tally_map
 
 !===============================================================================
@@ -259,10 +267,10 @@ contains
 ! SCORE_TALLY contains the main logic for scoring user-specified tallies
 !===============================================================================
 
-  subroutine score_tally(p, scatter)
+  subroutine score_tally(p, scattered)
 
     type(Particle), pointer :: p
-    logical, intent(in)     :: scatter
+    logical, intent(in)     :: scattered
 
     integer :: i
     integer :: j
@@ -290,7 +298,7 @@ contains
 
     do i = 1, n_tallies
        t => tallies(i)
-       
+
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
@@ -395,7 +403,7 @@ contains
              ! If this tally has an outgoing energy filter, the only supported
              ! reaction is scattering. For all other reactions, about
 
-             if (.not. scatter) return
+             if (.not. scattered) cycle
              
              ! Make sure bin is scattering -- since scattering has already
              ! occured, we do not need to multiply by the scattering cross

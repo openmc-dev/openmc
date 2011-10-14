@@ -229,7 +229,178 @@ Each ``material`` element can have the following attributes or sub-elements:
 Settings Specification -- settings.xml
 --------------------------------------
 
+All simulation parameters and miscellaneous options are specified in the
+settings.xml file. The following elements can be specified:
+
+- ``xslibrary``
+- ``criticality``
+- ``verbosity``
+- ``source``
+
+The ``xslibrary`` element has the following attributes:
+
+  :path:
+    The absolute or relative path of the xsdata file which lists cross sections
+    to be used in the simulation.
+
+    *Default*: None
+
+The ``criticality`` element indicates that a criticality calculation should be
+performed. It has the following attributes/sub-elements:
+
+  :cycles:
+    The number of total fission source iterations.
+
+    *Default*: None
+
+  :inactive:
+    The number of inactive fission source iterations. In general, the starting
+    cycles in a criticality calculation can not be used to contribute to tallies
+    since the fission source distribution and eigenvalue are generally not
+    converged immediately
+
+    *Default*: None
+
+  :particles:
+    The number of neutrons to simulate per fission source iteration.
+
+    *Default*: None
+
+The ``verbosity`` element tells the code how much information to display to the
+standard output. A higher verbosity corresponds to more information being
+displayed. This element takes the following attributes:
+
+  :value:
+    The specified verbosity between 1 and 10.
+
+    *Default*: 5
+
+The ``source`` element gives information on an initial source guess for
+criticality calculations. It takes the following attributes:
+
+  :type:
+    The type of source distribution. Currently, the only accepted option is
+    "box"
+
+  :coeffs:
+    For a "box" source distribution, ``coeffs`` should be given as six integers,
+    the first three of which specify the lower-left corner of a parallelepiped
+    and the last three of which specify the upper-right corner. Source sites are
+    sampled uniformly through that parallelepiped.
+
 ------------------------------------
 Tallies Specification -- tallies.xml
 ------------------------------------
 
+The tallies.xml file allows the user to tell the code what results he/she is
+interested in, e.g. the fission rate in a given cell or the current across a
+given surface. There are two pieces of information that determine what
+quantities should be scored. First, one needs to specify what region of phase
+space should count towards the tally and secondly, the actual quantity to be
+scored also needs to be specified. The first set of parameters we call *filters*
+since they effectively serve to filter events, allowing some to score and
+preventing others from scoring to the tally.
+
+The structure of tallies in OpenMC is flexible in that any combination of
+filters can be used for a tally. The following types of filter are available:
+cell, universe, material, surface, birth region, pre-collision energy,
+post-collision energy, and an arbitrary structured mesh.
+
+The two valid elements in the tallies.xml file are ``tally`` and ``mesh``. The
+``tally`` element accepts the following sub-elements:
+
+  :filters:
+    A list of filters to specify what region of phase space should contribute to
+    the tally. See below for full details on what filters are available.
+
+  :macros:
+    The desired responses to be accumulated. See below for full details on what
+    responses can be tallied.
+
+The following filters can be specified for a tally:
+
+  :cell:
+    A list of cells in which the tally should be accumulated.
+
+  :cellborn:
+    This filter allows the tally to be scored to only when particles were
+    originally born in a specified cell.
+
+  :surface:
+    A list of surfaces for which the tally should be accumulated.
+
+  :material:
+    A list of materials for which the tally should be accumulated.
+
+  :universe:
+    A list of universes for which the tally should be accumulated.
+
+  :energy:
+    A monotonically increasing list of bounding **pre-collision** energies for a
+    number of groups. For example, if the following energy filter is specified
+    as ``<energy>0.0 1.0 20.0</energy>``, then two energy bins will be created,
+    one with energies between 0 and 1 MeV and the other with energies between 1
+    and 20 MeV.
+
+  :energyout:
+    A monotonically increasing list of bounding **post-collision** energies for
+    a number of groups. For example, if the following energy filter is specified
+    as ``<energy>0.0 1.0 20.0</energy>``, then two energy bins will be created,
+    one with energies between 0 and 1 MeV and the other with energies between 1
+    and 20 MeV.
+
+  :mesh:
+    The ``id`` of a structured mesh to be tallied over.
+
+The following responses can be tallied.
+
+  :flux:
+    Total flux
+
+  :total:
+    Total reaction rate
+
+  :scatter:
+    Total scattering rate
+
+  :nu-scatter:
+    Total production of neutrons due to scattering. This accounts for
+    multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
+    slightly higher than the scattering rate.
+
+  :scatter-1:
+    First scattering moment
+
+  :scatter-2:
+    Second scattering moment
+
+  :scatter-3:
+    Third scattering moment
+
+  :absorption:
+    Total absorption rate. This accounts for all reactions which do not produce
+    secondary neutrons.
+
+  :fission:
+    Total fission rate
+
+  :nu-fission:
+    Total production of neutrons due to fission
+
+If a structured mesh is desired as a filter for a tally, it must be specified in
+a separate element with the tag name ``mesh``. This element has the following
+attributes/sub-elements:
+
+  :type:
+    The type of structured mesh. Valid options include "rectangular" and
+    "hexagonal".
+
+  :origin:
+    The lower-left corner of the structured mesh. If only two coordinate are
+    given, it is assumed that the mesh is an x-y mesh.
+
+  :dimension:
+    The number of mesh cells in each direction.
+
+  :width:
+    The width of mesh cells in each direction.

@@ -152,7 +152,7 @@ module constants
        N_DA        = 117
 
   ! Tally macro reactions
-  integer, parameter :: N_MACRO_TYPES = 10
+  integer, parameter :: N_MACRO_TYPES = 14
   integer, parameter :: &
        MACRO_FLUX       = -1,  & ! flux
        MACRO_TOTAL      = -2,  & ! total reaction rate
@@ -161,9 +161,13 @@ module constants
        MACRO_SCATTER_1  = -5,  & ! first scattering moment
        MACRO_SCATTER_2  = -6,  & ! second scattering moment
        MACRO_SCATTER_3  = -7,  & ! third scattering moment
-       MACRO_ABSORPTION = -8,  & ! absorption rate
-       MACRO_FISSION    = -9,  & ! fission rate
-       MACRO_NU_FISSION = -10    ! neutron production rate
+       MACRO_N_1N       = -8,  & ! (n,1n) rate
+       MACRO_N_2N       = -9,  & ! (n,2n) rate
+       MACRO_N_3N       = -10, & ! (n,3n) rate
+       MACRO_N_4N       = -11, & ! (n,4n) rate
+       MACRO_ABSORPTION = -12, & ! absorption rate
+       MACRO_FISSION    = -13, & ! fission rate
+       MACRO_NU_FISSION = -14    ! neutron production rate
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1

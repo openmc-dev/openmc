@@ -756,6 +756,14 @@ contains
                 t % macro_bins(j) % scalar = MACRO_SCATTER_2
              case ('scatter-3')
                 t % macro_bins(j) % scalar = MACRO_SCATTER_3
+             case ('n1n')
+                t % macro_bins(j) % scalar = MACRO_N_1N
+             case ('n2n')
+                t % macro_bins(j) % scalar = MACRO_N_2N
+             case ('n3n')
+                t % macro_bins(j) % scalar = MACRO_N_3N
+             case ('n4n')
+                t % macro_bins(j) % scalar = MACRO_N_4N
              case ('absorption')
                 t % macro_bins(j) % scalar = MACRO_ABSORPTION
              case ('fission')

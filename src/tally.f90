@@ -217,14 +217,6 @@ contains
 
     end do
 
-    do i = 1, n_cells
-       do j = 1, size(tally_maps(T_CELL) % items(i) % elements)
-          print *, cells(i) % uid, &
-               tally_maps(T_CELL) % items(i) % elements(j) % index_tally, &
-               tally_maps(T_CELL) % items(i) % elements(j) % index_bin
-       end do
-    end do
-
   end subroutine create_tally_map
 
 !===============================================================================
@@ -395,9 +387,10 @@ contains
 
           ! determine if we need outgoing angle
           has_outgoing_angle = (macro_bin == MACRO_NU_SCATTER .or. &
-               macro_bin == MACRO_SCATTER_1 .or. &
-               macro_bin == MACRO_SCATTER_2 .or. &
-               macro_bin == MACRO_SCATTER_3)
+               macro_bin == MACRO_SCATTER_1 .or. macro_bin == MACRO_SCATTER_2 .or. &
+               macro_bin == MACRO_SCATTER_3 .or. macro_bin == MACRO_N_1N .or. &
+               macro_bin == MACRO_N_2N .or. macro_bin == MACRO_N_3N .or. &
+               macro_bin == MACRO_N_4N)
 
           if (has_outgoing_energy .or. has_outgoing_angle) then
              ! If this tally has an outgoing energy filter, the only supported
@@ -420,6 +413,30 @@ contains
                 score = last_wgt * 0.5*(3.0*mu*mu - ONE)
              case (MACRO_SCATTER_3)
                 score = last_wgt * 0.5*(5.0*mu*mu*mu - 3.0*mu)
+             case (MACRO_N_1N)
+                if (wgt == last_wgt) then
+                   score = last_wgt
+                else
+                   cycle
+                end if
+             case (MACRO_N_2N)
+                if (int(wgt/last_wgt) == 2) then
+                   score = last_wgt
+                else
+                   cycle
+                end if
+             case (MACRO_N_3N)
+                if (int(wgt/last_wgt) == 3) then
+                   score = last_wgt
+                else
+                   cycle
+                end if
+             case (MACRO_N_4N)
+                if (int(wgt/last_wgt) == 4) then
+                   score = last_wgt
+                else
+                   cycle
+                end if
              case default
                 ! call fatal_error
              end select
@@ -615,6 +632,10 @@ contains
     macro_name(abs(MACRO_SCATTER_1))  = "First Scattering Moment"
     macro_name(abs(MACRO_SCATTER_2))  = "Second Scattering Moment"
     macro_name(abs(MACRO_SCATTER_3))  = "Third Scattering Moment"
+    macro_name(abs(MACRO_N_1N))       = "(n,1n) Rate"
+    macro_name(abs(MACRO_N_2N))       = "(n,2n) Rate"
+    macro_name(abs(MACRO_N_3N))       = "(n,3n) Rate"
+    macro_name(abs(MACRO_N_4N))       = "(n,4n) Rate"
     macro_name(abs(MACRO_ABSORPTION)) = "Absorption Rate"
     macro_name(abs(MACRO_FISSION))    = "Fission Rate"
     macro_name(abs(MACRO_NU_FISSION)) = "Nu-Fission Rate"

@@ -7,9 +7,10 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Creating XML Input Files &mdash; OpenMC v0.3.2 documentation</title>
-    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <title>Creating XML Input Files &mdash; OpenMC Documentation</title>
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
@@ -22,34 +23,32 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link rel="top" title="OpenMC v0.3.2 documentation" href="../index.html" />
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="User’s Guide" href="index.html" />
     <link rel="next" title="Development Team" href="../developers.html" />
     <link rel="prev" title="User’s Guide" href="index.html" /> 
   </head>
   <body>
-    <div class="related">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="../genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="../developers.html" title="Development Team"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="index.html" title="User’s Guide"
-             accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">OpenMC v0.3.2 documentation</a> &raquo;</li>
-          <li><a href="index.html" accesskey="U">User&#8217;s Guide</a> &raquo;</li> 
-      </ul>
-    </div>  
+      <div class="header">
+        <a href="../index.html">
+          <img class="logo" src="../_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="index.html">User&#8217;s Guide</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="../developers.html">Development Team</a>&#160;&#160;»
+        </p>
 
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body">
-            
+      </div>
+      <div class="content">
+        
+        
   <div class="section" id="creating-xml-input-files">
 <span id="usersguide-input"></span><h1>Creating XML Input Files<a class="headerlink" href="#creating-xml-input-files" title="Permalink to this headline">¶</a></h1>
 <p>Unlike many other Monte Carlo codes which use an arbitrary-format ASCII file
@@ -130,110 +129,362 @@ could be written as:</p>
 
 &lt;/geometry&gt;</pre>
 </div>
-<p>Types of surfaces:</p>
-<dl class="docutils">
-<dt><tt class="docutils literal"><span class="pre">x-plane</span></tt></dt>
-<dd>A plane perpendicular to the x axis, i.e. a surface of the form <img class="math" src="../_images/math/c97be2c5d5ea73f3537be247c4cbb9d842dd0567.png" alt="x - x_0
-= 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/17f1249ad95b7682b8316ad21de8ce4ee9fdcf93.png" alt="x_0"/>&#8221;.</dd>
-<dt><tt class="docutils literal"><span class="pre">y-plane</span></tt></dt>
-<dd>A plane perpendicular to the y axis, i.e. a surface of the form <img class="math" src="../_images/math/ce995bc4e617a85ac28c2d3c238d362a1f38bb34.png" alt="y - y_0
-= 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/721e40b7e0ac4359611aebe48cfb63122a347798.png" alt="y_0"/>&#8221;.</dd>
-<dt><tt class="docutils literal"><span class="pre">z-plane</span></tt></dt>
-<dd>A plane perpendicular to the z axis, i.e. a surface of the form <img class="math" src="../_images/math/309c87ef1ad84c2412670454fac9aea8f52c0481.png" alt="z - z_0
-= 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/bab9abe98679312d2a3308c76188cf2cbc492f68.png" alt="z_0"/>&#8221;.</dd>
-<dt><tt class="docutils literal"><span class="pre">plane</span></tt></dt>
-<dd>An arbitrary plane of the form <img class="math" src="../_images/math/eb8661ea00d3e9e10ef23de03755960eec4b554f.png" alt="Ax + By + Cz = D"/>. The coefficients
-specified are &#8220;<img class="math" src="../_images/math/5d687cb5bc98aa30d5460e4d0f34feaa8ec52008.png" alt="A \: B \: C \: D"/>&#8221;.</dd>
-<dt><tt class="docutils literal"><span class="pre">x-cylinder</span></tt></dt>
-<dd>An infinite cylinder whose length is paralle to the x-axis. This is a
+<p>Each <tt class="docutils literal"><span class="pre">surface</span></tt> element can have the following attributes or sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">uid:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the surface.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of the surfaces. This can be <tt class="docutils literal"><span class="pre">x-plane</span></tt>, <tt class="docutils literal"><span class="pre">y-plane</span></tt>, <tt class="docutils literal"><span class="pre">z-plane</span></tt>,
+<tt class="docutils literal"><span class="pre">plane</span></tt>, <tt class="docutils literal"><span class="pre">x-cylinder</span></tt>, <tt class="docutils literal"><span class="pre">y-cylinder</span></tt>, <tt class="docutils literal"><span class="pre">z-cylinder</span></tt>, or <tt class="docutils literal"><span class="pre">sphere</span></tt>.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">coeffs:</th><td class="field-body"><p class="first">The corresponding coefficients for the given type of surface. See below for
+a list a what coefficients to specify for a given surface</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">boundary:</th><td class="field-body"><p class="first">The boundary condition for the surface. This can be <tt class="docutils literal"><span class="pre">vacuum</span></tt> or <tt class="docutils literal"><span class="pre">reflective</span></tt>.</p>
+<p class="last"><em>Default</em>: <tt class="docutils literal"><span class="pre">reflective</span></tt></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>Each <tt class="docutils literal"><span class="pre">cell</span></tt> element can have the following attributes or sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">uid:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the surface.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">universe:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">uid</span></tt> of the universe that this cell is contained in.</p>
+<p><em>Default</em>: 0</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">fill:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">uid</span></tt> of the universe that fills this cell.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If a fill is specified, no material should be given.</p>
+</div>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">material:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">uid</span></tt> of the material that this cell contains.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If a material is specified, no fill should be given.</p>
+</div>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">surfaces:</th><td class="field-body"><p class="first">A list of the <tt class="docutils literal"><span class="pre">uids</span></tt> for surfaces that bound this cell, e.g. if the cell
+is on the negative side of surface 3 and the positive side of surface 5, the
+bounding surfaces would be given as &#8220;-3 5&#8221;.</p>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>The following quadratic surfaces can be modeled:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">x-plane:</th><td class="field-body">A plane perpendicular to the x axis, i.e. a surface of the form <img class="math" src="../_images/math/c97be2c5d5ea73f3537be247c4cbb9d842dd0567.png" alt="x - x_0
+= 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/17f1249ad95b7682b8316ad21de8ce4ee9fdcf93.png" alt="x_0"/>&#8221;.</td>
+</tr>
+<tr class="field"><th class="field-name">y-plane:</th><td class="field-body">A plane perpendicular to the y axis, i.e. a surface of the form <img class="math" src="../_images/math/ce995bc4e617a85ac28c2d3c238d362a1f38bb34.png" alt="y - y_0
+= 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/721e40b7e0ac4359611aebe48cfb63122a347798.png" alt="y_0"/>&#8221;.</td>
+</tr>
+<tr class="field"><th class="field-name">z-plane:</th><td class="field-body">A plane perpendicular to the z axis, i.e. a surface of the form <img class="math" src="../_images/math/309c87ef1ad84c2412670454fac9aea8f52c0481.png" alt="z - z_0
+= 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/bab9abe98679312d2a3308c76188cf2cbc492f68.png" alt="z_0"/>&#8221;.</td>
+</tr>
+<tr class="field"><th class="field-name">plane:</th><td class="field-body">An arbitrary plane of the form <img class="math" src="../_images/math/eb8661ea00d3e9e10ef23de03755960eec4b554f.png" alt="Ax + By + Cz = D"/>. The coefficients
+specified are &#8220;<img class="math" src="../_images/math/5d687cb5bc98aa30d5460e4d0f34feaa8ec52008.png" alt="A \: B \: C \: D"/>&#8221;.</td>
+</tr>
+<tr class="field"><th class="field-name">x-cylinder:</th><td class="field-body">An infinite cylinder whose length is paralle to the x-axis. This is a
 quadratic surface of the form <img class="math" src="../_images/math/c70e001674ec3ce487852ca76aab6d872c634cbf.png" alt="(y - y_0)^2 + (z - z_0)^2 = R^2"/>. The
-coefficients specified are &#8220;<img class="math" src="../_images/math/8f0dd3d5d7c73c87564b7aa9d05b3b933a107e6c.png" alt="y_0 \: z_0 \: R"/>&#8221;.</dd>
-<dt><tt class="docutils literal"><span class="pre">y-cylinder</span></tt></dt>
-<dd>An infinite cylinder whose length is paralle to the y-axis. This is a
+coefficients specified are &#8220;<img class="math" src="../_images/math/8f0dd3d5d7c73c87564b7aa9d05b3b933a107e6c.png" alt="y_0 \: z_0 \: R"/>&#8221;.</td>
+</tr>
+<tr class="field"><th class="field-name">y-cylinder:</th><td class="field-body">An infinite cylinder whose length is paralle to the y-axis. This is a
 quadratic surface of the form <img class="math" src="../_images/math/883b49d218bf8cf809fae9decb62b4231ecf964f.png" alt="(x - x_0)^2 + (z - z_0)^2 = R^2"/>. The
-coefficients specified are &#8220;<img class="math" src="../_images/math/c495d88c348c2f010641c13f26fdd9d841973a6b.png" alt="x_0 \: z_0 \: R"/>&#8221;.</dd>
-<dt><tt class="docutils literal"><span class="pre">z-cylinder</span></tt></dt>
-<dd>An infinite cylinder whose length is paralle to the z-axis. This is a
+coefficients specified are &#8220;<img class="math" src="../_images/math/c495d88c348c2f010641c13f26fdd9d841973a6b.png" alt="x_0 \: z_0 \: R"/>&#8221;.</td>
+</tr>
+<tr class="field"><th class="field-name">z-cylinder:</th><td class="field-body">An infinite cylinder whose length is paralle to the z-axis. This is a
 quadratic surface of the form <img class="math" src="../_images/math/9486fcc643d149a10bc21b05ac1e123031f400da.png" alt="(x - x_0)^2 + (y - y_0)^2 = R^2"/>. The
-coefficients specified are &#8220;<img class="math" src="../_images/math/d9efe2f18fee6e45486f86bf704b28646bcc2867.png" alt="x_0 \: y_0 \: R"/>&#8221;.</dd>
-<dt><tt class="docutils literal"><span class="pre">sphere</span></tt></dt>
-<dd>A sphere of the form <img class="math" src="../_images/math/62a745995df775198e16354b6b1ed9887e88c8a2.png" alt="(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
-R^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/e13d971231512283e81d8480a218782f7d68b585.png" alt="x_0 \: y_0 \: z_0 \: R"/>&#8221;.</dd>
-</dl>
+coefficients specified are &#8220;<img class="math" src="../_images/math/d9efe2f18fee6e45486f86bf704b28646bcc2867.png" alt="x_0 \: y_0 \: R"/>&#8221;.</td>
+</tr>
+<tr class="field"><th class="field-name">sphere:</th><td class="field-body">A sphere of the form <img class="math" src="../_images/math/62a745995df775198e16354b6b1ed9887e88c8a2.png" alt="(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
+R^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/e13d971231512283e81d8480a218782f7d68b585.png" alt="x_0 \: y_0 \: z_0 \: R"/>&#8221;.</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section" id="materials-specification-materials-xml">
 <h2>Materials Specification &#8211; materials.xml<a class="headerlink" href="#materials-specification-materials-xml" title="Permalink to this headline">¶</a></h2>
+<p>Each <tt class="docutils literal"><span class="pre">material</span></tt> element can have the following attributes or sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">density:</th><td class="field-body"><p class="first">An element with attributes/sub-elements called <tt class="docutils literal"><span class="pre">value</span></tt> and <tt class="docutils literal"><span class="pre">units</span></tt>. The
+<tt class="docutils literal"><span class="pre">value</span></tt> attribute is the numeric value of the density while the <tt class="docutils literal"><span class="pre">units</span></tt>
+can be &#8220;g/cm3&#8221;, &#8220;kg/m3&#8221;, &#8220;atom/b-cm&#8221;, or &#8220;atom/cm3&#8221;. For example, this could
+be specified as:</p>
+<div class="highlight-python"><pre>&lt;density value="4.5" units="g/cm3" /&gt;</pre>
+</div>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">nuclide:</th><td class="field-body"><p class="first">An element with attributes/sub-elements called <tt class="docutils literal"><span class="pre">name</span></tt>, <tt class="docutils literal"><span class="pre">xs</span></tt>, and <tt class="docutils literal"><span class="pre">ao</span></tt>
+or <tt class="docutils literal"><span class="pre">wo</span></tt>. The <tt class="docutils literal"><span class="pre">name</span></tt> attribute is the name of the cross-section for a
+desired nuclide while the <tt class="docutils literal"><span class="pre">xs</span></tt> attribute is the cross-section
+identifier. Finally, the <tt class="docutils literal"><span class="pre">ao</span></tt> and <tt class="docutils literal"><span class="pre">wo</span></tt> attributes specify the atom or
+weight percent of that nuclide within the material, respectively. One
+example would be as follows:</p>
+<div class="highlight-python"><pre>&lt;nuclide name="H-1" xs="03c" ao="2.0" /&gt;
+&lt;nuclide name="O-16" xs="03c" ao="1.0" /&gt;</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If one nuclide is specified in atom percent, all others must also
+be given in atom percent. The same applies for weight percentages.</p>
+</div>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
 </div>
 <div class="section" id="settings-specification-settings-xml">
 <h2>Settings Specification &#8211; settings.xml<a class="headerlink" href="#settings-specification-settings-xml" title="Permalink to this headline">¶</a></h2>
+<p>All simulation parameters and miscellaneous options are specified in the
+settings.xml file. The following elements can be specified:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">xslibrary</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">criticality</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">verbosity</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">source</span></tt></li>
+</ul>
+<p>The <tt class="docutils literal"><span class="pre">xslibrary</span></tt> element has the following attributes:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">path:</th><td class="field-body"><p class="first">The absolute or relative path of the xsdata file which lists cross sections
+to be used in the simulation.</p>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>The <tt class="docutils literal"><span class="pre">criticality</span></tt> element indicates that a criticality calculation should be
+performed. It has the following attributes/sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">cycles:</th><td class="field-body"><p class="first">The number of total fission source iterations.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">inactive:</th><td class="field-body"><p class="first">The number of inactive fission source iterations. In general, the starting
+cycles in a criticality calculation can not be used to contribute to tallies
+since the fission source distribution and eigenvalue are generally not
+converged immediately</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">particles:</th><td class="field-body"><p class="first">The number of neutrons to simulate per fission source iteration.</p>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>The <tt class="docutils literal"><span class="pre">verbosity</span></tt> element tells the code how much information to display to the
+standard output. A higher verbosity corresponds to more information being
+displayed. This element takes the following attributes:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">value:</th><td class="field-body"><p class="first">The specified verbosity between 1 and 10.</p>
+<p class="last"><em>Default</em>: 5</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>The <tt class="docutils literal"><span class="pre">source</span></tt> element gives information on an initial source guess for
+criticality calculations. It takes the following attributes:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">type:</th><td class="field-body">The type of source distribution. Currently, the only accepted option is
+&#8220;box&#8221;</td>
+</tr>
+<tr class="field"><th class="field-name">coeffs:</th><td class="field-body">For a &#8220;box&#8221; source distribution, <tt class="docutils literal"><span class="pre">coeffs</span></tt> should be given as six integers,
+the first three of which specify the lower-left corner of a parallelepiped
+and the last three of which specify the upper-right corner. Source sites are
+sampled uniformly through that parallelepiped.</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
 </div>
 <div class="section" id="tallies-specification-tallies-xml">
 <h2>Tallies Specification &#8211; tallies.xml<a class="headerlink" href="#tallies-specification-tallies-xml" title="Permalink to this headline">¶</a></h2>
+<p>The tallies.xml file allows the user to tell the code what results he/she is
+interested in, e.g. the fission rate in a given cell or the current across a
+given surface. There are two pieces of information that determine what
+quantities should be scored. First, one needs to specify what region of phase
+space should count towards the tally and secondly, the actual quantity to be
+scored also needs to be specified. The first set of parameters we call <em>filters</em>
+since they effectively serve to filter events, allowing some to score and
+preventing others from scoring to the tally.</p>
+<p>The structure of tallies in OpenMC is flexible in that any combination of
+filters can be used for a tally. The following types of filter are available:
+cell, universe, material, surface, birth region, pre-collision energy,
+post-collision energy, and an arbitrary structured mesh.</p>
+<p>The two valid elements in the tallies.xml file are <tt class="docutils literal"><span class="pre">tally</span></tt> and <tt class="docutils literal"><span class="pre">mesh</span></tt>. The
+<tt class="docutils literal"><span class="pre">tally</span></tt> element accepts the following sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">filters:</th><td class="field-body">A list of filters to specify what region of phase space should contribute to
+the tally. See below for full details on what filters are available.</td>
+</tr>
+<tr class="field"><th class="field-name">macros:</th><td class="field-body">The desired responses to be accumulated. See below for full details on what
+responses can be tallied.</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>The following filters can be specified for a tally:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">cell:</th><td class="field-body">A list of cells in which the tally should be accumulated.</td>
+</tr>
+<tr class="field"><th class="field-name">cellborn:</th><td class="field-body">This filter allows the tally to be scored to only when particles were
+originally born in a specified cell.</td>
+</tr>
+<tr class="field"><th class="field-name">surface:</th><td class="field-body">A list of surfaces for which the tally should be accumulated.</td>
+</tr>
+<tr class="field"><th class="field-name">material:</th><td class="field-body">A list of materials for which the tally should be accumulated.</td>
+</tr>
+<tr class="field"><th class="field-name">universe:</th><td class="field-body">A list of universes for which the tally should be accumulated.</td>
+</tr>
+<tr class="field"><th class="field-name">energy:</th><td class="field-body">A monotonically increasing list of bounding <strong>pre-collision</strong> energies for a
+number of groups. For example, if the following energy filter is specified
+as <tt class="docutils literal"><span class="pre">&lt;energy&gt;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&lt;/energy&gt;</span></tt>, then two energy bins will be created,
+one with energies between 0 and 1 MeV and the other with energies between 1
+and 20 MeV.</td>
+</tr>
+<tr class="field"><th class="field-name">energyout:</th><td class="field-body">A monotonically increasing list of bounding <strong>post-collision</strong> energies for
+a number of groups. For example, if the following energy filter is specified
+as <tt class="docutils literal"><span class="pre">&lt;energy&gt;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&lt;/energy&gt;</span></tt>, then two energy bins will be created,
+one with energies between 0 and 1 MeV and the other with energies between 1
+and 20 MeV.</td>
+</tr>
+<tr class="field"><th class="field-name">mesh:</th><td class="field-body">The <tt class="docutils literal"><span class="pre">id</span></tt> of a structured mesh to be tallied over.</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>The following responses can be tallied.</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">flux:</th><td class="field-body">Total flux</td>
+</tr>
+<tr class="field"><th class="field-name">total:</th><td class="field-body">Total reaction rate</td>
+</tr>
+<tr class="field"><th class="field-name">scatter:</th><td class="field-body">Total scattering rate</td>
+</tr>
+<tr class="field"><th class="field-name">nu-scatter:</th><td class="field-body">Total production of neutrons due to scattering. This accounts for
+multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
+slightly higher than the scattering rate.</td>
+</tr>
+<tr class="field"><th class="field-name">scatter-1:</th><td class="field-body">First scattering moment</td>
+</tr>
+<tr class="field"><th class="field-name">scatter-2:</th><td class="field-body">Second scattering moment</td>
+</tr>
+<tr class="field"><th class="field-name">scatter-3:</th><td class="field-body">Third scattering moment</td>
+</tr>
+<tr class="field"><th class="field-name">absorption:</th><td class="field-body">Total absorption rate. This accounts for all reactions which do not produce
+secondary neutrons.</td>
+</tr>
+<tr class="field"><th class="field-name">fission:</th><td class="field-body">Total fission rate</td>
+</tr>
+<tr class="field"><th class="field-name">nu-fission:</th><td class="field-body">Total production of neutrons due to fission</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>If a structured mesh is desired as a filter for a tally, it must be specified in
+a separate element with the tag name <tt class="docutils literal"><span class="pre">mesh</span></tt>. This element has the following
+attributes/sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">type:</th><td class="field-body">The type of structured mesh. Valid options include &#8220;rectangular&#8221; and
+&#8220;hexagonal&#8221;.</td>
+</tr>
+<tr class="field"><th class="field-name">origin:</th><td class="field-body">The lower-left corner of the structured mesh. If only two coordinate are
+given, it is assumed that the mesh is an x-y mesh.</td>
+</tr>
+<tr class="field"><th class="field-name">dimension:</th><td class="field-body">The number of mesh cells in each direction.</td>
+</tr>
+<tr class="field"><th class="field-name">width:</th><td class="field-body">The width of mesh cells in each direction.</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
 </div>
 </div>
 
 
-          </div>
-        </div>
       </div>
-      <div class="sphinxsidebar">
-        <div class="sphinxsidebarwrapper">
-  <h3><a href="../index.html">Table Of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">Creating XML Input Files</a><ul>
-<li><a class="reference internal" href="#overview-of-files">Overview of Files</a></li>
-<li><a class="reference internal" href="#geometry-specification-geometry-xml">Geometry Specification &#8211; geometry.xml</a></li>
-<li><a class="reference internal" href="#materials-specification-materials-xml">Materials Specification &#8211; materials.xml</a></li>
-<li><a class="reference internal" href="#settings-specification-settings-xml">Settings Specification &#8211; settings.xml</a></li>
-<li><a class="reference internal" href="#tallies-specification-tallies-xml">Tallies Specification &#8211; tallies.xml</a></li>
-</ul>
-</li>
-</ul>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="index.html">User&#8217;s Guide</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="../developers.html">Development Team</a>&#160;&#160;»
+        </p>
 
-  <h4>Previous topic</h4>
-  <p class="topless"><a href="index.html"
-                        title="previous chapter">User&#8217;s Guide</a></p>
-  <h4>Next topic</h4>
-  <p class="topless"><a href="../developers.html"
-                        title="next chapter">Development Team</a></p>
-  <h3>This Page</h3>
-  <ul class="this-page-menu">
-    <li><a href="../_sources/usersguide/input.txt"
-           rel="nofollow">Show Source</a></li>
-  </ul>
-<div id="searchbox" style="display: none">
-  <h3>Quick search</h3>
-    <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" size="18" />
-      <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
-    </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
-</div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
-        </div>
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="related">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="../genindex.html" title="General Index"
-             >index</a></li>
-        <li class="right" >
-          <a href="../developers.html" title="Development Team"
-             >next</a> |</li>
-        <li class="right" >
-          <a href="index.html" title="User’s Guide"
-             >previous</a> |</li>
-        <li><a href="../index.html">OpenMC v0.3.2 documentation</a> &raquo;</li>
-          <li><a href="index.html" >User&#8217;s Guide</a> &raquo;</li> 
-      </ul>
-    </div>
+
     <div class="footer">
         &copy; Copyright 2011, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.

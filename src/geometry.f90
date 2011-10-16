@@ -26,7 +26,7 @@ contains
     integer, allocatable :: expression(:) ! copy of surfaces list
     integer :: specified_sense ! specified sense of surface in list
     integer :: actual_sense    ! sense of particle wrt surface
-    integer :: n_surfaces      ! number of surfaces in cell
+    integer :: n_surf          ! number of surfaces in cell
     integer :: i               ! index of surfaces in cell
     integer :: surf_num        ! index in surfaces array (with sign)
     integer :: current_surface ! current surface of particle (with sign)
@@ -34,10 +34,10 @@ contains
 
     current_surface = p % surface
 
-    n_surfaces = size(c % surfaces)
-    allocate(expression(n_surfaces))
+    n_surf = size(c % surfaces)
+    allocate(expression(n_surf))
     expression = c % surfaces
-    do i = 1, n_surfaces
+    do i = 1, n_surf
 
        ! Don't change logical operator
        if (expression(i) >= OP_DIFFERENCE) then
@@ -511,7 +511,7 @@ contains
 
     integer, allocatable :: expression(:) ! copy of surface list
     integer :: i            ! index for surface in cell
-    integer :: n_surfaces   ! total number of surfaces to check
+    integer :: n_surf       ! total number of surfaces to check
     integer :: n1           ! number of surfaces in current cell
     integer :: n2           ! number of surfaces in parent cell
     integer :: index_surf   ! index in surfaces array (with sign)
@@ -542,10 +542,10 @@ contains
        parent_p => cells(cell_p % parent)
        n2 = parent_p % n_surfaces
     end if
-    n_surfaces = n1 + n2
+    n_surf = n1 + n2
 
     ! allocate space and assign expression
-    allocate(expression(n_surfaces))
+    allocate(expression(n_surf))
     expression(1:n1) = cell_p % surfaces
     if (cell_p % parent > 0) then
        expression(n1+1:n1+n2) = parent_p % surfaces
@@ -557,7 +557,7 @@ contains
 
     ! loop over all surfaces
     dist = INFINITY
-    do i = 1, n_surfaces
+    do i = 1, n_surf
        if (i <= n1) then
           ! in local cell, so use xyz_local
           x = p % xyz_local(1)

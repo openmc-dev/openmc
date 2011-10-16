@@ -472,6 +472,7 @@ contains
           scattered = .true.
        case (N_FISSION, N_F, N_NF, N_2NF, N_3NF)
           call create_fission_sites(p, index_nuclide, rxn, .true.)
+          p % alive = .false.
        case (N_GAMMA : N_DA)
           call n_absorption(p)
        case default
@@ -766,9 +767,6 @@ contains
 
     ! increment number of bank sites
     n_bank = min(n_bank + nu, 3*n_particles)
-
-    ! kill original neutron if no survival biasing
-    if (actual_event) p % alive = .false.
 
   end subroutine create_fission_sites
 

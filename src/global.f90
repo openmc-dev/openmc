@@ -124,6 +124,9 @@ module global
   real(8) :: weight_cutoff = 0.25
   real(8) :: weight_survive = 1.0
 
+  ! Plotting options
+  logical :: plotting = .false.
+
 contains
 
 !===============================================================================

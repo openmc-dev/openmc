@@ -7,6 +7,7 @@ program main
   use mpi_routines,    only: synchronize_bank
   use output,          only: message, header, print_runtime
   use particle_header, only: Particle
+  use plot,            only: run_plot
   use physics,         only: transport
   use tally,           only: calculate_keff
   use source,          only: get_source_particle
@@ -28,12 +29,16 @@ program main
   call initialize_run()
 
   ! start problem
-  call run_problem()
+  if (plotting) then
+     call run_plot()
+  else
+     call run_problem()
 
-  ! show timing statistics
-  call timer_stop(time_total)
-  if (master) call print_runtime()
-  if (master) call write_tallies()
+     ! show timing statistics
+     call timer_stop(time_total)
+     if (master) call print_runtime()
+     if (master) call write_tallies()
+  end if
 
   ! deallocate arrays
   call free_memory()

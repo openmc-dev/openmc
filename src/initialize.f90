@@ -78,29 +78,31 @@ contains
     ! neighboring cells for efficient tracking
     call neighbor_lists()
 
-    ! Read cross section summary file to determine what files contain
-    ! cross-sections
-    call read_xsdata(path_xsdata)
+    if (.not. plotting) then
+       ! Read cross section summary file to determine what files contain
+       ! cross-sections
+       call read_xsdata(path_xsdata)
 
-    ! With the AWRs from the xsdata, change all material specifications so that
-    ! they contain atom percents summing to 1
-    call normalize_ao()
+       ! With the AWRs from the xsdata, change all material specifications so that
+       ! they contain atom percents summing to 1
+       call normalize_ao()
 
-    ! Read ACE-format cross sections
-    call read_xs()
+       ! Read ACE-format cross sections
+       call read_xs()
 
-    ! Construct unionized energy grid from cross-sections
-    call unionized_grid()
-    call original_indices()
+       ! Construct unionized energy grid from cross-sections
+       call unionized_grid()
+       call original_indices()
 
-    ! Create tally map
-    call create_tally_map()
+       ! Create tally map
+       call create_tally_map()
 
-    ! create source particles
-    call initialize_source()
+       ! create source particles
+       call initialize_source()
+    end if
 
     ! stop timer for initialization
-    if (master) then
+    if (master .and. (.not. plotting)) then
        call echo_input()
        call print_summary()
     end if
@@ -116,8 +118,11 @@ contains
 
   subroutine read_command_line()
 
-    integer                 :: argc ! number of command line arguments
-    character(MAX_LINE_LEN) :: pwd  ! present working directory
+    integer :: i         ! loop index
+    integer :: argc      ! number of command line arguments
+    integer :: last_flag ! index of last flag
+    character(MAX_LINE_LEN) :: pwd       ! present working directory
+    character(MAX_WORD_LEN) :: argv(10)  ! command line arguments
     
     ! Get working directory
     call GET_ENVIRONMENT_VARIABLE("PWD", pwd)
@@ -125,11 +130,25 @@ contains
     ! Check number of command line arguments
     argc = COMMAND_ARGUMENT_COUNT()
 
+    ! Get all command line arguments
+    last_flag = 0
+    do i = 1, argc
+       call GET_COMMAND_ARGUMENT(i, argv(i))
+
+       ! Check for flags
+       if (starts_with(argv(i), "-")) then
+          if (argv(i)(2:5) == 'plot') then
+             plotting = .true.
+          end if
+
+          last_flag = i
+       end if
+    end do
+
     ! Determine directory where XML input files are
     if (argc > 0) then
-       call GET_COMMAND_ARGUMENT(1, path_input)
-       ! Need to add working directory if the given path is a relative
-       ! path
+       path_input = argv(last_flag + 1)
+       ! Need to add working directory if the given path is a relative path
        if (.not. starts_with(path_input, "/")) then
           path_input = trim(pwd) // "/" // trim(path_input)
        end if

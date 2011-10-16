@@ -26,6 +26,7 @@ mpi_routines.o \
 output.o \
 particle_header.o \
 physics.o \
+plot.o \
 search.o \
 source.o \
 source_header.o \

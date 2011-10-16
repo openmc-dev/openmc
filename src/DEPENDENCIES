@@ -104,6 +104,7 @@ main.o: mpi_routines.o
 main.o: output.o
 main.o: particle_header.o
 main.o: physics.o
+main.o: plot.o
 main.o: source.o
 main.o: string.o
 main.o: tally.o
@@ -145,6 +146,13 @@ physics.o: particle_header.o
 physics.o: search.o
 physics.o: string.o
 physics.o: tally.o
+
+plot.o: constants.o
+plot.o: error.o
+plot.o: geometry.o
+plot.o: geometry_header.o
+plot.o: global.o
+plot.o: particle_header.o
 
 search.o: constants.o
 search.o: error.o

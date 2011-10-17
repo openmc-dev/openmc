@@ -19,6 +19,8 @@ class Plot(object):
 
         # Create polygon object for each particle track segment
         for s in self.segments:
+            if s.cell == 0:
+                continue
             ax.add_patch(s.polygon(self.pixel))
 
         # Set range of x- and y-axes

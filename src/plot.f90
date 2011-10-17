@@ -142,7 +142,7 @@ contains
 
           ! If next boundary crossing is out of range of the plot, only include
           ! the visible portion and move to next horizontal ray
-          if (p % xyz(1) > last_x_coord) then
+          if (p % xyz(1) >= last_x_coord) then
              p % alive = .false.
              p % xyz(1) = last_x_coord
 
@@ -165,8 +165,16 @@ contains
           else
              p % surface = surf
              call cross_surface(p, last_cell)
+
+             ! Since boundary conditions are disabled in plotting mode, we need
+             ! to manually add the last segment
+             if (surfaces(surf) % bc == BC_VACUUM) then
+                p % xyz(1) = last_x_coord
+                write(UNIT=UNIT_PLOT) p % xyz, 0
+                exit
+             end if
           end if
-       
+
        end do
 
        ! Move y-coordinate to next position

@@ -4,6 +4,9 @@
 *.log
 *.out
 
+# Compiler python objects
+*.pyc
+
 # OpenMC executable
 src/openmc
 

@@ -200,7 +200,7 @@ contains
        call message(msg)
     end if
 
-    if (surf % bc == BC_VACUUM) then
+    if (surf % bc == BC_VACUUM .and. (.not. plotting)) then
        ! =======================================================================
        ! PARTICLE LEAKS OUT OF PROBLEM
 
@@ -211,7 +211,7 @@ contains
        end if
        return
 
-    elseif (surf % bc == BC_REFLECT) then
+    elseif (surf % bc == BC_REFLECT .and. (.not. plotting)) then
        ! =======================================================================
        ! PARTICLE REFLECTS FROM SURFACE
 
@@ -531,24 +531,31 @@ contains
     type(Surface), pointer  :: surf_p => null()
     type(Lattice), pointer  :: lat => null()
 
-    cell_p => cells(p%cell)
+    if (p % cell == CELL_VOID) then
+       n_surf = n_surfaces
+       allocate(expression(n_surfaces))
+       expression = (/ (i, i=1, n_surfaces) /)
+       current_surf = 0
+    else
+       cell_p => cells(p%cell)
 
-    current_surf = p%surface
+       current_surf = p%surface
 
-    ! determine number of surfaces to check
-    n1 = cell_p % n_surfaces
-    n2 = 0
-    if (cell_p % parent > 0) then
-       parent_p => cells(cell_p % parent)
-       n2 = parent_p % n_surfaces
-    end if
-    n_surf = n1 + n2
+       ! determine number of surfaces to check
+       n1 = cell_p % n_surfaces
+       n2 = 0
+       if (cell_p % parent > 0) then
+          parent_p => cells(cell_p % parent)
+          n2 = parent_p % n_surfaces
+       end if
+       n_surf = n1 + n2
 
-    ! allocate space and assign expression
-    allocate(expression(n_surf))
-    expression(1:n1) = cell_p % surfaces
-    if (cell_p % parent > 0) then
-       expression(n1+1:n1+n2) = parent_p % surfaces
+       ! allocate space and assign expression
+       allocate(expression(n_surf))
+       expression(1:n1) = cell_p % surfaces
+       if (cell_p % parent > 0) then
+          expression(n1+1:n1+n2) = parent_p % surfaces
+       end if
     end if
 
     u = p % uvw(1)

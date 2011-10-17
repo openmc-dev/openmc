@@ -126,6 +126,10 @@ module global
 
   ! Plotting options
   logical :: plotting = .false.
+  real(8) :: plot_origin(3)
+  real(8) :: plot_width(2)
+  real(8) :: plot_basis(6)
+  real(8) :: pixel
 
 contains
 

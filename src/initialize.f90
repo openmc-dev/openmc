@@ -15,7 +15,7 @@ module initialize
   use mcnp_random,      only: RN_init_problem
   use mpi_routines,     only: setup_mpi
   use output,           only: title, echo_input, message, print_summary,       &
-                              print_particle, header
+                              print_particle, header, print_plot
   use source,           only: initialize_source
   use string,           only: int_to_str, starts_with, ends_with
   use tally,            only: create_tally_map, TallyObject
@@ -102,9 +102,13 @@ contains
     end if
 
     ! stop timer for initialization
-    if (master .and. (.not. plotting)) then
-       call echo_input()
-       call print_summary()
+    if (master) then
+       if (plotting) then
+          call print_plot()
+       else
+          call echo_input()
+          call print_summary()
+       end if
     end if
 
     ! Stop initialization timer

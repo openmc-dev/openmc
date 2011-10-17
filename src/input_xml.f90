@@ -30,6 +30,7 @@ contains
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
+    if (plotting) call read_plot_xml()
 
   end subroutine read_input_xml
 
@@ -781,5 +782,58 @@ contains
     end do
 
   end subroutine read_tallies_xml
+
+!===============================================================================
+! READ_TALLIES_XML reads data from a tallies.xml file and parses it, checking
+! for errors and placing properly-formatted data in the right data structures
+!===============================================================================
+
+  subroutine read_plot_xml
+
+    use xml_data_plot_t
+
+    logical :: file_exists ! does tallies.xml file exist?
+    character(MAX_LINE_LEN) :: filename
+    character(MAX_LINE_LEN) :: msg
+
+    ! Check if plot.xml exists
+    filename = trim(path_input) // "plot.xml"
+    inquire(FILE=filename, EXIST=file_exists)
+    if (.not. file_exists) then
+       msg = "Plot XML file '" // trim(filename) // "' does not exist!"
+       call fatal_error(msg)
+    end if
+    
+    ! Display output message
+    msg = "Reading plot XML file..."
+    call message(msg, 5)
+
+    ! Parse plot.xml file
+    call read_xml_file_plot_t(filename)
+
+    ! Copy plotting origin
+    if (size(origin_) == 3) then
+       plot_origin = origin_
+    end if
+
+    ! Copy plotting width
+    if (size(width_) == 2) then
+       plot_width = width_
+    end if
+
+    ! Read basis
+    select case (basis_)
+    case ("xy")
+       plot_basis = (/ 1, 0, 0, 0, 1, 0 /)
+    case ("yz")
+       plot_basis = (/ 0, 1, 0, 0, 0, 1 /)
+    case ("xz")
+       plot_basis = (/ 1, 0, 0, 0, 0, 1 /)
+    end select
+
+    ! Read pixel width
+    pixel = pixel_
+
+  end subroutine read_plot_xml
 
 end module input_xml

@@ -716,6 +716,33 @@ contains
   end subroutine print_summary
 
 !===============================================================================
+! PRINT_PLOT displays selected options for plotting
+!===============================================================================
+
+  subroutine print_plot()
+
+    ! Display header for plotting
+    call header("PLOTTING SUMMARY")
+
+    ! Print plotting origin
+    write(ou,100) "Plotting Origin:", trim(real_to_str(plot_origin(1))) // &
+         " " // trim(real_to_str(plot_origin(2))) // " " // &
+         trim(real_to_str(plot_origin(3)))
+
+    ! Print plotting width
+    write(ou,100) "Plotting Width:", trim(real_to_str(plot_width(1))) // &
+         " " // trim(real_to_str(plot_width(2)))
+
+    ! Print pixel width
+    write(ou,100) "Pixel Width:", trim(real_to_str(pixel))
+    write(ou,*)
+
+    ! Format descriptor for columns
+100 format (1X,A,T25,A)
+
+  end subroutine print_plot
+
+!===============================================================================
 ! PRINT_RUNTIME displays the total time elapsed for the entire run, for
 ! initialization, for computation, and for intercycle synchronization.
 !===============================================================================

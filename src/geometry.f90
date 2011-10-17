@@ -176,6 +176,8 @@ contains
 
     integer                 :: i          ! index of neighbors
     integer                 :: index_cell ! index in cells array
+    integer                 :: i_x        ! x index in lattice
+    integer                 :: i_y        ! y index in lattice
     real(8)                 :: x          ! x-x0 for sphere
     real(8)                 :: y          ! y-y0 for sphere
     real(8)                 :: z          ! z-z0 for sphere
@@ -190,8 +192,9 @@ contains
     real(8)                 :: norm       ! "norm" of surface normal
     logical                 :: found      ! particle found in universe?
     character(MAX_LINE_LEN) :: msg        ! output/error message?
-    type(Surface),  pointer :: surf
-    type(Cell),     pointer :: c
+    type(Surface),  pointer :: surf => null()
+    type(Cell),     pointer :: c => null()
+    type(Lattice),  pointer :: lat => null()
     type(Universe), pointer :: lower_univ => null()
 
     surf => surfaces(abs(p % surface))
@@ -332,6 +335,31 @@ contains
                    msg = "Could not locate particle in universe: "
                    call fatal_error(msg)
                 end if
+             elseif (c % type == CELL_LATTICE) then
+                ! Set current lattice
+                lat => lattices(c % fill)
+                p % lattice = c % fill
+
+                ! determine universe based on lattice position
+                i_x = ceiling((p%xyz(1) - lat%x0)/lat%width_x)
+                i_y = ceiling((p%xyz(2) - lat%y0)/lat%width_y)
+                lower_univ => universes(lat % element(i_x,i_y))
+
+                ! adjust local position of particle
+                p%xyz_local(1) = p%xyz(1) - (lat%x0 + (i_x-0.5)*lat%width_x)
+                p%xyz_local(2) = p%xyz(2) - (lat%y0 + (i_y-0.5)*lat%width_y)
+                p%xyz_local(3) = p%xyz(3)
+             
+                ! set particle lattice indices
+                p % index_x = i_x
+                p % index_y = i_y
+
+                call find_cell(lower_univ, p, found)
+                if (.not. found) then
+                   msg = "Could not locate particle in lattice: " & 
+                        & // int_to_str(lat % uid)
+                   call fatal_error(msg)
+                end if
              else
                 ! set current pointers
                 p % cell = index_cell
@@ -352,6 +380,31 @@ contains
                 call find_cell(lower_univ, p, found)
                 if (.not. found) then
                    msg = "Could not locate particle in universe: "
+                   call fatal_error(msg)
+                end if
+             elseif (c % type == CELL_LATTICE) then
+                ! Set current lattice
+                lat => lattices(c % fill)
+                p % lattice = c % fill
+
+                ! determine universe based on lattice position
+                i_x = ceiling((p%xyz(1) - lat%x0)/lat%width_x)
+                i_y = ceiling((p%xyz(2) - lat%y0)/lat%width_y)
+                lower_univ => universes(lat % element(i_x,i_y))
+
+                ! adjust local position of particle
+                p%xyz_local(1) = p%xyz(1) - (lat%x0 + (i_x-0.5)*lat%width_x)
+                p%xyz_local(2) = p%xyz(2) - (lat%y0 + (i_y-0.5)*lat%width_y)
+                p%xyz_local(3) = p%xyz(3)
+             
+                ! set particle lattice indices
+                p % index_x = i_x
+                p % index_y = i_y
+
+                call find_cell(lower_univ, p, found)
+                if (.not. found) then
+                   msg = "Could not locate particle in lattice: " & 
+                        & // int_to_str(lat % uid)
                    call fatal_error(msg)
                 end if
              else

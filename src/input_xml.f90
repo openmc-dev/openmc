@@ -745,8 +745,17 @@ contains
              select case (trim(word))
              case ('flux')
                 t % macro_bins(j) % scalar = MACRO_FLUX
+                if (t % n_bins(T_ENERGYOUT) > 0) then
+                   msg = "Cannot tally flux with an outgoing energy filter."
+                   call fatal_error(msg)
+                end if
              case ('total')
                 t % macro_bins(j) % scalar = MACRO_TOTAL
+                if (t % n_bins(T_ENERGYOUT) > 0) then
+                   msg = "Cannot tally total reaction rate with an outgoing " &
+                        // "energy filter."
+                   call fatal_error(msg)
+                end if
              case ('scatter')
                 t % macro_bins(j) % scalar = MACRO_SCATTER
              case ('nu-scatter')
@@ -767,10 +776,26 @@ contains
                 t % macro_bins(j) % scalar = MACRO_N_4N
              case ('absorption')
                 t % macro_bins(j) % scalar = MACRO_ABSORPTION
+                if (t % n_bins(T_ENERGYOUT) > 0) then
+                   msg = "Cannot tally absorption rate with an outgoing " &
+                        // "energy filter."
+                   call fatal_error(msg)
+                end if
              case ('fission')
                 t % macro_bins(j) % scalar = MACRO_FISSION
+                if (t % n_bins(T_ENERGYOUT) > 0) then
+                   msg = "Cannot tally fission rate with an outgoing " &
+                        // "energy filter."
+                   call fatal_error(msg)
+                end if
              case ('nu-fission')
                 t % macro_bins(j) % scalar = MACRO_NU_FISSION
+                ! TODO: Add fission energy transfer and remove this
+                if (t % n_bins(T_ENERGYOUT) > 0) then
+                   msg = "Cannot tally nu-fission rate with an outgoing " &
+                        // "energy filter."
+                   call fatal_error(msg)
+                end if
              case default
                 msg = "Unknown macro reaction: " // trim(words(j))
                 call fatal_error(msg)

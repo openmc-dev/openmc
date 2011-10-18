@@ -259,24 +259,30 @@ contains
 ! SCORE_TALLY contains the main logic for scoring user-specified tallies
 !===============================================================================
 
-  subroutine score_tally(p, scattered)
+  subroutine score_tally(p, scattered, fissioned)
 
     type(Particle), pointer :: p
     logical, intent(in)     :: scattered
+    logical, intent(in)     :: fissioned
 
     integer :: i
     integer :: j
+    integer :: k
     integer :: n
     integer :: bins(TALLY_TYPES)
+    integer :: bin_energyout
     integer :: score_index
+    integer :: score_index0
     integer :: macro_bin
     real(8) :: score
     real(8) :: last_wgt
     real(8) :: wgt
     real(8) :: mu
+    real(8) :: E_out
     logical :: in_mesh
-    logical :: has_outgoing_energy
-    logical :: has_outgoing_angle
+    logical :: has_energyout_bin
+    logical :: analog
+    character(MAX_LINE_LEN) :: msg
     type(TallyObject),    pointer :: t
     type(StructuredMesh), pointer :: m
 
@@ -364,10 +370,10 @@ contains
 
           ! search to find incoming energy bin
           bins(T_ENERGYOUT) = binary_search(t % energy_out, n + 1, p % E)
-          has_outgoing_energy = .true.
+          has_energyout_bin = .true.
        else
           bins(T_ENERGYOUT) = 1
-          has_outgoing_energy = .false.
+          has_energyout_bin = .false.
        end if
 
        ! =======================================================================
@@ -386,60 +392,110 @@ contains
           macro_bin = t % macro_bins(j) % scalar
 
           ! determine if we need outgoing angle
-          has_outgoing_angle = (macro_bin == MACRO_NU_SCATTER .or. &
+          analog = (macro_bin == MACRO_NU_SCATTER .or. &
                macro_bin == MACRO_SCATTER_1 .or. macro_bin == MACRO_SCATTER_2 .or. &
                macro_bin == MACRO_SCATTER_3 .or. macro_bin == MACRO_N_1N .or. &
                macro_bin == MACRO_N_2N .or. macro_bin == MACRO_N_3N .or. &
                macro_bin == MACRO_N_4N)
 
-          if (has_outgoing_energy .or. has_outgoing_angle) then
+          if (has_energyout_bin .or. analog) then
              ! If this tally has an outgoing energy filter, the only supported
-             ! reaction is scattering. For all other reactions, about
+             ! reaction is scattering or nu-fission. Note that some macro
+             ! quantities can only be scored in analog such as scattering
+             ! moments and (n,xn)
 
-             if (.not. scattered) cycle
-             
-             ! Make sure bin is scattering -- since scattering has already
-             ! occured, we do not need to multiply by the scattering cross
-             ! section
+             if ((.not. scattered) .and. (.not. fissioned)) cycle
 
-             select case (macro_bin)
-             case (MACRO_SCATTER)
-                score = last_wgt
-             case (MACRO_NU_SCATTER)
-                score = wgt
-             case (MACRO_SCATTER_1)
-                score = last_wgt * mu
-             case (MACRO_SCATTER_2)
-                score = last_wgt * 0.5*(3.0*mu*mu - ONE)
-             case (MACRO_SCATTER_3)
-                score = last_wgt * 0.5*(5.0*mu*mu*mu - 3.0*mu)
-             case (MACRO_N_1N)
-                if (wgt == last_wgt) then
+             if (scattered) then
+                ! since scattering has already occured, we do not need to
+                ! multiply by the scattering cross section
+
+                select case (macro_bin)
+                case (MACRO_SCATTER)
                    score = last_wgt
-                else
+                case (MACRO_NU_SCATTER)
+                   score = wgt
+                case (MACRO_SCATTER_1)
+                   score = last_wgt * mu
+                case (MACRO_SCATTER_2)
+                   score = last_wgt * 0.5*(3.0*mu*mu - ONE)
+                case (MACRO_SCATTER_3)
+                   score = last_wgt * 0.5*(5.0*mu*mu*mu - 3.0*mu)
+                case (MACRO_N_1N)
+                   if (wgt == last_wgt) then
+                      score = last_wgt
+                   else
+                      cycle
+                   end if
+                case (MACRO_N_2N)
+                   if (int(wgt/last_wgt) == 2) then
+                      score = last_wgt
+                   else
+                      cycle
+                   end if
+                case (MACRO_N_3N)
+                   if (int(wgt/last_wgt) == 3) then
+                      score = last_wgt
+                   else
+                      cycle
+                   end if
+                case (MACRO_N_4N)
+                   if (int(wgt/last_wgt) == 4) then
+                      score = last_wgt
+                   else
+                      cycle
+                   end if
+                case (MACRO_NU_FISSION)
                    cycle
-                end if
-             case (MACRO_N_2N)
-                if (int(wgt/last_wgt) == 2) then
-                   score = last_wgt
-                else
-                   cycle
-                end if
-             case (MACRO_N_3N)
-                if (int(wgt/last_wgt) == 3) then
-                   score = last_wgt
-                else
-                   cycle
-                end if
-             case (MACRO_N_4N)
-                if (int(wgt/last_wgt) == 4) then
-                   score = last_wgt
-                else
-                   cycle
-                end if
-             case default
-                ! call fatal_error
-             end select
+                case default
+                   msg = "Invalid macro reaction on analog tally."
+                   call fatal_error(msg)
+                end select
+             end if
+
+             if (fissioned) then
+
+                if (macro_bin /= MACRO_NU_FISSION) cycle
+
+                ! Normally, we only need to make contributions to one scoring
+                ! bin. However, in the case of fission, since multiple fission
+                ! neutrons were emitted with different energies, multiple
+                ! outgoing energy bins may have been scored to. The following
+                ! logic treats this special case and scores to multiple bins
+
+                ! save original outgoing energy bin and score index
+                bin_energyout = bins(T_ENERGYOUT)
+                score_index0 = score_index
+
+                ! loop over number of particles banked
+                do k = 1, p % n_bank
+                   ! determine outgoing energy from fission bank
+                   E_out = fission_bank(n_bank - p % n_bank + k) % E
+
+                   ! change outgoing energy bin
+                   bins(T_ENERGYOUT) = binary_search(t % energy_out, n + 1, E_out)
+
+                   ! determine scoring index
+                   score_index = sum((bins - 1) * t % stride) + 1
+
+                   ! Since the creation of fission sites is weighted such that
+                   ! it is expected to create n_particles sites, we need to
+                   ! multiply the score by keff to get the true nu-fission
+                   ! rate. Otherwise, the sum of all nu-fission rates would be
+                   ! ~1.0.
+
+                   score = keff
+
+                   ! Add score to tally
+                   call add_to_score(t % scores(score_index, j), score)
+                end do
+
+                ! reset outgoing energy bin and score index
+                bins(T_ENERGYOUT) = bin_energyout 
+                score_index = score_index0
+                cycle
+
+             end if
           else
              ! For tallies with no outgoing energy filter, the score is
              ! calculated normally depending on the quantity specified

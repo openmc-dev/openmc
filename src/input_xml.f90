@@ -790,12 +790,6 @@ contains
                 end if
              case ('nu-fission')
                 t % macro_bins(j) % scalar = MACRO_NU_FISSION
-                ! TODO: Add fission energy transfer and remove this
-                if (t % n_bins(T_ENERGYOUT) > 0) then
-                   msg = "Cannot tally nu-fission rate with an outgoing " &
-                        // "energy filter."
-                   call fatal_error(msg)
-                end if
              case default
                 msg = "Unknown macro reaction: " // trim(words(j))
                 call fatal_error(msg)

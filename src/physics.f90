@@ -285,13 +285,15 @@ contains
     real(8) :: scatter       ! microscopic scattering cross-section
     real(8) :: inelastic     ! microscopic inelastic scattering cross-section
     logical :: scattered     ! was this a scattering reaction?
+    logical :: fissioned     ! was this a fission reaction?
     character(MAX_LINE_LEN) :: msg ! output/error message
     type(Material), pointer :: mat
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
-    ! Set scatter to false by default
+    ! Set scattered/fissioned to false by default
     scattered = .false.
+    fissioned = .false.
 
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
@@ -433,7 +435,6 @@ contains
           call inelastic_scatter(p, nuc, rxn)
        end if
 
-
        ! With survival biasing, the particle will always scatter
        scattered = .true.
 
@@ -472,6 +473,7 @@ contains
           scattered = .true.
        case (N_FISSION, N_F, N_NF, N_2NF, N_3NF)
           call create_fission_sites(p, index_nuclide, rxn, .true.)
+          fissioned = .true.
           p % alive = .false.
        case (N_GAMMA : N_DA)
           call n_absorption(p)
@@ -500,8 +502,11 @@ contains
     ! filter
 
     if (tallies_on) then
-       call score_tally(p, scattered)
+       call score_tally(p, scattered, fissioned)
     end if
+
+    ! Reset number of particles banked during collision
+    p % n_bank = 0
 
     ! find energy index, interpolation factor
     call find_energy_index(p)
@@ -767,6 +772,7 @@ contains
 
     ! increment number of bank sites
     n_bank = min(n_bank + nu, 3*n_particles)
+    p % n_bank = nu
 
   end subroutine create_fission_sites
 

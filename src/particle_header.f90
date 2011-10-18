@@ -27,6 +27,9 @@ module particle_header
      real(8)    :: last_wgt      ! last particle weight
      real(8)    :: last_E        ! last energy
 
+     ! Post-collision physical data
+     integer    :: n_bank        ! number of fission sites banked
+
      ! Energy grid data
      integer    :: IE            ! index on energy grid
      real(8)    :: interp        ! interpolation factor for energy grid
@@ -65,6 +68,7 @@ contains
     p % type          = NEUTRON
     p % wgt           = ONE
     p % alive         = .true.
+    p % n_bank        = 0
     p % cell          = 0
     p % cell_born     = 0
     p % universe      = 0

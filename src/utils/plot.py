@@ -195,5 +195,11 @@ if __name__ == '__main__':
         filename = sys.argv[1]
 
         p = Plot()
+
+        # Load binary plot.out file
+        print("Loading plotting file...")
         p.load_file(filename)
+
+        # Display plot
+        print("Generating plot...")
         p.plot()

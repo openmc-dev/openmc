@@ -28,7 +28,6 @@ contains
     real(8) :: distance       ! distance particle travels
     logical :: found_cell     ! found cell which particle is in?
     logical :: in_lattice     ! is surface crossing in lattice?
-    character(MAX_LINE_LEN) :: msg   ! output/error message
     character(MAX_LINE_LEN) :: path_plot ! unit for binary plot file
     type(Cell),     pointer :: c    => null()
     type(Universe), pointer :: univ => null()

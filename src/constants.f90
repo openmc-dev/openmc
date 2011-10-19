@@ -153,7 +153,7 @@ module constants
        N_DA        = 117
 
   ! Tally macro reactions
-  integer, parameter :: N_MACRO_TYPES = 14
+  integer, parameter :: N_MACRO_TYPES = 15
   integer, parameter :: &
        MACRO_FLUX       = -1,  & ! flux
        MACRO_TOTAL      = -2,  & ! total reaction rate
@@ -168,7 +168,8 @@ module constants
        MACRO_N_4N       = -11, & ! (n,4n) rate
        MACRO_ABSORPTION = -12, & ! absorption rate
        MACRO_FISSION    = -13, & ! fission rate
-       MACRO_NU_FISSION = -14    ! neutron production rate
+       MACRO_NU_FISSION = -14, & ! neutron production rate
+       MACRO_CURRENT    = -15    ! partial current
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1

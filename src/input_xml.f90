@@ -790,6 +790,46 @@ contains
                 end if
              case ('nu-fission')
                 t % macro_bins(j) % scalar = MACRO_NU_FISSION
+             case ('current')
+                t % macro_bins(j) % scalar = MACRO_CURRENT
+                t % surface_current = .true.
+
+                ! Check to make sure that current is the only desired response
+                ! for this tally
+                if (n_words > 1) then
+                   msg = "Cannot tally other macro reactions in the same " &
+                        // "tally as surface currents. Separate other macro " &
+                        // "reactions into a distinct tally."
+                   call fatal_error(msg)
+                end if
+
+                ! Check to make sure that only the mesh filter was specified
+                if (t % mesh == 0 .or. t % n_bins(T_MESH) /= & 
+                     product(t % n_bins, t % n_bins > 0)) then
+                   msg = "Surface currents must be used with a mesh filter only."
+                   call fatal_error(msg)
+                end if
+
+                ! Since the number of bins for the mesh filter was already set
+                ! assuming it was a flux tally, we need to adjust the number of
+                ! bins
+                t % n_bins(T_MESH) = t % n_bins(T_MESH) - product(m % dimension)
+
+                ! Get pointer to mesh
+                uid = t % mesh
+                index = dict_get_key(mesh_dict, uid)
+                m => meshes(index)
+
+                ! We need to increase the dimension by one since we also need
+                ! currents coming into and out of the boundary mesh cells.
+                if (size(m % dimension) == 2) then
+                   t % n_bins(T_MESH) = t % n_bins(T_MESH) + &
+                        product(m % dimension + 1) * 4
+                elseif (size(m % dimension) == 3) then
+                   t % n_bins(T_MESH) = t % n_bins(T_MESH) + &
+                        product(m % dimension + 1) * 6
+                end if
+
              case default
                 msg = "Unknown macro reaction: " // trim(words(j))
                 call fatal_error(msg)

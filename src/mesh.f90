@@ -1,10 +1,198 @@
 module mesh
 
+  use constants
   use mesh_header
+  use particle_header, only: Particle
 
   implicit none
 
 contains
+
+!===============================================================================
+! SURFACE_CROSSINGS
+!===============================================================================
+
+  subroutine surface_crossings(m, p)
+
+    type(StructuredMesh), pointer :: m
+    type(Particle),       pointer :: p
+
+    integer :: i, j
+    integer :: ijk0(3)
+    integer :: ijk1(3)
+    integer :: ijkd_cross(4) ! (i,j,k) and direction of crossing
+    integer :: n_cross
+    real(8) :: uvw(3)
+    real(8) :: xyz0(3)
+    real(8) :: xyz1(3)
+    real(8) :: xyz_cross(3)
+    real(8) :: d(3)
+    real(8) :: distance
+    logical :: start_in_mesh
+    logical :: end_in_mesh
+    logical :: x_same
+    logical :: y_same
+    logical :: z_same
+
+    ! Copy starting and ending location of particle
+    xyz0 = p % last_xyz
+    xyz1 = p % xyz
+
+    ! Determine indices for starting and ending location
+    call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
+    write (*,'(A,1X,3I5)') 'Particle starts in:', ijk0
+
+    call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
+    write (*,'(A,1X,3I5)') 'Particle ends in:', ijk1
+
+    ! Check to make sure start or end is in mesh
+    if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) return
+
+    ! Calculate number of surface crossings
+    n_cross = sum(abs(ijk1 - ijk0))
+    write (*,'(A,1X,I5)') 'Number of surface crossings:', n_cross
+    if (n_cross == 0) return
+
+    ! Copy particle's direction
+    uvw = p % uvw
+
+    ! ==========================================================================
+    ! SPECIAL CASES WHERE TWO INDICES ARE THE SAME
+
+    x_same = (ijk0(1) == ijk1(1))
+    y_same = (ijk0(2) == ijk1(2))
+    z_same = (ijk0(3) == ijk1(3))
+
+    if (x_same .and. y_same) then
+       ! Only z crossings
+       print *, "Only z crossings"
+       if (uvw(3) > 0) then
+          do i = ijk0(3), ijk1(3) - 1
+             ijk0(3) = i
+             print *, ijk0, "OUT_TOP"
+          end do
+       else
+          do i = ijk0(3) - 1, ijk1(3), -1
+             ijk0(3) = i
+             print *, ijk0, "IN_TOP"
+          end do
+       end if
+       return
+    elseif (x_same .and. z_same) then
+       ! Only y crossings
+       print *, "Only y crossings"
+       if (uvw(2) > 0) then
+          do i = ijk0(2), ijk1(2) - 1
+             ijk0(2) = i
+             print *, ijk0, "OUT_TOP"
+          end do
+       else
+          do i = ijk0(2) - 1, ijk1(2), -1
+             ijk0(2) = i
+             print *, ijk0, "IN_TOP"
+          end do
+       end if
+       return
+    elseif (y_same .and. z_same) then
+       ! Only x crossings
+       print *, "Only x crossings"
+       if (uvw(1) > 0) then
+          do i = ijk0(1), ijk1(1) - 1
+             ijk0(1) = i
+             print *, ijk0, "OUT_TOP"
+          end do
+       else
+          do i = ijk0(1) - 1, ijk1(1), -1
+             ijk0(1) = i
+             print *, ijk0, "IN_TOP"
+          end do
+       end if
+       return
+    end if
+
+    ! ==========================================================================
+    ! GENERIC CASE
+
+    ! Bounding coordinates
+    do i = 1, 3
+       if (uvw(i) > 0) then
+          xyz_cross(i) = m % origin(i) + ijk0(i) * m % width(i)
+       else
+          xyz_cross(i) = m % origin(i) + (ijk0(i) - 1) * m % width(i)
+       end if
+    end do
+
+    do i = 1, n_cross
+       ! Calculate distance to each bounding surface. We need to treat special
+       ! case where the cosine of the angle is zero since this would result in a
+       ! divide-by-zero.
+
+       do j = 1, 3
+          if (uvw(j) == 0) then
+             d(j) = INFINITY
+          else
+             d(j) = (xyz_cross(j) - xyz0(j))/uvw(j)
+          end if
+       end do
+
+       ! Determine the closest bounding surface of the mesh cell by calculating
+       ! the minimum distance
+
+       distance = minval(d)
+
+       ! Now use the minimum distance and diretion of the particle to determine
+       ! which surface was crossed
+
+       if (distance == d(1)) then
+          if (uvw(1) > 0) then
+             ! Crossing into right mesh cell -- this is treated as outgoing
+             ! current from (i,j,k)
+             print *, ijk0, "OUT_RIGHT"
+             ijk0(1) = ijk0(1) + 1
+             xyz_cross(1) = xyz_cross(1) + m % width(1)
+          else
+             ! Crossing into left mesh cell -- this is treated as incoming
+             ! current in (i-1,j,k)
+             ijk0(1) = ijk0(1) - 1
+             xyz_cross(1) = xyz_cross(1) - m % width(1)
+             print *, ijk0, "IN_RIGHT"
+
+          end if
+       elseif (distance == d(2)) then
+          if (uvw(2) > 0) then
+             ! Crossing into front mesh cell -- this is treated as outgoing
+             ! current in (i,j,k)
+             print *, ijk0, "OUT_FRONT"
+             ijk0(2) = ijk0(2) + 1
+             xyz_cross(2) = xyz_cross(2) + m % width(2)
+          else
+             ! Crossing into back mesh cell -- this is treated as incoming
+             ! current in (i,j-1,k)
+             ijk0(2) = ijk0(2) - 1
+             xyz_cross(2) = xyz_cross(2) - m % width(2)
+             print *, ijk0, "IN_FRONT"
+          end if
+       else if (distance == d(3)) then
+          if (uvw(3) > 0) then
+             ! Crossing into top mesh cell -- this is treated as outgoing
+             ! current in (i,j,k)
+             print *, ijk0, "OUT_TOP"
+             ijk0(3) = ijk0(3) + 1
+             xyz_cross(3) = xyz_cross(3) + m % width(3)
+          else
+             ! Crossing into bottom mesh cell -- this is treated as incoming
+             ! current in (i,j,k-1)
+             ijk0(3) = ijk0(3) - 1
+             xyz_cross(3) = xyz_cross(3) - m % width(3)
+             print *, ijk0, "IN_TOP"
+          end if
+       end if
+
+       ! Calculate new coordinates
+       xyz0 = xyz0 + distance * uvw
+    end do
+
+  end subroutine surface_crossings
 
 !===============================================================================
 ! GET_MESH_BIN determines the tally bin for a particle in a structured mesh

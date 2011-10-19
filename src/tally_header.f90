@@ -61,6 +61,7 @@ module tally_header
      integer :: uid
      integer :: type
      real(8) :: volume
+     logical :: surface_current = .false.
 
      ! Tally bin specifications
 

@@ -274,6 +274,7 @@ contains
     integer :: score_index
     integer :: score_index0
     integer :: macro_bin
+    integer :: mesh_bin
     real(8) :: score
     real(8) :: last_wgt
     real(8) :: wgt
@@ -343,8 +344,17 @@ contains
        ! determine mesh bin
        if (t % n_bins(T_MESH) > 0) then
           m => meshes(t % mesh)
-          call get_mesh_bin(m, p % xyz, bins(T_MESH), in_mesh)
+
+          ! Determine if we're in the mesh first
+          call get_mesh_bin(m, p % xyz, mesh_bin, in_mesh)
           if (.not. in_mesh) cycle
+
+          if (t % surface_current) then
+             msg = "Surface current mesh tally not yet implemented."
+             call fatal_error(msg)
+          else
+             bins(T_MESH) = mesh_bin
+          end if
        else
           bins(T_MESH) = 1
        end if

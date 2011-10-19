@@ -3,14 +3,14 @@ test_objects = $(source:.f90=.o)
 executables = $(basename $(source))
 
 objects = ../search.o ../constants.o ../error.o ../global.o
-objects += ../mesh.o ../mesh_header.o
+objects += ../mesh.o ../mesh_header.o ../particle_header.o
 
 #===============================================================================
 # Compiler Options
 #===============================================================================
 
 F90 = ifort
-F90FLAGS = -I..
+F90FLAGS = -I.. -g -traceback
 LDFLAGS = 
 
 #===============================================================================
@@ -18,7 +18,7 @@ LDFLAGS =
 #===============================================================================
 
 all: $(executables)
-$(executables): $(test_objects) $(objects)
+$(executables): $(test_objects)
 	$(F90) $(LDFLAGS) $@.o $(objects) -o $@
 clean:
 	@rm -f *.o *.mod $(executables)

@@ -24,6 +24,7 @@ module particle_header
      logical    :: alive         ! is particle alive?
 
      ! Pre-collision physical data
+     real(8)    :: last_xyz(3)   ! previous coordinates
      real(8)    :: last_wgt      ! last particle weight
      real(8)    :: last_E        ! last energy
 

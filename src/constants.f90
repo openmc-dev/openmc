@@ -186,6 +186,15 @@ module constants
        T_ENERGYIN  = 7, &
        T_ENERGYOUT = 8
 
+  ! Tally surface current directions
+  integer, parameter :: &
+       IN_RIGHT  = 1,   &
+       OUT_RIGHT = 2,   &
+       IN_FRONT  = 3,   &
+       OUT_FRONT = 4,   &
+       IN_TOP    = 5,   &
+       OUT_TOP   = 6
+
   ! Fission neutron emission (nu) type
   integer, parameter ::   &
        NU_NONE       = 0, & ! No nu values (non-fissionable)

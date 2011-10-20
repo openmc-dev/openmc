@@ -86,12 +86,12 @@ contains
        if (uvw(2) > 0) then
           do i = ijk0(2), ijk1(2) - 1
              ijk0(2) = i
-             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "OUT_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "OUT_FRONT"
           end do
        else
           do i = ijk0(2) - 1, ijk1(2), -1
              ijk0(2) = i
-             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "IN_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "IN_FRONT"
           end do
        end if
        return
@@ -101,12 +101,12 @@ contains
        if (uvw(1) > 0) then
           do i = ijk0(1), ijk1(1) - 1
              ijk0(1) = i
-             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "OUT_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "OUT_RIGHT"
           end do
        else
           do i = ijk0(1) - 1, ijk1(1), -1
              ijk0(1) = i
-             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "IN_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "IN_RIGHT"
           end do
        end if
        return

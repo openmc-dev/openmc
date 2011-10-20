@@ -69,6 +69,7 @@ contains
              p % uid = j
              p % xyz = p_min + r*(p_max - p_min)
              p % xyz_local = p % xyz
+             p % last_xyz = p % xyz
 
              ! sample angle
              phi = TWO*PI*rang()

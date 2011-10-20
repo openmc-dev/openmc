@@ -354,6 +354,7 @@ contains
 
        p % xyz       = temp_bank(i) % xyz
        p % xyz_local = temp_bank(i) % xyz
+       p % last_xyz  = temp_bank(i) % xyz
        p % uvw       = temp_bank(i) % uvw
        p % E         = temp_bank(i) % E
        p % last_E    = p % E

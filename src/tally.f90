@@ -4,7 +4,8 @@ module tally
   use cross_section, only: get_macro_xs
   use error,         only: fatal_error
   use global
-  use mesh,          only: get_mesh_bin, bin_to_mesh_indices
+  use mesh,          only: get_mesh_bin, bin_to_mesh_indices, get_mesh_indices
+  use mesh_header,   only: StructuredMesh
   use output,        only: message, header
   use search,        only: binary_search
   use string,        only: int_to_str, real_to_str
@@ -103,7 +104,8 @@ contains
     integer :: filter_bins         ! running total of number of filter bins
     integer :: score_bins          ! number of scoring bins
     character(MAX_LINE_LEN) :: msg ! output/error message
-    type(TallyObject), pointer :: t => null()
+    type(TallyObject),    pointer :: t => null()
+    type(StructuredMesh), pointer :: m => null()
 
     ! allocate tally map array -- note that we don't need a tally map for the
     ! energy_in and energy_out filters
@@ -123,8 +125,42 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
-       ! initialize number of scoring bins
+       ! initialize number of filter bins
        filter_bins = 1
+
+       ! handle surface current tallies separately
+       if (t % surface_current) then
+          m => meshes(t % mesh)
+
+          ! Set stride for surface/direction
+          if (m % n_dimension == 2) then
+             filter_bins = filter_bins * 4
+          elseif (m % n_dimension == 3) then
+             filter_bins = filter_bins * 6
+          end if
+          
+          ! account for z direction
+          t % stride(3) = filter_bins
+          filter_bins = filter_bins * (m % dimension(3) + 1)
+
+          ! account for y direction
+          t % stride(2) = filter_bins
+          filter_bins = filter_bins * (m % dimension(2) + 1)
+
+          ! account for z direction
+          t % stride(1) = filter_bins
+          filter_bins = filter_bins * (m % dimension(1) + 1)
+
+          ! Finally add scoring bins for the macro tallies and allocate scores
+          ! for tally
+          score_bins = t % n_macro_bins
+          t % n_total_bins = filter_bins
+          allocate(t % scores(filter_bins, score_bins))
+
+          ! All the remaining logic is for non-surface-current tallies so we can
+          ! safely skip it
+          cycle
+       end if
 
        ! determine if there are subdivisions for incoming or outgoing energy to
        ! adjust the number of filter bins appropriately
@@ -297,6 +333,12 @@ contains
 
     do i = 1, n_tallies
        t => tallies(i)
+
+       ! Handle surface current tallies separately
+       if (t % surface_current) then
+          call score_surface_current(p, t)
+          cycle
+       end if
 
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
@@ -540,6 +582,236 @@ contains
   end subroutine score_tally
 
 !===============================================================================
+! SCORE_SURFACE_CURRENT
+!===============================================================================
+
+  subroutine score_surface_current(p, t)
+
+    type(Particle),    pointer :: p
+    type(TallyObject), pointer :: t
+
+    integer :: i             ! loop indices
+    integer :: j             ! loop indices
+    integer :: ijk0(3)       ! indices of starting coordinates
+    integer :: ijk1(3)       ! indices of ending coordinates
+    integer :: n_cross       ! number of surface crossings
+    integer :: score_index   ! index of scoring bin
+    real(8) :: uvw(3)        ! cosine of angle of particle
+    real(8) :: xyz0(3)       ! starting/intermediate coordinates
+    real(8) :: xyz1(3)       ! ending coordinates of particle
+    real(8) :: xyz_cross(3)  ! coordinates of bounding surfaces
+    real(8) :: d(3)          ! distance to each bounding surface
+    real(8) :: distance      ! actual distance traveled
+    logical :: start_in_mesh ! particle's starting xyz in mesh?
+    logical :: end_in_mesh   ! particle's ending xyz in mesh?
+    logical :: x_same        ! same starting/ending x index (i)
+    logical :: y_same        ! same starting/ending y index (j)
+    logical :: z_same        ! same starting/ending z index (k)
+    type(StructuredMesh), pointer :: m => null()
+
+    ! Get pointer to mesh
+    m => meshes(t % mesh)
+
+    ! Copy starting and ending location of particle
+    xyz0 = p % last_xyz
+    xyz1 = p % xyz
+
+    ! Determine indices for starting and ending location
+    call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
+    call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
+
+    ! Check to make sure start or end is in mesh
+    if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) return
+
+    ! Calculate number of surface crossings
+    n_cross = sum(abs(ijk1 - ijk0))
+    if (n_cross == 0) return
+
+    ! Copy particle's direction
+    uvw = p % uvw
+
+    ! ==========================================================================
+    ! SPECIAL CASES WHERE TWO INDICES ARE THE SAME
+
+    x_same = (ijk0(1) == ijk1(1))
+    y_same = (ijk0(2) == ijk1(2))
+    z_same = (ijk0(3) == ijk1(3))
+
+    if (x_same .and. y_same) then
+       ! Only z crossings
+       if (uvw(3) > 0) then
+          do i = ijk0(3), ijk1(3) - 1
+             ijk0(3) = i
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + OUT_TOP
+                call add_to_score(t % scores(score_index, 1), p % last_wgt)
+             end if
+          end do
+       else
+          do i = ijk0(3) - 1, ijk1(3), -1
+             ijk0(3) = i
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + IN_TOP
+                call add_to_score(t % scores(score_index, 1), p % last_wgt)
+             end if
+          end do
+       end if
+       return
+    elseif (x_same .and. z_same) then
+       ! Only y crossings
+       if (uvw(2) > 0) then
+          do i = ijk0(2), ijk1(2) - 1
+             ijk0(2) = i
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + OUT_FRONT
+                call add_to_score(t % scores(score_index, 1), p % last_wgt)
+             end if
+          end do
+       else
+          do i = ijk0(2) - 1, ijk1(2), -1
+             ijk0(2) = i
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + IN_FRONT
+                call add_to_score(t % scores(score_index, 1), p % last_wgt)
+             end if
+          end do
+       end if
+       return
+    elseif (y_same .and. z_same) then
+       ! Only x crossings
+       if (uvw(1) > 0) then
+          do i = ijk0(1), ijk1(1) - 1
+             ijk0(1) = i
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + OUT_RIGHT
+                call add_to_score(t % scores(score_index, 1), p % last_wgt)
+             end if
+          end do
+       else
+          do i = ijk0(1) - 1, ijk1(1), -1
+             ijk0(1) = i
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + IN_RIGHT
+                call add_to_score(t % scores(score_index, 1), p % last_wgt)
+             end if
+          end do
+       end if
+       return
+    end if
+
+    ! ==========================================================================
+    ! GENERIC CASE
+
+    ! Bounding coordinates
+    do i = 1, 3
+       if (uvw(i) > 0) then
+          xyz_cross(i) = m % origin(i) + ijk0(i) * m % width(i)
+       else
+          xyz_cross(i) = m % origin(i) + (ijk0(i) - 1) * m % width(i)
+       end if
+    end do
+
+    do i = 1, n_cross
+       ! Reset scoring bin index
+       score_index = 0
+
+       ! Calculate distance to each bounding surface. We need to treat special
+       ! case where the cosine of the angle is zero since this would result in a
+       ! divide-by-zero.
+
+       do j = 1, 3
+          if (uvw(j) == 0) then
+             d(j) = INFINITY
+          else
+             d(j) = (xyz_cross(j) - xyz0(j))/uvw(j)
+          end if
+       end do
+
+       ! Determine the closest bounding surface of the mesh cell by calculating
+       ! the minimum distance
+
+       distance = minval(d)
+
+       ! Now use the minimum distance and diretion of the particle to determine
+       ! which surface was crossed
+
+       if (distance == d(1)) then
+          if (uvw(1) > 0) then
+             ! Crossing into right mesh cell -- this is treated as outgoing
+             ! current from (i,j,k)
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + OUT_RIGHT
+             end if
+             ijk0(1) = ijk0(1) + 1
+             xyz_cross(1) = xyz_cross(1) + m % width(1)
+          else
+             ! Crossing into left mesh cell -- this is treated as incoming
+             ! current in (i-1,j,k)
+             ijk0(1) = ijk0(1) - 1
+             xyz_cross(1) = xyz_cross(1) - m % width(1)
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + IN_RIGHT
+             end if
+          end if
+       elseif (distance == d(2)) then
+          if (uvw(2) > 0) then
+             ! Crossing into front mesh cell -- this is treated as outgoing
+             ! current in (i,j,k)
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + OUT_FRONT
+             end if
+             ijk0(2) = ijk0(2) + 1
+             xyz_cross(2) = xyz_cross(2) + m % width(2)
+          else
+             ! Crossing into back mesh cell -- this is treated as incoming
+             ! current in (i,j-1,k)
+             ijk0(2) = ijk0(2) - 1
+             xyz_cross(2) = xyz_cross(2) - m % width(2)
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + IN_FRONT
+             end if
+          end if
+       else if (distance == d(3)) then
+          if (uvw(3) > 0) then
+             ! Crossing into top mesh cell -- this is treated as outgoing
+             ! current in (i,j,k)
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + OUT_TOP
+             end if
+             ijk0(3) = ijk0(3) + 1
+             xyz_cross(3) = xyz_cross(3) + m % width(3)
+          else
+             ! Crossing into bottom mesh cell -- this is treated as incoming
+             ! current in (i,j,k-1)
+             ijk0(3) = ijk0(3) - 1
+             xyz_cross(3) = xyz_cross(3) - m % width(3)
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
+                score_index = sum(t % stride(1:3) * ijk0) + IN_TOP
+             end if
+          end if
+       end if
+
+       ! Check for errors
+       if (score_index < 0 .or. score_index > t % n_total_bins) then
+          print *, ijk0
+          print *, ijk1
+          print *, score_index
+          print *, t % stride(1:3), t % n_total_bins
+          call fatal_error("Score_index outside range.")
+       end if
+
+       ! Add to surface current tally
+       if (score_index > 0) then
+          call add_to_score(t % scores(score_index, 1), p % last_wgt)
+       end if
+
+       ! Calculate new coordinates
+       xyz0 = xyz0 + distance * uvw
+    end do
+
+  end subroutine score_surface_current
+
+!===============================================================================
 ! GET_NEXT_BIN determines the next scoring bin for a particular filter variable
 !===============================================================================
 
@@ -724,6 +996,13 @@ contains
 
        ! Write header block
        call header("TALLY " // trim(int_to_str(t % uid)), 3, UNIT_TALLY)
+
+       ! Handle surface current tallies separately
+       if (t % surface_current) then
+          write(UNIT=UNIT_TALLY, FMT=*) "Printing of surface current tallies " &
+               // "not yet implemented"
+          cycle
+       end if
 
        ! First determine which filters this tally has
        do j = 1, TALLY_TYPES

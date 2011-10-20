@@ -9,7 +9,8 @@ module mesh
 contains
 
 !===============================================================================
-! SURFACE_CROSSINGS
+! SURFACE_CROSSINGS determines which surfaces are crossed in a mesh after a
+! collision and calls the appropriate subroutine to tally surface currents
 !===============================================================================
 
   subroutine surface_crossings(m, p)
@@ -17,22 +18,23 @@ contains
     type(StructuredMesh), pointer :: m
     type(Particle),       pointer :: p
 
-    integer :: i, j
-    integer :: ijk0(3)
-    integer :: ijk1(3)
-    integer :: ijkd_cross(4) ! (i,j,k) and direction of crossing
-    integer :: n_cross
-    real(8) :: uvw(3)
-    real(8) :: xyz0(3)
-    real(8) :: xyz1(3)
-    real(8) :: xyz_cross(3)
-    real(8) :: d(3)
-    real(8) :: distance
-    logical :: start_in_mesh
-    logical :: end_in_mesh
-    logical :: x_same
-    logical :: y_same
-    logical :: z_same
+    integer :: i             ! loop indices
+    integer :: j             ! loop indices
+    integer :: ijk0(3)       ! indices of starting coordinates
+    integer :: ijk1(3)       ! indices of ending coordinates
+    integer :: n_cross       ! number of surface crossings
+    integer :: surface       ! surface/direction of crossing, e.g. IN_RIGHT
+    real(8) :: uvw(3)        ! cosine of angle of particle
+    real(8) :: xyz0(3)       ! starting/intermediate coordinates
+    real(8) :: xyz1(3)       ! ending coordinates of particle
+    real(8) :: xyz_cross(3)  ! coordinates of bounding surfaces
+    real(8) :: d(3)          ! distance to each bounding surface
+    real(8) :: distance      ! actual distance traveled
+    logical :: start_in_mesh ! particle's starting xyz in mesh?
+    logical :: end_in_mesh   ! particle's ending xyz in mesh?
+    logical :: x_same        ! same starting/ending x index (i)
+    logical :: y_same        ! same starting/ending y index (j)
+    logical :: z_same        ! same starting/ending z index (k)
 
     ! Copy starting and ending location of particle
     xyz0 = p % last_xyz
@@ -69,12 +71,12 @@ contains
        if (uvw(3) > 0) then
           do i = ijk0(3), ijk1(3) - 1
              ijk0(3) = i
-             print *, ijk0, "OUT_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "OUT_TOP"
           end do
        else
           do i = ijk0(3) - 1, ijk1(3), -1
              ijk0(3) = i
-             print *, ijk0, "IN_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "IN_TOP"
           end do
        end if
        return
@@ -84,12 +86,12 @@ contains
        if (uvw(2) > 0) then
           do i = ijk0(2), ijk1(2) - 1
              ijk0(2) = i
-             print *, ijk0, "OUT_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "OUT_TOP"
           end do
        else
           do i = ijk0(2) - 1, ijk1(2), -1
              ijk0(2) = i
-             print *, ijk0, "IN_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "IN_TOP"
           end do
        end if
        return
@@ -99,12 +101,12 @@ contains
        if (uvw(1) > 0) then
           do i = ijk0(1), ijk1(1) - 1
              ijk0(1) = i
-             print *, ijk0, "OUT_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "OUT_TOP"
           end do
        else
           do i = ijk0(1) - 1, ijk1(1), -1
              ijk0(1) = i
-             print *, ijk0, "IN_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "IN_TOP"
           end do
        end if
        return
@@ -147,7 +149,7 @@ contains
           if (uvw(1) > 0) then
              ! Crossing into right mesh cell -- this is treated as outgoing
              ! current from (i,j,k)
-             print *, ijk0, "OUT_RIGHT"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "OUT_RIGHT"
              ijk0(1) = ijk0(1) + 1
              xyz_cross(1) = xyz_cross(1) + m % width(1)
           else
@@ -155,14 +157,14 @@ contains
              ! current in (i-1,j,k)
              ijk0(1) = ijk0(1) - 1
              xyz_cross(1) = xyz_cross(1) - m % width(1)
-             print *, ijk0, "IN_RIGHT"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "IN_RIGHT"
 
           end if
        elseif (distance == d(2)) then
           if (uvw(2) > 0) then
              ! Crossing into front mesh cell -- this is treated as outgoing
              ! current in (i,j,k)
-             print *, ijk0, "OUT_FRONT"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "OUT_FRONT"
              ijk0(2) = ijk0(2) + 1
              xyz_cross(2) = xyz_cross(2) + m % width(2)
           else
@@ -170,13 +172,13 @@ contains
              ! current in (i,j-1,k)
              ijk0(2) = ijk0(2) - 1
              xyz_cross(2) = xyz_cross(2) - m % width(2)
-             print *, ijk0, "IN_FRONT"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "IN_FRONT"
           end if
        else if (distance == d(3)) then
           if (uvw(3) > 0) then
              ! Crossing into top mesh cell -- this is treated as outgoing
              ! current in (i,j,k)
-             print *, ijk0, "OUT_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "OUT_TOP"
              ijk0(3) = ijk0(3) + 1
              xyz_cross(3) = xyz_cross(3) + m % width(3)
           else
@@ -184,7 +186,7 @@ contains
              ! current in (i,j,k-1)
              ijk0(3) = ijk0(3) - 1
              xyz_cross(3) = xyz_cross(3) - m % width(3)
-             print *, ijk0, "IN_TOP"
+             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) print *, ijk0, "IN_TOP"
           end if
        end if
 

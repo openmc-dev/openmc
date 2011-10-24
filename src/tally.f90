@@ -999,8 +999,7 @@ contains
 
        ! Handle surface current tallies separately
        if (t % surface_current) then
-          write(UNIT=UNIT_TALLY, FMT=*) "Printing of surface current tallies " &
-               // "not yet implemented"
+          call write_surface_current(t)
           cycle
        end if
 
@@ -1090,6 +1089,122 @@ contains
     close(UNIT=UNIT_TALLY)
 
   end subroutine write_tallies
+
+!===============================================================================
+! WRITE_SURFACE_CURRENT writes out surface current tallies over a mesh to the
+! tallies.out file.
+!===============================================================================
+
+  subroutine write_surface_current(t)
+
+    type(TallyObject), pointer :: t
+
+    integer :: i           ! mesh index for x
+    integer :: j           ! mesh index for y
+    integer :: k           ! mesh index for z
+    integer :: ijk(3)      ! indices in mesh
+    integer :: len1        ! length of string 
+    integer :: len2        ! length of string 
+    integer :: score_index ! index in scores array for filters
+    character(MAX_LINE_LEN) :: string
+    type(StructuredMesh), pointer :: m => null()
+
+    ! Get pointer to mesh
+    m => meshes(t % mesh)
+
+    do i = 1, m % dimension(1)
+       string = "Mesh Index (" // trim(int_to_str(i)) // ", "
+       len1 = len_trim(string)
+       do j = 1, m % dimension(2)
+          string = string(1:len1+1) // trim(int_to_str(j)) // ", "
+          len2 = len_trim(string)
+          do k = 1, m % dimension(3)
+             ! Write mesh cell index
+             string = string(1:len2+1) // trim(int_to_str(k)) // ")"
+             write(UNIT=UNIT_TALLY, FMT='(1X,A)') trim(string)
+
+             ! Left Surface
+             ijk = (/ i-1, j, k /)
+             score_index = sum(t % stride(1:3) * ijk) + IN_RIGHT
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Outgoing Current to Left", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             score_index = sum(t % stride(1:3) * ijk) + OUT_RIGHT
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Incoming Current from Left", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             
+             ! Right Surface
+             ijk = (/ i, j, k /)
+             score_index = sum(t % stride(1:3) * ijk) + IN_RIGHT
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Incoming Current from Right", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             score_index = sum(t % stride(1:3) * ijk) + OUT_RIGHT
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Outgoing Current to Right", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             
+             ! Back Surface
+             ijk = (/ i, j-1, k /)
+             score_index = sum(t % stride(1:3) * ijk) + IN_FRONT
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Outgoing Current to Back", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             score_index = sum(t % stride(1:3) * ijk) + OUT_FRONT
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Incoming Current from Back", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             
+             ! Front Surface
+             ijk = (/ i, j, k /)
+             score_index = sum(t % stride(1:3) * ijk) + IN_FRONT
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Incoming Current from Front", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             score_index = sum(t % stride(1:3) * ijk) + OUT_FRONT
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Outgoing Current to Front", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             
+             ! Bottom Surface
+             ijk = (/ i, j, k-1 /)
+             score_index = sum(t % stride(1:3) * ijk) + IN_TOP
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Outgoing Current to Bottom", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             score_index = sum(t % stride(1:3) * ijk) + OUT_TOP
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Incoming Current from Bottom", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             
+             ! Top Surface
+             ijk = (/ i, j, k /)
+             score_index = sum(t % stride(1:3) * ijk) + IN_TOP
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Incoming Current from Top", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             score_index = sum(t % stride(1:3) * ijk) + OUT_TOP
+             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
+                  "Outgoing Current to Top", &
+                  real_to_str(t % scores(score_index,1) % val), &
+                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+          end do
+       end do
+    end do
+
+  end subroutine write_surface_current
 
 !===============================================================================
 ! GET_LABEL returns a label for a cell/surface/etc given a tally, filter type,

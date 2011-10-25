@@ -533,6 +533,7 @@ contains
     real(8) :: vel     ! magnitude of velocity
     real(8) :: v_n(3)  ! velocity of neutron
     real(8) :: v_cm(3) ! velocity of center-of-mass
+    real(8) :: v_t(3)  ! velocity of target nucleus
     real(8) :: u       ! x-direction
     real(8) :: v       ! y-direction
     real(8) :: w       ! z-direction
@@ -544,14 +545,17 @@ contains
     ! Neutron velocity in LAB
     v_n = vel * p % uvw
 
+    ! Sample velocity of target nucleus
+    call sample_target_velocity(p, nuc, v_t)
+
     ! Velocity of center-of-mass
-    v_cm = v_n/(awr + ONE)
+    v_cm = (v_n + awr*v_t)/(awr + ONE)
 
     ! Transform to CM frame
     v_n = v_n - v_cm
 
     ! Find speed of neutron in CM
-    vel = norm2(v_n)
+    vel = sqrt(dot_product(v_n, v_n))
 
     ! Sample scattering angle
     mu = sample_angle(rxn, p % E)
@@ -590,14 +594,12 @@ contains
 ! for this method can be found in FRA-TM-123.
 !===============================================================================
 
-  subroutine sample_target_velocity(nuc, E, uvw, v_target)
+  subroutine sample_target_velocity(p, nuc, v_target)
 
-    type(Nuclide), pointer :: nuc
-    real(8), intent(in)    :: E
-    real(8), intent(in)    :: uvw(3)
-    real(8), intent(out)   :: v_target(3)
+    type(Particle), pointer :: p
+    type(Nuclide),  pointer :: nuc
+    real(8), intent(out)    :: v_target(3)
 
-    real(8) :: awr         ! atomic weight ratio of target nucleus
     real(8) :: u, v, w     ! direction of target 
     real(8) :: kT          ! equilibrium temperature of target in MeV
     real(8) :: alpha       ! probability of sampling f2 over f1
@@ -610,14 +612,17 @@ contains
     real(8) :: beta_vt_sq  ! (beta * speed of target)^2
     real(8) :: vt          ! speed of target
 
-    ! Copy atomic weight ratio for this nuclide
-    awr = nuc % awr
-
     ! Determine equilibrium temperature in MeV
-    kT = K_BOLTZMANN * nuc % temp * 1e-6
+    kT = K_BOLTZMANN * nuc % temp
+
+    ! Check if energy is above threshold
+    if (p % E >= FREE_GAS_THRESHOLD * kT) then
+       v_target = ZERO
+       return
+    end if
 
     ! calculate beta
-    beta_vn = sqrt(awr*E/kT)
+    beta_vn = sqrt(nuc%awr * p%E / kT)
 
     alpha = ONE/(ONE + sqrt(pi)*beta_vn/2.0)
 
@@ -658,13 +663,13 @@ contains
 
     ! determine direction of target velocity based on the neutron's velocity
     ! vector and the sampled angle between them
-    u = uvw(1)
-    v = uvw(2)
-    w = uvw(3)
+    u = p % uvw(1)
+    v = p % uvw(2)
+    w = p % uvw(3)
     call rotate_angle(u, v, w, mu)
 
     ! determine speed of target nucleus
-    vt = sqrt(beta_vt_sq*kT/awr)
+    vt = sqrt(beta_vt_sq*kT/nuc % awr)
 
     ! determine velocity vector of target nucleus
     v_target(1) = u*vt

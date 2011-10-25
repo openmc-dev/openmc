@@ -42,7 +42,7 @@ contains
     real(8)              :: sigma    ! broadened cross section at one point
 
     ! Determine alpha parameter -- have to convert k to MeV/K
-    alpha = A_target/(1.0e-6 * K_BOLTZMANN * T)
+    alpha = A_target/(K_BOLTZMANN * T)
 
     ! Allocate memory for x and assign values
     n = size(energy)

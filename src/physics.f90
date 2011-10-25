@@ -528,66 +528,56 @@ contains
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
-    real(8) :: awr ! atomic weight ratio of target
-    real(8) :: mu  ! cosine of polar angle
-    real(8) :: vx  ! velocity of neutron in x-direction
-    real(8) :: vy  ! velocity of neutron in y-direction
-    real(8) :: vz  ! velocity of neutron in z-direction
-    real(8) :: vcx ! velocity of CM in x-direction
-    real(8) :: vcy ! velocity of CM in y-direction
-    real(8) :: vcz ! velocity of CM in z-direction
-    real(8) :: vel ! magnitude of velocity
-    real(8) :: u   ! x-direction
-    real(8) :: v   ! y-direction
-    real(8) :: w   ! z-direction
-    real(8) :: E   ! energy
+    real(8) :: awr     ! atomic weight ratio of target
+    real(8) :: mu      ! cosine of polar angle
+    real(8) :: vel     ! magnitude of velocity
+    real(8) :: v_n(3)  ! velocity of neutron
+    real(8) :: v_cm(3) ! velocity of center-of-mass
+    real(8) :: u       ! x-direction
+    real(8) :: v       ! y-direction
+    real(8) :: w       ! z-direction
+    real(8) :: E       ! energy
 
     vel = sqrt(p % E)
     awr = nuc % awr
 
-    vx = vel * p%uvw(1)
-    vy = vel * p%uvw(2)
-    vz = vel * p%uvw(3)
+    ! Neutron velocity in LAB
+    v_n = vel * p % uvw
 
-    vcx = vx/(awr + ONE)
-    vcy = vy/(awr + ONE)
-    vcz = vz/(awr + ONE)
+    ! Velocity of center-of-mass
+    v_cm = v_n/(awr + ONE)
 
     ! Transform to CM frame
-    vx = vx - vcx
-    vy = vy - vcy
-    vz = vz - vcz
+    v_n = v_n - v_cm
 
-    vel = sqrt(vx*vx + vy*vy + vz*vz)
+    ! Find speed of neutron in CM
+    vel = norm2(v_n)
 
     ! Sample scattering angle
     mu = sample_angle(rxn, p % E)
 
     ! Determine direction cosines in CM
-    u = vx/vel
-    v = vy/vel
-    w = vz/vel
+    u = v_n(1)/vel
+    v = v_n(2)/vel
+    w = v_n(3)/vel
 
     ! Change direction cosines according to mu
     call rotate_angle(u, v, w, mu)
 
-    vx = u*vel
-    vy = v*vel
-    vz = w*vel
+    ! Rotate neutron velocity vector to new angle -- note that the speed of the
+    ! neutron in CM does not change in elastic scattering. However, the speed
+    ! will change when we convert back to LAB
+    v_n = vel * (/ u, v, w /)
 
     ! Transform back to LAB frame
-    vx = vx + vcx
-    vy = vy + vcy
-    vz = vz + vcz
+    v_n = v_n + v_cm
 
-    E = vx*vx + vy*vy + vz*vz
+    E = dot_product(v_n, v_n)
     vel = sqrt(E)
 
     ! Set energy and direction of particle in LAB frame
     p % E = E
-    p % uvw(1) = vx/vel
-    p % uvw(2) = vy/vel
-    p % uvw(3) = vz/vel
+    p % uvw = v_n / vel
 
     ! Copy scattering cosine for tallies
     p % mu = mu
@@ -685,9 +675,7 @@ contains
 
 !===============================================================================
 ! CREATE_FISSION_SITES determines the average total, prompt, and delayed
-! neutrons produced from fission and creates appropriate bank sites. This
-! routine will not work with implicit absorption, namely sampling of the number
-! of neutrons!
+! neutrons produced from fission and creates appropriate bank sites.
 !===============================================================================
 
   subroutine create_fission_sites(p, index_nuclide, rxn, event)

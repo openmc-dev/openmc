@@ -595,6 +595,95 @@ contains
   end subroutine elastic_scatter
 
 !===============================================================================
+! SAMPLE_TARGET_VELOCITY samples the target velocity based on the free gas
+! scattering formulation used by most Monte Carlo codes. Excellent documentation
+! for this method can be found in FRA-TM-123.
+!===============================================================================
+
+  subroutine sample_target_velocity(nuc, E, uvw, v_target)
+
+    type(Nuclide), pointer :: nuc
+    real(8), intent(in)    :: E
+    real(8), intent(in)    :: uvw(3)
+    real(8), intent(out)   :: v_target(3)
+
+    real(8) :: awr         ! atomic weight ratio of target nucleus
+    real(8) :: u, v, w     ! direction of target 
+    real(8) :: kT          ! equilibrium temperature of target in MeV
+    real(8) :: alpha       ! probability of sampling f2 over f1
+    real(8) :: mu          ! cosine of angle between neutron and target vel
+    real(8) :: r1, r2      ! pseudo-random numbers
+    real(8) :: c           ! cosine used in maxwell sampling
+    real(8) :: accept_prob ! probability of accepting combination of vt and mu
+    real(8) :: beta_vn     ! beta * speed of neutron
+    real(8) :: beta_vt     ! beta * speed of target
+    real(8) :: beta_vt_sq  ! (beta * speed of target)^2
+    real(8) :: vt          ! speed of target
+
+    ! Copy atomic weight ratio for this nuclide
+    awr = nuc % awr
+
+    ! Determine equilibrium temperature in MeV
+    kT = K_BOLTZMANN * nuc % temp * 1e-6
+
+    ! calculate beta
+    beta_vn = sqrt(awr*E/kT)
+
+    alpha = ONE/(ONE + sqrt(pi)*beta_vn/2.0)
+
+    do
+       ! Sample two random numbers
+       r1 = rang()
+       r2 = rang()
+
+       if (rang() < alpha) then
+          ! With probability alpha, we sample the distribution p(y) =
+          ! y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
+          ! Carlo sampler
+
+          beta_vt_sq = -log(r1*r2)
+
+       else
+          ! With probability 1-alpha, we sample the distribution p(y) = y^2 *
+          ! e^(-y^2). This can be done with sampling scheme C61 from the Monte
+          ! Carlo sampler
+
+          c = cos(PI/2.0 * rang())
+          beta_vt_sq = -log(r1) - log(r2)*c*c
+       end if
+
+       ! Determine beta * vt
+       beta_vt = sqrt(beta_vt_sq)
+
+       ! Sample cosine of angle between neutron and target velocity
+       mu = 2.0*rang() - ONE
+
+       ! Determine rejection probability
+       accept_prob = sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
+            /(beta_vn + beta_vt)
+
+       ! Perform rejection sampling on vt and mu
+       if (rang() < accept_prob) exit
+    end do
+
+    ! determine direction of target velocity based on the neutron's velocity
+    ! vector and the sampled angle between them
+    u = uvw(1)
+    v = uvw(2)
+    w = uvw(3)
+    call rotate_angle(u, v, w, mu)
+
+    ! determine speed of target nucleus
+    vt = sqrt(beta_vt_sq*kT/awr)
+
+    ! determine velocity vector of target nucleus
+    v_target(1) = u*vt
+    v_target(2) = v*vt
+    v_target(3) = W*vt
+
+  end subroutine sample_target_velocity
+
+!===============================================================================
 ! CREATE_FISSION_SITES determines the average total, prompt, and delayed
 ! neutrons produced from fission and creates appropriate bank sites. This
 ! routine will not work with implicit absorption, namely sampling of the number

@@ -11,7 +11,7 @@
     <density value="1.0" units="g/cc" />
     <nuclide name="H-1" xs="03c" ao="2.0" />
     <nuclide name="O-16" xs="03c" ao="1.0" />
-    <sab uid="H-H2O" xs="10t" />
+    <sab name="H-H2O" xs="10t" />
   </material>
 
 </materials>

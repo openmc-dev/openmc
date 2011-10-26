@@ -492,16 +492,27 @@ contains
     character(MAX_LINE_LEN) :: string
     type(Nuclide),  pointer :: nuc => null()
 
+    ! Write identifier for material
     write(ou,*) 'Material ' // int_to_str(mat % uid)
+
+    ! Write total atom density in atom/b-cm
     write(ou,*) '    Atom Density = ' // trim(real_to_str(mat % density)) &
          & // ' atom/b-cm'
+
+    ! Write atom density for each nuclide in material
+    write(ou,*) '    Nuclides:'
     do i = 1, mat % n_nuclides
        nuc => nuclides(mat % nuclide(i))
        density = mat % atom_density(i)
-       string = '    ' // trim(nuc % name) // ' = ' // &
+       string = '        ' // trim(nuc % name) // ' = ' // &
             & trim(real_to_str(density)) // ' atom/b-cm'
        write(ou,*) trim(string)
     end do
+
+    ! Write information on S(a,b) table
+    if (mat % has_sab_table) then
+       write(ou,*) '    S(a,b) table = ' // trim(mat % sab_name)
+    end if
     write(ou,*)
 
     nullify(nuc)

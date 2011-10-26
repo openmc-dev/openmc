@@ -487,6 +487,7 @@ contains
           elseif (nuc % ao /= ZERO .and. nuc % wo /= ZERO) then
              msg = "Cannot specify both atom and weight percents for a nuclide: " &
                   // trim(name)
+             call fatal_error(msg)
           end if
 
           ! Copy atom/weight percents

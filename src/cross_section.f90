@@ -37,7 +37,6 @@ contains
     integer        :: i                ! index in materials array
     integer        :: j                ! index over nuclides in material
     integer        :: index            ! index in xsdatas array
-    integer        :: n                ! length of key
     integer        :: index_nuclides   ! index in nuclides
     integer        :: index_sab        ! index in sab_tables
     character(10)  :: key              ! name of isotope, e.g. 92235.03c
@@ -51,34 +50,38 @@ contains
     index_nuclides = 0
     index_sab = 0
     do i = 1, n_materials
+       ! Get pointer to material
        mat => materials(i)
+
+       ! First go through all the nuclide and check if they exist on other
+       ! materials -- if not, then increment the count for the number of
+       ! nuclides and add to dictionary
        do j = 1, mat % n_nuclides
-          index = mat % xsdata(j)
-          key = xsdatas(index) % id
-          n = len_trim(key)
+          key = mat % names(j)
           call lower_case(key)
-          select case (key(n:n))
-          case ('c')
-             if (.not. dict_has_key(nuclide_dict, key)) then
-                index_nuclides = index_nuclides + 1
-                call dict_add_key(nuclide_dict, key, index_nuclides)
-                mat % nuclide(j) = index_nuclides
-             else
-                mat % nuclide(j) = dict_get_key(nuclide_dict, key)
-             end if
-          case ('t')
-             if (.not. dict_has_key(sab_dict, key)) then
-                index_sab = index_sab + 1
-                call dict_add_key(sab_dict, key, index_sab)
-                mat % sab_table = index_sab
-             else
-                mat % sab_table = 0
-             end if
-          case default
-             msg = "Unknown cross section table type: " // key
-             call fatal_error(msg)
-          end select
+          if (.not. dict_has_key(nuclide_dict, key)) then
+             index_nuclides = index_nuclides + 1
+             call dict_add_key(nuclide_dict, key, index_nuclides)
+             mat % nuclide(j) = index_nuclides
+          else
+             mat % nuclide(j) = dict_get_key(nuclide_dict, key)
+          end if
        end do
+
+       ! Check if S(a,b) exists on other materials
+       if (mat % has_sab_table) then
+          key = mat % sab_name
+          call lower_case(key)
+          if (.not. dict_has_key(sab_dict, key)) then
+             index_sab = index_sab + 1
+             call dict_add_key(sab_dict, key, index_sab)
+             mat % sab_table = index_sab
+          else
+             mat % sab_table = dict_get_key(sab_dict, key)
+          end if
+       else
+          mat % sab_table = 0
+       end if
     end do
 
     n_nuclides_total = index_nuclides
@@ -101,25 +104,39 @@ contains
     do i = 1, n_materials
        mat => materials(i)
        do j = 1, mat % n_nuclides
+          ! Get index in xsdatas array for this nuclide
           index = mat % xsdata(j)
-          key = xsdatas(index) % id
-          n = len_trim(key)
+
+          ! Get name of nuclide
+          key = mat % names(j)
           call lower_case(key)
-          select case (key(n:n))
-          case ('c')
-             if (.not. dict_has_key(temp_dict, key)) then
-                index_nuclides = index_nuclides + 1
-                call read_ACE_continuous(index_nuclides, index)
-                call dict_add_key(temp_dict, key, index_nuclides)
-             end if
-          case ('t')
-             if (.not. dict_has_key(temp_dict, key)) then
-                index_sab = index_sab + 1
-                call read_ACE_thermal(index_sab, index)
-                call dict_add_key(temp_dict, key, index_sab)
-             end if
-          end select
+          
+          if (.not. dict_has_key(temp_dict, key)) then
+             index_nuclides = index_nuclides + 1
+             call read_ACE_continuous(index_nuclides, index)
+             call dict_add_key(temp_dict, key, index_nuclides)
+          end if
        end do
+
+       ! Read S(a,b) table if this material has one and it hasn't been read
+       ! already
+       if (mat % has_sab_table) then
+          ! Find index in xsdatas
+          key = mat % sab_name
+          if (dict_has_key(xsdata_dict, key)) then
+             index = dict_get_key(xsdata_dict, key)
+          else
+             msg = "Cannot find cross-section " // trim(key) // " in specified &
+                   &xsdata file."
+             call fatal_error(msg)
+          end if
+
+          if (.not. dict_has_key(temp_dict, key)) then
+             index_sab = index_sab + 1
+             call read_ACE_thermal(index_sab, index)
+             call dict_add_key(temp_dict, key, index_sab)
+          end if
+       end if
     end do
 
     ! delete dictionary

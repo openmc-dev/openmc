@@ -17,7 +17,7 @@ module initialize
   use output,           only: title, echo_input, message, print_summary,       &
                               print_particle, header, print_plot
   use source,           only: initialize_source
-  use string,           only: int_to_str, starts_with, ends_with
+  use string,           only: int_to_str, starts_with, ends_with, lower_case
   use tally,            only: create_tally_map, TallyObject
   use timing,           only: timer_start, timer_stop
 
@@ -527,6 +527,7 @@ contains
     integer        :: index           ! index used for several purposes
     integer        :: i               ! index in materials array
     integer        :: j               ! index over nuclides in material
+    integer        :: n               ! length of string
     real(8)        :: sum_percent     ! 
     real(8)        :: awr             ! atomic weight ratio
     real(8)        :: x               ! atom percent
@@ -556,13 +557,23 @@ contains
        do j = 1, mat % n_nuclides
           ! Set indices for nuclides
           key = mat % names(j)
-          index = dict_get_key(xsdata_dict, key)
-          if (index == DICT_NULL) then
+
+          ! Check to make sure cross-section is continuous energy neutron table
+          n = len_trim(key)
+          if (key(n:n) /= 'c') then
+             msg = "Cross-section table " // trim(key) // " is not a " // &
+                  "continuous-energy neutron table."
+             call fatal_error(msg)
+          end if
+
+          if (dict_has_key(xsdata_dict, key)) then
+             index = dict_get_key(xsdata_dict, key)
+             mat % xsdata(j) = index
+          else
              msg = "Cannot find cross-section " // trim(key) // " in specified &
                    &xsdata file."
              call fatal_error(msg)
           end if
-          mat % xsdata(j) = index
 
           ! determine atomic weight ratio
           awr = xsdatas(index) % awr

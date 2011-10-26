@@ -29,7 +29,6 @@ module global
   type(xsData),         allocatable, target :: xsdatas(:)
   type(StructuredMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
-  type(TallyObject),    allocatable, target :: tallies_global(:)
 
   ! Size of main arrays
   integer :: n_cells          ! # of cells
@@ -39,7 +38,6 @@ module global
   integer :: n_materials      ! # of materials
   integer :: n_meshes         ! # of structured meshes
   integer :: n_tallies        ! # of tallies
-  integer :: n_tallies_global ! # of global tallies
 
   ! These dictionaries provide a fast lookup mechanism -- the key is the
   ! user-specified identifier and the value is the index in the corresponding
@@ -67,7 +65,7 @@ module global
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
 
-  ! unionized energy grid
+  ! Unionized energy grid
   integer              :: n_grid    ! number of points on unionized grid
   real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
@@ -92,6 +90,7 @@ module global
   real(8) :: keff
   real(8) :: keff_std
 
+  ! Flag for turning tallies on
   logical :: tallies_on
 
   ! Parallel processing variables

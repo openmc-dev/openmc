@@ -409,6 +409,7 @@ contains
     character(MAX_LINE_LEN) :: msg
     type(Material),    pointer :: m => null()
     type(nuclide_xml), pointer :: nuc => null()
+    type(sab_xml),     pointer :: sab => null()
 
     ! Display output message
     msg = "Reading materials XML file..."
@@ -493,6 +494,17 @@ contains
              m % atom_percent(j) = nuc % ao
           else
              m % atom_percent(j) = -nuc % wo
+          end if
+
+          ! Read S(a,b) table information
+          if (size(material_(i) % sab) == 1) then
+             sab => material_(i) % sab(1)
+             name = trim(sab % name) // "." // trim(sab % xs)
+             m % sab_name = name
+             m % has_sab_table = .true.
+          elseif (size(material_(i) % sab) > 1) then
+             msg = "Cannot have multiple S(a,b) tables on a single material."
+             call fatal_error(msg)
           end if
        end do
 

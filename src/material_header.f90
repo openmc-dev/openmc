@@ -18,8 +18,10 @@ module material_header
      real(8), allocatable :: total_xs(:)     ! macroscopic cross-section
 
      ! S(a,b) data references
-     integer :: sab_table      ! index in sab_tables
-     integer :: sab_nuclide    ! index of nuclide which has S(a,b) table
+     logical       :: has_sab_table = .false.
+     character(10) :: sab_name    ! name of S(a,b) table
+     integer       :: sab_table   ! index in sab_tables
+     integer       :: sab_nuclide ! index of nuclide which has S(a,b) table
   end type Material
 
 end module material_header

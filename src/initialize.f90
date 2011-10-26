@@ -177,7 +177,7 @@ contains
 
   subroutine create_dictionaries()
 
-    ! Create cell dictionary
+    ! Create all global dictionaries
     call dict_create(cell_dict)
     call dict_create(universe_dict)
     call dict_create(lattice_dict)
@@ -185,6 +185,11 @@ contains
     call dict_create(material_dict)
     call dict_create(mesh_dict)
     call dict_create(tally_dict)
+    call dict_create(xsdata_dict)
+    call dict_create(nuclide_dict)
+    call dict_create(sab_dict)
+
+    ! Create special dictionary used in input_xml
     call dict_create(cells_in_univ_dict)
     
   end subroutine create_dictionaries

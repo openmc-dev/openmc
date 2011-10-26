@@ -12,7 +12,7 @@ module cross_section
   use material_header,      only: Material
   use output,               only: message
   use string,               only: split_string, str_to_int, str_to_real, &
-                                  lower_case
+                                  lower_case, int_to_str
 
   implicit none
 
@@ -42,6 +42,8 @@ contains
     character(10)  :: key              ! name of isotope, e.g. 92235.03c
     character(MAX_LINE_LEN) :: msg     ! output/error message
     type(Material),     pointer :: mat => null()
+    type(Nuclide),      pointer :: nuc => null()
+    type(SAB_Table),    pointer :: sab => null()
     type(DictionaryCI), pointer :: temp_dict => null()
 
     ! First we need to determine how many continuous-energy tables and how many
@@ -121,20 +123,42 @@ contains
        ! Read S(a,b) table if this material has one and it hasn't been read
        ! already
        if (mat % has_sab_table) then
-          ! Find index in xsdatas
+          ! Get name of S(a,b) table
           key = mat % sab_name
-          if (dict_has_key(xsdata_dict, key)) then
-             index = dict_get_key(xsdata_dict, key)
-          else
-             msg = "Cannot find cross-section " // trim(key) // " in specified &
-                   &xsdata file."
-             call fatal_error(msg)
-          end if
 
           if (.not. dict_has_key(temp_dict, key)) then
+             ! Find the entry in xsdatas for this table
+             if (dict_has_key(xsdata_dict, key)) then
+                index = dict_get_key(xsdata_dict, key)
+             else
+                msg = "Cannot find cross-section " // trim(key) // " in specified &
+                     &xsdata file."
+                call fatal_error(msg)
+             end if
+
+             ! Read the table and add entry to dictionary
              index_sab = index_sab + 1
              call read_ACE_thermal(index_sab, index)
              call dict_add_key(temp_dict, key, index_sab)
+          end if
+
+          ! In order to know which nuclide the S(a,b) table applies to, we need
+          ! to search through the list of nuclides for one which has a matching
+          ! zaid
+          sab => sab_tables(mat % sab_table)
+
+          do j = 1, mat % n_nuclides
+             nuc => nuclides(mat % nuclide(j))
+             if (nuc % zaid == sab % zaid) then
+                mat % sab_nuclide = j
+             end if
+          end do
+
+          ! Check to make sure S(a,b) table matched a nuclide
+          if (mat % sab_nuclide == 0) then
+             msg = "S(a,b) table " // trim(mat % sab_name) // " did not match " &
+                  // "any nuclide on material " // trim(int_to_str(mat % uid))
+             call fatal_error(msg)
           end if
        end if
     end do
@@ -231,6 +255,9 @@ contains
        lines = 2
        words_per_line = 8
        call read_data(in, NXS, 16, lines, words_per_line)
+
+       ! Set ZAID of nuclide
+       nuc % zaid = NXS(2)
 
        ! Read JXS data
        lines = 4
@@ -1097,10 +1124,21 @@ contains
           table%awr = str_to_real(words(2))
           kT = str_to_real(words(3))
           table%temp = kT / K_BOLTZMANN
+
+          ! Skip 1 line
+          call skip_lines(in, 1, ioError)
+
+          ! Read corresponding ZAID
+          call read_line(in, line, ioError)
+          call split_string(line, words, n)
+          table % zaid = str_to_int(words(1))
+
+          ! Skip remaining 3 lines
+          call skip_lines(in, 3, ioError)
+       else
+          ! Skip 5 lines
+          call skip_lines(in, 5, ioError)
        end if
-       
-       ! Skip 5 lines
-       call skip_lines(in, 5, ioError)
 
        ! Read NXS data
        lines = 2

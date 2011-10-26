@@ -19,9 +19,9 @@ module material_header
 
      ! S(a,b) data references
      logical       :: has_sab_table = .false.
-     character(10) :: sab_name    ! name of S(a,b) table
-     integer       :: sab_table   ! index in sab_tables
-     integer       :: sab_nuclide ! index of nuclide which has S(a,b) table
+     character(10) :: sab_name        ! name of S(a,b) table
+     integer       :: sab_table   = 0 ! index in sab_tables
+     integer       :: sab_nuclide = 0 ! index of nuclide which has S(a,b) table
   end type Material
 
 end module material_header

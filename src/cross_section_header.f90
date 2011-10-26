@@ -66,6 +66,7 @@ module cross_section_header
 
   type Nuclide
      character(20) :: name
+     integer       :: zaid
      real(8)       :: awr
      real(8)       :: temp
 
@@ -118,8 +119,11 @@ module cross_section_header
      
   type SAB_Table
      character(20) :: name
-     real(8) :: awr
-     real(8) :: temp
+     integer       :: zaid
+     real(8)       :: awr
+     real(8)       :: temp
+
+     ! Inelastic scattering data
      integer :: n_inelastic_e_in
      integer :: n_inelastic_e_out
      integer :: n_inelastic_mu
@@ -127,6 +131,8 @@ module cross_section_header
      real(8), allocatable :: inelastic_sigma(:) 
      real(8), allocatable :: inelastic_e_out(:,:)
      real(8), allocatable :: inelastic_mu(:,:,:)
+
+     ! Elastic scattering data
      integer :: n_elastic_e_in
      integer :: n_elastic_type
      integer :: n_elastic_mu

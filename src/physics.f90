@@ -1223,6 +1223,18 @@ contains
        r1 = rang()
        k = 1 + int(NET * r1)
 
+       ! Determine E_1 and E_K
+       loc   = 3 + 3*NR + NE + (i-1)*NET
+       E_i_1 = edist % data(loc + 1)
+       E_i_K = edist % data(loc + NET)
+
+       loc    = 3 + 3*NR + NE + i*NET
+       E_i1_1 = edist % data(loc + 1)
+       E_i1_K = edist % data(loc + NET)
+
+       E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
+       E_K = E_i_K + r*(E_i1_K - E_i_K)
+
        ! Randomly select between the outgoing table for incoming energy E_i and
        ! E_(i+1)
        if (rang() < r) then
@@ -1231,13 +1243,21 @@ contains
           l = i
        end if
 
+       ! Determine E_l_k and E_l_k+1
        loc    = 3 + 2*NR + NE + (l-1)*NET
        E_l_k  = edist % data(loc+k)
        E_l_k1 = edist % data(loc+k+1)
+
+       ! Determine E' (denoted here as E_out)
        r2 = rang()
        E_out  = E_l_k + r2*(E_l_k1 - E_l_k)
 
-       ! TODO: Add scaled interpolation
+       ! Now interpolate between incident energy bins i and i + 1
+       if (l == i) then
+          E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
+       else
+          E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+       end if
 
     case (3)
        ! =======================================================================

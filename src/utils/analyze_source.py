@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 
 import sys
+import os
+
+# Add color for posix systems
+if os.name == 'posix':
+    colorOn = '\x1b[34m'
+    colorOff = '\x1b[0m'
+else:
+    colorOn = ''
+    colorOff = ''
 
 if len(sys.argv) <= 1:
     print("Usage:")
@@ -40,14 +49,15 @@ for sourceFile in source:
     totalComment += comment
     totalSpace += space
 
-    print("------ {0} ------".format(sourceFile))
-    print("Code: {0} ({1:4.1f}%)".format(code, 100.0*float(code)/total))
+    print(colorOn + sourceFile + colorOff)
+    print("Code:     {0} ({1:4.1f}%)".format(code, 100.0*float(code)/total))
     print("Comments: {0} ({1:4.1f}%)".format(comment, 100.0*float(comment)/total))
-    print("Spaces: {0} ({1:4.1f}%)\n".format(space, 100.0*float(space)/total))
+    print("Spaces:   {0} ({1:4.1f}%)\n".format(space, 100.0*float(space)/total))
 
 total = totalCode + totalComment + totalSpace
 
-print("------ TOTALS ------")
-print("Code: {0} ({1:4.1f}%)".format(totalCode, 100.0*float(totalCode)/total))
+print(colorOn + "TOTAL COUNT" + colorOff)
+print("Code:     {0} ({1:4.1f}%)".format(totalCode, 100.0*float(totalCode)/total))
 print("Comments: {0} ({1:4.1f}%)".format(totalComment, 100.0*float(totalComment)/total))
-print("Spaces: {0} ({1:4.1f}%)\n".format(totalSpace, 100.0*float(totalSpace)/total))
+print("Spaces:   {0} ({1:4.1f}%)".format(totalSpace, 100.0*float(totalSpace)/total))
+print("Total:    {0}\n".format(total))

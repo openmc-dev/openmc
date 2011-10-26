@@ -51,6 +51,7 @@ module global
   type(DictionaryII), pointer :: tally_dict
   type(DictionaryCI), pointer :: xsdata_dict
   type(DictionaryCI), pointer :: nuclide_dict
+  type(DictionaryCI), pointer :: sab_dict
 
   ! Cross section arrays
   type(Nuclide),   allocatable, target :: nuclides(:)

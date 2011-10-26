@@ -45,10 +45,9 @@ contains
     type(Material),     pointer :: mat => null()
     type(DictionaryCI), pointer :: temp_dict => null()
 
-    call dict_create(nuclide_dict)
-
-    ! determine how many continuous-energy tables and how many S(a,b) thermal
-    ! scattering tables there are
+    ! First we need to determine how many continuous-energy tables and how many
+    ! S(a,b) thermal scattering tables there are -- this loop doesn't actually
+    ! read the data, it simply counts the number of nuclides and S(a,b) tables
     index_nuclides = 0
     index_sab = 0
     do i = 1, n_materials
@@ -68,8 +67,13 @@ contains
                 mat % nuclide(j) = dict_get_key(nuclide_dict, key)
              end if
           case ('t')
-             ! Need same logic as for continuous tables
-             n_sab_tables = n_sab_tables + 1
+             if (.not. dict_has_key(sab_dict, key)) then
+                index_sab = index_sab + 1
+                call dict_add_key(sab_dict, key, index_sab)
+                mat % sab_table = index_sab
+             else
+                mat % sab_table = 0
+             end if
           case default
              msg = "Unknown cross section table type: " // key
              call fatal_error(msg)
@@ -87,9 +91,11 @@ contains
     ! allocate array for microscopic cross section cache
     allocate(micro_xs(n_nuclides_total))
 
-    ! loop over all nuclides in xsdata
     call dict_create(temp_dict)
 
+    ! Now that the nuclides and sab_tables arrays have been allocated, we can
+    ! repeat the same loop through each table in each material and read the
+    ! cross sections
     index_nuclides = 0
     index_sab = 0
     do i = 1, n_materials
@@ -104,9 +110,14 @@ contains
              if (.not. dict_has_key(temp_dict, key)) then
                 index_nuclides = index_nuclides + 1
                 call read_ACE_continuous(index_nuclides, index)
+                call dict_add_key(temp_dict, key, index_nuclides)
              end if
           case ('t')
-             n_sab_tables = n_sab_tables + 1
+             if (.not. dict_has_key(temp_dict, key)) then
+                index_sab = index_sab + 1
+                call read_ACE_thermal(index_sab, index)
+                call dict_add_key(temp_dict, key, index_sab)
+             end if
           end select
        end do
     end do
@@ -142,6 +153,15 @@ contains
     character(MAX_WORD_LEN) :: filename         ! name of ACE library file
     character(10)           :: tablename        ! name of cross section table
     type(Nuclide), pointer :: nuc => null()
+
+    ! Check to make sure index in nuclides array and xsdata arrays are valid
+    if (index_table > size(nuclides)) then
+       msg = "Index of table to read is greater than length of nuclides."
+       call fatal_error(msg)
+    elseif (index > size(xsdatas)) then
+       msg = "Index of xsdata entry is greater than length of xsdatas."
+       call fatal_error(msg)
+    end if
 
     filename = xsdatas(index)%path
     tablename = xsdatas(index)%id
@@ -1346,9 +1366,6 @@ contains
        count = count + 1
     end do
     allocate(xsdatas(count))
-
-    ! create dictionary
-    call dict_create(xsdata_dict)
 
     ! read actual lines
     index = 0

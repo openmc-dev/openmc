@@ -123,6 +123,10 @@ module cross_section_header
      real(8)       :: awr
      real(8)       :: temp
 
+     ! threshold for S(a,b) treatment (usually ~4 eV)
+     real(8) :: threshold_inelastic
+     real(8) :: threshold_elastic = 0.0
+
      ! Inelastic scattering data
      integer :: n_inelastic_e_in
      integer :: n_inelastic_e_out
@@ -133,8 +137,8 @@ module cross_section_header
      real(8), allocatable :: inelastic_mu(:,:,:)
 
      ! Elastic scattering data
+     integer :: elastic_type
      integer :: n_elastic_e_in
-     integer :: n_elastic_type
      integer :: n_elastic_mu
      real(8), allocatable :: elastic_e_in(:)
      real(8), allocatable :: elastic_P(:)

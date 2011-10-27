@@ -1207,6 +1207,9 @@ contains
     table % inelastic_e_in = get_real(NE_in)
     table % inelastic_sigma = get_real(NE_in)
 
+    ! set threshold value
+    table % threshold_inelastic = table % inelastic_e_in(NE_in)
+
     ! allocate space for outgoing energy/angle for inelastic
     ! scattering
     NE_out = NXS(4)
@@ -1239,9 +1242,18 @@ contains
        allocate(table % elastic_e_in(NE_in))
        allocate(table % elastic_P(NE_in))
 
+       ! read elastic energies and P
+       XSS_index = JXS4 + 1
+       table % elastic_e_in = get_real(NE_in)
+       table % elastic_P    = get_real(NE_in)
+
+       ! set threshold
+       table % threshold_elastic = table % elastic_e_in(NE_in)
+
        ! determine whether sigma=P or sigma = P/E
-       table % n_elastic_type = NXS(5)
+       table % elastic_type = NXS(5)
     else
+       table % threshold_elastic = ZERO
        table % n_elastic_e_in = 0
     end if
 

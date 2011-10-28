@@ -2,13 +2,13 @@
 <settings>
 
   <!-- Path for cross section library -->
-  <xslibrary path="/opt/serpent/xsdata/endfb7/xsdata" />
+  <xslibrary path="/opt/serpent/xsdata/sss_endfb7u.xsdata" />
 
   <!-- Parameters for criticality calculation -->
   <criticality>
     <cycles>500</cycles>
     <inactive>10</inactive>
-    <particles>1000</particles>
+    <particles>10000</particles>
   </criticality>
 
   <!-- How verbose output should be -->

@@ -1,4 +1,5 @@
 cmfd_utils.o: global.o
+cmfd_utils.o: mesh.o
 
 cross_section.o: constants.o
 cross_section.o: cross_section_header.o

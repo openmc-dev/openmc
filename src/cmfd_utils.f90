@@ -47,6 +47,8 @@ contains
 
   subroutine print_cmfd()
 
+    write(7,*) 'hello world'
+
   end subroutine print_cmfd
 
 end module cmfd_utils

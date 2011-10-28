@@ -15,7 +15,7 @@ include OBJECTS
 # User Options
 #===============================================================================
 
-COMPILER    = intel
+COMPILER    = gfortran
 DEBUG       = no
 PROFILE     = no
 OPTIMIZE    = no

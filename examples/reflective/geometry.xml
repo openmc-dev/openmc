@@ -9,8 +9,8 @@
   </cell>
 
 <!-- Defition of Surfaces -->
-  <surface uid="1" type="x-plane" coeffs="-1" boundary="vacuum" />
-  <surface uid="2" type="x-plane" coeffs="1" boundary="vacuum" />
+  <surface uid="1" type="x-plane" coeffs="-1" boundary="reflective" />
+  <surface uid="2" type="x-plane" coeffs="1" boundary="reflective" />
   <surface uid="3" type="y-plane" coeffs="-1" boundary="reflective" /> 
   <surface uid="4" type="y-plane" coeffs="1" boundary="reflective" />
   <surface uid="5" type="z-plane" coeffs="-1" boundary="reflective" /> 

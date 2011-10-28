@@ -286,14 +286,27 @@ contains
 
        ! Check for elastic data
        if (p % E < sab % threshold_elastic) then
-          ! Get index on elastic P grid
-          IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
+          ! Determine whether elastic scattering is given in the coherent or
+          ! incoherent approximation. For coherent, the cross section is
+          ! represented as P/E whereas for incoherent, it is simply P
 
-          ! Determine treatment of elastic scattering -- if NXS(5) = 4, then the
-          ! cross section is given as P/E whereas if NXS(5) /= 4, then it is P.
-          if (sab % elastic_type == 4) then
-             elastic = sab % elastic_P(IE_sab) / p % E
+          if (sab % elastic_mode == SAB_ELASTIC_EXACT) then
+             if (p % E < sab % elastic_e_in(1)) then
+                ! If energy is below that of the lowest Bragg peak, the elastic
+                ! cross section will be zero
+                elastic = ZERO
+             else
+                IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
+                elastic = sab % elastic_P(IE_sab) / p % E
+             end if
           else
+             ! Determine index on elastic energy grid
+             if (p % E < sab % elastic_e_in(1)) then
+                IE_sab = 1
+             else
+                IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
+             end if
+
              ! Get interpolation factor for elastic grid
              f_sab = (p%E - sab%elastic_e_in(IE_sab))/(sab%elastic_e_in(IE_sab+1) - &
                   sab%elastic_e_in(IE_sab))
@@ -303,6 +316,7 @@ contains
                   sab % elastic_P(IE_sab + 1)
           end if
        else
+          ! No elastic data
           elastic = ZERO
        end if
 
@@ -730,8 +744,8 @@ contains
 
 !===============================================================================
 ! SAB_SCATTER performs thermal scattering of a particle with a bound scatterer
-! according to a specified S(a,b) table. Inelastic 
-! ===============================================================================
+! according to a specified S(a,b) table.
+!===============================================================================
 
   subroutine sab_scatter(p, index_nuclide, index_sab)
 
@@ -751,6 +765,7 @@ contains
     real(8) :: mu           ! outgoing cosine
     real(8) :: mu_ijk       ! outgoing cosine k for E_in(i) and E_out(j)
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
+    real(8) :: prob         ! probability for sampling Bragg edge
     real(8) :: u, v, w      ! directional cosines
     character(MAX_LINE_LEN)  :: msg
     type(SAB_Table), pointer :: sab => null()
@@ -758,31 +773,68 @@ contains
     ! Get pointer to S(a,b) table
     sab => sab_tables(index_sab)
 
-    ! Get index and interpolation factor for inelastic grid
-    if (p%E < sab % inelastic_e_in(1)) then
-       i = 1
-       f = ZERO
-    else
-       i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
-       f = (p%E - sab%inelastic_e_in(i)) / & 
-            (sab%inelastic_e_in(i+1) - sab%inelastic_e_in(i))
-    end if
-
     ! Determine whether inelastic or elastic scattering will occur
     if (rang() < micro_xs(index_nuclide) % elastic_sab / &
          micro_xs(index_nuclide) % elastic) then
        ! elastic scattering
 
+       ! Get index and interpolation factor for elastic grid
+       if (p%E < sab % elastic_e_in(1)) then
+          i = 1
+          f = ZERO
+       else
+          i = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
+          f = (p%E - sab%elastic_e_in(i)) / & 
+               (sab%elastic_e_in(i+1) - sab%elastic_e_in(i))
+       end if
+
+       ! Select treatment based on elastic mode
+       if (sab % elastic_mode == SAB_ELASTIC_DISCRETE) then
+          ! With this treatment, we interpolate between two discrete cosines
+          ! corresponding to neighboring incoming energies. This is used for
+          ! data derived in the incoherent approximation
+
+          ! Sample outgoing cosine bin
+          k = 1 + rang() * sab % n_elastic_mu
+
+          ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
+          mu_ijk  = sab % elastic_mu(k,i)
+          mu_i1jk = sab % elastic_mu(k,i+1)
+
+          ! Cosine of angle between incoming and outgoing neutron
+          mu = (1 - f)*mu_ijk + f*mu_i1jk
+
+       elseif (sab % elastic_mode == SAB_ELASTIC_EXACT) then
+          ! This treatment is used for data derived in the coherent
+          ! approximation, i.e. for crystalline structures that have Bragg
+          ! edges.
+          
+          ! Sample a Bragg edge between 1 and i
+          prob = rang() * sab % elastic_P(i+1)
+          k = binary_search(sab % elastic_P(1:i+1), i+1, prob)
+
+          ! Characteristic scattering cosine for this Bragg egg
+          mu = ONE - 2.0*sab % elastic_e_in(k) / p % E
+
+       end if
+
        ! Outgoing energy is same as incoming energy
        E = p % E
-
-       msg = "Elastic scattering on S(a,b) table not yet supported"
-       call fatal_error(msg)
 
     else
        ! Determine number of outgoing energy and angle bins
        n_energy_out = sab % n_inelastic_e_out
        
+       ! Get index and interpolation factor for inelastic grid
+       if (p%E < sab % inelastic_e_in(1)) then
+          i = 1
+          f = ZERO
+       else
+          i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
+          f = (p%E - sab%inelastic_e_in(i)) / & 
+               (sab%inelastic_e_in(i+1) - sab%inelastic_e_in(i))
+       end if
+
        ! Now that we have an incoming energy bin, we need to determine the
        ! outgoing energy bin. This will depend on the "secondary energy
        ! mode". If the mode is 0, then the outgoing energy bin is chosen from a
@@ -791,10 +843,10 @@ contains
        ! other bins (0.1 for the first and last bins and 0.4 for the second and
        ! second to last bins, relative to a normal bin probability of 1)
 
-       if (sab % secondary_mode == SECONDARY_EQUAL) then
+       if (sab % secondary_mode == SAB_SECONDARY_EQUAL) then
           ! All bins equally likely
           j = 1 + rang() * n_energy_out
-       elseif (sab % secondary_mode == SECONDARY_SKEWED) then
+       elseif (sab % secondary_mode == SAB_SECONDARY_SKEWED) then
           r = rang() * (n_energy_out - 3)
           if (r > ONE) then
              ! equally likely N-4 middle bins

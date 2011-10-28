@@ -1,6 +1,8 @@
 module cmfd_utils
 
- implicit none
+  use global
+
+  implicit none
 
 contains
 
@@ -38,5 +40,13 @@ contains
     get_matrix_idx = nidx
 
   end function get_matrix_idx
+
+!===============================================================================
+! PRINT_CMFD is a test routine to check if info from tally is being accessed 
+!===============================================================================
+
+  subroutine print_cmfd()
+
+  end subroutine print_cmfd
 
 end module cmfd_utils

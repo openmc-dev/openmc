@@ -1,3 +1,5 @@
+cmfd_utils.o: global.o
+
 cross_section.o: constants.o
 cross_section.o: cross_section_header.o
 cross_section.o: datatypes.o

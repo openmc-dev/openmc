@@ -1,6 +1,8 @@
 module cmfd_utils
 
   use global
+  use mesh,          only: mesh_indices_to_bin
+  use tally_header,  only: TallyObject, TallyScore
 
   implicit none
 
@@ -47,7 +49,36 @@ contains
 
   subroutine print_cmfd()
 
-    write(7,*) 'hello world'
+    integer :: bins(TALLY_TYPES)       ! bin for tally_types, for filters
+    integer :: ijk(3)                  ! indices for mesh cell where tally is
+    integer :: score_index             ! index in tally score to get value
+
+    real(8) :: tally_val               ! value of tally being extracted    
+
+    type(TallyObject), pointer :: t    ! pointer for a tally object
+    type(StructuredMesh), pointer :: m ! pointer for mesh object
+
+    ! associate pointers with objects
+    t => tallies(1)
+    m => meshes(t % mesh)
+
+    ! set all bins to 1
+    bins = 1
+
+    ! get mesh indices, first we will first force to 1,1,1
+    ijk = (/ 1, 1, 1 /)
+
+    ! apply filters, here we will just try a mesh filter first
+    bins(T_MESH) = mesh_indices_to_bin(m,ijk)
+
+    ! calculate score index from bins
+    score_index = sum((bins - 1) * t%stride) + 1
+
+    ! get value from tally object
+    tally_val = t%scores(score_index,1)%val
+
+    ! write value to file
+    write(7,*) "Tally value is:",tally_val
 
   end subroutine print_cmfd
 

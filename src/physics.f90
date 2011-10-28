@@ -115,10 +115,12 @@ contains
 
     type(Particle), pointer :: p
 
-    integer                 :: i             ! loop index over nuclides
-    integer                 :: index_nuclide ! index into nuclides array
-    real(8)                 :: atom_density  ! atom density of a nuclide
-    type(Material), pointer :: mat           ! current material
+    integer                  :: i             ! loop index over nuclides
+    integer                  :: index_nuclide ! index into nuclides array
+    integer                  :: index_sab
+    real(8)                  :: atom_density  ! atom density of a nuclide
+    real(8)                  :: sab_threshold ! threshold for S(a,b) table
+    type(Material),  pointer :: mat => null() ! current material
 
     ! If the material is the same as the last material and the energy of the
     ! particle hasn't changed, we don't need to lookup cross sections again.
@@ -137,11 +139,28 @@ contains
     ! Find energy index on unionized grid
     call find_energy_index(p)
 
+    ! Check if there's an S(a,b) table for this material
+    if (mat % has_sab_table) then
+       sab_threshold = sab_tables(mat % sab_table) % threshold_inelastic
+    else
+       sab_threshold = ZERO
+    end if
+
     ! Add contribution from each nuclide in material
     do i = 1, mat % n_nuclides
        ! Determine microscopic cross sections for this nuclide
        index_nuclide = mat % nuclide(i)
-       call calculate_nuclide_xs(p, index_nuclide)
+
+       ! Determine whether to use S(a,b) based on energy of particle and whether
+       ! the nuclide matches the S(a,b) table
+       if (p % E < sab_threshold .and. i == mat % sab_nuclide) then
+          index_sab = mat % sab_table
+       else
+          index_sab = 0
+       end if
+
+       ! Calculate microscopic cross section for this nuclide
+       call calculate_nuclide_xs(p, index_nuclide, index_sab)
 
        ! Copy atom density of nuclide in material
        atom_density = mat % atom_density(i)
@@ -174,16 +193,22 @@ contains
 ! given index in the nuclides array at the energy of the given particle
 !===============================================================================
 
-  subroutine calculate_nuclide_xs(p, index_nuclide)
+  subroutine calculate_nuclide_xs(p, index_nuclide, index_sab)
 
     type(Particle), pointer :: p
     integer, intent(in)     :: index_nuclide ! index into nuclides array
+    integer, intent(in)     :: index_sab     ! index into sab_tables array
 
-    integer                :: i    ! index into nuclides array
-    integer                :: IE   ! index on nuclide energy grid
-    real(8)                :: f    ! interpolation factor on nuclide energy grid
-    real(8)                :: nu_t ! total number of neutrons emitted per fission
-    type(Nuclide), pointer :: nuc  ! pointer to nuclide cross section table
+    integer                :: i         ! index into nuclides array
+    integer                :: IE        ! index on nuclide energy grid
+    integer                :: IE_sab    ! index on S(a,b) energy grid
+    real(8)                :: f         ! interp factor on nuclide energy grid
+    real(8)                :: f_sab     ! interp factor on S(a,b) energy grid
+    real(8)                :: inelastic ! S(a,b) inelastic cross section
+    real(8)                :: elastic   ! S(a,b) elastic cross section
+    real(8)                :: nu        ! total # of neutrons emitted per fission
+    type(Nuclide),   pointer :: nuc => null()
+    type(SAB_Table), pointer :: sab => null()
 
     ! Copy index of nuclide
     i = index_nuclide
@@ -226,8 +251,59 @@ contains
             (ONE-f) * nuc % fission(IE) + f * nuc % fission(IE+1)
 
        ! Calculate microscopic nuclide nu-fission cross section
-       nu_t = nu_total(nuc, p % E)
-       micro_xs(i) % nu_fission = nu_t * micro_xs(i) % fission
+       nu = nu_total(nuc, p % E)
+       micro_xs(i) % nu_fission = nu * micro_xs(i) % fission
+    end if
+
+    ! If there is S(a,b) data for this nuclide, we need to do a few
+    ! things. Since the total cross section was based on non-S(a,b) data, we
+    ! need to correct it by subtracting the non-S(a,b) elastic cross section and
+    ! then add back in the calculated S(a,b) elastic+inelastic cross section.
+
+    if (index_sab > 0) then
+       ! Get pointer to S(a,b) table
+       sab => sab_tables(index_sab)
+
+       ! Get index and interpolation factor for inelastic grid
+       if (p%E < sab % inelastic_e_in(1)) then
+          IE_sab = 1
+          f_sab = ZERO
+       else
+          IE_sab = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
+          f_sab = (p%E - sab%inelastic_e_in(IE_sab)) / & 
+               (sab%inelastic_e_in(IE_sab+1) - sab%inelastic_e_in(IE_sab))
+       end if
+
+       ! Calculate S(a,b) inelastic scattering cross section
+       inelastic = (ONE-f_sab) * sab % inelastic_sigma(IE_sab) + f_sab * &
+            sab % inelastic_sigma(IE_sab + 1)
+
+       ! Check for elastic data
+       if (p % E < sab % threshold_elastic) then
+          ! Get index on elastic P grid
+          IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
+
+          ! Determine treatment of elastic scattering -- if NXS(5) = 4, then the
+          ! cross section is given as P/E whereas if NXS(5) /= 4, then it is P.
+          if (sab % elastic_type == 4) then
+             elastic = sab % elastic_P(IE_sab) / p % E
+          else
+             ! Get interpolation factor for elastic grid
+             f_sab = (p%E - sab%elastic_e_in(IE_sab))/(sab%elastic_e_in(IE_sab+1) - &
+                  sab%elastic_e_in(IE_sab))
+
+             ! Calculate S(a,b) elastic scattering cross section
+             elastic = (ONE-f_sab) * sab % elastic_P(IE_sab) + f_sab * &
+                  sab % elastic_P(IE_sab + 1)
+          end if
+       else
+          elastic = ZERO
+       end if
+
+       ! Correct total and elastic cross sections
+       micro_xs(i) % total = micro_xs(i) % total - micro_xs(i) % elastic &
+            + inelastic + elastic
+       micro_xs(i) % elastic = inelastic + elastic
     end if
 
   end subroutine calculate_nuclide_xs

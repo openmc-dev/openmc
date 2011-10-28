@@ -229,6 +229,10 @@ contains
     micro_xs(i) % index_grid = IE
     micro_xs(i) % interp_factor = f
 
+    ! Initialize sab treatment to false
+    micro_xs(i) % use_sab     = .false.
+    micro_xs(i) % elastic_sab = ZERO
+
     ! Initialize nuclide cross-sections to zero
     micro_xs(i) % fission    = ZERO
     micro_xs(i) % nu_fission = ZERO
@@ -261,6 +265,8 @@ contains
     ! then add back in the calculated S(a,b) elastic+inelastic cross section.
 
     if (index_sab > 0) then
+       micro_xs(i) % use_sab = .true.
+
        ! Get pointer to S(a,b) table
        sab => sab_tables(index_sab)
 
@@ -304,6 +310,9 @@ contains
        micro_xs(i) % total = micro_xs(i) % total - micro_xs(i) % elastic &
             + inelastic + elastic
        micro_xs(i) % elastic = inelastic + elastic
+
+       ! Store ratio of elastic to elastic+inelastic for sampling later
+       micro_xs(i) % elastic_sab = elastic
     end if
 
   end subroutine calculate_nuclide_xs
@@ -589,11 +598,17 @@ contains
        ! =======================================================================
        ! ELASTIC SCATTERING
 
-       ! get pointer to elastic scattering reaction
-       rxn => nuc % reactions(1)
+       if (micro_xs(index_nuclide) % use_sab) then
+          ! S(a,b) scattering
+          call sab_scatter(p, index_nuclide, mat % sab_table)
 
-       ! Perform collision physics for elastic scattering
-       call elastic_scatter(p, nuc, rxn)
+       else
+          ! get pointer to elastic scattering reaction
+          rxn => nuc % reactions(1)
+
+          ! Perform collision physics for elastic scattering
+          call elastic_scatter(p, nuc, rxn)
+       end if
 
     else
        ! =======================================================================
@@ -712,6 +727,130 @@ contains
     p % mu = mu
 
   end subroutine elastic_scatter
+
+!===============================================================================
+! SAB_SCATTER performs thermal scattering of a particle with a bound scatterer
+! according to a specified S(a,b) table. Inelastic 
+! ===============================================================================
+
+  subroutine sab_scatter(p, index_nuclide, index_sab)
+
+    type(Particle), pointer :: p
+    integer, intent(in)     :: index_nuclide ! index in micro_xs
+    integer, intent(in)     :: index_sab     ! index in sab_tables
+
+    integer :: i            ! incoming energy bin
+    integer :: j            ! outgoing energy bin
+    integer :: k            ! outgoing cosine bin
+    integer :: n_energy_out ! number of outgoing energy bins
+    real(8) :: f            ! interpolation factor
+    real(8) :: r            ! used for skewed sampling
+    real(8) :: E            ! outgoing energy
+    real(8) :: E_ij         ! outgoing energy j for E_in(i)
+    real(8) :: E_i1j        ! outgoing energy j for E_in(i+1)
+    real(8) :: mu           ! outgoing cosine
+    real(8) :: mu_ijk       ! outgoing cosine k for E_in(i) and E_out(j)
+    real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
+    real(8) :: u, v, w      ! directional cosines
+    character(MAX_LINE_LEN)  :: msg
+    type(SAB_Table), pointer :: sab => null()
+
+    ! Get pointer to S(a,b) table
+    sab => sab_tables(index_sab)
+
+    ! Get index and interpolation factor for inelastic grid
+    if (p%E < sab % inelastic_e_in(1)) then
+       i = 1
+       f = ZERO
+    else
+       i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
+       f = (p%E - sab%inelastic_e_in(i)) / & 
+            (sab%inelastic_e_in(i+1) - sab%inelastic_e_in(i))
+    end if
+
+    ! Determine whether inelastic or elastic scattering will occur
+    if (rang() < micro_xs(index_nuclide) % elastic_sab / &
+         micro_xs(index_nuclide) % elastic) then
+       ! elastic scattering
+
+       ! Outgoing energy is same as incoming energy
+       E = p % E
+
+       msg = "Elastic scattering on S(a,b) table not yet supported"
+       call fatal_error(msg)
+
+    else
+       ! Determine number of outgoing energy and angle bins
+       n_energy_out = sab % n_inelastic_e_out
+       
+       ! Now that we have an incoming energy bin, we need to determine the
+       ! outgoing energy bin. This will depend on the "secondary energy
+       ! mode". If the mode is 0, then the outgoing energy bin is chosen from a
+       ! set of equally-likely bins. However, if the mode is 1, then the first
+       ! two and last two bins are skewed to have lower probabilities than the
+       ! other bins (0.1 for the first and last bins and 0.4 for the second and
+       ! second to last bins, relative to a normal bin probability of 1)
+
+       if (sab % secondary_mode == SECONDARY_EQUAL) then
+          ! All bins equally likely
+          j = 1 + rang() * n_energy_out
+       elseif (sab % secondary_mode == SECONDARY_SKEWED) then
+          r = rang() * (n_energy_out - 3)
+          if (r > ONE) then
+             ! equally likely N-4 middle bins
+             j = r + 2
+          elseif (r > 0.6) then
+             ! second to last bin has relative probability of 0.4
+             j = n_energy_out - 1
+          elseif (r > 0.5) then
+             ! last bin has relative probability of 0.1
+             j = n_energy_out
+          elseif (r > 0.1) then
+             ! second bin has relative probability of 0.4
+             j = 2
+          else
+             ! first bin has relative probability of 0.1
+             j = 1
+          end if
+       else
+          msg = "Invalid secondary energy mode on S(a,b) table " // &
+               trim(sab % name)
+       end if
+
+       ! Determine outgoing energy corresponding to E_in(i) and E_in(i+1)
+       E_ij  = sab % inelastic_e_out(j,i)
+       E_i1j = sab % inelastic_e_out(j,i+1)
+
+       ! Outgoing energy
+       E = (1 - f)*E_ij + f*E_i1j
+
+       ! Sample outgoing cosine bin
+       k = 1 + rang() * sab % n_inelastic_mu
+
+       ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
+       mu_ijk  = sab % inelastic_mu(k,j,i)
+       mu_i1jk = sab % inelastic_mu(k,j,i+1)
+
+       ! Cosine of angle between incoming and outgoing neutron
+       mu = (1 - f)*mu_ijk + f*mu_i1jk
+    end if
+
+    ! copy directional cosines
+    u = p % uvw(1)
+    v = p % uvw(2)
+    w = p % uvw(3)
+
+    ! change direction of particle
+    call rotate_angle(u, v, w, mu)
+    p % uvw = (/ u, v, w /)
+
+    ! change energy of particle
+    p % E = E
+
+    ! Copy scattering cosine for tallies
+    p % mu = mu
+
+  end subroutine sab_scatter
 
 !===============================================================================
 ! SAMPLE_TARGET_VELOCITY samples the target velocity based on the free gas

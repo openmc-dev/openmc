@@ -585,16 +585,17 @@ contains
 
     type(Nuclide), pointer :: nuc
 
-    integer :: i     ! loop indices
-    integer :: LMT   ! index of MT list in XSS
-    integer :: NMT   ! Number of reactions
-    integer :: JXS4  ! index of Q values in XSS
-    integer :: JXS5  ! index of neutron multiplicities in XSS
-    integer :: JXS7  ! index of reactions cross-sections in XSS
-    integer :: LXS   ! location of cross-section locators
-    integer :: LOCA  ! location of cross-section for given MT
-    integer :: IE    ! reaction's starting index on energy grid
-    integer :: NE    ! number of energies for reaction
+    integer :: i         ! loop indices
+    integer :: i_fission ! index in nuc % index_fission
+    integer :: LMT       ! index of MT list in XSS
+    integer :: NMT       ! Number of reactions
+    integer :: JXS4      ! index of Q values in XSS
+    integer :: JXS5      ! index of neutron multiplicities in XSS
+    integer :: JXS7      ! index of reactions cross-sections in XSS
+    integer :: LXS       ! location of cross-section locators
+    integer :: LOCA      ! location of cross-section for given MT
+    integer :: IE        ! reaction's starting index on energy grid
+    integer :: NE        ! number of energies for reaction
     type(Reaction), pointer :: rxn => null()
     
     LMT  = JXS(3)
@@ -625,6 +626,8 @@ contains
     ! reactions are encountered
     nuc % fissionable = .false.
     nuc % has_partial_fission = .false.
+    nuc % n_fission = 0
+    i_fission = 0
 
     do i = 1, NMT
        rxn => nuc % reactions(i+1)
@@ -660,8 +663,9 @@ contains
 
        ! Information about fission reactions
        if (rxn % MT == N_FISSION) then
-          nuc % index_fission = i + 1
+          allocate(nuc % index_fission(1))
        elseif (rxn % MT == N_F) then
+          allocate(nuc % index_fission(PARTIAL_FISSION_MAX))
           nuc % has_partial_fission = .true.
        end if
 
@@ -673,6 +677,11 @@ contains
 
           ! Also need to add fission cross sections to absorption
           nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
+
+          ! Keep track of this reaction for easy searching later
+          i_fission = i_fission + 1
+          nuc % index_fission(i_fission) = i + 1
+          nuc % n_fission = nuc % n_fission + 1
        end if
 
        ! set defaults

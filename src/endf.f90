@@ -146,5 +146,46 @@ contains
     end select
 
   end function reaction_name
-       
+
+!===============================================================================
+! IS_FISSION determines if a given MT number is that of a fission event. This
+! accounts for aggregate fission (MT=18) as well as partial fission reactions.
+!===============================================================================
+
+  function is_fission(MT) result(fission_event)
+
+    integer, intent(in) :: MT
+    logical             :: fission_event
+
+    if (MT == N_FISSION .or. MT == N_F .or. MT == N_NF .or. MT == N_2NF & 
+         .or. MT == N_3NF) then
+       fission_event = .true.
+    else
+       fission_event = .false.
+    end if
+
+  end function is_fission
+
+!===============================================================================
+! IS_SCATTER determines if a given MT number is that of a scattering event
+!===============================================================================
+
+  function is_scatter(MT) result(scatter_event)
+
+    integer, intent(in) :: MT
+    logical             :: scatter_event
+
+    if (MT < 100) then
+       if (MT == N_FISSION .or. MT == N_F .or. MT == N_NF .or. MT == N_2NF & 
+            .or. MT == N_3NF) then
+          scatter_event = .false.
+       else
+          scatter_event = .true.
+       end if
+    else
+       scatter_event = .false.
+    end if
+
+  end function is_scatter
+
 end module endf

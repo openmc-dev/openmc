@@ -139,6 +139,7 @@ module constants
        N_N1        = 51, &
        N_N40       = 90, &
        N_NC        = 91, &
+       N_DISAPPEAR = 101, &
        N_GAMMA     = 102, &
        N_P         = 103, &
        N_D         = 104, &
@@ -203,6 +204,9 @@ module constants
        NU_NONE       = 0, & ! No nu values (non-fissionable)
        NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
        NU_TABULAR    = 2    ! Nu values given by tabular distribution
+
+  ! Maximum number of partial fission reactions
+  integer, parameter :: PARTIAL_FISSION_MAX = 4
 
   ! Maximum number of words in a single line, length of line, and length of
   ! single word

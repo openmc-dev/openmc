@@ -85,7 +85,8 @@ module cross_section_header
      ! Fission information
      logical :: fissionable
      logical :: has_partial_fission
-     integer :: index_fission
+     integer :: n_fission
+     integer, allocatable :: index_fission(:)
 
      ! Total fission neutron emission
      integer :: nu_t_type

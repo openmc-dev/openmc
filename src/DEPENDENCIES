@@ -96,6 +96,7 @@ interpolation.o: search.o
 logging.o: constants.o
 logging.o: global.o
 
+main.o: cmfd/cmfd_utils.o
 main.o: constants.o
 main.o: global.o
 main.o: initialize.o

@@ -107,8 +107,13 @@ module constants
 
   ! Secondary energy mode for S(a,b) inelastic scattering
   integer, parameter :: &
-       & SECONDARY_EQUAL  = 0, & ! Equally-likely outgoing energy bins
-       & SECONDARY_SKEWED = 1    ! Skewed outgoing energy bins
+       & SAB_SECONDARY_EQUAL  = 0, & ! Equally-likely outgoing energy bins
+       & SAB_SECONDARY_SKEWED = 1    ! Skewed outgoing energy bins
+
+  ! Elastic mode for S(a,b) elastic scattering
+  integer, parameter :: &
+       & SAB_ELASTIC_DISCRETE = 3, & ! Sample from discrete cosines
+       & SAB_ELASTIC_EXACT    = 4    ! Exact treatment for coherent elastic
 
   ! Reaction types
   integer, parameter :: &

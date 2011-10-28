@@ -1263,7 +1263,7 @@ contains
        table % threshold_elastic = table % elastic_e_in(NE_in)
 
        ! determine whether sigma=P or sigma = P/E
-       table % elastic_type = NXS(5)
+       table % elastic_mode = NXS(5)
     else
        table % threshold_elastic = ZERO
        table % n_elastic_e_in = 0

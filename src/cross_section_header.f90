@@ -139,7 +139,7 @@ module cross_section_header
      real(8), allocatable :: inelastic_mu(:,:,:)
 
      ! Elastic scattering data
-     integer :: elastic_type
+     integer :: elastic_mode
      integer :: n_elastic_e_in
      integer :: n_elastic_mu
      real(8), allocatable :: elastic_e_in(:)

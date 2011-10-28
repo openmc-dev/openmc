@@ -1205,6 +1205,9 @@ contains
     integer :: NMU    ! number of outgoing angles
     integer :: JXS4   ! location of elastic energy table
 
+    ! read secondary energy mode for inelastic scattering
+    table % secondary_mode = NXS(7)
+
     ! read number of inelastic energies and allocate arrays
     NE_in = XSS(JXS(1))
     table % n_inelastic_e_in = NE_in

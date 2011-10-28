@@ -132,6 +132,7 @@ module cross_section_header
      integer :: n_inelastic_e_in
      integer :: n_inelastic_e_out
      integer :: n_inelastic_mu
+     integer :: secondary_mode
      real(8), allocatable :: inelastic_e_in(:)
      real(8), allocatable :: inelastic_sigma(:) 
      real(8), allocatable :: inelastic_e_out(:,:)
@@ -178,6 +179,10 @@ module cross_section_header
      real(8) :: absorption
      real(8) :: fission
      real(8) :: nu_fission
+
+     ! Information for S(a,b) use
+     logical :: use_sab
+     real(8) :: elastic_sab
   end type NuclideMicroXS
 
 !===============================================================================

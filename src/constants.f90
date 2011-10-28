@@ -105,6 +105,11 @@ module constants
        & ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins
        & ANGLE_TABULAR   = 3    ! Tabular angular distribution
 
+  ! Secondary energy mode for S(a,b) inelastic scattering
+  integer, parameter :: &
+       & SECONDARY_EQUAL  = 0, & ! Equally-likely outgoing energy bins
+       & SECONDARY_SKEWED = 1    ! Skewed outgoing energy bins
+
   ! Reaction types
   integer, parameter :: &
        TOTAL_XS    = 1, &

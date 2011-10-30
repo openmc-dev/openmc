@@ -1226,6 +1226,8 @@ contains
     ! scattering
     NE_out = NXS(4)
     NMU = NXS(3) + 1
+    table % n_inelastic_e_out = NE_out
+    table % n_inelastic_mu = NMU
     allocate(table % inelastic_e_out(NE_out, NE_in))
     allocate(table % inelastic_mu(NMU, NE_out, NE_in))
 

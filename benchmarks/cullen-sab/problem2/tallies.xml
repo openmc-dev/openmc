@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <!--
+      ====================================================
+      Description: Simple thermal system from INDC-USA-107
+      Case:        Problem 2 (1/4" pin, 2" lattice pitch)
+      Written By:  Paul Romano
+      Date:        10/30/2011
+      ====================================================
+  -->
+
+  <tally id="1">
+    <filters>
+      <cell>1 2</cell>
+    </filters>
+
+    <macros>total scatter nu-scatter absorption fission nu-fission</macros>
+  </tally>
+
+</tallies>

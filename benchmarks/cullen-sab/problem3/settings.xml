@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<settings>
+
+  <!--
+      ====================================================
+      Description: Simple thermal system from INDC-USA-107
+      Case:        Problem 3 (1/8" pin, 2" lattice pitch)
+      Written By:  Paul Romano
+      Date:        10/30/2011
+      ====================================================
+  -->
+
+  <xslibrary path="/opt/serpent/xsdata/endfb7/xsdata" />
+
+  <criticality>
+    <cycles>500</cycles>
+    <inactive>50</inactive>
+    <particles>10000</particles>
+  </criticality>
+
+  <verbosity value="7" />
+
+  <source>
+    <type>box</type>
+    <coeffs>-2 -2 -2  2  2  2</coeffs>
+  </source>
+
+</settings>

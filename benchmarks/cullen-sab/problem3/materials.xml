@@ -4,17 +4,17 @@
   <!--
       ====================================================
       Description: Simple thermal system from INDC-USA-107
-      Case:        Problem 1 (1/2" pin, 2" lattice pitch)
+      Case:        Problem 3 (1/8" pin, 2" lattice pitch)
       Written By:  Paul Romano
-      Date:        10/28/2011
+      Date:        10/30/2011
       ====================================================
   -->
 
-  <!-- Fuel composed of 99.02 a/o U-238 and 0.98 a/o U-235 -->
+  <!-- Fuel composed of 30 a/o U-238 and 70 a/o U-235 -->
   <material uid="1">
     <density value="18.8" units="g/cc" />
-    <nuclide name="U-238" xs="03c" ao="99.02" />
-    <nuclide name="U-235" xs="03c" ao="0.98" />
+    <nuclide name="U-238" xs="03c" ao="30.0" />
+    <nuclide name="U-235" xs="03c" ao="70.0" />
   </material>
 
   <!-- Water at 1 g/cc -->

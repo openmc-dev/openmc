@@ -388,12 +388,7 @@ contains
           call get_mesh_bin(m, p % xyz, mesh_bin, in_mesh)
           if (.not. in_mesh) cycle
 
-          if (t % surface_current) then
-             message = "Surface current mesh tally not yet implemented."
-             call fatal_error()
-          else
-             bins(T_MESH) = mesh_bin
-          end if
+          bins(T_MESH) = mesh_bin
        else
           bins(T_MESH) = 1
        end if

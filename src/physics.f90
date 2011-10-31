@@ -1251,26 +1251,6 @@ contains
   end subroutine inelastic_scatter
 
 !===============================================================================
-! N_ABSORPTION handles all absorbing reactions, i.e. (n,gamma), (n,p), (n,a),
-! etc.
-!===============================================================================
-
-  subroutine n_absorption(p)
-
-    type(Particle), pointer :: p
-
-    integer                 :: cell_num ! user-specified cell number
-
-    p % alive = .false.
-    if (verbosity >= 10) then
-       cell_num = cells(p % cell)%uid
-       message = "    Absorbed in cell " // trim(int_to_str(cell_num))
-       call write_message()
-    end if
-
-  end subroutine n_absorption
-
-!===============================================================================
 ! SAMPLE_ANGLE samples the cosine of the angle between incident and exiting
 ! particle directions either from 32 equiprobable bins or from a tabular
 ! distribution.

@@ -5,7 +5,7 @@ module source
   use cross_section_header, only: Nuclide
   use global
   use mcnp_random,          only: rang, RN_init_particle
-  use output,               only: message
+  use output,               only: write_message
   use particle_header,      only: Particle, initialize_particle
   use physics,              only: watt_spectrum
 
@@ -33,7 +33,7 @@ contains
     character(MAX_LINE_LEN) :: msg    ! error message
 
     msg = 'Initializing source particles...'
-    call message(msg, 6)
+    call write_message(6)
 
     ! Determine maximum amount of particles to simulate on each processor
     maxwork = ceiling(real(n_particles)/n_procs,8)

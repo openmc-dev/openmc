@@ -5,7 +5,7 @@ module geometry
   use error,           only: fatal_error
   use geometry_header, only: Cell, Surface, Universe, Lattice
   use global
-  use output,          only: message
+  use output,          only: write_message
   use particle_header, only: Particle
   use string,          only: int_to_str
 
@@ -95,7 +95,6 @@ contains
     type(Particle), pointer :: p          ! pointer to particle
     logical,  intent(inout) :: found      ! particle found?
 
-    character(MAX_LINE_LEN) :: msg        ! error message
     integer                 :: i          ! index over cells
     integer                 :: x, y
     type(Cell),     pointer :: c          ! pointer to cell
@@ -127,8 +126,8 @@ contains
              if (found) then
                 exit
              else
-                msg = "Could not locate particle in universe: "
-                call fatal_error(msg)
+                message = "Could not locate particle in universe: "
+                call fatal_error()
              end if
           elseif (c % type == CELL_LATTICE) then
              ! Set current lattice
@@ -153,9 +152,9 @@ contains
              if (found) then
                 exit
              else
-                msg = "Could not locate particle in lattice: " & 
+                message = "Could not locate particle in lattice: " & 
                      & // int_to_str(lat % uid)
-                call fatal_error(msg)
+                call fatal_error()
              end if
           end if
        end if
@@ -191,7 +190,6 @@ contains
     real(8)                 :: dot_prod   ! dot product of direction and normal
     real(8)                 :: norm       ! "norm" of surface normal
     logical                 :: found      ! particle found in universe?
-    character(MAX_LINE_LEN) :: msg        ! output/error message?
     type(Surface),  pointer :: surf => null()
     type(Cell),     pointer :: c => null()
     type(Lattice),  pointer :: lat => null()
@@ -199,8 +197,8 @@ contains
 
     surf => surfaces(abs(p % surface))
     if (verbosity >= 10) then
-       msg = "    Crossing surface " // trim(int_to_str(surf % uid))
-       call message(msg)
+       message = "    Crossing surface " // trim(int_to_str(surf % uid))
+       call write_message()
     end if
 
     if (surf % bc == BC_VACUUM .and. (.not. plotting)) then
@@ -209,8 +207,8 @@ contains
 
        p % alive = .false.
        if (verbosity >= 10) then
-          msg = "    Leaked out of surface " // trim(int_to_str(surf % uid))
-          call message(msg)
+          message = "    Leaked out of surface " // trim(int_to_str(surf % uid))
+          call write_message()
        end if
        return
 
@@ -301,9 +299,9 @@ contains
           ! Set vector
           p % uvw = (/ u, v, w /)
        case default
-          msg = "Reflection not supported for surface " // &
+          message = "Reflection not supported for surface " // &
                trim(int_to_str(surf % uid))
-          call fatal_error(msg)
+          call fatal_error()
        end select
 
        ! Reassign particle's cell and surface
@@ -312,8 +310,8 @@ contains
 
        ! Diagnostic message
        if (verbosity >= 10) then
-          msg = "    Reflected from surface " // trim(int_to_str(surf%uid))
-          call message(msg)
+          message = "    Reflected from surface " // trim(int_to_str(surf%uid))
+          call write_message()
        end if
        return
     end if
@@ -332,8 +330,8 @@ contains
                 lower_univ => universes(c % fill)
                 call find_cell(lower_univ, p, found)
                 if (.not. found) then
-                   msg = "Could not locate particle in universe: "
-                   call fatal_error(msg)
+                   message = "Could not locate particle in universe: "
+                   call fatal_error()
                 end if
              elseif (c % type == CELL_LATTICE) then
                 ! Set current lattice
@@ -356,9 +354,9 @@ contains
 
                 call find_cell(lower_univ, p, found)
                 if (.not. found) then
-                   msg = "Could not locate particle in lattice: " & 
-                        & // int_to_str(lat % uid)
-                   call fatal_error(msg)
+                   message = "Could not locate particle in lattice: " // &
+                        trim(int_to_str(lat % uid))
+                   call fatal_error()
                 end if
              else
                 ! set current pointers
@@ -379,8 +377,8 @@ contains
                 lower_univ => universes(c % fill)
                 call find_cell(lower_univ, p, found)
                 if (.not. found) then
-                   msg = "Could not locate particle in universe: "
-                   call fatal_error(msg)
+                   message = "Could not locate particle in universe: "
+                   call fatal_error()
                 end if
              elseif (c % type == CELL_LATTICE) then
                 ! Set current lattice
@@ -403,9 +401,9 @@ contains
 
                 call find_cell(lower_univ, p, found)
                 if (.not. found) then
-                   msg = "Could not locate particle in lattice: " & 
-                        & // int_to_str(lat % uid)
-                   call fatal_error(msg)
+                   message = "Could not locate particle in lattice: " // &
+                        trim(int_to_str(lat % uid))
+                   call fatal_error()
                 end if
              else
                 ! set current pointers
@@ -430,9 +428,9 @@ contains
     end do
 
     ! Couldn't find next cell anywhere!
-    msg = "After particle crossed surface " // trim(int_to_str(p%surface)) // &
-         & ", it could not be located in any cell and it did not leak."
-    call fatal_error(msg)
+    message = "After particle crossed surface " // trim(int_to_str(p%surface)) &
+         // ", it could not be located in any cell and it did not leak."
+    call fatal_error()
        
   end subroutine cross_surface
 
@@ -459,13 +457,12 @@ contains
     real(8)        :: x0       ! half the width of lattice element
     real(8)        :: y0       ! half the height of lattice element
     logical        :: found    ! particle found in cell?
-    character(MAX_LINE_LEN) :: msg  ! output/error message
     type(Lattice),  pointer :: lat
     type(Universe), pointer :: univ
 
     if (verbosity >= 10) then
-       msg = "    Crossing lattice"
-       call message(msg)
+       message = "    Crossing lattice"
+       call write_message()
     end if
 
     lat => lattices(p % lattice)
@@ -530,11 +527,11 @@ contains
     i_x = p % index_x
     i_y = p % index_y
     if (i_x < 1 .or. i_x > lat % n_x) then
-       msg = "Reached edge of lattice."
-       call fatal_error(msg)
+       message = "Reached edge of lattice."
+       call fatal_error()
     elseif (i_y < 1 .or. i_y > lat % n_y) then
-       msg = "Reached edge of lattice."
-       call fatal_error(msg)
+       message = "Reached edge of lattice."
+       call fatal_error()
     end if
 
     ! Find universe for next lattice element
@@ -543,8 +540,8 @@ contains
     ! Find cell in next lattice element
     call find_cell(univ, p, found)
     if (.not. found) then
-       msg = "Could not locate particle in universe: "
-       call fatal_error(msg)
+       message = "Could not locate particle in universe: "
+       call fatal_error()
     end if
 
   end subroutine cross_lattice
@@ -578,7 +575,6 @@ contains
     real(8) :: a,b,c,k      ! quadratic equation coefficients
     real(8) :: quad         ! discriminant of quadratic equation
     logical :: on_surface   ! is particle on surface?
-    character(MAX_LINE_LEN) :: msg   ! output/error message
     type(Cell),    pointer  :: cell_p => null()
     type(Cell),    pointer  :: parent_p => null()
     type(Surface), pointer  :: surf_p => null()
@@ -882,8 +878,8 @@ contains
           end if
 
        case (SURF_GQ)
-          msg = "Surface distance not yet implement for general quadratic."
-          call fatal_error(msg)
+          message = "Surface distance not yet implement for general quadratic."
+          call fatal_error()
 
        end select
 
@@ -1114,12 +1110,11 @@ contains
     integer, allocatable :: count_positive(:) ! # of cells on positive side
     integer, allocatable :: count_negative(:) ! # of cells on negative side
     logical :: positive   ! positive side specified in surface list
-    character(MAX_LINE_LEN) :: msg ! output/error message
     type(Cell),    pointer  :: c
     type(Surface), pointer  :: surf
 
-    msg = "Building neighboring cells lists for each surface..."
-    call message(msg, 4)
+    message = "Building neighboring cells lists for each surface..."
+    call write_message(4)
 
     allocate(count_positive(n_surfaces))
     allocate(count_negative(n_surfaces))

@@ -10,7 +10,7 @@ module cross_section
   use fileio,               only: read_line, read_data, skip_lines
   use global
   use material_header,      only: Material
-  use output,               only: message
+  use output,               only: write_message
   use string,               only: split_string, str_to_int, str_to_real, &
                                   lower_case, int_to_str
 
@@ -40,7 +40,6 @@ contains
     integer        :: index_nuclides   ! index in nuclides
     integer        :: index_sab        ! index in sab_tables
     character(10)  :: key              ! name of isotope, e.g. 92235.03c
-    character(MAX_LINE_LEN) :: msg     ! output/error message
     type(Material),     pointer :: mat => null()
     type(Nuclide),      pointer :: nuc => null()
     type(SAB_Table),    pointer :: sab => null()
@@ -131,9 +130,9 @@ contains
              if (dict_has_key(xsdata_dict, key)) then
                 index = dict_get_key(xsdata_dict, key)
              else
-                msg = "Cannot find cross-section " // trim(key) // " in specified &
-                     &xsdata file."
-                call fatal_error(msg)
+                message = "Cannot find cross-section " // trim(key) // &
+                     " in specified xsdata file."
+                call fatal_error()
              end if
 
              ! Read the table and add entry to dictionary
@@ -156,9 +155,9 @@ contains
 
           ! Check to make sure S(a,b) table matched a nuclide
           if (mat % sab_nuclide == 0) then
-             msg = "S(a,b) table " // trim(mat % sab_name) // " did not match " &
+             message = "S(a,b) table " // trim(mat % sab_name) // " did not match " &
                   // "any nuclide on material " // trim(int_to_str(mat % uid))
-             call fatal_error(msg)
+             call fatal_error()
           end if
        end if
     end do
@@ -188,7 +187,6 @@ contains
     logical                 :: file_exists      ! does ACE library exist?
     logical                 :: found_xs         ! did we find table in library?
     character(7)            :: readable         ! is ACE library readable?
-    character(MAX_LINE_LEN) :: msg              ! output/error message
     character(MAX_LINE_LEN) :: line             ! single line to read
     character(MAX_WORD_LEN) :: words(MAX_WORDS) ! words on a line
     character(MAX_WORD_LEN) :: filename         ! name of ACE library file
@@ -197,11 +195,11 @@ contains
 
     ! Check to make sure index in nuclides array and xsdata arrays are valid
     if (index_table > size(nuclides)) then
-       msg = "Index of table to read is greater than length of nuclides."
-       call fatal_error(msg)
+       message = "Index of table to read is greater than length of nuclides."
+       call fatal_error()
     elseif (index > size(xsdatas)) then
-       msg = "Index of xsdata entry is greater than length of xsdatas."
-       call fatal_error(msg)
+       message = "Index of xsdata entry is greater than length of xsdatas."
+       call fatal_error()
     end if
 
     filename = xsdatas(index)%path
@@ -212,32 +210,32 @@ contains
     ! Check if input file exists and is readable
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
-       msg = "ACE library '" // trim(filename) // "' does not exist!"
-       call fatal_error(msg)
+       message = "ACE library '" // trim(filename) // "' does not exist!"
+       call fatal_error()
     elseif (readable(1:3) == 'NO') then
-       msg = "ACE library '" // trim(filename) // "' is not readable! &
+       message = "ACE library '" // trim(filename) // "' is not readable! &
             &Change file permissions with chmod command."
-       call fatal_error(msg)
+       call fatal_error()
     end if
 
     ! display message
-    msg = "Loading ACE cross section table: " // tablename
-    call message(msg, 6)
+    message = "Loading ACE cross section table: " // tablename
+    call write_message(6)
 
     ! open file
     open(file=filename, unit=in, status='old', & 
          & action='read', iostat=ioError)
     if (ioError /= 0) then
-       msg = "Error while opening file: " // filename
-       call fatal_error(msg)
+       message = "Error while opening file: " // filename
+       call fatal_error()
     end if
 
     found_xs = .false.
     do while (.not. found_xs)
        call read_line(in, line, ioError)
        if (ioError < 0) then
-          msg = "Could not find ACE table " // tablename // "."
-          call fatal_error(msg)
+          message = "Could not find ACE table " // tablename // "."
+          call fatal_error()
        end if
        call split_string(line, words, n)
        if (trim(words(1)) == trim(tablename)) then
@@ -1084,7 +1082,6 @@ contains
     logical                 :: file_exists      ! does ACE library exist?
     logical                 :: found_xs         ! did we find table in library?
     character(7)            :: readable         ! is ACE library readable?
-    character(MAX_LINE_LEN) :: msg              ! output/error message
     character(MAX_LINE_LEN) :: line             ! single line to read
     character(MAX_WORD_LEN) :: words(MAX_WORDS) ! words on a line
     character(MAX_WORD_LEN) :: filename         ! name of ACE library file
@@ -1099,32 +1096,32 @@ contains
     ! Check if input file exists and is readable
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
-       msg = "ACE library '" // trim(filename) // "' does not exist!"
-       call fatal_error(msg)
+       message = "ACE library '" // trim(filename) // "' does not exist!"
+       call fatal_error()
     elseif (readable(1:3) == 'NO') then
-       msg = "ACE library '" // trim(filename) // "' is not readable! &
+       message = "ACE library '" // trim(filename) // "' is not readable! &
             &Change file permissions with chmod command."
-       call fatal_error(msg)
+       call fatal_error()
     end if
 
     ! display message
-    msg = "Loading ACE cross section table: " // tablename
-    call message(msg, 6)
+    message = "Loading ACE cross section table: " // tablename
+    call write_message(6)
 
     ! open file
     open(file=filename, unit=in, status='old', & 
          & action='read', iostat=ioError)
     if (ioError /= 0) then
-       msg = "Error while opening file: " // filename
-       call fatal_error(msg)
+       message = "Error while opening file: " // filename
+       call fatal_error()
     end if
 
     found_xs = .false.
     do while (.not. found_xs)
        call read_line(in, line, ioError)
        if (ioError < 0) then
-          msg = "Could not find ACE table " // tablename // "."
-          call fatal_error(msg)
+          message = "Could not find ACE table " // tablename // "."
+          call fatal_error()
        end if
        call split_string(line, words, n)
        if (trim(words(1)) == trim(tablename)) then
@@ -1396,7 +1393,6 @@ contains
 
     type(xsData), pointer    :: iso => null()
     character(MAX_LINE_LEN)  :: line
-    character(MAX_LINE_LEN)  :: msg
     character(MAX_WORD_LEN)  :: words(MAX_WORDS)
     character(MAX_WORD_LEN)  :: filename
     integer                  :: n
@@ -1407,8 +1403,8 @@ contains
     integer                  :: index
     integer                  :: ioError
 
-    msg = "Reading cross-section summary file..."
-    call message(msg, 5)
+    message = "Reading cross-section summary file..."
+    call write_message(5)
 
     ! Construct filename
     filename = trim(path)
@@ -1416,20 +1412,20 @@ contains
     ! Check if xsdata exists and is readable
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
-       msg = "Cross section summary '" // trim(filename) // "' does not exist!"
-       call fatal_error(msg)
+       message = "Cross section summary '" // trim(filename) // "' does not exist!"
+       call fatal_error()
     elseif (readable(1:3) == 'NO') then
-       msg = "Cross section summary '" // trim(filename) // "' is not readable!" &
-            & // "Change file permissions with chmod command."
-       call fatal_error(msg)
+       message = "Cross section summary '" // trim(filename) // "' is not " &
+            & // "readable! Change file permissions with chmod command."
+       call fatal_error()
     end if
 
     ! open xsdata file
     open(FILE=filename, UNIT=in, STATUS='old', &
          & ACTION='read', IOSTAT=ioError)
     if (ioError /= 0) then
-       msg = "Error while opening file: " // filename
-       call fatal_error(msg)
+       message = "Error while opening file: " // filename
+       call fatal_error()
     end if
 
     ! determine how many lines
@@ -1440,9 +1436,9 @@ contains
           ! reached end of file
           exit
        elseif (ioError > 0) then
-          msg = "Unknown error while reading file: " // filename
+          message = "Unknown error while reading file: " // filename
           close(UNIT=in)
-          call fatal_error(msg)
+          call fatal_error()
        end if
        count = count + 1
     end do
@@ -1460,9 +1456,9 @@ contains
 
        ! Check to make sure there are enough arguments
        if (n < 9) then
-          msg = "Not enough arguments on xsdata line: " // line
+          message = "Not enough arguments on xsdata line: " // line
           close(UNIT=in)
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        iso => xsdatas(index)

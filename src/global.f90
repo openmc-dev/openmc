@@ -146,8 +146,11 @@ module global
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
-  character(MAX_WORD_LEN) :: path_input
-  character(MAX_WORD_LEN) :: path_xsdata
+  character(MAX_WORD_LEN) :: path_input  ! Path to input file
+  character(MAX_WORD_LEN) :: path_xsdata ! Path to xsdata file
+
+  ! Message used in message/warning/fatal_error
+  character(MAX_LINE_LEN) :: message
 
   ! Problem type
   integer :: problem_type = PROB_CRITICALITY

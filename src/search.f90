@@ -2,6 +2,7 @@ module search
 
   use constants, only: ONE, MAX_LINE_LEN
   use error,     only: fatal_error
+  use global,    only: message
 
 contains
 
@@ -20,14 +21,13 @@ contains
     integer :: L
     integer :: R
     real(8) :: testval
-    character(MAX_LINE_LEN) :: msg
 
     L = 1
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-       msg = "Value outside of array during binary search"
-       call fatal_error(msg)
+       message = "Value outside of array during binary search"
+       call fatal_error()
     end if
     
     do while (R - L > 1)

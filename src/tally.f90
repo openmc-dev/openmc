@@ -6,7 +6,7 @@ module tally
   use global
   use mesh,          only: get_mesh_bin, bin_to_mesh_indices, get_mesh_indices
   use mesh_header,   only: StructuredMesh
-  use output,        only: message, header
+  use output,        only: write_message, header
   use search,        only: binary_search
   use string,        only: int_to_str, real_to_str
   use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement
@@ -36,13 +36,12 @@ contains
     real(8), save           :: k1 = 0.    ! accumulated keff
     real(8), save           :: k2 = 0.    ! accumulated keff**2
     real(8)                 :: std        ! stdev of keff over active cycles
-    character(MAX_LINE_LEN) :: msg        ! output/error message
 #ifdef MPI
     integer :: ierr
 #endif
 
-    msg = "Calculate cycle keff..."
-    call message(msg, 8)
+    message = "Calculate cycle keff..."
+    call write_message(8)
 
     ! set k1 and k2 at beginning of run
     if (i_cycle == 1) then
@@ -103,7 +102,6 @@ contains
     integer :: n                   ! number of bins
     integer :: filter_bins         ! running total of number of filter bins
     integer :: score_bins          ! number of scoring bins
-    character(MAX_LINE_LEN) :: msg ! output/error message
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 
@@ -243,8 +241,8 @@ contains
        if (n > 0) then
           score_bins = n
        else
-          msg = "Must have macro tally bins!"
-          call fatal_error(msg)
+          message = "Must have macro tally bins!"
+          call fatal_error()
        end if
 
        ! Allocate scores for tally
@@ -319,7 +317,6 @@ contains
     logical :: in_mesh
     logical :: has_energyout_bin
     logical :: analog
-    character(MAX_LINE_LEN) :: msg
     type(TallyObject),    pointer :: t
     type(StructuredMesh), pointer :: m
 
@@ -392,8 +389,8 @@ contains
           if (.not. in_mesh) cycle
 
           if (t % surface_current) then
-             msg = "Surface current mesh tally not yet implemented."
-             call fatal_error(msg)
+             message = "Surface current mesh tally not yet implemented."
+             call fatal_error()
           else
              bins(T_MESH) = mesh_bin
           end if
@@ -500,8 +497,8 @@ contains
                 case (MACRO_NU_FISSION)
                    cycle
                 case default
-                   msg = "Invalid macro reaction on analog tally."
-                   call fatal_error(msg)
+                   message = "Invalid macro reaction on analog tally."
+                   call fatal_error()
                 end select
              end if
 
@@ -793,11 +790,8 @@ contains
 
        ! Check for errors
        if (score_index < 0 .or. score_index > t % n_total_bins) then
-          print *, ijk0
-          print *, ijk1
-          print *, score_index
-          print *, t % stride(1:3), t % n_total_bins
-          call fatal_error("Score_index outside range.")
+          message = "Score index outside range."
+          call fatal_error()
        end if
 
        ! Add to surface current tally

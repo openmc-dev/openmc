@@ -152,14 +152,13 @@ contains
   end subroutine header
 
 !===============================================================================
-! MESSAGE displays an informational message to the log file and the standard
-! output stream.
+! WRITE_MESSAGE displays an informational message to the log file and the 
+! standard output stream.
 !===============================================================================
 
-  subroutine message(msg, level)
+  subroutine write_message(level)
 
-    character(*), intent(in) :: msg
-    integer,      optional   :: level
+    integer, optional :: level
 
     integer :: n_lines
     integer :: i
@@ -168,13 +167,13 @@ contains
     if (.not. master .and. present(level)) return
 
     if (.not. present(level) .or. level <= verbosity) then
-       n_lines = (len_trim(msg)-1)/79 + 1
+       n_lines = (len_trim(message)-1)/79 + 1
        do i = 1, n_lines
-          write(ou, fmt='(1X,A)') trim(msg(79*(i-1)+1:79*i))
+          write(ou, fmt='(1X,A)') trim(message(79*(i-1)+1:79*i))
        end do
     end if
 
-  end subroutine message
+  end subroutine write_message
 
 !===============================================================================
 ! GET_TODAY determines the date and time at which the program began execution

@@ -32,6 +32,7 @@ fileio.o: string.o
 fission.o: constants.o
 fission.o: cross_section_header.o
 fission.o: error.o
+fission.o: global.o
 fission.o: interpolation.o
 fission.o: search.o
 
@@ -91,6 +92,7 @@ input_xml.o: xml-fortran/templates/tallies_t.o
 
 interpolation.o: constants.o
 interpolation.o: error.o
+interpolation.o: global.o
 interpolation.o: search.o
 
 logging.o: constants.o
@@ -156,6 +158,7 @@ plot.o: particle_header.o
 
 search.o: constants.o
 search.o: error.o
+search.o: global.o
 
 source.o: bank_header.o
 source.o: constants.o
@@ -168,6 +171,7 @@ source.o: physics.o
 
 string.o: constants.o
 string.o: error.o
+string.o: global.o
 
 tally.o: constants.o
 tally.o: cross_section.o

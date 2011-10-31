@@ -7,7 +7,7 @@ module input_xml
   use geometry_header, only: Cell, Surface, Lattice
   use global
   use mesh_header,     only: StructuredMesh
-  use output,          only: message
+  use output,          only: write_message
   use string,          only: lower_case, int_to_str, str_to_int, str_to_real,  &
                              split_string
   use tally_header,    only: TallyObject
@@ -47,19 +47,18 @@ contains
     integer :: coeffs_reqd
     logical :: file_exists
     character(MAX_WORD_LEN) :: type
-    character(MAX_LINE_LEN) :: msg
     character(MAX_LINE_LEN) :: filename
 
     ! Display output message
-    msg = "Reading settings XML file..."
-    call message(msg, 5)
+    message = "Reading settings XML file..."
+    call write_message(5)
 
     ! Check if settings.xml exists
     filename = trim(path_input) // "settings.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-       msg = "Settings XML file '" // trim(filename) // "' does not exist!"
-       call fatal_error(msg)
+       message = "Settings XML file '" // trim(filename) // "' does not exist!"
+       call fatal_error()
     end if
 
     ! Parse settings.xml file
@@ -88,19 +87,18 @@ contains
           external_source % type = SRC_BOX
           coeffs_reqd = 6
        case default
-          msg = "Invalid source type: " // trim(source_ % type)
-          call fatal_error(msg)
+          message = "Invalid source type: " // trim(source_ % type)
+          call fatal_error()
        end select
 
        ! Coefficients for external surface
        n = size(source_ % coeffs)
        if (n < coeffs_reqd) then
-          msg = "Not enough coefficients specified for external source."
-          print *, n, coeffs_reqd
-          call fatal_error(msg)
+          message = "Not enough coefficients specified for external source."
+          call fatal_error()
        elseif (n > coeffs_reqd) then
-          msg = "Too many coefficients specified for external source."
-          call fatal_error(msg)
+          message = "Too many coefficients specified for external source."
+          call fatal_error()
        else
           allocate(external_source % values(n))
           external_source % values = source_ % coeffs
@@ -135,15 +133,14 @@ contains
     integer :: coeffs_reqd
     logical :: file_exists
     character(MAX_LINE_LEN) :: filename
-    character(MAX_LINE_LEN) :: msg
     character(MAX_WORD_LEN) :: word
     type(Cell),    pointer :: c => null()
     type(Surface), pointer :: s => null()
     type(Lattice), pointer :: l => null()
 
     ! Display output message
-    msg = "Reading geometry XML file..."
-    call message(msg, 5)
+    message = "Reading geometry XML file..."
+    call write_message(5)
 
     ! ==========================================================================
     ! READ CELLS FROM GEOMETRY.XML
@@ -152,8 +149,8 @@ contains
     filename = trim(path_input) // "geometry.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-       msg = "Geometry XML file '" // trim(filename) // "' does not exist!"
-       call fatal_error(msg)
+       message = "Geometry XML file '" // trim(filename) // "' does not exist!"
+       call fatal_error()
     end if
 
     ! Parse geometry.xml file
@@ -175,22 +172,23 @@ contains
 
        ! Check to make sure that either material or fill was specified
        if (c % material == 0 .and. c % fill == 0) then
-          msg = "Neither material nor fill was specified for cell " // & 
+          message = "Neither material nor fill was specified for cell " // & 
                trim(int_to_str(c % uid))
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        ! Check to make sure that both material and fill haven't been
        ! specified simultaneously
        if (c % material /= 0 .and. c % fill /= 0) then
-          msg = "Cannot specify material and fill simultaneously"
-          call fatal_error(msg)
+          message = "Cannot specify material and fill simultaneously"
+          call fatal_error()
        end if
 
        ! Check to make sure that surfaces were specified
        if (.not. associated(cell_(i) % surfaces)) then
-          msg = "No surfaces specified for cell " // trim(int_to_str(c % uid))
-          call fatal_error(msg)
+          message = "No surfaces specified for cell " // &
+               trim(int_to_str(c % uid))
+          call fatal_error()
        end if
 
        ! Allocate array for surfaces and copy
@@ -274,8 +272,8 @@ contains
           s % type = SURF_GQ
           coeffs_reqd  = 10
        case default
-          msg = "Invalid surface type: " // trim(surface_(i) % type)
-          call fatal_error(msg)
+          message = "Invalid surface type: " // trim(surface_(i) % type)
+          call fatal_error()
        end select
 
        ! Check to make sure that the proper number of coefficients
@@ -284,14 +282,14 @@ contains
 
        n = size(surface_(i) % coeffs)
        if (n < coeffs_reqd) then
-          msg = "Not enough coefficients specified for surface: " // & 
+          message = "Not enough coefficients specified for surface: " // & 
                trim(int_to_str(s % uid))
           print *, n, coeffs_reqd
-          call fatal_error(msg)
+          call fatal_error()
        elseif (n > coeffs_reqd) then
-          msg = "Too many coefficients specified for surface: " // &
+          message = "Too many coefficients specified for surface: " // &
                trim(int_to_str(s % uid))
-          call fatal_error(msg)
+          call fatal_error()
        else
           allocate(s % coeffs(n))
           s % coeffs = surface_(i) % coeffs
@@ -310,9 +308,9 @@ contains
        case ('periodic')
           s % bc = BC_PERIODIC
        case default
-          msg = "Unknown boundary condition '" // trim(word) // &
+          message = "Unknown boundary condition '" // trim(word) // &
                "' specified on surface " // trim(int_to_str(s % uid))
-          call fatal_error(msg)
+          call fatal_error()
        end select
 
        ! Add surface to dictionary
@@ -342,15 +340,15 @@ contains
        case ('hex', 'hexagon', 'hexagonal')
           l % type = LATTICE_HEX
        case default
-          msg = "Invalid lattice type: " // trim(lattice_(i) % type)
-          call fatal_error(msg)
+          message = "Invalid lattice type: " // trim(lattice_(i) % type)
+          call fatal_error()
        end select
 
        ! Read number of lattice cells in each dimension
        n = size(lattice_(i) % dimension)
        if (n /= 2 .and. n /= 3) then
-          msg = "Lattice must be two or three dimensions."
-          call fatal_error(msg)
+          message = "Lattice must be two or three dimensions."
+          call fatal_error()
        end if
        n_x = lattice_(i) % dimension(1)
        n_y = lattice_(i) % dimension(2)
@@ -359,18 +357,18 @@ contains
 
        ! Read lattice origin location
        if (size(lattice_(i) % dimension) /= size(lattice_(i) % origin)) then
-          msg = "Number of entries on <origin> must be the same as the " // &
-               "number of entries on <dimension>."
-          call fatal_error(msg)
+          message = "Number of entries on <origin> must be the same as " // &
+               "the number of entries on <dimension>."
+          call fatal_error()
        end if
        l % x0 = lattice_(i) % origin(1)
        l % y0 = lattice_(i) % origin(2)
 
        ! Read lattice widths
        if (size(lattice_(i) % width) /= size(lattice_(i) % origin)) then
-          msg = "Number of entries on <width> must be the same as the " // &
-               "number of entries on <origin>."
-          call fatal_error(msg)
+          message = "Number of entries on <width> must be the same as " // &
+               "the number of entries on <origin>."
+          call fatal_error()
        end if
        l % width_x = lattice_(i) % width(1)
        l % width_y = lattice_(i) % width(2)
@@ -406,21 +404,20 @@ contains
     character(MAX_WORD_LEN) :: units
     character(MAX_WORD_LEN) :: name
     character(MAX_LINE_LEN) :: filename
-    character(MAX_LINE_LEN) :: msg
     type(Material),    pointer :: m => null()
     type(nuclide_xml), pointer :: nuc => null()
     type(sab_xml),     pointer :: sab => null()
 
     ! Display output message
-    msg = "Reading materials XML file..."
-    call message(msg, 5)
+    message = "Reading materials XML file..."
+    call write_message(5)
 
     ! Check is materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-       msg = "Material XML file '" // trim(filename) // "' does not exist!"
-       call fatal_error(msg)
+       message = "Material XML file '" // trim(filename) // "' does not exist!"
+       call fatal_error()
     end if
 
     ! Parse materials.xml file
@@ -452,15 +449,16 @@ contains
        case ('atom/cm3', 'atom/cc')
           m % density = 1.0e-24 * val
        case default
-          msg = "Unkwown units '" // trim(material_(i) % density % units) // &
-               "' specified on material " // trim(int_to_str(m % uid))
-          call fatal_error(msg)
+          message = "Unkwown units '" // trim(material_(i) % density % units) &
+               // "' specified on material " // trim(int_to_str(m % uid))
+          call fatal_error()
        end select
        
        ! Check to ensure material has at least one nuclide
        if (.not. associated(material_(i) % nuclides)) then
-          msg = "No nuclides specified on material " // trim(int_to_str(m % uid))
-          call fatal_error(msg)
+          message = "No nuclides specified on material " // &
+               trim(int_to_str(m % uid))
+          call fatal_error()
        end if
 
        ! allocate arrays in Material object
@@ -481,13 +479,13 @@ contains
           ! Check if no atom/weight percents were specified or if both atom and
           ! weight percents were specified
           if (nuc % ao == ZERO .and. nuc % wo == ZERO) then
-             msg = "No atom or weight percent specified for nuclide " // &
+             message = "No atom or weight percent specified for nuclide " // &
                   trim(name)
-             call fatal_error(msg)
+             call fatal_error()
           elseif (nuc % ao /= ZERO .and. nuc % wo /= ZERO) then
-             msg = "Cannot specify both atom and weight percents for a nuclide: " &
-                  // trim(name)
-             call fatal_error(msg)
+             message = "Cannot specify both atom and weight percents for a " &
+                  // "nuclide: " // trim(name)
+             call fatal_error()
           end if
 
           ! Copy atom/weight percents
@@ -504,8 +502,8 @@ contains
              m % sab_name = name
              m % has_sab_table = .true.
           elseif (size(material_(i) % sab) > 1) then
-             msg = "Cannot have multiple S(a,b) tables on a single material."
-             call fatal_error(msg)
+             message = "Cannot have multiple S(a,b) tables on a single material."
+             call fatal_error()
           end if
        end do
 
@@ -533,7 +531,6 @@ contains
     integer :: n_words     ! number of words read
     logical :: file_exists ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
-    character(MAX_LINE_LEN) :: msg
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: words(MAX_WORDS)
     type(TallyObject),    pointer :: t => null()
@@ -549,8 +546,8 @@ contains
     end if
     
     ! Display output message
-    msg = "Reading tallies XML file..."
-    call message(msg, 5)
+    message = "Reading tallies XML file..."
+    call write_message(5)
 
     ! Parse tallies.xml file
     call read_xml_file_tallies_t(filename)
@@ -569,8 +566,8 @@ contains
     ! Allocate tallies array
     if (.not. associated(tally_)) then
        n_tallies = 0
-       msg = "No tallies present in tallies.xml file!"
-       call warning(msg)
+       message = "No tallies present in tallies.xml file!"
+       call warning()
     else
        n_tallies = size(tally_)
        allocate(tallies(n_tallies))
@@ -594,15 +591,15 @@ contains
        case ('hex', 'hexagon', 'hexagonal')
           m % type = LATTICE_HEX
        case default
-          msg = "Invalid mesh type: " // trim(mesh_(i) % type)
-          call fatal_error(msg)
+          message = "Invalid mesh type: " // trim(mesh_(i) % type)
+          call fatal_error()
        end select
 
        ! Determine number of dimensions for mesh
        n = size(mesh_(i) % dimension)
        if (n /= 2 .and. n /= 3) then
-          msg = "Mesh must be two or three dimensions."
-          call fatal_error(msg)
+          message = "Mesh must be two or three dimensions."
+          call fatal_error()
        end if
        m % n_dimension = n
 
@@ -616,17 +613,17 @@ contains
 
        ! Read mesh origin location
        if (m % n_dimension /= size(mesh_(i) % origin)) then
-          msg = "Number of entries on <origin> must be the same as the " // &
-               "number of entries on <dimension>."
-          call fatal_error(msg)
+          message = "Number of entries on <origin> must be the same as " // &
+               "the number of entries on <dimension>."
+          call fatal_error()
        end if
        m % origin = mesh_(i) % origin
 
        ! Read mesh widths
        if (size(mesh_(i) % width) /= size(mesh_(i) % origin)) then
-          msg = "Number of entries on <width> must be the same as the " // &
-               "number of entries on <origin>."
-          call fatal_error(msg)
+          message = "Number of entries on <width> must be the same as " // &
+               "the number of entries on <origin>."
+          call fatal_error()
        end if
        m % width = mesh_(i) % width
 
@@ -654,9 +651,9 @@ contains
        ! Check to make sure that both cells and surfaces were not specified
        if (len_trim(tally_(i) % filters % cell) > 0 .and. &
             len_trim(tally_(i) % filters % surface) > 0) then
-          msg = "Cannot specify both cell and surface filters for tally " &
+          message = "Cannot specify both cell and surface filters for tally " &
                // trim(int_to_str(t % uid))
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        ! TODO: Parse logical expressions instead of just each word
@@ -710,9 +707,9 @@ contains
              index = dict_get_key(mesh_dict, uid)
              m => meshes(index)
           else
-             msg = "Could not find mesh " // trim(int_to_str(uid)) // &
+             message = "Could not find mesh " // trim(int_to_str(uid)) // &
                   " specified on tally " // trim(int_to_str(t % uid))
-             call fatal_error(msg)
+             call fatal_error()
           end if
 
           t % n_bins(T_MESH) = t % n_bins(T_MESH) + product(m % dimension)
@@ -759,15 +756,15 @@ contains
              case ('flux')
                 t % macro_bins(j) % scalar = MACRO_FLUX
                 if (t % n_bins(T_ENERGYOUT) > 0) then
-                   msg = "Cannot tally flux with an outgoing energy filter."
-                   call fatal_error(msg)
+                   message = "Cannot tally flux with an outgoing energy filter."
+                   call fatal_error()
                 end if
              case ('total')
                 t % macro_bins(j) % scalar = MACRO_TOTAL
                 if (t % n_bins(T_ENERGYOUT) > 0) then
-                   msg = "Cannot tally total reaction rate with an outgoing " &
-                        // "energy filter."
-                   call fatal_error(msg)
+                   message = "Cannot tally total reaction rate with an " &
+                        // "outgoing energy filter."
+                   call fatal_error()
                 end if
              case ('scatter')
                 t % macro_bins(j) % scalar = MACRO_SCATTER
@@ -790,16 +787,16 @@ contains
              case ('absorption')
                 t % macro_bins(j) % scalar = MACRO_ABSORPTION
                 if (t % n_bins(T_ENERGYOUT) > 0) then
-                   msg = "Cannot tally absorption rate with an outgoing " &
+                   message = "Cannot tally absorption rate with an outgoing " &
                         // "energy filter."
-                   call fatal_error(msg)
+                   call fatal_error()
                 end if
              case ('fission')
                 t % macro_bins(j) % scalar = MACRO_FISSION
                 if (t % n_bins(T_ENERGYOUT) > 0) then
-                   msg = "Cannot tally fission rate with an outgoing " &
+                   message = "Cannot tally fission rate with an outgoing " &
                         // "energy filter."
-                   call fatal_error(msg)
+                   call fatal_error()
                 end if
              case ('nu-fission')
                 t % macro_bins(j) % scalar = MACRO_NU_FISSION
@@ -810,17 +807,17 @@ contains
                 ! Check to make sure that current is the only desired response
                 ! for this tally
                 if (n_words > 1) then
-                   msg = "Cannot tally other macro reactions in the same " &
+                   message = "Cannot tally other macro reactions in the same " &
                         // "tally as surface currents. Separate other macro " &
                         // "reactions into a distinct tally."
-                   call fatal_error(msg)
+                   call fatal_error()
                 end if
 
                 ! Check to make sure that only the mesh filter was specified
                 if (t % mesh == 0 .or. t % n_bins(T_MESH) /= & 
                      product(t % n_bins, t % n_bins > 0)) then
-                   msg = "Surface currents must be used with a mesh filter only."
-                   call fatal_error(msg)
+                   message = "Surface currents must be used with a mesh filter only."
+                   call fatal_error()
                 end if
 
                 ! Since the number of bins for the mesh filter was already set
@@ -844,8 +841,8 @@ contains
                 end if
 
              case default
-                msg = "Unknown macro reaction: " // trim(words(j))
-                call fatal_error(msg)
+                message = "Unknown macro reaction: " // trim(words(j))
+                call fatal_error()
              end select
           end do
           t % n_macro_bins = n_words
@@ -866,19 +863,18 @@ contains
 
     logical :: file_exists ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
-    character(MAX_LINE_LEN) :: msg
 
     ! Check if plot.xml exists
     filename = trim(path_input) // "plot.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-       msg = "Plot XML file '" // trim(filename) // "' does not exist!"
-       call fatal_error(msg)
+       message = "Plot XML file '" // trim(filename) // "' does not exist!"
+       call fatal_error()
     end if
     
     ! Display output message
-    msg = "Reading plot XML file..."
-    call message(msg, 5)
+    message = "Reading plot XML file..."
+    call write_message(5)
 
     ! Parse plot.xml file
     call read_xml_file_plot_t(filename)

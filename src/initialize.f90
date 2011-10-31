@@ -271,7 +271,6 @@ contains
     integer                 :: k
     integer                 :: index        ! index in surfaces/materials array 
     integer                 :: uid          ! user-specified uid
-    character(MAX_LINE_LEN) :: msg          ! output/error message
     type(Cell),        pointer :: c => null()
     type(Lattice),     pointer :: l => null()
     type(TallyObject), pointer :: t => null()
@@ -288,9 +287,9 @@ contains
                 index = dict_get_key(surface_dict, abs(uid))
                 c % surfaces(j) = sign(index, uid)
              else
-                msg = "Could not find surface " // trim(int_to_str(abs(uid))) // &
+                message = "Could not find surface " // trim(int_to_str(abs(uid))) // &
                      & " specified on cell " // trim(int_to_str(c % uid))
-                call fatal_error(msg)
+                call fatal_error()
              end if
           end if
        end do
@@ -302,9 +301,9 @@ contains
        if (dict_has_key(universe_dict, uid)) then
           c % universe = dict_get_key(universe_dict, uid)
        else
-          msg = "Could not find universe " // trim(int_to_str(uid)) // &
+          message = "Could not find universe " // trim(int_to_str(uid)) // &
                " specified on cell " // trim(int_to_str(c % uid))
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        ! =======================================================================
@@ -316,9 +315,9 @@ contains
              c % type = CELL_NORMAL
              c % material = dict_get_key(material_dict, uid)
           else
-             msg = "Could not find material " // trim(int_to_str(uid)) // &
+             message = "Could not find material " // trim(int_to_str(uid)) // &
                    " specified on cell " // trim(int_to_str(c % uid))
-             call fatal_error(msg)
+             call fatal_error()
           end if
        else
           uid = c % fill
@@ -329,9 +328,9 @@ contains
              c % type = CELL_LATTICE
              c % fill = dict_get_key(lattice_dict, uid)
           else
-             msg = "Specified fill " // trim(int_to_str(uid)) // " on cell " // &
+             message = "Specified fill " // trim(int_to_str(uid)) // " on cell " // &
                   trim(int_to_str(c % uid)) // " is neither a universe nor a lattice."
-             call fatal_error(msg)
+             call fatal_error()
           end if
        end if
     end do
@@ -347,9 +346,9 @@ contains
              if (dict_has_key(universe_dict, uid)) then
                 l % element(j,k) = dict_get_key(universe_dict, uid)
              else
-                msg = "Invalid universe number " // trim(int_to_str(uid)) &
+                message = "Invalid universe number " // trim(int_to_str(uid)) &
                      // " specified on lattice " // trim(int_to_str(l % uid))
-                call fatal_error(msg)
+                call fatal_error()
              end if
           end do
        end do
@@ -367,9 +366,9 @@ contains
              if (dict_has_key(cell_dict, uid)) then
                 t % cell_bins(j) % scalar = dict_get_key(cell_dict, uid)
              else
-                msg = "Could not find cell " // trim(int_to_str(uid)) // &
+                message = "Could not find cell " // trim(int_to_str(uid)) // &
                      & " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
+                call fatal_error()
              end if
           end do
        end if
@@ -383,9 +382,9 @@ contains
              if (dict_has_key(surface_dict, uid)) then
                 t % surface_bins(j) % scalar = dict_get_key(surface_dict, uid)
              else
-                msg = "Could not find surface " // trim(int_to_str(uid)) // &
+                message = "Could not find surface " // trim(int_to_str(uid)) // &
                      & " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
+                call fatal_error()
              end if
           end do
        end if
@@ -399,9 +398,9 @@ contains
              if (dict_has_key(universe_dict, uid)) then
                 t % universe_bins(j) % scalar = dict_get_key(universe_dict, uid)
              else
-                msg = "Could not find universe " // trim(int_to_str(uid)) // &
+                message = "Could not find universe " // trim(int_to_str(uid)) // &
                      & " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
+                call fatal_error()
              end if
           end do
        end if
@@ -415,9 +414,9 @@ contains
              if (dict_has_key(material_dict, uid)) then
                 t % material_bins(j) % scalar = dict_get_key(material_dict, uid)
              else
-                msg = "Could not find material " // trim(int_to_str(uid)) // &
+                message = "Could not find material " // trim(int_to_str(uid)) // &
                      & " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
+                call fatal_error()
              end if
           end do
        end if
@@ -431,9 +430,9 @@ contains
              if (dict_has_key(cell_dict, uid)) then
                 t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, uid)
              else
-                msg = "Could not find material " // trim(int_to_str(uid)) // &
+                message = "Could not find material " // trim(int_to_str(uid)) // &
                      & " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
+                call fatal_error()
              end if
           end do
        end if
@@ -446,9 +445,9 @@ contains
           if (dict_has_key(mesh_dict, uid)) then
              t % mesh = dict_get_key(mesh_dict, uid)
           else
-             msg = "Could not find mesh " // trim(int_to_str(uid)) // &
+             message = "Could not find mesh " // trim(int_to_str(uid)) // &
                   & " specified on tally " // trim(int_to_str(t % uid))
-             call fatal_error(msg)
+             call fatal_error()
           end if
        end if
     end do
@@ -531,7 +530,6 @@ contains
     logical        :: percent_in_atom ! nuclides specified in atom percent?
     logical        :: density_in_atom ! density specified in atom/b-cm?
     character(10)  :: key             ! name of nuclide, e.g. 92235.03c
-    character(MAX_LINE_LEN) :: msg    ! output/error message
     type(Material), pointer :: mat => null()
     
     ! first find the index in the xsdata array for each nuclide in each material
@@ -542,9 +540,9 @@ contains
        ! given
        if (.not. (all(mat%atom_percent > ZERO) .or. & 
             & all(mat%atom_percent < ZERO))) then
-          msg = "Cannot mix atom and weight percents in material " // &
+          message = "Cannot mix atom and weight percents in material " // &
                & int_to_str(mat%uid)
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        percent_in_atom = (mat%atom_percent(1) > ZERO)
@@ -558,18 +556,18 @@ contains
           ! Check to make sure cross-section is continuous energy neutron table
           n = len_trim(key)
           if (key(n:n) /= 'c') then
-             msg = "Cross-section table " // trim(key) // " is not a " // &
-                  "continuous-energy neutron table."
-             call fatal_error(msg)
+             message = "Cross-section table " // trim(key) // & 
+                  " is not a continuous-energy neutron table."
+             call fatal_error()
           end if
 
           if (dict_has_key(xsdata_dict, key)) then
              index = dict_get_key(xsdata_dict, key)
              mat % xsdata(j) = index
           else
-             msg = "Cannot find cross-section " // trim(key) // " in specified &
-                   &xsdata file."
-             call fatal_error(msg)
+             message = "Cannot find cross-section " // trim(key) // &
+                  " in specified xsdata file."
+             call fatal_error()
           end if
 
           ! determine atomic weight ratio

@@ -2,6 +2,7 @@ module interpolation
 
   use constants
   use error,    only: fatal_error
+  use global,   only: message
   use search,   only: binary_search
 
   implicit none
@@ -34,7 +35,6 @@ contains
     real(8) :: r               ! interpolation factor
     real(8) :: x0, x1          ! bounding x values
     real(8) :: y0, y1          ! bounding y values
-    character(MAX_LINE_LEN) :: msg
 
     ! determine starting location
     if (present(loc_start)) then
@@ -76,8 +76,8 @@ contains
     elseif (n_regions == 1) then
        interp = data(loc_interp + 1)
     elseif (n_regions > 1) then
-       msg = "Multiple interpolation regions not yet supported."
-       call fatal_error(msg)
+       message = "Multiple interpolation regions not yet supported."
+       call fatal_error()
     end if
 
     ! handle special case of histogram interpolation

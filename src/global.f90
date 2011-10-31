@@ -40,13 +40,13 @@ module global
   ! These dictionaries provide a fast lookup mechanism -- the key is the
   ! user-specified identifier and the value is the index in the corresponding
   ! array
-  type(DictionaryII), pointer :: cell_dict
-  type(DictionaryII), pointer :: universe_dict
-  type(DictionaryII), pointer :: lattice_dict
-  type(DictionaryII), pointer :: surface_dict
-  type(DictionaryII), pointer :: material_dict
-  type(DictionaryII), pointer :: mesh_dict
-  type(DictionaryII), pointer :: tally_dict
+  type(DictionaryII), pointer :: cell_dict     => null()
+  type(DictionaryII), pointer :: universe_dict => null()
+  type(DictionaryII), pointer :: lattice_dict  => null()
+  type(DictionaryII), pointer :: surface_dict  => null()
+  type(DictionaryII), pointer :: material_dict => null()
+  type(DictionaryII), pointer :: mesh_dict     => null()
+  type(DictionaryII), pointer :: tally_dict    => null()
 
   ! ============================================================================
   ! CROSS SECTION RELATED VARIABLES
@@ -64,9 +64,9 @@ module global
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
 
   ! Dictionaries to look up cross sections and xsdata
-  type(DictionaryCI), pointer :: nuclide_dict
-  type(DictionaryCI), pointer :: sab_dict 
-  type(DictionaryCI), pointer :: xsdata_dict
+  type(DictionaryCI), pointer :: nuclide_dict => null()
+  type(DictionaryCI), pointer :: sab_dict     => null()
+  type(DictionaryCI), pointer :: xsdata_dict  => null()
 
   ! Unionized energy grid
   integer              :: n_grid    ! number of points on unionized grid

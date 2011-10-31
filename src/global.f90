@@ -20,24 +20,22 @@ module global
   implicit none
   save
 
+  ! ============================================================================
+  ! GEOMETRY-RELATED VARIABLES
+
   ! Main arrays
-  type(Cell),           allocatable, target :: cells(:)
-  type(Universe),       allocatable, target :: universes(:)
-  type(Lattice),        allocatable, target :: lattices(:)
-  type(Surface),        allocatable, target :: surfaces(:)
-  type(Material),       allocatable, target :: materials(:)
-  type(xsData),         allocatable, target :: xsdatas(:)
-  type(StructuredMesh), allocatable, target :: meshes(:)
-  type(TallyObject),    allocatable, target :: tallies(:)
+  type(Cell),     allocatable, target :: cells(:)
+  type(Universe), allocatable, target :: universes(:)
+  type(Lattice),  allocatable, target :: lattices(:)
+  type(Surface),  allocatable, target :: surfaces(:)
+  type(Material), allocatable, target :: materials(:)
 
   ! Size of main arrays
-  integer :: n_cells          ! # of cells
-  integer :: n_universes      ! # of universes
-  integer :: n_lattices       ! # of lattices
-  integer :: n_surfaces       ! # of surfaces
-  integer :: n_materials      ! # of materials
-  integer :: n_meshes         ! # of structured meshes
-  integer :: n_tallies        ! # of tallies
+  integer :: n_cells     ! # of cells
+  integer :: n_universes ! # of universes
+  integer :: n_lattices  ! # of lattices
+  integer :: n_surfaces  ! # of surfaces
+  integer :: n_materials ! # of materials
 
   ! These dictionaries provide a fast lookup mechanism -- the key is the
   ! user-specified identifier and the value is the index in the corresponding
@@ -49,31 +47,52 @@ module global
   type(DictionaryII), pointer :: material_dict
   type(DictionaryII), pointer :: mesh_dict
   type(DictionaryII), pointer :: tally_dict
-  type(DictionaryCI), pointer :: xsdata_dict
-  type(DictionaryCI), pointer :: nuclide_dict
-  type(DictionaryCI), pointer :: sab_dict
+
+  ! ============================================================================
+  ! CROSS SECTION RELATED VARIABLES
 
   ! Cross section arrays
-  type(Nuclide),   allocatable, target :: nuclides(:)
-  type(SAB_Table), allocatable, target :: sab_tables(:)
-  integer :: n_nuclides_total
-  integer :: n_sab_tables
+  type(Nuclide),   allocatable, target :: nuclides(:)   ! Nuclide cross-sections
+  type(SAB_Table), allocatable, target :: sab_tables(:) ! S(a,b) tables
+  type(xsData),    allocatable, target :: xsdatas(:)    ! xsdata listings
 
   ! Cross section caches
-  type(NuclideMicroXS), allocatable :: micro_xs(:)
-  type(MaterialMacroXS)             :: material_xs
+  type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
+  type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 
-  ! Tally map structure
-  type(TallyMap), allocatable :: tally_maps(:)
+  integer :: n_nuclides_total ! Number of nuclide cross section tables
+  integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
+
+  ! Dictionaries to look up cross sections and xsdata
+  type(DictionaryCI), pointer :: nuclide_dict
+  type(DictionaryCI), pointer :: sab_dict 
+  type(DictionaryCI), pointer :: xsdata_dict
 
   ! Unionized energy grid
   integer              :: n_grid    ! number of points on unionized grid
   real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
-  ! Histories/cycles/etc for both external source and criticality
-  integer(8) :: n_particles ! # of particles (per cycle for criticality)
-  integer    :: n_cycles    ! # of cycles
-  integer    :: n_inactive  ! # of inactive cycles
+  ! ============================================================================
+  ! TALLY-RELATED VARIABLES
+
+  type(StructuredMesh), allocatable, target :: meshes(:)
+  type(TallyObject),    allocatable, target :: tallies(:)
+
+  ! Tally map structure
+  type(TallyMap), allocatable :: tally_maps(:)
+
+  integer :: n_meshes         ! # of structured meshes
+  integer :: n_tallies        ! # of tallies
+
+  ! Flag for turning tallies on
+  logical :: tallies_on
+
+  ! ============================================================================
+  ! CRITICALITY SIMULATION VARIABLES
+
+  integer(8) :: n_particles = 10000 ! # of particles per cycle
+  integer    :: n_cycles    = 500   ! # of cycles
+  integer    :: n_inactive  = 50    ! # of inactive cycles
 
   ! External source
   type(ExtSource), target :: external_source
@@ -88,70 +107,56 @@ module global
   integer(8) :: source_index ! index for source particles
 
   ! cycle keff
-  real(8) :: keff
+  real(8) :: keff = ONE
   real(8) :: keff_std
 
-  ! Flag for turning tallies on
-  logical :: tallies_on
+  ! ============================================================================
+  ! PARALLEL PROCESSING VARIABLES
 
-  ! Parallel processing variables
   integer :: n_procs     ! number of processes
   integer :: rank        ! rank of process
   logical :: master      ! master process?
   logical :: mpi_enabled ! is MPI in use and initialized?
 
-  ! Timing variables
+  ! ============================================================================
+  ! TIMING VARIABLES
+
   type(Timer) :: time_total       ! timer for total run
   type(Timer) :: time_init        ! timer for initialization
   type(Timer) :: time_intercycle  ! timer for intercycle synchronization
   type(Timer) :: time_inactive    ! timer for inactive cycles
   type(Timer) :: time_compute     ! timer for computation
 
-  ! Paths to input file, cross section data, etc
-  character(MAX_WORD_LEN) :: & 
-       & path_input,         &
-       & path_xsdata
+  ! ===========================================================================
+  ! VARIANCE REDUCTION VARIABLES
 
-  ! Problem type
-  integer :: problem_type
-
-  ! The verbosity controls how much information will be printed to the
-  ! screen and in logs
-  integer :: verbosity
-
-  ! Variance reduction options
   logical :: survival_biasing = .false.
   real(8) :: weight_cutoff = 0.25
   real(8) :: weight_survive = 1.0
 
-  ! Plotting options
+  ! ============================================================================
+  ! PLOTTING VARIABLES
+
   logical :: plotting = .false.
   real(8) :: plot_origin(3)
   real(8) :: plot_width(2)
   real(8) :: plot_basis(6)
   real(8) :: pixel
 
+  ! ============================================================================
+  ! MISCELLANEOUS VARIABLES
+
+  character(MAX_WORD_LEN) :: path_input
+  character(MAX_WORD_LEN) :: path_xsdata
+
+  ! Problem type
+  integer :: problem_type = PROB_CRITICALITY
+
+  ! The verbosity controls how much information will be printed to the
+  ! screen and in logs
+  integer :: verbosity = 5
+
 contains
-
-!===============================================================================
-! SET_DEFAULTS gives default values for many global parameters
-!===============================================================================
-
-  subroutine set_defaults()
-
-    ! Default problem type is external source
-    problem_type = PROB_SOURCE
-    
-    ! Default number of particles
-    n_particles = 10000
-
-    ! Default verbosity
-    verbosity = 5
-
-    ! Defualt multiplication factor
-    keff = ONE
-
-  end subroutine set_defaults
 
 !===============================================================================
 ! FREE_MEMORY deallocates all allocatable arrays in the program, namely the

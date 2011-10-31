@@ -55,9 +55,6 @@ contains
     ! 63-bit RNGs.
     call RN_init_problem(3, 0_8, 0_8, 0_8, 0)
 
-    ! Set default values for settings
-    call set_defaults()
-
     ! set up dictionaries
     call create_dictionaries()
 

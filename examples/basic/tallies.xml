@@ -1,23 +1,28 @@
 <?xml version="1.0"?>
 <tallies>
 
-  <mesh id="32">
-    <type>rectangular</type>
-    <dimension>1 1 5</dimension>
-    <origin>-50.0 -50.0 -50.0</origin>
-    <width>100.0 100.0 20.0</width>
-  </mesh>
-
   <tally id="1">
-    <!-- this is where you specify filters -->
     <filters>
       <cell>100</cell>
-      <mesh>32</mesh>
     </filters>
+    <macros>total scatter nu-scatter absorption fission nu-fission</macros>
+  </tally>
 
-    <!-- which reactions to score -->
-    <macros>total scatter absorption fission nu-fission</macros>
+  <tally id="2">
+    <filters>
+      <cell>100</cell>
+      <energy>0 20.0</energy>
+    </filters>
+    <macros>total scatter nu-scatter absorption fission nu-fission</macros>
+  </tally>
 
+  <tally id="3">
+    <filters>
+      <cell>100</cell>
+      <energy>0 20.0</energy>
+      <energyout>0 20.0</energyout>
+    </filters>
+    <macros>scatter nu-scatter nu-fission</macros>
   </tally>
 
 </tallies>

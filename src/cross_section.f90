@@ -1320,69 +1320,6 @@ contains
   end function get_real
 
 !===============================================================================
-! GET_MACRO_XS
-!===============================================================================
-
-  function get_macro_xs(p, mat, MT) result(xs)
-
-    type(Particle), pointer    :: p
-    type(Material), pointer    :: mat
-    integer,        intent(in) :: MT
-    real(8)                    :: xs
-
-    integer :: i, j
-    integer :: n_nuclides
-    integer :: IE
-    real(8) :: density_i
-    real(8) :: sigma_i
-    real(8) :: f
-    type(Nuclide),  pointer :: nuc => null()
-    type(Reaction), pointer :: rxn => null()
-
-    ! initialize xs
-    xs = ZERO
-
-    ! loop over all nuclides in material
-    n_nuclides = mat % n_nuclides
-    do i = 1, n_nuclides
-       nuc => nuclides(mat % nuclide(i))
-
-       ! determine nuclide atom density
-       density_i = mat % atom_density(i)
-
-       ! search nuclide energy grid
-       IE = nuc%grid_index(p % IE)
-       f = (p%E - nuc%energy(IE))/(nuc%energy(IE+1) - nuc%energy(IE))
-       
-       ! handle special case of total cross section
-       if (MT == 1) then
-          xs = xs + mat % density * (ONE-f) * nuc%total(IE) + & 
-               & f * (nuc%total(IE+1))
-          cycle
-       end if
-
-       ! loop over reactions in isotope
-       do j = 1, nuc % n_reaction
-          rxn => nuc % reactions(i)
-
-          ! check for matching MT
-          if (MT /= rxn % MT) cycle
-
-          ! if energy is below threshold for this reaction, skip it
-          if (IE < rxn % IE) cycle
-
-          ! add to cumulative probability
-          sigma_i = (ONE-f) * rxn%sigma(IE-rxn%IE+1) + & 
-               & f * (rxn%sigma(IE-rxn%IE+2))
-       end do
-
-       ! calculate nuclide macroscopic cross-section
-       xs = xs + density_i * sigma_i
-    end do
-
-  end function get_macro_xs
-
-!===============================================================================
 ! READ_XSDATA reads the data in a SERPENT xsdata file and builds a dictionary to
 ! find cross-section information later on.
 !===============================================================================

@@ -1,7 +1,6 @@
 module tally
 
   use constants
-  use cross_section, only: get_macro_xs
   use error,         only: fatal_error
   use global
   use mesh,          only: get_mesh_bin, bin_to_mesh_indices, get_mesh_indices

@@ -174,7 +174,6 @@ string.o: error.o
 string.o: global.o
 
 tally.o: constants.o
-tally.o: cross_section.o
 tally.o: error.o
 tally.o: global.o
 tally.o: mesh.o

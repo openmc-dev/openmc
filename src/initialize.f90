@@ -3,7 +3,7 @@ module initialize
   use constants
   use cross_section,    only: read_xs, read_xsdata
   use datatypes,        only: dict_create, dict_add_key, dict_get_key,         &
-                              dict_has_key, DICT_NULL, dict_keys
+                              dict_has_key, dict_keys
   use datatypes_header, only: ListKeyValueII, DictionaryII
   use energy_grid,      only: unionized_grid, original_indices
   use error,            only: fatal_error

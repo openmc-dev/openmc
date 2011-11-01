@@ -68,6 +68,7 @@ contains
 
     p % type          = NEUTRON
     p % wgt           = ONE
+    p % last_wgt      = ONE
     p % alive         = .true.
     p % n_bank        = 0
     p % cell          = 0

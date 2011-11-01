@@ -244,9 +244,9 @@ contains
           p % uvw = (/ u, v, w /)
        case (SURF_CYL_X)
           ! Find y-y0, z-z0 and dot product of direction and surface normal
-          y = p % xyz(2) - surf % coeffs(2)
-          z = p % xyz(3) - surf % coeffs(3)
-          R = surf % coeffs(4)
+          y = p % xyz(2) - surf % coeffs(1)
+          z = p % xyz(3) - surf % coeffs(2)
+          R = surf % coeffs(3)
           dot_prod = v*y + w*z
 
           ! Reflect direction according to normal
@@ -258,8 +258,8 @@ contains
        case (SURF_CYL_Y)
           ! Find x-x0, z-z0 and dot product of direction and surface normal
           x = p % xyz(1) - surf % coeffs(1)
-          z = p % xyz(3) - surf % coeffs(3)
-          R = surf % coeffs(4)
+          z = p % xyz(3) - surf % coeffs(2)
+          R = surf % coeffs(3)
           dot_prod = u*x + w*z
 
           ! Reflect direction according to normal
@@ -272,7 +272,7 @@ contains
           ! Find x-x0, y-y0 and dot product of direction and surface normal
           x = p % xyz(1) - surf % coeffs(1)
           y = p % xyz(2) - surf % coeffs(2)
-          R = surf % coeffs(4)
+          R = surf % coeffs(3)
           dot_prod = u*x + v*y
 
           ! Reflect direction according to normal

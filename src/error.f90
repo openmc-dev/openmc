@@ -19,8 +19,8 @@ contains
 
   subroutine warning()
 
-    integer :: n_lines
-    integer :: i
+    integer :: n_lines ! number of lines
+    integer :: i       ! loop index for lines
 
     ! Only allow master to print to screen
     if (.not. master) return
@@ -46,8 +46,8 @@ contains
 
   subroutine fatal_error()
 
-    integer :: n_lines
-    integer :: i
+    integer :: n_lines ! number of lines
+    integer :: i       ! loop index over lines
 
     ! Only allow master to print to screen
     if (master) then

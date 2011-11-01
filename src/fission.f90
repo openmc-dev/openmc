@@ -22,9 +22,9 @@ contains
     real(8), intent(in)    :: E   ! energy of incoming neutron
     real(8)                :: nu  ! number of total neutrons emitted per fission
 
-    integer :: i           ! loop index
-    integer :: NC          ! number of polynomial coefficients
-    real(8) :: c           ! polynomial coefficient
+    integer :: i  ! loop index
+    integer :: NC ! number of polynomial coefficients
+    real(8) :: c  ! polynomial coefficient
 
     if (nuc % nu_t_type == NU_NONE) then
        message = "No neutron emission data for table: " // nuc % name
@@ -57,9 +57,9 @@ contains
     real(8), intent(in)    :: E   ! energy of incoming neutron
     real(8)                :: nu  ! number of prompt neutrons emitted per fission
 
-    integer :: i           ! loop index
-    integer :: NC          ! number of polynomial coefficients
-    real(8) :: c           ! polynomial coefficient
+    integer :: i  ! loop index
+    integer :: NC ! number of polynomial coefficients
+    real(8) :: c  ! polynomial coefficient
 
     if (nuc % nu_p_type == NU_NONE) then
        ! since no prompt or delayed data is present, this means all neutron

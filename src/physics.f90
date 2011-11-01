@@ -78,9 +78,6 @@ contains
        ! Select smaller of the two distances
        distance = min(d_to_boundary, d_to_collision)
 
-       ! Save original coordinates of particle
-       p % last_xyz = p % xyz
-
        ! Advance particle
        p % xyz       = p % xyz       + distance * p % uvw
        p % xyz_local = p % xyz_local + distance * p % uvw
@@ -99,6 +96,9 @@ contains
           ! collision
           p % surface = 0
           call collision(p)
+
+          ! Save coordinates at collision for tallying purposes
+          p % last_xyz = p % xyz
        end if
        
     end do

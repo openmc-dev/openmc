@@ -8,6 +8,7 @@ module geometry
   use output,          only: write_message
   use particle_header, only: Particle
   use string,          only: int_to_str
+  use tally,           only: score_surface_current
 
   implicit none
      
@@ -204,7 +205,20 @@ contains
        ! =======================================================================
        ! PARTICLE LEAKS OUT OF PROBLEM
 
+       ! Kill particle
        p % alive = .false.
+
+       ! Score any surface current tallies -- note that the particle is moved
+       ! forward slightly so that if the mesh boundary is on the surface, it is
+       ! still processed
+
+       ! TODO: Find a better solution to score surface currents than physically
+       ! moving the particle forward slightly
+
+       p % xyz = p % xyz + 1e-6 * p % uvw
+       call score_surface_current(p)
+
+       ! Display message
        if (verbosity >= 10) then
           message = "    Leaked out of surface " // trim(int_to_str(surf % uid))
           call write_message()
@@ -306,6 +320,13 @@ contains
        ! Reassign particle's cell and surface
        p % cell = last_cell
        p % surface = -p % surface
+
+       ! Score surface currents since reflection causes the direction of the
+       ! particle to change
+       call score_surface_current(p)
+
+       ! Set previous coordinate going slightly past surface crossing
+       p % last_xyz = p % xyz + 1e-6 * p % uvw
 
        ! Diagnostic message
        if (verbosity >= 10) then

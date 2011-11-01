@@ -44,6 +44,7 @@ geometry.o: global.o
 geometry.o: output.o
 geometry.o: particle_header.o
 geometry.o: string.o
+geometry.o: tally.o
 
 global.o: bank_header.o
 global.o: constants.o

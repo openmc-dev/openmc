@@ -13,7 +13,7 @@ module physics
   use mcnp_random,          only: rang
   use output,               only: write_message, print_particle
   use particle_header,      only: Particle
-  use tally,                only: score_tally
+  use tally,                only: score_tally, score_surface_current
   use search,               only: binary_search
   use string,               only: int_to_str
 
@@ -412,6 +412,7 @@ contains
 
     if (tallies_on) then
        call score_tally(p, scattered, fissioned)
+       call score_surface_current(p)
     end if
 
     ! Reset number of particles banked during collision

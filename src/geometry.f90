@@ -99,9 +99,8 @@ contains
     integer                 :: x, y
     type(Cell),     pointer :: c          ! pointer to cell
     type(Lattice),  pointer :: lat        ! pointer to lattice
-    type(Universe), pointer :: lower_univ ! if particle is in lower
-                                          ! universe, use this pointer
-                                          ! to call recursively
+    type(Universe), pointer :: lower_univ ! if particle is in lower universe,
+                                          ! use this pointer to call recursively
 
     found = .false.
 

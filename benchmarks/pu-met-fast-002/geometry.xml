@@ -10,13 +10,13 @@
   ==========================================
   -->
 
-  <cell uid="1">
+  <cell id="1">
     <universe>0</universe>
     <material>1</material>
     <surfaces>-1</surfaces>
   </cell>
 
-  <surface uid="1">
+  <surface id="1">
     <type>sphere</type>
     <coeffs>0. 0. 0. 6.6595</coeffs>
     <boundary>vacuum</boundary>

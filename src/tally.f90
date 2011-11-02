@@ -989,7 +989,7 @@ contains
        t => tallies(i)
 
        ! Write header block
-       call header("TALLY " // trim(int_to_str(t % uid)), 3, UNIT_TALLY)
+       call header("TALLY " // trim(int_to_str(t % id)), 3, UNIT_TALLY)
 
        ! Handle surface current tallies separately
        if (t % surface_current) then
@@ -1221,19 +1221,19 @@ contains
     select case(filter_type)
     case (T_UNIVERSE)
        index = t % universe_bins(bin) % scalar
-       label = int_to_str(universes(index) % uid)
+       label = int_to_str(universes(index) % id)
     case (T_MATERIAL)
        index = t % material_bins(bin) % scalar
-       label = int_to_str(materials(index) % uid)
+       label = int_to_str(materials(index) % id)
     case (T_CELL)
        index = t % cell_bins(bin) % scalar
-       label = int_to_str(cells(index) % uid)
+       label = int_to_str(cells(index) % id)
     case (T_CELLBORN)
        index = t % cellborn_bins(bin) % scalar
-       label = int_to_str(cells(index) % uid)
+       label = int_to_str(cells(index) % id)
     case (T_SURFACE)
        index = t % surface_bins(bin) % scalar
-       label = int_to_str(surfaces(index) % uid)
+       label = int_to_str(surfaces(index) % id)
     case (T_MESH)
        m => meshes(t % mesh)
        allocate(ijk(m % n_dimension))

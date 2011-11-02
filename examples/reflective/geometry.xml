@@ -2,18 +2,18 @@
 <geometry>
 
 <!-- Definition of Cells -->
-  <cell uid="1">
+  <cell id="1">
     <universe>0</universe>
     <material>1</material>
     <surfaces>1 -2 3 -4 5 -6</surfaces>
   </cell>
 
 <!-- Defition of Surfaces -->
-  <surface uid="1" type="x-plane" coeffs="-1" boundary="vacuum" />
-  <surface uid="2" type="x-plane" coeffs="1" boundary="vacuum" />
-  <surface uid="3" type="y-plane" coeffs="-1" boundary="reflective" /> 
-  <surface uid="4" type="y-plane" coeffs="1" boundary="reflective" />
-  <surface uid="5" type="z-plane" coeffs="-1" boundary="reflective" /> 
-  <surface uid="6" type="z-plane" coeffs="1" boundary="reflective" />
+  <surface id="1" type="x-plane" coeffs="-1" boundary="vacuum" />
+  <surface id="2" type="x-plane" coeffs="1" boundary="vacuum" />
+  <surface id="3" type="y-plane" coeffs="-1" boundary="reflective" /> 
+  <surface id="4" type="y-plane" coeffs="1" boundary="reflective" />
+  <surface id="5" type="z-plane" coeffs="-1" boundary="reflective" /> 
+  <surface id="6" type="z-plane" coeffs="1" boundary="reflective" />
     
 </geometry>

@@ -11,7 +11,7 @@ module particle_header
 
   type Particle
      ! Basic data
-     integer(8) :: uid           ! Unique ID
+     integer(8) :: id            ! Unique ID
      integer    :: type          ! Particle type (n, p, e, etc)
 
      ! Physical data

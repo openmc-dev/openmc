@@ -87,7 +87,7 @@ contains
           end if
 
           ! set random number seed
-          i_particle = (i_cycle-1)*n_particles + p % uid
+          i_particle = (i_cycle-1)*n_particles + p % id
           call RN_init_particle(i_particle)
 
           ! transport particle

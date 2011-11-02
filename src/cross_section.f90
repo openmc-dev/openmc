@@ -156,7 +156,7 @@ contains
           ! Check to make sure S(a,b) table matched a nuclide
           if (mat % sab_nuclide == 0) then
              message = "S(a,b) table " // trim(mat % sab_name) // " did not match " &
-                  // "any nuclide on material " // trim(int_to_str(mat % uid))
+                  // "any nuclide on material " // trim(int_to_str(mat % id))
              call fatal_error()
           end if
        end if

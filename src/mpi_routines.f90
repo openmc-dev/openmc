@@ -68,7 +68,7 @@ contains
     end if
 
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(b % uid, bank_disp(1), ierr)
+    call MPI_GET_ADDRESS(b % id,  bank_disp(1), ierr)
     call MPI_GET_ADDRESS(b % xyz, bank_disp(2), ierr)
     call MPI_GET_ADDRESS(b % uvw, bank_disp(3), ierr)
     call MPI_GET_ADDRESS(b % E,   bank_disp(4), ierr)
@@ -112,7 +112,7 @@ contains
     integer(8) :: finish          ! ending index in local fission bank
     integer(8) :: total           ! total sites in global fission bank
     integer(8) :: count           ! index for source bank
-    integer(8) :: index           ! index for uid -- accounts for all nodes
+    integer(8) :: index           ! index for id -- accounts for all nodes
     integer    :: send_to_left    ! # of bank sites to send/recv to or from left
     integer    :: send_to_right   ! # of bank sites to send/recv to or from right
     integer(8) :: sites_needed    ! # of sites to be sampled
@@ -169,7 +169,7 @@ contains
 
     allocate(temp_sites(2*work))
     count = 0_8 ! Index for local source_bank
-    index = 0_8 ! Index for global source uid -- must account for all nodes
+    index = 0_8 ! Index for global source id -- must account for all nodes
 
     if (total < n_particles) then
        sites_needed = mod(n_particles,total)

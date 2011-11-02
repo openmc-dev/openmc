@@ -8,7 +8,7 @@ module mesh_header
 !===============================================================================
 
   type StructuredMesh
-     integer :: uid
+     integer :: id
      integer :: type
      integer :: n_dimension
      integer, allocatable :: dimension(:)

@@ -165,7 +165,7 @@ contains
        c => cells(i)
        
        ! Copy data into cells
-       c % uid      = cell_(i) % uid
+       c % id       = cell_(i) % id
        c % universe = cell_(i) % universe
        c % material = cell_(i) % material
        c % fill     = cell_(i) % fill
@@ -173,7 +173,7 @@ contains
        ! Check to make sure that either material or fill was specified
        if (c % material == 0 .and. c % fill == 0) then
           message = "Neither material nor fill was specified for cell " // & 
-               trim(int_to_str(c % uid))
+               trim(int_to_str(c % id))
           call fatal_error()
        end if
 
@@ -187,7 +187,7 @@ contains
        ! Check to make sure that surfaces were specified
        if (.not. associated(cell_(i) % surfaces)) then
           message = "No surfaces specified for cell " // &
-               trim(int_to_str(c % uid))
+               trim(int_to_str(c % id))
           call fatal_error()
        end if
 
@@ -198,7 +198,7 @@ contains
        c % surfaces = cell_(i) % surfaces
 
        ! Add cell to dictionary
-       call dict_add_key(cell_dict, c % uid, i)
+       call dict_add_key(cell_dict, c % id, i)
 
        ! For cells, we also need to check if there's a new universe --
        ! also for every cell add 1 to the count of cells for the
@@ -226,7 +226,7 @@ contains
        s => surfaces(i)
        
        ! Copy data into cells
-       s % uid = surface_(i) % uid
+       s % id = surface_(i) % id
 
        ! Copy and interpret surface type
        word = surface_(i) % type
@@ -283,12 +283,12 @@ contains
        n = size(surface_(i) % coeffs)
        if (n < coeffs_reqd) then
           message = "Not enough coefficients specified for surface: " // & 
-               trim(int_to_str(s % uid))
+               trim(int_to_str(s % id))
           print *, n, coeffs_reqd
           call fatal_error()
        elseif (n > coeffs_reqd) then
           message = "Too many coefficients specified for surface: " // &
-               trim(int_to_str(s % uid))
+               trim(int_to_str(s % id))
           call fatal_error()
        else
           allocate(s % coeffs(n))
@@ -309,12 +309,12 @@ contains
           s % bc = BC_PERIODIC
        case default
           message = "Unknown boundary condition '" // trim(word) // &
-               "' specified on surface " // trim(int_to_str(s % uid))
+               "' specified on surface " // trim(int_to_str(s % id))
           call fatal_error()
        end select
 
        ! Add surface to dictionary
-       call dict_add_key(surface_dict, s % uid, i)
+       call dict_add_key(surface_dict, s % id, i)
 
     end do
 
@@ -328,8 +328,8 @@ contains
     do i = 1, n_lattices
        l => lattices(i)
 
-       ! UID of lattice
-       l % uid = lattice_(i) % uid
+       ! ID of lattice
+       l % id = lattice_(i) % id
 
        ! Read lattice type
        word = lattice_(i) % type
@@ -382,7 +382,7 @@ contains
        end do
 
        ! Add lattice to dictionary
-       call dict_add_key(lattice_dict, l % uid, i)
+       call dict_add_key(lattice_dict, l % id, i)
 
     end do
 
@@ -430,8 +430,8 @@ contains
     do i = 1, n_materials
        m => materials(i)
 
-       ! Copy material uid
-       m % uid = material_(i) % uid
+       ! Copy material id
+       m % id = material_(i) % id
 
        ! Copy density -- the default value for the units is given in the
        ! material_t.xml file and doesn't need to be specified here, hence case
@@ -450,14 +450,14 @@ contains
           m % density = 1.0e-24 * val
        case default
           message = "Unkwown units '" // trim(material_(i) % density % units) &
-               // "' specified on material " // trim(int_to_str(m % uid))
+               // "' specified on material " // trim(int_to_str(m % id))
           call fatal_error()
        end select
        
        ! Check to ensure material has at least one nuclide
        if (.not. associated(material_(i) % nuclides)) then
           message = "No nuclides specified on material " // &
-               trim(int_to_str(m % uid))
+               trim(int_to_str(m % id))
           call fatal_error()
        end if
 
@@ -508,7 +508,7 @@ contains
        end do
 
        ! Add material to dictionary
-       call dict_add_key(material_dict, m % uid, i)
+       call dict_add_key(material_dict, m % id, i)
 
     end do
 
@@ -525,7 +525,7 @@ contains
 
     integer :: i           ! loop over user-specified tallies
     integer :: j           ! loop over words
-    integer :: uid         ! user-specified identifier
+    integer :: id          ! user-specified identifier
     integer :: index       ! index in meshes array
     integer :: n           ! size of arrays in mesh specification
     integer :: n_words     ! number of words read
@@ -579,8 +579,8 @@ contains
     do i = 1, n_meshes
        m => meshes(i)
 
-       ! copy mesh uid
-       m % uid = mesh_(i) % id
+       ! copy mesh id
+       m % id = mesh_(i) % id
 
        ! Read mesh type
        word = mesh_(i) % type
@@ -628,7 +628,7 @@ contains
        m % width = mesh_(i) % width
 
        ! Add mesh to dictionary
-       call dict_add_key(mesh_dict, m % uid, i)
+       call dict_add_key(mesh_dict, m % id, i)
     end do
 
     ! ==========================================================================
@@ -645,14 +645,14 @@ contains
        t % n_bins = 0
        t % stride = 0
 
-       ! Copy material uid
-       t % uid = tally_(i) % id
+       ! Copy material id
+       t % id = tally_(i) % id
 
        ! Check to make sure that both cells and surfaces were not specified
        if (len_trim(tally_(i) % filters % cell) > 0 .and. &
             len_trim(tally_(i) % filters % surface) > 0) then
           message = "Cannot specify both cell and surface filters for tally " &
-               // trim(int_to_str(t % uid))
+               // trim(int_to_str(t % id))
           call fatal_error()
        end if
 
@@ -702,13 +702,13 @@ contains
        t % mesh = tally_(i) % filters % mesh
        if (t % mesh > 0) then
           ! Determine index in mesh array for this bin
-          uid = t % mesh
-          if (dict_has_key(mesh_dict, uid)) then
-             index = dict_get_key(mesh_dict, uid)
+          id = t % mesh
+          if (dict_has_key(mesh_dict, id)) then
+             index = dict_get_key(mesh_dict, id)
              m => meshes(index)
           else
-             message = "Could not find mesh " // trim(int_to_str(uid)) // &
-                  " specified on tally " // trim(int_to_str(t % uid))
+             message = "Could not find mesh " // trim(int_to_str(id)) // &
+                  " specified on tally " // trim(int_to_str(t % id))
              call fatal_error()
           end if
 
@@ -826,8 +826,8 @@ contains
                 t % n_bins(T_MESH) = t % n_bins(T_MESH) - product(m % dimension)
 
                 ! Get pointer to mesh
-                uid = t % mesh
-                index = dict_get_key(mesh_dict, uid)
+                id = t % mesh
+                index = dict_get_key(mesh_dict, id)
                 m => meshes(index)
 
                 ! We need to increase the dimension by one since we also need

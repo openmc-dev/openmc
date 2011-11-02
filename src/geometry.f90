@@ -117,7 +117,7 @@ contains
 
              ! set particle attributes
              p % cell = univ % cells(i)
-             p % universe = dict_get_key(universe_dict, univ % uid)
+             p % universe = dict_get_key(universe_dict, univ % id)
              p % material = c % material
              exit
           elseif (c % type == CELL_FILL) then
@@ -153,7 +153,7 @@ contains
                 exit
              else
                 message = "Could not locate particle in lattice: " & 
-                     & // int_to_str(lat % uid)
+                     & // int_to_str(lat % id)
                 call fatal_error()
              end if
           end if
@@ -197,7 +197,7 @@ contains
 
     surf => surfaces(abs(p % surface))
     if (verbosity >= 10) then
-       message = "    Crossing surface " // trim(int_to_str(surf % uid))
+       message = "    Crossing surface " // trim(int_to_str(surf % id))
        call write_message()
     end if
 
@@ -220,7 +220,7 @@ contains
 
        ! Display message
        if (verbosity >= 10) then
-          message = "    Leaked out of surface " // trim(int_to_str(surf % uid))
+          message = "    Leaked out of surface " // trim(int_to_str(surf % id))
           call write_message()
        end if
        return
@@ -313,7 +313,7 @@ contains
           p % uvw = (/ u, v, w /)
        case default
           message = "Reflection not supported for surface " // &
-               trim(int_to_str(surf % uid))
+               trim(int_to_str(surf % id))
           call fatal_error()
        end select
 
@@ -330,7 +330,7 @@ contains
 
        ! Diagnostic message
        if (verbosity >= 10) then
-          message = "    Reflected from surface " // trim(int_to_str(surf%uid))
+          message = "    Reflected from surface " // trim(int_to_str(surf%id))
           call write_message()
        end if
        return
@@ -375,7 +375,7 @@ contains
                 call find_cell(lower_univ, p, found)
                 if (.not. found) then
                    message = "Could not locate particle in lattice: " // &
-                        trim(int_to_str(lat % uid))
+                        trim(int_to_str(lat % id))
                    call fatal_error()
                 end if
              else
@@ -422,7 +422,7 @@ contains
                 call find_cell(lower_univ, p, found)
                 if (.not. found) then
                    message = "Could not locate particle in lattice: " // &
-                        trim(int_to_str(lat % uid))
+                        trim(int_to_str(lat % id))
                    call fatal_error()
                 end if
              else

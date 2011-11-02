@@ -54,12 +54,12 @@ contains
     end if
 
     if (verbosity >= 9) then
-       message = "Simulating Particle " // trim(int_to_str(p % uid))
+       message = "Simulating Particle " // trim(int_to_str(p % id))
        call write_message()
     end if
 
     if (verbosity >= 10) then
-       message = "    Born in cell " // trim(int_to_str(cells(p%cell)%uid))
+       message = "    Born in cell " // trim(int_to_str(cells(p%cell)%id))
        call write_message()
     end if
 
@@ -637,7 +637,7 @@ contains
           if (i > nuc % n_reaction) then
              message = "Did not sample any reaction for nuclide " // &
                   trim(nuc % name) // " on material " // &
-                  trim(int_to_str(mat % uid))
+                  trim(int_to_str(mat % id))
              call fatal_error()
           end if
 
@@ -1076,7 +1076,7 @@ contains
     if (nu == 0 .or. n_bank == 3*n_particles) return
     do i = n_bank + 1, min(n_bank + nu, 3*n_particles)
        ! Bank source neutrons by copying particle data
-       fission_bank(i) % uid = p % uid
+       fission_bank(i) % id  = p % id
        fission_bank(i) % xyz = p % xyz
 
        ! sample cosine of angle

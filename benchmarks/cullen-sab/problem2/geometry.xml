@@ -10,13 +10,13 @@
       ====================================================
   -->
 
-  <surface uid="1" type="z-cylinder" coeffs="0. 0. 0.635" />
-  <surface uid="2" type="x-plane" coeffs="-2.54" boundary="reflective" />
-  <surface uid="3" type="x-plane" coeffs="2.54" boundary="reflective" />
-  <surface uid="4" type="y-plane" coeffs="-2.54" boundary="reflective" />
-  <surface uid="5" type="y-plane" coeffs="2.54" boundary="reflective" />
+  <surface id="1" type="z-cylinder" coeffs="0. 0. 0.635" />
+  <surface id="2" type="x-plane" coeffs="-2.54" boundary="reflective" />
+  <surface id="3" type="x-plane" coeffs="2.54" boundary="reflective" />
+  <surface id="4" type="y-plane" coeffs="-2.54" boundary="reflective" />
+  <surface id="5" type="y-plane" coeffs="2.54" boundary="reflective" />
 
-  <cell uid="1" material="1" surfaces="-1" />
-  <cell uid="2" material="2" surfaces="1 2 -3 4 -5" />
+  <cell id="1" material="1" surfaces="-1" />
+  <cell id="2" material="2" surfaces="1 2 -3 4 -5" />
 
 </geometry>

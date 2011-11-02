@@ -7,7 +7,7 @@ module material_header
 !===============================================================================
 
   type Material
-     integer              :: uid             ! unique identifier
+     integer              :: id              ! unique identifier
      integer              :: n_nuclides      ! number of nuclides
      character(10), allocatable :: names(:)  ! isotope names
      integer, allocatable :: xs_listing(:)   ! index in xs_listings list

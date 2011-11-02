@@ -11,14 +11,14 @@
   -->
 
   <!-- Fuel composed of 96.5 a/o U-238 and 3.5 a/o U-235 -->
-  <material uid="1">
+  <material id="1">
     <density value="18.8" units="g/cc" />
     <nuclide name="U-238" xs="03c" ao="96.5" />
     <nuclide name="U-235" xs="03c" ao="3.5" />
   </material>
 
   <!-- Water at 1 g/cc -->
-  <material uid="2">
+  <material id="2">
     <density value="1.0" units="g/cc" />
     <nuclide name="H-1"  xs="03c" ao="2.0" />
     <nuclide name="O-16" xs="03c" ao="1.0" />

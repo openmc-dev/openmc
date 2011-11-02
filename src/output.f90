@@ -231,13 +231,13 @@ contains
 
     select case (p % type)
     case (NEUTRON)
-       write(ou,*) 'Neutron ' // int_to_str(p % uid)
+       write(ou,*) 'Neutron ' // int_to_str(p % id)
     case (PHOTON)
-       write(ou,*) 'Photon ' // int_to_str(p % uid)
+       write(ou,*) 'Photon ' // int_to_str(p % id)
     case (ELECTRON)
-       write(ou,*) 'Electron ' // int_to_str(p % uid)
+       write(ou,*) 'Electron ' // int_to_str(p % id)
     case default
-       write(ou,*) 'Unknown Particle ' // int_to_str(p % uid)
+       write(ou,*) 'Unknown Particle ' // int_to_str(p % id)
     end select
     write(ou,*) '    x = ' // real_to_str(p % xyz(1))
     write(ou,*) '    y = ' // real_to_str(p % xyz(2))
@@ -257,20 +257,20 @@ contains
 
     if (p % cell > 0) then
        c => cells(p % cell)
-       write(ou,*) '    Cell = ' // int_to_str(c % uid)
+       write(ou,*) '    Cell = ' // int_to_str(c % id)
     else
        write(ou,*) '    Cell not determined'
     end if
 
     if (p % surface > 0) then
        s => surfaces(p % surface)
-       write(ou,*) '    Surface = ' // int_to_str(s % uid)
+       write(ou,*) '    Surface = ' // int_to_str(s % id)
     else
        write(ou,*) '    Surface = None'
     end if
 
     u => universes(p % universe)
-    write(ou,*) '    Universe = ' // int_to_str(u % uid)
+    write(ou,*) '    Universe = ' // int_to_str(u % id)
     write(ou,*)
 
     nullify(c)
@@ -314,26 +314,26 @@ contains
     type(Lattice),  pointer :: l => null()
     type(Material), pointer :: m => null()
 
-    write(ou,*) 'Cell ' // int_to_str(c % uid)
-    temp = dict_get_key(cell_dict, c % uid)
+    write(ou,*) 'Cell ' // int_to_str(c % id)
+    temp = dict_get_key(cell_dict, c % id)
     write(ou,*) '    Array Index = ' // int_to_str(temp)
     u => universes(c % universe)
-    write(ou,*) '    Universe = ' // int_to_str(u % uid)
+    write(ou,*) '    Universe = ' // int_to_str(u % id)
     select case (c % type)
     case (CELL_NORMAL)
        write(ou,*) '    Fill = NONE'
     case (CELL_FILL)
        u => universes(c % fill)
-       write(ou,*) '    Fill = Universe ' // int_to_str(u % uid)
+       write(ou,*) '    Fill = Universe ' // int_to_str(u % id)
     case (CELL_LATTICE)
        l => lattices(c % fill)
-       write(ou,*) '    Fill = Lattice ' // int_to_str(l % uid)
+       write(ou,*) '    Fill = Lattice ' // int_to_str(l % id)
     end select
     if (c % material == 0) then
        write(ou,*) '    Material = NONE'
     else
        m => materials(c % material)
-       write(ou,*) '    Material = ' // int_to_str(m % uid)
+       write(ou,*) '    Material = ' // int_to_str(m % id)
     end if
     write(ou,*) '    Parent Cell = ' // int_to_str(c % parent)
     string = ""
@@ -372,12 +372,12 @@ contains
     character(MAX_LINE_LEN) :: string
     type(Cell), pointer     :: c => null()
 
-    write(ou,*) 'Universe ' // int_to_str(univ % uid)
+    write(ou,*) 'Universe ' // int_to_str(univ % id)
     write(ou,*) '    Level = ' // int_to_str(univ % level)
     string = ""
     do i = 1, univ % n_cells
        c => cells(univ % cells(i))
-       string = trim(string) // ' ' // int_to_str(c % uid)
+       string = trim(string) // ' ' // int_to_str(c % id)
     end do
     write(ou,*) '    Cells =' // trim(string)
     write(ou,*)
@@ -394,7 +394,7 @@ contains
 
     type(Lattice), pointer :: lat
 
-    write(ou,*) 'Lattice ' // int_to_str(lat % uid)
+    write(ou,*) 'Lattice ' // int_to_str(lat % id)
     write(ou,*) '    n_x = ' // int_to_str(lat % n_x)
     write(ou,*) '    n_y = ' // int_to_str(lat % n_y)
     write(ou,*) '    x0 = ' // real_to_str(lat % x0)
@@ -416,7 +416,7 @@ contains
     integer :: i
     character(MAX_LINE_LEN) :: string
 
-    write(ou,*) 'Surface ' // int_to_str(surf % uid)
+    write(ou,*) 'Surface ' // int_to_str(surf % id)
     select case (surf % type)
     case (SURF_PX)
        string = "X Plane"
@@ -492,7 +492,7 @@ contains
     type(Nuclide),  pointer :: nuc => null()
 
     ! Write identifier for material
-    write(ou,*) 'Material ' // int_to_str(mat % uid)
+    write(ou,*) 'Material ' // int_to_str(mat % id)
 
     ! Write total atom density in atom/b-cm
     write(ou,*) '    Atom Density = ' // trim(real_to_str(mat % density)) &
@@ -527,7 +527,7 @@ contains
     type(TallyObject), pointer :: t
 
     integer                       :: i
-    integer                       :: uid
+    integer                       :: id
     character(MAX_LINE_LEN)       :: string
     type(Cell),           pointer :: c => null()
     type(Surface),        pointer :: s => null()
@@ -535,14 +535,14 @@ contains
     type(Material),       pointer :: m => null()
     type(StructuredMesh), pointer :: sm => null()
 
-    write(ou,*) 'Tally ' // int_to_str(t % uid)
+    write(ou,*) 'Tally ' // int_to_str(t % id)
 
     if (t % n_bins(T_CELL) > 0) then
        string = ""
        do i = 1, t % n_bins(T_CELL)
-          uid = t % cell_bins(i) % scalar
-          c => cells(uid)
-          string = trim(string) // ' ' // trim(int_to_str(c % uid))
+          id = t % cell_bins(i) % scalar
+          c => cells(id)
+          string = trim(string) // ' ' // trim(int_to_str(c % id))
        end do
        write(ou, *) '    Cell Bins:' // trim(string)
     end if
@@ -550,9 +550,9 @@ contains
     if (t % n_bins(T_SURFACE) > 0) then
        string = ""
        do i = 1, t % n_bins(T_SURFACE)
-          uid = t % surface_bins(i) % scalar
-          s => surfaces(uid)
-          string = trim(string) // ' ' // trim(int_to_str(s % uid))
+          id = t % surface_bins(i) % scalar
+          s => surfaces(id)
+          string = trim(string) // ' ' // trim(int_to_str(s % id))
        end do
        write(ou, *) '    Surface Bins:' // trim(string)
     end if
@@ -560,9 +560,9 @@ contains
     if (t % n_bins(T_UNIVERSE) > 0) then
        string = ""
        do i = 1, t % n_bins(T_UNIVERSE)
-          uid = t % universe_bins(i) % scalar
-          u => universes(uid)
-          string = trim(string) // ' ' // trim(int_to_str(u % uid))
+          id = t % universe_bins(i) % scalar
+          u => universes(id)
+          string = trim(string) // ' ' // trim(int_to_str(u % id))
        end do
        write(ou, *) '    Material Bins:' // trim(string)
     end if
@@ -570,17 +570,17 @@ contains
     if (t % n_bins(T_MATERIAL) > 0) then
        string = ""
        do i = 1, t % n_bins(T_MATERIAL)
-          uid = t % material_bins(i) % scalar
-          m => materials(uid)
-          string = trim(string) // ' ' // trim(int_to_str(m % uid))
+          id = t % material_bins(i) % scalar
+          m => materials(id)
+          string = trim(string) // ' ' // trim(int_to_str(m % id))
        end do
        write(ou, *) '    Material Bins:' // trim(string)
     end if
 
     if (t % n_bins(T_MESH) > 0) then
        string = ""
-       uid = t % mesh
-       sm => meshes(uid)
+       id = t % mesh
+       sm => meshes(id)
        string = trim(string) // ' ' // trim(int_to_str(sm % dimension(1)))
        do i = 2, sm % n_dimension
           string = trim(string) // ' x ' // trim(int_to_str(sm % dimension(i)))
@@ -591,9 +591,9 @@ contains
     if (t % n_bins(T_CELLBORN) > 0) then
        string = ""
        do i = 1, t % n_bins(T_CELLBORN)
-          uid = t % cellborn_bins(i) % scalar
-          c => cells(uid)
-          string = trim(string) // ' ' // trim(int_to_str(c % uid))
+          id = t % cellborn_bins(i) % scalar
+          c => cells(id)
+          string = trim(string) // ' ' // trim(int_to_str(c % id))
        end do
        write(ou, *) '    Birth Region Bins:' // trim(string)
     end if

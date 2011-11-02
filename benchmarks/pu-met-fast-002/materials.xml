@@ -10,7 +10,7 @@
   ==========================================
   -->
 
-  <material uid="1">
+  <material id="1">
     <density value="0.04055292" units="atom/b-cm" />
     <nuclide name="Pu-239" xs="03c" ao="0.029934" />
     <nuclide name="Pu-240" xs="03c" ao="0.0078754" />

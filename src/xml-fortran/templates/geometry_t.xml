@@ -6,7 +6,7 @@
   <options rootname="geometry" />
 
   <typedef name="cell_xml">
-    <component name="uid" type="integer" />
+    <component name="id" type="integer" />
     <component name="universe" type="integer" default="0" />
     <component name="material" type="integer" default="0" />
     <component name="fill" type="integer" default="0" />
@@ -14,14 +14,14 @@
   </typedef>
 
   <typedef name="surface_xml">
-    <component name="uid" type="integer" />
+    <component name="id" type="integer" />
     <component name="type" type="word" length="15" />
     <component name="coeffs" type="double-array" />
     <component name="boundary" type="word" length="12" default="'transmit'" />
   </typedef>
 
   <typedef name="lattice_xml">
-    <component name="uid" type="integer" />
+    <component name="id" type="integer" />
     <component name="type" type="word" length="12" />
     <component name="dimension" type="integer-array" />
     <component name="origin" type="double-array" />

@@ -58,7 +58,7 @@ module tally_header
   type TallyObject
      ! Basic data
 
-     integer :: uid
+     integer :: id
      integer :: type
      real(8) :: volume
      logical :: surface_current = .false.

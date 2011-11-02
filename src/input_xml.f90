@@ -46,6 +46,7 @@ contains
     integer :: n
     integer :: coeffs_reqd
     logical :: file_exists
+    character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
 
@@ -61,11 +62,31 @@ contains
        call fatal_error()
     end if
 
+    ! Initialize path for cross_sections.xml
+    cross_sections_ = ""
+
     ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
 
-    ! Path for cross_sections.xml file
-    path_cross_sections = trim(cross_sections_)
+    ! Find cross_sections.xml file -- the first place to look is the
+    ! settings.xml file. If no file is found there, then we check the
+    ! CROSS_SECTIONS environment variable
+
+    if (len_trim(cross_sections_) == 0) then
+       ! No cross_sections.xml file specified in settings.xml, check environment
+       ! variable
+       call get_environment_variable("CROSS_SECTIONS", env_variable)
+       if (len_trim(env_variable) == 0) then
+          message = "No cross_sections.xml file was specified in " // &
+               "settings.xml or in the CROSS_SECTIONS environment " // &
+               "variable."
+          call fatal_error()
+       else
+          path_cross_sections = trim(env_variable)
+       end if
+    else
+       path_cross_sections = trim(cross_sections_)
+    end if
 
     ! Criticality information
     if (criticality % cycles > 0) then

@@ -154,7 +154,10 @@ class XsdirTable(object):
 
     @property
     def zaid(self):
-        return self.name[:self.name.find('.')]
+        if self.name.endswith('c'):
+            return self.name[:self.name.find('.')]
+        else:
+            return 0
 
     def to_xml_node(self, doc):
         node = doc.createElement("ace_table")
@@ -174,6 +177,10 @@ class XsdirTable(object):
                 if attribute == "metastable" and self.metastable == 0:
                     continue
                 if attribute == "binary" and self.binary == 0:
+                    continue
+
+                # Skip any attribute that is none
+                if getattr(self, attribute) is None:
                     continue
 
                 # Create attribute node

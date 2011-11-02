@@ -2,8 +2,8 @@ module global
 
   use bank_header,          only: Bank
   use constants
-  use cross_section_header, only: Nuclide, SAB_Table, xsData, NuclideMicroXS, &
-                                  MaterialMacroXS
+  use cross_section_header, only: Nuclide, SAB_Table, xsListing, &
+                                  NuclideMicroXS, MaterialMacroXS
   use datatypes_header,     only: DictionaryII, DictionaryCI
   use geometry_header,      only: Cell, Universe, Lattice, Surface
   use material_header,      only: Material
@@ -52,9 +52,9 @@ module global
   ! CROSS SECTION RELATED VARIABLES
 
   ! Cross section arrays
-  type(Nuclide),   allocatable, target :: nuclides(:)   ! Nuclide cross-sections
-  type(SAB_Table), allocatable, target :: sab_tables(:) ! S(a,b) tables
-  type(xsData),    allocatable, target :: xsdatas(:)    ! xsdata listings
+  type(Nuclide),   allocatable, target :: nuclides(:)    ! Nuclide cross-sections
+  type(SAB_Table), allocatable, target :: sab_tables(:)  ! S(a,b) tables
+  type(XsListing), allocatable, target :: xs_listings(:) ! cross_sections.xml listings 
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
@@ -63,10 +63,10 @@ module global
   integer :: n_nuclides_total ! Number of nuclide cross section tables
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
 
-  ! Dictionaries to look up cross sections and xsdata
-  type(DictionaryCI), pointer :: nuclide_dict => null()
-  type(DictionaryCI), pointer :: sab_dict     => null()
-  type(DictionaryCI), pointer :: xsdata_dict  => null()
+  ! Dictionaries to look up cross sections and listings
+  type(DictionaryCI), pointer :: nuclide_dict    => null()
+  type(DictionaryCI), pointer :: sab_dict        => null()
+  type(DictionaryCI), pointer :: xs_listing_dict => null()
 
   ! Unionized energy grid
   integer              :: n_grid    ! number of points on unionized grid
@@ -146,8 +146,8 @@ module global
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
-  character(MAX_WORD_LEN) :: path_input  ! Path to input file
-  character(MAX_WORD_LEN) :: path_xsdata ! Path to xsdata file
+  character(MAX_WORD_LEN) :: path_input          ! Path to input file
+  character(MAX_FILE_LEN) :: path_cross_sections ! Path to cross_sections.xml
 
   ! Message used in message/warning/fatal_error
   character(MAX_LINE_LEN) :: message
@@ -178,10 +178,10 @@ contains
     if (allocated(materials)) deallocate(materials)
     if (allocated(lattices)) deallocate(lattices)
 
-    ! Deallocate cross section data
-    if (allocated(xsdatas)) deallocate(xsdatas)
+    ! Deallocate cross section data and listings
     if (allocated(nuclides)) deallocate(nuclides)
     if (allocated(sab_tables)) deallocate(sab_tables)
+    if (allocated(xs_listings)) deallocate(xs_listings)
 
     ! Deallocate energy grid
     if (allocated(e_grid)) deallocate(e_grid)

@@ -9,7 +9,7 @@ module input_xml
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message
   use string,          only: lower_case, int_to_str, str_to_int, str_to_real,  &
-                             split_string
+                             split_string, starts_with, ends_with
   use tally_header,    only: TallyObject
 
   implicit none
@@ -64,8 +64,8 @@ contains
     ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
 
-    ! Cross-section library path
-    path_xsdata = trim(xslibrary % path)
+    ! Path for cross_sections.xml file
+    path_cross_sections = trim(cross_sections_)
 
     ! Criticality information
     if (criticality % cycles > 0) then
@@ -466,7 +466,7 @@ contains
        m % n_nuclides = n
        allocate(m % names(n))
        allocate(m % nuclide(n))
-       allocate(m % xsdata(n))
+       allocate(m % xs_listing(n))
        allocate(m % atom_density(n))
        allocate(m % atom_percent(n))
 
@@ -903,5 +903,103 @@ contains
     pixel = pixel_
 
   end subroutine read_plot_xml
+
+!===============================================================================
+! READ_CROSS_SECTIONS_XML reads information from a cross_sections.xml file. This
+! file contains a listing of the ACE cross sections that may be used.
+!===============================================================================
+
+  subroutine read_cross_sections_xml()
+
+    use xml_data_cross_sections_t
+
+    integer :: i           ! loop index
+    integer :: n_listings  ! number of listings in cross_sections.xml
+    logical :: file_exists ! does cross_sections.xml exist?
+    character(MAX_WORD_LEN)  :: directory
+    type(XsListing), pointer :: listing => null()
+
+    ! Check if cross_sections.xml exists
+    inquire(FILE=path_cross_sections, EXIST=file_exists)
+    if (.not. file_exists) then
+       ! Could not find cross_sections.xml file
+       message = "Cross sections XML file '" // trim(path_cross_sections) // &
+            "' does not exist!"
+       call fatal_error()
+    end if
+    
+    message = "Reading cross sections XML file..."
+    call write_message(5)
+
+    ! Initialize directory_ variable
+    directory_ = ""
+
+    ! Parse cross_sections.xml file
+    call read_xml_file_cross_sections_t(path_cross_sections)
+
+    ! Copy directory information if present
+    directory = trim(directory_)
+
+    ! Allocate xs_listings array
+    if (.not. associated(ace_tables_)) then
+       message = "No ACE table listings present in cross_sections.xml file!"
+       call fatal_error()
+    else
+       n_listings = size(ace_tables_)
+       allocate(xs_listings(n_listings))
+    end if
+    
+
+    do i = 1, n_listings
+       listing => xs_listings(i)
+
+       ! copy a number of attributes
+       listing % name       = trim(ace_tables_(i) % name)
+       listing % alias      = trim(ace_tables_(i) % alias)
+       listing % zaid       = ace_tables_(i) % zaid
+       listing % awr        = ace_tables_(i) % awr
+       listing % temp       = ace_tables_(i) % temperature
+
+       ! determine type of cross section
+       select case(ace_tables_(i) % type)
+       case ('neutron')
+          listing % type = ACE_NEUTRON
+       case ('thermal')
+          listing % type = ACE_THERMAL
+       case ('dosimetry')
+          listing % type = ACE_DOSIMETRY
+       end select
+
+       ! determine metastable state
+       if (ace_tables_(i) % metastable == 0) then
+          listing % metastable = .false.
+       else
+          listing % metastable = .true.
+       end if
+
+       ! determine whether binary/ascii
+       if (ace_tables_(i) % binary == 0) then
+          listing % binary = .false.
+       else
+          listing % binary = .true.
+       end if
+
+       ! determine path of cross section table
+       if (starts_with(ace_tables_(i) % path, '/')) then
+          listing % path = ace_tables_(i) % path
+       else
+          if (ends_with(directory,'/')) then
+             listing % path = trim(directory) // trim(ace_tables_(i) % path)
+          else
+             listing % path = trim(directory) // '/' // trim(ace_tables_(i) % path)
+          end if
+       end if
+
+       ! create dictionary entry for both name and alias
+       call dict_add_key(xs_listing_dict, listing % name, i)
+       call dict_add_key(xs_listing_dict, listing % alias, i)
+    end do
+
+  end subroutine read_cross_sections_xml
 
 end module input_xml

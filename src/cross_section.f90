@@ -1,7 +1,7 @@
 module cross_section
 
   use constants
-  use cross_section_header, only: Nuclide, Reaction, SAB_Table, xsData
+  use cross_section_header, only: Nuclide, Reaction, SAB_Table, XsListing
   use datatypes,            only: dict_create, dict_add_key, dict_get_key, &
                                   dict_has_key, dict_delete
   use datatypes_header,     only: DictionaryCI
@@ -36,7 +36,7 @@ contains
 
     integer        :: i                ! index in materials array
     integer        :: j                ! index over nuclides in material
-    integer        :: index            ! index in xsdatas array
+    integer        :: index            ! index in xs_listings array
     integer        :: index_nuclides   ! index in nuclides
     integer        :: index_sab        ! index in sab_tables
     character(10)  :: key              ! name of isotope, e.g. 92235.03c
@@ -105,8 +105,8 @@ contains
     do i = 1, n_materials
        mat => materials(i)
        do j = 1, mat % n_nuclides
-          ! Get index in xsdatas array for this nuclide
-          index = mat % xsdata(j)
+          ! Get index in xs_listings array for this nuclide
+          index = mat % xs_listing(j)
 
           ! Get name of nuclide
           key = mat % names(j)
@@ -126,12 +126,12 @@ contains
           key = mat % sab_name
 
           if (.not. dict_has_key(temp_dict, key)) then
-             ! Find the entry in xsdatas for this table
-             if (dict_has_key(xsdata_dict, key)) then
-                index = dict_get_key(xsdata_dict, key)
+             ! Find the entry in xs_listings for this table
+             if (dict_has_key(xs_listing_dict, key)) then
+                index = dict_get_key(xs_listing_dict, key)
              else
                 message = "Cannot find cross-section " // trim(key) // &
-                     " in specified xsdata file."
+                     " in specified cross_sections.xml file."
                 call fatal_error()
              end if
 
@@ -176,7 +176,7 @@ contains
   subroutine read_ACE_continuous(index_table, index)
 
     integer, intent(in) :: index_table ! index in nuclides array
-    integer, intent(in) :: index       ! index in xsdatas array
+    integer, intent(in) :: index       ! index in xs_listings array
 
     integer                 :: in = 7           ! unit to read from
     integer                 :: ioError          ! error status for file access
@@ -189,21 +189,23 @@ contains
     character(7)            :: readable         ! is ACE library readable?
     character(MAX_LINE_LEN) :: line             ! single line to read
     character(MAX_WORD_LEN) :: words(MAX_WORDS) ! words on a line
-    character(MAX_WORD_LEN) :: filename         ! name of ACE library file
+    character(MAX_FILE_LEN) :: filename         ! name of ACE library file
     character(10)           :: tablename        ! name of cross section table
     type(Nuclide), pointer :: nuc => null()
 
-    ! Check to make sure index in nuclides array and xsdata arrays are valid
+    ! Check to make sure index in nuclides array and xs_listings arrays are
+    ! valid
     if (index_table > size(nuclides)) then
        message = "Index of table to read is greater than length of nuclides."
        call fatal_error()
-    elseif (index > size(xsdatas)) then
-       message = "Index of xsdata entry is greater than length of xsdatas."
+    elseif (index > size(xs_listings)) then
+       message = "Index of xs_listing entry is greater than length of " // &
+            "xs_listings."
        call fatal_error()
     end if
 
-    filename = xsdatas(index)%path
-    tablename = xsdatas(index)%id
+    filename  = xs_listings(index) % path
+    tablename = xs_listings(index) % name
 
     nuc => nuclides(index_table)
 
@@ -1071,7 +1073,7 @@ contains
   subroutine read_ACE_thermal(index_table, index)
 
     integer, intent(in) :: index_table ! index in sab_tables array
-    integer, intent(in) :: index       ! index in xsdatas array
+    integer, intent(in) :: index       ! index in xs_listings array
 
     integer                 :: in = 7           ! unit to read from
     integer                 :: ioError          ! error status for file access
@@ -1088,8 +1090,8 @@ contains
     character(10)           :: tablename        ! name of cross section table
     type(SAB_Table), pointer :: table => null()
 
-    filename = xsdatas(index)%path
-    tablename = xsdatas(index)%id
+    filename  = xs_listings(index) % path
+    tablename = xs_listings(index) % name
 
     table => sab_tables(index_table)
 
@@ -1318,105 +1320,5 @@ contains
     XSS_index = XSS_index + n_values
 
   end function get_real
-
-!===============================================================================
-! READ_XSDATA reads the data in a SERPENT xsdata file and builds a dictionary to
-! find cross-section information later on.
-!===============================================================================
-
-  subroutine read_xsdata(path)
-
-    character(*), intent(in) :: path
-
-    type(xsData), pointer    :: iso => null()
-    character(MAX_LINE_LEN)  :: line
-    character(MAX_WORD_LEN)  :: words(MAX_WORDS)
-    character(MAX_WORD_LEN)  :: filename
-    integer                  :: n
-    integer                  :: in = 7
-    logical                  :: file_exists
-    character(7)             :: readable
-    integer                  :: count
-    integer                  :: index
-    integer                  :: ioError
-
-    message = "Reading cross-section summary file..."
-    call write_message(5)
-
-    ! Construct filename
-    filename = trim(path)
-
-    ! Check if xsdata exists and is readable
-    inquire(FILE=filename, EXIST=file_exists, READ=readable)
-    if (.not. file_exists) then
-       message = "Cross section summary '" // trim(filename) // "' does not exist!"
-       call fatal_error()
-    elseif (readable(1:3) == 'NO') then
-       message = "Cross section summary '" // trim(filename) // "' is not " &
-            & // "readable! Change file permissions with chmod command."
-       call fatal_error()
-    end if
-
-    ! open xsdata file
-    open(FILE=filename, UNIT=in, STATUS='old', &
-         & ACTION='read', IOSTAT=ioError)
-    if (ioError /= 0) then
-       message = "Error while opening file: " // filename
-       call fatal_error()
-    end if
-
-    ! determine how many lines
-    count = 0
-    do
-       read(UNIT=in, FMT='(A)', IOSTAT=ioError) line
-       if (ioError < 0) then
-          ! reached end of file
-          exit
-       elseif (ioError > 0) then
-          message = "Unknown error while reading file: " // filename
-          close(UNIT=in)
-          call fatal_error()
-       end if
-       count = count + 1
-    end do
-    allocate(xsdatas(count))
-
-    ! read actual lines
-    index = 0
-    rewind(in)
-    do
-       read(UNIT=in, FMT='(A)', IOSTAT=ioError) line
-       if (ioError < 0) exit
-       index = index + 1
-       call split_string(line, words, n)
-       if (n == 0) cycle ! skip blank line
-
-       ! Check to make sure there are enough arguments
-       if (n < 9) then
-          message = "Not enough arguments on xsdata line: " // line
-          close(UNIT=in)
-          call fatal_error()
-       end if
-
-       iso => xsdatas(index)
-
-       ! store data
-       iso%alias = words(1)
-       iso%id = words(2)
-       iso%type = str_to_int(words(3))
-       iso%zaid = str_to_int(words(4))
-       iso%isomeric = str_to_int(words(5))
-       iso%awr = str_to_real(words(6))
-       iso%temp = str_to_real(words(7))
-       iso%binary = str_to_int(words(8))
-       iso%path = words(9)
-
-       ! create dictionary entry
-       call dict_add_key(xsdata_dict, iso%alias, index)
-    end do
-
-    close(UNIT=in)
-
-  end subroutine read_xsdata
 
 end module cross_section

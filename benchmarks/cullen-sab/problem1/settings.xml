@@ -10,7 +10,9 @@
       ====================================================
   -->
 
-  <xslibrary path="/opt/serpent/xsdata/endfb7/xsdata" />
+  <cross_sections>
+      /home/paulromano/openmc/cross_sections_serpent.xml
+  </cross_sections>
 
   <criticality>
     <cycles>500</cycles>

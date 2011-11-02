@@ -1,7 +1,7 @@
 module initialize
 
   use constants
-  use cross_section,    only: read_xs, read_xsdata
+  use cross_section,    only: read_xs
   use datatypes,        only: dict_create, dict_add_key, dict_get_key,         &
                               dict_has_key, dict_keys
   use datatypes_header, only: ListKeyValueII, DictionaryII
@@ -10,7 +10,8 @@ module initialize
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Surface, Universe, Lattice, BASE_UNIVERSE
   use global
-  use input_xml,        only: read_input_xml, cells_in_univ_dict
+  use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
+                              cells_in_univ_dict
   use logging,          only: create_log
   use mcnp_random,      only: RN_init_problem
   use mpi_routines,     only: setup_mpi
@@ -78,10 +79,10 @@ contains
     if (.not. plotting) then
        ! Read cross section summary file to determine what files contain
        ! cross-sections
-       call read_xsdata(path_xsdata)
+       call read_cross_sections_xml()
 
-       ! With the AWRs from the xsdata, change all material specifications so that
-       ! they contain atom percents summing to 1
+       ! With the AWRs from the xs_listings, change all material specifications
+       ! so that they contain atom percents summing to 1
        call normalize_ao()
 
        ! Read ACE-format cross sections
@@ -182,7 +183,7 @@ contains
     call dict_create(material_dict)
     call dict_create(mesh_dict)
     call dict_create(tally_dict)
-    call dict_create(xsdata_dict)
+    call dict_create(xs_listing_dict)
     call dict_create(nuclide_dict)
     call dict_create(sab_dict)
 
@@ -532,7 +533,8 @@ contains
     character(10)  :: key             ! name of nuclide, e.g. 92235.03c
     type(Material), pointer :: mat => null()
     
-    ! first find the index in the xsdata array for each nuclide in each material
+    ! first find the index in the xs_listings array for each nuclide in each
+    ! material
     do i = 1, n_materials
        mat => materials(i)
 
@@ -561,17 +563,17 @@ contains
              call fatal_error()
           end if
 
-          if (dict_has_key(xsdata_dict, key)) then
-             index = dict_get_key(xsdata_dict, key)
-             mat % xsdata(j) = index
+          if (dict_has_key(xs_listing_dict, key)) then
+             index = dict_get_key(xs_listing_dict, key)
+             mat % xs_listing(j) = index
           else
              message = "Cannot find cross-section " // trim(key) // &
-                  " in specified xsdata file."
+                  " in specified cross_sections.xml file."
              call fatal_error()
           end if
 
           ! determine atomic weight ratio
-          awr = xsdatas(index) % awr
+          awr = xs_listings(index) % awr
 
           ! if given weight percent, convert all values so that they are divided
           ! by awr. thus, when a sum is done over the values, it's actually
@@ -592,8 +594,8 @@ contains
        if (.not. density_in_atom) then
           sum_percent = ZERO
           do j = 1, mat % n_nuclides
-             index = mat % xsdata(j)
-             awr = xsdatas(index) % awr
+             index = mat % xs_listing(j)
+             awr = xs_listings(index) % awr
              x = mat % atom_percent(j)
              sum_percent = sum_percent + x*awr
           end do

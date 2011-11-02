@@ -15,7 +15,6 @@ module material_header
      real(8)              :: density         ! total atom density in atom/b-cm
      real(8), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
      real(8), allocatable :: atom_percent(:) ! atom/weight percent (negative for weight)
-     real(8), allocatable :: total_xs(:)     ! macroscopic cross-section
 
      ! S(a,b) data references
      logical       :: has_sab_table = .false.

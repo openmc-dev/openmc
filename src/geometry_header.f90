@@ -15,7 +15,6 @@ module geometry_header
      real(8) :: x0                    ! Translation in x-coordinate
      real(8) :: y0                    ! Translation in y-coordinate
      real(8) :: z0                    ! Translation in z-coordinate
-     integer, allocatable :: tallies(:)
   end type Universe
 
 !===============================================================================
@@ -34,7 +33,6 @@ module geometry_header
      real(8) :: width_x  ! width of lattice cell 
      real(8) :: width_y  ! width of lattice cell
      integer, allocatable :: element(:,:) ! specified universes
-     integer, allocatable :: tallies(:)
   end type Lattice
 
 !===============================================================================
@@ -68,7 +66,6 @@ module geometry_header
           & surfaces(:)    ! List of surfaces bounding cell -- note that
                            ! parentheses, union, etc operators will be listed
                            ! here too
-     integer, allocatable :: tallies(:)
   end type Cell
 
   ! array index of universe 0

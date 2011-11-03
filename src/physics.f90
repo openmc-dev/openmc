@@ -392,8 +392,8 @@ contains
     ! check for very low energy
     if (p % E < 1.0e-100_8) then
        p % alive = .false.
-       ! message = "Killing neutron with extremely low energy"
-       ! call warning(message)
+       message = "Killing neutron with extremely low energy"
+       call warning()
     end if
 
     ! Score collision estimator tallies for any macro tallies -- this is done

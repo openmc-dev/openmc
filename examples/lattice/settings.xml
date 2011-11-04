@@ -13,9 +13,6 @@
     <particles>10000</particles>
   </criticality>
 
-  <!-- How verbose output should be -->
-  <verbosity value="7" />
-
   <!-- Starting source -->
   <source>
     <type>box</type>

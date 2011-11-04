@@ -62,8 +62,9 @@ contains
        call fatal_error()
     end if
 
-    ! Initialize path for cross_sections.xml
+    ! Initialize XML scalar variables
     cross_sections_ = ""
+    verbosity_ = 0
 
     ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
@@ -97,7 +98,7 @@ contains
     end if
 
     ! Verbosity
-    verbosity = verbosity_
+    if (verbosity_ > 0) verbosity = verbosity_
 
     if (associated(source_ % coeffs)) then
        ! Determine external source type

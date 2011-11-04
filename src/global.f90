@@ -157,7 +157,7 @@ module global
 
   ! The verbosity controls how much information will be printed to the
   ! screen and in logs
-  integer :: verbosity = 5
+  integer :: verbosity = 7
 
 contains
 

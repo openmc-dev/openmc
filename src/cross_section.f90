@@ -7,7 +7,7 @@ module cross_section
   use datatypes_header,     only: DictionaryCI
   use endf,                 only: reaction_name
   use error,                only: fatal_error
-  use fileio,               only: read_line, read_data, skip_lines
+  use fileio,               only: read_line, skip_lines
   use global
   use material_header,      only: Material
   use output,               only: write_message
@@ -180,7 +180,6 @@ contains
 
     integer                 :: in = 7           ! unit to read from
     integer                 :: ioError          ! error status for file access
-    integer                 :: words_per_line   ! number of words per line (data)
     integer                 :: lines            ! number of lines (data
     integer                 :: n                ! number of data values
     real(8)                 :: kT               ! ACE table temperature
@@ -251,29 +250,23 @@ contains
        ! Skip 5 lines
        call skip_lines(in, 5, ioError)
 
-       ! Read NXS data
-       lines = 2
-       words_per_line = 8
-       call read_data(in, NXS, 16, lines, words_per_line)
-
-       ! Set ZAID of nuclide
-       nuc % zaid = NXS(2)
-
-       ! Read JXS data
-       lines = 4
-       call read_data(in, JXS, 32, lines, words_per_line)
+       ! Read NXS and JXS data
+       read(UNIT=in, FMT=*) NXS
+       read(UNIT=in, FMT=*) JXS
 
        ! Calculate how many data points and lines in the XSS array
        n = NXS(1)
        lines = (n + 3)/4
 
        if (found_xs) then
+          ! Set ZAID of nuclide
+          nuc % zaid = NXS(2)
+
           ! allocate storage for XSS array
           allocate(XSS(n))
           
           ! Read XSS
-          words_per_line = 4
-          call read_data(in, XSS, n, lines, words_per_line)
+          read(UNIT=in, FMT=*) XSS
        else
           call skip_lines(in, lines, ioError)
        end if
@@ -1077,7 +1070,6 @@ contains
 
     integer                 :: in = 7           ! unit to read from
     integer                 :: ioError          ! error status for file access
-    integer                 :: words_per_line   ! number of words per line (data)
     integer                 :: lines            ! number of lines (data
     integer                 :: n                ! number of data values
     real(8)                 :: kT               ! ACE table temperature
@@ -1148,14 +1140,9 @@ contains
           call skip_lines(in, 5, ioError)
        end if
 
-       ! Read NXS data
-       lines = 2
-       words_per_line = 8
-       call read_data(in, NXS, 16, lines, words_per_line)
-
-       ! Read JXS data
-       lines = 4
-       call read_data(in, JXS, 32, lines, words_per_line)
+       ! Read NXS and JXS data
+       read(UNIT=in, FMT=*) NXS
+       read(UNIT=in, FMT=*) JXS
 
        ! Calculate how many data points and lines in the XSS array
        n = NXS(1)
@@ -1166,8 +1153,7 @@ contains
           allocate(XSS(n))
           
           ! Read XSS
-          words_per_line = 4
-          call read_data(in, XSS, n, lines, words_per_line)
+          read(UNIT=in, FMT=*) XSS
        else
           call skip_lines(in, lines, ioError)
        end if

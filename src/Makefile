@@ -15,7 +15,7 @@ include OBJECTS
 # User Options
 #===============================================================================
 
-COMPILER    = petsc 
+COMPILER    = petsc
 DEBUG       = no
 PROFILE     = no
 OPTIMIZE    = no
@@ -45,13 +45,13 @@ endif
 
 # use petsc compiler
 
-# ifeq ($(COMPILER),petsc)
+ifeq ($(COMPILER),petsc)
   F90 = ${FLINKER}
   F90FLAGS := -cpp -ffree-form
   include ${PETSC_DIR}/conf/variables
   include ${PETSC_DIR}/conf/rules
   LDFLAGS = ${PETSC_SYS_LIB}
-# endif
+endif
 
 # Set compiler flags for debugging
 

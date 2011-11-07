@@ -1,5 +1,7 @@
 objects = \
 bank_header.o \
+cmfd_execute.o \
+cmfd_header.o \
 cmfd_utils.o \
 cross_section_header.o \
 cross_section.o \

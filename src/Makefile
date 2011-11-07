@@ -15,7 +15,7 @@ include OBJECTS
 # User Options
 #===============================================================================
 
-COMPILER    = gfortran
+COMPILER    = petsc 
 DEBUG       = no
 PROFILE     = no
 OPTIMIZE    = no
@@ -42,6 +42,16 @@ ifeq ($(COMPILER),gfortran)
   F90FLAGS := -cpp -Wall
   LDFLAGS =
 endif
+
+# use petsc compiler
+
+# ifeq ($(COMPILER),petsc)
+  F90 = ${FLINKER}
+  F90FLAGS := -cpp -ffree-form
+  include ${PETSC_DIR}/conf/variables
+  include ${PETSC_DIR}/conf/rules
+  LDFLAGS = ${PETSC_SYS_LIB}
+# endif
 
 # Set compiler flags for debugging
 

@@ -1,6 +1,7 @@
 module global
 
   use bank_header,          only: Bank
+  use cmfd_header
   use constants
   use cross_section_header, only: Nuclide, SAB_Table, xsListing, &
                                   NuclideMicroXS, MaterialMacroXS
@@ -158,6 +159,17 @@ module global
   ! The verbosity controls how much information will be printed to the
   ! screen and in logs
   integer :: verbosity = 7
+
+  ! ============================================================================
+  ! CMFD VARIABLES 
+
+  ! Main object
+  type(cmfd_obj) :: cmfd
+
+  ! Timing objects
+  type(Timer) :: time_cmfd   ! timer for whole calculation
+  type(Timer) :: time_mat    ! timer for mat building
+  type(Timer) :: time_power  ! timer for power iteration
 
 contains
 

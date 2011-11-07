@@ -1,21 +1,57 @@
 module cmfd_execute
 
   use global
+  use mesh_header,  only: StructuredMesh
+  use tally_header, only: TallyObject, TallyScore
 
   implicit none
 
 contains
 
 !===============================================================================
-! ALLOCATE_CMFD allocates all of the space for the cmfd object based on tallies.
+! ALLOCATE_CMFD allocates all of the space for the cmfd object based on tallies
 !===============================================================================
 
   subroutine allocate_cmfd()
 
+    integer :: nx  ! number of mesh cells in x direction
+    integer :: ny  ! number of mesh cells in y direction
+    integer :: nz  ! number of mesh cells in z direction
+    integer :: ng  ! number of energy groups
+
+    ! extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! allocate flux, cross sections and diffusion coefficient
+    allocate( cmfd % flux(ng,nx,ny,nz) )
+    allocate( cmfd % totalxs(ng,nx,ny,nz) )
+    allocate( cmfd % p1scattxs(ng,nx,ny,nz) )
+    allocate( cmfd % scattxs(ng,ng,nx,ny,nz) )
+    allocate( cmfd % nfissxs(ng,ng,nx,ny,nz) )
+    allocate( cmfd % diffcof(ng,nx,ny,nz) )
+
+    ! allocate dtilde and dhat
+    allocate( cmfd % dtilde(6,ng,nx,ny,nz) )
+    allocate( cmfd % dhat(6,ng,nx,ny,nz) )
+
+    ! allocate dimensions for each box (here for general case)
+    allocate( cmfd % hxyz(3,nx,ny,nz) )
+
+    ! allocate cmfd fission source pdf
+    allocate( cmfd % sourcepdf(ng,nx,ny,nz) )
+
+    ! allocate surface currents
+    allocate( cmfd % currentX(2,ng,nx,ny,nz) )
+    allocate( cmfd % currentY(2,ng,nx,ny,nz) )
+    allocate( cmfd % currentZ(2,ng,nx,ny,nz) )
+
   end subroutine allocate_cmfd
 
 !===============================================================================
-! COMPUTE_XS takes tallies and computes macroscopic cross sections.
+! COMPUTE_XS takes tallies and computes macroscopic cross sections
 !===============================================================================
 
   subroutine compute_xs()
@@ -51,7 +87,7 @@ contains
     real(8) :: neig_totxs         ! total xs of neighbor cell
     real(8) :: neig_dc            ! diffusion coefficient of neighbor cell
     real(8) :: neig_hxyz(3)       ! cell dimensions of neighbor cell
-    real(8) :: dtilda             ! finite difference coupling parameter 
+    real(8) :: dtilde             ! finite difference coupling parameter 
 
     ! get maximum of spatial and group indices
     nx = cmfd%indices(1)
@@ -78,7 +114,7 @@ contains
 
             ! get cell data
             cell_dc = cmfd%diffcof(g,i,j,k)
-            cell_hxyz = cmfd%hxyz(i,j,k,:)
+            cell_hxyz = cmfd%hxyz(:,i,j,k)
 
 
             ! setup of vector to identify boundary conditions
@@ -95,8 +131,8 @@ contains
               ! check if at a boundary
               if (bound(l) == nxyz(xyz_idx,dir_idx)) then
 
-                ! compute dtilda
-                dtilda = (2*cell_dc*(1-albedo(l)))/(4*cell_dc*(1+albedo(l)) +  &
+                ! compute dtilde
+                dtilde = (2*cell_dc*(1-albedo(l)))/(4*cell_dc*(1+albedo(l)) +  &
                &         (1-albedo(l))*cell_hxyz(xyz_idx))
 
               else  ! not a boundary
@@ -109,14 +145,14 @@ contains
                 neig_dc = cmfd%diffcof(g,neig_idx(1),neig_idx(2),neig_idx(3))
                 neig_hxyz = cmfd%hxyz(neig_idx(1),neig_idx(2),neig_idx(3),:)
   
-                ! compute dtilda
-                dtilda = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc +     &
+                ! compute dtilde
+                dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc +     &
                &          cell_hxyz(xyz_idx)*neig_dc)
 
               end if
   
-              ! record dtilda in cmfd object
-              cmfd%dtilda(l,g,i,j,k) = dtilda
+              ! record dtilde in cmfd object
+              cmfd%dtilde(l,g,i,j,k) = dtilde
 
             end do LEAK
 
@@ -152,7 +188,7 @@ contains
     integer :: shift_idx          ! parameter to shift index by +1 or -1
     integer :: neig_idx(3)        ! spatial indices of neighbour
     integer :: bound(6)           ! vector containing indices for boudary check
-    real(8) :: cell_dtilda(6)     ! cell dtilda for each face
+    real(8) :: cell_dtilde(6)     ! cell dtilde for each face
     real(8) :: cell_flux          ! flux in current cell
     real(8) :: current(3,2)       ! cell current at each face
     real(8) :: neig_flux          ! flux in neighbor cell
@@ -178,12 +214,12 @@ contains
 
           GROUP: do g = 1,ng
 
-            ! get cell data
-            cell_dtilda = cmfd%dtilda(:,g,i,j,k)
+            ! get cell data (CHANGE THIS)
+            cell_dtilde = cmfd%dtilde(:,g,i,j,k)
             cell_flux = cmfd%flux(g,i,j,k)
-            current(1,:) = cmfd%currentX(g,i-1:i,j,k)
-            current(2,:) = cmfd%currentY(g,i,j-1:j,k)
-            current(3,:) = cmfd%currentZ(g,i,j,k-1:k)
+            current(1,:) = cmfd%currentX(1,g,i-1:i,j,k)
+            current(2,:) = cmfd%currentY(1,g,i,j-1:j,k)
+            current(3,:) = cmfd%currentZ(1,g,i,j,k-1:k)
 
 
             ! setup of vector to identify boundary conditions
@@ -201,7 +237,7 @@ contains
               if (bound(l) == nxyz(xyz_idx,dir_idx)) then
 
                 ! compute dhat
-                dhat = (current(xyz_idx,dir_idx) - shift_idx*cell_dtilda(l)*   &
+                dhat = (current(xyz_idx,dir_idx) - shift_idx*cell_dtilde(l)*   &
                &        cell_flux)/cell_flux
 
               else  ! not a boundary
@@ -214,12 +250,12 @@ contains
                 neig_flux = cmfd%flux(neig_idx(1),neig_idx(2),neig_idx(3),g)
 
                 ! compute dhat 
-                dhat = (current(xyz_idx,dir_idx) + shift_idx*cell_dtilda(l)*   &
+                dhat = (current(xyz_idx,dir_idx) + shift_idx*cell_dtilde(l)*   &
                &       (neig_flux - cell_flux))/(neig_flux + cell_flux)
 
               end if
 
-              ! record dtilda in cmfd object
+              ! record dtilde in cmfd object
               cmfd%dhat(l,g,i,j,k) = dhat
 
             end do LEAK
@@ -528,7 +564,7 @@ use timing, only: timer_start, timer_stop
     real(8) :: totxs                ! total macro cross section
     real(8) :: scattxsgg            ! scattering macro cross section g-->g
     real(8) :: scattxshg            ! scattering macro cross section h-->g
-    real(8) :: dtilda(6)            ! finite difference coupling parameter
+    real(8) :: dtilde(6)            ! finite difference coupling parameter
     real(8) :: dhat(6)              ! nonlinear coupling parameter
     real(8) :: hxyz(3)              ! cell lengths in each direction
     real(8) :: jn                   ! direction dependent leakage coeff to neig
@@ -566,8 +602,8 @@ use timing, only: timer_start, timer_stop
             ! retrieve cell data
             totxs = cmfd%totalxs(g,i,j,k)
             scattxsgg = cmfd%scattxs(g,g,i,j,k)
-            dtilda = cmfd%dtilda(:,g,i,j,k)
-            hxyz = cmfd%hxyz(i,j,k,:)
+            dtilde = cmfd%dtilde(:,g,i,j,k)
+            hxyz = cmfd%hxyz(:,i,j,k)
 
             ! check and get dhat
             if (allocated(cmfd%dhat)) then
@@ -596,7 +632,7 @@ use timing, only: timer_start, timer_stop
               if (bound(l) /= nxyz(xyz_idx,dir_idx)) then
 
                 ! compute leakage coefficient for neighbor
-                jn = -dtilda(l) + shift_idx*dhat(l)
+                jn = -dtilde(l) + shift_idx*dhat(l)
 
                 ! get neighbor matrix index
                 neig_mat_idx = get_matrix_idx(g,neig_idx(1),neig_idx(2),       &
@@ -612,7 +648,7 @@ use timing, only: timer_start, timer_stop
               end if
 
               ! compute leakage coefficient for target
-              jo(l) = shift_idx*dtilda(l) + dhat(l) 
+              jo(l) = shift_idx*dtilde(l) + dhat(l) 
 
             end do LEAK
 
@@ -905,7 +941,7 @@ use timing, only: timer_start, timer_stop
           GROUP: do g = 1,ng
 
             ! get dimensions of cell
-            hxyz = cmfd%hxyz(i,j,k,:)
+            hxyz = cmfd%hxyz(:,i,j,k)
 
             ! get index
             idx = get_matrix_idx(g,i,j,k,ng,nx,ny)

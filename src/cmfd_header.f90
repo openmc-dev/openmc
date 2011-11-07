@@ -14,6 +14,7 @@ module cmfd_header
 
     ! cross sections
     real(8), allocatable :: totalxs(:,:,:,:)
+    real(8), allocatable :: p1scattxs(:,:,:,:)
     real(8), allocatable :: scattxs(:,:,:,:,:)
     real(8), allocatable :: nfissxs(:,:,:,:,:)
 
@@ -21,15 +22,15 @@ module cmfd_header
     real(8), allocatable :: diffcof(:,:,:,:)
 
     ! currents
-    real(8), allocatable :: currentX(:,:,:,:)
-    real(8), allocatable :: currentY(:,:,:,:)
-    real(8), allocatable :: currentZ(:,:,:,:)
+    real(8), allocatable :: currentX(:,:,:,:,:)
+    real(8), allocatable :: currentY(:,:,:,:,:)
+    real(8), allocatable :: currentZ(:,:,:,:,:)
 
     ! flux
     real(8), allocatable :: flux(:,:,:,:)
 
     ! coupling coefficients
-    real(8), allocatable :: dtilda(:,:,:,:,:)
+    real(8), allocatable :: dtilde(:,:,:,:,:)
     real(8), allocatable :: dhat(:,:,:,:,:)
 
     ! core albedo boundary conditions

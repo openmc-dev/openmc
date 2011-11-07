@@ -6,7 +6,7 @@ program main
   use initialize,      only: initialize_run
   use mcnp_random,     only: RN_init_particle
   use mpi_routines,    only: synchronize_bank
-  use output,          only: message, header, print_runtime
+  use output,          only: write_message, header, print_runtime
   use particle_header, only: Particle
   use plot,            only: run_plot
   use physics,         only: transport
@@ -71,7 +71,7 @@ contains
        call timer_start(time_compute)
 
        msg = "Simulating cycle " // trim(int_to_str(i_cycle)) // "..."
-       call message(msg, 8)
+       call write_message(8)
        
        ! Set all tallies to zero
        n_bank = 0
@@ -88,7 +88,7 @@ contains
           end if
 
           ! set random number seed
-          i_particle = (i_cycle-1)*n_particles + p % uid
+          i_particle = (i_cycle-1)*n_particles + p % id
           call RN_init_particle(i_particle)
 
           ! transport particle

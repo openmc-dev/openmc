@@ -7,7 +7,7 @@ module geometry_header
 !===============================================================================
 
   type Universe
-     integer :: uid                   ! Unique ID
+     integer :: id                    ! Unique ID
      integer :: type                  ! Type
      integer :: level                 ! Level of universe (0=base)
      integer :: n_cells               ! # of cells within
@@ -15,7 +15,6 @@ module geometry_header
      real(8) :: x0                    ! Translation in x-coordinate
      real(8) :: y0                    ! Translation in y-coordinate
      real(8) :: z0                    ! Translation in z-coordinate
-     integer, allocatable :: tallies(:)
   end type Universe
 
 !===============================================================================
@@ -24,7 +23,7 @@ module geometry_header
 !===============================================================================
 
   type Lattice
-     integer :: uid      ! Universe number for lattice
+     integer :: id       ! Universe number for lattice
      integer :: type     ! Type of lattice (rectangular, hex, etc)
      integer :: level    ! Level of lattice
      integer :: n_x      ! number of lattice cells in x-direction
@@ -34,7 +33,6 @@ module geometry_header
      real(8) :: width_x  ! width of lattice cell 
      real(8) :: width_y  ! width of lattice cell
      integer, allocatable :: element(:,:) ! specified universes
-     integer, allocatable :: tallies(:)
   end type Lattice
 
 !===============================================================================
@@ -43,7 +41,7 @@ module geometry_header
 !===============================================================================
 
   type Surface
-     integer :: uid                    ! Unique ID
+     integer :: id                     ! Unique ID
      integer :: type                   ! Type of surface
      real(8), allocatable :: coeffs(:) ! Definition of surface
      integer, allocatable :: & 
@@ -57,7 +55,7 @@ module geometry_header
 !===============================================================================
 
   type Cell
-     integer :: uid        ! Unique ID
+     integer :: id         ! Unique ID
      integer :: type       ! Type of cell (normal, universe, lattice)
      integer :: universe   ! universe # this cell is in
      integer :: fill       ! universe # filling this cell
@@ -68,7 +66,6 @@ module geometry_header
           & surfaces(:)    ! List of surfaces bounding cell -- note that
                            ! parentheses, union, etc operators will be listed
                            ! here too
-     integer, allocatable :: tallies(:)
   end type Cell
 
   ! array index of universe 0

@@ -15,7 +15,7 @@ contains
 
     character(MAX_WORD_LEN) :: path_log     ! path of log file
     logical                 :: file_exists  ! does log file already exist?
-    integer                 :: ioError      ! error status for file access
+    ! integer                 :: ioError      ! error status for file access
 
     ! Create filename for log file
     path_log = trim(path_input) // ".log"
@@ -27,8 +27,8 @@ contains
     end if
 
     ! Open log file for writing
-    open(FILE=path_log, UNIT=UNIT_LOG, STATUS='replace', &
-         & ACTION='write', IOSTAT=ioError)
+    ! open(FILE=path_log, UNIT=UNIT_LOG, STATUS='replace', &
+    !      & ACTION='write', IOSTAT=ioError)
 
   end subroutine create_log
 

@@ -1,5 +1,7 @@
 module cross_section_header
 
+  use constants, only: MAX_FILE_LEN
+
   implicit none
 
 !===============================================================================
@@ -148,20 +150,20 @@ module cross_section_header
   end type SAB_Table
 
 !===============================================================================
-! XSDATA contains data read in from a SERPENT xsdata file
+! XSLISTING contains data read from a cross_sections.xml file
 !===============================================================================
 
-  type xsData
+  type XsListing
+     character(10) :: name
      character(10) :: alias
-     character(10) :: id
      integer :: type
      integer :: zaid
-     integer :: isomeric
      real(8) :: awr
      real(8) :: temp
-     integer :: binary
-     character(150) :: path
-  end type xsData
+     logical :: metastable
+     logical :: binary
+     character(MAX_FILE_LEN) :: path
+  end type XsListing
 
 !===============================================================================
 ! NUCLIDEMICROXS contains cached microscopic cross sections for a

@@ -11,9 +11,9 @@ module physics
   use global
   use interpolation,        only: interpolate_tab1
   use mcnp_random,          only: rang
-  use output,               only: message, print_particle
+  use output,               only: write_message, print_particle
   use particle_header,      only: Particle
-  use tally,                only: score_tally
+  use tally,                only: score_tally, score_surface_current
   use search,               only: binary_search
   use string,               only: int_to_str
 
@@ -36,7 +36,6 @@ contains
     real(8)        :: distance       ! distance particle travels
     logical        :: found_cell     ! found cell which particle is in?
     logical        :: in_lattice     ! is surface crossing in lattice?
-    character(MAX_LINE_LEN) :: msg   ! output/error message
     type(Universe), pointer :: univ
 
     if (p % cell == 0) then
@@ -45,9 +44,9 @@ contains
 
        ! if particle couldn't be located, print error
        if (.not. found_cell) then
-          write(msg, '(A,3ES11.3)') & 
+          write(message, '(A,3ES11.3)') & 
                "Could not locate cell for particle at: ", p % xyz
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        ! set birth cell attribute
@@ -55,13 +54,13 @@ contains
     end if
 
     if (verbosity >= 9) then
-       msg = "Simulating Particle " // trim(int_to_str(p % uid))
-       call message(msg)
+       message = "Simulating Particle " // trim(int_to_str(p % id))
+       call write_message()
     end if
 
     if (verbosity >= 10) then
-       msg = "    Born in cell " // trim(int_to_str(cells(p%cell)%uid))
-       call message(msg)
+       message = "    Born in cell " // trim(int_to_str(cells(p%cell)%id))
+       call write_message()
     end if
 
     ! find energy index, interpolation factor
@@ -78,9 +77,6 @@ contains
        
        ! Select smaller of the two distances
        distance = min(d_to_boundary, d_to_collision)
-
-       ! Save original coordinates of particle
-       p % last_xyz = p % xyz
 
        ! Advance particle
        p % xyz       = p % xyz       + distance * p % uvw
@@ -100,6 +96,9 @@ contains
           ! collision
           p % surface = 0
           call collision(p)
+
+          ! Save coordinates at collision for tallying purposes
+          p % last_xyz = p % xyz
        end if
        
     end do
@@ -393,8 +392,8 @@ contains
     ! check for very low energy
     if (p % E < 1.0e-100_8) then
        p % alive = .false.
-       ! msg = "Killing neutron with extremely low energy"
-       ! call warning(msg)
+       message = "Killing neutron with extremely low energy"
+       call warning()
     end if
 
     ! Score collision estimator tallies for any macro tallies -- this is done
@@ -413,6 +412,7 @@ contains
 
     if (tallies_on) then
        call score_tally(p, scattered, fissioned)
+       call score_surface_current(p)
     end if
 
     ! Reset number of particles banked during collision
@@ -444,7 +444,6 @@ contains
     real(8) :: prob          ! cumulative probability
     real(8) :: cutoff        ! random number
     real(8) :: atom_density  ! atom density of nuclide in atom/b-cm
-    character(MAX_LINE_LEN) :: msg ! output/error message
     type(Material), pointer :: mat => null()
     type(Nuclide),  pointer :: nuc => null()
     type(Reaction), pointer :: rxn => null()
@@ -464,8 +463,8 @@ contains
 
        ! Check to make sure that a nuclide was sampled
        if (i > mat % n_nuclides) then
-          msg = "Did not sample any nuclide during collision."
-          call fatal_error(msg)
+          message = "Did not sample any nuclide during collision."
+          call fatal_error()
        end if
 
        ! Find atom density and microscopic total cross section
@@ -528,9 +527,9 @@ contains
 
                 ! Check to make sure partial fission reaction sampled
                 if (i > nuc % n_fission) then
-                   msg = "Did not sample any partial fission reaction for " // &
-                        "survival biasing in " // trim(nuc % name)
-                   call fatal_error(msg)
+                   message = "Did not sample any partial fission reaction " // &
+                        "for survival biasing in " // trim(nuc % name)
+                   call fatal_error()
                 end if
 
                 rxn => nuc % reactions(nuc % index_fission(i))
@@ -636,10 +635,10 @@ contains
 
           ! Check to make sure inelastic scattering reaction sampled
           if (i > nuc % n_reaction) then
-             msg = "Did not sample any reaction for nuclide " // &
+             message = "Did not sample any reaction for nuclide " // &
                   trim(nuc % name) // " on material " // &
-                  trim(int_to_str(mat % uid))
-             call fatal_error(msg)
+                  trim(int_to_str(mat % id))
+             call fatal_error()
           end if
 
           rxn => nuc % reactions(i)
@@ -767,7 +766,6 @@ contains
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
     real(8) :: prob         ! probability for sampling Bragg edge
     real(8) :: u, v, w      ! directional cosines
-    character(MAX_LINE_LEN)  :: msg
     type(SAB_Table), pointer :: sab => null()
 
     ! Get pointer to S(a,b) table
@@ -865,7 +863,7 @@ contains
              j = 1
           end if
        else
-          msg = "Invalid secondary energy mode on S(a,b) table " // &
+          message = "Invalid secondary energy mode on S(a,b) table " // &
                trim(sab % name)
        end if
 
@@ -1027,7 +1025,6 @@ contains
     real(8) :: yield        ! delayed neutron precursor yield
     real(8) :: prob         ! cumulative probability
     logical :: actual_event ! did fission actually occur? (no survival biasing)
-    character(MAX_LINE_LEN) :: msg  ! error message
     type(Nuclide),  pointer :: nuc
 
     ! Get pointer to nuclide
@@ -1079,7 +1076,7 @@ contains
     if (nu == 0 .or. n_bank == 3*n_particles) return
     do i = n_bank + 1, min(n_bank + nu, 3*n_particles)
        ! Bank source neutrons by copying particle data
-       fission_bank(i) % uid = p % uid
+       fission_bank(i) % id  = p % id
        fission_bank(i) % xyz = p % xyz
 
        ! sample cosine of angle
@@ -1099,9 +1096,9 @@ contains
              NR  = nuc % nu_d_precursor_data(loc + 1)
              NE  = nuc % nu_d_precursor_data(loc + 2 + 2*NR)
              if (NR > 0) then
-                msg = "Multiple interpolation regions not supported while & 
+                message = "Multiple interpolation regions not supported while & 
                      &sampling delayed neutron precursor yield."
-                call fatal_error(msg)
+                call fatal_error()
              end if
 
              ! interpolate on energy grid
@@ -1255,27 +1252,6 @@ contains
   end subroutine inelastic_scatter
 
 !===============================================================================
-! N_ABSORPTION handles all absorbing reactions, i.e. (n,gamma), (n,p), (n,a),
-! etc.
-!===============================================================================
-
-  subroutine n_absorption(p)
-
-    type(Particle), pointer :: p
-
-    integer                 :: cell_num ! user-specified cell number
-    character(MAX_LINE_LEN) :: msg      ! output/error message
-
-    p % alive = .false.
-    if (verbosity >= 10) then
-       cell_num = cells(p % cell)%uid
-       msg = "    Absorbed in cell " // trim(int_to_str(cell_num))
-       call message(msg)
-    end if
-
-  end subroutine n_absorption
-
-!===============================================================================
 ! SAMPLE_ANGLE samples the cosine of the angle between incident and exiting
 ! particle directions either from 32 equiprobable bins or from a tabular
 ! distribution.
@@ -1302,7 +1278,6 @@ contains
     real(8)        :: c_k     ! cumulative frequency at k
     real(8)        :: c_k1    ! cumulative frequency at k+1
     real(8)        :: p0,p1   ! probability distribution
-    character(MAX_LINE_LEN) :: msg     ! error message
 
     ! check if reaction has angular distribution -- if not, sample outgoing
     ! angle isotropically
@@ -1379,20 +1354,20 @@ contains
              mu = mu0 + (sqrt(p0*p0 + 2*frac*(xi - c_k))-p0)/frac
           end if
        else
-          msg = "Unknown interpolation type: " // trim(int_to_str(interp))
-          call fatal_error(msg)
+          message = "Unknown interpolation type: " // trim(int_to_str(interp))
+          call fatal_error()
        end if
 
        if (abs(mu) > ONE) then
-          msg = "Sampled cosine of angle outside [-1, 1)."
-          call warning(msg)
+          message = "Sampled cosine of angle outside [-1, 1)."
+          call warning()
 
           mu = sign(ONE,mu)
        end if
          
     else
-       msg = "Unknown angular distribution type: " // trim(int_to_str(type))
-       call fatal_error(msg)
+       message = "Unknown angular distribution type: " // trim(int_to_str(type))
+       call fatal_error()
     end if
     
   end function sample_angle
@@ -1501,15 +1476,14 @@ contains
     real(8) :: E_max       ! parameter for n-body dist
     real(8) :: x, y, v     ! intermediate variables for n-body dist
     real(8) :: r1, r2, r3, r4, r5, r6
-    character(MAX_LINE_LEN) :: msg  ! error message
 
     ! TODO: If there are multiple scattering laws, sample scattering law
 
     ! Check for multiple interpolation regions
     if (edist % n_interp > 0) then
-       msg = "Multiple interpolation regions not supported while &
+       message = "Multiple interpolation regions not supported while &
             &attempting to sample secondary energy distribution."
-       call fatal_error(msg)
+       call fatal_error()
     end if
        
     ! Determine which secondary energy distribution law to use
@@ -1524,9 +1498,9 @@ contains
        NE  = edist % data(2 + 2*NR)
        NET = edist % data(3 + 2*NR + NE)
        if (NR > 0) then
-          msg = "Multiple interpolation regions not supported while &
+          message = "Multiple interpolation regions not supported while &
                &attempting to sample equiprobable energy bins."
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        ! determine index on incoming energy grid and interpolation factor
@@ -1591,9 +1565,9 @@ contains
        NR  = edist % data(1)
        NE  = edist % data(2 + 2*NR)
        if (NR > 0) then
-          msg = "Multiple interpolation regions not supported while &
+          message = "Multiple interpolation regions not supported while &
                &attempting to sample continuous tabular distribution."
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1650,9 +1624,9 @@ contains
 
        if (ND > 0) then
           ! discrete lines present
-          msg = "Discrete lines in continuous tabular distributed not &
+          message = "Discrete lines in continuous tabular distributed not &
                &yet supported"
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        ! determine outgoing energy bin
@@ -1685,8 +1659,8 @@ contains
                   & p_l_k)/frac
           end if
        else
-          msg = "Unknown interpolation type: " // trim(int_to_str(INTT))
-          call fatal_error(msg)
+          message = "Unknown interpolation type: " // trim(int_to_str(INTT))
+          call fatal_error()
        end if
 
        ! Now interpolate between incident energy bins i and i + 1
@@ -1762,17 +1736,17 @@ contains
        ! KALBACH-MANN CORRELATED SCATTERING
 
        if (.not. present(mu_out)) then
-          msg = "Law 44 called without giving mu_out as argument."
-          call fatal_error(msg)
+          message = "Law 44 called without giving mu_out as argument."
+          call fatal_error()
        end if
 
        ! read number of interpolation regions and incoming energies 
        NR  = edist % data(1)
        NE  = edist % data(2 + 2*NR)
        if (NR > 0) then
-          msg = "Multiple interpolation regions not supported while &
+          message = "Multiple interpolation regions not supported while &
                &attempting to sample Kalbach-Mann distribution."
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1830,9 +1804,9 @@ contains
 
        if (ND > 0) then
           ! discrete lines present
-          msg = "Discrete lines in continuous tabular distributed not &
+          message = "Discrete lines in continuous tabular distributed not &
                &yet supported"
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        ! determine outgoing energy bin
@@ -1879,8 +1853,8 @@ contains
           KM_R = R_k + (R_k1 - R_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
           KM_A = A_k + (A_k1 - A_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
        else
-          msg = "Unknown interpolation type: " // trim(int_to_str(INTT))
-          call fatal_error(msg)
+          message = "Unknown interpolation type: " // trim(int_to_str(INTT))
+          call fatal_error()
        end if
 
        ! Now interpolate between incident energy bins i and i + 1
@@ -1905,17 +1879,17 @@ contains
        ! CORRELATED ENERGY AND ANGLE DISTRIBUTION
 
        if (.not. present(mu_out)) then
-          msg = "Law 44 called without giving mu_out as argument."
-          call fatal_error(msg)
+          message = "Law 44 called without giving mu_out as argument."
+          call fatal_error()
        end if
 
        ! read number of interpolation regions and incoming energies 
        NR  = edist % data(1)
        NE  = edist % data(2 + 2*NR)
        if (NR > 0) then
-          msg = "Multiple interpolation regions not supported while &
+          message = "Multiple interpolation regions not supported while &
                &attempting to sample correlated energy-angle distribution."
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        ! find energy bin and calculate interpolation factor -- if the energy is
@@ -1973,9 +1947,9 @@ contains
 
        if (ND > 0) then
           ! discrete lines present
-          msg = "Discrete lines in continuous tabular distributed not &
+          message = "Discrete lines in continuous tabular distributed not &
                &yet supported"
-          call fatal_error(msg)
+          call fatal_error()
        end if
 
        ! determine outgoing energy bin
@@ -2009,8 +1983,8 @@ contains
                   & p_l_k)/frac
           end if
        else
-          msg = "Unknown interpolation type: " // trim(int_to_str(INTT))
-          call fatal_error(msg)
+          message = "Unknown interpolation type: " // trim(int_to_str(INTT))
+          call fatal_error()
        end if
 
        ! Now interpolate between incident energy bins i and i + 1
@@ -2062,8 +2036,8 @@ contains
              mu_out = mu_k + (sqrt(p_k*p_k + 2*frac*(r3 - c_k))-p_k)/frac
           end if
        else
-          msg = "Unknown interpolation type: " // trim(int_to_str(JJ))
-          call fatal_error(msg)
+          message = "Unknown interpolation type: " // trim(int_to_str(JJ))
+          call fatal_error()
        end if
 
     case (66)

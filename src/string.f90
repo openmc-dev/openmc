@@ -2,6 +2,7 @@ module string
 
   use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL
   use error,     only: warning
+  use global,    only: message
 
   implicit none
 
@@ -31,7 +32,6 @@ contains
     integer       :: i       ! current index
     integer       :: i_start ! starting index of word
     integer       :: i_end   ! ending index of word
-    character(MAX_LINE_LEN) :: msg
 
     i_start = 0
     i_end = 0
@@ -49,9 +49,9 @@ contains
           if (i_end > 0) then
              n = n + 1
              if (i_end - i_start + 1 > len(words(n))) then
-                msg = "The word '" // string(i_start:i_end) // "' is longer than " &
-                     & // "the space allocated for it."
-                call warning(msg)
+                message = "The word '" // string(i_start:i_end) // &
+                     "' is longer than the space allocated for it."
+                call warning()
              end if
              words(n) = string(i_start:i_end)
              ! reset indices

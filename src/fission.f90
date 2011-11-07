@@ -3,6 +3,7 @@ module fission
   use constants
   use cross_section_header, only: Nuclide
   use error,                only: fatal_error
+  use global,               only: message
   use interpolation,        only: interpolate_tab1
   use search,               only: binary_search
 
@@ -21,14 +22,13 @@ contains
     real(8), intent(in)    :: E   ! energy of incoming neutron
     real(8)                :: nu  ! number of total neutrons emitted per fission
 
-    integer :: i           ! loop index
-    integer :: NC          ! number of polynomial coefficients
-    real(8) :: c           ! polynomial coefficient
-    character(MAX_LINE_LEN) :: msg ! error message
+    integer :: i  ! loop index
+    integer :: NC ! number of polynomial coefficients
+    real(8) :: c  ! polynomial coefficient
 
     if (nuc % nu_t_type == NU_NONE) then
-       msg = "No neutron emission data for table: " // nuc % name
-       call fatal_error(msg)
+       message = "No neutron emission data for table: " // nuc % name
+       call fatal_error()
     elseif (nuc % nu_t_type == NU_POLYNOMIAL) then
        ! determine number of coefficients
        NC = int(nuc % nu_t_data(1))
@@ -57,9 +57,9 @@ contains
     real(8), intent(in)    :: E   ! energy of incoming neutron
     real(8)                :: nu  ! number of prompt neutrons emitted per fission
 
-    integer :: i           ! loop index
-    integer :: NC          ! number of polynomial coefficients
-    real(8) :: c           ! polynomial coefficient
+    integer :: i  ! loop index
+    integer :: NC ! number of polynomial coefficients
+    real(8) :: c  ! polynomial coefficient
 
     if (nuc % nu_p_type == NU_NONE) then
        ! since no prompt or delayed data is present, this means all neutron

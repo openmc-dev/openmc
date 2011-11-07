@@ -13,6 +13,8 @@ cross_section.o: material_header.o
 cross_section.o: output.o 
 cross_section.o: string.o 
 
+cross_section_header.o: constants.o
+
 datatypes.o: datatypes_header.o
 
 doppler.o: constants.o
@@ -35,6 +37,7 @@ fileio.o: string.o
 fission.o: constants.o
 fission.o: cross_section_header.o
 fission.o: error.o
+fission.o: global.o
 fission.o: interpolation.o
 fission.o: search.o
 
@@ -46,6 +49,7 @@ geometry.o: global.o
 geometry.o: output.o
 geometry.o: particle_header.o
 geometry.o: string.o
+geometry.o: tally.o
 
 global.o: bank_header.o
 global.o: constants.o
@@ -87,6 +91,7 @@ input_xml.o: mesh_header.o
 input_xml.o: output.o
 input_xml.o: string.o
 input_xml.o: tally_header.o
+input_xml.o: xml-fortran/templates/cross_sections_t.o
 input_xml.o: xml-fortran/templates/geometry_t.o
 input_xml.o: xml-fortran/templates/materials_t.o
 input_xml.o: xml-fortran/templates/settings_t.o
@@ -94,6 +99,7 @@ input_xml.o: xml-fortran/templates/tallies_t.o
 
 interpolation.o: constants.o
 interpolation.o: error.o
+interpolation.o: global.o
 interpolation.o: search.o
 
 logging.o: constants.o
@@ -160,6 +166,7 @@ plot.o: particle_header.o
 
 search.o: constants.o
 search.o: error.o
+search.o: global.o
 
 source.o: bank_header.o
 source.o: constants.o
@@ -172,9 +179,9 @@ source.o: physics.o
 
 string.o: constants.o
 string.o: error.o
+string.o: global.o
 
 tally.o: constants.o
-tally.o: cross_section.o
 tally.o: error.o
 tally.o: global.o
 tally.o: mesh.o

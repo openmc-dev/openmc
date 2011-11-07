@@ -1,3 +1,7 @@
+cmfd_execute.o: cmfd_utils.o
+cmfd_execute.o: global.o
+cmfd_execute.o: timing.o
+
 cmfd_utils.o: datatypes.o
 cmfd_utils.o: global.o
 cmfd_utils.o: mesh.o
@@ -56,6 +60,7 @@ geometry.o: string.o
 geometry.o: tally.o
 
 global.o: bank_header.o
+global.o: cmfd_header.o
 global.o: constants.o
 global.o: cross_section_header.o
 global.o: datatypes_header.o

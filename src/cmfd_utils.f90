@@ -1,6 +1,6 @@
 module cmfd_utils
 
-  use datatypes,     only: dict_add_key
+  use datatypes,     only: dict_add_key, dict_get_key
   use error,         only: fatal_error, warning
   use global
   use mesh,          only: mesh_indices_to_bin
@@ -101,6 +101,8 @@ contains
 
     integer :: i           ! loop counter
     integer :: j           ! loop counter
+    integer :: id          ! user-specified identifier
+    integer :: index       ! index in mesh array
     integer :: n           ! size of arrays in mesh specification
     integer :: n_words     ! number of words read
     logical :: file_exists ! does cmfd.xml file exist?
@@ -167,12 +169,11 @@ contains
     call dict_add_key(mesh_dict, m % id, 1)
 
     ! allocate tallies
-    n_tallies = 1
+    n_tallies = 3
     allocate(tallies(n_tallies))
 
     ! begin loop around tallies
-!    do i = 1,max_tal
-      i = 1
+    do i = 1,n_tallies
       t => tallies(i)
 
       ! allocate arrays for number of bins and stride in scores array
@@ -201,14 +202,70 @@ contains
         t % n_bins(T_ENERGYIN) = n_words - 1
       end if
 
-      ! set macro reactions
-      allocate(t % macro_bins(1))
-      t % n_macro_bins = 1
+      if (i == 1) then
 
-      ! set total reaction rate
-      t % macro_bins(1) % scalar = MACRO_TOTAL
+        ! allocate macro reactions
+        allocate(t % macro_bins(3))
+        t % n_macro_bins = 3 
 
- !   end do
+        ! set macro_bins
+        t % macro_bins(1) % scalar = MACRO_FLUX
+        t % macro_bins(2) % scalar = MACRO_TOTAL
+        t % macro_bins(3) % scalar = MACRO_SCATTER_2
+
+      else if (i == 2) then
+
+        ! read and set outgoing energy mesh filter
+        if (len_trim(energy_) > 0) then
+          call split_string(energy_, words, n_words)
+          allocate(t % energy_out(n_words))
+          do j = 1, n_words
+            t % energy_out(j) = str_to_real(words(j))
+          end do
+          t % n_bins(T_ENERGYOUT) = n_words - 1
+        end if
+
+        ! allocate macro reactions
+        allocate(t % macro_bins(2))
+        t % n_macro_bins = 2
+
+        ! set macro_bins
+        t % macro_bins(1) % scalar = MACRO_NU_SCATTER
+        t % macro_bins(2) % scalar = MACRO_NU_FISSION
+
+      else if (i == 3) then
+
+        ! allocate macro reactions
+        allocate(t % macro_bins(1))
+        t % n_macro_bins = 1
+
+        ! set macro bins
+        t % macro_bins(1) % scalar = MACRO_CURRENT
+        t % surface_current = .true.
+
+        ! since the number of bins for the mesh filter was already set
+        ! assuming it was a flux tally, we need to adjust the number of
+        ! bins
+        t % n_bins(T_MESH) = t % n_bins(T_MESH) - product(m % dimension)
+
+        ! get pointer to mesh
+        id = t % mesh
+        index = dict_get_key(mesh_dict, id)
+        m => meshes(index)
+
+        ! we need to increase the dimension by one since we also need
+        ! currents coming into and out of the boundary mesh cells.
+        if (size(m % dimension) == 2) then
+          t % n_bins(T_MESH) = t % n_bins(T_MESH) + &
+       &                       product(m % dimension + 1) * 4
+        elseif (size(m % dimension) == 3) then
+          t % n_bins(T_MESH) = t % n_bins(T_MESH) + &
+                               product(m % dimension + 1) * 6
+        end if
+
+      end if
+
+    end do
 
   end subroutine create_cmfd_tally
 

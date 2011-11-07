@@ -1,5 +1,6 @@
 module cmfd_utils
 
+  use cmfd_header
   use datatypes,     only: dict_add_key, dict_get_key
   use error,         only: fatal_error, warning
   use global
@@ -104,6 +105,7 @@ contains
     integer :: id          ! user-specified identifier
     integer :: index       ! index in mesh array
     integer :: n           ! size of arrays in mesh specification
+    integer :: ng=1        ! number of energy groups (default 1)
     integer :: n_words     ! number of words read
     logical :: file_exists ! does cmfd.xml file exist?
     character(MAX_LINE_LEN) :: filename
@@ -195,6 +197,7 @@ contains
       ! read and set incoming energy mesh filter
       if (len_trim(energy_) > 0) then
         call split_string(energy_,words,n_words)
+        ng = n_words
         allocate(t % energy_in(n_words))
         do j = 1,n_words
           t % energy_in(j) = str_to_real(words(j))
@@ -266,6 +269,10 @@ contains
       end if
 
     end do
+
+    ! set dimensions in cmfd object
+    cmfd % indices(1:3) = m % dimension(1:3) ! sets spatial dimensions
+    cmfd % indices(4) = ng  ! sets energy group dimension
 
   end subroutine create_cmfd_tally
 

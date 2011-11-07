@@ -31,7 +31,7 @@
   <!-- Type for specifying a material -->
 
   <typedef name="material_xml">
-    <component name="uid" type="integer" />
+    <component name="id" type="integer" />
     <component name="density" type="density_xml" />
     <component name="nuclides" tag="nuclide" type="nuclide_xml" dimension="1" />
     <component name="sab" type="sab_xml" dimension="1" />

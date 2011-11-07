@@ -2,7 +2,7 @@ module error
 
   use ISO_FORTRAN_ENV
 
-  use global, only: master, free_memory
+  use global, only: master, free_memory, message
 
   implicit none
 
@@ -17,24 +17,22 @@ contains
 ! stream.
 !===============================================================================
 
-  subroutine warning(msg)
+  subroutine warning()
 
-    character(*), intent(in) :: msg
-
-    integer :: n_lines
-    integer :: i
+    integer :: n_lines ! number of lines
+    integer :: i       ! loop index for lines
 
     ! Only allow master to print to screen
     if (.not. master) return
 
     write(ou, fmt='(1X,A9)', advance='no') 'WARNING: '
 
-    n_lines = (len_trim(msg)-1)/70 + 1
+    n_lines = (len_trim(message)-1)/70 + 1
     do i = 1, n_lines
        if (i == 1) then
-          write(ou, fmt='(A70)') msg(70*(i-1)+1:70*i)
+          write(ou, fmt='(A70)') message(70*(i-1)+1:70*i)
        else
-          write(ou, fmt='(10X,A70)') msg(70*(i-1)+1:70*i)
+          write(ou, fmt='(10X,A70)') message(70*(i-1)+1:70*i)
        end if
     end do
 
@@ -46,23 +44,21 @@ contains
 ! the program is aborted.
 !===============================================================================
 
-  subroutine fatal_error(msg)
+  subroutine fatal_error()
 
-    character(*), intent(in) :: msg
-
-    integer :: n_lines
-    integer :: i
+    integer :: n_lines ! number of lines
+    integer :: i       ! loop index over lines
 
     ! Only allow master to print to screen
     if (master) then
        write(eu, fmt='(1X,A7)', advance='no') 'ERROR: '
 
-       n_lines = (len_trim(msg)-1)/72 + 1
+       n_lines = (len_trim(message)-1)/72 + 1
        do i = 1, n_lines
           if (i == 1) then
-             write(eu, fmt='(A72)') msg(72*(i-1)+1:72*i)
+             write(eu, fmt='(A72)') message(72*(i-1)+1:72*i)
           else
-             write(eu, fmt='(7X,A72)') msg(72*(i-1)+1:72*i)
+             write(eu, fmt='(7X,A72)') message(72*(i-1)+1:72*i)
           end if
        end do
        write(eu,*)

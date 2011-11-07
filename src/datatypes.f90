@@ -16,9 +16,9 @@ module datatypes
 
   implicit none
 
-  integer, parameter :: HASH_SIZE       = 4993
-  integer, parameter :: HASH_MULTIPLIER = 31
-  integer, parameter :: DICT_NULL       = 0
+  integer, parameter, private :: HASH_SIZE       = 4993
+  integer, parameter, private :: HASH_MULTIPLIER = 31
+  integer, parameter, private :: DICT_NULL       = 0
 
 !===============================================================================
 ! LIST Interfaces -- these allow one to use a single subroutine or function for

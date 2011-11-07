@@ -4,7 +4,7 @@ module energy_grid
   use datatypes,        only: list_insert, list_size, list_delete
   use datatypes_header, only: ListReal
   use global
-  use output,           only: message
+  use output,           only: write_message
 
 contains
 
@@ -23,10 +23,9 @@ contains
     type(Material), pointer :: mat => null()
     type(Nuclide),  pointer :: nuc => null()
     integer :: i, j
-    character(MAX_LINE_LEN) :: msg
 
-    msg = "Creating unionized energy grid..."
-    call message(msg, 5)
+    message = "Creating unionized energy grid..."
+    call write_message(5)
 
     ! loop over all materials
     do i = 1, n_materials

@@ -4,7 +4,7 @@ module mpi_routines
   use error,           only: fatal_error
   use global
   use mcnp_random,     only: rang, RN_init_particle, RN_skip
-  use output,          only: message
+  use output,          only: write_message
   use particle_header, only: Particle, initialize_particle
   use tally_header,    only: TallyObject
 
@@ -35,7 +35,6 @@ contains
     integer        :: bank_types(4)  ! Datatypes
     integer(MPI_ADDRESS_KIND) :: bank_disp(4)   ! Displacements
     integer(MPI_ADDRESS_KIND) :: base
-    character(MAX_LINE_LEN) :: msg            ! Error message
     type(Bank)     :: b
 
     mpi_enabled = .true.
@@ -43,22 +42,22 @@ contains
     ! Initialize MPI
     call MPI_INIT(ierr)
     if (ierr /= MPI_SUCCESS) then
-       msg = "Failed to initialize MPI."
-       call fatal_error(msg)
+       message = "Failed to initialize MPI."
+       call fatal_error()
     end if
 
     ! Determine number of processors
     call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, ierr)
     if (ierr /= MPI_SUCCESS) then
-       msg = "Could not determine number of processors."
-       call fatal_error(msg)
+       message = "Could not determine number of processors."
+       call fatal_error()
     end if
 
     ! Determine rank of each processor
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
     if (ierr /= MPI_SUCCESS) then
-       msg = "Could not determine MPI rank."
-       call fatal_error(msg)
+       message = "Could not determine MPI rank."
+       call fatal_error()
     end if
 
     ! Determine master
@@ -69,7 +68,7 @@ contains
     end if
 
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(b % uid, bank_disp(1), ierr)
+    call MPI_GET_ADDRESS(b % id,  bank_disp(1), ierr)
     call MPI_GET_ADDRESS(b % xyz, bank_disp(2), ierr)
     call MPI_GET_ADDRESS(b % uvw, bank_disp(3), ierr)
     call MPI_GET_ADDRESS(b % E,   bank_disp(4), ierr)
@@ -113,7 +112,7 @@ contains
     integer(8) :: finish          ! ending index in local fission bank
     integer(8) :: total           ! total sites in global fission bank
     integer(8) :: count           ! index for source bank
-    integer(8) :: index           ! index for uid -- accounts for all nodes
+    integer(8) :: index           ! index for id -- accounts for all nodes
     integer    :: send_to_left    ! # of bank sites to send/recv to or from left
     integer    :: send_to_right   ! # of bank sites to send/recv to or from right
     integer(8) :: sites_needed    ! # of sites to be sampled
@@ -122,7 +121,6 @@ contains
          & temp_sites(:),      & ! local array of extra sites on each node
          & left_bank(:),       & ! bank sites to send/recv to or from left node
          & right_bank(:)         ! bank sites to send/recv to or fram right node
-    character(MAX_LINE_LEN) :: msg
 
 #ifdef MPI
     integer    :: ierr
@@ -133,8 +131,8 @@ contains
     real(8)    :: t0, t1, t2, t3, t4
 #endif
 
-    msg = "Collecting number of fission sites..."
-    call message(msg, 8)
+    message = "Collecting number of fission sites..."
+    call write_message(8)
 
 #ifdef MPI
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -159,8 +157,8 @@ contains
 
     ! Check if there are no fission sites
     if (total == 0) then
-       msg = "No fission sites banked!"
-       call fatal_error(msg)
+       message = "No fission sites banked!"
+       call fatal_error()
     end if
 
     ! Make sure all processors start at the same point for random sampling
@@ -171,7 +169,7 @@ contains
 
     allocate(temp_sites(2*work))
     count = 0_8 ! Index for local source_bank
-    index = 0_8 ! Index for global source uid -- must account for all nodes
+    index = 0_8 ! Index for global source id -- must account for all nodes
 
     if (total < n_particles) then
        sites_needed = mod(n_particles,total)
@@ -180,8 +178,8 @@ contains
     end if
     p_sample = real(sites_needed,8)/real(total,8)
 
-    msg = "Sampling fission sites..."
-    call message(msg, 8)
+    message = "Sampling fission sites..."
+    call write_message(8)
 
     ! ==========================================================================
     ! SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
@@ -252,8 +250,8 @@ contains
     t2 = MPI_WTIME()
     t_sync(2) = t_sync(2) + (t2 - t1)
 
-    msg = "Sending fission sites..."
-    call message(msg, 8)
+    message = "Sending fission sites..."
+    call write_message(8)
 
     ! ==========================================================================
     ! SEND BANK SITES TO NEIGHBORS
@@ -281,8 +279,8 @@ contains
     t_sync(3) = t_sync(3) + (t3 - t2)
 #endif
 
-    msg = "Constructing source bank..."
-    call message(msg, 8)
+    message = "Constructing source bank..."
+    call write_message(8)
 
     ! ==========================================================================
     ! RECONSTRUCT SOURCE BANK

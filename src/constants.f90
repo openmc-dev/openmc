@@ -166,6 +166,12 @@ module constants
        N_PT        = 116, &
        N_DA        = 117
 
+  ! ACE table types
+  integer, parameter :: &
+       ACE_NEUTRON   = 1, & ! continuous-energy neutron
+       ACE_THERMAL   = 2, & ! thermal S(a,b) scattering data
+       ACE_DOSIMETRY = 3    ! dosimetry cross sections
+
   ! Tally macro reactions
   integer, parameter :: N_MACRO_TYPES = 15
   integer, parameter :: &
@@ -223,6 +229,7 @@ module constants
   integer, parameter :: MAX_WORDS    = 500
   integer, parameter :: MAX_LINE_LEN = 250
   integer, parameter :: MAX_WORD_LEN = 150
+  integer, parameter :: MAX_FILE_LEN = 255
 
   ! Unit numbers
   integer, parameter :: UNIT_LOG   = 11 ! unit # for writing log file

@@ -1,16 +1,17 @@
 module initialize
 
   use constants
-  use cross_section,    only: read_xs, read_xsdata
+  use cross_section,    only: read_xs
   use datatypes,        only: dict_create, dict_add_key, dict_get_key,         &
-                              dict_has_key, DICT_NULL, dict_keys
+                              dict_has_key, dict_keys
   use datatypes_header, only: ListKeyValueII, DictionaryII
   use energy_grid,      only: unionized_grid, original_indices
   use error,            only: fatal_error
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Surface, Universe, Lattice, BASE_UNIVERSE
   use global
-  use input_xml,        only: read_input_xml, cells_in_univ_dict
+  use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
+                              cells_in_univ_dict
   use logging,          only: create_log
   use mcnp_random,      only: RN_init_problem
   use mpi_routines,     only: setup_mpi
@@ -55,9 +56,6 @@ contains
     ! 63-bit RNGs.
     call RN_init_problem(3, 0_8, 0_8, 0_8, 0)
 
-    ! Set default values for settings
-    call set_defaults()
-
     ! set up dictionaries
     call create_dictionaries()
 
@@ -81,10 +79,10 @@ contains
     if (.not. plotting) then
        ! Read cross section summary file to determine what files contain
        ! cross-sections
-       call read_xsdata(path_xsdata)
+       call read_cross_sections_xml()
 
-       ! With the AWRs from the xsdata, change all material specifications so that
-       ! they contain atom percents summing to 1
+       ! With the AWRs from the xs_listings, change all material specifications
+       ! so that they contain atom percents summing to 1
        call normalize_ao()
 
        ! Read ACE-format cross sections
@@ -185,7 +183,7 @@ contains
     call dict_create(material_dict)
     call dict_create(mesh_dict)
     call dict_create(tally_dict)
-    call dict_create(xsdata_dict)
+    call dict_create(xs_listing_dict)
     call dict_create(nuclide_dict)
     call dict_create(sab_dict)
 
@@ -214,18 +212,18 @@ contains
 
     ! We also need to allocate the cell count lists for each universe. The logic
     ! for this is a little more convoluted. In universe_dict, the (key,value)
-    ! pairs are the uid of the universe and the index in the array. In
-    ! ucount_dict, it's the uid of the universe and the number of cells.
+    ! pairs are the id of the universe and the index in the array. In
+    ! ucount_dict, it's the id of the universe and the number of cells.
 
     key_list => dict_keys(universe_dict)
     do while (associated(key_list))
        ! find index of universe in universes array
        index = key_list%data%value
        univ => universes(index)
-       univ % uid = key_list%data%key
+       univ % id = key_list%data%key
 
        ! check for lowest level universe
-       if (univ % uid == 0) BASE_UNIVERSE = index
+       if (univ % id == 0) BASE_UNIVERSE = index
        
        ! find cell count for this universe
        count = dict_get_key(cells_in_univ_dict, key_list%data%key)
@@ -273,8 +271,7 @@ contains
     integer                 :: j            ! index over surface list
     integer                 :: k
     integer                 :: index        ! index in surfaces/materials array 
-    integer                 :: uid          ! user-specified uid
-    character(MAX_LINE_LEN) :: msg          ! output/error message
+    integer                 :: id           ! user-specified id
     type(Cell),        pointer :: c => null()
     type(Lattice),     pointer :: l => null()
     type(TallyObject), pointer :: t => null()
@@ -285,15 +282,15 @@ contains
 
        c => cells(i)
        do j = 1, c % n_surfaces
-          uid = c % surfaces(j)
-          if (uid < OP_DIFFERENCE) then
-             if (dict_has_key(surface_dict, abs(uid))) then
-                index = dict_get_key(surface_dict, abs(uid))
-                c % surfaces(j) = sign(index, uid)
+          id = c % surfaces(j)
+          if (id < OP_DIFFERENCE) then
+             if (dict_has_key(surface_dict, abs(id))) then
+                index = dict_get_key(surface_dict, abs(id))
+                c % surfaces(j) = sign(index, id)
              else
-                msg = "Could not find surface " // trim(int_to_str(abs(uid))) // &
-                     & " specified on cell " // trim(int_to_str(c % uid))
-                call fatal_error(msg)
+                message = "Could not find surface " // trim(int_to_str(abs(id))) // &
+                     & " specified on cell " // trim(int_to_str(c % id))
+                call fatal_error()
              end if
           end if
        end do
@@ -301,40 +298,40 @@ contains
        ! =======================================================================
        ! ADJUST UNIVERSE INDEX FOR EACH CELL
 
-       uid = c % universe
-       if (dict_has_key(universe_dict, uid)) then
-          c % universe = dict_get_key(universe_dict, uid)
+       id = c % universe
+       if (dict_has_key(universe_dict, id)) then
+          c % universe = dict_get_key(universe_dict, id)
        else
-          msg = "Could not find universe " // trim(int_to_str(uid)) // &
-               " specified on cell " // trim(int_to_str(c % uid))
-          call fatal_error(msg)
+          message = "Could not find universe " // trim(int_to_str(id)) // &
+               " specified on cell " // trim(int_to_str(c % id))
+          call fatal_error()
        end if
 
        ! =======================================================================
        ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
 
-       uid = c % material
-       if (uid /= 0) then
-          if (dict_has_key(material_dict, uid)) then
+       id = c % material
+       if (id /= 0) then
+          if (dict_has_key(material_dict, id)) then
              c % type = CELL_NORMAL
-             c % material = dict_get_key(material_dict, uid)
+             c % material = dict_get_key(material_dict, id)
           else
-             msg = "Could not find material " // trim(int_to_str(uid)) // &
-                   " specified on cell " // trim(int_to_str(c % uid))
-             call fatal_error(msg)
+             message = "Could not find material " // trim(int_to_str(id)) // &
+                   " specified on cell " // trim(int_to_str(c % id))
+             call fatal_error()
           end if
        else
-          uid = c % fill
-          if (dict_has_key(universe_dict, uid)) then
+          id = c % fill
+          if (dict_has_key(universe_dict, id)) then
              c % type = CELL_FILL
-             c % fill = dict_get_key(universe_dict, uid)
-          elseif (dict_has_key(lattice_dict, uid)) then
+             c % fill = dict_get_key(universe_dict, id)
+          elseif (dict_has_key(lattice_dict, id)) then
              c % type = CELL_LATTICE
-             c % fill = dict_get_key(lattice_dict, uid)
+             c % fill = dict_get_key(lattice_dict, id)
           else
-             msg = "Specified fill " // trim(int_to_str(uid)) // " on cell " // &
-                  trim(int_to_str(c % uid)) // " is neither a universe nor a lattice."
-             call fatal_error(msg)
+             message = "Specified fill " // trim(int_to_str(id)) // " on cell " // &
+                  trim(int_to_str(c % id)) // " is neither a universe nor a lattice."
+             call fatal_error()
           end if
        end if
     end do
@@ -346,13 +343,13 @@ contains
        l => lattices(i)
        do j = 1, l % n_x
           do k = 1, l % n_y
-             uid = l % element(j,k)
-             if (dict_has_key(universe_dict, uid)) then
-                l % element(j,k) = dict_get_key(universe_dict, uid)
+             id = l % element(j,k)
+             if (dict_has_key(universe_dict, id)) then
+                l % element(j,k) = dict_get_key(universe_dict, id)
              else
-                msg = "Invalid universe number " // trim(int_to_str(uid)) &
-                     // " specified on lattice " // trim(int_to_str(l % uid))
-                call fatal_error(msg)
+                message = "Invalid universe number " // trim(int_to_str(id)) &
+                     // " specified on lattice " // trim(int_to_str(l % id))
+                call fatal_error()
              end if
           end do
        end do
@@ -366,13 +363,13 @@ contains
 
        if (t % n_bins(T_CELL) > 0) then
           do j = 1, t % n_bins(T_CELL)
-             uid = t % cell_bins(j) % scalar
-             if (dict_has_key(cell_dict, uid)) then
-                t % cell_bins(j) % scalar = dict_get_key(cell_dict, uid)
+             id = t % cell_bins(j) % scalar
+             if (dict_has_key(cell_dict, id)) then
+                t % cell_bins(j) % scalar = dict_get_key(cell_dict, id)
              else
-                msg = "Could not find cell " // trim(int_to_str(uid)) // &
-                     & " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
+                message = "Could not find cell " // trim(int_to_str(id)) // &
+                     & " specified on tally " // trim(int_to_str(t % id))
+                call fatal_error()
              end if
           end do
        end if
@@ -382,13 +379,13 @@ contains
 
        if (t % n_bins(T_SURFACE) > 0) then
           do j = 1, t % n_bins(T_SURFACE)
-             uid = t % surface_bins(j) % scalar
-             if (dict_has_key(surface_dict, uid)) then
-                t % surface_bins(j) % scalar = dict_get_key(surface_dict, uid)
+             id = t % surface_bins(j) % scalar
+             if (dict_has_key(surface_dict, id)) then
+                t % surface_bins(j) % scalar = dict_get_key(surface_dict, id)
              else
-                msg = "Could not find surface " // trim(int_to_str(uid)) // &
-                     & " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
+                message = "Could not find surface " // trim(int_to_str(id)) // &
+                     & " specified on tally " // trim(int_to_str(t % id))
+                call fatal_error()
              end if
           end do
        end if
@@ -398,13 +395,13 @@ contains
 
        if (t % n_bins(T_UNIVERSE) > 0) then
           do j = 1, t % n_bins(T_UNIVERSE)
-             uid = t % universe_bins(j) % scalar
-             if (dict_has_key(universe_dict, uid)) then
-                t % universe_bins(j) % scalar = dict_get_key(universe_dict, uid)
+             id = t % universe_bins(j) % scalar
+             if (dict_has_key(universe_dict, id)) then
+                t % universe_bins(j) % scalar = dict_get_key(universe_dict, id)
              else
-                msg = "Could not find universe " // trim(int_to_str(uid)) // &
-                     & " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
+                message = "Could not find universe " // trim(int_to_str(id)) // &
+                     & " specified on tally " // trim(int_to_str(t % id))
+                call fatal_error()
              end if
           end do
        end if
@@ -414,13 +411,13 @@ contains
 
        if (t % n_bins(T_MATERIAL) > 0) then
           do j = 1, t % n_bins(T_MATERIAL)
-             uid = t % material_bins(j) % scalar
-             if (dict_has_key(material_dict, uid)) then
-                t % material_bins(j) % scalar = dict_get_key(material_dict, uid)
+             id = t % material_bins(j) % scalar
+             if (dict_has_key(material_dict, id)) then
+                t % material_bins(j) % scalar = dict_get_key(material_dict, id)
              else
-                msg = "Could not find material " // trim(int_to_str(uid)) // &
-                     & " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
+                message = "Could not find material " // trim(int_to_str(id)) // &
+                     & " specified on tally " // trim(int_to_str(t % id))
+                call fatal_error()
              end if
           end do
        end if
@@ -430,13 +427,13 @@ contains
 
        if (t % n_bins(T_CELLBORN) > 0) then
           do j = 1, t % n_bins(T_CELLBORN)
-             uid = t % cellborn_bins(j) % scalar
-             if (dict_has_key(cell_dict, uid)) then
-                t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, uid)
+             id = t % cellborn_bins(j) % scalar
+             if (dict_has_key(cell_dict, id)) then
+                t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, id)
              else
-                msg = "Could not find material " // trim(int_to_str(uid)) // &
-                     & " specified on tally " // trim(int_to_str(t % uid))
-                call fatal_error(msg)
+                message = "Could not find material " // trim(int_to_str(id)) // &
+                     & " specified on tally " // trim(int_to_str(t % id))
+                call fatal_error()
              end if
           end do
        end if
@@ -445,13 +442,13 @@ contains
        ! ADJUST MESH INDICES FOR EACH TALLY
 
        if (t % n_bins(T_MESH) > 0) then
-          uid = t % mesh
-          if (dict_has_key(mesh_dict, uid)) then
-             t % mesh = dict_get_key(mesh_dict, uid)
+          id = t % mesh
+          if (dict_has_key(mesh_dict, id)) then
+             t % mesh = dict_get_key(mesh_dict, id)
           else
-             msg = "Could not find mesh " // trim(int_to_str(uid)) // &
-                  & " specified on tally " // trim(int_to_str(t % uid))
-             call fatal_error(msg)
+             message = "Could not find mesh " // trim(int_to_str(id)) // &
+                  & " specified on tally " // trim(int_to_str(t % id))
+             call fatal_error()
           end if
        end if
     end do
@@ -534,10 +531,10 @@ contains
     logical        :: percent_in_atom ! nuclides specified in atom percent?
     logical        :: density_in_atom ! density specified in atom/b-cm?
     character(10)  :: key             ! name of nuclide, e.g. 92235.03c
-    character(MAX_LINE_LEN) :: msg    ! output/error message
     type(Material), pointer :: mat => null()
     
-    ! first find the index in the xsdata array for each nuclide in each material
+    ! first find the index in the xs_listings array for each nuclide in each
+    ! material
     do i = 1, n_materials
        mat => materials(i)
 
@@ -545,9 +542,9 @@ contains
        ! given
        if (.not. (all(mat%atom_percent > ZERO) .or. & 
             & all(mat%atom_percent < ZERO))) then
-          msg = "Cannot mix atom and weight percents in material " // &
-               & int_to_str(mat%uid)
-          call fatal_error(msg)
+          message = "Cannot mix atom and weight percents in material " // &
+               & int_to_str(mat % id)
+          call fatal_error()
        end if
 
        percent_in_atom = (mat%atom_percent(1) > ZERO)
@@ -561,22 +558,22 @@ contains
           ! Check to make sure cross-section is continuous energy neutron table
           n = len_trim(key)
           if (key(n:n) /= 'c') then
-             msg = "Cross-section table " // trim(key) // " is not a " // &
-                  "continuous-energy neutron table."
-             call fatal_error(msg)
+             message = "Cross-section table " // trim(key) // & 
+                  " is not a continuous-energy neutron table."
+             call fatal_error()
           end if
 
-          if (dict_has_key(xsdata_dict, key)) then
-             index = dict_get_key(xsdata_dict, key)
-             mat % xsdata(j) = index
+          if (dict_has_key(xs_listing_dict, key)) then
+             index = dict_get_key(xs_listing_dict, key)
+             mat % xs_listing(j) = index
           else
-             msg = "Cannot find cross-section " // trim(key) // " in specified &
-                   &xsdata file."
-             call fatal_error(msg)
+             message = "Cannot find cross-section " // trim(key) // &
+                  " in specified cross_sections.xml file."
+             call fatal_error()
           end if
 
           ! determine atomic weight ratio
-          awr = xsdatas(index) % awr
+          awr = xs_listings(index) % awr
 
           ! if given weight percent, convert all values so that they are divided
           ! by awr. thus, when a sum is done over the values, it's actually
@@ -597,8 +594,8 @@ contains
        if (.not. density_in_atom) then
           sum_percent = ZERO
           do j = 1, mat % n_nuclides
-             index = mat % xsdata(j)
-             awr = xsdatas(index) % awr
+             index = mat % xs_listing(j)
+             awr = xs_listings(index) % awr
              x = mat % atom_percent(j)
              sum_percent = sum_percent + x*awr
           end do

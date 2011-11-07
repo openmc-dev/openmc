@@ -5,7 +5,7 @@ module source
   use cross_section_header, only: Nuclide
   use global
   use mcnp_random,          only: rang, RN_init_particle
-  use output,               only: message
+  use output,               only: write_message
   use particle_header,      only: Particle, initialize_particle
   use physics,              only: watt_spectrum
 
@@ -33,7 +33,7 @@ contains
     character(MAX_LINE_LEN) :: msg    ! error message
 
     msg = 'Initializing source particles...'
-    call message(msg, 6)
+    call write_message(6)
 
     ! Determine maximum amount of particles to simulate on each processor
     maxwork = ceiling(real(n_particles)/n_procs,8)
@@ -51,7 +51,7 @@ contains
     ! Initialize first cycle source bank
     do i = 0, n_procs - 1
        if (rank == i) then
-          ! UID's of first and last source particles
+          ! ID's of first and last source particles
           bank_first = i*maxwork + 1
           bank_last  = min((i+1)*maxwork, n_particles)
 
@@ -66,7 +66,7 @@ contains
 
              ! sample position
              r = (/ (rang(), k = 1,3) /)
-             p % uid = j
+             p % id = j
              p % xyz = p_min + r*(p_max - p_min)
              p % xyz_local = p % xyz
              p % last_xyz = p % xyz
@@ -120,8 +120,8 @@ contains
     ! point to next source particle
     p => source_bank(source_index)
 
-    ! set uid
-    p % uid = bank_first + source_index - 1
+    ! set id
+    p % id = bank_first + source_index - 1
 
   end function get_source_particle
 

@@ -89,8 +89,8 @@ contains
     integer, intent(in)  :: n_lines ! number of lines to skip
     integer, intent(out) :: ioError ! error status 
 
-    integer                 :: i        ! index for number of lines
-    character(MAX_LINE_LEN) :: tmp      ! single line
+    integer                 :: i   ! index for number of lines
+    character(MAX_LINE_LEN) :: tmp ! single line
 
     do i = 1, n_lines
        read(UNIT=unit, FMT='(A)', IOSTAT=ioError) tmp
@@ -110,8 +110,8 @@ contains
     integer, intent(in)  :: lines          ! total number of lines
     integer, intent(in)  :: words_per_line ! number of words per line
 
-    integer :: i       ! line index
-    integer :: loc     ! locator for array
+    integer :: i   ! line index
+    integer :: loc ! locator for array
 
     loc = 0
     do i = 1, lines
@@ -137,8 +137,8 @@ contains
     integer, intent(in)  :: lines          ! total number of lines
     integer, intent(in)  :: words_per_line ! number of words per line
 
-    integer :: i       ! line index
-    integer :: loc     ! locator for array
+    integer :: i   ! line index
+    integer :: loc ! locator for array
 
     loc = 0
     do i = 1, lines

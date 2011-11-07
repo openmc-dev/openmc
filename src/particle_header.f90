@@ -11,7 +11,7 @@ module particle_header
 
   type Particle
      ! Basic data
-     integer(8) :: uid           ! Unique ID
+     integer(8) :: id            ! Unique ID
      integer    :: type          ! Particle type (n, p, e, etc)
 
      ! Physical data
@@ -68,6 +68,7 @@ contains
 
     p % type          = NEUTRON
     p % wgt           = ONE
+    p % last_wgt      = ONE
     p % alive         = .true.
     p % n_bank        = 0
     p % cell          = 0

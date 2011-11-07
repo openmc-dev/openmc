@@ -211,7 +211,7 @@ contains
         ! set macro_bins
         t % macro_bins(1) % scalar = MACRO_FLUX
         t % macro_bins(2) % scalar = MACRO_TOTAL
-        t % macro_bins(3) % scalar = MACRO_SCATTER_2
+        t % macro_bins(3) % scalar = MACRO_SCATTER_1
 
       else if (i == 2) then
 

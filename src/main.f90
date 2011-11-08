@@ -55,7 +55,6 @@ contains
 
     integer                 :: i_cycle     ! cycle index
     integer(8)              :: i_particle  ! history index
-    character(MAX_LINE_LEN) :: msg         ! output/error message
     type(Particle), pointer :: p => null()
 
     if (master) call header("BEGIN SIMULATION", 1)
@@ -70,7 +69,7 @@ contains
        ! Start timer for computation
        call timer_start(time_compute)
 
-       msg = "Simulating cycle " // trim(int_to_str(i_cycle)) // "..."
+       message = "Simulating cycle " // trim(int_to_str(i_cycle)) // "..."
        call write_message(8)
        
        ! Set all tallies to zero

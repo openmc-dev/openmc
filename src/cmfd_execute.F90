@@ -22,8 +22,21 @@ contains
     call compute_xs()
 
     ! print out flux for debugginb
-    write(100,*) cmfd % flux 
+    write(100,*) cmfd % flux
+    write(100,*) cmfd % totalxs
+    write(100,*) cmfd % p1scattxs 
+    write(100,*) cmfd % scattxs
+    write(100,*) cmfd % nfissxs
 
+    ! compute dtilde terms
+    call compute_diffcoef()
+
+    ! set dhats to zero
+    cmfd % dhat = 0.0
+
+    ! print dtilde
+    write(101,*) cmfd % dtilde
+ 
   end subroutine
 
 !===============================================================================
@@ -82,6 +95,7 @@ contains
     integer :: j                 ! iteration counter for y
     integer :: k                 ! iteration counter for z
     integer :: g                 ! iteration counter for g
+    integer :: h                 ! iteration counter for outgoing groups
     integer :: ijk(3)            ! indices for mesh cell
     integer :: score_index       ! index to pull from tally object
     integer :: bins(TALLY_TYPES) ! bins for filters
@@ -104,7 +118,7 @@ contains
 
         XLOOP: do i = 1,nx
 
-          GROUP: do g = 1,ng
+          INGROUP: do g = 1,ng
 
             ! begin with first tally 
             t => tallies(1)
@@ -129,7 +143,33 @@ contains
             flux = t % scores(score_index,1) % val
             cmfd % flux(g,i,j,k) = flux
 
-          end do GROUP
+            ! get total rr and convert to total xs
+            cmfd % totalxs(g,i,j,k) = t % scores(score_index,2) % val / flux
+
+            ! get p1 scatter rr and convert to p1 scatter xs
+            cmfd % p1scattxs(g,i,j,k) = t % scores(score_index,3) % val / flux
+
+            ! begin loop to get energy out tallies
+            OUTGROUP: do h = 1,ng
+
+              ! associate tally pointer to energy out tally object
+              t => tallies(2)
+
+              ! set energy out bin
+              bins(T_ENERGYOUT) = h
+
+              ! calculate score index from bins
+              score_index = sum((bins - 1) * t%stride) + 1
+
+              ! get scattering
+              cmfd % scattxs(h,g,i,j,k) = t % scores(score_index,1) % val / flux
+
+              ! get nu-fission
+              cmfd % nfissxs(h,g,i,j,k) = t % scores(score_index,2) % val / flux
+
+            end do OUTGROUP
+
+          end do INGROUP
 
         end do XLOOP
 

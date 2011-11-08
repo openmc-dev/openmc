@@ -29,6 +29,10 @@ contains
     write(100,*) cmfd % nfissxs
     write(100,*) cmfd % hxyz
 
+    ! force albedos
+    cmfd % albedo = 1.0
+    cmfd % albedo(1:2) = 0.0
+
     ! compute dtilde terms
     call compute_diffcoef()
 
@@ -154,6 +158,10 @@ contains
 
             ! get p1 scatter rr and convert to p1 scatter xs
             cmfd % p1scattxs(g,i,j,k) = t % scores(score_index,3) % val / flux
+
+            ! calculate diffusion coefficient
+            cmfd % diffcof(g,i,j,k) = 1/(3*(cmfd % totalxs(g,i,j,k) -          &
+           &                                cmfd % p1scattxs(g,i,j,k)))
 
             ! begin loop to get energy out tallies
             OUTGROUP: do h = 1,ng

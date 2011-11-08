@@ -278,7 +278,7 @@ contains
 
                 ! get neigbor cell data
                 neig_dc = cmfd%diffcof(g,neig_idx(1),neig_idx(2),neig_idx(3))
-                neig_hxyz = cmfd%hxyz(neig_idx(1),neig_idx(2),neig_idx(3),:)
+                neig_hxyz = cmfd%hxyz(:,neig_idx(1),neig_idx(2),neig_idx(3))
   
                 ! compute dtilde
                 dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc +     &

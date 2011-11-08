@@ -41,7 +41,10 @@ contains
 
     ! print dtilde
     write(101,*) cmfd % dtilde
- 
+
+    ! solve diffusion equation
+    call cmfd_solver()
+
   end subroutine
 
 !===============================================================================

@@ -1,5 +1,6 @@
 program main
 
+  use cmfd_execute,    only: execute_cmfd
   use constants
   use global
   use initialize,      only: initialize_run
@@ -131,6 +132,9 @@ contains
 
     ! Calculate statistics for tallies
     call tally_statistics()
+
+    ! call cmfd calculation
+    call execute_cmfd()
 
     if (master) call header("SIMULATION FINISHED", 1)
 

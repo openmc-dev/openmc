@@ -10,6 +10,23 @@ module cmfd_execute
 contains
 
 !===============================================================================
+! EXECUTE_CMFD is the highest level routine that controls CMFD calculation 
+!===============================================================================
+
+  subroutine execute_cmfd()
+
+    ! allocate cmfd object
+    call allocate_cmfd()
+
+    ! calculate all cross sections based on reaction rates from last batch
+    call compute_xs()
+
+    ! print out flux for debugginb
+    write(11,*) cmfd % flux
+
+  end subroutine
+
+!===============================================================================
 ! ALLOCATE_CMFD allocates all of the space for the cmfd object based on tallies
 !===============================================================================
 

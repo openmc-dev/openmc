@@ -604,14 +604,14 @@ contains
        xyz0 = p % last_xyz
        xyz1 = p % xyz
 
-       ! Get pointer to tally and mesh
+       ! Get pointer to tally
        t => tallies(i)
-       m => meshes(t % mesh)
 
        ! Skip non-surface-current tallies
        if (.not. t % surface_current) cycle
 
        ! Determine indices for starting and ending location
+       m => meshes(t % mesh)
        call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
        call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
 

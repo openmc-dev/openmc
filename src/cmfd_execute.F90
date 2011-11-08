@@ -27,6 +27,7 @@ contains
     write(100,*) cmfd % p1scattxs 
     write(100,*) cmfd % scattxs
     write(100,*) cmfd % nfissxs
+    write(100,*) cmfd % hxyz
 
     ! compute dtilde terms
     call compute_diffcoef()
@@ -123,6 +124,11 @@ contains
             ! begin with first tally 
             t => tallies(1)
             m => meshes(t % mesh)
+
+            ! set mesh widths
+            cmfd % hxyz(1,:,:,:) = m % width(1) ! set x width
+            cmfd % hxyz(2,:,:,:) = m % width(2) ! set y width
+            cmfd % hxyz(3,:,:,:) = m % width(3) ! set z width
 
             ! reset all bins to 1
             bins = 1

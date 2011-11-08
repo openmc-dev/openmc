@@ -6,16 +6,6 @@ module fileio
 
   implicit none
 
-!===============================================================================
-! READ_DATA interface allows data to be read with one function regardless of
-! whether it is integer or real data. E.g. NXS and JXS can be read with the
-! integer version and XSS can be read with the real version
-!===============================================================================
-
-  interface read_data
-     module procedure read_data_int, read_data_real
-  end interface
-
 contains
 
 !===============================================================================
@@ -89,67 +79,12 @@ contains
     integer, intent(in)  :: n_lines ! number of lines to skip
     integer, intent(out) :: ioError ! error status 
 
-    integer                 :: i   ! index for number of lines
-    character(MAX_LINE_LEN) :: tmp ! single line
+    integer :: i   ! index for number of lines
 
     do i = 1, n_lines
-       read(UNIT=unit, FMT='(A)', IOSTAT=ioError) tmp
+       read(UNIT=unit, FMT=*, IOSTAT=ioError)
     end do
 
   end subroutine skip_lines
-
-!===============================================================================
-! READ_DATA_INT reads integer data into an array from a file open
-!===============================================================================
-
-  subroutine read_data_int(unit, array, n, lines, words_per_line)
-
-    integer, intent(in)  :: unit           ! unit to read from
-    integer, intent(in)  :: n              ! total number of ints
-    integer, intent(out) :: array(n)       ! ints read from file
-    integer, intent(in)  :: lines          ! total number of lines
-    integer, intent(in)  :: words_per_line ! number of words per line
-
-    integer :: i   ! line index
-    integer :: loc ! locator for array
-
-    loc = 0
-    do i = 1, lines
-       if (i == lines) then
-          read(UNIT=unit,FMT=*) array(loc+1:n)
-       else
-          read(UNIT=unit,FMT=*) array(loc+1:loc+words_per_line)
-          loc = loc + words_per_line
-       end if
-    end do
-
-  end subroutine read_data_int
-
-!===============================================================================
-! READ_DATA_REAL reads real(8) data into an array from a file open
-!===============================================================================
-
-  subroutine read_data_real(unit, array, n, lines, words_per_line)
-
-    integer, intent(in)  :: unit           ! unit to read from
-    integer, intent(in)  :: n              ! total number of ints
-    real(8), intent(out) :: array(n)       ! real(8)s read from file
-    integer, intent(in)  :: lines          ! total number of lines
-    integer, intent(in)  :: words_per_line ! number of words per line
-
-    integer :: i   ! line index
-    integer :: loc ! locator for array
-
-    loc = 0
-    do i = 1, lines
-       if (i == lines) then
-          read(UNIT=unit,FMT=*) array(loc+1:n)
-       else
-          read(UNIT=unit,FMT=*) array(loc+1:loc+words_per_line)
-          loc = loc + words_per_line
-       end if
-    end do
-
-  end subroutine read_data_real
 
 end module fileio

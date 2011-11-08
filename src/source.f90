@@ -30,9 +30,8 @@ contains
     real(8)    :: E          ! outgoing energy
     real(8)    :: p_min(3)   ! minimum coordinates of source
     real(8)    :: p_max(3)   ! maximum coordinates of source
-    character(MAX_LINE_LEN) :: msg    ! error message
 
-    msg = 'Initializing source particles...'
+    message = "Initializing source particles..."
     call write_message(6)
 
     ! Determine maximum amount of particles to simulate on each processor

@@ -1,6 +1,7 @@
 module cmfd_execute
 
   use global
+  use mesh,         only: mesh_indices_to_bin
   use mesh_header,  only: StructuredMesh
   use tally_header, only: TallyObject, TallyScore
 
@@ -55,6 +56,69 @@ contains
 !===============================================================================
 
   subroutine compute_xs()
+
+    integer :: nx                ! number of mesh cells in x direction
+    integer :: ny                ! number of mesh cells in y direction
+    integer :: nz                ! number of mesh cells in z direction
+    integer :: ng                ! number of energy groups
+    integer :: i                 ! iteration counter for x
+    integer :: j                 ! iteration counter for y
+    integer :: k                 ! iteration counter for z
+    integer :: g                 ! iteration counter for g
+    integer :: ijk(3)            ! indices for mesh cell
+    integer :: score_index       ! index to pull from tally object
+    integer :: bins(TALLY_TYPES) ! bins for filters
+
+    real(8) :: flux   ! temp variable for flux
+
+    type(TallyObject), pointer :: t    ! pointer for tally object
+    type(StructuredMesh), pointer :: m ! pointer for mesh object
+
+    ! extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! begin loop around space and energy groups
+    ZLOOP: do k = 1,nz
+
+      YLOOP: do j = 1,ny
+
+        XLOOP: do i = 1,nx
+
+          GROUP: do g = 1,ng
+
+            ! begin with first tally 
+            t => tallies(1)
+            m => meshes(t % mesh)
+
+            ! reset all bins to 1
+            bins = 1
+
+            ! set ijk as mesh indices
+            ijk = (/ i, j, k /)
+
+            ! get bin number for mesh indices
+            bins(T_MESH) = mesh_indices_to_bin(m,ijk)
+            
+            ! apply energy in filter
+            bins(T_ENERGYIN) = g
+
+            ! calculate score index from bins
+            score_index = sum((bins - 1) * t%stride) + 1
+
+            ! get flux
+            flux = t % scores(score_index,1) % val
+            cmfd % flux(g,i,j,k) = flux
+
+          end do GROUP
+
+        end do XLOOP
+
+      end do YLOOP
+
+    end do ZLOOP
 
   end subroutine compute_xs
 

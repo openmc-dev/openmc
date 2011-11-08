@@ -22,7 +22,7 @@ contains
     call compute_xs()
 
     ! print out flux for debugginb
-    write(11,*) cmfd % flux
+    write(100,*) cmfd % flux 
 
   end subroutine
 

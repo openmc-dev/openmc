@@ -17,7 +17,7 @@ module datatypes_header
 !===============================================================================
 
   ! Key length for dictionary
-  integer, parameter :: DICT_KEY_LENGTH = 20
+  integer, parameter :: DICT_KEY_LENGTH = 255
 
   type KeyValueCI
      character(len=DICT_KEY_LENGTH) :: key

@@ -13,6 +13,10 @@ class Xsdir(object):
         self.awr = {}
         self.tables = []
 
+        self.filetype = set()
+        self.recordlength = set()
+        self.entries = set()
+
         # Read first section (DATAPATH)
         line = self.f.readline()
         words = line.split()
@@ -20,6 +24,8 @@ class Xsdir(object):
             if words[0].lower().startswith('datapath'):
                 index = line.index('=')
                 self.datapath = line[index+1:].strip()
+            else:
+                self.f.seek(0)
 
         # Read second section
         line = self.f.readline()
@@ -68,14 +74,36 @@ class Xsdir(object):
             table.address = int(words[5])
             table.tablelength = int(words[6])
 
+            self.filetype.add(table.filetype)
+
             if len(words) > 7:
                 table.recordlength = int(words[7])
+                self.recordlength.add(table.recordlength)
             if len(words) > 8:
                 table.entries = int(words[8])
+                self.entries.add(table.entries)
             if len(words) > 9:
                 table.temperature = float(words[9])
             if len(words) > 10:
                 table.ptable = (words[10] == 'ptable')
+
+        if len(self.filetype) == 1:
+            if 1 in self.filetype:
+                self.filetype = 'ascii'
+            elif 2 in self.filetype:
+                self.filetype = 'binary'
+        else:
+            self.filetype = None
+
+        if len(self.recordlength) == 1:
+            self.recordlength = list(self.recordlength)[0]
+        else:
+            self.recordlength = None
+        if len(self.entries) == 1:
+            self.entries = list(self.entries)[0]
+        else:
+            self.recordlength = None
+            
 
     def to_xml(self):
         # Create XML document
@@ -94,6 +122,23 @@ class Xsdir(object):
 
             for table in self.tables:
                 table.path = os.path.basename(table.path)
+
+        # Add filetype, record_length and entries nodes
+        if self.filetype:
+            node = doc.createElement("filetype")
+            text = doc.createTextNode(self.filetype)
+            node.appendChild(text)
+            root.appendChild(node)
+        if self.recordlength:
+            node = doc.createElement("record_length")
+            text = doc.createTextNode(str(self.recordlength))
+            node.appendChild(text)
+            root.appendChild(node)
+        if self.entries:
+            node = doc.createElement("entries")
+            text = doc.createTextNode(str(self.entries))
+            node.appendChild(text)
+            root.appendChild(node)
 
         # Add a node for each table
         for table in self.tables:

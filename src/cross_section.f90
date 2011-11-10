@@ -43,10 +43,9 @@ contains
     integer        :: index_sab      ! index in sab_tables
     character(10)  :: name           ! name of isotope, e.g. 92235.03c
     character(10)  :: alias          ! alias of nuclide, e.g. U-235.03c
-    character(MAX_FILE_LEN) :: path  ! path to ACE cross section library
-    type(Material),       pointer :: mat => null()
-    type(Nuclide),        pointer :: nuc => null()
-    type(SAB_Table),      pointer :: sab => null()
+    type(Material),  pointer :: mat => null()
+    type(Nuclide),   pointer :: nuc => null()
+    type(SAB_Table), pointer :: sab => null()
 
     ! ==========================================================================
     ! COUNT NUMBER OF TABLES AND CREATE DICTIONARIES
@@ -172,6 +171,8 @@ contains
        end if
     end do
 
+    call dict_delete(already_read)
+
     ! ==========================================================================
     ! ASSIGN S(A,B) TABLES TO SPECIFIC NUCLIDES WITHIN MATERIALS
 
@@ -210,26 +211,28 @@ contains
 
   subroutine read_ace_table(index_table, index)
 
-    integer, intent(in) :: index_table
-    integer, intent(in) :: index
+    integer, intent(in) :: index_table ! index in nuclides/sab_tables
+    integer, intent(in) :: index       ! index in xs_listings
 
-    integer       :: i
-    integer       :: j, j1, j2
-    integer       :: record_length
-    integer       :: location
-    integer       :: entries
-    integer       :: length
-    integer       :: in = 7
-    integer       :: zaids(16)
-    integer       :: filetype
-    real(8)       :: kT
-    real(8)       :: awrs(16)
-    real(8)       :: awr
-    character(10) :: name
-    character(10) :: date
-    character(10) :: mat
-    character(70) :: comment
-    character(MAX_FILE_LEN) :: filename  ! path to ACE cross section library
+    integer       :: i             ! loop index for XSS records
+    integer       :: j, j1, j2     ! indices in XSS
+    integer       :: record_length ! Fortran record length
+    integer       :: location      ! location of ACE table
+    integer       :: entries       ! number of entries on each record
+    integer       :: length        ! length of ACE table
+    integer       :: in = 7        ! file unit
+    integer       :: zaids(16)     ! list of ZAIDs (only used for S(a,b))
+    integer       :: filetype      ! filetype (ASCII or BINARY)
+    real(8)       :: kT            ! temperature of table
+    real(8)       :: awrs(16)      ! list of atomic weight ratios (not used)
+    real(8)       :: awr           ! atomic weight ratio for table
+    logical       :: file_exists   ! does ACE library exist?
+    character(7)  :: readable      ! is ACE library readable?
+    character(10) :: name          ! name of ACE table
+    character(10) :: date          ! date ACE library was processed
+    character(10) :: mat           ! material identifier
+    character(70) :: comment       ! comment for ACE table
+    character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
     type(Nuclide),   pointer :: nuc => null()
     type(SAB_Table), pointer :: sab => null()
     type(XsListing), pointer :: listing => null()
@@ -241,6 +244,17 @@ contains
     location      = listing % location
     entries       = listing % entries
     filetype      = listing % filetype
+
+    ! Check if ACE library exists and is readable
+    inquire(FILE=filename, EXIST=file_exists, READ=readable)
+    if (.not. file_exists) then
+       message = "ACE library '" // trim(filename) // "' does not exist!"
+       call fatal_error()
+    elseif (readable(1:3) == 'NO') then
+       message = "ACE library '" // trim(filename) // "' is not readable! &
+            &Change file permissions with chmod command."
+       call fatal_error()
+    end if
 
     ! display message
     message = "Loading ACE cross section table: " // listing % name

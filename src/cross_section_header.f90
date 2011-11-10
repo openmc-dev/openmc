@@ -154,18 +154,18 @@ module cross_section_header
 !===============================================================================
 
   type XsListing
-     character(10) :: name
-     character(10) :: alias
-     integer :: type
-     integer :: zaid
-     integer :: filetype
-     integer :: location
-     integer :: recl
-     integer :: entries
-     real(8) :: awr
-     real(8) :: temp
-     logical :: metastable
-     character(MAX_FILE_LEN) :: path
+     character(10) :: name       ! table name, e.g. 92235.70c
+     character(10) :: alias      ! table alias, e.g. U-235.70c
+     integer       :: type       ! type of table (cont-E neutron, S(A,b), etc)
+     integer       :: zaid       ! ZAID identifier = 1000*Z + A
+     integer       :: filetype   ! ASCII or BINARY
+     integer       :: location   ! location of table within library
+     integer       :: recl       ! record length for library
+     integer       :: entries    ! number of entries per record
+     real(8)       :: awr        ! atomic weight ratio (# of neutron masses)
+     real(8)       :: temp       ! temperature
+     logical       :: metastable ! is this nuclide metastable?
+     character(MAX_FILE_LEN) :: path ! path to library containing table
   end type XsListing
 
 !===============================================================================

@@ -318,7 +318,7 @@ contains
        nuc => nuclides(index_table)
        nuc % name = name
        nuc % awr  = awr
-       nuc % temp = kT / K_BOLTZMANN
+       nuc % kT   = kT
        nuc % zaid = NXS(2)
 
        call read_esz(nuc)
@@ -331,7 +331,7 @@ contains
        sab => sab_tables(index_table)
        sab % name = name
        sab % awr  = awr
-       sab % temp = kT / K_BOLTZMANN
+       sab % kT   = kT
        sab % zaid = zaids(1)
 
        call read_thermal_data(sab)

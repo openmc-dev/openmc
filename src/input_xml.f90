@@ -1002,7 +1002,7 @@ contains
        listing % alias      = trim(ace_tables_(i) % alias)
        listing % zaid       = ace_tables_(i) % zaid
        listing % awr        = ace_tables_(i) % awr
-       listing % temp       = ace_tables_(i) % temperature
+       listing % kT         = ace_tables_(i) % temperature
        listing % location   = ace_tables_(i) % location
 
        ! determine type of cross section

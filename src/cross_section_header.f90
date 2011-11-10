@@ -70,7 +70,7 @@ module cross_section_header
      character(20) :: name
      integer       :: zaid
      real(8)       :: awr
-     real(8)       :: temp
+     real(8)       :: kT
 
      ! Energy grid information
      integer :: n_grid
@@ -124,7 +124,7 @@ module cross_section_header
      character(20) :: name
      integer       :: zaid
      real(8)       :: awr
-     real(8)       :: temp
+     real(8)       :: kT
 
      ! threshold for S(a,b) treatment (usually ~4 eV)
      real(8) :: threshold_inelastic
@@ -163,7 +163,7 @@ module cross_section_header
      integer       :: recl       ! record length for library
      integer       :: entries    ! number of entries per record
      real(8)       :: awr        ! atomic weight ratio (# of neutron masses)
-     real(8)       :: temp       ! temperature
+     real(8)       :: kT         ! Boltzmann constant * temperature (MeV)
      logical       :: metastable ! is this nuclide metastable?
      character(MAX_FILE_LEN) :: path ! path to library containing table
   end type XsListing

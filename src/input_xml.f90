@@ -937,6 +937,9 @@ contains
 
     integer :: i           ! loop index
     integer :: n_listings  ! number of listings in cross_sections.xml
+    integer :: filetype    ! default file type
+    integer :: recl        ! default record length
+    integer :: entries     ! default number of entries
     logical :: file_exists ! does cross_sections.xml exist?
     character(MAX_WORD_LEN)  :: directory
     type(XsListing), pointer :: listing => null()
@@ -953,14 +956,33 @@ contains
     message = "Reading cross sections XML file..."
     call write_message(5)
 
-    ! Initialize directory_ variable
+    ! Initialize variables that may go unused
     directory_ = ""
+    filetype_ = ""
+    record_length_ = 0
+    entries_ = 0
 
     ! Parse cross_sections.xml file
     call read_xml_file_cross_sections_t(path_cross_sections)
 
     ! Copy directory information if present
     directory = trim(directory_)
+
+    ! determine whether binary/ascii
+    if (filetype_ == 'ascii') then
+       filetype = ASCII
+    elseif (filetype_ == 'binary') then
+       filetype = BINARY
+    elseif (len_trim(filetype_) == 0) then
+       filetype = ASCII
+    else
+       message = "Unknown filetype in cross_sections.xml: " // trim(filetype_)
+       call fatal_error()
+    end if
+
+    ! copy default record length and entries for binary files
+    recl = record_length_
+    entries = entries_
 
     ! Allocate xs_listings array
     if (.not. associated(ace_tables_)) then
@@ -981,29 +1003,25 @@ contains
        listing % zaid       = ace_tables_(i) % zaid
        listing % awr        = ace_tables_(i) % awr
        listing % temp       = ace_tables_(i) % temperature
+       listing % location   = ace_tables_(i) % location
 
        ! determine type of cross section
-       select case(ace_tables_(i) % type)
-       case ('neutron')
+       if (ends_with(listing % name, 'c')) then
           listing % type = ACE_NEUTRON
-       case ('thermal')
+       elseif (ends_with(listing % name, 't')) then
           listing % type = ACE_THERMAL
-       case ('dosimetry')
-          listing % type = ACE_DOSIMETRY
-       end select
+       end if
+
+       ! set filetype, record length, and number of entries
+       listing % filetype = filetype
+       listing % recl     = recl
+       listing % entries  = entries
 
        ! determine metastable state
        if (ace_tables_(i) % metastable == 0) then
           listing % metastable = .false.
        else
           listing % metastable = .true.
-       end if
-
-       ! determine whether binary/ascii
-       if (ace_tables_(i) % binary == 0) then
-          listing % binary = .false.
-       else
-          listing % binary = .true.
        end if
 
        ! determine path of cross section table

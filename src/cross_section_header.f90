@@ -158,10 +158,13 @@ module cross_section_header
      character(10) :: alias
      integer :: type
      integer :: zaid
+     integer :: filetype
+     integer :: location
+     integer :: recl
+     integer :: entries
      real(8) :: awr
      real(8) :: temp
      logical :: metastable
-     logical :: binary
      character(MAX_FILE_LEN) :: path
   end type XsListing
 

@@ -21,6 +21,8 @@ module cross_section
   real(8), allocatable :: XSS(:) ! Cross section data
   integer :: XSS_index           ! current index in XSS data
 
+  type(DictionaryCI), pointer :: already_read => null()
+
   private :: NXS
   private :: JXS
   private :: XSS
@@ -45,10 +47,6 @@ contains
     type(Material),       pointer :: mat => null()
     type(Nuclide),        pointer :: nuc => null()
     type(SAB_Table),      pointer :: sab => null()
-    type(DictionaryCI),   pointer :: library_dict => null()
-    type(ListKeyValueCI), pointer :: list => null()
-
-    call dict_create(library_dict)
 
     ! ==========================================================================
     ! COUNT NUMBER OF TABLES AND CREATE DICTIONARIES
@@ -93,13 +91,6 @@ contains
           else
              mat % nuclide(j) = dict_get_key(nuclide_dict, name)
           end if
-
-          ! Determine the set of ACE files which contain cross-sections used
-          ! in this problem
-          path  = xs_listings(index) % path
-          if (.not. dict_has_key(library_dict, path)) then
-             call dict_add_key(library_dict, path, 0)
-          end if
        end do
 
        ! Check if S(a,b) exists on other materials
@@ -120,8 +111,8 @@ contains
           name  = xs_listings(index) % name
           alias = xs_listings(index) % alias
 
-          ! If this sab hasn't been encountered yet, we need to add its name
-          ! and alias to the sab_dict
+          ! If this S(a,b) table hasn't been encountered yet, we need to add its
+          ! name and alias to the sab_dict
           if (.not. dict_has_key(sab_dict, name)) then
              index_sab       = index_sab + 1
              mat % sab_table = index_sab
@@ -130,13 +121,6 @@ contains
              call dict_add_key(sab_dict, alias, index_sab)
           else
              mat % sab_table = dict_get_key(sab_dict, name)
-          end if
-
-          ! Determine the set of ACE files which contain cross-sections used
-          ! in this problem
-          path  = xs_listings(index) % path
-          if (.not. dict_has_key(library_dict, path)) then
-             call dict_add_key(library_dict, path, 0)
           end if
        end if
     end do
@@ -152,18 +136,44 @@ contains
     ! ==========================================================================
     ! READ ALL ACE CROSS SECTION TABLES
 
-    ! Get list to list of nuclides
-    list => dict_keys(library_dict)
+    call dict_create(already_read)
 
     ! Loop over all files
-    do while (associated(list))
-       ! Read all cross sections from this file
-       path = list % data % key
-       call read_ace_tables(path)
+    do i = 1, n_materials
+       mat => materials(i)
 
-       ! Move pointer to next item
-       list => list % next
+       do j = 1, mat % n_nuclides
+          name = mat % names(j)
+
+          if (.not. dict_has_key(already_read, name)) then
+             index = dict_get_key(xs_listing_dict, name)
+             index_nuclides = dict_get_key(nuclide_dict, name)
+             name  = xs_listings(index) % name
+             alias = xs_listings(index) % alias
+
+             call read_ace_table(index_nuclides, index)
+
+             call dict_add_key(already_read, name, 0)
+             call dict_add_key(already_read, alias, 0)
+          end if
+       end do
+
+       if (mat % has_sab_table) then
+          name = mat % sab_name
+
+          if (.not. dict_has_key(already_read, name)) then
+             index = dict_get_key(xs_listing_dict, name)
+             index_sab = dict_get_key(sab_dict, name)
+
+             call read_ace_table(index_sab, index)
+
+             call dict_add_key(already_read, name, 0)
+          end if
+       end if
     end do
+
+    ! ==========================================================================
+    ! ASSIGN S(A,B) TABLES TO SPECIFIC NUCLIDES WITHIN MATERIALS
 
     do i = 1, n_materials
        mat => materials(i)
@@ -190,163 +200,136 @@ contains
        end if
     end do
 
-    call dict_delete(library_dict)
-       
   end subroutine read_xs
 
 !===============================================================================
-! READ_ACE_TABLES reads in all nuclides and S(a,b) tables that are present in
-! the problem from a single ACE library. This routine reads the header data for
-! each table and then calls appropriate subroutines to parse the actual data.
+! READ_ACE_BINARY reads a single cross section table in binary format. This
+! routine reads the header data for each table and then calls appropriate
+! subroutines to parse the actual data.
 !===============================================================================
 
-  subroutine read_ace_tables(filename)
+  subroutine read_ace_table(index_table, index)
 
-    character(*) :: filename ! name of ACE library file
+    integer, intent(in) :: index_table
+    integer, intent(in) :: index
 
-    integer :: index_nuclides ! index in nuclides array
-    integer :: index_sab      ! index in sab_tables array
-    integer :: in = 7         ! unit to read from
-    integer :: ioError        ! error status for file access
-    integer :: lines          ! number of lines (data
-    integer :: n              ! number of data values
-    real(8) :: kT             ! ACE table temperature
-    logical :: file_exists    ! does ACE library exist?
-    logical :: found_nuclide  ! did we find nuclide in library?
-    logical :: found_sab      ! did we find S(a,b) table in library?
-    character(7)            :: readable         ! is ACE library readable?
-    character(MAX_LINE_LEN) :: line             ! single line to read
-    character(MAX_WORD_LEN) :: words(MAX_WORDS) ! words on a line
+    integer       :: i
+    integer       :: j, j1, j2
+    integer       :: record_length
+    integer       :: location
+    integer       :: entries
+    integer       :: length
+    integer       :: in = 7
+    integer       :: zaids(16)
+    integer       :: filetype
+    real(8)       :: kT
+    real(8)       :: awrs(16)
+    real(8)       :: awr
+    character(10) :: name
+    character(10) :: date
+    character(10) :: mat
+    character(70) :: comment
+    character(MAX_FILE_LEN) :: filename  ! path to ACE cross section library
     type(Nuclide),   pointer :: nuc => null()
     type(SAB_Table), pointer :: sab => null()
+    type(XsListing), pointer :: listing => null()
 
-    ! Check if input file exists and is readable
-    inquire(FILE=filename, EXIST=file_exists, READ=readable)
-    if (.not. file_exists) then
-       message = "ACE library '" // trim(filename) // "' does not exist!"
-       call fatal_error()
-    elseif (readable(1:3) == 'NO') then
-       message = "ACE library '" // trim(filename) // "' is not readable! &
-            &Change file permissions with chmod command."
-       call fatal_error()
+    ! determine path, record length, and location of table
+    listing => xs_listings(index)
+    filename      = listing % path
+    record_length = listing % recl
+    location      = listing % location
+    entries       = listing % entries
+    filetype      = listing % filetype
+
+    ! display message
+    message = "Loading ACE cross section table: " // listing % name
+    call write_message(6)
+
+    if (filetype == ASCII) then
+       ! =======================================================================
+       ! READ ACE TABLE IN ASCII FORMAT
+
+       ! Find location of table
+       open(UNIT=in, FILE=filename, STATUS='old', ACTION='read')
+       rewind(UNIT=in)
+       do i = 1, location - 1
+          read(UNIT=in, FMT=*)
+       end do
+
+       ! Read first line of header
+       read(UNIT=in, FMT='(A10,2E12.0,1X,A10)') name, awr, kT, date
+
+       ! Read more header and NXS and JXS
+       read(UNIT=in, FMT=100) comment, mat, & 
+            (zaids(i), awrs(i), i=1,16), NXS, JXS
+100    format(A70,A10/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/&
+            &,8I9/8I9/8I9/8I9/8I9/8I9)
+
+       ! determine table length
+       length = NXS(1)
+       allocate(XSS(length))
+
+       ! Read XSS array
+       read(UNIT=in, FMT='(4E20.0)') XSS
+
+    elseif (filetype == BINARY) then
+       ! =======================================================================
+       ! READ ACE TABLE IN BINARY FORMAT
+
+       open(UNIT=in, FILE=filename, STATUS='old', ACTION='read', &
+            ACCESS='direct', RECL=record_length)
+
+       ! Read all header information
+       read(UNIT=in, REC=location) name, awr, kT, date, & 
+            comment, mat, (zaids(i), awrs(i), i=1,16), NXS, JXS
+
+       ! determine table length
+       length = NXS(1)
+       allocate(XSS(length))
+
+       ! Read remaining records with XSS
+       do i = 1, (length + entries - 1)/entries
+          j1 = 1 + (i-1)*entries
+          j2 = min(length, j1 + entries - 1)
+          read(UNIT=IN, REC=location + i) (XSS(j), j=j1,j2)
+       end do
     end if
 
-    ! open file
-    open(FILE=filename, UNIT=in, STATUS='old', & 
-         & ACTION='read', IOSTAT=ioError)
-    if (ioError /= 0) then
-       message = "Error while opening file: " // filename
-       call fatal_error()
-    end if
+    ! ==========================================================================
+    ! PARSE DATA BASED ON NXS, JXS, AND XSS ARRAYS
 
-    do
-       ! Reset flags for finding table to read
-       found_nuclide = .false.
-       found_sab = .false.
+    select case(listing % type)
+    case (ACE_NEUTRON)
+       nuc => nuclides(index_table)
+       nuc % name = name
+       nuc % awr  = awr
+       nuc % temp = kT / K_BOLTZMANN
+       nuc % zaid = NXS(2)
 
-       ! Read next line and tokenize it into strings. If we have reached the end
-       ! of the file, then the loop is exited
-       call read_line(in, line, ioError)
-       if (ioError < 0) exit
-       call split_string(line, words, n)
+       call read_esz(nuc)
+       call read_nu_data(nuc)
+       call read_reactions(nuc)
+       call read_angular_dist(nuc)
+       call read_energy_dist(nuc)
+       call read_unr_res(nuc)
+    case (ACE_THERMAL)
+       sab => sab_tables(index_table)
+       sab % name = name
+       sab % awr  = awr
+       sab % temp = kT / K_BOLTZMANN
+       sab % zaid = zaids(1)
 
-       if (dict_has_key(nuclide_dict, words(1))) then
-          found_nuclide = .true.
-          index_nuclides = dict_get_key(nuclide_dict, words(1))
-          nuc => nuclides(index_nuclides)
+       call read_thermal_data(sab)
+    end select
 
-          ! Copy header data
-          nuc % name = words(1)
-          nuc % awr  = str_to_real(words(2))
-          kT         = str_to_real(words(3))
-          nuc % temp = kT / K_BOLTZMANN
-
-          ! display message
-          message = "Loading ACE cross section table: " // nuc % name
-          call write_message(6)
-
-          ! Skip 5 lines
-          call skip_lines(in, 5, ioError)
-
-       elseif (dict_has_key(sab_dict, words(1))) then
-          found_sab = .true.
-          index_sab = dict_get_key(sab_dict, words(1))
-          sab => sab_tables(index_sab)
-
-          ! Copy header data
-          sab % name = words(1)
-          sab % awr  = str_to_real(words(2))
-          kT         = str_to_real(words(3))
-          sab % temp = kT / K_BOLTZMANN
-
-          ! display message
-          message = "Loading ACE cross section table: " // sab % name
-          call write_message(6)
-
-          ! Skip 1 line
-          call skip_lines(in, 1, ioError)
-
-          ! Read corresponding ZAID
-          call read_line(in, line, ioError)
-          call split_string(line, words, n)
-          sab % zaid = str_to_int(words(1))
-
-          ! Skip remaining 3 lines
-          call skip_lines(in, 3, ioError)
-          
-       else
-          call skip_lines(in, 5, ioError)
-       end if
-       
-       ! Read NXS and JXS data
-       read(UNIT=in, FMT=*) NXS
-       read(UNIT=in, FMT=*) JXS
-
-       ! Calculate how many data points and lines in the XSS array
-       n = NXS(1)
-       lines = (n + 3)/4
-
-       if (found_nuclide) then
-          ! Set ZAID of nuclide
-          nuc % zaid = NXS(2)
-
-          ! allocate storage for XSS array
-          allocate(XSS(n))
-          
-          ! Read XSS
-          read(UNIT=in, FMT=*) XSS
-
-          call read_esz(nuc)
-          call read_nu_data(nuc)
-          call read_reactions(nuc)
-          call read_angular_dist(nuc)
-          call read_energy_dist(nuc)
-          call read_unr_res(nuc)
-
-          ! Free memory from XSS array
-          deallocate(XSS)
-       elseif (found_sab) then
-          ! allocate storage for XSS array
-          allocate(XSS(n))
-          
-          ! Read XSS
-          read(UNIT=in, FMT=*) XSS
-
-          call read_thermal_data(sab)
-
-          ! Free memory from XSS array
-          deallocate(XSS)
-       else
-          call skip_lines(in, lines, ioError)
-       end if
-    end do
-
+    deallocate(XSS)
     if(associated(nuc)) nullify(nuc)
     if(associated(sab)) nullify(sab)
 
     close(UNIT=in)
 
-  end subroutine read_ace_tables
+  end subroutine read_ace_table
 
 !===============================================================================
 ! READ_ESZ - reads through the ESZ block. This block contains the energy grid,

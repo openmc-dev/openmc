@@ -927,7 +927,7 @@ contains
     real(8) :: vt          ! speed of target
 
     ! Determine equilibrium temperature in MeV
-    kT = K_BOLTZMANN * nuc % temp
+    kT = nuc % kT
 
     ! Check if energy is above threshold
     if (p % E >= FREE_GAS_THRESHOLD * kT) then

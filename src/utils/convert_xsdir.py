@@ -71,8 +71,8 @@ class Xsdir(object):
             table.filename = words[2]
             table.access = words[3]
             table.filetype = int(words[4])
-            table.address = int(words[5])
-            table.tablelength = int(words[6])
+            table.location = int(words[5])
+            table.length = int(words[6])
 
             self.filetype.add(table.filetype)
 
@@ -159,8 +159,8 @@ class XsdirTable(object):
         self.filename = None
         self.access = None
         self.filetype = None
-        self.address = None
-        self.tablelength = None
+        self.location = None
+        self.length = None
         self.recordlength = None
         self.entries = None
         self.temperature = None
@@ -207,8 +207,8 @@ class XsdirTable(object):
     def to_xml_node(self, doc):
         node = doc.createElement("ace_table")
         node.setAttribute("name", self.name)
-        for attribute in ["alias", "zaid", "type", "metastable",
-                          "awr", "temperature", "binary", "path"]:
+        for attribute in ["alias", "zaid", "type", "metastable", "awr", 
+                          "temperature", "path", "location"]:
             if hasattr(self, attribute):
                 # Join string for alias attribute
                 if attribute == "alias":
@@ -216,12 +216,10 @@ class XsdirTable(object):
                         continue
                     string = " ".join(self.alias)
                 else:
-                    string = "{0}".format(getattr(self,attribute))
+                    string = str(getattr(self,attribute))
 
                 # Skip metastable and binary if 0
                 if attribute == "metastable" and self.metastable == 0:
-                    continue
-                if attribute == "binary" and self.binary == 0:
                     continue
 
                 # Skip any attribute that is none
@@ -229,11 +227,8 @@ class XsdirTable(object):
                     continue
 
                 # Create attribute node
-                # nodeAttr = doc.createElement(attribute)
-                # text = doc.createTextNode(string)
-                # nodeAttr.appendChild(text)
-                # node.appendChild(nodeAttr)
                 node.setAttribute(attribute, string)
+
         return node
 
 

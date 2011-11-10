@@ -221,6 +221,11 @@ module constants
        NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
        NU_TABULAR    = 2    ! Nu values given by tabular distribution
 
+  ! Cross section filetypes
+  integer, parameter :: &
+       ASCII  = 1, & ! ASCII cross section file
+       BINARY = 2    ! Binary cross section file
+
   ! Maximum number of partial fission reactions
   integer, parameter :: PARTIAL_FISSION_MAX = 4
 

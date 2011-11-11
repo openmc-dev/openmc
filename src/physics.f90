@@ -1482,7 +1482,7 @@ contains
     ! TODO: If there are multiple scattering laws, sample scattering law
 
     ! Check for multiple interpolation regions
-    if (edist % n_interp > 0) then
+    if (edist % p_valid % n_regions > 0) then
        message = "Multiple interpolation regions not supported while &
             &attempting to sample secondary energy distribution."
        call fatal_error()

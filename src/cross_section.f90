@@ -414,12 +414,9 @@ contains
     integer :: LED    ! location of energy distribution locators
     integer :: LDIS   ! location of all energy distributions
     integer :: LOCC   ! location of energy distributions for given MT
-    integer :: LNW    ! location of next energy distribution if multiple
-    integer :: LAW    ! secondary energy distribution law   
-    integer :: IDAT   ! location of first energy distribution for given MT
     integer :: loc    ! locator
-    integer :: length             ! length of data to allocate
-    integer :: length_interp_data ! length of interpolation data
+    integer :: length ! length of data to allocate
+    type(DistEnergy), pointer :: edist => null()
 
     JXS2  = JXS(2)
     JXS24 = JXS(24)
@@ -555,50 +552,9 @@ contains
           ! find location of energy distribution data
           LOCC = XSS(LED + i - 1)
 
-          LNW  = XSS(LDIS + LOCC - 1)
-          LAW  = XSS(LDIS + LOCC)
-          IDAT = XSS(LDIS + LOCC + 1)
-          NR   = XSS(LDIS + LOCC + 2)
-          nuc % nu_d_edist(i) % law = LAW
-          nuc % nu_d_edist(i) % n_interp = NR
-
-          ! allocate space for ENDF interpolation parameters
-          if (NR > 0) then
-             allocate(nuc % nu_d_edist(i) % nbt(NR))
-             allocate(nuc % nu_d_edist(i) % int(NR))
-          end if
-
-          ! read ENDF interpolation parameters
-          XSS_index = LDIS + LOCC + 3
-          if (NR > 0) then
-             nuc % nu_d_edist(i) % nbt = get_real(NR)
-             nuc % nu_d_edist(i) % int = get_real(NR)
-          end if
-
-          ! allocate space for law validity data
-          NE = XSS(LDIS + LOCC + 3 + 2*NR)
-          allocate(nuc % nu_d_edist(i) % energy(NE))
-          allocate(nuc % nu_d_edist(i) % pvalid(NE))
-
-          length_interp_data = 5 + 2*(NR + NE)
-
-          ! read law validity data
-          XSS_index = LDIS + LOCC + 4 + 2*NR
-          nuc % nu_d_edist(i) % energy = get_real(NE)
-          nuc % nu_d_edist(i) % pvalid = get_real(NE)
-
-          ! Set index to beginning of IDAT array
-          loc = LDIS + IDAT - 2
-
-          ! determine length of energy distribution
-          length = length_energy_dist(loc, LAW, LOCC, length_interp_data)
-
-          ! allocate secondary energy distribution array
-          allocate(nuc % nu_d_edist(i) % data(length))
-
-          ! read secondary energy distribution
-          XSS_index = loc + 1
-          nuc % nu_d_edist(i) % data = get_real(length)
+          ! read energy distribution data
+          edist => nuc % nu_d_edist(i)
+          call get_energy_dist(edist, LOCC, .true.)
        end do
 
        ! =======================================================================
@@ -871,10 +827,11 @@ contains
 ! single reaction
 !===============================================================================
 
-  recursive subroutine get_energy_dist(edist, loc_law)
+  recursive subroutine get_energy_dist(edist, loc_law, delayed_n)
 
-    type(DistEnergy), pointer :: edist   ! energy distribution
-    integer, intent(in)       :: loc_law ! locator for data
+    type(DistEnergy), pointer :: edist     ! energy distribution
+    integer, intent(in)       :: loc_law   ! locator for data
+    logical, optional         :: delayed_n ! is this for delayed neutrons?
 
     integer :: LDIS   ! location of all energy distributions
     integer :: LNW    ! location of next energy distribution if multiple
@@ -886,7 +843,12 @@ contains
     integer :: length ! length of data to allocate
     integer :: length_interp_data ! length of interpolation data
 
-    LDIS = JXS(11)
+    ! determine location of energy distribution
+    if (present(delayed_n)) then
+       LDIS = JXS(27)
+    else
+       LDIS = JXS(11)
+    end if
 
     ! locator for next law and information on this law
     LNW  = XSS(LDIS + loc_law - 1)
@@ -894,33 +856,33 @@ contains
     IDAT = XSS(LDIS + loc_law + 1)
     NR   = XSS(LDIS + loc_law + 2)
     edist % law = LAW
-    edist % n_interp = NR
+    edist % p_valid % n_regions = NR
 
     ! allocate space for ENDF interpolation parameters
     if (NR > 0) then
-       allocate(edist % nbt(NR))
-       allocate(edist % int(NR))
+       allocate(edist % p_valid % nbt(NR))
+       allocate(edist % p_valid % int(NR))
     end if
 
     ! read ENDF interpolation parameters
     XSS_index = LDIS + loc_law + 3
     if (NR > 0) then
-       edist % nbt = get_real(NR)
-       edist % int = get_real(NR)
+       edist % p_valid % nbt = get_real(NR)
+       edist % p_valid % int = get_real(NR)
     end if
 
     ! allocate space for law validity data
     NE = XSS(LDIS + loc_law + 3 + 2*NR)
-    edist % n_energy = NE
-    allocate(edist % energy(NE))
-    allocate(edist % pvalid(NE))
+    edist % p_valid % n_pairs = NE
+    allocate(edist % p_valid % x(NE))
+    allocate(edist % p_valid % y(NE))
 
     length_interp_data = 5 + 2*(NR + NE)
 
     ! read law validity data
     XSS_index = LDIS + loc_law + 4 + 2*NR
-    edist % energy = get_real(NE)
-    edist % pvalid = get_real(NE)
+    edist % p_valid % x = get_real(NE)
+    edist % p_valid % y = get_real(NE)
 
     ! Set index to beginning of IDAT array
     loc = LDIS + IDAT - 2

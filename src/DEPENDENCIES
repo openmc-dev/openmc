@@ -95,6 +95,7 @@ input_xml.o: xml-fortran/templates/settings_t.o
 input_xml.o: xml-fortran/templates/tallies_t.o
 
 interpolation.o: constants.o
+interpolation.o: endf_header.o
 interpolation.o: error.o
 interpolation.o: global.o
 interpolation.o: search.o

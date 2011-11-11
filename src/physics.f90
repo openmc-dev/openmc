@@ -1425,7 +1425,7 @@ contains
 ! SAMPLE_ENERGY
 !===============================================================================
 
-  subroutine sample_energy(edist, E_in, E_out, mu_out, A, Q)
+  recursive subroutine sample_energy(edist, E_in, E_out, mu_out, A, Q)
 
     type(DistEnergy),  pointer       :: edist
     real(8), intent(in)              :: E_in
@@ -1446,6 +1446,8 @@ contains
     integer :: JJ          ! 1 = histogram, 2 = linear-linear
     integer :: ND          ! number of discrete lines
     integer :: NP          ! number of points in distribution
+
+    real(8) :: p_valid     ! probability of law validity
 
     real(8) :: E_i_1, E_i_K   ! endpoints on outgoing grid i
     real(8) :: E_i1_1, E_i1_K ! endpoints on outgoing grid i+1
@@ -1479,15 +1481,26 @@ contains
     real(8) :: x, y, v     ! intermediate variables for n-body dist
     real(8) :: r1, r2, r3, r4, r5, r6
 
-    ! TODO: If there are multiple scattering laws, sample scattering law
+    ! ==========================================================================
+    ! SAMPLE ENERGY DISTRIBUTION IF THERE ARE MULTIPLE
 
-    ! Check for multiple interpolation regions
-    if (edist % p_valid % n_regions > 0) then
-       message = "Multiple interpolation regions not supported while &
-            &attempting to sample secondary energy distribution."
-       call fatal_error()
+    if (associated(edist % next)) then
+       if (edist % p_valid % n_regions > 0) then
+          p_valid = interpolate_tab1(edist % p_valid, E_in)
+
+          if (rang() > p_valid) then
+             if (edist % law == 44 .or. edist % law == 61) then
+                call sample_energy(edist%next, E_in, E_out, mu_out)
+             elseif (edist % law == 66) then
+                call sample_energy(edist%next, E_in, E_out, A=A, Q=Q)
+             else
+                call sample_energy(edist%next, E_in, E_out)
+             end if
+             return
+          end if
+       end if
     end if
-       
+
     ! Determine which secondary energy distribution law to use
     select case (edist % law)
     case (1)

@@ -138,7 +138,7 @@ contains
 
     ! determine number of interpolation regions and pairs
     n_regions = obj % n_regions
-    n_pairs = obj % n_pairs
+    n_pairs   = obj % n_pairs
 
     ! find which bin the abscissa is in -- if the abscissa is outside the
     ! tabulated range, the first or last point is chosen, i.e. no interpolation

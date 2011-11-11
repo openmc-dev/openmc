@@ -7,7 +7,7 @@ module endf_header
 !===============================================================================
 
   type Tab1
-     integer :: n_regions           ! # of interpolation regions
+     integer :: n_regions = 0       ! # of interpolation regions
      integer, allocatable :: nbt(:) ! values separating interpolation regions
      integer, allocatable :: int(:) ! interpolation scheme
      integer :: n_pairs             ! # of pairs of (x,y) values

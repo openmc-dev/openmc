@@ -1025,7 +1025,8 @@ contains
     real(8) :: yield        ! delayed neutron precursor yield
     real(8) :: prob         ! cumulative probability
     logical :: actual_event ! did fission actually occur? (no survival biasing)
-    type(Nuclide),  pointer :: nuc
+    type(Nuclide),    pointer :: nuc
+    type(DistEnergy), pointer :: edist => null()
 
     ! Get pointer to nuclide
     nuc => nuclides(index_nuclide)
@@ -1130,11 +1131,12 @@ contains
 
           ! sample from energy distribution for group j
           law = nuc % nu_d_edist(j) % law
+          edist => nuc % nu_d_edist(j)
           do
              if (law == 44 .or. law == 61) then
-                call sample_energy(nuc%nu_d_edist(j), E, E_out, mu)
+                call sample_energy(edist, E, E_out, mu)
              else
-                call sample_energy(nuc%nu_d_edist(j), E, E_out)
+                call sample_energy(edist, E, E_out)
              end if
              ! resample if energy is >= 20 MeV
              if (E_out < 20) exit
@@ -1425,7 +1427,7 @@ contains
 
   subroutine sample_energy(edist, E_in, E_out, mu_out, A, Q)
 
-    type(DistEnergy),  intent(inout) :: edist
+    type(DistEnergy),  pointer       :: edist
     real(8), intent(in)              :: E_in
     real(8), intent(out)             :: E_out
     real(8), intent(inout), optional :: mu_out

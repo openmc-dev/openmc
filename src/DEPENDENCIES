@@ -11,6 +11,7 @@ cross_section.o: output.o
 cross_section.o: string.o 
 
 cross_section_header.o: constants.o
+cross_section_header.o: endf_header.o
 
 datatypes.o: datatypes_header.o
 

@@ -1,6 +1,7 @@
 module cross_section_header
 
-  use constants, only: MAX_FILE_LEN
+  use constants,   only: MAX_FILE_LEN
+  use endf_header, only: Tab1
 
   implicit none
 
@@ -23,13 +24,8 @@ module cross_section_header
 !===============================================================================
 
   type DistEnergy
-     integer :: law                    ! secondary distribution law
-     integer :: n_interp               ! # of interpolation regions
-     integer, allocatable :: nbt(:)    ! ENDF interpolation parameters
-     integer, allocatable :: int(:)    ! ''
-     integer :: n_energy               ! # of energies for law validity
-     real(8), allocatable :: energy(:) ! energy grid for law validity
-     real(8), allocatable :: pvalid(:) ! probability of law validity
+     integer    :: law                 ! secondary distribution law
+     type(Tab1) :: p_valid             ! probability of law validity
      real(8), allocatable :: data(:)   ! energy distribution data
 
      ! For reactions that may have multiple energy distributions such as (n.2n),

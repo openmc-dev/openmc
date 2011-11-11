@@ -31,6 +31,10 @@ module cross_section_header
      real(8), allocatable :: energy(:) ! energy grid for law validity
      real(8), allocatable :: pvalid(:) ! probability of law validity
      real(8), allocatable :: data(:)   ! energy distribution data
+
+     ! For reactions that may have multiple energy distributions such as (n.2n),
+     ! this pointer allows multiple laws to be stored
+     type(DistEnergy), pointer :: next => null()
   end type DistEnergy
 
 !===============================================================================
@@ -39,15 +43,15 @@ module cross_section_header
 !===============================================================================
 
   type Reaction
-     integer :: MT                     ! ENDF MT value
-     real(8) :: Q_value                ! Reaction Q value
-     integer :: TY                     ! Number of neutrons released
-     integer :: IE                     ! Starting energy grid index
-     real(8), allocatable :: sigma(:)  ! Cross section values
-     logical :: has_angle_dist         ! Angle distribution present?
-     logical :: has_energy_dist        ! Energy distribution present?
-     type(DistAngle)  :: adist         ! Secondary angular distribution
-     type(DistEnergy) :: edist         ! Secondary energy distribution
+     integer :: MT                      ! ENDF MT value
+     real(8) :: Q_value                 ! Reaction Q value
+     integer :: TY                      ! Number of neutrons released
+     integer :: IE                      ! Starting energy grid index
+     real(8), allocatable :: sigma(:)   ! Cross section values
+     logical :: has_angle_dist          ! Angle distribution present?
+     logical :: has_energy_dist         ! Energy distribution present?
+     type(DistAngle)           :: adist ! Secondary angular distribution
+     type(DistEnergy), pointer :: edist ! Secondary energy distribution
   end type Reaction
 
 !===============================================================================
@@ -103,7 +107,7 @@ module cross_section_header
      integer :: n_precursor
      real(8), allocatable :: nu_d_data(:)
      real(8), allocatable :: nu_d_precursor_data(:)
-     type(DistEnergy), allocatable :: nu_d_edist(:)
+     type(DistEnergy), pointer :: nu_d_edist(:) => null()
 
      ! Unresolved resonance data
      logical                :: urr_present

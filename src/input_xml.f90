@@ -963,7 +963,6 @@ contains
     use xml_data_cross_sections_t
 
     integer :: i           ! loop index
-    integer :: n_listings  ! number of listings in cross_sections.xml
     integer :: filetype    ! default file type
     integer :: recl        ! default record length
     integer :: entries     ! default number of entries

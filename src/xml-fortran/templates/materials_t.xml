@@ -15,8 +15,8 @@
   <!-- Type for specifying a nuclide -->
 
   <typedef name="nuclide_xml">
-    <component name="name" type="word" length="10" />
-    <component name="xs" type="word" length="3" />
+    <component name="name" type="word" length="10" default="''" />
+    <component name="xs" type="word" length="3" default="''" />
     <component name="ao" type="double" default="0.0" />
     <component name="wo" type="double" default="0.0" />
   </typedef>
@@ -38,5 +38,6 @@
   </typedef>
 
   <variable name="material_" tag="material" type="material_xml" dimension="1" />
+  <variable name="default_xs_" tag="default_xs" type="word" length="3" />
 
 </template>

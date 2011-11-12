@@ -215,7 +215,7 @@ contains
        ! TODO: Find a better solution to score surface currents than physically
        ! moving the particle forward slightly
 
-       p % xyz = p % xyz + 1e-6 * p % uvw
+       p % xyz = p % xyz + TINY_BIT * p % uvw
        call score_surface_current(p)
 
        ! Display message
@@ -228,6 +228,13 @@ contains
     elseif (surf % bc == BC_REFLECT .and. (.not. plotting)) then
        ! =======================================================================
        ! PARTICLE REFLECTS FROM SURFACE
+
+       ! Score surface currents since reflection causes the direction of the
+       ! particle to change -- artificially move the particle slightly back in
+       ! case the surface crossing in coincident with a mesh boundary
+       p % xyz = p % xyz - TINY_BIT * p % uvw
+       call score_surface_current(p)
+       p % xyz = p % xyz + TINY_BIT * p % uvw
 
        ! Copy particle's direction cosines
        u = p % uvw(1)
@@ -321,12 +328,8 @@ contains
        p % cell = last_cell
        p % surface = -p % surface
 
-       ! Score surface currents since reflection causes the direction of the
-       ! particle to change
-       call score_surface_current(p)
-
        ! Set previous coordinate going slightly past surface crossing
-       p % last_xyz = p % xyz + 1e-6 * p % uvw
+       p % last_xyz = p % xyz + TINY_BIT * p % uvw
 
        ! Diagnostic message
        if (verbosity >= 10) then

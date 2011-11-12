@@ -5,7 +5,7 @@ module constants
   ! Versioning numbers
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 3
-  integer, parameter :: VERSION_RELEASE = 2
+  integer, parameter :: VERSION_RELEASE = 3
 
   ! Physical constants
   real(8), parameter ::            &
@@ -69,6 +69,9 @@ module constants
   integer, parameter ::      &
        & SENSE_POSITIVE = 1, &
        & SENSE_NEGATIVE = -1
+
+  ! Used for surface current tallies
+  real(8), parameter :: TINY_BIT = 1e-8
 
   ! Codes for read errors -- better hope these numbers are never used in an
   ! input file!

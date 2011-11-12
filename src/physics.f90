@@ -1006,7 +1006,6 @@ contains
 
     integer :: i            ! loop index
     integer :: j            ! index on nu energy grid / precursor group
-    integer :: k            ! index on precursor yield grid
     integer :: loc          ! index before start of energies/nu values
     integer :: NR           ! number of interpolation regions
     integer :: NE           ! number of energies tabulated
@@ -1014,7 +1013,6 @@ contains
     integer :: law          ! energy distribution law
     real(8) :: E            ! incoming energy of neutron
     real(8) :: E_out        ! outgoing energy of fission neutron
-    real(8) :: f            ! interpolation factor
     real(8) :: nu_t         ! total nu
     real(8) :: nu_p         ! prompt nu
     real(8) :: nu_d         ! delayed nu
@@ -1096,37 +1094,17 @@ contains
              ! determine number of interpolation regions and energies
              NR  = nuc % nu_d_precursor_data(loc + 1)
              NE  = nuc % nu_d_precursor_data(loc + 2 + 2*NR)
-             if (NR > 0) then
-                message = "Multiple interpolation regions not supported while & 
-                     &sampling delayed neutron precursor yield."
-                call fatal_error()
-             end if
-
-             ! interpolate on energy grid
-             loc = loc + 2 + 2*NR
-             if (E < nuc%nu_d_precursor_data(loc+1)) then
-                k = 1
-                f = ZERO
-             elseif (E > nuc%nu_d_precursor_data(loc+NE)) then
-                k = NE - 1
-                f = ONE
-             else
-                k = binary_search(nuc%nu_d_precursor_data(loc+1), NE, E)
-                f = (E - nuc%nu_d_precursor_data(loc+k)) / & 
-                     & (nuc%nu_d_precursor_data(loc+k+1) - &
-                     & nuc%nu_d_precursor_data(loc+k))
-             end if
 
              ! determine delayed neutron precursor yield for group j
-             loc = loc + NE
-             yield = nuc%nu_d_precursor_data(loc+k) + f * &
-                  (nuc%nu_d_precursor_data(loc+k+1) - &
-                  & nuc%nu_d_precursor_data(loc+k))
+             yield = interpolate_tab1(nuc % nu_d_precursor_data( &
+                  loc+1:loc+2+2*NR+2*NE), E)
+
+             ! Check if this group is sampled
              prob = prob + yield
              if (xi < prob) exit
 
              ! advance pointer
-             loc = loc + NE + 1
+             loc = loc + 2 + 2*NR + 2*NE + 1
           end do
 
           ! sample from energy distribution for group j

@@ -1,24 +1,29 @@
 module interpolation
 
   use constants
-  use error,    only: fatal_error
-  use global,   only: message
-  use search,   only: binary_search
+  use endf_header, only: Tab1
+  use error,       only: fatal_error
+  use global,      only: message
+  use search,      only: binary_search
 
   implicit none
+
+  interface interpolate_tab1
+     module procedure interpolate_tab1_array, interpolate_tab1_object
+  end interface interpolate_tab1
 
 contains
 
 !===============================================================================
-! INTERPOLATE_TAB1 interpolates a function between two points based on
+! INTERPOLATE_TAB1_ARRAY interpolates a function between two points based on
 ! particular interpolation scheme. The data needs to be organized as a ENDF TAB1
 ! type function containing the interpolation regions, break points, and
 ! tabulated x's and y's.
 !===============================================================================
 
-  function interpolate_tab1(data, x, loc_start) result(y)
+  function interpolate_tab1_array(data, x, loc_start) result(y)
 
-    real(8), intent(in)           :: data(:)   ! array of data whose 
+    real(8), intent(in)           :: data(:)   ! array of data
     real(8), intent(in)           :: x         ! x value to find y at
     integer, intent(in), optional :: loc_start ! starting location in data
     real(8)                       :: y         ! y(x)
@@ -108,6 +113,84 @@ contains
        y = exp((1-r)*log(y0) + r*log(y1))
     end select
     
-  end function interpolate_tab1
+  end function interpolate_tab1_array
+
+!===============================================================================
+! INTERPOLATE_TAB1_OBJECT interpolates a function between two points based on
+! particular interpolation scheme. The data needs to be organized as a ENDF TAB1
+! type function containing the interpolation regions, break points, and
+! tabulated x's and y's.
+!===============================================================================
+
+  function interpolate_tab1_object(obj, x) result(y)
+
+    type(Tab1), intent(in) :: obj ! ENDF Tab1 interpolable function
+    real(8),    intent(in) :: x   ! x value to find y at
+    real(8)                :: y   ! y(x)
+
+    integer :: i               ! bin in which to interpolate
+    integer :: n_regions       ! number of interpolation regions
+    integer :: n_pairs         ! number of tabulated values
+    integer :: interp          ! ENDF interpolation scheme
+    real(8) :: r               ! interpolation factor
+    real(8) :: x0, x1          ! bounding x values
+    real(8) :: y0, y1          ! bounding y values
+
+    ! determine number of interpolation regions and pairs
+    n_regions = obj % n_regions
+    n_pairs   = obj % n_pairs
+
+    ! find which bin the abscissa is in -- if the abscissa is outside the
+    ! tabulated range, the first or last point is chosen, i.e. no interpolation
+    ! is done outside the energy range
+    if (x < obj % x(1)) then
+       y = obj % y(1)
+       return
+    elseif (x > obj % x(n_pairs)) then
+       y = obj % y(n_pairs)
+       return
+    else
+       i = binary_search(obj % x, n_pairs, x)
+    end if
+
+    ! determine interpolation scheme
+    if (n_regions == 0) then
+       interp = LINEAR_LINEAR
+    elseif (n_regions == 1) then
+       interp = obj % int(1)
+    elseif (n_regions > 1) then
+       message = "Multiple interpolation regions not yet supported."
+       call fatal_error()
+    end if
+
+    ! handle special case of histogram interpolation
+    if (interp == HISTOGRAM) then
+       y = obj % y(i)
+       return
+    end if
+
+    ! determine bounding values
+    x0 = obj % x(i)
+    x1 = obj % x(i + 1)
+    y0 = obj % y(i)
+    y1 = obj % y(i + 1)
+
+    ! determine interpolation factor and interpolated value
+    select case (interp)
+    case (LINEAR_LINEAR)
+       r = (x - x0)/(x1 - x0)
+       y = (1 - r)*y0 + r*y1
+    case (LINEAR_LOG)
+       r = (log(x) - log(x0))/(log(x1) - log(x0))
+       y = (1 - r)*y0 + r*y1
+    case (LOG_LINEAR)
+       r = (x - x0)/(x1 - x0)
+       y = exp((1-r)*log(y0) + r*log(y1))
+    case (LOG_LOG)
+       r = (log(x) - log(x0))/(log(x1) - log(x0))
+       y = exp((1-r)*log(y0) + r*log(y1))
+    end select
+    
+  end function interpolate_tab1_object
 
 end module interpolation

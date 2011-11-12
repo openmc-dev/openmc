@@ -1,6 +1,7 @@
 module cross_section_header
 
-  use constants, only: MAX_FILE_LEN
+  use constants,   only: MAX_FILE_LEN
+  use endf_header, only: Tab1
 
   implicit none
 
@@ -23,14 +24,13 @@ module cross_section_header
 !===============================================================================
 
   type DistEnergy
-     integer :: law                    ! secondary distribution law
-     integer :: n_interp               ! # of interpolation regions
-     integer, allocatable :: nbt(:)    ! ENDF interpolation parameters
-     integer, allocatable :: int(:)    ! ''
-     integer :: n_energy               ! # of energies for law validity
-     real(8), allocatable :: energy(:) ! energy grid for law validity
-     real(8), allocatable :: pvalid(:) ! probability of law validity
+     integer    :: law                 ! secondary distribution law
+     type(Tab1) :: p_valid             ! probability of law validity
      real(8), allocatable :: data(:)   ! energy distribution data
+
+     ! For reactions that may have multiple energy distributions such as (n.2n),
+     ! this pointer allows multiple laws to be stored
+     type(DistEnergy), pointer :: next => null()
   end type DistEnergy
 
 !===============================================================================
@@ -39,15 +39,15 @@ module cross_section_header
 !===============================================================================
 
   type Reaction
-     integer :: MT                     ! ENDF MT value
-     real(8) :: Q_value                ! Reaction Q value
-     integer :: TY                     ! Number of neutrons released
-     integer :: IE                     ! Starting energy grid index
-     real(8), allocatable :: sigma(:)  ! Cross section values
-     logical :: has_angle_dist         ! Angle distribution present?
-     logical :: has_energy_dist        ! Energy distribution present?
-     type(DistAngle)  :: adist         ! Secondary angular distribution
-     type(DistEnergy) :: edist         ! Secondary energy distribution
+     integer :: MT                      ! ENDF MT value
+     real(8) :: Q_value                 ! Reaction Q value
+     integer :: TY                      ! Number of neutrons released
+     integer :: IE                      ! Starting energy grid index
+     real(8), allocatable :: sigma(:)   ! Cross section values
+     logical :: has_angle_dist          ! Angle distribution present?
+     logical :: has_energy_dist         ! Energy distribution present?
+     type(DistAngle)           :: adist ! Secondary angular distribution
+     type(DistEnergy), pointer :: edist ! Secondary energy distribution
   end type Reaction
 
 !===============================================================================
@@ -70,7 +70,7 @@ module cross_section_header
      character(20) :: name
      integer       :: zaid
      real(8)       :: awr
-     real(8)       :: temp
+     real(8)       :: kT
 
      ! Energy grid information
      integer :: n_grid
@@ -103,7 +103,7 @@ module cross_section_header
      integer :: n_precursor
      real(8), allocatable :: nu_d_data(:)
      real(8), allocatable :: nu_d_precursor_data(:)
-     type(DistEnergy), allocatable :: nu_d_edist(:)
+     type(DistEnergy), pointer :: nu_d_edist(:) => null()
 
      ! Unresolved resonance data
      logical                :: urr_present
@@ -124,7 +124,7 @@ module cross_section_header
      character(20) :: name
      integer       :: zaid
      real(8)       :: awr
-     real(8)       :: temp
+     real(8)       :: kT
 
      ! threshold for S(a,b) treatment (usually ~4 eV)
      real(8) :: threshold_inelastic
@@ -154,15 +154,18 @@ module cross_section_header
 !===============================================================================
 
   type XsListing
-     character(10) :: name
-     character(10) :: alias
-     integer :: type
-     integer :: zaid
-     real(8) :: awr
-     real(8) :: temp
-     logical :: metastable
-     logical :: binary
-     character(MAX_FILE_LEN) :: path
+     character(10) :: name       ! table name, e.g. 92235.70c
+     character(10) :: alias      ! table alias, e.g. U-235.70c
+     integer       :: type       ! type of table (cont-E neutron, S(A,b), etc)
+     integer       :: zaid       ! ZAID identifier = 1000*Z + A
+     integer       :: filetype   ! ASCII or BINARY
+     integer       :: location   ! location of table within library
+     integer       :: recl       ! record length for library
+     integer       :: entries    ! number of entries per record
+     real(8)       :: awr        ! atomic weight ratio (# of neutron masses)
+     real(8)       :: kT         ! Boltzmann constant * temperature (MeV)
+     logical       :: metastable ! is this nuclide metastable?
+     character(MAX_FILE_LEN) :: path ! path to library containing table
   end type XsListing
 
 !===============================================================================

@@ -425,6 +425,7 @@ contains
     integer :: n
     real(8) :: val
     logical :: file_exists
+    character(3) :: default_xs
     character(MAX_WORD_LEN) :: units
     character(MAX_WORD_LEN) :: name
     character(MAX_LINE_LEN) :: filename
@@ -444,8 +445,14 @@ contains
        call fatal_error()
     end if
 
+    ! Initialize default cross section variable
+    default_xs_ = ""
+
     ! Parse materials.xml file
     call read_xml_file_materials_t(filename)
+
+    ! Copy default cross section if present
+    default_xs = default_xs_
 
     ! Allocate cells array
     n_materials = size(material_)
@@ -497,6 +504,26 @@ contains
        do j = 1, n
           ! Combine nuclide identifier and cross section and copy into names
           nuc => material_(i) % nuclides(j)
+
+          ! Check for empty name on nuclide
+          if (len_trim(nuc % name) == 0) then
+             message = "No name specified on nuclide in material " // &
+                  trim(int_to_str(m % id))
+             call fatal_error()
+          end if
+
+          ! Check for cross section
+          if (len_trim(nuc % xs) == 0) then
+             if (default_xs == '') then
+                message = "No cross section specified for nuclide in material " &
+                     // trim(int_to_str(m % id))
+                call fatal_error()
+             else
+                nuc % xs = default_xs
+             end if
+          end if
+
+          ! copy full name
           name = trim(nuc % name) // "." // trim(nuc % xs)
           m % names(j) = name
 
@@ -938,7 +965,9 @@ contains
     use xml_data_cross_sections_t
 
     integer :: i           ! loop index
-    integer :: n_listings  ! number of listings in cross_sections.xml
+    integer :: filetype    ! default file type
+    integer :: recl        ! default record length
+    integer :: entries     ! default number of entries
     logical :: file_exists ! does cross_sections.xml exist?
     character(MAX_WORD_LEN)  :: directory
     type(XsListing), pointer :: listing => null()
@@ -955,14 +984,33 @@ contains
     message = "Reading cross sections XML file..."
     call write_message(5)
 
-    ! Initialize directory_ variable
+    ! Initialize variables that may go unused
     directory_ = ""
+    filetype_ = ""
+    record_length_ = 0
+    entries_ = 0
 
     ! Parse cross_sections.xml file
     call read_xml_file_cross_sections_t(path_cross_sections)
 
     ! Copy directory information if present
     directory = trim(directory_)
+
+    ! determine whether binary/ascii
+    if (filetype_ == 'ascii') then
+       filetype = ASCII
+    elseif (filetype_ == 'binary') then
+       filetype = BINARY
+    elseif (len_trim(filetype_) == 0) then
+       filetype = ASCII
+    else
+       message = "Unknown filetype in cross_sections.xml: " // trim(filetype_)
+       call fatal_error()
+    end if
+
+    ! copy default record length and entries for binary files
+    recl = record_length_
+    entries = entries_
 
     ! Allocate xs_listings array
     if (.not. associated(ace_tables_)) then
@@ -982,30 +1030,26 @@ contains
        listing % alias      = trim(ace_tables_(i) % alias)
        listing % zaid       = ace_tables_(i) % zaid
        listing % awr        = ace_tables_(i) % awr
-       listing % temp       = ace_tables_(i) % temperature
+       listing % kT         = ace_tables_(i) % temperature
+       listing % location   = ace_tables_(i) % location
 
        ! determine type of cross section
-       select case(ace_tables_(i) % type)
-       case ('neutron')
+       if (ends_with(listing % name, 'c')) then
           listing % type = ACE_NEUTRON
-       case ('thermal')
+       elseif (ends_with(listing % name, 't')) then
           listing % type = ACE_THERMAL
-       case ('dosimetry')
-          listing % type = ACE_DOSIMETRY
-       end select
+       end if
+
+       ! set filetype, record length, and number of entries
+       listing % filetype = filetype
+       listing % recl     = recl
+       listing % entries  = entries
 
        ! determine metastable state
        if (ace_tables_(i) % metastable == 0) then
           listing % metastable = .false.
        else
           listing % metastable = .true.
-       end if
-
-       ! determine whether binary/ascii
-       if (ace_tables_(i) % binary == 0) then
-          listing % binary = .false.
-       else
-          listing % binary = .true.
        end if
 
        ! determine path of cross section table

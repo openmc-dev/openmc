@@ -927,7 +927,7 @@ contains
     real(8) :: vt          ! speed of target
 
     ! Determine equilibrium temperature in MeV
-    kT = K_BOLTZMANN * nuc % temp
+    kT = nuc % kT
 
     ! Check if energy is above threshold
     if (p % E >= FREE_GAS_THRESHOLD * kT) then
@@ -1025,7 +1025,8 @@ contains
     real(8) :: yield        ! delayed neutron precursor yield
     real(8) :: prob         ! cumulative probability
     logical :: actual_event ! did fission actually occur? (no survival biasing)
-    type(Nuclide),  pointer :: nuc
+    type(Nuclide),    pointer :: nuc
+    type(DistEnergy), pointer :: edist => null()
 
     ! Get pointer to nuclide
     nuc => nuclides(index_nuclide)
@@ -1130,11 +1131,12 @@ contains
 
           ! sample from energy distribution for group j
           law = nuc % nu_d_edist(j) % law
+          edist => nuc % nu_d_edist(j)
           do
              if (law == 44 .or. law == 61) then
-                call sample_energy(nuc%nu_d_edist(j), E, E_out, mu)
+                call sample_energy(edist, E, E_out, mu)
              else
-                call sample_energy(nuc%nu_d_edist(j), E, E_out)
+                call sample_energy(edist, E, E_out)
              end if
              ! resample if energy is >= 20 MeV
              if (E_out < 20) exit
@@ -1423,9 +1425,9 @@ contains
 ! SAMPLE_ENERGY
 !===============================================================================
 
-  subroutine sample_energy(edist, E_in, E_out, mu_out, A, Q)
+  recursive subroutine sample_energy(edist, E_in, E_out, mu_out, A, Q)
 
-    type(DistEnergy),  intent(inout) :: edist
+    type(DistEnergy),  pointer       :: edist
     real(8), intent(in)              :: E_in
     real(8), intent(out)             :: E_out
     real(8), intent(inout), optional :: mu_out
@@ -1444,6 +1446,8 @@ contains
     integer :: JJ          ! 1 = histogram, 2 = linear-linear
     integer :: ND          ! number of discrete lines
     integer :: NP          ! number of points in distribution
+
+    real(8) :: p_valid     ! probability of law validity
 
     real(8) :: E_i_1, E_i_K   ! endpoints on outgoing grid i
     real(8) :: E_i1_1, E_i1_K ! endpoints on outgoing grid i+1
@@ -1477,15 +1481,26 @@ contains
     real(8) :: x, y, v     ! intermediate variables for n-body dist
     real(8) :: r1, r2, r3, r4, r5, r6
 
-    ! TODO: If there are multiple scattering laws, sample scattering law
+    ! ==========================================================================
+    ! SAMPLE ENERGY DISTRIBUTION IF THERE ARE MULTIPLE
 
-    ! Check for multiple interpolation regions
-    if (edist % n_interp > 0) then
-       message = "Multiple interpolation regions not supported while &
-            &attempting to sample secondary energy distribution."
-       call fatal_error()
+    if (associated(edist % next)) then
+       if (edist % p_valid % n_regions > 0) then
+          p_valid = interpolate_tab1(edist % p_valid, E_in)
+
+          if (rang() > p_valid) then
+             if (edist % law == 44 .or. edist % law == 61) then
+                call sample_energy(edist%next, E_in, E_out, mu_out)
+             elseif (edist % law == 66) then
+                call sample_energy(edist%next, E_in, E_out, A=A, Q=Q)
+             else
+                call sample_energy(edist%next, E_in, E_out)
+             end if
+             return
+          end if
+       end if
     end if
-       
+
     ! Determine which secondary energy distribution law to use
     select case (edist % law)
     case (1)

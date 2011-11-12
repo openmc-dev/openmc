@@ -423,6 +423,7 @@ contains
     integer :: n
     real(8) :: val
     logical :: file_exists
+    character(3) :: default_xs
     character(MAX_WORD_LEN) :: units
     character(MAX_WORD_LEN) :: name
     character(MAX_LINE_LEN) :: filename
@@ -442,8 +443,14 @@ contains
        call fatal_error()
     end if
 
+    ! Initialize default cross section variable
+    default_xs_ = ""
+
     ! Parse materials.xml file
     call read_xml_file_materials_t(filename)
+
+    ! Copy default cross section if present
+    default_xs = default_xs_
 
     ! Allocate cells array
     n_materials = size(material_)
@@ -495,6 +502,26 @@ contains
        do j = 1, n
           ! Combine nuclide identifier and cross section and copy into names
           nuc => material_(i) % nuclides(j)
+
+          ! Check for empty name on nuclide
+          if (len_trim(nuc % name) == 0) then
+             message = "No name specified on nuclide in material " // &
+                  trim(int_to_str(m % id))
+             call fatal_error()
+          end if
+
+          ! Check for cross section
+          if (len_trim(nuc % xs) == 0) then
+             if (default_xs == '') then
+                message = "No cross section specified for nuclide in material " &
+                     // trim(int_to_str(m % id))
+                call fatal_error()
+             else
+                nuc % xs = default_xs
+             end if
+          end if
+
+          ! copy full name
           name = trim(nuc % name) // "." // trim(nuc % xs)
           m % names(j) = name
 

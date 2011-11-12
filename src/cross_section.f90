@@ -1,10 +1,11 @@
 module cross_section
 
   use constants
-  use cross_section_header, only: Nuclide, Reaction, SAB_Table, XsListing
+  use cross_section_header, only: Nuclide, Reaction, SAB_Table, XsListing, &
+                                  DistEnergy
   use datatypes,            only: dict_create, dict_add_key, dict_get_key, &
-                                  dict_has_key, dict_delete
-  use datatypes_header,     only: DictionaryCI
+                                  dict_has_key, dict_delete, dict_keys
+  use datatypes_header,     only: DictionaryCI, ListKeyValueCI
   use endf,                 only: reaction_name
   use error,                only: fatal_error
   use fileio,               only: read_line, skip_lines
@@ -21,6 +22,8 @@ module cross_section
   real(8), allocatable :: XSS(:) ! Cross section data
   integer :: XSS_index           ! current index in XSS data
 
+  type(DictionaryCI), pointer :: already_read => null()
+
   private :: NXS
   private :: JXS
   private :: XSS
@@ -34,16 +37,19 @@ contains
 
   subroutine read_xs()
 
-    integer        :: i                ! index in materials array
-    integer        :: j                ! index over nuclides in material
-    integer        :: index            ! index in xs_listings array
-    integer        :: index_nuclides   ! index in nuclides
-    integer        :: index_sab        ! index in sab_tables
-    character(10)  :: key              ! name of isotope, e.g. 92235.03c
-    type(Material),     pointer :: mat => null()
-    type(Nuclide),      pointer :: nuc => null()
-    type(SAB_Table),    pointer :: sab => null()
-    type(DictionaryCI), pointer :: temp_dict => null()
+    integer        :: i              ! index in materials array
+    integer        :: j              ! index over nuclides in material
+    integer        :: index          ! index in xs_listings array
+    integer        :: index_nuclides ! index in nuclides
+    integer        :: index_sab      ! index in sab_tables
+    character(10)  :: name           ! name of isotope, e.g. 92235.03c
+    character(10)  :: alias          ! alias of nuclide, e.g. U-235.03c
+    type(Material),  pointer :: mat => null()
+    type(Nuclide),   pointer :: nuc => null()
+    type(SAB_Table), pointer :: sab => null()
+
+    ! ==========================================================================
+    ! COUNT NUMBER OF TABLES AND CREATE DICTIONARIES
 
     ! First we need to determine how many continuous-energy tables and how many
     ! S(a,b) thermal scattering tables there are -- this loop doesn't actually
@@ -58,89 +64,123 @@ contains
        ! materials -- if not, then increment the count for the number of
        ! nuclides and add to dictionary
        do j = 1, mat % n_nuclides
-          key = mat % names(j)
-          call lower_case(key)
-          if (.not. dict_has_key(nuclide_dict, key)) then
-             index_nuclides = index_nuclides + 1
-             call dict_add_key(nuclide_dict, key, index_nuclides)
+          name = mat % names(j)
+
+          ! First check that this nuclide is listed in the cross_sections.xml
+          ! file
+          if (.not. dict_has_key(xs_listing_dict, name)) then
+             message = "Could not find nuclide " // trim(name) // &
+                  " in cross_sections.xml file!"
+             call fatal_error()
+          end if
+
+          ! Find index in xs_listing and set the name and alias according to the
+          ! listing
+          index = dict_get_key(xs_listing_dict, name)
+          name  = xs_listings(index) % name
+          alias = xs_listings(index) % alias
+
+          ! If this nuclide hasn't been encountered yet, we need to add its name
+          ! and alias to the nuclide_dict
+          if (.not. dict_has_key(nuclide_dict, name)) then
+             index_nuclides   = index_nuclides + 1
              mat % nuclide(j) = index_nuclides
+
+             call dict_add_key(nuclide_dict, name,  index_nuclides)
+             call dict_add_key(nuclide_dict, alias, index_nuclides)
           else
-             mat % nuclide(j) = dict_get_key(nuclide_dict, key)
+             mat % nuclide(j) = dict_get_key(nuclide_dict, name)
           end if
        end do
 
        ! Check if S(a,b) exists on other materials
        if (mat % has_sab_table) then
-          key = mat % sab_name
-          call lower_case(key)
-          if (.not. dict_has_key(sab_dict, key)) then
-             index_sab = index_sab + 1
-             call dict_add_key(sab_dict, key, index_sab)
-             mat % sab_table = index_sab
-          else
-             mat % sab_table = dict_get_key(sab_dict, key)
+          name = mat % sab_name
+
+          ! First check that this nuclide is listed in the cross_sections.xml
+          ! file
+          if (.not. dict_has_key(xs_listing_dict, name)) then
+             message = "Could not find S(a,b) table " // trim(name) // &
+                  " in cross_sections.xml file!"
+             call fatal_error()
           end if
-       else
-          mat % sab_table = 0
+
+          ! Find index in xs_listing and set the name and alias according to the
+          ! listing
+          index = dict_get_key(xs_listing_dict, name)
+          name  = xs_listings(index) % name
+          alias = xs_listings(index) % alias
+
+          ! If this S(a,b) table hasn't been encountered yet, we need to add its
+          ! name and alias to the sab_dict
+          if (.not. dict_has_key(sab_dict, name)) then
+             index_sab       = index_sab + 1
+             mat % sab_table = index_sab
+
+             call dict_add_key(sab_dict, name,  index_sab)
+             call dict_add_key(sab_dict, alias, index_sab)
+          else
+             mat % sab_table = dict_get_key(sab_dict, name)
+          end if
        end if
     end do
 
     n_nuclides_total = index_nuclides
     n_sab_tables     = index_sab
 
-    ! allocate arrays for ACE table storage
+    ! allocate arrays for ACE table storage and cross section cache
     allocate(nuclides(n_nuclides_total))
     allocate(sab_tables(n_sab_tables))
-
-    ! allocate array for microscopic cross section cache
     allocate(micro_xs(n_nuclides_total))
 
-    call dict_create(temp_dict)
+    ! ==========================================================================
+    ! READ ALL ACE CROSS SECTION TABLES
 
-    ! Now that the nuclides and sab_tables arrays have been allocated, we can
-    ! repeat the same loop through each table in each material and read the
-    ! cross sections
-    index_nuclides = 0
-    index_sab = 0
+    call dict_create(already_read)
+
+    ! Loop over all files
     do i = 1, n_materials
        mat => materials(i)
-       do j = 1, mat % n_nuclides
-          ! Get index in xs_listings array for this nuclide
-          index = mat % xs_listing(j)
 
-          ! Get name of nuclide
-          key = mat % names(j)
-          call lower_case(key)
-          
-          if (.not. dict_has_key(temp_dict, key)) then
-             index_nuclides = index_nuclides + 1
-             call read_ACE_continuous(index_nuclides, index)
-             call dict_add_key(temp_dict, key, index_nuclides)
+       do j = 1, mat % n_nuclides
+          name = mat % names(j)
+
+          if (.not. dict_has_key(already_read, name)) then
+             index = dict_get_key(xs_listing_dict, name)
+             index_nuclides = dict_get_key(nuclide_dict, name)
+             name  = xs_listings(index) % name
+             alias = xs_listings(index) % alias
+
+             call read_ace_table(index_nuclides, index)
+
+             call dict_add_key(already_read, name, 0)
+             call dict_add_key(already_read, alias, 0)
           end if
        end do
 
-       ! Read S(a,b) table if this material has one and it hasn't been read
-       ! already
        if (mat % has_sab_table) then
-          ! Get name of S(a,b) table
-          key = mat % sab_name
+          name = mat % sab_name
 
-          if (.not. dict_has_key(temp_dict, key)) then
-             ! Find the entry in xs_listings for this table
-             if (dict_has_key(xs_listing_dict, key)) then
-                index = dict_get_key(xs_listing_dict, key)
-             else
-                message = "Cannot find cross-section " // trim(key) // &
-                     " in specified cross_sections.xml file."
-                call fatal_error()
-             end if
+          if (.not. dict_has_key(already_read, name)) then
+             index = dict_get_key(xs_listing_dict, name)
+             index_sab = dict_get_key(sab_dict, name)
 
-             ! Read the table and add entry to dictionary
-             index_sab = index_sab + 1
-             call read_ACE_thermal(index_sab, index)
-             call dict_add_key(temp_dict, key, index_sab)
+             call read_ace_table(index_sab, index)
+
+             call dict_add_key(already_read, name, 0)
           end if
+       end if
+    end do
 
+    call dict_delete(already_read)
+
+    ! ==========================================================================
+    ! ASSIGN S(A,B) TABLES TO SPECIFIC NUCLIDES WITHIN MATERIALS
+
+    do i = 1, n_materials
+       mat => materials(i)
+
+       if (mat % has_sab_table) then
           ! In order to know which nuclide the S(a,b) table applies to, we need
           ! to search through the list of nuclides for one which has a matching
           ! zaid
@@ -162,53 +202,51 @@ contains
        end if
     end do
 
-    ! delete dictionary
-    call dict_delete(temp_dict)
-       
   end subroutine read_xs
 
 !===============================================================================
-! READ_ACE_CONTINUOUS reads in a single ACE continuous-energy neutron cross
-! section table. This routine reads the header data and then calls appropriate
+! READ_ACE_BINARY reads a single cross section table in binary format. This
+! routine reads the header data for each table and then calls appropriate
 ! subroutines to parse the actual data.
 !===============================================================================
 
-  subroutine read_ACE_continuous(index_table, index)
+  subroutine read_ace_table(index_table, index)
 
-    integer, intent(in) :: index_table ! index in nuclides array
-    integer, intent(in) :: index       ! index in xs_listings array
+    integer, intent(in) :: index_table ! index in nuclides/sab_tables
+    integer, intent(in) :: index       ! index in xs_listings
 
-    integer                 :: in = 7           ! unit to read from
-    integer                 :: ioError          ! error status for file access
-    integer                 :: lines            ! number of lines (data
-    integer                 :: n                ! number of data values
-    real(8)                 :: kT               ! ACE table temperature
-    logical                 :: file_exists      ! does ACE library exist?
-    logical                 :: found_xs         ! did we find table in library?
-    character(7)            :: readable         ! is ACE library readable?
-    character(MAX_LINE_LEN) :: line             ! single line to read
-    character(MAX_WORD_LEN) :: words(MAX_WORDS) ! words on a line
-    character(MAX_FILE_LEN) :: filename         ! name of ACE library file
-    character(10)           :: tablename        ! name of cross section table
-    type(Nuclide), pointer :: nuc => null()
+    integer       :: i             ! loop index for XSS records
+    integer       :: j, j1, j2     ! indices in XSS
+    integer       :: record_length ! Fortran record length
+    integer       :: location      ! location of ACE table
+    integer       :: entries       ! number of entries on each record
+    integer       :: length        ! length of ACE table
+    integer       :: in = 7        ! file unit
+    integer       :: zaids(16)     ! list of ZAIDs (only used for S(a,b))
+    integer       :: filetype      ! filetype (ASCII or BINARY)
+    real(8)       :: kT            ! temperature of table
+    real(8)       :: awrs(16)      ! list of atomic weight ratios (not used)
+    real(8)       :: awr           ! atomic weight ratio for table
+    logical       :: file_exists   ! does ACE library exist?
+    character(7)  :: readable      ! is ACE library readable?
+    character(10) :: name          ! name of ACE table
+    character(10) :: date          ! date ACE library was processed
+    character(10) :: mat           ! material identifier
+    character(70) :: comment       ! comment for ACE table
+    character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
+    type(Nuclide),   pointer :: nuc => null()
+    type(SAB_Table), pointer :: sab => null()
+    type(XsListing), pointer :: listing => null()
 
-    ! Check to make sure index in nuclides array and xs_listings arrays are
-    ! valid
-    if (index_table > size(nuclides)) then
-       message = "Index of table to read is greater than length of nuclides."
-       call fatal_error()
-    elseif (index > size(xs_listings)) then
-       message = "Index of xs_listing entry is greater than length of " // &
-            "xs_listings."
-       call fatal_error()
-    end if
+    ! determine path, record length, and location of table
+    listing => xs_listings(index)
+    filename      = listing % path
+    record_length = listing % recl
+    location      = listing % location
+    entries       = listing % entries
+    filetype      = listing % filetype
 
-    filename  = xs_listings(index) % path
-    tablename = xs_listings(index) % name
-
-    nuc => nuclides(index_table)
-
-    ! Check if input file exists and is readable
+    ! Check if ACE library exists and is readable
     inquire(FILE=filename, EXIST=file_exists, READ=readable)
     if (.not. file_exists) then
        message = "ACE library '" // trim(filename) // "' does not exist!"
@@ -220,73 +258,93 @@ contains
     end if
 
     ! display message
-    message = "Loading ACE cross section table: " // tablename
+    message = "Loading ACE cross section table: " // listing % name
     call write_message(6)
 
-    ! open file
-    open(file=filename, unit=in, status='old', & 
-         & action='read', iostat=ioError)
-    if (ioError /= 0) then
-       message = "Error while opening file: " // filename
-       call fatal_error()
+    if (filetype == ASCII) then
+       ! =======================================================================
+       ! READ ACE TABLE IN ASCII FORMAT
+
+       ! Find location of table
+       open(UNIT=in, FILE=filename, STATUS='old', ACTION='read')
+       rewind(UNIT=in)
+       do i = 1, location - 1
+          read(UNIT=in, FMT=*)
+       end do
+
+       ! Read first line of header
+       read(UNIT=in, FMT='(A10,2E12.0,1X,A10)') name, awr, kT, date
+
+       ! Read more header and NXS and JXS
+       read(UNIT=in, FMT=100) comment, mat, & 
+            (zaids(i), awrs(i), i=1,16), NXS, JXS
+100    format(A70,A10/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/&
+            &,8I9/8I9/8I9/8I9/8I9/8I9)
+
+       ! determine table length
+       length = NXS(1)
+       allocate(XSS(length))
+
+       ! Read XSS array
+       read(UNIT=in, FMT='(4E20.0)') XSS
+
+    elseif (filetype == BINARY) then
+       ! =======================================================================
+       ! READ ACE TABLE IN BINARY FORMAT
+
+       open(UNIT=in, FILE=filename, STATUS='old', ACTION='read', &
+            ACCESS='direct', RECL=record_length)
+
+       ! Read all header information
+       read(UNIT=in, REC=location) name, awr, kT, date, & 
+            comment, mat, (zaids(i), awrs(i), i=1,16), NXS, JXS
+
+       ! determine table length
+       length = NXS(1)
+       allocate(XSS(length))
+
+       ! Read remaining records with XSS
+       do i = 1, (length + entries - 1)/entries
+          j1 = 1 + (i-1)*entries
+          j2 = min(length, j1 + entries - 1)
+          read(UNIT=IN, REC=location + i) (XSS(j), j=j1,j2)
+       end do
     end if
 
-    found_xs = .false.
-    do while (.not. found_xs)
-       call read_line(in, line, ioError)
-       if (ioError < 0) then
-          message = "Could not find ACE table " // tablename // "."
-          call fatal_error()
-       end if
-       call split_string(line, words, n)
-       if (trim(words(1)) == trim(tablename)) then
-          found_xs = .true.
-          nuc % name = words(1)
-          nuc % awr  = str_to_real(words(2))
-          kT = str_to_real(words(3))
-          nuc % temp = kT / K_BOLTZMANN
-       end if
-       
-       ! Skip 5 lines
-       call skip_lines(in, 5, ioError)
+    ! ==========================================================================
+    ! PARSE DATA BASED ON NXS, JXS, AND XSS ARRAYS
 
-       ! Read NXS and JXS data
-       read(UNIT=in, FMT=*) NXS
-       read(UNIT=in, FMT=*) JXS
+    select case(listing % type)
+    case (ACE_NEUTRON)
+       nuc => nuclides(index_table)
+       nuc % name = name
+       nuc % awr  = awr
+       nuc % kT   = kT
+       nuc % zaid = NXS(2)
 
-       ! Calculate how many data points and lines in the XSS array
-       n = NXS(1)
-       lines = (n + 3)/4
+       call read_esz(nuc)
+       call read_nu_data(nuc)
+       call read_reactions(nuc)
+       call read_angular_dist(nuc)
+       call read_energy_dist(nuc)
+       call read_unr_res(nuc)
+    case (ACE_THERMAL)
+       sab => sab_tables(index_table)
+       sab % name = name
+       sab % awr  = awr
+       sab % kT   = kT
+       sab % zaid = zaids(1)
 
-       if (found_xs) then
-          ! Set ZAID of nuclide
-          nuc % zaid = NXS(2)
+       call read_thermal_data(sab)
+    end select
 
-          ! allocate storage for XSS array
-          allocate(XSS(n))
-          
-          ! Read XSS
-          read(UNIT=in, FMT=*) XSS
-       else
-          call skip_lines(in, lines, ioError)
-       end if
-
-    end do
-
-    call read_esz(nuc)
-    call read_nu_data(nuc)
-    call read_reactions(nuc)
-    call read_angular_dist(nuc)
-    call read_energy_dist(nuc)
-    call read_unr_res(nuc)
-
-    ! Free memory from XSS array
-    if(allocated(XSS)) deallocate(XSS)
+    deallocate(XSS)
     if(associated(nuc)) nullify(nuc)
+    if(associated(sab)) nullify(sab)
 
-    close(unit=in)
+    close(UNIT=in)
 
-  end subroutine read_ACE_continuous
+  end subroutine read_ace_table
 
 !===============================================================================
 ! READ_ESZ - reads through the ESZ block. This block contains the energy grid,
@@ -356,12 +414,9 @@ contains
     integer :: LED    ! location of energy distribution locators
     integer :: LDIS   ! location of all energy distributions
     integer :: LOCC   ! location of energy distributions for given MT
-    integer :: LNW    ! location of next energy distribution if multiple
-    integer :: LAW    ! secondary energy distribution law   
-    integer :: IDAT   ! location of first energy distribution for given MT
     integer :: loc    ! locator
-    integer :: length             ! length of data to allocate
-    integer :: length_interp_data ! length of interpolation data
+    integer :: length ! length of data to allocate
+    type(DistEnergy), pointer :: edist => null()
 
     JXS2  = JXS(2)
     JXS24 = JXS(24)
@@ -497,50 +552,9 @@ contains
           ! find location of energy distribution data
           LOCC = XSS(LED + i - 1)
 
-          LNW  = XSS(LDIS + LOCC - 1)
-          LAW  = XSS(LDIS + LOCC)
-          IDAT = XSS(LDIS + LOCC + 1)
-          NR   = XSS(LDIS + LOCC + 2)
-          nuc % nu_d_edist(i) % law = LAW
-          nuc % nu_d_edist(i) % n_interp = NR
-
-          ! allocate space for ENDF interpolation parameters
-          if (NR > 0) then
-             allocate(nuc % nu_d_edist(i) % nbt(NR))
-             allocate(nuc % nu_d_edist(i) % int(NR))
-          end if
-
-          ! read ENDF interpolation parameters
-          XSS_index = LDIS + LOCC + 3
-          if (NR > 0) then
-             nuc % nu_d_edist(i) % nbt = get_real(NR)
-             nuc % nu_d_edist(i) % int = get_real(NR)
-          end if
-
-          ! allocate space for law validity data
-          NE = XSS(LDIS + LOCC + 3 + 2*NR)
-          allocate(nuc % nu_d_edist(i) % energy(NE))
-          allocate(nuc % nu_d_edist(i) % pvalid(NE))
-
-          length_interp_data = 5 + 2*(NR + NE)
-
-          ! read law validity data
-          XSS_index = LDIS + LOCC + 4 + 2*NR
-          nuc % nu_d_edist(i) % energy = get_real(NE)
-          nuc % nu_d_edist(i) % pvalid = get_real(NE)
-
-          ! Set index to beginning of IDAT array
-          loc = LDIS + IDAT - 2
-
-          ! determine length of energy distribution
-          length = length_energy_dist(loc, LAW, LOCC, length_interp_data)
-
-          ! allocate secondary energy distribution array
-          allocate(nuc % nu_d_edist(i) % data(length))
-
-          ! read secondary energy distribution
-          XSS_index = loc + 1
-          nuc % nu_d_edist(i) % data = get_real(length)
+          ! read energy distribution data
+          edist => nuc % nu_d_edist(i)
+          call get_energy_dist(edist, LOCC, .true.)
        end do
 
        ! =======================================================================
@@ -784,21 +798,11 @@ contains
     type(Nuclide), pointer :: nuc
 
     integer :: LED   ! location of energy distribution locators
-    integer :: LDIS  ! location of all energy distributions
     integer :: LOCC  ! location of energy distributions for given MT
-    integer :: LNW   ! location of next energy distribution if multiple
-    integer :: LAW   ! secondary energy distribution law   
-    integer :: NR    ! number of interpolation regions
-    integer :: NE    ! number of incoming energies
-    integer :: IDAT  ! location of first energy distribution for given MT
-    integer :: loc   ! locator
-    integer :: length             ! length of data to allocate
-    integer :: length_interp_data ! length of interpolation data
-    integer :: i                  ! loop index
-    type(Reaction), pointer :: rxn => null()
+    integer :: i     ! loop index
+    type(Reaction),   pointer :: rxn => null()
 
     LED  = JXS(10)
-    LDIS = JXS(11)
 
     ! Loop over all reactions 
     do i = 1, NXS(5)
@@ -807,54 +811,99 @@ contains
 
        ! find location of energy distribution data
        LOCC = XSS(LED + i - 1)
-       
-       LNW  = XSS(LDIS + LOCC - 1)
-       LAW  = XSS(LDIS + LOCC)
-       IDAT = XSS(LDIS + LOCC + 1)
-       NR   = XSS(LDIS + LOCC + 2)
-       rxn % edist % law = LAW
-       rxn % edist % n_interp = NR
 
-       ! allocate space for ENDF interpolation parameters
-       if (NR > 0) then
-          allocate(rxn % edist % nbt(NR))
-          allocate(rxn % edist % int(NR))
-       end if
-       
-       ! read ENDF interpolation parameters
-       XSS_index = LDIS + LOCC + 3
-       if (NR > 0) then
-          rxn % edist % nbt = get_real(NR)
-          rxn % edist % int = get_real(NR)
-       end if
+       ! allocate energy distribution
+       allocate(rxn % edist)
 
-       ! allocate space for law validity data
-       NE = XSS(LDIS + LOCC + 3 + 2*NR)
-       allocate(rxn % edist % energy(NE))
-       allocate(rxn % edist % pvalid(NE))
-       
-       length_interp_data = 5 + 2*(NR + NE)
-       
-       ! read law validity data
-       XSS_index = LDIS + LOCC + 4 + 2*NR
-       rxn % edist % energy = get_real(NE)
-       rxn % edist % pvalid = get_real(NE)
-
-       ! Set index to beginning of IDAT array
-       loc = LDIS + IDAT - 2
-
-       ! determine length of energy distribution
-       length = length_energy_dist(loc, LAW, LOCC, length_interp_data)
-
-       ! allocate secondary energy distribution array
-       allocate(rxn % edist % data(length))
-
-       ! read secondary energy distribution
-       XSS_index = loc + 1
-       rxn % edist % data = get_real(length)
+       ! read data for energy distribution
+       call get_energy_dist(rxn % edist, LOCC)
     end do
 
   end subroutine read_energy_dist
+
+!===============================================================================
+! GET_ENERGY_DIST reads in data for a single law for an energy distribution and
+! calls itself recursively if there are multiple energy distributions for a
+! single reaction
+!===============================================================================
+
+  recursive subroutine get_energy_dist(edist, loc_law, delayed_n)
+
+    type(DistEnergy), pointer :: edist     ! energy distribution
+    integer, intent(in)       :: loc_law   ! locator for data
+    logical, optional         :: delayed_n ! is this for delayed neutrons?
+
+    integer :: LDIS   ! location of all energy distributions
+    integer :: LNW    ! location of next energy distribution if multiple
+    integer :: LAW    ! secondary energy distribution law   
+    integer :: NR     ! number of interpolation regions
+    integer :: NE     ! number of incoming energies
+    integer :: IDAT   ! location of first energy distribution for given MT
+    integer :: loc    ! locator
+    integer :: length ! length of data to allocate
+    integer :: length_interp_data ! length of interpolation data
+
+    ! determine location of energy distribution
+    if (present(delayed_n)) then
+       LDIS = JXS(27)
+    else
+       LDIS = JXS(11)
+    end if
+
+    ! locator for next law and information on this law
+    LNW  = XSS(LDIS + loc_law - 1)
+    LAW  = XSS(LDIS + loc_law)
+    IDAT = XSS(LDIS + loc_law + 1)
+    NR   = XSS(LDIS + loc_law + 2)
+    edist % law = LAW
+    edist % p_valid % n_regions = NR
+
+    ! allocate space for ENDF interpolation parameters
+    if (NR > 0) then
+       allocate(edist % p_valid % nbt(NR))
+       allocate(edist % p_valid % int(NR))
+    end if
+
+    ! read ENDF interpolation parameters
+    XSS_index = LDIS + loc_law + 3
+    if (NR > 0) then
+       edist % p_valid % nbt = get_real(NR)
+       edist % p_valid % int = get_real(NR)
+    end if
+
+    ! allocate space for law validity data
+    NE = XSS(LDIS + loc_law + 3 + 2*NR)
+    edist % p_valid % n_pairs = NE
+    allocate(edist % p_valid % x(NE))
+    allocate(edist % p_valid % y(NE))
+
+    length_interp_data = 5 + 2*(NR + NE)
+
+    ! read law validity data
+    XSS_index = LDIS + loc_law + 4 + 2*NR
+    edist % p_valid % x = get_real(NE)
+    edist % p_valid % y = get_real(NE)
+
+    ! Set index to beginning of IDAT array
+    loc = LDIS + IDAT - 2
+
+    ! determine length of energy distribution
+    length = length_energy_dist(loc, LAW, loc_law, length_interp_data)
+
+    ! allocate secondary energy distribution array
+    allocate(edist % data(length))
+
+    ! read secondary energy distribution
+    XSS_index = loc + 1
+    edist % data = get_real(length)
+
+    ! read next energy distribution if present
+    if (LNW > 0) then
+       allocate(edist % next)
+       call get_energy_dist(edist % next, LNW)
+    end if
+
+  end subroutine get_energy_dist
 
 !===============================================================================
 ! LENGTH_ENERGY_DIST determines how many values are contained in an LDAT energy
@@ -1056,119 +1105,6 @@ contains
     end do
 
   end subroutine read_unr_res
-
-!===============================================================================
-! READ_ACE_THERMAL reads in a single ACE thermal scattering S(a,b) table. This
-! routine in particular reads the header data and then calls read_thermal_data
-! to parse the actual data blocks.
-!===============================================================================
-
-  subroutine read_ACE_thermal(index_table, index)
-
-    integer, intent(in) :: index_table ! index in sab_tables array
-    integer, intent(in) :: index       ! index in xs_listings array
-
-    integer                 :: in = 7           ! unit to read from
-    integer                 :: ioError          ! error status for file access
-    integer                 :: lines            ! number of lines (data
-    integer                 :: n                ! number of data values
-    real(8)                 :: kT               ! ACE table temperature
-    logical                 :: file_exists      ! does ACE library exist?
-    logical                 :: found_xs         ! did we find table in library?
-    character(7)            :: readable         ! is ACE library readable?
-    character(MAX_LINE_LEN) :: line             ! single line to read
-    character(MAX_WORD_LEN) :: words(MAX_WORDS) ! words on a line
-    character(MAX_WORD_LEN) :: filename         ! name of ACE library file
-    character(10)           :: tablename        ! name of cross section table
-    type(SAB_Table), pointer :: table => null()
-
-    filename  = xs_listings(index) % path
-    tablename = xs_listings(index) % name
-
-    table => sab_tables(index_table)
-
-    ! Check if input file exists and is readable
-    inquire(FILE=filename, EXIST=file_exists, READ=readable)
-    if (.not. file_exists) then
-       message = "ACE library '" // trim(filename) // "' does not exist!"
-       call fatal_error()
-    elseif (readable(1:3) == 'NO') then
-       message = "ACE library '" // trim(filename) // "' is not readable! &
-            &Change file permissions with chmod command."
-       call fatal_error()
-    end if
-
-    ! display message
-    message = "Loading ACE cross section table: " // tablename
-    call write_message(6)
-
-    ! open file
-    open(file=filename, unit=in, status='old', & 
-         & action='read', iostat=ioError)
-    if (ioError /= 0) then
-       message = "Error while opening file: " // filename
-       call fatal_error()
-    end if
-
-    found_xs = .false.
-    do while (.not. found_xs)
-       call read_line(in, line, ioError)
-       if (ioError < 0) then
-          message = "Could not find ACE table " // tablename // "."
-          call fatal_error()
-       end if
-       call split_string(line, words, n)
-       if (trim(words(1)) == trim(tablename)) then
-          found_xs = .true.
-          table%name = words(1)
-          table%awr = str_to_real(words(2))
-          kT = str_to_real(words(3))
-          table%temp = kT / K_BOLTZMANN
-
-          ! Skip 1 line
-          call skip_lines(in, 1, ioError)
-
-          ! Read corresponding ZAID
-          call read_line(in, line, ioError)
-          call split_string(line, words, n)
-          table % zaid = str_to_int(words(1))
-
-          ! Skip remaining 3 lines
-          call skip_lines(in, 3, ioError)
-       else
-          ! Skip 5 lines
-          call skip_lines(in, 5, ioError)
-       end if
-
-       ! Read NXS and JXS data
-       read(UNIT=in, FMT=*) NXS
-       read(UNIT=in, FMT=*) JXS
-
-       ! Calculate how many data points and lines in the XSS array
-       n = NXS(1)
-       lines = (n + 3)/4
-
-       if (found_xs) then
-          ! allocate storage for XSS array
-          allocate(XSS(n))
-          
-          ! Read XSS
-          read(UNIT=in, FMT=*) XSS
-       else
-          call skip_lines(in, lines, ioError)
-       end if
-
-    end do
-
-    call read_thermal_data(table)
-
-    ! Free memory from XSS array
-    if(allocated(XSS)) deallocate(XSS)
-    if(associated(table)) nullify(table)
-
-    close(unit=in)
-
-  end subroutine read_ACE_thermal
 
 !===============================================================================
 ! READ_THERMAL_DATA reads elastic and inelastic cross sections and corresponding

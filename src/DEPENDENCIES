@@ -100,6 +100,7 @@ interpolation.o: endf_header.o
 interpolation.o: error.o
 interpolation.o: global.o
 interpolation.o: search.o
+interpolation.o: string.o
 
 logging.o: constants.o
 logging.o: global.o

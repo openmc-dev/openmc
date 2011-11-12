@@ -5,6 +5,7 @@ module interpolation
   use error,       only: fatal_error
   use global,      only: message
   use search,      only: binary_search
+  use string,      only: int_to_str
 
   implicit none
 
@@ -29,6 +30,7 @@ contains
     real(8)                       :: y         ! y(x)
 
     integer :: i               ! bin in which to interpolate
+    integer :: j               ! index for interpolation region
     integer :: loc_0           ! starting location
     integer :: n_regions       ! number of interpolation regions
     integer :: n_points        ! number of tabulated values
@@ -81,8 +83,12 @@ contains
     elseif (n_regions == 1) then
        interp = data(loc_interp + 1)
     elseif (n_regions > 1) then
-       message = "Multiple interpolation regions not yet supported."
-       call fatal_error()
+       do j = 1, n_regions
+          if (i < data(loc_breakpoints + j)) then
+             interp = data(loc_interp + j)
+             exit
+          end if
+       end do
     end if
 
     ! handle special case of histogram interpolation
@@ -111,6 +117,9 @@ contains
     case (LOG_LOG)
        r = (log(x) - log(x0))/(log(x1) - log(x0))
        y = exp((1-r)*log(y0) + r*log(y1))
+    case default
+       message = "Unsupported interpolation scheme: " // int_to_str(interp)
+       call fatal_error()
     end select
     
   end function interpolate_tab1_array
@@ -129,6 +138,7 @@ contains
     real(8)                :: y   ! y(x)
 
     integer :: i               ! bin in which to interpolate
+    integer :: j               ! index for interpolation region
     integer :: n_regions       ! number of interpolation regions
     integer :: n_pairs         ! number of tabulated values
     integer :: interp          ! ENDF interpolation scheme
@@ -159,8 +169,12 @@ contains
     elseif (n_regions == 1) then
        interp = obj % int(1)
     elseif (n_regions > 1) then
-       message = "Multiple interpolation regions not yet supported."
-       call fatal_error()
+       do j = 1, n_regions
+          if (i < obj % nbt(j)) then
+             interp = obj % int(j)
+             exit
+          end if
+       end do
     end if
 
     ! handle special case of histogram interpolation
@@ -189,6 +203,9 @@ contains
     case (LOG_LOG)
        r = (log(x) - log(x0))/(log(x1) - log(x0))
        y = exp((1-r)*log(y0) + r*log(y1))
+    case default
+       message = "Unsupported interpolation scheme: " // int_to_str(interp)
+       call fatal_error()
     end select
     
   end function interpolate_tab1_object

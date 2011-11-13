@@ -21,10 +21,8 @@ module cmfd_header
     ! diffusion coefficient
     real(8), allocatable :: diffcof(:,:,:,:)
 
-    ! currents
-    real(8), allocatable :: currentX(:,:,:,:,:)
-    real(8), allocatable :: currentY(:,:,:,:,:)
-    real(8), allocatable :: currentZ(:,:,:,:,:)
+    ! current 
+    real(8), allocatable :: current(:,:,:,:,:)
 
     ! flux
     real(8), allocatable :: flux(:,:,:,:)

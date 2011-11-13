@@ -1,5 +1,6 @@
 module cmfd_execute
 
+  use cmfd_utils,   only: get_matrix_idx
   use global
   use mesh,         only: mesh_indices_to_bin
   use mesh_header,  only: StructuredMesh
@@ -28,6 +29,9 @@ contains
     write(100,*) cmfd % scattxs
     write(100,*) cmfd % nfissxs
     write(100,*) cmfd % hxyz
+    write(101,*) cmfd % currentX
+    write(101,*) cmfd % currentY
+    write(101,*) cmfd % currentZ
 
     ! force albedos
     cmfd % albedo = 1.0
@@ -40,7 +44,7 @@ contains
     cmfd % dhat = 0.0
 
     ! print dtilde
-    write(101,*) cmfd % dtilde
+    write(102,*) cmfd % dtilde
 
     ! solve diffusion equation
     call cmfd_solver()
@@ -83,9 +87,9 @@ contains
     allocate( cmfd % sourcepdf(ng,nx,ny,nz) )
 
     ! allocate surface currents
-    allocate( cmfd % currentX(2,ng,nx,ny,nz) )
-    allocate( cmfd % currentY(2,ng,nx,ny,nz) )
-    allocate( cmfd % currentZ(2,ng,nx,ny,nz) )
+    allocate( cmfd % currentX(4,ng,nx,ny,nz) )
+    allocate( cmfd % currentY(4,ng,nx,ny,nz) )
+    allocate( cmfd % currentZ(4,ng,nx,ny,nz) )
 
   end subroutine allocate_cmfd
 
@@ -118,7 +122,7 @@ contains
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
     ng = cmfd % indices(4)
-
+ 
     ! begin loop around space and energy groups
     ZLOOP: do k = 1,nz
 
@@ -185,6 +189,51 @@ contains
               cmfd % nfissxs(h,g,i,j,k) = t % scores(score_index,2) % val / flux
 
             end do OUTGROUP
+
+            ! extract surface currents 
+            t => tallies(3) 
+ 
+            ! left surface
+            ijk = (/ i-1, j, k /)
+            score_index = sum(t % stride(1:3) * ijk) + IN_RIGHT ! outgoing
+            cmfd % currentX(1,g,i,j,k) = t % scores(score_index,1) % val
+            score_index = sum(t % stride(1:3) * ijk) + OUT_RIGHT ! incoming 
+            cmfd % currentX(2,g,i,j,k) = t % scores(score_index,1) % val
+
+            ! right surface
+            ijk = (/ i, j, k /)
+            score_index = sum(t % stride(1:3) * ijk) + IN_RIGHT ! incoming 
+            cmfd % currentX(3,g,i,j,k) = t % scores(score_index,1) % val
+            score_index = sum(t % stride(1:3) * ijk) + OUT_RIGHT ! outgoing 
+            cmfd % currentX(4,g,i,j,k) = t % scores(score_index,1) % val
+
+            ! back surface
+            ijk = (/ i, j-1, k /)
+            score_index = sum(t % stride(1:3) * ijk) + IN_FRONT ! outgoing
+            cmfd % currentY(1,g,i,j,k) = t % scores(score_index,1) % val
+            score_index = sum(t % stride(1:3) * ijk) + OUT_FRONT ! incoming 
+            cmfd % currentY(2,g,i,j,k) = t % scores(score_index,1) % val
+
+            ! front surface
+            ijk = (/ i, j, k /)
+            score_index = sum(t % stride(1:3) * ijk) + IN_FRONT ! incoming 
+            cmfd % currentY(3,g,i,j,k) = t % scores(score_index,1) % val
+            score_index = sum(t % stride(1:3) * ijk) + OUT_FRONT ! outgoing 
+            cmfd % currentY(4,g,i,j,k) = t % scores(score_index,1) % val
+
+            ! bottom surface
+            ijk = (/ i, j, k-1 /)
+            score_index = sum(t % stride(1:3) * ijk) + IN_TOP ! outgoing
+            cmfd % currentZ(1,g,i,j,k) = t % scores(score_index,1) % val
+            score_index = sum(t % stride(1:3) * ijk) + OUT_TOP ! incoming 
+            cmfd % currentZ(2,g,i,j,k) = t % scores(score_index,1) % val
+
+            ! top surface
+            ijk = (/ i, j, k /)
+            score_index = sum(t % stride(1:3) * ijk) + IN_TOP ! incoming 
+            cmfd % currentZ(3,g,i,j,k) = t % scores(score_index,1) % val
+            score_index = sum(t % stride(1:3) * ijk) + OUT_TOP ! outgoing 
+            cmfd % currentZ(4,g,i,j,k) = t % scores(score_index,1) % val
 
           end do INGROUP
 
@@ -669,8 +718,6 @@ use timing, only: timer_start, timer_stop
 !===============================================================================
 
   subroutine loss_matrix(M)
-
-    use cmfd_utils,  only: get_matrix_idx
 
 #include <finclude/petsc.h90>
 

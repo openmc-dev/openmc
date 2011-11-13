@@ -33,10 +33,6 @@ contains
     write(101,*) cmfd % currentY
     write(101,*) cmfd % currentZ
 
-    ! force albedos
-    cmfd % albedo = 1.0
-    cmfd % albedo(1:2) = 0.0
-
     ! compute dtilde terms
     call compute_diffcoef()
 

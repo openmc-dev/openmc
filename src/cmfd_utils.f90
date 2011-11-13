@@ -282,6 +282,9 @@ contains
     cmfd % indices(1:3) = m % dimension(1:3) ! sets spatial dimensions
     cmfd % indices(4) = ng  ! sets energy group dimension
 
+    ! set global albedo
+    cmfd % albedo = mesh_ % albedo
+
   end subroutine create_cmfd_tally
 
 end module cmfd_utils

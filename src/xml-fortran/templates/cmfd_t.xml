@@ -7,6 +7,7 @@
     <component name="dimension" type="integer-array" />
     <component name="origin" type="double-array" />
     <component name="width" type="double-array" />
+    <component name="albedo" type="double-array" />
   </typedef>
 
   <variable name="mesh_" tag="mesh" type="mesh_xml" />

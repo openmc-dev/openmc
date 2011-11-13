@@ -29,18 +29,17 @@ contains
     write(100,*) cmfd % scattxs
     write(100,*) cmfd % nfissxs
     write(100,*) cmfd % hxyz
-    write(101,*) cmfd % currentX
-    write(101,*) cmfd % currentY
-    write(101,*) cmfd % currentZ
+    write(101,*) cmfd % current 
 
     ! compute dtilde terms
     call compute_diffcoef()
 
     ! set dhats to zero
-    cmfd % dhat = 0.0
+    call compute_dhat() 
 
-    ! print dtilde
+    ! print dtilde and dhat
     write(102,*) cmfd % dtilde
+    write(103,*) cmfd % dhat
 
     ! solve diffusion equation
     call cmfd_solver()
@@ -83,9 +82,7 @@ contains
     allocate( cmfd % sourcepdf(ng,nx,ny,nz) )
 
     ! allocate surface currents
-    allocate( cmfd % currentX(4,ng,nx,ny,nz) )
-    allocate( cmfd % currentY(4,ng,nx,ny,nz) )
-    allocate( cmfd % currentZ(4,ng,nx,ny,nz) )
+    allocate( cmfd % current(12,ng,nx,ny,nz) )
 
   end subroutine allocate_cmfd
 
@@ -192,44 +189,44 @@ contains
             ! left surface
             ijk = (/ i-1, j, k /)
             score_index = sum(t % stride(1:3) * ijk) + IN_RIGHT ! outgoing
-            cmfd % currentX(1,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(1,g,i,j,k) = t % scores(score_index,1) % val
             score_index = sum(t % stride(1:3) * ijk) + OUT_RIGHT ! incoming 
-            cmfd % currentX(2,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(2,g,i,j,k) = t % scores(score_index,1) % val
 
             ! right surface
             ijk = (/ i, j, k /)
             score_index = sum(t % stride(1:3) * ijk) + IN_RIGHT ! incoming 
-            cmfd % currentX(3,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(3,g,i,j,k) = t % scores(score_index,1) % val
             score_index = sum(t % stride(1:3) * ijk) + OUT_RIGHT ! outgoing 
-            cmfd % currentX(4,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(4,g,i,j,k) = t % scores(score_index,1) % val
 
             ! back surface
             ijk = (/ i, j-1, k /)
             score_index = sum(t % stride(1:3) * ijk) + IN_FRONT ! outgoing
-            cmfd % currentY(1,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(5,g,i,j,k) = t % scores(score_index,1) % val
             score_index = sum(t % stride(1:3) * ijk) + OUT_FRONT ! incoming 
-            cmfd % currentY(2,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(6,g,i,j,k) = t % scores(score_index,1) % val
 
             ! front surface
             ijk = (/ i, j, k /)
             score_index = sum(t % stride(1:3) * ijk) + IN_FRONT ! incoming 
-            cmfd % currentY(3,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(7,g,i,j,k) = t % scores(score_index,1) % val
             score_index = sum(t % stride(1:3) * ijk) + OUT_FRONT ! outgoing 
-            cmfd % currentY(4,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(8,g,i,j,k) = t % scores(score_index,1) % val
 
             ! bottom surface
             ijk = (/ i, j, k-1 /)
             score_index = sum(t % stride(1:3) * ijk) + IN_TOP ! outgoing
-            cmfd % currentZ(1,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(9,g,i,j,k) = t % scores(score_index,1) % val
             score_index = sum(t % stride(1:3) * ijk) + OUT_TOP ! incoming 
-            cmfd % currentZ(2,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(10,g,i,j,k) = t % scores(score_index,1) % val
 
             ! top surface
             ijk = (/ i, j, k /)
             score_index = sum(t % stride(1:3) * ijk) + IN_TOP ! incoming 
-            cmfd % currentZ(3,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(11,g,i,j,k) = t % scores(score_index,1) % val
             score_index = sum(t % stride(1:3) * ijk) + OUT_TOP ! outgoing 
-            cmfd % currentZ(4,g,i,j,k) = t % scores(score_index,1) % val
+            cmfd % current(12,g,i,j,k) = t % scores(score_index,1) % val
 
           end do INGROUP
 
@@ -373,7 +370,8 @@ contains
     integer :: bound(6)           ! vector containing indices for boudary check
     real(8) :: cell_dtilde(6)     ! cell dtilde for each face
     real(8) :: cell_flux          ! flux in current cell
-    real(8) :: current(3,2)       ! cell current at each face
+    real(8) :: current(12)        ! area integrated cell current at each face
+    real(8) :: net_current        ! net current on a face
     real(8) :: neig_flux          ! flux in neighbor cell
     real(8) :: dhat               ! dhat equivalence parameter
 
@@ -397,12 +395,10 @@ contains
 
           GROUP: do g = 1,ng
 
-            ! get cell data (CHANGE THIS)
+            ! get cell data
             cell_dtilde = cmfd%dtilde(:,g,i,j,k)
-            cell_flux = cmfd%flux(g,i,j,k)
-            current(1,:) = cmfd%currentX(1,g,i-1:i,j,k)
-            current(2,:) = cmfd%currentY(1,g,i,j-1:j,k)
-            current(3,:) = cmfd%currentZ(1,g,i,j,k-1:k)
+            cell_flux = cmfd%flux(g,i,j,k)/product(cmfd%hxyz(:,i,j,k))
+            current = cmfd%current(:,g,i,j,k)
 
 
             ! setup of vector to identify boundary conditions
@@ -416,12 +412,17 @@ contains
               dir_idx = 2 - mod(l,2) ! -=1, +=2
               shift_idx = -2*mod(l,2) +1          ! shift neig by -1 or +1
 
+              ! calculate net current on l face (divided by surf area)
+              net_current = (current(2*l) - current(2*l-1)) /                  &
+             &               product(cmfd%hxyz(:,i,j,k)) *                     &
+             &               cmfd%hxyz(xyz_idx,i,j,k)
+
               ! check if at a boundary
               if (bound(l) == nxyz(xyz_idx,dir_idx)) then
 
                 ! compute dhat
-                dhat = (current(xyz_idx,dir_idx) - shift_idx*cell_dtilde(l)*   &
-               &        cell_flux)/cell_flux
+                dhat = (net_current - shift_idx*cell_dtilde(l)*cell_flux) /    &
+               &        cell_flux
 
               else  ! not a boundary
 
@@ -429,11 +430,12 @@ contains
                 neig_idx = (/i,j,k/)                ! begin with i,j,k
                 neig_idx(xyz_idx) = shift_idx + neig_idx(xyz_idx)
 
-                ! get neigbor cell data
-                neig_flux = cmfd%flux(neig_idx(1),neig_idx(2),neig_idx(3),g)
+                ! get neigbor flux 
+                neig_flux = cmfd%flux(neig_idx(1),neig_idx(2),neig_idx(3),g)/  &
+                     product(cmfd%hxyz(:,neig_idx(1),neig_idx(2),neig_idx(3)))
 
                 ! compute dhat 
-                dhat = (current(xyz_idx,dir_idx) + shift_idx*cell_dtilde(l)*   &
+                dhat = (net_current + shift_idx*cell_dtilde(l)*                &
                &       (neig_flux - cell_flux))/(neig_flux + cell_flux)
 
               end if

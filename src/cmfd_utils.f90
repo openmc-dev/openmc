@@ -64,26 +64,34 @@ contains
     type(StructuredMesh), pointer :: m ! pointer for mesh object
 
     ! associate pointers with objects
-    t => tallies(1)
+    t => tallies(3)
     m => meshes(t % mesh)
 
     ! set all bins to 1
     bins = 1
 
     ! get mesh indices, first we will first force to 1,1,1
-    ijk = (/ 1, 1, 1 /)
+!   ijk = (/ 1, 1, 1 /)
 
     ! apply filters, here we will just try a mesh filter first
-    bins(T_MESH) = mesh_indices_to_bin(m,ijk)
+ !  bins(T_MESH) = mesh_indices_to_bin(m,ijk)
 
     ! calculate score index from bins
-    score_index = sum((bins - 1) * t%stride) + 1
+ !  score_index = sum((bins - 1) * t%stride) + 1
 
     ! get value from tally object
-    tally_val = t%scores(score_index,1)%val
+ !  tally_val = t%scores(score_index,2)%val
 
     ! write value to file
-    write(7,*) "Tally value is:",tally_val
+ !  write(7,*) "Tally value is:",tally_val
+
+    ! Left Surface
+    ijk = (/ 1-1, 1, 1 /)
+    score_index = sum(t % stride(1:3) * ijk) + IN_RIGHT
+    print *, "Outgiong Current from Left", t % scores(score_index,1) % val
+    score_index = sum(t % stride(1:3) * ijk) + OUT_RIGHT
+    print *, "Incoming Current from Left", t % scores(score_index,1) % val
+
 
   end subroutine print_cmfd
 

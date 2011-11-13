@@ -473,34 +473,26 @@ use timing, only: timer_start, timer_stop
 
 #include <finclude/petsc.h90>
 
-    Mat         :: A             ! shift matrix
-    Mat         :: M             ! loss matrix
-    Mat         :: F             ! production matrix
-    Vec         :: phi_n         ! new flux eigenvector
-    Vec         :: phi_o         ! old flux eigenvector
-    Vec         :: S_n           ! new source vector
-    Vec         :: S_o           ! old source vector
-    real(8)     :: k_n           ! new k-eigenvalue
-    real(8)     :: k_o           ! old k-eigenvlaue
-    real(8)     :: ka_n          ! new modified eigenvalue
-    real(8)     :: ka_o          ! old modified eigenvalue   
-    real(8)     :: num           ! numerator for eigenvalue update
-    real(8)     :: den           ! denominator for eigenvalue update
-    real(8)     :: one =  1.0    ! one
-    real(8)     :: dk =   0.01   ! eigenvalue shift
-    real(8)     :: ks            ! negative one
-    integer     :: ierr          ! error flag
-    KSP         :: krylov        ! krylov solver
-    PC          :: prec          ! preconditioner for krylov
-    PetscViewer :: viewer        ! viewer for answer
+    Mat         :: M       ! loss matrix
+    Mat         :: F       ! production matrix
+    Vec         :: phi_n   ! new flux eigenvector
+    Vec         :: phi_o   ! old flux eigenvector
+    Vec         :: S_n     ! new source vector
+    Vec         :: S_o     ! old source vector
+    real(8)     :: k_n     ! new k-eigenvalue
+    real(8)     :: k_o     ! old k-eigenvlaue
+    real(8)     :: num     ! numerator for eigenvalue update
+    real(8)     :: den     ! denominator for eigenvalue update
+    real(8)     :: one=1.0 ! one
+    integer     :: ierr    ! error flag
+    KSP         :: krylov  ! krylov solver
+    PC          :: prec    ! preconditioner for krylov
+    PetscViewer :: viewer  ! viewer for answer
     real(8) :: info(MAT_INFO_SIZE)
     real(8) :: mall
     real(8) :: nza,nzu,nzun
     integer :: i       ! iteration counter
     logical :: iconv   ! is problem converged
-    integer :: nzM,n
-    integer :: maxit
-    real(8) :: ktol
 
     ! reset convergence flag
     iconv = .FALSE.
@@ -511,7 +503,7 @@ use timing, only: timer_start, timer_stop
     ! initialize matrices and vectors
     print *,"Initializing and building matrices"
     call timer_start(time_mat)
-    call init_data(M,F,phi_n,phi_o,S_n,S_o,k_n,k_o)
+    call init_data(M,F,phi_n,phi_o,S_n,S_o,k_n,k_o,krylov,prec)
 
     ! set up M loss matrix
     call loss_matrix(M)
@@ -525,70 +517,39 @@ use timing, only: timer_start, timer_stop
     call prod_matrix(F)
     call timer_stop(time_mat)
 
+    ! set up krylov info
+    call KSPSetOperators(krylov, M, M, SAME_NONZERO_PATTERN, ierr)
+    call KSPSetUp(krylov,ierr)
+
+    ! calculate preconditioner (ILU)
+    call PCFactorGetMatrix(prec,M,ierr)
+
     ! begin timer for power iteration
     print *,"Beginning power iteration"
     call timer_start(time_power)
 
-    ! set of Wielandt eigenvalues
-    ka_n = k_n
-    ka_o = k_o
-
     ! begin power iteration
     do i = 1,10000
 
-      ! shift eigenvalue
-!     if (i <= 5) then
-        ks = -1.284946 
-!     else
-!       ks = -1*(k_o + dk)
-!     end if
-
-      ! set up Wielandt shift
-!     if (i == 1) then
-      call init_solver(A,krylov,prec)
-      call MatCopy(M,A,SAME_NONZERO_PATTERN,ierr)
-
-      ! only shift after iteration 1
-      if (i /= 1) then
-        call MatAXPY(A,one/ks,F,SUBSET_NONZERO_PATTERN,ierr)
-      end if
-
-      ! set up krylov info
-      call KSPSetOperators(krylov, A, A, SAME_NONZERO_PATTERN, ierr)
-      call KSPSetUp(krylov,ierr)
-
-      ! calculate preconditioner (ILU)
-      call PCFactorGetMatrix(prec,A,ierr)
-!     end if 
       ! compute source vector
       call MatMult(F,phi_o,S_o,ierr)
 
       ! normalize source vector
-      call VecScale(S_o,one/ka_o,ierr)
+      call VecScale(S_o,one/k_o,ierr)
 
       ! compute new flux vector
       call KSPSolve(krylov,S_o,phi_n,ierr)
 
-      call KSPGetIterationNumber(krylov,maxit,ierr)
-      call KSPGetResidualNorm(krylov,ktol,ierr)
-
       ! compute new source vector
       call MatMult(F,phi_n,S_n,ierr)
 
-      ! compute new shifted k-eigenvalue
+      ! compute new k-eigenvalue
       call VecSum(S_n,num,ierr)
       call VecSum(S_o,den,ierr)
-      ka_n = num/den
-
-      ! compute new k-eigenvalue
-      if (i ==1) then 
-        k_n = ka_n
-      else
-        k_n = 1/(1/ka_n - 1/ks)
-      end if
+      k_n = num/den
 
       ! renormalize the old source
-      call VecScale(S_o,ka_o,ierr)
+      call VecScale(S_o,k_o,ierr)
 
       ! check convergence
       call convergence(S_n,S_o,k_o,k_n,iconv)
@@ -599,8 +560,6 @@ use timing, only: timer_start, timer_stop
       ! record old values
       call VecCopy(phi_n,phi_o,ierr)
       k_o = k_n
-      ka_o = ka_n
-      call KSPDestroy(krylov,ierr)
 
     end do
 
@@ -612,7 +571,7 @@ use timing, only: timer_start, timer_stop
     print *,"Matrix building time (s):",time_mat%elapsed
     print *,"Power iteration time (s):",time_power%elapsed
     print *,"Power iteration time per iteration (s):",time_power%elapsed/i
-    print *,"Total number of power iterations:",i
+    print *,"Number of Power iterations:",i
 
     ! compute source pdf and record in cmfd object
 !   call source_pdf(S_n)
@@ -626,14 +585,13 @@ use timing, only: timer_start, timer_stop
     ! finalize PETSc
     call PetscFinalize(ierr)
 
-
   end subroutine cmfd_solver
 
 !===============================================================================
 ! INIT_DATA allocates matrices vectors for CMFD solution
 !===============================================================================
 
-  subroutine init_data(M,F,phi_n,phi_o,S_n,S_o,k_n,k_o)
+  subroutine init_data(M,F,phi_n,phi_o,S_n,S_o,k_n,k_o,krylov,prec)
 
 #include <finclude/petsc.h90>
 
@@ -646,9 +604,13 @@ use timing, only: timer_start, timer_stop
     Vec         :: S_o        ! old source vector
     real(8)     :: k_n        ! new k-eigenvalue
     real(8)     :: k_o        ! old k-eigenvalue
- 
+    KSP         :: krylov     ! krylov solver
+    PC          :: prec       ! preconditioner for krylov
+
     ! local variables
     integer             :: n           ! dimensions of matrix
+    integer             :: nz_M        ! number of nonzeros in loss matrix
+    integer             :: nz_F        ! number of nonzeros in prod matrix
     integer             :: ierr        ! error flag
     integer             :: nx          ! maximum number of x cells
     integer             :: ny          ! maximum number of y cells
@@ -686,6 +648,7 @@ use timing, only: timer_start, timer_stop
     call MatSetOption(F,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
     call MatSetOption(F,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
 
+
     ! set up flux vectors
     call VecCreate(PETSC_COMM_WORLD,phi_n,ierr)
     call VecSetSizes(phi_n,PETSC_DECIDE,n,ierr)
@@ -707,7 +670,20 @@ use timing, only: timer_start, timer_stop
     call VecSet(phi_n,guess,ierr)
     call VecSet(phi_o,guess,ierr)
     k_n = guess
-    k_o = guess  
+    k_o = guess
+
+    ! set up krylov solver
+    call KSPCreate(PETSC_COMM_WORLD,krylov,ierr)
+    call KSPSetTolerances(krylov,ktol,PETSC_DEFAULT_DOUBLE_PRECISION,          &
+   &                      PETSC_DEFAULT_DOUBLE_PRECISION,                      &
+   &                      PETSC_DEFAULT_INTEGER,ierr)
+    call KSPSetType(krylov,KSPGMRES,ierr)
+    call KSPSetInitialGuessNonzero(krylov,PETSC_TRUE,ierr)
+    call KSPSetInitialGuessNonzero(krylov,PETSC_TRUE,ierr)
+    call KSPGetPC(krylov,prec,ierr)
+    call PCSetType(prec,PCILU,ierr)
+    call PCFactorSetLevels(prec,5,ierr)
+    call KSPSetFromOptions(krylov,ierr)
 
   end subroutine init_data 
 
@@ -969,65 +945,6 @@ use timing, only: timer_start, timer_stop
     call PetscViewerDestroy(viewer,ierr)
 
   end subroutine prod_matrix
-
-!===============================================================================
-! INIT_Solver  allocates matrices vectors for CMFD solution
-!===============================================================================
-
-  subroutine init_solver(A,krylov,prec)
-
-#include <finclude/petsc.h90>
-
-    ! arguments
-    Mat         :: A          ! shifted matrxi
-    KSP         :: krylov     ! krylov solver
-    PC          :: prec       ! preconditioner for krylov
- 
-    ! local variables
-    integer             :: n           ! dimensions of matrix
-    integer             :: ierr        ! error flag
-    integer             :: nx          ! maximum number of x cells
-    integer             :: ny          ! maximum number of y cells
-    integer             :: nz          ! maximum number of z cells
-    integer             :: ng          ! maximum number of groups
-    integer             :: nzM         ! max number of nonzeros in a row for M
-    integer             :: maxit = 10e4  ! max krylov iters
-    real(8)             :: ktol=1.e-7  ! krylov tolerance
-    real(8)             :: mem
-    integer             :: res = 100
-
-    ! get maximum number of cells in each direction
-    nx = cmfd%indices(1)
-    ny = cmfd%indices(2)
-    nz = cmfd%indices(3)
-    ng = cmfd%indices(4)
-
-    ! calculate dimensions of matrix
-    n = nx*ny*nz*ng
-
-    ! maximum number of nonzeros in each matrix
-    nzM = 7+ng-1
-
-    ! set up Wielandt matrix
-    call MatCreateSeqAIJ(PETSC_COMM_SELF,n,n,nzM,PETSC_NULL_INTEGER,A,ierr)
-    call MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
-    call MatSetOption(A,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
-    call MatSetOption(A,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
-
-    ! set up krylov solver
-    call KSPCreate(PETSC_COMM_WORLD,krylov,ierr)
-    call KSPSetTolerances(krylov,ktol,PETSC_DEFAULT_DOUBLE_PRECISION,          &
-   &                      PETSC_DEFAULT_DOUBLE_PRECISION,                      &
-   &                      maxit,ierr)
-    call KSPSetType(krylov,KSPGMRES,ierr)
-    call KSPSetInitialGuessNonzero(krylov,PETSC_TRUE,ierr)
-    call KSPSetInitialGuessNonzero(krylov,PETSC_TRUE,ierr)
-    call KSPGetPC(krylov,prec,ierr)
-    call PCSetType(prec,PCILU,ierr)
-!   call KSPGMRESSetRestart(krylov,res,ierr)
-    call KSPSetFromOptions(krylov,ierr)
-
-  end subroutine init_solver
 
 !===============================================================================
 ! CONVERGENCE checks the convergence of eigenvalue, eigenvector and source

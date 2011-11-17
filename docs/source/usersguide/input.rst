@@ -232,18 +232,18 @@ Settings Specification -- settings.xml
 All simulation parameters and miscellaneous options are specified in the
 settings.xml file. The following elements can be specified:
 
-- ``xslibrary``
+- ``cross_sections``
 - ``criticality``
 - ``verbosity``
 - ``source``
+- ``survival_biasing``
+- ``cutoff``
 
-The ``xslibrary`` element has the following attributes:
-
-  :path:
-    The absolute or relative path of the xsdata file which lists cross sections
-    to be used in the simulation.
-
-    *Default*: None
+The ``cross_sections`` element has no attributes and simply indicates the path
+to an XML cross section listing file (usually named ``cross_sections.xml``. If
+this element is absent from the ``settings.xml`` file, the environment variable
+``CROSS_SECTIONS`` will be used to find the path to the XML cross section
+listing.
 
 The ``criticality`` element indicates that a criticality calculation should be
 performed. It has the following attributes/sub-elements:
@@ -287,6 +287,17 @@ criticality calculations. It takes the following attributes:
     the first three of which specify the lower-left corner of a parallelepiped
     and the last three of which specify the upper-right corner. Source sites are
     sampled uniformly through that parallelepiped.
+
+The ``survival_biasing`` element as no attributes and assumes wither the
+value ``on`` or ``off``. If turned on, this option will enable the use of
+survival biasing, otherwise known as implicit capture or absorption.
+
+  *Default*: off
+
+The ``cutoff`` element has no attributes and indicates the weight cutoff used
+below which particles undergo Russian roulette.
+
+  *Default*: 0.25
 
 ------------------------------------
 Tallies Specification -- tallies.xml

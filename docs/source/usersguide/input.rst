@@ -64,14 +64,14 @@ number of cells, surfaces, and lattices. Let us look at the following example::
       <!-- This is a comment -->
 
       <surface>
-        <uid>1</uid>
+        <id>1</id>
         <type>sphere</type>
         <coeffs>0.0 0.0 0.0 5.0</coeffs>
         <boundary>vacuum</boundary>
       <surface>
 
       <cell>
-        <uid>1</uid>
+        <id>1</id>
         <universe>0</universe>
         <material>1</material>
         <surfaces>-1</surfaces>
@@ -89,14 +89,14 @@ could be written as::
     <geometry>
       <!-- This is a comment -->
 
-      <surface uid="1" type="sphere" coeffs="0.0 0.0 0.0 5.0" boundary="vacuum" />
-      <cell uid="1" universe="0" material="1" surfaces="-1" />
+      <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 5.0" boundary="vacuum" />
+      <cell id="1" universe="0" material="1" surfaces="-1" />
 
     </geometry>
 
 Each ``surface`` element can have the following attributes or sub-elements:
 
-  :uid:
+  :id:
     A unique integer that can be used to identify the surface.
 
     *Default*: None
@@ -120,32 +120,32 @@ Each ``surface`` element can have the following attributes or sub-elements:
 
 Each ``cell`` element can have the following attributes or sub-elements:
 
-  :uid:
+  :id:
     A unique integer that can be used to identify the surface.
 
     *Default*: None
 
   :universe:
-    The ``uid`` of the universe that this cell is contained in.
+    The ``id`` of the universe that this cell is contained in.
 
     *Default*: 0
 
   :fill:
-    The ``uid`` of the universe that fills this cell.
+    The ``id`` of the universe that fills this cell.
 
     .. note:: If a fill is specified, no material should be given.
 
     *Default*: None
 
   :material:
-    The ``uid`` of the material that this cell contains.
+    The ``id`` of the material that this cell contains.
 
     .. note:: If a material is specified, no fill should be given.
 
     *Default*: None
 
   :surfaces:
-    A list of the ``uids`` for surfaces that bound this cell, e.g. if the cell
+    A list of the ``ids`` for surfaces that bound this cell, e.g. if the cell
     is on the negative side of surface 3 and the positive side of surface 5, the
     bounding surfaces would be given as "-3 5".
 

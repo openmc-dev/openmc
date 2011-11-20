@@ -863,11 +863,11 @@ contains
                 end if
 
                 ! Check to make sure that only the mesh filter was specified
-                if (t % mesh == 0 .or. t % n_bins(T_MESH) /= & 
-                     product(t % n_bins, t % n_bins > 0)) then
-                   message = "Surface currents must be used with a mesh filter only."
-                   call fatal_error()
-                end if
+!!$                if (t % mesh == 0 .or. t % n_bins(T_MESH) /= & 
+!!$                     product(t % n_bins, t % n_bins > 0)) then
+!!$                   message = "Surface currents must be used with a mesh filter only."
+!!$                   call fatal_error()
+!!$                end if
 
                 ! Since the number of bins for the mesh filter was already set
                 ! assuming it was a flux tally, we need to adjust the number of

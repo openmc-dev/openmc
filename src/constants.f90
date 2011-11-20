@@ -208,6 +208,12 @@ module constants
        T_MESH      = 6, &
        T_ENERGYIN  = 7, &
        T_ENERGYOUT = 8
+  integer, parameter :: &
+       TS_MESH_X   = 1, &
+       TS_MESH_Y   = 2, &
+       TS_MESH_Z   = 3, &
+       TS_ENERGYIN = 4, &
+       TS_SURFACE  = 5
 
   ! Tally surface current directions
   integer, parameter :: &

@@ -31,7 +31,7 @@ USE_COARRAY = no
 
 ifeq ($(COMPILER),intel)
   F90 = ifort
-  F90FLAGS := -fpp -warn
+  F90FLAGS := -fpp -warn -assume byterecl
   LDFLAGS =
 endif
 

@@ -95,12 +95,12 @@ contains
 
   subroutine create_tally_map()
 
-    integer :: i                   ! loop index for tallies
-    integer :: j                   ! loop index for filter arrays
-    integer :: index               ! filter bin entries
-    integer :: n                   ! number of bins
-    integer :: filter_bins         ! running total of number of filter bins
-    integer :: score_bins          ! number of scoring bins
+    integer :: i           ! loop index for tallies
+    integer :: j           ! loop index for filter arrays
+    integer :: index       ! filter bin entries
+    integer :: n           ! number of bins
+    integer :: filter_bins ! running total of number of filter bins
+    integer :: score_bins  ! number of scoring bins
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 
@@ -129,23 +129,31 @@ contains
        if (t % surface_current) then
           m => meshes(t % mesh)
 
+          t % stride(TS_SURFACE) = filter_bins
           ! Set stride for surface/direction
           if (m % n_dimension == 2) then
              filter_bins = filter_bins * 4
           elseif (m % n_dimension == 3) then
              filter_bins = filter_bins * 6
           end if
+
+          ! Add filter for incoming energy
+          n = t % n_bins(T_ENERGYIN)
+          t % stride(TS_ENERGYIN) = filter_bins
+          if (n > 0) then
+             filter_bins = filter_bins * n
+          end if
           
           ! account for z direction
-          t % stride(3) = filter_bins
+          t % stride(TS_MESH_Z) = filter_bins
           filter_bins = filter_bins * (m % dimension(3) + 1)
 
           ! account for y direction
-          t % stride(2) = filter_bins
+          t % stride(TS_MESH_Y) = filter_bins
           filter_bins = filter_bins * (m % dimension(2) + 1)
 
           ! account for z direction
-          t % stride(1) = filter_bins
+          t % stride(TS_MESH_X) = filter_bins
           filter_bins = filter_bins * (m % dimension(1) + 1)
 
           ! Finally add scoring bins for the macro tallies and allocate scores
@@ -578,26 +586,30 @@ contains
 
     type(Particle),    pointer :: p
 
-    integer :: i             ! loop indices
-    integer :: j             ! loop indices
-    integer :: k             ! loop indices
-    integer :: ijk0(3)       ! indices of starting coordinates
-    integer :: ijk1(3)       ! indices of ending coordinates
-    integer :: n_cross       ! number of surface crossings
-    integer :: score_index   ! index of scoring bin
-    real(8) :: uvw(3)        ! cosine of angle of particle
-    real(8) :: xyz0(3)       ! starting/intermediate coordinates
-    real(8) :: xyz1(3)       ! ending coordinates of particle
-    real(8) :: xyz_cross(3)  ! coordinates of bounding surfaces
-    real(8) :: d(3)          ! distance to each bounding surface
-    real(8) :: distance      ! actual distance traveled
-    logical :: start_in_mesh ! particle's starting xyz in mesh?
-    logical :: end_in_mesh   ! particle's ending xyz in mesh?
-    logical :: x_same        ! same starting/ending x index (i)
-    logical :: y_same        ! same starting/ending y index (j)
-    logical :: z_same        ! same starting/ending z index (k)
+    integer :: i                 ! loop indices
+    integer :: j                 ! loop indices
+    integer :: k                 ! loop indices
+    integer :: ijk0(3)           ! indices of starting coordinates
+    integer :: ijk1(3)           ! indices of ending coordinates
+    integer :: n_cross           ! number of surface crossings
+    integer :: n                 ! number of incoming energy bins
+    integer :: bins(TALLY_TYPES) ! scoring bin combination
+    integer :: score_index       ! index of scoring bin
+    real(8) :: uvw(3)            ! cosine of angle of particle
+    real(8) :: xyz0(3)           ! starting/intermediate coordinates
+    real(8) :: xyz1(3)           ! ending coordinates of particle
+    real(8) :: xyz_cross(3)      ! coordinates of bounding surfaces
+    real(8) :: d(3)              ! distance to each bounding surface
+    real(8) :: distance          ! actual distance traveled
+    logical :: start_in_mesh     ! particle's starting xyz in mesh?
+    logical :: end_in_mesh       ! particle's ending xyz in mesh?
+    logical :: x_same            ! same starting/ending x index (i)
+    logical :: y_same            ! same starting/ending y index (j)
+    logical :: z_same            ! same starting/ending z index (k)
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
+
+    bins = 1
 
     do i = 1, n_tallies
        ! Copy starting and ending location of particle
@@ -625,6 +637,19 @@ contains
        ! Copy particle's direction
        uvw = p % uvw
 
+       ! determine incoming energy bin
+       n = t % n_bins(T_ENERGYIN)
+       if (n > 0) then
+          ! check if energy of the particle is within energy bins
+          if (p % last_E < t % energy_in(1) .or. &
+               p % last_E > t % energy_in(n + 1)) cycle
+
+          ! search to find incoming energy bin
+          bins(TS_ENERGYIN) = binary_search(t % energy_in, n + 1, p % last_E)
+       else
+          bins(TS_ENERGYIN) = 1
+       end if
+
        ! =======================================================================
        ! SPECIAL CASES WHERE TWO INDICES ARE THE SAME
 
@@ -638,7 +663,9 @@ contains
              do j = ijk0(3), ijk1(3) - 1
                 ijk0(3) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + OUT_TOP
+                   bins(TS_SURFACE) = OUT_TOP
+                   bins(1:3) = ijk0 + 1
+                   score_index = sum((bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(score_index, 1), p % last_wgt)
                 end if
              end do
@@ -646,7 +673,9 @@ contains
              do j = ijk0(3) - 1, ijk1(3), -1
                 ijk0(3) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + IN_TOP
+                   bins(TS_SURFACE) = IN_TOP
+                   bins(1:3) = ijk0 + 1
+                   score_index = sum((bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(score_index, 1), p % last_wgt)
                 end if
              end do
@@ -658,7 +687,9 @@ contains
              do j = ijk0(2), ijk1(2) - 1
                 ijk0(2) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + OUT_FRONT
+                   bins(TS_SURFACE) = OUT_FRONT
+                   bins(1:3) = ijk0 + 1
+                   score_index = sum((bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(score_index, 1), p % last_wgt)
                 end if
              end do
@@ -666,7 +697,9 @@ contains
              do j = ijk0(2) - 1, ijk1(2), -1
                 ijk0(2) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + IN_FRONT
+                   bins(TS_SURFACE) = IN_FRONT
+                   bins(1:3) = ijk0 + 1
+                   score_index = sum((bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(score_index, 1), p % last_wgt)
                 end if
              end do
@@ -678,7 +711,9 @@ contains
              do j = ijk0(1), ijk1(1) - 1
                 ijk0(1) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + OUT_RIGHT
+                   bins(TS_SURFACE) = OUT_RIGHT
+                   bins(1:3) = ijk0 + 1
+                   score_index = sum((bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(score_index, 1), p % last_wgt)
                 end if
              end do
@@ -686,7 +721,9 @@ contains
              do j = ijk0(1) - 1, ijk1(1), -1
                 ijk0(1) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + IN_RIGHT
+                   bins(TS_SURFACE) = IN_RIGHT
+                   bins(1:3) = ijk0 + 1
+                   score_index = sum((bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(score_index, 1), p % last_wgt)
                 end if
              end do
@@ -708,7 +745,7 @@ contains
 
        do k = 1, n_cross
           ! Reset scoring bin index
-          score_index = 0
+          bins(TS_SURFACE) = 0
 
           ! Calculate distance to each bounding surface. We need to treat
           ! special case where the cosine of the angle is zero since this would
@@ -735,7 +772,8 @@ contains
                 ! Crossing into right mesh cell -- this is treated as outgoing
                 ! current from (i,j,k)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + OUT_RIGHT
+                   bins(TS_SURFACE) = OUT_RIGHT
+                   bins(1:3) = ijk0 + 1
                 end if
                 ijk0(1) = ijk0(1) + 1
                 xyz_cross(1) = xyz_cross(1) + m % width(1)
@@ -745,7 +783,8 @@ contains
                 ijk0(1) = ijk0(1) - 1
                 xyz_cross(1) = xyz_cross(1) - m % width(1)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + IN_RIGHT
+                   bins(TS_SURFACE) = IN_RIGHT
+                   bins(1:3) = ijk0 + 1
                 end if
              end if
           elseif (distance == d(2)) then
@@ -753,7 +792,8 @@ contains
                 ! Crossing into front mesh cell -- this is treated as outgoing
                 ! current in (i,j,k)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + OUT_FRONT
+                   bins(TS_SURFACE) = OUT_FRONT
+                   bins(1:3) = ijk0 + 1
                 end if
                 ijk0(2) = ijk0(2) + 1
                 xyz_cross(2) = xyz_cross(2) + m % width(2)
@@ -763,7 +803,8 @@ contains
                 ijk0(2) = ijk0(2) - 1
                 xyz_cross(2) = xyz_cross(2) - m % width(2)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + IN_FRONT
+                   bins(TS_SURFACE) = IN_FRONT
+                   bins(1:3) = ijk0 + 1
                 end if
              end if
           else if (distance == d(3)) then
@@ -771,7 +812,8 @@ contains
                 ! Crossing into top mesh cell -- this is treated as outgoing
                 ! current in (i,j,k)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + OUT_TOP
+                   bins(TS_SURFACE) = OUT_TOP
+                   bins(1:3) = ijk0 + 1
                 end if
                 ijk0(3) = ijk0(3) + 1
                 xyz_cross(3) = xyz_cross(3) + m % width(3)
@@ -781,19 +823,23 @@ contains
                 ijk0(3) = ijk0(3) - 1
                 xyz_cross(3) = xyz_cross(3) - m % width(3)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   score_index = sum(t % stride(1:3) * ijk0) + IN_TOP
+                   bins(TS_SURFACE) = IN_TOP
+                   bins(1:3) = ijk0 + 1
                 end if
              end if
           end if
 
-          ! Check for errors
-          if (score_index < 0 .or. score_index > t % n_total_bins) then
-             message = "Score index outside range."
-             call fatal_error()
-          end if
+          ! Determine scoring index
+          if (bins(TS_SURFACE) > 0) then
+             score_index = sum((bins - 1) * t % stride) + 1
 
-          ! Add to surface current tally
-          if (score_index > 0) then
+             ! Check for errors
+             if (score_index <= 0 .or. score_index > t % n_total_bins) then
+                message = "Score index outside range."
+                call fatal_error()
+             end if
+
+             ! Add to surface current tally
              call add_to_score(t % scores(score_index, 1), p % last_wgt)
           end if
 
@@ -1093,18 +1139,33 @@ contains
 
     type(TallyObject), pointer :: t
 
-    integer :: i           ! mesh index for x
-    integer :: j           ! mesh index for y
-    integer :: k           ! mesh index for z
-    integer :: ijk(3)      ! indices in mesh
-    integer :: len1        ! length of string 
-    integer :: len2        ! length of string 
-    integer :: score_index ! index in scores array for filters
+    integer :: i                 ! mesh index for x
+    integer :: j                 ! mesh index for y
+    integer :: k                 ! mesh index for z
+    integer :: l                 ! mesh index for energy
+    integer :: bins(TALLY_TYPES) ! bin combination
+    integer :: n                 ! number of incoming energy bins
+    integer :: len1              ! length of string 
+    integer :: len2              ! length of string 
+    integer :: score_index       ! index in scores array for filters
+    logical :: print_ebin        ! should incoming energy bin be displayed?
     character(MAX_LINE_LEN) :: string
     type(StructuredMesh), pointer :: m => null()
 
     ! Get pointer to mesh
     m => meshes(t % mesh)
+
+    ! initialize bins array
+    bins = 1
+
+    ! determine how many energy in bins there are
+    n = t % n_bins(T_ENERGYIN)
+    if (n > 0) then
+       print_ebin = .true.
+    else
+       print_ebin = .false.
+       n = 1
+    end if
 
     do i = 1, m % dimension(1)
        string = "Mesh Index (" // trim(int_to_str(i)) // ", "
@@ -1117,83 +1178,113 @@ contains
              string = string(1:len2+1) // trim(int_to_str(k)) // ")"
              write(UNIT=UNIT_TALLY, FMT='(1X,A)') trim(string)
 
-             ! Left Surface
-             ijk = (/ i-1, j, k /)
-             score_index = sum(t % stride(1:3) * ijk) + IN_RIGHT
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Outgoing Current to Left", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
-             score_index = sum(t % stride(1:3) * ijk) + OUT_RIGHT
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Incoming Current from Left", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
-             
-             ! Right Surface
-             ijk = (/ i, j, k /)
-             score_index = sum(t % stride(1:3) * ijk) + IN_RIGHT
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Incoming Current from Right", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
-             score_index = sum(t % stride(1:3) * ijk) + OUT_RIGHT
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Outgoing Current to Right", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
-             
-             ! Back Surface
-             ijk = (/ i, j-1, k /)
-             score_index = sum(t % stride(1:3) * ijk) + IN_FRONT
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Outgoing Current to Back", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
-             score_index = sum(t % stride(1:3) * ijk) + OUT_FRONT
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Incoming Current from Back", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
-             
-             ! Front Surface
-             ijk = (/ i, j, k /)
-             score_index = sum(t % stride(1:3) * ijk) + IN_FRONT
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Incoming Current from Front", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
-             score_index = sum(t % stride(1:3) * ijk) + OUT_FRONT
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Outgoing Current to Front", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
-             
-             ! Bottom Surface
-             ijk = (/ i, j, k-1 /)
-             score_index = sum(t % stride(1:3) * ijk) + IN_TOP
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Outgoing Current to Bottom", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
-             score_index = sum(t % stride(1:3) * ijk) + OUT_TOP
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Incoming Current from Bottom", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
-             
-             ! Top Surface
-             ijk = (/ i, j, k /)
-             score_index = sum(t % stride(1:3) * ijk) + IN_TOP
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Incoming Current from Top", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
-             score_index = sum(t % stride(1:3) * ijk) + OUT_TOP
-             write(UNIT=UNIT_TALLY, FMT='(3X,A,T35,A,"+/- ",A)') & 
-                  "Outgoing Current to Top", &
-                  real_to_str(t % scores(score_index,1) % val), &
-                  trim(real_to_str(t % scores(score_index,1) % val_sq))
+             do l = 1, n
+                ! Write incoming energy bin
+                if (print_ebin) then
+                   write(UNIT=UNIT_TALLY, FMT='(3X,A,1X,A)') &
+                        "Incoming Energy", trim(get_label(t, T_ENERGYIN, l))
+                end if
+
+                ! Set incoming energy bin
+                bins(TS_ENERGYIN) = l
+
+                ! Left Surface
+                bins(1:3) = (/ i-1, j, k /) + 1
+                bins(TS_SURFACE) = IN_RIGHT
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Outgoing Current to Left", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+
+                bins(TS_SURFACE) = OUT_RIGHT
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Incoming Current from Left", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+
+                ! Right Surface
+                bins(1:3) = (/ i, j, k /) + 1
+                bins(TS_SURFACE) = IN_RIGHT
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Incoming Current from Right", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+
+                bins(TS_SURFACE) = OUT_RIGHT
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Outgoing Current to Right", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+
+                ! Back Surface
+                bins(1:3) = (/ i, j-1, k /) + 1
+                bins(TS_SURFACE) = IN_FRONT
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Outgoing Current to Back", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+
+                bins(TS_SURFACE) = OUT_FRONT
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Incoming Current from Back", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+
+                ! Front Surface
+                bins(1:3) = (/ i, j, k /) + 1
+                bins(TS_SURFACE) = IN_FRONT
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Incoming Current from Front", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+
+                bins(TS_SURFACE) = OUT_FRONT
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Outgoing Current to Front", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+
+                ! Bottom Surface
+                bins(1:3) = (/ i, j, k-1 /) + 1
+                bins(TS_SURFACE) = IN_TOP
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Outgoing Current to Bottom", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+
+                bins(TS_SURFACE) = OUT_TOP
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Incoming Current from Bottom", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+
+                ! Top Surface
+                bins(1:3) = (/ i, j, k /) + 1
+                bins(TS_SURFACE) = IN_TOP
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Incoming Current from Top", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+
+                bins(TS_SURFACE) = OUT_TOP
+                score_index = sum((bins - 1) * t % stride) + 1
+                write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+                     "Outgoing Current to Top", &
+                     real_to_str(t % scores(score_index,1) % val), &
+                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+             end do
+
           end do
        end do
     end do

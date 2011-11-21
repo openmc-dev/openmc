@@ -197,9 +197,9 @@ contains
 
   subroutine prepare_universes()
 
-    integer              :: i     ! index in cells array
-    integer              :: index ! index in universes array
-    integer              :: count ! number of cells in a universe
+    integer              :: i                     ! index in cells array
+    integer              :: i_univ                ! index in universes array
+    integer              :: n_cells_in_univ       ! number of cells in a universe
     integer, allocatable :: index_cell_in_univ(:) ! the index in the univ%cells
                                                   ! array for each universe
     type(ListKeyValueII), pointer :: key_list => null()
@@ -216,19 +216,19 @@ contains
     key_list => dict_keys(universe_dict)
     do while (associated(key_list))
        ! find index of universe in universes array
-       index = key_list%data%value
-       univ => universes(index)
+       i_univ = key_list%data%value
+       univ => universes(i_univ)
        univ % id = key_list%data%key
 
        ! check for lowest level universe
-       if (univ % id == 0) BASE_UNIVERSE = index
+       if (univ % id == 0) BASE_UNIVERSE = i_univ
        
        ! find cell count for this universe
-       count = dict_get_key(cells_in_univ_dict, key_list%data%key)
+       n_cells_in_univ = dict_get_key(cells_in_univ_dict, key_list%data%key)
 
        ! allocate cell list for universe
-       allocate(univ % cells(count))
-       univ % n_cells = count
+       allocate(univ % cells(n_cells_in_univ))
+       univ % n_cells = n_cells_in_univ
        
        ! move to next universe
        key_list => key_list%next
@@ -244,13 +244,13 @@ contains
        c => cells(i)
 
        ! get pointer to corresponding universe
-       index = dict_get_key(universe_dict, c % universe)
-       univ => universes(index)
+       i_univ = dict_get_key(universe_dict, c % universe)
+       univ => universes(i_univ)
 
        ! increment the index for the cells array within the Universe object and
        ! then store the index of the Cell object in that array
-       index_cell_in_univ(index) = index_cell_in_univ(index) + 1
-       univ % cells(index_cell_in_univ(index)) = i
+       index_cell_in_univ(i_univ) = index_cell_in_univ(i_univ) + 1
+       univ % cells(index_cell_in_univ(i_univ)) = i
     end do
 
   end subroutine prepare_universes
@@ -268,7 +268,7 @@ contains
     integer                 :: i            ! index in cells array
     integer                 :: j            ! index over surface list
     integer                 :: k
-    integer                 :: index        ! index in surfaces/materials array 
+    integer                 :: i_array      ! index in surfaces/materials array 
     integer                 :: id           ! user-specified id
     type(Cell),        pointer :: c => null()
     type(Lattice),     pointer :: l => null()
@@ -283,8 +283,8 @@ contains
           id = c % surfaces(j)
           if (id < OP_DIFFERENCE) then
              if (dict_has_key(surface_dict, abs(id))) then
-                index = dict_get_key(surface_dict, abs(id))
-                c % surfaces(j) = sign(index, id)
+                i_array = dict_get_key(surface_dict, abs(id))
+                c % surfaces(j) = sign(i_array, id)
              else
                 message = "Could not find surface " // trim(int_to_str(abs(id))) // &
                      & " specified on cell " // trim(int_to_str(c % id))
@@ -464,9 +464,9 @@ contains
     integer,     intent(in) :: parent ! cell containing universe
     integer,     intent(in) :: level  ! level of universe
 
-    integer :: i     ! index for cells in universe
-    integer :: x,y   ! indices for lattice positions
-    integer :: index ! index in cells array
+    integer :: i      ! index for cells in universe
+    integer :: x,y    ! indices for lattice positions
+    integer :: i_cell ! index in cells array
     integer :: universe_num
     type(Cell),     pointer :: c => null()
     type(Universe), pointer :: subuniverse => null()
@@ -478,15 +478,15 @@ contains
 
     ! loop over all cells in the universe
     do i = 1, univ % n_cells
-       index = univ % cells(i)
-       c => cells(index)
+       i_cell = univ % cells(i)
+       c => cells(i_cell)
        c%parent = parent
 
        ! if this cell is filled with another universe, recursively
        ! call this subroutine
        if (c % type == CELL_FILL) then
           subuniverse => universes(c % fill)
-          call build_universe(subuniverse, index, level + 1)
+          call build_universe(subuniverse, i_cell, level + 1)
        end if
 
        ! if this cell is filled by a lattice, need to build the
@@ -503,7 +503,7 @@ contains
                    call dict_add_key(dict, universe_num, 0)
 
                    subuniverse => universes(universe_num)
-                   call build_universe(subuniverse, index, level + 1)
+                   call build_universe(subuniverse, i_cell, level + 1)
                 end if
              end do
           end do
@@ -519,7 +519,7 @@ contains
 
   subroutine normalize_ao()
 
-    integer        :: index           ! index used for several purposes
+    integer        :: index_list      ! index in xs_listings array
     integer        :: i               ! index in materials array
     integer        :: j               ! index over nuclides in material
     integer        :: n               ! length of string
@@ -562,8 +562,8 @@ contains
           end if
 
           if (dict_has_key(xs_listing_dict, key)) then
-             index = dict_get_key(xs_listing_dict, key)
-             mat % xs_listing(j) = index
+             index_list = dict_get_key(xs_listing_dict, key)
+             mat % xs_listing(j) = index_list
           else
              message = "Cannot find cross-section " // trim(key) // &
                   " in specified cross_sections.xml file."
@@ -571,7 +571,7 @@ contains
           end if
 
           ! determine atomic weight ratio
-          awr = xs_listings(index) % awr
+          awr = xs_listings(index_list) % awr
 
           ! if given weight percent, convert all values so that they are divided
           ! by awr. thus, when a sum is done over the values, it's actually
@@ -592,8 +592,8 @@ contains
        if (.not. density_in_atom) then
           sum_percent = ZERO
           do j = 1, mat % n_nuclides
-             index = mat % xs_listing(j)
-             awr = xs_listings(index) % awr
+             index_list = mat % xs_listing(j)
+             awr = xs_listings(index_list) % awr
              x = mat % atom_percent(j)
              sum_percent = sum_percent + x*awr
           end do

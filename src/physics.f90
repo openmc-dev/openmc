@@ -1009,7 +1009,7 @@ contains
 
     integer :: i            ! loop index
     integer :: j            ! index on nu energy grid / precursor group
-    integer :: loc          ! index before start of energies/nu values
+    integer :: lc           ! index before start of energies/nu values
     integer :: NR           ! number of interpolation regions
     integer :: NE           ! number of energies tabulated
     integer :: nu           ! actual number of neutrons produced
@@ -1091,23 +1091,23 @@ contains
 
           ! sampled delayed precursor group
           xi = prn()
-          loc = 1
+          lc = 1
           prob = ZERO
           do j = 1, nuc % n_precursor
              ! determine number of interpolation regions and energies
-             NR = int(nuc % nu_d_precursor_data(loc + 1))
-             NE = int(nuc % nu_d_precursor_data(loc + 2 + 2*NR))
+             NR = int(nuc % nu_d_precursor_data(lc + 1))
+             NE = int(nuc % nu_d_precursor_data(lc + 2 + 2*NR))
 
              ! determine delayed neutron precursor yield for group j
              yield = interpolate_tab1(nuc % nu_d_precursor_data( &
-                  loc+1:loc+2+2*NR+2*NE), E)
+                  lc+1:lc+2+2*NR+2*NE), E)
 
              ! Check if this group is sampled
              prob = prob + yield
              if (xi < prob) exit
 
              ! advance pointer
-             loc = loc + 2 + 2*NR + 2*NE + 1
+             lc = lc + 2 + 2*NR + 2*NE + 1
           end do
 
           ! sample from energy distribution for group j
@@ -1250,7 +1250,7 @@ contains
     integer        :: type    ! angular distribution type
     integer        :: i       ! incoming energy bin
     integer        :: n       ! number of incoming energy bins
-    integer        :: loc     ! location in data array
+    integer        :: lc      ! location in data array
     integer        :: NP      ! number of points in cos distribution
     integer        :: k       ! index on cosine grid
     real(8)        :: r       ! interpolation factor on incoming energy
@@ -1290,7 +1290,7 @@ contains
     if (r > prn()) i = i + 1
 
     ! check whether this is a 32-equiprobable bin or a tabular distribution
-    loc  = rxn % adist % location(i)
+    lc  = rxn % adist % location(i)
     type = rxn % adist % type(i)
     if (type == ANGLE_ISOTROPIC) then
        mu = TWO * prn() - ONE
@@ -1300,26 +1300,26 @@ contains
        k = 1 + int(32.0_8*xi)
 
        ! calculate cosine
-       mu0 = rxn % adist % data(loc + k)
-       mu1 = rxn % adist % data(loc + k+1)
+       mu0 = rxn % adist % data(lc + k)
+       mu1 = rxn % adist % data(lc + k+1)
        mu = mu0 + (32.0_8 * xi - k) * (mu1 - mu0)
 
     elseif (type == ANGLE_TABULAR) then
-       interp = int(rxn % adist % data(loc + 1))
-       NP     = int(rxn % adist % data(loc + 2))
+       interp = int(rxn % adist % data(lc + 1))
+       NP     = int(rxn % adist % data(lc + 2))
 
        ! determine outgoing cosine bin
        xi = prn()
-       loc = loc + 2
-       c_k = rxn % adist % data(loc + 2*NP + 1)
+       lc = lc + 2
+       c_k = rxn % adist % data(lc + 2*NP + 1)
        do k = 1, NP-1
-          c_k1 = rxn % adist % data(loc + 2*NP + k+1)
+          c_k1 = rxn % adist % data(lc + 2*NP + k+1)
           if (xi < c_k1) exit
           c_k = c_k1
        end do
 
-       p0  = rxn % adist % data(loc + NP + k)
-       mu0 = rxn % adist % data(loc + k)
+       p0  = rxn % adist % data(lc + NP + k)
+       mu0 = rxn % adist % data(lc + k)
        if (interp == HISTOGRAM) then
           ! Histogram interpolation
           mu = mu0 + (xi - c_k)/p0
@@ -1327,8 +1327,8 @@ contains
        elseif (interp == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about the
           ! formula given in the MCNP manual
-          p1  = rxn % adist % data(loc + NP + k+1)
-          mu1 = rxn % adist % data(loc + k+1)
+          p1  = rxn % adist % data(lc + NP + k+1)
+          mu1 = rxn % adist % data(lc + k+1)
 
           frac = (p1 - p0)/(mu1 - mu0)
           if (frac == ZERO) then
@@ -1418,7 +1418,7 @@ contains
     integer :: i           ! index on incoming energy grid
     integer :: k           ! sampled index on outgoing grid
     integer :: l           ! sampled index on incoming grid
-    integer :: loc         ! dummy index
+    integer :: lc          ! dummy index
     integer :: NR          ! number of interpolation regions
     integer :: NE          ! number of energies
     integer :: NET         ! number of outgoing energies
@@ -1500,23 +1500,23 @@ contains
        end if
 
        ! determine index on incoming energy grid and interpolation factor
-       loc = 2 + 2*NR
-       i = binary_search(edist % data(loc+1), NE, E_in)
-       r = (E_in - edist%data(loc+i)) / &
-            & (edist%data(loc+i+1) - edist%data(loc+i))
+       lc = 2 + 2*NR
+       i = binary_search(edist % data(lc+1), NE, E_in)
+       r = (E_in - edist%data(lc+i)) / &
+            & (edist%data(lc+i+1) - edist%data(lc+i))
 
        ! Sample outgoing energy bin
        r1 = prn()
        k = 1 + int(NET * r1)
 
        ! Determine E_1 and E_K
-       loc   = 3 + 3*NR + NE + (i-1)*NET
-       E_i_1 = edist % data(loc + 1)
-       E_i_K = edist % data(loc + NET)
+       lc    = 3 + 3*NR + NE + (i-1)*NET
+       E_i_1 = edist % data(lc + 1)
+       E_i_K = edist % data(lc + NET)
 
-       loc    = 3 + 3*NR + NE + i*NET
-       E_i1_1 = edist % data(loc + 1)
-       E_i1_K = edist % data(loc + NET)
+       lc     = 3 + 3*NR + NE + i*NET
+       E_i1_1 = edist % data(lc + 1)
+       E_i1_K = edist % data(lc + NET)
 
        E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
        E_K = E_i_K + r*(E_i1_K - E_i_K)
@@ -1530,9 +1530,9 @@ contains
        end if
 
        ! Determine E_l_k and E_l_k+1
-       loc    = 3 + 2*NR + NE + (l-1)*NET
-       E_l_k  = edist % data(loc+k)
-       E_l_k1 = edist % data(loc+k+1)
+       lc     = 3 + 2*NR + NE + (l-1)*NET
+       E_l_k  = edist % data(lc+k)
+       E_l_k1 = edist % data(lc+k+1)
 
        ! Determine E' (denoted here as E_out)
        r2 = prn()
@@ -1569,17 +1569,17 @@ contains
        ! find energy bin and calculate interpolation factor -- if the energy is
        ! outside the range of the tabulated energies, choose the first or last
        ! bins
-       loc = 2 + 2*NR
-       if (E_in < edist % data(loc+1)) then
+       lc = 2 + 2*NR
+       if (E_in < edist % data(lc+1)) then
           i = 1
           r = ZERO
-       elseif (E_in > edist % data(loc+NE)) then
+       elseif (E_in > edist % data(lc+NE)) then
           i = NE - 1
           r = ONE
        else
-          i = binary_search(edist % data(loc+1), NE, E_in)
-          r = (E_in - edist%data(loc+i)) / & 
-               & (edist%data(loc+i+1) - edist%data(loc+i))
+          i = binary_search(edist % data(lc+1), NE, E_in)
+          r = (E_in - edist%data(lc+i)) / & 
+               & (edist%data(lc+i+1) - edist%data(lc+i))
        end if
 
        ! Sample between the ith and (i+1)th bin
@@ -1591,25 +1591,25 @@ contains
        end if
 
        ! interpolation for energy E1 and EK
-       loc   = int(edist%data(2 + 2*NR + NE + i))
-       NP    = int(edist%data(loc + 2))
-       E_i_1 = edist%data(loc + 2 + 1)
-       E_i_K = edist%data(loc + 2 + NP)
+       lc    = int(edist%data(2 + 2*NR + NE + i))
+       NP    = int(edist%data(lc + 2))
+       E_i_1 = edist%data(lc + 2 + 1)
+       E_i_K = edist%data(lc + 2 + NP)
 
-       loc    = int(edist%data(2 + 2*NR + NE + i + 1))
-       NP     = int(edist%data(loc + 2))
-       E_i1_1 = edist%data(loc + 2 + 1)
-       E_i1_K = edist%data(loc + 2 + NP)
+       lc     = int(edist%data(2 + 2*NR + NE + i + 1))
+       NP     = int(edist%data(lc + 2))
+       E_i1_1 = edist%data(lc + 2 + 1)
+       E_i1_K = edist%data(lc + 2 + NP)
 
        E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
        E_K = E_i_K + r*(E_i1_K - E_i_K)
 
        ! determine location of outgoing energies, pdf, cdf for E(l)
-       loc = int(edist % data(2 + 2*NR + NE + l))
+       lc = int(edist % data(2 + 2*NR + NE + l))
 
        ! determine type of interpolation and number of discrete lines
-       INTTp = int(edist % data(loc + 1))
-       NP    = int(edist % data(loc + 2))
+       INTTp = int(edist % data(lc + 1))
+       NP    = int(edist % data(lc + 2))
        if (INTTp > 10) then
           INTT = mod(INTTp,10)
           ND = (INTTp - INTT)/10
@@ -1627,16 +1627,16 @@ contains
 
        ! determine outgoing energy bin
        r1 = prn()
-       loc = loc + 2 ! start of EOUT
-       c_k = edist % data(loc + 2*NP + 1)
+       lc = lc + 2 ! start of EOUT
+       c_k = edist % data(lc + 2*NP + 1)
        do k = 1, NP-1
-          c_k1 = edist % data(loc + 2*NP + k+1)
+          c_k1 = edist % data(lc + 2*NP + k+1)
           if (r1 < c_k1) exit
           c_k = c_k1
        end do
 
-       E_l_k = edist % data(loc+k)
-       p_l_k = edist % data(loc+NP+k)
+       E_l_k = edist % data(lc+k)
+       p_l_k = edist % data(lc+NP+k)
        if (INTT == HISTOGRAM) then
           ! Histogram interpolation
           E_out = E_l_k + (r1 - c_k)/p_l_k
@@ -1644,8 +1644,8 @@ contains
        elseif (INTT == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about the
           ! formula given in the MCNP manual
-          E_l_k1 = edist % data(loc+k+1)
-          p_l_k1 = edist % data(loc+NP+k+1)
+          E_l_k1 = edist % data(lc+k+1)
+          p_l_k1 = edist % data(lc+NP+k+1)
 
           frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
           if (frac == ZERO) then
@@ -1694,8 +1694,8 @@ contains
        T = interpolate_tab1(edist % data, E_in)
 
        ! determine restriction energy
-       loc = 2 + 2*NR + 2*NE
-       U = edist % data(loc + 1)
+       lc = 2 + 2*NR + 2*NE
+       U = edist % data(lc + 1)
 
        ! sample outgoing energy based on evaporation spectrum probability
        ! density function
@@ -1719,8 +1719,8 @@ contains
        Watt_a = interpolate_tab1(edist % data, E_in)
 
        ! determine Watt parameter 'b' from tabulated function
-       loc = 3 + 2*(NR + NE)
-       Watt_b = interpolate_tab1(edist % data, E_in, loc)
+       lc = 3 + 2*(NR + NE)
+       Watt_b = interpolate_tab1(edist % data, E_in, lc)
 
        ! Sample energy-dependent Watt fission spectrum
        E_out = watt_spectrum(Watt_a, Watt_b)
@@ -1748,17 +1748,17 @@ contains
        ! find energy bin and calculate interpolation factor -- if the energy is
        ! outside the range of the tabulated energies, choose the first or last
        ! bins
-       loc = 2 + 2*NR
-       if (E_in < edist % data(loc+1)) then
+       lc = 2 + 2*NR
+       if (E_in < edist % data(lc+1)) then
           i = 1
           r = ZERO
-       elseif (E_in > edist % data(loc+NE)) then
+       elseif (E_in > edist % data(lc+NE)) then
           i = NE - 1
           r = ONE
        else
-          i = binary_search(edist % data(loc+1), NE, E_in)
-          r = (E_in - edist%data(loc+i)) / & 
-               & (edist%data(loc+i+1) - edist%data(loc+i))
+          i = binary_search(edist % data(lc+1), NE, E_in)
+          r = (E_in - edist%data(lc+i)) / & 
+               & (edist%data(lc+i+1) - edist%data(lc+i))
        end if
 
        ! Sample between the ith and (i+1)th bin
@@ -1770,26 +1770,26 @@ contains
        end if
 
        ! determine endpoints on grid i
-       loc   = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
-       NP    = int(edist%data(loc + 2))
-       E_i_1 = edist%data(loc + 2 + 1)
-       E_i_K = edist%data(loc + 2 + NP)
+       lc    = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
+       NP    = int(edist%data(lc + 2))
+       E_i_1 = edist%data(lc + 2 + 1)
+       E_i_K = edist%data(lc + 2 + NP)
 
        ! determine endpoints on grid i+1
-       loc    = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
-       NP     = int(edist%data(loc + 2))
-       E_i1_1 = edist%data(loc + 2 + 1)
-       E_i1_K = edist%data(loc + 2 + NP)
+       lc     = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
+       NP     = int(edist%data(lc + 2))
+       E_i1_1 = edist%data(lc + 2 + 1)
+       E_i1_K = edist%data(lc + 2 + NP)
 
        E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
        E_K = E_i_K + r*(E_i1_K - E_i_K)
 
        ! determine location of outgoing energies, pdf, cdf for E(l)
-       loc = int(edist % data(2 + 2*NR + NE + l))
+       lc = int(edist % data(2 + 2*NR + NE + l))
 
        ! determine type of interpolation and number of discrete lines
-       INTTp = int(edist % data(loc + 1))
-       NP    = int(edist % data(loc + 2))
+       INTTp = int(edist % data(lc + 1))
+       NP    = int(edist % data(lc + 2))
        if (INTTp > 10) then
           INTT = mod(INTTp,10)
           ND = (INTTp - INTT)/10
@@ -1807,29 +1807,29 @@ contains
 
        ! determine outgoing energy bin
        r1 = prn()
-       loc = loc + 2 ! start of EOUT
-       c_k = edist % data(loc + 2*NP + 1)
+       lc = lc + 2 ! start of EOUT
+       c_k = edist % data(lc + 2*NP + 1)
        do k = 1, NP-1
-          c_k1 = edist % data(loc + 2*NP + k+1)
+          c_k1 = edist % data(lc + 2*NP + k+1)
           if (r1 < c_k1) exit
           c_k = c_k1
        end do
 
-       E_l_k = edist % data(loc+k)
-       p_l_k = edist % data(loc+NP+k)
+       E_l_k = edist % data(lc+k)
+       p_l_k = edist % data(lc+NP+k)
        if (INTT == HISTOGRAM) then
           ! Histogram interpolation
           E_out = E_l_k + (r1 - c_k)/p_l_k
 
           ! Determine Kalbach-Mann parameters
-          KM_R = edist % data(loc + 3*NP + k)
-          KM_A = edist % data(loc + 4*NP + k)
+          KM_R = edist % data(lc + 3*NP + k)
+          KM_A = edist % data(lc + 4*NP + k)
 
        elseif (INTT == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about the
           ! formula given in the MCNP manual
-          E_l_k1 = edist % data(loc+k+1)
-          p_l_k1 = edist % data(loc+NP+k+1)
+          E_l_k1 = edist % data(lc+k+1)
+          p_l_k1 = edist % data(lc+NP+k+1)
 
           ! Find E prime
           frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
@@ -1841,10 +1841,10 @@ contains
           end if
 
           ! Determine Kalbach-Mann parameters
-          R_k  = edist % data(loc + 3*NP + k)
-          R_k1 = edist % data(loc + 3*NP + k+1)
-          A_k  = edist % data(loc + 4*NP + k)
-          A_k1 = edist % data(loc + 4*NP + k+1)
+          R_k  = edist % data(lc + 3*NP + k)
+          R_k1 = edist % data(lc + 3*NP + k+1)
+          A_k  = edist % data(lc + 4*NP + k)
+          A_k1 = edist % data(lc + 4*NP + k+1)
           
           KM_R = R_k + (R_k1 - R_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
           KM_A = A_k + (A_k1 - A_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
@@ -1891,17 +1891,17 @@ contains
        ! find energy bin and calculate interpolation factor -- if the energy is
        ! outside the range of the tabulated energies, choose the first or last
        ! bins
-       loc = 2 + 2*NR
-       if (E_in < edist % data(loc+1)) then
+       lc = 2 + 2*NR
+       if (E_in < edist % data(lc+1)) then
           i = 1
           r = ZERO
-       elseif (E_in > edist % data(loc+NE)) then
+       elseif (E_in > edist % data(lc+NE)) then
           i = NE - 1
           r = ONE
        else
-          i = binary_search(edist % data(loc+1), NE, E_in)
-          r = (E_in - edist%data(loc+i)) / & 
-               & (edist%data(loc+i+1) - edist%data(loc+i))
+          i = binary_search(edist % data(lc+1), NE, E_in)
+          r = (E_in - edist%data(lc+i)) / & 
+               & (edist%data(lc+i+1) - edist%data(lc+i))
        end if
 
        ! Sample between the ith and (i+1)th bin
@@ -1913,26 +1913,26 @@ contains
        end if
 
        ! determine endpoints on grid i
-       loc   = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
-       NP    = int(edist%data(loc + 2))
-       E_i_1 = edist%data(loc + 2 + 1)
-       E_i_K = edist%data(loc + 2 + NP)
+       lc    = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
+       NP    = int(edist%data(lc + 2))
+       E_i_1 = edist%data(lc + 2 + 1)
+       E_i_K = edist%data(lc + 2 + NP)
 
        ! determine endpoints on grid i+1
-       loc    = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
-       NP     = int(edist%data(loc + 2))
-       E_i1_1 = edist%data(loc + 2 + 1)
-       E_i1_K = edist%data(loc + 2 + NP)
+       lc     = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
+       NP     = int(edist%data(lc + 2))
+       E_i1_1 = edist%data(lc + 2 + 1)
+       E_i1_K = edist%data(lc + 2 + NP)
 
        E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
        E_K = E_i_K + r*(E_i1_K - E_i_K)
 
        ! determine location of outgoing energies, pdf, cdf for E(l)
-       loc = int(edist % data(2 + 2*NR + NE + l))
+       lc = int(edist % data(2 + 2*NR + NE + l))
 
        ! determine type of interpolation and number of discrete lines
-       INTTp = int(edist % data(loc + 1))
-       NP    = int(edist % data(loc + 2))
+       INTTp = int(edist % data(lc + 1))
+       NP    = int(edist % data(lc + 2))
        if (INTTp > 10) then
           INTT = mod(INTTp,10)
           ND = (INTTp - INTT)/10
@@ -1950,16 +1950,16 @@ contains
 
        ! determine outgoing energy bin
        r1 = prn()
-       loc = loc + 2 ! start of EOUT
-       c_k = edist % data(loc + 2*NP + 1)
+       lc = lc + 2 ! start of EOUT
+       c_k = edist % data(lc + 2*NP + 1)
        do k = 1, NP-1
-          c_k1 = edist % data(loc + 2*NP + k+1)
+          c_k1 = edist % data(lc + 2*NP + k+1)
           if (r1 < c_k1) exit
           c_k = c_k1
        end do
 
-       E_l_k = edist % data(loc+k)
-       p_l_k = edist % data(loc+NP+k)
+       E_l_k = edist % data(lc+k)
+       p_l_k = edist % data(lc+NP+k)
        if (INTT == HISTOGRAM) then
           ! Histogram interpolation
           E_out = E_l_k + (r1 - c_k)/p_l_k
@@ -1967,8 +1967,8 @@ contains
        elseif (INTT == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about the
           ! formula given in the MCNP manual
-          E_l_k1 = edist % data(loc+k+1)
-          p_l_k1 = edist % data(loc+NP+k+1)
+          E_l_k1 = edist % data(lc+k+1)
+          p_l_k1 = edist % data(lc+NP+k+1)
 
           ! Find E prime
           frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
@@ -1991,30 +1991,30 @@ contains
        end if
 
        ! Find location of correlated angular distribution
-       loc = int(edist % data(loc+3*NP+k))
+       lc = int(edist % data(lc+3*NP+k))
 
        ! Check if angular distribution is isotropic
-       if (loc == 0) then
+       if (lc == 0) then
           mu_out = TWO * prn() - ONE
           return
        end if
 
        ! interpolation type and number of points in angular distribution
-       JJ = int(edist % data(loc + 1))
-       NP = int(edist % data(loc + 2))
+       JJ = int(edist % data(lc + 1))
+       NP = int(edist % data(lc + 2))
 
        ! determine outgoing cosine bin
        r3 = prn()
-       loc = loc + 2
-       c_k = edist % data(loc + 2*NP + 1)
+       lc = lc + 2
+       c_k = edist % data(lc + 2*NP + 1)
        do k = 1, NP-1
-          c_k1 = edist % data(loc + 2*NP + k+1)
+          c_k1 = edist % data(lc + 2*NP + k+1)
           if (r3 < c_k1) exit
           c_k = c_k1
        end do
 
-       p_k  = edist % data(loc + NP + k)
-       mu_k = edist % data(loc + k)
+       p_k  = edist % data(lc + NP + k)
+       mu_k = edist % data(lc + k)
        if (JJ == HISTOGRAM) then
           ! Histogram interpolation
           mu_out = mu_k + (r3 - c_k)/p_k
@@ -2022,8 +2022,8 @@ contains
        elseif (JJ == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about the
           ! formula given in the MCNP manual
-          p_k1  = edist % data(loc + NP + k+1)
-          mu_k1 = edist % data(loc + k+1)
+          p_k1  = edist % data(lc + NP + k+1)
+          mu_k1 = edist % data(lc + k+1)
 
           frac = (p_k1 - p_k)/(mu_k1 - mu_k)
           if (frac == ZERO) then

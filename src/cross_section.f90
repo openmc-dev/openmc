@@ -210,10 +210,10 @@ contains
 ! subroutines to parse the actual data.
 !===============================================================================
 
-  subroutine read_ace_table(index_table, index)
+  subroutine read_ace_table(index_table, index_list)
 
     integer, intent(in) :: index_table ! index in nuclides/sab_tables
-    integer, intent(in) :: index       ! index in xs_listings
+    integer, intent(in) :: index_list  ! index in xs_listings
 
     integer       :: i             ! loop index for XSS records
     integer       :: j, j1, j2     ! indices in XSS
@@ -230,7 +230,7 @@ contains
     logical       :: file_exists   ! does ACE library exist?
     character(7)  :: readable      ! is ACE library readable?
     character(10) :: name          ! name of ACE table
-    character(10) :: date          ! date ACE library was processed
+    character(10) :: date_         ! date ACE library was processed
     character(10) :: mat           ! material identifier
     character(70) :: comment       ! comment for ACE table
     character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
@@ -239,7 +239,7 @@ contains
     type(XsListing), pointer :: listing => null()
 
     ! determine path, record length, and location of table
-    listing => xs_listings(index)
+    listing => xs_listings(index_list)
     filename      = listing % path
     record_length = listing % recl
     location      = listing % location
@@ -273,7 +273,7 @@ contains
        end do
 
        ! Read first line of header
-       read(UNIT=in, FMT='(A10,2E12.0,1X,A10)') name, awr, kT, date
+       read(UNIT=in, FMT='(A10,2E12.0,1X,A10)') name, awr, kT, date_
 
        ! Read more header and NXS and JXS
        read(UNIT=in, FMT=100) comment, mat, & 
@@ -296,7 +296,7 @@ contains
             ACCESS='direct', RECL=record_length)
 
        ! Read all header information
-       read(UNIT=in, REC=location) name, awr, kT, date, & 
+       read(UNIT=in, REC=location) name, awr, kT, date_, & 
             comment, mat, (zaids(i), awrs(i), i=1,16), NXS, JXS
 
        ! determine table length
@@ -414,7 +414,7 @@ contains
     integer :: LED    ! location of energy distribution locators
     integer :: LDIS   ! location of all energy distributions
     integer :: LOCC   ! location of energy distributions for given MT
-    integer :: loc    ! locator
+    integer :: lc     ! locator
     integer :: length ! length of data to allocate
     type(DistEnergy), pointer :: edist => null()
 
@@ -562,10 +562,10 @@ contains
 
        ! determine length of all precursor constants/yields/interp data
        length = 0
-       loc = JXS(25)
+       lc = JXS(25)
        do i = 1, NPCR
-          NR = int(XSS(loc + length + 1))
-          NE = int(XSS(loc + length + 2 + 2*NR))
+          NR = int(XSS(lc + length + 1))
+          NE = int(XSS(lc + length + 2 + 2*NR))
           length = length + 3 + 2*NR + 2*NE
        end do
 
@@ -573,7 +573,7 @@ contains
        allocate(nuc % nu_d_precursor_data(length))
 
        ! read delayed neutron precursor data
-       XSS_index = loc
+       XSS_index = lc
        nuc % nu_d_precursor_data = get_real(length)
 
     else
@@ -839,7 +839,7 @@ contains
     integer :: NR     ! number of interpolation regions
     integer :: NE     ! number of incoming energies
     integer :: IDAT   ! location of first energy distribution for given MT
-    integer :: loc    ! locator
+    integer :: lc     ! locator
     integer :: length ! length of data to allocate
     integer :: length_interp_data ! length of interpolation data
 
@@ -885,16 +885,16 @@ contains
     edist % p_valid % y = get_real(NE)
 
     ! Set index to beginning of IDAT array
-    loc = LDIS + IDAT - 2
+    lc = LDIS + IDAT - 2
 
     ! determine length of energy distribution
-    length = length_energy_dist(loc, LAW, loc_law, length_interp_data)
+    length = length_energy_dist(lc, LAW, loc_law, length_interp_data)
 
     ! allocate secondary energy distribution array
     allocate(edist % data(length))
 
     ! read secondary energy distribution
-    XSS_index = loc + 1
+    XSS_index = lc + 1
     edist % data = get_real(length)
 
     ! read next energy distribution if present
@@ -910,9 +910,9 @@ contains
 ! distribution array based on the secondary energy law and location in XSS
 !===============================================================================
 
-  function length_energy_dist(loc, law, LOCC, lid) result(length)
+  function length_energy_dist(lc, law, LOCC, lid) result(length)
 
-    integer, intent(in) :: loc    ! location in XSS array
+    integer, intent(in) :: lc     ! location in XSS array
     integer, intent(in) :: law    ! energy distribution law
     integer, intent(in) :: LOCC   ! location of energy distribution
     integer, intent(in) :: lid    ! length of interpolation data
@@ -934,9 +934,9 @@ contains
     select case (law)
     case (1)
        ! Tabular equiprobable energy bins
-       NR = int(XSS(loc + 1))
-       NE = int(XSS(loc + 2 + 2*NR))
-       NP = int(XSS(loc + 3 + 2*NR + NE))
+       NR = int(XSS(lc + 1))
+       NE = int(XSS(lc + 2 + 2*NR))
+       NP = int(XSS(lc + 3 + 2*NR + NE))
        length = 3 + 2*NR + NE + 3*NP*NE
 
     case (2)
@@ -949,72 +949,72 @@ contains
 
     case (4)
        ! Continuous tabular distribution
-       NR = int(XSS(loc + 1))
-       NE = int(XSS(loc + 2 + 2*NR))
+       NR = int(XSS(lc + 1))
+       NE = int(XSS(lc + 2 + 2*NR))
        length = length + 2 + 2*NR + 2*NE
        do i = 1,NE
           ! determine length
-          NP = int(XSS(loc + length + 2))
+          NP = int(XSS(lc + length + 2))
           length = length + 2 + 3*NP
 
           ! adjust location for this block
-          j = loc + 2 + 2*NR + NE + i
+          j = lc + 2 + 2*NR + NE + i
           XSS(j) = XSS(j) - LOCC - lid
        end do
 
     case (5)
        ! General evaporation spectrum
-       NR = int(XSS(loc + 1))
-       NE = int(XSS(loc + 2 + 2*NR))
-       NP = int(XSS(loc + 3 + 2*NR + 2*NE))
+       NR = int(XSS(lc + 1))
+       NE = int(XSS(lc + 2 + 2*NR))
+       NP = int(XSS(lc + 3 + 2*NR + 2*NE))
        length = 3 + 2*NR + 2*NE + NP
 
     case (7)
        ! Maxwell fission spectrum
-       NR = int(XSS(loc + 1))
-       NE = int(XSS(loc + 2 + 2*NR))
+       NR = int(XSS(lc + 1))
+       NE = int(XSS(lc + 2 + 2*NR))
        length = 3 + 2*NR + 2*NE
 
     case (9)
        ! Evaporation spectrum
-       NR = int(XSS(loc + 1))
-       NE = int(XSS(loc + 2 + 2*NR))
+       NR = int(XSS(lc + 1))
+       NE = int(XSS(lc + 2 + 2*NR))
        length = 3 + 2*NR + 2*NE
 
     case (11)
        ! Watt spectrum
-       NRa = int(XSS(loc + 1))
-       NEa = int(XSS(loc + 2 + 2*NRa))
-       NRb = int(XSS(loc + 3 + 2*(NRa+NEa)))
-       NEb = int(XSS(loc + 4 + 2*(NRa+NEa+NRb)))
+       NRa = int(XSS(lc + 1))
+       NEa = int(XSS(lc + 2 + 2*NRa))
+       NRb = int(XSS(lc + 3 + 2*(NRa+NEa)))
+       NEb = int(XSS(lc + 4 + 2*(NRa+NEa+NRb)))
        length = 5 + 2*(NRa + NEa + NRb + NEb)
 
     case (44)
        ! Kalbach-Mann correlated scattering
-       NR = int(XSS(loc + 1))
-       NE = int(XSS(loc + 2 + 2*NR))
+       NR = int(XSS(lc + 1))
+       NE = int(XSS(lc + 2 + 2*NR))
        length = length + 2 + 2*NR + 2*NE
        do i = 1,NE
-          NP = int(XSS(loc + length + 2))
+          NP = int(XSS(lc + length + 2))
           length = length + 2 + 5*NP
 
           ! adjust location for this block
-          j = loc + 2 + 2*NR + NE + i
+          j = lc + 2 + 2*NR + NE + i
           XSS(j) = XSS(j) - LOCC - lid
        end do
 
     case (61)
        ! Correlated energy and angle distribution
-       NR = int(XSS(loc + 1))
-       NE = int(XSS(loc + 2 + 2*NR))
+       NR = int(XSS(lc + 1))
+       NE = int(XSS(lc + 2 + 2*NR))
        length = length + 2 + 2*NR + 2*NE
        do i = 1,NE
           ! outgoing energy distribution
-          NP = int(XSS(loc + length + 2))
+          NP = int(XSS(lc + length + 2))
 
           ! adjust locators for angular distribution
           do j = 1, NP
-             k = loc + length + 2 + 3*NP + j
+             k = lc + length + 2 + 3*NP + j
              if (XSS(k) /= 0) XSS(k) = XSS(k) - LOCC - lid
           end do
 
@@ -1022,12 +1022,12 @@ contains
           do j = 1, NP
              ! outgoing angle distribution -- NMU here is actually
              ! referred to as NP in the MCNP documentation
-             NMU = int(XSS(loc + length + 2))
+             NMU = int(XSS(lc + length + 2))
              length = length + 2 + 3*NMU
           end do
 
           ! adjust locators for energy distribution
-          j = loc + 2 + 2*NR + NE + i
+          j = lc + 2 + 2*NR + NE + i
           XSS(j) = XSS(j) - LOCC - lid
        end do
 
@@ -1037,9 +1037,9 @@ contains
 
     case (67)
        ! Laboratory energy-angle law
-       NR  = int(XSS(loc + 1))
-       NE  = int(XSS(loc + 2 + 2*NR))
-       NMU = int(XSS(loc + 4 + 2*NR + 2*NE))
+       NR  = int(XSS(lc + 1))
+       NE  = int(XSS(lc + 2 + 2*NR))
+       NMU = int(XSS(lc + 4 + 2*NR + 2*NE))
        length = 4 + 2*(NR + NE + NMU)
 
     end select
@@ -1055,7 +1055,7 @@ contains
     type(Nuclide), pointer :: nuc
 
     integer :: JXS23 ! location of URR data
-    integer :: loc   ! locator
+    integer :: lc    ! locator
     integer :: N     ! # of incident energies
     integer :: M     ! # of probabilities
     integer :: i     ! index over incoming energies
@@ -1070,19 +1070,19 @@ contains
        nuc % urr_present = .true.
        allocate(nuc % urr_data)
        allocate(nuc % urr_data % params(6))
-       loc = JXS23
+       lc = JXS23
     else
        nuc % urr_present = .false.
        return
     end if
 
     ! read parameters
-    nuc % urr_data % params(1) = int(XSS(loc))     ! # of incident energies
-    nuc % urr_data % params(2) = int(XSS(loc + 1)) ! # of probabilities
-    nuc % urr_data % params(3) = int(XSS(loc + 2)) ! interpolation parameter
-    nuc % urr_data % params(4) = int(XSS(loc + 3)) ! inelastic competition flag
-    nuc % urr_data % params(5) = int(XSS(loc + 4)) ! other absorption flag
-    nuc % urr_data % params(6) = int(XSS(loc + 5)) ! factors flag
+    nuc % urr_data % params(1) = int(XSS(lc))     ! # of incident energies
+    nuc % urr_data % params(2) = int(XSS(lc + 1)) ! # of probabilities
+    nuc % urr_data % params(3) = int(XSS(lc + 2)) ! interpolation parameter
+    nuc % urr_data % params(4) = int(XSS(lc + 3)) ! inelastic competition flag
+    nuc % urr_data % params(5) = int(XSS(lc + 4)) ! other absorption flag
+    nuc % urr_data % params(6) = int(XSS(lc + 5)) ! factors flag
 
     ! allocate incident energies and probability tables
     N = nuc % urr_data % params(1)
@@ -1091,7 +1091,7 @@ contains
     allocate(nuc % urr_data % prob(N,6,M))
 
     ! read incident energies
-    XSS_index = loc + 6
+    XSS_index = lc + 6
     nuc % urr_data % energy = get_real(N)
 
     ! read probability tables
@@ -1120,7 +1120,7 @@ contains
     integer :: i      ! index for incoming energies
     integer :: j      ! index for outgoing energies
     integer :: k      ! index for outoging angles
-    integer :: loc    ! location in XSS array
+    integer :: lc     ! location in XSS array
     integer :: NE_in  ! number of incoming energies
     integer :: NE_out ! number of outgoing energies
     integer :: NMU    ! number of outgoing angles
@@ -1153,19 +1153,19 @@ contains
     allocate(table % inelastic_mu(NMU, NE_out, NE_in))
 
     ! read outgoing energy/angle distribution for inelastic scattering
-    loc = JXS(3) - 1
+    lc = JXS(3) - 1
     do i = 1, NE_in
        do j = 1, NE_out
           ! read outgoing energy
-          table % inelastic_e_out(j,i) = XSS(loc + 1)
+          table % inelastic_e_out(j,i) = XSS(lc + 1)
 
           ! read outgoing angles for this outgoing energy
           do k = 1, NMU
-             table % inelastic_mu(k,j,i) = XSS(loc + 1 + k)
+             table % inelastic_mu(k,j,i) = XSS(lc + 1 + k)
           end do
 
           ! advance pointer
-          loc = loc + 1 + NMU
+          lc = lc + 1 + NMU
        end do
     end do
 
@@ -1202,12 +1202,12 @@ contains
     ! read equiprobable outgoing cosines for elastic scattering each
     ! incoming energy
     if (JXS4 /= 0 .and. NMU /= 0) then
-       loc = JXS(6) - 1
+       lc = JXS(6) - 1
        do i = 1, NE_in
           do j = 1, NMU
-             table % elastic_mu(j,i) = XSS(loc + j)
+             table % elastic_mu(j,i) = XSS(lc + j)
           end do
-          loc = loc + NMU
+          lc = lc + NMU
        end do
     end if
     

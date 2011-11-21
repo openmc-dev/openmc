@@ -51,14 +51,14 @@ contains
     end if
 
     ! determine number of interpolation regions
-    n_regions = data(loc_0 + 1)
+    n_regions = int(data(loc_0 + 1))
 
     ! set locations for breakpoints and interpolation schemes
     loc_breakpoints = loc_0 + 1
     loc_interp      = loc_breakpoints + n_regions
 
     ! determine number of tabulated values
-    n_points  = data(loc_interp + n_regions + 1)
+    n_points  = int(data(loc_interp + n_regions + 1))
 
     ! set locations for x's and y's
     loc_x = loc_interp + n_regions + 1
@@ -81,11 +81,11 @@ contains
     if (n_regions == 0) then
        interp = LINEAR_LINEAR
     elseif (n_regions == 1) then
-       interp = data(loc_interp + 1)
+       interp = int(data(loc_interp + 1))
     elseif (n_regions > 1) then
        do j = 1, n_regions
           if (i < data(loc_breakpoints + j)) then
-             interp = data(loc_interp + j)
+             interp = int(data(loc_interp + j))
              exit
           end if
        end do

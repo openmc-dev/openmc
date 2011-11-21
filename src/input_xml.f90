@@ -425,7 +425,7 @@ contains
     logical :: file_exists
     character(3) :: default_xs
     character(MAX_WORD_LEN) :: units
-    character(MAX_WORD_LEN) :: name
+    character(10)           :: name
     character(MAX_LINE_LEN) :: filename
     type(Material),    pointer :: m => null()
     type(nuclide_xml), pointer :: nuc => null()
@@ -712,7 +712,7 @@ contains
           call split_string(tally_(i) % filters % cell, words, n_words)
           allocate(t % cell_bins(n_words))
           do j = 1, n_words
-             t % cell_bins(j) % scalar = str_to_int(words(j))
+             t % cell_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
           t % n_bins(T_CELL) = n_words
        end if
@@ -722,7 +722,7 @@ contains
           call split_string(tally_(i) % filters % surface, words, n_words)
           allocate(t % surface_bins(n_words))
           do j = 1, n_words
-             t % surface_bins(j) % scalar = str_to_int(words(j))
+             t % surface_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
           t % n_bins(T_SURFACE) = n_words
        end if
@@ -732,7 +732,7 @@ contains
           call split_string(tally_(i) % filters % universe, words, n_words)
           allocate(t % universe_bins(n_words))
           do j = 1, n_words
-             t % universe_bins(j) % scalar = str_to_int(words(j))
+             t % universe_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
           t % n_bins(T_UNIVERSE) = n_words
        end if
@@ -742,7 +742,7 @@ contains
           call split_string(tally_(i) % filters % material, words, n_words)
           allocate(t % material_bins(n_words))
           do j = 1, n_words
-             t % material_bins(j) % scalar = str_to_int(words(j))
+             t % material_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
           t % n_bins(T_MATERIAL) = n_words
        end if
@@ -769,7 +769,7 @@ contains
           call split_string(tally_(i) % filters % cellborn, words, n_words)
           allocate(t % cellborn_bins(n_words))
           do j = 1, n_words
-             t % cellborn_bins(j) % scalar = str_to_int(words(j))
+             t % cellborn_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
           t % n_bins(T_CELLBORN) = n_words
        end if

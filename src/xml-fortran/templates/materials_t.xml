@@ -15,7 +15,7 @@
   <!-- Type for specifying a nuclide -->
 
   <typedef name="nuclide_xml">
-    <component name="name" type="word" length="10" default="''" />
+    <component name="name" type="word" length="6" default="''" />
     <component name="xs" type="word" length="3" default="''" />
     <component name="ao" type="double" default="0.0" />
     <component name="wo" type="double" default="0.0" />

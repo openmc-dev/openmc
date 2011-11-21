@@ -3,9 +3,9 @@ module mpi_routines
   use constants,       only: MAX_LINE_LEN
   use error,           only: fatal_error
   use global
-  use mcnp_random,     only: rang, RN_init_particle, RN_skip
   use output,          only: write_message
   use particle_header, only: Particle, initialize_particle
+  use random_lcg,      only: prn, set_particle_seed, prn_skip
   use tally_header,    only: TallyObject
 
 #ifdef MPI
@@ -162,10 +162,10 @@ contains
     end if
 
     ! Make sure all processors start at the same point for random sampling
-    call RN_init_particle(int(i_cycle,8))
+    call set_particle_seed(int(i_cycle,8))
 
     ! Skip ahead however many random numbers are needed
-    call RN_skip(start)
+    call prn_skip(start)
 
     allocate(temp_sites(2*work))
     count = 0_8 ! Index for local source_bank
@@ -198,7 +198,7 @@ contains
        end if
 
        ! Randomly sample sites needed
-       if (rang() < p_sample) then
+       if (prn() < p_sample) then
           count = count + 1
           temp_sites(count) = fission_bank(i)
        end if

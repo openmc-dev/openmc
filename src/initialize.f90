@@ -13,10 +13,10 @@ module initialize
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict
   use logging,          only: create_log
-  use mcnp_random,      only: RN_init_problem
   use mpi_routines,     only: setup_mpi
   use output,           only: title, echo_input, message, print_summary,       &
                               print_particle, header, print_plot
+  use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use string,           only: int_to_str, starts_with, ends_with, lower_case
   use tally,            only: create_tally_map, TallyObject
@@ -51,10 +51,8 @@ contains
     ! Print initialization header block
     if (master) call header("INITIALIZATION", 1)
 
-    ! Initialize random number generator. The first argument corresponds to
-    ! which random number generator to use- in this case one of the L'Ecuyer
-    ! 63-bit RNGs.
-    call RN_init_problem(3, 0_8, 0_8, 0_8, 0)
+    ! Initialize random number generator
+    call initialize_prng()
 
     ! set up dictionaries
     call create_dictionaries()

@@ -10,12 +10,12 @@ module physics
   use geometry_header,      only: Universe, BASE_UNIVERSE
   use global
   use interpolation,        only: interpolate_tab1
-  use mcnp_random,          only: rang
   use output,               only: write_message, print_particle
   use particle_header,      only: Particle
-  use tally,                only: score_tally, score_surface_current
+  use random_lcg,           only: prn
   use search,               only: binary_search
   use string,               only: int_to_str
+  use tally,                only: score_tally, score_surface_current
 
   implicit none
 
@@ -73,7 +73,7 @@ contains
        call dist_to_boundary(p, d_to_boundary, surf, in_lattice)
 
        ! Sample a distance to collision
-       d_to_collision = -log(rang()) / material_xs % total
+       d_to_collision = -log(prn()) / material_xs % total
        
        ! Select smaller of the two distances
        distance = min(d_to_boundary, d_to_collision)
@@ -454,7 +454,7 @@ contains
     ! ==========================================================================
     ! SAMPLE NUCLIDE WITHIN THE MATERIAL
 
-    cutoff = rang() * material_xs % total
+    cutoff = prn() * material_xs % total
     prob = ZERO
 
     i = 0
@@ -491,7 +491,7 @@ contains
 
     else
        ! set cutoff variable for analog cases
-       cutoff = rang() * micro_xs(index_nuclide) % total
+       cutoff = prn() * micro_xs(index_nuclide) % total
        prob = ZERO
 
        ! Add disappearance cross-section to prob
@@ -518,7 +518,7 @@ contains
           ! created.
 
           if (nuc % has_partial_fission) then
-             cutoff = rang() * micro_xs(index_nuclide) % fission
+             cutoff = prn() * micro_xs(index_nuclide) % fission
              prob = ZERO
 
              i = 0
@@ -586,7 +586,7 @@ contains
 
     if (survival_biasing) then
        if (p % wgt < weight_cutoff) then
-          if (rang() < p % wgt / weight_survive) then
+          if (prn() < p % wgt / weight_survive) then
              p % wgt = weight_survive
           else
              p % wgt = ZERO
@@ -598,7 +598,7 @@ contains
        ! survival biasing. The cutoff will be a random number times the
        ! scattering cross section
 
-       cutoff = rang() * (micro_xs(index_nuclide) % total - &
+       cutoff = prn() * (micro_xs(index_nuclide) % total - &
             micro_xs(index_nuclide) % absorption)
        prob = ZERO
     end if
@@ -772,7 +772,7 @@ contains
     sab => sab_tables(index_sab)
 
     ! Determine whether inelastic or elastic scattering will occur
-    if (rang() < micro_xs(index_nuclide) % elastic_sab / &
+    if (prn() < micro_xs(index_nuclide) % elastic_sab / &
          micro_xs(index_nuclide) % elastic) then
        ! elastic scattering
 
@@ -793,7 +793,7 @@ contains
           ! data derived in the incoherent approximation
 
           ! Sample outgoing cosine bin
-          k = 1 + rang() * sab % n_elastic_mu
+          k = 1 + prn() * sab % n_elastic_mu
 
           ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
           mu_ijk  = sab % elastic_mu(k,i)
@@ -808,7 +808,7 @@ contains
           ! edges.
           
           ! Sample a Bragg edge between 1 and i
-          prob = rang() * sab % elastic_P(i+1)
+          prob = prn() * sab % elastic_P(i+1)
           k = binary_search(sab % elastic_P(1:i+1), i+1, prob)
 
           ! Characteristic scattering cosine for this Bragg egg
@@ -843,9 +843,9 @@ contains
 
        if (sab % secondary_mode == SAB_SECONDARY_EQUAL) then
           ! All bins equally likely
-          j = 1 + rang() * n_energy_out
+          j = 1 + prn() * n_energy_out
        elseif (sab % secondary_mode == SAB_SECONDARY_SKEWED) then
-          r = rang() * (n_energy_out - 3)
+          r = prn() * (n_energy_out - 3)
           if (r > ONE) then
              ! equally likely N-4 middle bins
              j = r + 2
@@ -875,7 +875,7 @@ contains
        E = (1 - f)*E_ij + f*E_i1j
 
        ! Sample outgoing cosine bin
-       k = 1 + rang() * sab % n_inelastic_mu
+       k = 1 + prn() * sab % n_inelastic_mu
 
        ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
        mu_ijk  = sab % inelastic_mu(k,j,i)
@@ -942,10 +942,10 @@ contains
 
     do
        ! Sample two random numbers
-       r1 = rang()
-       r2 = rang()
+       r1 = prn()
+       r2 = prn()
 
-       if (rang() < alpha) then
+       if (prn() < alpha) then
           ! With probability alpha, we sample the distribution p(y) =
           ! y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
           ! Carlo sampler
@@ -957,7 +957,7 @@ contains
           ! e^(-y^2). This can be done with sampling scheme C61 from the Monte
           ! Carlo sampler
 
-          c = cos(PI/2.0 * rang())
+          c = cos(PI/2.0 * prn())
           beta_vt_sq = -log(r1) - log(r2)*c*c
        end if
 
@@ -965,14 +965,14 @@ contains
        beta_vt = sqrt(beta_vt_sq)
 
        ! Sample cosine of angle between neutron and target velocity
-       mu = 2.0*rang() - ONE
+       mu = 2.0*prn() - ONE
 
        ! Determine rejection probability
        accept_prob = sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
             /(beta_vn + beta_vt)
 
        ! Perform rejection sampling on vt and mu
-       if (rang() < accept_prob) exit
+       if (prn() < accept_prob) exit
     end do
 
     ! determine direction of target velocity based on the neutron's velocity
@@ -1065,7 +1065,7 @@ contains
        nu_t = p % last_wgt * micro_xs(index_nuclide) % fission / (keff * &
             micro_xs(index_nuclide) % total) * nu_t
     end if
-    if (rang() > nu_t - int(nu_t)) then
+    if (prn() > nu_t - int(nu_t)) then
        nu = int(nu_t)
     else
        nu = int(nu_t) + 1
@@ -1082,12 +1082,12 @@ contains
        mu = sample_angle(rxn, E)
 
        ! sample between delayed and prompt neutrons
-       if (rang() < beta) then
+       if (prn() < beta) then
           ! ====================================================================
           ! DELAYED NEUTRON SAMPLED
 
           ! sampled delayed precursor group
-          xi = rang()
+          xi = prn()
           loc = 1
           prob = ZERO
           do j = 1, nuc % n_precursor
@@ -1139,7 +1139,7 @@ contains
        end if
 
        ! Sample azimuthal angle uniformly in [0,2*pi)
-       phi = TWO*PI*rang()
+       phi = TWO*PI*prn()
        fission_bank(i) % uvw(1) = mu
        fission_bank(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
        fission_bank(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
@@ -1262,7 +1262,7 @@ contains
     ! check if reaction has angular distribution -- if not, sample outgoing
     ! angle isotropically
     if (.not. rxn % has_angle_dist) then
-       mu = TWO * rang() - ONE
+       mu = TWO * prn() - ONE
        return
     end if
 
@@ -1284,16 +1284,16 @@ contains
     end if
 
     ! Sample between the ith and (i+1)th bin
-    if (r > rang()) i = i + 1
+    if (r > prn()) i = i + 1
 
     ! check whether this is a 32-equiprobable bin or a tabular distribution
     loc  = rxn % adist % location(i)
     type = rxn % adist % type(i)
     if (type == ANGLE_ISOTROPIC) then
-       mu = TWO * rang() - ONE
+       mu = TWO * prn() - ONE
     elseif (type == ANGLE_32_EQUI) then
        ! sample cosine bin
-       xi = rang()
+       xi = prn()
        k = 1 + int(32.0_8*xi)
 
        ! calculate cosine
@@ -1306,7 +1306,7 @@ contains
        NP     = rxn % adist % data(loc + 2)
 
        ! determine outgoing cosine bin
-       xi = rang()
+       xi = prn()
        loc = loc + 2
        c_k = rxn % adist % data(loc + 2*NP + 1)
        do k = 1, NP-1
@@ -1376,7 +1376,7 @@ contains
     w0 = w
 
     ! Sample azimuthal angle in [0,2pi)
-    phi = TWO * PI * rang()
+    phi = TWO * PI * prn()
 
     ! Precompute factors to save flops
     sinphi = sin(phi)
@@ -1466,7 +1466,7 @@ contains
        if (edist % p_valid % n_regions > 0) then
           p_valid = interpolate_tab1(edist % p_valid, E_in)
 
-          if (rang() > p_valid) then
+          if (prn() > p_valid) then
              if (edist % law == 44 .or. edist % law == 61) then
                 call sample_energy(edist%next, E_in, E_out, mu_out)
              elseif (edist % law == 66) then
@@ -1503,7 +1503,7 @@ contains
             & (edist%data(loc+i+1) - edist%data(loc+i))
 
        ! Sample outgoing energy bin
-       r1 = rang()
+       r1 = prn()
        k = 1 + int(NET * r1)
 
        ! Determine E_1 and E_K
@@ -1520,7 +1520,7 @@ contains
 
        ! Randomly select between the outgoing table for incoming energy E_i and
        ! E_(i+1)
-       if (rang() < r) then
+       if (prn() < r) then
           l = i + 1
        else
           l = i
@@ -1532,7 +1532,7 @@ contains
        E_l_k1 = edist % data(loc+k+1)
 
        ! Determine E' (denoted here as E_out)
-       r2 = rang()
+       r2 = prn()
        E_out  = E_l_k + r2*(E_l_k1 - E_l_k)
 
        ! Now interpolate between incident energy bins i and i + 1
@@ -1580,7 +1580,7 @@ contains
        end if
 
        ! Sample between the ith and (i+1)th bin
-       r2 = rang()
+       r2 = prn()
        if (r > r2) then
           l = i + 1
        else
@@ -1623,7 +1623,7 @@ contains
        end if
 
        ! determine outgoing energy bin
-       r1 = rang()
+       r1 = prn()
        loc = loc + 2 ! start of EOUT
        c_k = edist % data(loc + 2*NP + 1)
        do k = 1, NP-1
@@ -1697,8 +1697,8 @@ contains
        ! sample outgoing energy based on evaporation spectrum probability
        ! density function
        do
-          r1 = rang()
-          r2 = rang()
+          r1 = prn()
+          r2 = prn()
           E_out = -T * log(r1*r2)
           if (E_out <= E_in - U) exit
        end do
@@ -1759,7 +1759,7 @@ contains
        end if
 
        ! Sample between the ith and (i+1)th bin
-       r2 = rang()
+       r2 = prn()
        if (r > r2) then
           l = i + 1
        else
@@ -1803,7 +1803,7 @@ contains
        end if
 
        ! determine outgoing energy bin
-       r1 = rang()
+       r1 = prn()
        loc = loc + 2 ! start of EOUT
        c_k = edist % data(loc + 2*NP + 1)
        do k = 1, NP-1
@@ -1858,8 +1858,8 @@ contains
        end if
 
        ! Sampled correlated angle from Kalbach-Mann parameters
-       r3 = rang()
-       r4 = rang()
+       r3 = prn()
+       r4 = prn()
        T = (TWO*r4 - ONE) * sinh(KM_A)
        if (r3 > KM_R) then
           mu_out = log(T + sqrt(T*T + ONE))/KM_A
@@ -1902,7 +1902,7 @@ contains
        end if
 
        ! Sample between the ith and (i+1)th bin
-       r2 = rang()
+       r2 = prn()
        if (r > r2) then
           l = i + 1
        else
@@ -1946,7 +1946,7 @@ contains
        end if
 
        ! determine outgoing energy bin
-       r1 = rang()
+       r1 = prn()
        loc = loc + 2 ! start of EOUT
        c_k = edist % data(loc + 2*NP + 1)
        do k = 1, NP-1
@@ -1992,7 +1992,7 @@ contains
 
        ! Check if angular distribution is isotropic
        if (loc == 0) then
-          mu_out = TWO * rang() - ONE
+          mu_out = TWO * prn() - ONE
           return
        end if
 
@@ -2001,7 +2001,7 @@ contains
        NP = edist % data(loc + 2)
 
        ! determine outgoing cosine bin
-       r3 = rang()
+       r3 = prn()
        loc = loc + 2
        c_k = edist % data(loc + 2*NP + 1)
        do k = 1, NP-1
@@ -2051,17 +2051,17 @@ contains
        case (3)
           y = maxwell_spectrum(ONE)
        case (4)
-          r1 = rang()
-          r2 = rang()
-          r3 = rang()
+          r1 = prn()
+          r2 = prn()
+          r3 = prn()
           y = -log(r1*r2*r3)
        case (5)
-          r1 = rang()
-          r2 = rang()
-          r3 = rang()
-          r4 = rang()
-          r5 = rang()
-          r6 = rang()
+          r1 = prn()
+          r2 = prn()
+          r3 = prn()
+          r4 = prn()
+          r5 = prn()
+          r6 = prn()
           y = -log(r1*r2*r3*r4) - log(r5) * cos(PI/2.*r6)**2
        end select
 
@@ -2092,9 +2092,9 @@ contains
     real(8) :: r1, r2, r3  ! random numbers
     real(8) :: c           ! cosine of pi/2*r3
 
-    r1 = rang()
-    r2 = rang()
-    r3 = rang()
+    r1 = prn()
+    r2 = prn()
+    r3 = prn()
 
     ! determine cosine of pi/2*r
     c = cos(PI/2.*r3)
@@ -2121,7 +2121,7 @@ contains
     real(8) :: w ! sampled from Maxwellian
 
     w     = maxwell_spectrum(a)
-    E_out = w + a*a*b/4. + (2.*rang() - ONE)*sqrt(a*a*b*w)
+    E_out = w + a*a*b/4. + (2.*prn() - ONE)*sqrt(a*a*b*w)
 
   end function watt_spectrum
 
@@ -2137,7 +2137,7 @@ contains
 
     real(8) :: c
 
-    c = -4.*D_avg*D_avg/PI * log(rang())
+    c = -4.*D_avg*D_avg/PI * log(prn())
     D = sqrt(c)
 
   end function wigner
@@ -2166,7 +2166,7 @@ contains
        ! sample x as -2/n*log(product(r_i, i = 1 to n/2))
        x = ONE
        do i = 1, n/2
-          x = x * rang()
+          x = x * prn()
        end do
        x = -2./n * log(x)
 
@@ -2178,11 +2178,11 @@ contains
        ! Note that we take advantage of integer division on n/2
        y = ONE
        do i = 1, n/2
-          y = y * rang()
+          y = y * prn()
        end do
 
-       r1 = rang()
-       r2 = rang()
+       r1 = prn()
+       r2 = prn()
        c = cos(PI/2.*r2)
        x = -2./n * (log(y) + log(r1)*c*c)
     end select

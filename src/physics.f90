@@ -621,8 +621,11 @@ contains
 
           ! Perform collision physics for elastic scattering
           call elastic_scatter(p, nuc, rxn)
+
        end if
 
+       ! Set MT to be returned
+       MT = 2
     else
        ! =======================================================================
        ! INELASTIC SCATTERING
@@ -662,10 +665,10 @@ contains
 
        ! Perform collision physics for inelastics scattering
        call inelastic_scatter(p, nuc, rxn)
-    end if
 
-    ! Set MT to be returned
-    MT = rxn % MT
+       ! Set MT to be returned
+       MT = rxn % MT
+    end if
 
   end subroutine sample_reaction
 

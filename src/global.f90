@@ -196,9 +196,6 @@ contains
     call MPI_FINALIZE(ierr)
 #endif
 
-    ! End program
-    stop
-   
   end subroutine free_memory
 
 end module global

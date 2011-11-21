@@ -763,17 +763,18 @@ contains
 
   subroutine print_runtime()
 
-    integer(8) :: total_particles
-    real(8)    :: speed
+    integer(8)    :: total_particles
+    real(8)       :: speed
+    character(15) :: string
 
     ! display header block
     call header("Time Elapsed")
 
     ! display time elapsed for various sections
-    write(ou,100) "Total time elapsed", trim(real_to_str(time_total % elapsed))
-    write(ou,100) "Total time for initialization", trim(real_to_str(time_init % elapsed))
-    write(ou,100) "Total time in computation", trim(real_to_str(time_compute % elapsed))
-    write(ou,100) "Total time between cycles", trim(real_to_str(time_intercycle % elapsed))
+    write(ou,100) "Total time elapsed", time_total % elapsed
+    write(ou,100) "Total time for initialization", time_init % elapsed
+    write(ou,100) "Total time in computation", time_compute % elapsed
+    write(ou,100) "Total time between cycles", time_intercycle % elapsed
 
     ! display header block
     call header("Run Statistics")
@@ -781,14 +782,15 @@ contains
     ! display calculate rate and final keff
     total_particles = n_particles * n_cycles
     speed = real(total_particles) / time_compute % elapsed
-    write(ou,101) "Calculation Rate", trim(real_to_str(speed))
-    write(ou,102) "Final Keff", trim(real_to_str(keff)), trim(real_to_str(keff_std))
+    string = real_to_str(speed)
+    write(ou,101) "Calculation Rate", trim(string)
+    write(ou,102) "Final Keff", keff, keff_std
     write(ou,*)
 
     ! format for write statements
-100 format (1X,A,T33,"= ",A," seconds")
+100 format (1X,A,T33,"= ",ES11.4," seconds")
 101 format (1X,A,T20,"= ",A," neutrons/second")
-102 format (1X,A,T20,"= ",A," +/- ",A)
+102 format (1X,A,T20,"= ",F8.5," +/- ",F8.5)
  
   end subroutine print_runtime
 

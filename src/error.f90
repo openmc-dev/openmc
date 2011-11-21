@@ -64,8 +64,11 @@ contains
        write(eu,*)
     end if
 
-    ! All processors abort
+    ! Release memory from all allocatable arrays
     call free_memory()
+
+    ! Abort program
+    stop
 
   end subroutine fatal_error
 

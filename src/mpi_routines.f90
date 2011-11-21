@@ -183,7 +183,7 @@ contains
 
     ! ==========================================================================
     ! SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
-    do i = 1, n_bank
+    do i = 1, int(n_bank,4)
 
        ! If there are less than n_particles particles banked, automatically add
        ! int(n_particles/total) sites to temp_sites. For example, if you need
@@ -221,8 +221,8 @@ contains
 #endif
 
     ! Determine how many sites to send to adjacent nodes
-    send_to_left  = bank_first - 1 - start
-    send_to_right = finish - bank_last
+    send_to_left  = int(bank_first - 1_8 - start, 4)
+    send_to_right = int(finish - bank_last, 4)
 
     if (rank == n_procs - 1) then
        if (total > n_particles) then
@@ -236,7 +236,7 @@ contains
           ! If we have too few sites, grab sites from the very end of the
           ! fission bank
           sites_needed = n_particles - total
-          do i = 1, sites_needed
+          do i = 1, int(sites_needed,4)
              count = count + 1
              temp_sites(count) = fission_bank(n_bank - sites_needed + i)
           end do
@@ -285,27 +285,27 @@ contains
     ! ==========================================================================
     ! RECONSTRUCT SOURCE BANK
     if (send_to_left < 0 .and. send_to_right >= 0) then
-       i = -send_to_left         ! size of first block
-       j = count - send_to_right ! size of second block
+       i = -send_to_left                ! size of first block
+       j = int(count,4) - send_to_right ! size of second block
        call copy_from_bank(temp_sites, i+1, j)
 #ifdef MPI
        call MPI_WAIT(request_left, status, ierr)
 #endif
        call copy_from_bank(left_bank, 1, i)
     else if (send_to_left >= 0 .and. send_to_right < 0) then
-       i = count - send_to_left ! size of first block
-       j = -send_to_right       ! size of second block
+       i = int(count,4) - send_to_left ! size of first block
+       j = -send_to_right              ! size of second block
        call copy_from_bank(temp_sites(1+send_to_left), 1, i)
 #ifdef MPI
        call MPI_WAIT(request_right, status, ierr)
 #endif
        call copy_from_bank(right_bank, i+1, j)
     else if (send_to_left >= 0 .and. send_to_right >= 0) then
-       i = count - send_to_left - send_to_right
+       i = int(count,4) - send_to_left - send_to_right
        call copy_from_bank(temp_sites(1+send_to_left), 1, i)
     else if (send_to_left < 0 .and. send_to_right < 0) then
        i = -send_to_left
-       j = count
+       j = int(count,4)
        k = -send_to_right
        call copy_from_bank(temp_sites, i+1, j)
 #ifdef MPI

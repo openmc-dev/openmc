@@ -121,8 +121,8 @@ contains
     integer :: i         ! loop index
     integer :: argc      ! number of command line arguments
     integer :: last_flag ! index of last flag
-    character(MAX_LINE_LEN) :: pwd       ! present working directory
-    character(MAX_WORD_LEN) :: argv(10)  ! command line arguments
+    character(MAX_FILE_LEN) :: pwd      ! present working directory
+    character(MAX_WORD_LEN) :: argv(10) ! command line arguments
     
     ! Get working directory
     call GET_ENVIRONMENT_VARIABLE("PWD", pwd)

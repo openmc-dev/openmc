@@ -763,8 +763,8 @@ contains
 
   subroutine print_runtime()
 
-    integer :: total_particles
-    real(8) :: speed
+    integer(8) :: total_particles
+    real(8)    :: speed
 
     ! display header block
     call header("Time Elapsed")

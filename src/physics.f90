@@ -793,7 +793,7 @@ contains
           ! data derived in the incoherent approximation
 
           ! Sample outgoing cosine bin
-          k = 1 + prn() * sab % n_elastic_mu
+          k = 1 + int(prn() * sab % n_elastic_mu)
 
           ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
           mu_ijk  = sab % elastic_mu(k,i)
@@ -843,12 +843,12 @@ contains
 
        if (sab % secondary_mode == SAB_SECONDARY_EQUAL) then
           ! All bins equally likely
-          j = 1 + prn() * n_energy_out
+          j = 1 + int(prn() * n_energy_out)
        elseif (sab % secondary_mode == SAB_SECONDARY_SKEWED) then
           r = prn() * (n_energy_out - 3)
           if (r > ONE) then
              ! equally likely N-4 middle bins
-             j = r + 2
+             j = int(r) + 2
           elseif (r > 0.6) then
              ! second to last bin has relative probability of 0.4
              j = n_energy_out - 1
@@ -875,7 +875,7 @@ contains
        E = (1 - f)*E_ij + f*E_i1j
 
        ! Sample outgoing cosine bin
-       k = 1 + prn() * sab % n_inelastic_mu
+       k = 1 + int(prn() * sab % n_inelastic_mu)
 
        ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
        mu_ijk  = sab % inelastic_mu(k,j,i)
@@ -1072,8 +1072,8 @@ contains
     end if
 
     ! Bank source neutrons
-    if (nu == 0 .or. n_bank == 3*n_particles) return
-    do i = n_bank + 1, min(n_bank + nu, 3*n_particles)
+    if (nu == 0 .or. n_bank == 3*work) return
+    do i = int(n_bank,4) + 1, int(min(n_bank + nu, 3*work),4)
        ! Bank source neutrons by copying particle data
        fission_bank(i) % id  = p % id
        fission_bank(i) % xyz = p % xyz
@@ -1092,8 +1092,8 @@ contains
           prob = ZERO
           do j = 1, nuc % n_precursor
              ! determine number of interpolation regions and energies
-             NR  = nuc % nu_d_precursor_data(loc + 1)
-             NE  = nuc % nu_d_precursor_data(loc + 2 + 2*NR)
+             NR = int(nuc % nu_d_precursor_data(loc + 1))
+             NE = int(nuc % nu_d_precursor_data(loc + 2 + 2*NR))
 
              ! determine delayed neutron precursor yield for group j
              yield = interpolate_tab1(nuc % nu_d_precursor_data( &
@@ -1149,7 +1149,7 @@ contains
     end do
 
     ! increment number of bank sites
-    n_bank = min(n_bank + nu, 3*n_particles)
+    n_bank = min(n_bank + nu, 3*work)
     p % n_bank = nu
 
   end subroutine create_fission_sites
@@ -1302,8 +1302,8 @@ contains
        mu = mu0 + (32.0_8 * xi - k) * (mu1 - mu0)
 
     elseif (type == ANGLE_TABULAR) then
-       interp = rxn % adist % data(loc + 1)
-       NP     = rxn % adist % data(loc + 2)
+       interp = int(rxn % adist % data(loc + 1))
+       NP     = int(rxn % adist % data(loc + 2))
 
        ! determine outgoing cosine bin
        xi = prn()
@@ -1487,9 +1487,9 @@ contains
 
        ! read number of interpolation regions, incoming energies, and outgoing
        ! energies
-       NR  = edist % data(1)
-       NE  = edist % data(2 + 2*NR)
-       NET = edist % data(3 + 2*NR + NE)
+       NR  = int(edist % data(1))
+       NE  = int(edist % data(2 + 2*NR))
+       NET = int(edist % data(3 + 2*NR + NE))
        if (NR > 0) then
           message = "Multiple interpolation regions not supported while &
                &attempting to sample equiprobable energy bins."
@@ -1555,8 +1555,8 @@ contains
        ! CONTINUOUS TABULAR DISTRIBUTION
 
        ! read number of interpolation regions and incoming energies 
-       NR  = edist % data(1)
-       NE  = edist % data(2 + 2*NR)
+       NR  = int(edist % data(1))
+       NE  = int(edist % data(2 + 2*NR))
        if (NR > 0) then
           message = "Multiple interpolation regions not supported while &
                &attempting to sample continuous tabular distribution."
@@ -1588,13 +1588,13 @@ contains
        end if
 
        ! interpolation for energy E1 and EK
-       loc   = edist%data(2 + 2*NR + NE + i)
-       NP    = edist%data(loc + 2)
+       loc   = int(edist%data(2 + 2*NR + NE + i))
+       NP    = int(edist%data(loc + 2))
        E_i_1 = edist%data(loc + 2 + 1)
        E_i_K = edist%data(loc + 2 + NP)
 
-       loc    = edist%data(2 + 2*NR + NE + i + 1)
-       NP     = edist%data(loc + 2)
+       loc    = int(edist%data(2 + 2*NR + NE + i + 1))
+       NP     = int(edist%data(loc + 2))
        E_i1_1 = edist%data(loc + 2 + 1)
        E_i1_K = edist%data(loc + 2 + NP)
 
@@ -1602,11 +1602,11 @@ contains
        E_K = E_i_K + r*(E_i1_K - E_i_K)
 
        ! determine location of outgoing energies, pdf, cdf for E(l)
-       loc = edist % data(2 + 2*NR + NE + l)
+       loc = int(edist % data(2 + 2*NR + NE + l))
 
        ! determine type of interpolation and number of discrete lines
-       INTTp = edist % data(loc + 1)
-       NP    = edist % data(loc + 2)
+       INTTp = int(edist % data(loc + 1))
+       NP    = int(edist % data(loc + 2))
        if (INTTp > 10) then
           INTT = mod(INTTp,10)
           ND = (INTTp - INTT)/10
@@ -1684,8 +1684,8 @@ contains
        ! EVAPORATION SPECTRUM
 
        ! read number of interpolation regions and incoming energies 
-       NR  = edist % data(1)
-       NE  = edist % data(2 + 2*NR)
+       NR = int(edist % data(1))
+       NE = int(edist % data(2 + 2*NR))
 
        ! determine nuclear temperature from tabulated function
        T = interpolate_tab1(edist % data, E_in)
@@ -1709,8 +1709,8 @@ contains
 
        ! read number of interpolation regions and incoming energies for
        ! parameter 'a'
-       NR  = edist % data(1)
-       NE  = edist % data(2 + 2*NR)
+       NR = int(edist % data(1))
+       NE = int(edist % data(2 + 2*NR))
 
        ! determine Watt parameter 'a' from tabulated function
        Watt_a = interpolate_tab1(edist % data, E_in)
@@ -1734,8 +1734,8 @@ contains
        end if
 
        ! read number of interpolation regions and incoming energies 
-       NR  = edist % data(1)
-       NE  = edist % data(2 + 2*NR)
+       NR = int(edist % data(1))
+       NE = int(edist % data(2 + 2*NR))
        if (NR > 0) then
           message = "Multiple interpolation regions not supported while &
                &attempting to sample Kalbach-Mann distribution."
@@ -1767,14 +1767,14 @@ contains
        end if
 
        ! determine endpoints on grid i
-       loc   = edist%data(2+2*NR+NE + i) ! start of LDAT for i
-       NP    = edist%data(loc + 2)
+       loc   = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
+       NP    = int(edist%data(loc + 2))
        E_i_1 = edist%data(loc + 2 + 1)
        E_i_K = edist%data(loc + 2 + NP)
 
        ! determine endpoints on grid i+1
-       loc    = edist%data(2+2*NR+NE + i+1) ! start of LDAT for i+1
-       NP     = edist%data(loc + 2)
+       loc    = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
+       NP     = int(edist%data(loc + 2))
        E_i1_1 = edist%data(loc + 2 + 1)
        E_i1_K = edist%data(loc + 2 + NP)
 
@@ -1782,11 +1782,11 @@ contains
        E_K = E_i_K + r*(E_i1_K - E_i_K)
 
        ! determine location of outgoing energies, pdf, cdf for E(l)
-       loc = edist % data(2 + 2*NR + NE + l)
+       loc = int(edist % data(2 + 2*NR + NE + l))
 
        ! determine type of interpolation and number of discrete lines
-       INTTp = edist % data(loc + 1)
-       NP    = edist % data(loc + 2)
+       INTTp = int(edist % data(loc + 1))
+       NP    = int(edist % data(loc + 2))
        if (INTTp > 10) then
           INTT = mod(INTTp,10)
           ND = (INTTp - INTT)/10
@@ -1877,8 +1877,8 @@ contains
        end if
 
        ! read number of interpolation regions and incoming energies 
-       NR  = edist % data(1)
-       NE  = edist % data(2 + 2*NR)
+       NR = int(edist % data(1))
+       NE = int(edist % data(2 + 2*NR))
        if (NR > 0) then
           message = "Multiple interpolation regions not supported while &
                &attempting to sample correlated energy-angle distribution."
@@ -1910,14 +1910,14 @@ contains
        end if
 
        ! determine endpoints on grid i
-       loc   = edist%data(2+2*NR+NE + i) ! start of LDAT for i
-       NP    = edist%data(loc + 2)
+       loc   = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
+       NP    = int(edist%data(loc + 2))
        E_i_1 = edist%data(loc + 2 + 1)
        E_i_K = edist%data(loc + 2 + NP)
 
        ! determine endpoints on grid i+1
-       loc    = edist%data(2+2*NR+NE + i+1) ! start of LDAT for i+1
-       NP     = edist%data(loc + 2)
+       loc    = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
+       NP     = int(edist%data(loc + 2))
        E_i1_1 = edist%data(loc + 2 + 1)
        E_i1_K = edist%data(loc + 2 + NP)
 
@@ -1925,11 +1925,11 @@ contains
        E_K = E_i_K + r*(E_i1_K - E_i_K)
 
        ! determine location of outgoing energies, pdf, cdf for E(l)
-       loc = edist % data(2 + 2*NR + NE + l)
+       loc = int(edist % data(2 + 2*NR + NE + l))
 
        ! determine type of interpolation and number of discrete lines
-       INTTp = edist % data(loc + 1)
-       NP    = edist % data(loc + 2)
+       INTTp = int(edist % data(loc + 1))
+       NP    = int(edist % data(loc + 2))
        if (INTTp > 10) then
           INTT = mod(INTTp,10)
           ND = (INTTp - INTT)/10
@@ -1988,7 +1988,7 @@ contains
        end if
 
        ! Find location of correlated angular distribution
-       loc = edist % data(loc+3*NP+k)
+       loc = int(edist % data(loc+3*NP+k))
 
        ! Check if angular distribution is isotropic
        if (loc == 0) then
@@ -1997,8 +1997,8 @@ contains
        end if
 
        ! interpolation type and number of points in angular distribution
-       JJ = edist % data(loc + 1)
-       NP = edist % data(loc + 2)
+       JJ = int(edist % data(loc + 1))
+       NP = int(edist % data(loc + 2))
 
        ! determine outgoing cosine bin
        r3 = prn()
@@ -2038,7 +2038,7 @@ contains
        ! N-BODY PHASE SPACE DISTRIBUTION
 
        ! read number of bodies in phase space and total mass ratio
-       n_bodies = edist % data(1)
+       n_bodies = int(edist % data(1))
        Ap       = edist % data(2)
 
        ! determine E_max parameter

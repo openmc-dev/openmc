@@ -464,21 +464,21 @@ contains
        ! =======================================================================
        ! PROMPT AND TOTAL NU DATA -- read prompt data first
        KNU = JXS2 + 1
-       LNU = XSS(KNU)
+       LNU = int(XSS(KNU))
        if (LNU == 1) then
           ! Polynomial data
           nuc % nu_p_type = NU_POLYNOMIAL
 
           ! allocate determine how many coefficients for polynomial
-          NC = XSS(KNU+1)
+          NC = int(XSS(KNU+1))
           length = NC + 1
        elseif (LNU == 2) then
           ! Tabular data
           nuc % nu_p_type = NU_TABULAR
 
           ! determine number of interpolation regions and number of energies
-          NR = XSS(KNU+1)
-          NE = XSS(KNU+2+2*NR)
+          NR = int(XSS(KNU+1))
+          NE = int(XSS(KNU+2+2*NR))
           length = 2 + 2*NR + 2*NE
        end if
 
@@ -490,8 +490,8 @@ contains
        nuc % nu_p_data = get_real(length)
 
        ! Now read total nu data
-       KNU = JXS2 + abs(XSS(JXS2)) + 1
-       LNU = XSS(KNU)
+       KNU = JXS2 + int(abs(XSS(JXS2))) + 1
+       LNU = int(XSS(KNU))
        if (LNU == 1) then
           ! Polynomial data
           nuc % nu_t_type = NU_POLYNOMIAL
@@ -550,7 +550,7 @@ contains
        ! Loop over all delayed neutron precursor groups
        do i = 1, NPCR
           ! find location of energy distribution data
-          LOCC = XSS(LED + i - 1)
+          LOCC = int(XSS(LED + i - 1))
 
           ! read energy distribution data
           edist => nuc % nu_d_edist(i)
@@ -564,8 +564,8 @@ contains
        length = 0
        loc = JXS(25)
        do i = 1, NPCR
-          NR = XSS(loc + length + 1)
-          NE = XSS(loc + length + 2 + 2*NR)
+          NR = int(XSS(loc + length + 1))
+          NE = int(XSS(loc + length + 2 + 2*NR))
           length = length + 3 + 2*NR + 2*NE
        end do
 
@@ -640,17 +640,17 @@ contains
        rxn => nuc % reactions(i+1)
 
        ! read MT number, Q-value, and neutrons produced
-       rxn % MT      = XSS(LMT + i - 1)
+       rxn % MT      = int(XSS(LMT + i - 1))
        rxn % Q_value = XSS(JXS4 + i - 1)
-       rxn % TY      = XSS(JXS5 + i - 1)
+       rxn % TY      = int(XSS(JXS5 + i - 1))
 
        ! read starting energy index
-       LOCA = XSS(LXS + i - 1)
-       IE = XSS(JXS7 + LOCA - 1)
+       LOCA = int(XSS(LXS + i - 1))
+       IE   = int(XSS(JXS7 + LOCA - 1))
        rxn % IE = IE
 
        ! read number of energies cross section values
-       NE = XSS(JXS7 + LOCA)
+       NE = int(XSS(JXS7 + LOCA))
        allocate(rxn % sigma(NE))
        XSS_index = JXS7 + LOCA + 1
        rxn % sigma = get_real(NE)
@@ -727,7 +727,7 @@ contains
        rxn => nuc%reactions(i)
 
        ! find location of angular distribution
-       LOCB = XSS(JXS8 + i - 1)
+       LOCB = int(XSS(JXS8 + i - 1))
        if (LOCB == -1) then
           ! Angular distribution data are specified through LAWi = 44 in the DLW
           ! block
@@ -740,7 +740,7 @@ contains
        rxn % has_angle_dist = .true.
 
        ! allocate space for incoming energies and locations
-       NE = XSS(JXS9 + LOCB - 1)
+       NE = int(XSS(JXS9 + LOCB - 1))
        rxn % adist % n_energy = NE
        allocate(rxn % adist % energy(NE))
        allocate(rxn % adist % type(NE))
@@ -765,7 +765,7 @@ contains
           elseif (LC < 0) then
              ! tabular distribution
              rxn % adist % type(j) = ANGLE_TABULAR
-             NP = XSS(JXS9 + abs(LC))
+             NP = int(XSS(JXS9 + abs(LC)))
              length = length + 2 + 3*NP
           end if
        end do
@@ -810,7 +810,7 @@ contains
        rxn % has_energy_dist = .true.
 
        ! find location of energy distribution data
-       LOCC = XSS(LED + i - 1)
+       LOCC = int(XSS(LED + i - 1))
 
        ! allocate energy distribution
        allocate(rxn % edist)
@@ -851,10 +851,10 @@ contains
     end if
 
     ! locator for next law and information on this law
-    LNW  = XSS(LDIS + loc_law - 1)
-    LAW  = XSS(LDIS + loc_law)
-    IDAT = XSS(LDIS + loc_law + 1)
-    NR   = XSS(LDIS + loc_law + 2)
+    LNW  = int(XSS(LDIS + loc_law - 1))
+    LAW  = int(XSS(LDIS + loc_law))
+    IDAT = int(XSS(LDIS + loc_law + 1))
+    NR   = int(XSS(LDIS + loc_law + 2))
     edist % law = LAW
     edist % p_valid % n_regions = NR
 
@@ -867,12 +867,12 @@ contains
     ! read ENDF interpolation parameters
     XSS_index = LDIS + loc_law + 3
     if (NR > 0) then
-       edist % p_valid % nbt = get_real(NR)
-       edist % p_valid % int = get_real(NR)
+       edist % p_valid % nbt = int(get_real(NR))
+       edist % p_valid % int = int(get_real(NR))
     end if
 
     ! allocate space for law validity data
-    NE = XSS(LDIS + loc_law + 3 + 2*NR)
+    NE = int(XSS(LDIS + loc_law + 3 + 2*NR))
     edist % p_valid % n_pairs = NE
     allocate(edist % p_valid % x(NE))
     allocate(edist % p_valid % y(NE))
@@ -934,9 +934,9 @@ contains
     select case (law)
     case (1)
        ! Tabular equiprobable energy bins
-       NR = XSS(loc + 1)
-       NE = XSS(loc + 2 + 2*NR)
-       NP = XSS(loc + 3 + 2*NR + NE)
+       NR = int(XSS(loc + 1))
+       NE = int(XSS(loc + 2 + 2*NR))
+       NP = int(XSS(loc + 3 + 2*NR + NE))
        length = 3 + 2*NR + NE + 3*NP*NE
 
     case (2)
@@ -949,12 +949,12 @@ contains
 
     case (4)
        ! Continuous tabular distribution
-       NR = XSS(loc + 1)
-       NE = XSS(loc + 2 + 2*NR)
+       NR = int(XSS(loc + 1))
+       NE = int(XSS(loc + 2 + 2*NR))
        length = length + 2 + 2*NR + 2*NE
        do i = 1,NE
           ! determine length
-          NP = XSS(loc + length + 2)
+          NP = int(XSS(loc + length + 2))
           length = length + 2 + 3*NP
 
           ! adjust location for this block
@@ -964,38 +964,38 @@ contains
 
     case (5)
        ! General evaporation spectrum
-       NR = XSS(loc + 1)
-       NE = XSS(loc + 2 + 2*NR)
-       NP = XSS(loc + 3 + 2*NR + 2*NE)
+       NR = int(XSS(loc + 1))
+       NE = int(XSS(loc + 2 + 2*NR))
+       NP = int(XSS(loc + 3 + 2*NR + 2*NE))
        length = 3 + 2*NR + 2*NE + NP
 
     case (7)
        ! Maxwell fission spectrum
-       NR = XSS(loc + 1)
-       NE = XSS(loc + 2 + 2*NR)
+       NR = int(XSS(loc + 1))
+       NE = int(XSS(loc + 2 + 2*NR))
        length = 3 + 2*NR + 2*NE
 
     case (9)
        ! Evaporation spectrum
-       NR = XSS(loc + 1)
-       NE = XSS(loc + 2 + 2*NR)
+       NR = int(XSS(loc + 1))
+       NE = int(XSS(loc + 2 + 2*NR))
        length = 3 + 2*NR + 2*NE
 
     case (11)
        ! Watt spectrum
-       NRa = XSS(loc + 1)
-       NEa = XSS(loc + 2 + 2*NRa)
-       NRb = XSS(loc + 3 + 2*(NRa+NEa))
-       NEb = XSS(loc + 4 + 2*(NRa+NEa+NRb))
+       NRa = int(XSS(loc + 1))
+       NEa = int(XSS(loc + 2 + 2*NRa))
+       NRb = int(XSS(loc + 3 + 2*(NRa+NEa)))
+       NEb = int(XSS(loc + 4 + 2*(NRa+NEa+NRb)))
        length = 5 + 2*(NRa + NEa + NRb + NEb)
 
     case (44)
        ! Kalbach-Mann correlated scattering
-       NR = XSS(loc + 1)
-       NE = XSS(loc + 2 + 2*NR)
+       NR = int(XSS(loc + 1))
+       NE = int(XSS(loc + 2 + 2*NR))
        length = length + 2 + 2*NR + 2*NE
        do i = 1,NE
-          NP = XSS(loc + length + 2)
+          NP = int(XSS(loc + length + 2))
           length = length + 2 + 5*NP
 
           ! adjust location for this block
@@ -1005,12 +1005,12 @@ contains
 
     case (61)
        ! Correlated energy and angle distribution
-       NR = XSS(loc + 1)
-       NE = XSS(loc + 2 + 2*NR)
+       NR = int(XSS(loc + 1))
+       NE = int(XSS(loc + 2 + 2*NR))
        length = length + 2 + 2*NR + 2*NE
        do i = 1,NE
           ! outgoing energy distribution
-          NP = XSS(loc + length + 2)
+          NP = int(XSS(loc + length + 2))
 
           ! adjust locators for angular distribution
           do j = 1, NP
@@ -1022,7 +1022,7 @@ contains
           do j = 1, NP
              ! outgoing angle distribution -- NMU here is actually
              ! referred to as NP in the MCNP documentation
-             NMU = XSS(loc + length + 2)
+             NMU = int(XSS(loc + length + 2))
              length = length + 2 + 3*NMU
           end do
 
@@ -1037,9 +1037,9 @@ contains
 
     case (67)
        ! Laboratory energy-angle law
-       NR = XSS(loc + 1)
-       NE = XSS(loc + 2 + 2*NR)
-       NMU = XSS(loc + 4 + 2*NR + 2*NE)
+       NR  = int(XSS(loc + 1))
+       NE  = int(XSS(loc + 2 + 2*NR))
+       NMU = int(XSS(loc + 4 + 2*NR + 2*NE))
        length = 4 + 2*(NR + NE + NMU)
 
     end select
@@ -1077,12 +1077,12 @@ contains
     end if
 
     ! read parameters
-    nuc % urr_data % params(1) = XSS(loc)     ! # of incident energies
-    nuc % urr_data % params(2) = XSS(loc + 1) ! # of probabilities
-    nuc % urr_data % params(3) = XSS(loc + 2) ! interpolation parameter
-    nuc % urr_data % params(4) = XSS(loc + 3) ! inelastic competition flag
-    nuc % urr_data % params(5) = XSS(loc + 4) ! other absorption flag
-    nuc % urr_data % params(6) = XSS(loc + 5) ! factors flag
+    nuc % urr_data % params(1) = int(XSS(loc))     ! # of incident energies
+    nuc % urr_data % params(2) = int(XSS(loc + 1)) ! # of probabilities
+    nuc % urr_data % params(3) = int(XSS(loc + 2)) ! interpolation parameter
+    nuc % urr_data % params(4) = int(XSS(loc + 3)) ! inelastic competition flag
+    nuc % urr_data % params(5) = int(XSS(loc + 4)) ! other absorption flag
+    nuc % urr_data % params(6) = int(XSS(loc + 5)) ! factors flag
 
     ! allocate incident energies and probability tables
     N = nuc % urr_data % params(1)
@@ -1130,7 +1130,7 @@ contains
     table % secondary_mode = NXS(7)
 
     ! read number of inelastic energies and allocate arrays
-    NE_in = XSS(JXS(1))
+    NE_in = int(XSS(JXS(1)))
     table % n_inelastic_e_in = NE_in
     allocate(table % inelastic_e_in(NE_in))
     allocate(table % inelastic_sigma(NE_in))
@@ -1172,7 +1172,7 @@ contains
     ! read number of elastic energies and allocate arrays
     JXS4 = JXS(4)
     if (JXS4 /= 0) then
-       NE_in = XSS(JXS4)
+       NE_in = int(XSS(JXS4))
        table % n_elastic_e_in = NE_in
        allocate(table % elastic_e_in(NE_in))
        allocate(table % elastic_P(NE_in))

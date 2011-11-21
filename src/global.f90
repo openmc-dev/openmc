@@ -147,7 +147,7 @@ module global
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
-  character(MAX_WORD_LEN) :: path_input          ! Path to input file
+  character(MAX_FILE_LEN) :: path_input          ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections ! Path to cross_sections.xml
 
   ! Message used in message/warning/fatal_error

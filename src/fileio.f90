@@ -79,7 +79,7 @@ contains
     integer, intent(in)  :: n_lines ! number of lines to skip
     integer, intent(out) :: ioError ! error status 
 
-    integer :: i   ! index for number of lines
+    integer :: i ! index for number of lines
 
     do i = 1, n_lines
        read(UNIT=unit, FMT=*, IOSTAT=ioError)

@@ -208,6 +208,8 @@ module constants
        T_MESH      = 6, &
        T_ENERGYIN  = 7, &
        T_ENERGYOUT = 8
+
+  ! Filter types for surface current tallies
   integer, parameter :: &
        TS_MESH_X   = 1, &
        TS_MESH_Y   = 2, &

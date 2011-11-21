@@ -67,28 +67,28 @@ module cross_section_header
 !===============================================================================
 
   type Nuclide
-     character(20) :: name
-     integer       :: zaid
-     real(8)       :: awr
-     real(8)       :: kT
+     character(10) :: name ! name of nuclide, e.g. 92235.03c
+     integer       :: zaid ! Z and A identifier, e.g. 92235
+     real(8)       :: awr  ! weight of nucleus in neutron masses
+     real(8)       :: kT   ! temperature in MeV (k*T)
 
      ! Energy grid information
-     integer :: n_grid
-     integer, allocatable :: grid_index(:)
-     real(8), allocatable :: energy(:)
+     integer :: n_grid                     ! # of nuclide grid points
+     integer, allocatable :: grid_index(:) ! pointers to union grid
+     real(8), allocatable :: energy(:)     ! energy values corresponding to xs
 
-     ! Cross sections
-     real(8), allocatable :: total(:)
-     real(8), allocatable :: elastic(:)
-     real(8), allocatable :: fission(:)
-     real(8), allocatable :: absorption(:)
-     real(8), allocatable :: heating(:)
+     ! Microscopic cross sections
+     real(8), allocatable :: total(:)      ! total cross section
+     real(8), allocatable :: elastic(:)    ! elastic scattering
+     real(8), allocatable :: fission(:)    ! fission
+     real(8), allocatable :: absorption(:) ! absorption (MT > 100)
+     real(8), allocatable :: heating(:)    ! heating
 
      ! Fission information
-     logical :: fissionable
-     logical :: has_partial_fission
-     integer :: n_fission
-     integer, allocatable :: index_fission(:)
+     logical :: fissionable         ! nuclide is fissionable?
+     logical :: has_partial_fission ! nuclide has partial fission reactions?
+     integer :: n_fission           ! # of fission reactions
+     integer, allocatable :: index_fission(:) ! indices in reactions
 
      ! Total fission neutron emission
      integer :: nu_t_type
@@ -100,7 +100,7 @@ module cross_section_header
      
      ! Delayed fission neutron emission
      integer :: nu_d_type
-     integer :: n_precursor
+     integer :: n_precursor ! # of delayed neutron precursors
      real(8), allocatable :: nu_d_data(:)
      real(8), allocatable :: nu_d_precursor_data(:)
      type(DistEnergy), pointer :: nu_d_edist(:) => null()
@@ -110,7 +110,7 @@ module cross_section_header
      type(UrrData), pointer :: urr_data => null()
 
      ! Reactions
-     integer :: n_reaction
+     integer :: n_reaction ! # of reactions
      type(Reaction), pointer :: reactions(:) => null()
 
   end type Nuclide
@@ -121,29 +121,29 @@ module cross_section_header
 !===============================================================================
      
   type SAB_Table
-     character(20) :: name
-     integer       :: zaid
-     real(8)       :: awr
-     real(8)       :: kT
+     character(10) :: name ! name of table, e.g. lwtr.10t
+     integer       :: zaid ! Z and A identifier, e.g. 6012 for Carbon-12
+     real(8)       :: awr  ! weight of nucleus in neutron masses
+     real(8)       :: kT   ! temperature in MeV (k*T)
 
      ! threshold for S(a,b) treatment (usually ~4 eV)
      real(8) :: threshold_inelastic
      real(8) :: threshold_elastic = 0.0
 
      ! Inelastic scattering data
-     integer :: n_inelastic_e_in
-     integer :: n_inelastic_e_out
-     integer :: n_inelastic_mu
-     integer :: secondary_mode
+     integer :: n_inelastic_e_in  ! # of incoming E for inelastic
+     integer :: n_inelastic_e_out ! # of outgoing E for inelastic
+     integer :: n_inelastic_mu    ! # of outgoing angles for inelastic
+     integer :: secondary_mode    ! secondary mode (equal/skewed)
      real(8), allocatable :: inelastic_e_in(:)
      real(8), allocatable :: inelastic_sigma(:) 
      real(8), allocatable :: inelastic_e_out(:,:)
      real(8), allocatable :: inelastic_mu(:,:,:)
 
      ! Elastic scattering data
-     integer :: elastic_mode
-     integer :: n_elastic_e_in
-     integer :: n_elastic_mu
+     integer :: elastic_mode   ! elastic mode (discrete/exact)
+     integer :: n_elastic_e_in ! # of incoming E for elastic
+     integer :: n_elastic_mu   ! # of outgoing angles for elastic
      real(8), allocatable :: elastic_e_in(:)
      real(8), allocatable :: elastic_P(:)
      real(8), allocatable :: elastic_mu(:,:)
@@ -174,20 +174,20 @@ module cross_section_header
 !===============================================================================
 
   type NuclideMicroXS
-     integer :: index_grid
-     integer :: index_temp
-     integer :: last_index_grid
-     integer :: last_index_temp
-     real(8) :: interp_factor
-     real(8) :: total
-     real(8) :: elastic
-     real(8) :: absorption
-     real(8) :: fission
-     real(8) :: nu_fission
+     integer :: index_grid      ! index on nuclide energy grid
+     integer :: index_temp      ! temperature index for nuclide
+     integer :: last_index_grid ! previous index on nuclide energy grid
+     integer :: last_index_temp ! previous temperature index for nuclide
+     real(8) :: interp_factor   ! interpolation factor on nuc. energy grid
+     real(8) :: total           ! microscropic total xs
+     real(8) :: elastic         ! microscopic elastic scattering xs
+     real(8) :: absorption      ! microscopic absorption xs
+     real(8) :: fission         ! microscopic fission xs
+     real(8) :: nu_fission      ! microscopic production xs
 
      ! Information for S(a,b) use
-     logical :: use_sab
-     real(8) :: elastic_sab
+     logical :: use_sab     ! in S(a,b) energy range?
+     real(8) :: elastic_sab ! microscopic elastic scattering on S(a,b) table
   end type NuclideMicroXS
 
 !===============================================================================
@@ -196,12 +196,11 @@ module cross_section_header
 !===============================================================================
 
   type MaterialMacroXS
-     real(8) :: total
-     real(8) :: scatter
-     real(8) :: elastic
-     real(8) :: absorption
-     real(8) :: fission
-     real(8) :: nu_fission
+     real(8) :: total      ! macroscopic total xs
+     real(8) :: elastic    ! macroscopic elastic scattering xs
+     real(8) :: absorption ! macroscopic absorption xs
+     real(8) :: fission    ! macroscopic fission xs
+     real(8) :: nu_fission ! macroscopic production xs
   end type MaterialMacroXS
 
 end module cross_section_header

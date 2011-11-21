@@ -12,8 +12,8 @@ module mesh_header
      integer :: type
      integer :: n_dimension
      integer, allocatable :: dimension(:)
-     integer, allocatable :: origin(:)
-     integer, allocatable :: width(:)
+     real(8), allocatable :: origin(:)
+     real(8), allocatable :: width(:)
   end type StructuredMesh
 
 end module mesh_header

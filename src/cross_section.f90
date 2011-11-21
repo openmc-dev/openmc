@@ -800,7 +800,7 @@ contains
     integer :: LED   ! location of energy distribution locators
     integer :: LOCC  ! location of energy distributions for given MT
     integer :: i     ! loop index
-    type(Reaction),   pointer :: rxn => null()
+    type(Reaction), pointer :: rxn => null()
 
     LED  = JXS(10)
 

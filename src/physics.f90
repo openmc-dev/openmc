@@ -324,7 +324,7 @@ contains
             + inelastic + elastic
        micro_xs(i) % elastic = inelastic + elastic
 
-       ! Store ratio of elastic to elastic+inelastic for sampling later
+       ! Store S(a,b) elastic cross section for sampling later
        micro_xs(i) % elastic_sab = elastic
     end if
 

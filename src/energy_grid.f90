@@ -18,11 +18,12 @@ contains
 
   subroutine unionized_grid()
 
+    integer :: i ! index over materials
+    integer :: j ! index over nuclides
     type(ListReal), pointer :: list => null()
     type(ListReal), pointer :: current => null()
     type(Material), pointer :: mat => null()
     type(Nuclide),  pointer :: nuc => null()
-    integer :: i, j
 
     message = "Creating unionized energy grid..."
     call write_message(5)
@@ -31,7 +32,7 @@ contains
     do i = 1, n_materials
        mat => materials(i)
        
-       ! loop over all isotopes
+       ! loop over all nuclides
        do j = 1, mat % n_nuclides
           nuc => nuclides(mat % nuclide(j))
 
@@ -152,14 +153,13 @@ contains
 
   subroutine original_indices()
 
-    integer :: i, j
+    integer :: i
+    integer :: j
     integer :: index
     integer :: n_grid_nuclide
-    type(Nuclide), pointer :: nuc
-
     real(8) :: union_energy
     real(8) :: energy
-    
+    type(Nuclide), pointer :: nuc
 
     do i = 1, n_nuclides_total
        nuc => nuclides(i)
@@ -177,7 +177,6 @@ contains
           end if
           nuc % grid_index(j) = index-1
        end do
-
     end do
 
   end subroutine original_indices

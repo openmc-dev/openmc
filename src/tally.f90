@@ -97,7 +97,7 @@ contains
 
     integer :: i           ! loop index for tallies
     integer :: j           ! loop index for filter arrays
-    integer :: index       ! filter bin entries
+    integer :: i_item      ! filter bin entries
     integer :: n           ! number of bins
     integer :: filter_bins ! running total of number of filter bins
     integer :: score_bins  ! number of scoring bins
@@ -193,8 +193,8 @@ contains
        t % stride(T_SURFACE) = filter_bins
        if (n > 0) then
           do j = 1, n
-             index = t % surface_bins(j) % scalar
-             call add_map_element(tally_maps(T_SURFACE) % items(index), i, j)
+             i_item = t % surface_bins(j) % scalar
+             call add_map_element(tally_maps(T_SURFACE) % items(i_item), i, j)
           end do
           filter_bins = filter_bins * n
        end if
@@ -204,8 +204,8 @@ contains
        t % stride(T_CELLBORN) = filter_bins
        if (n > 0) then
           do j = 1, n
-             index = t % cellborn_bins(j) % scalar
-             call add_map_element(tally_maps(T_CELLBORN) % items(index), i, j)
+             i_item = t % cellborn_bins(j) % scalar
+             call add_map_element(tally_maps(T_CELLBORN) % items(i_item), i, j)
           end do
           filter_bins = filter_bins * n
        end if
@@ -215,8 +215,8 @@ contains
        t % stride(T_CELL) = filter_bins
        if (n > 0) then
           do j = 1, n
-             index = t % cell_bins(j) % scalar
-             call add_map_element(tally_maps(T_CELL) % items(index), i, j)
+             i_item = t % cell_bins(j) % scalar
+             call add_map_element(tally_maps(T_CELL) % items(i_item), i, j)
           end do
           filter_bins = filter_bins * n
        end if
@@ -226,8 +226,8 @@ contains
        t % stride(T_MATERIAL) = filter_bins
        if (n > 0) then
           do j = 1, n
-             index = t % material_bins(j) % scalar
-             call add_map_element(tally_maps(T_MATERIAL) % items(index), i, j)
+             i_item = t % material_bins(j) % scalar
+             call add_map_element(tally_maps(T_MATERIAL) % items(i_item), i, j)
           end do
           filter_bins = filter_bins * n
        end if
@@ -237,8 +237,8 @@ contains
        t % stride(T_UNIVERSE) = filter_bins
        if (n > 0) then
           do j = 1, n
-             index = t % universe_bins(j) % scalar
-             call add_map_element(tally_maps(T_UNIVERSE) % items(index), i, j)
+             i_item = t % universe_bins(j) % scalar
+             call add_map_element(tally_maps(T_UNIVERSE) % items(i_item), i, j)
           end do
           filter_bins = filter_bins * n
        end if
@@ -1303,7 +1303,7 @@ contains
     integer, intent(in)        :: bin         ! bin in filter array
     character(30)              :: label         ! user-specified identifier
 
-    integer              :: index  ! index in cells/surfaces/etc array
+    integer              :: i      ! index in cells/surfaces/etc array
     integer, allocatable :: ijk(:) ! indices in mesh
     real(8)              :: E0     ! lower bound for energy bin
     real(8)              :: E1     ! upper bound for energy bin
@@ -1311,20 +1311,20 @@ contains
 
     select case(filter_type)
     case (T_UNIVERSE)
-       index = t % universe_bins(bin) % scalar
-       label = int_to_str(universes(index) % id)
+       i = t % universe_bins(bin) % scalar
+       label = int_to_str(universes(i) % id)
     case (T_MATERIAL)
-       index = t % material_bins(bin) % scalar
-       label = int_to_str(materials(index) % id)
+       i = t % material_bins(bin) % scalar
+       label = int_to_str(materials(i) % id)
     case (T_CELL)
-       index = t % cell_bins(bin) % scalar
-       label = int_to_str(cells(index) % id)
+       i = t % cell_bins(bin) % scalar
+       label = int_to_str(cells(i) % id)
     case (T_CELLBORN)
-       index = t % cellborn_bins(bin) % scalar
-       label = int_to_str(cells(index) % id)
+       i = t % cellborn_bins(bin) % scalar
+       label = int_to_str(cells(i) % id)
     case (T_SURFACE)
-       index = t % surface_bins(bin) % scalar
-       label = int_to_str(surfaces(index) % id)
+       i = t % surface_bins(bin) % scalar
+       label = int_to_str(surfaces(i) % id)
     case (T_MESH)
        m => meshes(t % mesh)
        allocate(ijk(m % n_dimension))

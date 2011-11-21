@@ -27,8 +27,8 @@ contains
 
   subroutine title()
 
-    character(10) :: date
-    character(8)  :: time
+    character(10) :: today_date
+    character(8)  :: today_time
 
     write(ou,*)
     write(ou,*) '       .d88888b.                             888b     d888  .d8888b.'
@@ -51,8 +51,8 @@ contains
 100 format (6X,"Version:",9X,I1,".",I1,".",I1)
 
     ! Write the date and time
-    call get_today(date, time)
-    write(ou,101) trim(date), trim(time)
+    call get_today(today_date, today_time)
+    write(ou,101) trim(today_date), trim(today_time)
 101 format (6X,"Date/Time:",7X,A,1X,A)
     write(ou,*)
 
@@ -187,11 +187,11 @@ contains
     character(8),  intent(out) :: today_time
 
     integer       :: val(8)
-    character(8)  :: date
-    character(10) :: time
+    character(8)  :: date_
+    character(10) :: time_
     character(5)  :: zone
 
-    call date_and_time(date, time, zone, val)
+    call date_and_time(date_, time_, zone, val)
     ! val(1) = year (YYYY)
     ! val(2) = month (MM)
     ! val(3) = day (DD)
@@ -203,18 +203,18 @@ contains
 
     if (val(2) < 10) then
        if (val(3) < 10) then
-          today_date = date(6:6) // "/" // date(8:8) // "/" // date(1:4)
+          today_date = date_(6:6) // "/" // date_(8:8) // "/" // date_(1:4)
        else
-          today_date = date(6:6) // "/" // date(7:8) // "/" // date(1:4)
+          today_date = date_(6:6) // "/" // date_(7:8) // "/" // date_(1:4)
        end if
     else
        if (val(3) < 10) then
-          today_date = date(5:6) // "/" // date(8:8) // "/" // date(1:4)
+          today_date = date_(5:6) // "/" // date_(8:8) // "/" // date_(1:4)
        else
-          today_date = date(5:6) // "/" // date(7:8) // "/" // date(1:4)
+          today_date = date_(5:6) // "/" // date_(7:8) // "/" // date_(1:4)
        end if
     end if
-    today_time = time(1:2) // ":" // time(3:4) // ":" // time(5:6)
+    today_time = time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
 
   end subroutine get_today
 

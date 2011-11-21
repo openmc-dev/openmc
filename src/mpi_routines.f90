@@ -111,8 +111,7 @@ contains
     integer(8) :: start           ! starting index in local fission bank
     integer(8) :: finish          ! ending index in local fission bank
     integer(8) :: total           ! total sites in global fission bank
-    integer(8) :: count           ! index for source bank
-    integer(8) :: index           ! index for id -- accounts for all nodes
+    integer(8) :: index_local     ! index for source bank
     integer    :: send_to_left    ! # of bank sites to send/recv to or from left
     integer    :: send_to_right   ! # of bank sites to send/recv to or from right
     integer(8) :: sites_needed    ! # of sites to be sampled
@@ -168,8 +167,7 @@ contains
     call prn_skip(start)
 
     allocate(temp_sites(2*work))
-    count = 0_8 ! Index for local source_bank
-    index = 0_8 ! Index for global source id -- must account for all nodes
+    index_local = 0_8 ! Index for local source_bank
 
     if (total < n_particles) then
        sites_needed = mod(n_particles,total)
@@ -192,15 +190,15 @@ contains
        if (total < n_particles) then
           do j = 1,int(n_particles/total)
              ! If index is within this node's range, add site to source
-             count = count + 1
-             temp_sites(count) = fission_bank(i)
+             index_local = index_local + 1
+             temp_sites(index_local) = fission_bank(i)
           end do
        end if
 
        ! Randomly sample sites needed
        if (prn() < p_sample) then
-          count = count + 1
-          temp_sites(count) = fission_bank(i)
+          index_local = index_local + 1
+          temp_sites(index_local) = fission_bank(i)
        end if
     end do
 
@@ -208,16 +206,16 @@ contains
     ! the source bank
 #ifdef MPI
     start = 0_8
-    call MPI_EXSCAN(count, start, 1, MPI_INTEGER8, MPI_SUM, & 
+    call MPI_EXSCAN(index_local, start, 1, MPI_INTEGER8, MPI_SUM, & 
          & MPI_COMM_WORLD, ierr)
-    finish = start + count
+    finish = start + index_local
     total = finish
     call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
          & MPI_COMM_WORLD, ierr)
 #else
     start  = 0_8
-    finish = count
-    total  = count
+    finish = index_local
+    total  = index_local
 #endif
 
     ! Determine how many sites to send to adjacent nodes
@@ -229,7 +227,7 @@ contains
           ! If we have extra sites sampled, we will simply discard the extra
           ! ones on the last processor
           if (rank == n_procs - 1) then
-             count = count - send_to_right
+             index_local = index_local - send_to_right
           end if
 
        elseif (total < n_particles) then
@@ -237,8 +235,8 @@ contains
           ! fission bank
           sites_needed = n_particles - total
           do i = 1, int(sites_needed,4)
-             count = count + 1
-             temp_sites(count) = fission_bank(n_bank - sites_needed + i)
+             index_local = index_local + 1
+             temp_sites(index_local) = fission_bank(n_bank - sites_needed + i)
           end do
        end if
 
@@ -259,7 +257,7 @@ contains
     allocate(right_bank(abs(send_to_right)))
 
     if (send_to_right > 0) then
-       i = count - send_to_right + 1
+       i = index_local - send_to_right + 1
        call MPI_ISEND(temp_sites(i), send_to_right, MPI_BANK, rank+1, 0, &
             & MPI_COMM_WORLD, request, ierr)
     else if (send_to_right < 0) then
@@ -285,27 +283,27 @@ contains
     ! ==========================================================================
     ! RECONSTRUCT SOURCE BANK
     if (send_to_left < 0 .and. send_to_right >= 0) then
-       i = -send_to_left                ! size of first block
-       j = int(count,4) - send_to_right ! size of second block
+       i = -send_to_left                      ! size of first block
+       j = int(index_local,4) - send_to_right ! size of second block
        call copy_from_bank(temp_sites, i+1, j)
 #ifdef MPI
        call MPI_WAIT(request_left, status, ierr)
 #endif
        call copy_from_bank(left_bank, 1, i)
     else if (send_to_left >= 0 .and. send_to_right < 0) then
-       i = int(count,4) - send_to_left ! size of first block
-       j = -send_to_right              ! size of second block
+       i = int(index_local,4) - send_to_left ! size of first block
+       j = -send_to_right                    ! size of second block
        call copy_from_bank(temp_sites(1+send_to_left), 1, i)
 #ifdef MPI
        call MPI_WAIT(request_right, status, ierr)
 #endif
        call copy_from_bank(right_bank, i+1, j)
     else if (send_to_left >= 0 .and. send_to_right >= 0) then
-       i = int(count,4) - send_to_left - send_to_right
+       i = int(index_local,4) - send_to_left - send_to_right
        call copy_from_bank(temp_sites(1+send_to_left), 1, i)
     else if (send_to_left < 0 .and. send_to_right < 0) then
        i = -send_to_left
-       j = int(count,4)
+       j = int(index_local,4)
        k = -send_to_right
        call copy_from_bank(temp_sites, i+1, j)
 #ifdef MPI
@@ -336,19 +334,19 @@ contains
 ! COPY_FROM_BANK
 !===============================================================================
 
-  subroutine copy_from_bank(temp_bank, index, n_sites)
+  subroutine copy_from_bank(temp_bank, i_start, n_sites)
 
     integer,    intent(in) :: n_sites  ! # of bank sites to copy
     type(Bank), intent(in) :: temp_bank(n_sites)
-    integer,    intent(in) :: index    ! starting index in source_bank
+    integer,    intent(in) :: i_start  ! starting index in source_bank
 
-    integer :: i            ! index in temp_bank
-    integer :: index_source ! index in source_bank
+    integer :: i        ! index in temp_bank
+    integer :: i_source ! index in source_bank
     type(Particle), pointer :: p
     
     do i = 1, n_sites
-       index_source = index + i - 1
-       p => source_bank(index_source)
+       i_source = i_start + i - 1
+       p => source_bank(i_source)
 
        p % xyz       = temp_bank(i) % xyz
        p % xyz_local = temp_bank(i) % xyz
@@ -374,7 +372,7 @@ contains
     integer :: i
     integer :: n
     integer :: m
-    integer :: count
+    integer :: n_bins
     integer :: ierr
     real(8), allocatable :: tally_temp(:,:)
     type(TallyObject), pointer :: t
@@ -384,7 +382,7 @@ contains
 
        n = t % n_total_bins
        m = t % n_macro_bins
-       count = n*m
+       n_bins = n*m
 
        allocate(tally_temp(n,m))
 
@@ -392,14 +390,14 @@ contains
 
        if (master) then
           ! Description of MPI_IN_PLANE
-          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, count, MPI_REAL8, MPI_SUM, &
+          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
                0, MPI_COMM_WORLD, ierr)
 
           ! Transfer values to val_history on master
           t % scores(:,:) % val_history = tally_temp
        else
           ! Receive buffer not significant at other processors
-          call MPI_REDUCE(tally_temp, tally_temp, count, MPI_REAL8, MPI_SUM, &
+          call MPI_REDUCE(tally_temp, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
                0, MPI_COMM_WORLD, ierr)
 
           ! Reset val_history on other processors

@@ -37,9 +37,9 @@ contains
 
     character(MAX_LINE_LEN) :: line                   ! single line
     character(MAX_WORD_LEN) :: local_words(MAX_WORDS) ! words on one line
-    integer                 :: index                  ! index of words
+    integer                 :: index_word             ! index of words
 
-    index = 0
+    index_word = 0
     do
        ! read line from file
        read(UNIT=unit, FMT='(A100)', IOSTAT=ioError) line
@@ -55,17 +55,17 @@ contains
 
        ! Check whether there is a continuation line
        if (local_words(n) == '&') then
-          words(index+1:index+n-1) = local_words(1:n-1)
-          index = index + n - 1
+          words(index_word+1:index_word+n-1) = local_words(1:n-1)
+          index_word = index_word + n - 1
        else
-          words(index+1:index+n) = local_words(1:n)
-          index = index + n
+          words(index_word+1:index_word+n) = local_words(1:n)
+          index_word = index_word + n
           exit
        end if
     end do
 
     ! set total number of words
-    n = index
+    n = index_word
 
   end subroutine get_next_line
 

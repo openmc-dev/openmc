@@ -28,7 +28,7 @@ contains
     character(*), intent(out) :: words(MAX_WORDS)
     integer,      intent(out) :: n
 
-    character(1)  :: char    ! current character
+    character(1)  :: chr     ! current character
     integer       :: i       ! current index
     integer       :: i_start ! starting index of word
     integer       :: i_end   ! ending index of word
@@ -37,14 +37,14 @@ contains
     i_end = 0
     n = 0
     do i = 1, len_trim(string)
-       char = string(i:i)
+       chr = string(i:i)
 
        ! Note that ACHAR(9) is a horizontal tab
-       if ((i_start == 0) .and. (char /= ' ') .and. (char /= achar(9))) then
+       if ((i_start == 0) .and. (chr /= ' ') .and. (chr /= achar(9))) then
           i_start = i
        end if
        if (i_start > 0) then
-          if ((char == ' ') .or. (char == achar(9))) i_end = i - 1
+          if ((chr == ' ') .or. (chr == achar(9))) i_end = i - 1
           if (i == len_trim(string))   i_end = i
           if (i_end > 0) then
              n = n + 1
@@ -80,7 +80,7 @@ contains
     character(*), intent(out) :: words(MAX_WORDS)
     integer,      intent(out) :: n
 
-    character(1)  :: char    ! current character
+    character(1)  :: chr     ! current character
     integer       :: i       ! current index
     integer       :: i_start ! starting index of word
     integer       :: i_end   ! ending index of word
@@ -89,27 +89,27 @@ contains
     i_end = 0
     n = 0
     do i = 1, len_trim(string)
-       char = string(i:i)
+       chr = string(i:i)
 
        ! Check for special characters
-       if (index('():#', char) > 0) then
+       if (index('():#', chr) > 0) then
           if (i_start > 0) then
              i_end = i - 1
              n = n + 1
              words(n) = string(i_start:i_end)
           end if
           n = n + 1
-          words(n) = char
+          words(n) = chr
           i_start = 0
           i_end = 0
           cycle
        end if
 
-       if ((i_start == 0) .and. (char /= ' ')) then
+       if ((i_start == 0) .and. (chr /= ' ')) then
           i_start = i
        end if
        if (i_start > 0) then
-          if (char == ' ')           i_end = i - 1
+          if (chr == ' ')           i_end = i - 1
           if (i == len_trim(string)) i_end = i
           if (i_end > 0) then
              n = n + 1

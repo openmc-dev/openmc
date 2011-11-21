@@ -151,7 +151,7 @@ contains
     integer :: n
     integer :: n_x, n_y
     integer :: universe_num
-    integer :: count
+    integer :: n_cells_in_univ
     integer :: coeffs_reqd
     logical :: file_exists
     character(MAX_LINE_LEN) :: filename
@@ -228,12 +228,12 @@ contains
        universe_num = cell_(i) % universe
        if (.not. dict_has_key(cells_in_univ_dict, universe_num)) then
           n_universes = n_universes + 1
-          count = 1
+          n_cells_in_univ = 1
           call dict_add_key(universe_dict, universe_num, n_universes)
        else
-          count = 1 + dict_get_key(cells_in_univ_dict, universe_num)
+          n_cells_in_univ = 1 + dict_get_key(cells_in_univ_dict, universe_num)
        end if
-       call dict_add_key(cells_in_univ_dict, universe_num, count)
+       call dict_add_key(cells_in_univ_dict, universe_num, n_cells_in_univ)
 
     end do
 
@@ -575,7 +575,7 @@ contains
     integer :: i           ! loop over user-specified tallies
     integer :: j           ! loop over words
     integer :: id          ! user-specified identifier
-    integer :: index       ! index in meshes array
+    integer :: i_mesh      ! index in meshes array
     integer :: n           ! size of arrays in mesh specification
     integer :: n_words     ! number of words read
     logical :: file_exists ! does tallies.xml file exist?
@@ -753,8 +753,8 @@ contains
           ! Determine index in mesh array for this bin
           id = t % mesh
           if (dict_has_key(mesh_dict, id)) then
-             index = dict_get_key(mesh_dict, id)
-             m => meshes(index)
+             i_mesh = dict_get_key(mesh_dict, id)
+             m => meshes(i_mesh)
           else
              message = "Could not find mesh " // trim(int_to_str(id)) // &
                   " specified on tally " // trim(int_to_str(t % id))
@@ -876,8 +876,8 @@ contains
 
                 ! Get pointer to mesh
                 id = t % mesh
-                index = dict_get_key(mesh_dict, id)
-                m => meshes(index)
+                i_mesh = dict_get_key(mesh_dict, id)
+                m => meshes(i_mesh)
 
                 ! We need to increase the dimension by one since we also need
                 ! currents coming into and out of the boundary mesh cells.

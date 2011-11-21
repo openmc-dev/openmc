@@ -22,8 +22,7 @@ contains
 
     integer        :: i              ! index in materials array
     integer        :: j              ! index over nuclides in material
-    integer        :: index          ! index in xs_listings array
-    integer        :: index_nuclides ! index in nuclides
+    integer        :: index_list     ! index in xs_listings array
     character(10)  :: name           ! name of isotope, e.g. 92235.03c
     character(10)  :: alias          ! alias of nuclide, e.g. U-235.03c
     type(ListReal),     pointer :: list => null()
@@ -51,10 +50,9 @@ contains
              call add_grid_points(list, nuc % energy)
 
              ! determine name and alias from xs_listings
-             index = dict_get_key(xs_listing_dict, name)
-             index_nuclides = dict_get_key(nuclide_dict, name)
-             name  = xs_listings(index) % name
-             alias = xs_listings(index) % alias
+             index_list = dict_get_key(xs_listing_dict, name)
+             name  = xs_listings(index_list) % name
+             alias = xs_listings(index_list) % alias
 
              ! add name and alias to dictionary
              call dict_add_key(already_added, name, 0)
@@ -88,7 +86,7 @@ contains
     type(ListReal), pointer :: list
     real(8), intent(in) :: energy(:)
 
-    integer :: index
+    integer :: i
     integer :: n
     real(8) :: E
     type(ListReal), pointer :: current => null()
@@ -96,7 +94,7 @@ contains
     type(ListReal), pointer :: head => null()
     type(ListReal), pointer :: tmp => null()
 
-    index = 1
+    i = 1
     n = size(energy)
 
     ! if the original list is empty, we need to allocate the first element and
@@ -104,9 +102,9 @@ contains
     if (list_size(list) == 0) then
        allocate(list)
        current => list
-       do index = 1, n
-          current % data = energy(index)
-          if (index == n) then
+       do i = 1, n
+          current % data = energy(i)
+          if (i == n) then
              current % next => null()
              return
           end if
@@ -118,19 +116,19 @@ contains
     current => list
     head => list
 
-    do while (index <= n)
-       E = energy(index)
+    do while (i <= n)
+       E = energy(i)
 
        ! If we've reached the end of the grid energy list, add the remaining
        ! energy points to the end
        if (.not. associated(current)) then
           ! finish remaining energies
-          do while (index <= n)
+          do while (i <= n)
              allocate(previous % next)
              current => previous % next
-             current % data = energy(index)
+             current % data = energy(i)
              previous => current
-             index = index + 1
+             i = i + 1
           end do
           current%next => null()
           exit
@@ -151,12 +149,12 @@ contains
           nullify(tmp)
 
           ! advance index
-          index = index + 1
+          i = i + 1
 
        elseif (E == current % data) then
           ! found the exact same energy, no need to store duplicates so just
           ! skip and move to next index
-          index = index + 1
+          i = i + 1
        else
           previous => current
           current => current % next
@@ -178,7 +176,7 @@ contains
 
     integer :: i
     integer :: j
-    integer :: index
+    integer :: index_e
     integer :: n_grid_nuclide
     real(8) :: union_energy
     real(8) :: energy
@@ -189,16 +187,16 @@ contains
        n_grid_nuclide = size(nuc % energy)
        allocate(nuc % grid_index(n_grid))
 
-       index = 1
-       energy = nuc % energy(index)
+       index_e = 1
+       energy = nuc % energy(index_e)
 
        do j = 1, n_grid
           union_energy = e_grid(j)
-          if (union_energy >= energy .and. index < n_grid_nuclide) then
-             index = index + 1
-             energy = nuc % energy(index)
+          if (union_energy >= energy .and. index_e < n_grid_nuclide) then
+             index_e = index_e + 1
+             energy = nuc % energy(index_e)
           end if
-          nuc % grid_index(j) = index-1
+          nuc % grid_index(j) = index_e - 1
        end do
     end do
 

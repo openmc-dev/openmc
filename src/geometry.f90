@@ -1129,7 +1129,7 @@ contains
 
     integer :: i          ! index in cells/surfaces array
     integer :: j          ! index of surface in cell
-    integer :: index      ! index in count arrays
+    integer :: i_surface  ! index in count arrays
     integer, allocatable :: count_positive(:) ! # of cells on positive side
     integer, allocatable :: count_negative(:) ! # of cells on negative side
     logical :: positive   ! positive side specified in surface list
@@ -1149,13 +1149,13 @@ contains
 
        ! loop over each surface specification
        do j = 1, c % n_surfaces
-          index = c % surfaces(j)
-          positive = (index > 0)
-          index = abs(index)
+          i_surface = c % surfaces(j)
+          positive = (i_surface > 0)
+          i_surface = abs(i_surface)
           if (positive) then
-             count_positive(index) = count_positive(index) + 1
+             count_positive(i_surface) = count_positive(i_surface) + 1
           else
-             count_negative(index) = count_negative(index) + 1
+             count_negative(i_surface) = count_negative(i_surface) + 1
           end if
        end do
     end do
@@ -1180,17 +1180,17 @@ contains
 
        ! loop over each surface specification
        do j = 1, c % n_surfaces
-          index = c % surfaces(j)
-          positive = (index > 0)
-          index = abs(index)
+          i_surface = c % surfaces(j)
+          positive = (i_surface > 0)
+          i_surface = abs(i_surface)
 
-          surf => surfaces(index)
+          surf => surfaces(i_surface)
           if (positive) then
-             count_positive(index) = count_positive(index) + 1
-             surf%neighbor_pos(count_positive(index)) = i
+             count_positive(i_surface) = count_positive(i_surface) + 1
+             surf%neighbor_pos(count_positive(i_surface)) = i
           else
-             count_negative(index) = count_negative(index) + 1
-             surf%neighbor_neg(count_negative(index)) = i
+             count_negative(i_surface) = count_negative(i_surface) + 1
+             surf%neighbor_neg(count_negative(i_surface)) = i
           end if
        end do
     end do

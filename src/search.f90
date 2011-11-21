@@ -11,12 +11,12 @@ contains
 ! value lies in the array. This is used extensively for energy grid searching
 !===============================================================================
 
-  function binary_search(array, n, val) result(index)
+  function binary_search(array, n, val) result(array_index)
 
     integer, intent(in) :: n
     real(8), intent(in) :: array(n)
     real(8), intent(in) :: val
-    integer :: index
+    integer             :: array_index
 
     integer :: L
     integer :: R
@@ -34,41 +34,25 @@ contains
        
        ! Check boundaries
        if (val > array(L) .and. val < array(L+1)) then
-          index = L
+          array_index = L
           return
        elseif (val > array(R-1) .and. val < array(R)) then
-          index = R-1
+          array_index = R - 1
           return
        end if
 
        ! Find values at midpoint
-       index = L + (R - L)/2
-       testval = array(index)
+       array_index = L + (R - L)/2
+       testval = array(array_index)
        if (val > testval) then
-          L = index
+          L = array_index
        elseif (val < testval) then
-          R = index
+          R = array_index
        end if
     end do
 
-    index = L
+    array_index = L
 
   end function binary_search
-
-!===============================================================================
-! INTERPOLATE
-!===============================================================================
-
-  function interpolate(array, n, index, f) result(val)
- 
-    integer, intent(in) :: n
-    real(8), intent(in) :: array(n)
-    integer, intent(in) :: index
-    real(8), intent(in) :: f
-    real(8)             :: val
-
-    val = (ONE-f) * array(index) + f * array(index+1)
-    
-  end function interpolate
 
 end module search

@@ -76,6 +76,37 @@ ifeq ($(COMPILER),gfortran)
 endif
 
 #===============================================================================
+# PGI compiler options
+#===============================================================================
+
+ifeq ($(COMPILER),pgi)
+  F90 = pgf90
+  F90FLAGS := -Mpreprocess -Minform=inform
+  LDFLAGS =
+
+  # Since ERFC is currently not supported in the PGI compiler and this intrinsic
+  # is used in the doppler module (which is not actually used yet), it is
+  # removed from the source objects
+  objects := $(subst doppler.o, ,$(objects))
+
+  # Debugging options
+  ifeq ($(DEBUG),yes)
+    F90FLAGS += -g -Mbounds -Mchkptr -Mchkstk -traceback
+    LDFLAGS  += -g
+  endif
+
+  # Profiling options
+  ifeq ($(PROFILE),yes)
+    F90FLAGS += -pg
+    LDFLAGS  += -pg
+  endif
+
+  ifeq ($(OPTIMIZE),yes)
+    F90FLAGS += -fast -Mipa
+  endif
+endif
+
+#===============================================================================
 # Miscellaneous compiler options
 #===============================================================================
 

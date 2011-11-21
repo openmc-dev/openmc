@@ -3,17 +3,16 @@ program main
   use constants
   use global
   use initialize,      only: initialize_run
-  use mcnp_random,     only: RN_init_particle
   use mpi_routines,    only: synchronize_bank
   use output,          only: write_message, header, print_runtime
   use particle_header, only: Particle
   use plot,            only: run_plot
   use physics,         only: transport
-  use tally,           only: calculate_keff
+  use random_lcg,      only: set_particle_seed
   use source,          only: get_source_particle
   use string,          only: int_to_str
   use tally,           only: synchronize_tallies, write_tallies, &
-                             tally_statistics
+                             tally_statistics, calculate_keff
   use timing,          only: timer_start, timer_stop
 
 #ifdef MPI
@@ -87,7 +86,7 @@ contains
 
           ! set random number seed
           i_particle = (i_cycle-1)*n_particles + p % id
-          call RN_init_particle(i_particle)
+          call set_particle_seed(i_particle)
 
           ! transport particle
           call transport(p)

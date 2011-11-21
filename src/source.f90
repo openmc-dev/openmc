@@ -4,10 +4,10 @@ module source
   use constants,            only: ONE, MAX_LINE_LEN
   use cross_section_header, only: Nuclide
   use global
-  use mcnp_random,          only: rang, RN_init_particle
   use output,               only: write_message
   use particle_header,      only: Particle, initialize_particle
   use physics,              only: watt_spectrum
+  use random_lcg,           only: prn, set_particle_seed
 
   implicit none
 
@@ -61,18 +61,18 @@ contains
              p => source_bank(j - bank_first + 1)
 
              ! initialize random number seed
-             call RN_init_particle(int(j,8))
+             call set_particle_seed(int(j,8))
 
              ! sample position
-             r = (/ (rang(), k = 1,3) /)
+             r = (/ (prn(), k = 1,3) /)
              p % id = j
              p % xyz = p_min + r*(p_max - p_min)
              p % xyz_local = p % xyz
              p % last_xyz = p % xyz
 
              ! sample angle
-             phi = TWO*PI*rang()
-             mu = TWO*rang() - ONE
+             phi = TWO*PI*prn()
+             mu = TWO*prn() - ONE
              p % uvw(1) = mu
              p % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
              p % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)

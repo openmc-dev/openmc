@@ -69,21 +69,22 @@ contains
     call header("PROBLEM SUMMARY")
     if (problem_type == PROB_CRITICALITY) then
        write(ou,100) 'Problem type:', 'Criticality'
-       write(ou,100) 'Number of Cycles:', int_to_str(n_cycles)
-       write(ou,100) 'Number of Inactive Cycles:', int_to_str(n_inactive) 
+       write(ou,101) 'Number of Cycles:', n_cycles
+       write(ou,101) 'Number of Inactive Cycles:', n_inactive
     elseif (problem_type == PROB_SOURCE) then
        write(ou,100) 'Problem type:', 'External Source'
     end if
-    write(ou,100) 'Number of Particles:', int_to_str(n_particles)
+    write(ou,101) 'Number of Particles:', n_particles
 
     ! Display geometry summary
     call header("GEOMETRY SUMMARY")
-    write(ou,100) 'Number of Cells:', int_to_str(n_cells)
-    write(ou,100) 'Number of Surfaces:', int_to_str(n_surfaces)
-    write(ou,100) 'Number of Materials:', int_to_str(n_materials)
+    write(ou,101) 'Number of Cells:', n_cells
+    write(ou,101) 'Number of Surfaces:', n_surfaces
+    write(ou,101) 'Number of Materials:', n_materials
 
     ! Format descriptor for columns
 100 format (1X,A,T35,A)
+101 format (1X,A,T35,I11)
 
   end subroutine echo_input
 
@@ -654,6 +655,7 @@ contains
     type(Lattice),     pointer :: l => null()
     type(Material),    pointer :: m => null()
     type(TallyObject), pointer :: t => null()
+    character(15) :: string
     integer :: i
 
     ! print summary of cells
@@ -709,8 +711,10 @@ contains
     else
        write(ou,100) "Survival Biasing:", "off"
     end if
-    write(ou,100) "Weight Cutoff:", trim(real_to_str(weight_cutoff))
-    write(ou,100) "Survival weight:", trim(real_to_str(weight_survive))
+    string = real_to_str(weight_cutoff)
+    write(ou,100) "Weight Cutoff:", trim(string)
+    string = real_to_str(weight_survive)
+    write(ou,100) "Survival weight:", trim(string)
     write(ou,*)
 
     ! Format descriptor for columns

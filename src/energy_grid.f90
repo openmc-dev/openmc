@@ -1,8 +1,10 @@
 module energy_grid
 
   use constants,        only: MAX_LINE_LEN
-  use datatypes,        only: list_insert, list_size, list_delete
-  use datatypes_header, only: ListReal
+  use datatypes,        only: list_insert, list_size, list_delete, &
+                              dict_create, dict_get_key, dict_has_key, &
+                              dict_add_key, dict_delete
+  use datatypes_header, only: ListReal, DictionaryCI
   use global
   use output,           only: write_message
 
@@ -18,26 +20,46 @@ contains
 
   subroutine unionized_grid()
 
-    integer :: i ! index over materials
-    integer :: j ! index over nuclides
-    type(ListReal), pointer :: list => null()
-    type(ListReal), pointer :: current => null()
-    type(Material), pointer :: mat => null()
-    type(Nuclide),  pointer :: nuc => null()
+    integer        :: i              ! index in materials array
+    integer        :: j              ! index over nuclides in material
+    integer        :: index          ! index in xs_listings array
+    integer        :: index_nuclides ! index in nuclides
+    character(10)  :: name           ! name of isotope, e.g. 92235.03c
+    character(10)  :: alias          ! alias of nuclide, e.g. U-235.03c
+    type(ListReal),     pointer :: list => null()
+    type(ListReal),     pointer :: current => null()
+    type(Material),     pointer :: mat => null()
+    type(Nuclide),      pointer :: nuc => null()
+    type(DictionaryCI), pointer :: already_added => null()
 
     message = "Creating unionized energy grid..."
     call write_message(5)
 
-    ! loop over all materials
+    ! Create dictionary for keeping track of cross sections already added
+    call dict_create(already_added)
+
+    ! Loop over all files
     do i = 1, n_materials
        mat => materials(i)
-       
-       ! loop over all nuclides
-       do j = 1, mat % n_nuclides
-          nuc => nuclides(mat % nuclide(j))
 
-          ! loop over energy points
-          call add_grid_points(list, nuc % energy)
+       do j = 1, mat % n_nuclides
+          name = mat % names(j)
+
+          if (.not. dict_has_key(already_added, name)) then
+             ! loop over energy points
+             nuc => nuclides(mat % nuclide(j))
+             call add_grid_points(list, nuc % energy)
+
+             ! determine name and alias from xs_listings
+             index = dict_get_key(xs_listing_dict, name)
+             index_nuclides = dict_get_key(nuclide_dict, name)
+             name  = xs_listings(index) % name
+             alias = xs_listings(index) % alias
+
+             ! add name and alias to dictionary
+             call dict_add_key(already_added, name, 0)
+             call dict_add_key(already_added, alias, 0)
+          end if
        end do
     end do
 
@@ -50,8 +72,9 @@ contains
        current => current % next
     end do
 
-    ! delete linked list
+    ! delete linked list and dictionary
     call list_delete(list)
+    call dict_delete(already_added)
 
   end subroutine unionized_grid
 

@@ -425,7 +425,7 @@ contains
     logical :: file_exists
     character(3) :: default_xs
     character(MAX_WORD_LEN) :: units
-    character(10)           :: name
+    character(12)           :: name
     character(MAX_LINE_LEN) :: filename
     type(Material),    pointer :: m => null()
     type(nuclide_xml), pointer :: nuc => null()

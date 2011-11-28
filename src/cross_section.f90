@@ -42,8 +42,8 @@ contains
     integer        :: index_list     ! index in xs_listings array
     integer        :: index_nuclides ! index in nuclides
     integer        :: index_sab      ! index in sab_tables
-    character(10)  :: name           ! name of isotope, e.g. 92235.03c
-    character(10)  :: alias          ! alias of nuclide, e.g. U-235.03c
+    character(12)  :: name           ! name of isotope, e.g. 92235.03c
+    character(12)  :: alias          ! alias of nuclide, e.g. U-235.03c
     type(Material),  pointer :: mat => null()
     type(Nuclide),   pointer :: nuc => null()
     type(SAB_Table), pointer :: sab => null()

@@ -528,7 +528,7 @@ contains
     real(8)        :: x               ! atom percent
     logical        :: percent_in_atom ! nuclides specified in atom percent?
     logical        :: density_in_atom ! density specified in atom/b-cm?
-    character(10)  :: key             ! name of nuclide, e.g. 92235.03c
+    character(12)  :: key             ! name of nuclide, e.g. 92235.03c
     type(Material), pointer :: mat => null()
     
     ! first find the index in the xs_listings array for each nuclide in each

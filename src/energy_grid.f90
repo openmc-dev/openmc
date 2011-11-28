@@ -23,8 +23,8 @@ contains
     integer        :: i              ! index in materials array
     integer        :: j              ! index over nuclides in material
     integer        :: index_list     ! index in xs_listings array
-    character(10)  :: name           ! name of isotope, e.g. 92235.03c
-    character(10)  :: alias          ! alias of nuclide, e.g. U-235.03c
+    character(12)  :: name           ! name of isotope, e.g. 92235.03c
+    character(12)  :: alias          ! alias of nuclide, e.g. U-235.03c
     type(ListReal),     pointer :: list => null()
     type(ListReal),     pointer :: current => null()
     type(Material),     pointer :: mat => null()

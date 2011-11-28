@@ -515,6 +515,13 @@ contains
                 bin_energyout = bins(T_ENERGYOUT)
                 score_index0 = score_index
 
+                ! Since the creation of fission sites is weighted such that it
+                ! is expected to create n_particles sites, we need to multiply
+                ! the score by keff to get the true nu-fission rate. Otherwise,
+                ! the sum of all nu-fission rates would be ~1.0.
+
+                score = keff
+
                 ! loop over number of particles banked
                 do k = 1, p % n_bank
                    ! determine outgoing energy from fission bank
@@ -525,14 +532,6 @@ contains
 
                    ! determine scoring index
                    score_index = sum((bins - 1) * t % stride) + 1
-
-                   ! Since the creation of fission sites is weighted such that
-                   ! it is expected to create n_particles sites, we need to
-                   ! multiply the score by keff to get the true nu-fission
-                   ! rate. Otherwise, the sum of all nu-fission rates would be
-                   ! ~1.0.
-
-                   score = keff
 
                    ! Add score to tally
                    call add_to_score(t % scores(score_index, j), score)

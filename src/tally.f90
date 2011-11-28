@@ -982,10 +982,9 @@ contains
     integer :: score_index             ! index in scores array for filters
     logical :: file_exists             ! does tallies.out file already exists? 
     logical :: has_filter(TALLY_TYPES) ! does tally have this filter?
-    character(MAX_LINE_LEN) :: filename                  ! name of output file
+    character(MAX_FILE_LEN) :: filename                  ! name of output file
     character(15)           :: filter_name(TALLY_TYPES)  ! names of tally filters
     character(27)           :: macro_name(N_MACRO_TYPES) ! names of macro scores
-    character(80)           :: space = " "               ! spaces
     type(TallyObject), pointer :: t
 
     ! Skip if there are no tallies
@@ -1091,7 +1090,7 @@ contains
                 else
                    if (has_filter(j)) then
                       ! Print current filter information
-                      write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') space(1:indent), &
+                      write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                            trim(filter_name(j)), trim(get_label(t, j, bins(j)))
                       indent = indent + 2
                    end if
@@ -1102,7 +1101,7 @@ contains
           end do find_bin
 
           ! Print filter information
-          write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') space(1:indent), &
+          write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                trim(filter_name(j)), trim(get_label(t, j, bins(j)))
 
           ! Determine scoring index for this bin combination -- note that unlike
@@ -1115,7 +1114,7 @@ contains
           indent = indent + 2
           do k = 1, t % n_macro_bins
              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
-                  space(1:indent), macro_name(abs(t % macro_bins(k) % scalar)), &
+                  repeat(" ", indent), macro_name(abs(t % macro_bins(k) % scalar)), &
                   real_to_str(t % scores(score_index,k) % val), &
                   trim(real_to_str(t % scores(score_index,k) % val_sq))
           end do

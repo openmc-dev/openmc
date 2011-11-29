@@ -3,11 +3,13 @@ module source
   use bank_header,          only: Bank
   use constants,            only: ONE, MAX_LINE_LEN
   use cross_section_header, only: Nuclide
+  use error,                only: fatal_error
   use global
   use output,               only: write_message
   use particle_header,      only: Particle, initialize_particle
   use physics,              only: watt_spectrum
   use random_lcg,           only: prn, set_particle_seed
+  use string,               only: int_to_str
 
   implicit none
 
@@ -24,12 +26,15 @@ contains
     integer(8) :: j          ! loop index over bank sites
     integer    :: k          ! dummy loop index
     integer(8) :: maxwork    ! maxinum # of particles per processor
+    integer    :: alloc_err  ! allocation error code
+    integer(8) :: bytes      ! size of fission/source bank
     real(8)    :: r(3)       ! sampled coordinates
     real(8)    :: phi        ! azimuthal angle
     real(8)    :: mu         ! cosine of polar angle
     real(8)    :: E          ! outgoing energy
     real(8)    :: p_min(3)   ! minimum coordinates of source
     real(8)    :: p_max(3)   ! maximum coordinates of source
+    type(Bank) :: bank_obj
 
     message = "Initializing source particles..."
     call write_message(6)
@@ -37,9 +42,23 @@ contains
     ! Determine maximum amount of particles to simulate on each processor
     maxwork = ceiling(real(n_particles)/n_procs,8)
 
-    ! Allocate fission and source banks
-    allocate(source_bank(maxwork))
-    allocate(fission_bank(3*maxwork))
+    ! Allocate source bank
+    allocate(source_bank(maxwork), STAT=alloc_err)
+    if (alloc_err /= 0) then
+       bytes = maxwork * storage_size(bank_obj) / 8
+       message = "Could not allocate source bank. Attempted to allocate " &
+            // trim(int_to_str(bytes)) // " bytes."
+       call fatal_error()
+    end if
+
+    ! Allocate fission bank
+    allocate(fission_bank(3*maxwork), STAT=alloc_err)
+    if (alloc_err /= 0) then
+       bytes = 3 * maxwork * storage_size(bank_obj) / 8
+       message = "Could not allocate fission bank. Attempted to allocate " &
+            // trim(int_to_str(bytes)) // " bytes."
+       call fatal_error()
+    end if
 
     ! Check external source type
     if (external_source%type == SRC_BOX) then

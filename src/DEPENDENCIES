@@ -170,11 +170,13 @@ search.o: global.o
 source.o: bank_header.o
 source.o: constants.o
 source.o: cross_section_header.o
+source.o: error.o
 source.o: global.o
 source.o: output.o
-source.o: random_lcg.o
 source.o: particle_header.o
 source.o: physics.o
+source.o: random_lcg.o
+source.o: string.o
 
 string.o: constants.o
 string.o: error.o

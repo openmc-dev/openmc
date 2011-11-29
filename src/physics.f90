@@ -1711,13 +1711,32 @@ contains
        ! =======================================================================
        ! MAXWELL FISSION SPECTRUM
 
+       ! read number of interpolation regions and incoming energies 
+       NR = int(edist % data(1))
+       NE = int(edist % data(2 + 2*NR))
+
        ! determine nuclear temperature from tabulated function
        T = interpolate_tab1(edist % data, E_in)
-       
-       ! sample maxwell fission spectrum
-       E_out = maxwell_spectrum(T)
 
-       ! TODO: Add restriction energy constraint??
+       ! determine restriction energy
+       lc = 2 + 2*NR + 2*NE
+       U = edist % data(lc + 1)
+       
+       n_sample = 0
+       do
+          ! sample maxwell fission spectrum
+          E_out = maxwell_spectrum(T)
+
+          ! accept energy based on restriction energy
+          if (E_out <= E_in - U) exit
+
+          ! check for large number of rejections
+          n_sample = n_sample + 1
+          if (n_sample == MAX_SAMPLE) then
+             message = "Too many rejections on evaporation spectrum."
+             call fatal_error()
+          end if
+       end do
        
     case (9)
        ! =======================================================================

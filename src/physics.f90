@@ -1733,7 +1733,7 @@ contains
           ! check for large number of rejections
           n_sample = n_sample + 1
           if (n_sample == MAX_SAMPLE) then
-             message = "Too many rejections on evaporation spectrum."
+             message = "Too many rejections on Maxwell fission spectrum."
              call fatal_error()
           end if
        end do
@@ -1783,13 +1783,33 @@ contains
        Watt_a = interpolate_tab1(edist % data, E_in)
 
        ! determine Watt parameter 'b' from tabulated function
-       lc = 3 + 2*(NR + NE)
-       Watt_b = interpolate_tab1(edist % data, E_in, lc)
+       lc = 2 + 2*(NR + NE)
+       Watt_b = interpolate_tab1(edist % data, E_in, lc + 1)
 
-       ! Sample energy-dependent Watt fission spectrum
-       E_out = watt_spectrum(Watt_a, Watt_b)
+       ! read number of interpolation regions and incoming energies for
+       ! parameter 'a'
+       NR = int(edist % data(lc + 1))
+       NE = int(edist % data(lc + 2 + 2*NR))
 
-       ! TODO: Add restriction energy constraint??
+       ! determine restriction energy
+       lc = lc + 2 + 2*(NR + NE)
+       U = edist % data(lc + 1)
+
+       n_sample = 0
+       do
+          ! Sample energy-dependent Watt fission spectrum
+          E_out = watt_spectrum(Watt_a, Watt_b)
+
+          ! accept energy based on restriction energy
+          if (E_out <= E_in - U) exit
+
+          ! check for large number of rejections
+          n_sample = n_sample + 1
+          if (n_sample == MAX_SAMPLE) then
+             message = "Too many rejections on Watt spectrum."
+             call fatal_error()
+          end if
+       end do
 
     case (44)
        ! =======================================================================

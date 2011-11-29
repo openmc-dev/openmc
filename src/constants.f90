@@ -75,6 +75,7 @@ module constants
 
   ! Maximum number of collisions/crossings
   integer, parameter :: MAX_EVENTS = 10000
+  integer, parameter :: MAX_SAMPLE = 100000
 
   ! Codes for read errors -- better hope these numbers are never used in an
   ! input file!

@@ -1027,6 +1027,7 @@ contains
     integer :: NE           ! number of energies tabulated
     integer :: nu           ! actual number of neutrons produced
     integer :: law          ! energy distribution law
+    integer :: n_sample     ! number of times resampling
     real(8) :: E            ! incoming energy of neutron
     real(8) :: E_out        ! outgoing energy of fission neutron
     real(8) :: nu_t         ! total nu
@@ -1123,17 +1124,29 @@ contains
              lc = lc + 2 + 2*NR + 2*NE + 1
           end do
 
-          ! sample from energy distribution for group j
+          ! select energy distribution for group j
           law = nuc % nu_d_edist(j) % law
           edist => nuc % nu_d_edist(j)
+
+          ! sample from energy distribution
+          n_sample = 0
           do
              if (law == 44 .or. law == 61) then
                 call sample_energy(edist, E, E_out, mu)
              else
                 call sample_energy(edist, E, E_out)
              end if
+
              ! resample if energy is >= 20 MeV
              if (E_out < 20) exit
+
+             ! check for large number of resamples
+             n_sample = n_sample + 1
+             if (n_sample == MAX_SAMPLE) then
+                message = "Resampled energy distribution maximum number of " // &
+                     "times for nuclide " // nuc % name
+                call fatal_error()
+             end if
           end do
 
        else
@@ -1142,14 +1155,24 @@ contains
 
           ! sample from prompt neutron energy distribution
           law = rxn % edist % law
+          n_sample = 0
           do
              if (law == 44 .or. law == 61) then
                 call sample_energy(rxn%edist, E, E_out, prob)
              else
                 call sample_energy(rxn%edist, E, E_out)
              end if
+
              ! resample if energy is >= 20 MeV
              if (E_out < 20) exit
+
+             ! check for large number of resamples
+             n_sample = n_sample + 1
+             if (n_sample == MAX_SAMPLE) then
+                message = "Resampled energy distribution maximum number of " // &
+                     "times for nuclide " // nuc % name
+                call fatal_error()
+             end if
           end do
 
        end if
@@ -1431,6 +1454,7 @@ contains
     integer :: i           ! index on incoming energy grid
     integer :: k           ! sampled index on outgoing grid
     integer :: l           ! sampled index on incoming grid
+    integer :: n_sample    ! number of rejections
     integer :: lc          ! dummy index
     integer :: NR          ! number of interpolation regions
     integer :: NE          ! number of energies
@@ -1712,11 +1736,19 @@ contains
 
        ! sample outgoing energy based on evaporation spectrum probability
        ! density function
+       n_sample = 0
        do
           r1 = prn()
           r2 = prn()
           E_out = -T * log(r1*r2)
           if (E_out <= E_in - U) exit
+
+          ! check for large number of rejections
+          n_sample = n_sample + 1
+          if (n_sample == MAX_SAMPLE) then
+             message = "Too many rejections on evaporation spectrum."
+             call fatal_error()
+          end if
        end do
        
     case (11)

@@ -73,6 +73,9 @@ module constants
   ! Used for surface current tallies
   real(8), parameter :: TINY_BIT = 1e-8
 
+  ! Maximum number of collisions/crossings
+  integer, parameter :: MAX_EVENTS = 10000
+
   ! Codes for read errors -- better hope these numbers are never used in an
   ! input file!
   integer, parameter :: ERROR_INT  = -huge(0)

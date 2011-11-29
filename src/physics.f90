@@ -31,6 +31,7 @@ contains
 
     integer        :: surf           ! surface which particle is on
     integer        :: last_cell      ! most recent cell particle was in
+    integer        :: n_event        ! number of collisions/crossings
     real(8)        :: d_to_boundary  ! distance to nearest boundary
     real(8)        :: d_to_collision ! sampled distance to collision
     real(8)        :: distance       ! distance particle travels
@@ -62,6 +63,9 @@ contains
        message = "    Born in cell " // trim(int_to_str(cells(p%cell)%id))
        call write_message()
     end if
+
+    ! Initialize number of events to zero
+    n_event = 0
 
     ! find energy index, interpolation factor
     do while (p % alive)
@@ -100,7 +104,16 @@ contains
           ! Save coordinates at collision for tallying purposes
           p % last_xyz = p % xyz
        end if
-       
+
+       ! If particle has too many events, display warning and kill it
+       n_event = n_event + 1
+       if (n_event == MAX_EVENTS) then
+          message = "Particle " // trim(int_to_str(p%id)) // " underwent " & 
+               // "maximum number of events."
+          call warning()
+          p % alive = .false.
+       end if
+
     end do
 
   end subroutine transport

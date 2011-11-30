@@ -718,7 +718,7 @@ contains
     write(ou,*)
 
     ! Format descriptor for columns
-100 format (1X,A,T35,A)
+100 format (1X,A,T25,A)
 
     nullify(s)
     nullify(c)
@@ -768,13 +768,20 @@ contains
     character(15) :: string
 
     ! display header block
-    call header("Time Elapsed")
+    call header("Timing Statistics")
 
     ! display time elapsed for various sections
-    write(ou,100) "Total time elapsed", time_total % elapsed
-    write(ou,100) "Total time for initialization", time_init % elapsed
+    write(ou,100) "Total time for initialization", time_initialize % elapsed
+    write(ou,100) "  Reading cross sections", time_read_xs % elapsed
     write(ou,100) "Total time in computation", time_compute % elapsed
     write(ou,100) "Total time between cycles", time_intercycle % elapsed
+    write(ou,100) "  Accumulating tallies", time_ic_tallies % elapsed
+    write(ou,100) "  Sampling source sites", time_ic_sample % elapsed
+    write(ou,100) "  SEND/RECV source sites", time_ic_sendrecv % elapsed
+    write(ou,100) "  Reconstruct source bank", time_ic_rebuild % elapsed
+    write(ou,100) "Total time in inactive cycles", time_inactive % elapsed
+    write(ou,100) "Total time in active cycles", time_active % elapsed
+    write(ou,100) "Total time elapsed", time_total % elapsed
 
     ! display header block
     call header("Run Statistics")
@@ -788,7 +795,7 @@ contains
     write(ou,*)
 
     ! format for write statements
-100 format (1X,A,T33,"= ",ES11.4," seconds")
+100 format (1X,A,T35,"= ",ES11.4," seconds")
 101 format (1X,A,T20,"= ",A," neutrons/second")
 102 format (1X,A,T20,"= ",F8.5," +/- ",F8.5)
  

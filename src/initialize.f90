@@ -36,7 +36,7 @@ contains
     type(Universe), pointer :: univ
 
     ! Start initialization timer
-    call timer_start(time_init)
+    call timer_start(time_initialize)
 
     ! Setup MPI
     call setup_mpi()
@@ -84,7 +84,9 @@ contains
        call normalize_ao()
 
        ! Read ACE-format cross sections
+       call timer_start(time_read_xs)
        call read_xs()
+       call timer_stop(time_read_xs)
 
        ! Construct unionized energy grid from cross-sections
        call unionized_grid()
@@ -108,7 +110,7 @@ contains
     end if
 
     ! Stop initialization timer
-    call timer_stop(time_init)
+    call timer_stop(time_initialize)
 
   end subroutine initialize_run
 

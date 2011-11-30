@@ -7,6 +7,7 @@ module mpi_routines
   use particle_header, only: Particle, initialize_particle
   use random_lcg,      only: prn, set_particle_seed, prn_skip
   use tally_header,    only: TallyObject
+  use timing,          only: timer_start, timer_stop
 
 #ifdef MPI
   use mpi
@@ -16,7 +17,6 @@ module mpi_routines
 
   integer    :: MPI_BANK   ! MPI datatype for fission bank
   integer(8) :: bank_index ! Fission bank site unique identifier
-  real(8)    :: t_sync(4)  ! synchronization time
 
 contains
 
@@ -30,7 +30,6 @@ contains
 
 #ifdef MPI
     integer        :: i
-    integer        :: ierr           ! Error status
     integer        :: bank_blocks(4) ! Count for each datatype
     integer        :: bank_types(4)  ! Datatypes
     integer(MPI_ADDRESS_KIND) :: bank_disp(4)   ! Displacements
@@ -40,22 +39,22 @@ contains
     mpi_enabled = .true.
 
     ! Initialize MPI
-    call MPI_INIT(ierr)
-    if (ierr /= MPI_SUCCESS) then
+    call MPI_INIT(mpi_err)
+    if (mpi_err /= MPI_SUCCESS) then
        message = "Failed to initialize MPI."
        call fatal_error()
     end if
 
     ! Determine number of processors
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, ierr)
-    if (ierr /= MPI_SUCCESS) then
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, mpi_err)
+    if (mpi_err /= MPI_SUCCESS) then
        message = "Could not determine number of processors."
        call fatal_error()
     end if
 
     ! Determine rank of each processor
-    call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
-    if (ierr /= MPI_SUCCESS) then
+    call MPI_COMM_RANK(MPI_COMM_WORLD, rank, mpi_err)
+    if (mpi_err /= MPI_SUCCESS) then
        message = "Could not determine MPI rank."
        call fatal_error()
     end if
@@ -68,10 +67,10 @@ contains
     end if
 
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(b % id,  bank_disp(1), ierr)
-    call MPI_GET_ADDRESS(b % xyz, bank_disp(2), ierr)
-    call MPI_GET_ADDRESS(b % uvw, bank_disp(3), ierr)
-    call MPI_GET_ADDRESS(b % E,   bank_disp(4), ierr)
+    call MPI_GET_ADDRESS(b % id,  bank_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(b % xyz, bank_disp(2), mpi_err)
+    call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
+    call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
 
     ! Adjust displacements 
     base = bank_disp(1)
@@ -83,10 +82,9 @@ contains
     bank_blocks = (/ 1, 3, 3, 1 /)
     bank_types = (/ MPI_INTEGER8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
     call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
-         & bank_types, MPI_BANK, ierr)
-    call MPI_TYPE_COMMIT(MPI_BANK, ierr)
+         & bank_types, MPI_BANK, mpi_err)
+    call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
-    t_sync    = ZERO
 #else
     ! if no MPI, set processor to master
     mpi_enabled = .false.
@@ -122,32 +120,25 @@ contains
          & right_bank(:)         ! bank sites to send/recv to or fram right node
 
 #ifdef MPI
-    integer    :: ierr
     integer    :: status(MPI_STATUS_SIZE) ! message status
     integer    :: request         ! communication request for sending sites
     integer    :: request_left    ! communication request for recv sites from left
     integer    :: request_right   ! communication request for recv sites from right
-    real(8)    :: t0, t1, t2, t3, t4
 #endif
 
     message = "Collecting number of fission sites..."
     call write_message(8)
 
 #ifdef MPI
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-    t0 = MPI_WTIME()
-
     ! Determine starting index for fission bank and total sites in fission bank
     start = 0_8
     call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
-         & MPI_COMM_WORLD, ierr)
+         & MPI_COMM_WORLD, mpi_err)
     finish = start + n_bank
     total = finish
     call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
-         & MPI_COMM_WORLD, ierr)
+         & MPI_COMM_WORLD, mpi_err)
 
-    t1 = MPI_WTIME()
-    t_sync(1) = t_sync(1) + (t1 - t0)
 #else
     start  = 0_8
     finish = n_bank
@@ -179,6 +170,8 @@ contains
     message = "Sampling fission sites..."
     call write_message(8)
 
+    call timer_start(time_ic_sample)
+
     ! ==========================================================================
     ! SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
     do i = 1, int(n_bank,4)
@@ -207,11 +200,11 @@ contains
 #ifdef MPI
     start = 0_8
     call MPI_EXSCAN(index_local, start, 1, MPI_INTEGER8, MPI_SUM, & 
-         & MPI_COMM_WORLD, ierr)
+         & MPI_COMM_WORLD, mpi_err)
     finish = start + index_local
     total = finish
     call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
-         & MPI_COMM_WORLD, ierr)
+         & MPI_COMM_WORLD, mpi_err)
 #else
     start  = 0_8
     finish = index_local
@@ -251,10 +244,10 @@ contains
        send_to_right = 0
     end if
 
-#ifdef MPI
-    t2 = MPI_WTIME()
-    t_sync(2) = t_sync(2) + (t2 - t1)
+    call timer_stop(time_ic_sample)
+    call timer_start(time_ic_sendrecv)
 
+#ifdef MPI
     message = "Sending fission sites..."
     call write_message(8)
 
@@ -266,23 +259,23 @@ contains
     if (send_to_right > 0) then
        i = index_local - send_to_right + 1
        call MPI_ISEND(temp_sites(i), send_to_right, MPI_BANK, rank+1, 0, &
-            & MPI_COMM_WORLD, request, ierr)
+            & MPI_COMM_WORLD, request, mpi_err)
     else if (send_to_right < 0) then
        call MPI_IRECV(right_bank, -send_to_right, MPI_BANK, rank+1, 1, &
-            & MPI_COMM_WORLD, request_right, ierr)
+            & MPI_COMM_WORLD, request_right, mpi_err)
     end if
 
     if (send_to_left < 0) then
        call MPI_IRECV(left_bank, -send_to_left, MPI_BANK, rank-1, 0, &
-            & MPI_COMM_WORLD, request_left, ierr)
+            & MPI_COMM_WORLD, request_left, mpi_err)
     else if (send_to_left > 0) then
        call MPI_ISEND(temp_sites(1), send_to_left, MPI_BANK, rank-1, 1, &
-            & MPI_COMM_WORLD, request, ierr)
+            & MPI_COMM_WORLD, request, mpi_err)
     end if
-
-    t3 = MPI_WTIME()
-    t_sync(3) = t_sync(3) + (t3 - t2)
 #endif
+
+    call timer_stop(time_ic_sendrecv)
+    call timer_start(time_ic_rebuild)
 
     message = "Constructing source bank..."
     call write_message(8)
@@ -294,7 +287,7 @@ contains
        j = int(index_local,4) - send_to_right ! size of second block
        call copy_from_bank(temp_sites, i+1, j)
 #ifdef MPI
-       call MPI_WAIT(request_left, status, ierr)
+       call MPI_WAIT(request_left, status, mpi_err)
 #endif
        call copy_from_bank(left_bank, 1, i)
     else if (send_to_left >= 0 .and. send_to_right < 0) then
@@ -302,7 +295,7 @@ contains
        j = -send_to_right                    ! size of second block
        call copy_from_bank(temp_sites(1+send_to_left), 1, i)
 #ifdef MPI
-       call MPI_WAIT(request_right, status, ierr)
+       call MPI_WAIT(request_right, status, mpi_err)
 #endif
        call copy_from_bank(right_bank, i+1, j)
     else if (send_to_left >= 0 .and. send_to_right >= 0) then
@@ -314,23 +307,22 @@ contains
        k = -send_to_right
        call copy_from_bank(temp_sites, i+1, j)
 #ifdef MPI
-       call MPI_WAIT(request_left, status, ierr)
+       call MPI_WAIT(request_left, status, mpi_err)
 #endif
        call copy_from_bank(left_bank, 1, i)
 #ifdef MPI
-       call MPI_WAIT(request_right, status, ierr)
+       call MPI_WAIT(request_right, status, mpi_err)
 #endif
        call copy_from_bank(right_bank, i+j+1, k)
     end if
 
     ! Reset source index
     source_index = 0_8
+
+    call timer_stop(time_ic_rebuild)
     
 #ifdef MPI
-    t4 = MPI_WTIME()
-    t_sync(4) = t_sync(4) + (t4 - t3)
-
-    deallocate(left_bank )
+    deallocate(left_bank)
     deallocate(right_bank)
 #endif
     deallocate(temp_sites)
@@ -380,7 +372,6 @@ contains
     integer :: n
     integer :: m
     integer :: n_bins
-    integer :: ierr
     real(8), allocatable :: tally_temp(:,:)
     type(TallyObject), pointer :: t
 
@@ -398,14 +389,14 @@ contains
        if (master) then
           ! Description of MPI_IN_PLANE
           call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
-               0, MPI_COMM_WORLD, ierr)
+               0, MPI_COMM_WORLD, mpi_err)
 
           ! Transfer values to val_history on master
           t % scores(:,:) % val_history = tally_temp
        else
           ! Receive buffer not significant at other processors
           call MPI_REDUCE(tally_temp, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
-               0, MPI_COMM_WORLD, ierr)
+               0, MPI_COMM_WORLD, mpi_err)
 
           ! Reset val_history on other processors
           t % scores(:,:) % val_history = 0

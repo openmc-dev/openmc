@@ -222,6 +222,13 @@ contains
     send_to_left  = int(bank_first - 1_8 - start, 4)
     send_to_right = int(finish - bank_last, 4)
 
+    ! Check to make sure number of sites is not more than size of bank
+    if (abs(send_to_left) > work .or. abs(send_to_right) > work) then
+       message = "Tried sending sites to neighboring process greater than " &
+            // "the size of the source bank."
+       call fatal_error()
+    end if
+
     if (rank == n_procs - 1) then
        if (total > n_particles) then
           ! If we have extra sites sampled, we will simply discard the extra

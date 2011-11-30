@@ -35,9 +35,6 @@ contains
     real(8), save           :: k1 = 0.    ! accumulated keff
     real(8), save           :: k2 = 0.    ! accumulated keff**2
     real(8)                 :: std        ! stdev of keff over active cycles
-#ifdef MPI
-    integer :: ierr
-#endif
 
     message = "Calculate cycle keff..."
     call write_message(8)
@@ -51,7 +48,7 @@ contains
 #ifdef MPI
     ! Collect number bank sites onto master process
     call MPI_REDUCE(n_bank, total_bank, 1, MPI_INTEGER8, MPI_SUM, 0, &
-         & MPI_COMM_WORLD, ierr)
+         & MPI_COMM_WORLD, mpi_err)
 #else
     total_bank = n_bank
 #endif
@@ -78,7 +75,7 @@ contains
     end if
 
 #ifdef MPI
-    call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
 #endif
 
 100 format (2X,I4,2X,F8.5)

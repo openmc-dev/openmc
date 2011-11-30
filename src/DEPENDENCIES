@@ -128,6 +128,7 @@ mpi_routines.o: output.o
 mpi_routines.o: particle_header.o
 mpi_routines.o: random_lcg.o
 mpi_routines.o: tally_header.o
+mpi_routines.o: timing.o
 
 output.o: constants.o
 output.o: datatypes.o

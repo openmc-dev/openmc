@@ -118,14 +118,21 @@ module global
   integer :: rank        ! rank of process
   logical :: master      ! master process?
   logical :: mpi_enabled ! is MPI in use and initialized?
+  integer :: mpi_err     ! MPI error code
 
   ! ============================================================================
   ! TIMING VARIABLES
 
   type(Timer) :: time_total       ! timer for total run
-  type(Timer) :: time_init        ! timer for initialization
+  type(Timer) :: time_initialize  ! timer for initialization
+  type(Timer) :: time_read_xs     ! timer for reading cross sections
   type(Timer) :: time_intercycle  ! timer for intercycle synchronization
+  type(Timer) :: time_ic_tallies  ! timer for intercycle accumulate tallies
+  type(Timer) :: time_ic_sample   ! timer for intercycle sampling
+  type(Timer) :: time_ic_sendrecv ! timer for intercycle SEND/RECV
+  type(Timer) :: time_ic_rebuild  ! timer for intercycle source bank rebuild
   type(Timer) :: time_inactive    ! timer for inactive cycles
+  type(Timer) :: time_active      ! timer for active cycles
   type(Timer) :: time_compute     ! timer for computation
 
   ! ===========================================================================
@@ -169,10 +176,6 @@ contains
 
   subroutine free_memory()
 
-#ifdef MPI
-    integer :: ierr
-#endif
-
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)
     if (allocated(surfaces)) deallocate(surfaces)
@@ -193,7 +196,7 @@ contains
 
 #ifdef MPI
     ! If MPI is in use and enabled, terminate it
-    call MPI_FINALIZE(ierr)
+    call MPI_FINALIZE(mpi_err)
 #endif
 
   end subroutine free_memory

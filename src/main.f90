@@ -33,10 +33,13 @@ program main
   else
      call run_problem()
 
+     ! Calculate statistics for tallies and write to tallies.out
+     call tally_statistics()
+     if (master) call write_tallies()
+
      ! show timing statistics
      call timer_stop(time_total)
      if (master) call print_runtime()
-     if (master) call write_tallies()
   end if
 
   ! deallocate arrays
@@ -58,6 +61,7 @@ contains
     if (master) call header("BEGIN SIMULATION", 1)
 
     tallies_on = .false.
+    call timer_start(time_active)
     call timer_start(time_inactive)
 
     ! ==========================================================================
@@ -103,7 +107,11 @@ contains
        call timer_start(time_intercycle)
 
        ! Collect tallies
-       if (tallies_on) call synchronize_tallies()
+       if (tallies_on) then
+          call timer_start(time_ic_tallies)
+          call synchronize_tallies()
+          call timer_stop(time_ic_tallies)
+       end if
 
        ! Distribute fission bank across processors evenly
        call synchronize_bank(i_cycle)
@@ -124,11 +132,10 @@ contains
 
     end do CYCLE_LOOP
 
+    call timer_stop(time_active)
+
     ! ==========================================================================
     ! END OF RUN WRAPUP
-
-    ! Calculate statistics for tallies
-    call tally_statistics()
 
     if (master) call header("SIMULATION FINISHED", 1)
 

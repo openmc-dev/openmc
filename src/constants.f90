@@ -2,12 +2,39 @@ module constants
 
   implicit none
 
-  ! Versioning numbers
+  ! ============================================================================
+  ! VERSIONING NUMBERS
+
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 3
   integer, parameter :: VERSION_RELEASE = 3
 
-  ! Physical constants
+  ! ============================================================================
+  ! ADJUSTABLE PARAMETERS 
+
+  ! NOTE: This is the only section of the constants module that should ever be
+  ! adjusted. Modifying constants in other sections may cause the code to fail.
+
+  ! Monoatomic ideal-gas scattering treatment threshold
+  real(8), parameter :: FREE_GAS_THRESHOLD = 400.0
+
+  ! Used for surface current tallies
+  real(8), parameter :: TINY_BIT = 1e-8
+
+  ! Maximum number of collisions/crossings
+  integer, parameter :: MAX_EVENTS = 10000
+  integer, parameter :: MAX_SAMPLE = 100000
+
+  ! Maximum number of words in a single line, length of line, and length of
+  ! single word
+  integer, parameter :: MAX_WORDS    = 500
+  integer, parameter :: MAX_LINE_LEN = 250
+  integer, parameter :: MAX_WORD_LEN = 150
+  integer, parameter :: MAX_FILE_LEN = 255
+
+  ! ============================================================================
+  ! PHYSICAL CONSTANTS
+
   real(8), parameter ::            &
        PI           = 3.1415926535898_8, & ! pi
        MASS_NEUTRON = 1.0086649156,      & ! mass of a neutron
@@ -20,8 +47,8 @@ module constants
        ONE          = 1.0_8,             &
        TWO          = 2.0_8
 
-  ! Monoatomic ideal-gas scattering treatment threshold
-  real(8), parameter :: FREE_GAS_THRESHOLD = 400.0
+  ! ============================================================================
+  ! GEOMETRY-RELATED CONSTANTS
 
   ! Boundary conditions
   integer, parameter ::    &
@@ -70,27 +97,8 @@ module constants
        & SENSE_POSITIVE = 1, &
        & SENSE_NEGATIVE = -1
 
-  ! Used for surface current tallies
-  real(8), parameter :: TINY_BIT = 1e-8
-
-  ! Maximum number of collisions/crossings
-  integer, parameter :: MAX_EVENTS = 10000
-  integer, parameter :: MAX_SAMPLE = 100000
-
-  ! Codes for read errors -- better hope these numbers are never used in an
-  ! input file!
-  integer, parameter :: ERROR_INT  = -huge(0)
-  real(8), parameter :: ERROR_REAL = -huge(0.0_8) * 0.917826354_8
-
-  ! Source types
-  integer, parameter ::   &
-       SRC_BOX     = 1, & ! Source in a rectangular prism
-       SRC_CELL    = 2, & ! Source in a cell
-       SRC_SURFACE = 3    ! Source on a surface
-
-  integer, parameter ::        &
-       PROB_SOURCE      = 1, & ! External source problem
-       PROB_CRITICALITY = 2    ! Criticality problem
+  ! ============================================================================
+  ! CROSS SECTION RELATED CONSTANTS
 
   ! Interpolation flag
   integer, parameter ::     &
@@ -179,6 +187,23 @@ module constants
        ACE_THERMAL   = 2, & ! thermal S(a,b) scattering data
        ACE_DOSIMETRY = 3    ! dosimetry cross sections
 
+  ! Fission neutron emission (nu) type
+  integer, parameter ::   &
+       NU_NONE       = 0, & ! No nu values (non-fissionable)
+       NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
+       NU_TABULAR    = 2    ! Nu values given by tabular distribution
+
+  ! Cross section filetypes
+  integer, parameter :: &
+       ASCII  = 1, & ! ASCII cross section file
+       BINARY = 2    ! Binary cross section file
+
+  ! Maximum number of partial fission reactions
+  integer, parameter :: PARTIAL_FISSION_MAX = 4
+
+  ! ============================================================================
+  ! TALLY-RELATED CONSTANTS
+
   ! Tally macro reactions
   integer, parameter :: N_MACRO_TYPES = 15
   integer, parameter :: &
@@ -230,26 +255,23 @@ module constants
        IN_TOP    = 5,   &
        OUT_TOP   = 6
 
-  ! Fission neutron emission (nu) type
+  ! ============================================================================
+  ! MISCELLANEOUS CONSTANTS
+
+  ! Codes for read errors -- better hope these numbers are never used in an
+  ! input file!
+  integer, parameter :: ERROR_INT  = -huge(0)
+  real(8), parameter :: ERROR_REAL = -huge(0.0_8) * 0.917826354_8
+
+  ! Source types
   integer, parameter ::   &
-       NU_NONE       = 0, & ! No nu values (non-fissionable)
-       NU_POLYNOMIAL = 1, & ! Nu values given by polynomial
-       NU_TABULAR    = 2    ! Nu values given by tabular distribution
+       SRC_BOX     = 1, & ! Source in a rectangular prism
+       SRC_CELL    = 2, & ! Source in a cell
+       SRC_SURFACE = 3    ! Source on a surface
 
-  ! Cross section filetypes
-  integer, parameter :: &
-       ASCII  = 1, & ! ASCII cross section file
-       BINARY = 2    ! Binary cross section file
-
-  ! Maximum number of partial fission reactions
-  integer, parameter :: PARTIAL_FISSION_MAX = 4
-
-  ! Maximum number of words in a single line, length of line, and length of
-  ! single word
-  integer, parameter :: MAX_WORDS    = 500
-  integer, parameter :: MAX_LINE_LEN = 250
-  integer, parameter :: MAX_WORD_LEN = 150
-  integer, parameter :: MAX_FILE_LEN = 255
+  integer, parameter ::        &
+       PROB_SOURCE      = 1, & ! External source problem
+       PROB_CRITICALITY = 2    ! Criticality problem
 
   ! Unit numbers
   integer, parameter :: UNIT_LOG   = 11 ! unit # for writing log file

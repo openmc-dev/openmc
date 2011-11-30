@@ -773,6 +773,7 @@ contains
     ! display time elapsed for various sections
     write(ou,100) "Total time for initialization", time_initialize % elapsed
     write(ou,100) "  Reading cross sections", time_read_xs % elapsed
+    write(ou,100) "  Unionizing energy grid", time_unionize % elapsed
     write(ou,100) "Total time in computation", time_compute % elapsed
     write(ou,100) "Total time between cycles", time_intercycle % elapsed
     write(ou,100) "  Accumulating tallies", time_ic_tallies % elapsed

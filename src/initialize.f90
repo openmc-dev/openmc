@@ -89,8 +89,10 @@ contains
        call timer_stop(time_read_xs)
 
        ! Construct unionized energy grid from cross-sections
+       call timer_start(time_unionize)
        call unionized_grid()
        call original_indices()
+       call timer_stop(time_unionize)
 
        ! Create tally map
        call create_tally_map()

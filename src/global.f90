@@ -126,6 +126,7 @@ module global
   type(Timer) :: time_total       ! timer for total run
   type(Timer) :: time_initialize  ! timer for initialization
   type(Timer) :: time_read_xs     ! timer for reading cross sections
+  type(Timer) :: time_unionize    ! timer for unionizing energy grid
   type(Timer) :: time_intercycle  ! timer for intercycle synchronization
   type(Timer) :: time_ic_tallies  ! timer for intercycle accumulate tallies
   type(Timer) :: time_ic_sample   ! timer for intercycle sampling

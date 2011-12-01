@@ -574,12 +574,12 @@ contains
   end subroutine cross_lattice
 
 !===============================================================================
-! DIST_TO_BOUNDARY calculates the distance to the nearest boundary for a
+! DISTANCE_TO_BOUNDARY calculates the distance to the nearest boundary for a
 ! particle 'p' traveling in a certain direction. For a cell in a subuniverse
 ! that has a parent cell, also include the surfaces of the edge of the universe.
 !===============================================================================
 
-  subroutine dist_to_boundary(p, dist, surf, in_lattice)
+  subroutine distance_to_boundary(p, dist, surf, in_lattice)
 
     type(Particle), pointer     :: p
     real(8),        intent(out) :: dist
@@ -975,7 +975,7 @@ contains
     ! deallocate expression
     deallocate(expression)
 
-  end subroutine dist_to_boundary
+  end subroutine distance_to_boundary
 
 !===============================================================================
 ! SENSE determines whether a point is on the 'positive' or 'negative' side of a

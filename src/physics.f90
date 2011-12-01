@@ -5,8 +5,8 @@ module physics
   use endf,                 only: reaction_name, is_fission, is_scatter
   use error,                only: fatal_error, warning
   use fission,              only: nu_total, nu_prompt, nu_delayed
-  use geometry,             only: find_cell, dist_to_boundary, cross_surface, &
-                                  cross_lattice
+  use geometry,             only: find_cell, distance_to_boundary,              &
+                                  cross_surface, cross_lattice
   use geometry_header,      only: Universe, BASE_UNIVERSE
   use global
   use interpolation,        only: interpolate_tab1
@@ -32,8 +32,8 @@ contains
     integer        :: surf           ! surface which particle is on
     integer        :: last_cell      ! most recent cell particle was in
     integer        :: n_event        ! number of collisions/crossings
-    real(8)        :: d_to_boundary  ! distance to nearest boundary
-    real(8)        :: d_to_collision ! sampled distance to collision
+    real(8)        :: d_boundary     ! distance to nearest boundary
+    real(8)        :: d_collision    ! sampled distance to collision
     real(8)        :: distance       ! distance particle travels
     logical        :: found_cell     ! found cell which particle is in?
     logical        :: in_lattice     ! is surface crossing in lattice?
@@ -74,19 +74,19 @@ contains
        call calculate_xs(p)
 
        ! Find the distance to the nearest boundary
-       call dist_to_boundary(p, d_to_boundary, surf, in_lattice)
+       call distance_to_boundary(p, d_boundary, surf, in_lattice)
 
        ! Sample a distance to collision
-       d_to_collision = -log(prn()) / material_xs % total
+       d_collision = -log(prn()) / material_xs % total
        
        ! Select smaller of the two distances
-       distance = min(d_to_boundary, d_to_collision)
+       distance = min(d_boundary, d_collision)
 
        ! Advance particle
        p % xyz       = p % xyz       + distance * p % uvw
        p % xyz_local = p % xyz_local + distance * p % uvw
 
-       if (d_to_collision > d_to_boundary) then
+       if (d_collision > d_boundary) then
           last_cell = p % cell
           p % cell = 0
           if (in_lattice) then

@@ -14,8 +14,8 @@ module initialize
                               cells_in_univ_dict
   use logging,          only: create_log
   use mpi_routines,     only: setup_mpi
-  use output,           only: title, echo_input, message, print_summary,       &
-                              print_particle, header, print_plot
+  use output,           only: title, header, print_summary, print_geometry,    &
+                              print_plot
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use string,           only: int_to_str, starts_with, ends_with, lower_case
@@ -104,9 +104,9 @@ contains
     ! stop timer for initialization
     if (master) then
        if (plotting) then
+          call print_geometry()
           call print_plot()
        else
-          call echo_input()
           call print_summary()
        end if
     end if
@@ -150,7 +150,7 @@ contains
     end do
 
     ! Determine directory where XML input files are
-    if (argc > 0) then
+    if (argc > 0 .and. last_flag < argc) then
        path_input = argv(last_flag + 1)
        ! Need to add working directory if the given path is a relative path
        if (.not. starts_with(path_input, "/")) then

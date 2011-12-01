@@ -59,36 +59,6 @@ contains
   end subroutine title
 
 !===============================================================================
-! ECHO_INPUT displays summary information about the problem about to be run
-! after reading all the input.
-!===============================================================================
-
-  subroutine echo_input()
-
-    ! Display problem summary
-    call header("PROBLEM SUMMARY")
-    if (problem_type == PROB_CRITICALITY) then
-       write(ou,100) 'Problem type:', 'Criticality'
-       write(ou,101) 'Number of Cycles:', n_cycles
-       write(ou,101) 'Number of Inactive Cycles:', n_inactive
-    elseif (problem_type == PROB_SOURCE) then
-       write(ou,100) 'Problem type:', 'External Source'
-    end if
-    write(ou,101) 'Number of Particles:', n_particles
-
-    ! Display geometry summary
-    call header("GEOMETRY SUMMARY")
-    write(ou,101) 'Number of Cells:', n_cells
-    write(ou,101) 'Number of Surfaces:', n_surfaces
-    write(ou,101) 'Number of Materials:', n_materials
-
-    ! Format descriptor for columns
-100 format (1X,A,T35,A)
-101 format (1X,A,T35,I11)
-
-  end subroutine echo_input
-
-!===============================================================================
 ! HEADER displays a header block according to a specified level. If no level is
 ! specified, it is assumed to be a minor header block (H3).
 !===============================================================================
@@ -642,21 +612,17 @@ contains
   end subroutine print_tally
 
 !===============================================================================
-! PRINT_SUMMARY displays the attributes of all cells, universes,
-! surfaces and materials read in the input file. Very useful for
-! debugging!
+! PRINT_GEOMETRY displays the attributes of all cells, surfaces, universes,
+! surfaces, and lattices read in the input files.
 !===============================================================================
 
-  subroutine print_summary()
+  subroutine print_geometry()
 
+    integer :: i
     type(Surface),     pointer :: s => null()
     type(Cell),        pointer :: c => null()
     type(Universe),    pointer :: u => null()
     type(Lattice),     pointer :: l => null()
-    type(Material),    pointer :: m => null()
-    type(TallyObject), pointer :: t => null()
-    character(15) :: string
-    integer :: i
 
     ! print summary of cells
     call header("CELL SUMMARY")
@@ -687,6 +653,40 @@ contains
        s => surfaces(i)
        call print_surface(s)
     end do
+
+  end subroutine print_geometry
+
+!===============================================================================
+! PRINT_SUMMARY displays summary information about the problem about to be run
+! after reading all input files
+!===============================================================================
+
+  subroutine print_summary()
+
+    integer :: i
+    character(15) :: string
+    type(Material),    pointer :: m => null()
+    type(TallyObject), pointer :: t => null()
+
+    ! Display problem summary
+    call header("PROBLEM SUMMARY")
+    if (problem_type == PROB_CRITICALITY) then
+       write(ou,100) 'Problem type:', 'Criticality'
+       write(ou,101) 'Number of Cycles:', n_cycles
+       write(ou,101) 'Number of Inactive Cycles:', n_inactive
+    elseif (problem_type == PROB_SOURCE) then
+       write(ou,100) 'Problem type:', 'External Source'
+    end if
+    write(ou,101) 'Number of Particles:', n_particles
+
+    ! Display geometry summary
+    call header("GEOMETRY SUMMARY")
+    write(ou,101) 'Number of Cells:', n_cells
+    write(ou,101) 'Number of Surfaces:', n_surfaces
+    write(ou,101) 'Number of Materials:', n_materials
+
+    ! print summary of all geometry
+    call print_geometry()
 
     ! print summary of materials
     call header("MATERIAL SUMMARY")
@@ -724,14 +724,9 @@ contains
     write(ou,*)
 
     ! Format descriptor for columns
-100 format (1X,A,T25,A)
+100 format (1X,A,T35,A)
+101 format (1X,A,T35,I11)
 
-    nullify(s)
-    nullify(c)
-    nullify(u)
-    nullify(l)
-    nullify(m)
-    nullify(t)
 
   end subroutine print_summary
 

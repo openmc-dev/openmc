@@ -1,9 +1,33 @@
 module particle_header
 
-  use constants, only: NEUTRON, ONE
+  use constants, only: NEUTRON, ONE, NONE
+  use geometry_header, only: BASE_UNIVERSE
 
   implicit none
 
+!===============================================================================
+! LOCALCOORD describes the location of a particle local to a single
+! universe. When the geometry consists of nested universes, a particle will have
+! a list of coordinates in each level
+!===============================================================================
+
+  type LocalCoord
+     ! Indices in various arrays for this level
+     integer :: cell      = NONE
+     integer :: universe  = NONE
+     integer :: lattice   = NONE
+     integer :: lattice_x = NONE
+     integer :: lattice_y = NONE
+
+     ! Particle position and direction for this level
+     real(8) :: xyz(3)
+     real(8) :: uvw(3)
+
+     ! Pointers to next (lower) and previous (higher) universe
+     type(LocalCoord), pointer :: next => null()
+     type(LocalCoord), pointer :: prev => null()
+  end type LocalCoord
+     
 !===============================================================================
 ! PARTICLE describes the state of a particle being transported through the
 ! geometry
@@ -14,10 +38,12 @@ module particle_header
      integer(8) :: id            ! Unique ID
      integer    :: type          ! Particle type (n, p, e, etc)
 
-     ! Physical data
-     real(8)    :: xyz(3)        ! location
-     real(8)    :: xyz_local(3)  ! local location (after transformations)
-     real(8)    :: uvw(3)        ! directional cosines
+     ! Particle coordinates
+     logical :: in_lower_universe        ! is particle in lower universe?
+     type(LocalCoord), pointer :: coord0 ! coordinates on universe 0
+     type(LocalCoord), pointer :: coord  ! coordinates on lowest universe
+
+     ! Other physical data
      real(8)    :: wgt           ! particle weight
      real(8)    :: E             ! energy
      real(8)    :: mu            ! angle of scatter
@@ -36,15 +62,10 @@ module particle_header
      real(8)    :: interp        ! interpolation factor for energy grid
 
      ! Indices for various arrays
-     integer    :: cell          ! index for current cell
+     integer    :: surface       ! index for surface particle is on
      integer    :: cell_born     ! index for cell particle was born in
-     integer    :: universe      ! index for current universe
-     integer    :: lattice       ! index for current lattice
-     integer    :: surface       ! index for current surface
      integer    :: material      ! index for current material
      integer    :: last_material ! index for last material
-     integer    :: index_x       ! lattice index for x direction
-     integer    :: index_y       ! lattice index for y direction
 
      ! Statistical data
      integer    :: n_collision   ! # of collisions
@@ -66,22 +87,48 @@ contains
     ! passed through the fission bank to the source bank, no lookup would be
     ! needed at the beginning of a cycle
 
-    p % type          = NEUTRON
+    p % type              = NEUTRON
+    p % alive             = .true.
+
+    ! clear attributes
+    p % surface       = NONE
+    p % cell_born     = NONE
+    p % material      = NONE
+    p % last_material = NONE
     p % wgt           = ONE
     p % last_wgt      = ONE
-    p % alive         = .true.
     p % n_bank        = 0
-    p % cell          = 0
-    p % cell_born     = 0
-    p % universe      = 0
-    p % lattice       = 0
-    p % surface       = 0
-    p % material      = 0
-    p % last_material = 0
-    p % index_x       = 0
-    p % index_y       = 0
     p % n_collision   = 0
 
+    ! remove any original coordinates
+    call deallocate_coord(p % coord0)
+    
+    ! Set up base level coordinates
+    allocate(p % coord0)
+    p % coord0 % universe = BASE_UNIVERSE
+    p % coord             => p % coord0
+    p % in_lower_universe = .false.
+
   end subroutine initialize_particle
+
+!===============================================================================
+! DEALLOCATE_COORD removes all levels of coordinates below a given level. This
+! is used in distance_to_boundary when the particle moves from a lower universe
+! to a higher universe since the data for the lower one is not needed anymore.
+!===============================================================================
+
+  recursive subroutine deallocate_coord(coord)
+
+    type(LocalCoord), pointer :: coord
+
+    if (associated(coord)) then 
+       ! recursively deallocate lower coordinates
+       if (associated(coord % next)) call deallocate_coord(coord%next)
+
+       ! deallocate original coordinate
+       deallocate(coord)
+    end if
+
+  end subroutine deallocate_coord
 
 end module particle_header

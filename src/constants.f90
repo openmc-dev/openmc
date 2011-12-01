@@ -261,6 +261,9 @@ module constants
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
 
+  ! indicates that an array index hasn't been set
+  integer, parameter :: NONE = 0
+
   ! Codes for read errors -- better hope these numbers are never used in an
   ! input file!
   integer, parameter :: ERROR_INT  = -huge(0)

@@ -140,6 +140,7 @@ output.o: string.o
 output.o: tally_header.o
 
 particle_header.o: constants.o
+particle_header.o: geometry_header.o
 
 physics.o: constants.o
 physics.o: cross_section_header.o

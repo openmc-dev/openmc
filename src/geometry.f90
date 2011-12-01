@@ -550,10 +550,12 @@ contains
     i_x = p % index_x
     i_y = p % index_y
     if (i_x < 1 .or. i_x > lat % n_x) then
-       message = "Reached edge of lattice."
+       message = "Reached edge of lattice (" // trim(int_to_str(i_x)) // &
+            "," // trim(int_to_str(i_y)) // ")."
        call fatal_error()
     elseif (i_y < 1 .or. i_y > lat % n_y) then
-       message = "Reached edge of lattice."
+       message = "Reached edge of lattice (" // trim(int_to_str(i_x)) // &
+            "," // trim(int_to_str(i_y)) // ")."
        call fatal_error()
     end if
 
@@ -634,7 +636,9 @@ contains
     v = p % uvw(2)
     w = p % uvw(3)
 
-    ! loop over all surfaces
+    ! ==========================================================================
+    ! FIND MINIMUM DISTANCE TO SURFACES IN CELL AND PARENT
+
     dist = INFINITY
     do i = 1, n_surf
        if (i <= n1) then
@@ -911,10 +915,11 @@ contains
           dist = d
           surf = -expression(i)
        end if
-
     end do
 
-    ! Check lattice surfaces
+    ! ==========================================================================
+    ! FIND MINIMUM DISTANCE TO LATTICE SURFACES
+
     in_lattice = .false.
     if (p % lattice > 0) then
        lat => lattices(p % lattice)
@@ -922,9 +927,8 @@ contains
           x = p % xyz_local(1)
           y = p % xyz_local(2)
           z = p % xyz_local(3)
-          x0 = lat % width_x * 0.5
-          y0 = lat % width_y * 0.5
-          
+          x0 = lat % width_x * 0.5_8
+          y0 = lat % width_y * 0.5_8
           
           ! left and right sides
           if (u > 0) then
@@ -932,9 +936,19 @@ contains
           else
              d = -(x + x0)/u
           end if
-          if (d < dist) then
-             dist = d
-             in_lattice = .true.
+          
+          ! If the lattice boundary is coincident with the parent cell boundary,
+          ! we need to make sure that the lattice is not selected. This is
+          ! complicated by the fact that floating point may determine that one
+          ! is closer than the other (can't check direct equality). Thus, the
+          ! logic here checks whether the relative difference is within floating
+          ! point precision.
+
+          if (d < dist) then 
+             if (abs(d - dist)/dist >= FP_PRECISION) then
+                dist = d
+                in_lattice = .true.
+             end if
           end if
 
           ! top and bottom sides
@@ -943,9 +957,12 @@ contains
           else
              d = -(y + y0)/v
           end if
+
           if (d < dist) then
-             dist = d
-             in_lattice = .true.
+             if (abs(d - dist)/dist >= FP_PRECISION) then
+                dist = d
+                in_lattice = .true.
+             end if
           end if
 
        elseif (lat % type == LATTICE_HEX) then

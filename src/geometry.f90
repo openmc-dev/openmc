@@ -483,12 +483,12 @@ contains
     type(Lattice),  pointer :: lat
     type(Universe), pointer :: univ
 
+    lat => lattices(p % lattice)
+
     if (verbosity >= 10) then
-       message = "    Crossing lattice"
+       message = "    Crossing lattice " // int_to_str(lat % id)
        call write_message()
     end if
-
-    lat => lattices(p % lattice)
 
     u = p % uvw(1)
     v = p % uvw(2)
@@ -550,12 +550,14 @@ contains
     i_x = p % index_x
     i_y = p % index_y
     if (i_x < 1 .or. i_x > lat % n_x) then
-       message = "Reached edge of lattice (" // trim(int_to_str(i_x)) // &
-            "," // trim(int_to_str(i_y)) // ")."
+       message = "Reached edge of lattice " // trim(int_to_str(lat % id)) // &
+            " at position (" // trim(int_to_str(i_x)) // "," // &
+            trim(int_to_str(i_y)) // ")."
        call fatal_error()
     elseif (i_y < 1 .or. i_y > lat % n_y) then
-       message = "Reached edge of lattice (" // trim(int_to_str(i_x)) // &
-            "," // trim(int_to_str(i_y)) // ")."
+       message = "Reached edge of lattice " // trim(int_to_str(lat % id)) // &
+            " at position (" // trim(int_to_str(i_x)) // "," // &
+            trim(int_to_str(i_y)) // ")."
        call fatal_error()
     end if
 

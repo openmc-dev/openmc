@@ -2,7 +2,7 @@ module plot
 
   use constants
   use error,           only: fatal_error
-  use geometry,        only: find_cell, dist_to_boundary, cross_surface, &
+  use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
                              cross_lattice, cell_contains
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
@@ -82,7 +82,7 @@ contains
              p % cell = univ % cells(i)
 
              distance = INFINITY
-             call dist_to_boundary(p, d, surf, in_lattice)
+             call distance_to_boundary(p, d, surf, in_lattice)
              if (d < distance) then
                 ! Move particle forward to next surface
                 p % xyz = p % xyz + d * p % uvw
@@ -133,7 +133,7 @@ contains
        do while (p % alive)
 
           ! Calculate distance to next boundary
-          call dist_to_boundary(p, distance, surf, in_lattice)
+          call distance_to_boundary(p, distance, surf, in_lattice)
 
           ! Advance particle
           p%xyz = p%xyz + distance * p%uvw

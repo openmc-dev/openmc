@@ -704,6 +704,12 @@ contains
        end do
     end if
 
+    ! print summary of unionized energy grid
+    call header("UNIONIZED ENERGY GRID")
+    write(ou,*) "Points on energy grid:  " // trim(int_to_str(n_grid))
+    write(ou,*) "Extra storage required: " // trim(int_to_str(&
+         n_grid*n_nuclides_total*4)) // " bytes"
+
     ! print summary of variance reduction
     call header("VARIANCE REDUCTION")
     if (survival_biasing) then

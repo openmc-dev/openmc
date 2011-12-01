@@ -11,7 +11,7 @@ module physics
   use global
   use interpolation,        only: interpolate_tab1
   use output,               only: write_message, print_particle
-  use particle_header,      only: Particle
+  use particle_header,      only: Particle, LocalCoord
   use random_lcg,           only: prn
   use search,               only: binary_search
   use string,               only: int_to_str
@@ -29,29 +29,27 @@ contains
 
     type(Particle), pointer :: p
 
-    integer        :: surf           ! surface which particle is on
-    integer        :: last_cell      ! most recent cell particle was in
-    integer        :: n_event        ! number of collisions/crossings
-    real(8)        :: d_boundary     ! distance to nearest boundary
-    real(8)        :: d_collision    ! sampled distance to collision
-    real(8)        :: distance       ! distance particle travels
-    logical        :: found_cell     ! found cell which particle is in?
-    logical        :: in_lattice     ! is surface crossing in lattice?
-    type(Universe), pointer :: univ
+    integer        :: surface_crossed ! surface which particle is on
+    integer        :: last_cell       ! most recent cell particle was in
+    integer        :: n_event         ! number of collisions/crossings
+    real(8)        :: d_boundary      ! distance to nearest boundary
+    real(8)        :: d_collision     ! sampled distance to collision
+    real(8)        :: distance        ! distance particle travels
+    logical        :: found_cell      ! found cell which particle is in?
+    logical        :: lattice_crossed ! is surface crossing in lattice?
+    type(LocalCoord), pointer :: coord
 
-    if (p % cell == 0) then
-       univ => universes(BASE_UNIVERSE)
-       call find_cell(univ, p, found_cell)
-
-       ! if particle couldn't be located, print error
+    if (p % coord % cell == NONE) then
+       call find_cell(p, found_cell)
+       ! Particle couldn't be located
        if (.not. found_cell) then
           write(message, '(A,3ES11.3)') & 
-               "Could not locate cell for particle at: ", p % xyz
+               "Could not locate cell for particle at: ", p % coord0 % xyz
           call fatal_error()
        end if
 
        ! set birth cell attribute
-       p % cell_born = p % cell
+       p % cell_born = p % coord % cell
     end if
 
     if (verbosity >= 9) then
@@ -60,7 +58,8 @@ contains
     end if
 
     if (verbosity >= 10) then
-       message = "    Born in cell " // trim(int_to_str(cells(p%cell)%id))
+       message = "    Born in cell " // trim(int_to_str(&
+            cells(p % coord % cell) % id))
        call write_message()
     end if
 
@@ -74,7 +73,7 @@ contains
        call calculate_xs(p)
 
        ! Find the distance to the nearest boundary
-       call distance_to_boundary(p, d_boundary, surf, in_lattice)
+       call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)
 
        ! Sample a distance to collision
        d_collision = -log(prn()) / material_xs % total
@@ -83,26 +82,37 @@ contains
        distance = min(d_boundary, d_collision)
 
        ! Advance particle
-       p % xyz       = p % xyz       + distance * p % uvw
-       p % xyz_local = p % xyz_local + distance * p % uvw
+       coord => p % coord0
+       do while (associated(coord))
+          coord % xyz = coord % xyz + distance * coord % uvw
+          coord => coord % next
+       end do
 
        if (d_collision > d_boundary) then
-          last_cell = p % cell
-          p % cell = 0
-          if (in_lattice) then
-             p % surface = 0
+          last_cell = p % coord % cell
+          p % coord % cell = NONE
+          if (lattice_crossed) then
+             p % surface = NONE
              call cross_lattice(p)
           else
-             p % surface = surf
+             p % surface = surface_crossed
              call cross_surface(p, last_cell)
           end if
        else
           ! collision
-          p % surface = 0
+          p % surface = NONE
           call collision(p)
 
           ! Save coordinates at collision for tallying purposes
-          p % last_xyz = p % xyz
+          p % last_xyz = p % coord % xyz
+
+          ! Set all uvws to base level -- right now, after a collision, only the
+          ! base level uvws are changed
+          coord => p % coord0
+          do while(associated(coord))
+             coord % uvw = p % coord0 % uvw
+             coord => coord % next
+          end do
        end if
 
        ! If particle has too many events, display warning and kill it
@@ -712,7 +722,7 @@ contains
     awr = nuc % awr
 
     ! Neutron velocity in LAB
-    v_n = vel * p % uvw
+    v_n = vel * p % coord0 % uvw
 
     ! Sample velocity of target nucleus
     call sample_target_velocity(p, nuc, v_t)
@@ -750,7 +760,7 @@ contains
 
     ! Set energy and direction of particle in LAB frame
     p % E = E
-    p % uvw = v_n / vel
+    p % coord0 % uvw = v_n / vel
 
     ! Copy scattering cosine for tallies
     p % mu = mu
@@ -902,13 +912,13 @@ contains
     end if
 
     ! copy directional cosines
-    u = p % uvw(1)
-    v = p % uvw(2)
-    w = p % uvw(3)
+    u = p % coord0 % uvw(1)
+    v = p % coord0 % uvw(2)
+    w = p % coord0 % uvw(3)
 
     ! change direction of particle
     call rotate_angle(u, v, w, mu)
-    p % uvw = (/ u, v, w /)
+    p % coord0 % uvw = (/ u, v, w /)
 
     ! change energy of particle
     p % E = E
@@ -993,9 +1003,9 @@ contains
 
     ! determine direction of target velocity based on the neutron's velocity
     ! vector and the sampled angle between them
-    u = p % uvw(1)
-    v = p % uvw(2)
-    w = p % uvw(3)
+    u = p % coord0 % uvw(1)
+    v = p % coord0 % uvw(2)
+    w = p % coord0 % uvw(3)
     call rotate_angle(u, v, w, mu)
 
     ! determine speed of target nucleus
@@ -1093,7 +1103,7 @@ contains
     do i = int(n_bank,4) + 1, int(min(n_bank + nu, 3*work),4)
        ! Bank source neutrons by copying particle data
        fission_bank(i) % id  = p % id
-       fission_bank(i) % xyz = p % xyz
+       fission_bank(i) % xyz = p % coord0 % xyz
 
        ! sample cosine of angle
        mu = sample_angle(rxn, E)
@@ -1250,13 +1260,13 @@ contains
     end if
 
     ! copy directional cosines
-    u = p % uvw(1)
-    v = p % uvw(2)
-    w = p % uvw(3)
+    u = p % coord0 % uvw(1)
+    v = p % coord0 % uvw(2)
+    w = p % coord0 % uvw(3)
 
     ! change direction of particle
     call rotate_angle(u, v, w, mu)
-    p % uvw = (/ u, v, w /)
+    p % coord0 % uvw = (/ u, v, w /)
 
     ! change energy of particle
     p % E = E

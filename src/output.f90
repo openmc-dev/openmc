@@ -210,43 +210,39 @@ contains
     case default
        write(ou,*) 'Unknown Particle ' // int_to_str(p % id)
     end select
-    write(ou,*) '    x = ' // real_to_str(p % xyz(1))
-    write(ou,*) '    y = ' // real_to_str(p % xyz(2))
-    write(ou,*) '    z = ' // real_to_str(p % xyz(3))
-    write(ou,*) '    x local = ' // real_to_str(p % xyz_local(1))
-    write(ou,*) '    y local = ' // real_to_str(p % xyz_local(2))
-    write(ou,*) '    z local = ' // real_to_str(p % xyz_local(3))
-    write(ou,*) '    u = ' // real_to_str(p % uvw(1))
-    write(ou,*) '    v = ' // real_to_str(p % uvw(2))
-    write(ou,*) '    w = ' // real_to_str(p % uvw(3))
+    write(ou,*) '    x = ' // real_to_str(p % coord0 % xyz(1))
+    write(ou,*) '    y = ' // real_to_str(p % coord0 % xyz(2))
+    write(ou,*) '    z = ' // real_to_str(p % coord0 % xyz(3))
+    write(ou,*) '    x local = ' // real_to_str(p % coord % xyz(1))
+    write(ou,*) '    y local = ' // real_to_str(p % coord % xyz(2))
+    write(ou,*) '    z local = ' // real_to_str(p % coord % xyz(3))
+    write(ou,*) '    u = ' // real_to_str(p % coord0 % uvw(1))
+    write(ou,*) '    v = ' // real_to_str(p % coord0 % uvw(2))
+    write(ou,*) '    w = ' // real_to_str(p % coord0 % uvw(3))
     write(ou,*) '    Weight = ' // real_to_str(p % wgt)
     write(ou,*) '    Energy = ' // real_to_str(p % E)
-    write(ou,*) '    x index = ' // int_to_str(p % index_x)
-    write(ou,*) '    y index = ' // int_to_str(p % index_y)
+    write(ou,*) '    x index = ' // int_to_str(p % coord % lattice_x)
+    write(ou,*) '    y index = ' // int_to_str(p % coord % lattice_y)
     write(ou,*) '    IE = ' // int_to_str(p % IE)
     write(ou,*) '    Interpolation factor = ' // real_to_str(p % interp)
 
-    if (p % cell > 0) then
-       c => cells(p % cell)
+    if (p % coord % cell /= NONE) then
+       c => cells(p % coord % cell)
        write(ou,*) '    Cell = ' // int_to_str(c % id)
     else
        write(ou,*) '    Cell not determined'
     end if
 
-    if (p % surface > 0) then
+    if (p % surface /= NONE) then
        s => surfaces(p % surface)
        write(ou,*) '    Surface = ' // int_to_str(s % id)
     else
        write(ou,*) '    Surface = None'
     end if
 
-    u => universes(p % universe)
+    u => universes(p % coord % universe)
     write(ou,*) '    Universe = ' // int_to_str(u % id)
     write(ou,*)
-
-    nullify(c)
-    nullify(s)
-    nullify(u)
 
   end subroutine print_particle
 
@@ -325,10 +321,6 @@ contains
     write(ou,*) '    Surface Specification:' // trim(string)
     write(ou,*)
 
-    ! nullify associated pointers
-    nullify(u)
-    nullify(m)
-
   end subroutine print_cell
 
 !===============================================================================
@@ -352,8 +344,6 @@ contains
     end do
     write(ou,*) '    Cells =' // trim(string)
     write(ou,*)
-
-    nullify(c)
 
   end subroutine print_universe
 
@@ -484,8 +474,6 @@ contains
        write(ou,*) '    S(a,b) table = ' // trim(mat % sab_name)
     end if
     write(ou,*)
-
-    nullify(nuc)
 
   end subroutine print_material
 

@@ -343,7 +343,7 @@ contains
 
        ! determine next universe bin
        if (t % n_bins(T_UNIVERSE) > 0) then
-          bins(T_UNIVERSE) = get_next_bin(T_UNIVERSE, p % universe, i)
+          bins(T_UNIVERSE) = get_next_bin(T_UNIVERSE, p % coord % universe, i)
           if (bins(T_UNIVERSE) == NO_BIN_FOUND) cycle
        else
           bins(T_UNIVERSE) = 1
@@ -359,7 +359,7 @@ contains
 
        ! determine next cell bin
        if (t % n_bins(T_CELL) > 0) then
-          bins(T_CELL) = get_next_bin(T_CELL, p % cell, i)
+          bins(T_CELL) = get_next_bin(T_CELL, p % coord % cell, i)
           if (bins(T_CELL) == NO_BIN_FOUND) cycle
        else
           bins(T_CELL) = 1
@@ -386,7 +386,7 @@ contains
           m => meshes(t % mesh)
 
           ! Determine if we're in the mesh first
-          call get_mesh_bin(m, p % xyz, mesh_bin, in_mesh)
+          call get_mesh_bin(m, p % coord0 % xyz, mesh_bin, in_mesh)
           if (.not. in_mesh) cycle
 
           bins(T_MESH) = mesh_bin
@@ -610,7 +610,7 @@ contains
     do i = 1, n_tallies
        ! Copy starting and ending location of particle
        xyz0 = p % last_xyz
-       xyz1 = p % xyz
+       xyz1 = p % coord0 % xyz
 
        ! Get pointer to tally
        t => tallies(i)
@@ -631,7 +631,7 @@ contains
        if (n_cross == 0) cycle
 
        ! Copy particle's direction
-       uvw = p % uvw
+       uvw = p % coord0 % uvw
 
        ! determine incoming energy bin
        n = t % n_bins(T_ENERGYIN)

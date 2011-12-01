@@ -347,15 +347,14 @@ contains
        i_source = i_start + i - 1
        p => source_bank(i_source)
 
-       p % xyz       = temp_bank(i) % xyz
-       p % xyz_local = temp_bank(i) % xyz
-       p % last_xyz  = temp_bank(i) % xyz
-       p % uvw       = temp_bank(i) % uvw
-       p % E         = temp_bank(i) % E
-       p % last_E    = p % E
-
        ! set defaults
        call initialize_particle(p)
+
+       p % coord % xyz = temp_bank(i) % xyz
+       p % coord % uvw = temp_bank(i) % uvw
+       p % last_xyz    = temp_bank(i) % xyz
+       p % E           = temp_bank(i) % E
+       p % last_E      = temp_bank(i) % E
 
     end do
 

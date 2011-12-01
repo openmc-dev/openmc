@@ -6,7 +6,7 @@ module geometry
   use geometry_header, only: Cell, Surface, Universe, Lattice
   use global
   use output,          only: write_message
-  use particle_header, only: Particle
+  use particle_header, only: Particle, LocalCoord, deallocate_coord
   use string,          only: int_to_str
   use tally,           only: score_surface_current
 
@@ -62,7 +62,7 @@ contains
 
        ! Compare sense of point to specified sense
        specified_sense = sign(1,expression(i))
-       actual_sense = sense(surf, p % xyz_local)
+       actual_sense = sense(surf, p % coord % xyz)
        if (actual_sense == specified_sense) then
           expression(i) = 1
        else
@@ -90,76 +90,115 @@ contains
 ! as it's within the geometry
 !===============================================================================
 
-  recursive subroutine find_cell(univ, p, found)
+  recursive subroutine find_cell(p, found, search_cells)
 
-    type(Universe), pointer :: univ       ! universe to search in
-    type(Particle), pointer :: p          ! pointer to particle
-    logical,  intent(inout) :: found      ! particle found?
+    type(Particle), pointer  :: p
+    logical, intent(inout)   :: found
+    integer, optional        :: search_cells(:)
 
-    integer                 :: i          ! index over cells
-    integer                 :: x, y
-    type(Cell),     pointer :: c          ! pointer to cell
-    type(Lattice),  pointer :: lat        ! pointer to lattice
-    type(Universe), pointer :: lower_univ ! if particle is in lower universe,
-                                          ! use this pointer to call recursively
+    integer :: i                    ! index over cells
+    integer :: x                    ! x-index for lattice
+    integer :: y                    ! y-index for lattice
+    integer :: n                    ! number of cells to search
+    integer :: index_cell           ! index in cells array
+    logical :: use_search_cells     ! use cells provided as argument
+    type(Cell),     pointer :: c    ! pointer to cell
+    type(Lattice),  pointer :: lat  ! pointer to lattice
+    type(Universe), pointer :: univ ! universe to search in
 
-    found = .false.
+    ! set size of list to search
+    if (present(search_cells)) then
+       use_search_cells = .true.
+       n = size(search_cells)
+    else
+       use_search_cells = .false.
+       univ => universes(p % coord % universe)
+       n = univ % n_cells
+    end if
 
-    ! determine what region in
-    do i = 1, univ % n_cells
-       c => cells(univ % cells(i))
-       
-       if (cell_contains(c, p)) then
-          ! If this cell contains a universe or lattice, search for the particle
-          ! in that universe/lattice
-          if (c % type == CELL_NORMAL) then
-             found = .true.         
-
-             ! set particle attributes
-             p % cell = univ % cells(i)
-             p % universe = dict_get_key(universe_dict, univ % id)
-             p % material = c % material
-             exit
-          elseif (c % type == CELL_FILL) then
-             lower_univ => universes(c % fill)
-             call find_cell(lower_univ, p, found)
-             if (found) then
-                exit
-             else
-                message = "Could not locate particle in universe: "
-                call fatal_error()
-             end if
-          elseif (c % type == CELL_LATTICE) then
-             ! Set current lattice
-             lat => lattices(c % fill)
-             p % lattice = c % fill
-
-             ! determine universe based on lattice position
-             x = ceiling((p%xyz(1) - lat%x0)/lat%width_x)
-             y = ceiling((p%xyz(2) - lat%y0)/lat%width_y)
-             lower_univ => universes(lat % element(x,y))
-
-             ! adjust local position of particle
-             p%xyz_local(1) = p%xyz(1) - (lat%x0 + (x-0.5)*lat%width_x)
-             p%xyz_local(2) = p%xyz(2) - (lat%y0 + (y-0.5)*lat%width_y)
-             p%xyz_local(3) = p%xyz(3)
-             
-             ! set particle lattice indices
-             p % index_x = x
-             p % index_y = y
-
-             call find_cell(lower_univ, p, found)
-             if (found) then
-                exit
-             else
-                message = "Could not locate particle in lattice: " & 
-                     & // int_to_str(lat % id)
-                call fatal_error()
-             end if
-          end if
+    do i = 1, n
+       ! select cells based on whether we are searching a universe or a provided
+       ! list of cells (this would be for lists of neighbor cells)
+       if (use_search_cells) then
+          index_cell = search_cells(i) 
+       else
+          index_cell = univ % cells(i)
        end if
 
+       ! get pointer to cell
+       c => cells(index_cell)
+
+       ! print *, 'searching cell ', c % id, cell_contains(c,p)
+       
+       if (cell_contains(c, p)) then
+          ! Set cell on this level
+          p % coord % cell = index_cell
+
+          if (c % type == CELL_NORMAL) then
+             ! =================================================================
+             ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+
+             ! set material
+             p % material = c % material
+
+          elseif (c % type == CELL_FILL) then
+             ! =================================================================
+             ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+             ! Create new level of coordinates
+             p % in_lower_universe = .true.
+             allocate(p % coord % next)
+
+             ! Move particle to next level and set universe
+             p % coord => p % coord % next
+             p % coord % universe = c % fill
+
+             call find_cell(p, found)
+             if (.not. found) exit
+
+          elseif (c % type == CELL_LATTICE) then
+             ! =================================================================
+             ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+             ! Set current lattice
+             lat => lattices(c % fill)
+
+             ! determine universe based on lattice position
+             x = ceiling((p % coord % xyz(1) - lat % x0)/lat % width_x)
+             y = ceiling((p % coord % xyz(2) - lat % y0)/lat % width_y)
+
+             ! Create new level of coordinates
+             p % in_lower_universe = .true.
+             allocate(p % coord % next)
+             
+             ! adjust local position of particle
+             p % coord % next % xyz(1) = p % coord % xyz(1) - &
+                  (lat%x0 + (x-0.5_8)*lat%width_x)
+             p % coord % next % xyz(2) = p % coord % xyz(2) - &
+                  (lat%y0 + (y-0.5_8)*lat%width_y)
+             p % coord % next % xyz(3) = p % coord % xyz(3)
+             p % coord % next % uvw    = p % coord % uvw
+
+             ! Move particle to next level
+             p % coord => p % coord % next
+             
+             ! set particle lattice indices
+             p % coord % lattice   = c % fill
+             p % coord % lattice_x = x
+             p % coord % lattice_y = y
+             p % coord % universe  = lat % element(x,y)
+
+             call find_cell(p, found)
+             if (.not. found) exit
+          end if
+          
+          ! Found cell so we can return
+          found = .true.
+          return
+       end if
     end do
+
+    found = .false.
 
   end subroutine find_cell
 
@@ -173,10 +212,6 @@ contains
     type(Particle), pointer :: p
     integer, intent(in)     :: last_cell  ! last cell particle was in
 
-    integer                 :: i          ! index of neighbors
-    integer                 :: index_cell ! index in cells array
-    integer                 :: i_x        ! x index in lattice
-    integer                 :: i_y        ! y index in lattice
     real(8)                 :: x          ! x-x0 for sphere
     real(8)                 :: y          ! y-y0 for sphere
     real(8)                 :: z          ! z-z0 for sphere
@@ -191,9 +226,6 @@ contains
     real(8)                 :: norm       ! "norm" of surface normal
     logical                 :: found      ! particle found in universe?
     type(Surface),  pointer :: surf => null()
-    type(Cell),     pointer :: c => null()
-    type(Lattice),  pointer :: lat => null()
-    type(Universe), pointer :: lower_univ => null()
 
     surf => surfaces(abs(p % surface))
     if (verbosity >= 10) then
@@ -215,7 +247,7 @@ contains
        ! TODO: Find a better solution to score surface currents than physically
        ! moving the particle forward slightly
 
-       p % xyz = p % xyz + TINY_BIT * p % uvw
+       p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
        call score_surface_current(p)
 
        ! Display message
@@ -229,25 +261,31 @@ contains
        ! =======================================================================
        ! PARTICLE REFLECTS FROM SURFACE
 
+       ! Do not handle reflective boundary conditions on lower universes
+       if (p % in_lower_universe) then
+          message = "Cannot reflect particle off surface in a lower universe."
+          call fatal_error()
+       end if
+
        ! Score surface currents since reflection causes the direction of the
        ! particle to change -- artificially move the particle slightly back in
        ! case the surface crossing in coincident with a mesh boundary
-       p % xyz = p % xyz - TINY_BIT * p % uvw
+       p % coord0 % xyz = p % coord0 % xyz - TINY_BIT * p % coord0 % uvw
        call score_surface_current(p)
-       p % xyz = p % xyz + TINY_BIT * p % uvw
+       p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
 
        ! Copy particle's direction cosines
-       u = p % uvw(1)
-       v = p % uvw(2)
-       w = p % uvw(3)
+       u = p % coord0 % uvw(1)
+       v = p % coord0 % uvw(2)
+       w = p % coord0 % uvw(3)
 
        select case (surf%type)
        case (SURF_PX)
-          p % uvw = (/ -u, v, w /)
+          p % coord0 % uvw = (/ -u, v, w /)
        case (SURF_PY)
-          p % uvw = (/ u, -v, w /)
+          p % coord0 % uvw = (/ u, -v, w /)
        case (SURF_PZ)
-          p % uvw = (/ u, v, -w /)
+          p % coord0 % uvw = (/ u, v, -w /)
        case (SURF_PLANE)
           ! Find surface coefficients and norm of vector normal to surface
           n1 = surf % coeffs(1)
@@ -262,11 +300,11 @@ contains
           w = w - 2*dot_prod*n3/norm
 
           ! Set vector
-          p % uvw = (/ u, v, w /)
+          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_CYL_X)
           ! Find y-y0, z-z0 and dot product of direction and surface normal
-          y = p % xyz(2) - surf % coeffs(1)
-          z = p % xyz(3) - surf % coeffs(2)
+          y = p % coord0 % xyz(2) - surf % coeffs(1)
+          z = p % coord0 % xyz(3) - surf % coeffs(2)
           R = surf % coeffs(3)
           dot_prod = v*y + w*z
 
@@ -275,11 +313,11 @@ contains
           w = w - 2*dot_prod*z/(R*R)
 
           ! Set vector
-          p % uvw = (/ u, v, w /)
+          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_CYL_Y)
           ! Find x-x0, z-z0 and dot product of direction and surface normal
-          x = p % xyz(1) - surf % coeffs(1)
-          z = p % xyz(3) - surf % coeffs(2)
+          x = p % coord0 % xyz(1) - surf % coeffs(1)
+          z = p % coord0 % xyz(3) - surf % coeffs(2)
           R = surf % coeffs(3)
           dot_prod = u*x + w*z
 
@@ -288,11 +326,11 @@ contains
           w = w - 2*dot_prod*z/(R*R)
 
           ! Set vector
-          p % uvw = (/ u, v, w /)
+          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_CYL_Z)
           ! Find x-x0, y-y0 and dot product of direction and surface normal
-          x = p % xyz(1) - surf % coeffs(1)
-          y = p % xyz(2) - surf % coeffs(2)
+          x = p % coord0 % xyz(1) - surf % coeffs(1)
+          y = p % coord0 % xyz(2) - surf % coeffs(2)
           R = surf % coeffs(3)
           dot_prod = u*x + v*y
 
@@ -301,13 +339,13 @@ contains
           v = v - 2*dot_prod*y/(R*R)
 
           ! Set vector
-          p % uvw = (/ u, v, w /)
+          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_SPHERE)
           ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
           ! normal
-          x = p % xyz(1) - surf % coeffs(1)
-          y = p % xyz(2) - surf % coeffs(2)
-          z = p % xyz(3) - surf % coeffs(3)
+          x = p % coord0 % xyz(1) - surf % coeffs(1)
+          y = p % coord0 % xyz(2) - surf % coeffs(2)
+          z = p % coord0 % xyz(3) - surf % coeffs(3)
           R = surf % coeffs(4)
           dot_prod = u*x + v*y + w*z
 
@@ -317,7 +355,7 @@ contains
           w = w - 2*dot_prod*z/(R*R)
 
           ! Set vector
-          p % uvw = (/ u, v, w /)
+          p % coord0 % uvw = (/ u, v, w /)
        case default
           message = "Reflection not supported for surface " // &
                trim(int_to_str(surf % id))
@@ -325,11 +363,11 @@ contains
        end select
 
        ! Reassign particle's cell and surface
-       p % cell = last_cell
+       p % coord0 % cell = last_cell
        p % surface = -p % surface
 
        ! Set previous coordinate going slightly past surface crossing
-       p % last_xyz = p % xyz + TINY_BIT * p % uvw
+       p % last_xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
 
        ! Diagnostic message
        if (verbosity >= 10) then
@@ -345,115 +383,30 @@ contains
     if (p % surface > 0 .and. allocated(surf % neighbor_pos)) then
        ! If coming from negative side of surface, search all the neighboring
        ! cells on the positive side
-       do i = 1, size(surf % neighbor_pos)
-          index_cell = surf % neighbor_pos(i)
-          c => cells(index_cell)
-          if (cell_contains(c, p)) then
-             if (c % type == CELL_FILL) then
-                lower_univ => universes(c % fill)
-                call find_cell(lower_univ, p, found)
-                if (.not. found) then
-                   message = "Could not locate particle in universe: "
-                   call fatal_error()
-                end if
-             elseif (c % type == CELL_LATTICE) then
-                ! Set current lattice
-                lat => lattices(c % fill)
-                p % lattice = c % fill
+       
+       call find_cell(p, found, surf % neighbor_pos)
+       if (found) return
 
-                ! determine universe based on lattice position
-                i_x = ceiling((p%xyz(1) - lat%x0)/lat%width_x)
-                i_y = ceiling((p%xyz(2) - lat%y0)/lat%width_y)
-                lower_univ => universes(lat % element(i_x,i_y))
-
-                ! adjust local position of particle
-                p%xyz_local(1) = p%xyz(1) - (lat%x0 + (i_x-0.5)*lat%width_x)
-                p%xyz_local(2) = p%xyz(2) - (lat%y0 + (i_y-0.5)*lat%width_y)
-                p%xyz_local(3) = p%xyz(3)
-             
-                ! set particle lattice indices
-                p % index_x = i_x
-                p % index_y = i_y
-
-                call find_cell(lower_univ, p, found)
-                if (.not. found) then
-                   message = "Could not locate particle in lattice: " // &
-                        trim(int_to_str(lat % id))
-                   call fatal_error()
-                end if
-             else
-                ! set current pointers
-                p % cell = index_cell
-                p % material = c % material
-             end if
-             return
-          end if
-       end do
     elseif (p % surface < 0  .and. allocated(surf % neighbor_neg)) then
        ! If coming from positive side of surface, search all the neighboring
        ! cells on the negative side
-       do i = 1, size(surf % neighbor_neg)
-          index_cell = surf % neighbor_neg(i)
-          c => cells(index_cell)
-          if (cell_contains(c, p)) then
-             if (c % type == CELL_FILL) then
-                lower_univ => universes(c % fill)
-                call find_cell(lower_univ, p, found)
-                if (.not. found) then
-                   message = "Could not locate particle in universe: "
-                   call fatal_error()
-                end if
-             elseif (c % type == CELL_LATTICE) then
-                ! Set current lattice
-                lat => lattices(c % fill)
-                p % lattice = c % fill
+       
+       call find_cell(p, found, surf % neighbor_neg)
+       if (found) return
 
-                ! determine universe based on lattice position
-                i_x = ceiling((p%xyz(1) - lat%x0)/lat%width_x)
-                i_y = ceiling((p%xyz(2) - lat%y0)/lat%width_y)
-                lower_univ => universes(lat % element(i_x,i_y))
-
-                ! adjust local position of particle
-                p%xyz_local(1) = p%xyz(1) - (lat%x0 + (i_x-0.5)*lat%width_x)
-                p%xyz_local(2) = p%xyz(2) - (lat%y0 + (i_y-0.5)*lat%width_y)
-                p%xyz_local(3) = p%xyz(3)
-             
-                ! set particle lattice indices
-                p % index_x = i_x
-                p % index_y = i_y
-
-                call find_cell(lower_univ, p, found)
-                if (.not. found) then
-                   message = "Could not locate particle in lattice: " // &
-                        trim(int_to_str(lat % id))
-                   call fatal_error()
-                end if
-             else
-                ! set current pointers
-                p % cell = index_cell
-                p % material = c % material
-             end if
-             return
-          end if
-       end do
     end if
 
     ! ==========================================================================
     ! COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
-    do i = 1, size(cells)
-       c => cells(i)
-       if (cell_contains(c, p)) then
-          p % cell = i
-          p % material = c % material
-          return
-       end if
-    end do
+    call find_cell(p, found)
 
     ! Couldn't find next cell anywhere!
-    message = "After particle crossed surface " // trim(int_to_str(p%surface)) &
-         // ", it could not be located in any cell and it did not leak."
-    call fatal_error()
+    if (.not. found) then
+       message = "After particle crossed surface " // trim(int_to_str(p%surface)) &
+            // ", it could not be located in any cell and it did not leak."
+       call fatal_error()
+    end if
        
   end subroutine cross_surface
 
@@ -480,25 +433,24 @@ contains
     real(8)        :: x0       ! half the width of lattice element
     real(8)        :: y0       ! half the height of lattice element
     logical        :: found    ! particle found in cell?
-    type(Lattice),  pointer :: lat
-    type(Universe), pointer :: univ
+    type(Lattice),  pointer :: lat => null()
 
-    lat => lattices(p % lattice)
+    lat => lattices(p % coord % lattice)
 
     if (verbosity >= 10) then
        message = "    Crossing lattice " // int_to_str(lat % id)
        call write_message()
     end if
 
-    u = p % uvw(1)
-    v = p % uvw(2)
+    u = p % coord % uvw(1)
+    v = p % coord % uvw(2)
 
     if (lat % type == LATTICE_RECT) then
-       x = p % xyz_local(1)
-       y = p % xyz_local(2)
-       z = p % xyz_local(3)
-       x0 = lat % width_x * 0.5
-       y0 = lat % width_y * 0.5
+       x = p % coord % xyz(1)
+       y = p % coord % xyz(2)
+       z = p % coord % xyz(3)
+       x0 = lat % width_x * 0.5_8
+       y0 = lat % width_y * 0.5_8
        
        dist = INFINITY
 
@@ -523,23 +475,23 @@ contains
        dist = min(d_left, d_right, d_top, d_bottom)
        if (dist == d_left) then
           ! Move particle to left element
-          p % index_x = p % index_x - 1
-          p % xyz_local(1) = x0
+          p % coord % lattice_x = p % coord % lattice_x - 1
+          p % coord % xyz(1) = x0
           
        elseif (dist == d_right) then
           ! Move particle to right element
-          p % index_x = p % index_x + 1
-          p % xyz_local(1) = -x0
+          p % coord % lattice_x = p % coord % lattice_x + 1
+          p % coord % xyz(1) = -x0
 
        elseif (dist == d_bottom) then
           ! Move particle to bottom element
-          p % index_y = p % index_y - 1
-          p % xyz_local(2) = y0
+          p % coord % lattice_y = p % coord % lattice_y - 1
+          p % coord % xyz(2) = y0
 
        elseif (dist == d_top) then
           ! Move particle to top element
-          p % index_y = p % index_y + 1
-          p % xyz_local(2) = -y0
+          p % coord % lattice_y = p % coord % lattice_y + 1
+          p % coord % xyz(2) = -y0
 
        end if
     elseif (lat % type == LATTICE_HEX) then
@@ -547,8 +499,8 @@ contains
     end if
     
     ! Check to make sure still in lattice
-    i_x = p % index_x
-    i_y = p % index_y
+    i_x = p % coord % lattice_x
+    i_y = p % coord % lattice_y
     if (i_x < 1 .or. i_x > lat % n_x) then
        message = "Reached edge of lattice " // trim(int_to_str(lat % id)) // &
             " at position (" // trim(int_to_str(i_x)) // "," // &
@@ -562,12 +514,13 @@ contains
     end if
 
     ! Find universe for next lattice element
-    univ => universes(lat % element(i_x,i_y))
+    p % coord % universe = lat % element(i_x, i_y)
 
     ! Find cell in next lattice element
-    call find_cell(univ, p, found)
+    call find_cell(p, found)
     if (.not. found) then
-       message = "Could not locate particle in universe: "
+       message = "Could not locate particle in universe: " // &
+            int_to_str(universes(p % coord % universe) % id)
        call fatal_error()
     end if
 
@@ -579,20 +532,15 @@ contains
 ! that has a parent cell, also include the surfaces of the edge of the universe.
 !===============================================================================
 
-  subroutine distance_to_boundary(p, dist, surf, in_lattice)
+  subroutine distance_to_boundary(p, dist, surface_crossed, lattice_crossed)
 
     type(Particle), pointer     :: p
     real(8),        intent(out) :: dist
-    integer,        intent(out) :: surf
-    logical,        intent(out) :: in_lattice
+    integer,        intent(out) :: surface_crossed
+    logical,        intent(out) :: lattice_crossed
 
-    integer, allocatable :: expression(:) ! copy of surface list
     integer :: i            ! index for surface in cell
-    integer :: n_surf       ! total number of surfaces to check
-    integer :: n1           ! number of surfaces in current cell
-    integer :: n2           ! number of surfaces in parent cell
     integer :: index_surf   ! index in surfaces array (with sign)
-    integer :: current_surf ! current surface 
     real(8) :: x,y,z        ! particle coordinates
     real(8) :: u,v,w        ! particle directions
     real(8) :: d            ! evaluated distance
@@ -602,378 +550,372 @@ contains
     real(8) :: a,b,c,k      ! quadratic equation coefficients
     real(8) :: quad         ! discriminant of quadratic equation
     logical :: on_surface   ! is particle on surface?
-    type(Cell),    pointer  :: cell_p => null()
-    type(Cell),    pointer  :: parent_p => null()
-    type(Surface), pointer  :: surf_p => null()
-    type(Lattice), pointer  :: lat => null()
+    type(Cell),       pointer :: cl => null()
+    type(Surface),    pointer :: surf => null()
+    type(Lattice),    pointer :: lat => null()
+    type(LocalCoord), pointer :: coord => null()
+    type(LocalCoord), pointer :: final_coord => null()
 
-    if (p % cell == CELL_VOID) then
-       n_surf = n_surfaces
-       allocate(expression(n_surfaces))
-       expression = (/ (i, i=1, n_surfaces) /)
-       current_surf = 0
-    else
-       cell_p => cells(p%cell)
-
-       current_surf = p%surface
-
-       ! determine number of surfaces to check
-       n1 = cell_p % n_surfaces
-       n2 = 0
-       if (cell_p % parent > 0) then
-          parent_p => cells(cell_p % parent)
-          n2 = parent_p % n_surfaces
-       end if
-       n_surf = n1 + n2
-
-       ! allocate space and assign expression
-       allocate(expression(n_surf))
-       expression(1:n1) = cell_p % surfaces
-       if (cell_p % parent > 0) then
-          expression(n1+1:n1+n2) = parent_p % surfaces
-       end if
-    end if
-
-    u = p % uvw(1)
-    v = p % uvw(2)
-    w = p % uvw(3)
-
-    ! ==========================================================================
-    ! FIND MINIMUM DISTANCE TO SURFACES IN CELL AND PARENT
-
+    ! inialize distance to infinity (huge)
     dist = INFINITY
-    do i = 1, n_surf
-       if (i <= n1) then
-          ! in local cell, so use xyz_local
-          x = p % xyz_local(1)
-          y = p % xyz_local(2)
-          z = p % xyz_local(3)
-       else
-          ! in parent cell, so use xyz
-          x = p % xyz(1)
-          y = p % xyz(2)
-          z = p % xyz(3)
-       end if
 
-       ! check for coincident surface -- note that we can't skip the calculation
-       ! in general because a particle could be on one side of a cylinder and
-       ! still have a positive distance to the other
+    ! Get pointer to top-level coordinates
+    coord => p % coord0
 
-       index_surf = expression(i)
-       if (index_surf == current_surf) then
-          on_surface = .true.
-       else
-          on_surface = .false.
-       end if
+    ! Loop over each universe level
+    LEVEL_LOOP: do while(associated(coord))
 
-       ! check for operators
-       index_surf = abs(index_surf)
-       if (index_surf >= OP_DIFFERENCE) cycle
+       ! get pointer to cell on this level
+       cl => cells(coord % cell)
 
-       surf_p => surfaces(index_surf)
-       select case (surf_p%type)
-       case (SURF_PX)
-          if (on_surface .or. u == ZERO) then
-             d = INFINITY
+       ! copy directional cosines
+       u = coord % uvw(1)
+       v = coord % uvw(2)
+       w = coord % uvw(3)
+
+       ! =======================================================================
+       ! FIND MINIMUM DISTANCE TO SURFACE IN THIS CELL
+
+       SURFACE_LOOP: do i = 1, cl % n_surfaces
+
+          ! copy local coordinates of particle
+          x = coord % xyz(1)
+          y = coord % xyz(2)
+          z = coord % xyz(3)
+
+          ! check for coincident surface -- note that we can't skip the
+          ! calculation in general because a particle could be on one side of a
+          ! cylinder and still have a positive distance to the other
+
+          index_surf = cl % surfaces(i)
+          if (index_surf == p % surface) then
+             on_surface = .true.
           else
-             x0 = surf_p % coeffs(1)
-             d = (x0 - x)/u
-             if (d < ZERO) d = INFINITY
-          end if
-          
-       case (SURF_PY)
-          if (on_surface .or. v == ZERO) then
-             d = INFINITY
-          else
-             y0 = surf_p % coeffs(1)
-             d = (y0 - y)/v
-             if (d < ZERO) d = INFINITY
-          end if
-          
-       case (SURF_PZ)
-          if (on_surface .or. w == ZERO) then
-             d = INFINITY
-          else
-             z0 = surf_p % coeffs(1)
-             d = (z0 - z)/w
-             if (d < ZERO) d = INFINITY
-          end if
-          
-       case (SURF_PLANE)
-          A = surf_p % coeffs(1)
-          B = surf_p % coeffs(2)
-          C = surf_p % coeffs(3)
-          D = surf_p % coeffs(4)
-          
-          tmp = A*u + B*v + C*w
-          if (on_surface .or. tmp == ZERO) then
-             d = INFINITY
-          else
-             d = -(A*x + B*y + C*w - D)/tmp
-             if (d < ZERO) d = INFINITY
+             on_surface = .false.
           end if
 
-       case (SURF_CYL_X)
-          a = ONE - u*u  ! v^2 + w^2
-          if (a == ZERO) then
-             d = INFINITY
-          else
-             y0 = surf_p % coeffs(1)
-             z0 = surf_p % coeffs(2)
-             r = surf_p % coeffs(3)
+          ! check for operators
+          index_surf = abs(index_surf)
+          if (index_surf >= OP_DIFFERENCE) cycle
 
-             y = y - y0
-             z = z - z0
-             k = y*v + z*w
-             c = y*y + z*z - r*r
-             quad = k*k - a*c
+          ! get pointer to surface
+          surf => surfaces(index_surf)
 
-             if (quad < ZERO) then
-                ! no intersection with cylinder
-
-                d = INFINITY 
-
-             elseif (on_surface) then
-                ! particle is on the cylinder, thus one distance is
-                ! positive/negative and the other is zero. The sign of k
-                ! determines if we are facing in or out
-
-                if (k >= ZERO) then
-                   d = INFINITY
-                else
-                   d = (-k + sqrt(quad))/a
-                end if
-
-             elseif (c < ZERO) then
-                ! particle is inside the cylinder, thus one distance must be
-                ! negative and one must be positive. The positive distance will
-                ! be the one with negative sign on sqrt(quad)
-
-                d = (-k + sqrt(quad))/a
-
-             else
-                ! particle is outside the cylinder, thus both distances are
-                ! either positive or negative. If positive, the smaller distance
-                ! is the one with positive sign on sqrt(quad)
-
-                d = (-k - sqrt(quad))/a
-                if (d < ZERO) d = INFINITY
-
-             end if
-          end if
-
-       case (SURF_CYL_Y)
-          a = ONE - v*v  ! u^2 + w^2
-          if (a == ZERO) then
-             d = INFINITY
-          else
-             x0 = surf_p % coeffs(1)
-             z0 = surf_p % coeffs(2)
-             r = surf_p % coeffs(3)
-
-             x = x - x0
-             z = z - z0
-             k = x*u + z*w
-             c = x*x + z*z - r*r
-             quad = k*k - a*c
-
-             if (quad < ZERO) then
-                ! no intersection with cylinder
-
-                d = INFINITY 
-
-             elseif (on_surface) then
-                ! particle is on the cylinder, thus one distance is
-                ! positive/negative and the other is zero. The sign of k
-                ! determines if we are facing in or out
-
-                if (k >= ZERO) then
-                   d = INFINITY
-                else
-                   d = (-k + sqrt(quad))/a
-                end if
-
-             elseif (c < ZERO) then
-                ! particle is inside the cylinder, thus one distance must be
-                ! negative and one must be positive. The positive distance will
-                ! be the one with negative sign on sqrt(quad)
-
-                d = (-k + sqrt(quad))/a
-
-             else
-                ! particle is outside the cylinder, thus both distances are
-                ! either positive or negative. If positive, the smaller distance
-                ! is the one with positive sign on sqrt(quad)
-
-                d = (-k - sqrt(quad))/a
-                if (d < ZERO) d = INFINITY
-
-             end if
-          end if
-
-       case (SURF_CYL_Z)
-          a = ONE - w*w  ! u^2 + v^2
-          if (a == ZERO) then
-             d = INFINITY
-          else
-             x0 = surf_p % coeffs(1)
-             y0 = surf_p % coeffs(2)
-             r = surf_p % coeffs(3)
-
-             x = x - x0
-             y = y - y0
-             k = x*u + y*v
-             c = x*x + y*y - r*r
-             quad = k*k - a*c
-
-             if (quad < ZERO) then
-                ! no intersection with cylinder
-
-                d = INFINITY 
-
-             elseif (on_surface) then
-                ! particle is on the cylinder, thus one distance is
-                ! positive/negative and the other is zero. The sign of k
-                ! determines if we are facing in or out
-
-                if (k >= ZERO) then
-                   d = INFINITY
-                else
-                   d = (-k + sqrt(quad))/a
-                end if
-
-             elseif (c < ZERO) then
-                ! particle is inside the cylinder, thus one distance must be
-                ! negative and one must be positive. The positive distance will
-                ! be the one with negative sign on sqrt(quad)
-
-                d = (-k + sqrt(quad))/a
-
-             else
-                ! particle is outside the cylinder, thus both distances are
-                ! either positive or negative. If positive, the smaller distance
-                ! is the one with positive sign on sqrt(quad)
-
-                d = (-k - sqrt(quad))/a
-                if (d <= ZERO) d = INFINITY
-
-             end if
-          end if
-
-       case (SURF_SPHERE)
-          x0 = surf_p % coeffs(1)
-          y0 = surf_p % coeffs(2)
-          z0 = surf_p % coeffs(3)
-          r = surf_p % coeffs(4)
-
-          x = x - x0
-          y = y - y0
-          z = z - z0
-          k = x*u + y*v + z*w
-          c = x*x + y*y + z*z - r*r
-          quad = k*k - c
-          
-          if (quad < ZERO) then
-             ! no intersection with sphere
-
-             d = INFINITY 
-
-          elseif (on_surface) then
-             ! particle is on the sphere, thus one distance is positive/negative
-             ! and the other is zero. The sign of k determines if we are facing
-             ! in or out
-             
-             if (k >= ZERO) then
+          select case (surf % type)
+          case (SURF_PX)
+             if (on_surface .or. u == ZERO) then
                 d = INFINITY
              else
+                x0 = surf % coeffs(1)
+                d = (x0 - x)/u
+                if (d < ZERO) d = INFINITY
+             end if
+          
+          case (SURF_PY)
+             if (on_surface .or. v == ZERO) then
+                d = INFINITY
+             else
+                y0 = surf % coeffs(1)
+                d = (y0 - y)/v
+                if (d < ZERO) d = INFINITY
+             end if
+          
+          case (SURF_PZ)
+             if (on_surface .or. w == ZERO) then
+                d = INFINITY
+             else
+                z0 = surf % coeffs(1)
+                d = (z0 - z)/w
+                if (d < ZERO) d = INFINITY
+             end if
+             
+          case (SURF_PLANE)
+             A = surf % coeffs(1)
+             B = surf % coeffs(2)
+             C = surf % coeffs(3)
+             D = surf % coeffs(4)
+
+             tmp = A*u + B*v + C*w
+             if (on_surface .or. tmp == ZERO) then
+                d = INFINITY
+             else
+                d = -(A*x + B*y + C*w - D)/tmp
+                if (d < ZERO) d = INFINITY
+             end if
+
+          case (SURF_CYL_X)
+             a = ONE - u*u  ! v^2 + w^2
+             if (a == ZERO) then
+                d = INFINITY
+             else
+                y0 = surf % coeffs(1)
+                z0 = surf % coeffs(2)
+                r = surf % coeffs(3)
+
+                y = y - y0
+                z = z - z0
+                k = y*v + z*w
+                c = y*y + z*z - r*r
+                quad = k*k - a*c
+
+                if (quad < ZERO) then
+                   ! no intersection with cylinder
+
+                   d = INFINITY 
+
+                elseif (on_surface) then
+                   ! particle is on the cylinder, thus one distance is
+                   ! positive/negative and the other is zero. The sign of k
+                   ! determines if we are facing in or out
+
+                   if (k >= ZERO) then
+                      d = INFINITY
+                   else
+                      d = (-k + sqrt(quad))/a
+                   end if
+
+                elseif (c < ZERO) then
+                   ! particle is inside the cylinder, thus one distance must be
+                   ! negative and one must be positive. The positive distance
+                   ! will be the one with negative sign on sqrt(quad)
+
+                   d = (-k + sqrt(quad))/a
+
+                else
+                   ! particle is outside the cylinder, thus both distances are
+                   ! either positive or negative. If positive, the smaller
+                   ! distance is the one with positive sign on sqrt(quad)
+
+                   d = (-k - sqrt(quad))/a
+                   if (d < ZERO) d = INFINITY
+
+                end if
+             end if
+
+          case (SURF_CYL_Y)
+             a = ONE - v*v  ! u^2 + w^2
+             if (a == ZERO) then
+                d = INFINITY
+             else
+                x0 = surf % coeffs(1)
+                z0 = surf % coeffs(2)
+                r = surf % coeffs(3)
+
+                x = x - x0
+                z = z - z0
+                k = x*u + z*w
+                c = x*x + z*z - r*r
+                quad = k*k - a*c
+
+                if (quad < ZERO) then
+                   ! no intersection with cylinder
+
+                   d = INFINITY 
+
+                elseif (on_surface) then
+                   ! particle is on the cylinder, thus one distance is
+                   ! positive/negative and the other is zero. The sign of k
+                   ! determines if we are facing in or out
+
+                   if (k >= ZERO) then
+                      d = INFINITY
+                   else
+                      d = (-k + sqrt(quad))/a
+                   end if
+
+                elseif (c < ZERO) then
+                   ! particle is inside the cylinder, thus one distance must be
+                   ! negative and one must be positive. The positive distance
+                   ! will be the one with negative sign on sqrt(quad)
+
+                   d = (-k + sqrt(quad))/a
+
+                else
+                   ! particle is outside the cylinder, thus both distances are
+                   ! either positive or negative. If positive, the smaller
+                   ! distance is the one with positive sign on sqrt(quad)
+
+                   d = (-k - sqrt(quad))/a
+                   if (d < ZERO) d = INFINITY
+
+                end if
+             end if
+
+          case (SURF_CYL_Z)
+             a = ONE - w*w  ! u^2 + v^2
+             if (a == ZERO) then
+                d = INFINITY
+             else
+                x0 = surf % coeffs(1)
+                y0 = surf % coeffs(2)
+                r = surf % coeffs(3)
+
+                x = x - x0
+                y = y - y0
+                k = x*u + y*v
+                c = x*x + y*y - r*r
+                quad = k*k - a*c
+
+                if (quad < ZERO) then
+                   ! no intersection with cylinder
+
+                   d = INFINITY 
+
+                elseif (on_surface) then
+                   ! particle is on the cylinder, thus one distance is
+                   ! positive/negative and the other is zero. The sign of k
+                   ! determines if we are facing in or out
+
+                   if (k >= ZERO) then
+                      d = INFINITY
+                   else
+                      d = (-k + sqrt(quad))/a
+                   end if
+
+                elseif (c < ZERO) then
+                   ! particle is inside the cylinder, thus one distance must be
+                   ! negative and one must be positive. The positive distance
+                   ! will be the one with negative sign on sqrt(quad)
+
+                   d = (-k + sqrt(quad))/a
+
+                else
+                   ! particle is outside the cylinder, thus both distances are
+                   ! either positive or negative. If positive, the smaller
+                   ! distance is the one with positive sign on sqrt(quad)
+
+                   d = (-k - sqrt(quad))/a
+                   if (d <= ZERO) d = INFINITY
+
+                end if
+             end if
+
+          case (SURF_SPHERE)
+             x0 = surf % coeffs(1)
+             y0 = surf % coeffs(2)
+             z0 = surf % coeffs(3)
+             r = surf % coeffs(4)
+
+             x = x - x0
+             y = y - y0
+             z = z - z0
+             k = x*u + y*v + z*w
+             c = x*x + y*y + z*z - r*r
+             quad = k*k - c
+
+             if (quad < ZERO) then
+                ! no intersection with sphere
+
+                d = INFINITY 
+
+             elseif (on_surface) then
+                ! particle is on the sphere, thus one distance is
+                ! positive/negative and the other is zero. The sign of k
+                ! determines if we are facing in or out
+
+                if (k >= ZERO) then
+                   d = INFINITY
+                else
+                   d = -k + sqrt(quad)
+                end if
+
+             elseif (c < ZERO) then
+                ! particle is inside the sphere, thus one distance must be
+                ! negative and one must be positive. The positive distance will
+                ! be the one with negative sign on sqrt(quad)
+
                 d = -k + sqrt(quad)
+
+             else
+                ! particle is outside the sphere, thus both distances are either
+                ! positive or negative. If positive, the smaller distance is the
+                ! one with positive sign on sqrt(quad)
+
+                d = -k - sqrt(quad)
+                if (d < ZERO) d = INFINITY
+
              end if
 
-          elseif (c < ZERO) then
-             ! particle is inside the sphere, thus one distance must be negative
-             ! and one must be positive. The positive distance will be the one
-             ! with negative sign on sqrt(quad)
+          case (SURF_GQ)
+             message = "Surface distance not yet implement for general quadratic."
+             call fatal_error()
 
-             d = -k + sqrt(quad)
+          end select
 
-          else
-             ! particle is outside the sphere, thus both distances are either
-             ! positive or negative. If positive, the smaller distance is the
-             ! one with positive sign on sqrt(quad)
-
-             d = -k - sqrt(quad)
-             if (d < ZERO) d = INFINITY
-
-          end if
-
-       case (SURF_GQ)
-          message = "Surface distance not yet implement for general quadratic."
-          call fatal_error()
-
-       end select
-
-       ! Check is calculated distance is new minimum
-       if (d < dist) then
-          dist = d
-          surf = -expression(i)
-       end if
-    end do
-
-    ! ==========================================================================
-    ! FIND MINIMUM DISTANCE TO LATTICE SURFACES
-
-    in_lattice = .false.
-    if (p % lattice > 0) then
-       lat => lattices(p % lattice)
-       if (lat % type == LATTICE_RECT) then
-          x = p % xyz_local(1)
-          y = p % xyz_local(2)
-          z = p % xyz_local(3)
-          x0 = lat % width_x * 0.5_8
-          y0 = lat % width_y * 0.5_8
-          
-          ! left and right sides
-          if (u > 0) then
-             d = (x0 - x)/u
-          else
-             d = -(x + x0)/u
-          end if
-          
-          ! If the lattice boundary is coincident with the parent cell boundary,
-          ! we need to make sure that the lattice is not selected. This is
-          ! complicated by the fact that floating point may determine that one
-          ! is closer than the other (can't check direct equality). Thus, the
-          ! logic here checks whether the relative difference is within floating
-          ! point precision.
-
-          if (d < dist) then 
-             if (abs(d - dist)/dist >= FP_PRECISION) then
-                dist = d
-                in_lattice = .true.
-             end if
-          end if
-
-          ! top and bottom sides
-          if (v > 0) then
-             d = (y0 - y)/v
-          else
-             d = -(y + y0)/v
-          end if
-
+          ! Check is calculated distance is new minimum
           if (d < dist) then
-             if (abs(d - dist)/dist >= FP_PRECISION) then
-                dist = d
-                in_lattice = .true.
-             end if
+             dist = d
+             surface_crossed = -cl % surfaces(i)
+             final_coord => coord
           end if
 
-       elseif (lat % type == LATTICE_HEX) then
-          ! TODO: Add hex lattice support
-       end if
-    end if
+       end do SURFACE_LOOP
 
-    ! deallocate expression
-    deallocate(expression)
+       ! =======================================================================
+       ! FIND MINIMUM DISTANCE TO LATTICE SURFACES
+
+       lattice_crossed = .false.
+
+       if (p % coord % lattice /= NONE) then
+          lat => lattices(p % coord % lattice)
+          if (lat % type == LATTICE_RECT) then
+             x = p % coord % xyz(1)
+             y = p % coord % xyz(2)
+             z = p % coord % xyz(3)
+             x0 = lat % width_x * 0.5_8
+             y0 = lat % width_y * 0.5_8
+
+             ! left and right sides
+             if (u > 0) then
+                d = (x0 - x)/u
+             else
+                d = -(x + x0)/u
+             end if
+
+             ! If the lattice boundary is coincident with the parent cell boundary,
+             ! we need to make sure that the lattice is not selected. This is
+             ! complicated by the fact that floating point may determine that one
+             ! is closer than the other (can't check direct equality). Thus, the
+             ! logic here checks whether the relative difference is within floating
+             ! point precision.
+
+             if (d < dist) then 
+                if (abs(d - dist)/dist >= FP_PRECISION) then
+                   dist = d
+                   lattice_crossed = .true.
+                   final_coord => coord
+                end if
+             end if
+
+             ! top and bottom sides
+             if (v > 0) then
+                d = (y0 - y)/v
+             else
+                d = -(y + y0)/v
+             end if
+
+             if (d < dist) then
+                if (abs(d - dist)/dist >= FP_PRECISION) then
+                   dist = d
+                   lattice_crossed = .true.
+                   final_coord => coord
+                end if
+             end if
+
+          elseif (lat % type == LATTICE_HEX) then
+             ! TODO: Add hex lattice support
+          end if
+       end if
+
+       coord => coord % next
+
+    end do LEVEL_LOOP
+
+    ! Remove coordinates for any lower levels
+    call deallocate_coord(final_coord % next)
+
+    ! Move particle to appropriate coordinate level
+    p % coord => final_coord
 
   end subroutine distance_to_boundary
 

@@ -79,25 +79,24 @@ contains
           do j = bank_first, bank_last
              p => source_bank(j - bank_first + 1)
 
+             ! set defaults
+             call initialize_particle(p)
+
              ! initialize random number seed
              call set_particle_seed(int(j,8))
 
              ! sample position
              r = (/ (prn(), k = 1,3) /)
              p % id = j
-             p % xyz = p_min + r*(p_max - p_min)
-             p % xyz_local = p % xyz
-             p % last_xyz = p % xyz
+             p % coord0 % xyz = p_min + r*(p_max - p_min)
+             p % last_xyz = p % coord0 % xyz
 
              ! sample angle
              phi = TWO*PI*prn()
              mu = TWO*prn() - ONE
-             p % uvw(1) = mu
-             p % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-             p % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
-
-             ! set defaults
-             call initialize_particle(p)
+             p % coord0 % uvw(1) = mu
+             p % coord0 % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+             p % coord0 % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
              ! sample energy from Watt fission energy spectrum for U-235
              do

@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <settings>
 
-  <!-- Path for cross section library -->
-  <cross_sections>
-      /home/paulromano/openmc/cross_sections_serpent.xml
-  </cross_sections>
-
   <!-- Parameters for criticality calculation -->
   <criticality>
     <cycles>20</cycles>
@@ -13,10 +8,12 @@
     <particles>10000</particles>
   </criticality>
 
+  <verbosity>7</verbosity>
+
   <!-- Starting source -->
   <source>
     <type>box</type>
-    <coeffs>-4 -4 -4  4  4  4</coeffs>
+    <coeffs>-1 -1 -1  1  1  1</coeffs>
   </source>
 
 </settings>

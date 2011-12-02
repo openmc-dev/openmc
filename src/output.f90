@@ -9,6 +9,7 @@ module output
   use geometry_header,      only: Cell, Universe, Surface
   use global
   use mesh_header,          only: StructuredMesh
+  use particle_header,      only: Particle, LocalCoord
   use string,               only: upper_case, int_to_str, real_to_str
   use tally_header,         only: TallyObject
 
@@ -194,12 +195,16 @@ contains
 
   subroutine print_particle(p)
 
-    type(Particle), pointer :: p
+    type(Particle),   pointer :: p
 
-    type(Cell),     pointer :: c => null()
-    type(Surface),  pointer :: s => null()
-    type(Universe), pointer :: u => null()
+    integer                   :: i
+    type(Cell),       pointer :: c => null()
+    type(Surface),    pointer :: s => null()
+    type(Universe),   pointer :: u => null()
+    type(Lattice),    pointer :: l => null()
+    type(LocalCoord), pointer :: coord => null()
 
+    ! display type of particle
     select case (p % type)
     case (NEUTRON)
        write(ou,*) 'Neutron ' // int_to_str(p % id)
@@ -210,38 +215,53 @@ contains
     case default
        write(ou,*) 'Unknown Particle ' // int_to_str(p % id)
     end select
-    write(ou,*) '    x = ' // real_to_str(p % coord0 % xyz(1))
-    write(ou,*) '    y = ' // real_to_str(p % coord0 % xyz(2))
-    write(ou,*) '    z = ' // real_to_str(p % coord0 % xyz(3))
-    write(ou,*) '    x local = ' // real_to_str(p % coord % xyz(1))
-    write(ou,*) '    y local = ' // real_to_str(p % coord % xyz(2))
-    write(ou,*) '    z local = ' // real_to_str(p % coord % xyz(3))
-    write(ou,*) '    u = ' // real_to_str(p % coord0 % uvw(1))
-    write(ou,*) '    v = ' // real_to_str(p % coord0 % uvw(2))
-    write(ou,*) '    w = ' // real_to_str(p % coord0 % uvw(3))
-    write(ou,*) '    Weight = ' // real_to_str(p % wgt)
-    write(ou,*) '    Energy = ' // real_to_str(p % E)
-    write(ou,*) '    x index = ' // int_to_str(p % coord % lattice_x)
-    write(ou,*) '    y index = ' // int_to_str(p % coord % lattice_y)
-    write(ou,*) '    IE = ' // int_to_str(p % IE)
-    write(ou,*) '    Interpolation factor = ' // real_to_str(p % interp)
 
-    if (p % coord % cell /= NONE) then
-       c => cells(p % coord % cell)
-       write(ou,*) '    Cell = ' // int_to_str(c % id)
-    else
-       write(ou,*) '    Cell not determined'
-    end if
+    ! loop through each level of universes
+    coord => p % coord0
+    i = 0
+    do while(associated(coord))
+       ! Print level
+       write(ou,*) '  Level ' // trim(int_to_str(i))
 
+       ! Print cell for this level
+       if (coord % cell /= NONE) then
+          c => cells(coord % cell)
+          write(ou,*) '    Cell             = ' // trim(int_to_str(c % id))
+       end if
+
+       ! Print universe for this level
+       if (coord % universe /= NONE) then
+          u => universes(coord % universe)
+          write(ou,*) '    Universe         = ' // trim(int_to_str(u % id))
+       end if
+
+       ! Print information on lattice
+       if (coord % lattice /= NONE) then
+          l => lattices(coord % lattice)
+          write(ou,*) '    Lattice          = ' // trim(int_to_str(l % id))
+          write(ou,*) '    Lattice position = (' // trim(int_to_str(&
+               p % coord % lattice_x)) // ',' // trim(int_to_str(&
+               p % coord % lattice_y)) // ')'
+       end if
+
+       ! Print local coordinates
+       write(ou,'(1X,A,3ES11.4)') '    xyz = ', coord % xyz
+       write(ou,'(1X,A,3ES11.4)') '    uvw = ', coord % uvw
+
+       coord => coord % next
+       i = i + 1
+    end do
+
+    ! Print surface
     if (p % surface /= NONE) then
        s => surfaces(p % surface)
        write(ou,*) '    Surface = ' // int_to_str(s % id)
-    else
-       write(ou,*) '    Surface = None'
     end if
 
-    u => universes(p % coord % universe)
-    write(ou,*) '    Universe = ' // int_to_str(u % id)
+    write(ou,*) '  Weight = ' // real_to_str(p % wgt)
+    write(ou,*) '  Energy = ' // real_to_str(p % E)
+    write(ou,*) '  IE = ' // int_to_str(p % IE)
+    write(ou,*) '  Interpolation factor = ' // real_to_str(p % interp)
     write(ou,*)
 
   end subroutine print_particle

@@ -39,9 +39,9 @@ module particle_header
      integer    :: type          ! Particle type (n, p, e, etc)
 
      ! Particle coordinates
-     logical :: in_lower_universe        ! is particle in lower universe?
-     type(LocalCoord), pointer :: coord0 ! coordinates on universe 0
-     type(LocalCoord), pointer :: coord  ! coordinates on lowest universe
+     logical :: in_lower_universe                  ! is particle in lower universe?
+     type(LocalCoord), pointer :: coord0 => null() ! coordinates on universe 0
+     type(LocalCoord), pointer :: coord  => null() ! coordinates on lowest universe
 
      ! Other physical data
      real(8)    :: wgt           ! particle weight

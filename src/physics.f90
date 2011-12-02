@@ -10,7 +10,7 @@ module physics
   use geometry_header,      only: Universe, BASE_UNIVERSE
   use global
   use interpolation,        only: interpolate_tab1
-  use output,               only: write_message, print_particle
+  use output,               only: write_message
   use particle_header,      only: Particle, LocalCoord
   use random_lcg,           only: prn
   use search,               only: binary_search
@@ -104,7 +104,7 @@ contains
           call collision(p)
 
           ! Save coordinates at collision for tallying purposes
-          p % last_xyz = p % coord % xyz
+          p % last_xyz = p % coord0 % xyz
 
           ! Set all uvws to base level -- right now, after a collision, only the
           ! base level uvws are changed

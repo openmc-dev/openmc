@@ -101,10 +101,14 @@ contains
     integer :: y                    ! y-index for lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
+    real(8) :: xyz(3)               ! temporary location
     logical :: use_search_cells     ! use cells provided as argument
     type(Cell),     pointer :: c    ! pointer to cell
     type(Lattice),  pointer :: lat  ! pointer to lattice
     type(Universe), pointer :: univ ! universe to search in
+
+    ! Remove coordinates for any lower levels
+    call deallocate_coord(p % coord % next)
 
     ! set size of list to search
     if (present(search_cells)) then
@@ -128,8 +132,6 @@ contains
        ! get pointer to cell
        c => cells(index_cell)
 
-       ! print *, 'searching cell ', c % id, cell_contains(c,p)
-       
        if (cell_contains(c, p)) then
           ! Set cell on this level
           p % coord % cell = index_cell
@@ -164,8 +166,9 @@ contains
              lat => lattices(c % fill)
 
              ! determine universe based on lattice position
-             x = ceiling((p % coord % xyz(1) - lat % x0)/lat % width_x)
-             y = ceiling((p % coord % xyz(2) - lat % y0)/lat % width_y)
+             xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
+             x = ceiling((xyz(1) - lat % x0)/lat % width_x)
+             y = ceiling((xyz(2) - lat % y0)/lat % width_y)
 
              ! Create new level of coordinates
              p % in_lower_universe = .true.
@@ -455,7 +458,10 @@ contains
        dist = INFINITY
 
        ! left and right sides
-       if (u > 0) then
+       if (u == ZERO) then
+          d_left = INFINITY
+          d_right = INFINITY
+       elseif (u > 0) then
           d_left = INFINITY
           d_right = (x0 - x)/u
        else
@@ -464,7 +470,10 @@ contains
        end if
 
        ! top and bottom sides
-       if (v > 0) then
+       if (v == ZERO) then
+          d_bottom = INFINITY
+          d_top = INFINITY
+       elseif (v > 0) then
           d_bottom = INFINITY
           d_top = (y0 - y)/v
        else
@@ -558,6 +567,7 @@ contains
 
     ! inialize distance to infinity (huge)
     dist = INFINITY
+    lattice_crossed = .false.
 
     ! Get pointer to top-level coordinates
     coord => p % coord0
@@ -846,6 +856,7 @@ contains
           if (d < dist) then
              dist = d
              surface_crossed = -cl % surfaces(i)
+             lattice_crossed = .false.
              final_coord => coord
           end if
 
@@ -854,19 +865,22 @@ contains
        ! =======================================================================
        ! FIND MINIMUM DISTANCE TO LATTICE SURFACES
 
-       lattice_crossed = .false.
-
-       if (p % coord % lattice /= NONE) then
-          lat => lattices(p % coord % lattice)
+       if (coord % lattice /= NONE) then
+          lat => lattices(coord % lattice)
           if (lat % type == LATTICE_RECT) then
-             x = p % coord % xyz(1)
-             y = p % coord % xyz(2)
-             z = p % coord % xyz(3)
+             ! copy local coordinates
+             x = coord % xyz(1)
+             y = coord % xyz(2)
+             z = coord % xyz(3)
+
+             ! determine oncoming edge
              x0 = lat % width_x * 0.5_8
              y0 = lat % width_y * 0.5_8
 
              ! left and right sides
-             if (u > 0) then
+             if (u == ZERO) then
+                d = INFINITY
+             elseif (u > 0) then
                 d = (x0 - x)/u
              else
                 d = -(x + x0)/u
@@ -888,7 +902,9 @@ contains
              end if
 
              ! top and bottom sides
-             if (v > 0) then
+             if (v == ZERO) then
+                d = INFINITY
+             elseif (v > 0) then
                 d = (y0 - y)/v
              else
                 d = -(y + y0)/v
@@ -910,9 +926,6 @@ contains
        coord => coord % next
 
     end do LEVEL_LOOP
-
-    ! Remove coordinates for any lower levels
-    call deallocate_coord(final_coord % next)
 
     ! Move particle to appropriate coordinate level
     p % coord => final_coord

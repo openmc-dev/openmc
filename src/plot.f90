@@ -13,7 +13,9 @@ module plot
 contains
 
 !===============================================================================
-! RUN_PLOT
+! RUN_PLOT generates a binary stream file containing a list of surface/lattice
+! crossings and what cell was traveled through. A Python script can then be used
+! to generate a plot based on the recorded crossings and cells
 !===============================================================================
 
   subroutine run_plot()
@@ -131,6 +133,8 @@ contains
        ! MOVE PARTICLE ACROSS HORIZONTAL TRACK
 
        do while (p % alive)
+          ! save particle's current cell
+          last_cell = p % coord % cell
 
           ! Calculate distance to next boundary
           call distance_to_boundary(p, distance, surface_crossed, lattice_crossed)
@@ -152,14 +156,13 @@ contains
              if (distance == INFINITY) p % coord % cell = 0
 
              ! Write ending coordinates to file
-             write(UNIT=UNIT_PLOT) p % coord0 % xyz, p % coord % cell
+             write(UNIT=UNIT_PLOT) p % coord0 % xyz, last_cell
              cycle
           end if
 
           ! Write boundary crossing coordinates to file
-          write(UNIT=UNIT_PLOT) p % coord0 % xyz, p % coord % cell
+          write(UNIT=UNIT_PLOT) p % coord0 % xyz, last_cell
 
-          last_cell = p % coord % cell
           p % coord % cell = 0
           if (lattice_crossed) then
              p % surface = NONE
@@ -170,7 +173,7 @@ contains
 
              ! Since boundary conditions are disabled in plotting mode, we need
              ! to manually add the last segment
-             if (surfaces(surface_crossed) % bc == BC_VACUUM) then
+             if (surfaces(abs(surface_crossed)) % bc == BC_VACUUM) then
                 p % coord0 % xyz(1) = last_x_coord
                 write(UNIT=UNIT_PLOT) p % coord0 % xyz, 0
                 exit

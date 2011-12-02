@@ -136,6 +136,7 @@ output.o: endf.o
 output.o: geometry_header.o
 output.o: global.o
 output.o: mesh_header.o
+output.o: particle_header.o
 output.o: string.o
 output.o: tally_header.o
 

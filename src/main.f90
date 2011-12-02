@@ -61,7 +61,6 @@ contains
     if (master) call header("BEGIN SIMULATION", 1)
 
     tallies_on = .false.
-    call timer_start(time_active)
     call timer_start(time_inactive)
 
     ! ==========================================================================
@@ -125,6 +124,7 @@ contains
        if (i_cycle == n_inactive) then
           tallies_on = .true.
           call timer_stop(time_inactive)
+          call timer_start(time_active)
        end if
 
        ! Stop timer for inter-cycle synchronization

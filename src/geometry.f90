@@ -405,7 +405,7 @@ contains
     call find_cell(p, found)
 
     ! Couldn't find next cell anywhere!
-    if (.not. found) then
+    if ((.not. found) .and. (.not. plotting)) then
        message = "After particle crossed surface " // trim(int_to_str(p%surface)) &
             // ", it could not be located in any cell and it did not leak."
        call fatal_error()
@@ -568,6 +568,7 @@ contains
     ! inialize distance to infinity (huge)
     dist = INFINITY
     lattice_crossed = .false.
+    nullify(final_coord)
 
     ! Get pointer to top-level coordinates
     coord => p % coord0
@@ -928,7 +929,7 @@ contains
     end do LEVEL_LOOP
 
     ! Move particle to appropriate coordinate level
-    p % coord => final_coord
+    if (associated(final_coord)) p % coord => final_coord
 
   end subroutine distance_to_boundary
 

@@ -6,7 +6,8 @@ module plot
                              cross_lattice, cell_contains
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
-  use particle_header, only: Particle, initialize_particle, LocalCoord
+  use particle_header, only: Particle, initialize_particle, LocalCoord,      &
+                             deallocate_coord
 
   implicit none
 
@@ -76,58 +77,59 @@ contains
        ! =======================================================================
        ! MOVE PARTICLE FORWARD TO NEXT CELL
 
-!!$       if (.not. found_cell) then
-!!$          univ => universes(BASE_UNIVERSE)
-!!$          do i = 1, univ % n_cells
-!!$             p % xyz = coord
-!!$             p % xyz_local = coord
-!!$             p % cell = univ % cells(i)
-!!$
-!!$             distance = INFINITY
-!!$             ! call distance_to_boundary(p, d, surf, in_lattice)
-!!$             if (d < distance) then
-!!$                ! Move particle forward to next surface
-!!$                p % xyz = p % xyz + d * p % uvw
-!!$
-!!$                ! Check to make sure particle is actually going into this cell
-!!$                ! by moving it slightly forward and seeing if the cell contains
-!!$                ! that coordinate
-!!$
-!!$                p % xyz = p % xyz + 1e-4 * p % uvw
-!!$                p % xyz_local = p % xyz
-!!$
-!!$                c => cells(p % cell)
-!!$                if (.not. cell_contains(c, p)) cycle
-!!$
-!!$                ! Reset coordinate to surface crossing
-!!$                p % xyz = p % xyz - 1e-4 * p % uvw
-!!$                p % xyz_local = p % xyz
-!!$
-!!$                ! Set new distance and retain pointer to this cell
-!!$                distance = d
-!!$                last_cell = p % cell
-!!$             end if
-!!$          end do
-!!$
-!!$          ! No cell was found on this horizontal ray
-!!$          if (distance == INFINITY) then
-!!$             p % xyz(1) = last_x_coord
-!!$             p % cell = 0
-!!$             write(UNIT_PLOT) p % xyz, p % cell
-!!$
-!!$             ! Move to next horizontal ray
-!!$             xyz(2) = xyz(2) - pixel
-!!$             cycle
-!!$          end if
-!!$
-!!$          ! Write coordinate where next cell begins
-!!$          write(UNIT=UNIT_PLOT) p % xyz, 0
-!!$
-!!$          ! Process surface crossing for next cell
-!!$          p % cell = 0
-!!$          p % surface = -surf
-!!$          call cross_surface(p, last_cell)
-!!$       end if
+       if (.not. found_cell) then
+          ! Clear any coordinates beyond first level
+          call deallocate_coord(p % coord0 % next)
+          p % coord => p % coord0
+
+          univ => universes(BASE_UNIVERSE)
+          do i = 1, univ % n_cells
+             p % coord0 % xyz = xyz
+             p % coord0 % cell = univ % cells(i)
+
+             distance = INFINITY
+             call distance_to_boundary(p, d, surface_crossed, lattice_crossed)
+             if (d < distance) then
+                ! Move particle forward to next surface
+                ! Advance particle
+                p % coord0 % xyz = p % coord0 % xyz + d * p % coord0 % uvw
+
+                ! Check to make sure particle is actually going into this cell
+                ! by moving it slightly forward and seeing if the cell contains
+                ! that coordinate
+
+                p % coord0 % xyz = p % coord0 % xyz + 1e-4 * p % coord0 % uvw
+
+                c => cells(p % coord0 % cell)
+                if (.not. cell_contains(c, p)) cycle
+
+                ! Reset coordinate to surface crossing
+                p % coord0 % xyz = p % coord0 % xyz - 1e-4 * p % coord0 % uvw
+
+                ! Set new distance and retain pointer to this cell
+                distance = d
+                last_cell = p % coord0 % cell
+             end if
+          end do
+
+          ! No cell was found on this horizontal ray
+          if (distance == INFINITY) then
+             p % coord0 % xyz(1) = last_x_coord
+             write(UNIT_PLOT) p % coord0 % xyz, 0
+
+             ! Move to next horizontal ray
+             xyz(2) = xyz(2) - pixel
+             cycle
+          end if
+
+          ! Write coordinate where next cell begins
+          write(UNIT=UNIT_PLOT) p % coord0 % xyz, 0
+
+          ! Process surface crossing for next cell
+          p % coord0 % cell = NONE
+          p % surface = -surface_crossed
+          call cross_surface(p, last_cell)
+       end if
 
        ! =======================================================================
        ! MOVE PARTICLE ACROSS HORIZONTAL TRACK

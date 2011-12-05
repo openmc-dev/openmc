@@ -22,7 +22,7 @@ module constants
   real(8), parameter :: TINY_BIT = 1e-8_8
 
   ! User for precision in geometry
-  real(8), parameter :: FP_PRECISION = 1e-8_8
+  real(8), parameter :: FP_PRECISION = 1e-7_8
 
   ! Maximum number of collisions/crossings
   integer, parameter :: MAX_EVENTS = 10000

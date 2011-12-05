@@ -441,7 +441,9 @@ contains
     lat => lattices(p % coord % lattice)
 
     if (verbosity >= 10 .or. trace) then
-       message = "    Crossing lattice " // int_to_str(lat % id)
+       message = "    Crossing lattice " // trim(int_to_str(lat % id)) // &
+            ". Current position (" // trim(int_to_str(p % coord % lattice_x)) &
+            // "," // trim(int_to_str(p % coord % lattice_y)) // ")"
        call write_message()
     end if
 

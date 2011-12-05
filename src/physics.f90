@@ -14,7 +14,7 @@ module physics
   use particle_header,      only: Particle, LocalCoord
   use random_lcg,           only: prn
   use search,               only: binary_search
-  use string,               only: int_to_str
+  use string,               only: int_to_str, real_to_str
   use tally,                only: score_tally, score_surface_current
 
   implicit none
@@ -412,17 +412,19 @@ contains
     ! Sample nuclide/reaction for the material the particle is in
     call sample_reaction(p, MT)
 
+    ! Display information about collision
+    if (verbosity >= 10 .or. trace) then
+       message = "    " // trim(reaction_name(MT)) // ". Energy = " // &
+            trim(real_to_str(p % E * 1e6_8)) // " eV."
+       call write_message()
+    end if
+
     ! check for very low energy
     if (p % E < 1.0e-100_8) then
        p % alive = .false.
        message = "Killing neutron with extremely low energy"
        call warning()
     end if
-
-    ! Score collision estimator tallies for any macro tallies -- this is done
-    ! after a collision has occurred rather than before because we need
-    ! information on the outgoing energy for any tallies with an outgoing energy
-    ! filter
 
     ! Check if particle scattered or fissioned
     if (survival_biasing) then
@@ -432,6 +434,11 @@ contains
        fissioned = is_fission(MT)
        scattered = is_scatter(MT)
     end if
+
+    ! Score collision estimator tallies for any macro tallies -- this is done
+    ! after a collision has occurred rather than before because we need
+    ! information on the outgoing energy for any tallies with an outgoing energy
+    ! filter
 
     if (tallies_on) then
        call score_tally(p, scattered, fissioned)

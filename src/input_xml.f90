@@ -136,6 +136,12 @@ contains
        weight_survive = cutoff_(1) % weight_avg
     end if
 
+    ! Particle trace
+    if (size(trace_) > 0) then
+       trace_cycle    = trace_(1)
+       trace_particle = trace_(2)
+    end if
+
   end subroutine read_settings_xml
 
 !===============================================================================

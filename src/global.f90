@@ -168,6 +168,11 @@ module global
   ! screen and in logs
   integer :: verbosity = 7
 
+  ! Trace for single particle
+  logical    :: trace
+  integer    :: trace_cycle
+  integer(8) :: trace_particle
+
 contains
 
 !===============================================================================

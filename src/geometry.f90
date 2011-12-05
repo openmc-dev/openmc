@@ -406,8 +406,9 @@ contains
 
     ! Couldn't find next cell anywhere!
     if ((.not. found) .and. (.not. plotting)) then
-       message = "After particle crossed surface " // trim(int_to_str(p%surface)) &
-            // ", it could not be located in any cell and it did not leak."
+       message = "After particle crossed surface " // trim(int_to_str( &
+            surfaces(abs(p%surface)) % id)) // " it could not be located in " &
+            // "any cell and it did not leak."
        call fatal_error()
     end if
        

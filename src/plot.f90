@@ -24,7 +24,8 @@ contains
     integer :: i               ! loop index
     integer :: surface_crossed ! surface which particle is on
     integer :: last_cell       ! most recent cell particle was in
-    real(8) :: xyz(3)        ! starting coordinates
+    integer :: enter_surface   ! entrance surface
+    real(8) :: xyz(3)          ! starting coordinates
     real(8) :: last_x_coord    ! bounding x coordinate
     real(8) :: last_y_coord    ! bounding y coordinate
     real(8) :: d               ! distance to boundary
@@ -82,33 +83,26 @@ contains
           call deallocate_coord(p % coord0 % next)
           p % coord => p % coord0
 
+          distance = INFINITY
           univ => universes(BASE_UNIVERSE)
           do i = 1, univ % n_cells
              p % coord0 % xyz = xyz
              p % coord0 % cell = univ % cells(i)
 
-             distance = INFINITY
              call distance_to_boundary(p, d, surface_crossed, lattice_crossed)
              if (d < distance) then
-                ! Move particle forward to next surface
-                ! Advance particle
-                p % coord0 % xyz = p % coord0 % xyz + d * p % coord0 % uvw
-
                 ! Check to make sure particle is actually going into this cell
                 ! by moving it slightly forward and seeing if the cell contains
                 ! that coordinate
 
-                p % coord0 % xyz = p % coord0 % xyz + 1e-4 * p % coord0 % uvw
+                p % coord0 % xyz = p % coord0 % xyz + (d + TINY_BIT) * p % coord0 % uvw
 
                 c => cells(p % coord0 % cell)
                 if (.not. cell_contains(c, p)) cycle
 
-                ! Reset coordinate to surface crossing
-                p % coord0 % xyz = p % coord0 % xyz - 1e-4 * p % coord0 % uvw
-
                 ! Set new distance and retain pointer to this cell
                 distance = d
-                last_cell = p % coord0 % cell
+                enter_surface = surface_crossed
              end if
           end do
 
@@ -123,12 +117,13 @@ contains
           end if
 
           ! Write coordinate where next cell begins
+          p % coord0 % xyz = xyz + distance * p % coord0 % uvw
           write(UNIT=UNIT_PLOT) p % coord0 % xyz, 0
 
           ! Process surface crossing for next cell
           p % coord0 % cell = NONE
-          p % surface = -surface_crossed
-          call cross_surface(p, last_cell)
+          p % surface = -enter_surface
+          call cross_surface(p, enter_surface)
        end if
 
        ! =======================================================================

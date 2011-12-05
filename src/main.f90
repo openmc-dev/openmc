@@ -90,6 +90,11 @@ contains
           ! set random number seed
           i_particle = (i_cycle-1)*n_particles + p % id
           call set_particle_seed(i_particle)
+          
+          ! set particle trace
+          trace = .false.
+          if (i_cycle == trace_cycle .and. &
+               p % id == trace_particle) trace = .true.
 
           ! transport particle
           call transport(p)

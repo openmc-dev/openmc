@@ -231,7 +231,7 @@ contains
     type(Surface),  pointer :: surf => null()
 
     surf => surfaces(abs(p % surface))
-    if (verbosity >= 10) then
+    if (verbosity >= 10 .or. trace) then
        message = "    Crossing surface " // trim(int_to_str(surf % id))
        call write_message()
     end if
@@ -254,7 +254,7 @@ contains
        call score_surface_current(p)
 
        ! Display message
-       if (verbosity >= 10) then
+       if (verbosity >= 10 .or. trace) then
           message = "    Leaked out of surface " // trim(int_to_str(surf % id))
           call write_message()
        end if
@@ -373,7 +373,7 @@ contains
        p % last_xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
 
        ! Diagnostic message
-       if (verbosity >= 10) then
+       if (verbosity >= 10 .or. trace) then
           message = "    Reflected from surface " // trim(int_to_str(surf%id))
           call write_message()
        end if
@@ -440,7 +440,7 @@ contains
 
     lat => lattices(p % coord % lattice)
 
-    if (verbosity >= 10) then
+    if (verbosity >= 10 .or. trace) then
        message = "    Crossing lattice " // int_to_str(lat % id)
        call write_message()
     end if

@@ -52,12 +52,12 @@ contains
        p % cell_born = p % coord % cell
     end if
 
-    if (verbosity >= 9) then
+    if (verbosity >= 9 .or. trace) then
        message = "Simulating Particle " // trim(int_to_str(p % id))
        call write_message()
     end if
 
-    if (verbosity >= 10) then
+    if (verbosity >= 10 .or. trace) then
        message = "    Born in cell " // trim(int_to_str(&
             cells(p % coord % cell) % id))
        call write_message()

@@ -22,6 +22,10 @@ module initialize
   use tally,            only: create_tally_map, TallyObject
   use timing,           only: timer_start, timer_stop
 
+  implicit none
+
+  type(DictionaryII), pointer :: build_dict => null()
+
 contains
 
 !===============================================================================
@@ -191,6 +195,9 @@ contains
 
     ! Create special dictionary used in input_xml
     call dict_create(cells_in_univ_dict)
+
+    ! Create special dictionary for building universes
+    call dict_create(build_dict)
     
   end subroutine create_dictionaries
 
@@ -475,7 +482,6 @@ contains
     type(Cell),     pointer :: c => null()
     type(Universe), pointer :: subuniverse => null()
     type(Lattice),  pointer :: lat => null()
-    type(DictionaryII), pointer :: dict => null()
 
     ! set level of the universe
     univ % level = level
@@ -484,7 +490,7 @@ contains
     do i = 1, univ % n_cells
        i_cell = univ % cells(i)
        c => cells(i_cell)
-       c%parent = parent
+       c % parent = parent
 
        ! if this cell is filled with another universe, recursively
        ! call this subroutine
@@ -497,15 +503,12 @@ contains
        ! universe for each unique lattice element
        if (c % type == CELL_LATTICE) then
           lat => lattices(c % fill)
-          call dict_create(dict)
           do x = 1, lat % n_x
              do y = 1, lat % n_y
+                lat => lattices(cells(i_cell) % fill)
                 universe_num = lat % element(x,y)
-                if (dict_has_key(dict, universe_num)) then
-                   cycle
-                else
-                   call dict_add_key(dict, universe_num, 0)
-
+                if (.not. dict_has_key(build_dict, universe_num)) then
+                   call dict_add_key(build_dict, universe_num, 0)
                    subuniverse => universes(universe_num)
                    call build_universe(subuniverse, i_cell, level + 1)
                 end if

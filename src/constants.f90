@@ -19,10 +19,10 @@ module constants
   real(8), parameter :: FREE_GAS_THRESHOLD = 400.0
 
   ! Used for surface current tallies
-  real(8), parameter :: TINY_BIT = 1e-8
+  real(8), parameter :: TINY_BIT = 1e-8_8
 
   ! User for precision in geometry
-  real(8), parameter :: FP_PRECISION = 1e-9_8
+  real(8), parameter :: FP_PRECISION = 1e-8_8
 
   ! Maximum number of collisions/crossings
   integer, parameter :: MAX_EVENTS = 10000

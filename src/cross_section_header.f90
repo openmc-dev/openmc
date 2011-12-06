@@ -176,8 +176,7 @@ module cross_section_header
   type NuclideMicroXS
      integer :: index_grid      ! index on nuclide energy grid
      integer :: index_temp      ! temperature index for nuclide
-     integer :: last_index_grid ! previous index on nuclide energy grid
-     integer :: last_index_temp ! previous temperature index for nuclide
+     real(8) :: last_E = 0.0    ! last evaluated energy
      real(8) :: interp_factor   ! interpolation factor on nuc. energy grid
      real(8) :: total           ! microscropic total xs
      real(8) :: elastic         ! microscopic elastic scattering xs

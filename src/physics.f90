@@ -182,7 +182,9 @@ contains
        end if
 
        ! Calculate microscopic cross section for this nuclide
-       call calculate_nuclide_xs(p, index_nuclide, index_sab)
+       if (p % E /= micro_xs(index_nuclide) % last_E) then
+          call calculate_nuclide_xs(p, index_nuclide, index_sab)
+       end if
 
        ! Copy atom density of nuclide in material
        atom_density = mat % atom_density(i)
@@ -350,6 +352,9 @@ contains
        ! Store S(a,b) elastic cross section for sampling later
        micro_xs(i) % elastic_sab = elastic
     end if
+
+    ! Set last evaluated energy
+    micro_xs(i) % last_E = p % E
 
   end subroutine calculate_nuclide_xs
 

@@ -137,7 +137,7 @@ contains
     end if
 
     ! Particle trace
-    if (size(trace_) > 0) then
+    if (associated(trace_)) then
        trace_cycle    = trace_(1)
        trace_particle = trace_(2)
     end if

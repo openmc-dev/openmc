@@ -225,7 +225,6 @@ contains
     integer, intent(in)     :: index_nuclide ! index into nuclides array
     integer, intent(in)     :: index_sab     ! index into sab_tables array
 
-    integer :: i         ! index into nuclides array
     integer :: IE        ! index on nuclide energy grid
     integer :: IE_sab    ! index on S(a,b) energy grid
     real(8) :: f         ! interp factor on nuclide energy grid
@@ -236,11 +235,8 @@ contains
     type(Nuclide),   pointer :: nuc => null()
     type(SAB_Table), pointer :: sab => null()
 
-    ! Copy index of nuclide
-    i = index_nuclide
-
     ! Set pointer to nuclide
-    nuc => nuclides(i)
+    nuc => nuclides(index_nuclide)
 
     ! TODO: If not using unionized energy grid, we need to find the index on the
     ! nuclide energy grid using lethargy mapping or whatever other technique
@@ -249,37 +245,37 @@ contains
     IE = nuc % grid_index(p % IE)
     f = (p%E - nuc%energy(IE))/(nuc%energy(IE+1) - nuc%energy(IE))
 
-    micro_xs(i) % index_grid = IE
-    micro_xs(i) % interp_factor = f
+    micro_xs(index_nuclide) % index_grid = IE
+    micro_xs(index_nuclide) % interp_factor = f
 
     ! Initialize sab treatment to false
-    micro_xs(i) % use_sab     = .false.
-    micro_xs(i) % elastic_sab = ZERO
+    micro_xs(index_nuclide) % use_sab     = .false.
+    micro_xs(index_nuclide) % elastic_sab = ZERO
 
     ! Initialize nuclide cross-sections to zero
-    micro_xs(i) % fission    = ZERO
-    micro_xs(i) % nu_fission = ZERO
+    micro_xs(index_nuclide) % fission    = ZERO
+    micro_xs(index_nuclide) % nu_fission = ZERO
 
     ! Calculate microscopic nuclide total cross section
-    micro_xs(i) % total = &
+    micro_xs(index_nuclide) % total = &
          (ONE-f) * nuc % total(IE) + f * nuc % total(IE+1)
 
     ! Calculate microscopic nuclide total cross section
-    micro_xs(i) % elastic = &
+    micro_xs(index_nuclide) % elastic = &
          (ONE-f) * nuc % elastic(IE) + f * nuc % elastic(IE+1)
 
     ! Calculate microscopic nuclide absorption cross section
-    micro_xs(i) % absorption = &
+    micro_xs(index_nuclide) % absorption = &
          (ONE-f) * nuc % absorption(IE) + f * nuc % absorption(IE+1)
 
     if (nuc % fissionable) then
        ! Calculate microscopic nuclide total cross section
-       micro_xs(i) % fission = &
+       micro_xs(index_nuclide) % fission = &
             (ONE-f) * nuc % fission(IE) + f * nuc % fission(IE+1)
 
        ! Calculate microscopic nuclide nu-fission cross section
        nu = nu_total(nuc, p % E)
-       micro_xs(i) % nu_fission = nu * micro_xs(i) % fission
+       micro_xs(index_nuclide) % nu_fission = nu * micro_xs(index_nuclide) % fission
     end if
 
     ! If there is S(a,b) data for this nuclide, we need to do a few
@@ -288,7 +284,7 @@ contains
     ! then add back in the calculated S(a,b) elastic+inelastic cross section.
 
     if (index_sab > 0) then
-       micro_xs(i) % use_sab = .true.
+       micro_xs(index_nuclide) % use_sab = .true.
 
        ! Get pointer to S(a,b) table
        sab => sab_tables(index_sab)
@@ -344,16 +340,16 @@ contains
        end if
 
        ! Correct total and elastic cross sections
-       micro_xs(i) % total = micro_xs(i) % total - micro_xs(i) % elastic &
-            + inelastic + elastic
-       micro_xs(i) % elastic = inelastic + elastic
+       micro_xs(index_nuclide) % total = micro_xs(index_nuclide) % total - &
+            micro_xs(index_nuclide) % elastic + inelastic + elastic
+       micro_xs(index_nuclide) % elastic = inelastic + elastic
 
        ! Store S(a,b) elastic cross section for sampling later
-       micro_xs(i) % elastic_sab = elastic
+       micro_xs(index_nuclide) % elastic_sab = elastic
     end if
 
     ! Set last evaluated energy
-    micro_xs(i) % last_E = p % E
+    micro_xs(index_nuclide) % last_E = p % E
 
   end subroutine calculate_nuclide_xs
 

@@ -141,6 +141,7 @@ contains
              ! AT LOWEST UNIVERSE, TERMINATE SEARCH
 
              ! set material
+             p % last_material = p % material
              p % material = c % material
 
           elseif (c % type == CELL_FILL) then

@@ -37,7 +37,7 @@ contains
     real(8)        :: distance        ! distance particle travels
     logical        :: found_cell      ! found cell which particle is in?
     logical        :: lattice_crossed ! is surface crossing in lattice?
-    type(LocalCoord), pointer :: coord
+    type(LocalCoord), pointer :: coord => null()
 
     if (p % coord % cell == NONE) then
        call find_cell(p, found_cell)
@@ -69,8 +69,11 @@ contains
     ! find energy index, interpolation factor
     do while (p % alive)
 
-       ! Calculate microscopic and macroscopic cross sections
-       call calculate_xs(p)
+       ! Calculate microscopic and macroscopic cross sections -- note: if the
+       ! material is the same as the last material and the energy of the
+       ! particle hasn't changed, we don't need to lookup cross sections again.
+
+       if (p % material /= p % last_material) call calculate_xs(p)
 
        ! Find the distance to the nearest boundary
        call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)
@@ -106,6 +109,10 @@ contains
           ! Save coordinates at collision for tallying purposes
           p % last_xyz = p % coord0 % xyz
 
+          ! Set last material to none since cross sections will need to be
+          ! re-evaluated
+          p % last_material = NONE
+
           ! Set all uvws to base level -- right now, after a collision, only the
           ! base level uvws are changed
           coord => p % coord0
@@ -137,17 +144,12 @@ contains
 
     type(Particle), pointer :: p
 
-    integer                  :: i             ! loop index over nuclides
-    integer                  :: index_nuclide ! index into nuclides array
-    integer                  :: index_sab
-    real(8)                  :: atom_density  ! atom density of a nuclide
-    real(8)                  :: sab_threshold ! threshold for S(a,b) table
+    integer :: i             ! loop index over nuclides
+    integer :: index_nuclide ! index into nuclides array
+    integer :: index_sab     ! index into sab_tables array
+    real(8) :: atom_density  ! atom density of a nuclide
+    real(8) :: sab_threshold ! threshold for S(a,b) table
     type(Material),  pointer :: mat => null() ! current material
-
-    ! If the material is the same as the last material and the energy of the
-    ! particle hasn't changed, we don't need to lookup cross sections again.
-
-    if (p % material == p % last_material) return
 
     ! Set all material macroscopic cross sections to zero
     material_xs % total      = ZERO
@@ -223,14 +225,14 @@ contains
     integer, intent(in)     :: index_nuclide ! index into nuclides array
     integer, intent(in)     :: index_sab     ! index into sab_tables array
 
-    integer                :: i         ! index into nuclides array
-    integer                :: IE        ! index on nuclide energy grid
-    integer                :: IE_sab    ! index on S(a,b) energy grid
-    real(8)                :: f         ! interp factor on nuclide energy grid
-    real(8)                :: f_sab     ! interp factor on S(a,b) energy grid
-    real(8)                :: inelastic ! S(a,b) inelastic cross section
-    real(8)                :: elastic   ! S(a,b) elastic cross section
-    real(8)                :: nu        ! total # of neutrons emitted per fission
+    integer :: i         ! index into nuclides array
+    integer :: IE        ! index on nuclide energy grid
+    integer :: IE_sab    ! index on S(a,b) energy grid
+    real(8) :: f         ! interp factor on nuclide energy grid
+    real(8) :: f_sab     ! interp factor on S(a,b) energy grid
+    real(8) :: inelastic ! S(a,b) inelastic cross section
+    real(8) :: elastic   ! S(a,b) elastic cross section
+    real(8) :: nu        ! total # of neutrons emitted per fission
     type(Nuclide),   pointer :: nuc => null()
     type(SAB_Table), pointer :: sab => null()
 
@@ -239,9 +241,6 @@ contains
 
     ! Set pointer to nuclide
     nuc => nuclides(i)
-
-    ! TODO: Check if last energy/temp combination is same as current. If so, we
-    ! can return.
 
     ! TODO: If not using unionized energy grid, we need to find the index on the
     ! nuclide energy grid using lethargy mapping or whatever other technique

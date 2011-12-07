@@ -662,7 +662,7 @@ contains
                    bins(TS_SURFACE) = OUT_TOP
                    bins(1:3) = ijk0 + 1
                    score_index = sum((bins - 1) * t % stride) + 1
-                   call add_to_score(t % scores(score_index, 1), p % last_wgt)
+                   call add_to_score(t % scores(score_index, 1), p % wgt)
                 end if
              end do
           else
@@ -672,7 +672,7 @@ contains
                    bins(TS_SURFACE) = IN_TOP
                    bins(1:3) = ijk0 + 1
                    score_index = sum((bins - 1) * t % stride) + 1
-                   call add_to_score(t % scores(score_index, 1), p % last_wgt)
+                   call add_to_score(t % scores(score_index, 1), p % wgt)
                 end if
              end do
           end if
@@ -686,7 +686,7 @@ contains
                    bins(TS_SURFACE) = OUT_FRONT
                    bins(1:3) = ijk0 + 1
                    score_index = sum((bins - 1) * t % stride) + 1
-                   call add_to_score(t % scores(score_index, 1), p % last_wgt)
+                   call add_to_score(t % scores(score_index, 1), p % wgt)
                 end if
              end do
           else
@@ -696,7 +696,7 @@ contains
                    bins(TS_SURFACE) = IN_FRONT
                    bins(1:3) = ijk0 + 1
                    score_index = sum((bins - 1) * t % stride) + 1
-                   call add_to_score(t % scores(score_index, 1), p % last_wgt)
+                   call add_to_score(t % scores(score_index, 1), p % wgt)
                 end if
              end do
           end if
@@ -710,7 +710,7 @@ contains
                    bins(TS_SURFACE) = OUT_RIGHT
                    bins(1:3) = ijk0 + 1
                    score_index = sum((bins - 1) * t % stride) + 1
-                   call add_to_score(t % scores(score_index, 1), p % last_wgt)
+                   call add_to_score(t % scores(score_index, 1), p % wgt)
                 end if
              end do
           else
@@ -720,7 +720,7 @@ contains
                    bins(TS_SURFACE) = IN_RIGHT
                    bins(1:3) = ijk0 + 1
                    score_index = sum((bins - 1) * t % stride) + 1
-                   call add_to_score(t % scores(score_index, 1), p % last_wgt)
+                   call add_to_score(t % scores(score_index, 1), p % wgt)
                 end if
              end do
           end if
@@ -836,7 +836,7 @@ contains
              end if
 
              ! Add to surface current tally
-             call add_to_score(t % scores(score_index, 1), p % last_wgt)
+             call add_to_score(t % scores(score_index, 1), p % wgt)
           end if
 
           ! Calculate new coordinates

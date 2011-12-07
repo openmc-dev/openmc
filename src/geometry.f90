@@ -248,11 +248,13 @@ contains
        ! forward slightly so that if the mesh boundary is on the surface, it is
        ! still processed
 
-       ! TODO: Find a better solution to score surface currents than physically
-       ! moving the particle forward slightly
+       if (tallies_on) then
+          ! TODO: Find a better solution to score surface currents than
+          ! physically moving the particle forward slightly
 
-       p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
-       call score_surface_current(p)
+          p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
+          call score_surface_current(p)
+       end if
 
        ! Display message
        if (verbosity >= 10 .or. trace) then
@@ -274,9 +276,12 @@ contains
        ! Score surface currents since reflection causes the direction of the
        ! particle to change -- artificially move the particle slightly back in
        ! case the surface crossing in coincident with a mesh boundary
-       p % coord0 % xyz = p % coord0 % xyz - TINY_BIT * p % coord0 % uvw
-       call score_surface_current(p)
-       p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
+       
+       if (tallies_on) then
+          p % coord0 % xyz = p % coord0 % xyz - TINY_BIT * p % coord0 % uvw
+          call score_surface_current(p)
+          p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
+       end if
 
        ! Copy particle's direction cosines
        u = p % coord0 % uvw(1)

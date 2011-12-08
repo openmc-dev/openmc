@@ -552,6 +552,7 @@ subroutine write_prolog
   &   '   use WRITE_XML_PRIMITIVES', &
   &   '   use XMLPARSE', &
   &   '   implicit none', &
+  &   '   save', &
   &   '   integer, private :: lurep_', &
   &   '   logical, private :: strict_'
 

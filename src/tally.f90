@@ -1,5 +1,7 @@
 module tally
 
+  use ISO_FORTRAN_ENV
+
   use constants
   use error,         only: fatal_error
   use global
@@ -22,27 +24,27 @@ module tally
 contains
 
 !===============================================================================
-! CALCULATE_KEFF
+! CALCULATE_KEFF calculates the single cycle estimate of keff as well as the
+! mean and standard deviation of the mean for active cycles and displays them
 !===============================================================================
 
   subroutine calculate_keff(i_cycle)
 
     integer, intent(in) :: i_cycle ! index of current cycle
 
-    integer(8)              :: total_bank ! total number of source sites
-    integer                 :: n          ! active cycle number
-    real(8)                 :: kcoll      ! keff collision estimator         
-    real(8), save           :: k1 = 0.    ! accumulated keff
-    real(8), save           :: k2 = 0.    ! accumulated keff**2
-    real(8)                 :: std        ! stdev of keff over active cycles
+    integer(8)    :: total_bank ! total number of source sites
+    integer       :: n          ! active cycle number
+    real(8)       :: k_cycle    ! single cycle estimate of keff
+    real(8), save :: k_sum      ! accumulated keff
+    real(8), save :: k_sum_sq   ! accumulated keff**2
 
     message = "Calculate cycle keff..."
     call write_message(8)
 
-    ! set k1 and k2 at beginning of run
+    ! initialize sum and square of sum at beginning of run
     if (i_cycle == 1) then
-       k1 = ZERO
-       k2 = ZERO
+       k_sum = ZERO
+       k_sum_sq = ZERO
     end if
 
 #ifdef MPI
@@ -55,31 +57,44 @@ contains
 
     ! Collect statistics and print output
     if (master) then
-       kcoll = real(total_bank)/real(n_particles)*keff
+       ! Since the creation of bank sites was originally weighted by the last
+       ! cycle keff, we need to multiply by that keff to get the current cycle's
+       ! value
+
+       k_cycle = real(total_bank)/real(n_particles)*keff
+
        if (i_cycle > n_inactive) then
+          ! Active cycle number
           n = i_cycle - n_inactive
-          k1 = k1 + kcoll
-          k2 = k2 + kcoll**2
-          keff = k1/n
-          std  = sqrt((k2/n-keff**2)/n)
-          keff_std = std
+
+          ! Accumulate cycle estimate of k
+          k_sum =    k_sum    + k_cycle
+          k_sum_sq = k_sum_sq + k_cycle*k_cycle
+
+          ! Determine mean and standard deviation of mean
+          keff = k_sum/n
+          keff_std = sqrt((k_sum_sq/n - keff*keff)/n)
+
+          ! Display output for this cycle
           if (i_cycle > n_inactive+1) then
-             write(6,101) i_cycle, kcoll, keff, std
+             write(UNIT=OUTPUT_UNIT, FMT=101) i_cycle, k_cycle, keff, keff_std
           else
-             write(6,100) i_cycle, kcoll
+             write(UNIT=OUTPUT_UNIT, FMT=100) i_cycle, k_cycle
           end if
        else
-          write(6,100) i_cycle, kcoll
-          keff = kcoll
+          ! Display output for inactive cycle
+          write(UNIT=OUTPUT_UNIT, FMT=100) i_cycle, k_cycle
+          keff = k_cycle
        end if
     end if
 
 #ifdef MPI
+    ! Broadcast new keff value to all processors
     call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
 #endif
 
-100 format (2X,I4,2X,F8.5)
-101 format (2X,I4,2X,F8.5,9X,F8.5,1X,F8.5)
+100 format (2X,I5,2X,F8.5)
+101 format (2X,I5,2X,F8.5,9X,F8.5,1X,F8.5)
 
   end subroutine calculate_keff
 

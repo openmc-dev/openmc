@@ -165,10 +165,10 @@ neat:
 # Rules
 #===============================================================================
 
-.SUFFIXES: .f90 .o
+.SUFFIXES: .F90 .o
 .PHONY: all xml-fortran clean neat distclean 
 
-%.o: %.f90
+%.o: %.F90
 	$(F90) -Ixml-fortran -Ixml-fortran/templates $(F90FLAGS) -c $<
 
 #===============================================================================

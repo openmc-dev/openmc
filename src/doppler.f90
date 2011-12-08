@@ -210,4 +210,32 @@ contains
 
   end subroutine calculate_F
 
+#ifdef NO_F2008
+!===============================================================================
+! ERFC computes the complementary error function of x
+!===============================================================================
+
+  function erfc(x) result(y)
+
+    real(8), intent(in) :: x
+    real(8)             :: y
+
+    real(8) :: a1 =  0.254829592_8
+    real(8) :: a2 = -0.284496736_8
+    real(8) :: a3 =  1.421413741_8
+    real(8) :: a4 = -1.453152027_8
+    real(8) :: a5 =  1.061405429_8
+    real(8) :: p  =  0.3275911_8
+    real(8) :: t
+
+    ! Abramowitz and Stegun formula 7.1.26
+    t = 1.0_8/(1.0_8 + p*abs(x))
+    y = (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*exp(-x*x)
+    
+    ! Account for negative values of x
+    y = sign(y,x)
+
+  end function erfc
+#endif
+
 end module doppler

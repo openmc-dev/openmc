@@ -81,13 +81,8 @@ endif
 
 ifeq ($(COMPILER),pgi)
   F90 = pgf90
-  F90FLAGS := -Mpreprocess -Minform=inform
+  F90FLAGS := -Mpreprocess -DNO_F2008 -Minform=inform
   LDFLAGS =
-
-  # Since ERFC is currently not supported in the PGI compiler and this intrinsic
-  # is used in the doppler module (which is not actually used yet), it is
-  # removed from the source objects
-  objects := $(subst doppler.o, ,$(objects))
 
   # Debugging options
   ifeq ($(DEBUG),yes)

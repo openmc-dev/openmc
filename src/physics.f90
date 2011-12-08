@@ -409,6 +409,12 @@ contains
     ! Add to collision counter for particle
     p % n_collision = p % n_collision + 1
 
+    ! score surface current tallies -- this has to be done before the collision
+    ! since the direction of the particle will change and we need to use the
+    ! pre-collision direction to figure out what mesh surfaces were crossed
+
+    if (tallies_on) call score_surface_current(p)
+
     ! Sample nuclide/reaction for the material the particle is in
     call sample_reaction(p, MT)
 
@@ -440,10 +446,7 @@ contains
     ! information on the outgoing energy for any tallies with an outgoing energy
     ! filter
 
-    if (tallies_on) then
-       call score_tally(p, scattered, fissioned)
-       call score_surface_current(p)
-    end if
+    if (tallies_on) call score_tally(p, scattered, fissioned)
 
     ! Reset number of particles banked during collision
     p % n_bank = 0

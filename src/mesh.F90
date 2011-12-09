@@ -12,15 +12,15 @@ contains
 ! GET_MESH_BIN determines the tally bin for a particle in a structured mesh
 !===============================================================================
 
-  subroutine get_mesh_bin(m, xyz, bin, in_mesh)
+  subroutine get_mesh_bin(m, xyz, bin)
 
     type(StructuredMesh), pointer :: m
     real(8), intent(in)           :: xyz(:)
     integer, intent(out)          :: bin
-    logical, intent(out)          :: in_mesh
 
     integer              :: n
     integer, allocatable :: ijk(:)
+    logical              :: in_mesh
 
     ! Get number of dimensions
     n = m % n_dimension
@@ -32,7 +32,11 @@ contains
     call get_mesh_indices(m, xyz(1:n), ijk, in_mesh)
 
     ! Convert indices to bin
-    bin = mesh_indices_to_bin(m, ijk)
+    if (in_mesh) then
+       bin = mesh_indices_to_bin(m, ijk)
+    else
+       bin = NO_BIN_FOUND
+    end if
 
     ! Release memory for ijk
     deallocate(ijk)

@@ -9,6 +9,7 @@ module cross_section
   use endf,                 only: reaction_name
   use error,                only: fatal_error
   use fileio,               only: read_line, skip_lines
+  use fission,              only: nu_total
   use global
   use material_header,      only: Material
   use output,               only: write_message
@@ -322,12 +323,20 @@ contains
        nuc % kT   = kT
        nuc % zaid = NXS(2)
 
+       ! read all blocks
        call read_esz(nuc)
        call read_nu_data(nuc)
        call read_reactions(nuc)
        call read_angular_dist(nuc)
        call read_energy_dist(nuc)
        call read_unr_res(nuc)
+
+       ! for fissionable nuclides, precalculate microscopic nu-fission cross
+       ! sections so that we don't need to call the nu_total function during
+       ! cross section lookups
+
+       if (nuc % fissionable) call generate_nu_fission(nuc)
+
     case (ACE_THERMAL)
        sab => sab_tables(index_table)
        sab % name = name
@@ -366,6 +375,7 @@ contains
     allocate(nuc % total(NE))
     allocate(nuc % elastic(NE))
     allocate(nuc % fission(NE))
+    allocate(nuc % nu_fission(NE))
     allocate(nuc % absorption(NE))
     allocate(nuc % heating(NE))
 
@@ -373,6 +383,7 @@ contains
     nuc % total      = ZERO
     nuc % elastic    = ZERO
     nuc % fission    = ZERO
+    nuc % nu_fission = ZERO
     nuc % absorption = ZERO
     nuc % heating    = ZERO
 
@@ -1105,6 +1116,33 @@ contains
     end do
 
   end subroutine read_unr_res
+
+!===============================================================================
+! GENERATE_NU_FISSION precalculates the microscopic nu-fission cross section for
+! a given nuclide. This is done so that the nu_total function does not need to
+! be called during cross section lookups.
+!===============================================================================
+
+  subroutine generate_nu_fission(nuc)
+
+    type(Nuclide), pointer :: nuc
+
+    integer :: i  ! index on nuclide energy grid
+    real(8) :: E  ! energy
+    real(8) :: nu ! # of neutrons per fission
+
+    do i = 1, nuc % n_grid
+       ! determine energy
+       E = nuc % energy(i)
+
+       ! determine total nu at given energy
+       nu = nu_total(nuc, E)
+
+       ! determine nu-fission microscopic cross section
+       nuc % nu_fission(i) = nu * nuc % fission(i)
+    end do
+
+  end subroutine generate_nu_fission
 
 !===============================================================================
 ! READ_THERMAL_DATA reads elastic and inelastic cross sections and corresponding

@@ -81,6 +81,7 @@ module cross_section_header
      real(8), allocatable :: total(:)      ! total cross section
      real(8), allocatable :: elastic(:)    ! elastic scattering
      real(8), allocatable :: fission(:)    ! fission
+     real(8), allocatable :: nu_fission(:) ! neutron production
      real(8), allocatable :: absorption(:) ! absorption (MT > 100)
      real(8), allocatable :: heating(:)    ! heating
 

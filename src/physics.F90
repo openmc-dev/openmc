@@ -231,7 +231,6 @@ contains
     real(8) :: f_sab     ! interp factor on S(a,b) energy grid
     real(8) :: inelastic ! S(a,b) inelastic cross section
     real(8) :: elastic   ! S(a,b) elastic cross section
-    real(8) :: nu        ! total # of neutrons emitted per fission
     type(Nuclide),   pointer :: nuc => null()
     type(SAB_Table), pointer :: sab => null()
 
@@ -274,8 +273,8 @@ contains
             (ONE-f) * nuc % fission(IE) + f * nuc % fission(IE+1)
 
        ! Calculate microscopic nuclide nu-fission cross section
-       nu = nu_total(nuc, p % E)
-       micro_xs(index_nuclide) % nu_fission = nu * micro_xs(index_nuclide) % fission
+       micro_xs(index_nuclide) % nu_fission = &
+            (ONE-f) * nuc % nu_fission(IE) + f * nuc % nu_fission(IE+1)
     end if
 
     ! If there is S(a,b) data for this nuclide, we need to do a few

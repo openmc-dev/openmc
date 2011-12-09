@@ -30,13 +30,13 @@ ifeq ($(COMPILER),intel)
   F90FLAGS := -fpp -warn -assume byterecl
   LDFLAGS =
 
-  # Debugging options
+  # Debugging
   ifeq ($(DEBUG),yes)
     F90FLAGS += -g -traceback -ftrapuv -fp-stack-check -check all
     LDFLAGS  += -g
   endif
 
-  # Profiling options
+  # Profiling
   ifeq ($(PROFILE),yes)
     F90FLAGS += -pg
     LDFLAGS  += -pg
@@ -44,7 +44,7 @@ ifeq ($(COMPILER),intel)
 
   # Optimization
   ifeq ($(OPTIMIZE),yes)
-    F90FLAGS += -O3 # -ipo
+    F90FLAGS += -O3 -ipo
   endif
 endif
 
@@ -57,19 +57,20 @@ ifeq ($(COMPILER),gfortran)
   F90FLAGS := -cpp -Wall
   LDFLAGS =
 
-  # Debugging options
+  # Debugging
   ifeq ($(DEBUG),yes)
     F90FLAGS += -g -pedantic -std=f2008 -fbacktrace -fbounds-check \
                 -ffpe-trap=invalid,zero,overflow,underflow
     LDFLAGS  += -g
   endif
 
-  # Profiling options
+  # Profiling
   ifeq ($(PROFILE),yes)
     F90FLAGS += -pg
     LDFLAGS  += -pg
   endif
 
+  # Optimization
   ifeq ($(OPTIMIZE),yes)
     F90FLAGS += -O3
   endif
@@ -84,18 +85,19 @@ ifeq ($(COMPILER),pgi)
   F90FLAGS := -Mpreprocess -DNO_F2008 -Minform=inform
   LDFLAGS =
 
-  # Debugging options
+  # Debugging
   ifeq ($(DEBUG),yes)
     F90FLAGS += -g -Mbounds -Mchkptr -Mchkstk -traceback
     LDFLAGS  += -g
   endif
 
-  # Profiling options
+  # Profiling
   ifeq ($(PROFILE),yes)
     F90FLAGS += -pg
     LDFLAGS  += -pg
   endif
 
+  # Optimization
   ifeq ($(OPTIMIZE),yes)
     F90FLAGS += -fast -Mipa
   endif
@@ -109,10 +111,21 @@ ifeq ($(COMPILER),ibm)
   F90 = xlf2003
   F90FLAGS := -WF,-DNO_F2008
 
-  # Debugging options
+  # Debugging
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g
+    F90FLAGS += -g -C -qflag=i:i -u
     LDFLAGS  += -g
+  endif
+
+  # Profiling
+  ifeq ($(PROFILE),yes)
+    F90FLAGS += -p
+    LDFLAGS  += -p
+  endif
+
+  # Optimization
+  ifeq ($(OPTIMIZE),yes)
+    F90FLAGS += -O3
   endif
 endif
 
@@ -124,7 +137,7 @@ ifeq ($(COMPILER),cray)
   F90 = ftn
   F90FLAGS := -e Z -m 0
 
-  # Debugging options
+  # Debugging
   ifeq ($(DEBUG),yes)
     F90FLAGS += -g -R abcnsp -O0
     LDFLAGS  += -g

@@ -48,7 +48,7 @@ contains
        ! Find values at midpoint
        array_index = L + (R - L)/2
        testval = array(array_index)
-       if (val > testval) then
+       if (val >= testval) then
           L = array_index
        elseif (val < testval) then
           R = array_index

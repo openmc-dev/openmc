@@ -662,6 +662,7 @@ contains
        allocate(m % dimension(n))
        allocate(m % origin(n))
        allocate(m % width(n))
+       allocate(m % upper_right(n))
 
        ! Read dimensions in each direction
        m % dimension = mesh_(i) % dimension
@@ -681,6 +682,9 @@ contains
           call fatal_error()
        end if
        m % width = mesh_(i) % width
+
+       ! Set upper right coordinate
+       m % upper_right = m % origin + m % dimension * m % width
 
        ! Add mesh to dictionary
        call dict_add_key(mesh_dict, m % id, i)

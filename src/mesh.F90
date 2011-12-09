@@ -18,18 +18,39 @@ contains
     real(8), intent(in)           :: xyz(:)
     integer, intent(out)          :: bin
 
-    integer              :: n
-    integer, allocatable :: ijk(:)
-    logical              :: in_mesh
+    integer :: n
+    integer :: ijk(3)
+    logical :: in_mesh
 
     ! Get number of dimensions
     n = m % n_dimension
 
-    ! Create indices array same size as xyz
-    allocate(ijk(n))
-    
+    ! Check for cases where particle is outside of mesh
+    if (xyz(1) < m % origin(1)) then
+       bin = NO_BIN_FOUND
+       return
+    elseif (xyz(1) > m % upper_right(1)) then
+       bin = NO_BIN_FOUND
+       return
+    elseif (xyz(2) < m % origin(2)) then
+       bin = NO_BIN_FOUND
+       return
+    elseif (xyz(2) > m % upper_right(2)) then
+       bin = NO_BIN_FOUND
+       return
+    end if
+    if (n > 2) then
+       if (xyz(3) < m % origin(3)) then
+          bin = NO_BIN_FOUND
+          return
+       elseif (xyz(3) > m % upper_right(3)) then
+          bin = NO_BIN_FOUND
+          return
+       end if
+    end if
+
     ! Determine indices
-    call get_mesh_indices(m, xyz(1:n), ijk, in_mesh)
+    call get_mesh_indices(m, xyz(1:n), ijk(1:n), in_mesh)
 
     ! Convert indices to bin
     if (in_mesh) then
@@ -37,9 +58,6 @@ contains
     else
        bin = NO_BIN_FOUND
     end if
-
-    ! Release memory for ijk
-    deallocate(ijk)
 
   end subroutine get_mesh_bin
 

@@ -5,6 +5,7 @@ cross_section.o: datatypes_header.o
 cross_section.o: endf.o
 cross_section.o: error.o
 cross_section.o: fileio.o
+cross_section.o: fission.o
 cross_section.o: global.o 
 cross_section.o: material_header.o
 cross_section.o: output.o 

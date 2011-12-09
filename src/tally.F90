@@ -333,7 +333,6 @@ contains
     real(8) :: wgt
     real(8) :: mu
     real(8) :: E_out
-    logical :: in_mesh
     logical :: has_energyout_bin
     logical :: analog
     type(TallyObject),    pointer :: t
@@ -355,6 +354,18 @@ contains
 
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
+
+       ! determine mesh bin
+       if (t % n_bins(T_MESH) > 0) then
+          m => meshes(t % mesh)
+
+          ! Determine if we're in the mesh first
+          call get_mesh_bin(m, p % coord0 % xyz, mesh_bin)
+          if (mesh_bin == NO_BIN_FOUND) cycle
+          bins(T_MESH) = mesh_bin
+       else
+          bins(T_MESH) = 1
+       end if
 
        ! determine next universe bin
        if (t % n_bins(T_UNIVERSE) > 0) then
@@ -394,19 +405,6 @@ contains
           if (bins(T_SURFACE) == NO_BIN_FOUND) cycle
        else
           bins(T_SURFACE) = 1
-       end if
-
-       ! determine mesh bin
-       if (t % n_bins(T_MESH) > 0) then
-          m => meshes(t % mesh)
-
-          ! Determine if we're in the mesh first
-          call get_mesh_bin(m, p % coord0 % xyz, mesh_bin, in_mesh)
-          if (.not. in_mesh) cycle
-
-          bins(T_MESH) = mesh_bin
-       else
-          bins(T_MESH) = 1
        end if
 
        ! determine incoming energy bin

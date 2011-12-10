@@ -41,7 +41,10 @@ program main
      if (master) call write_tallies()
   end if
 
-  ! deallocate arrays
+ ! call cmfd calculation
+ call execute_cmfd()
+
+ ! deallocate arrays
   call free_memory()
   
 contains
@@ -131,9 +134,6 @@ contains
 
     ! Calculate statistics for tallies
     call tally_statistics()
-
-    ! call cmfd calculation
-    call execute_cmfd()
 
     if (master) call header("SIMULATION FINISHED", 1)
 

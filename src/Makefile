@@ -20,27 +20,60 @@ DEBUG       = no
 PROFILE     = no
 OPTIMIZE    = no
 USE_MPI     = no
-USE_OPENMP  = no
-USE_COARRAY = no
 
 #===============================================================================
-# Compiler Options
-#===============================================================================
-
 # Intel Fortran compiler options
+#===============================================================================
 
 ifeq ($(COMPILER),intel)
   F90 = ifort
-  F90FLAGS := -fpp -warn
+  F90FLAGS := -fpp -warn -assume byterecl
   LDFLAGS =
+
+  # Debugging
+  ifeq ($(DEBUG),yes)
+    F90FLAGS += -g -traceback -ftrapuv -fp-stack-check -check all
+    LDFLAGS  += -g
+  endif
+
+  # Profiling
+  ifeq ($(PROFILE),yes)
+    F90FLAGS += -pg
+    LDFLAGS  += -pg
+  endif
+
+  # Optimization
+  ifeq ($(OPTIMIZE),yes)
+    F90FLAGS += -O3 -ipo
+  endif
 endif
 
+#===============================================================================
 # GNU Fortran compiler options
+#===============================================================================
 
 ifeq ($(COMPILER),gfortran)
   F90 = gfortran
   F90FLAGS := -cpp -Wall
   LDFLAGS =
+
+  # Debugging
+  ifeq ($(DEBUG),yes)
+    F90FLAGS += -g -pedantic -std=f2008 -fbacktrace -fbounds-check \
+                -ffpe-trap=invalid,zero,overflow,underflow
+    LDFLAGS  += -g
+  endif
+
+  # Profiling
+  ifeq ($(PROFILE),yes)
+    F90FLAGS += -pg
+    LDFLAGS  += -pg
+  endif
+
+  # Optimization
+  ifeq ($(OPTIMIZE),yes)
+    F90FLAGS += -O3
+  endif
 endif
 
 # use petsc compiler
@@ -53,35 +86,77 @@ ifeq ($(COMPILER),petsc)
   LDFLAGS = ${PETSC_SYS_LIB}
 endif
 
-# Set compiler flags for debugging
+#===============================================================================
+# PGI compiler options
+#===============================================================================
 
-ifeq ($(DEBUG),yes)
-  F90FLAGS += -g 
-  LDFLAGS  += -g
-  ifeq ($(COMPILER),intel)
-    F90FLAGS += -traceback -ftrapuv -fp-stack-check -check all
+ifeq ($(COMPILER),pgi)
+  F90 = pgf90
+  F90FLAGS := -Mpreprocess -DNO_F2008 -Minform=inform
+  LDFLAGS =
+
+  # Debugging
+  ifeq ($(DEBUG),yes)
+    F90FLAGS += -g -Mbounds -Mchkptr -Mchkstk -traceback
+    LDFLAGS  += -g
   endif
-  ifeq ($(COMPILER),gfortran)
-    F90FLAGS += -pedantic -std=f2008 -fbacktrace -fbounds-check \
-                -ffpe-trap=invalid,zero,overflow,underflow
+
+  # Profiling
+  ifeq ($(PROFILE),yes)
+    F90FLAGS += -pg
+    LDFLAGS  += -pg
+  endif
+
+  # Optimization
+  ifeq ($(OPTIMIZE),yes)
+    F90FLAGS += -fast -Mipa
+  endif
+endif
+
+#===============================================================================
+# IBM XL compiler options
+#===============================================================================
+
+ifeq ($(COMPILER),ibm)
+  F90 = xlf2003
+  F90FLAGS := -WF,-DNO_F2008
+
+  # Debugging
+  ifeq ($(DEBUG),yes)
+    F90FLAGS += -g -C -qflag=i:i -u
+    LDFLAGS  += -g
+  endif
+
+  # Profiling
+  ifeq ($(PROFILE),yes)
+    F90FLAGS += -p
+    LDFLAGS  += -p
+  endif
+
+  # Optimization
+  ifeq ($(OPTIMIZE),yes)
+    F90FLAGS += -O3
   endif
 endif
 
-# Set compiler flags for profiling
+#===============================================================================
+# Cray compiler options
+#===============================================================================
 
-ifeq ($(PROFILE),yes)
-  F90FLAGS += -pg
-  LDFLAGS  += -pg
-endif
+ifeq ($(COMPILER),cray)
+  F90 = ftn
+  F90FLAGS := -e Z -m 0
 
-# Set compiler flags for high optimization
-
-ifeq ($(OPTIMIZE),yes)
-  F90FLAGS += -O3
-  ifeq ($(COMPILER),intel)
-    F90FLAGS += -ipo
+  # Debugging
+  ifeq ($(DEBUG),yes)
+    F90FLAGS += -g -R abcnsp -O0
+    LDFLAGS  += -g
   endif
 endif
+
+#===============================================================================
+# Miscellaneous compiler options
+#===============================================================================
 
 # Use MPI for parallelism
 
@@ -91,17 +166,14 @@ ifeq ($(USE_MPI),yes)
   F90FLAGS += -DMPI
 endif
 
-# Use OpenMP for shared-memory parallelism
+#===============================================================================
+# Special options for ORNL Jaguar supercomputer
+#===============================================================================
 
-ifeq ($(USE_OPENMP),yes)
-  F90FLAGS += -openmp
-  LDFLAGS += -openmp
-endif
-
-# Use Fortran 2008 Coarrays for parallelism
-
-ifeq ($(USE_COARRAY),yes)
-  F90FLAGS += -coarray
+HOSTNAME = $(shell hostname)
+ifneq (,$(findstring jaguar,$(HOSTNAME)))
+  F90 = ftn
+  F90FLAGS += -DMPI
 endif
 
 #===============================================================================
@@ -126,10 +198,10 @@ neat:
 # Rules
 #===============================================================================
 
-.SUFFIXES: .f90 .o
+.SUFFIXES: .F90 .o
 .PHONY: all xml-fortran clean neat distclean 
 
-%.o: %.f90
+%.o: %.F90
 	$(F90) -Ixml-fortran -Ixml-fortran/templates $(F90FLAGS) -c $<
 
 #===============================================================================

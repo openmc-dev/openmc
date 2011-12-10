@@ -19,6 +19,7 @@ cross_section.o: datatypes_header.o
 cross_section.o: endf.o
 cross_section.o: error.o
 cross_section.o: fileio.o
+cross_section.o: fission.o
 cross_section.o: global.o 
 cross_section.o: material_header.o
 cross_section.o: output.o 
@@ -87,9 +88,9 @@ initialize.o: geometry_header.o
 initialize.o: global.o
 initialize.o: input_xml.o
 initialize.o: logging.o
-initialize.o: mcnp_random.o
 initialize.o: mpi_routines.o
 initialize.o: output.o
+initialize.o: random_lcg.o
 initialize.o: source.o
 initialize.o: string.o
 initialize.o: tally.o
@@ -116,6 +117,7 @@ interpolation.o: endf_header.o
 interpolation.o: error.o
 interpolation.o: global.o
 interpolation.o: search.o
+interpolation.o: string.o
 
 logging.o: constants.o
 logging.o: global.o
@@ -124,12 +126,12 @@ main.o: cmfd_execute.o
 main.o: constants.o
 main.o: global.o
 main.o: initialize.o
-main.o: mcnp_random.o
 main.o: mpi_routines.o
 main.o: output.o
 main.o: particle_header.o
 main.o: physics.o
 main.o: plot.o
+main.o: random_lcg.o
 main.o: source.o
 main.o: string.o
 main.o: tally.o
@@ -140,10 +142,11 @@ mesh.o: mesh_header.o
 mpi_routines.o: constants.o
 mpi_routines.o: error.o
 mpi_routines.o: global.o
-mpi_routines.o: mcnp_random.o
 mpi_routines.o: output.o
 mpi_routines.o: particle_header.o
+mpi_routines.o: random_lcg.o
 mpi_routines.o: tally_header.o
+mpi_routines.o: timing.o
 
 output.o: constants.o
 output.o: datatypes.o
@@ -151,10 +154,12 @@ output.o: endf.o
 output.o: geometry_header.o
 output.o: global.o
 output.o: mesh_header.o
+output.o: particle_header.o
 output.o: string.o
 output.o: tally_header.o
 
 particle_header.o: constants.o
+particle_header.o: geometry_header.o
 
 physics.o: constants.o
 physics.o: cross_section_header.o
@@ -165,9 +170,9 @@ physics.o: geometry.o
 physics.o: geometry_header.o
 physics.o: global.o
 physics.o: interpolation.o
-physics.o: mcnp_random.o
 physics.o: output.o
 physics.o: particle_header.o
+physics.o: random_lcg.o
 physics.o: search.o
 physics.o: string.o
 physics.o: tally.o
@@ -186,11 +191,13 @@ search.o: global.o
 source.o: bank_header.o
 source.o: constants.o
 source.o: cross_section_header.o
+source.o: error.o
 source.o: global.o
-source.o: mcnp_random.o
 source.o: output.o
 source.o: particle_header.o
 source.o: physics.o
+source.o: random_lcg.o
+source.o: string.o
 
 string.o: constants.o
 string.o: error.o

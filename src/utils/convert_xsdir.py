@@ -4,6 +4,18 @@ import os
 import sys
 from xml.dom.minidom import getDOMImplementation
 
+elements = [None, "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na",
+            "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V",
+            "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se",
+            "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh",
+            "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba",
+            "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho",
+            "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt",
+            "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac",
+            "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm",
+            "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg",
+            "Cn"]
+
 class Xsdir(object):
 
     def __init__(self, filename):
@@ -192,11 +204,30 @@ class XsdirTable(object):
 
         # All other cases
         A = int(self.zaid) % 1000
-        if A > 600:
+        if A > 300:
             return 1
         else:
             return 0
 
+    @property
+    def alias(self):
+        zaid = self.zaid
+        Z = int(zaid[:-3])
+        A = zaid[-3:]
+
+        if A == '000':
+            s = 'Nat'
+        elif zaid == '95242':
+            s = '242m'
+        elif zaid == '95642':
+            s = '242'
+        elif int(A) > 300:
+            s = str(int(A) - 400) + "m"
+        else:
+            s = str(int(A))
+
+        return "{0}-{1}.{2}".format(elements[Z], s, self.xs)
+        
     @property
     def zaid(self):
         if self.name.endswith('c'):
@@ -204,19 +235,17 @@ class XsdirTable(object):
         else:
             return 0
 
+    @property
+    def xs(self):
+        return self.name[self.name.find('.')+1:]
+
     def to_xml_node(self, doc):
         node = doc.createElement("ace_table")
         node.setAttribute("name", self.name)
         for attribute in ["alias", "zaid", "type", "metastable", "awr", 
                           "temperature", "path", "location"]:
             if hasattr(self, attribute):
-                # Join string for alias attribute
-                if attribute == "alias":
-                    if not self.alias:
-                        continue
-                    string = " ".join(self.alias)
-                else:
-                    string = str(getattr(self,attribute))
+                string = str(getattr(self,attribute))
 
                 # Skip metastable and binary if 0
                 if attribute == "metastable" and self.metastable == 0:

@@ -94,6 +94,9 @@ could be written as::
 
     </geometry>
 
+``surface`` Element
+-------------------
+
 Each ``surface`` element can have the following attributes or sub-elements:
 
   :id:
@@ -117,6 +120,46 @@ Each ``surface`` element can have the following attributes or sub-elements:
     The boundary condition for the surface. This can be ``vacuum`` or ``reflective``.
 
     *Default*: ``reflective``
+
+The following quadratic surfaces can be modeled:
+
+  :x-plane:
+    A plane perpendicular to the x axis, i.e. a surface of the form :math:`x -
+    x_0 = 0`. The coefficients specified are ":math:`x_0`".
+
+  :y-plane:
+    A plane perpendicular to the y axis, i.e. a surface of the form :math:`y -
+    y_0 = 0`. The coefficients specified are ":math:`y_0`".
+
+  :z-plane:
+    A plane perpendicular to the z axis, i.e. a surface of the form :math:`z -
+    z_0 = 0`. The coefficients specified are ":math:`z_0`".
+
+  :plane:
+    An arbitrary plane of the form :math:`Ax + By + Cz = D`. The coefficients
+    specified are ":math:`A \: B \: C \: D`".
+
+  :x-cylinder:
+    An infinite cylinder whose length is paralle to the x-axis. This is a
+    quadratic surface of the form :math:`(y - y_0)^2 + (z - z_0)^2 = R^2`. The
+    coefficients specified are ":math:`y_0 \: z_0 \: R`".
+
+  :y-cylinder:
+    An infinite cylinder whose length is paralle to the y-axis. This is a
+    quadratic surface of the form :math:`(x - x_0)^2 + (z - z_0)^2 = R^2`. The
+    coefficients specified are ":math:`x_0 \: z_0 \: R`".
+
+  :z-cylinder:
+    An infinite cylinder whose length is paralle to the z-axis. This is a
+    quadratic surface of the form :math:`(x - x_0)^2 + (y - y_0)^2 = R^2`. The
+    coefficients specified are ":math:`x_0 \: y_0 \: R`".
+
+  :sphere:
+    A sphere of the form :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
+    R^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0 \: R`".
+
+``cell`` Element
+----------------
 
 Each ``cell`` element can have the following attributes or sub-elements:
 
@@ -151,42 +194,43 @@ Each ``cell`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
-The following quadratic surfaces can be modeled:
+``lattice`` Element
+-------------------
 
-:x-plane:
-  A plane perpendicular to the x axis, i.e. a surface of the form :math:`x - x_0
-  = 0`. The coefficients specified are ":math:`x_0`".
+The ``lattice`` can be used to represent repeating structures (e.g. fuel pins in
+an assembly) or other geometry which naturally fits into a two-dimensional
+structured mesh. Each cell within the lattice is filled with a specified
+universe. A ``lattice`` accepts the following attributes or sub-elements:
 
-:y-plane:
-  A plane perpendicular to the y axis, i.e. a surface of the form :math:`y - y_0
-  = 0`. The coefficients specified are ":math:`y_0`".
+  :id:
+    A unique integer that can be used to identify the surface.
 
-:z-plane:
-  A plane perpendicular to the z axis, i.e. a surface of the form :math:`z - z_0
-  = 0`. The coefficients specified are ":math:`z_0`".
+  :type:
+    A string indicating the arrangement of lattice cells. Accepted options are
+    "rectangular" and "hexagonal".
 
-:plane:
-  An arbitrary plane of the form :math:`Ax + By + Cz = D`. The coefficients
-  specified are ":math:`A \: B \: C \: D`".
+    *Default*: rectangular
 
-:x-cylinder:
-  An infinite cylinder whose length is paralle to the x-axis. This is a
-  quadratic surface of the form :math:`(y - y_0)^2 + (z - z_0)^2 = R^2`. The
-  coefficients specified are ":math:`y_0 \: z_0 \: R`".
+  :dimension:
+    Two integers representing the number of lattice cells in the x- and y-
+    directions, respectively.
 
-:y-cylinder:
-  An infinite cylinder whose length is paralle to the y-axis. This is a
-  quadratic surface of the form :math:`(x - x_0)^2 + (z - z_0)^2 = R^2`. The
-  coefficients specified are ":math:`x_0 \: z_0 \: R`".
+    *Default*: None
 
-:z-cylinder:
-  An infinite cylinder whose length is paralle to the z-axis. This is a
-  quadratic surface of the form :math:`(x - x_0)^2 + (y - y_0)^2 = R^2`. The
-  coefficients specified are ":math:`x_0 \: y_0 \: R`".
+  :origin:
+    The coordinates of the lower-left corner of the lattice.
 
-:sphere:
-  A sphere of the form :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
-  R^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0 \: R`".
+    *Default*: None
+
+  :width:
+    The width of the lattice cell in the x- and y- directions.
+
+    *Default*: None
+
+  :universes:
+    A list of the universe numbers that fill each cell of the lattice.
+
+    *Default*: None
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 
@@ -196,7 +240,13 @@ The following quadratic surfaces can be modeled:
 Materials Specification -- materials.xml
 ----------------------------------------
 
+``material`` Element
+--------------------
+
 Each ``material`` element can have the following attributes or sub-elements:
+
+  :id:
+    A unique integer that can be used to identify the material.
 
   :density:
     An element with attributes/sub-elements called ``value`` and ``units``. The
@@ -209,7 +259,6 @@ Each ``material`` element can have the following attributes or sub-elements:
     *Default*: None
 
   :nuclide:
-
     An element with attributes/sub-elements called ``name``, ``xs``, and ``ao``
     or ``wo``. The ``name`` attribute is the name of the cross-section for a
     desired nuclide while the ``xs`` attribute is the cross-section
@@ -225,25 +274,35 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+  :sab:
+    Associates an S(a,b) table with the material. This element has
+    attributes/sub-elements called ``name`` and ``xs``. The ``name`` attribute
+    is the name of the S(a,b) table that should be associated with the material,
+    and ``xs`` is the cross-section identifier for the table.
+
+    *Default*: None
+
+``default_xs`` Element
+----------------------
+
+In some circumstances, the cross-section identifier may be the same for many or
+all nuclides in a given problem. In this case, rather than specifying the
+``xs=...`` attribute on every nuclide, a ``default_xs`` element can be used to
+set the default cross-section identifier for any nuclide without an identifier
+explicitly listed. This element has no attributes and accepts a 3-letter string
+that indicates the default cross-section identifier, e.g. "70c".
+
+  *Default*: None
+
 --------------------------------------
 Settings Specification -- settings.xml
 --------------------------------------
 
 All simulation parameters and miscellaneous options are specified in the
-settings.xml file. The following elements can be specified:
+settings.xml file.
 
-- ``cross_sections``
-- ``criticality``
-- ``verbosity``
-- ``source``
-- ``survival_biasing``
-- ``cutoff``
-
-The ``cross_sections`` element has no attributes and simply indicates the path
-to an XML cross section listing file (usually named ``cross_sections.xml``. If
-this element is absent from the ``settings.xml`` file, the environment variable
-``CROSS_SECTIONS`` will be used to find the path to the XML cross section
-listing.
+``criticality`` Element
+-----------------------
 
 The ``criticality`` element indicates that a criticality calculation should be
 performed. It has the following attributes/sub-elements:
@@ -266,14 +325,25 @@ performed. It has the following attributes/sub-elements:
 
     *Default*: None
 
-The ``verbosity`` element tells the code how much information to display to the
-standard output. A higher verbosity corresponds to more information being
-displayed. This element takes the following attributes:
+``cross_sections`` Element
+--------------------------
 
-  :value:
-    The specified verbosity between 1 and 10.
+The ``cross_sections`` element has no attributes and simply indicates the path
+to an XML cross section listing file (usually named cross_sections.xml). If this
+element is absent from the settings.xml file, the environment variable
+``CROSS_SECTIONS`` will be used to find the path to the XML cross section
+listing.
 
-    *Default*: 5
+``cutoff`` Element
+------------------
+
+The ``cutoff`` element has no attributes and indicates the weight cutoff used
+below which particles undergo Russian roulette.
+
+  *Default*: 0.25
+
+``source`` Element
+------------------
 
 The ``source`` element gives information on an initial source guess for
 criticality calculations. It takes the following attributes:
@@ -288,16 +358,26 @@ criticality calculations. It takes the following attributes:
     and the last three of which specify the upper-right corner. Source sites are
     sampled uniformly through that parallelepiped.
 
-The ``survival_biasing`` element as no attributes and assumes wither the
+``survival_biasing`` Element
+----------------------------
+
+The ``survival_biasing`` element has no attributes and assumes wither the
 value ``on`` or ``off``. If turned on, this option will enable the use of
 survival biasing, otherwise known as implicit capture or absorption.
 
   *Default*: off
 
-The ``cutoff`` element has no attributes and indicates the weight cutoff used
-below which particles undergo Russian roulette.
+``verbosity`` Element
+---------------------
 
-  *Default*: 0.25
+The ``verbosity`` element tells the code how much information to display to the
+standard output. A higher verbosity corresponds to more information being
+displayed. This element takes the following attributes:
+
+  :value:
+    The specified verbosity between 1 and 10.
+
+    *Default*: 5
 
 ------------------------------------
 Tallies Specification -- tallies.xml
@@ -317,8 +397,12 @@ filters can be used for a tally. The following types of filter are available:
 cell, universe, material, surface, birth region, pre-collision energy,
 post-collision energy, and an arbitrary structured mesh.
 
-The two valid elements in the tallies.xml file are ``tally`` and ``mesh``. The
-``tally`` element accepts the following sub-elements:
+The two valid elements in the tallies.xml file are ``tally`` and ``mesh``.
+
+``tally`` Element
+-----------------
+
+The ``tally`` element accepts the following sub-elements:
 
   :filters:
     A list of filters to specify what region of phase space should contribute to
@@ -398,6 +482,9 @@ The following responses can be tallied.
   :nu-fission:
     Total production of neutrons due to fission
 
+``mesh`` Element
+----------------
+
 If a structured mesh is desired as a filter for a tally, it must be specified in
 a separate element with the tag name ``mesh``. This element has the following
 attributes/sub-elements:
@@ -415,3 +502,47 @@ attributes/sub-elements:
 
   :width:
     The width of mesh cells in each direction.
+
+-------------------------------------------
+Geometry Plotting Specification -- plot.xml
+-------------------------------------------
+
+A rudimentary plotting capability is available in OpenMC by specifying a
+plot.xml file and subsequently running with the command-line flag ``-plot``. The
+root element of the plot.xml is simply ``<plot>`` and four sub-elements can be
+defined to configure the plotting range and resolution.
+
+``origin`` Element
+------------------
+
+The ``origin`` element has no attributes/sub-elements and indicates the
+Cartesian coordinates of the center of the plot.
+
+  *Default*: None
+
+``width`` Element
+-----------------
+
+The ``width`` element has no attributes/sub-elements and indicates the width of
+the plot in each of the basis directions.
+
+  *Default*: None
+
+``basis`` Element
+-----------------
+
+The ``basis`` element has no attributes/sub-elements and indicates the specified
+basis for plotting.
+
+  .. note:: The only accepted option currently is "xy"
+
+  *Default*: xy
+
+``pixel`` Element
+-----------------
+
+The ``pixel`` element has no attributes/sub-elements and indicates the distance
+between horizontal rays sent through the geometry to record surface crossings. A
+smaller ``pixel`` will result in a higher-resolution plot.
+
+  *Default*: 0.01

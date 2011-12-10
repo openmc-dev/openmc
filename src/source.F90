@@ -45,11 +45,11 @@ contains
     ! Allocate source bank
     allocate(source_bank(maxwork), STAT=alloc_err)
     if (alloc_err /= 0) then
-#ifndef NO_F2008
-       bytes = maxwork * storage_size(bank_obj) / 8
-#else
+!#ifndef NO_F2008
+!      bytes = maxwork * storage_size(bank_obj) / 8
+!#else
        bytes = maxwork * 64 / 8
-#endif
+!#endif
        message = "Could not allocate source bank. Attempted to allocate " &
             // trim(int_to_str(bytes)) // " bytes."
        call fatal_error()
@@ -58,11 +58,11 @@ contains
     ! Allocate fission bank
     allocate(fission_bank(3*maxwork), STAT=alloc_err)
     if (alloc_err /= 0) then
-#ifndef NO_F2008
-       bytes = 3 * maxwork * storage_size(bank_obj) / 8
-#else
+!#ifndef NO_F2008
+!      bytes = 3 * maxwork * storage_size(bank_obj) / 8
+!#else
        bytes = 3 * maxwork * 64 / 8
-#endif
+!#endif
        message = "Could not allocate fission bank. Attempted to allocate " &
             // trim(int_to_str(bytes)) // " bytes."
        call fatal_error()

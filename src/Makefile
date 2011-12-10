@@ -77,10 +77,9 @@ ifeq ($(COMPILER),gfortran)
 endif
 
 # use petsc compiler
-
 ifeq ($(COMPILER),petsc)
   F90 = ${FLINKER}
-  F90FLAGS := -cpp -ffree-form
+  F90FLAGS := -cpp -ffree-form -I ${PETSC_DIR}/include
   include ${PETSC_DIR}/conf/variables
   include ${PETSC_DIR}/conf/rules
   LDFLAGS = ${PETSC_SYS_LIB}

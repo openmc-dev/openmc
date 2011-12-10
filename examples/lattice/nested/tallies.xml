@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <mesh id="1">
+    <type>rectangular</type>
+    <dimension>4 4</dimension>
+    <origin>-2.0 -2.0</origin>
+    <width>1.0 1.0</width>
+  </mesh>
+
+  <tally id="1">
+    <filters>
+      <mesh>1</mesh>
+    </filters>
+
+    <macros>total</macros>
+  </tally>
+
+</tallies>

@@ -23,7 +23,6 @@ input_xml.o \
 logging.o \
 main.o \
 material_header.o \
-mcnp_random.o \
 mesh_header.o \
 mesh.o \
 mpi_routines.o \
@@ -31,6 +30,7 @@ output.o \
 particle_header.o \
 physics.o \
 plot.o \
+random_lcg.o \
 search.o \
 source.o \
 source_header.o \

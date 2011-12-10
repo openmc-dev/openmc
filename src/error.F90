@@ -1,0 +1,75 @@
+module error
+
+  use ISO_FORTRAN_ENV
+
+  use global, only: master, free_memory, message
+
+  implicit none
+
+  ! Short names for output and error units
+  integer :: ou = OUTPUT_UNIT
+  integer :: eu = ERROR_UNIT
+
+contains
+
+!===============================================================================
+! WARNING issues a warning to the user in the log file and the standard output
+! stream.
+!===============================================================================
+
+  subroutine warning()
+
+    integer :: n_lines ! number of lines
+    integer :: i       ! loop index for lines
+
+    ! Only allow master to print to screen
+    if (.not. master) return
+
+    write(ou, fmt='(1X,A9)', advance='no') 'WARNING: '
+
+    n_lines = (len_trim(message)-1)/70 + 1
+    do i = 1, n_lines
+       if (i == 1) then
+          write(ou, fmt='(A70)') message(70*(i-1)+1:70*i)
+       else
+          write(ou, fmt='(10X,A70)') message(70*(i-1)+1:70*i)
+       end if
+    end do
+
+  end subroutine warning
+
+!===============================================================================
+! FATAL_ERROR alerts the user that an error has been encountered and displays a
+! message about the particular problem. Errors are considered 'fatal' and hence
+! the program is aborted.
+!===============================================================================
+
+  subroutine fatal_error()
+
+    integer :: n_lines ! number of lines
+    integer :: i       ! loop index over lines
+
+    ! Only allow master to print to screen
+    if (master) then
+       write(eu, fmt='(1X,A7)', advance='no') 'ERROR: '
+
+       n_lines = (len_trim(message)-1)/72 + 1
+       do i = 1, n_lines
+          if (i == 1) then
+             write(eu, fmt='(A72)') message(72*(i-1)+1:72*i)
+          else
+             write(eu, fmt='(7X,A72)') message(72*(i-1)+1:72*i)
+          end if
+       end do
+       write(eu,*)
+    end if
+
+    ! Release memory from all allocatable arrays
+    call free_memory()
+
+    ! Abort program
+    stop
+
+  end subroutine fatal_error
+
+end module error

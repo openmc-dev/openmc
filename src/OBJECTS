@@ -17,7 +17,6 @@ global.o \
 initialize.o \
 interpolation.o \
 input_xml.o \
-logging.o \
 main.o \
 material_header.o \
 mesh_header.o \

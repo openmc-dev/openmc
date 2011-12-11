@@ -17,9 +17,49 @@ contains
 ! READ_INPUT reads the CMFD input file and organizes it into a data structure
 !===============================================================================
 
-  subroutine read_input()
+  subroutine read_cmfd_xml()
 
-  end subroutine read_input
+    use xml_data_cmfd_t
+
+    integer :: ng=1        ! number of energy groups (default 1)
+    integer :: n_words     ! number of words read
+    logical :: file_exists ! does cmfd.xml exist?
+    character(MAX_LINE_LEN) :: filename
+    character(MAX_WORD_LEN) :: words(MAX_WORDS)
+
+    ! read cmfd infput file
+    filename = trim(path_input) // "cmfd.xml"
+    inquire(FILE=filename, EXIST=file_exists)
+    if (.not. file_exists) then
+      write(*,*) "Cannot perform CMFD"
+      STOP
+    end if
+
+    ! parse cmfd.xml file
+    call read_xml_file_cmfd_t(filename)
+
+    ! set spatial dimensions in cmfd object
+    cmfd % indices(1:3) = mesh_ % dimension(1:3) ! sets spatial dimensions
+
+    ! get number of energy groups
+    if (len_trim(mesh_ % energy) > 0) then
+      call split_string(mesh_ % energy, words, n_words)
+      ng = n_words
+    end if
+    cmfd % indices(4) = ng  ! sets energy group dimension
+
+    ! set global albedo
+    cmfd % albedo = mesh_ % albedo
+
+    ! get acceleration map
+    allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2),              &
+   &         cmfd % indices(3)))
+    cmfd % coremap = reshape(mesh_ % map,(cmfd % indices(1:3)))
+
+    ! create tally objects
+    call create_cmfd_tally()
+
+  end subroutine read_cmfd_xml
 
 !===============================================================================
 ! GET_MATRIX_IDX takes (x,y,z,g) indices and computes location in matrix 
@@ -106,7 +146,7 @@ contains
 
   subroutine create_cmfd_tally()
 
-    use xml_data_cmfd_t
+    use xml_data_cmfd_t 
 
     integer :: i           ! loop counter
     integer :: j           ! loop counter
@@ -115,22 +155,14 @@ contains
     integer :: n           ! size of arrays in mesh specification
     integer :: ng=1        ! number of energy groups (default 1)
     integer :: n_words     ! number of words read
-    logical :: file_exists ! does cmfd.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: words(MAX_WORDS)
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 
-    ! check if cmfd.xml exists
-    filename = trim(path_input) // "cmfd.xml"
-    inquire(FILE=filename, EXIST=file_exists)
-    if (.not. file_exists) then
-      write(*,*) "Cannot perform CMFD"
-      STOP
-    end if
-
     ! parse cmfd.xml file
-    call read_xml_file_cmfd_t(filename)
+     filename = trim(path_input) // "cmfd.xml"
+     call read_xml_file_cmfd_t(filename)
 
     ! allocate mesh
     n_meshes = 1
@@ -281,13 +313,6 @@ contains
       end if
 
     end do
-
-    ! set dimensions in cmfd object
-    cmfd % indices(1:3) = m % dimension(1:3) ! sets spatial dimensions
-    cmfd % indices(4) = ng  ! sets energy group dimension
-
-    ! set global albedo
-    cmfd % albedo = mesh_ % albedo
 
   end subroutine create_cmfd_tally
 

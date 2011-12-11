@@ -8,9 +8,10 @@
     <component name="origin" type="double-array" />
     <component name="width" type="double-array" />
     <component name="albedo" type="double-array" />
+    <component name="map" type="integer-array" />
+    <component name="energy" type="word" length="250" default="''" />
   </typedef>
 
   <variable name="mesh_" tag="mesh" type="mesh_xml" />
-  <variable name="energy_" tag="energy" type="word" length="250" default="''" />
 
 </template>

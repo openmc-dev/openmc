@@ -49,9 +49,6 @@ module cmfd_header
     ! core map for xs association
     integer, allocatable :: coremap(:,:,:)
 
-    ! we may need to add the mesh object
-    ! add accumulation of important parameters
-
   end type cmfd_obj
 
 end module cmfd_header

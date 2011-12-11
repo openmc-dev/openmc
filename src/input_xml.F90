@@ -1,6 +1,6 @@
 module input_xml
 
-  use cmfd_utils,      only: create_cmfd_tally
+  use cmfd_utils,      only: read_cmfd_xml 
   use constants
   use datatypes,       only: dict_create, dict_add_key, dict_has_key,          &
                              dict_get_key
@@ -31,7 +31,7 @@ contains
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
-    call create_cmfd_tally()
+    call read_cmfd_xml()
     if (plotting) call read_plot_xml()
 
   end subroutine read_input_xml

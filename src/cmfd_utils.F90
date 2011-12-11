@@ -155,6 +155,7 @@ contains
     allocate(m % dimension(n))
     allocate(m % origin(n))
     allocate(m % width(n))
+    allocate(m % upper_right(n))
 
     ! read dimensions in each direction
     m % dimension = mesh_ % dimension
@@ -174,6 +175,9 @@ contains
        call fatal_error()
     end if
     m % width = mesh_ % width
+
+    ! set upper right coordinate
+    m % upper_right = m % origin + m % dimension * m % width
 
     ! add mesh to dictionary
     call dict_add_key(mesh_dict, m % id, 1)
@@ -203,8 +207,8 @@ contains
       t % n_bins(T_MESH) = t % n_bins(T_MESH) + product(m % dimension)
 
       ! read and set incoming energy mesh filter
-      if (len_trim(energy_) > 0) then
-        call split_string(energy_,words,n_words)
+      if (len_trim(mesh_ % energy) > 0) then
+        call split_string(mesh_ % energy,words,n_words)
         ng = n_words
         allocate(t % energy_in(n_words))
         do j = 1,n_words
@@ -227,8 +231,8 @@ contains
       else if (i == 2) then
 
         ! read and set outgoing energy mesh filter
-        if (len_trim(energy_) > 0) then
-          call split_string(energy_, words, n_words)
+        if (len_trim(mesh_ % energy) > 0) then
+          call split_string(mesh_ % energy, words, n_words)
           allocate(t % energy_out(n_words))
           do j = 1, n_words
             t % energy_out(j) = str_to_real(words(j))

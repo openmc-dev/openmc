@@ -43,10 +43,10 @@ program main
      if (master) call print_runtime()
   end if
 
- ! call cmfd calculation
- call execute_cmfd()
+  ! call cmfd calculation
+  call execute_cmfd()
 
- ! deallocate arrays
+  ! deallocate arrays
   call free_memory()
   
 contains

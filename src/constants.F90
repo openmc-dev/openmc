@@ -280,9 +280,9 @@ module constants
        PROB_CRITICALITY = 2    ! Criticality problem
 
   ! Unit numbers
-  integer, parameter :: UNIT_LOG   = 11 ! unit # for writing log file
-  integer, parameter :: UNIT_TALLY = 12 ! unit # for writing tally file
-  integer, parameter :: UNIT_PLOT  = 13 ! unit # for writing plot file
+  integer, parameter :: UNIT_SUMMARY = 11 ! unit # for writing summary file
+  integer, parameter :: UNIT_TALLY   = 12 ! unit # for writing tally file
+  integer, parameter :: UNIT_PLOT    = 13 ! unit # for writing plot file
 
 end module constants
 

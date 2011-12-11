@@ -58,7 +58,7 @@ contains
     integer(8)              :: i_particle  ! history index
     type(Particle), pointer :: p => null()
 
-    if (master) call header("BEGIN SIMULATION", 1)
+    if (master) call header("BEGIN SIMULATION", level=1)
 
     tallies_on = .false.
     call timer_start(time_inactive)
@@ -142,7 +142,7 @@ contains
     ! ==========================================================================
     ! END OF RUN WRAPUP
 
-    if (master) call header("SIMULATION FINISHED", 1)
+    if (master) call header("SIMULATION FINISHED", level=1)
 
   end subroutine run_problem
 

@@ -72,7 +72,6 @@ initialize.o: geometry.o
 initialize.o: geometry_header.o
 initialize.o: global.o
 initialize.o: input_xml.o
-initialize.o: logging.o
 initialize.o: mpi_routines.o
 initialize.o: output.o
 initialize.o: random_lcg.o
@@ -102,9 +101,6 @@ interpolation.o: error.o
 interpolation.o: global.o
 interpolation.o: search.o
 interpolation.o: string.o
-
-logging.o: constants.o
-logging.o: global.o
 
 main.o: constants.o
 main.o: global.o

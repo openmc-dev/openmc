@@ -12,10 +12,9 @@ module initialize
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict
-  use logging,          only: create_log
   use mpi_routines,     only: setup_mpi
   use output,           only: title, header, print_summary, print_geometry,    &
-                              print_plot
+                              print_plot, create_summary_file
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use string,           only: int_to_str, starts_with, ends_with, lower_case
@@ -47,13 +46,13 @@ contains
 
     ! Read command line arguments
     call read_command_line()
-    if (master) call create_log()
+    if (master) call create_summary_file()
 
     ! Print the OpenMC title and version/date/time information
     if (master) call title()
 
     ! Print initialization header block
-    if (master) call header("INITIALIZATION", 1)
+    if (master) call header("INITIALIZATION", level=1)
 
     ! Initialize random number generator
     call initialize_prng()

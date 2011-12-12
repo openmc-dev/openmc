@@ -58,7 +58,7 @@ contains
     ! Write information to summary file
     call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
     write(UNIT=UNIT_SUMMARY, FMT=*) &
-         "Copyright:   2010 Massachusetts Institute of Technology"
+         "Copyright:   2011 Massachusetts Institute of Technology"
     write(UNIT=UNIT_SUMMARY, FMT='(1X,A,5X,2(I1,"."),I1)') &
          "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
     write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",3X,A,1X,A)') &

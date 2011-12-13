@@ -44,7 +44,7 @@ contains
     ! get number of energy groups
     if (len_trim(mesh_ % energy) > 0) then
       call split_string(mesh_ % energy, words, n_words)
-      ng = n_words
+      ng = n_words - 1
     end if
     cmfd % indices(4) = ng  ! sets energy group dimension
 
@@ -52,9 +52,11 @@ contains
     cmfd % albedo = mesh_ % albedo
 
     ! get acceleration map
-    allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2),              &
-   &         cmfd % indices(3)))
-    cmfd % coremap = reshape(mesh_ % map,(cmfd % indices(1:3)))
+    if (associated(mesh_ % map)) then
+      allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2),            &
+     &         cmfd % indices(3)))
+      cmfd % coremap = reshape(mesh_ % map,(cmfd % indices(1:3)))
+   end if
 
     ! create tally objects
     call create_cmfd_tally()

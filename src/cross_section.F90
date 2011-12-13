@@ -12,7 +12,7 @@ module cross_section
   use fission,              only: nu_total
   use global
   use material_header,      only: Material
-  use output,               only: write_message
+  use output,               only: write_message, print_nuclide, header
   use string,               only: split_string, str_to_int, str_to_real, &
                                   lower_case, int_to_str
 
@@ -137,6 +137,9 @@ contains
     ! ==========================================================================
     ! READ ALL ACE CROSS SECTION TABLES
 
+    ! display header in summary.out
+    if (master) call header("CROSS SECTION TABLES", unit=UNIT_SUMMARY)
+
     call dict_create(already_read)
 
     ! Loop over all files
@@ -153,6 +156,10 @@ contains
              alias = xs_listings(index_list) % alias
 
              call read_ace_table(index_nuclides, index_list)
+
+             ! Print out information on table to summary.out file
+             nuc => nuclides(index_nuclides)
+             if (master) call print_nuclide(nuc, unit=UNIT_SUMMARY)
 
              call dict_add_key(already_read, name, 0)
              call dict_add_key(already_read, alias, 0)
@@ -634,6 +641,8 @@ contains
     rxn % Q_value = ZERO
     rxn % TY      = 1
     rxn % IE      = 1
+    rxn % has_angle_dist = .false.
+    rxn % has_energy_dist = .false.
     allocate(rxn % sigma(nuc % n_grid))
     rxn % sigma = nuc % elastic
     
@@ -649,6 +658,10 @@ contains
 
     do i = 1, NMT
        rxn => nuc % reactions(i+1)
+
+       ! set defaults
+       rxn % has_angle_dist  = .false.
+       rxn % has_energy_dist = .false.
 
        ! read MT number, Q-value, and neutrons produced
        rxn % MT      = int(XSS(LMT + i - 1))
@@ -701,10 +714,6 @@ contains
           nuc % index_fission(i_fission) = i + 1
           nuc % n_fission = nuc % n_fission + 1
        end if
-
-       ! set defaults
-       rxn % has_angle_dist  = .false.
-       rxn % has_energy_dist = .false.
     end do
 
   end subroutine read_reactions

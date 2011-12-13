@@ -52,17 +52,25 @@ contains
 
     ! Write the date and time
     call get_today(today_date, today_time)
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",5X,A,1X,A/)') &
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",5X,A,1X,A)') &
          trim(today_date), trim(today_time)
 
     ! Write information to summary file
     call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
     write(UNIT=UNIT_SUMMARY, FMT=*) &
-         "Copyright:   2011 Massachusetts Institute of Technology"
-    write(UNIT=UNIT_SUMMARY, FMT='(1X,A,5X,2(I1,"."),I1)') &
+         "Copyright:     2011 Massachusetts Institute of Technology"
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
          "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
-    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",3X,A,1X,A)') &
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A,1X,A)') &
          trim(today_date), trim(today_time)
+
+    ! Write information on number of processors
+#ifdef MPI
+    write(UNIT=OUTPUT_UNIT, FMT='(1X,A)') '     MPI Processes: ' // &
+         trim(int_to_str(n_procs))
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"MPI Processes:",1X,A)') &
+         trim(int_to_str(n_procs))
+#endif
 
   end subroutine title
 

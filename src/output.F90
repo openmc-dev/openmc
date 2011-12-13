@@ -3,7 +3,7 @@ module output
   use ISO_FORTRAN_ENV
 
   use constants
-  use cross_section_header, only: Reaction
+  use cross_section_header, only: Nuclide, Reaction
   use datatypes,            only: dict_get_key
   use endf,                 only: reaction_name
   use geometry_header,      only: Cell, Universe, Surface
@@ -710,6 +710,83 @@ contains
     end if
 
   end subroutine print_geometry
+
+!===============================================================================
+! PRINT_NUCLIDE displays information about a continuous-energy neutron
+! cross_section table and its reactions and secondary angle/energy distributions
+!===============================================================================
+
+  subroutine print_nuclide(nuc, unit)
+
+    type(Nuclide), pointer :: nuc
+    integer,      optional :: unit
+
+    integer :: i
+    integer :: unit_
+    integer :: size_total
+    integer :: size_xs
+    integer :: size_angle
+    integer :: size_energy
+    type(Reaction), pointer :: rxn => null()
+
+    ! set default unit for writing information
+    if (present(unit)) then
+       unit_ = unit
+    else
+       unit_ = OUTPUT_UNIT
+    end if
+
+    ! Determine size of cross-sections
+    size_xs = (5 + nuc % n_reaction) * nuc % n_grid * 8
+    size_total = size_xs
+
+    ! Basic nuclide information
+    write(unit_,*) 'Nuclide ' // trim(nuc % name)
+    write(unit_,*) '  zaid = ' // trim(int_to_str(nuc % zaid))
+    write(unit_,*) '  awr = ' // trim(real_to_str(nuc % awr))
+    write(unit_,*) '  kT = ' // trim(real_to_str(nuc % kT))
+    write(unit_,*) '  # of grid points = ' // trim(int_to_str(nuc % n_grid))
+    write(unit_,*) '  Fissionable = ', nuc % fissionable
+    write(unit_,*) '  # of fission reactions = ' // trim(int_to_str(nuc % n_fission))
+    write(unit_,*) '  # of reactions = ' // trim(int_to_str(nuc % n_reaction))
+    write(unit_,*) '  Size of cross sections = ' // trim(int_to_str(&
+         size_xs)) // ' bytes'
+
+    write(unit_,*) '  Reaction    Q-value   Mult    IE    size(angle) size(energy)'
+    do i = 1, nuc % n_reaction
+       ! Information on each reaction
+       rxn => nuc % reactions(i)
+
+       ! Determine size of angle distribution
+       if (rxn % has_angle_dist) then
+          size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
+       else
+          size_angle = 0
+       end if
+
+       ! Determine size of energy distribution
+       if (rxn % has_energy_dist) then
+          size_energy = size(rxn % edist % data) * 8
+       else
+          size_energy = 0
+       end if
+
+       write(unit_,'(3X,A11,1X,F8.3,2X,I3,3X,I6,1X,I11,1X,I11)') &
+            reaction_name(rxn % MT), rxn % Q_value, rxn % TY, rxn % IE, &
+            size_angle, size_energy
+
+       ! Accumulate data size
+       size_total = size_total + size_angle + size_energy
+    end do
+
+    ! Write total memory used
+    write(unit_,*) '  Total memory used = ' // trim(int_to_str(size_total)) &
+         // ' bytes'
+
+    ! Blank line at end of nuclide
+    write(unit_,*)
+
+  end subroutine print_nuclide
 
 !===============================================================================
 ! PRINT_SUMMARY displays summary information about the problem about to be run

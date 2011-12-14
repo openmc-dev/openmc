@@ -183,7 +183,7 @@ contains
 #endif
 
 100 format (2X,I5,2X,F8.5)
-101 format (2X,I5,2X,F8.5,9X,F8.5," +/-",F8.5)
+101 format (2X,I5,2X,F8.5,5X,F8.5," +/-",F8.5)
 102 format (2X,I5,2X,F8.5,3X,F8.5)
 103 format (2X,I5,2X,F8.5,3X,F8.5,3X,F8.5," +/-",F8.5)
 

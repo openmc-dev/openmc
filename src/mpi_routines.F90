@@ -386,7 +386,8 @@ contains
        tally_temp = t % scores(:,:) % val_history
 
        if (master) then
-          ! Description of MPI_IN_PLANE
+          ! The MPI_IN_PLACE specifier allows the master to copy values into a
+          ! receive buffer without having a temporary variable
           call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
                0, MPI_COMM_WORLD, mpi_err)
 

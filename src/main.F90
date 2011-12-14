@@ -65,10 +65,17 @@ contains
     call timer_start(time_inactive)
 
     ! Display column titles
-    message = " Cycle   k(cycle)   Entropy         Average k"
-    call write_message(1)
-    message = " =====   ========   =======    ==================="
-    call write_message(1)
+    if (entropy_on) then
+       message = " Cycle   k(cycle)   Entropy         Average k"
+       call write_message(1)
+       message = " =====   ========   =======    ==================="
+       call write_message(1)
+    else
+       message = " Cycle   k(cycle)          Average k"
+       call write_message(1)
+       message = " =====   ========     ==================="
+       call write_message(1)
+    end if
 
     ! ==========================================================================
     ! LOOP OVER CYCLES

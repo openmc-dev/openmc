@@ -1,13 +1,11 @@
 module tally
 
-  use ISO_FORTRAN_ENV
-
   use constants
   use error,         only: fatal_error
   use global
   use mesh,          only: get_mesh_bin, bin_to_mesh_indices, get_mesh_indices
   use mesh_header,   only: StructuredMesh
-  use output,        only: write_message, header
+  use output,        only: header
   use search,        only: binary_search
   use string,        only: int_to_str, real_to_str
   use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement
@@ -22,81 +20,6 @@ module tally
   integer, allocatable :: position(:)
 
 contains
-
-!===============================================================================
-! CALCULATE_KEFF calculates the single cycle estimate of keff as well as the
-! mean and standard deviation of the mean for active cycles and displays them
-!===============================================================================
-
-  subroutine calculate_keff(i_cycle)
-
-    integer, intent(in) :: i_cycle ! index of current cycle
-
-    integer(8)    :: total_bank ! total number of source sites
-    integer       :: n          ! active cycle number
-    real(8)       :: k_cycle    ! single cycle estimate of keff
-    real(8), save :: k_sum      ! accumulated keff
-    real(8), save :: k_sum_sq   ! accumulated keff**2
-
-    message = "Calculate cycle keff..."
-    call write_message(8)
-
-    ! initialize sum and square of sum at beginning of run
-    if (i_cycle == 1) then
-       k_sum = ZERO
-       k_sum_sq = ZERO
-    end if
-
-#ifdef MPI
-    ! Collect number bank sites onto master process
-    call MPI_REDUCE(n_bank, total_bank, 1, MPI_INTEGER8, MPI_SUM, 0, &
-         & MPI_COMM_WORLD, mpi_err)
-#else
-    total_bank = n_bank
-#endif
-
-    ! Collect statistics and print output
-    if (master) then
-       ! Since the creation of bank sites was originally weighted by the last
-       ! cycle keff, we need to multiply by that keff to get the current cycle's
-       ! value
-
-       k_cycle = real(total_bank)/real(n_particles)*keff
-
-       if (i_cycle > n_inactive) then
-          ! Active cycle number
-          n = i_cycle - n_inactive
-
-          ! Accumulate cycle estimate of k
-          k_sum =    k_sum    + k_cycle
-          k_sum_sq = k_sum_sq + k_cycle*k_cycle
-
-          ! Determine mean and standard deviation of mean
-          keff = k_sum/n
-          keff_std = sqrt((k_sum_sq/n - keff*keff)/n)
-
-          ! Display output for this cycle
-          if (i_cycle > n_inactive+1) then
-             write(UNIT=OUTPUT_UNIT, FMT=101) i_cycle, k_cycle, keff, keff_std
-          else
-             write(UNIT=OUTPUT_UNIT, FMT=100) i_cycle, k_cycle
-          end if
-       else
-          ! Display output for inactive cycle
-          write(UNIT=OUTPUT_UNIT, FMT=100) i_cycle, k_cycle
-          keff = k_cycle
-       end if
-    end if
-
-#ifdef MPI
-    ! Broadcast new keff value to all processors
-    call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
-#endif
-
-100 format (2X,I5,2X,F8.5)
-101 format (2X,I5,2X,F8.5,9X,F8.5,1X,F8.5)
-
-  end subroutine calculate_keff
 
 !===============================================================================
 ! CREATE_TALLY_MAP creates a map that allows a quick determination of which

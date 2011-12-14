@@ -95,6 +95,9 @@ input_xml.o: xml-fortran/templates/materials_t.o
 input_xml.o: xml-fortran/templates/settings_t.o
 input_xml.o: xml-fortran/templates/tallies_t.o
 
+intercycle.o: global.o
+intercycle.o: error.o
+
 interpolation.o: constants.o
 interpolation.o: endf_header.o
 interpolation.o: error.o
@@ -105,6 +108,7 @@ interpolation.o: string.o
 main.o: constants.o
 main.o: global.o
 main.o: initialize.o
+main.o: intercycle.o
 main.o: mpi_routines.o
 main.o: output.o
 main.o: particle_header.o

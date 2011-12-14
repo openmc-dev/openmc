@@ -3,7 +3,7 @@ program main
   use constants
   use global
   use initialize,      only: initialize_run
-  use intercycle,      only: shannon_entropy
+  use intercycle,      only: shannon_entropy, calculate_keff
   use mpi_routines,    only: synchronize_bank
   use output,          only: write_message, header, print_runtime
   use particle_header, only: Particle
@@ -13,7 +13,7 @@ program main
   use source,          only: get_source_particle
   use string,          only: int_to_str
   use tally,           only: synchronize_tallies, write_tallies, &
-                             tally_statistics, calculate_keff
+                             tally_statistics
   use timing,          only: timer_start, timer_stop
 
 #ifdef MPI
@@ -64,6 +64,12 @@ contains
     tallies_on = .false.
     call timer_start(time_inactive)
 
+    ! Display column titles
+    message = " Cycle   k(cycle)   Entropy         Average k"
+    call write_message(1)
+    message = " =====   ========   =======    ==================="
+    call write_message(1)
+
     ! ==========================================================================
     ! LOOP OVER CYCLES
     CYCLE_LOOP: do i_cycle = 1, n_cycles
@@ -73,7 +79,7 @@ contains
 
        message = "Simulating cycle " // trim(int_to_str(i_cycle)) // "..."
        call write_message(8)
-       
+
        ! Set all tallies to zero
        n_bank = 0
 

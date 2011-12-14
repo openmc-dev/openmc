@@ -97,6 +97,7 @@ input_xml.o: xml-fortran/templates/tallies_t.o
 
 intercycle.o: global.o
 intercycle.o: error.o
+intercycle.o: output.o
 
 interpolation.o: constants.o
 interpolation.o: endf_header.o

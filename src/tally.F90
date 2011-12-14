@@ -1043,7 +1043,7 @@ contains
        t => tallies(i)
 
        ! Write header block
-       call header("TALLY " // trim(int_to_str(t % id)), 3, UNIT_TALLY)
+       call header("TALLY " // trim(int_to_str(t % id)), unit=UNIT_TALLY, level=3)
 
        ! Handle surface current tallies separately
        if (t % surface_current) then

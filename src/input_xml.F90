@@ -142,6 +142,30 @@ contains
        trace_particle = trace_(2)
     end if
 
+    ! Entropy box
+    if (associated(entropy_box_)) then
+       ! Check to make sure enough values were supplied
+       if (size(entropy_box_) /= 6) then
+          message = "Need to supply lower-left and upper-right coordinates " &
+               // "for Shannon entropy box."
+          call fatal_error()
+       end if
+
+       ! Copy values
+       entropy_lower_left = entropy_box_(1:3)
+       entropy_upper_right = entropy_box_(4:6)
+
+       ! Check on values provided
+       if (.not. all(entropy_upper_right > entropy_lower_left)) then
+          message = "Upper-right coordinate must be greater than lower-left " &
+               // "coordinate for Shannon entropy box."
+          call fatal_error()
+       end if
+
+       ! Turn on Shannon entropy calculation
+       entropy_on = .true.
+    end if
+
   end subroutine read_settings_xml
 
 !===============================================================================

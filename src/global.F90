@@ -111,6 +111,13 @@ module global
   real(8) :: keff = ONE
   real(8) :: keff_std
 
+  ! Shannon entropy
+  logical :: entropy_on = .false.
+  real(8) :: entropy                ! value of shannon entropy
+  real(8) :: entropy_lower_left(3)  ! lower-left corner for entropy box
+  real(8) :: entropy_upper_right(3) ! upper-right corner for entropy box
+  real(8), allocatable :: entropy_p(:,:,:)
+
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
 

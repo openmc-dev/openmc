@@ -15,6 +15,7 @@ geometry.o \
 geometry_header.o \
 global.o \
 initialize.o \
+intercycle.o \
 interpolation.o \
 input_xml.o \
 main.o \

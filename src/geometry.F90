@@ -424,22 +424,13 @@ contains
 ! CROSS_LATTICE moves a particle into a new lattice element
 !===============================================================================
 
-  subroutine cross_lattice(p)
+  subroutine cross_lattice(p, lattice_crossed)
 
     type(Particle), pointer :: p
+    integer, intent(in) :: lattice_crossed
 
     integer        :: i_x      ! x index in lattice
     integer        :: i_y      ! y index in lattice
-    real(8)        :: d_left   ! distance to left side
-    real(8)        :: d_right  ! distance to right side
-    real(8)        :: d_bottom ! distance to bottom side
-    real(8)        :: d_top    ! distance to top side
-    real(8)        :: dist     ! shortest distance
-    real(8)        :: x        ! x coordinate in local lattice element
-    real(8)        :: y        ! y coordinate in local lattice element
-    real(8)        :: z        ! z coordinate in local lattice element
-    real(8)        :: u        ! cosine of angle with x axis
-    real(8)        :: v        ! cosine of angle with y axis
     real(8)        :: x0       ! half the width of lattice element
     real(8)        :: y0       ! half the height of lattice element
     logical        :: found    ! particle found in cell?
@@ -454,68 +445,36 @@ contains
        call write_message()
     end if
 
-    u = p % coord % uvw(1)
-    v = p % coord % uvw(2)
-
     if (lat % type == LATTICE_RECT) then
-       x = p % coord % xyz(1)
-       y = p % coord % xyz(2)
-       z = p % coord % xyz(3)
        x0 = lat % width_x * 0.5_8
        y0 = lat % width_y * 0.5_8
-       
-       dist = INFINITY
 
-       ! left and right sides
-       if (u == ZERO) then
-          d_left = INFINITY
-          d_right = INFINITY
-       elseif (u > 0) then
-          d_left = INFINITY
-          d_right = (x0 - x)/u
-       else
-          d_left = -(x0 + x)/u
-          d_right = INFINITY
-       end if
-
-       ! top and bottom sides
-       if (v == ZERO) then
-          d_bottom = INFINITY
-          d_top = INFINITY
-       elseif (v > 0) then
-          d_bottom = INFINITY
-          d_top = (y0 - y)/v
-       else
-          d_bottom = -(y0 + y)/v
-          d_top = INFINITY
-       end if
-
-       dist = min(d_left, d_right, d_top, d_bottom)
-       if (dist == d_left) then
+       select case (lattice_crossed)
+       case (LATTICE_LEFT)
           ! Move particle to left element
           p % coord % lattice_x = p % coord % lattice_x - 1
           p % coord % xyz(1) = x0
           
-       elseif (dist == d_right) then
+       case (LATTICE_RIGHT)
           ! Move particle to right element
           p % coord % lattice_x = p % coord % lattice_x + 1
           p % coord % xyz(1) = -x0
 
-       elseif (dist == d_bottom) then
+       case (LATTICE_BOTTOM)
           ! Move particle to bottom element
           p % coord % lattice_y = p % coord % lattice_y - 1
           p % coord % xyz(2) = y0
 
-       elseif (dist == d_top) then
+       case (LATTICE_TOP)
           ! Move particle to top element
           p % coord % lattice_y = p % coord % lattice_y + 1
           p % coord % xyz(2) = -y0
 
-       end if
+       end select
     elseif (lat % type == LATTICE_HEX) then
        ! TODO: Add hex lattice support
     end if
-    
+
     ! Check to make sure still in lattice
     i_x = p % coord % lattice_x
     i_y = p % coord % lattice_y
@@ -555,7 +514,7 @@ contains
     type(Particle), pointer     :: p
     real(8),        intent(out) :: dist
     integer,        intent(out) :: surface_crossed
-    logical,        intent(out) :: lattice_crossed
+    integer,        intent(out) :: lattice_crossed
 
     integer :: i            ! index for surface in cell
     integer :: index_surf   ! index in surfaces array (with sign)
@@ -576,7 +535,7 @@ contains
 
     ! inialize distance to infinity (huge)
     dist = INFINITY
-    lattice_crossed = .false.
+    lattice_crossed = NONE
     nullify(final_coord)
 
     ! Get pointer to top-level coordinates
@@ -866,7 +825,7 @@ contains
           if (d < dist) then
              dist = d
              surface_crossed = -cl % surfaces(i)
-             lattice_crossed = .false.
+             lattice_crossed = NONE
              final_coord => coord
           end if
 
@@ -906,7 +865,11 @@ contains
              if (d < dist) then 
                 if (abs(d - dist)/dist >= FP_PRECISION) then
                    dist = d
-                   lattice_crossed = .true.
+                   if (u > 0) then
+                      lattice_crossed = LATTICE_RIGHT
+                   else
+                      lattice_crossed = LATTICE_LEFT
+                   end if
                    final_coord => coord
                 end if
              end if
@@ -923,7 +886,11 @@ contains
              if (d < dist) then
                 if (abs(d - dist)/dist >= FP_PRECISION) then
                    dist = d
-                   lattice_crossed = .true.
+                   if (v > 0) then
+                      lattice_crossed = LATTICE_TOP
+                   else
+                      lattice_crossed = LATTICE_BOTTOM
+                   end if
                    final_coord => coord
                 end if
              end if

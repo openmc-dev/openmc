@@ -1023,7 +1023,7 @@ contains
     ! determine velocity vector of target nucleus
     v_target(1) = u*vt
     v_target(2) = v*vt
-    v_target(3) = W*vt
+    v_target(3) = w*vt
 
   end subroutine sample_target_velocity
 

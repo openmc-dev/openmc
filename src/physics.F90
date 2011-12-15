@@ -30,13 +30,13 @@ contains
     type(Particle), pointer :: p
 
     integer        :: surface_crossed ! surface which particle is on
+    integer        :: lattice_crossed ! lattice boundary which particle crossed
     integer        :: last_cell       ! most recent cell particle was in
     integer        :: n_event         ! number of collisions/crossings
     real(8)        :: d_boundary      ! distance to nearest boundary
     real(8)        :: d_collision     ! sampled distance to collision
     real(8)        :: distance        ! distance particle travels
     logical        :: found_cell      ! found cell which particle is in?
-    logical        :: lattice_crossed ! is surface crossing in lattice?
     type(LocalCoord), pointer :: coord => null()
 
     if (p % coord % cell == NONE) then
@@ -94,9 +94,9 @@ contains
        if (d_collision > d_boundary) then
           last_cell = p % coord % cell
           p % coord % cell = NONE
-          if (lattice_crossed) then
+          if (lattice_crossed /= NONE) then
              p % surface = NONE
-             call cross_lattice(p)
+             call cross_lattice(p, lattice_crossed)
           else
              p % surface = surface_crossed
              call cross_surface(p, last_cell)
@@ -1380,8 +1380,7 @@ contains
           mu = mu0 + (xi - c_k)/p0
 
        elseif (interp == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about the
-          ! formula given in the MCNP manual
+          ! Linear-linear interpolation
           p1  = rxn % adist % data(lc + NP + k+1)
           mu1 = rxn % adist % data(lc + k+1)
 

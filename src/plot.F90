@@ -23,6 +23,7 @@ contains
 
     integer :: i               ! loop index
     integer :: surface_crossed ! surface which particle is on
+    integer :: lattice_crossed ! is surface crossing in lattice?
     integer :: last_cell       ! most recent cell particle was in
     integer :: enter_surface   ! entrance surface
     real(8) :: xyz(3)          ! starting coordinates
@@ -31,7 +32,6 @@ contains
     real(8) :: d               ! distance to boundary
     real(8) :: distance        ! distance particle travels
     logical :: found_cell      ! found cell which particle is in?
-    logical :: lattice_crossed ! is surface crossing in lattice?
     character(MAX_LINE_LEN) :: path_plot ! unit for binary plot file
     type(Cell),       pointer :: c    => null()
     type(Universe),   pointer :: univ => null()
@@ -161,9 +161,9 @@ contains
           write(UNIT=UNIT_PLOT) p % coord0 % xyz, last_cell
 
           p % coord % cell = 0
-          if (lattice_crossed) then
+          if (lattice_crossed /= NONE) then
              p % surface = NONE
-             call cross_lattice(p)
+             call cross_lattice(p, lattice_crossed)
           else
              p % surface = surface_crossed
              call cross_surface(p, last_cell)

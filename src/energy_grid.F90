@@ -99,7 +99,7 @@ contains
 
     ! if the original list is empty, we need to allocate the first element and
     ! store first energy point
-    if (list_size(list) == 0) then
+    if (.not. associated(list)) then
        allocate(list)
        current => list
        do i = 1, n

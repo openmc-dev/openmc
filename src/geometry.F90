@@ -171,26 +171,42 @@ contains
              x = ceiling((xyz(1) - lat % x0)/lat % width_x)
              y = ceiling((xyz(2) - lat % y0)/lat % width_y)
 
-             ! Create new level of coordinates
-             p % in_lower_universe = .true.
-             allocate(p % coord % next)
-             
-             ! adjust local position of particle
-             p % coord % next % xyz(1) = p % coord % xyz(1) - &
-                  (lat%x0 + (x-0.5_8)*lat%width_x)
-             p % coord % next % xyz(2) = p % coord % xyz(2) - &
-                  (lat%y0 + (y-0.5_8)*lat%width_y)
-             p % coord % next % xyz(3) = p % coord % xyz(3)
-             p % coord % next % uvw    = p % coord % uvw
+             ! Check if lattice coordinates are within bounds
+             if (x < 1 .or. x > lat % n_x .or. &
+                  y < 1 .or. y > lat % n_y) then
 
-             ! Move particle to next level
-             p % coord => p % coord % next
+                ! This condition should only get hit in rare circumstances where
+                ! a neutron hits the corner of a lattice. In this case, the
+                ! neutron may need to be moved diagonally across the lattice. To
+                ! do so, we remove all lower coordinate levels and then search
+                ! from universe 0.
+
+                p % coord => p % coord0
+                call deallocate_coord(p % coord % next)
+
+             else
+
+                ! Create new level of coordinates
+                p % in_lower_universe = .true.
+                allocate(p % coord % next)
              
-             ! set particle lattice indices
-             p % coord % lattice   = c % fill
-             p % coord % lattice_x = x
-             p % coord % lattice_y = y
-             p % coord % universe  = lat % element(x,y)
+                ! adjust local position of particle
+                p % coord % next % xyz(1) = p % coord % xyz(1) - &
+                     (lat%x0 + (x-0.5_8)*lat%width_x)
+                p % coord % next % xyz(2) = p % coord % xyz(2) - &
+                     (lat%y0 + (y-0.5_8)*lat%width_y)
+                p % coord % next % xyz(3) = p % coord % xyz(3)
+                p % coord % next % uvw    = p % coord % uvw
+
+                ! Move particle to next level
+                p % coord => p % coord % next
+             
+                ! set particle lattice indices
+                p % coord % lattice   = c % fill
+                p % coord % lattice_x = x
+                p % coord % lattice_y = y
+                p % coord % universe  = lat % element(x,y)
+             end if
 
              call find_cell(p, found)
              if (.not. found) exit
@@ -216,19 +232,19 @@ contains
     type(Particle), pointer :: p
     integer, intent(in)     :: last_cell  ! last cell particle was in
 
-    real(8)                 :: x          ! x-x0 for sphere
-    real(8)                 :: y          ! y-y0 for sphere
-    real(8)                 :: z          ! z-z0 for sphere
-    real(8)                 :: R          ! radius of sphere
-    real(8)                 :: u          ! x-component of direction
-    real(8)                 :: v          ! y-component of direction
-    real(8)                 :: w          ! z-component of direction
-    real(8)                 :: n1         ! x-component of surface normal
-    real(8)                 :: n2         ! y-component of surface normal
-    real(8)                 :: n3         ! z-component of surface normal
-    real(8)                 :: dot_prod   ! dot product of direction and normal
-    real(8)                 :: norm       ! "norm" of surface normal
-    logical                 :: found      ! particle found in universe?
+    real(8) :: x        ! x-x0 for sphere
+    real(8) :: y        ! y-y0 for sphere
+    real(8) :: z        ! z-z0 for sphere
+    real(8) :: R        ! radius of sphere
+    real(8) :: u        ! x-component of direction
+    real(8) :: v        ! y-component of direction
+    real(8) :: w        ! z-component of direction
+    real(8) :: n1       ! x-component of surface normal
+    real(8) :: n2       ! y-component of surface normal
+    real(8) :: n3       ! z-component of surface normal
+    real(8) :: dot_prod ! dot product of direction and normal
+    real(8) :: norm     ! "norm" of surface normal
+    logical :: found    ! particle found in universe?
     type(Surface),  pointer :: surf => null()
 
     surf => surfaces(abs(p % surface))
@@ -429,11 +445,11 @@ contains
     type(Particle), pointer :: p
     integer, intent(in) :: lattice_crossed
 
-    integer        :: i_x      ! x index in lattice
-    integer        :: i_y      ! y index in lattice
-    real(8)        :: x0       ! half the width of lattice element
-    real(8)        :: y0       ! half the height of lattice element
-    logical        :: found    ! particle found in cell?
+    integer :: i_x   ! x index in lattice
+    integer :: i_y   ! y index in lattice
+    real(8) :: x0    ! half the width of lattice element
+    real(8) :: y0    ! half the height of lattice element
+    logical :: found ! particle found in cell?
     type(Lattice),  pointer :: lat => null()
 
     lat => lattices(p % coord % lattice)

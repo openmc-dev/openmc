@@ -226,13 +226,8 @@ contains
     integer, intent(in)     :: index_sab     ! index into sab_tables array
 
     integer :: IE        ! index on nuclide energy grid
-    integer :: IE_sab    ! index on S(a,b) energy grid
     real(8) :: f         ! interp factor on nuclide energy grid
-    real(8) :: f_sab     ! interp factor on S(a,b) energy grid
-    real(8) :: inelastic ! S(a,b) inelastic cross section
-    real(8) :: elastic   ! S(a,b) elastic cross section
     type(Nuclide),   pointer :: nuc => null()
-    type(SAB_Table), pointer :: sab => null()
 
     ! Set pointer to nuclide
     nuc => nuclides(index_nuclide)
@@ -282,75 +277,96 @@ contains
     ! need to correct it by subtracting the non-S(a,b) elastic cross section and
     ! then add back in the calculated S(a,b) elastic+inelastic cross section.
 
-    if (index_sab > 0) then
-       micro_xs(index_nuclide) % use_sab = .true.
-
-       ! Get pointer to S(a,b) table
-       sab => sab_tables(index_sab)
-
-       ! Get index and interpolation factor for inelastic grid
-       if (p%E < sab % inelastic_e_in(1)) then
-          IE_sab = 1
-          f_sab = ZERO
-       else
-          IE_sab = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
-          f_sab = (p%E - sab%inelastic_e_in(IE_sab)) / & 
-               (sab%inelastic_e_in(IE_sab+1) - sab%inelastic_e_in(IE_sab))
-       end if
-
-       ! Calculate S(a,b) inelastic scattering cross section
-       inelastic = (ONE-f_sab) * sab % inelastic_sigma(IE_sab) + f_sab * &
-            sab % inelastic_sigma(IE_sab + 1)
-
-       ! Check for elastic data
-       if (p % E < sab % threshold_elastic) then
-          ! Determine whether elastic scattering is given in the coherent or
-          ! incoherent approximation. For coherent, the cross section is
-          ! represented as P/E whereas for incoherent, it is simply P
-
-          if (sab % elastic_mode == SAB_ELASTIC_EXACT) then
-             if (p % E < sab % elastic_e_in(1)) then
-                ! If energy is below that of the lowest Bragg peak, the elastic
-                ! cross section will be zero
-                elastic = ZERO
-             else
-                IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
-                elastic = sab % elastic_P(IE_sab) / p % E
-             end if
-          else
-             ! Determine index on elastic energy grid
-             if (p % E < sab % elastic_e_in(1)) then
-                IE_sab = 1
-             else
-                IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
-             end if
-
-             ! Get interpolation factor for elastic grid
-             f_sab = (p%E - sab%elastic_e_in(IE_sab))/(sab%elastic_e_in(IE_sab+1) - &
-                  sab%elastic_e_in(IE_sab))
-
-             ! Calculate S(a,b) elastic scattering cross section
-             elastic = (ONE-f_sab) * sab % elastic_P(IE_sab) + f_sab * &
-                  sab % elastic_P(IE_sab + 1)
-          end if
-       else
-          ! No elastic data
-          elastic = ZERO
-       end if
-
-       ! Correct total and elastic cross sections
-       micro_xs(index_nuclide) % total = micro_xs(index_nuclide) % total - &
-            micro_xs(index_nuclide) % elastic + inelastic + elastic
-       micro_xs(index_nuclide) % elastic = inelastic + elastic
-
-       ! Store S(a,b) elastic cross section for sampling later
-       micro_xs(index_nuclide) % elastic_sab = elastic
-    end if
+    if (index_sab > 0) call calculate_sab_xs(p, index_nuclide, index_sab)
 
     ! Set last evaluated energy
     micro_xs(index_nuclide) % last_E = p % E
 
   end subroutine calculate_nuclide_xs
+
+!===============================================================================
+! CALCULATE_SAB_XS determines the elastic and inelastic scattering
+! cross-sections in the thermal energy range. These cross sections replace
+! whatever data were taken from the normal Nuclide table.
+!===============================================================================
+
+  subroutine calculate_sab_xs(p, index_nuclide, index_sab)
+
+    type(Particle), pointer :: p
+    integer, intent(in)     :: index_nuclide ! index into nuclides array
+    integer, intent(in)     :: index_sab     ! index into sab_tables array
+
+    integer :: IE_sab    ! index on S(a,b) energy grid
+    real(8) :: f_sab     ! interp factor on S(a,b) energy grid
+    real(8) :: inelastic ! S(a,b) inelastic cross section
+    real(8) :: elastic   ! S(a,b) elastic cross section
+    type(SAB_Table), pointer :: sab => null()
+
+    ! Set flag that S(a,b) treatment should be used for scattering
+    micro_xs(index_nuclide) % use_sab = .true.
+
+    ! Get pointer to S(a,b) table
+    sab => sab_tables(index_sab)
+
+    ! Get index and interpolation factor for inelastic grid
+    if (p%E < sab % inelastic_e_in(1)) then
+       IE_sab = 1
+       f_sab = ZERO
+    else
+       IE_sab = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
+       f_sab = (p%E - sab%inelastic_e_in(IE_sab)) / & 
+            (sab%inelastic_e_in(IE_sab+1) - sab%inelastic_e_in(IE_sab))
+    end if
+
+    ! Calculate S(a,b) inelastic scattering cross section
+    inelastic = (ONE-f_sab) * sab % inelastic_sigma(IE_sab) + f_sab * &
+         sab % inelastic_sigma(IE_sab + 1)
+
+    ! Check for elastic data
+    if (p % E < sab % threshold_elastic) then
+       ! Determine whether elastic scattering is given in the coherent or
+       ! incoherent approximation. For coherent, the cross section is
+       ! represented as P/E whereas for incoherent, it is simply P
+
+       if (sab % elastic_mode == SAB_ELASTIC_EXACT) then
+          if (p % E < sab % elastic_e_in(1)) then
+             ! If energy is below that of the lowest Bragg peak, the elastic
+             ! cross section will be zero
+             elastic = ZERO
+          else
+             IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
+             elastic = sab % elastic_P(IE_sab) / p % E
+          end if
+       else
+          ! Determine index on elastic energy grid
+          if (p % E < sab % elastic_e_in(1)) then
+             IE_sab = 1
+          else
+             IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
+          end if
+
+          ! Get interpolation factor for elastic grid
+          f_sab = (p%E - sab%elastic_e_in(IE_sab))/(sab%elastic_e_in(IE_sab+1) - &
+               sab%elastic_e_in(IE_sab))
+
+          ! Calculate S(a,b) elastic scattering cross section
+          elastic = (ONE-f_sab) * sab % elastic_P(IE_sab) + f_sab * &
+               sab % elastic_P(IE_sab + 1)
+       end if
+    else
+       ! No elastic data
+       elastic = ZERO
+    end if
+
+    ! Correct total and elastic cross sections
+    micro_xs(index_nuclide) % total = micro_xs(index_nuclide) % total - &
+         micro_xs(index_nuclide) % elastic + inelastic + elastic
+    micro_xs(index_nuclide) % elastic = inelastic + elastic
+
+    ! Store S(a,b) elastic cross section for sampling later
+    micro_xs(index_nuclide) % elastic_sab = elastic
+
+  end subroutine calculate_sab_xs
 
 !===============================================================================
 ! FIND_ENERGY_INDEX determines the index on the union energy grid and the

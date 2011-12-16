@@ -1089,7 +1089,6 @@ contains
     if (JXS23 /= 0) then
        nuc % urr_present = .true.
        allocate(nuc % urr_data)
-       allocate(nuc % urr_data % params(6))
        lc = JXS23
     else
        nuc % urr_present = .false.
@@ -1097,16 +1096,20 @@ contains
     end if
 
     ! read parameters
-    nuc % urr_data % params(1) = int(XSS(lc))     ! # of incident energies
-    nuc % urr_data % params(2) = int(XSS(lc + 1)) ! # of probabilities
-    nuc % urr_data % params(3) = int(XSS(lc + 2)) ! interpolation parameter
-    nuc % urr_data % params(4) = int(XSS(lc + 3)) ! inelastic competition flag
-    nuc % urr_data % params(5) = int(XSS(lc + 4)) ! other absorption flag
-    nuc % urr_data % params(6) = int(XSS(lc + 5)) ! factors flag
+    nuc % urr_data % n_energy = int(XSS(lc))
+    nuc % urr_data % n_prob = int(XSS(lc + 1))
+    nuc % urr_data % interp = int(XSS(lc + 2))
+    nuc % urr_data % inelastic_flag = int(XSS(lc + 3))
+    nuc % urr_data % absorption_flag = int(XSS(lc + 4))
+    if (int(XSS(lc + 5)) == 0) then
+       nuc % urr_data % multiply_smooth = .false.
+    else
+       nuc % urr_data % multiply_smooth = .true.
+    end if
 
     ! allocate incident energies and probability tables
-    N = nuc % urr_data % params(1)
-    M = nuc % urr_data % params(2)
+    N = nuc % urr_data % n_energy
+    M = nuc % urr_data % n_prob
     allocate(nuc % urr_data % energy(N))
     allocate(nuc % urr_data % prob(N,6,M))
 

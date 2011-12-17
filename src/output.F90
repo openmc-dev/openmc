@@ -3,7 +3,7 @@ module output
   use ISO_FORTRAN_ENV
 
   use constants
-  use cross_section_header, only: Nuclide, Reaction
+  use cross_section_header, only: Nuclide, Reaction, UrrData
   use datatypes,            only: dict_get_key
   use endf,                 only: reaction_name
   use geometry_header,      only: Cell, Universe, Surface
@@ -736,6 +736,7 @@ contains
     integer :: size_angle
     integer :: size_energy
     type(Reaction), pointer :: rxn => null()
+    type(UrrData), pointer :: urr => null()
 
     ! set default unit for writing information
     if (present(unit)) then
@@ -786,6 +787,20 @@ contains
        ! Accumulate data size
        size_total = size_total + size_angle + size_energy
     end do
+
+    ! Write information about URR probability tables
+    if (nuc % urr_present) then
+       urr => nuc % urr_data
+       write(unit_,*) '  Unresolved resonance probability table:'
+       write(unit_,*) '    # of energies = ' // trim(int_to_str(urr % n_energy))
+       write(unit_,*) '    # of probabilities = ' // trim(int_to_str(urr % n_prob))
+       write(unit_,*) '    Interpolation =  ' // trim(int_to_str(urr % interp))
+       write(unit_,*) '    Inelastic flag = ' // trim(int_to_str(urr % inelastic_flag))
+       write(unit_,*) '    Absorption flag = ' // trim(int_to_str(urr % absorption_flag))
+       write(unit_,*) '    Multiply by smooth? ', urr % multiply_smooth
+       write(unit_,*) '    Min energy = ', trim(real_to_str(urr % energy(1)))
+       write(unit_,*) '    Max energy = ', trim(real_to_str(urr % energy(urr % n_energy)))
+    end if
 
     ! Write total memory used
     write(unit_,*) '  Total memory used = ' // trim(int_to_str(size_total)) &

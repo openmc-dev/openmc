@@ -235,8 +235,13 @@ contains
     ! TODO: If not using unionized energy grid, we need to find the index on the
     ! nuclide energy grid using lethargy mapping or whatever other technique
 
-    ! search nuclide energy grid
+    ! get index on nuclide energy grid
     IE = nuc % grid_index(p % IE)
+
+    ! check for rare case where two energy points are the same
+    if (nuc % energy(IE) == nuc % energy(IE+1)) IE = IE + 1
+
+    ! calculate interpolation factor
     f = (p%E - nuc%energy(IE))/(nuc%energy(IE+1) - nuc%energy(IE))
 
     micro_xs(index_nuclide) % index_grid = IE

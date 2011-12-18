@@ -1,7 +1,7 @@
 module physics
 
   use constants
-  use cross_section_header, only: Nuclide, Reaction, DistEnergy
+  use cross_section_header, only: Nuclide, Reaction, DistEnergy, UrrData
   use endf,                 only: reaction_name, is_fission, is_scatter
   use error,                only: fatal_error, warning
   use fission,              only: nu_total, nu_prompt, nu_delayed
@@ -279,6 +279,16 @@ contains
 
     if (index_sab > 0) call calculate_sab_xs(p, index_nuclide, index_sab)
 
+    ! if the particle is in the unresolved resonance range and there are
+    ! probability tables, we need to determine cross sections from the table
+
+    if (urr_ptables_on .and. nuc % urr_present) then
+       if (p % E > nuc % urr_data % energy(1) .and. &
+            p % E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
+          call calculate_urr_xs(p, index_nuclide)
+       end if
+    end if
+
     ! Set last evaluated energy
     micro_xs(index_nuclide) % last_E = p % E
 
@@ -367,6 +377,113 @@ contains
     micro_xs(index_nuclide) % elastic_sab = elastic
 
   end subroutine calculate_sab_xs
+
+!===============================================================================
+! CALCULATE_URR_XS determines cross sections in the unresolved resonance range
+! from probability tables
+!===============================================================================
+
+  subroutine calculate_urr_xs(p, index_nuclide)
+
+    type(Particle), pointer :: p
+    integer, intent(in)     :: index_nuclide ! index into nuclides array
+
+    integer :: i_energy   ! index for energy
+    integer :: i_table    ! index for table
+    real(8) :: f          ! interpolation factor
+    real(8) :: r          ! pseudo-random number
+    real(8) :: elastic    ! smooth elastic cross section
+    real(8) :: absorption ! smooth absorption cross section
+    real(8) :: fission    ! smooth fission cross section
+    real(8) :: inelastic  ! smooth inelastic cross section
+    type(UrrData),  pointer :: urr => null()
+    type(Nuclide),  pointer :: nuc => null()
+    type(Reaction), pointer :: rxn => null()
+
+    ! copy cross-sections already calculated
+    elastic    = micro_xs(index_nuclide) % elastic
+    absorption = micro_xs(index_nuclide) % absorption
+    fission    = micro_xs(index_nuclide) % fission
+
+    ! get pointer to probability table
+    nuc => nuclides(index_nuclide)
+    urr => nuc % urr_data
+
+    ! determine energy table
+    i_energy = 1
+    do
+       if (p % E > urr % energy(i_energy)) exit
+       i_energy = i_energy + 1
+    end do
+
+    ! determine interpolation factor on table
+    f = (p % E - urr % energy(i_energy)) / &
+         (urr % energy(i_energy + 1) - urr % energy(i_energy))
+
+    ! sample probability table using the cumulative distribution
+    r = prn()
+    i_table = 1
+    do
+       if (urr % prob(i_energy, URR_CUM_PROB, i_table) > r) exit
+       i_table = i_table + 1
+    end do
+
+    ! determine elastic, fission, and capture cross sections from probability
+    ! table
+    if (urr % interp == LINEAR_LINEAR) then
+       micro_xs(index_nuclide) % elastic = &
+            (ONE - f) * urr % prob(i_energy, URR_ELASTIC, i_table) + &
+            f * urr % prob(i_energy + 1, URR_ELASTIC, i_table)
+       micro_xs(index_nuclide) % fission = &
+            (ONE - f) * urr % prob(i_energy, URR_FISSION, i_table) + &
+            f * urr % prob(i_energy + 1, URR_FISSION, i_table)
+       micro_xs(index_nuclide) % absorption = &
+            micro_xs(index_nuclide) % fission + &
+            (ONE - f) * urr % prob(i_energy, URR_N_GAMMA, i_table) + &
+            f * urr % prob(i_energy + 1, URR_N_GAMMA, i_table)
+    elseif (urr % interp == LOG_LOG) then
+       message = "Log-log interpolation on probability table not yet supported."
+       call fatal_error()
+    end if
+
+    ! Determine treatment of inelastic scattering
+    inelastic = ZERO
+    if (urr % inelastic_flag > 0) then
+       ! Get pointer to inelastic scattering reaction
+       rxn => nuc % reactions(nuc % urr_inelastic)
+
+       ! Get index on energy grid and interpolation factor
+       i_energy = micro_xs(index_nuclide) % index_grid
+       f = micro_xs(index_nuclide) % interp_factor
+
+       ! Determine inelastic scattering cross section
+       if (i_energy >= rxn % IE) then
+          inelastic = (ONE - f) * rxn % sigma(i_energy - rxn%IE + 1) + &
+               f * rxn % sigma(i_energy - rxn%IE + 2)
+       end if
+    end if
+
+    ! Multiply by smooth cross-section if needed
+    if (urr % multiply_smooth) then
+       micro_xs(index_nuclide) % elastic = elastic * &
+            micro_xs(index_nuclide) % elastic
+       micro_xs(index_nuclide) % absorption = absorption * &
+            micro_xs(index_nuclide) % absorption
+       micro_xs(index_nuclide) % fission = fission * &
+            micro_xs(index_nuclide) % fission
+    end if
+
+    ! Determine nu-fission cross section
+    if (nuc % fissionable) then
+       micro_xs(index_nuclide) % nu_fission = nu_total(nuc, p % E) * &
+            micro_xs(index_nuclide) % fission
+    end if
+
+    ! Calculate total cross section as sum of partials
+    micro_xs(index_nuclide) % total = micro_xs(index_nuclide) % elastic + &
+         inelastic + micro_xs(index_nuclide) % absorption
+
+  end subroutine calculate_urr_xs
 
 !===============================================================================
 ! FIND_ENERGY_INDEX determines the index on the union energy grid and the

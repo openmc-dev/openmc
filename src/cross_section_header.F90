@@ -113,6 +113,7 @@ module cross_section_header
 
      ! Unresolved resonance data
      logical                :: urr_present
+     integer                :: urr_inelastic
      type(UrrData), pointer :: urr_data => null()
 
      ! Reactions

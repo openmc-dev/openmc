@@ -208,6 +208,15 @@ module constants
        ASCII  = 1, & ! ASCII cross section file
        BINARY = 2    ! Binary cross section file
 
+  ! Probability table parameters
+  integer, parameter :: &
+       URR_CUM_PROB = 1, &
+       URR_TOTAL    = 2, &
+       URR_ELASTIC  = 3, &
+       URR_FISSION  = 4, &
+       URR_N_GAMMA  = 5, &
+       URR_HEATING  = 6
+
   ! Maximum number of partial fission reactions
   integer, parameter :: PARTIAL_FISSION_MAX = 4
 

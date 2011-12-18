@@ -1107,6 +1107,25 @@ contains
        nuc % urr_data % multiply_smooth = .true.
     end if
 
+    ! if the inelastic competition flag indicates that the inelastic cross
+    ! section should be determined from a normal reaction cross section, we need
+    ! to set up a pointer to that reaction
+    nuc % urr_inelastic = NONE
+    if (nuc % urr_data % inelastic_flag > 0) then
+       do i = 1, nuc % n_reaction
+          if (nuc % reactions(i) % MT == nuc % urr_data % inelastic_flag) then
+             nuc % urr_inelastic = i
+          end if
+       end do
+
+       ! Abort if no corresponding inelastic reaction was found
+       if (nuc % urr_inelastic == NONE) then
+          message = "Could not find inelastic reaction specified on " &
+               // "unresolved resonance probability table."
+          call fatal_error()
+       end if
+    end if
+
     ! allocate incident energies and probability tables
     N = nuc % urr_data % n_energy
     M = nuc % urr_data % n_prob

@@ -82,7 +82,7 @@ contains
     bank_blocks = (/ 1, 3, 3, 1 /)
     bank_types = (/ MPI_INTEGER8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
     call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
-         & bank_types, MPI_BANK, mpi_err)
+         bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
 #else
@@ -115,9 +115,9 @@ contains
     integer(8) :: sites_needed    ! # of sites to be sampled
     real(8)    :: p_sample        ! probability of sampling a site
     type(Bank), allocatable :: &
-         & temp_sites(:),      & ! local array of extra sites on each node
-         & left_bank(:),       & ! bank sites to send/recv to or from left node
-         & right_bank(:)         ! bank sites to send/recv to or fram right node
+         temp_sites(:), & ! local array of extra sites on each node
+         left_bank(:),  & ! bank sites to send/recv to or from left node
+         right_bank(:)    ! bank sites to send/recv to or fram right node
 
 #ifdef MPI
     integer    :: status(MPI_STATUS_SIZE) ! message status
@@ -133,11 +133,11 @@ contains
     ! Determine starting index for fission bank and total sites in fission bank
     start = 0_8
     call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
-         & MPI_COMM_WORLD, mpi_err)
+         MPI_COMM_WORLD, mpi_err)
     finish = start + n_bank
     total = finish
     call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
-         & MPI_COMM_WORLD, mpi_err)
+         MPI_COMM_WORLD, mpi_err)
 
 #else
     start  = 0_8
@@ -200,11 +200,11 @@ contains
 #ifdef MPI
     start = 0_8
     call MPI_EXSCAN(index_local, start, 1, MPI_INTEGER8, MPI_SUM, & 
-         & MPI_COMM_WORLD, mpi_err)
+         MPI_COMM_WORLD, mpi_err)
     finish = start + index_local
     total = finish
     call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
-         & MPI_COMM_WORLD, mpi_err)
+         MPI_COMM_WORLD, mpi_err)
 #else
     start  = 0_8
     finish = index_local
@@ -259,18 +259,18 @@ contains
     if (send_to_right > 0) then
        i = index_local - send_to_right + 1
        call MPI_ISEND(temp_sites(i), send_to_right, MPI_BANK, rank+1, 0, &
-            & MPI_COMM_WORLD, request, mpi_err)
+            MPI_COMM_WORLD, request, mpi_err)
     else if (send_to_right < 0) then
        call MPI_IRECV(right_bank, -send_to_right, MPI_BANK, rank+1, 1, &
-            & MPI_COMM_WORLD, request_right, mpi_err)
+            MPI_COMM_WORLD, request_right, mpi_err)
     end if
 
     if (send_to_left < 0) then
        call MPI_IRECV(left_bank, -send_to_left, MPI_BANK, rank-1, 0, &
-            & MPI_COMM_WORLD, request_left, mpi_err)
+            MPI_COMM_WORLD, request_left, mpi_err)
     else if (send_to_left > 0) then
        call MPI_ISEND(temp_sites(1), send_to_left, MPI_BANK, rank-1, 1, &
-            & MPI_COMM_WORLD, request, mpi_err)
+            MPI_COMM_WORLD, request, mpi_err)
     end if
 #endif
 

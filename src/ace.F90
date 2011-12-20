@@ -203,8 +203,8 @@ contains
 
           ! Check to make sure S(a,b) table matched a nuclide
           if (mat % sab_nuclide == 0) then
-             message = "S(a,b) table " // trim(mat % sab_name) // " did not match " &
-                  // "any nuclide on material " // trim(int_to_str(mat % id))
+             message = "S(a,b) table " // trim(mat % sab_name) // " did not match &
+                  &any nuclide on material " // trim(int_to_str(mat % id))
              call fatal_error()
           end if
        end if
@@ -287,7 +287,7 @@ contains
        read(UNIT=in, FMT=100) comment, mat, & 
             (zaids(i), awrs(i), i=1,16), NXS, JXS
 100    format(A70,A10/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/&
-            &,8I9/8I9/8I9/8I9/8I9/8I9)
+            ,8I9/8I9/8I9/8I9/8I9/8I9)
 
        ! determine table length
        length = NXS(1)

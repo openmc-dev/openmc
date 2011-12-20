@@ -429,8 +429,8 @@ contains
     ! Couldn't find next cell anywhere!
     if ((.not. found) .and. (.not. plotting)) then
        message = "After particle crossed surface " // trim(int_to_str( &
-            surfaces(abs(p%surface)) % id)) // " it could not be located in " &
-            // "any cell and it did not leak."
+            surfaces(abs(p%surface)) % id)) // " it could not be located in &
+            &any cell and it did not leak."
        call fatal_error()
     end if
        
@@ -1055,7 +1055,7 @@ contains
        y1 = surf % coeffs(5)
        z1 = surf % coeffs(6)
        if (x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1 .and. & 
-            & z >= z0 .and. z < z1) then
+            z >= z0 .and. z < z1) then
           s = SENSE_NEGATIVE
        else
           s = SENSE_POSITIVE
@@ -1074,7 +1074,7 @@ contains
        I = surf % coeffs(9)
        J = surf % coeffs(10)
        func = A*x*x + B*y*y + C*z*z + D*x*y + E*y*z + F*x*z + G*x &
-            & + H*y + I*z + J
+            + H*y + I*z + J
 
     end select
 

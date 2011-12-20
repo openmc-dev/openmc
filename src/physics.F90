@@ -316,7 +316,7 @@ contains
 
                 ! add to cumulative probability
                 prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-                     & + f*(rxn%sigma(IE-rxn%IE+2)))
+                     + f*(rxn%sigma(IE-rxn%IE+2)))
              end do
           else
              ! For nuclides with only total fission reaction, get a pointer to
@@ -341,7 +341,7 @@ contains
              ! add to cumulative probability
              if (nuc % has_partial_fission) then
                 prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-                     & + f*(rxn%sigma(IE-rxn%IE+2)))
+                     + f*(rxn%sigma(IE-rxn%IE+2)))
              else
                 prob = prob + micro_xs(index_nuclide) % fission
              end if
@@ -437,7 +437,7 @@ contains
 
           ! add to cumulative probability
           prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-               & + f*(rxn%sigma(IE-rxn%IE+2)))
+               + f*(rxn%sigma(IE-rxn%IE+2)))
        end do
 
        ! Perform collision physics for inelastics scattering
@@ -1007,7 +1007,7 @@ contains
 
        ! determine outgoing energy in lab
        E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) & 
-            & / ((A+ONE)*(A+ONE))
+            / ((A+ONE)*(A+ONE))
 
        ! determine outgoing angle in lab
        mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
@@ -1083,7 +1083,7 @@ contains
     else
        i = binary_search(rxn % adist % energy, n, E)
        r = (E - rxn % adist % energy(i)) / & 
-            & (rxn % adist % energy(i+1) - rxn % adist % energy(i))
+            (rxn % adist % energy(i+1) - rxn % adist % energy(i))
     end if
 
     ! Sample between the ith and (i+1)th bin
@@ -1303,7 +1303,7 @@ contains
        lc = 2 + 2*NR
        i = binary_search(edist % data(lc+1), NE, E_in)
        r = (E_in - edist%data(lc+i)) / &
-            & (edist%data(lc+i+1) - edist%data(lc+i))
+            (edist%data(lc+i+1) - edist%data(lc+i))
 
        ! Sample outgoing energy bin
        r1 = prn()
@@ -1379,7 +1379,7 @@ contains
        else
           i = binary_search(edist % data(lc+1), NE, E_in)
           r = (E_in - edist%data(lc+i)) / & 
-               & (edist%data(lc+i+1) - edist%data(lc+i))
+               (edist%data(lc+i+1) - edist%data(lc+i))
        end if
 
        ! Sample between the ith and (i+1)th bin
@@ -1452,7 +1452,7 @@ contains
              E_out = E_l_k + (r1 - c_k)/p_l_k
           else
              E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
-                  & p_l_k)/frac
+                  p_l_k)/frac
           end if
        else
           message = "Unknown interpolation type: " // trim(int_to_str(INTT))
@@ -1605,7 +1605,7 @@ contains
        else
           i = binary_search(edist % data(lc+1), NE, E_in)
           r = (E_in - edist%data(lc+i)) / & 
-               & (edist%data(lc+i+1) - edist%data(lc+i))
+               (edist%data(lc+i+1) - edist%data(lc+i))
        end if
 
        ! Sample between the ith and (i+1)th bin
@@ -1684,7 +1684,7 @@ contains
              E_out = E_l_k + (r1 - c_k)/p_l_k
           else
              E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
-                  & p_l_k)/frac
+                  p_l_k)/frac
           end if
 
           ! Determine Kalbach-Mann parameters
@@ -1748,7 +1748,7 @@ contains
        else
           i = binary_search(edist % data(lc+1), NE, E_in)
           r = (E_in - edist%data(lc+i)) / & 
-               & (edist%data(lc+i+1) - edist%data(lc+i))
+               (edist%data(lc+i+1) - edist%data(lc+i))
        end if
 
        ! Sample between the ith and (i+1)th bin
@@ -1823,7 +1823,7 @@ contains
              E_out = E_l_k + (r1 - c_k)/p_l_k
           else
              E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
-                  & p_l_k)/frac
+                  p_l_k)/frac
           end if
        else
           message = "Unknown interpolation type: " // trim(int_to_str(INTT))

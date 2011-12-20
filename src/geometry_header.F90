@@ -45,8 +45,8 @@ module geometry_header
      integer :: type                   ! Type of surface
      real(8), allocatable :: coeffs(:) ! Definition of surface
      integer, allocatable :: & 
-          & neighbor_pos(:), &         ! List of cells on positive side
-          & neighbor_neg(:)            ! List of cells on negative side
+          neighbor_pos(:), &           ! List of cells on positive side
+          neighbor_neg(:)              ! List of cells on negative side
      integer :: bc                     ! Boundary condition
   end type Surface
 

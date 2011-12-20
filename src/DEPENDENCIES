@@ -14,6 +14,16 @@ ace.o: string.o
 ace_header.o: constants.o
 ace_header.o: endf_header.o
 
+cross_section.o: ace_header.o
+cross_section.o: constants.o
+cross_section.o: error.o
+cross_section.o: fission.o
+cross_section.o: global.o
+cross_section.o: material_header.o
+cross_section.o: particle_header.o
+cross_section.o: random_lcg.o
+cross_section.o: search.o
+
 datatypes.o: datatypes_header.o
 
 doppler.o: constants.o
@@ -147,6 +157,7 @@ particle_header.o: geometry_header.o
 
 physics.o: ace_header.o
 physics.o: constants.o
+physics.o: cross_section.o
 physics.o: endf.o
 physics.o: error.o
 physics.o: fission.o

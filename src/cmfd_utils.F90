@@ -318,4 +318,41 @@ contains
 
   end subroutine create_cmfd_tally
 
+!===============================================================================
+! NEUTRON_BALANCE writes a file that contains n. bal. info for all cmfd mesh 
+!===============================================================================
+
+  subroutine neutron_balance()
+
+    integer :: nx                ! number of mesh cells in x direction
+    integer :: ny                ! number of mesh cells in y direction
+    integer :: nz                ! number of mesh cells in z direction
+    integer :: ng                ! number of energy groups
+    integer :: i                 ! iteration counter for x
+    integer :: j                 ! iteration counter for y
+    integer :: k                 ! iteration counter for z
+    integer :: g                 ! iteration counter for g
+    integer :: h                 ! iteration counter for outgoing groups
+
+    ! extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! begin loop around space and energy groups
+    ZLOOP: do k = 1,nz
+
+      YLOOP: do j = 1,ny
+
+        XLOOP: do i = 1,nx
+
+          GROUPG: do g = 1,ng
+
+            ! get leakage
+            leakage = 0.0
+            LEAK: do l = 1,3
+
+              leakage = leakage + ((cmfd % current(4) - cmfd % current(3))
+  end subroutine neutron_balance
 end module cmfd_utils

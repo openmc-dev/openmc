@@ -72,6 +72,10 @@ contains
     if (external_source%type == SRC_BOX) then
        p_min = external_source%values(1:3)
        p_max = external_source%values(4:6)
+    else
+       message = "Unsupported external source type: " // &
+            int_to_str(external_source%type)
+       call fatal_error()
     end if
 
     ! Initialize first cycle source bank

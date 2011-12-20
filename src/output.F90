@@ -2,16 +2,16 @@ module output
 
   use ISO_FORTRAN_ENV
 
+  use ace_header,      only: Nuclide, Reaction, UrrData
   use constants
-  use cross_section_header, only: Nuclide, Reaction, UrrData
-  use datatypes,            only: dict_get_key
-  use endf,                 only: reaction_name
-  use geometry_header,      only: Cell, Universe, Surface
+  use datatypes,       only: dict_get_key
+  use endf,            only: reaction_name
+  use geometry_header, only: Cell, Universe, Surface
   use global
-  use mesh_header,          only: StructuredMesh
-  use particle_header,      only: Particle, LocalCoord
-  use string,               only: upper_case, int_to_str, real_to_str
-  use tally_header,         only: TallyObject
+  use mesh_header,     only: StructuredMesh
+  use particle_header, only: Particle, LocalCoord
+  use string,          only: upper_case, int_to_str, real_to_str
+  use tally_header,    only: TallyObject
 
   implicit none
 

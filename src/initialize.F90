@@ -1,7 +1,7 @@
 module initialize
 
+  use ace,              only: read_xs
   use constants
-  use cross_section,    only: read_xs
   use datatypes,        only: dict_create, dict_add_key, dict_get_key,         &
                               dict_has_key, dict_keys
   use datatypes_header, only: ListKeyValueII, DictionaryII

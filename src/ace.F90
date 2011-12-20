@@ -1,8 +1,8 @@
-module cross_section
+module ace
 
-  use constants
-  use cross_section_header, only: Nuclide, Reaction, SAB_Table, XsListing, &
+  use ace_header,           only: Nuclide, Reaction, SAB_Table, XsListing, &
                                   DistEnergy
+  use constants
   use datatypes,            only: dict_create, dict_add_key, dict_get_key, &
                                   dict_has_key, dict_delete, dict_keys
   use datatypes_header,     only: DictionaryCI, ListKeyValueCI
@@ -1312,4 +1312,4 @@ contains
 
   end function get_real
 
-end module cross_section
+end module ace

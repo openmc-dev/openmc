@@ -1,7 +1,7 @@
 objects = \
+ace.o \
+ace_header.o \
 bank_header.o \
-cross_section_header.o \
-cross_section.o \
 datatypes.o \
 datatypes_header.o \
 doppler.o \

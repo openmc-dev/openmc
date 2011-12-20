@@ -1,18 +1,18 @@
-cross_section.o: constants.o
-cross_section.o: cross_section_header.o
-cross_section.o: datatypes.o
-cross_section.o: datatypes_header.o
-cross_section.o: endf.o
-cross_section.o: error.o
-cross_section.o: fileio.o
-cross_section.o: fission.o
-cross_section.o: global.o 
-cross_section.o: material_header.o
-cross_section.o: output.o 
-cross_section.o: string.o 
+ace.o: ace_header.o
+ace.o: constants.o
+ace.o: datatypes.o
+ace.o: datatypes_header.o
+ace.o: endf.o
+ace.o: error.o
+ace.o: fileio.o
+ace.o: fission.o
+ace.o: global.o 
+ace.o: material_header.o
+ace.o: output.o 
+ace.o: string.o 
 
-cross_section_header.o: constants.o
-cross_section_header.o: endf_header.o
+ace_header.o: constants.o
+ace_header.o: endf_header.o
 
 datatypes.o: datatypes_header.o
 
@@ -33,8 +33,8 @@ fileio.o: constants.o
 fileio.o: global.o
 fileio.o: string.o
 
+fission.o: ace_header.o
 fission.o: constants.o
-fission.o: cross_section_header.o
 fission.o: error.o
 fission.o: global.o
 fission.o: interpolation.o
@@ -50,9 +50,9 @@ geometry.o: particle_header.o
 geometry.o: string.o
 geometry.o: tally.o
 
+global.o: ace_header.o
 global.o: bank_header.o
 global.o: constants.o
-global.o: cross_section_header.o
 global.o: datatypes_header.o
 global.o: geometry_header.o
 global.o: material_header.o
@@ -62,8 +62,8 @@ global.o: source_header.o
 global.o: tally_header.o
 global.o: timing.o
 
+initialize.o: ace.o
 initialize.o: constants.o
-initialize.o: cross_section.o
 initialize.o: datatypes.o
 initialize.o: datatypes_header.o
 initialize.o: energy_grid.o
@@ -145,8 +145,8 @@ output.o: tally_header.o
 particle_header.o: constants.o
 particle_header.o: geometry_header.o
 
+physics.o: ace_header.o
 physics.o: constants.o
-physics.o: cross_section_header.o
 physics.o: endf.o
 physics.o: error.o
 physics.o: fission.o
@@ -172,9 +172,9 @@ search.o: constants.o
 search.o: error.o
 search.o: global.o
 
+source.o: ace_header.o
 source.o: bank_header.o
 source.o: constants.o
-source.o: cross_section_header.o
 source.o: error.o
 source.o: global.o
 source.o: output.o

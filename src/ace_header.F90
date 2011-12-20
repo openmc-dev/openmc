@@ -1,4 +1,4 @@
-module cross_section_header
+module ace_header
 
   use constants,   only: MAX_FILE_LEN
   use endf_header, only: Tab1
@@ -209,4 +209,4 @@ module cross_section_header
      real(8) :: nu_fission ! macroscopic production xs
   end type MaterialMacroXS
 
-end module cross_section_header
+end module ace_header

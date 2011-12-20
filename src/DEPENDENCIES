@@ -4,7 +4,6 @@ ace.o: datatypes.o
 ace.o: datatypes_header.o
 ace.o: endf.o
 ace.o: error.o
-ace.o: fileio.o
 ace.o: fission.o
 ace.o: global.o 
 ace.o: material_header.o
@@ -38,10 +37,6 @@ energy_grid.o: datatypes.o
 energy_grid.o: datatypes_header.o
 energy_grid.o: global.o
 energy_grid.o: output.o
-
-fileio.o: constants.o
-fileio.o: global.o
-fileio.o: string.o
 
 fission.o: ace_header.o
 fission.o: constants.o

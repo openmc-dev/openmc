@@ -8,7 +8,6 @@ module ace
   use datatypes_header,     only: DictionaryCI, ListKeyValueCI
   use endf,                 only: reaction_name
   use error,                only: fatal_error
-  use fileio,               only: read_line, skip_lines
   use fission,              only: nu_total
   use global
   use material_header,      only: Material

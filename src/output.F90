@@ -780,7 +780,7 @@ contains
           size_energy = 0
        end if
 
-       write(unit_,'(3X,A11,1X,F8.3,2X,I3,3X,I6,1X,I11,1X,I11)') &
+       write(unit_,'(3X,A11,1X,F8.3,2X,I4,2X,I6,1X,I11,1X,I11)') &
             reaction_name(rxn % MT), rxn % Q_value, rxn % TY, rxn % IE, &
             size_angle, size_energy
 

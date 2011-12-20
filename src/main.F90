@@ -44,6 +44,11 @@ program main
 
   ! deallocate arrays
   call free_memory()
+
+#ifdef MPI
+  ! If MPI is in use and enabled, terminate it
+  call MPI_FINALIZE(mpi_err)
+#endif
   
 contains
 

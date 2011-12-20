@@ -1,6 +1,7 @@
 module initialize
 
   use ace,              only: read_xs
+  use bank_header,      only: Bank
   use constants
   use datatypes,        only: dict_create, dict_add_key, dict_get_key,         &
                               dict_has_key, dict_keys
@@ -12,7 +13,6 @@ module initialize
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict
-  use mpi_routines,     only: setup_mpi
   use output,           only: title, header, print_summary, print_geometry,    &
                               print_plot, create_summary_file
   use random_lcg,       only: initialize_prng
@@ -20,6 +20,10 @@ module initialize
   use string,           only: int_to_str, starts_with, ends_with, lower_case
   use tally,            only: create_tally_map, TallyObject
   use timing,           only: timer_start, timer_stop
+
+#ifdef MPI
+  use mpi
+#endif
 
   implicit none
 
@@ -118,6 +122,81 @@ contains
     call timer_stop(time_initialize)
 
   end subroutine initialize_run
+
+!===============================================================================
+! SETUP_MPI initilizes the Message Passing Interface (MPI) and determines the
+! number of processors the problem is being run with as well as the rank of each
+! processor.
+!===============================================================================
+
+  subroutine setup_mpi()
+
+#ifdef MPI
+    integer        :: i
+    integer        :: bank_blocks(4) ! Count for each datatype
+    integer        :: bank_types(4)  ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: bank_disp(4)   ! Displacements
+    integer(MPI_ADDRESS_KIND) :: base
+    type(Bank)     :: b
+
+    mpi_enabled = .true.
+
+    ! Initialize MPI
+    call MPI_INIT(mpi_err)
+    if (mpi_err /= MPI_SUCCESS) then
+       message = "Failed to initialize MPI."
+       call fatal_error()
+    end if
+
+    ! Determine number of processors
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, mpi_err)
+    if (mpi_err /= MPI_SUCCESS) then
+       message = "Could not determine number of processors."
+       call fatal_error()
+    end if
+
+    ! Determine rank of each processor
+    call MPI_COMM_RANK(MPI_COMM_WORLD, rank, mpi_err)
+    if (mpi_err /= MPI_SUCCESS) then
+       message = "Could not determine MPI rank."
+       call fatal_error()
+    end if
+
+    ! Determine master
+    if (rank == 0) then
+       master = .true.
+    else
+       master = .false.
+    end if
+
+    ! Determine displacements for MPI_BANK type
+    call MPI_GET_ADDRESS(b % id,  bank_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(b % xyz, bank_disp(2), mpi_err)
+    call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
+    call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
+
+    ! Adjust displacements 
+    base = bank_disp(1)
+    do i = 1, 4
+       bank_disp(i) = bank_disp(i) - base
+    end do
+    
+    ! Define MPI_BANK for fission sites
+    bank_blocks = (/ 1, 3, 3, 1 /)
+    bank_types = (/ MPI_INTEGER8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
+    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
+         bank_types, MPI_BANK, mpi_err)
+    call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
+
+#else
+    ! if no MPI, set processor to master
+    mpi_enabled = .false.
+    rank = 0
+    n_procs = 1
+    master = .true.
+#endif
+
+  end subroutine setup_mpi
 
 !===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line

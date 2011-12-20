@@ -126,7 +126,7 @@ contains
 #ifdef MPI
     ! Collect number bank sites onto master process
     call MPI_REDUCE(n_bank, total_bank, 1, MPI_INTEGER8, MPI_SUM, 0, &
-         & MPI_COMM_WORLD, mpi_err)
+         MPI_COMM_WORLD, mpi_err)
 #else
     total_bank = n_bank
 #endif

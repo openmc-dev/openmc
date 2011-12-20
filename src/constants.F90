@@ -54,64 +54,64 @@ module constants
   ! GEOMETRY-RELATED CONSTANTS
 
   ! Boundary conditions
-  integer, parameter ::    &
-       & BC_TRANSMIT = 0,  & ! Transmission boundary condition (default)
-       & BC_VACUUM   = 1,  & ! Vacuum boundary condition
-       & BC_REFLECT  = 2,  & ! Reflecting boundary condition
-       & BC_PERIODIC = 3     ! Periodic boundary condition
+  integer, parameter ::  &
+       BC_TRANSMIT = 0,  & ! Transmission boundary condition (default)
+       BC_VACUUM   = 1,  & ! Vacuum boundary condition
+       BC_REFLECT  = 2,  & ! Reflecting boundary condition
+       BC_PERIODIC = 3     ! Periodic boundary condition
 
   ! Logical operators for cell definitions
-  integer, parameter ::                &
-       & OP_LEFT_PAREN  = huge(0),     & ! Left parentheses
-       & OP_RIGHT_PAREN = huge(0) - 1, & ! Right parentheses
-       & OP_UNION       = huge(0) - 2, & ! Union operator
-       & OP_DIFFERENCE  = huge(0) - 3    ! Difference operator
+  integer, parameter ::              &
+       OP_LEFT_PAREN  = huge(0),     & ! Left parentheses
+       OP_RIGHT_PAREN = huge(0) - 1, & ! Right parentheses
+       OP_UNION       = huge(0) - 2, & ! Union operator
+       OP_DIFFERENCE  = huge(0) - 3    ! Difference operator
 
   ! Cell types
-  integer, parameter ::    &
-       & CELL_NORMAL  = 1, & ! Cell with a specified material
-       & CELL_FILL    = 2, & ! Cell filled by a separate universe
-       & CELL_LATTICE = 3, & ! Cell filled with a lattice
-       & CELL_VOID    = -1
+  integer, parameter ::  &
+       CELL_NORMAL  = 1, & ! Cell with a specified material
+       CELL_FILL    = 2, & ! Cell filled by a separate universe
+       CELL_LATTICE = 3, & ! Cell filled with a lattice
+       CELL_VOID    = -1
 
   ! Lattice types
-  integer, parameter :: &
-       & LATTICE_RECT = 1, &
-       & LATTICE_HEX  = 2
+  integer, parameter ::  &
+       LATTICE_RECT = 1, &
+       LATTICE_HEX  = 2
 
   ! Lattice boundary crossings
-  integer, parameter :: &
-       & LATTICE_LEFT   = 1, &
-       & LATTICE_RIGHT  = 2, &
-       & LATTICE_BOTTOM = 3, &
-       & LATTICE_TOP    = 4
+  integer, parameter ::    &
+       LATTICE_LEFT   = 1, &
+       LATTICE_RIGHT  = 2, &
+       LATTICE_BOTTOM = 3, &
+       LATTICE_TOP    = 4
 
   ! Surface types
-  integer, parameter ::    &
-       & SURF_PX     =  1, & ! Plane parallel to x-plane 
-       & SURF_PY     =  2, & ! Plane parallel to y-plane 
-       & SURF_PZ     =  3, & ! Plane parallel to z-plane 
-       & SURF_PLANE  =  4, & ! Arbitrary plane
-       & SURF_CYL_X  =  5, & ! Cylinder along x-axis
-       & SURF_CYL_Y  =  6, & ! Cylinder along y-axis
-       & SURF_CYL_Z  =  7, & ! Cylinder along z-axis
-       & SURF_SPHERE =  8, & ! Sphere
-       & SURF_BOX_X  =  9, & ! Box extending infinitely in x-direction
-       & SURF_BOX_Y  = 10, & ! Box extending infinitely in y-direction
-       & SURF_BOX_Z  = 11, & ! Box extending infinitely in z-direction
-       & SURF_BOX    = 12, & ! Rectangular prism
-       & SURF_GQ     = 13    ! General quadratic surface
+  integer, parameter ::  &
+       SURF_PX     =  1, & ! Plane parallel to x-plane 
+       SURF_PY     =  2, & ! Plane parallel to y-plane 
+       SURF_PZ     =  3, & ! Plane parallel to z-plane 
+       SURF_PLANE  =  4, & ! Arbitrary plane
+       SURF_CYL_X  =  5, & ! Cylinder along x-axis
+       SURF_CYL_Y  =  6, & ! Cylinder along y-axis
+       SURF_CYL_Z  =  7, & ! Cylinder along z-axis
+       SURF_SPHERE =  8, & ! Sphere
+       SURF_BOX_X  =  9, & ! Box extending infinitely in x-direction
+       SURF_BOX_Y  = 10, & ! Box extending infinitely in y-direction
+       SURF_BOX_Z  = 11, & ! Box extending infinitely in z-direction
+       SURF_BOX    = 12, & ! Rectangular prism
+       SURF_GQ     = 13    ! General quadratic surface
 
   ! Surface senses
-  integer, parameter ::      &
-       & SENSE_POSITIVE = 1, &
-       & SENSE_NEGATIVE = -1
+  integer, parameter ::    &
+       SENSE_POSITIVE = 1, &
+       SENSE_NEGATIVE = -1
 
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS
 
   ! Interpolation flag
-  integer, parameter ::     &
+  integer, parameter ::   &
        HISTOGRAM     = 1, & ! y is constant in x
        LINEAR_LINEAR = 2, & ! y is linear in x
        LINEAR_LOG    = 3, & ! y is linear in ln(x)
@@ -126,19 +126,19 @@ module constants
 
   ! Angular distribution type
   integer, parameter :: & 
-       & ANGLE_ISOTROPIC = 1, & ! Isotropic angular distribution
-       & ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins
-       & ANGLE_TABULAR   = 3    ! Tabular angular distribution
+       ANGLE_ISOTROPIC = 1, & ! Isotropic angular distribution
+       ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins
+       ANGLE_TABULAR   = 3    ! Tabular angular distribution
 
   ! Secondary energy mode for S(a,b) inelastic scattering
   integer, parameter :: &
-       & SAB_SECONDARY_EQUAL  = 0, & ! Equally-likely outgoing energy bins
-       & SAB_SECONDARY_SKEWED = 1    ! Skewed outgoing energy bins
+       SAB_SECONDARY_EQUAL  = 0, & ! Equally-likely outgoing energy bins
+       SAB_SECONDARY_SKEWED = 1    ! Skewed outgoing energy bins
 
   ! Elastic mode for S(a,b) elastic scattering
   integer, parameter :: &
-       & SAB_ELASTIC_DISCRETE = 3, & ! Sample from discrete cosines
-       & SAB_ELASTIC_EXACT    = 4    ! Exact treatment for coherent elastic
+       SAB_ELASTIC_DISCRETE = 3, & ! Sample from discrete cosines
+       SAB_ELASTIC_EXACT    = 4    ! Exact treatment for coherent elastic
 
   ! Reaction types
   integer, parameter :: &

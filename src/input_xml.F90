@@ -14,8 +14,8 @@ module input_xml
 
   implicit none
 
-  type(DictionaryII), pointer :: &    ! used to count how many cells each
-       & cells_in_univ_dict => null() ! universe contains
+  type(DictionaryII), pointer :: &  ! used to count how many cells each
+       cells_in_univ_dict => null() ! universe contains
 
 contains
 
@@ -78,9 +78,8 @@ contains
        ! variable
        call get_environment_variable("CROSS_SECTIONS", env_variable)
        if (len_trim(env_variable) == 0) then
-          message = "No cross_sections.xml file was specified in " // &
-               "settings.xml or in the CROSS_SECTIONS environment " // &
-               "variable."
+          message = "No cross_sections.xml file was specified in settings.xml &
+               &or in the CROSS_SECTIONS environment variable."
           call fatal_error()
        else
           path_cross_sections = trim(env_variable)
@@ -146,8 +145,8 @@ contains
     if (associated(entropy_box_)) then
        ! Check to make sure enough values were supplied
        if (size(entropy_box_) /= 6) then
-          message = "Need to supply lower-left and upper-right coordinates " &
-               // "for Shannon entropy box."
+          message = "Need to supply lower-left and upper-right coordinates &
+               &for Shannon entropy box."
           call fatal_error()
        end if
 
@@ -157,8 +156,8 @@ contains
 
        ! Check on values provided
        if (.not. all(entropy_upper_right > entropy_lower_left)) then
-          message = "Upper-right coordinate must be greater than lower-left " &
-               // "coordinate for Shannon entropy box."
+          message = "Upper-right coordinate must be greater than lower-left &
+               &coordinate for Shannon entropy box."
           call fatal_error()
        end if
 
@@ -336,7 +335,6 @@ contains
        if (n < coeffs_reqd) then
           message = "Not enough coefficients specified for surface: " // & 
                trim(int_to_str(s % id))
-          print *, n, coeffs_reqd
           call fatal_error()
        elseif (n > coeffs_reqd) then
           message = "Too many coefficients specified for surface: " // &
@@ -562,8 +560,8 @@ contains
                   trim(name)
              call fatal_error()
           elseif (nuc % ao /= ZERO .and. nuc % wo /= ZERO) then
-             message = "Cannot specify both atom and weight percents for a " &
-                  // "nuclide: " // trim(name)
+             message = "Cannot specify both atom and weight percents for a &
+                  &nuclide: " // trim(name)
              call fatal_error()
           end if
 
@@ -693,16 +691,16 @@ contains
 
        ! Read mesh origin location
        if (m % n_dimension /= size(mesh_(i) % origin)) then
-          message = "Number of entries on <origin> must be the same as " // &
-               "the number of entries on <dimension>."
+          message = "Number of entries on <origin> must be the same as the &
+               &number of entries on <dimension>."
           call fatal_error()
        end if
        m % origin = mesh_(i) % origin
 
        ! Read mesh widths
        if (size(mesh_(i) % width) /= size(mesh_(i) % origin)) then
-          message = "Number of entries on <width> must be the same as " // &
-               "the number of entries on <origin>."
+          message = "Number of entries on <width> must be the same as the &
+               &number of entries on <origin>."
           call fatal_error()
        end if
        m % width = mesh_(i) % width
@@ -845,8 +843,8 @@ contains
              case ('total')
                 t % macro_bins(j) % scalar = MACRO_TOTAL
                 if (t % n_bins(T_ENERGYOUT) > 0) then
-                   message = "Cannot tally total reaction rate with an " &
-                        // "outgoing energy filter."
+                   message = "Cannot tally total reaction rate with an &
+                        &outgoing energy filter."
                    call fatal_error()
                 end if
              case ('scatter')
@@ -870,15 +868,15 @@ contains
              case ('absorption')
                 t % macro_bins(j) % scalar = MACRO_ABSORPTION
                 if (t % n_bins(T_ENERGYOUT) > 0) then
-                   message = "Cannot tally absorption rate with an outgoing " &
-                        // "energy filter."
+                   message = "Cannot tally absorption rate with an outgoing &
+                        &energy filter."
                    call fatal_error()
                 end if
              case ('fission')
                 t % macro_bins(j) % scalar = MACRO_FISSION
                 if (t % n_bins(T_ENERGYOUT) > 0) then
-                   message = "Cannot tally fission rate with an outgoing " &
-                        // "energy filter."
+                   message = "Cannot tally fission rate with an outgoing &
+                        &energy filter."
                    call fatal_error()
                 end if
              case ('nu-fission')
@@ -890,9 +888,9 @@ contains
                 ! Check to make sure that current is the only desired response
                 ! for this tally
                 if (n_words > 1) then
-                   message = "Cannot tally other macro reactions in the same " &
-                        // "tally as surface currents. Separate other macro " &
-                        // "reactions into a distinct tally."
+                   message = "Cannot tally other macro reactions in the same &
+                        &tally as surface currents. Separate other macro &
+                        &reactions into a distinct tally."
                    call fatal_error()
                 end if
 

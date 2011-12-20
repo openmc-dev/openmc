@@ -524,7 +524,7 @@ contains
 
     ! Write total atom density in atom/b-cm
     write(unit_,*) '    Atom Density = ' // trim(real_to_str(mat % density)) &
-         & // ' atom/b-cm'
+         // ' atom/b-cm'
 
     ! Write atom density for each nuclide in material
     write(unit_,*) '    Nuclides:'
@@ -532,7 +532,7 @@ contains
        nuc => nuclides(mat % nuclide(i))
        density = mat % atom_density(i)
        string = '        ' // trim(nuc % name) // ' = ' // &
-            & trim(real_to_str(density)) // ' atom/b-cm'
+            trim(real_to_str(density)) // ' atom/b-cm'
        write(unit_,*) trim(string)
     end do
 

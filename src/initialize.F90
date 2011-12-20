@@ -297,7 +297,7 @@ contains
                 c % surfaces(j) = sign(i_array, id)
              else
                 message = "Could not find surface " // trim(int_to_str(abs(id))) // &
-                     & " specified on cell " // trim(int_to_str(c % id))
+                     " specified on cell " // trim(int_to_str(c % id))
                 call fatal_error()
              end if
           end if
@@ -376,7 +376,7 @@ contains
                 t % cell_bins(j) % scalar = dict_get_key(cell_dict, id)
              else
                 message = "Could not find cell " // trim(int_to_str(id)) // &
-                     & " specified on tally " // trim(int_to_str(t % id))
+                     " specified on tally " // trim(int_to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -392,7 +392,7 @@ contains
                 t % surface_bins(j) % scalar = dict_get_key(surface_dict, id)
              else
                 message = "Could not find surface " // trim(int_to_str(id)) // &
-                     & " specified on tally " // trim(int_to_str(t % id))
+                     " specified on tally " // trim(int_to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -408,7 +408,7 @@ contains
                 t % universe_bins(j) % scalar = dict_get_key(universe_dict, id)
              else
                 message = "Could not find universe " // trim(int_to_str(id)) // &
-                     & " specified on tally " // trim(int_to_str(t % id))
+                     " specified on tally " // trim(int_to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -424,7 +424,7 @@ contains
                 t % material_bins(j) % scalar = dict_get_key(material_dict, id)
              else
                 message = "Could not find material " // trim(int_to_str(id)) // &
-                     & " specified on tally " // trim(int_to_str(t % id))
+                     " specified on tally " // trim(int_to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -440,7 +440,7 @@ contains
                 t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, id)
              else
                 message = "Could not find material " // trim(int_to_str(id)) // &
-                     & " specified on tally " // trim(int_to_str(t % id))
+                     " specified on tally " // trim(int_to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -455,7 +455,7 @@ contains
              t % mesh = dict_get_key(mesh_dict, id)
           else
              message = "Could not find mesh " // trim(int_to_str(id)) // &
-                  & " specified on tally " // trim(int_to_str(t % id))
+                  " specified on tally " // trim(int_to_str(t % id))
              call fatal_error()
           end if
        end if
@@ -545,9 +545,9 @@ contains
        ! Check to make sure either all atom percents or all weight percents are
        ! given
        if (.not. (all(mat%atom_percent > ZERO) .or. & 
-            & all(mat%atom_percent < ZERO))) then
+            all(mat%atom_percent < ZERO))) then
           message = "Cannot mix atom and weight percents in material " // &
-               & int_to_str(mat % id)
+               int_to_str(mat % id)
           call fatal_error()
        end if
 
@@ -605,7 +605,7 @@ contains
           end do
           sum_percent = ONE / sum_percent
           mat % density = -mat % density * N_AVOGADRO & 
-               & / MASS_NEUTRON * sum_percent
+               / MASS_NEUTRON * sum_percent
        end if
 
        ! Calculate nuclide atom densities and deallocate atom_percent array

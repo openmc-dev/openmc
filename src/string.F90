@@ -348,7 +348,7 @@ contains
     ! Determine number of digits to right of decimal point
     index_decimal = index(string, '.')
     index_exponent = max(index(string, 'd'), index(string, 'D'), &
-         & index(string, 'e'), index(string, 'E'))
+         index(string, 'e'), index(string, 'E'))
     if (index_decimal > 0) then
        if (index_exponent > 0) then
           d = index_exponent - index_decimal - 1

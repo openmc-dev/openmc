@@ -68,6 +68,7 @@ global.o: tally_header.o
 global.o: timing.o
 
 initialize.o: ace.o
+initialize.o: bank_header.o
 initialize.o: constants.o
 initialize.o: datatypes.o
 initialize.o: datatypes_header.o
@@ -77,7 +78,6 @@ initialize.o: geometry.o
 initialize.o: geometry_header.o
 initialize.o: global.o
 initialize.o: input_xml.o
-initialize.o: mpi_routines.o
 initialize.o: output.o
 initialize.o: random_lcg.o
 initialize.o: source.o
@@ -100,9 +100,13 @@ input_xml.o: xml-fortran/templates/materials_t.o
 input_xml.o: xml-fortran/templates/settings_t.o
 input_xml.o: xml-fortran/templates/tallies_t.o
 
-intercycle.o: global.o
 intercycle.o: error.o
+intercycle.o: global.o
 intercycle.o: output.o
+intercycle.o: particle_header.o
+intercycle.o: random_lcg.o
+intercycle.o: tally_header.o
+intercycle.o: timing.o
 
 interpolation.o: constants.o
 interpolation.o: endf_header.o
@@ -115,7 +119,6 @@ main.o: constants.o
 main.o: global.o
 main.o: initialize.o
 main.o: intercycle.o
-main.o: mpi_routines.o
 main.o: output.o
 main.o: particle_header.o
 main.o: physics.o
@@ -127,15 +130,6 @@ main.o: tally.o
 main.o: timing.o
 
 mesh.o: mesh_header.o
-
-mpi_routines.o: constants.o
-mpi_routines.o: error.o
-mpi_routines.o: global.o
-mpi_routines.o: output.o
-mpi_routines.o: particle_header.o
-mpi_routines.o: random_lcg.o
-mpi_routines.o: tally_header.o
-mpi_routines.o: timing.o
 
 output.o: constants.o
 output.o: datatypes.o
@@ -196,9 +190,9 @@ string.o: global.o
 tally.o: constants.o
 tally.o: error.o
 tally.o: global.o
+tally.o: intercycle.o
 tally.o: mesh.o
 tally.o: mesh_header.o
-tally.o: mpi_routines.o
 tally.o: output.o
 tally.o: search.o
 tally.o: string.o

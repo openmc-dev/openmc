@@ -11,8 +11,8 @@ module tally
   use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement
 
 #ifdef MPI
+  use intercycle,    only: reduce_tallies
   use mpi
-  use mpi_routines,  only: reduce_tallies
 #endif
 
   implicit none

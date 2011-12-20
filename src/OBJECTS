@@ -22,7 +22,6 @@ main.o \
 material_header.o \
 mesh_header.o \
 mesh.o \
-mpi_routines.o \
 output.o \
 particle_header.o \
 physics.o \

@@ -3,8 +3,7 @@ program main
   use constants
   use global
   use initialize,      only: initialize_run
-  use intercycle,      only: shannon_entropy, calculate_keff
-  use mpi_routines,    only: synchronize_bank
+  use intercycle,      only: shannon_entropy, calculate_keff, synchronize_bank
   use output,          only: write_message, header, print_runtime
   use particle_header, only: Particle
   use plot,            only: run_plot

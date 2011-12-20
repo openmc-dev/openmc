@@ -129,6 +129,7 @@ module global
   logical :: master      ! master process?
   logical :: mpi_enabled ! is MPI in use and initialized?
   integer :: mpi_err     ! MPI error code
+  integer :: MPI_BANK    ! MPI datatype for fission bank
 
   ! ============================================================================
   ! TIMING VARIABLES

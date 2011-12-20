@@ -15,9 +15,6 @@ module mpi_routines
 
   implicit none
 
-  integer    :: MPI_BANK   ! MPI datatype for fission bank
-  integer(8) :: bank_index ! Fission bank site unique identifier
-
 contains
 
 !===============================================================================

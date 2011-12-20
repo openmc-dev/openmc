@@ -2,7 +2,7 @@ module physics
 
   use ace_header,      only: Nuclide, Reaction, DistEnergy
   use constants
-  use cross_section,   only: calculate_xs, find_energy_index
+  use cross_section,   only: calculate_xs
   use endf,            only: reaction_name, is_fission, is_scatter
   use error,           only: fatal_error, warning
   use fission,         only: nu_total, nu_prompt, nu_delayed
@@ -197,9 +197,6 @@ contains
 
     ! Reset number of particles banked during collision
     p % n_bank = 0
-
-    ! find energy index, interpolation factor
-    call find_energy_index(p)
 
   end subroutine collision
 

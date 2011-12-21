@@ -296,7 +296,7 @@ contains
     ! determine energy table
     i_energy = 1
     do
-       if (p % E > urr % energy(i_energy)) exit
+       if (p % E < urr % energy(i_energy + 1)) exit
        i_energy = i_energy + 1
     end do
 

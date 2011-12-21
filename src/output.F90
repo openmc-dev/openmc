@@ -10,7 +10,7 @@ module output
   use global
   use mesh_header,     only: StructuredMesh
   use particle_header, only: Particle, LocalCoord
-  use string,          only: upper_case, int_to_str, real_to_str
+  use string,          only: upper_case, to_str
   use tally_header,    only: TallyObject
 
   implicit none
@@ -67,9 +67,9 @@ contains
     ! Write information on number of processors
 #ifdef MPI
     write(UNIT=OUTPUT_UNIT, FMT='(1X,A)') '     MPI Processes: ' // &
-         trim(int_to_str(n_procs))
+         trim(to_str(n_procs))
     write(UNIT=UNIT_SUMMARY, FMT='(1X,"MPI Processes:",1X,A)') &
-         trim(int_to_str(n_procs))
+         trim(to_str(n_procs))
 #endif
 
   end subroutine title
@@ -213,13 +213,13 @@ contains
     ! display type of particle
     select case (p % type)
     case (NEUTRON)
-       write(ou,*) 'Neutron ' // int_to_str(p % id)
+       write(ou,*) 'Neutron ' // to_str(p % id)
     case (PHOTON)
-       write(ou,*) 'Photon ' // int_to_str(p % id)
+       write(ou,*) 'Photon ' // to_str(p % id)
     case (ELECTRON)
-       write(ou,*) 'Electron ' // int_to_str(p % id)
+       write(ou,*) 'Electron ' // to_str(p % id)
     case default
-       write(ou,*) 'Unknown Particle ' // int_to_str(p % id)
+       write(ou,*) 'Unknown Particle ' // to_str(p % id)
     end select
 
     ! loop through each level of universes
@@ -227,26 +227,26 @@ contains
     i = 0
     do while(associated(coord))
        ! Print level
-       write(ou,*) '  Level ' // trim(int_to_str(i))
+       write(ou,*) '  Level ' // trim(to_str(i))
 
        ! Print cell for this level
        if (coord % cell /= NONE) then
           c => cells(coord % cell)
-          write(ou,*) '    Cell             = ' // trim(int_to_str(c % id))
+          write(ou,*) '    Cell             = ' // trim(to_str(c % id))
        end if
 
        ! Print universe for this level
        if (coord % universe /= NONE) then
           u => universes(coord % universe)
-          write(ou,*) '    Universe         = ' // trim(int_to_str(u % id))
+          write(ou,*) '    Universe         = ' // trim(to_str(u % id))
        end if
 
        ! Print information on lattice
        if (coord % lattice /= NONE) then
           l => lattices(coord % lattice)
-          write(ou,*) '    Lattice          = ' // trim(int_to_str(l % id))
-          write(ou,*) '    Lattice position = (' // trim(int_to_str(&
-               p % coord % lattice_x)) // ',' // trim(int_to_str(&
+          write(ou,*) '    Lattice          = ' // trim(to_str(l % id))
+          write(ou,*) '    Lattice position = (' // trim(to_str(&
+               p % coord % lattice_x)) // ',' // trim(to_str(&
                p % coord % lattice_y)) // ')'
        end if
 
@@ -261,13 +261,13 @@ contains
     ! Print surface
     if (p % surface /= NONE) then
        s => surfaces(p % surface)
-       write(ou,*) '    Surface = ' // int_to_str(s % id)
+       write(ou,*) '    Surface = ' // to_str(s % id)
     end if
 
-    write(ou,*) '  Weight = ' // real_to_str(p % wgt)
-    write(ou,*) '  Energy = ' // real_to_str(p % E)
-    write(ou,*) '  IE = ' // int_to_str(p % IE)
-    write(ou,*) '  Interpolation factor = ' // real_to_str(p % interp)
+    write(ou,*) '  Weight = ' // to_str(p % wgt)
+    write(ou,*) '  Energy = ' // to_str(p % E)
+    write(ou,*) '  IE = ' // to_str(p % IE)
+    write(ou,*) '  Interpolation factor = ' // to_str(p % interp)
     write(ou,*)
 
   end subroutine print_particle
@@ -281,12 +281,12 @@ contains
     type(Reaction), pointer :: rxn
 
     write(ou,*) 'Reaction ' // reaction_name(rxn % MT)
-    write(ou,*) '    MT = ' // int_to_str(rxn % MT)
-    write(ou,*) '    Q-value = ' // real_to_str(rxn % Q_value)
-    write(ou,*) '    TY = ' // int_to_str(rxn % TY)
-    write(ou,*) '    Starting index = ' // int_to_str(rxn % IE)
+    write(ou,*) '    MT = ' // to_str(rxn % MT)
+    write(ou,*) '    Q-value = ' // to_str(rxn % Q_value)
+    write(ou,*) '    TY = ' // to_str(rxn % TY)
+    write(ou,*) '    Starting index = ' // to_str(rxn % IE)
     if (rxn % has_energy_dist) then
-       write(ou,*) '    Energy: Law ' // int_to_str(rxn % edist % law)
+       write(ou,*) '    Energy: Law ' // to_str(rxn % edist % law)
     end if
     write(ou,*)
 
@@ -315,28 +315,28 @@ contains
        unit_ = OUTPUT_UNIT
     end if
 
-    write(unit_,*) 'Cell ' // int_to_str(c % id)
+    write(unit_,*) 'Cell ' // to_str(c % id)
     temp = dict_get_key(cell_dict, c % id)
-    write(unit_,*) '    Array Index = ' // int_to_str(temp)
+    write(unit_,*) '    Array Index = ' // to_str(temp)
     u => universes(c % universe)
-    write(unit_,*) '    Universe = ' // int_to_str(u % id)
+    write(unit_,*) '    Universe = ' // to_str(u % id)
     select case (c % type)
     case (CELL_NORMAL)
        write(unit_,*) '    Fill = NONE'
     case (CELL_FILL)
        u => universes(c % fill)
-       write(unit_,*) '    Fill = Universe ' // int_to_str(u % id)
+       write(unit_,*) '    Fill = Universe ' // to_str(u % id)
     case (CELL_LATTICE)
        l => lattices(c % fill)
-       write(unit_,*) '    Fill = Lattice ' // int_to_str(l % id)
+       write(unit_,*) '    Fill = Lattice ' // to_str(l % id)
     end select
     if (c % material == 0) then
        write(unit_,*) '    Material = NONE'
     else
        m => materials(c % material)
-       write(unit_,*) '    Material = ' // int_to_str(m % id)
+       write(unit_,*) '    Material = ' // to_str(m % id)
     end if
-    write(unit_,*) '    Parent Cell = ' // int_to_str(c % parent)
+    write(unit_,*) '    Parent Cell = ' // to_str(c % parent)
     string = ""
     do i = 1, c % n_surfaces
        select case (c % surfaces(i))
@@ -349,7 +349,7 @@ contains
        case (OP_DIFFERENCE)
           string = trim(string) // ' !'
        case default
-          string = trim(string) // ' ' // int_to_str(c % surfaces(i))
+          string = trim(string) // ' ' // to_str(c % surfaces(i))
        end select
     end do
     write(unit_,*) '    Surface Specification:' // trim(string)
@@ -377,12 +377,12 @@ contains
        unit_ = OUTPUT_UNIT
     end if
 
-    write(unit_,*) 'Universe ' // int_to_str(univ % id)
-    write(unit_,*) '    Level = ' // int_to_str(univ % level)
+    write(unit_,*) 'Universe ' // to_str(univ % id)
+    write(unit_,*) '    Level = ' // to_str(univ % level)
     string = ""
     do i = 1, univ % n_cells
        c => cells(univ % cells(i))
-       string = trim(string) // ' ' // int_to_str(c % id)
+       string = trim(string) // ' ' // to_str(c % id)
     end do
     write(unit_,*) '    Cells =' // trim(string)
     write(unit_,*)
@@ -406,13 +406,13 @@ contains
        unit_ = OUTPUT_UNIT
     end if
 
-    write(unit_,*) 'Lattice ' // int_to_str(lat % id)
-    write(unit_,*) '    n_x = ' // int_to_str(lat % n_x)
-    write(unit_,*) '    n_y = ' // int_to_str(lat % n_y)
-    write(unit_,*) '    x0 = ' // real_to_str(lat % x0)
-    write(unit_,*) '    y0 = ' // real_to_str(lat % y0)
-    write(unit_,*) '    width_x = ' // real_to_str(lat % width_x)
-    write(unit_,*) '    width_y = ' // real_to_str(lat % width_y)
+    write(unit_,*) 'Lattice ' // to_str(lat % id)
+    write(unit_,*) '    n_x = ' // to_str(lat % n_x)
+    write(unit_,*) '    n_y = ' // to_str(lat % n_y)
+    write(unit_,*) '    x0 = ' // to_str(lat % x0)
+    write(unit_,*) '    y0 = ' // to_str(lat % y0)
+    write(unit_,*) '    width_x = ' // to_str(lat % width_x)
+    write(unit_,*) '    width_y = ' // to_str(lat % width_y)
     write(unit_,*)
 
   end subroutine print_lattice
@@ -436,7 +436,7 @@ contains
        unit_ = OUTPUT_UNIT
     end if
 
-    write(unit_,*) 'Surface ' // int_to_str(surf % id)
+    write(unit_,*) 'Surface ' // to_str(surf % id)
     select case (surf % type)
     case (SURF_PX)
        string = "X Plane"
@@ -465,14 +465,14 @@ contains
 
     string = ""
     do i = 1, size(surf % coeffs)
-       string = trim(string) // ' ' // real_to_str(surf % coeffs(i), 4)
+       string = trim(string) // ' ' // to_str(surf % coeffs(i), 4)
     end do
     write(unit_,*) '    Coefficients = ' // trim(string)
 
     string = ""
     if (allocated(surf % neighbor_pos)) then
        do i = 1, size(surf % neighbor_pos)
-          string = trim(string) // ' ' // int_to_str(surf % neighbor_pos(i))
+          string = trim(string) // ' ' // to_str(surf % neighbor_pos(i))
        end do
     end if
     write(unit_,*) '    Positive Neighbors = ' // trim(string)
@@ -480,7 +480,7 @@ contains
     string = ""
     if (allocated(surf % neighbor_neg)) then
        do i = 1, size(surf % neighbor_neg)
-          string = trim(string) // ' ' // int_to_str(surf % neighbor_neg(i))
+          string = trim(string) // ' ' // to_str(surf % neighbor_neg(i))
        end do
     end if
     write(unit_,*) '    Negative Neighbors =' // trim(string)
@@ -520,10 +520,10 @@ contains
     end if
 
     ! Write identifier for material
-    write(unit_,*) 'Material ' // int_to_str(mat % id)
+    write(unit_,*) 'Material ' // to_str(mat % id)
 
     ! Write total atom density in atom/b-cm
-    write(unit_,*) '    Atom Density = ' // trim(real_to_str(mat % density)) &
+    write(unit_,*) '    Atom Density = ' // trim(to_str(mat % density)) &
          // ' atom/b-cm'
 
     ! Write atom density for each nuclide in material
@@ -532,7 +532,7 @@ contains
        nuc => nuclides(mat % nuclide(i))
        density = mat % atom_density(i)
        string = '        ' // trim(nuc % name) // ' = ' // &
-            trim(real_to_str(density)) // ' atom/b-cm'
+            trim(to_str(density)) // ' atom/b-cm'
        write(unit_,*) trim(string)
     end do
 
@@ -569,14 +569,14 @@ contains
        unit_ = OUTPUT_UNIT
     end if
 
-    write(unit_,*) 'Tally ' // int_to_str(t % id)
+    write(unit_,*) 'Tally ' // to_str(t % id)
 
     if (t % n_bins(T_CELL) > 0) then
        string = ""
        do i = 1, t % n_bins(T_CELL)
           id = t % cell_bins(i) % scalar
           c => cells(id)
-          string = trim(string) // ' ' // trim(int_to_str(c % id))
+          string = trim(string) // ' ' // trim(to_str(c % id))
        end do
        write(unit_, *) '    Cell Bins:' // trim(string)
     end if
@@ -586,7 +586,7 @@ contains
        do i = 1, t % n_bins(T_SURFACE)
           id = t % surface_bins(i) % scalar
           s => surfaces(id)
-          string = trim(string) // ' ' // trim(int_to_str(s % id))
+          string = trim(string) // ' ' // trim(to_str(s % id))
        end do
        write(unit_, *) '    Surface Bins:' // trim(string)
     end if
@@ -596,7 +596,7 @@ contains
        do i = 1, t % n_bins(T_UNIVERSE)
           id = t % universe_bins(i) % scalar
           u => universes(id)
-          string = trim(string) // ' ' // trim(int_to_str(u % id))
+          string = trim(string) // ' ' // trim(to_str(u % id))
        end do
        write(unit_, *) '    Material Bins:' // trim(string)
     end if
@@ -606,7 +606,7 @@ contains
        do i = 1, t % n_bins(T_MATERIAL)
           id = t % material_bins(i) % scalar
           m => materials(id)
-          string = trim(string) // ' ' // trim(int_to_str(m % id))
+          string = trim(string) // ' ' // trim(to_str(m % id))
        end do
        write(unit_, *) '    Material Bins:' // trim(string)
     end if
@@ -615,9 +615,9 @@ contains
        string = ""
        id = t % mesh
        sm => meshes(id)
-       string = trim(string) // ' ' // trim(int_to_str(sm % dimension(1)))
+       string = trim(string) // ' ' // trim(to_str(sm % dimension(1)))
        do i = 2, sm % n_dimension
-          string = trim(string) // ' x ' // trim(int_to_str(sm % dimension(i)))
+          string = trim(string) // ' x ' // trim(to_str(sm % dimension(i)))
        end do
        write(unit_, *) '    Mesh Bins:' // trim(string)
     end if
@@ -627,7 +627,7 @@ contains
        do i = 1, t % n_bins(T_CELLBORN)
           id = t % cellborn_bins(i) % scalar
           c => cells(id)
-          string = trim(string) // ' ' // trim(int_to_str(c % id))
+          string = trim(string) // ' ' // trim(to_str(c % id))
        end do
        write(unit_, *) '    Birth Region Bins:' // trim(string)
     end if
@@ -635,7 +635,7 @@ contains
     if (t % n_bins(T_ENERGYIN) > 0) then
        string = ""
        do i = 1, t % n_bins(T_ENERGYIN) + 1
-          string = trim(string) // ' ' // trim(real_to_str(&
+          string = trim(string) // ' ' // trim(to_str(&
                t % energy_in(i)))
        end do
        write(unit_,*) '    Incoming Energy Bins:' // trim(string)
@@ -644,7 +644,7 @@ contains
     if (t % n_bins(T_ENERGYOUT) > 0) then
        string = ""
        do i = 1, t % n_bins(T_ENERGYOUT) + 1
-          string = trim(string) // ' ' // trim(real_to_str(&
+          string = trim(string) // ' ' // trim(to_str(&
                t % energy_out(i)))
        end do
        write(unit_,*) '    Outgoing Energy Bins:' // trim(string)
@@ -751,14 +751,14 @@ contains
 
     ! Basic nuclide information
     write(unit_,*) 'Nuclide ' // trim(nuc % name)
-    write(unit_,*) '  zaid = ' // trim(int_to_str(nuc % zaid))
-    write(unit_,*) '  awr = ' // trim(real_to_str(nuc % awr))
-    write(unit_,*) '  kT = ' // trim(real_to_str(nuc % kT))
-    write(unit_,*) '  # of grid points = ' // trim(int_to_str(nuc % n_grid))
+    write(unit_,*) '  zaid = ' // trim(to_str(nuc % zaid))
+    write(unit_,*) '  awr = ' // trim(to_str(nuc % awr))
+    write(unit_,*) '  kT = ' // trim(to_str(nuc % kT))
+    write(unit_,*) '  # of grid points = ' // trim(to_str(nuc % n_grid))
     write(unit_,*) '  Fissionable = ', nuc % fissionable
-    write(unit_,*) '  # of fission reactions = ' // trim(int_to_str(nuc % n_fission))
-    write(unit_,*) '  # of reactions = ' // trim(int_to_str(nuc % n_reaction))
-    write(unit_,*) '  Size of cross sections = ' // trim(int_to_str(&
+    write(unit_,*) '  # of fission reactions = ' // trim(to_str(nuc % n_fission))
+    write(unit_,*) '  # of reactions = ' // trim(to_str(nuc % n_reaction))
+    write(unit_,*) '  Size of cross sections = ' // trim(to_str(&
          size_xs)) // ' bytes'
 
     write(unit_,*) '  Reaction    Q-value   Mult    IE    size(angle) size(energy)'
@@ -792,18 +792,18 @@ contains
     if (nuc % urr_present) then
        urr => nuc % urr_data
        write(unit_,*) '  Unresolved resonance probability table:'
-       write(unit_,*) '    # of energies = ' // trim(int_to_str(urr % n_energy))
-       write(unit_,*) '    # of probabilities = ' // trim(int_to_str(urr % n_prob))
-       write(unit_,*) '    Interpolation =  ' // trim(int_to_str(urr % interp))
-       write(unit_,*) '    Inelastic flag = ' // trim(int_to_str(urr % inelastic_flag))
-       write(unit_,*) '    Absorption flag = ' // trim(int_to_str(urr % absorption_flag))
+       write(unit_,*) '    # of energies = ' // trim(to_str(urr % n_energy))
+       write(unit_,*) '    # of probabilities = ' // trim(to_str(urr % n_prob))
+       write(unit_,*) '    Interpolation =  ' // trim(to_str(urr % interp))
+       write(unit_,*) '    Inelastic flag = ' // trim(to_str(urr % inelastic_flag))
+       write(unit_,*) '    Absorption flag = ' // trim(to_str(urr % absorption_flag))
        write(unit_,*) '    Multiply by smooth? ', urr % multiply_smooth
-       write(unit_,*) '    Min energy = ', trim(real_to_str(urr % energy(1)))
-       write(unit_,*) '    Max energy = ', trim(real_to_str(urr % energy(urr % n_energy)))
+       write(unit_,*) '    Min energy = ', trim(to_str(urr % energy(1)))
+       write(unit_,*) '    Max energy = ', trim(to_str(urr % energy(urr % n_energy)))
     end if
 
     ! Write total memory used
-    write(unit_,*) '  Total memory used = ' // trim(int_to_str(size_total)) &
+    write(unit_,*) '  Total memory used = ' // trim(to_str(size_total)) &
          // ' bytes'
 
     ! Blank line at end of nuclide
@@ -861,8 +861,8 @@ contains
 
     ! print summary of unionized energy grid
     call header("UNIONIZED ENERGY GRID", unit=UNIT_SUMMARY)
-    write(UNIT_SUMMARY,*) "Points on energy grid:  " // trim(int_to_str(n_grid))
-    write(UNIT_SUMMARY,*) "Extra storage required: " // trim(int_to_str(&
+    write(UNIT_SUMMARY,*) "Points on energy grid:  " // trim(to_str(n_grid))
+    write(UNIT_SUMMARY,*) "Extra storage required: " // trim(to_str(&
          n_grid*n_nuclides_total*4)) // " bytes"
 
     ! print summary of variance reduction
@@ -872,9 +872,9 @@ contains
     else
        write(UNIT_SUMMARY,100) "Survival Biasing:", "off"
     end if
-    string = real_to_str(weight_cutoff)
+    string = to_str(weight_cutoff)
     write(UNIT_SUMMARY,100) "Weight Cutoff:", trim(string)
-    string = real_to_str(weight_survive)
+    string = to_str(weight_survive)
     write(UNIT_SUMMARY,100) "Survival weight:", trim(string)
 
     ! Format descriptor for columns
@@ -893,16 +893,16 @@ contains
     call header("PLOTTING SUMMARY")
 
     ! Print plotting origin
-    write(ou,100) "Plotting Origin:", trim(real_to_str(plot_origin(1))) // &
-         " " // trim(real_to_str(plot_origin(2))) // " " // &
-         trim(real_to_str(plot_origin(3)))
+    write(ou,100) "Plotting Origin:", trim(to_str(plot_origin(1))) // &
+         " " // trim(to_str(plot_origin(2))) // " " // &
+         trim(to_str(plot_origin(3)))
 
     ! Print plotting width
-    write(ou,100) "Plotting Width:", trim(real_to_str(plot_width(1))) // &
-         " " // trim(real_to_str(plot_width(2)))
+    write(ou,100) "Plotting Width:", trim(to_str(plot_width(1))) // &
+         " " // trim(to_str(plot_width(2)))
 
     ! Print pixel width
-    write(ou,100) "Pixel Width:", trim(real_to_str(pixel))
+    write(ou,100) "Pixel Width:", trim(to_str(pixel))
     write(ou,*)
 
     ! Format descriptor for columns
@@ -944,7 +944,7 @@ contains
     ! display calculate rate and final keff
     total_particles = n_particles * n_cycles
     speed = real(total_particles) / time_compute % elapsed
-    string = real_to_str(speed)
+    string = to_str(speed)
     write(ou,101) "Calculation Rate", trim(string)
     write(ou,102) "Final Keff", keff, keff_std
     write(ou,*)

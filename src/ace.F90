@@ -13,7 +13,7 @@ module ace
   use material_header,      only: Material
   use output,               only: write_message, print_nuclide, header
   use string,               only: split_string, str_to_int, str_to_real, &
-                                  lower_case, int_to_str
+                                  lower_case, to_str
 
   implicit none
 
@@ -203,7 +203,7 @@ contains
           ! Check to make sure S(a,b) table matched a nuclide
           if (mat % sab_nuclide == 0) then
              message = "S(a,b) table " // trim(mat % sab_name) // " did not match &
-                  &any nuclide on material " // trim(int_to_str(mat % id))
+                  &any nuclide on material " // trim(to_str(mat % id))
              call fatal_error()
           end if
        end if

@@ -10,7 +10,7 @@ program main
   use physics,         only: transport
   use random_lcg,      only: set_particle_seed
   use source,          only: get_source_particle
-  use string,          only: int_to_str
+  use string,          only: to_str
   use tally,           only: synchronize_tallies, write_tallies, &
                              tally_statistics
   use timing,          only: timer_start, timer_stop
@@ -88,7 +88,7 @@ contains
        ! Start timer for computation
        call timer_start(time_compute)
 
-       message = "Simulating cycle " // trim(int_to_str(i_cycle)) // "..."
+       message = "Simulating cycle " // trim(to_str(i_cycle)) // "..."
        call write_message(8)
 
        ! Set all tallies to zero

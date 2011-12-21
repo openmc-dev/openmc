@@ -17,7 +17,7 @@ module initialize
                               print_plot, create_summary_file
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
-  use string,           only: int_to_str, starts_with, ends_with, lower_case
+  use string,           only: to_str, starts_with, ends_with, lower_case
   use tally,            only: create_tally_map, TallyObject
   use timing,           only: timer_start, timer_stop
 
@@ -375,8 +375,8 @@ contains
                 i_array = dict_get_key(surface_dict, abs(id))
                 c % surfaces(j) = sign(i_array, id)
              else
-                message = "Could not find surface " // trim(int_to_str(abs(id))) // &
-                     " specified on cell " // trim(int_to_str(c % id))
+                message = "Could not find surface " // trim(to_str(abs(id))) // &
+                     " specified on cell " // trim(to_str(c % id))
                 call fatal_error()
              end if
           end if
@@ -389,8 +389,8 @@ contains
        if (dict_has_key(universe_dict, id)) then
           c % universe = dict_get_key(universe_dict, id)
        else
-          message = "Could not find universe " // trim(int_to_str(id)) // &
-               " specified on cell " // trim(int_to_str(c % id))
+          message = "Could not find universe " // trim(to_str(id)) // &
+               " specified on cell " // trim(to_str(c % id))
           call fatal_error()
        end if
 
@@ -403,8 +403,8 @@ contains
              c % type = CELL_NORMAL
              c % material = dict_get_key(material_dict, id)
           else
-             message = "Could not find material " // trim(int_to_str(id)) // &
-                   " specified on cell " // trim(int_to_str(c % id))
+             message = "Could not find material " // trim(to_str(id)) // &
+                   " specified on cell " // trim(to_str(c % id))
              call fatal_error()
           end if
        else
@@ -416,8 +416,8 @@ contains
              c % type = CELL_LATTICE
              c % fill = dict_get_key(lattice_dict, id)
           else
-             message = "Specified fill " // trim(int_to_str(id)) // " on cell " // &
-                  trim(int_to_str(c % id)) // " is neither a universe nor a lattice."
+             message = "Specified fill " // trim(to_str(id)) // " on cell " // &
+                  trim(to_str(c % id)) // " is neither a universe nor a lattice."
              call fatal_error()
           end if
        end if
@@ -434,8 +434,8 @@ contains
              if (dict_has_key(universe_dict, id)) then
                 l % element(j,k) = dict_get_key(universe_dict, id)
              else
-                message = "Invalid universe number " // trim(int_to_str(id)) &
-                     // " specified on lattice " // trim(int_to_str(l % id))
+                message = "Invalid universe number " // trim(to_str(id)) &
+                     // " specified on lattice " // trim(to_str(l % id))
                 call fatal_error()
              end if
           end do
@@ -454,8 +454,8 @@ contains
              if (dict_has_key(cell_dict, id)) then
                 t % cell_bins(j) % scalar = dict_get_key(cell_dict, id)
              else
-                message = "Could not find cell " // trim(int_to_str(id)) // &
-                     " specified on tally " // trim(int_to_str(t % id))
+                message = "Could not find cell " // trim(to_str(id)) // &
+                     " specified on tally " // trim(to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -470,8 +470,8 @@ contains
              if (dict_has_key(surface_dict, id)) then
                 t % surface_bins(j) % scalar = dict_get_key(surface_dict, id)
              else
-                message = "Could not find surface " // trim(int_to_str(id)) // &
-                     " specified on tally " // trim(int_to_str(t % id))
+                message = "Could not find surface " // trim(to_str(id)) // &
+                     " specified on tally " // trim(to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -486,8 +486,8 @@ contains
              if (dict_has_key(universe_dict, id)) then
                 t % universe_bins(j) % scalar = dict_get_key(universe_dict, id)
              else
-                message = "Could not find universe " // trim(int_to_str(id)) // &
-                     " specified on tally " // trim(int_to_str(t % id))
+                message = "Could not find universe " // trim(to_str(id)) // &
+                     " specified on tally " // trim(to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -502,8 +502,8 @@ contains
              if (dict_has_key(material_dict, id)) then
                 t % material_bins(j) % scalar = dict_get_key(material_dict, id)
              else
-                message = "Could not find material " // trim(int_to_str(id)) // &
-                     " specified on tally " // trim(int_to_str(t % id))
+                message = "Could not find material " // trim(to_str(id)) // &
+                     " specified on tally " // trim(to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -518,8 +518,8 @@ contains
              if (dict_has_key(cell_dict, id)) then
                 t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, id)
              else
-                message = "Could not find material " // trim(int_to_str(id)) // &
-                     " specified on tally " // trim(int_to_str(t % id))
+                message = "Could not find material " // trim(to_str(id)) // &
+                     " specified on tally " // trim(to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -533,8 +533,8 @@ contains
           if (dict_has_key(mesh_dict, id)) then
              t % mesh = dict_get_key(mesh_dict, id)
           else
-             message = "Could not find mesh " // trim(int_to_str(id)) // &
-                  " specified on tally " // trim(int_to_str(t % id))
+             message = "Could not find mesh " // trim(to_str(id)) // &
+                  " specified on tally " // trim(to_str(t % id))
              call fatal_error()
           end if
        end if
@@ -626,7 +626,7 @@ contains
        if (.not. (all(mat%atom_percent > ZERO) .or. & 
             all(mat%atom_percent < ZERO))) then
           message = "Cannot mix atom and weight percents in material " // &
-               int_to_str(mat % id)
+               to_str(mat % id)
           call fatal_error()
        end if
 

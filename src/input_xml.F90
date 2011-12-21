@@ -8,7 +8,7 @@ module input_xml
   use global
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message
-  use string,          only: lower_case, int_to_str, str_to_int, str_to_real,  &
+  use string,          only: lower_case, to_str, str_to_int, str_to_real,  &
                              split_string, starts_with, ends_with
   use tally_header,    only: TallyObject
 
@@ -224,7 +224,7 @@ contains
        ! Check to make sure that either material or fill was specified
        if (c % material == 0 .and. c % fill == 0) then
           message = "Neither material nor fill was specified for cell " // & 
-               trim(int_to_str(c % id))
+               trim(to_str(c % id))
           call fatal_error()
        end if
 
@@ -238,7 +238,7 @@ contains
        ! Check to make sure that surfaces were specified
        if (.not. associated(cell_(i) % surfaces)) then
           message = "No surfaces specified for cell " // &
-               trim(int_to_str(c % id))
+               trim(to_str(c % id))
           call fatal_error()
        end if
 
@@ -334,11 +334,11 @@ contains
        n = size(surface_(i) % coeffs)
        if (n < coeffs_reqd) then
           message = "Not enough coefficients specified for surface: " // & 
-               trim(int_to_str(s % id))
+               trim(to_str(s % id))
           call fatal_error()
        elseif (n > coeffs_reqd) then
           message = "Too many coefficients specified for surface: " // &
-               trim(int_to_str(s % id))
+               trim(to_str(s % id))
           call fatal_error()
        else
           allocate(s % coeffs(n))
@@ -359,7 +359,7 @@ contains
           s % bc = BC_PERIODIC
        case default
           message = "Unknown boundary condition '" // trim(word) // &
-               "' specified on surface " // trim(int_to_str(s % id))
+               "' specified on surface " // trim(to_str(s % id))
           call fatal_error()
        end select
 
@@ -507,14 +507,14 @@ contains
           m % density = 1.0e-24 * val
        case default
           message = "Unkwown units '" // trim(material_(i) % density % units) &
-               // "' specified on material " // trim(int_to_str(m % id))
+               // "' specified on material " // trim(to_str(m % id))
           call fatal_error()
        end select
        
        ! Check to ensure material has at least one nuclide
        if (.not. associated(material_(i) % nuclides)) then
           message = "No nuclides specified on material " // &
-               trim(int_to_str(m % id))
+               trim(to_str(m % id))
           call fatal_error()
        end if
 
@@ -534,7 +534,7 @@ contains
           ! Check for empty name on nuclide
           if (len_trim(nuc % name) == 0) then
              message = "No name specified on nuclide in material " // &
-                  trim(int_to_str(m % id))
+                  trim(to_str(m % id))
              call fatal_error()
           end if
 
@@ -542,7 +542,7 @@ contains
           if (len_trim(nuc % xs) == 0) then
              if (default_xs == '') then
                 message = "No cross section specified for nuclide in material " &
-                     // trim(int_to_str(m % id))
+                     // trim(to_str(m % id))
                 call fatal_error()
              else
                 nuc % xs = default_xs
@@ -733,7 +733,7 @@ contains
        if (len_trim(tally_(i) % filters % cell) > 0 .and. &
             len_trim(tally_(i) % filters % surface) > 0) then
           message = "Cannot specify both cell and surface filters for tally " &
-               // trim(int_to_str(t % id))
+               // trim(to_str(t % id))
           call fatal_error()
        end if
 
@@ -788,8 +788,8 @@ contains
              i_mesh = dict_get_key(mesh_dict, id)
              m => meshes(i_mesh)
           else
-             message = "Could not find mesh " // trim(int_to_str(id)) // &
-                  " specified on tally " // trim(int_to_str(t % id))
+             message = "Could not find mesh " // trim(to_str(id)) // &
+                  " specified on tally " // trim(to_str(t % id))
              call fatal_error()
           end if
 

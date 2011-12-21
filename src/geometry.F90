@@ -7,7 +7,7 @@ module geometry
   use global
   use output,          only: write_message
   use particle_header, only: Particle, LocalCoord, deallocate_coord
-  use string,          only: int_to_str
+  use string,          only: to_str
   use tally,           only: score_surface_current
 
   implicit none
@@ -249,7 +249,7 @@ contains
 
     surf => surfaces(abs(p % surface))
     if (verbosity >= 10 .or. trace) then
-       message = "    Crossing surface " // trim(int_to_str(surf % id))
+       message = "    Crossing surface " // trim(to_str(surf % id))
        call write_message()
     end if
 
@@ -274,7 +274,7 @@ contains
 
        ! Display message
        if (verbosity >= 10 .or. trace) then
-          message = "    Leaked out of surface " // trim(int_to_str(surf % id))
+          message = "    Leaked out of surface " // trim(to_str(surf % id))
           call write_message()
        end if
        return
@@ -383,7 +383,7 @@ contains
           p % coord0 % uvw = (/ u, v, w /)
        case default
           message = "Reflection not supported for surface " // &
-               trim(int_to_str(surf % id))
+               trim(to_str(surf % id))
           call fatal_error()
        end select
 
@@ -396,7 +396,7 @@ contains
 
        ! Diagnostic message
        if (verbosity >= 10 .or. trace) then
-          message = "    Reflected from surface " // trim(int_to_str(surf%id))
+          message = "    Reflected from surface " // trim(to_str(surf%id))
           call write_message()
        end if
        return
@@ -428,7 +428,7 @@ contains
 
     ! Couldn't find next cell anywhere!
     if ((.not. found) .and. (.not. plotting)) then
-       message = "After particle crossed surface " // trim(int_to_str( &
+       message = "After particle crossed surface " // trim(to_str( &
             surfaces(abs(p%surface)) % id)) // " it could not be located in &
             &any cell and it did not leak."
        call fatal_error()
@@ -455,9 +455,9 @@ contains
     lat => lattices(p % coord % lattice)
 
     if (verbosity >= 10 .or. trace) then
-       message = "    Crossing lattice " // trim(int_to_str(lat % id)) // &
-            ". Current position (" // trim(int_to_str(p % coord % lattice_x)) &
-            // "," // trim(int_to_str(p % coord % lattice_y)) // ")"
+       message = "    Crossing lattice " // trim(to_str(lat % id)) // &
+            ". Current position (" // trim(to_str(p % coord % lattice_x)) &
+            // "," // trim(to_str(p % coord % lattice_y)) // ")"
        call write_message()
     end if
 
@@ -495,14 +495,14 @@ contains
     i_x = p % coord % lattice_x
     i_y = p % coord % lattice_y
     if (i_x < 1 .or. i_x > lat % n_x) then
-       message = "Reached edge of lattice " // trim(int_to_str(lat % id)) // &
-            " at position (" // trim(int_to_str(i_x)) // "," // &
-            trim(int_to_str(i_y)) // ")."
+       message = "Reached edge of lattice " // trim(to_str(lat % id)) // &
+            " at position (" // trim(to_str(i_x)) // "," // &
+            trim(to_str(i_y)) // ")."
        call fatal_error()
     elseif (i_y < 1 .or. i_y > lat % n_y) then
-       message = "Reached edge of lattice " // trim(int_to_str(lat % id)) // &
-            " at position (" // trim(int_to_str(i_x)) // "," // &
-            trim(int_to_str(i_y)) // ")."
+       message = "Reached edge of lattice " // trim(to_str(lat % id)) // &
+            " at position (" // trim(to_str(i_x)) // "," // &
+            trim(to_str(i_y)) // ")."
        call fatal_error()
     end if
 
@@ -512,8 +512,8 @@ contains
     ! Find cell in next lattice element
     call find_cell(p, found)
     if (.not. found) then
-       message = "Could not locate particle in universe: " // &
-            int_to_str(universes(p % coord % universe) % id)
+       message = "Could not locate particle " // trim(to_str(p % id)) // &
+            " in universe " // to_str(universes(p % coord % universe) % id)
        call fatal_error()
     end if
 

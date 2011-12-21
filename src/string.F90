@@ -6,8 +6,8 @@ module string
 
   implicit none
 
-  interface int_to_str
-     module procedure int4_to_str, int8_to_str
+  interface to_str
+     module procedure int4_to_str, int8_to_str, real_to_str
   end interface
 
 contains

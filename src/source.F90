@@ -9,7 +9,7 @@ module source
   use particle_header, only: Particle, initialize_particle
   use physics,         only: watt_spectrum
   use random_lcg,      only: prn, set_particle_seed
-  use string,          only: int_to_str
+  use string,          only: to_str
 
   implicit none
 
@@ -51,7 +51,7 @@ contains
        bytes = maxwork * 64 / 8
 #endif
        message = "Could not allocate source bank. Attempted to allocate " &
-            // trim(int_to_str(bytes)) // " bytes."
+            // trim(to_str(bytes)) // " bytes."
        call fatal_error()
     end if
 
@@ -64,7 +64,7 @@ contains
        bytes = 3 * maxwork * 64 / 8
 #endif
        message = "Could not allocate fission bank. Attempted to allocate " &
-            // trim(int_to_str(bytes)) // " bytes."
+            // trim(to_str(bytes)) // " bytes."
        call fatal_error()
     end if
 
@@ -74,7 +74,7 @@ contains
        p_max = external_source%values(4:6)
     else
        message = "Unsupported external source type: " // &
-            int_to_str(external_source%type)
+            to_str(external_source%type)
        call fatal_error()
     end if
 

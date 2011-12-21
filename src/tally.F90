@@ -7,7 +7,7 @@ module tally
   use mesh_header,   only: StructuredMesh
   use output,        only: header
   use search,        only: binary_search
-  use string,        only: int_to_str, real_to_str
+  use string,        only: to_str
   use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement
 
 #ifdef MPI
@@ -966,7 +966,7 @@ contains
        t => tallies(i)
 
        ! Write header block
-       call header("TALLY " // trim(int_to_str(t % id)), unit=UNIT_TALLY, level=3)
+       call header("TALLY " // trim(to_str(t % id)), unit=UNIT_TALLY, level=3)
 
        ! Handle surface current tallies separately
        if (t % surface_current) then
@@ -1048,8 +1048,8 @@ contains
           do k = 1, t % n_macro_bins
              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                   repeat(" ", indent), macro_name(abs(t % macro_bins(k) % scalar)), &
-                  real_to_str(t % scores(score_index,k) % val), &
-                  trim(real_to_str(t % scores(score_index,k) % val_sq))
+                  to_str(t % scores(score_index,k) % val), &
+                  trim(to_str(t % scores(score_index,k) % val_sq))
           end do
           indent = indent - 2
 
@@ -1099,14 +1099,14 @@ contains
     end if
 
     do i = 1, m % dimension(1)
-       string = "Mesh Index (" // trim(int_to_str(i)) // ", "
+       string = "Mesh Index (" // trim(to_str(i)) // ", "
        len1 = len_trim(string)
        do j = 1, m % dimension(2)
-          string = string(1:len1+1) // trim(int_to_str(j)) // ", "
+          string = string(1:len1+1) // trim(to_str(j)) // ", "
           len2 = len_trim(string)
           do k = 1, m % dimension(3)
              ! Write mesh cell index
-             string = string(1:len2+1) // trim(int_to_str(k)) // ")"
+             string = string(1:len2+1) // trim(to_str(k)) // ")"
              write(UNIT=UNIT_TALLY, FMT='(1X,A)') trim(string)
 
              do l = 1, n
@@ -1125,15 +1125,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Left", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
 
                 bins(TS_SURFACE) = OUT_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Left", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
 
                 ! Right Surface
                 bins(1:3) = (/ i, j, k /) + 1
@@ -1141,15 +1141,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Right", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
 
                 bins(TS_SURFACE) = OUT_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Right", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
 
                 ! Back Surface
                 bins(1:3) = (/ i, j-1, k /) + 1
@@ -1157,15 +1157,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Back", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
 
                 bins(TS_SURFACE) = OUT_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Back", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
 
                 ! Front Surface
                 bins(1:3) = (/ i, j, k /) + 1
@@ -1173,15 +1173,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Front", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
 
                 bins(TS_SURFACE) = OUT_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Front", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
 
                 ! Bottom Surface
                 bins(1:3) = (/ i, j, k-1 /) + 1
@@ -1189,15 +1189,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Bottom", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
 
                 bins(TS_SURFACE) = OUT_TOP
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Bottom", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
 
                 ! Top Surface
                 bins(1:3) = (/ i, j, k /) + 1
@@ -1205,15 +1205,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Top", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
 
                 bins(TS_SURFACE) = OUT_TOP
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Top", &
-                     real_to_str(t % scores(score_index,1) % val), &
-                     trim(real_to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % val), &
+                     trim(to_str(t % scores(score_index,1) % val_sq))
              end do
 
           end do
@@ -1243,38 +1243,38 @@ contains
     select case(filter_type)
     case (T_UNIVERSE)
        i = t % universe_bins(bin) % scalar
-       label = int_to_str(universes(i) % id)
+       label = to_str(universes(i) % id)
     case (T_MATERIAL)
        i = t % material_bins(bin) % scalar
-       label = int_to_str(materials(i) % id)
+       label = to_str(materials(i) % id)
     case (T_CELL)
        i = t % cell_bins(bin) % scalar
-       label = int_to_str(cells(i) % id)
+       label = to_str(cells(i) % id)
     case (T_CELLBORN)
        i = t % cellborn_bins(bin) % scalar
-       label = int_to_str(cells(i) % id)
+       label = to_str(cells(i) % id)
     case (T_SURFACE)
        i = t % surface_bins(bin) % scalar
-       label = int_to_str(surfaces(i) % id)
+       label = to_str(surfaces(i) % id)
     case (T_MESH)
        m => meshes(t % mesh)
        allocate(ijk(m % n_dimension))
        call bin_to_mesh_indices(m, bin, ijk)
        if (m % n_dimension == 2) then
-          label = "Index (" // trim(int_to_str(ijk(1))) // ", " // &
-               trim(int_to_str(ijk(2))) // ")"
+          label = "Index (" // trim(to_str(ijk(1))) // ", " // &
+               trim(to_str(ijk(2))) // ")"
        elseif (m % n_dimension == 3) then
-          label = "Index (" // trim(int_to_str(ijk(1))) // ", " // &
-               trim(int_to_str(ijk(2))) // ", " // trim(int_to_str(ijk(3))) // ")"
+          label = "Index (" // trim(to_str(ijk(1))) // ", " // &
+               trim(to_str(ijk(2))) // ", " // trim(to_str(ijk(3))) // ")"
        end if
     case (T_ENERGYIN)
        E0 = t % energy_in(bin)
        E1 = t % energy_in(bin + 1)
-       label = "[" // trim(real_to_str(E0)) // ", " // trim(real_to_str(E1)) // ")"
+       label = "[" // trim(to_str(E0)) // ", " // trim(to_str(E1)) // ")"
     case (T_ENERGYOUT)
        E0 = t % energy_out(bin)
        E1 = t % energy_out(bin + 1)
-       label = "[" // trim(real_to_str(E0)) // ", " // trim(real_to_str(E1)) // ")"
+       label = "[" // trim(to_str(E0)) // ", " // trim(to_str(E1)) // ")"
     end select
 
   end function get_label

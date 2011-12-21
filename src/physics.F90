@@ -15,7 +15,7 @@ module physics
   use particle_header, only: Particle, LocalCoord
   use random_lcg,      only: prn
   use search,          only: binary_search
-  use string,          only: int_to_str, real_to_str
+  use string,          only: to_str
   use tally,           only: score_tally, score_surface_current
 
   implicit none
@@ -54,12 +54,12 @@ contains
     end if
 
     if (verbosity >= 9 .or. trace) then
-       message = "Simulating Particle " // trim(int_to_str(p % id))
+       message = "Simulating Particle " // trim(to_str(p % id))
        call write_message()
     end if
 
     if (verbosity >= 10 .or. trace) then
-       message = "    Born in cell " // trim(int_to_str(&
+       message = "    Born in cell " // trim(to_str(&
             cells(p % coord % cell) % id))
        call write_message()
     end if
@@ -126,7 +126,7 @@ contains
        ! If particle has too many events, display warning and kill it
        n_event = n_event + 1
        if (n_event == MAX_EVENTS) then
-          message = "Particle " // trim(int_to_str(p%id)) // " underwent " & 
+          message = "Particle " // trim(to_str(p%id)) // " underwent " & 
                // "maximum number of events."
           call warning()
           p % alive = .false.
@@ -168,7 +168,7 @@ contains
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
        message = "    " // trim(reaction_name(MT)) // ". Energy = " // &
-            trim(real_to_str(p % E * 1e6_8)) // " eV."
+            trim(to_str(p % E * 1e6_8)) // " eV."
        call write_message()
     end if
 
@@ -417,7 +417,7 @@ contains
           if (i > nuc % n_reaction) then
              message = "Did not sample any reaction for nuclide " // &
                   trim(nuc % name) // " on material " // &
-                  trim(int_to_str(mat % id))
+                  trim(to_str(mat % id))
              call fatal_error()
           end if
 
@@ -1136,7 +1136,7 @@ contains
              mu = mu0 + (sqrt(p0*p0 + 2*frac*(xi - c_k))-p0)/frac
           end if
        else
-          message = "Unknown interpolation type: " // trim(int_to_str(interp))
+          message = "Unknown interpolation type: " // trim(to_str(interp))
           call fatal_error()
        end if
 
@@ -1148,7 +1148,7 @@ contains
        end if
          
     else
-       message = "Unknown angular distribution type: " // trim(int_to_str(type))
+       message = "Unknown angular distribution type: " // trim(to_str(type))
        call fatal_error()
     end if
     
@@ -1455,7 +1455,7 @@ contains
                   p_l_k)/frac
           end if
        else
-          message = "Unknown interpolation type: " // trim(int_to_str(INTT))
+          message = "Unknown interpolation type: " // trim(to_str(INTT))
           call fatal_error()
        end if
 
@@ -1696,7 +1696,7 @@ contains
           KM_R = R_k + (R_k1 - R_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
           KM_A = A_k + (A_k1 - A_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
        else
-          message = "Unknown interpolation type: " // trim(int_to_str(INTT))
+          message = "Unknown interpolation type: " // trim(to_str(INTT))
           call fatal_error()
        end if
 
@@ -1826,7 +1826,7 @@ contains
                   p_l_k)/frac
           end if
        else
-          message = "Unknown interpolation type: " // trim(int_to_str(INTT))
+          message = "Unknown interpolation type: " // trim(to_str(INTT))
           call fatal_error()
        end if
 
@@ -1879,7 +1879,7 @@ contains
              mu_out = mu_k + (sqrt(p_k*p_k + 2*frac*(r3 - c_k))-p_k)/frac
           end if
        else
-          message = "Unknown interpolation type: " // trim(int_to_str(JJ))
+          message = "Unknown interpolation type: " // trim(to_str(JJ))
           call fatal_error()
        end if
 

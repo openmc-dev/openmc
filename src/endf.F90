@@ -1,7 +1,7 @@
 module endf
 
   use constants
-  use string, only: int_to_str
+  use string, only: to_str
 
 contains
 
@@ -72,7 +72,7 @@ contains
     case (N_NPA)
        string = '(n,npa)'
     case (N_N1 : N_N40)
-       string = '(n,n' // trim(int_to_str(MT-50)) // ')'
+       string = '(n,n' // trim(to_str(MT-50)) // ')'
     case (N_NC)
        string = '(n,nc)'
     case (N_GAMMA)
@@ -122,27 +122,27 @@ contains
     case (444)
        string = '(damage)'
     case (600 : 648)
-       string = '(n,p' // trim(int_to_str(MT-600)) // ')'
+       string = '(n,p' // trim(to_str(MT-600)) // ')'
     case (649)
        string = '(n,pc)'
     case (650 : 698)
-       string = '(n,d' // trim(int_to_str(MT-650)) // ')'
+       string = '(n,d' // trim(to_str(MT-650)) // ')'
     case (699)
        string = '(n,dc)'
     case (700 : 748)
-       string = '(n,t' // trim(int_to_str(MT-700)) // ')'
+       string = '(n,t' // trim(to_str(MT-700)) // ')'
     case (749)
        string = '(n,tc)'
     case (750 : 798)
-       string = '(n,3He' // trim(int_to_str(MT-750)) // ')'
+       string = '(n,3He' // trim(to_str(MT-750)) // ')'
     case (799)
        string = '(n,3Hec)'
     case (800 : 848)
-       string = '(n,a' // trim(int_to_str(MT-800)) // ')'
+       string = '(n,a' // trim(to_str(MT-800)) // ')'
     case (849)
        string = '(n,tc)'
     case default
-       string = 'MT=' // trim(int_to_str(MT))
+       string = 'MT=' // trim(to_str(MT))
     end select
 
   end function reaction_name

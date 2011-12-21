@@ -285,7 +285,8 @@ contains
 
        ! Do not handle reflective boundary conditions on lower universes
        if (p % in_lower_universe) then
-          message = "Cannot reflect particle off surface in a lower universe."
+          message = "Cannot reflect particle " // trim(to_str(p % id)) // &
+               " off surface in a lower universe."
           call fatal_error()
        end if
 
@@ -428,9 +429,9 @@ contains
 
     ! Couldn't find next cell anywhere!
     if ((.not. found) .and. (.not. plotting)) then
-       message = "After particle crossed surface " // trim(to_str( &
-            surfaces(abs(p%surface)) % id)) // " it could not be located in &
-            &any cell and it did not leak."
+       message = "After particle " // trim(to_str(p % id)) // " crossed surface " &
+            // trim(to_str(surfaces(abs(p%surface)) % id)) // " it could not be &
+            &located in any cell and it did not leak."
        call fatal_error()
     end if
        
@@ -495,14 +496,14 @@ contains
     i_x = p % coord % lattice_x
     i_y = p % coord % lattice_y
     if (i_x < 1 .or. i_x > lat % n_x) then
-       message = "Reached edge of lattice " // trim(to_str(lat % id)) // &
-            " at position (" // trim(to_str(i_x)) // "," // &
-            trim(to_str(i_y)) // ")."
+       message = "Particle " // trim(to_str(p % id)) // " reached edge of &
+            &lattice " // trim(to_str(lat % id)) // " at position (" // &
+            trim(to_str(i_x)) // "," // trim(to_str(i_y)) // ")."
        call fatal_error()
     elseif (i_y < 1 .or. i_y > lat % n_y) then
-       message = "Reached edge of lattice " // trim(to_str(lat % id)) // &
-            " at position (" // trim(to_str(i_x)) // "," // &
-            trim(to_str(i_y)) // ")."
+       message = "Particle " // trim(to_str(p % id)) // " reached edge of &
+            &lattice " // trim(to_str(lat % id)) // " at position (" // &
+            trim(to_str(i_x)) // "," // trim(to_str(i_y)) // ")."
        call fatal_error()
     end if
 

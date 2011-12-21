@@ -44,8 +44,7 @@ contains
        call find_cell(p, found_cell)
        ! Particle couldn't be located
        if (.not. found_cell) then
-          write(message, '(A,3ES11.3)') & 
-               "Could not locate cell for particle at: ", p % coord0 % xyz
+          message = "Could not locate particle " // trim(to_str(p % id))
           call fatal_error()
        end if
 

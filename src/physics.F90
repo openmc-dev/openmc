@@ -30,14 +30,14 @@ contains
 
     type(Particle), pointer :: p
 
-    integer        :: surface_crossed ! surface which particle is on
-    integer        :: lattice_crossed ! lattice boundary which particle crossed
-    integer        :: last_cell       ! most recent cell particle was in
-    integer        :: n_event         ! number of collisions/crossings
-    real(8)        :: d_boundary      ! distance to nearest boundary
-    real(8)        :: d_collision     ! sampled distance to collision
-    real(8)        :: distance        ! distance particle travels
-    logical        :: found_cell      ! found cell which particle is in?
+    integer :: surface_crossed ! surface which particle is on
+    integer :: lattice_crossed ! lattice boundary which particle crossed
+    integer :: last_cell       ! most recent cell particle was in
+    integer :: n_event         ! number of collisions/crossings
+    real(8) :: d_boundary      ! distance to nearest boundary
+    real(8) :: d_collision     ! sampled distance to collision
+    real(8) :: distance        ! distance particle travels
+    logical :: found_cell      ! found cell which particle is in?
     type(LocalCoord), pointer :: coord => null()
 
     if (p % coord % cell == NONE) then
@@ -125,8 +125,8 @@ contains
        ! If particle has too many events, display warning and kill it
        n_event = n_event + 1
        if (n_event == MAX_EVENTS) then
-          message = "Particle " // trim(to_str(p%id)) // " underwent " & 
-               // "maximum number of events."
+          message = "Particle " // trim(to_str(p%id)) // " underwent maximum &
+               &number of events."
           call warning()
           p % alive = .false.
        end if

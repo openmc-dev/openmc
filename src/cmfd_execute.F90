@@ -126,7 +126,7 @@ contains
 
         XLOOP: do i = 1,nx
 
-          INGROUP: do h = 1,ng
+          OUTGROUP: do h = 1,ng
 
             ! begin with first tally 
             t => tallies(1)
@@ -167,7 +167,7 @@ contains
            &                                cmfd % p1scattxs(h,i,j,k)))
 
             ! begin loop to get energy out tallies
-            OUTGROUP: do g = 1,ng
+            INGROUP: do g = 1,ng
 
               ! associate tally pointer to energy out tally object
               t => tallies(2)
@@ -183,8 +183,8 @@ contains
 
               ! get nu-fission
               cmfd % nfissxs(h,g,i,j,k) = t % scores(score_index,2) % val / flux
-              print *,h,g,i,j,k,t % scores(score_index,2) % val
-            end do OUTGROUP
+
+            end do INGROUP
 
             ! extract surface currents 
             t => tallies(3) 
@@ -247,7 +247,7 @@ contains
             score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
             cmfd % current(12,h,i,j,k) = t % scores(score_index,1) % val
 
-          end do INGROUP
+          end do OUTGROUP
 
         end do XLOOP
 

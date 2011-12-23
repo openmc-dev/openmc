@@ -384,10 +384,10 @@ contains
             GROUPH: do h = 1,ng
 
               scattering = scattering + cmfd % scattxs(h,g,i,j,k) *            &
-             &                          cmfd % flux(g,i,j,k)
+             &                          cmfd % flux(h,i,j,k)
 
               fission = fission + cmfd % nfissxs(h,g,i,j,k) *                  &
-             &                    cmfd % flux(g,i,j,k)
+             &                    cmfd % flux(h,i,j,k)
 
             end do GROUPH
 

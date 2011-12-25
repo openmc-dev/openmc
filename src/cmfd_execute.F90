@@ -1,6 +1,6 @@
 module cmfd_execute
 
-  use cmfd_utils,   only: get_matrix_idx
+  use cmfd_utils,   only: get_matrix_idx,neutron_balance
   use global
   use mesh,         only: mesh_indices_to_bin
   use mesh_header,  only: StructuredMesh
@@ -30,6 +30,9 @@ contains
     write(104,*) cmfd % nfissxs
     write(105,*) cmfd % hxyz
     write(106,*) cmfd % current 
+
+    ! write out neutron balance
+    call neutron_balance()
 
     ! compute dtilde terms
     call compute_diffcoef()

@@ -1,12 +1,13 @@
 module cmfd_utils
 
   use cmfd_header
+  use constants
   use datatypes,     only: dict_add_key, dict_get_key
   use error,         only: fatal_error, warning
   use global
   use mesh,          only: mesh_indices_to_bin
   use mesh_header,   only: StructuredMesh
-  use string,        only: lower_case, str_to_real, split_string
+  use string
   use tally_header,  only: TallyObject, TallyScore
 
   implicit none
@@ -333,6 +334,20 @@ contains
     integer :: k                 ! iteration counter for z
     integer :: g                 ! iteration counter for g
     integer :: h                 ! iteration counter for outgoing groups
+    integer :: l                 ! iteration counter for leakage
+    integer :: io_error          ! error for opening file unit
+    real(8) :: leakage           ! leakage term in neutron balance
+    real(8) :: interactions      ! total number of interactions in balance
+    real(8) :: scattering        ! scattering term in neutron balance
+    real(8) :: fission           ! fission term in neutron balance
+    real(8) :: res               ! residual of neutron balance
+    character(MAX_FILE_LEN) :: filename
+    character(30)           :: label
+
+    ! open cmfd file for output
+    filename = "cmfd.out"
+    open(FILE=filename, UNIT=UNIT_CMFD, STATUS='replace', ACTION='write',      &
+         IOSTAT=io_error)
 
     ! extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -353,6 +368,50 @@ contains
             leakage = 0.0
             LEAK: do l = 1,3
 
-              leakage = leakage + ((cmfd % current(4) - cmfd % current(3))
+              leakage = leakage + ((cmfd % current(4*l,g,i,j,k) -              &
+             &          cmfd % current(4*l-1,g,i,j,k))) -                      &
+             &         ((cmfd % current(4*l-2,g,i,j,k) -                       &
+             &          cmfd % current(4*l-3,g,i,j,k)))
+
+            end do LEAK
+
+            ! interactions
+            interactions = cmfd % totalxs(g,i,j,k) * cmfd % flux(g,i,j,k)
+
+            ! get scattering and fission
+            scattering = 0.0
+            fission = 0.0
+            GROUPH: do h = 1,ng
+
+              scattering = scattering + cmfd % scattxs(h,g,i,j,k) *            &
+             &                          cmfd % flux(g,i,j,k)
+
+              fission = fission + cmfd % nfissxs(h,g,i,j,k) *                  &
+             &                    cmfd % flux(g,i,j,k)
+
+            end do GROUPH
+
+            ! compute residual
+            res = leakage + interactions - scattering - (ONE/keff)*fission
+
+            ! write output
+            label = "MESH (" // trim(int_to_str(i)) // ". " //                 &
+           &        trim(int_to_str(j)) // ", " // trim(int_to_str(k)) //      &
+           &        ")  GROUP " // trim(int_to_str(g))
+            write(UNIT=UNIT_CMFD, FMT='(A,T35,A)') label,                      &
+           &      trim(real_to_str(res))
+
+          end do GROUPG
+
+        end do XLOOP
+
+      end do YLOOP
+
+    end do ZLOOP
+
+    ! close file
+    close(UNIT=UNIT_CMFD)
+
   end subroutine neutron_balance
+
 end module cmfd_utils

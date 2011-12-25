@@ -283,6 +283,7 @@ module constants
   integer, parameter :: UNIT_LOG   = 11 ! unit # for writing log file
   integer, parameter :: UNIT_TALLY = 12 ! unit # for writing tally file
   integer, parameter :: UNIT_PLOT  = 13 ! unit # for writing plot file
+  integer, parameter :: UNIT_CMFD  = 14 ! unit # for writing cmfd file
 
 end module constants
 

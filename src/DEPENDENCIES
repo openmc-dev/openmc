@@ -5,6 +5,7 @@ cmfd_execute.o: mesh_header.o
 cmfd_execute.o: tally_header.o
 cmfd_execute.o: timing.o
 
+cmfd_utils.o: constants.o
 cmfd_utils.o: datatypes.o
 cmfd_utils.o: global.o
 cmfd_utils.o: mesh.o

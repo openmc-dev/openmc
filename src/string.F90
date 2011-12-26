@@ -6,8 +6,8 @@ module string
 
   implicit none
 
-  interface int_to_str
-     module procedure int4_to_str, int8_to_str
+  interface to_str
+     module procedure int4_to_str, int8_to_str, real_to_str
   end interface
 
 contains
@@ -348,7 +348,7 @@ contains
     ! Determine number of digits to right of decimal point
     index_decimal = index(string, '.')
     index_exponent = max(index(string, 'd'), index(string, 'D'), &
-         & index(string, 'e'), index(string, 'E'))
+         index(string, 'e'), index(string, 'E'))
     if (index_decimal > 0) then
        if (index_exponent > 0) then
           d = index_exponent - index_decimal - 1

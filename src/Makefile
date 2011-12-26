@@ -118,7 +118,7 @@ endif
 
 ifeq ($(COMPILER),ibm)
   F90 = xlf2003
-  F90FLAGS := -WF,-DNO_F2008
+  F90FLAGS := -WF,-DNO_F2008 -O2
 
   # Debugging
   ifeq ($(DEBUG),yes)
@@ -166,11 +166,19 @@ ifeq ($(USE_MPI),yes)
 endif
 
 #===============================================================================
-# Special options for ORNL Jaguar supercomputer
+# Options for IBM Blue Gene/P ANL supercomputer
 #===============================================================================
 
-HOSTNAME = $(shell hostname)
-ifneq (,$(findstring jaguar,$(HOSTNAME)))
+ifeq ($(MACHINE),bluegene)
+  F90 = /bgsys/drivers/ppcfloor/comm/xl/bin/mpixlf2003
+  F90FLAGS = -WF,-DNO_F2008,-DMPI -O3
+endif
+
+#===============================================================================
+# Options for Cray XK6 ORNL Jaguar supercomputer
+#===============================================================================
+
+ifeq ($(MACHINE),crayxk6)
   F90 = ftn
   F90FLAGS += -DMPI
 endif
@@ -181,7 +189,7 @@ endif
 
 all: xml-fortran $(program)
 xml-fortran:
-	cd xml-fortran; make F90=$(F90) F90FLAGS="$(F90FLAGS)"
+	cd xml-fortran; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
 	cd xml-fortran/templates; make F90=$(F90) F90FLAGS="$(F90FLAGS)"
 $(program): $(objects)
 	$(F90) $(objects) $(templates) $(xml_fort) -o $@ $(LDFLAGS)

@@ -1,4 +1,4 @@
-module cross_section_header
+module ace_header
 
   use constants,   only: MAX_FILE_LEN
   use endf_header, only: Tab1
@@ -51,11 +51,16 @@ module cross_section_header
   end type Reaction
 
 !===============================================================================
-! URRDATA contains unresolved resonance data.
+! URRDATA contains probability tables for the unresolved resonance range.
 !===============================================================================
 
   type UrrData
-     integer, allocatable :: params(:)
+     integer :: n_energy        ! # of incident neutron energies
+     integer :: n_prob          ! # of probabilities
+     integer :: interp          ! inteprolation (2=lin-lin, 5=log-log)
+     integer :: inelastic_flag  ! inelastic competition flag
+     integer :: absorption_flag ! other absorption flag
+     logical :: multiply_smooth ! multiply by smooth cross section?
      real(8), allocatable :: energy(:)
      real(8), allocatable :: prob(:,:,:)
   end type UrrData
@@ -108,6 +113,7 @@ module cross_section_header
 
      ! Unresolved resonance data
      logical                :: urr_present
+     integer                :: urr_inelastic
      type(UrrData), pointer :: urr_data => null()
 
      ! Reactions
@@ -203,4 +209,4 @@ module cross_section_header
      real(8) :: nu_fission ! macroscopic production xs
   end type MaterialMacroXS
 
-end module cross_section_header
+end module ace_header

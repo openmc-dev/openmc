@@ -5,7 +5,7 @@ module interpolation
   use error,       only: fatal_error
   use global,      only: message
   use search,      only: binary_search
-  use string,      only: int_to_str
+  use string,      only: to_str
 
   implicit none
 
@@ -118,7 +118,7 @@ contains
        r = (log(x) - log(x0))/(log(x1) - log(x0))
        y = exp((1-r)*log(y0) + r*log(y1))
     case default
-       message = "Unsupported interpolation scheme: " // int_to_str(interp)
+       message = "Unsupported interpolation scheme: " // to_str(interp)
        call fatal_error()
     end select
     
@@ -204,7 +204,7 @@ contains
        r = (log(x) - log(x0))/(log(x1) - log(x0))
        y = exp((1-r)*log(y0) + r*log(y1))
     case default
-       message = "Unsupported interpolation scheme: " // int_to_str(interp)
+       message = "Unsupported interpolation scheme: " // to_str(interp)
        call fatal_error()
     end select
     

@@ -1,11 +1,11 @@
 module fission
 
+  use ace_header,    only: Nuclide
   use constants
-  use cross_section_header, only: Nuclide
-  use error,                only: fatal_error
-  use global,               only: message
-  use interpolation,        only: interpolate_tab1
-  use search,               only: binary_search
+  use error,         only: fatal_error
+  use global,        only: message
+  use interpolation, only: interpolate_tab1
+  use search,        only: binary_search
 
   implicit none
 

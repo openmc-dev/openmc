@@ -1,21 +1,22 @@
 module physics
 
+  use ace_header,      only: Nuclide, Reaction, DistEnergy
   use constants
-  use cross_section_header, only: Nuclide, Reaction, DistEnergy
-  use endf,                 only: reaction_name, is_fission, is_scatter
-  use error,                only: fatal_error, warning
-  use fission,              only: nu_total, nu_prompt, nu_delayed
-  use geometry,             only: find_cell, distance_to_boundary,              &
-                                  cross_surface, cross_lattice
-  use geometry_header,      only: Universe, BASE_UNIVERSE
+  use cross_section,   only: calculate_xs
+  use endf,            only: reaction_name, is_fission, is_scatter
+  use error,           only: fatal_error, warning
+  use fission,         only: nu_total, nu_prompt, nu_delayed
+  use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
+                             cross_lattice
+  use geometry_header, only: Universe, BASE_UNIVERSE
   use global
-  use interpolation,        only: interpolate_tab1
-  use output,               only: write_message
-  use particle_header,      only: Particle, LocalCoord
-  use random_lcg,           only: prn
-  use search,               only: binary_search
-  use string,               only: int_to_str, real_to_str
-  use tally,                only: score_tally, score_surface_current
+  use interpolation,   only: interpolate_tab1
+  use output,          only: write_message
+  use particle_header, only: Particle, LocalCoord
+  use random_lcg,      only: prn
+  use search,          only: binary_search
+  use string,          only: to_str
+  use tally,           only: score_tally, score_surface_current
 
   implicit none
 
@@ -29,22 +30,21 @@ contains
 
     type(Particle), pointer :: p
 
-    integer        :: surface_crossed ! surface which particle is on
-    integer        :: last_cell       ! most recent cell particle was in
-    integer        :: n_event         ! number of collisions/crossings
-    real(8)        :: d_boundary      ! distance to nearest boundary
-    real(8)        :: d_collision     ! sampled distance to collision
-    real(8)        :: distance        ! distance particle travels
-    logical        :: found_cell      ! found cell which particle is in?
-    logical        :: lattice_crossed ! is surface crossing in lattice?
+    integer :: surface_crossed ! surface which particle is on
+    integer :: lattice_crossed ! lattice boundary which particle crossed
+    integer :: last_cell       ! most recent cell particle was in
+    integer :: n_event         ! number of collisions/crossings
+    real(8) :: d_boundary      ! distance to nearest boundary
+    real(8) :: d_collision     ! sampled distance to collision
+    real(8) :: distance        ! distance particle travels
+    logical :: found_cell      ! found cell which particle is in?
     type(LocalCoord), pointer :: coord => null()
 
     if (p % coord % cell == NONE) then
        call find_cell(p, found_cell)
        ! Particle couldn't be located
        if (.not. found_cell) then
-          write(message, '(A,3ES11.3)') & 
-               "Could not locate cell for particle at: ", p % coord0 % xyz
+          message = "Could not locate particle " // trim(to_str(p % id))
           call fatal_error()
        end if
 
@@ -53,12 +53,12 @@ contains
     end if
 
     if (verbosity >= 9 .or. trace) then
-       message = "Simulating Particle " // trim(int_to_str(p % id))
+       message = "Simulating Particle " // trim(to_str(p % id))
        call write_message()
     end if
 
     if (verbosity >= 10 .or. trace) then
-       message = "    Born in cell " // trim(int_to_str(&
+       message = "    Born in cell " // trim(to_str(&
             cells(p % coord % cell) % id))
        call write_message()
     end if
@@ -94,9 +94,9 @@ contains
        if (d_collision > d_boundary) then
           last_cell = p % coord % cell
           p % coord % cell = NONE
-          if (lattice_crossed) then
+          if (lattice_crossed /= NONE) then
              p % surface = NONE
-             call cross_lattice(p)
+             call cross_lattice(p, lattice_crossed)
           else
              p % surface = surface_crossed
              call cross_surface(p, last_cell)
@@ -125,8 +125,8 @@ contains
        ! If particle has too many events, display warning and kill it
        n_event = n_event + 1
        if (n_event == MAX_EVENTS) then
-          message = "Particle " // trim(int_to_str(p%id)) // " underwent " & 
-               // "maximum number of events."
+          message = "Particle " // trim(to_str(p%id)) // " underwent maximum &
+               &number of events."
           call warning()
           p % alive = .false.
        end if
@@ -134,259 +134,6 @@ contains
     end do
 
   end subroutine transport
-
-!===============================================================================
-! CALCULATE_XS determines the macroscopic cross sections for the material the
-! particle is currently traveling through.
-!===============================================================================
-
-  subroutine calculate_xs(p)
-
-    type(Particle), pointer :: p
-
-    integer :: i             ! loop index over nuclides
-    integer :: index_nuclide ! index into nuclides array
-    integer :: index_sab     ! index into sab_tables array
-    real(8) :: atom_density  ! atom density of a nuclide
-    real(8) :: sab_threshold ! threshold for S(a,b) table
-    type(Material),  pointer :: mat => null() ! current material
-
-    ! Set all material macroscopic cross sections to zero
-    material_xs % total      = ZERO
-    material_xs % elastic    = ZERO
-    material_xs % absorption = ZERO
-    material_xs % fission    = ZERO
-    material_xs % nu_fission = ZERO
-
-    mat => materials(p % material)
-
-    ! Find energy index on unionized grid
-    call find_energy_index(p)
-
-    ! Check if there's an S(a,b) table for this material
-    if (mat % has_sab_table) then
-       sab_threshold = sab_tables(mat % sab_table) % threshold_inelastic
-    else
-       sab_threshold = ZERO
-    end if
-
-    ! Add contribution from each nuclide in material
-    do i = 1, mat % n_nuclides
-       ! Determine microscopic cross sections for this nuclide
-       index_nuclide = mat % nuclide(i)
-
-       ! Determine whether to use S(a,b) based on energy of particle and whether
-       ! the nuclide matches the S(a,b) table
-       if (p % E < sab_threshold .and. i == mat % sab_nuclide) then
-          index_sab = mat % sab_table
-       else
-          index_sab = 0
-       end if
-
-       ! Calculate microscopic cross section for this nuclide
-       if (p % E /= micro_xs(index_nuclide) % last_E) then
-          call calculate_nuclide_xs(p, index_nuclide, index_sab)
-       end if
-
-       ! Copy atom density of nuclide in material
-       atom_density = mat % atom_density(i)
-
-       ! Add contributions to material macroscopic total cross section
-       material_xs % total = material_xs % total + &
-            atom_density * micro_xs(index_nuclide) % total
-       
-       ! Add contributions to material macroscopic scattering cross section
-       material_xs % elastic = material_xs % elastic + &
-            atom_density * micro_xs(index_nuclide) % elastic
-       
-       ! Add contributions to material macroscopic absorption cross section
-       material_xs % absorption = material_xs % absorption + & 
-            atom_density * micro_xs(index_nuclide) % absorption
-       
-       ! Add contributions to material macroscopic fission cross section
-       material_xs % fission = material_xs % fission + &
-            atom_density * micro_xs(index_nuclide) % fission
-       
-       ! Add contributions to material macroscopic nu-fission cross section
-       material_xs % nu_fission = material_xs % nu_fission + &
-            atom_density * micro_xs(index_nuclide) % nu_fission
-    end do
-
-  end subroutine calculate_xs
-
-!===============================================================================
-! CALCULATE_NUCLIDE_XS determines microscopic cross sections for a nuclide of a
-! given index in the nuclides array at the energy of the given particle
-!===============================================================================
-
-  subroutine calculate_nuclide_xs(p, index_nuclide, index_sab)
-
-    type(Particle), pointer :: p
-    integer, intent(in)     :: index_nuclide ! index into nuclides array
-    integer, intent(in)     :: index_sab     ! index into sab_tables array
-
-    integer :: IE        ! index on nuclide energy grid
-    integer :: IE_sab    ! index on S(a,b) energy grid
-    real(8) :: f         ! interp factor on nuclide energy grid
-    real(8) :: f_sab     ! interp factor on S(a,b) energy grid
-    real(8) :: inelastic ! S(a,b) inelastic cross section
-    real(8) :: elastic   ! S(a,b) elastic cross section
-    type(Nuclide),   pointer :: nuc => null()
-    type(SAB_Table), pointer :: sab => null()
-
-    ! Set pointer to nuclide
-    nuc => nuclides(index_nuclide)
-
-    ! TODO: If not using unionized energy grid, we need to find the index on the
-    ! nuclide energy grid using lethargy mapping or whatever other technique
-
-    ! search nuclide energy grid
-    IE = nuc % grid_index(p % IE)
-    f = (p%E - nuc%energy(IE))/(nuc%energy(IE+1) - nuc%energy(IE))
-
-    micro_xs(index_nuclide) % index_grid = IE
-    micro_xs(index_nuclide) % interp_factor = f
-
-    ! Initialize sab treatment to false
-    micro_xs(index_nuclide) % use_sab     = .false.
-    micro_xs(index_nuclide) % elastic_sab = ZERO
-
-    ! Initialize nuclide cross-sections to zero
-    micro_xs(index_nuclide) % fission    = ZERO
-    micro_xs(index_nuclide) % nu_fission = ZERO
-
-    ! Calculate microscopic nuclide total cross section
-    micro_xs(index_nuclide) % total = &
-         (ONE-f) * nuc % total(IE) + f * nuc % total(IE+1)
-
-    ! Calculate microscopic nuclide total cross section
-    micro_xs(index_nuclide) % elastic = &
-         (ONE-f) * nuc % elastic(IE) + f * nuc % elastic(IE+1)
-
-    ! Calculate microscopic nuclide absorption cross section
-    micro_xs(index_nuclide) % absorption = &
-         (ONE-f) * nuc % absorption(IE) + f * nuc % absorption(IE+1)
-
-    if (nuc % fissionable) then
-       ! Calculate microscopic nuclide total cross section
-       micro_xs(index_nuclide) % fission = &
-            (ONE-f) * nuc % fission(IE) + f * nuc % fission(IE+1)
-
-       ! Calculate microscopic nuclide nu-fission cross section
-       micro_xs(index_nuclide) % nu_fission = &
-            (ONE-f) * nuc % nu_fission(IE) + f * nuc % nu_fission(IE+1)
-    end if
-
-    ! If there is S(a,b) data for this nuclide, we need to do a few
-    ! things. Since the total cross section was based on non-S(a,b) data, we
-    ! need to correct it by subtracting the non-S(a,b) elastic cross section and
-    ! then add back in the calculated S(a,b) elastic+inelastic cross section.
-
-    if (index_sab > 0) then
-       micro_xs(index_nuclide) % use_sab = .true.
-
-       ! Get pointer to S(a,b) table
-       sab => sab_tables(index_sab)
-
-       ! Get index and interpolation factor for inelastic grid
-       if (p%E < sab % inelastic_e_in(1)) then
-          IE_sab = 1
-          f_sab = ZERO
-       else
-          IE_sab = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
-          f_sab = (p%E - sab%inelastic_e_in(IE_sab)) / & 
-               (sab%inelastic_e_in(IE_sab+1) - sab%inelastic_e_in(IE_sab))
-       end if
-
-       ! Calculate S(a,b) inelastic scattering cross section
-       inelastic = (ONE-f_sab) * sab % inelastic_sigma(IE_sab) + f_sab * &
-            sab % inelastic_sigma(IE_sab + 1)
-
-       ! Check for elastic data
-       if (p % E < sab % threshold_elastic) then
-          ! Determine whether elastic scattering is given in the coherent or
-          ! incoherent approximation. For coherent, the cross section is
-          ! represented as P/E whereas for incoherent, it is simply P
-
-          if (sab % elastic_mode == SAB_ELASTIC_EXACT) then
-             if (p % E < sab % elastic_e_in(1)) then
-                ! If energy is below that of the lowest Bragg peak, the elastic
-                ! cross section will be zero
-                elastic = ZERO
-             else
-                IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
-                elastic = sab % elastic_P(IE_sab) / p % E
-             end if
-          else
-             ! Determine index on elastic energy grid
-             if (p % E < sab % elastic_e_in(1)) then
-                IE_sab = 1
-             else
-                IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
-             end if
-
-             ! Get interpolation factor for elastic grid
-             f_sab = (p%E - sab%elastic_e_in(IE_sab))/(sab%elastic_e_in(IE_sab+1) - &
-                  sab%elastic_e_in(IE_sab))
-
-             ! Calculate S(a,b) elastic scattering cross section
-             elastic = (ONE-f_sab) * sab % elastic_P(IE_sab) + f_sab * &
-                  sab % elastic_P(IE_sab + 1)
-          end if
-       else
-          ! No elastic data
-          elastic = ZERO
-       end if
-
-       ! Correct total and elastic cross sections
-       micro_xs(index_nuclide) % total = micro_xs(index_nuclide) % total - &
-            micro_xs(index_nuclide) % elastic + inelastic + elastic
-       micro_xs(index_nuclide) % elastic = inelastic + elastic
-
-       ! Store S(a,b) elastic cross section for sampling later
-       micro_xs(index_nuclide) % elastic_sab = elastic
-    end if
-
-    ! Set last evaluated energy
-    micro_xs(index_nuclide) % last_E = p % E
-
-  end subroutine calculate_nuclide_xs
-
-!===============================================================================
-! FIND_ENERGY_INDEX determines the index on the union energy grid and the
-! interpolation factor for a particle at a certain energy
-!===============================================================================
-
-  subroutine find_energy_index(p)
-
-    type(Particle), pointer :: p
-
-    integer :: IE     ! index on union energy grid
-    real(8) :: E      ! energy of particle
-    real(8) :: interp ! interpolation factor
-
-    ! copy particle's energy
-    E = p % E
-
-    ! if particle's energy is outside of energy grid range, set to first or last
-    ! index. Otherwise, do a binary search through the union energy grid.
-    if (E < e_grid(1)) then
-       IE = 1
-    elseif (E > e_grid(n_grid)) then
-       IE = n_grid - 1
-    else
-       IE = binary_search(e_grid, n_grid, E)
-    end if
-    
-    ! calculate the interpolation factor -- note this will be outside of [0,1)
-    ! for a particle outside the energy range of the union grid
-    interp = (E - e_grid(IE))/(e_grid(IE+1) - e_grid(IE))
-
-    ! set particle attributes
-    p % IE     = IE
-    p % interp = interp
-    
-  end subroutine find_energy_index
 
 !===============================================================================
 ! COLLISION samples a nuclide and reaction and then calls the appropriate
@@ -420,7 +167,7 @@ contains
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
        message = "    " // trim(reaction_name(MT)) // ". Energy = " // &
-            trim(real_to_str(p % E * 1e6_8)) // " eV."
+            trim(to_str(p % E * 1e6_8)) // " eV."
        call write_message()
     end if
 
@@ -449,9 +196,6 @@ contains
 
     ! Reset number of particles banked during collision
     p % n_bank = 0
-
-    ! find energy index, interpolation factor
-    call find_energy_index(p)
 
   end subroutine collision
 
@@ -571,7 +315,7 @@ contains
 
                 ! add to cumulative probability
                 prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-                     & + f*(rxn%sigma(IE-rxn%IE+2)))
+                     + f*(rxn%sigma(IE-rxn%IE+2)))
              end do
           else
              ! For nuclides with only total fission reaction, get a pointer to
@@ -596,7 +340,7 @@ contains
              ! add to cumulative probability
              if (nuc % has_partial_fission) then
                 prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-                     & + f*(rxn%sigma(IE-rxn%IE+2)))
+                     + f*(rxn%sigma(IE-rxn%IE+2)))
              else
                 prob = prob + micro_xs(index_nuclide) % fission
              end if
@@ -672,7 +416,7 @@ contains
           if (i > nuc % n_reaction) then
              message = "Did not sample any reaction for nuclide " // &
                   trim(nuc % name) // " on material " // &
-                  trim(int_to_str(mat % id))
+                  trim(to_str(mat % id))
              call fatal_error()
           end if
 
@@ -692,7 +436,7 @@ contains
 
           ! add to cumulative probability
           prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-               & + f*(rxn%sigma(IE-rxn%IE+2)))
+               + f*(rxn%sigma(IE-rxn%IE+2)))
        end do
 
        ! Perform collision physics for inelastics scattering
@@ -1023,7 +767,7 @@ contains
     ! determine velocity vector of target nucleus
     v_target(1) = u*vt
     v_target(2) = v*vt
-    v_target(3) = W*vt
+    v_target(3) = w*vt
 
   end subroutine sample_target_velocity
 
@@ -1262,7 +1006,7 @@ contains
 
        ! determine outgoing energy in lab
        E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) & 
-            & / ((A+ONE)*(A+ONE))
+            / ((A+ONE)*(A+ONE))
 
        ! determine outgoing angle in lab
        mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
@@ -1338,7 +1082,7 @@ contains
     else
        i = binary_search(rxn % adist % energy, n, E)
        r = (E - rxn % adist % energy(i)) / & 
-            & (rxn % adist % energy(i+1) - rxn % adist % energy(i))
+            (rxn % adist % energy(i+1) - rxn % adist % energy(i))
     end if
 
     ! Sample between the ith and (i+1)th bin
@@ -1380,8 +1124,7 @@ contains
           mu = mu0 + (xi - c_k)/p0
 
        elseif (interp == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about the
-          ! formula given in the MCNP manual
+          ! Linear-linear interpolation
           p1  = rxn % adist % data(lc + NP + k+1)
           mu1 = rxn % adist % data(lc + k+1)
 
@@ -1392,7 +1135,7 @@ contains
              mu = mu0 + (sqrt(p0*p0 + 2*frac*(xi - c_k))-p0)/frac
           end if
        else
-          message = "Unknown interpolation type: " // trim(int_to_str(interp))
+          message = "Unknown interpolation type: " // trim(to_str(interp))
           call fatal_error()
        end if
 
@@ -1404,7 +1147,7 @@ contains
        end if
          
     else
-       message = "Unknown angular distribution type: " // trim(int_to_str(type))
+       message = "Unknown angular distribution type: " // trim(to_str(type))
        call fatal_error()
     end if
     
@@ -1559,7 +1302,7 @@ contains
        lc = 2 + 2*NR
        i = binary_search(edist % data(lc+1), NE, E_in)
        r = (E_in - edist%data(lc+i)) / &
-            & (edist%data(lc+i+1) - edist%data(lc+i))
+            (edist%data(lc+i+1) - edist%data(lc+i))
 
        ! Sample outgoing energy bin
        r1 = prn()
@@ -1635,7 +1378,7 @@ contains
        else
           i = binary_search(edist % data(lc+1), NE, E_in)
           r = (E_in - edist%data(lc+i)) / & 
-               & (edist%data(lc+i+1) - edist%data(lc+i))
+               (edist%data(lc+i+1) - edist%data(lc+i))
        end if
 
        ! Sample between the ith and (i+1)th bin
@@ -1708,10 +1451,10 @@ contains
              E_out = E_l_k + (r1 - c_k)/p_l_k
           else
              E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
-                  & p_l_k)/frac
+                  p_l_k)/frac
           end if
        else
-          message = "Unknown interpolation type: " // trim(int_to_str(INTT))
+          message = "Unknown interpolation type: " // trim(to_str(INTT))
           call fatal_error()
        end if
 
@@ -1861,7 +1604,7 @@ contains
        else
           i = binary_search(edist % data(lc+1), NE, E_in)
           r = (E_in - edist%data(lc+i)) / & 
-               & (edist%data(lc+i+1) - edist%data(lc+i))
+               (edist%data(lc+i+1) - edist%data(lc+i))
        end if
 
        ! Sample between the ith and (i+1)th bin
@@ -1940,7 +1683,7 @@ contains
              E_out = E_l_k + (r1 - c_k)/p_l_k
           else
              E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
-                  & p_l_k)/frac
+                  p_l_k)/frac
           end if
 
           ! Determine Kalbach-Mann parameters
@@ -1952,7 +1695,7 @@ contains
           KM_R = R_k + (R_k1 - R_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
           KM_A = A_k + (A_k1 - A_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
        else
-          message = "Unknown interpolation type: " // trim(int_to_str(INTT))
+          message = "Unknown interpolation type: " // trim(to_str(INTT))
           call fatal_error()
        end if
 
@@ -2004,7 +1747,7 @@ contains
        else
           i = binary_search(edist % data(lc+1), NE, E_in)
           r = (E_in - edist%data(lc+i)) / & 
-               & (edist%data(lc+i+1) - edist%data(lc+i))
+               (edist%data(lc+i+1) - edist%data(lc+i))
        end if
 
        ! Sample between the ith and (i+1)th bin
@@ -2079,10 +1822,10 @@ contains
              E_out = E_l_k + (r1 - c_k)/p_l_k
           else
              E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
-                  & p_l_k)/frac
+                  p_l_k)/frac
           end if
        else
-          message = "Unknown interpolation type: " // trim(int_to_str(INTT))
+          message = "Unknown interpolation type: " // trim(to_str(INTT))
           call fatal_error()
        end if
 
@@ -2135,7 +1878,7 @@ contains
              mu_out = mu_k + (sqrt(p_k*p_k + 2*frac*(r3 - c_k))-p_k)/frac
           end if
        else
-          message = "Unknown interpolation type: " // trim(int_to_str(JJ))
+          message = "Unknown interpolation type: " // trim(to_str(JJ))
           call fatal_error()
        end if
 

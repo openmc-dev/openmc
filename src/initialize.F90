@@ -1,7 +1,8 @@
 module initialize
 
+  use ace,              only: read_xs
+  use bank_header,      only: Bank
   use constants
-  use cross_section,    only: read_xs
   use datatypes,        only: dict_create, dict_add_key, dict_get_key,         &
                               dict_has_key, dict_keys
   use datatypes_header, only: ListKeyValueII, DictionaryII
@@ -12,15 +13,17 @@ module initialize
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict
-  use logging,          only: create_log
-  use mpi_routines,     only: setup_mpi
   use output,           only: title, header, print_summary, print_geometry,    &
-                              print_plot
+                              print_plot, create_summary_file
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
-  use string,           only: int_to_str, starts_with, ends_with, lower_case
+  use string,           only: to_str, starts_with, ends_with, lower_case
   use tally,            only: create_tally_map, TallyObject
   use timing,           only: timer_start, timer_stop
+
+#ifdef MPI
+  use mpi
+#endif
 
   implicit none
 
@@ -47,13 +50,13 @@ contains
 
     ! Read command line arguments
     call read_command_line()
-    if (master) call create_log()
+    if (master) call create_summary_file()
 
     ! Print the OpenMC title and version/date/time information
     if (master) call title()
 
     ! Print initialization header block
-    if (master) call header("INITIALIZATION", 1)
+    if (master) call header("INITIALIZATION", level=1)
 
     ! Initialize random number generator
     call initialize_prng()
@@ -119,6 +122,81 @@ contains
     call timer_stop(time_initialize)
 
   end subroutine initialize_run
+
+!===============================================================================
+! SETUP_MPI initilizes the Message Passing Interface (MPI) and determines the
+! number of processors the problem is being run with as well as the rank of each
+! processor.
+!===============================================================================
+
+  subroutine setup_mpi()
+
+#ifdef MPI
+    integer        :: i
+    integer        :: bank_blocks(4) ! Count for each datatype
+    integer        :: bank_types(4)  ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: bank_disp(4)   ! Displacements
+    integer(MPI_ADDRESS_KIND) :: base
+    type(Bank)     :: b
+
+    mpi_enabled = .true.
+
+    ! Initialize MPI
+    call MPI_INIT(mpi_err)
+    if (mpi_err /= MPI_SUCCESS) then
+       message = "Failed to initialize MPI."
+       call fatal_error()
+    end if
+
+    ! Determine number of processors
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, mpi_err)
+    if (mpi_err /= MPI_SUCCESS) then
+       message = "Could not determine number of processors."
+       call fatal_error()
+    end if
+
+    ! Determine rank of each processor
+    call MPI_COMM_RANK(MPI_COMM_WORLD, rank, mpi_err)
+    if (mpi_err /= MPI_SUCCESS) then
+       message = "Could not determine MPI rank."
+       call fatal_error()
+    end if
+
+    ! Determine master
+    if (rank == 0) then
+       master = .true.
+    else
+       master = .false.
+    end if
+
+    ! Determine displacements for MPI_BANK type
+    call MPI_GET_ADDRESS(b % id,  bank_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(b % xyz, bank_disp(2), mpi_err)
+    call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
+    call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
+
+    ! Adjust displacements 
+    base = bank_disp(1)
+    do i = 1, 4
+       bank_disp(i) = bank_disp(i) - base
+    end do
+    
+    ! Define MPI_BANK for fission sites
+    bank_blocks = (/ 1, 3, 3, 1 /)
+    bank_types = (/ MPI_INTEGER8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
+    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
+         bank_types, MPI_BANK, mpi_err)
+    call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
+
+#else
+    ! if no MPI, set processor to master
+    mpi_enabled = .false.
+    rank = 0
+    n_procs = 1
+    master = .true.
+#endif
+
+  end subroutine setup_mpi
 
 !===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line
@@ -297,8 +375,8 @@ contains
                 i_array = dict_get_key(surface_dict, abs(id))
                 c % surfaces(j) = sign(i_array, id)
              else
-                message = "Could not find surface " // trim(int_to_str(abs(id))) // &
-                     & " specified on cell " // trim(int_to_str(c % id))
+                message = "Could not find surface " // trim(to_str(abs(id))) // &
+                     " specified on cell " // trim(to_str(c % id))
                 call fatal_error()
              end if
           end if
@@ -311,8 +389,8 @@ contains
        if (dict_has_key(universe_dict, id)) then
           c % universe = dict_get_key(universe_dict, id)
        else
-          message = "Could not find universe " // trim(int_to_str(id)) // &
-               " specified on cell " // trim(int_to_str(c % id))
+          message = "Could not find universe " // trim(to_str(id)) // &
+               " specified on cell " // trim(to_str(c % id))
           call fatal_error()
        end if
 
@@ -325,8 +403,8 @@ contains
              c % type = CELL_NORMAL
              c % material = dict_get_key(material_dict, id)
           else
-             message = "Could not find material " // trim(int_to_str(id)) // &
-                   " specified on cell " // trim(int_to_str(c % id))
+             message = "Could not find material " // trim(to_str(id)) // &
+                   " specified on cell " // trim(to_str(c % id))
              call fatal_error()
           end if
        else
@@ -338,8 +416,8 @@ contains
              c % type = CELL_LATTICE
              c % fill = dict_get_key(lattice_dict, id)
           else
-             message = "Specified fill " // trim(int_to_str(id)) // " on cell " // &
-                  trim(int_to_str(c % id)) // " is neither a universe nor a lattice."
+             message = "Specified fill " // trim(to_str(id)) // " on cell " // &
+                  trim(to_str(c % id)) // " is neither a universe nor a lattice."
              call fatal_error()
           end if
        end if
@@ -356,8 +434,8 @@ contains
              if (dict_has_key(universe_dict, id)) then
                 l % element(j,k) = dict_get_key(universe_dict, id)
              else
-                message = "Invalid universe number " // trim(int_to_str(id)) &
-                     // " specified on lattice " // trim(int_to_str(l % id))
+                message = "Invalid universe number " // trim(to_str(id)) &
+                     // " specified on lattice " // trim(to_str(l % id))
                 call fatal_error()
              end if
           end do
@@ -376,8 +454,8 @@ contains
              if (dict_has_key(cell_dict, id)) then
                 t % cell_bins(j) % scalar = dict_get_key(cell_dict, id)
              else
-                message = "Could not find cell " // trim(int_to_str(id)) // &
-                     & " specified on tally " // trim(int_to_str(t % id))
+                message = "Could not find cell " // trim(to_str(id)) // &
+                     " specified on tally " // trim(to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -392,8 +470,8 @@ contains
              if (dict_has_key(surface_dict, id)) then
                 t % surface_bins(j) % scalar = dict_get_key(surface_dict, id)
              else
-                message = "Could not find surface " // trim(int_to_str(id)) // &
-                     & " specified on tally " // trim(int_to_str(t % id))
+                message = "Could not find surface " // trim(to_str(id)) // &
+                     " specified on tally " // trim(to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -408,8 +486,8 @@ contains
              if (dict_has_key(universe_dict, id)) then
                 t % universe_bins(j) % scalar = dict_get_key(universe_dict, id)
              else
-                message = "Could not find universe " // trim(int_to_str(id)) // &
-                     & " specified on tally " // trim(int_to_str(t % id))
+                message = "Could not find universe " // trim(to_str(id)) // &
+                     " specified on tally " // trim(to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -424,8 +502,8 @@ contains
              if (dict_has_key(material_dict, id)) then
                 t % material_bins(j) % scalar = dict_get_key(material_dict, id)
              else
-                message = "Could not find material " // trim(int_to_str(id)) // &
-                     & " specified on tally " // trim(int_to_str(t % id))
+                message = "Could not find material " // trim(to_str(id)) // &
+                     " specified on tally " // trim(to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -440,8 +518,8 @@ contains
              if (dict_has_key(cell_dict, id)) then
                 t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, id)
              else
-                message = "Could not find material " // trim(int_to_str(id)) // &
-                     & " specified on tally " // trim(int_to_str(t % id))
+                message = "Could not find material " // trim(to_str(id)) // &
+                     " specified on tally " // trim(to_str(t % id))
                 call fatal_error()
              end if
           end do
@@ -455,8 +533,8 @@ contains
           if (dict_has_key(mesh_dict, id)) then
              t % mesh = dict_get_key(mesh_dict, id)
           else
-             message = "Could not find mesh " // trim(int_to_str(id)) // &
-                  & " specified on tally " // trim(int_to_str(t % id))
+             message = "Could not find mesh " // trim(to_str(id)) // &
+                  " specified on tally " // trim(to_str(t % id))
              call fatal_error()
           end if
        end if
@@ -546,9 +624,9 @@ contains
        ! Check to make sure either all atom percents or all weight percents are
        ! given
        if (.not. (all(mat%atom_percent > ZERO) .or. & 
-            & all(mat%atom_percent < ZERO))) then
+            all(mat%atom_percent < ZERO))) then
           message = "Cannot mix atom and weight percents in material " // &
-               & int_to_str(mat % id)
+               to_str(mat % id)
           call fatal_error()
        end if
 
@@ -606,7 +684,7 @@ contains
           end do
           sum_percent = ONE / sum_percent
           mat % density = -mat % density * N_AVOGADRO & 
-               & / MASS_NEUTRON * sum_percent
+               / MASS_NEUTRON * sum_percent
        end if
 
        ! Calculate nuclide atom densities and deallocate atom_percent array

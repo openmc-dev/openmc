@@ -7,7 +7,7 @@ module geometry
   use global
   use output,          only: write_message
   use particle_header, only: Particle, LocalCoord, deallocate_coord
-  use string,          only: int_to_str
+  use string,          only: to_str
   use tally,           only: score_surface_current
 
   implicit none
@@ -171,26 +171,42 @@ contains
              x = ceiling((xyz(1) - lat % x0)/lat % width_x)
              y = ceiling((xyz(2) - lat % y0)/lat % width_y)
 
-             ! Create new level of coordinates
-             p % in_lower_universe = .true.
-             allocate(p % coord % next)
-             
-             ! adjust local position of particle
-             p % coord % next % xyz(1) = p % coord % xyz(1) - &
-                  (lat%x0 + (x-0.5_8)*lat%width_x)
-             p % coord % next % xyz(2) = p % coord % xyz(2) - &
-                  (lat%y0 + (y-0.5_8)*lat%width_y)
-             p % coord % next % xyz(3) = p % coord % xyz(3)
-             p % coord % next % uvw    = p % coord % uvw
+             ! Check if lattice coordinates are within bounds
+             if (x < 1 .or. x > lat % n_x .or. &
+                  y < 1 .or. y > lat % n_y) then
 
-             ! Move particle to next level
-             p % coord => p % coord % next
+                ! This condition should only get hit in rare circumstances where
+                ! a neutron hits the corner of a lattice. In this case, the
+                ! neutron may need to be moved diagonally across the lattice. To
+                ! do so, we remove all lower coordinate levels and then search
+                ! from universe 0.
+
+                p % coord => p % coord0
+                call deallocate_coord(p % coord % next)
+
+             else
+
+                ! Create new level of coordinates
+                p % in_lower_universe = .true.
+                allocate(p % coord % next)
              
-             ! set particle lattice indices
-             p % coord % lattice   = c % fill
-             p % coord % lattice_x = x
-             p % coord % lattice_y = y
-             p % coord % universe  = lat % element(x,y)
+                ! adjust local position of particle
+                p % coord % next % xyz(1) = p % coord % xyz(1) - &
+                     (lat%x0 + (x-0.5_8)*lat%width_x)
+                p % coord % next % xyz(2) = p % coord % xyz(2) - &
+                     (lat%y0 + (y-0.5_8)*lat%width_y)
+                p % coord % next % xyz(3) = p % coord % xyz(3)
+                p % coord % next % uvw    = p % coord % uvw
+
+                ! Move particle to next level
+                p % coord => p % coord % next
+             
+                ! set particle lattice indices
+                p % coord % lattice   = c % fill
+                p % coord % lattice_x = x
+                p % coord % lattice_y = y
+                p % coord % universe  = lat % element(x,y)
+             end if
 
              call find_cell(p, found)
              if (.not. found) exit
@@ -216,24 +232,24 @@ contains
     type(Particle), pointer :: p
     integer, intent(in)     :: last_cell  ! last cell particle was in
 
-    real(8)                 :: x          ! x-x0 for sphere
-    real(8)                 :: y          ! y-y0 for sphere
-    real(8)                 :: z          ! z-z0 for sphere
-    real(8)                 :: R          ! radius of sphere
-    real(8)                 :: u          ! x-component of direction
-    real(8)                 :: v          ! y-component of direction
-    real(8)                 :: w          ! z-component of direction
-    real(8)                 :: n1         ! x-component of surface normal
-    real(8)                 :: n2         ! y-component of surface normal
-    real(8)                 :: n3         ! z-component of surface normal
-    real(8)                 :: dot_prod   ! dot product of direction and normal
-    real(8)                 :: norm       ! "norm" of surface normal
-    logical                 :: found      ! particle found in universe?
+    real(8) :: x        ! x-x0 for sphere
+    real(8) :: y        ! y-y0 for sphere
+    real(8) :: z        ! z-z0 for sphere
+    real(8) :: R        ! radius of sphere
+    real(8) :: u        ! x-component of direction
+    real(8) :: v        ! y-component of direction
+    real(8) :: w        ! z-component of direction
+    real(8) :: n1       ! x-component of surface normal
+    real(8) :: n2       ! y-component of surface normal
+    real(8) :: n3       ! z-component of surface normal
+    real(8) :: dot_prod ! dot product of direction and normal
+    real(8) :: norm     ! "norm" of surface normal
+    logical :: found    ! particle found in universe?
     type(Surface),  pointer :: surf => null()
 
     surf => surfaces(abs(p % surface))
     if (verbosity >= 10 .or. trace) then
-       message = "    Crossing surface " // trim(int_to_str(surf % id))
+       message = "    Crossing surface " // trim(to_str(surf % id))
        call write_message()
     end if
 
@@ -258,7 +274,7 @@ contains
 
        ! Display message
        if (verbosity >= 10 .or. trace) then
-          message = "    Leaked out of surface " // trim(int_to_str(surf % id))
+          message = "    Leaked out of surface " // trim(to_str(surf % id))
           call write_message()
        end if
        return
@@ -269,7 +285,8 @@ contains
 
        ! Do not handle reflective boundary conditions on lower universes
        if (p % in_lower_universe) then
-          message = "Cannot reflect particle off surface in a lower universe."
+          message = "Cannot reflect particle " // trim(to_str(p % id)) // &
+               " off surface in a lower universe."
           call fatal_error()
        end if
 
@@ -367,7 +384,7 @@ contains
           p % coord0 % uvw = (/ u, v, w /)
        case default
           message = "Reflection not supported for surface " // &
-               trim(int_to_str(surf % id))
+               trim(to_str(surf % id))
           call fatal_error()
        end select
 
@@ -380,7 +397,7 @@ contains
 
        ! Diagnostic message
        if (verbosity >= 10 .or. trace) then
-          message = "    Reflected from surface " // trim(int_to_str(surf%id))
+          message = "    Reflected from surface " // trim(to_str(surf%id))
           call write_message()
        end if
        return
@@ -412,9 +429,9 @@ contains
 
     ! Couldn't find next cell anywhere!
     if ((.not. found) .and. (.not. plotting)) then
-       message = "After particle crossed surface " // trim(int_to_str( &
-            surfaces(abs(p%surface)) % id)) // " it could not be located in " &
-            // "any cell and it did not leak."
+       message = "After particle " // trim(to_str(p % id)) // " crossed surface " &
+            // trim(to_str(surfaces(abs(p%surface)) % id)) // " it could not be &
+            &located in any cell and it did not leak."
        call fatal_error()
     end if
        
@@ -424,110 +441,69 @@ contains
 ! CROSS_LATTICE moves a particle into a new lattice element
 !===============================================================================
 
-  subroutine cross_lattice(p)
+  subroutine cross_lattice(p, lattice_crossed)
 
     type(Particle), pointer :: p
+    integer, intent(in) :: lattice_crossed
 
-    integer        :: i_x      ! x index in lattice
-    integer        :: i_y      ! y index in lattice
-    real(8)        :: d_left   ! distance to left side
-    real(8)        :: d_right  ! distance to right side
-    real(8)        :: d_bottom ! distance to bottom side
-    real(8)        :: d_top    ! distance to top side
-    real(8)        :: dist     ! shortest distance
-    real(8)        :: x        ! x coordinate in local lattice element
-    real(8)        :: y        ! y coordinate in local lattice element
-    real(8)        :: z        ! z coordinate in local lattice element
-    real(8)        :: u        ! cosine of angle with x axis
-    real(8)        :: v        ! cosine of angle with y axis
-    real(8)        :: x0       ! half the width of lattice element
-    real(8)        :: y0       ! half the height of lattice element
-    logical        :: found    ! particle found in cell?
+    integer :: i_x   ! x index in lattice
+    integer :: i_y   ! y index in lattice
+    real(8) :: x0    ! half the width of lattice element
+    real(8) :: y0    ! half the height of lattice element
+    logical :: found ! particle found in cell?
     type(Lattice),  pointer :: lat => null()
 
     lat => lattices(p % coord % lattice)
 
     if (verbosity >= 10 .or. trace) then
-       message = "    Crossing lattice " // trim(int_to_str(lat % id)) // &
-            ". Current position (" // trim(int_to_str(p % coord % lattice_x)) &
-            // "," // trim(int_to_str(p % coord % lattice_y)) // ")"
+       message = "    Crossing lattice " // trim(to_str(lat % id)) // &
+            ". Current position (" // trim(to_str(p % coord % lattice_x)) &
+            // "," // trim(to_str(p % coord % lattice_y)) // ")"
        call write_message()
     end if
 
-    u = p % coord % uvw(1)
-    v = p % coord % uvw(2)
-
     if (lat % type == LATTICE_RECT) then
-       x = p % coord % xyz(1)
-       y = p % coord % xyz(2)
-       z = p % coord % xyz(3)
        x0 = lat % width_x * 0.5_8
        y0 = lat % width_y * 0.5_8
-       
-       dist = INFINITY
 
-       ! left and right sides
-       if (u == ZERO) then
-          d_left = INFINITY
-          d_right = INFINITY
-       elseif (u > 0) then
-          d_left = INFINITY
-          d_right = (x0 - x)/u
-       else
-          d_left = -(x0 + x)/u
-          d_right = INFINITY
-       end if
-
-       ! top and bottom sides
-       if (v == ZERO) then
-          d_bottom = INFINITY
-          d_top = INFINITY
-       elseif (v > 0) then
-          d_bottom = INFINITY
-          d_top = (y0 - y)/v
-       else
-          d_bottom = -(y0 + y)/v
-          d_top = INFINITY
-       end if
-
-       dist = min(d_left, d_right, d_top, d_bottom)
-       if (dist == d_left) then
+       select case (lattice_crossed)
+       case (LATTICE_LEFT)
           ! Move particle to left element
           p % coord % lattice_x = p % coord % lattice_x - 1
           p % coord % xyz(1) = x0
           
-       elseif (dist == d_right) then
+       case (LATTICE_RIGHT)
           ! Move particle to right element
           p % coord % lattice_x = p % coord % lattice_x + 1
           p % coord % xyz(1) = -x0
 
-       elseif (dist == d_bottom) then
+       case (LATTICE_BOTTOM)
           ! Move particle to bottom element
           p % coord % lattice_y = p % coord % lattice_y - 1
           p % coord % xyz(2) = y0
 
-       elseif (dist == d_top) then
+       case (LATTICE_TOP)
           ! Move particle to top element
           p % coord % lattice_y = p % coord % lattice_y + 1
           p % coord % xyz(2) = -y0
 
-       end if
+       end select
     elseif (lat % type == LATTICE_HEX) then
        ! TODO: Add hex lattice support
     end if
-    
+
     ! Check to make sure still in lattice
     i_x = p % coord % lattice_x
     i_y = p % coord % lattice_y
     if (i_x < 1 .or. i_x > lat % n_x) then
-       message = "Reached edge of lattice " // trim(int_to_str(lat % id)) // &
-            " at position (" // trim(int_to_str(i_x)) // "," // &
-            trim(int_to_str(i_y)) // ")."
+       message = "Particle " // trim(to_str(p % id)) // " reached edge of &
+            &lattice " // trim(to_str(lat % id)) // " at position (" // &
+            trim(to_str(i_x)) // "," // trim(to_str(i_y)) // ")."
        call fatal_error()
     elseif (i_y < 1 .or. i_y > lat % n_y) then
-       message = "Reached edge of lattice " // trim(int_to_str(lat % id)) // &
-            " at position (" // trim(int_to_str(i_x)) // "," // &
-            trim(int_to_str(i_y)) // ")."
+       message = "Particle " // trim(to_str(p % id)) // " reached edge of &
+            &lattice " // trim(to_str(lat % id)) // " at position (" // &
+            trim(to_str(i_x)) // "," // trim(to_str(i_y)) // ")."
        call fatal_error()
     end if
 
@@ -537,8 +513,8 @@ contains
     ! Find cell in next lattice element
     call find_cell(p, found)
     if (.not. found) then
-       message = "Could not locate particle in universe: " // &
-            int_to_str(universes(p % coord % universe) % id)
+       message = "Could not locate particle " // trim(to_str(p % id)) // &
+            " in universe " // to_str(universes(p % coord % universe) % id)
        call fatal_error()
     end if
 
@@ -555,7 +531,7 @@ contains
     type(Particle), pointer     :: p
     real(8),        intent(out) :: dist
     integer,        intent(out) :: surface_crossed
-    logical,        intent(out) :: lattice_crossed
+    integer,        intent(out) :: lattice_crossed
 
     integer :: i            ! index for surface in cell
     integer :: index_surf   ! index in surfaces array (with sign)
@@ -576,7 +552,7 @@ contains
 
     ! inialize distance to infinity (huge)
     dist = INFINITY
-    lattice_crossed = .false.
+    lattice_crossed = NONE
     nullify(final_coord)
 
     ! Get pointer to top-level coordinates
@@ -866,7 +842,7 @@ contains
           if (d < dist) then
              dist = d
              surface_crossed = -cl % surfaces(i)
-             lattice_crossed = .false.
+             lattice_crossed = NONE
              final_coord => coord
           end if
 
@@ -906,7 +882,11 @@ contains
              if (d < dist) then 
                 if (abs(d - dist)/dist >= FP_PRECISION) then
                    dist = d
-                   lattice_crossed = .true.
+                   if (u > 0) then
+                      lattice_crossed = LATTICE_RIGHT
+                   else
+                      lattice_crossed = LATTICE_LEFT
+                   end if
                    final_coord => coord
                 end if
              end if
@@ -923,7 +903,11 @@ contains
              if (d < dist) then
                 if (abs(d - dist)/dist >= FP_PRECISION) then
                    dist = d
-                   lattice_crossed = .true.
+                   if (v > 0) then
+                      lattice_crossed = LATTICE_TOP
+                   else
+                      lattice_crossed = LATTICE_BOTTOM
+                   end if
                    final_coord => coord
                 end if
              end if
@@ -1072,7 +1056,7 @@ contains
        y1 = surf % coeffs(5)
        z1 = surf % coeffs(6)
        if (x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1 .and. & 
-            & z >= z0 .and. z < z1) then
+            z >= z0 .and. z < z1) then
           s = SENSE_NEGATIVE
        else
           s = SENSE_POSITIVE
@@ -1091,7 +1075,7 @@ contains
        I = surf % coeffs(9)
        J = surf % coeffs(10)
        func = A*x*x + B*y*y + C*z*z + D*x*y + E*y*z + F*x*z + G*x &
-            & + H*y + I*z + J
+            + H*y + I*z + J
 
     end select
 

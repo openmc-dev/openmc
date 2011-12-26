@@ -8,6 +8,10 @@ objects = $(source:.f90=.o)
 
 # Ignore unused variables
 
+ifeq ($(MACHINE),bluegene)
+  override F90 = xlf2003
+endif
+
 ifeq ($(F90),ifort)
   override F90FLAGS += -warn nounused
 endif

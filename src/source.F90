@@ -1,15 +1,15 @@
 module source
 
-  use bank_header,          only: Bank
-  use constants,            only: ONE, MAX_LINE_LEN
-  use cross_section_header, only: Nuclide
-  use error,                only: fatal_error
+  use ace_header,      only: Nuclide
+  use bank_header,     only: Bank
+  use constants,       only: ONE, MAX_LINE_LEN
+  use error,           only: fatal_error
   use global
-  use output,               only: write_message
-  use particle_header,      only: Particle, initialize_particle
-  use physics,              only: watt_spectrum
-  use random_lcg,           only: prn, set_particle_seed
-  use string,               only: int_to_str
+  use output,          only: write_message
+  use particle_header, only: Particle, initialize_particle
+  use physics,         only: watt_spectrum
+  use random_lcg,      only: prn, set_particle_seed
+  use string,          only: to_str
 
   implicit none
 
@@ -51,7 +51,7 @@ contains
        bytes = maxwork * 64 / 8
 !#endif
        message = "Could not allocate source bank. Attempted to allocate " &
-            // trim(int_to_str(bytes)) // " bytes."
+            // trim(to_str(bytes)) // " bytes."
        call fatal_error()
     end if
 
@@ -64,7 +64,7 @@ contains
        bytes = 3 * maxwork * 64 / 8
 !#endif
        message = "Could not allocate fission bank. Attempted to allocate " &
-            // trim(int_to_str(bytes)) // " bytes."
+            // trim(to_str(bytes)) // " bytes."
        call fatal_error()
     end if
 
@@ -72,6 +72,10 @@ contains
     if (external_source%type == SRC_BOX) then
        p_min = external_source%values(1:3)
        p_max = external_source%values(4:6)
+    else
+       message = "Unsupported external source type: " // &
+            to_str(external_source%type)
+       call fatal_error()
     end if
 
     ! Initialize first cycle source bank

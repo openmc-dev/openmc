@@ -4,16 +4,16 @@ program main
   use constants
   use global
   use initialize,      only: initialize_run
-  use mpi_routines,    only: synchronize_bank
+  use intercycle,      only: shannon_entropy, calculate_keff, synchronize_bank
   use output,          only: write_message, header, print_runtime
   use particle_header, only: Particle
   use plot,            only: run_plot
   use physics,         only: transport
   use random_lcg,      only: set_particle_seed
   use source,          only: get_source_particle
-  use string,          only: int_to_str
+  use string,          only: to_str
   use tally,           only: synchronize_tallies, write_tallies, &
-                             tally_statistics, calculate_keff
+                             tally_statistics
   use timing,          only: timer_start, timer_stop
 
 #ifdef MPI
@@ -48,6 +48,11 @@ program main
 
   ! deallocate arrays
   call free_memory()
+
+#ifdef MPI
+  ! If MPI is in use and enabled, terminate it
+  call MPI_FINALIZE(mpi_err)
+#endif
   
 contains
 
@@ -62,10 +67,23 @@ contains
     integer(8)              :: i_particle  ! history index
     type(Particle), pointer :: p => null()
 
-    if (master) call header("BEGIN SIMULATION", 1)
+    if (master) call header("BEGIN SIMULATION", level=1)
 
     tallies_on = .false.
     call timer_start(time_inactive)
+
+    ! Display column titles
+    if (entropy_on) then
+       message = " Cycle   k(cycle)   Entropy         Average k"
+       call write_message(1)
+       message = " =====   ========   =======    ==================="
+       call write_message(1)
+    else
+       message = " Cycle   k(cycle)          Average k"
+       call write_message(1)
+       message = " =====   ========     ==================="
+       call write_message(1)
+    end if
 
     ! ==========================================================================
     ! LOOP OVER CYCLES
@@ -74,9 +92,9 @@ contains
        ! Start timer for computation
        call timer_start(time_compute)
 
-       message = "Simulating cycle " // trim(int_to_str(i_cycle)) // "..."
+       message = "Simulating cycle " // trim(to_str(i_cycle)) // "..."
        call write_message(8)
-       
+
        ! Set all tallies to zero
        n_bank = 0
 
@@ -121,6 +139,9 @@ contains
           call timer_stop(time_ic_tallies)
        end if
 
+       ! Calculate shannon entropy
+       if (entropy_on) call shannon_entropy()
+
        ! Distribute fission bank across processors evenly
        call synchronize_bank(i_cycle)
 
@@ -146,7 +167,7 @@ contains
     ! ==========================================================================
     ! END OF RUN WRAPUP
 
-    if (master) call header("SIMULATION FINISHED", 1)
+    if (master) call header("SIMULATION FINISHED", level=1)
 
   end subroutine run_problem
 

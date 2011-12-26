@@ -26,5 +26,6 @@
   <variable name="cutoff_" tag="cutoff" type="cutoff_xml" dimension="1" />
   <variable name="cross_sections_" tag="cross_sections" type="word" length="255" />
   <variable name="trace_" tag="trace" type="integer-array" />
+  <variable name="entropy_box_" tag="entropy_box" type="double-array" />
 
 </template>

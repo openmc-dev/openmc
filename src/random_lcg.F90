@@ -23,7 +23,7 @@ module random_lcg
 contains
 
 !===============================================================================
-! PRN generates a pseudo-random number using a linean congruential generator
+! PRN generates a pseudo-random number using a linear congruential generator
 !===============================================================================
 
   function prn() result(pseudo_rn)

@@ -1,18 +1,18 @@
 module global
 
-  use bank_header,          only: Bank
+  use ace_header,       only: Nuclide, SAB_Table, xsListing, NuclideMicroXS, &
+                              MaterialMacroXS
+  use bank_header,      only: Bank
   use cmfd_header
   use constants
-  use cross_section_header, only: Nuclide, SAB_Table, xsListing, &
-                                  NuclideMicroXS, MaterialMacroXS
-  use datatypes_header,     only: DictionaryII, DictionaryCI
-  use geometry_header,      only: Cell, Universe, Lattice, Surface
-  use material_header,      only: Material
-  use mesh_header,          only: StructuredMesh
-  use particle_header,      only: Particle
-  use source_header,        only: ExtSource
-  use tally_header,         only: TallyObject, TallyMap
-  use timing,               only: Timer
+  use datatypes_header, only: DictionaryII, DictionaryCI
+  use geometry_header,  only: Cell, Universe, Lattice, Surface
+  use material_header,  only: Material
+  use mesh_header,      only: StructuredMesh
+  use particle_header,  only: Particle
+  use source_header,    only: ExtSource
+  use tally_header,     only: TallyObject, TallyMap
+  use timing,           only: Timer
 
 #ifdef MPI
   use mpi
@@ -74,6 +74,9 @@ module global
   integer              :: n_grid    ! number of points on unionized grid
   real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
+  ! Unreoslved resonance probablity tables
+  logical :: urr_ptables_on = .false.
+
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
@@ -112,6 +115,13 @@ module global
   real(8) :: keff = ONE
   real(8) :: keff_std
 
+  ! Shannon entropy
+  logical :: entropy_on = .false.
+  real(8) :: entropy                ! value of shannon entropy
+  real(8) :: entropy_lower_left(3)  ! lower-left corner for entropy box
+  real(8) :: entropy_upper_right(3) ! upper-right corner for entropy box
+  real(8), allocatable :: entropy_p(:,:,:)
+
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
 
@@ -120,6 +130,7 @@ module global
   logical :: master      ! master process?
   logical :: mpi_enabled ! is MPI in use and initialized?
   integer :: mpi_err     ! MPI error code
+  integer :: MPI_BANK    ! MPI datatype for fission bank
 
   ! ============================================================================
   ! TIMING VARIABLES
@@ -211,11 +222,6 @@ contains
     ! Deallocate fission and source bank
     if (allocated(fission_bank)) deallocate(fission_bank)
     if (allocated(source_bank)) deallocate(source_bank)
-
-#ifdef MPI
-    ! If MPI is in use and enabled, terminate it
-    call MPI_FINALIZE(mpi_err)
-#endif
 
   end subroutine free_memory
 

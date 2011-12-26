@@ -395,9 +395,9 @@ contains
             res = leakage + interactions - scattering - (ONE/keff)*fission
 
             ! write output
-            label = "MESH (" // trim(int_to_str(i)) // ". " //                 &
-           &        trim(int_to_str(j)) // ", " // trim(int_to_str(k)) //      &
-           &        ")  GROUP " // trim(int_to_str(g))
+            label = "MESH (" // trim(int4_to_str(i)) // ". " //                &
+           &        trim(int4_to_str(j)) // ", " // trim(int4_to_str(k)) //    &
+           &        ")  GROUP " // trim(int4_to_str(g))
             write(UNIT=UNIT_CMFD, FMT='(A,T35,A)') label,                      &
            &      trim(real_to_str(res))
 

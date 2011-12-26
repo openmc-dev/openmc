@@ -1,9 +1,10 @@
 objects = \
+ace.o \
+ace_header.o \
 bank_header.o \
 cmfd_execute.o \
 cmfd_header.o \
 cmfd_utils.o \
-cross_section_header.o \
 cross_section.o \
 datatypes.o \
 datatypes_header.o \
@@ -12,20 +13,18 @@ endf.o \
 endf_header.o \
 energy_grid.o \
 error.o \
-fileio.o \
 fission.o \
 geometry.o \
 geometry_header.o \
 global.o \
 initialize.o \
+intercycle.o \
 interpolation.o \
 input_xml.o \
-logging.o \
 main.o \
 material_header.o \
 mesh_header.o \
 mesh.o \
-mpi_routines.o \
 output.o \
 particle_header.o \
 physics.o \

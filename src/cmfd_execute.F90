@@ -165,6 +165,7 @@ contains
             ! calculate diffusion coefficient
             cmfd % diffcof(h,i,j,k) = 1/(3*(cmfd % totalxs(h,i,j,k) -          &
            &                                cmfd % p1scattxs(h,i,j,k)))
+            cmfd % diffcof(h,i,j,k) = 1/(3*(cmfd % totalxs(h,i,j,k)))
 
             ! begin loop to get energy out tallies
             INGROUP: do g = 1,ng
@@ -419,7 +420,6 @@ contains
             cell_flux = cmfd%flux(g,i,j,k)/product(cmfd%hxyz(:,i,j,k))
             current = cmfd%current(:,g,i,j,k)
 
-
             ! setup of vector to identify boundary conditions
             bound = (/i,i,j,j,k,k/)
 
@@ -450,7 +450,7 @@ contains
                 neig_idx(xyz_idx) = shift_idx + neig_idx(xyz_idx)
 
                 ! get neigbor flux 
-                neig_flux = cmfd%flux(neig_idx(1),neig_idx(2),neig_idx(3),g)/  &
+                neig_flux = cmfd%flux(g,neig_idx(1),neig_idx(2),neig_idx(3)) / &
                      product(cmfd%hxyz(:,neig_idx(1),neig_idx(2),neig_idx(3)))
 
                 ! compute dhat 

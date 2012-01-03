@@ -414,4 +414,53 @@ contains
 
   end subroutine neutron_balance
 
+!===============================================================================
+! SET_COREMAP is a routine that sets the core mapping information
+!===============================================================================
+
+  subroutine set_coremap
+
+    integer :: kount=1           ! counter for unique fuel assemblies
+    integer :: nx                ! number of mesh cells in x direction
+    integer :: ny                ! number of mesh cells in y direction
+    integer :: nz                ! number of mesh cells in z direction
+    integer :: ng                ! number of energy groups
+    integer :: i                 ! iteration counter for x
+    integer :: j                 ! iteration counter for y
+    integer :: k                 ! iteration counter for z
+
+    ! extract spatial indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+
+    ! begin loops over spatial indices
+    ZLOOP: do i = 1,nz
+
+      YLOOP: do j = 1,ny
+
+        XLOOP: do k = 1,nx
+
+          ! check for reflector
+          if (cmfd % coremap(i,j,k) == 1) then
+
+            ! reset value to 99999
+            cmfd % coremap(i,j,k) = 99999
+
+          else
+
+            ! must be a fuel --> give unique id number
+            cmfd % coremap(i,j,k) = kount
+            kount = kount + 1
+
+          end if
+
+        end do XLOOP
+
+      end do YLOOP
+
+    end do ZLOOP
+
+  end subroutine set_coremap
+
 end module cmfd_utils

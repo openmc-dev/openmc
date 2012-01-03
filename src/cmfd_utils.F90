@@ -435,11 +435,11 @@ contains
     nz = cmfd % indices(3)
 
     ! begin loops over spatial indices
-    ZLOOP: do i = 1,nz
+    ZLOOP: do k = 1,nz
 
       YLOOP: do j = 1,ny
 
-        XLOOP: do k = 1,nx
+        XLOOP: do i = 1,nx
 
           ! check for reflector
           if (cmfd % coremap(i,j,k) == 1) then

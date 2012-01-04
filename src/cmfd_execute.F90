@@ -1,6 +1,7 @@
 module cmfd_execute
 
-  use cmfd_utils,   only: get_matrix_idx,neutron_balance
+  use cmfd_utils,   only: get_matrix_idx,neutron_balance,set_coremap,          &
+ &                        get_reflector_albedo
   use global
   use mesh,         only: mesh_indices_to_bin
   use mesh_header,  only: StructuredMesh
@@ -33,6 +34,13 @@ contains
 
     ! write out neutron balance
     call neutron_balance()
+
+    ! check for core map
+    if (allocated(cmfd % coremap)) then
+      call set_coremap()
+      print *, cmfd % coremap
+      STOP
+    end if
 
     ! compute dtilde terms
     call compute_diffcoef()
@@ -288,6 +296,7 @@ contains
     real(8) :: neig_dc            ! diffusion coefficient of neighbor cell
     real(8) :: neig_hxyz(3)       ! cell dimensions of neighbor cell
     real(8) :: dtilde             ! finite difference coupling parameter 
+    real(8) :: ref_albedo         ! albedo to reflector
 
     ! get maximum of spatial and group indices
     nx = cmfd%indices(1)
@@ -345,9 +354,34 @@ contains
                 neig_dc = cmfd%diffcof(g,neig_idx(1),neig_idx(2),neig_idx(3))
                 neig_hxyz = cmfd%hxyz(:,neig_idx(1),neig_idx(2),neig_idx(3))
   
-                ! compute dtilde
-                dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc +     &
-               &          cell_hxyz(xyz_idx)*neig_dc)
+                ! check for next to reflector
+                if (allocated(cmfd % coremap)) then
+
+                  if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) ==   &
+                 &    99999) then
+
+                    ! get albedo
+                    ref_albedo = get_reflector_albedo(l,g,i,j,k)
+
+                    ! compute dtilde
+                    dtilde = (2*cell_dc*(1-ref_albedo))/(4*cell_dc*(1+         &
+                 &         ref_albedo)+(1-ref_albedo)*cell_hxyz(xyz_idx))
+
+                  else ! not next to a reflector or no core map
+
+                    ! compute dtilde
+                    dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc + &
+                   &         cell_hxyz(xyz_idx)*neig_dc)
+
+                  end if
+
+                else ! no core map
+
+                  ! compute dtilde
+                  dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc +   &
+                 &         cell_hxyz(xyz_idx)*neig_dc)
+
+               end if
 
               end if
   

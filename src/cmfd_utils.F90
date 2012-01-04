@@ -418,7 +418,7 @@ contains
 ! SET_COREMAP is a routine that sets the core mapping information
 !===============================================================================
 
-  subroutine set_coremap
+  subroutine set_coremap()
 
     integer :: kount=1           ! counter for unique fuel assemblies
     integer :: nx                ! number of mesh cells in x direction
@@ -462,5 +462,38 @@ contains
     end do ZLOOP
 
   end subroutine set_coremap
+
+!===============================================================================
+! GET_REFLECTOR_ALBEDO is a function that calculates the albedo to the reflector 
+!===============================================================================
+
+  function get_reflector_albedo(l,g,i,j,k)
+
+    ! function variable
+    real(8) :: get_reflector_albedo ! reflector albedo
+
+    ! local variable
+    integer :: i                    ! iteration counter for x
+    integer :: j                    ! iteration counter for y
+    integer :: k                    ! iteration counter for z
+    integer :: g                    ! iteration counter for groups
+    integer :: l                    ! iteration counter for leakages
+    integer :: shift_idx            ! parameter to shift index by +1 or -1
+    real(8) :: current(12)          ! partial currents for all faces of mesh cell            
+    real(8) :: albedo               ! the albedo
+
+    ! get partial currents from object
+    current = cmfd%current(:,g,i,j,k)
+
+    ! define xyz and +/- indices
+    shift_idx = -2*mod(l,2) + 1          ! shift neig by -1 or +1
+
+    ! calculate albedo
+    albedo = (current(2*l-1)/current(l))**(shift_idx)
+
+    ! assign to function variable
+    get_reflector_albedo = albedo
+
+  end function get_reflector_albedo
 
 end module cmfd_utils

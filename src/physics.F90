@@ -66,6 +66,9 @@ contains
     ! Initialize number of events to zero
     n_event = 0
 
+    ! Set recalculate ptables to true by default
+    micro_xs(:) % recalculate = .true.
+
     ! find energy index, interpolation factor
     do while (p % alive)
 
@@ -196,6 +199,10 @@ contains
 
     ! Reset number of particles banked during collision
     p % n_bank = 0
+
+    ! Since a collision has occurred, we need to recalculate probability tables
+    ! for any nuclide
+    micro_xs(:) % recalculate = .true.
 
   end subroutine collision
 

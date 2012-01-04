@@ -129,6 +129,7 @@ contains
     ! Initialize sab treatment to false
     micro_xs(index_nuclide) % use_sab     = .false.
     micro_xs(index_nuclide) % elastic_sab = ZERO
+    micro_xs(index_nuclide) % use_ptable  = .false.
 
     ! Initialize nuclide cross-sections to zero
     micro_xs(index_nuclide) % fission    = ZERO
@@ -283,6 +284,8 @@ contains
     type(UrrData),  pointer :: urr => null()
     type(Nuclide),  pointer :: nuc => null()
     type(Reaction), pointer :: rxn => null()
+
+    micro_xs(index_nuclide) % use_ptable = .true.
 
     ! copy cross-sections already calculated
     elastic    = micro_xs(index_nuclide) % elastic

@@ -331,28 +331,42 @@ contains
           ! just like any other reaction. Here we loop through the fission
           ! reactions for the nuclide and see if any of them occur
           
-          do i = 1, nuc % n_fission
-             rxn => nuc % reactions(nuc % index_fission(i))
+          if (micro_xs(index_nuclide) % use_ptable) then
 
-             ! if energy is below threshold for this reaction, skip it
-             if (IE < rxn%IE) cycle
-
-             ! add to cumulative probability
-             if (nuc % has_partial_fission) then
-                prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-                     + f*(rxn%sigma(IE-rxn%IE+2)))
-             else
-                prob = prob + micro_xs(index_nuclide) % fission
-             end if
-
-             ! Create fission bank sites if fission occus
+             prob = prob + micro_xs(index_nuclide) % fission
              if (prob > cutoff) then
+                rxn => nuc % reactions(nuc % index_fission(1))
                 call create_fission_sites(p, index_nuclide, rxn, .true.)
                 p % alive = .false.
                 MT = rxn % MT
                 return
              end if
-          end do
+          else
+
+             do i = 1, nuc % n_fission
+                rxn => nuc % reactions(nuc % index_fission(i))
+
+                ! if energy is below threshold for this reaction, skip it
+                if (IE < rxn%IE) cycle
+
+                ! add to cumulative probability
+                if (nuc % has_partial_fission) then
+                   prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
+                        + f*(rxn%sigma(IE-rxn%IE+2)))
+                else
+                   prob = prob + micro_xs(index_nuclide) % fission
+                end if
+
+                ! Create fission bank sites if fission occus
+                if (prob > cutoff) then
+                   call create_fission_sites(p, index_nuclide, rxn, .true.)
+                   p % alive = .false.
+                   MT = rxn % MT
+                   return
+                end if
+             end do
+
+          end if
        end if
 
     end if

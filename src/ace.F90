@@ -212,9 +212,9 @@ contains
   end subroutine read_xs
 
 !===============================================================================
-! READ_ACE_BINARY reads a single cross section table in binary format. This
-! routine reads the header data for each table and then calls appropriate
-! subroutines to parse the actual data.
+! READ_ACE_TABLE reads a single cross section table in either ASCII or binary
+! format. This routine reads the header data for each table and then calls
+! appropriate subroutines to parse the actual data.
 !===============================================================================
 
   subroutine read_ace_table(index_table, index_list)

@@ -346,7 +346,8 @@ contains
     ! Multiply by smooth cross-section if needed
     if (urr % multiply_smooth) then
        elastic = elastic * micro_xs(index_nuclide) % elastic
-       capture = capture * micro_xs(index_nuclide) % absorption
+       capture = capture * (micro_xs(index_nuclide) % absorption - &
+            micro_xs(index_nuclide) % fission)
        fission = fission * micro_xs(index_nuclide) % fission
     end if
 

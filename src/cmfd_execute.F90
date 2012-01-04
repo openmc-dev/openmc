@@ -485,9 +485,31 @@ contains
                 neig_flux = cmfd%flux(g,neig_idx(1),neig_idx(2),neig_idx(3)) / &
                      product(cmfd%hxyz(:,neig_idx(1),neig_idx(2),neig_idx(3)))
 
-                ! compute dhat 
-                dhat = (net_current + shift_idx*cell_dtilde(l)*                &
-               &       (neig_flux - cell_flux))/(neig_flux + cell_flux)
+                ! check for fuel-reflector interface
+                if (allocated(cmfd % coremap)) then
+
+                  if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) ==   &
+                 &    99999 .and. cmfd % coremap(i,j,k) /= 99999) then
+
+                    ! compute dhat
+                    dhat = (net_current - shift_idx*cell_dtilde(l)*cell_flux) /&
+                   &        cell_flux
+
+                  else ! not a fuel-reflector interface
+
+                    ! compute dhat 
+                    dhat = (net_current + shift_idx*cell_dtilde(l)*            &
+                   &       (neig_flux - cell_flux))/(neig_flux + cell_flux)
+
+                  end if
+
+                else ! not for fuel-reflector case
+
+                  ! compute dhat 
+                  dhat = (net_current + shift_idx*cell_dtilde(l)*              &
+                 &       (neig_flux - cell_flux))/(neig_flux + cell_flux)
+
+                end if
 
               end if
 
@@ -681,7 +703,11 @@ use timing, only: timer_start, timer_stop
     ng = cmfd%indices(4)
 
     ! calculate dimensions of matrix
-    n = nx*ny*nz*ng
+    if (allocated(cmfd % coremap)) then
+      n = cmfd % mat_dim
+    else
+      n = nx*ny*nz*ng
+    end if
 
     ! maximum number of nonzeros in each matrix
     nzM = 7+ng-1
@@ -873,6 +899,22 @@ use timing, only: timer_start, timer_stop
                    &                 INSERT_VALUES,ierr)
 
                   end if
+
+                else
+
+                  ! compute leakage coefficient for neighbor
+                  jn = -dtilde(l) + shift_idx*dhat(l)
+
+                  ! get neighbor matrix index
+                  neig_mat_idx = get_matrix_idx(g,neig_idx(1),neig_idx(2),     &
+                 &                              neig_idx(3),ng,nx,ny)
+
+                  ! compute value and record to bank
+                  val = jn/hxyz(xyz_idx)
+
+                  ! record value in matrix
+                  call MatSetValue(M,cell_mat_idx-1,neig_mat_idx-1,val,        &
+                 &                 INSERT_VALUES,ierr)
 
                 end if
 

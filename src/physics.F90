@@ -417,7 +417,7 @@ contains
           rxn => nuc % reactions(1)
 
           ! Perform collision physics for elastic scattering
-          call elastic_scatter(p, nuc, rxn)
+          call elastic_scatter(p, index_nuclide, rxn)
 
        end if
 
@@ -475,10 +475,10 @@ contains
 ! need to be fixed
 !===============================================================================
 
-  subroutine elastic_scatter(p, nuc, rxn)
+  subroutine elastic_scatter(p, index_nuclide, rxn)
 
     type(Particle), pointer :: p
-    type(Nuclide),  pointer :: nuc
+    integer, intent(in)     :: index_nuclide
     type(Reaction), pointer :: rxn
 
     real(8) :: awr     ! atomic weight ratio of target
@@ -491,6 +491,10 @@ contains
     real(8) :: v       ! y-direction
     real(8) :: w       ! z-direction
     real(8) :: E       ! energy
+    type(Nuclide), pointer :: nuc => null()
+
+    ! get pointer to nuclide
+    nuc => nuclides(index_nuclide)
 
     vel = sqrt(p % E)
     awr = nuc % awr
@@ -499,7 +503,9 @@ contains
     v_n = vel * p % coord0 % uvw
 
     ! Sample velocity of target nucleus
-    call sample_target_velocity(p, nuc, v_t)
+    if (.not. micro_xs(index_nuclide) % use_ptable) then
+       call sample_target_velocity(p, nuc, v_t)
+    end if
 
     ! Velocity of center-of-mass
     v_cm = (v_n + awr*v_t)/(awr + ONE)

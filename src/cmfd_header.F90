@@ -46,8 +46,9 @@ module cmfd_header
     ! weight adjustment factors
     real(8), allocatable :: weightfactors(:,:,:,:)
 
-    ! core map for xs association
+    ! core map for no reflector accel
     integer, allocatable :: coremap(:,:,:)
+    integer :: mat_dim
 
   end type cmfd_obj
 

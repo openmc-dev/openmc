@@ -438,7 +438,6 @@ contains
     integer :: i                 ! iteration counter for x
     integer :: j                 ! iteration counter for y
     integer :: k                 ! iteration counter for z
-    integer :: nmat              ! number of fuel assy, dim of mat
 
     ! extract spatial indices from object
     nx = cmfd % indices(1)
@@ -446,8 +445,7 @@ contains
     nz = cmfd % indices(3)
 
     ! count how many fuel assemblies exist
-    nmat = sum(cmfd % coremap - 1)
-    print *,'Dim is ',nmat
+    cmfd % mat_dim = sum(cmfd % coremap - 1)
 
     ! begin loops over spatial indices
     ZLOOP: do k = 1,nz

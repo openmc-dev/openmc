@@ -489,8 +489,8 @@ contains
     shift_idx = -2*mod(l,2) + 1          ! shift neig by -1 or +1
 
     ! calculate albedo
-    albedo = (current(2*l-1)/current(l))**(shift_idx)
-
+    albedo = (current(2*l-1)/current(2*l))**(shift_idx)
+    print *,current(2*l-1),current(2*l)
     ! assign to function variable
     get_reflector_albedo = albedo
 

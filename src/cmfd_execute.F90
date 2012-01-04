@@ -39,12 +39,11 @@ contains
     if (allocated(cmfd % coremap)) then
       call set_coremap()
       print *, cmfd % coremap
-      STOP
     end if
 
     ! compute dtilde terms
     call compute_diffcoef()
-
+    STOP
     ! set dhats to zero
     call compute_dhat() 
 
@@ -354,15 +353,15 @@ contains
                 neig_dc = cmfd%diffcof(g,neig_idx(1),neig_idx(2),neig_idx(3))
                 neig_hxyz = cmfd%hxyz(:,neig_idx(1),neig_idx(2),neig_idx(3))
   
-                ! check for next to reflector
+                ! check for fuel-reflector interface
                 if (allocated(cmfd % coremap)) then
 
                   if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) ==   &
-                 &    99999) then
-
+                 &    99999 .and. cmfd % coremap(i,j,k) /= 99999) then
+                    print *,'Before',cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)),neig_idx(1),neig_idx(2),neig_idx(3)
                     ! get albedo
                     ref_albedo = get_reflector_albedo(l,g,i,j,k)
-
+                    print *,'HERE --',ref_albedo
                     ! compute dtilde
                     dtilde = (2*cell_dc*(1-ref_albedo))/(4*cell_dc*(1+         &
                  &         ref_albedo)+(1-ref_albedo)*cell_hxyz(xyz_idx))

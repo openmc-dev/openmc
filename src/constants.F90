@@ -6,8 +6,8 @@ module constants
   ! VERSIONING NUMBERS
 
   integer, parameter :: VERSION_MAJOR   = 0
-  integer, parameter :: VERSION_MINOR   = 3
-  integer, parameter :: VERSION_RELEASE = 3
+  integer, parameter :: VERSION_MINOR   = 4
+  integer, parameter :: VERSION_RELEASE = 0
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS 

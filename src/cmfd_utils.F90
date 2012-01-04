@@ -83,8 +83,18 @@ contains
     ! local variables
     integer :: nidx            ! index in matrix
 
-    ! compute index
-    nidx = g + ng*(i - 1) + ng*nx*(j - 1) + ng*nx*ny*(k - 1)
+    ! check if coremap is used
+    if (allocated(cmfd % coremap)) then
+
+      ! get idx from core map
+      nidx = ng*(cmfd % coremap(i,j,k)) + (ng - g)
+
+    else
+
+      ! compute index
+      nidx = g + ng*(i - 1) + ng*nx*(j - 1) + ng*nx*ny*(k - 1)
+
+    end if
 
     ! record value to function
     get_matrix_idx = nidx
@@ -428,11 +438,16 @@ contains
     integer :: i                 ! iteration counter for x
     integer :: j                 ! iteration counter for y
     integer :: k                 ! iteration counter for z
+    integer :: nmat              ! number of fuel assy, dim of mat
 
     ! extract spatial indices from object
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
+
+    ! count how many fuel assemblies exist
+    nmat = sum(cmfd % coremap - 1)
+    print *,'Dim is ',nmat
 
     ! begin loops over spatial indices
     ZLOOP: do k = 1,nz
@@ -490,7 +505,7 @@ contains
 
     ! calculate albedo
     albedo = (current(2*l-1)/current(2*l))**(shift_idx)
-    print *,current(2*l-1),current(2*l)
+
     ! assign to function variable
     get_reflector_albedo = albedo
 

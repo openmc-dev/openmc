@@ -38,12 +38,11 @@ contains
     ! check for core map
     if (allocated(cmfd % coremap)) then
       call set_coremap()
-      print *, cmfd % coremap
     end if
 
     ! compute dtilde terms
     call compute_diffcoef()
-    STOP
+
     ! set dhats to zero
     call compute_dhat() 
 
@@ -358,10 +357,10 @@ contains
 
                   if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) ==   &
                  &    99999 .and. cmfd % coremap(i,j,k) /= 99999) then
-                    print *,'Before',cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)),neig_idx(1),neig_idx(2),neig_idx(3)
+
                     ! get albedo
                     ref_albedo = get_reflector_albedo(l,g,i,j,k)
-                    print *,'HERE --',ref_albedo
+
                     ! compute dtilde
                     dtilde = (2*cell_dc*(1-ref_albedo))/(4*cell_dc*(1+         &
                  &         ref_albedo)+(1-ref_albedo)*cell_hxyz(xyz_idx))
@@ -805,6 +804,16 @@ use timing, only: timer_start, timer_stop
 
         XLOOP: do i = 1,nx
 
+          ! check if not including reflector
+          if (allocated(cmfd % coremap)) then
+
+            ! check if at a reflector
+            if (cmfd % coremap(i,j,k) == 99999) then
+              cycle
+            end if
+
+          end if
+
           GROUP: do g = 1,ng
 
             ! get matrix index of cell
@@ -842,19 +851,30 @@ use timing, only: timer_start, timer_stop
               ! check for global boundary
               if (bound(l) /= nxyz(xyz_idx,dir_idx)) then
 
-                ! compute leakage coefficient for neighbor
-                jn = -dtilde(l) + shift_idx*dhat(l)
+                ! check for core map
+                if (allocated(cmfd % coremap)) then
 
-                ! get neighbor matrix index
-                neig_mat_idx = get_matrix_idx(g,neig_idx(1),neig_idx(2),       &
-               &                              neig_idx(3),ng,nx,ny) 
+                  ! check that neighbor is not reflector
+                  if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) /=   &
+                 &    99999) then
 
-                ! compute value and record to bank
-                val = jn/hxyz(xyz_idx)
+                    ! compute leakage coefficient for neighbor
+                    jn = -dtilde(l) + shift_idx*dhat(l)
 
-                ! record value in matrix
-                call MatSetValue(M,cell_mat_idx-1,neig_mat_idx-1,val,          &
-               &                 INSERT_VALUES,ierr)
+                    ! get neighbor matrix index
+                    neig_mat_idx = get_matrix_idx(g,neig_idx(1),neig_idx(2),   &
+                   &                              neig_idx(3),ng,nx,ny) 
+
+                    ! compute value and record to bank
+                    val = jn/hxyz(xyz_idx)
+
+                    ! record value in matrix
+                    call MatSetValue(M,cell_mat_idx-1,neig_mat_idx-1,val,      &
+                   &                 INSERT_VALUES,ierr)
+
+                  end if
+
+                end if
 
               end if
 
@@ -961,6 +981,16 @@ use timing, only: timer_start, timer_stop
       YLOOP: do j = 1,ny
 
         XLOOP: do i = 1,nx
+
+          ! check if not including reflector
+          if (allocated(cmfd % coremap)) then
+
+            ! check if at a reflector
+            if (cmfd % coremap(i,j,k) == 99999) then
+              cycle
+            end if
+
+          end if
 
           GROUP: do g = 1,ng
 

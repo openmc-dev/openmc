@@ -168,11 +168,9 @@ contains
     ! probability tables, we need to determine cross sections from the table
 
     if (urr_ptables_on .and. nuc % urr_present) then
-       if (micro_xs(index_nuclide) % recalculate) then
-          if (p % E > nuc % urr_data % energy(1) .and. &
-               p % E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
-             call calculate_urr_xs(p, index_nuclide)
-          end if
+       if (p % E > nuc % urr_data % energy(1) .and. &
+            p % E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
+          call calculate_urr_xs(p, index_nuclide)
        end if
     end if
 
@@ -364,10 +362,6 @@ contains
        micro_xs(index_nuclide) % nu_fission = nu_total(nuc, p % E) * &
             micro_xs(index_nuclide) % fission
     end if
-
-    ! As long as the energy of the neutron doesn't change, we don't need to
-    ! recalculate probability table data
-    micro_xs(index_nuclide) % recalculate = .false.
 
   end subroutine calculate_urr_xs
 

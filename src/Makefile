@@ -20,6 +20,7 @@ DEBUG       = no
 PROFILE     = no
 OPTIMIZE    = no
 USE_MPI     = no
+USE_HDF5    = yes 
 
 #===============================================================================
 # Intel Fortran compiler options
@@ -79,10 +80,12 @@ endif
 # use petsc compiler
 ifeq ($(COMPILER),petsc)
   F90 = ${FLINKER}
-  F90FLAGS := -cpp -ffree-form -I ${PETSC_DIR}/include
+  F90FLAGS := -cpp -ffree-form -I${PETSC_DIR}/include
   include ${PETSC_DIR}/conf/variables
   include ${PETSC_DIR}/conf/rules
   LDFLAGS = ${PETSC_SYS_LIB}
+  F90FLAGS += -I${HDF5_PREFIX}/include
+  LDFLAGS += -L${HDF5_PREFIX}/lib ${HDF5_PREFIX}/lib/libhdf5hl_fortran.a ${HDF5_PREFIX}/lib/libhdf5_hl.a ${HDF5_PREFIX}/lib/libhdf5_fortran.a ${HDF5_PREFIX}/lib/libhdf5.a -lz -lrt -lm -Wl,-rpath -Wl,${HDF5_PREFIX}/lib
 endif
 
 #===============================================================================

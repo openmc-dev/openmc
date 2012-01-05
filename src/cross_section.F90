@@ -129,6 +129,7 @@ contains
     ! Initialize sab treatment to false
     micro_xs(index_nuclide) % use_sab     = .false.
     micro_xs(index_nuclide) % elastic_sab = ZERO
+    micro_xs(index_nuclide) % use_ptable  = .false.
 
     ! Initialize nuclide cross-sections to zero
     micro_xs(index_nuclide) % fission    = ZERO
@@ -167,9 +168,11 @@ contains
     ! probability tables, we need to determine cross sections from the table
 
     if (urr_ptables_on .and. nuc % urr_present) then
-       if (p % E > nuc % urr_data % energy(1) .and. &
-            p % E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
-          call calculate_urr_xs(p, index_nuclide)
+       if (micro_xs(index_nuclide) % recalculate) then
+          if (p % E > nuc % urr_data % energy(1) .and. &
+               p % E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
+             call calculate_urr_xs(p, index_nuclide)
+          end if
        end if
     end if
 
@@ -276,18 +279,15 @@ contains
     integer :: i_table    ! index for table
     real(8) :: f          ! interpolation factor
     real(8) :: r          ! pseudo-random number
-    real(8) :: elastic    ! smooth elastic cross section
-    real(8) :: absorption ! smooth absorption cross section
-    real(8) :: fission    ! smooth fission cross section
-    real(8) :: inelastic  ! smooth inelastic cross section
+    real(8) :: elastic    ! elastic cross section
+    real(8) :: capture    ! (n,gamma) cross section
+    real(8) :: fission    ! fission cross section
+    real(8) :: inelastic  ! inelastic cross section
     type(UrrData),  pointer :: urr => null()
     type(Nuclide),  pointer :: nuc => null()
     type(Reaction), pointer :: rxn => null()
 
-    ! copy cross-sections already calculated
-    elastic    = micro_xs(index_nuclide) % elastic
-    absorption = micro_xs(index_nuclide) % absorption
-    fission    = micro_xs(index_nuclide) % fission
+    micro_xs(index_nuclide) % use_ptable = .true.
 
     ! get pointer to probability table
     nuc => nuclides(index_nuclide)
@@ -315,15 +315,11 @@ contains
     ! determine elastic, fission, and capture cross sections from probability
     ! table
     if (urr % interp == LINEAR_LINEAR) then
-       micro_xs(index_nuclide) % elastic = &
-            (ONE - f) * urr % prob(i_energy, URR_ELASTIC, i_table) + &
+       elastic = (ONE - f) * urr % prob(i_energy, URR_ELASTIC, i_table) + &
             f * urr % prob(i_energy + 1, URR_ELASTIC, i_table)
-       micro_xs(index_nuclide) % fission = &
-            (ONE - f) * urr % prob(i_energy, URR_FISSION, i_table) + &
+       fission = (ONE - f) * urr % prob(i_energy, URR_FISSION, i_table) + &
             f * urr % prob(i_energy + 1, URR_FISSION, i_table)
-       micro_xs(index_nuclide) % absorption = &
-            micro_xs(index_nuclide) % fission + &
-            (ONE - f) * urr % prob(i_energy, URR_N_GAMMA, i_table) + &
+       capture = (ONE - f) * urr % prob(i_energy, URR_N_GAMMA, i_table) + &
             f * urr % prob(i_energy + 1, URR_N_GAMMA, i_table)
     elseif (urr % interp == LOG_LOG) then
        message = "Log-log interpolation on probability table not yet supported."
@@ -349,13 +345,19 @@ contains
 
     ! Multiply by smooth cross-section if needed
     if (urr % multiply_smooth) then
-       micro_xs(index_nuclide) % elastic = elastic * &
-            micro_xs(index_nuclide) % elastic
-       micro_xs(index_nuclide) % absorption = absorption * &
-            micro_xs(index_nuclide) % absorption
-       micro_xs(index_nuclide) % fission = fission * &
-            micro_xs(index_nuclide) % fission
+       elastic = elastic * micro_xs(index_nuclide) % elastic
+       capture = capture * (micro_xs(index_nuclide) % absorption - &
+            micro_xs(index_nuclide) % fission)
+       fission = fission * micro_xs(index_nuclide) % fission
     end if
+
+    ! Set elastic, absorption, fission, and total cross sections. Note that the
+    ! total cross section is calculated as sum of partials rather than using the
+    ! table-provided value
+    micro_xs(index_nuclide) % elastic = elastic
+    micro_xs(index_nuclide) % absorption = capture + fission
+    micro_xs(index_nuclide) % fission = fission
+    micro_xs(index_nuclide) % total = elastic + inelastic + capture + fission
 
     ! Determine nu-fission cross section
     if (nuc % fissionable) then
@@ -363,9 +365,9 @@ contains
             micro_xs(index_nuclide) % fission
     end if
 
-    ! Calculate total cross section as sum of partials
-    micro_xs(index_nuclide) % total = micro_xs(index_nuclide) % elastic + &
-         inelastic + micro_xs(index_nuclide) % absorption
+    ! As long as the energy of the neutron doesn't change, we don't need to
+    ! recalculate probability table data
+    micro_xs(index_nuclide) % recalculate = .false.
 
   end subroutine calculate_urr_xs
 

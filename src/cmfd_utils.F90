@@ -518,19 +518,27 @@ contains
      use hdf5 ! This module contains all necessary modules
 
      character(LEN=8), parameter :: filename = "filef.h5" ! File name
+     character(LEN=4), parameter :: grpname = "cmfd"      ! Group name
      integer(HID_T) :: file_id                            ! File identifier
-     integer     ::   error  ! Error flag
+     integer(HID_T) :: group_id                           ! Group identifieer
+     integer        :: error                              ! Error flag
 
-!    Initialize FORTRAN interface.
-     call h5open_f (error)
+     ! Initialize FORTRAN interface.
+     call h5open_f(error)
 
      ! Create a new file using default properties.
      call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
 
+     ! Create the CMFD group
+     call h5gcreate_f(file_id, grpname, group_id, error)
+
+     ! Close the CMFD group
+     call h5gclose_f(group_id, error)
+
      ! Terminate access to the file.
      call h5fclose_f(file_id, error)
 
-!    Close FORTRAN interface.
+     ! Close FORTRAN interface.
      call h5close_f(error)
 
   end subroutine write_hdf5

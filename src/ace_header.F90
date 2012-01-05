@@ -194,6 +194,10 @@ module ace_header
      ! Information for S(a,b) use
      logical :: use_sab     ! in S(a,b) energy range?
      real(8) :: elastic_sab ! microscopic elastic scattering on S(a,b) table
+
+     ! Information for URR probability table use
+     logical :: use_ptable  ! in URR range with probability tables?
+     logical :: recalculate ! indicate whether we need to recalculate ptables
   end type NuclideMicroXS
 
 !===============================================================================

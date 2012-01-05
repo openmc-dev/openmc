@@ -75,7 +75,7 @@ module global
   real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
   ! Unreoslved resonance probablity tables
-  logical :: urr_ptables_on = .false.
+  logical :: urr_ptables_on = .true.
 
   ! ============================================================================
   ! TALLY-RELATED VARIABLES

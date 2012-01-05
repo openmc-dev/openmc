@@ -66,6 +66,9 @@ contains
     ! Initialize number of events to zero
     n_event = 0
 
+    ! Set recalculate ptables to true by default
+    micro_xs(:) % recalculate = .true.
+
     ! find energy index, interpolation factor
     do while (p % alive)
 
@@ -196,6 +199,10 @@ contains
 
     ! Reset number of particles banked during collision
     p % n_bank = 0
+
+    ! Since a collision has occurred, we need to recalculate probability tables
+    ! for any nuclide
+    micro_xs(:) % recalculate = .true.
 
   end subroutine collision
 
@@ -331,28 +338,42 @@ contains
           ! just like any other reaction. Here we loop through the fission
           ! reactions for the nuclide and see if any of them occur
           
-          do i = 1, nuc % n_fission
-             rxn => nuc % reactions(nuc % index_fission(i))
+          if (micro_xs(index_nuclide) % use_ptable) then
 
-             ! if energy is below threshold for this reaction, skip it
-             if (IE < rxn%IE) cycle
-
-             ! add to cumulative probability
-             if (nuc % has_partial_fission) then
-                prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-                     + f*(rxn%sigma(IE-rxn%IE+2)))
-             else
-                prob = prob + micro_xs(index_nuclide) % fission
-             end if
-
-             ! Create fission bank sites if fission occus
+             prob = prob + micro_xs(index_nuclide) % fission
              if (prob > cutoff) then
+                rxn => nuc % reactions(nuc % index_fission(1))
                 call create_fission_sites(p, index_nuclide, rxn, .true.)
                 p % alive = .false.
                 MT = rxn % MT
                 return
              end if
-          end do
+          else
+
+             do i = 1, nuc % n_fission
+                rxn => nuc % reactions(nuc % index_fission(i))
+
+                ! if energy is below threshold for this reaction, skip it
+                if (IE < rxn%IE) cycle
+
+                ! add to cumulative probability
+                if (nuc % has_partial_fission) then
+                   prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
+                        + f*(rxn%sigma(IE-rxn%IE+2)))
+                else
+                   prob = prob + micro_xs(index_nuclide) % fission
+                end if
+
+                ! Create fission bank sites if fission occus
+                if (prob > cutoff) then
+                   call create_fission_sites(p, index_nuclide, rxn, .true.)
+                   p % alive = .false.
+                   MT = rxn % MT
+                   return
+                end if
+             end do
+
+          end if
        end if
 
     end if
@@ -396,7 +417,7 @@ contains
           rxn => nuc % reactions(1)
 
           ! Perform collision physics for elastic scattering
-          call elastic_scatter(p, nuc, rxn)
+          call elastic_scatter(p, index_nuclide, rxn)
 
        end if
 
@@ -454,10 +475,10 @@ contains
 ! need to be fixed
 !===============================================================================
 
-  subroutine elastic_scatter(p, nuc, rxn)
+  subroutine elastic_scatter(p, index_nuclide, rxn)
 
     type(Particle), pointer :: p
-    type(Nuclide),  pointer :: nuc
+    integer, intent(in)     :: index_nuclide
     type(Reaction), pointer :: rxn
 
     real(8) :: awr     ! atomic weight ratio of target
@@ -470,6 +491,10 @@ contains
     real(8) :: v       ! y-direction
     real(8) :: w       ! z-direction
     real(8) :: E       ! energy
+    type(Nuclide), pointer :: nuc => null()
+
+    ! get pointer to nuclide
+    nuc => nuclides(index_nuclide)
 
     vel = sqrt(p % E)
     awr = nuc % awr
@@ -478,7 +503,9 @@ contains
     v_n = vel * p % coord0 % uvw
 
     ! Sample velocity of target nucleus
-    call sample_target_velocity(p, nuc, v_t)
+    if (.not. micro_xs(index_nuclide) % use_ptable) then
+       call sample_target_velocity(p, nuc, v_t)
+    end if
 
     ! Velocity of center-of-mass
     v_cm = (v_n + awr*v_t)/(awr + ONE)

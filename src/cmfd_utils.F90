@@ -525,15 +525,19 @@ contains
      integer(HID_T) :: dataspace_id                       ! Data space identifier
      integer(HID_T) :: dataset_id                         ! Dataset identifier
      integer        :: error                              ! Error flag
-     integer        :: i,j
-     integer, dimension(3,3) :: dset_data
-     integer(HSIZE_T), dimension(2) :: dims = (/3,3/)
-     integer :: rank = 2
+     integer        :: i,j,k,l
+     integer, dimension(3,3,3,3) :: dset_data
+     integer(HSIZE_T), dimension(4) :: dims = (/3,3,3,3/)
+     integer :: rank = 4
 
      ! Create example dataset
      do i = 1,3
        do j = 1,3
-         dset_data(i,j) = j
+         do k = 1,3
+           do l = 1,3
+             dset_data(i,j,k,l) = i*j*k*l
+           end do
+         end do
        end do
      end do
 

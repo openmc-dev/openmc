@@ -65,6 +65,49 @@ contains
   end subroutine read_cmfd_xml
 
 !===============================================================================
+! ALLOCATE_CMFD allocates all of the space for the cmfd object based on tallies
+!===============================================================================
+
+  subroutine allocate_cmfd()
+
+    integer :: nx  ! number of mesh cells in x direction
+    integer :: ny  ! number of mesh cells in y direction
+    integer :: nz  ! number of mesh cells in z direction
+    integer :: ng  ! number of energy groups
+
+    ! extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! allocate flux, cross sections and diffusion coefficient
+    if (.not. allocated(cmfd % flux)) allocate(cmfd % flux(ng,nx,ny,nz))
+    if (.not. allocated(cmfd % totalxs)) allocate(cmfd % totalxs(ng,nx,ny,nz))
+    if (.not. allocated(cmfd % p1scattxs)) allocate(cmfd % p1scattxs(ng,nx,ny,nz))
+    if (.not. allocated(cmfd % scattxs)) allocate(cmfd % scattxs(ng,ng,nx,ny,nz))
+    if (.not. allocated(cmfd % nfissxs)) allocate(cmfd % nfissxs(ng,ng,nx,ny,nz))
+    if (.not. allocated(cmfd % diffcof)) allocate(cmfd % diffcof(ng,nx,ny,nz))
+
+    ! allocate dtilde and dhat
+    if (.not. allocated(cmfd % dtilde)) allocate(cmfd % dtilde(6,ng,nx,ny,nz))
+    if (.not. allocated(cmfd % dhat)) allocate(cmfd % dhat(6,ng,nx,ny,nz))
+
+    ! allocate dimensions for each box (here for general case)
+    if (.not. allocated(cmfd % hxyz)) allocate(cmfd % hxyz(3,nx,ny,nz))
+
+    ! allocate cmfd fission source pdf
+    !allocate( cmfd % sourcepdf(ng,nx,ny,nz) )
+
+    ! allocate surface currents
+    if (.not. allocated(cmfd % current)) allocate(cmfd % current(12,ng,nx,ny,nz))
+
+    ! allocate for coremap
+    if (.not. allocated(cmfd % coremap)) allocate(cmfd % coremap(nx,ny,nz))
+
+  end subroutine allocate_cmfd
+
+!===============================================================================
 ! GET_MATRIX_IDX takes (x,y,z,g) indices and computes location in matrix 
 !===============================================================================
 
@@ -730,6 +773,9 @@ contains
     nz = cmfd % indices(3)
     ng = cmfd % indices(4)
 
+    ! allocate cmfd object
+    call allocate_cmfd()
+
     ! read totalxs to cmfd object
     call h5dopen_f(file_id,"cmfd/totalxs",dataset_id,error)
     dim4 = (/ng,nx,ny,nz/)
@@ -791,7 +837,7 @@ contains
     call h5dclose_f(dataset_id,error)
 
     ! read hxyz to cmfd object
-    call h5dopen_f(file_id,"cmfd/albedo",dataset_id,error)
+    call h5dopen_f(file_id,"cmfd/hxyz",dataset_id,error)
     dim4 = (/3,nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%hxyz,dim4,error)
     call h5dclose_f(dataset_id,error)

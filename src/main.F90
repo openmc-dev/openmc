@@ -1,6 +1,7 @@
 program main
 
-  use cmfd_execute,    only: execute_cmfd
+  use cmfd_execute,    only: execute_cmfd,allocate_cmfd,cmfd_solver
+  use cmfd_utils,      only: read_hdf5
   use constants
   use global
   use initialize,      only: initialize_run
@@ -42,10 +43,14 @@ program main
   ! only perform diffusion
   case('--cmfd_only')
 
-    ! allocate cmfd object
     ! read in HDF5 file
+    call read_hdf5()
+
+    ! run diffusion
+    call cmfd_solver()
+
     ! terminate code
-    print *,"Only Performing CMFD"
+    stop
 
   case default
 

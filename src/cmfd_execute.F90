@@ -1,7 +1,8 @@
 module cmfd_execute
 
   use cmfd_utils,   only: get_matrix_idx,neutron_balance,set_coremap,          &
- &                        get_reflector_albedo,write_hdf5,read_hdf5
+ &                        get_reflector_albedo,write_hdf5,read_hdf5,           &
+ &                        allocate_cmfd
   use global
   use mesh,         only: mesh_indices_to_bin
   use mesh_header,  only: StructuredMesh
@@ -53,53 +54,10 @@ contains
     ! write cmfd object to hdf5 file
     call write_hdf5()
 
-    ! read hdf5 restart file
-    call read_hdf5()
-
     ! solve diffusion equation
     call cmfd_solver()
 
   end subroutine
-
-!===============================================================================
-! ALLOCATE_CMFD allocates all of the space for the cmfd object based on tallies
-!===============================================================================
-
-  subroutine allocate_cmfd()
-
-    integer :: nx  ! number of mesh cells in x direction
-    integer :: ny  ! number of mesh cells in y direction
-    integer :: nz  ! number of mesh cells in z direction
-    integer :: ng  ! number of energy groups
-
-    ! extract spatial and energy indices from object
-    nx = cmfd % indices(1)
-    ny = cmfd % indices(2)
-    nz = cmfd % indices(3)
-    ng = cmfd % indices(4)
-
-    ! allocate flux, cross sections and diffusion coefficient
-    allocate( cmfd % flux(ng,nx,ny,nz) )
-    allocate( cmfd % totalxs(ng,nx,ny,nz) )
-    allocate( cmfd % p1scattxs(ng,nx,ny,nz) )
-    allocate( cmfd % scattxs(ng,ng,nx,ny,nz) )
-    allocate( cmfd % nfissxs(ng,ng,nx,ny,nz) )
-    allocate( cmfd % diffcof(ng,nx,ny,nz) )
-
-    ! allocate dtilde and dhat
-    allocate( cmfd % dtilde(6,ng,nx,ny,nz) )
-    allocate( cmfd % dhat(6,ng,nx,ny,nz) )
-
-    ! allocate dimensions for each box (here for general case)
-    allocate( cmfd % hxyz(3,nx,ny,nz) )
-
-    ! allocate cmfd fission source pdf
-    allocate( cmfd % sourcepdf(ng,nx,ny,nz) )
-
-    ! allocate surface currents
-    allocate( cmfd % current(12,ng,nx,ny,nz) )
-
-  end subroutine allocate_cmfd
 
 !===============================================================================
 ! COMPUTE_XS takes tallies and computes macroscopic cross sections

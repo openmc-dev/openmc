@@ -34,7 +34,7 @@ module cmfd_header
     ! core albedo boundary conditions
     real(8)              :: albedo(6)
 
-    ! dimensions of mesh cells (xloc,yloc,zloc,[hu,hv,hw])
+    ! dimensions of mesh cells ([hu,hv,hw],xloc,yloc,zloc)
     real(8), allocatable :: hxyz(:,:,:,:)
 
     ! source probability distribution

@@ -515,67 +515,66 @@ contains
 
   subroutine write_hdf5()
 
-   use hdf5 
+    use hdf5 
 
-   character(LEN=8), parameter :: filename = "filef.h5"  ! File name
-   character(LEN=4), parameter :: grpname = "cmfd"       ! Group name
-   character(LEN=9), parameter :: dsetname = "cmfd/dset" ! dataset name
+    character(LEN=7), parameter :: filename = "cmfd.h5"  ! File name
+    character(LEN=4), parameter :: grpname = "cmfd"       ! Group name
 
-   integer(HID_T) :: file_id             ! File identifier
-   integer(HID_T) :: group_id            ! Group identifier
-   integer(HID_T) :: dataspace_id        ! Data space identifier
-   integer(HID_T) :: dataset_id          ! Dataset identifier
-   integer        :: error               ! Error flag
+    integer(HID_T) :: file_id             ! File identifier
+    integer(HID_T) :: group_id            ! Group identifier
+    integer(HID_T) :: dataspace_id        ! Data space identifier
+    integer(HID_T) :: dataset_id          ! Dataset identifier
+    integer        :: error               ! Error flag
 
-   integer        :: i,j,k,l
-   integer, dimension(3,3,3,3) :: dset_data
-   integer(HSIZE_T), dimension(4) :: dims = (/3,3,3,3/)
-   integer :: rank = 4
+    integer(HSIZE_T), dimension(1) :: dim1 ! vector for hdf5 dimensions
+    integer(HSIZE_T), dimension(4) :: dim4 ! vector for hdf5 dimensions
 
-   ! Create example dataset
-   do i = 1,3
-     do j = 1,3
-       do k = 1,3
-         do l = 1,3
-           dset_data(i,j,k,l) = i*j*k*l
-         end do
-       end do
-     end do
-   end do
+    integer :: nx                ! number of mesh cells in x direction
+    integer :: ny                ! number of mesh cells in y direction
+    integer :: nz                ! number of mesh cells in z direction
+    integer :: ng                ! number of energy groups
 
-   ! Initialize FORTRAN interface.
-   call h5open_f(error)
+    ! extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
 
-   ! Create a new file using default properties.
-   call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
+    ! initialize FORTRAN interface.
+    call h5open_f(error)
 
-   ! Create the CMFD group
-   call h5gcreate_f(file_id, grpname, group_id, error)
+    ! create a new file using default properties.
+    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
 
-   ! Create the data space for the dataset
-   call h5screate_simple_f(rank, dims, dataspace_id, error)
+    ! create the CMFD group
+    call h5gcreate_f(file_id, grpname, group_id, error)
 
-   ! Create the data set in CMFD group
-   call h5dcreate_f(file_id, dsetname, H5T_NATIVE_INTEGER,dataspace_id,        &
-  &                 dataset_id,error)
+    ! write indices from cmfd object
+    dim1 = (/4/)
+    call h5screate_simple_f(1,dim1,dataspace_id,error)
+    call h5dcreate_f(file_id,"cmfd/indices",H5T_NATIVE_INTEGER,dataspace_id,   &
+   &                 dataset_id,error)
+    call h5dwrite_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%indices,dim1,error)
+    call h5sclose_f(dataspace_id,error)
+    call h5dclose_f(dataset_id,error)
 
-   ! Write the dataset
-   call h5dwrite_f(dataset_id, H5T_NATIVE_INTEGER, dset_data, dims, error)
+    ! write totalxs from cmfd object
+    dim4 = (/ng,nx,ny,nz/)
+    call h5screate_simple_f(4,dim4,dataspace_id,error)
+    call h5dcreate_f(file_id,"cmfd/totalxs",H5T_NATIVE_DOUBLE,dataspace_id,    &
+   &                 dataset_id,error)
+    call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%totalxs,dim4,error)
+    call h5sclose_f(dataspace_id,error)
+    call h5dclose_f(dataset_id,error)
 
-   ! Close the data space
-   call h5sclose_f(dataspace_id, error)
+    ! close the CMFD group
+    call h5gclose_f(group_id, error)
 
-   ! Close the dataset
-   call h5dclose_f(dataset_id, error)
+    ! terminate access to the file.
+    call h5fclose_f(file_id, error)
 
-   ! Close the CMFD group
-   call h5gclose_f(group_id, error)
-
-   ! Terminate access to the file.
-   call h5fclose_f(file_id, error)
-
-   ! Close FORTRAN interface.
-   call h5close_f(error)
+    ! close FORTRAN interface.
+    call h5close_f(error)
 
   end subroutine write_hdf5
 
@@ -587,40 +586,49 @@ contains
 
     use hdf5
 
-     character(LEN=8), parameter :: filename = "filef.h5"  ! File name
-     character(LEN=9), parameter :: dsetname = "cmfd/dset" ! dataset name
+    character(LEN=8), parameter :: filename = "cmfd.h5"  ! File name
 
-     integer(HID_T) :: file_id             ! File identifier
-     integer(HID_T) :: dataset_id          ! Dataset identifier
-     integer        :: error               ! Error flag
+    integer(HID_T) :: file_id             ! File identifier
+    integer(HID_T) :: dataset_id          ! Dataset identifier
+    integer        :: error               ! Error flag
 
-     integer        :: i,j,k,l
-     integer, dimension(3,3,3,3) :: dset_data
-     integer(HSIZE_T), dimension(4) :: dims = (/3,3,3,3/)
+    integer(HSIZE_T), dimension(1) :: dim1
+    integer(HSIZE_T), dimension(4) :: dim4 
 
-     ! Initialize the Fortran interface
-     call h5open_f(error)
+    integer :: nx                ! number of mesh cells in x direction
+    integer :: ny                ! number of mesh cells in y direction
+    integer :: nz                ! number of mesh cells in z direction
+    integer :: ng                ! number of energy groups
 
-     ! Open the restart file
-     call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,error)
+    ! initialize the Fortran interface
+    call h5open_f(error)
 
-     ! Open the dataset
-     call h5dopen_f(file_id, dsetname, dataset_id, error)
+    ! open the restart file
+    call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,error)
 
-     ! Read the dataset
-     call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,dset_data,dims,error)
+    ! read indices to cmfd object 
+    call h5dopen_f(file_id, "cmfd/indices", dataset_id, error)
+    dim1 = (/4/)
+    call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%indices,dim1,error)
+    call h5dclose_f(dataset_id,error)
 
-     ! Print result to stdout
-     print *,"Results:",dset_data
+    ! get indices
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
 
-     ! Close the dataset
+    ! read totalxs to cmfd object
+     call h5dopen_f(file_id, "cmfd/totalxs",dataset_id, error)
+     dim4 = (/ng,nx,ny,nz/)
+     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%totalxs,dim4,error)
      call h5dclose_f(dataset_id,error)
 
-     ! Close the file
-     call h5fclose_f(file_id,error)
+    ! Close the file
+    call h5fclose_f(file_id,error)
 
-     ! Close the Fortran interface
-     call h5close_f(error)
+    ! Close the Fortran interface
+    call h5close_f(error)
 
   end subroutine read_hdf5
 

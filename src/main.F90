@@ -22,38 +22,67 @@ program main
 
   implicit none
 
-  ! start timer for total run time
-  call timer_start(time_total)
+  integer           :: nargs    ! number of arguments
+  character(len=32) :: arg      ! the argument
 
-  ! set up problem
-  call initialize_run()
+  ! set arg to default
+  arg = "none"
 
-  ! start problem
-  if (plotting) then
-     call run_plot()
-  else
-     call run_problem()
+  ! get number of command line options
+  nargs = command_argument_count()
 
-     ! Calculate statistics for tallies and write to tallies.out
-     call tally_statistics()
-     if (master) call write_tallies()
-
-     ! show timing statistics
-     call timer_stop(time_total)
-     if (master) call print_runtime()
+  ! read only the first argument
+  if (nargs == 1) then
+    call get_command_argument(1,arg)
   end if
 
-  ! call cmfd calculation
-  call execute_cmfd()
+  ! begin case structure
+  select case(arg)
 
-  ! deallocate arrays
-  call free_memory()
+  ! only perform diffusion
+  case('--cmfd_only')
+
+    ! allocate cmfd object
+    ! read in HDF5 file
+    ! terminate code
+    print *,"Only Performing CMFD"
+
+  case default
+
+    ! start timer for total run time
+    call timer_start(time_total)
+
+    ! set up problem
+    call initialize_run()
+
+    ! start problem
+    if (plotting) then
+      call run_plot()
+    else
+      call run_problem()
+
+      ! Calculate statistics for tallies and write to tallies.out
+      call tally_statistics()
+      if (master) call write_tallies()
+
+      ! show timing statistics
+      call timer_stop(time_total)
+      if (master) call print_runtime()
+    end if
+
+    ! call cmfd calculation
+    call execute_cmfd()
+
+    ! deallocate arrays
+    call free_memory()
+
+  end select
 
 #ifdef MPI
   ! If MPI is in use and enabled, terminate it
   call MPI_FINALIZE(mpi_err)
 #endif
-  
+
 contains
 
 !===============================================================================

@@ -197,7 +197,6 @@ module ace_header
 
      ! Information for URR probability table use
      logical :: use_ptable  ! in URR range with probability tables?
-     logical :: recalculate ! indicate whether we need to recalculate ptables
   end type NuclideMicroXS
 
 !===============================================================================

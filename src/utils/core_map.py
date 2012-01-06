@@ -5,10 +5,9 @@ import sys
 import numpy as np
 import matplotlib.pyplot as pyplot
 
-axial_level = 10
-
 # Get filename and file object
 filename = sys.argv[1]
+axial_level = int(sys.argv[2])
 fh = open(filename,'r')
 
 # Read size of mesh
@@ -30,6 +29,8 @@ matrix = np.array([[value_dict[i+1,j+1,axial_level] for i in range(nx)]
 # Make figure
 pyplot.pcolor(matrix)
 pyplot.colorbar()
+pyplot.xlim([0,nx])
+pyplot.ylim([0,ny])
 pyplot.xticks([])
 pyplot.yticks([])
 pyplot.show()

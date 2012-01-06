@@ -515,65 +515,113 @@ contains
 
   subroutine write_hdf5()
 
-     use hdf5 ! This module contains all necessary modules
+   use hdf5 
 
-     character(LEN=8), parameter :: filename = "filef.h5" ! File name
-     character(LEN=4), parameter :: grpname = "cmfd"      ! Group name
-     character(LEN=9), parameter :: dsetname = "cmfd/dset" ! dataset name
-     integer(HID_T) :: file_id                            ! File identifier
-     integer(HID_T) :: group_id                           ! Group identifier
-     integer(HID_T) :: dataspace_id                       ! Data space identifier
-     integer(HID_T) :: dataset_id                         ! Dataset identifier
-     integer        :: error                              ! Error flag
-     integer        :: i,j,k,l
-     integer, dimension(3,3,3,3) :: dset_data
-     integer(HSIZE_T), dimension(4) :: dims = (/3,3,3,3/)
-     integer :: rank = 4
+   character(LEN=8), parameter :: filename = "filef.h5"  ! File name
+   character(LEN=4), parameter :: grpname = "cmfd"       ! Group name
+   character(LEN=9), parameter :: dsetname = "cmfd/dset" ! dataset name
 
-     ! Create example dataset
-     do i = 1,3
-       do j = 1,3
-         do k = 1,3
-           do l = 1,3
-             dset_data(i,j,k,l) = i*j*k*l
-           end do
+   integer(HID_T) :: file_id             ! File identifier
+   integer(HID_T) :: group_id            ! Group identifier
+   integer(HID_T) :: dataspace_id        ! Data space identifier
+   integer(HID_T) :: dataset_id          ! Dataset identifier
+   integer        :: error               ! Error flag
+
+   integer        :: i,j,k,l
+   integer, dimension(3,3,3,3) :: dset_data
+   integer(HSIZE_T), dimension(4) :: dims = (/3,3,3,3/)
+   integer :: rank = 4
+
+   ! Create example dataset
+   do i = 1,3
+     do j = 1,3
+       do k = 1,3
+         do l = 1,3
+           dset_data(i,j,k,l) = i*j*k*l
          end do
        end do
      end do
+   end do
 
-     ! Initialize FORTRAN interface.
-     call h5open_f(error)
+   ! Initialize FORTRAN interface.
+   call h5open_f(error)
 
-     ! Create a new file using default properties.
-     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
+   ! Create a new file using default properties.
+   call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
 
-     ! Create the CMFD group
-     call h5gcreate_f(file_id, grpname, group_id, error)
+   ! Create the CMFD group
+   call h5gcreate_f(file_id, grpname, group_id, error)
 
-     ! Create the data space for the dataset
-     call h5screate_simple_f(rank, dims, dataspace_id, error)
+   ! Create the data space for the dataset
+   call h5screate_simple_f(rank, dims, dataspace_id, error)
 
-     ! Create the data set in CMFD group
-     call h5dcreate_f(file_id, dsetname, H5T_NATIVE_INTEGER,dataspace_id,dataset_id,error)
+   ! Create the data set in CMFD group
+   call h5dcreate_f(file_id, dsetname, H5T_NATIVE_INTEGER,dataspace_id,        &
+  &                 dataset_id,error)
 
-     ! Write the dataset
-     call h5dwrite_f(dataset_id, H5T_NATIVE_INTEGER, dset_data, dims, error)
+   ! Write the dataset
+   call h5dwrite_f(dataset_id, H5T_NATIVE_INTEGER, dset_data, dims, error)
 
-     ! Close the data space
-     call h5sclose_f(dataspace_id, error)
+   ! Close the data space
+   call h5sclose_f(dataspace_id, error)
 
-     ! Close the dataset
-     call h5dclose_f(dataset_id, error)
- 
-     ! Close the CMFD group
-     call h5gclose_f(group_id, error)
+   ! Close the dataset
+   call h5dclose_f(dataset_id, error)
 
-     ! Terminate access to the file.
-     call h5fclose_f(file_id, error)
+   ! Close the CMFD group
+   call h5gclose_f(group_id, error)
 
-     ! Close FORTRAN interface.
-     call h5close_f(error)
+   ! Terminate access to the file.
+   call h5fclose_f(file_id, error)
+
+   ! Close FORTRAN interface.
+   call h5close_f(error)
 
   end subroutine write_hdf5
+
+!===============================================================================
+! READ_HDF5 writes an hdf5 output file with the cmfd object for restarts 
+!===============================================================================
+
+  subroutine read_hdf5()
+
+    use hdf5
+
+     character(LEN=8), parameter :: filename = "filef.h5"  ! File name
+     character(LEN=9), parameter :: dsetname = "cmfd/dset" ! dataset name
+
+     integer(HID_T) :: file_id             ! File identifier
+     integer(HID_T) :: dataset_id          ! Dataset identifier
+     integer        :: error               ! Error flag
+
+     integer        :: i,j,k,l
+     integer, dimension(3,3,3,3) :: dset_data
+     integer(HSIZE_T), dimension(4) :: dims = (/3,3,3,3/)
+
+     ! Initialize the Fortran interface
+     call h5open_f(error)
+
+     ! Open the restart file
+     call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,error)
+
+     ! Open the dataset
+     call h5dopen_f(file_id, dsetname, dataset_id, error)
+
+     ! Read the dataset
+     call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,dset_data,dims,error)
+
+     ! Print result to stdout
+     print *,"Results:",dset_data
+
+     ! Close the dataset
+     call h5dclose_f(dataset_id,error)
+
+     ! Close the file
+     call h5fclose_f(file_id,error)
+
+     ! Close the Fortran interface
+     call h5close_f(error)
+
+  end subroutine read_hdf5
 
 end module cmfd_utils

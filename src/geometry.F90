@@ -513,9 +513,21 @@ contains
     ! Find cell in next lattice element
     call find_cell(p, found)
     if (.not. found) then
-       message = "Could not locate particle " // trim(to_str(p % id)) // &
-            " in universe " // to_str(universes(p % coord % universe) % id)
-       call fatal_error()
+       ! In some circumstances, a particle crossing the corner of a cell may not
+       ! be able to be found in the next universe. In this scenario we cut off
+       ! all lower-level coordinates and search from universe zero
+       
+       ! Remove lower coordinates
+       call deallocate_coord(p % coord0 % next)
+       p % coord => p % coord0
+
+       ! Search for particle
+       call find_cell(p, found)
+       if (.not. found) then
+          message = "Could not locate particle " // trim(to_str(p % id)) // &
+               " after crossing a lattice boundary."
+          call fatal_error()
+       end if
     end if
 
   end subroutine cross_lattice

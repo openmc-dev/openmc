@@ -498,6 +498,8 @@ contains
     ! Sample velocity of target nucleus
     if (.not. micro_xs(index_nuclide) % use_ptable) then
        call sample_target_velocity(p, nuc, v_t)
+    else
+       v_t = ZERO
     end if
 
     ! Velocity of center-of-mass

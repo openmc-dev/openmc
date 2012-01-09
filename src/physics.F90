@@ -498,6 +498,8 @@ contains
     ! Sample velocity of target nucleus
     if (.not. micro_xs(index_nuclide) % use_ptable) then
        call sample_target_velocity(p, nuc, v_t)
+    else
+       v_t = ZERO
     end if
 
     ! Velocity of center-of-mass
@@ -608,7 +610,11 @@ contains
           
           ! Sample a Bragg edge between 1 and i
           prob = prn() * sab % elastic_P(i+1)
-          k = binary_search(sab % elastic_P(1:i+1), i+1, prob)
+          if (prob < sab % elastic_P(1)) then
+             k = 1
+          else
+             k = binary_search(sab % elastic_P(1:i+1), i+1, prob)
+          end if
 
           ! Characteristic scattering cosine for this Bragg egg
           mu = ONE - 2.0*sab % elastic_e_in(k) / p % E

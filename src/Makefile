@@ -32,7 +32,7 @@ ifeq ($(COMPILER),intel)
 
   # Debugging
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -traceback -ftrapuv -fp-stack-check -check all
+    F90FLAGS += -g -traceback -ftrapuv -fp-stack-check -check all -fpe0
     LDFLAGS  += -g
   endif
 

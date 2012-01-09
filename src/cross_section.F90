@@ -191,8 +191,8 @@ contains
     integer, intent(in)     :: index_nuclide ! index into nuclides array
     integer, intent(in)     :: index_sab     ! index into sab_tables array
 
-    integer :: IE_sab    ! index on S(a,b) energy grid
-    real(8) :: f_sab     ! interp factor on S(a,b) energy grid
+    integer :: IE        ! index on S(a,b) energy grid
+    real(8) :: f         ! interp factor on S(a,b) energy grid
     real(8) :: inelastic ! S(a,b) inelastic cross section
     real(8) :: elastic   ! S(a,b) elastic cross section
     type(SAB_Table), pointer :: sab => null()
@@ -205,17 +205,17 @@ contains
 
     ! Get index and interpolation factor for inelastic grid
     if (p%E < sab % inelastic_e_in(1)) then
-       IE_sab = 1
-       f_sab = ZERO
+       IE = 1
+       f = ZERO
     else
-       IE_sab = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
-       f_sab = (p%E - sab%inelastic_e_in(IE_sab)) / & 
-            (sab%inelastic_e_in(IE_sab+1) - sab%inelastic_e_in(IE_sab))
+       IE = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
+       f = (p%E - sab%inelastic_e_in(IE)) / & 
+            (sab%inelastic_e_in(IE+1) - sab%inelastic_e_in(IE))
     end if
 
     ! Calculate S(a,b) inelastic scattering cross section
-    inelastic = (ONE-f_sab) * sab % inelastic_sigma(IE_sab) + f_sab * &
-         sab % inelastic_sigma(IE_sab + 1)
+    inelastic = (ONE - f) * sab % inelastic_sigma(IE) + f * &
+         sab % inelastic_sigma(IE + 1)
 
     ! Check for elastic data
     if (p % E < sab % threshold_elastic) then
@@ -229,24 +229,24 @@ contains
              ! cross section will be zero
              elastic = ZERO
           else
-             IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
-             elastic = sab % elastic_P(IE_sab) / p % E
+             IE = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
+             elastic = sab % elastic_P(IE) / p % E
           end if
        else
           ! Determine index on elastic energy grid
           if (p % E < sab % elastic_e_in(1)) then
-             IE_sab = 1
+             IE = 1
           else
-             IE_sab = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
+             IE = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
           end if
 
           ! Get interpolation factor for elastic grid
-          f_sab = (p%E - sab%elastic_e_in(IE_sab))/(sab%elastic_e_in(IE_sab+1) - &
-               sab%elastic_e_in(IE_sab))
+          f = (p%E - sab%elastic_e_in(IE))/(sab%elastic_e_in(IE+1) - &
+               sab%elastic_e_in(IE))
 
           ! Calculate S(a,b) elastic scattering cross section
-          elastic = (ONE-f_sab) * sab % elastic_P(IE_sab) + f_sab * &
-               sab % elastic_P(IE_sab + 1)
+          elastic = (ONE - f) * sab % elastic_P(IE) + f * &
+               sab % elastic_P(IE + 1)
        end if
     else
        ! No elastic data

@@ -465,6 +465,8 @@ contains
     ! close file
     close(UNIT=UNIT_CMFD)
 
+    STOP
+
   end subroutine neutron_balance
 
 !===============================================================================
@@ -520,7 +522,7 @@ contains
   end subroutine set_coremap
 
 !===============================================================================
-! GET_REFLECTOR_ALBEDO is a function that calculates the albedo to the reflector 
+! GET_REFLECTOR_ALBEDO is a function that calculates the albedo to the reflector
 !===============================================================================
 
   function get_reflector_albedo(l,g,i,j,k)

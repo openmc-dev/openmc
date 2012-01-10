@@ -52,7 +52,7 @@ contains
     write(108,*) cmfd % dhat
 
     ! write cmfd object to hdf5 file
-    call write_hdf5()
+!   call write_hdf5()
 
     ! solve diffusion equation
     call cmfd_solver()

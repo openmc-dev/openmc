@@ -191,6 +191,9 @@ module global
   type(Timer) :: time_mat    ! timer for mat building
   type(Timer) :: time_power  ! timer for power iteration
 
+  ! Flag for CMFD only
+  logical :: cmfd_only = .FALSE.
+
   ! Trace for single particle
   logical    :: trace
   integer    :: trace_cycle

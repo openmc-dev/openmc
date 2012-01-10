@@ -59,6 +59,9 @@ contains
       cmfd % coremap = reshape(mesh_ % map,(cmfd % indices(1:3)))
    end if
 
+    ! check for core map activation by printing note
+    if (allocated(cmfd % coremap)) print *,"Core Map Overlay Activated"
+
     ! create tally objects
     call create_cmfd_tally()
 
@@ -103,7 +106,7 @@ contains
     if (.not. allocated(cmfd % current)) allocate(cmfd % current(12,ng,nx,ny,nz))
 
     ! allocate for coremap
-    if (.not. allocated(cmfd % coremap)) allocate(cmfd % coremap(nx,ny,nz))
+    if (cmfd_only) allocate(cmfd % coremap(nx,ny,nz))
 
   end subroutine allocate_cmfd
 
@@ -130,7 +133,7 @@ contains
     if (allocated(cmfd % coremap)) then
 
       ! get idx from core map
-      nidx = ng*(cmfd % coremap(i,j,k)) + (ng - g)
+      nidx = ng*(cmfd % coremap(i,j,k)) - (ng - g)
 
     else
 
@@ -464,8 +467,6 @@ contains
 
     ! close file
     close(UNIT=UNIT_CMFD)
-
-    STOP
 
   end subroutine neutron_balance
 

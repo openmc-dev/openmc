@@ -43,6 +43,9 @@ program main
   ! only perform diffusion
   case('--cmfd_only')
 
+    ! set CMFD only to true
+    cmfd_only = .TRUE.
+
     ! read in HDF5 file
     call read_hdf5()
 

@@ -197,7 +197,7 @@ contains
             score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
             cmfd % current(7,h,i,j,k) = t % scores(score_index,1) % val
             bins(TS_SURFACE) = OUT_FRONT
-            score_index = sum(t % stride(1:3) * ijk) + OUT_FRONT ! outgoing 
+            score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
             cmfd % current(8,h,i,j,k) = t % scores(score_index,1) % val
 
             ! bottom surface

@@ -134,7 +134,7 @@ contains
 
       ! get idx from core map
       nidx = ng*(cmfd % coremap(i,j,k)) - (ng - g)
-
+      write(200,*) g,i,j,k,nidx
     else
 
       ! compute index

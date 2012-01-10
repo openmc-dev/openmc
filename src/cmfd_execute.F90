@@ -52,7 +52,7 @@ contains
     write(108,*) cmfd % dhat
 
     ! write cmfd object to hdf5 file
-!   call write_hdf5()
+    call write_hdf5()
 
     ! solve diffusion equation
     call cmfd_solver()
@@ -668,7 +668,7 @@ use timing, only: timer_start, timer_stop
 
     ! calculate dimensions of matrix
     if (allocated(cmfd % coremap)) then
-      n = cmfd % mat_dim
+      n = cmfd % mat_dim * ng
     else
       n = nx*ny*nz*ng
     end if

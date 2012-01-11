@@ -495,29 +495,7 @@ contains
     ! Check to make sure still in lattice
     i_x = p % coord % lattice_x
     i_y = p % coord % lattice_y
-    if (i_x < 1 .or. i_x > lat % n_x) then
-       message = "Particle " // trim(to_str(p % id)) // " reached edge of &
-            &lattice " // trim(to_str(lat % id)) // " at position (" // &
-            trim(to_str(i_x)) // "," // trim(to_str(i_y)) // ")."
-       call fatal_error()
-    elseif (i_y < 1 .or. i_y > lat % n_y) then
-       message = "Particle " // trim(to_str(p % id)) // " reached edge of &
-            &lattice " // trim(to_str(lat % id)) // " at position (" // &
-            trim(to_str(i_x)) // "," // trim(to_str(i_y)) // ")."
-       call fatal_error()
-    end if
-
-    ! Find universe for next lattice element
-    p % coord % universe = lat % element(i_x, i_y)
-
-    ! Find cell in next lattice element
-    call find_cell(p, found)
-    if (.not. found) then
-       ! In some circumstances, a particle crossing the corner of a cell may not
-       ! be able to be found in the next universe. In this scenario we cut off
-       ! all lower-level coordinates and search from universe zero
-       
-       ! Remove lower coordinates
+    if (i_x < 1 .or. i_x > lat % n_x .or. i_y < 1 .or. i_y > lat % n_y) then
        call deallocate_coord(p % coord0 % next)
        p % coord => p % coord0
 
@@ -527,6 +505,29 @@ contains
           message = "Could not locate particle " // trim(to_str(p % id)) // &
                " after crossing a lattice boundary."
           call fatal_error()
+       end if
+    else
+       ! Find universe for next lattice element
+       p % coord % universe = lat % element(i_x, i_y)
+
+       ! Find cell in next lattice element
+       call find_cell(p, found)
+       if (.not. found) then
+          ! In some circumstances, a particle crossing the corner of a cell may not
+          ! be able to be found in the next universe. In this scenario we cut off
+          ! all lower-level coordinates and search from universe zero
+       
+          ! Remove lower coordinates
+          call deallocate_coord(p % coord0 % next)
+          p % coord => p % coord0
+
+          ! Search for particle
+          call find_cell(p, found)
+          if (.not. found) then
+             message = "Could not locate particle " // trim(to_str(p % id)) // &
+                  " after crossing a lattice boundary."
+             call fatal_error()
+          end if
        end if
     end if
 

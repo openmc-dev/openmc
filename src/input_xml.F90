@@ -129,6 +129,9 @@ contains
     ! Survival biasing
     if (trim(survival_) == 'on') survival_biasing = .true.
 
+    ! Probability tables
+    if (ptables_ == 'off') urr_ptables_on = .false.
+
     ! Cutoffs
     if (size(cutoff_) > 0) then
        weight_cutoff = cutoff_(1) % weight

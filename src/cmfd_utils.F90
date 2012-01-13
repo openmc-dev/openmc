@@ -865,4 +865,38 @@ contains
 
   end subroutine read_hdf5
 
-end module cmfd_utils
+!===============================================================================
+! WRITE_PARAVIEW_VTK outputs mesh data in vtk file for viewing 
+!===============================================================================
+
+  subroutine write_vtk()
+
+    use vtk_writer
+
+    integer  :: E_IO
+    integer, parameter  :: nx1=0
+    integer, parameter  :: nx2=1
+    integer, parameter  :: ny1=0
+    integer, parameter  :: ny2=1
+    integer, parameter  :: nz1=0
+    integer, parameter  :: nz2=1
+    real(8), dimension(nx1:nx2)  :: x_xml_rect
+    real(8), dimension(ny1:ny2)  :: y_xml_rect
+    real(8), dimension(nz1:nz2)  :: z_xml_rect
+
+    E_IO = VTK_INI_XML(output_format = 'ASCII',                                &
+   &                   filename      = 'cmfd_rect.vtr',                        &
+   &                   mesh_topology = 'RectilinearGrid',                      &
+   &                   nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2)  
+
+    x_xml_rect=(/0.0_8,1.0_8/)
+    y_xml_rect=(/0.0_8,1.0_8/)
+    x_xml_rect=(/0.0_8,1.0_8/)
+    E_IO = VTK_GEO_XML(nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2,        &
+   &                  X=x_xml_rect,Y=y_xml_rect,Z=z_xml_rect)
+
+    E_IO = VTK_END_XML()
+
+  end subroutine write_vtk
+
+end module cmfd_utils 

@@ -33,7 +33,7 @@ program main
   nargs = command_argument_count()
 
   ! read only the first argument
-  if (nargs == 1) then
+  if (nargs >= 1) then
     call get_command_argument(1,arg)
   end if
 

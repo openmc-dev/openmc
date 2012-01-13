@@ -180,6 +180,11 @@ module global
   ! screen and in logs
   integer :: verbosity = 7
 
+  ! Trace for single particle
+  logical    :: trace
+  integer    :: trace_cycle
+  integer(8) :: trace_particle
+
   ! ============================================================================
   ! CMFD VARIABLES 
 
@@ -189,15 +194,10 @@ module global
   ! Timing objects
   type(Timer) :: time_cmfd   ! timer for whole calculation
   type(Timer) :: time_mat    ! timer for mat building
-  type(Timer) :: time_power  ! timer for power iteration
+  type(Timer) :: time_eigen  ! timer for eigenvalue calculation
 
   ! Flag for CMFD only
   logical :: cmfd_only = .FALSE.
-
-  ! Trace for single particle
-  logical    :: trace
-  integer    :: trace_cycle
-  integer(8) :: trace_particle
 
 contains
 

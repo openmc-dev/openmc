@@ -2,7 +2,7 @@ module cmfd_execute
 
   use cmfd_utils,   only: get_matrix_idx,neutron_balance,set_coremap,          &
  &                        get_reflector_albedo,write_hdf5,read_hdf5,           &
- &                        allocate_cmfd
+ &                        allocate_cmfd,write_vtk
   use global
   use mesh,         only: mesh_indices_to_bin
   use mesh_header,  only: StructuredMesh
@@ -56,6 +56,9 @@ contains
 
     ! solve diffusion equation
     call cmfd_solver()
+
+    ! call vtk output
+    call write_vtk()
 
   end subroutine
 

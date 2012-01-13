@@ -26,6 +26,7 @@ cmfd_utils.o: global.o
 cmfd_utils.o: mesh.o
 cmfd_utils.o: mesh_header.o
 cmfd_utils.o: string.o
+cmfd_utils.o: vtk_writer.o
 cmfd_utils.o: xml-fortran/templates/cmfd_t.o
 
 cross_section.o: ace_header.o

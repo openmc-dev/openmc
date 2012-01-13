@@ -36,4 +36,5 @@ source_header.o \
 string.o \
 tally.o \
 tally_header.o \
-timing.o
+timing.o \
+vtk_writer.o

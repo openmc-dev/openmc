@@ -506,121 +506,84 @@ contains
 
   subroutine cmfd_solver()
 
+use output, only: write_message
 use timing, only: timer_start, timer_stop
 
 #include <finclude/petsc.h90>
+#include <finclude/slepcsys.h>
+#include <finclude/slepceps.h>
 
     Mat         :: M       ! loss matrix
     Mat         :: F       ! production matrix
-    Vec         :: phi_n   ! new flux eigenvector
-    Vec         :: phi_o   ! old flux eigenvector
-    Vec         :: S_n     ! new source vector
-    Vec         :: S_o     ! old source vector
-    real(8)     :: k_n     ! new k-eigenvalue
-    real(8)     :: k_o     ! old k-eigenvlaue
-    real(8)     :: num     ! numerator for eigenvalue update
-    real(8)     :: den     ! denominator for eigenvalue update
-    real(8)     :: one=1.0 ! one
-    integer     :: ierr    ! error flag
-    KSP         :: krylov  ! krylov solver
-    PC          :: prec    ! preconditioner for krylov
-    PetscViewer :: viewer  ! viewer for answer
-    real(8) :: info(MAT_INFO_SIZE)
-    real(8) :: mall
-    real(8) :: nza,nzu,nzun
-    integer :: i       ! iteration counter
-    logical :: iconv   ! is problem converged
+    Vec         :: phi_r   ! real part of eigenvector
+    Vec         :: phi_i   ! imaginary part of eigenvector
+    EPS         :: eps     ! slepc eigenvalue object
+    ST          :: st      ! slepc spectral trans object
+    KSP         :: ksp     ! linear solver object
+    PC          :: pc      ! preconditioner object
+    PetscViewer :: viewer  ! viewer for eigenvector
 
-    ! reset convergence flag
-    iconv = .FALSE.
+    integer     :: ierr    ! error flag
+    integer     :: i_eig=0 ! eigenvalue to extract
+    integer     :: its     ! number of iterations to eigenvalue solve
+    real(8)     :: k_r     ! real part of eigenvalue
+    real(8)     :: k_i     ! imaginary part of eigenvalue
 
     ! initialize PETSc
-    call PetscInitialize(PETSC_NULL_CHARACTER,ierr)
+    call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
 
     ! initialize matrices and vectors
-    print *,"Initializing and building matrices"
+    message = "Initializing and building matrices..."
+    call write_message(1)
     call timer_start(time_mat)
-    call init_data(M,F,phi_n,phi_o,S_n,S_o,k_n,k_o,krylov,prec)
+    call init_data(M,F)
+    call init_solver(eps,st,ksp,pc)
 
     ! set up M loss matrix
     call loss_matrix(M)
-!   call MatGetInfo(M,MAT_LOCAL,info,ierr)
-!   mall = info(MAT_INFO_MEMORY) 
-!   nza = info(MAT_INFO_NZ_ALLOCATED)
-!   nzu = info(MAT_INFO_NZ_USED)
-!   nzun = info(MAT_INFO_NZ_UNNEEDED)
 
     ! set up F production matrix
     call prod_matrix(F)
     call timer_stop(time_mat)
 
-    ! set up krylov info
-    call KSPSetOperators(krylov, M, M, SAME_NONZERO_PATTERN, ierr)
-    call KSPSetUp(krylov,ierr)
+    ! set eigenvalue operators
+    call EPSSetOperators(eps,F,M,ierr)
+    
+    ! begin timer for eigenvalue solution
+    message = "Beginning Eigenvalue Calculation..."
+    call write_message(1)
+    call timer_start(time_eigen)
 
-    ! calculate preconditioner (ILU)
-    call PCFactorGetMatrix(prec,M,ierr)
+    ! solve system
+    call EPSSolve(eps,ierr)
 
-    ! begin timer for power iteration
-    print *,"Beginning power iteration"
-    call timer_start(time_power)
+    ! end eigenvalue timer
+    call timer_stop(time_eigen)
 
-    ! begin power iteration
-    do i = 1,10000
+    ! extract run information
+    call EPSGetIterationNumber(eps,its,ierr)
+    call EPSGetEigenpair(eps,i_eig,k_r,k_i,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,&
+  &                      ierr)
 
-      ! compute source vector
-      call MatMult(F,phi_o,S_o,ierr)
-
-      ! normalize source vector
-      call VecScale(S_o,one/k_o,ierr)
-
-      ! compute new flux vector
-      call KSPSolve(krylov,S_o,phi_n,ierr)
-
-      ! compute new source vector
-      call MatMult(F,phi_n,S_n,ierr)
-
-      ! compute new k-eigenvalue
-      call VecSum(S_n,num,ierr)
-      call VecSum(S_o,den,ierr)
-      k_n = num/den
-
-      ! renormalize the old source
-      call VecScale(S_o,k_o,ierr)
-
-      ! check convergence
-      call convergence(S_n,S_o,k_o,k_n,iconv)
-
-      ! to break or not to break
-      if (iconv) exit
-
-      ! record old values
-      call VecCopy(phi_n,phi_o,ierr)
-      k_o = k_n
-
-    end do
-
-    ! print out keff
-    print *,'k-effective:',k_n
-
-    ! end power iteration timer
-    call timer_stop(time_power)
-    print *,"Matrix building time (s):",time_mat%elapsed
-    print *,"Power iteration time (s):",time_power%elapsed
-    print *,"Power iteration time per iteration (s):",time_power%elapsed/i
-    print *,"Number of Power iterations:",i
+    ! print output to user
+    print *, "Eigenvalue is: ",k_r
+    print *, "Number of iterations: ",its
+    print *, "Matrix building time (s): ",time_mat%elapsed
+    print *, "Eigenvalue solution time (s): ",time_eigen%elapsed
 
     ! compute source pdf and record in cmfd object
-!   call source_pdf(S_n)
+    ! call source_pdf(S_n)
 
     ! output answers
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'fluxvec.bin',FILE_MODE_WRITE, &
                                viewer,ierr)
-    call VecView(phi_n,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    ! call VecView(phi_n,viewer,ierr)
 
-    ! finalize PETSc
-    call PetscFinalize(ierr)
+    ! destroy all PETSc objects
+    call destroy_data(M,F,eps,viewer)
+
+    ! finalize SLEPc 
+    call SlepcFinalize(ierr)
 
   end subroutine cmfd_solver
 
@@ -628,21 +591,13 @@ use timing, only: timer_start, timer_stop
 ! INIT_DATA allocates matrices vectors for CMFD solution
 !===============================================================================
 
-  subroutine init_data(M,F,phi_n,phi_o,S_n,S_o,k_n,k_o,krylov,prec)
+  subroutine init_data(M,F)
 
 #include <finclude/petsc.h90>
 
     ! arguments
     Mat         :: M          ! loss matrix
     Mat         :: F          ! production matrix
-    Vec         :: phi_n      ! new flux eigenvector
-    Vec         :: phi_o      ! old flux eigenvector
-    Vec         :: S_n        ! new source vector
-    Vec         :: S_o        ! old source vector
-    real(8)     :: k_n        ! new k-eigenvalue
-    real(8)     :: k_o        ! old k-eigenvalue
-    KSP         :: krylov     ! krylov solver
-    PC          :: prec       ! preconditioner for krylov
 
     ! local variables
     integer             :: n           ! dimensions of matrix
@@ -655,10 +610,6 @@ use timing, only: timer_start, timer_stop
     integer             :: ng          ! maximum number of groups
     integer             :: nzM         ! max number of nonzeros in a row for M
     integer             :: nzF         ! max number of nonzeros in a row for F
-    real(8)             :: guess=1.0   ! initial guess
-    real(8)             :: ktol=1.e-7  ! krylov tolerance
-    real(8)             :: mem
-
 
     ! get maximum number of cells in each direction
     nx = cmfd%indices(1)
@@ -689,44 +640,82 @@ use timing, only: timer_start, timer_stop
     call MatSetOption(F,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
     call MatSetOption(F,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
 
-
-    ! set up flux vectors
-    call VecCreate(PETSC_COMM_WORLD,phi_n,ierr)
-    call VecSetSizes(phi_n,PETSC_DECIDE,n,ierr)
-    call VecSetFromOptions(phi_n,ierr)
-    call VecCreate(PETSC_COMM_WORLD,phi_o,ierr)
-    call VecSetSizes(phi_o,PETSC_DECIDE,n,ierr)
-    call VecSetFromOptions(phi_o,ierr)
-
-
-    ! set up source vectors
-    call VecCreate(PETSC_COMM_WORLD,S_n,ierr)
-    call VecSetSizes(S_n,PETSC_DECIDE,n,ierr)
-    call VecSetFromOptions(S_n,ierr)
-    call VecCreate(PETSC_COMM_WORLD,S_o,ierr)
-    call VecSetSizes(S_o,PETSC_DECIDE,n,ierr)
-    call VecSetFromOptions(S_o,ierr)
-
-    ! set initial guess
-    call VecSet(phi_n,guess,ierr)
-    call VecSet(phi_o,guess,ierr)
-    k_n = guess
-    k_o = guess
-
-    ! set up krylov solver
-    call KSPCreate(PETSC_COMM_WORLD,krylov,ierr)
-    call KSPSetTolerances(krylov,ktol,PETSC_DEFAULT_DOUBLE_PRECISION,          &
-   &                      PETSC_DEFAULT_DOUBLE_PRECISION,                      &
-   &                      PETSC_DEFAULT_INTEGER,ierr)
-    call KSPSetType(krylov,KSPGMRES,ierr)
-    call KSPSetInitialGuessNonzero(krylov,PETSC_TRUE,ierr)
-    call KSPSetInitialGuessNonzero(krylov,PETSC_TRUE,ierr)
-    call KSPGetPC(krylov,prec,ierr)
-    call PCSetType(prec,PCILU,ierr)
-    call PCFactorSetLevels(prec,5,ierr)
-    call KSPSetFromOptions(krylov,ierr)
-
   end subroutine init_data 
+
+!===============================================================================
+! INIT_SOLVER setups the eigenvalue problem solvers
+!===============================================================================
+
+  subroutine init_solver(eps,st,ksp,pc)
+
+#include <finclude/petsc.h90>
+#include <finclude/slepcsys.h>
+#include <finclude/slepceps.h>
+
+    integer     :: ierr    ! error flag
+    EPS         :: eps     ! slepc eigenvalue object
+    ST          :: st      ! slepc spetral trans object
+    KSP         :: ksp     ! linear solver object
+    PC          :: pc      ! preconditioner object
+    PetscViewer :: viewer  ! viewer for answer
+    character(LEN=20) :: epstype,sttype,ksptype,pctype
+
+    ! create EPS Object
+    call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
+    call EPSSetProblemType(eps,EPS_GNHEP,ierr)
+    call EPSSetType(eps,EPSPOWER,ierr)
+    call EPSSetFromOptions(eps,ierr)
+    call EPSSetWhichEigenpairs(eps,EPS_LARGEST_MAGNITUDE,ierr)
+
+    ! get ST, KSP and PC objects
+    call EPSGetST(eps,st,ierr)
+    call STGetKSP(st,ksp,ierr)
+    call KSPGetPC(ksp,pc,ierr)
+
+    ! set GMRES default
+    call KSPSetType(ksp,KSPGMRES,ierr)
+
+    ! set precursor type
+    call PCSetType(pc,PCILU,ierr)
+    call PCFactorSetLevels(pc,4,ierr)
+    call PCSetFromOptions(pc,ierr)
+
+    ! get all types and print
+    call EPSGetType(eps,epstype,ierr)
+    call STGetType(st,sttype,ierr)
+    call KSPGetType(ksp,ksptype,ierr)
+    call PCGetType(pc,pctype,ierr)
+    print *,'EPS TYPE IS: ',epstype
+    print *,'ST TYPE IS: ',sttype
+    print *,'KSP TYPE IS: ',ksptype
+    print *,'PC TYPE IS: ',pctype
+
+  end subroutine init_solver
+
+!===============================================================================
+! DESTROY_DATA deletes all PETSc and SLEPc objects
+!===============================================================================
+
+  subroutine destroy_data(M,F,eps,viewer) 
+
+#include <finclude/petsc.h90>
+#include <finclude/slepcsys.h>
+#include <finclude/slepceps.h>
+
+    Mat         :: M       ! loss matrix
+    Mat         :: F       ! production matrix
+    EPS         :: eps     ! slepc eigenvalue object
+    PetscViewer :: viewer  ! viewer for answer
+
+    integer     :: ierr    ! petsc error code
+
+    ! destroy all
+    call PetscViewerDestroy(viewer,ierr)
+    call EPSDestroy(eps,ierr)
+    call MatDestroy(M,ierr)
+    call MatDestroy(F,ierr)    
+
+  end subroutine destroy_data 
 
 !===============================================================================
 ! LOSS_MATRIX creates the matrix representing loss of neutrons

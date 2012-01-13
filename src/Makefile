@@ -80,11 +80,13 @@ endif
 # use petsc compiler
 ifeq ($(COMPILER),petsc)
   F90 = ${FLINKER}
-  F90FLAGS := -cpp -ffree-form -I${PETSC_DIR}/include \
+  F90FLAGS := -cpp -ffree-form -I${PETSC_DIR}/include -I${SLEPC_DIR}/include \
               -ffpe-trap=invalid,zero,overflow,underflow
-  include ${PETSC_DIR}/conf/variables
-  include ${PETSC_DIR}/conf/rules
-  LDFLAGS = ${PETSC_SYS_LIB}
+# include ${PETSC_DIR}/conf/variables
+#  include ${PETSC_DIR}/conf/rules
+  include ${SLEPC_DIR}/conf/slepc_common
+#  LDFLAGS = ${PETSC_SYS_LIB}
+  LDFLAGS = ${SLEPC_LIB}
 
   ifeq ($(USE_HDF5),yes)
     F90FLAGS += -I${HDF5_PREFIX}/include

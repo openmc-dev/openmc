@@ -29,7 +29,7 @@ contains
     character(MAX_WORD_LEN) :: words(MAX_WORDS)
 
     ! read cmfd infput file
-    filename = trim(path_input) // "cmfd.xml"
+    filename = "cmfd.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       write(*,*) "Cannot perform CMFD"

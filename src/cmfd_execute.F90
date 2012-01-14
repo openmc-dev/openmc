@@ -1187,4 +1187,232 @@ use timing, only: timer_start, timer_stop
 
   end subroutine adjust_weight
 
+!===============================================================================
+! CMFD_SOLVER in the main power iteration routine for the cmfd calculation
+!===============================================================================
+
+  subroutine cmfd_solver_power()
+
+use timing, only: timer_start, timer_stop
+
+#include <finclude/petsc.h90>
+
+    Mat         :: M       ! loss matrix
+    Mat         :: F       ! production matrix
+    Vec         :: phi_n   ! new flux eigenvector
+    Vec         :: phi_o   ! old flux eigenvector
+    Vec         :: S_n     ! new source vector
+    Vec         :: S_o     ! old source vector
+    real(8)     :: k_n     ! new k-eigenvalue
+    real(8)     :: k_o     ! old k-eigenvlaue
+    real(8)     :: num     ! numerator for eigenvalue update
+    real(8)     :: den     ! denominator for eigenvalue update
+    real(8)     :: one=1.0 ! one
+    integer     :: ierr    ! error flag
+    KSP         :: krylov  ! krylov solver
+    PC          :: prec    ! preconditioner for krylov
+    PetscViewer :: viewer  ! viewer for answer
+    real(8) :: info(MAT_INFO_SIZE)
+    real(8) :: mall
+    real(8) :: nza,nzu,nzun
+    integer :: i       ! iteration counter
+    logical :: iconv   ! is problem converged
+
+    ! reset convergence flag
+    iconv = .FALSE.
+
+    ! initialize PETSc
+    call PetscInitialize(PETSC_NULL_CHARACTER,ierr)
+
+    ! initialize matrices and vectors
+    print *,"Initializing and building matrices"
+    call timer_start(time_mat)
+    call init_data_power(M,F,phi_n,phi_o,S_n,S_o,k_n,k_o,krylov,prec)
+
+    ! set up M loss matrix
+    call loss_matrix(M)
+!   call MatGetInfo(M,MAT_LOCAL,info,ierr)
+!   mall = info(MAT_INFO_MEMORY) 
+!   nza = info(MAT_INFO_NZ_ALLOCATED)
+!   nzu = info(MAT_INFO_NZ_USED)
+!   nzun = info(MAT_INFO_NZ_UNNEEDED)
+
+    ! set up F production matrix
+    call prod_matrix(F)
+    call timer_stop(time_mat)
+
+    ! set up krylov info
+    call KSPSetOperators(krylov, M, M, SAME_NONZERO_PATTERN, ierr)
+    call KSPSetUp(krylov,ierr)
+
+    ! calculate preconditioner (ILU)
+    call PCFactorGetMatrix(prec,M,ierr)
+
+    ! begin timer for power iteration
+    print *,"Beginning power iteration"
+    call timer_start(time_eigen)
+
+    ! begin power iteration
+    do i = 1,10000
+
+      ! compute source vector
+      call MatMult(F,phi_o,S_o,ierr)
+
+      ! normalize source vector
+      call VecScale(S_o,one/k_o,ierr)
+
+      ! compute new flux vector
+      call KSPSolve(krylov,S_o,phi_n,ierr)
+
+      ! compute new source vector
+      call MatMult(F,phi_n,S_n,ierr)
+
+      ! compute new k-eigenvalue
+      call VecSum(S_n,num,ierr)
+      call VecSum(S_o,den,ierr)
+      k_n = num/den
+
+      ! renormalize the old source
+      call VecScale(S_o,k_o,ierr)
+
+      ! check convergence
+      call convergence(S_n,S_o,k_o,k_n,iconv)
+
+      ! to break or not to break
+      if (iconv) exit
+
+      ! record old values
+      call VecCopy(phi_n,phi_o,ierr)
+      k_o = k_n
+
+    end do
+
+    ! print out keff
+    print *,'k-effective:',k_n
+
+    ! end power iteration timer
+    call timer_stop(time_eigen)
+    print *,"Matrix building time (s):",time_mat%elapsed
+    print *,"Power iteration time (s):",time_eigen%elapsed
+    print *,"Power iteration time per iteration (s):",time_eigen%elapsed/i
+    print *,"Number of Power iterations:",i
+
+    ! compute source pdf and record in cmfd object
+!   call source_pdf(S_n)
+
+    ! output answers
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'fluxvec.bin',FILE_MODE_WRITE, &
+                               viewer,ierr)
+    call VecView(phi_n,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+
+    ! finalize PETSc
+    call PetscFinalize(ierr)
+
+  end subroutine cmfd_solver_power
+
+!===============================================================================
+! INIT_DATA allocates matrices vectors for CMFD solution
+!===============================================================================
+
+  subroutine init_data_power(M,F,phi_n,phi_o,S_n,S_o,k_n,k_o,krylov,prec)
+
+#include <finclude/petsc.h90>
+
+    ! arguments
+    Mat         :: M          ! loss matrix
+    Mat         :: F          ! production matrix
+    Vec         :: phi_n      ! new flux eigenvector
+    Vec         :: phi_o      ! old flux eigenvector
+    Vec         :: S_n        ! new source vector
+    Vec         :: S_o        ! old source vector
+    real(8)     :: k_n        ! new k-eigenvalue
+    real(8)     :: k_o        ! old k-eigenvalue
+    KSP         :: krylov     ! krylov solver
+    PC          :: prec       ! preconditioner for krylov
+
+    ! local variables
+    integer             :: n           ! dimensions of matrix
+    integer             :: nz_M        ! number of nonzeros in loss matrix
+    integer             :: nz_F        ! number of nonzeros in prod matrix
+    integer             :: ierr        ! error flag
+    integer             :: nx          ! maximum number of x cells
+    integer             :: ny          ! maximum number of y cells
+    integer             :: nz          ! maximum number of z cells
+    integer             :: ng          ! maximum number of groups
+    integer             :: nzM         ! max number of nonzeros in a row for M
+    integer             :: nzF         ! max number of nonzeros in a row for F
+    real(8)             :: guess=1.0   ! initial guess
+    real(8)             :: ktol=1.e-7  ! krylov tolerance
+    real(8)             :: mem
+
+
+    ! get maximum number of cells in each direction
+    nx = cmfd%indices(1)
+    ny = cmfd%indices(2)
+    nz = cmfd%indices(3)
+    ng = cmfd%indices(4)
+
+    ! calculate dimensions of matrix
+    if (allocated(cmfd % coremap)) then
+      n = cmfd % mat_dim * ng
+    else
+      n = nx*ny*nz*ng
+    end if
+
+    ! maximum number of nonzeros in each matrix
+    nzM = 7+ng-1
+    nzF = ng
+
+    ! set up loss matrix
+    call MatCreateSeqAIJ(PETSC_COMM_SELF,n,n,nzM,PETSC_NULL_INTEGER,M,ierr)
+    call MatSetOption(M,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
+    call MatSetOption(M,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
+    call MatSetOption(M,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
+
+    ! set up production matrix
+    call MatCreateSeqAIJ(PETSC_COMM_SELF,n,n,nzF,PETSC_NULL_INTEGER,F,ierr)
+    call MatSetOption(F,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
+    call MatSetOption(F,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
+    call MatSetOption(F,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
+
+
+    ! set up flux vectors
+    call VecCreate(PETSC_COMM_WORLD,phi_n,ierr)
+    call VecSetSizes(phi_n,PETSC_DECIDE,n,ierr)
+    call VecSetFromOptions(phi_n,ierr)
+    call VecCreate(PETSC_COMM_WORLD,phi_o,ierr)
+    call VecSetSizes(phi_o,PETSC_DECIDE,n,ierr)
+    call VecSetFromOptions(phi_o,ierr)
+
+
+    ! set up source vectors
+    call VecCreate(PETSC_COMM_WORLD,S_n,ierr)
+    call VecSetSizes(S_n,PETSC_DECIDE,n,ierr)
+    call VecSetFromOptions(S_n,ierr)
+    call VecCreate(PETSC_COMM_WORLD,S_o,ierr)
+    call VecSetSizes(S_o,PETSC_DECIDE,n,ierr)
+    call VecSetFromOptions(S_o,ierr)
+
+    ! set initial guess
+    call VecSet(phi_n,guess,ierr)
+    call VecSet(phi_o,guess,ierr)
+    k_n = guess
+    k_o = guess
+
+    ! set up krylov solver
+    call KSPCreate(PETSC_COMM_WORLD,krylov,ierr)
+    call KSPSetTolerances(krylov,ktol,PETSC_DEFAULT_DOUBLE_PRECISION,          &
+   &                      PETSC_DEFAULT_DOUBLE_PRECISION,                      &
+   &                      PETSC_DEFAULT_INTEGER,ierr)
+    call KSPSetType(krylov,KSPGMRES,ierr)
+    call KSPSetInitialGuessNonzero(krylov,PETSC_TRUE,ierr)
+    call KSPSetInitialGuessNonzero(krylov,PETSC_TRUE,ierr)
+    call KSPGetPC(krylov,prec,ierr)
+    call PCSetType(prec,PCILU,ierr)
+    call PCFactorSetLevels(prec,5,ierr)
+    call KSPSetFromOptions(krylov,ierr)
+
+  end subroutine init_data_power
+
 end module cmfd_execute

@@ -875,25 +875,40 @@ contains
 
     integer  :: E_IO
     integer, parameter  :: nx1=0
-    integer, parameter  :: nx2=1
+    integer, parameter  :: nx2=2
     integer, parameter  :: ny1=0
-    integer, parameter  :: ny2=1
+    integer, parameter  :: ny2=2
     integer, parameter  :: nz1=0
-    integer, parameter  :: nz2=1
+    integer, parameter  :: nz2=2
     real(8), dimension(nx1:nx2)  :: x_xml_rect
     real(8), dimension(ny1:ny2)  :: y_xml_rect
     real(8), dimension(nz1:nz2)  :: z_xml_rect
+    real, dimension(1:8) :: var_xml_rect_cell
 
     E_IO = VTK_INI_XML(output_format = 'ASCII',                                &
    &                   filename      = 'cmfd_rect.vtr',                        &
    &                   mesh_topology = 'RectilinearGrid',                      &
    &                   nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2)  
 
-    x_xml_rect=(/0.0_8,1.0_8/)
-    y_xml_rect=(/0.0_8,1.0_8/)
-    x_xml_rect=(/0.0_8,1.0_8/)
+    x_xml_rect=(/0.0_8,1.0_8,2.0_8/)
+    y_xml_rect=(/0.0_8,1.0_8,2.0_8/)
+    z_xml_rect=(/0.0_8,1.0_8,2.0_8/)
     E_IO = VTK_GEO_XML(nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2,        &
    &                  X=x_xml_rect,Y=y_xml_rect,Z=z_xml_rect)
+
+    E_IO = VTK_DAT_XML(var_location = 'cell', var_block_action = 'open')
+
+    var_xml_rect_cell(1:2)=(/1.0,2.0/)
+    var_xml_rect_cell(3:4)=(/3.0,4.0/)
+    var_xml_rect_cell(5:6)=(/5.0,6.0/)
+    var_xml_rect_cell(7:8)=(/7.0,8.0/)
+
+    E_IO = VTK_VAR_XML(NC_NN = 8, varname = 'volume_scalar',                   &
+   &                   var = var_xml_rect_cell)
+
+    E_IO = VTK_DAT_XML(var_location = 'cell', var_block_action = 'close')
+
+    E_IO = VTK_GEO_XML()
 
     E_IO = VTK_END_XML()
 

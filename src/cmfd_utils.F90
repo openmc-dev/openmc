@@ -876,6 +876,7 @@ contains
     integer  :: i          ! x loop counter
     integer  :: j          ! y loop counter
     integer  :: k          ! z loop counter
+    integer  :: g          ! group counter
     integer :: nx          ! number of mesh cells in x direction
     integer :: ny          ! number of mesh cells in y direction
     integer :: nz          ! number of mesh cells in z direction
@@ -893,13 +894,15 @@ contains
     type(StructuredMesh), pointer :: m => null() ! pointer to mesh
 
     ! vtk specific variables
-    integer    :: E_IO                 ! error code
-    integer    :: nn                   ! number of nodes
-    integer    :: nc                   ! number of cells
-    integer    :: con(8)               ! connectivity vector
-    integer    :: off(1:1)             ! offset, number of nodes in cell
-    integer(1) :: cell_id(1:1)         ! cell type
-    real(8)    :: real_buffer(1:1)     ! real data buffer 8-byte
+    integer           :: E_IO                 ! error code
+    integer           :: nn                   ! number of nodes
+    integer           :: nc                   ! number of cells
+    integer           :: con(8)               ! connectivity vector
+    integer           :: off(1:1)             ! offset, number of nodes in cell
+    integer(1)        :: cell_id(1:1)         ! cell type
+    real(8)           :: real_buffer(1:1)     ! real data buffer 8-byte
+    character(len=40) :: varname              ! name of output variable
+    character(len=3)  :: str_g                ! string for energy group #
 
     ! extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -948,9 +951,18 @@ contains
           ! open data block in vtk file
           E_IO = VTK_DAT_XML('cell','open')
 
-          ! write out flux
-          real_buffer = (/cmfd%flux(1,i,j,k)/)
-          E_IO = VTK_VAR_XML(nc,'flux',real_buffer)
+          ! loop around energy
+          GROUP: do g = 1,ng
+
+            ! convert group int to str
+            write(str_g,'(I3)') g
+
+            ! write out flux
+            real_buffer = (/cmfd%flux(g,i,j,k)/)
+            varname = 'flux_'//trim(adjustl(str_g))
+            E_IO = VTK_VAR_XML(nc,varname,real_buffer)
+
+          end do GROUP
 
           ! close data block in vtk file
           E_IO = VTK_DAT_XML('cell','close')

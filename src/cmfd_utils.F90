@@ -893,12 +893,13 @@ contains
     type(StructuredMesh), pointer :: m => null() ! pointer to mesh
 
     ! vtk specific variables
-    integer    :: E_IO            ! error code
-    integer    :: nn              ! number of nodes
-    integer    :: nc              ! number of cells
-    integer    :: con(8)          ! connectivity vector
-    integer    :: off(1:1)        ! offset, number of nodes in cell
-    integer(1) :: cell_id(1:1)    ! cell type
+    integer    :: E_IO                 ! error code
+    integer    :: nn                   ! number of nodes
+    integer    :: nc                   ! number of cells
+    integer    :: con(8)               ! connectivity vector
+    integer    :: off(1:1)             ! offset, number of nodes in cell
+    integer(1) :: cell_id(1:1)         ! cell type
+    real(8)    :: real_buffer(1:1)     ! real data buffer 8-byte
 
     ! extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -943,7 +944,17 @@ contains
 
           ! set up geometry piece
           E_IO = VTK_GEO_XML(nn,nc,x_uns,y_uns,z_uns)
-    
+
+          ! open data block in vtk file
+          E_IO = VTK_DAT_XML('cell','open')
+
+          ! write out flux
+          real_buffer = (/cmfd%flux(1,i,j,k)/)
+          E_IO = VTK_VAR_XML(nc,'flux',real_buffer)
+
+          ! close data block in vtk file
+          E_IO = VTK_DAT_XML('cell','close')
+          
           ! write out connectivity
           E_IO = VTK_CON_XML(nc,con,off,cell_id)
 

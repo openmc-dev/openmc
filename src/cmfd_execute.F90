@@ -129,6 +129,21 @@ contains
             flux = t % scores(score_index,1) % val
             cmfd % flux(h,i,j,k) = flux
 
+            ! detect zero flux
+            if ((flux - 0.0D0) < 1.0D-10) then
+              if (.not. allocated(cmfd%coremap)) then
+                write(*,*) 'Fatal: detected zero flux without coremap'
+                stop
+              else
+                write(*,*) 'Warning: detected zero flux at:',i,j,k
+                flux = 99999.0D0
+                if (.not. cmfd%coremap(i,j,k) == 99999) then
+                  write(*,*) 'Fatal: need to check core map with zero flux'
+                  stop
+                end if
+              end if
+            end if
+ 
             ! get total rr and convert to total xs
             cmfd % totalxs(h,i,j,k) = t % scores(score_index,2) % val / flux
 

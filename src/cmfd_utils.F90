@@ -873,43 +873,90 @@ contains
 
     use vtk_writer
 
-    integer  :: E_IO
-    integer, parameter  :: nx1=0
-    integer, parameter  :: nx2=2
-    integer, parameter  :: ny1=0
-    integer, parameter  :: ny2=2
-    integer, parameter  :: nz1=0
-    integer, parameter  :: nz2=2
-    real(8), dimension(nx1:nx2)  :: x_xml_rect
-    real(8), dimension(ny1:ny2)  :: y_xml_rect
-    real(8), dimension(nz1:nz2)  :: z_xml_rect
-    real, dimension(1:8) :: var_xml_rect_cell
+    integer  :: i          ! x loop counter
+    integer  :: j          ! y loop counter
+    integer  :: k          ! z loop counter
+    integer :: nx          ! number of mesh cells in x direction
+    integer :: ny          ! number of mesh cells in y direction
+    integer :: nz          ! number of mesh cells in z direction
+    integer :: ng          ! number of energy groups
+    real(8)  :: x_m        ! -x coordinate
+    real(8)  :: x_p        ! +x coordinate
+    real(8)  :: y_m        ! -y coordinate
+    real(8)  :: y_p        ! +y coordinate
+    real(8)  :: z_m        ! -z coordinate
+    real(8)  :: z_p        ! +z coordinate
+    real(8)  :: x_uns(1:8) ! array of x points
+    real(8)  :: y_uns(1:8) ! array of y points
+    real(8)  :: z_uns(1:8) ! array of z points
 
+    type(StructuredMesh), pointer :: m => null() ! pointer to mesh
+
+    ! vtk specific variables
+    integer    :: E_IO            ! error code
+    integer    :: nn              ! number of nodes
+    integer    :: nc              ! number of cells
+    integer    :: con(8)          ! connectivity vector
+    integer    :: off(1:1)        ! offset, number of nodes in cell
+    integer(1) :: cell_id(1:1)    ! cell type
+
+    ! extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! point to mesh object
+    m => meshes(1)
+
+    ! set up vtk file
     E_IO = VTK_INI_XML(output_format = 'ASCII',                                &
-   &                   filename      = 'cmfd_rect.vtr',                        &
-   &                   mesh_topology = 'RectilinearGrid',                      &
-   &                   nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2)  
+   &                   filename      = 'cmfd_unst.vtu',                        &
+   &                   mesh_topology = 'UnstructuredGrid')
 
-    x_xml_rect=(/0.0_8,1.0_8,2.0_8/)
-    y_xml_rect=(/0.0_8,1.0_8,2.0_8/)
-    z_xml_rect=(/0.0_8,1.0_8,2.0_8/)
-    E_IO = VTK_GEO_XML(nx1=nx1,nx2=nx2,ny1=ny1,ny2=ny2,nz1=nz1,nz2=nz2,        &
-   &                  X=x_xml_rect,Y=y_xml_rect,Z=z_xml_rect)
+    ! set vtk parameters
+    nn = 8
+    nc = 1
+    con = (/0,1,2,3,4,5,6,7/)
+    off = (/8/)
+    cell_id = (/11/)
 
-    E_IO = VTK_DAT_XML(var_location = 'cell', var_block_action = 'open')
+    ! begin loop to construct mesh
+    ZLOOP: do k = 1,nz
 
-    var_xml_rect_cell(1:2)=(/1.0,2.0/)
-    var_xml_rect_cell(3:4)=(/3.0,4.0/)
-    var_xml_rect_cell(5:6)=(/5.0,6.0/)
-    var_xml_rect_cell(7:8)=(/7.0,8.0/)
+      YLOOP: do j = 1,ny
 
-    E_IO = VTK_VAR_XML(NC_NN = 8, varname = 'volume_scalar',                   &
-   &                   var = var_xml_rect_cell)
+        XLOOP: do i = 1,nx
 
-    E_IO = VTK_DAT_XML(var_location = 'cell', var_block_action = 'close')
+          ! calculate all coordinates
+          x_m = dble(i - 1)*m%width(1) + m%origin(1)
+          x_p = dble(i)*m%width(1) + m%origin(1)
+          y_m = dble(j - 1)*m%width(2) + m%origin(2)
+          y_p = dble(j)*m%width(2) + m%origin(2)
+          z_m = dble(k - 1)*m%width(3) + m%origin(3)
+          z_p = dble(k)*m%width(3) + m%origin(3)
 
-    E_IO = VTK_GEO_XML()
+          ! set up points arrays
+          x_uns = (/x_m,x_p,x_m,x_p,x_m,x_p,x_m,x_p/)
+          y_uns = (/y_m,y_m,y_p,y_p,y_m,y_m,y_p,y_p/)
+          z_uns = (/z_m,z_m,z_m,z_m,z_p,z_p,z_p,z_p/)
 
+          ! set up geometry piece
+          E_IO = VTK_GEO_XML(nn,nc,x_uns,y_uns,z_uns)
+    
+          ! write out connectivity
+          E_IO = VTK_CON_XML(nc,con,off,cell_id)
+
+          ! close geometry piece
+          E_IO = VTK_GEO_XML()
+
+        end do XLOOP
+
+      end do YLOOP
+
+    end do ZLOOP
+
+    ! close vtk file
     E_IO = VTK_END_XML()
 
   end subroutine write_vtk

@@ -10,6 +10,7 @@ endf.o \
 endf_header.o \
 energy_grid.o \
 error.o \
+finalize.o \
 fission.o \
 geometry.o \
 geometry_header.o \

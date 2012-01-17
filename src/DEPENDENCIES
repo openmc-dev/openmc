@@ -38,6 +38,12 @@ energy_grid.o: datatypes_header.o
 energy_grid.o: global.o
 energy_grid.o: output.o
 
+finalize.o: global.o
+finalize.o: hdf5_interface.o
+finalize.o: output.o
+finalize.o: tally.o
+finalize.o: timing.o
+
 fission.o: ace_header.o
 fission.o: constants.o
 fission.o: error.o
@@ -121,7 +127,6 @@ interpolation.o: string.o
 
 main.o: constants.o
 main.o: global.o
-main.o: hdf5_interface.o
 main.o: initialize.o
 main.o: intercycle.o
 main.o: output.o

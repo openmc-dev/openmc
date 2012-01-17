@@ -46,7 +46,8 @@ contains
 
     type(Universe), pointer :: univ
 
-    ! Start initialization timer
+    ! Start total and initialization timer
+    call timer_start(time_total)
     call timer_start(time_initialize)
 
     ! Setup MPI

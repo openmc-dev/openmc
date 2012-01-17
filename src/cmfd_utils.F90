@@ -881,6 +881,7 @@ contains
     integer :: ny          ! number of mesh cells in y direction
     integer :: nz          ! number of mesh cells in z direction
     integer :: ng          ! number of energy groups
+    integer :: n_idx       ! index in eigenvector
     real(8)  :: x_m        ! -x coordinate
     real(8)  :: x_p        ! +x coordinate
     real(8)  :: y_m        ! -y coordinate
@@ -965,7 +966,8 @@ contains
             write(str_g,'(I3)') g
 
             ! write out flux
-            real_buffer = (/cmfd%flux(g,i,j,k)/)
+            n_idx = get_matrix_idx(g,i,j,k,ng,nx,ny) 
+            real_buffer = (/cmfd%phi(n_idx)/)
             varname = 'flux_'//trim(adjustl(str_g))
             E_IO = VTK_VAR_XML(nc,varname,real_buffer)
 

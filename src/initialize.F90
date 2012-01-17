@@ -25,6 +25,10 @@ module initialize
   use mpi
 #endif
 
+#ifdef HDF5
+  use hdf5_interface,   only: open_hdf5_output
+#endif
+
   implicit none
 
   type(DictionaryII), pointer :: build_dict => null()
@@ -50,13 +54,20 @@ contains
 
     ! Read command line arguments
     call read_command_line()
-    if (master) call create_summary_file()
 
-    ! Print the OpenMC title and version/date/time information
-    if (master) call title()
+    if (master) then
+       ! Create summary.out file
+       call create_summary_file()
 
-    ! Print initialization header block
-    if (master) call header("INITIALIZATION", level=1)
+#ifdef HDF5
+       ! Open HDF5 output file for writing
+       call open_hdf5_output()
+#endif
+
+       ! Display title and initialization header
+       call title()
+       call header("INITIALIZATION", level=1)
+    end if
 
     ! Initialize random number generator
     call initialize_prng()

@@ -533,8 +533,8 @@ use timing, only: timer_start, timer_stop
 
     Mat         :: M       ! loss matrix
     Mat         :: F       ! production matrix
-    Vec         :: phi_r   ! real part of eigenvector
-    Vec         :: phi_i   ! imaginary part of eigenvector
+    Vec         :: phi     ! eigenvector
+!   Vec         :: phi_i   ! imaginary part of eigenvector
     EPS         :: eps     ! slepc eigenvalue object
     ST          :: st      ! slepc spectral trans object
     KSP         :: ksp     ! linear solver object
@@ -544,8 +544,8 @@ use timing, only: timer_start, timer_stop
     integer     :: ierr    ! error flag
     integer     :: i_eig=0 ! eigenvalue to extract
     integer     :: its     ! number of iterations to eigenvalue solve
-    real(8)     :: k_r     ! real part of eigenvalue
-    real(8)     :: k_i     ! imaginary part of eigenvalue
+    real(8)     :: keff    ! eigenvalue
+!   real(8)     :: k_i     ! imaginary part of eigenvalue
 
     ! initialize PETSc
     call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
@@ -554,7 +554,7 @@ use timing, only: timer_start, timer_stop
     message = "Initializing and building matrices..."
     call write_message(1)
     call timer_start(time_mat)
-    call init_data(M,F)
+    call init_data(M,F,phi)
     call init_solver(eps,st,ksp,pc)
 
     ! set up M loss matrix
@@ -580,11 +580,10 @@ use timing, only: timer_start, timer_stop
 
     ! extract run information
     call EPSGetIterationNumber(eps,its,ierr)
-    call EPSGetEigenpair(eps,i_eig,k_r,k_i,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,&
-  &                      ierr)
+    call EPSGetEigenpair(eps,i_eig,keff,PETSC_NULL,phi,PETSC_NULL_OBJECT,ierr)
 
     ! print output to user
-    print *, "Eigenvalue is: ",k_r
+    print *, "Eigenvalue is: ",keff
     print *, "Number of iterations: ",its
     print *, "Matrix building time (s): ",time_mat%elapsed
     print *, "Eigenvalue solution time (s): ",time_eigen%elapsed
@@ -595,10 +594,10 @@ use timing, only: timer_start, timer_stop
     ! output answers
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'fluxvec.bin',FILE_MODE_WRITE, &
                                viewer,ierr)
-    ! call VecView(phi_n,viewer,ierr)
+    call VecView(phi,viewer,ierr)
 
     ! destroy all PETSc objects
-    call destroy_data(M,F,eps,viewer)
+    call destroy_data(M,F,phi,eps,viewer)
 
     ! finalize SLEPc 
     call SlepcFinalize(ierr)
@@ -609,13 +608,14 @@ use timing, only: timer_start, timer_stop
 ! INIT_DATA allocates matrices vectors for CMFD solution
 !===============================================================================
 
-  subroutine init_data(M,F)
+  subroutine init_data(M,F,phi)
 
 #include <finclude/petsc.h90>
 
     ! arguments
     Mat         :: M          ! loss matrix
     Mat         :: F          ! production matrix
+    Vec         :: phi        ! eigenvector
 
     ! local variables
     integer             :: n           ! dimensions of matrix
@@ -657,6 +657,11 @@ use timing, only: timer_start, timer_stop
     call MatSetOption(F,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
     call MatSetOption(F,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
     call MatSetOption(F,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
+
+    ! set up eigenvector
+    call VecCreate(PETSC_COMM_SELF,phi,ierr)
+    call VecSetSizes(phi,PETSC_DECIDE,n,ierr)
+    call VecSetFromOptions(phi,ierr)
 
   end subroutine init_data 
 
@@ -714,7 +719,7 @@ use timing, only: timer_start, timer_stop
 ! DESTROY_DATA deletes all PETSc and SLEPc objects
 !===============================================================================
 
-  subroutine destroy_data(M,F,eps,viewer) 
+  subroutine destroy_data(M,F,phi,eps,viewer) 
 
 #include <finclude/petsc.h90>
 #include <finclude/slepcsys.h>
@@ -722,6 +727,7 @@ use timing, only: timer_start, timer_stop
 
     Mat         :: M       ! loss matrix
     Mat         :: F       ! production matrix
+    Vec         :: phi     ! eigenvector
     EPS         :: eps     ! slepc eigenvalue object
     PetscViewer :: viewer  ! viewer for answer
 
@@ -730,6 +736,7 @@ use timing, only: timer_start, timer_stop
     ! destroy all
     call PetscViewerDestroy(viewer,ierr)
     call EPSDestroy(eps,ierr)
+    call VecDestroy(phi,ierr)
     call MatDestroy(M,ierr)
     call MatDestroy(F,ierr)    
 

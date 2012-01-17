@@ -932,6 +932,13 @@ contains
 
         XLOOP: do i = 1,nx
 
+          ! check for non accelerated region
+          if (allocated(cmfd%coremap)) then
+            if (cmfd%coremap(i,j,k) == 99999) then
+              cycle
+            end if
+          end if
+
           ! calculate all coordinates
           x_m = dble(i - 1)*m%width(1) + m%origin(1)
           x_p = dble(i)*m%width(1) + m%origin(1)

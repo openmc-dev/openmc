@@ -19,6 +19,10 @@ program main
   use mpi
 #endif
 
+#ifdef HDF5
+  use hdf5_interface,  only: write_hdf5_summary, close_hdf5_output
+#endif
+
   implicit none
 
   ! start timer for total run time
@@ -44,6 +48,13 @@ program main
 
   ! deallocate arrays
   call free_memory()
+
+#ifdef HDF5
+  if (master) then
+     call write_hdf5_summary()
+     call close_hdf5_output()
+  end if
+#endif
 
 #ifdef MPI
   ! If MPI is in use and enabled, terminate it

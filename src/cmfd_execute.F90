@@ -531,21 +531,20 @@ use timing, only: timer_start, timer_stop
 #include <finclude/slepcsys.h>
 #include <finclude/slepceps.h>
 
-    Mat         :: M       ! loss matrix
-    Mat         :: F       ! production matrix
-    Vec         :: phi     ! eigenvector
-!   Vec         :: phi_i   ! imaginary part of eigenvector
-    EPS         :: eps     ! slepc eigenvalue object
-    ST          :: st      ! slepc spectral trans object
-    KSP         :: ksp     ! linear solver object
-    PC          :: pc      ! preconditioner object
-    PetscViewer :: viewer  ! viewer for eigenvector
+    Mat         :: M                 ! loss matrix
+    Mat         :: F                 ! production matrix
+    Vec         :: phi               ! eigenvector
+    EPS         :: eps               ! slepc eigenvalue object
+    ST          :: st                ! slepc spectral trans object
+    KSP         :: ksp               ! linear solver object
+    PC          :: pc                ! preconditioner object
+    PetscViewer :: viewer            ! viewer for eigenvector
+    PetscScalar, pointer :: phi_v(:) ! pointer to eigenvector info
 
     integer     :: ierr    ! error flag
     integer     :: i_eig=0 ! eigenvalue to extract
     integer     :: its     ! number of iterations to eigenvalue solve
     real(8)     :: keff    ! eigenvalue
-!   real(8)     :: k_i     ! imaginary part of eigenvalue
 
     ! initialize PETSc
     call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
@@ -588,6 +587,11 @@ use timing, only: timer_start, timer_stop
     print *, "Matrix building time (s): ",time_mat%elapsed
     print *, "Eigenvalue solution time (s): ",time_eigen%elapsed
 
+    ! convert petsc phi object to cmfd obj
+    call VecGetArrayF90(phi,phi_v,ierr)
+    cmfd%phi = phi_v
+    call VecRestoreArrayF90(phi,phi_v,ierr)
+    
     ! compute source pdf and record in cmfd object
     ! call source_pdf(S_n)
 
@@ -662,6 +666,9 @@ use timing, only: timer_start, timer_stop
     call VecCreate(PETSC_COMM_SELF,phi,ierr)
     call VecSetSizes(phi,PETSC_DECIDE,n,ierr)
     call VecSetFromOptions(phi,ierr)
+
+    ! also allocate in cmfd object
+    if (.not. allocated(cmfd%phi)) allocate(cmfd%phi(n))
 
   end subroutine init_data 
 

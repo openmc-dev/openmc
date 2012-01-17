@@ -1,12 +1,12 @@
 module finalize
 
   use global
-  use output, only: print_runtime
-  use tally,  only: write_tallies, tally_statistics
-  use timing, only: timer_stop
+  use output,         only: print_runtime
+  use tally,          only: write_tallies, tally_statistics
+  use timing,         only: timer_stop
 
 #ifdef HDF5
-  use hdf5_interface,  only: write_hdf5_summary, close_hdf5_output
+  use hdf5_interface, only: hdf5_write_timing, hdf5_close_output
 #endif
 
   implicit none
@@ -31,8 +31,8 @@ contains
 
 #ifdef HDF5
     if (master) then
-       call write_hdf5_summary()
-       call close_hdf5_output()
+       call hdf5_write_timing()
+       call hdf5_close_output()
     end if
 #endif
 

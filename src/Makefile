@@ -28,12 +28,12 @@ USE_HDF5 = no
 
 ifeq ($(COMPILER),gnu)
   F90 = gfortran
-  F90FLAGS := -cpp -Wall -fbacktrace
+  F90FLAGS := -cpp -fbacktrace
   LDFLAGS =
 
   # Debugging
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -pedantic -std=f2008 -fbounds-check \
+    F90FLAGS += -g -Wall -pedantic -std=f2008 -fbounds-check \
                 -ffpe-trap=invalid,zero,overflow,underflow
     LDFLAGS  += -g
   endif

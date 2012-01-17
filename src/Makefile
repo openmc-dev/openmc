@@ -15,51 +15,25 @@ include OBJECTS
 # User Options
 #===============================================================================
 
-COMPILER    = intel
-DEBUG       = no
-PROFILE     = no
-OPTIMIZE    = no
-USE_MPI     = no
-
-#===============================================================================
-# Intel Fortran compiler options
-#===============================================================================
-
-ifeq ($(COMPILER),intel)
-  F90 = ifort
-  F90FLAGS := -fpp -warn -assume byterecl
-  LDFLAGS =
-
-  # Debugging
-  ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -traceback -ftrapuv -fp-stack-check -check all -fpe0
-    LDFLAGS  += -g
-  endif
-
-  # Profiling
-  ifeq ($(PROFILE),yes)
-    F90FLAGS += -pg
-    LDFLAGS  += -pg
-  endif
-
-  # Optimization
-  ifeq ($(OPTIMIZE),yes)
-    F90FLAGS += -O3 -ipo
-  endif
-endif
+COMPILER = gnu
+DEBUG    = no
+PROFILE  = no
+OPTIMIZE = no
+USE_MPI  = no
+USE_HDF5 = no
 
 #===============================================================================
 # GNU Fortran compiler options
 #===============================================================================
 
-ifeq ($(COMPILER),gfortran)
+ifeq ($(COMPILER),gnu)
   F90 = gfortran
-  F90FLAGS := -cpp -Wall
+  F90FLAGS := -cpp -Wall -fbacktrace
   LDFLAGS =
 
   # Debugging
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -pedantic -std=f2008 -fbacktrace -fbounds-check \
+    F90FLAGS += -g -pedantic -std=f2008 -fbounds-check \
                 -ffpe-trap=invalid,zero,overflow,underflow
     LDFLAGS  += -g
   endif
@@ -77,17 +51,44 @@ ifeq ($(COMPILER),gfortran)
 endif
 
 #===============================================================================
+# Intel Fortran compiler options
+#===============================================================================
+
+ifeq ($(COMPILER),intel)
+  F90 = ifort
+  F90FLAGS := -cpp -warn -assume byterecl -traceback
+  LDFLAGS =
+
+  # Debugging
+  ifeq ($(DEBUG),yes)
+    F90FLAGS += -g -ftrapuv -fp-stack-check -check all -fpe0
+    LDFLAGS  += -g
+  endif
+
+  # Profiling
+  ifeq ($(PROFILE),yes)
+    F90FLAGS += -pg
+    LDFLAGS  += -pg
+  endif
+
+  # Optimization
+  ifeq ($(OPTIMIZE),yes)
+    F90FLAGS += -O3 -ipo
+  endif
+endif
+
+#===============================================================================
 # PGI compiler options
 #===============================================================================
 
 ifeq ($(COMPILER),pgi)
   F90 = pgf90
-  F90FLAGS := -Mpreprocess -DNO_F2008 -Minform=inform
+  F90FLAGS := -Mpreprocess -DNO_F2008 -Minform=inform -traceback
   LDFLAGS =
 
   # Debugging
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -Mbounds -Mchkptr -Mchkstk -traceback
+    F90FLAGS += -g -Mbounds -Mchkptr -Mchkstk
     LDFLAGS  += -g
   endif
 
@@ -151,10 +152,21 @@ endif
 # Use MPI for parallelism
 
 ifeq ($(USE_MPI),yes)
-  MPI = /opt/mpich2/1.4.1-intel
+  MPI_ROOT = /opt/mpich2/1.4.1-$(COMPILER)
   F90 = $(MPI)/bin/mpif90
   F90FLAGS += -DMPI
 endif
+
+# Use HDF5 for output
+
+ifeq ($(USE_HDF5),yes)
+  HDF5_ROOT = /opt/hdf5/1.8.8-$(COMPILER)
+  F90FLAGS += -DHDF5 -I${HDF5_ROOT}/include
+  LDFLAGS += -L${HDF5_ROOT}/lib ${HDF5_ROOT}/lib/libhdf5hl_fortran.a \
+             ${HDF5_ROOT}/lib/libhdf5_hl.a ${HDF5_ROOT}/lib/libhdf5_fortran.a \
+             ${HDF5_ROOT}/lib/libhdf5.a -lz -lrt -lm -Wl,-rpath -Wl,${HDF5_ROOT}/lib
+endif
+
 
 #===============================================================================
 # Options for IBM Blue Gene/P ANL supercomputer
@@ -166,7 +178,7 @@ ifeq ($(MACHINE),bluegene)
 endif
 
 #===============================================================================
-# Options for Cray XK6 ORNL Jaguar supercomputer
+# Options for Cray XK6 ORNL Titan supercomputer
 #===============================================================================
 
 ifeq ($(MACHINE),crayxk6)
@@ -200,7 +212,7 @@ neat:
 .PHONY: all xml-fortran clean neat distclean 
 
 %.o: %.F90
-	$(F90) -Ixml-fortran -Ixml-fortran/templates $(F90FLAGS) -c $<
+	$(F90) $(F90FLAGS) -Ixml-fortran -Ixml-fortran/templates -c $<
 
 #===============================================================================
 # Dependencies

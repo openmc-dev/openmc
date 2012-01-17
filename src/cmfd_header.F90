@@ -50,6 +50,9 @@ module cmfd_header
     integer, allocatable :: coremap(:,:,:)
     integer :: mat_dim
 
+    ! eigenvector from cmfd run
+    real(8), allocatable :: phi(:)
+
   end type cmfd_obj
 
 end module cmfd_header

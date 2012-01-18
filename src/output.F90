@@ -261,7 +261,7 @@ contains
     ! Print surface
     if (p % surface /= NONE) then
        s => surfaces(p % surface)
-       write(ou,*) '    Surface = ' // to_str(s % id)
+       write(ou,*) '  Surface = ' // to_str(s % id)
     end if
 
     write(ou,*) '  Weight = ' // to_str(p % wgt)

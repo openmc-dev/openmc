@@ -79,7 +79,11 @@ contains
        call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)
 
        ! Sample a distance to collision
-       d_collision = -log(prn()) / material_xs % total
+       if (material_xs % total == ZERO) then
+          d_collision = INFINITY
+       else
+          d_collision = -log(prn()) / material_xs % total
+       end if
        
        ! Select smaller of the two distances
        distance = min(d_boundary, d_collision)

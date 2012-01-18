@@ -851,10 +851,12 @@ contains
 
           ! Check is calculated distance is new minimum
           if (d < dist) then
-             dist = d
-             surface_crossed = -cl % surfaces(i)
-             lattice_crossed = NONE
-             final_coord => coord
+             if (abs(d - dist)/dist >= FP_PRECISION) then
+                dist = d
+                surface_crossed = -cl % surfaces(i)
+                lattice_crossed = NONE
+                final_coord => coord
+             end if
           end if
 
        end do SURFACE_LOOP

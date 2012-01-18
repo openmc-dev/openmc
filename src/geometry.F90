@@ -149,7 +149,6 @@ contains
              ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
              ! Create new level of coordinates
-             p % in_lower_universe = .true.
              allocate(p % coord % next)
 
              ! Move particle to next level and set universe
@@ -187,7 +186,6 @@ contains
              else
 
                 ! Create new level of coordinates
-                p % in_lower_universe = .true.
                 allocate(p % coord % next)
              
                 ! adjust local position of particle
@@ -284,7 +282,7 @@ contains
        ! PARTICLE REFLECTS FROM SURFACE
 
        ! Do not handle reflective boundary conditions on lower universes
-       if (p % in_lower_universe) then
+       if (.not. associated(p % coord, p % coord0)) then
           message = "Cannot reflect particle " // trim(to_str(p % id)) // &
                " off surface in a lower universe."
           call fatal_error()

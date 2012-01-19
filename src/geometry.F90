@@ -386,6 +386,19 @@ contains
        p % coord0 % cell = last_cell
        p % surface = -p % surface
 
+       ! If a reflective surface is coincident with a lattice or universe
+       ! boundary, it is necessary to redetermine the particle's coordinates in
+       ! the lower universes.
+
+       if (associated(p % coord0 % next)) then
+          call deallocate_coord(p % coord0 % next)
+          call find_cell(p, found)
+          if (.not. found) then
+             message = "Couldn't find particle after reflecting from surface."
+             call fatal_error()
+          end if
+       end if
+
        ! Set previous coordinate going slightly past surface crossing
        p % last_xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
 
@@ -847,7 +860,7 @@ contains
 
           ! Check is calculated distance is new minimum
           if (d < dist) then
-             if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+             if (abs(d - dist)/dist >= FP_PRECISION) then
                 dist = d
                 surface_crossed = -cl % surfaces(i)
                 lattice_crossed = NONE

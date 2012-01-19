@@ -847,7 +847,7 @@ contains
 
           ! Check is calculated distance is new minimum
           if (d < dist) then
-             if (abs(d - dist)/dist >= FP_PRECISION) then
+             if (abs(d - dist)/dist >= FP_REL_PRECISION) then
                 dist = d
                 surface_crossed = -cl % surfaces(i)
                 lattice_crossed = NONE
@@ -869,16 +869,16 @@ contains
              z = coord % xyz(3)
 
              ! determine oncoming edge
-             x0 = lat % width_x * 0.5_8
-             y0 = lat % width_y * 0.5_8
+             x0 = sign(lat % width_x * 0.5_8, u)
+             y0 = sign(lat % width_y * 0.5_8, v)
 
              ! left and right sides
-             if (u == ZERO) then
+             if (abs(x - x0) < FP_PRECISION) then
                 d = INFINITY
-             elseif (u > 0) then
-                d = (x0 - x)/u
+             elseif (u == ZERO) then
+                d = INFINITY
              else
-                d = -(x + x0)/u
+                d = (x0 - x)/u
              end if
 
              ! If the lattice boundary is coincident with the parent cell boundary,
@@ -889,7 +889,7 @@ contains
              ! point precision.
 
              if (d < dist) then 
-                if (abs(d - dist)/dist >= FP_PRECISION) then
+                if (abs(d - dist)/dist >= FP_REL_PRECISION) then
                    dist = d
                    if (u > 0) then
                       lattice_crossed = LATTICE_RIGHT
@@ -901,16 +901,16 @@ contains
              end if
 
              ! top and bottom sides
-             if (v == ZERO) then
+             if (abs(y - y0) < FP_PRECISION) then
                 d = INFINITY
-             elseif (v > 0) then
-                d = (y0 - y)/v
+             elseif (v == ZERO) then
+                d = INFINITY
              else
-                d = -(y + y0)/v
+                d = (y0 - y)/v
              end if
 
              if (d < dist) then
-                if (abs(d - dist)/dist >= FP_PRECISION) then
+                if (abs(d - dist)/dist >= FP_REL_PRECISION) then
                    dist = d
                    if (v > 0) then
                       lattice_crossed = LATTICE_TOP

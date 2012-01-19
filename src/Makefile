@@ -16,7 +16,7 @@ include OBJECTS
 #===============================================================================
 
 COMPILER    = petsc
-DEBUG       = no 
+DEBUG       = yes
 PROFILE     = no
 OPTIMIZE    = no
 USE_MPI     = no
@@ -80,8 +80,8 @@ endif
 # use petsc compiler
 ifeq ($(COMPILER),petsc)
   F90 = ${FLINKER}
-  F90FLAGS := -cpp -ffree-form -I${PETSC_DIR}/include -I${SLEPC_DIR}/include \
-              -ffpe-trap=invalid,zero,overflow,underflow
+  F90FLAGS := -cpp -ffree-form -I${PETSC_DIR}/include -I${SLEPC_DIR}/include
+              -ffpe-trap=invalid,overflow,underflow
 # include ${PETSC_DIR}/conf/variables
 #  include ${PETSC_DIR}/conf/rules
   include ${SLEPC_DIR}/conf/slepc_common

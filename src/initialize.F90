@@ -25,6 +25,10 @@ module initialize
   use mpi
 #endif
 
+#ifdef HDF5
+  use hdf5_interface,   only: hdf5_open_output, hdf5_write_summary
+#endif
+
   implicit none
 
   type(DictionaryII), pointer :: build_dict => null()
@@ -42,7 +46,8 @@ contains
 
     type(Universe), pointer :: univ
 
-    ! Start initialization timer
+    ! Start total and initialization timer
+    call timer_start(time_total)
     call timer_start(time_initialize)
 
     ! Setup MPI
@@ -50,13 +55,21 @@ contains
 
     ! Read command line arguments
     call read_command_line()
-    if (master) call create_summary_file()
 
-    ! Print the OpenMC title and version/date/time information
-    if (master) call title()
+    if (master) then
+       ! Create summary.out file
+       call create_summary_file()
 
-    ! Print initialization header block
-    if (master) call header("INITIALIZATION", level=1)
+#ifdef HDF5
+       ! Open HDF5 output file for writing
+       call hdf5_open_output()
+       call hdf5_write_summary()
+#endif
+
+       ! Display title and initialization header
+       call title()
+       call header("INITIALIZATION", level=1)
+    end if
 
     ! Initialize random number generator
     call initialize_prng()

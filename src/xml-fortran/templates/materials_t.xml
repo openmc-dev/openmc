@@ -8,7 +8,7 @@
   <!-- Type for specifying density of a material -->
 
   <typedef name="density_xml">
-    <component name="value" type="double" />
+    <component name="value" type="double" default="0.0" />
     <component name="units" type="word" length="10" default="'atom/b-cm'" />
   </typedef>
 

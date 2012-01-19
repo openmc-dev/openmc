@@ -2,14 +2,14 @@ module input_xml
 
   use cmfd_utils,      only: read_cmfd_xml 
   use constants
-  use datatypes,       only: dict_create, dict_add_key, dict_has_key,          &
+  use datatypes,       only: dict_create, dict_add_key, dict_has_key, &
                              dict_get_key
   use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Surface, Lattice
   use global
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message
-  use string,          only: lower_case, to_str, str_to_int, str_to_real,  &
+  use string,          only: lower_case, to_str, str_to_int, str_to_real, &
                              split_string, starts_with, ends_with
   use tally_header,    only: TallyObject
 
@@ -130,6 +130,9 @@ contains
 
     ! Survival biasing
     if (trim(survival_) == 'on') survival_biasing = .true.
+
+    ! Probability tables
+    if (ptables_ == 'off') urr_ptables_on = .false.
 
     ! Cutoffs
     if (size(cutoff_) > 0) then
@@ -495,7 +498,13 @@ contains
        ! Copy density -- the default value for the units is given in the
        ! material_t.xml file and doesn't need to be specified here, hence case
        ! default results in an error.
-       val   = material_(i) % density % value
+       val = material_(i) % density % value
+       if (val <= ZERO) then
+          message = "Need to specify a positive density on material " // &
+               trim(to_str(m % id)) // "."
+          call fatal_error()
+       end if
+
        units = material_(i) % density % units
        call lower_case(units)
        select case(trim(units))
@@ -1025,8 +1034,15 @@ contains
     ! Parse cross_sections.xml file
     call read_xml_file_cross_sections_t(path_cross_sections)
 
-    ! Copy directory information if present
-    directory = trim(directory_)
+    if (len_trim(directory_) > 0) then
+       ! Copy directory information if present
+       directory = trim(directory_)
+    else
+       ! If no directory is listed in cross_sections.xml, by default select the
+       ! directory in which the cross_sections.xml file resides
+       i = index(path_cross_sections, "/", BACK=.true.)
+       directory = path_cross_sections(1:i)
+    end if
 
     ! determine whether binary/ascii
     if (filetype_ == 'ascii') then

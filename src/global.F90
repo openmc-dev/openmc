@@ -18,6 +18,10 @@ module global
   use mpi
 #endif
 
+#ifdef HDF5
+  use hdf5
+#endif
+
   implicit none
   save
 
@@ -163,6 +167,13 @@ module global
   real(8) :: plot_width(2)
   real(8) :: plot_basis(6)
   real(8) :: pixel
+
+  ! ============================================================================
+  ! HDF5 VARIABLES
+
+#ifdef HDF5
+  integer(HID_T) :: hdf5_output_file
+#endif
 
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES

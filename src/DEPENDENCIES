@@ -54,6 +54,12 @@ energy_grid.o: datatypes_header.o
 energy_grid.o: global.o
 energy_grid.o: output.o
 
+finalize.o: global.o
+finalize.o: hdf5_interface.o
+finalize.o: output.o
+finalize.o: tally.o
+finalize.o: timing.o
+
 fission.o: ace_header.o
 fission.o: constants.o
 fission.o: error.o
@@ -84,6 +90,9 @@ global.o: source_header.o
 global.o: tally_header.o
 global.o: timing.o
 
+hdf5_interface.o: constants.o
+hdf5_interface.o: global.o
+
 initialize.o: ace.o
 initialize.o: bank_header.o
 initialize.o: constants.o
@@ -94,6 +103,7 @@ initialize.o: error.o
 initialize.o: geometry.o
 initialize.o: geometry_header.o
 initialize.o: global.o
+initialize.o: hdf5_interface.o
 initialize.o: input_xml.o
 initialize.o: output.o
 initialize.o: random_lcg.o

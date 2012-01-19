@@ -1032,8 +1032,15 @@ contains
     ! Parse cross_sections.xml file
     call read_xml_file_cross_sections_t(path_cross_sections)
 
-    ! Copy directory information if present
-    directory = trim(directory_)
+    if (len_trim(directory_) > 0) then
+       ! Copy directory information if present
+       directory = trim(directory_)
+    else
+       ! If no directory is listed in cross_sections.xml, by default select the
+       ! directory in which the cross_sections.xml file resides
+       i = index(path_cross_sections, "/", BACK=.true.)
+       directory = path_cross_sections(1:i)
+    end if
 
     ! determine whether binary/ascii
     if (filetype_ == 'ascii') then

@@ -67,6 +67,9 @@ program main
        call run_problem()
     end if
 
+    ! run diffusion
+    call execute_cmfd()
+
     ! finalize run
     call finalize_run()
 

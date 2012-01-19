@@ -39,7 +39,6 @@ module particle_header
      integer    :: type          ! Particle type (n, p, e, etc)
 
      ! Particle coordinates
-     logical :: in_lower_universe                  ! is particle in lower universe?
      type(LocalCoord), pointer :: coord0 => null() ! coordinates on universe 0
      type(LocalCoord), pointer :: coord  => null() ! coordinates on lowest universe
 
@@ -107,7 +106,6 @@ contains
     allocate(p % coord0)
     p % coord0 % universe = BASE_UNIVERSE
     p % coord             => p % coord0
-    p % in_lower_universe = .false.
 
   end subroutine initialize_particle
 

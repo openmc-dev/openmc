@@ -4,17 +4,17 @@ program main
   use cmfd_utils,      only: read_hdf5
   use constants
   use global
+  use finalize,        only: finalize_run
   use initialize,      only: initialize_run
   use intercycle,      only: shannon_entropy, calculate_keff, synchronize_bank
-  use output,          only: write_message, header, print_runtime
+  use output,          only: write_message, header
   use particle_header, only: Particle
   use plot,            only: run_plot
   use physics,         only: transport
   use random_lcg,      only: set_particle_seed
   use source,          only: get_source_particle
   use string,          only: to_str
-  use tally,           only: synchronize_tallies, write_tallies, &
-                             tally_statistics
+  use tally,           only: synchronize_tallies 
   use timing,          only: timer_start, timer_stop
 
 #ifdef MPI
@@ -23,6 +23,7 @@ program main
 
   implicit none
 
+<<<<<<< HEAD
   integer           :: nargs    ! number of arguments
   character(len=32) :: arg      ! the argument
 
@@ -57,32 +58,18 @@ program main
 
   case default
 
-    ! start timer for total run time
-    call timer_start(time_total)
-
     ! set up problem
     call initialize_run()
 
     ! start problem
     if (plotting) then
-      call run_plot()
+       call run_plot()
     else
-      call run_problem()
-
-      ! Calculate statistics for tallies and write to tallies.out
-      call tally_statistics()
-      if (master) call write_tallies()
-
-      ! show timing statistics
-      call timer_stop(time_total)
-      if (master) call print_runtime()
+       call run_problem()
     end if
 
-    ! call cmfd calculation
-    call execute_cmfd()
-
-    ! deallocate arrays
-    call free_memory()
+    ! finalize run
+    call finalize_run()
 
   end select
 

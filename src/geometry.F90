@@ -149,7 +149,6 @@ contains
              ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
              ! Create new level of coordinates
-             p % in_lower_universe = .true.
              allocate(p % coord % next)
 
              ! Move particle to next level and set universe
@@ -187,7 +186,6 @@ contains
              else
 
                 ! Create new level of coordinates
-                p % in_lower_universe = .true.
                 allocate(p % coord % next)
              
                 ! adjust local position of particle
@@ -284,7 +282,7 @@ contains
        ! PARTICLE REFLECTS FROM SURFACE
 
        ! Do not handle reflective boundary conditions on lower universes
-       if (p % in_lower_universe) then
+       if (.not. associated(p % coord, p % coord0)) then
           message = "Cannot reflect particle " // trim(to_str(p % id)) // &
                " off surface in a lower universe."
           call fatal_error()
@@ -307,11 +305,14 @@ contains
 
        select case (surf%type)
        case (SURF_PX)
-          p % coord0 % uvw = (/ -u, v, w /)
+          u = -u
+
        case (SURF_PY)
-          p % coord0 % uvw = (/ u, -v, w /)
+          v = -v
+
        case (SURF_PZ)
-          p % coord0 % uvw = (/ u, v, -w /)
+          w = -w
+
        case (SURF_PLANE)
           ! Find surface coefficients and norm of vector normal to surface
           n1 = surf % coeffs(1)
@@ -325,8 +326,6 @@ contains
           v = v - 2*dot_prod*n2/norm
           w = w - 2*dot_prod*n3/norm
 
-          ! Set vector
-          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_CYL_X)
           ! Find y-y0, z-z0 and dot product of direction and surface normal
           y = p % coord0 % xyz(2) - surf % coeffs(1)
@@ -338,8 +337,6 @@ contains
           v = v - 2*dot_prod*y/(R*R)
           w = w - 2*dot_prod*z/(R*R)
 
-          ! Set vector
-          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_CYL_Y)
           ! Find x-x0, z-z0 and dot product of direction and surface normal
           x = p % coord0 % xyz(1) - surf % coeffs(1)
@@ -351,8 +348,6 @@ contains
           u = u - 2*dot_prod*x/(R*R)
           w = w - 2*dot_prod*z/(R*R)
 
-          ! Set vector
-          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_CYL_Z)
           ! Find x-x0, y-y0 and dot product of direction and surface normal
           x = p % coord0 % xyz(1) - surf % coeffs(1)
@@ -364,8 +359,6 @@ contains
           u = u - 2*dot_prod*x/(R*R)
           v = v - 2*dot_prod*y/(R*R)
 
-          ! Set vector
-          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_SPHERE)
           ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
           ! normal
@@ -380,17 +373,31 @@ contains
           v = v - 2*dot_prod*y/(R*R)
           w = w - 2*dot_prod*z/(R*R)
 
-          ! Set vector
-          p % coord0 % uvw = (/ u, v, w /)
        case default
           message = "Reflection not supported for surface " // &
                trim(to_str(surf % id))
           call fatal_error()
        end select
 
+       ! Set new particle direction
+       p % coord0 % uvw = (/ u, v, w /)
+
        ! Reassign particle's cell and surface
        p % coord0 % cell = last_cell
        p % surface = -p % surface
+
+       ! If a reflective surface is coincident with a lattice or universe
+       ! boundary, it is necessary to redetermine the particle's coordinates in
+       ! the lower universes.
+
+       if (associated(p % coord0 % next)) then
+          call deallocate_coord(p % coord0 % next)
+          call find_cell(p, found)
+          if (.not. found) then
+             message = "Couldn't find particle after reflecting from surface."
+             call fatal_error()
+          end if
+       end if
 
        ! Set previous coordinate going slightly past surface crossing
        p % last_xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
@@ -495,29 +502,7 @@ contains
     ! Check to make sure still in lattice
     i_x = p % coord % lattice_x
     i_y = p % coord % lattice_y
-    if (i_x < 1 .or. i_x > lat % n_x) then
-       message = "Particle " // trim(to_str(p % id)) // " reached edge of &
-            &lattice " // trim(to_str(lat % id)) // " at position (" // &
-            trim(to_str(i_x)) // "," // trim(to_str(i_y)) // ")."
-       call fatal_error()
-    elseif (i_y < 1 .or. i_y > lat % n_y) then
-       message = "Particle " // trim(to_str(p % id)) // " reached edge of &
-            &lattice " // trim(to_str(lat % id)) // " at position (" // &
-            trim(to_str(i_x)) // "," // trim(to_str(i_y)) // ")."
-       call fatal_error()
-    end if
-
-    ! Find universe for next lattice element
-    p % coord % universe = lat % element(i_x, i_y)
-
-    ! Find cell in next lattice element
-    call find_cell(p, found)
-    if (.not. found) then
-       ! In some circumstances, a particle crossing the corner of a cell may not
-       ! be able to be found in the next universe. In this scenario we cut off
-       ! all lower-level coordinates and search from universe zero
-       
-       ! Remove lower coordinates
+    if (i_x < 1 .or. i_x > lat % n_x .or. i_y < 1 .or. i_y > lat % n_y) then
        call deallocate_coord(p % coord0 % next)
        p % coord => p % coord0
 
@@ -527,6 +512,29 @@ contains
           message = "Could not locate particle " // trim(to_str(p % id)) // &
                " after crossing a lattice boundary."
           call fatal_error()
+       end if
+    else
+       ! Find universe for next lattice element
+       p % coord % universe = lat % element(i_x, i_y)
+
+       ! Find cell in next lattice element
+       call find_cell(p, found)
+       if (.not. found) then
+          ! In some circumstances, a particle crossing the corner of a cell may not
+          ! be able to be found in the next universe. In this scenario we cut off
+          ! all lower-level coordinates and search from universe zero
+       
+          ! Remove lower coordinates
+          call deallocate_coord(p % coord0 % next)
+          p % coord => p % coord0
+
+          ! Search for particle
+          call find_cell(p, found)
+          if (.not. found) then
+             message = "Could not locate particle " // trim(to_str(p % id)) // &
+                  " after crossing a lattice boundary."
+             call fatal_error()
+          end if
        end if
     end if
 
@@ -852,10 +860,12 @@ contains
 
           ! Check is calculated distance is new minimum
           if (d < dist) then
-             dist = d
-             surface_crossed = -cl % surfaces(i)
-             lattice_crossed = NONE
-             final_coord => coord
+             if (abs(d - dist)/dist >= FP_PRECISION) then
+                dist = d
+                surface_crossed = -cl % surfaces(i)
+                lattice_crossed = NONE
+                final_coord => coord
+             end if
           end if
 
        end do SURFACE_LOOP
@@ -872,16 +882,16 @@ contains
              z = coord % xyz(3)
 
              ! determine oncoming edge
-             x0 = lat % width_x * 0.5_8
-             y0 = lat % width_y * 0.5_8
+             x0 = sign(lat % width_x * 0.5_8, u)
+             y0 = sign(lat % width_y * 0.5_8, v)
 
              ! left and right sides
-             if (u == ZERO) then
+             if (abs(x - x0) < FP_PRECISION) then
                 d = INFINITY
-             elseif (u > 0) then
-                d = (x0 - x)/u
+             elseif (u == ZERO) then
+                d = INFINITY
              else
-                d = -(x + x0)/u
+                d = (x0 - x)/u
              end if
 
              ! If the lattice boundary is coincident with the parent cell boundary,
@@ -892,7 +902,7 @@ contains
              ! point precision.
 
              if (d < dist) then 
-                if (abs(d - dist)/dist >= FP_PRECISION) then
+                if (abs(d - dist)/dist >= FP_REL_PRECISION) then
                    dist = d
                    if (u > 0) then
                       lattice_crossed = LATTICE_RIGHT
@@ -904,16 +914,16 @@ contains
              end if
 
              ! top and bottom sides
-             if (v == ZERO) then
+             if (abs(y - y0) < FP_PRECISION) then
                 d = INFINITY
-             elseif (v > 0) then
-                d = (y0 - y)/v
+             elseif (v == ZERO) then
+                d = INFINITY
              else
-                d = -(y + y0)/v
+                d = (y0 - y)/v
              end if
 
              if (d < dist) then
-                if (abs(d - dist)/dist >= FP_PRECISION) then
+                if (abs(d - dist)/dist >= FP_REL_PRECISION) then
                    dist = d
                    if (v > 0) then
                       lattice_crossed = LATTICE_TOP

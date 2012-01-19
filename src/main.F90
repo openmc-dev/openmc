@@ -23,7 +23,6 @@ program main
 
   implicit none
 
-<<<<<<< HEAD
   integer           :: nargs    ! number of arguments
   character(len=32) :: arg      ! the argument
 

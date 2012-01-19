@@ -305,11 +305,14 @@ contains
 
        select case (surf%type)
        case (SURF_PX)
-          p % coord0 % uvw = (/ -u, v, w /)
+          u = -u
+
        case (SURF_PY)
-          p % coord0 % uvw = (/ u, -v, w /)
+          v = -v
+
        case (SURF_PZ)
-          p % coord0 % uvw = (/ u, v, -w /)
+          w = -w
+
        case (SURF_PLANE)
           ! Find surface coefficients and norm of vector normal to surface
           n1 = surf % coeffs(1)
@@ -323,8 +326,6 @@ contains
           v = v - 2*dot_prod*n2/norm
           w = w - 2*dot_prod*n3/norm
 
-          ! Set vector
-          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_CYL_X)
           ! Find y-y0, z-z0 and dot product of direction and surface normal
           y = p % coord0 % xyz(2) - surf % coeffs(1)
@@ -336,8 +337,6 @@ contains
           v = v - 2*dot_prod*y/(R*R)
           w = w - 2*dot_prod*z/(R*R)
 
-          ! Set vector
-          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_CYL_Y)
           ! Find x-x0, z-z0 and dot product of direction and surface normal
           x = p % coord0 % xyz(1) - surf % coeffs(1)
@@ -349,8 +348,6 @@ contains
           u = u - 2*dot_prod*x/(R*R)
           w = w - 2*dot_prod*z/(R*R)
 
-          ! Set vector
-          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_CYL_Z)
           ! Find x-x0, y-y0 and dot product of direction and surface normal
           x = p % coord0 % xyz(1) - surf % coeffs(1)
@@ -362,8 +359,6 @@ contains
           u = u - 2*dot_prod*x/(R*R)
           v = v - 2*dot_prod*y/(R*R)
 
-          ! Set vector
-          p % coord0 % uvw = (/ u, v, w /)
        case (SURF_SPHERE)
           ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
           ! normal
@@ -378,13 +373,14 @@ contains
           v = v - 2*dot_prod*y/(R*R)
           w = w - 2*dot_prod*z/(R*R)
 
-          ! Set vector
-          p % coord0 % uvw = (/ u, v, w /)
        case default
           message = "Reflection not supported for surface " // &
                trim(to_str(surf % id))
           call fatal_error()
        end select
+
+       ! Set new particle direction
+       p % coord0 % uvw = (/ u, v, w /)
 
        ! Reassign particle's cell and surface
        p % coord0 % cell = last_cell

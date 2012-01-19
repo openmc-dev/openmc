@@ -45,6 +45,7 @@ contains
        ! Particle couldn't be located
        if (.not. found_cell) then
           message = "Could not locate particle " // trim(to_str(p % id))
+          print *, p % coord0 % xyz
           call fatal_error()
        end if
 

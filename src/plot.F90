@@ -170,7 +170,7 @@ contains
 
              ! Since boundary conditions are disabled in plotting mode, we need
              ! to manually add the last segment
-             if (surfaces(abs(surface_crossed)) % bc == BC_VACUUM) then
+             if (surfaces(abs(surface_crossed)) % bc /= BC_TRANSMIT) then
                 p % coord0 % xyz(1) = last_x_coord
                 write(UNIT=UNIT_PLOT) p % coord0 % xyz, 0
                 exit

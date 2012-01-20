@@ -596,7 +596,6 @@ contains
           lat => lattices(c % fill)
           do x = 1, lat % n_x
              do y = 1, lat % n_y
-                lat => lattices(cells(i_cell) % fill)
                 universe_num = lat % element(x,y)
                 if (.not. dict_has_key(build_dict, universe_num)) then
                    call dict_add_key(build_dict, universe_num, 0)

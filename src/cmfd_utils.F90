@@ -741,10 +741,9 @@ contains
   subroutine read_hdf5()
 
     use hdf5
+    use hdf5_interface, only: hdf5_open_output, hdf5_close_output
 
-    character(LEN=8), parameter :: filename = "cmfd.h5"  ! File name
-
-    integer(HID_T) :: file_id             ! File identifier
+!   integer(HID_T) :: file_id             ! File identifier
     integer(HID_T) :: dataset_id          ! Dataset identifier
     integer        :: error               ! Error flag
 
@@ -758,14 +757,11 @@ contains
     integer :: nz                ! number of mesh cells in z direction
     integer :: ng                ! number of energy groups
 
-    ! initialize the Fortran interface
-    call h5open_f(error)
-
-    ! open the restart file
-    call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,error)
+    ! open output file
+    call hdf5_open_output()
 
     ! read indices to cmfd object 
-    call h5dopen_f(file_id,"cmfd/indices",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/indices",dataset_id,error)
     dim1 = (/4/)
     call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%indices,dim1,error)
     call h5dclose_f(dataset_id,error)
@@ -780,88 +776,85 @@ contains
     call allocate_cmfd()
 
     ! read totalxs to cmfd object
-    call h5dopen_f(file_id,"cmfd/totalxs",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/totalxs",dataset_id,error)
     dim4 = (/ng,nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%totalxs,dim4,error)
     call h5dclose_f(dataset_id,error)
 
     ! read p1scattxs to cmfd object
-    call h5dopen_f(file_id,"cmfd/p1scattxs",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/p1scattxs",dataset_id,error)
     dim4 = (/ng,nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%p1scattxs,dim4,error)
     call h5dclose_f(dataset_id,error)
 
     ! read scattxs to cmfd object
-    call h5dopen_f(file_id,"cmfd/scattxs",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/scattxs",dataset_id,error)
     dim5 = (/ng,ng,nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%scattxs,dim5,error)
     call h5dclose_f(dataset_id,error)
 
     ! read scattxs to cmfd object
-    call h5dopen_f(file_id,"cmfd/nfissxs",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/nfissxs",dataset_id,error)
     dim5 = (/ng,ng,nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%nfissxs,dim5,error)
     call h5dclose_f(dataset_id,error)
 
     ! read diffcof to cmfd object
-    call h5dopen_f(file_id,"cmfd/diffcof",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/diffcof",dataset_id,error)
     dim4 = (/ng,nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%diffcof,dim4,error)
     call h5dclose_f(dataset_id,error)
 
     ! read current to cmfd object
-    call h5dopen_f(file_id,"cmfd/current",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/current",dataset_id,error)
     dim5 = (/12,ng,nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%current,dim5,error)
     call h5dclose_f(dataset_id,error)
 
     ! read flux to cmfd object
-    call h5dopen_f(file_id,"cmfd/flux",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/flux",dataset_id,error)
     dim4 = (/ng,nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%flux,dim4,error)
     call h5dclose_f(dataset_id,error)
 
     ! read dtilde to cmfd object
-    call h5dopen_f(file_id,"cmfd/dtilde",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/dtilde",dataset_id,error)
     dim5 = (/6,ng,nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%dtilde,dim5,error)
     call h5dclose_f(dataset_id,error)
 
     ! read dhat to cmfd object
-    call h5dopen_f(file_id,"cmfd/dhat",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/dhat",dataset_id,error)
     dim5 = (/6,ng,nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%dhat,dim5,error)
     call h5dclose_f(dataset_id,error)
 
     ! read albedo to cmfd object
-    call h5dopen_f(file_id,"cmfd/albedo",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/albedo",dataset_id,error)
     dim1 = (/6/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%albedo,dim1,error)
     call h5dclose_f(dataset_id,error)
 
     ! read hxyz to cmfd object
-    call h5dopen_f(file_id,"cmfd/hxyz",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/hxyz",dataset_id,error)
     dim4 = (/3,nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%hxyz,dim4,error)
     call h5dclose_f(dataset_id,error)
 
     ! read coremap to cmfd object
-    call h5dopen_f(file_id,"cmfd/coremap",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/coremap",dataset_id,error)
     dim3 = (/nx,ny,nz/)
     call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%coremap,dim3,error)
     call h5dclose_f(dataset_id,error)
 
     ! read mat_dim to cmfd object
-    call h5dopen_f(file_id,"cmfd/mat_dim",dataset_id,error)
+    call h5dopen_f(hdf5_output_file,"cmfd/mat_dim",dataset_id,error)
     dim1 = (/1/)
     call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%mat_dim,dim1,error)
     call h5dclose_f(dataset_id,error)
 
-    ! Close the file
-    call h5fclose_f(file_id,error)
-
-    ! Close the Fortran interface
-    call h5close_f(error)
+    ! close output file
+    call hdf5_close_output()
 
   end subroutine read_hdf5
 

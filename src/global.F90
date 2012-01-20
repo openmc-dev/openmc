@@ -237,6 +237,9 @@ contains
     if (allocated(fission_bank)) deallocate(fission_bank)
     if (allocated(source_bank)) deallocate(source_bank)
 
+    ! Deallocate cmfd
+    if (allocated(cmfd)) deallocate(cmfd)
+
   end subroutine free_memory
 
 end module global

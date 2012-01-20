@@ -251,8 +251,8 @@ contains
        end if
 
        ! Print local coordinates
-       write(ou,'(1X,A,3ES11.4)') '    xyz = ', coord % xyz
-       write(ou,'(1X,A,3ES11.4)') '    uvw = ', coord % uvw
+       write(ou,'(1X,A,3ES12.4)') '    xyz = ', coord % xyz
+       write(ou,'(1X,A,3ES12.4)') '    uvw = ', coord % uvw
 
        coord => coord % next
        i = i + 1

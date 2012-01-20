@@ -27,7 +27,7 @@ contains
 
     ! show timing statistics
     call timer_stop(time_total)
-    if (master) call print_runtime()
+    if (master .and. (.not. plotting)) call print_runtime()
 
 #ifdef HDF5
     if (master) then

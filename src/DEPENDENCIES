@@ -23,6 +23,7 @@ cmfd_execute.o: timing.o
 cmfd_utils.o: constants.o
 cmfd_utils.o: datatypes.o
 cmfd_utils.o: global.o
+cmfd_utils.o: hdf5_interface.o
 cmfd_utils.o: mesh.o
 cmfd_utils.o: mesh_header.o
 cmfd_utils.o: string.o

@@ -15,6 +15,23 @@ contains
 #ifdef HDF5
 
 !===============================================================================
+! HDF5_CREATE_OUTPUT
+!===============================================================================
+
+  subroutine hdf5_create_output()
+
+    character(9), parameter :: filename = "output.h5" ! File name
+    integer :: error  ! Error flag
+
+    ! Initialize FORTRAN interface.
+    call h5open_f (error)
+
+    ! Create a new file using default properties.
+    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, hdf5_output_file, error)
+
+  end subroutine hdf5_create_output
+
+!===============================================================================
 ! HDF5_OPEN_OUTPUT
 !===============================================================================
 
@@ -27,7 +44,7 @@ contains
     call h5open_f (error)
 
     ! Create a new file using default properties.
-    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, hdf5_output_file, error)
+    call h5fopen_f(filename, H5F_ACC_RDWR_F, hdf5_output_file, error)
 
   end subroutine hdf5_open_output
 

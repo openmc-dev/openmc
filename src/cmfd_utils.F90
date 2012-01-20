@@ -563,10 +563,10 @@ contains
 
     use hdf5 
 
-    character(LEN=7), parameter :: filename = "cmfd.h5"  ! File name
+!   character(LEN=7), parameter :: filename = "cmfd.h5"  ! File name
     character(LEN=4), parameter :: grpname = "cmfd"       ! Group name
 
-    integer(HID_T) :: file_id             ! File identifier
+!   integer(HID_T) :: file_id             ! File identifier
     integer(HID_T) :: group_id            ! Group identifier
     integer(HID_T) :: dataspace_id        ! Data space identifier
     integer(HID_T) :: dataset_id          ! Dataset identifier
@@ -589,18 +589,18 @@ contains
     ng = cmfd % indices(4)
 
     ! initialize FORTRAN interface.
-    call h5open_f(error)
+!   call h5open_f(error)
 
     ! create a new file using default properties.
-    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
+!   call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
 
     ! create the CMFD group
-    call h5gcreate_f(file_id, grpname, group_id, error)
+    call h5gcreate_f(hdf5_output_file, grpname, group_id, error)
 
     ! write indices from cmfd object
     dim1 = (/4/)
     call h5screate_simple_f(1,dim1,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/indices",H5T_NATIVE_INTEGER,dataspace_id,   &
+    call h5dcreate_f(hdf5_output_file,"cmfd/indices",H5T_NATIVE_INTEGER,dataspace_id,   &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%indices,dim1,error)
     call h5sclose_f(dataspace_id,error)
@@ -609,7 +609,7 @@ contains
     ! write totalxs from cmfd object
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/totalxs",H5T_NATIVE_DOUBLE,dataspace_id,    &
+    call h5dcreate_f(hdf5_output_file,"cmfd/totalxs",H5T_NATIVE_DOUBLE,dataspace_id,    &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%totalxs,dim4,error)
     call h5sclose_f(dataspace_id,error)
@@ -618,7 +618,7 @@ contains
     ! write p1scattxs from cmfd object
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/p1scattxs",H5T_NATIVE_DOUBLE,dataspace_id,  &
+    call h5dcreate_f(hdf5_output_file,"cmfd/p1scattxs",H5T_NATIVE_DOUBLE,dataspace_id,  &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%p1scattxs,dim4,error)
     call h5sclose_f(dataspace_id,error)
@@ -627,7 +627,7 @@ contains
     ! write scattxs from cmfd object
     dim5 = (/ng,ng,nx,ny,nz/)
     call h5screate_simple_f(5,dim5,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/scattxs",H5T_NATIVE_DOUBLE,dataspace_id,    &
+    call h5dcreate_f(hdf5_output_file,"cmfd/scattxs",H5T_NATIVE_DOUBLE,dataspace_id,    &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%scattxs,dim5,error)
     call h5sclose_f(dataspace_id,error)
@@ -636,7 +636,7 @@ contains
     ! write nfissxs from cmfd object
     dim5 = (/ng,ng,nx,ny,nz/)
     call h5screate_simple_f(5,dim5,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/nfissxs",H5T_NATIVE_DOUBLE,dataspace_id,    &
+    call h5dcreate_f(hdf5_output_file,"cmfd/nfissxs",H5T_NATIVE_DOUBLE,dataspace_id,    &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%nfissxs,dim5,error)
     call h5sclose_f(dataspace_id,error)
@@ -645,7 +645,7 @@ contains
     ! write diffcof from cmfd object
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/diffcof",H5T_NATIVE_DOUBLE,dataspace_id,    &
+    call h5dcreate_f(hdf5_output_file,"cmfd/diffcof",H5T_NATIVE_DOUBLE,dataspace_id,    &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%diffcof,dim4,error)
     call h5sclose_f(dataspace_id,error)
@@ -654,7 +654,7 @@ contains
     ! write current from cmfd object
     dim5 = (/12,ng,nx,ny,nz/)
     call h5screate_simple_f(5,dim5,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/current",H5T_NATIVE_DOUBLE,dataspace_id,    &
+    call h5dcreate_f(hdf5_output_file,"cmfd/current",H5T_NATIVE_DOUBLE,dataspace_id,    &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%current,dim5,error)
     call h5sclose_f(dataspace_id,error)
@@ -663,7 +663,7 @@ contains
     ! write flux from cmfd object
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/flux",H5T_NATIVE_DOUBLE,dataspace_id,       &
+    call h5dcreate_f(hdf5_output_file,"cmfd/flux",H5T_NATIVE_DOUBLE,dataspace_id,       &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%flux,dim4,error)
     call h5sclose_f(dataspace_id,error)
@@ -672,7 +672,7 @@ contains
     ! write dtilde from cmfd object
     dim5 = (/6,ng,nx,ny,nz/)
     call h5screate_simple_f(5,dim5,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/dtilde",H5T_NATIVE_DOUBLE,dataspace_id,     &
+    call h5dcreate_f(hdf5_output_file,"cmfd/dtilde",H5T_NATIVE_DOUBLE,dataspace_id,     &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%dtilde,dim5,error)
     call h5sclose_f(dataspace_id,error)
@@ -681,7 +681,7 @@ contains
     ! write dhat from cmfd object
     dim5 = (/6,ng,nx,ny,nz/)
     call h5screate_simple_f(5,dim5,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/dhat",H5T_NATIVE_DOUBLE,dataspace_id,       &
+    call h5dcreate_f(hdf5_output_file,"cmfd/dhat",H5T_NATIVE_DOUBLE,dataspace_id,       &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%dhat,dim5,error)
     call h5sclose_f(dataspace_id,error)
@@ -690,7 +690,7 @@ contains
     ! write albedo from cmfd object
     dim1 = (/6/)
     call h5screate_simple_f(1,dim1,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/albedo",H5T_NATIVE_DOUBLE,dataspace_id,     &
+    call h5dcreate_f(hdf5_output_file,"cmfd/albedo",H5T_NATIVE_DOUBLE,dataspace_id,     &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%albedo,dim1,error)
     call h5sclose_f(dataspace_id,error)
@@ -699,7 +699,7 @@ contains
     ! write hxyz from cmfd object
     dim4 = (/3,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/hxyz",H5T_NATIVE_DOUBLE,dataspace_id,       &
+    call h5dcreate_f(hdf5_output_file,"cmfd/hxyz",H5T_NATIVE_DOUBLE,dataspace_id,       &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%hxyz,dim4,error)
     call h5sclose_f(dataspace_id,error)
@@ -708,7 +708,7 @@ contains
     ! write coremap from cmfd object
     dim3 = (/nx,ny,nz/)
     call h5screate_simple_f(3,dim3,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/coremap",H5T_NATIVE_INTEGER,dataspace_id,   &
+    call h5dcreate_f(hdf5_output_file,"cmfd/coremap",H5T_NATIVE_INTEGER,dataspace_id,   &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%coremap,dim3,error)
     call h5sclose_f(dataspace_id,error)
@@ -717,7 +717,7 @@ contains
     ! write mat_dim from cmfd object
     dim1 = (/1/)
     call h5screate_simple_f(1,dim1,dataspace_id,error)
-    call h5dcreate_f(file_id,"cmfd/mat_dim",H5T_NATIVE_INTEGER,dataspace_id,   &
+    call h5dcreate_f(hdf5_output_file,"cmfd/mat_dim",H5T_NATIVE_INTEGER,dataspace_id,   &
    &                 dataset_id,error)
     call h5dwrite_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%mat_dim,dim1,error)
     call h5sclose_f(dataspace_id,error)
@@ -727,10 +727,10 @@ contains
     call h5gclose_f(group_id, error)
 
     ! terminate access to the file.
-    call h5fclose_f(file_id, error)
+!   call h5fclose_f(hdf5_output_file, error)
 
     ! close FORTRAN interface.
-    call h5close_f(error)
+!   call h5close_f(error)
 
   end subroutine write_hdf5
 

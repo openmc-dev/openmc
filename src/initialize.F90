@@ -313,27 +313,27 @@ contains
     ! We also need to allocate the cell count lists for each universe. The logic
     ! for this is a little more convoluted. In universe_dict, the (key,value)
     ! pairs are the id of the universe and the index in the array. In
-    ! ucount_dict, it's the id of the universe and the number of cells.
+    ! cells_in_univ_dict, it's the id of the universe and the number of cells.
 
     key_list => dict_keys(universe_dict)
     do while (associated(key_list))
        ! find index of universe in universes array
-       i_univ = key_list%data%value
+       i_univ = key_list % data % value
        univ => universes(i_univ)
-       univ % id = key_list%data%key
+       univ % id = key_list % data % key
 
        ! check for lowest level universe
        if (univ % id == 0) BASE_UNIVERSE = i_univ
        
        ! find cell count for this universe
-       n_cells_in_univ = dict_get_key(cells_in_univ_dict, key_list%data%key)
+       n_cells_in_univ = dict_get_key(cells_in_univ_dict, univ % id)
 
        ! allocate cell list for universe
        allocate(univ % cells(n_cells_in_univ))
        univ % n_cells = n_cells_in_univ
        
        ! move to next universe
-       key_list => key_list%next
+       key_list => key_list % next
     end do
 
     ! Also allocate a list for keeping track of where cells have been assigned

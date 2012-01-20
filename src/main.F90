@@ -52,6 +52,9 @@ program main
     ! run diffusion
     call cmfd_solver()
 
+    ! deallocate arrays
+    call free_memory()
+
     ! terminate code
     stop
 

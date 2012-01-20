@@ -238,7 +238,21 @@ contains
     if (allocated(source_bank)) deallocate(source_bank)
 
     ! Deallocate cmfd
-!   if (allocated(cmfd)) deallocate(cmfd)
+    if (allocated(cmfd % totalxs))       deallocate(cmfd % totalxs)
+    if (allocated(cmfd % p1scattxs))     deallocate(cmfd % p1scattxs) 
+    if (allocated(cmfd % scattxs))       deallocate(cmfd % scattxs)
+    if (allocated(cmfd % nfissxs))       deallocate(cmfd % nfissxs)
+    if (allocated(cmfd % diffcof))       deallocate(cmfd % diffcof)
+    if (allocated(cmfd % current))       deallocate(cmfd % current)
+    if (allocated(cmfd % flux))          deallocate(cmfd % flux)
+    if (allocated(cmfd % dtilde))        deallocate(cmfd % dtilde)
+    if (allocated(cmfd % dhat))          deallocate(cmfd % dhat)
+    if (allocated(cmfd % hxyz))          deallocate(cmfd % hxyz)
+    if (allocated(cmfd % coremap))       deallocate(cmfd % coremap)
+    if (allocated(cmfd % phi))           deallocate(cmfd % phi)
+    if (allocated(cmfd % sourcepdf))     deallocate(cmfd % sourcepdf)
+    if (allocated(cmfd % sourcecounts))  deallocate(cmfd % sourcecounts)
+    if (allocated(cmfd % weightfactors)) deallocate(cmfd % weightfactors)
 
   end subroutine free_memory
 

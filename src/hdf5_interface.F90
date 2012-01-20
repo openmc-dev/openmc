@@ -65,6 +65,32 @@ contains
     call h5ltset_attribute_string_f(hdf5_output_file, "n_procs", &
          "description", "Number of MPI processes", error)
 
+    ! Write criticality information
+    if (problem_type == PROB_CRITICALITY) then
+       ! Need to write integer(8)'s using double instead since there is no H5LT
+       ! call for making a dataset of type long
+       call h5ltmake_dataset_double_f(hdf5_output_file, "n_particles", &
+            rank, dims, (/ real(n_particles,8) /), error)
+
+       ! Use H5LT interface to write n_cycles, n_inactive, and n_active
+       call h5ltmake_dataset_int_f(hdf5_output_file, "n_cycles", &
+            rank, dims, (/ n_cycles /), error)
+       call h5ltmake_dataset_int_f(hdf5_output_file, "n_inactive", &
+            rank, dims, (/ n_inactive /), error)
+       call h5ltmake_dataset_int_f(hdf5_output_file, "n_active", &
+            rank, dims, (/ n_cycles - n_inactive /), error)
+
+       ! Add description of each variable
+       call h5ltset_attribute_string_f(hdf5_output_file, "n_particles", &
+            "description", "Number of particles per cycle", error)
+       call h5ltset_attribute_string_f(hdf5_output_file, "n_cycles", &
+            "description", "Total number of cycles", error)
+       call h5ltset_attribute_string_f(hdf5_output_file, "n_inactive", &
+            "description", "Number of inactive cycles", error)
+       call h5ltset_attribute_string_f(hdf5_output_file, "n_active", &
+            "description", "Number of active cycles", error)
+    end if
+
   end subroutine hdf5_write_summary
 
 !===============================================================================
@@ -77,6 +103,8 @@ contains
     integer          :: rank = 1
     integer(HSIZE_T) :: dims(1) = (/1/)
     integer(HID_T)   :: timing_group
+    integer(8)       :: total_particles
+    real(8)          :: speed
 
     ! Create group for timing
     call h5gcreate_f(hdf5_output_file, "/timing", timing_group, error)
@@ -132,6 +160,12 @@ contains
          "description", "Total time in active cycles (s)", error)
     call h5ltset_attribute_string_f(timing_group, "time_total", &
          "description", "Total time elapsed (s)", error)
+
+    ! Write calculation rate
+    total_particles = n_particles * n_cycles
+    speed = real(total_particles) / time_compute % elapsed
+    call h5ltmake_dataset_double_f(timing_group, "neutrons_per_second", &
+         rank, dims, (/ speed /), error)
 
     ! Close timing group
     call h5gclose_f(timing_group, error)

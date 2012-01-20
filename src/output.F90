@@ -6,7 +6,7 @@ module output
   use constants
   use datatypes,       only: dict_get_key
   use endf,            only: reaction_name
-  use geometry_header, only: Cell, Universe, Surface
+  use geometry_header, only: Cell, Universe, Surface, BASE_UNIVERSE
   use global
   use mesh_header,     only: StructuredMesh
   use particle_header, only: Particle, LocalCoord
@@ -260,8 +260,8 @@ contains
 
     ! Print surface
     if (p % surface /= NONE) then
-       s => surfaces(p % surface)
-       write(ou,*) '  Surface = ' // to_str(s % id)
+       s => surfaces(abs(p % surface))
+       write(ou,*) '  Surface = ' // to_str(sign(s % id, p % surface))
     end if
 
     write(ou,*) '  Weight = ' // to_str(p % wgt)
@@ -370,6 +370,7 @@ contains
     integer :: unit_
     character(MAX_LINE_LEN) :: string
     type(Cell), pointer     :: c => null()
+    type(Universe), pointer :: base_u
 
     if (present(unit)) then
        unit_ = unit
@@ -377,7 +378,12 @@ contains
        unit_ = OUTPUT_UNIT
     end if
 
+    base_u => universes(BASE_UNIVERSE)
+
     write(unit_,*) 'Universe ' // to_str(univ % id)
+    if (associated(univ, base_u)) then
+       write(unit_,*) '   Base Universe'
+    end if
     write(unit_,*) '    Level = ' // to_str(univ % level)
     string = ""
     do i = 1, univ % n_cells

@@ -124,7 +124,9 @@ contains
        ! select cells based on whether we are searching a universe or a provided
        ! list of cells (this would be for lists of neighbor cells)
        if (use_search_cells) then
-          index_cell = search_cells(i) 
+          index_cell = search_cells(i)
+          ! check to make sure search cell is in same universe
+          if (cells(index_cell) % universe /= p % coord % universe) cycle
        else
           index_cell = univ % cells(i)
        end if

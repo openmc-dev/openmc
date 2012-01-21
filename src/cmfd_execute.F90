@@ -1056,54 +1056,6 @@ use timing, only: timer_start, timer_stop
   end subroutine prod_matrix
 
 !===============================================================================
-! CONVERGENCE checks the convergence of eigenvalue, eigenvector and source
-!===============================================================================
-
-  subroutine convergence(S_n,S_o,k_o,k_n,iconv)
-
-#include <finclude/petsc.h90>
-
-    ! arguments
-    Vec         :: phi_n  ! new flux eigenvector
-    Vec         :: phi_o  ! old flux eigenvector
-    Vec         :: S_n    ! new source vector
-    Vec         :: S_o    ! old source vector
-    real(8)     :: k_n    ! new k-eigenvalue
-    real(8)     :: k_o    ! old k-eigenvalue
-    logical     :: iconv  ! is the problem converged
-
-    ! local variables
-    real(8)     :: ktol = 1.e-6   ! tolerance on keff
-    real(8)     :: stol = 1.e-5   ! tolerance on source
-    real(8)     :: kerr           ! error in keff
-    real(8)     :: serr           ! error in source
-    real(8)     :: one = -1.0     ! one
-    real(8)     :: norm_n         ! L2 norm of new source
-    real(8)     :: norm_o         ! L2 norm of old source
-    integer     :: floc           ! location of max error in flux
-    integer     :: sloc           ! location of max error in source
-    integer     :: ierr           ! petsc error code
-    integer     :: n              ! vector size
-
-    ! reset convergence flag
-    iconv = .FALSE.
-
-    ! calculate error in keff
-    kerr = abs(k_o - k_n)/k_n
-
-    ! calculate max error in source
-    call VecNorm(S_n,NORM_2,norm_n,ierr)
-    call VecNorm(S_o,NORM_2,norm_o,ierr)
-    serr = abs(norm_n-norm_o)/norm_n
-
-    ! check for convergence
-    if(kerr < ktol .and. serr < stol) iconv = .TRUE.
-
-    print *,k_n,kerr,serr
- 
-  end subroutine convergence
-
-!===============================================================================
 ! SOURCE_PDF calculates the probability distribution of the cmfd fission source
 !===============================================================================
 
@@ -1428,5 +1380,53 @@ use timing, only: timer_start, timer_stop
     call KSPSetFromOptions(krylov,ierr)
 
   end subroutine init_data_power
+
+!===============================================================================
+! CONVERGENCE checks the convergence of eigenvalue, eigenvector and source
+!===============================================================================
+
+  subroutine convergence(S_n,S_o,k_o,k_n,iconv)
+
+#include <finclude/petsc.h90>
+
+    ! arguments
+    Vec         :: phi_n  ! new flux eigenvector
+    Vec         :: phi_o  ! old flux eigenvector
+    Vec         :: S_n    ! new source vector
+    Vec         :: S_o    ! old source vector
+    real(8)     :: k_n    ! new k-eigenvalue
+    real(8)     :: k_o    ! old k-eigenvalue
+    logical     :: iconv  ! is the problem converged
+
+    ! local variables
+    real(8)     :: ktol = 1.e-6   ! tolerance on keff
+    real(8)     :: stol = 1.e-5   ! tolerance on source
+    real(8)     :: kerr           ! error in keff
+    real(8)     :: serr           ! error in source
+    real(8)     :: one = -1.0     ! one
+    real(8)     :: norm_n         ! L2 norm of new source
+    real(8)     :: norm_o         ! L2 norm of old source
+    integer     :: floc           ! location of max error in flux
+    integer     :: sloc           ! location of max error in source
+    integer     :: ierr           ! petsc error code
+    integer     :: n              ! vector size
+
+    ! reset convergence flag
+    iconv = .FALSE.
+
+    ! calculate error in keff
+    kerr = abs(k_o - k_n)/k_n
+
+    ! calculate max error in source
+    call VecNorm(S_n,NORM_2,norm_n,ierr)
+    call VecNorm(S_o,NORM_2,norm_o,ierr)
+    serr = abs(norm_n-norm_o)/norm_n
+
+    ! check for convergence
+    if(kerr < ktol .and. serr < stol) iconv = .TRUE.
+
+    print *,k_n,kerr,serr
+
+  end subroutine convergence
 
 end module cmfd_execute

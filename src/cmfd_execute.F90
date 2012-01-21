@@ -25,13 +25,13 @@ contains
     call compute_xs()
 
     ! print out flux for debugginb
-    write(100,*) cmfd % flux
-    write(101,*) cmfd % totalxs
-    write(102,*) cmfd % p1scattxs 
-    write(103,*) cmfd % scattxs
-    write(104,*) cmfd % nfissxs
-    write(105,*) cmfd % hxyz
-    write(106,*) cmfd % current 
+!   write(100,*) cmfd % flux
+!   write(101,*) cmfd % totalxs
+!   write(102,*) cmfd % p1scattxs 
+!   write(103,*) cmfd % scattxs
+!   write(104,*) cmfd % nfissxs
+!   write(105,*) cmfd % hxyz
+!   write(106,*) cmfd % current 
 
     ! write out neutron balance
     call neutron_balance()
@@ -48,8 +48,8 @@ contains
     call compute_dhat() 
 
     ! print dtilde and dhat
-    write(107,*) cmfd % dtilde
-    write(108,*) cmfd % dhat
+!   write(107,*) cmfd % dtilde
+!   write(108,*) cmfd % dhat
 
     ! write cmfd object to hdf5 file
     call write_hdf5()

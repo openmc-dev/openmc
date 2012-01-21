@@ -600,6 +600,9 @@ use timing, only: timer_start, timer_stop
                                viewer,ierr)
     call VecView(phi,viewer,ierr)
 
+    ! solve nonlinear system
+    call solve_cmfd_nonlinear()
+
     ! destroy all PETSc objects
     call destroy_data(M,F,phi,eps,viewer)
 
@@ -721,6 +724,143 @@ use timing, only: timer_start, timer_stop
     print *,'PC TYPE IS: ',pctype
 
   end subroutine init_solver
+
+!===============================================================================
+! SOLVE_CMFD_NONLINEAR solves nonlinear system with JFNK
+!===============================================================================
+
+  subroutine solve_cmfd_nonlinear()
+
+#include <finclude/petsc.h90>
+
+    Mat         :: jac         ! jacobian matrix
+    Mat         :: jacpc       ! preconditioner from approx jac.
+    Vec         :: res         ! residual vector
+    KSP         :: ksp         ! linear solver context
+    PC          :: pc          ! preconditioner
+    SNES        :: snes        ! nonlinear solver context
+    integer     :: ierr        ! error flag
+    integer     :: n           ! dimensions of matrix
+    integer     :: nx          ! maximum number of x cells
+    integer     :: ny          ! maximum number of y cells
+    integer     :: nz          ! maximum number of z cells
+    integer     :: ng          ! maximum number of groups
+
+    ! get maximum number of cells in each direction
+    nx = cmfd%indices(1)
+    ny = cmfd%indices(2)
+    nz = cmfd%indices(3)
+    ng = cmfd%indices(4)
+
+    ! calculate dimensions of matrix
+    if (allocated(cmfd % coremap)) then
+      n = cmfd % mat_dim * ng
+    else
+      n = nx*ny*nz*ng
+    end if
+
+    ! create PETSc vectors
+    call VecCreate(PETSC_COMM_SELF,res,ierr)
+    call VecSetSizes(res,PETSC_DECIDE,n,ierr)
+    call VecSetFromOptions(res,ierr)
+
+    ! create nonlinear solver context
+    call SNESCreate(PETSC_COMM_SELF,snes,ierr)
+
+    ! set the residual function
+    call SNESSetFunction(snes,res,compute_nonlinear_residual,PETSC_NULL,ierr)
+
+    ! set GMRES solver
+    call SNESGetKSP(snes,ksp,ierr)
+    call KSPSetType(ksp,KSPGMRES)
+
+    ! set preconditioner
+    call KSPGetPC(ksp,pc,ierr)
+    call PCSetType(pc,PCILU)
+
+    ! set matrix free finite difference
+    call MatCreateSNESMF(snes,jac,ierr)
+!   call MatMFFDSetFunction(jac,SNESComputeFunction,snes,ierr)
+    call SNESSetJacobian(snes,jac,jacpc,MatMFFDComputeJacobian,PETSC_NULL,ierr)
+    
+    ! set SNES options
+    call SNESSetFromOptions(snes,ierr)
+
+    ! solve nonlinear system
+    call SNESSolve(snes,PETSC_NULL,res,ierr)
+
+  end subroutine solve_cmfd_nonlinear
+
+!===============================================================================
+! COMPUTE_NONLINEAR_RESIDUAL
+!===============================================================================
+
+  subroutine compute_nonlinear_residual(snes,x,res,ierr)
+
+#include <finclude/petsc.h90>
+
+    ! arguments
+    SNES        :: snes          ! nonlinear solver context
+    Vec         :: x             ! independent vector
+    Vec         :: res           ! residual vector
+    integer     :: ierr          ! error flag
+
+    Mat         :: M             ! loss matrix
+    Mat         :: F             ! production matrix
+    Vec         :: phi           ! flux vector
+    integer     :: n             ! dimensions of matrix
+    integer     :: nx            ! maximum number of x cells
+    integer     :: ny            ! maximum number of y cells
+    integer     :: nz            ! maximum number of z cells
+    integer     :: ng            ! maximum number of groups
+    integer, allocatable :: indx(:) ! array of indices
+    real(8)     :: lambda        ! eigenvalue
+    real(8), allocatable :: xvec(:)   ! fortran residual vector
+    real(8), allocatable :: phivec(:) ! fortran flux vector
+    
+    ! get maximum number of cells in each direction
+    nx = cmfd%indices(1)
+    ny = cmfd%indices(2)
+    nz = cmfd%indices(3)
+    ng = cmfd%indices(4)
+
+    ! calculate dimensions of matrix
+    if (allocated(cmfd % coremap)) then
+      n = cmfd % mat_dim * ng
+    else
+      n = nx*ny*nz*ng
+    end if
+
+    ! allocate fortran vectors
+!   allocate(xvec(n+1))
+!   allocate(phivec(n))
+!   allocate(indx(n))
+
+!   ! set indx vector
+!   indx = (1:n)
+
+    ! create PETSc vectors
+!   call VecCreate(PETSC_COMM_SELF,phi,ierr)
+!   call VecSetSizes(phi,PETSC_DECIDE,n,ierr)
+!   call VecSetFromOptions(phi,ierr)
+    
+    ! convert PETSc vector to fortran vector
+!   call VecGetArrayF90(X,xvec,ierr)
+
+    ! separate out residual vector
+!   phivec = xvec(1:n)
+!   lambda = xvec(n+1)
+
+    ! set Petsc Vector
+!   call VecAssemblyBegin(phi,ierr)
+!   call VecSetValues(phi,n,indx,phivec,INSERT_VALUES,ierr)
+!   call VecAssemblyEnd(phi,ierr) 
+
+    ! create operators
+!   call loss_matrix(M)
+!   call prod_matrix(F)
+
+  end subroutine compute_nonlinear_residual
 
 !===============================================================================
 ! DESTROY_DATA deletes all PETSc and SLEPc objects

@@ -9,7 +9,6 @@ module geometry_header
   type Universe
      integer :: id                    ! Unique ID
      integer :: type                  ! Type
-     integer :: level                 ! Level of universe (0=base)
      integer :: n_cells               ! # of cells within
      integer, allocatable :: cells(:) ! List of cells within
      real(8) :: x0                    ! Translation in x-coordinate
@@ -59,7 +58,6 @@ module geometry_header
      integer :: type       ! Type of cell (normal, universe, lattice)
      integer :: universe   ! universe # this cell is in
      integer :: fill       ! universe # filling this cell
-     integer :: parent     ! cell within which this cell resides
      integer :: material   ! Material within cell (0 for universe)
      integer :: n_surfaces ! Number of surfaces within
      integer, allocatable :: & 

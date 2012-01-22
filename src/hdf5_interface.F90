@@ -15,10 +15,10 @@ contains
 #ifdef HDF5
 
 !===============================================================================
-! HDF5_OPEN_OUTPUT
+! HDF5_CREATE_OUTPUT
 !===============================================================================
 
-  subroutine hdf5_open_output()
+  subroutine hdf5_create_output()
 
     character(9), parameter :: filename = "output.h5" ! File name
     integer :: error  ! Error flag
@@ -29,7 +29,7 @@ contains
     ! Create a new file using default properties.
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, hdf5_output_file, error)
 
-  end subroutine hdf5_open_output
+  end subroutine hdf5_create_output
 
 !===============================================================================
 ! HDF5_WRITE_SUMMARY

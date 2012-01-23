@@ -459,8 +459,8 @@ contains
        ! =======================================================================
        ! ADJUST CELL INDICES FOR EACH TALLY
 
-       if (t % n_bins(T_CELL) > 0) then
-          do j = 1, t % n_bins(T_CELL)
+       if (t % n_filter_bins(FILTER_CELL) > 0) then
+          do j = 1, t % n_filter_bins(FILTER_CELL)
              id = t % cell_bins(j) % scalar
              if (dict_has_key(cell_dict, id)) then
                 t % cell_bins(j) % scalar = dict_get_key(cell_dict, id)
@@ -475,8 +475,8 @@ contains
        ! =======================================================================
        ! ADJUST SURFACE INDICES FOR EACH TALLY
 
-       if (t % n_bins(T_SURFACE) > 0) then
-          do j = 1, t % n_bins(T_SURFACE)
+       if (t % n_filter_bins(FILTER_SURFACE) > 0) then
+          do j = 1, t % n_filter_bins(FILTER_SURFACE)
              id = t % surface_bins(j) % scalar
              if (dict_has_key(surface_dict, id)) then
                 t % surface_bins(j) % scalar = dict_get_key(surface_dict, id)
@@ -491,8 +491,8 @@ contains
        ! =======================================================================
        ! ADJUST UNIVERSE INDICES FOR EACH TALLY
 
-       if (t % n_bins(T_UNIVERSE) > 0) then
-          do j = 1, t % n_bins(T_UNIVERSE)
+       if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
+          do j = 1, t % n_filter_bins(FILTER_UNIVERSE)
              id = t % universe_bins(j) % scalar
              if (dict_has_key(universe_dict, id)) then
                 t % universe_bins(j) % scalar = dict_get_key(universe_dict, id)
@@ -507,8 +507,8 @@ contains
        ! =======================================================================
        ! ADJUST MATERIAL INDICES FOR EACH TALLY
 
-       if (t % n_bins(T_MATERIAL) > 0) then
-          do j = 1, t % n_bins(T_MATERIAL)
+       if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
+          do j = 1, t % n_filter_bins(FILTER_MATERIAL)
              id = t % material_bins(j) % scalar
              if (dict_has_key(material_dict, id)) then
                 t % material_bins(j) % scalar = dict_get_key(material_dict, id)
@@ -523,8 +523,8 @@ contains
        ! =======================================================================
        ! ADJUST CELLBORN INDICES FOR EACH TALLY
 
-       if (t % n_bins(T_CELLBORN) > 0) then
-          do j = 1, t % n_bins(T_CELLBORN)
+       if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
+          do j = 1, t % n_filter_bins(FILTER_CELLBORN)
              id = t % cellborn_bins(j) % scalar
              if (dict_has_key(cell_dict, id)) then
                 t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, id)
@@ -539,7 +539,7 @@ contains
        ! =======================================================================
        ! ADJUST MESH INDICES FOR EACH TALLY
 
-       if (t % n_bins(T_MESH) > 0) then
+       if (t % n_filter_bins(FILTER_MESH) > 0) then
           id = t % mesh
           if (dict_has_key(mesh_dict, id)) then
              t % mesh = dict_get_key(mesh_dict, id)

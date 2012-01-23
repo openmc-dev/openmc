@@ -224,47 +224,57 @@ module constants
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS
 
-  ! Tally macro reactions
-  integer, parameter :: N_MACRO_TYPES = 15
+  ! Tally type
   integer, parameter :: &
-       MACRO_FLUX       = -1,  & ! flux
-       MACRO_TOTAL      = -2,  & ! total reaction rate
-       MACRO_SCATTER    = -3,  & ! scattering rate
-       MACRO_NU_SCATTER = -4,  & ! scattering production rate
-       MACRO_SCATTER_1  = -5,  & ! first scattering moment
-       MACRO_SCATTER_2  = -6,  & ! second scattering moment
-       MACRO_SCATTER_3  = -7,  & ! third scattering moment
-       MACRO_N_1N       = -8,  & ! (n,1n) rate
-       MACRO_N_2N       = -9,  & ! (n,2n) rate
-       MACRO_N_3N       = -10, & ! (n,3n) rate
-       MACRO_N_4N       = -11, & ! (n,4n) rate
-       MACRO_ABSORPTION = -12, & ! absorption rate
-       MACRO_FISSION    = -13, & ! fission rate
-       MACRO_NU_FISSION = -14, & ! neutron production rate
-       MACRO_CURRENT    = -15    ! partial current
+       TALLY_VOLUME          = 1, &
+       TALLY_SURFACE_CURRENT = 2
+
+  ! Tally estimator types
+  integer, parameter :: &
+       ESTIMATOR_COLLISION   = 1, &
+       ESTIMATOR_TRACKLENGTH = 2
+
+  ! Tally score type
+  integer, parameter :: N_SCORE_TYPES = 15
+  integer, parameter :: &
+       SCORE_FLUX       = -1,  & ! flux
+       SCORE_TOTAL      = -2,  & ! total reaction rate
+       SCORE_SCATTER    = -3,  & ! scattering rate
+       SCORE_NU_SCATTER = -4,  & ! scattering production rate
+       SCORE_SCATTER_1  = -5,  & ! first scattering moment
+       SCORE_SCATTER_2  = -6,  & ! second scattering moment
+       SCORE_SCATTER_3  = -7,  & ! third scattering moment
+       SCORE_N_1N       = -8,  & ! (n,1n) rate
+       SCORE_N_2N       = -9,  & ! (n,2n) rate
+       SCORE_N_3N       = -10, & ! (n,3n) rate
+       SCORE_N_4N       = -11, & ! (n,4n) rate
+       SCORE_ABSORPTION = -12, & ! absorption rate
+       SCORE_FISSION    = -13, & ! fission rate
+       SCORE_NU_FISSION = -14, & ! neutron production rate
+       SCORE_CURRENT    = -15    ! partial current
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: TALLY_TYPES = 8
+  integer, parameter :: N_FILTER_TYPES = 8
   integer, parameter :: &
-       T_UNIVERSE  = 1, &
-       T_MATERIAL  = 2, &
-       T_CELL      = 3, &
-       T_CELLBORN  = 4, &
-       T_SURFACE   = 5, &
-       T_MESH      = 6, &
-       T_ENERGYIN  = 7, &
-       T_ENERGYOUT = 8
+       FILTER_UNIVERSE  = 1, &
+       FILTER_MATERIAL  = 2, &
+       FILTER_CELL      = 3, &
+       FILTER_CELLBORN  = 4, &
+       FILTER_SURFACE   = 5, &
+       FILTER_MESH      = 6, &
+       FILTER_ENERGYIN  = 7, &
+       FILTER_ENERGYOUT = 8
 
   ! Filter types for surface current tallies
   integer, parameter :: &
-       TS_MESH_X   = 1, &
-       TS_MESH_Y   = 2, &
-       TS_MESH_Z   = 3, &
-       TS_ENERGYIN = 4, &
-       TS_SURFACE  = 5
+       SURF_FILTER_MESH_X   = 1, &
+       SURF_FILTER_MESH_Y   = 2, &
+       SURF_FILTER_MESH_Z   = 3, &
+       SURF_FILTER_ENERGYIN = 4, &
+       SURF_FILTER_SURFACE  = 5
 
   ! Tally surface current directions
   integer, parameter :: &

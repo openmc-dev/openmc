@@ -171,7 +171,8 @@ module global
   ! HDF5 VARIABLES
 
 #ifdef HDF5
-  integer(HID_T) :: hdf5_output_file
+  integer(HID_T) :: hdf5_output_file ! identifier for output file
+  integer        :: hdf5_err         ! error flag 
 #endif
 
   ! ============================================================================

@@ -26,7 +26,8 @@ module initialize
 #endif
 
 #ifdef HDF5
-  use hdf5_interface,   only: hdf5_create_output, hdf5_write_summary
+  use hdf5_interface,   only: hdf5_create_output, hdf5_write_header, &
+                              hdf5_write_summary
 #endif
 
   implicit none
@@ -59,9 +60,9 @@ contains
        call create_summary_file()
 
 #ifdef HDF5
-       ! Open HDF5 output file for writing
+       ! Open HDF5 output file for writing and write header information
        call hdf5_create_output()
-       call hdf5_write_summary()
+       call hdf5_write_header()
 #endif
 
        ! Display title and initialization header
@@ -122,6 +123,9 @@ contains
           call print_plot()
        else
           call print_summary()
+#ifdef HDF5
+          call hdf5_write_summary()
+#endif
        end if
     end if
 

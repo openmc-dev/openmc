@@ -13,9 +13,9 @@ module hdf5_interface
 
   implicit none
 
-contains
-
 #ifdef HDF5
+
+contains
 
 !===============================================================================
 ! HDF5_CREATE_OUTPUT

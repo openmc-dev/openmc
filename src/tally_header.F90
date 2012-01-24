@@ -62,7 +62,6 @@ module tally_header
      integer :: type      ! volume, surface current
      integer :: estimator ! collision, track-length
      real(8) :: volume    ! volume of region
-     logical :: surface_current = .false.
 
      ! Tally bin specifications
 

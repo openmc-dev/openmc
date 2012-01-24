@@ -61,7 +61,7 @@ contains
        filter_bins = 1
 
        ! handle surface current tallies separately
-       if (t % surface_current) then
+       if (t % type == TALLY_SURFACE_CURRENT) then
           m => meshes(t % mesh)
 
           t % stride(SURF_FILTER_SURFACE) = filter_bins
@@ -273,7 +273,7 @@ contains
        t => tallies(i)
 
        ! Surface current tallies are treated separately
-       if (t % surface_current) cycle
+       if (t % type == TALLY_SURFACE_CURRENT) cycle
 
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
@@ -552,7 +552,7 @@ contains
        t => tallies(i)
 
        ! Skip non-surface-current tallies
-       if (.not. t % surface_current) cycle
+       if (t % type /= TALLY_SURFACE_CURRENT) cycle
 
        ! Determine indices for starting and ending location
        m => meshes(t % mesh)
@@ -969,7 +969,7 @@ contains
        call header("TALLY " // trim(to_str(t % id)), unit=UNIT_TALLY, level=3)
 
        ! Handle surface current tallies separately
-       if (t % surface_current) then
+       if (t % type == TALLY_SURFACE_CURRENT) then
           call write_surface_current(t)
           cycle
        end if

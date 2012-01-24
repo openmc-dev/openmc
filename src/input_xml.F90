@@ -735,6 +735,9 @@ contains
        t % n_filter_bins = 0
        t % stride = 0
 
+       ! Set tally type to volume by default
+       t % type = TALLY_VOLUME
+
        ! Copy material id
        t % id = tally_(i) % id
 
@@ -892,7 +895,7 @@ contains
                 t % score_bins(j) % scalar = SCORE_NU_FISSION
              case ('current')
                 t % score_bins(j) % scalar = SCORE_CURRENT
-                t % surface_current = .true.
+                t % type = TALLY_SURFACE_CURRENT
 
                 ! Check to make sure that current is the only desired response
                 ! for this tally

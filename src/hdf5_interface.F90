@@ -92,6 +92,9 @@ contains
 
     call hdf5_write_geometry()
     call hdf5_write_materials()
+    if (n_tallies > 0) then
+       call hdf5_write_tallies()
+    end if
 
   end subroutine hdf5_write_summary
 
@@ -403,6 +406,189 @@ contains
     call h5gclose_f(materials_group, hdf5_err)
 
   end subroutine hdf5_write_materials
+
+!===============================================================================
+! HDF5_WRITE_TALLIES
+!===============================================================================
+
+  subroutine hdf5_write_tallies()
+
+    integer           :: i, j
+    integer(SIZE_T)   :: num_elements
+    integer(HSIZE_T)  :: dims(1)
+    integer(HSIZE_T)  :: coord(1,1)
+    integer(HSIZE_T)  :: size_string = 12
+    integer(HID_T)    :: string_type
+    integer(HID_T)    :: tallies_group
+    integer(HID_T)    :: temp_group
+    integer(HID_T)    :: dspace
+    integer(HID_T)    :: subspace
+    integer(HID_T)    :: dset
+    character(12)     :: string
+    type(TallyObject),    pointer :: t => null()
+    type(StructuredMesh), pointer :: m => null()
+     
+    ! Create group for tallies
+    call h5gcreate_f(hdf5_output_file, "/tallies", tallies_group, hdf5_err)
+
+    ! Use H5LT interface to write number of tallies
+    call hdf5_make_integer(tallies_group, "n_tallies", n_tallies)
+
+    ! Write information on each material
+    do i = 1, n_tallies
+       t => tallies(i)
+
+       ! Create group for i-th universe
+       call h5gcreate_f(tallies_group, "tally " // trim(to_str(t % id)), &
+            temp_group, hdf5_err)
+
+       ! =======================================================================
+       ! WRITE INFORMATION ON TALLY FILTERS
+
+       ! Write universe_bins if present
+       if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
+          dims(1) = t % n_filter_bins(FILTER_UNIVERSE)
+          call h5ltmake_dataset_int_f(temp_group, "universe_bins", 1, &
+               dims, t % universe_bins(:) % scalar, hdf5_err)
+       end if
+
+       ! Write material_bins if present
+       if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
+          dims(1) = t % n_filter_bins(FILTER_MATERIAL)
+          call h5ltmake_dataset_int_f(temp_group, "material_bins", 1, &
+               dims, t % material_bins(:) % scalar, hdf5_err)
+       end if
+
+       ! Write cell_bins if present
+       if (t % n_filter_bins(FILTER_CELL) > 0) then
+          dims(1) = t % n_filter_bins(FILTER_CELL)
+          call h5ltmake_dataset_int_f(temp_group, "cell_bins", 1, &
+               dims, t % cell_bins(:) % scalar, hdf5_err)
+       end if
+
+       ! Write cellborn_bins if present
+       if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
+          dims(1) = t % n_filter_bins(FILTER_CELLBORN)
+          call h5ltmake_dataset_int_f(temp_group, "cellborn_bins", 1, &
+               dims, t % cellborn_bins(:) % scalar, hdf5_err)
+       end if
+
+       ! Write surface_bins if present
+       if (t % n_filter_bins(FILTER_SURFACE) > 0) then
+          dims(1) = t % n_filter_bins(FILTER_SURFACE)
+          call h5ltmake_dataset_int_f(temp_group, "surface_bins", 1, &
+               dims, t % surface_bins(:) % scalar, hdf5_err)
+       end if
+
+       ! Write incoming energy filter
+       if (t % n_filter_bins(FILTER_ENERGYIN) > 0) then
+          dims(1) = t % n_filter_bins(FILTER_ENERGYIN)
+          call h5ltmake_dataset_double_f(temp_group, "energy_in", 1, &
+               dims, t % energy_in, hdf5_err)
+       end if
+
+       ! Write outgoing energy filter
+       if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
+          dims(1) = t % n_filter_bins(FILTER_ENERGYOUT)
+          call h5ltmake_dataset_double_f(temp_group, "energy_out", 1, &
+               dims, t % energy_out, hdf5_err)
+       end if
+
+       ! Write mesh information
+       if (t % n_filter_bins(FILTER_MESH) > 0) then
+          m => meshes(t % mesh)
+          dims(1) = m % n_dimension
+
+          ! Write mesh dimensions
+          call h5ltmake_dataset_int_f(temp_group, "mesh_dimensions", 1, &
+               dims, m % dimension, hdf5_err)
+
+          ! Write mesh lower-left corner
+          call h5ltmake_dataset_double_f(temp_group, "mesh_lower_left", 1, &
+               dims, m % origin, hdf5_err)
+          
+          ! Write mesh element width
+          call h5ltmake_dataset_double_f(temp_group, "mesh_element_width", 1, &
+               dims, m % width, hdf5_err)
+       end if
+          
+       ! =======================================================================
+       ! WRITE INFORMATION ON TALLY SCORES
+
+       ! Create string type of length 12
+       call h5tcopy_f(H5T_C_S1, string_type, hdf5_err)
+       call h5tset_size_f(string_type, size_string, hdf5_err)
+
+       ! Create dataspace and dataset for writing nuclides
+       dims(1) = t % n_score_bins
+       call h5screate_simple_f(1, dims, dspace, hdf5_err)
+       call h5dcreate_f(temp_group, "scores", string_type, dspace, &
+            dset, hdf5_err)
+
+       ! Create subspace for writing one element
+       dims(1) = 1
+       call h5screate_simple_f(1, dims, subspace, hdf5_err)
+
+       ! Write list of nuclides
+       num_elements = 1
+       do j = 1, t % n_score_bins
+          ! Determine string for this scoring bin
+          select case (t % score_bins(j) % scalar)
+          case (SCORE_FLUX)
+             string = 'flux'
+          case (SCORE_TOTAL)
+             string = 'total'
+          case (SCORE_SCATTER)
+             string = 'scatter'
+          case (SCORE_NU_SCATTER)
+             string = 'nu-scatter'
+          case (SCORE_SCATTER_1)
+             string = '1st moment'
+          case (SCORE_SCATTER_2)
+             string = '2nd moment'
+          case (SCORE_SCATTER_3)
+             string = '3rd moment'
+          case (SCORE_N_1N)
+             string = '(n,1n)'
+          case (SCORE_N_2N)
+             string = '(n,2n)'
+          case (SCORE_N_3N)
+             string = '(n,3n)'
+          case (SCORE_N_4N)
+             string = '(n,4n)'
+          case (SCORE_ABSORPTION)
+             string = 'absorption'
+          case (SCORE_FISSION)
+             string = 'fission'
+          case (SCORE_NU_FISSION)
+             string = 'nu-fission'
+          case (SCORE_CURRENT)
+             string = 'current'
+          end select
+
+          ! Select block within array
+          coord(1,1) = j
+          call h5sselect_elements_f(dspace, H5S_SELECT_SET_F, 1, &
+               num_elements, coord, hdf5_err)
+
+          ! Write data to partial array
+          call h5dwrite_f(dset, string_type, string, dims, hdf5_err, &
+               subspace, dspace)
+       end do
+
+       ! Close dataspace and dataset for nuclides
+       call h5dclose_f(dset, hdf5_err)
+       call h5sclose_f(subspace, hdf5_err)
+       call h5sclose_f(dspace, hdf5_err)
+
+       ! Close group for i-th material
+       call h5gclose_f(temp_group, hdf5_err)
+    end do
+
+    ! Close tallies group
+    call h5gclose_f(tallies_group, hdf5_err)
+
+  end subroutine hdf5_write_tallies
 
 !===============================================================================
 ! HDF5_WRITE_TIMING

@@ -41,6 +41,7 @@ contains
   subroutine hdf5_open_output()
 
     character(9), parameter :: filename = "output.h5" ! File name
+    integer :: error ! Error flag
 
     ! Initialize FORTRAN interface.
     call h5open_f(hdf5_err)

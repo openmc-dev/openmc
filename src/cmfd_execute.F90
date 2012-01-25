@@ -601,7 +601,7 @@ use timing, only: timer_start, timer_stop
     call VecView(phi,viewer,ierr)
 
     ! solve nonlinear system
-    call solve_cmfd_nonlinear()
+    call solve_cmfd_nonlinear(phi,keff)
 
     ! destroy all PETSc objects
     call destroy_data(M,F,phi,eps,viewer)
@@ -729,13 +729,16 @@ use timing, only: timer_start, timer_stop
 ! SOLVE_CMFD_NONLINEAR solves nonlinear system with JFNK
 !===============================================================================
 
-  subroutine solve_cmfd_nonlinear()
+  subroutine solve_cmfd_nonlinear(phi,keff)
 
 #include <finclude/petsc.h90>
 
+    Vec         :: phi         ! flux vector from slepc
+    real(8)     :: keff        ! eigenvalue
+
     Mat         :: jac         ! jacobian matrix
-    Mat         :: jacpc       ! preconditioner from approx jac.
     Vec         :: res         ! residual vector
+    Vec         :: x           ! results
     KSP         :: ksp         ! linear solver context
     PC          :: pc          ! preconditioner
     SNES        :: snes        ! nonlinear solver context
@@ -745,6 +748,10 @@ use timing, only: timer_start, timer_stop
     integer     :: ny          ! maximum number of y cells
     integer     :: nz          ! maximum number of z cells
     integer     :: ng          ! maximum number of groups
+    PetscViewer :: viewer      ! viewer for output
+
+    real(8), pointer :: fptr(:) ! flux pointer
+    real(8), pointer :: xptr(:) ! solution pointer
 
     ! get maximum number of cells in each direction
     nx = cmfd%indices(1)
@@ -761,10 +768,25 @@ use timing, only: timer_start, timer_stop
 
     ! create PETSc vectors
     call VecCreate(PETSC_COMM_SELF,res,ierr)
-    call VecSetSizes(res,PETSC_DECIDE,n,ierr)
+    call VecSetSizes(res,PETSC_DECIDE,n+1,ierr)
     call VecSetFromOptions(res,ierr)
+    call VecCreate(PETSC_COMM_SELF,x,ierr)
+    call VecSetSizes(x,PETSC_DECIDE,n+1,ierr)
+    call VecSetFromOptions(x,ierr)
 
-    ! create nonlinear solver context
+    ! get pointers
+    call VecGetArrayF90(x,xptr,ierr)
+    call VecGetArrayF90(phi,fptr,ierr)
+
+    ! set new xptr
+    xptr(1:n) = fptr(1:n)
+    xptr(n+1) = 1.0_8/keff
+
+    ! restore array
+    call VecRestoreArrayF90(x,xptr,ierr)
+    call VecRestoreArrayF90(phi,fptr,ierr)
+    
+    ! create SNES context
     call SNESCreate(PETSC_COMM_SELF,snes,ierr)
 
     ! set the residual function
@@ -772,22 +794,27 @@ use timing, only: timer_start, timer_stop
 
     ! set GMRES solver
     call SNESGetKSP(snes,ksp,ierr)
-    call KSPSetType(ksp,KSPGMRES)
+    call KSPSetType(ksp,KSPGMRES,ierr)
 
     ! set preconditioner
     call KSPGetPC(ksp,pc,ierr)
-    call PCSetType(pc,PCILU)
+    call PCSetType(pc,PCNONE,ierr)
 
     ! set matrix free finite difference
     call MatCreateSNESMF(snes,jac,ierr)
-!   call MatMFFDSetFunction(jac,SNESComputeFunction,snes,ierr)
-    call SNESSetJacobian(snes,jac,jacpc,MatMFFDComputeJacobian,PETSC_NULL,ierr)
+    call SNESSetJacobian(snes,jac,jac,MatMFFDComputeJacobian,PETSC_NULL,ierr)
     
     ! set SNES options
     call SNESSetFromOptions(snes,ierr)
 
-    ! solve nonlinear system
-    call SNESSolve(snes,PETSC_NULL,res,ierr)
+   ! solve nonlinear system
+    call SNESSolve(snes,PETSC_NULL,x,ierr)
+
+    ! output answers
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'nonlinear.bin',FILE_MODE_WRITE, &
+                               viewer,ierr)
+    call VecView(x,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
 
   end subroutine solve_cmfd_nonlinear
 
@@ -808,16 +835,21 @@ use timing, only: timer_start, timer_stop
     Mat         :: M             ! loss matrix
     Mat         :: F             ! production matrix
     Vec         :: phi           ! flux vector
+    Vec         :: rphi          ! flux part of residual
+    Vec         :: phiM          ! M part of residual flux calc
     integer     :: n             ! dimensions of matrix
     integer     :: nx            ! maximum number of x cells
     integer     :: ny            ! maximum number of y cells
     integer     :: nz            ! maximum number of z cells
     integer     :: ng            ! maximum number of groups
-    integer, allocatable :: indx(:) ! array of indices
+    integer     :: nzM           ! max number of nonzeros in a row for M
+    integer     :: nzF           ! max number of nonzeros in a row for F
     real(8)     :: lambda        ! eigenvalue
-    real(8), allocatable :: xvec(:)   ! fortran residual vector
-    real(8), allocatable :: phivec(:) ! fortran flux vector
-    
+    real(8)     :: reslamb       ! residual for lambda
+
+    real(8), pointer :: xptr(:)  ! pointer to solution vector
+    real(8), pointer :: rptr(:)  ! pointer to residual vector
+
     ! get maximum number of cells in each direction
     nx = cmfd%indices(1)
     ny = cmfd%indices(2)
@@ -831,34 +863,73 @@ use timing, only: timer_start, timer_stop
       n = nx*ny*nz*ng
     end if
 
-    ! allocate fortran vectors
-!   allocate(xvec(n+1))
-!   allocate(phivec(n))
-!   allocate(indx(n))
+    ! get pointers to vectors
+    call VecGetArrayF90(x,xptr,ierr)
+    call VecGetArrayF90(res,rptr,ierr)
 
-!   ! set indx vector
-!   indx = (1:n)
+    ! create petsc vector for flux
+    call VecCreate(PETSC_COMM_SELF,phi,ierr)
+    call VecSetSizes(phi,PETSC_DECIDE,n,ierr)
+    call VecSetFromOptions(phi,ierr)
+    call VecCreate(PETSC_COMM_SELF,rphi,ierr)
+    call VecSetSizes(rphi,PETSC_DECIDE,n,ierr)
+    call VecSetFromOptions(rphi,ierr)
 
-    ! create PETSc vectors
-!   call VecCreate(PETSC_COMM_SELF,phi,ierr)
-!   call VecSetSizes(phi,PETSC_DECIDE,n,ierr)
-!   call VecSetFromOptions(phi,ierr)
-    
-    ! convert PETSc vector to fortran vector
-!   call VecGetArrayF90(X,xvec,ierr)
+    ! extract flux and place in petsc vector 
+    call VecPlaceArray(phi,xptr,ierr)
+    call VecPlaceArray(rphi,rptr,ierr)
 
-    ! separate out residual vector
-!   phivec = xvec(1:n)
-!   lambda = xvec(n+1)
+    ! extract eigenvalue
+    lambda = xptr(n+1)
 
-    ! set Petsc Vector
-!   call VecAssemblyBegin(phi,ierr)
-!   call VecSetValues(phi,n,indx,phivec,INSERT_VALUES,ierr)
-!   call VecAssemblyEnd(phi,ierr) 
+    ! maximum number of nonzeros in each matrix
+    nzM = 7+ng-1
+    nzF = ng
+
+    ! set up loss matrix
+    call MatCreateSeqAIJ(PETSC_COMM_SELF,n,n,nzM,PETSC_NULL_INTEGER,M,ierr)
+    call MatSetOption(M,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
+    call MatSetOption(M,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
+    call MatSetOption(M,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
+
+    ! set up production matrix
+    call MatCreateSeqAIJ(PETSC_COMM_SELF,n,n,nzF,PETSC_NULL_INTEGER,F,ierr)
+    call MatSetOption(F,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
+    call MatSetOption(F,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
+    call MatSetOption(F,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
 
     ! create operators
-!   call loss_matrix(M)
-!   call prod_matrix(F)
+    call loss_matrix(M)
+    call prod_matrix(F)
+
+    ! create new petsc vectors to perform math
+    call VecCreate(PETSC_COMM_SELF,phiM,ierr)
+    call VecSetSizes(phiM,PETSC_DECIDE,n,ierr)
+    call VecSetFromOptions(phiM,ierr)
+
+    ! calculate flux part of residual vector
+    call MatMult(M,phi,phiM,ierr)
+    call MatMult(F,phi,rphi,ierr)
+    call VecAYPX(rphi,-1.0_8*lambda,phiM,ierr)
+
+    ! set eigenvalue part of residual vector
+    call VecDot(phi,phi,reslamb,ierr)
+
+    ! map to ptr
+    rptr(n+1) = 0.5_8 - 0.5_8*reslamb
+
+    ! reset arrays that are not used
+    call VecResetArray(phi,ierr)
+    call VecResetArray(rphi,ierr)
+
+    ! restore arrays for residual and solution
+    call VecRestoreArrayF90(x,xptr,ierr)
+    call VecRestoreArrayF90(res,rptr,ierr)
+ 
+    ! destroy all temp vectors
+    call VecDestroy(phi,ierr)
+    call VecDestroy(phiM,ierr)
+    call VecDestroy(rphi,ierr)
 
   end subroutine compute_nonlinear_residual
 

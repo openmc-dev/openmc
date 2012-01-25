@@ -92,7 +92,10 @@ global.o: tally_header.o
 global.o: timing.o
 
 hdf5_interface.o: constants.o
+hdf5_interface.o: geometry_header.o
 hdf5_interface.o: global.o
+hdf5_interface.o: material_header.o
+hdf5_interface.o: string.o
 
 initialize.o: ace.o
 initialize.o: bank_header.o

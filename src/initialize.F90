@@ -26,7 +26,8 @@ module initialize
 #endif
 
 #ifdef HDF5
-  use hdf5_interface,   only: hdf5_create_output, hdf5_write_summary
+  use hdf5_interface,   only: hdf5_create_output, hdf5_write_header, &
+                              hdf5_write_summary
 #endif
 
   implicit none
@@ -44,8 +45,6 @@ contains
 
   subroutine initialize_run()
 
-    type(Universe), pointer :: univ
-
     ! Start total and initialization timer
     call timer_start(time_total)
     call timer_start(time_initialize)
@@ -61,9 +60,9 @@ contains
        call create_summary_file()
 
 #ifdef HDF5
-       ! Create HDF5 output file for writing
+       ! Open HDF5 output file for writing and write header information
        call hdf5_create_output()
-       call hdf5_write_summary()
+       call hdf5_write_header()
 #endif
 
        ! Display title and initialization header
@@ -85,10 +84,6 @@ contains
 
     ! Use dictionaries to redefine index pointers
     call adjust_indices()
-
-    ! determine at which level universes are and link cells to parenting cells
-    univ => universes(BASE_UNIVERSE)
-    call build_universe(univ, 0, 0)
 
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
@@ -128,6 +123,9 @@ contains
           call print_plot()
        else
           call print_summary()
+#ifdef HDF5
+          call hdf5_write_summary()
+#endif
        end if
     end if
 
@@ -554,61 +552,6 @@ contains
     end do
 
   end subroutine adjust_indices
-
-!===============================================================================
-! BUILD_UNIVERSE determines what level each universe is at and determines what
-! the parent cell of each cell in a subuniverse is.
-!===============================================================================
-
-  recursive subroutine build_universe(univ, parent, level)
-
-    type(Universe), pointer :: univ   ! univese pointer
-    integer,     intent(in) :: parent ! cell containing universe
-    integer,     intent(in) :: level  ! level of universe
-
-    integer :: i      ! index for cells in universe
-    integer :: x,y    ! indices for lattice positions
-    integer :: i_cell ! index in cells array
-    integer :: universe_num
-    type(Cell),     pointer :: c => null()
-    type(Universe), pointer :: subuniverse => null()
-    type(Lattice),  pointer :: lat => null()
-
-    ! set level of the universe
-    univ % level = level
-
-    ! loop over all cells in the universe
-    do i = 1, univ % n_cells
-       i_cell = univ % cells(i)
-       c => cells(i_cell)
-       c % parent = parent
-
-       ! if this cell is filled with another universe, recursively
-       ! call this subroutine
-       if (c % type == CELL_FILL) then
-          subuniverse => universes(c % fill)
-          call build_universe(subuniverse, i_cell, level + 1)
-       end if
-
-       ! if this cell is filled by a lattice, need to build the
-       ! universe for each unique lattice element
-       if (c % type == CELL_LATTICE) then
-          lat => lattices(c % fill)
-          do x = 1, lat % n_x
-             do y = 1, lat % n_y
-                universe_num = lat % element(x,y)
-                if (.not. dict_has_key(build_dict, universe_num)) then
-                   call dict_add_key(build_dict, universe_num, 0)
-                   subuniverse => universes(universe_num)
-                   call build_universe(subuniverse, i_cell, level + 1)
-                end if
-             end do
-          end do
-       end if
-
-    end do
-
-  end subroutine build_universe
 
 !===============================================================================
 ! NORMALIZE_AO normalizes the atom or weight percentages for each material

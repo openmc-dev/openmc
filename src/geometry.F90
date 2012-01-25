@@ -152,6 +152,8 @@ contains
 
              ! Create new level of coordinates
              allocate(p % coord % next)
+             p % coord % next % xyz = p % coord % xyz
+             p % coord % next % uvw = p % coord % uvw
 
              ! Move particle to next level and set universe
              p % coord => p % coord % next

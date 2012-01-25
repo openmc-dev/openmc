@@ -336,7 +336,6 @@ contains
        m => materials(c % material)
        write(unit_,*) '    Material = ' // to_str(m % id)
     end if
-    write(unit_,*) '    Parent Cell = ' // to_str(c % parent)
     string = ""
     do i = 1, c % n_surfaces
        select case (c % surfaces(i))
@@ -382,9 +381,8 @@ contains
 
     write(unit_,*) 'Universe ' // to_str(univ % id)
     if (associated(univ, base_u)) then
-       write(unit_,*) '   Base Universe'
+       write(unit_,*) '    Base Universe'
     end if
-    write(unit_,*) '    Level = ' // to_str(univ % level)
     string = ""
     do i = 1, univ % n_cells
        c => cells(univ % cells(i))

@@ -1,6 +1,6 @@
 module particle_header
 
-  use constants, only: NEUTRON, ONE, NONE
+  use constants, only: NEUTRON, ONE, NONE, ZERO
   use geometry_header, only: BASE_UNIVERSE
 
   implicit none
@@ -52,6 +52,9 @@ module particle_header
      real(8)    :: last_xyz(3)   ! previous coordinates
      real(8)    :: last_wgt      ! last particle weight
      real(8)    :: last_E        ! last energy
+
+     ! What event last took place
+     integer    :: event
 
      ! Post-collision physical data
      integer    :: n_bank        ! number of fission sites banked

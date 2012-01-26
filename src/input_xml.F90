@@ -738,6 +738,14 @@ contains
        ! Set tally type to volume by default
        t % type = TALLY_VOLUME
 
+       ! It's desirable to use a track-length esimator for tallies since
+       ! generally more events will score to the tally, reducing the
+       ! variance. However, for tallies that require information on
+       ! post-collision parameters (e.g. tally with an energyout filter) the
+       ! analog esimator must be used.
+
+       t % estimator = ESTIMATOR_TRACKLENGTH
+
        ! Copy material id
        t % id = tally_(i) % id
 
@@ -836,6 +844,9 @@ contains
              t % energy_out(j) = str_to_real(words(j))
           end do
           t % n_filter_bins(FILTER_ENERGYOUT) = n_words - 1
+
+          ! Set tally estimator to analog
+          t % estimator = ESTIMATOR_ANALOG
        end if
 
        ! Read macro reactions
@@ -863,20 +874,44 @@ contains
                 t % score_bins(j) % scalar = SCORE_SCATTER
              case ('nu-scatter')
                 t % score_bins(j) % scalar = SCORE_NU_SCATTER
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('scatter-1')
                 t % score_bins(j) % scalar = SCORE_SCATTER_1
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('scatter-2')
                 t % score_bins(j) % scalar = SCORE_SCATTER_2
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('scatter-3')
                 t % score_bins(j) % scalar = SCORE_SCATTER_3
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('n1n')
                 t % score_bins(j) % scalar = SCORE_N_1N
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('n2n')
                 t % score_bins(j) % scalar = SCORE_N_2N
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('n3n')
                 t % score_bins(j) % scalar = SCORE_N_3N
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('n4n')
                 t % score_bins(j) % scalar = SCORE_N_4N
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('absorption')
                 t % score_bins(j) % scalar = SCORE_ABSORPTION
                 if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then

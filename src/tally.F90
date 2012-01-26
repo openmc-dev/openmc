@@ -428,6 +428,11 @@ contains
                 cycle
 
              else
+                ! If there is no outgoing energy filter, than we only need to
+                ! score to one bin. For the score to be 'analog', we need to
+                ! score the number of particles that were banked in the fission
+                ! bank. Since this was weighted by 1/keff, we multiply by keff
+                ! to get the proper score.
 
                 score = keff * p % n_bank
 
@@ -451,7 +456,10 @@ contains
   end subroutine score_analog_tally
 
 !===============================================================================
-! SCORE_FISSION_EOUT
+! SCORE_FISSION_EOUT handles a special case where we need to store neutron
+! production rate with an outgoing energy filter (think of a fission matrix). In
+! this case, we may need to score to multiple bins if there were multiple
+! neutrons produced with different energies.
 !===============================================================================
 
   subroutine score_fission_eout(p, t, bins, j)
@@ -499,7 +507,10 @@ contains
   end subroutine score_fission_eout
 
 !===============================================================================
-! SCORE_TRACKLENGTH_TALLY
+! SCORE_TRACKLENGTH_TALLY calculates fluxes and reaction rates based on the
+! track-length estimate of the flux. This is triggered at every event (surface
+! crossing, lattice crossing, or collision) and thus cannot be done for tallies
+! that require post-collision information.
 !===============================================================================
 
   subroutine score_tracklength_tally(p, distance)
@@ -585,7 +596,8 @@ contains
   end subroutine score_tracklength_tally
 
 !===============================================================================
-! GET_SCORING_BINS
+! GET_SCORING_BINS determines a combination of filter bins that should be scored
+! for a tally based on the particle's current attributes.
 !===============================================================================
 
   subroutine get_scoring_bins(p, index_tally, bins, found_bin)

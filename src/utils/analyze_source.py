@@ -34,6 +34,8 @@ for sourceFile in source:
         commentChar = '!'
     elif ending == 'f90':
         commentChar = '!'
+    elif ending == 'F90':
+        commentChar = '!'
     
     for line in open(sourceFile, 'r'):
         line = line.strip()

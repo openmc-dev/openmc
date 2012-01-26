@@ -445,6 +445,14 @@ contains
        ! =======================================================================
        ! WRITE INFORMATION ON TALLY FILTERS
 
+       ! Write filters
+       call hdf5_make_integer(temp_group, "n_filters", t % n_filters)
+       if (t % n_filters > 0) then
+          dims(1) = t % n_filters
+          call h5ltmake_dataset_int_f(temp_group, "filters", 1, &
+               dims, t % filters, hdf5_err)
+       end if
+
        ! Write universe_bins if present
        if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
           dims(1) = t % n_filter_bins(FILTER_UNIVERSE)

@@ -16,7 +16,8 @@ module physics
   use random_lcg,      only: prn
   use search,          only: binary_search
   use string,          only: to_str
-  use tally,           only: score_tally, score_surface_current
+  use tally,           only: score_analog_tally, score_tracklength_tally, &
+                             score_surface_current
 
   implicit none
 
@@ -66,7 +67,6 @@ contains
     ! Initialize number of events to zero
     n_event = 0
 
-    ! find energy index, interpolation factor
     do while (p % alive)
 
        ! Calculate microscopic and macroscopic cross sections -- note: if the
@@ -95,15 +95,22 @@ contains
           coord => coord % next
        end do
 
+       ! Score track-length tallies
+       if (tallies_on) call score_tracklength_tally(p, distance)
+
        if (d_collision > d_boundary) then
           last_cell = p % coord % cell
           p % coord % cell = NONE
           if (lattice_crossed /= NONE) then
+             ! Particle crosses lattice boundary
              p % surface = NONE
              call cross_lattice(p, lattice_crossed)
+             p % event = EVENT_LATTICE
           else
+             ! Particle crosses surface
              p % surface = surface_crossed
              call cross_surface(p, last_cell)
+             p % event = EVENT_SURFACE
           end if
        else
           ! collision
@@ -148,10 +155,6 @@ contains
 
     type(Particle), pointer :: p
 
-    integer :: MT            ! ENDF reaction number
-    logical :: scattered     ! was this a scattering reaction?
-    logical :: fissioned     ! was this a fission reaction?
-
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
     p % last_E   = p % E
@@ -166,13 +169,13 @@ contains
     if (tallies_on) call score_surface_current(p)
 
     ! Sample nuclide/reaction for the material the particle is in
-    call sample_reaction(p, MT)
+    call sample_reaction(p)
 
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
-       message = "    " // trim(reaction_name(MT)) // ". Energy = " // &
-            trim(to_str(p % E * 1e6_8)) // " eV."
-       call write_message()
+!!$       message = "    " // trim(reaction_name(MT)) // ". Energy = " // &
+!!$            trim(to_str(p % E * 1e6_8)) // " eV."
+!!$       call write_message()
     end if
 
     ! check for very low energy
@@ -182,21 +185,12 @@ contains
        call warning()
     end if
 
-    ! Check if particle scattered or fissioned
-    if (survival_biasing) then
-       fissioned = .false.
-       scattered = .true.
-    else
-       fissioned = is_fission(MT)
-       scattered = is_scatter(MT)
-    end if
-
     ! Score collision estimator tallies for any macro tallies -- this is done
     ! after a collision has occurred rather than before because we need
     ! information on the outgoing energy for any tallies with an outgoing energy
     ! filter
 
-    if (tallies_on) call score_tally(p, scattered, fissioned)
+    if (tallies_on) call score_analog_tally(p)
 
     ! Reset number of particles banked during collision
     p % n_bank = 0
@@ -211,10 +205,9 @@ contains
 ! disappearance are treated implicitly.
 !===============================================================================
 
-  subroutine sample_reaction(p, MT)
+  subroutine sample_reaction(p)
 
     type(Particle), pointer :: p
-    integer, intent(out)    :: MT ! ENDF MT number of reaction that occured
 
     integer :: i             ! index over nuclides in a material
     integer :: index_nuclide ! index in nuclides array
@@ -281,7 +274,7 @@ contains
        ! See if disappearance reaction happens
        if (prob > cutoff) then
           p % alive = .false.
-          MT = N_DISAPPEAR
+          p % event = EVENT_ABSORB
           return
        end if
     end if
@@ -337,15 +330,23 @@ contains
           
           if (micro_xs(index_nuclide) % use_ptable) then
 
+             ! In the case that the particle is in the unresolved resonance
+             ! region and probability tables are being used, we should only
+             ! check the first fission reaction
+
              prob = prob + micro_xs(index_nuclide) % fission
              if (prob > cutoff) then
                 rxn => nuc % reactions(nuc % index_fission(1))
                 call create_fission_sites(p, index_nuclide, rxn, .true.)
                 p % alive = .false.
-                MT = rxn % MT
+                p % event = EVENT_FISSION
                 return
              end if
+
           else
+
+             ! With no probability tables, we need to loop through each fission
+             ! reaction type
 
              do i = 1, nuc % n_fission
                 rxn => nuc % reactions(nuc % index_fission(i))
@@ -365,7 +366,7 @@ contains
                 if (prob > cutoff) then
                    call create_fission_sites(p, index_nuclide, rxn, .true.)
                    p % alive = .false.
-                   MT = rxn % MT
+                   p % event = EVENT_FISSION
                    return
                 end if
              end do
@@ -418,8 +419,6 @@ contains
 
        end if
 
-       ! Set MT to be returned
-       MT = 2
     else
        ! =======================================================================
        ! INELASTIC SCATTERING
@@ -460,9 +459,11 @@ contains
        ! Perform collision physics for inelastics scattering
        call inelastic_scatter(p, nuc, rxn)
 
-       ! Set MT to be returned
-       MT = rxn % MT
     end if
+
+    ! If we made it this far, it means that a scattering reaction took place
+    ! since the absorption and fission blocks had return statements.
+    p % event = EVENT_SCATTER
 
   end subroutine sample_reaction
 

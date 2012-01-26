@@ -232,34 +232,26 @@ contains
   end subroutine add_map_element
 
 !===============================================================================
-! SCORE_TALLY contains the main logic for scoring user-specified tallies
+! SCORE_ANALOG_TALLY keeps track of how many events occur in a specified cell,
+! energy range, etc. Note that since these are "analog" tallies, they are only
+! triggered at every collision, not every event
 !===============================================================================
 
-  subroutine score_tally(p, scattered, fissioned)
+  subroutine score_analog_tally(p)
 
     type(Particle), pointer :: p
-    logical, intent(in)     :: scattered
-    logical, intent(in)     :: fissioned
 
     integer :: i
     integer :: j
-    integer :: k
-    integer :: n
     integer :: bins(N_FILTER_TYPES)
-    integer :: bin_energyout
     integer :: score_index
-    integer :: score_index0
     integer :: score_bin
-    integer :: mesh_bin
     real(8) :: score
     real(8) :: last_wgt
     real(8) :: wgt
     real(8) :: mu
-    real(8) :: E_out
-    logical :: has_energyout_bin
-    logical :: analog
-    type(TallyObject),    pointer :: t
-    type(StructuredMesh), pointer :: m
+    logical :: found_bin
+    type(TallyObject), pointer :: t => null()
 
     ! Copy particle's pre- and post-collision weight and angle
     last_wgt = p % last_wgt
@@ -275,87 +267,14 @@ contains
        ! Surface current tallies are treated separately
        if (t % type == TALLY_SURFACE_CURRENT) cycle
 
+       ! Skip tallies that are handled by track-length estimators
+       if (t % estimator == ESTIMATOR_TRACKLENGTH) cycle
+
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       ! determine mesh bin
-       if (t % n_filter_bins(FILTER_MESH) > 0) then
-          m => meshes(t % mesh)
-
-          ! Determine if we're in the mesh first
-          call get_mesh_bin(m, p % coord0 % xyz, mesh_bin)
-          if (mesh_bin == NO_BIN_FOUND) cycle
-          bins(FILTER_MESH) = mesh_bin
-       else
-          bins(FILTER_MESH) = 1
-       end if
-
-       ! determine next universe bin
-       if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
-          bins(FILTER_UNIVERSE) = get_next_bin(FILTER_UNIVERSE, p % coord % universe, i)
-          if (bins(FILTER_UNIVERSE) == NO_BIN_FOUND) cycle
-       else
-          bins(FILTER_UNIVERSE) = 1
-       end if
-
-       ! determine next material bin
-       if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
-          bins(FILTER_MATERIAL) = get_next_bin(FILTER_MATERIAL, p % material, i)
-          if (bins(FILTER_MATERIAL) == NO_BIN_FOUND) cycle
-       else
-          bins(FILTER_MATERIAL) = 1
-       end if
-
-       ! determine next cell bin
-       if (t % n_filter_bins(FILTER_CELL) > 0) then
-          bins(FILTER_CELL) = get_next_bin(FILTER_CELL, p % coord % cell, i)
-          if (bins(FILTER_CELL) == NO_BIN_FOUND) cycle
-       else
-          bins(FILTER_CELL) = 1
-       end if
-
-       ! determine next cellborn bin
-       if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
-          bins(FILTER_CELLBORN) = get_next_bin(FILTER_CELLBORN, p % cell_born, i)
-          if (bins(FILTER_CELLBORN) == NO_BIN_FOUND) cycle
-       else
-          bins(FILTER_CELLBORN) = 1
-       end if
-
-       ! determine next surface bin
-       if (t % n_filter_bins(FILTER_SURFACE) > 0) then
-          bins(FILTER_SURFACE) = get_next_bin(FILTER_SURFACE, p % surface, i)
-          if (bins(FILTER_SURFACE) == NO_BIN_FOUND) cycle
-       else
-          bins(FILTER_SURFACE) = 1
-       end if
-
-       ! determine incoming energy bin
-       n = t % n_filter_bins(FILTER_ENERGYIN)
-       if (n > 0) then
-          ! check if energy of the particle is within energy bins
-          if (p % last_E < t % energy_in(1) .or. &
-               p % last_E > t % energy_in(n + 1)) cycle
-
-          ! search to find incoming energy bin
-          bins(FILTER_ENERGYIN) = binary_search(t % energy_in, n + 1, p % last_E)
-       else
-          bins(FILTER_ENERGYIN) = 1
-       end if
-
-       ! determine outgoing energy bin
-       n = t % n_filter_bins(FILTER_ENERGYOUT)
-       if (n > 0) then
-          ! check if energy of the particle is within energy bins
-          if (p % E < t % energy_out(1) .or. p % E > t % energy_out(n + 1)) cycle
-
-          ! search to find incoming energy bin
-          bins(FILTER_ENERGYOUT) = binary_search(t % energy_out, n + 1, p % E)
-          has_energyout_bin = .true.
-       else
-          bins(FILTER_ENERGYOUT) = 1
-          has_energyout_bin = .false.
-       end if
+       call get_scoring_bins(p, i, bins, found_bin)
+       if (.not. found_bin) cycle
 
        ! =======================================================================
        ! CALCULATE SCORES AND ACCUMULATE TALLY
@@ -372,130 +291,152 @@ contains
           ! determine what type of score bin
           score_bin = t % score_bins(j) % scalar
 
-          ! determine if we need outgoing angle
-          analog = (score_bin == SCORE_NU_SCATTER .or. &
-               score_bin == SCORE_SCATTER_1 .or. score_bin == SCORE_SCATTER_2 .or. &
-               score_bin == SCORE_SCATTER_3 .or. score_bin == SCORE_N_1N .or. &
-               score_bin == SCORE_N_2N .or. score_bin == SCORE_N_3N .or. &
-               score_bin == SCORE_N_4N)
+          select case (score_bin)
+          case (SCORE_FLUX)
+             ! All events score to a flux bin. We actually use a collision
+             ! estimator since there is no way to count 'events' exactly for the
+             ! flux
 
-          if (has_energyout_bin .or. analog) then
-             ! If this tally has an outgoing energy filter, the only supported
-             ! reaction is scattering or nu-fission. Note that some scoring
-             ! quantities can only be scored in analog such as scattering
-             ! moments and (n,xn)
+             score = last_wgt / material_xs % total
 
-             if ((.not. scattered) .and. (.not. fissioned)) cycle
+          case (SCORE_TOTAL)
+             ! All events will score to the total reaction rate. We can just use
+             ! the weight of the particle entering the collision as the score
 
-             if (scattered) then
-                ! since scattering has already occured, we do not need to
-                ! multiply by the scattering cross section
+             score = last_wgt
 
-                select case (score_bin)
-                case (SCORE_SCATTER)
-                   score = last_wgt
-                case (SCORE_NU_SCATTER)
-                   score = wgt
-                case (SCORE_SCATTER_1)
-                   score = last_wgt * mu
-                case (SCORE_SCATTER_2)
-                   score = last_wgt * 0.5*(3.0*mu*mu - ONE)
-                case (SCORE_SCATTER_3)
-                   score = last_wgt * 0.5*(5.0*mu*mu*mu - 3.0*mu)
-                case (SCORE_N_1N)
-                   if (wgt == last_wgt) then
-                      score = last_wgt
-                   else
-                      cycle
-                   end if
-                case (SCORE_N_2N)
-                   if (int(wgt/last_wgt) == 2) then
-                      score = last_wgt
-                   else
-                      cycle
-                   end if
-                case (SCORE_N_3N)
-                   if (int(wgt/last_wgt) == 3) then
-                      score = last_wgt
-                   else
-                      cycle
-                   end if
-                case (SCORE_N_4N)
-                   if (int(wgt/last_wgt) == 4) then
-                      score = last_wgt
-                   else
-                      cycle
-                   end if
-                case (SCORE_NU_FISSION)
-                   cycle
-                case default
-                   message = "Invalid score type on analog tally."
-                   call fatal_error()
-                end select
-             end if
+          case (SCORE_SCATTER)
+             ! Skip any event where the particle didn't scatter
+             if (p % event /= EVENT_SCATTER) cycle
 
-             if (fissioned) then
+             ! Since only scattering events make it here, again we can use the
+             ! weight entering the collision as the estimator for the reaction
+             ! rate
 
-                if (score_bin /= SCORE_NU_FISSION) cycle
+             score = last_wgt
 
+          case (SCORE_NU_SCATTER) 
+             ! Skip any event where the particle didn't scatter
+             if (p % event /= EVENT_SCATTER) cycle
+
+             ! For scattering production, we need to use the post-collision
+             ! weight as the estimate for the number of neutrons exiting a
+             ! reaction with neutrons in the exit channel
+
+             score = wgt
+
+          case (SCORE_SCATTER_1)
+             ! Skip any event where the particle didn't scatter
+             if (p % event /= EVENT_SCATTER) cycle
+
+             ! The first scattering moment can be determined by using the rate
+             ! of scattering reactions multiplied by the cosine of the change in
+             ! neutron's angle due to the collision
+
+             score = last_wgt * mu
+
+          case (SCORE_SCATTER_2)
+             ! Skip any event where the particle didn't scatter
+             if (p % event /= EVENT_SCATTER) cycle
+
+             ! The second scattering moment can be determined in a similar
+             ! manner to the first scattering moment
+
+             score = last_wgt * 0.5*(3.0*mu*mu - ONE)
+
+          case (SCORE_SCATTER_3)
+             ! Skip any event where the particle didn't scatter
+             if (p % event /= EVENT_SCATTER) cycle
+
+             ! The first scattering moment can be determined by using the rate
+             ! of scattering reactions multiplied by the cosine of the change in
+             ! neutron's angle due to the collision
+
+             score = last_wgt * 0.5*(5.0*mu*mu*mu - 3.0*mu)
+
+          case (SCORE_N_1N)
+             ! Skip any event where the particle didn't scatter
+             if (p % event /= EVENT_SCATTER) cycle
+
+             ! Skip any events where weight of particle changed
+             if (wgt /= last_wgt) cycle
+
+             ! All events that reach this point are (n,1n) reactions
+             score = last_wgt
+
+          case (SCORE_N_2N)
+             ! Skip any event where the particle didn't scatter
+             if (p % event /= EVENT_SCATTER) cycle
+
+             ! Skip any scattering events where the weight didn't double
+             if (nint(wgt/last_wgt) /= 2) cycle
+
+             ! All events that reach this point are (n,2n) reactions
+             score = last_wgt
+
+          case (SCORE_N_3N)
+             ! Skip any event where the particle didn't scatter
+             if (p % event /= EVENT_SCATTER) cycle
+
+             ! Skip any scattering events where the weight didn't double
+             if (nint(wgt/last_wgt) /= 3) cycle
+
+             ! All events that reach this point are (n,3n) reactions
+             score = last_wgt
+
+          case (SCORE_N_4N)
+             ! Skip any event where the particle didn't scatter
+             if (p % event /= EVENT_SCATTER) cycle
+
+             ! Skip any scattering events where the weight didn't double
+             if (nint(wgt/last_wgt) /= 4) cycle
+
+             ! All events that reach this point are (n,3n) reactions
+             score = last_wgt
+
+          case (SCORE_ABSORPTION)
+             ! Skip any event where the particle wasn't absorbed
+             if (p % event == EVENT_SCATTER) cycle
+
+             ! All fission and absorption events will contribute here, so we can
+             ! just use the particle's weight entering the collision
+
+             score = last_wgt
+
+          case (SCORE_FISSION)
+             ! Skip any non-fission events
+             if (p % event /= EVENT_FISSION) cycle
+
+             ! All fission events will contribute, so again we can use
+             ! particle's weight entering the collision as the estimate for the
+             ! fission reaction rate
+
+             score = last_wgt
+
+          case (SCORE_NU_FISSION)
+             ! Skip any non-fission events
+             if (p % event /= EVENT_FISSION) cycle
+
+             if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                 ! Normally, we only need to make contributions to one scoring
                 ! bin. However, in the case of fission, since multiple fission
-                ! neutrons were emitted with different energies, multiple
-                ! outgoing energy bins may have been scored to. The following
-                ! logic treats this special case and scores to multiple bins
+                ! neutrons were emitted with different energies, multiple outgoing
+                ! energy bins may have been scored to. The following logic treats
+                ! this special case and scores to multiple bins
 
-                ! save original outgoing energy bin and score index
-                bin_energyout = bins(FILTER_ENERGYOUT)
-                score_index0 = score_index
-
-                ! Since the creation of fission sites is weighted such that it
-                ! is expected to create n_particles sites, we need to multiply
-                ! the score by keff to get the true nu-fission rate. Otherwise,
-                ! the sum of all nu-fission rates would be ~1.0.
-
-                score = keff
-
-                ! loop over number of particles banked
-                do k = 1, p % n_bank
-                   ! determine outgoing energy from fission bank
-                   E_out = fission_bank(n_bank - p % n_bank + k) % E
-
-                   ! change outgoing energy bin
-                   bins(FILTER_ENERGYOUT) = binary_search(t % energy_out, n + 1, E_out)
-
-                   ! determine scoring index
-                   score_index = sum((bins - 1) * t % stride) + 1
-
-                   ! Add score to tally
-                   call add_to_score(t % scores(score_index, j), score)
-                end do
-
-                ! reset outgoing energy bin and score index
-                bins(FILTER_ENERGYOUT) = bin_energyout 
-                score_index = score_index0
+                call score_fission_eout(p, t, bins, j)
                 cycle
 
-             end if
-          else
-             ! For tallies with no outgoing energy filter, the score is
-             ! calculated normally depending on the quantity specified
+             else
 
-             select case (score_bin)
-             case (SCORE_FLUX)
-                score = last_wgt / material_xs % total
-             case (SCORE_TOTAL)
-                score = last_wgt
-             case (SCORE_SCATTER)
-                score = last_wgt * (material_xs % total - material_xs % absorption) &
-                     / material_xs % total
-             case (SCORE_ABSORPTION)
-                score = last_wgt * material_xs % absorption / material_xs % total
-             case (SCORE_FISSION)
-                score = last_wgt * material_xs % fission / material_xs % total
-             case (SCORE_NU_FISSION)
-                score = last_wgt * material_xs % nu_fission / material_xs % total
-             end select
-          end if
+                score = keff * p % n_bank
+
+             end if
+
+          case default
+             message = "Invalid score type on tally " // to_str(t % id) // "."
+             call fatal_error()
+          end select
              
           ! Add score to tally
           call add_to_score(t % scores(score_index, j), score)
@@ -507,7 +448,270 @@ contains
 
     end do
 
-  end subroutine score_tally
+  end subroutine score_analog_tally
+
+!===============================================================================
+! SCORE_FISSION_EOUT
+!===============================================================================
+
+  subroutine score_fission_eout(p, t, bins, j)
+
+    type(Particle),    pointer :: p
+    type(TallyObject), pointer :: t
+    integer, intent(inout)     :: bins(N_FILTER_TYPES)
+    integer, intent(in)        :: j
+
+    integer :: k
+    integer :: bin_energyout
+    integer :: score_index
+    real(8) :: score
+    real(8) :: E_out
+
+    ! save original outgoing energy bin and score index
+    bin_energyout = bins(FILTER_ENERGYOUT)
+
+    ! Since the creation of fission sites is weighted such that it is
+    ! expected to create n_particles sites, we need to multiply the
+    ! score by keff to get the true nu-fission rate. Otherwise, the sum
+    ! of all nu-fission rates would be ~1.0.
+
+    score = keff
+
+    ! loop over number of particles banked
+    do k = 1, p % n_bank
+       ! determine outgoing energy from fission bank
+       E_out = fission_bank(n_bank - p % n_bank + k) % E
+
+       ! change outgoing energy bin
+       bins(FILTER_ENERGYOUT) = binary_search(t % energy_out, &
+            size(t % energy_out), E_out)
+
+       ! determine scoring index
+       score_index = sum((bins - 1) * t % stride) + 1
+
+       ! Add score to tally
+       call add_to_score(t % scores(score_index, j), score)
+    end do
+
+    ! reset outgoing energy bin and score index
+    bins(FILTER_ENERGYOUT) = bin_energyout
+
+  end subroutine score_fission_eout
+
+!===============================================================================
+! SCORE_TRACKLENGTH_TALLY
+!===============================================================================
+
+  subroutine score_tracklength_tally(p, distance)
+
+    type(Particle), pointer :: p
+    real(8), intent(in)     :: distance
+
+    integer :: i
+    integer :: j
+    integer :: bins(N_FILTER_TYPES)
+    integer :: score_index
+    integer :: score_bin
+    real(8) :: flux
+    real(8) :: score
+    logical :: found_bin
+    type(TallyObject), pointer :: t => null()
+
+    ! Determine track-length estimate of flux
+    flux = p % wgt * distance
+
+    ! A loop over all tallies is necessary because we need to simultaneously
+    ! determine different filter bins for the same tally in order to score to it
+
+    do i = 1, n_tallies
+       t => tallies(i)
+
+       ! Surface current tallies are treated separately
+       if (t % type == TALLY_SURFACE_CURRENT) cycle
+
+       ! Skip tallies that are handled by track-length estimators
+       if (t % estimator == ESTIMATOR_ANALOG) cycle
+
+       ! =======================================================================
+       ! DETERMINE SCORING BIN COMBINATION
+
+       call get_scoring_bins(p, i, bins, found_bin)
+       if (.not. found_bin) cycle
+
+       ! =======================================================================
+       ! CALCULATE SCORES AND ACCUMULATE TALLY
+
+       ! If we have made it here, we have a scoring combination of bins for this
+       ! tally -- now we need to determine where in the scores array we should
+       ! be accumulating the tally values
+
+       ! Determine scoring index for this filter combination
+       score_index = sum((bins - 1) * t % stride) + 1
+
+       ! Determine score for each bin
+       do j = 1, t % n_score_bins
+          ! determine what type of score bin
+          score_bin = t % score_bins(j) % scalar
+
+          ! Determine cross section 
+          select case(score_bin)
+          case (SCORE_FLUX)
+             score = flux
+          case (SCORE_TOTAL)
+             score = material_xs % total * flux
+          case (SCORE_SCATTER)
+             score = (material_xs % total - material_xs % absorption) * flux
+          case (SCORE_ABSORPTION)
+             score = material_xs % absorption * flux
+          case (SCORE_FISSION)
+             score = material_xs % fission * flux
+          case (SCORE_NU_FISSION)
+             score = material_xs % nu_fission * flux
+          case default
+             message = "Invalid score type on tally " // to_str(t % id) // "."
+             call fatal_error()
+          end select
+
+          ! Add score to tally
+          call add_to_score(t % scores(score_index, j), score)
+
+       end do
+
+       ! Reset tally map positioning
+       position = 0
+
+    end do
+
+  end subroutine score_tracklength_tally
+
+!===============================================================================
+! GET_SCORING_BINS
+!===============================================================================
+
+  subroutine get_scoring_bins(p, index_tally, bins, found_bin)
+
+    type(Particle),    pointer :: p
+    integer, intent(in)        :: index_tally
+    integer, intent(out)       :: bins(N_FILTER_TYPES)
+    logical, intent(out)       :: found_bin
+
+    integer :: n
+    integer :: mesh_bin
+    type(TallyObject),    pointer :: t => null()
+    type(StructuredMesh), pointer :: m => null()
+
+    found_bin = .true.
+    t => tallies(index_tally)
+
+    ! determine mesh bin
+    if (t % n_filter_bins(FILTER_MESH) > 0) then
+       m => meshes(t % mesh)
+
+       ! Determine if we're in the mesh first
+       call get_mesh_bin(m, p % coord0 % xyz, mesh_bin)
+       if (mesh_bin == NO_BIN_FOUND) then
+          found_bin = .false.
+          return
+       end if
+       bins(FILTER_MESH) = mesh_bin
+    else
+       bins(FILTER_MESH) = 1
+    end if
+
+    ! determine next universe bin
+    ! TODO: Account for multiple universes when performing this filter
+    if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
+       bins(FILTER_UNIVERSE) = get_next_bin(FILTER_UNIVERSE, &
+            p % coord % universe, index_tally)
+       if (bins(FILTER_UNIVERSE) == NO_BIN_FOUND) then
+          found_bin = .false.
+          return
+       end if
+    else
+       bins(FILTER_UNIVERSE) = 1
+    end if
+
+    ! determine next material bin
+    if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
+       bins(FILTER_MATERIAL) = get_next_bin(FILTER_MATERIAL, &
+            p % material, index_tally)
+       if (bins(FILTER_MATERIAL) == NO_BIN_FOUND) then
+          found_bin = .false.
+          return
+       end if
+    else
+       bins(FILTER_MATERIAL) = 1
+    end if
+
+    ! determine next cell bin
+    ! TODO: Account for cells in multiple levels when performing this filter
+    if (t % n_filter_bins(FILTER_CELL) > 0) then
+       bins(FILTER_CELL) = get_next_bin(FILTER_CELL, &
+            p % coord % cell, index_tally)
+       if (bins(FILTER_CELL) == NO_BIN_FOUND) then
+          found_bin = .false.
+          return
+       end if
+    else
+       bins(FILTER_CELL) = 1
+    end if
+
+    ! determine next cellborn bin
+    if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
+       bins(FILTER_CELLBORN) = get_next_bin(FILTER_CELLBORN, &
+            p % cell_born, index_tally)
+       if (bins(FILTER_CELLBORN) == NO_BIN_FOUND) then
+          found_bin = .false.
+          return
+       end if
+    else
+       bins(FILTER_CELLBORN) = 1
+    end if
+
+    ! determine next surface bin
+    if (t % n_filter_bins(FILTER_SURFACE) > 0) then
+       bins(FILTER_SURFACE) = get_next_bin(FILTER_SURFACE, &
+            p % surface, index_tally)
+       if (bins(FILTER_SURFACE) == NO_BIN_FOUND) then
+          found_bin = .false.
+          return
+       end if
+    else
+       bins(FILTER_SURFACE) = 1
+    end if
+
+    ! determine incoming energy bin
+    n = t % n_filter_bins(FILTER_ENERGYIN)
+    if (n > 0) then
+       ! check if energy of the particle is within energy bins
+       if (p % last_E < t % energy_in(1) .or. &
+            p % last_E > t % energy_in(n + 1)) then
+          found_bin = .false.
+          return
+       end if
+
+       ! search to find incoming energy bin
+       bins(FILTER_ENERGYIN) = binary_search(t % energy_in, n + 1, p % last_E)
+    else
+       bins(FILTER_ENERGYIN) = 1
+    end if
+
+    ! determine outgoing energy bin
+    n = t % n_filter_bins(FILTER_ENERGYOUT)
+    if (n > 0) then
+       ! check if energy of the particle is within energy bins
+       if (p % E < t % energy_out(1) .or. p % E > t % energy_out(n + 1)) then
+          found_bin = .false.
+          return
+       end if
+
+       ! search to find incoming energy bin
+       bins(FILTER_ENERGYOUT) = binary_search(t % energy_out, n + 1, p % E)
+    else
+       bins(FILTER_ENERGYOUT) = 1
+    end if
+
+  end subroutine get_scoring_bins
 
 !===============================================================================
 ! SCORE_SURFACE_CURRENT tallies surface crossings in a mesh tally by manually

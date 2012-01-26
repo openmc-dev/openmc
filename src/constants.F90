@@ -231,8 +231,16 @@ module constants
 
   ! Tally estimator types
   integer, parameter :: &
-       ESTIMATOR_COLLISION   = 1, &
+       ESTIMATOR_ANALOG      = 1, &
        ESTIMATOR_TRACKLENGTH = 2
+
+  ! Event types for tallies
+  integer, parameter :: &
+       EVENT_SURFACE = -2, &
+       EVENT_LATTICE = -1, &
+       EVENT_SCATTER =  1, &
+       EVENT_ABSORB  =  2, &
+       EVENT_FISSION =  3 
 
   ! Tally score type
   integer, parameter :: N_SCORE_TYPES = 15

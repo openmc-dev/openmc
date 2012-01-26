@@ -23,9 +23,8 @@ module particle_header
      real(8) :: xyz(3)
      real(8) :: uvw(3)
 
-     ! Pointers to next (lower) and previous (higher) universe
+     ! Pointer to next (more local) set of coordinates
      type(LocalCoord), pointer :: next => null()
-     type(LocalCoord), pointer :: prev => null()
   end type LocalCoord
      
 !===============================================================================

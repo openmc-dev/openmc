@@ -63,7 +63,12 @@ module tally_header
      integer :: estimator ! collision, track-length
      real(8) :: volume    ! volume of region
 
-     ! Tally bin specifications
+     ! Information about what filters should be used
+
+     integer              :: n_filters
+     integer, allocatable :: filters(:)
+
+     ! Filter bin specifications
 
      type(TallyFilter), pointer :: universe_bins(:) => null()
      type(TallyFilter), pointer :: material_bins(:) => null()

@@ -615,6 +615,8 @@ contains
     integer :: i_mesh      ! index in meshes array
     integer :: n           ! size of arrays in mesh specification
     integer :: n_words     ! number of words read
+    integer :: n_filters   ! number of filters
+    integer :: filters(N_FILTER_TYPES) ! temporary list of filters
     logical :: file_exists ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
@@ -735,6 +737,10 @@ contains
        t % n_filter_bins = 0
        t % stride = 0
 
+       ! Initialize filters
+       n_filters = 0
+       filters = 0
+
        ! Set tally type to volume by default
        t % type = TALLY_VOLUME
 
@@ -767,6 +773,9 @@ contains
              t % cell_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
           t % n_filter_bins(FILTER_CELL) = n_words
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_CELL
        end if
 
        ! Read surface filter bins
@@ -777,6 +786,9 @@ contains
              t % surface_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
           t % n_filter_bins(FILTER_SURFACE) = n_words
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_SURFACE
        end if
 
        ! Read universe filter bins
@@ -787,6 +799,9 @@ contains
              t % universe_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
           t % n_filter_bins(FILTER_UNIVERSE) = n_words
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_UNIVERSE
        end if
 
        ! Read material filter bins
@@ -797,6 +812,9 @@ contains
              t % material_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
           t % n_filter_bins(FILTER_MATERIAL) = n_words
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_MATERIAL
        end if
 
        ! Read mesh filter bins
@@ -814,6 +832,9 @@ contains
           end if
 
           t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) + product(m % dimension)
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_MESH
        end if
 
        ! Read birth region filter bins
@@ -824,6 +845,9 @@ contains
              t % cellborn_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
           t % n_filter_bins(FILTER_CELLBORN) = n_words
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_CELLBORN
        end if
 
        ! Read incoming energy filter bins
@@ -834,6 +858,9 @@ contains
              t % energy_in(j) = str_to_real(words(j))
           end do
           t % n_filter_bins(FILTER_ENERGYIN) = n_words - 1
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_ENERGYIN
        end if
 
        ! Read outgoing energy filter bins
@@ -847,7 +874,15 @@ contains
 
           ! Set tally estimator to analog
           t % estimator = ESTIMATOR_ANALOG
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_ENERGYOUT
        end if
+
+       ! Allocate and set filters
+       t % n_filters = n_filters
+       allocate(t % filters(n_filters))
+       t % filters = filters(1:n_filters)
 
        ! Read macro reactions
        if (len_trim(tally_(i) % macros) > 0) then

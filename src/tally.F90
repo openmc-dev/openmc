@@ -602,11 +602,12 @@ contains
 
   subroutine get_scoring_bins(p, index_tally, bins, found_bin)
 
-    type(Particle),    pointer :: p
-    integer, intent(in)        :: index_tally
-    integer, intent(out)       :: bins(N_FILTER_TYPES)
-    logical, intent(out)       :: found_bin
+    type(Particle), pointer :: p
+    integer, intent(in)     :: index_tally
+    integer, intent(out)    :: bins(N_FILTER_TYPES)
+    logical, intent(out)    :: found_bin
 
+    integer :: i
     integer :: n
     integer :: mesh_bin
     type(TallyObject),    pointer :: t => null()
@@ -614,114 +615,97 @@ contains
 
     found_bin = .true.
     t => tallies(index_tally)
+    bins = 1
 
-    ! determine mesh bin
-    if (t % n_filter_bins(FILTER_MESH) > 0) then
-       m => meshes(t % mesh)
+    FILTER_LOOP: do i = 1, t % n_filters
 
-       ! Determine if we're in the mesh first
-       call get_mesh_bin(m, p % coord0 % xyz, mesh_bin)
-       if (mesh_bin == NO_BIN_FOUND) then
-          found_bin = .false.
-          return
-       end if
-       bins(FILTER_MESH) = mesh_bin
-    else
-       bins(FILTER_MESH) = 1
-    end if
+       select case (t % filters(i))
+       case (FILTER_MESH)
+          ! determine mesh bin
+          m => meshes(t % mesh)
 
-    ! determine next universe bin
-    ! TODO: Account for multiple universes when performing this filter
-    if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
-       bins(FILTER_UNIVERSE) = get_next_bin(FILTER_UNIVERSE, &
-            p % coord % universe, index_tally)
-       if (bins(FILTER_UNIVERSE) == NO_BIN_FOUND) then
-          found_bin = .false.
-          return
-       end if
-    else
-       bins(FILTER_UNIVERSE) = 1
-    end if
+          ! Determine if we're in the mesh first
+          call get_mesh_bin(m, p % coord0 % xyz, mesh_bin)
+          if (mesh_bin == NO_BIN_FOUND) then
+             found_bin = .false.
+             return
+          end if
+          bins(FILTER_MESH) = mesh_bin
 
-    ! determine next material bin
-    if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
-       bins(FILTER_MATERIAL) = get_next_bin(FILTER_MATERIAL, &
-            p % material, index_tally)
-       if (bins(FILTER_MATERIAL) == NO_BIN_FOUND) then
-          found_bin = .false.
-          return
-       end if
-    else
-       bins(FILTER_MATERIAL) = 1
-    end if
+       case (FILTER_UNIVERSE)
+          ! determine next universe bin
+          ! TODO: Account for multiple universes when performing this filter
+          bins(FILTER_UNIVERSE) = get_next_bin(FILTER_UNIVERSE, &
+               p % coord % universe, index_tally)
+          if (bins(FILTER_UNIVERSE) == NO_BIN_FOUND) then
+             found_bin = .false.
+             return
+          end if
 
-    ! determine next cell bin
-    ! TODO: Account for cells in multiple levels when performing this filter
-    if (t % n_filter_bins(FILTER_CELL) > 0) then
-       bins(FILTER_CELL) = get_next_bin(FILTER_CELL, &
-            p % coord % cell, index_tally)
-       if (bins(FILTER_CELL) == NO_BIN_FOUND) then
-          found_bin = .false.
-          return
-       end if
-    else
-       bins(FILTER_CELL) = 1
-    end if
+       case (FILTER_MATERIAL)
+          bins(FILTER_MATERIAL) = get_next_bin(FILTER_MATERIAL, &
+               p % material, index_tally)
+          if (bins(FILTER_MATERIAL) == NO_BIN_FOUND) then
+             found_bin = .false.
+             return
+          end if
 
-    ! determine next cellborn bin
-    if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
-       bins(FILTER_CELLBORN) = get_next_bin(FILTER_CELLBORN, &
-            p % cell_born, index_tally)
-       if (bins(FILTER_CELLBORN) == NO_BIN_FOUND) then
-          found_bin = .false.
-          return
-       end if
-    else
-       bins(FILTER_CELLBORN) = 1
-    end if
+       case (FILTER_CELL)
+          ! determine next cell bin
+          ! TODO: Account for cells in multiple levels when performing this filter
+          bins(FILTER_CELL) = get_next_bin(FILTER_CELL, &
+               p % coord % cell, index_tally)
+          if (bins(FILTER_CELL) == NO_BIN_FOUND) then
+             found_bin = .false.
+             return
+          end if
 
-    ! determine next surface bin
-    if (t % n_filter_bins(FILTER_SURFACE) > 0) then
-       bins(FILTER_SURFACE) = get_next_bin(FILTER_SURFACE, &
-            p % surface, index_tally)
-       if (bins(FILTER_SURFACE) == NO_BIN_FOUND) then
-          found_bin = .false.
-          return
-       end if
-    else
-       bins(FILTER_SURFACE) = 1
-    end if
+       case (FILTER_CELLBORN)
+          ! determine next cellborn bin
+          bins(FILTER_CELLBORN) = get_next_bin(FILTER_CELLBORN, &
+               p % cell_born, index_tally)
+          if (bins(FILTER_CELLBORN) == NO_BIN_FOUND) then
+             found_bin = .false.
+             return
+          end if
 
-    ! determine incoming energy bin
-    n = t % n_filter_bins(FILTER_ENERGYIN)
-    if (n > 0) then
-       ! check if energy of the particle is within energy bins
-       if (p % last_E < t % energy_in(1) .or. &
-            p % last_E > t % energy_in(n + 1)) then
-          found_bin = .false.
-          return
-       end if
+       case (FILTER_SURFACE)
+          ! determine next surface bin
+          bins(FILTER_SURFACE) = get_next_bin(FILTER_SURFACE, &
+               p % surface, index_tally)
+          if (bins(FILTER_SURFACE) == NO_BIN_FOUND) then
+             found_bin = .false.
+             return
+          end if
 
-       ! search to find incoming energy bin
-       bins(FILTER_ENERGYIN) = binary_search(t % energy_in, n + 1, p % last_E)
-    else
-       bins(FILTER_ENERGYIN) = 1
-    end if
+       case (FILTER_ENERGYIN)
+          ! determine incoming energy bin
+          n = t % n_filter_bins(FILTER_ENERGYIN)
+          ! check if energy of the particle is within energy bins
+          if (p % last_E < t % energy_in(1) .or. &
+               p % last_E > t % energy_in(n + 1)) then
+             found_bin = .false.
+             return
+          end if
 
-    ! determine outgoing energy bin
-    n = t % n_filter_bins(FILTER_ENERGYOUT)
-    if (n > 0) then
-       ! check if energy of the particle is within energy bins
-       if (p % E < t % energy_out(1) .or. p % E > t % energy_out(n + 1)) then
-          found_bin = .false.
-          return
-       end if
+          ! search to find incoming energy bin
+          bins(FILTER_ENERGYIN) = binary_search(t % energy_in, n + 1, p % last_E)
 
-       ! search to find incoming energy bin
-       bins(FILTER_ENERGYOUT) = binary_search(t % energy_out, n + 1, p % E)
-    else
-       bins(FILTER_ENERGYOUT) = 1
-    end if
+       case (FILTER_ENERGYOUT)
+          ! determine outgoing energy bin
+          n = t % n_filter_bins(FILTER_ENERGYOUT)
+          ! check if energy of the particle is within energy bins
+          if (p % E < t % energy_out(1) .or. p % E > t % energy_out(n + 1)) then
+             found_bin = .false.
+             return
+          end if
+
+          ! search to find incoming energy bin
+          bins(FILTER_ENERGYOUT) = binary_search(t % energy_out, n + 1, p % E)
+
+       end select
+
+    end do FILTER_LOOP
 
   end subroutine get_scoring_bins
 

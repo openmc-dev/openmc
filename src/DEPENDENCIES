@@ -13,6 +13,7 @@ ace.o: string.o
 ace_header.o: constants.o
 ace_header.o: endf_header.o
 
+cmfd_data.o: cmfd_output.o
 cmfd_data.o: datatypes.o
 cmfd_data.o: global.o
 cmfd_data.o: mesh.o

@@ -6,6 +6,7 @@ cmfd_data.o \
 cmfd_execute.o \
 cmfd_header.o \
 cmfd_loss_operator.o \
+cmfd_output.o \
 cmfd_power_solver.o \
 cmfd_prod_operator.o \
 cmfd_slepc_solver.o \

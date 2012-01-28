@@ -29,18 +29,6 @@ contains
     ! initialize slepc/petsc
     call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
 
-    ! execute diffusion solver
-    call cmfd_power_execute()
-
-    ! print results
-    print *,'Power Eigenvalue is:',cmfd%keff
-
-    ! execute slepc solver
-    call cmfd_slepc_execute()
-
-    ! print results
-    print *,'SLEPC Eigenvalue is:',cmfd%keff
-
     ! execute snes solver
     call cmfd_snes_execute()
 

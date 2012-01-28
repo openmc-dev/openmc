@@ -58,12 +58,17 @@ module tally_header
   type TallyObject
      ! Basic data
 
-     integer :: id
-     integer :: type
-     real(8) :: volume
-     logical :: surface_current = .false.
+     integer :: id        ! user-defined identifier
+     integer :: type      ! volume, surface current
+     integer :: estimator ! collision, track-length
+     real(8) :: volume    ! volume of region
 
-     ! Tally bin specifications
+     ! Information about what filters should be used
+
+     integer              :: n_filters
+     integer, allocatable :: filters(:)
+
+     ! Filter bin specifications
 
      type(TallyFilter), pointer :: universe_bins(:) => null()
      type(TallyFilter), pointer :: material_bins(:) => null()
@@ -74,24 +79,24 @@ module tally_header
      real(8), allocatable       :: energy_in(:)
      real(8), allocatable       :: energy_out(:)
 
-     ! Number of bins for each filter
-     integer :: n_total_bins    = 0
+     ! Total number of filter bins
+     integer :: n_total_bins = 0
 
      ! The following attributes do not necessarily need to be stored but they
      ! greatly simplify logic in many places. n_bins gives the number of bins
-     ! for each filter type, e.g. n_bins(T_CELL) would be the size of
-     ! cell_bins. The stride attribute is used for determining the index in the
-     ! scores array for a bin combination. Since multiple dimensions are mapped
-     ! onto one dimension in the scores array, the stride attribute gives the
-     ! stride for a given filter type within the scores array
+     ! for each filter type, e.g. n_filter_bins(FILTER_CELL) would be the size
+     ! of cell_bins. The stride attribute is used for determining the index in
+     ! the scores array for a bin combination. Since multiple dimensions are
+     ! mapped onto one dimension in the scores array, the stride attribute gives
+     ! the stride for a given filter type within the scores array
 
-     integer, allocatable :: n_bins(:)
+     integer, allocatable :: n_filter_bins(:)
      integer, allocatable :: stride(:)
 
      ! Macroscopic properties to score
 
-     type(TallyFilter), pointer :: macro_bins(:) => null()
-     integer :: n_macro_bins = 0
+     type(TallyFilter), pointer :: score_bins(:) => null()
+     integer :: n_score_bins = 0
      
      ! Scores for each bin -- the most natural way to have scores would be to
      ! have a dimension for each different type of bin, but older Fortran

@@ -1,7 +1,7 @@
 program main
 
-  use cmfd_execute,    only: execute_cmfd,allocate_cmfd,cmfd_solver
-  use cmfd_utils,      only: read_hdf5
+  use cmfd_execute,    only: execute_cmfd
+! use cmfd_utils,      only: read_hdf5
   use constants
   use global
   use finalize,        only: finalize_run
@@ -47,13 +47,13 @@ program main
     cmfd_only = .TRUE.
 
     ! read in HDF5 file
-    call read_hdf5()
+!   call read_hdf5()
 
     ! run diffusion
-    call cmfd_solver()
+!   call cmfd_solver()
 
     ! deallocate arrays
-    call free_memory()
+!   call free_memory()
 
     ! terminate code
     stop

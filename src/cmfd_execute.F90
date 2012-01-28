@@ -1,10 +1,11 @@
 module cmfd_execute
 
-  use cmfd_data
+  use cmfd_data,         only: set_up_cmfd
+  use cmfd_output,       only: write_cmfd_vtk
   use cmfd_power_solver, only: cmfd_power_execute
   use cmfd_slepc_solver, only: cmfd_slepc_execute
   use cmfd_snes_solver,  only: cmfd_snes_execute
-  use global
+  use global,            only: cmfd
 
   implicit none
 
@@ -37,6 +38,9 @@ contains
 
     ! finalize slepc
     call SlepcFinalize(ierr)
+
+    ! write vtk file
+    call write_cmfd_vtk()
 
   end subroutine execute_cmfd
 

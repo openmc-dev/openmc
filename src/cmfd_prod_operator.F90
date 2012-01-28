@@ -2,8 +2,7 @@ module cmfd_prod_operator
 
   implicit none
   private
-  public :: init_F_operator,build_prod_matrix,print_F_operator,                &
- &          destroy_F_operator
+  public :: init_F_operator,build_prod_matrix,destroy_F_operator
 
 #include <finclude/petsc.h90>
 
@@ -141,6 +140,9 @@ contains
 
     ! finalize matrix assembly
     call MatAssemblyEnd(this%F,MAT_FINAL_ASSEMBLY,ierr)
+
+    ! print out operator to file
+    call print_F_operator(this)
 
   end subroutine build_prod_matrix
 

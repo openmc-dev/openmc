@@ -2,7 +2,7 @@ module cmfd_loss_operator
 
   implicit none
   private
-  public :: init_M_operator,build_loss_matrix,print_M_operator,destroy_M_operator
+  public :: init_M_operator,build_loss_matrix,destroy_M_operator
 
 #include "finclude/petsc.h90"
 
@@ -260,6 +260,9 @@ contains
 
     ! finalize matrix assembly
     call MatAssemblyEnd(this%M,MAT_FINAL_ASSEMBLY,ierr)
+
+    ! print out operator to file
+    call print_M_operator(this)
 
   end subroutine build_loss_matrix
 

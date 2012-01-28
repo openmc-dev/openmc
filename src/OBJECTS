@@ -5,6 +5,7 @@ bank_header.o \
 cmfd_data.o \
 cmfd_execute.o \
 cmfd_header.o \
+cmfd_input.o \
 cmfd_loss_operator.o \
 cmfd_output.o \
 cmfd_power_solver.o \

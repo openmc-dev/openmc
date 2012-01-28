@@ -2,7 +2,7 @@ module cmfd_input
 
   implicit none
   private
-  public :: read_cmfd_xml
+  public :: read_cmfd_xml,read_cmfd_hdf5
 
 contains
 
@@ -247,5 +247,135 @@ contains
     end do
 
   end subroutine create_cmfd_tally
+
+!===============================================================================
+! READ_CMFD_HDF5 writes an hdf5 output file with the cmfd object for restarts
+!===============================================================================
+
+  subroutine read_cmfd_hdf5()
+
+    use cmfd_header, only: allocate_cmfd
+    use global,      only: cmfd
+
+#ifdef HDF5
+    use global, only: hdf5_output_file,hdf5_err
+    use hdf5
+    use hdf5_interface, only: hdf5_open_output, hdf5_close_output
+#endif
+
+! integer(HID_T) :: file_id ! File identifier
+    integer(HID_T) :: dataset_id ! Dataset identifier
+    integer :: error ! Error flag
+
+    integer(HSIZE_T), dimension(1) :: dim1
+    integer(HSIZE_T), dimension(3) :: dim3
+    integer(HSIZE_T), dimension(4) :: dim4
+    integer(HSIZE_T), dimension(5) :: dim5
+
+    integer :: nx ! number of mesh cells in x direction
+    integer :: ny ! number of mesh cells in y direction
+    integer :: nz ! number of mesh cells in z direction
+    integer :: ng ! number of energy groups
+
+    ! open output file
+    call hdf5_open_output()
+
+    ! read indices to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/indices",dataset_id,hdf5_err)
+    dim1 = (/4/)
+    call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%indices,dim1,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! get indices
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! allocate cmfd object
+    call allocate_cmfd(cmfd)
+
+    ! read totalxs to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/totalxs",dataset_id,hdf5_err)
+    dim4 = (/ng,nx,ny,nz/)
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%totalxs,dim4,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read p1scattxs to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/p1scattxs",dataset_id,hdf5_err)
+    dim4 = (/ng,nx,ny,nz/)
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%p1scattxs,dim4,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read scattxs to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/scattxs",dataset_id,hdf5_err)
+    dim5 = (/ng,ng,nx,ny,nz/)
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%scattxs,dim5,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read scattxs to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/nfissxs",dataset_id,hdf5_err)
+    dim5 = (/ng,ng,nx,ny,nz/)
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%nfissxs,dim5,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read diffcof to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/diffcof",dataset_id,hdf5_err)
+    dim4 = (/ng,nx,ny,nz/)
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%diffcof,dim4,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read current to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/current",dataset_id,hdf5_err)
+    dim5 = (/12,ng,nx,ny,nz/)
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%current,dim5,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read flux to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/flux",dataset_id,hdf5_err)
+    dim4 = (/ng,nx,ny,nz/)
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%flux,dim4,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read dtilde to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/dtilde",dataset_id,hdf5_err)
+    dim5 = (/6,ng,nx,ny,nz/)
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%dtilde,dim5,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read dhat to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/dhat",dataset_id,hdf5_err)
+    dim5 = (/6,ng,nx,ny,nz/)
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%dhat,dim5,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read albedo to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/albedo",dataset_id,hdf5_err)
+    dim1 = (/6/)
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%albedo,dim1,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read hxyz to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/hxyz",dataset_id,hdf5_err)
+    dim4 = (/3,nx,ny,nz/)
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%hxyz,dim4,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read coremap to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/coremap",dataset_id,hdf5_err)
+    dim3 = (/nx,ny,nz/)
+    call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%coremap,dim3,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! read mat_dim to cmfd object
+    call h5dopen_f(hdf5_output_file,"cmfd/mat_dim",dataset_id,hdf5_err)
+    dim1 = (/1/)
+    call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%mat_dim,dim1,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! close output file
+    call hdf5_close_output()
+
+  end subroutine read_cmfd_hdf5
 
 end module cmfd_input

@@ -1,7 +1,7 @@
 program main
 
   use cmfd_execute,    only: execute_cmfd
-! use cmfd_utils,      only: read_hdf5
+  use cmfd_input,      only: read_cmfd_hdf5
   use constants
   use global
   use finalize,        only: finalize_run
@@ -46,14 +46,18 @@ program main
     ! set CMFD only to true
     cmfd_only = .TRUE.
 
+#ifdef HDF5
     ! read in HDF5 file
-!   call read_hdf5()
+    call read_cmfd_hdf5()
 
     ! run diffusion
-!   call cmfd_solver()
+    call execute_cmfd() 
 
     ! deallocate arrays
-!   call free_memory()
+    call free_memory()
+#else
+    write(*,*) 'Restart capability not supported without HDF5'
+#endif
 
     ! terminate code
     stop

@@ -5,7 +5,7 @@ module cmfd_execute
   use cmfd_power_solver, only: cmfd_power_execute
   use cmfd_slepc_solver, only: cmfd_slepc_execute
   use cmfd_snes_solver,  only: cmfd_snes_execute
-  use global,            only: cmfd
+  use global,            only: cmfd,cmfd_only
 
   implicit none
 
@@ -25,7 +25,7 @@ contains
     integer :: ierr  ! petsc error code
 
     ! set up cmfd
-    call set_up_cmfd()
+    if(.not. cmfd_only) call set_up_cmfd()
 
     ! initialize slepc/petsc
     call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
@@ -40,7 +40,7 @@ contains
     call SlepcFinalize(ierr)
 
     ! write vtk file
-    call write_cmfd_vtk()
+    if(.not. cmfd_only) call write_cmfd_vtk()
 
   end subroutine execute_cmfd
 

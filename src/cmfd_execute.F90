@@ -25,7 +25,7 @@ contains
     integer :: ierr  ! petsc error code
 
     ! set up cmfd
-    call set_up_cmfd()    
+    call set_up_cmfd()
 
     ! initialize slepc/petsc
     call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)

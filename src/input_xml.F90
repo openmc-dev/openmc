@@ -617,6 +617,8 @@ contains
     integer :: i_mesh      ! index in meshes array
     integer :: n           ! size of arrays in mesh specification
     integer :: n_words     ! number of words read
+    integer :: n_filters   ! number of filters
+    integer :: filters(N_FILTER_TYPES) ! temporary list of filters
     logical :: file_exists ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
@@ -730,12 +732,27 @@ contains
        t => tallies(i)
 
        ! Allocate arrays for number of bins and stride in scores array
-       allocate(t % n_bins(TALLY_TYPES))
-       allocate(t % stride(TALLY_TYPES))
+       allocate(t % n_filter_bins(N_FILTER_TYPES))
+       allocate(t % stride(N_FILTER_TYPES))
 
        ! Initialize number of bins and stride
-       t % n_bins = 0
+       t % n_filter_bins = 0
        t % stride = 0
+
+       ! Initialize filters
+       n_filters = 0
+       filters = 0
+
+       ! Set tally type to volume by default
+       t % type = TALLY_VOLUME
+
+       ! It's desirable to use a track-length esimator for tallies since
+       ! generally more events will score to the tally, reducing the
+       ! variance. However, for tallies that require information on
+       ! post-collision parameters (e.g. tally with an energyout filter) the
+       ! analog esimator must be used.
+
+       t % estimator = ESTIMATOR_TRACKLENGTH
 
        ! Copy material id
        t % id = tally_(i) % id
@@ -757,7 +774,10 @@ contains
           do j = 1, n_words
              t % cell_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
-          t % n_bins(T_CELL) = n_words
+          t % n_filter_bins(FILTER_CELL) = n_words
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_CELL
        end if
 
        ! Read surface filter bins
@@ -767,7 +787,10 @@ contains
           do j = 1, n_words
              t % surface_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
-          t % n_bins(T_SURFACE) = n_words
+          t % n_filter_bins(FILTER_SURFACE) = n_words
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_SURFACE
        end if
 
        ! Read universe filter bins
@@ -777,7 +800,10 @@ contains
           do j = 1, n_words
              t % universe_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
-          t % n_bins(T_UNIVERSE) = n_words
+          t % n_filter_bins(FILTER_UNIVERSE) = n_words
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_UNIVERSE
        end if
 
        ! Read material filter bins
@@ -787,7 +813,10 @@ contains
           do j = 1, n_words
              t % material_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
-          t % n_bins(T_MATERIAL) = n_words
+          t % n_filter_bins(FILTER_MATERIAL) = n_words
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_MATERIAL
        end if
 
        ! Read mesh filter bins
@@ -804,7 +833,10 @@ contains
              call fatal_error()
           end if
 
-          t % n_bins(T_MESH) = t % n_bins(T_MESH) + product(m % dimension)
+          t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) + product(m % dimension)
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_MESH
        end if
 
        ! Read birth region filter bins
@@ -814,7 +846,10 @@ contains
           do j = 1, n_words
              t % cellborn_bins(j) % scalar = int(str_to_int(words(j)),4)
           end do
-          t % n_bins(T_CELLBORN) = n_words
+          t % n_filter_bins(FILTER_CELLBORN) = n_words
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_CELLBORN
        end if
 
        ! Read incoming energy filter bins
@@ -824,7 +859,10 @@ contains
           do j = 1, n_words
              t % energy_in(j) = str_to_real(words(j))
           end do
-          t % n_bins(T_ENERGYIN) = n_words - 1
+          t % n_filter_bins(FILTER_ENERGYIN) = n_words - 1
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_ENERGYIN
        end if
 
        ! Read outgoing energy filter bins
@@ -834,88 +872,117 @@ contains
           do j = 1, n_words
              t % energy_out(j) = str_to_real(words(j))
           end do
-          t % n_bins(T_ENERGYOUT) = n_words - 1
+          t % n_filter_bins(FILTER_ENERGYOUT) = n_words - 1
+
+          ! Set tally estimator to analog
+          t % estimator = ESTIMATOR_ANALOG
+
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_ENERGYOUT
        end if
+
+       ! Allocate and set filters
+       t % n_filters = n_filters
+       allocate(t % filters(n_filters))
+       t % filters = filters(1:n_filters)
 
        ! Read macro reactions
        if (len_trim(tally_(i) % macros) > 0) then
           call split_string(tally_(i) % macros, words, n_words)
-          allocate(t % macro_bins(n_words))
+          allocate(t % score_bins(n_words))
           do j = 1, n_words
              word = words(j)
              call lower_case(word)
              select case (trim(word))
              case ('flux')
-                t % macro_bins(j) % scalar = MACRO_FLUX
-                if (t % n_bins(T_ENERGYOUT) > 0) then
+                t % score_bins(j) % scalar = SCORE_FLUX
+                if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally flux with an outgoing energy filter."
                    call fatal_error()
                 end if
              case ('total')
-                t % macro_bins(j) % scalar = MACRO_TOTAL
-                if (t % n_bins(T_ENERGYOUT) > 0) then
+                t % score_bins(j) % scalar = SCORE_TOTAL
+                if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally total reaction rate with an &
                         &outgoing energy filter."
                    call fatal_error()
                 end if
              case ('scatter')
-                t % macro_bins(j) % scalar = MACRO_SCATTER
+                t % score_bins(j) % scalar = SCORE_SCATTER
              case ('nu-scatter')
-                t % macro_bins(j) % scalar = MACRO_NU_SCATTER
+                t % score_bins(j) % scalar = SCORE_NU_SCATTER
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('scatter-1')
-                t % macro_bins(j) % scalar = MACRO_SCATTER_1
+                t % score_bins(j) % scalar = SCORE_SCATTER_1
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('scatter-2')
-                t % macro_bins(j) % scalar = MACRO_SCATTER_2
+                t % score_bins(j) % scalar = SCORE_SCATTER_2
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('scatter-3')
-                t % macro_bins(j) % scalar = MACRO_SCATTER_3
+                t % score_bins(j) % scalar = SCORE_SCATTER_3
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('n1n')
-                t % macro_bins(j) % scalar = MACRO_N_1N
+                t % score_bins(j) % scalar = SCORE_N_1N
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('n2n')
-                t % macro_bins(j) % scalar = MACRO_N_2N
+                t % score_bins(j) % scalar = SCORE_N_2N
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('n3n')
-                t % macro_bins(j) % scalar = MACRO_N_3N
+                t % score_bins(j) % scalar = SCORE_N_3N
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('n4n')
-                t % macro_bins(j) % scalar = MACRO_N_4N
+                t % score_bins(j) % scalar = SCORE_N_4N
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('absorption')
-                t % macro_bins(j) % scalar = MACRO_ABSORPTION
-                if (t % n_bins(T_ENERGYOUT) > 0) then
+                t % score_bins(j) % scalar = SCORE_ABSORPTION
+                if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally absorption rate with an outgoing &
                         &energy filter."
                    call fatal_error()
                 end if
              case ('fission')
-                t % macro_bins(j) % scalar = MACRO_FISSION
-                if (t % n_bins(T_ENERGYOUT) > 0) then
+                t % score_bins(j) % scalar = SCORE_FISSION
+                if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally fission rate with an outgoing &
                         &energy filter."
                    call fatal_error()
                 end if
              case ('nu-fission')
-                t % macro_bins(j) % scalar = MACRO_NU_FISSION
+                t % score_bins(j) % scalar = SCORE_NU_FISSION
              case ('current')
-                t % macro_bins(j) % scalar = MACRO_CURRENT
-                t % surface_current = .true.
+                t % score_bins(j) % scalar = SCORE_CURRENT
+                t % type = TALLY_SURFACE_CURRENT
 
                 ! Check to make sure that current is the only desired response
                 ! for this tally
                 if (n_words > 1) then
-                   message = "Cannot tally other macro reactions in the same &
-                        &tally as surface currents. Separate other macro &
-                        &reactions into a distinct tally."
+                   message = "Cannot tally other scoring functions in the same &
+                        &tally as surface currents. Separate other scoring &
+                        &functions into a distinct tally."
                    call fatal_error()
                 end if
-
-                ! Check to make sure that only the mesh filter was specified
-!!$                if (t % mesh == 0 .or. t % n_bins(T_MESH) /= & 
-!!$                     product(t % n_bins, t % n_bins > 0)) then
-!!$                   message = "Surface currents must be used with a mesh filter only."
-!!$                   call fatal_error()
-!!$                end if
 
                 ! Since the number of bins for the mesh filter was already set
                 ! assuming it was a flux tally, we need to adjust the number of
                 ! bins
-                t % n_bins(T_MESH) = t % n_bins(T_MESH) - product(m % dimension)
+                t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) &
+                     - product(m % dimension)
 
                 ! Get pointer to mesh
                 id = t % mesh
@@ -925,19 +992,19 @@ contains
                 ! We need to increase the dimension by one since we also need
                 ! currents coming into and out of the boundary mesh cells.
                 if (size(m % dimension) == 2) then
-                   t % n_bins(T_MESH) = t % n_bins(T_MESH) + &
-                        product(m % dimension + 1) * 4
+                   t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) &
+                        + product(m % dimension + 1) * 4
                 elseif (size(m % dimension) == 3) then
-                   t % n_bins(T_MESH) = t % n_bins(T_MESH) + &
-                        product(m % dimension + 1) * 6
+                   t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) &
+                        + product(m % dimension + 1) * 6
                 end if
 
              case default
-                message = "Unknown macro reaction: " // trim(words(j))
+                message = "Unknown scoring function: " // trim(words(j))
                 call fatal_error()
              end select
           end do
-          t % n_macro_bins = n_words
+          t % n_score_bins = n_words
        end if
 
     end do

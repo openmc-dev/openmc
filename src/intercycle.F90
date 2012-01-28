@@ -299,7 +299,7 @@ contains
        t => tallies(i)
 
        n = t % n_total_bins
-       m = t % n_macro_bins
+       m = t % n_score_bins
        n_bins = n*m
 
        allocate(tally_temp(n,m))

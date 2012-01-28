@@ -15,17 +15,23 @@ ace_header.o: endf_header.o
 
 cmfd_data.o: cmfd_output.o
 cmfd_data.o: datatypes.o
+cmfd_data.o: error.o
 cmfd_data.o: global.o
 cmfd_data.o: mesh.o
+cmfd_data.o: mesh_header.o
 cmfd_data.o: string.o
 cmfd_data.o: xml-fortran/templates/cmfd_t.o
 
 cmfd_execute.o: cmfd_data.o
+cmfd_output.o : cmfd_output.o
 cmfd_execute.o: cmfd_power_solver.o
 cmfd_execute.o: cmfd_slepc_solver.o
 cmfd_execute.o: cmfd_snes_solver.o
 
 cmfd_loss_operator.o: global.o
+
+cmfd_output.o: mesh_header.o
+cmfd_output.o: vtk_writer.o
 
 cmfd_power_solver.o: cmfd_loss_operator.o
 cmfd_power_solver.o: cmfd_prod_operator.o

@@ -2,9 +2,14 @@ objects = \
 ace.o \
 ace_header.o \
 bank_header.o \
+cmfd_data.o \
 cmfd_execute.o \
 cmfd_header.o \
-cmfd_utils.o \
+cmfd_loss_operator.o \
+cmfd_power_solver.o \
+cmfd_prod_operator.o \
+cmfd_slepc_solver.o \
+cmfd_snes_solver.o \
 cross_section.o \
 datatypes.o \
 datatypes_header.o \

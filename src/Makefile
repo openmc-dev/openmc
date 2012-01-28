@@ -16,7 +16,7 @@ include OBJECTS
 #===============================================================================
 
 COMPILER = petsc
-DEBUG    = yes
+DEBUG    = no 
 PROFILE  = no
 OPTIMIZE = no
 USE_MPI  = no

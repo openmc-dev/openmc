@@ -13,22 +13,30 @@ ace.o: string.o
 ace_header.o: constants.o
 ace_header.o: endf_header.o
 
-cmfd_execute.o: cmfd_utils.o
-cmfd_execute.o: global.o
-cmfd_execute.o: mesh.o
-cmfd_execute.o: mesh_header.o
-cmfd_execute.o: tally_header.o
-cmfd_execute.o: timing.o
+cmfd_data.o: datatypes.o
+cmfd_data.o: global.o
+cmfd_data.o: mesh.o
+cmfd_data.o: string.o
+cmfd_data.o: xml-fortran/templates/cmfd_t.o
 
-cmfd_utils.o: constants.o
-cmfd_utils.o: datatypes.o
-cmfd_utils.o: global.o
-cmfd_utils.o: hdf5_interface.o
-cmfd_utils.o: mesh.o
-cmfd_utils.o: mesh_header.o
-cmfd_utils.o: string.o
-cmfd_utils.o: vtk_writer.o
-cmfd_utils.o: xml-fortran/templates/cmfd_t.o
+cmfd_execute.o: cmfd_data.o
+cmfd_execute.o: cmfd_power_solver.o
+cmfd_execute.o: cmfd_slepc_solver.o
+cmfd_execute.o: cmfd_snes_solver.o
+
+cmfd_loss_operator.o: global.o
+
+cmfd_power_solver.o: cmfd_loss_operator.o
+cmfd_power_solver.o: cmfd_prod_operator.o
+
+cmfd_prod_operator.o: global.o
+
+cmfd_slepc_solver.o: cmfd_loss_operator.o
+cmfd_slepc_solver.o: cmfd_prod_operator.o
+
+cmfd_snes_solver.o: cmfd_loss_operator.o
+cmfd_snes_solver.o: cmfd_prod_operator.o
+cmfd_snes_solver.o: cmfd_slepc_solver.o
 
 cross_section.o: ace_header.o
 cross_section.o: constants.o
@@ -116,7 +124,7 @@ initialize.o: string.o
 initialize.o: tally.o
 initialize.o: timing.o
 
-input_xml.o: cmfd_utils.o
+input_xml.o: cmfd_data.o
 input_xml.o: constants.o
 input_xml.o: datatypes.o
 input_xml.o: error.o

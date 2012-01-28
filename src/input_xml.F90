@@ -1,6 +1,6 @@
 module input_xml
 
-  use cmfd_data,       only: read_cmfd_xml 
+  use cmfd_input,      only: read_cmfd_xml 
   use constants
   use datatypes,       only: dict_create, dict_add_key, dict_has_key, &
                              dict_get_key

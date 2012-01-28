@@ -1,6 +1,8 @@
 module cmfd_data
 
-implicit none
+  implicit none
+  private
+  public :: set_up_cmfd,read_cmfd_xml
 
 contains
 
@@ -12,6 +14,7 @@ contains
 
     use global,       only: cmfd
     use cmfd_header,  only: allocate_cmfd
+    use cmfd_output,  only: write_cmfd_hdf5
 
     ! initialize data
     call allocate_cmfd(cmfd)
@@ -28,10 +31,15 @@ contains
     end if
 
     ! compute dtilde terms
-    call compute_diffcoef()
+    call compute_dtilde()
 
-    ! set dhats to zero
+    ! compute dhat terms
     call compute_dhat()
+
+#ifdef HDF5
+    ! write out hdf5 file for cmfd object
+    call write_cmfd_hdf5()
+#endif
 
   end subroutine set_up_cmfd
 
@@ -467,10 +475,10 @@ contains
   end subroutine compute_xs
 
 !===============================================================================
-! COMPUTE_DIFFCOEF computes the diffusion coupling coefficient
+! COMPUTE_DTILDE computes the diffusion coupling coefficient
 !===============================================================================
 
-  subroutine compute_diffcoef()
+  subroutine compute_dtilde()
 
     use global, only: cmfd
 
@@ -600,7 +608,7 @@ contains
 
     end do ZLOOP
 
-  end subroutine compute_diffcoef
+  end subroutine compute_dtilde
 
 !===============================================================================
 ! COMPUTE_DHAT computes the nonlinear coupling coefficient

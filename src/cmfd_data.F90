@@ -14,7 +14,7 @@ contains
 
     use global,       only: cmfd
     use cmfd_header,  only: allocate_cmfd
-    use cmfd_output,  only: write_cmfd_hdf5
+    use cmfd_output,  only: neutron_balance,write_cmfd_hdf5
 
     ! initialize data
     call allocate_cmfd(cmfd)
@@ -23,7 +23,7 @@ contains
     call compute_xs()
 
     ! write out the neutron balance file
-!   call neutron_balance()
+    call neutron_balance()
 
     ! check for core map
     if (allocated(cmfd % coremap)) then

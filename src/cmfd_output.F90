@@ -2,7 +2,7 @@ module cmfd_output
 
   implicit none
   private
-  public :: write_cmfd_hdf5,write_cmfd_vtk
+  public :: neutron_balance,write_cmfd_hdf5,write_cmfd_vtk
 
   integer :: nx         ! number of mesh cells in x direction
   integer :: ny         ! number of mesh cells in y direction
@@ -10,6 +10,101 @@ module cmfd_output
   integer :: ng         ! number of energy groups
 
 contains
+
+!===============================================================================
+! NEUTRON_BALANCE writes a file that contains n. bal. info for all cmfd mesh
+!===============================================================================
+
+  subroutine neutron_balance()
+
+    use constants, only: ONE
+    use global,    only: cmfd,UNIT_CMFD,keff,MAX_FILE_LEN
+    use string
+
+    integer :: i            ! iteration counter for x
+    integer :: j            ! iteration counter for y
+    integer :: k            ! iteration counter for z
+    integer :: g            ! iteration counter for g
+    integer :: h            ! iteration counter for outgoing groups
+    integer :: l            ! iteration counter for leakage
+    integer :: io_error     ! error for opening file unit
+    real(8) :: leakage      ! leakage term in neutron balance
+    real(8) :: interactions ! total number of interactions in balance
+    real(8) :: scattering   ! scattering term in neutron balance
+    real(8) :: fission      ! fission term in neutron balance
+    real(8) :: res          ! residual of neutron balance
+    character(MAX_FILE_LEN) :: filename
+    character(30) :: label
+
+    ! open cmfd file for output
+    filename = "cmfd.out"
+    open(FILE=filename, UNIT=UNIT_CMFD, STATUS='replace', ACTION='write', &
+         IOSTAT=io_error)
+
+    ! extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! begin loop around space and energy groups
+    ZLOOP: do k = 1,nz
+
+      YLOOP: do j = 1,ny
+
+        XLOOP: do i = 1,nx
+
+          GROUPG: do g = 1,ng
+
+            ! get leakage
+            leakage = 0.0
+            LEAK: do l = 1,3
+
+              leakage = leakage + ((cmfd % current(4*l,g,i,j,k) - &
+             & cmfd % current(4*l-1,g,i,j,k))) - &
+             & ((cmfd % current(4*l-2,g,i,j,k) - &
+             & cmfd % current(4*l-3,g,i,j,k)))
+
+            end do LEAK
+
+            ! interactions
+            interactions = cmfd % totalxs(g,i,j,k) * cmfd % flux(g,i,j,k)
+
+            ! get scattering and fission
+            scattering = 0.0
+            fission = 0.0
+            GROUPH: do h = 1,ng
+
+              scattering = scattering + cmfd % scattxs(h,g,i,j,k) * &
+             & cmfd % flux(h,i,j,k)
+
+              fission = fission + cmfd % nfissxs(h,g,i,j,k) * &
+             & cmfd % flux(h,i,j,k)
+
+            end do GROUPH
+
+            ! compute residual
+            res = leakage + interactions - scattering - (ONE/keff)*fission
+
+            ! write output
+            label = "MESH (" // trim(int4_to_str(i)) // ". " // &
+           & trim(int4_to_str(j)) // ", " // trim(int4_to_str(k)) // &
+           & ") GROUP " // trim(int4_to_str(g))
+            write(UNIT=UNIT_CMFD, FMT='(A,T35,A)') label, &
+           & trim(real_to_str(res))
+
+          end do GROUPG
+
+        end do XLOOP
+
+      end do YLOOP
+
+    end do ZLOOP
+
+    ! close file
+    close(UNIT=UNIT_CMFD)
+
+  end subroutine neutron_balance
 
 !===============================================================================
 ! WRITE_CMFD_HDF5 writes an hdf5 output file with the cmfd object for restarts

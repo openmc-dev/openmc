@@ -48,7 +48,7 @@ contains
 
   subroutine get_M_indices(this)
 
-    use global, only: cmfd
+    use global, only: cmfd,cmfd_coremap
 
     type(loss_operator) :: this
 
@@ -62,7 +62,7 @@ contains
     this%nnz = 7 + ng - 1
 
     ! calculate dimensions of matrix
-    if (allocated(cmfd % coremap)) then
+    if (cmfd_coremap) then
       this%n = cmfd % mat_dim * ng
     else
       this%n = nx*ny*nz*ng
@@ -76,7 +76,7 @@ contains
 
   subroutine build_loss_matrix(this)
 
-    use global, only: cmfd
+    use global, only: cmfd,cmfd_coremap
 
     type(loss_operator) :: this
 
@@ -123,7 +123,7 @@ contains
         XLOOP: do i = 1,nx
 
           ! check if not including reflector
-          if (allocated(cmfd % coremap)) then
+          if (cmfd_coremap) then
 
             ! check if at a reflector
             if (cmfd % coremap(i,j,k) == 99999) then
@@ -170,7 +170,7 @@ contains
               if (bound(l) /= nxyz(xyz_idx,dir_idx)) then
 
                 ! check for core map
-                if (allocated(cmfd % coremap)) then
+                if (cmfd_coremap) then
 
                   ! check that neighbor is not reflector
                   if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) /=   &
@@ -272,7 +272,7 @@ contains
 
   function get_matrix_idx(g,i,j,k)
 
-    use global, only: cmfd
+    use global, only: cmfd,cmfd_coremap
 
     ! arguments
     integer :: get_matrix_idx  ! the index location in matrix
@@ -285,7 +285,7 @@ contains
     integer :: nidx            ! index in matrix
 
     ! check if coremap is used
-    if (allocated(cmfd % coremap)) then
+    if (cmfd_coremap) then
 
       ! get idx from core map
       nidx = ng*(cmfd % coremap(i,j,k)) - (ng - g)

@@ -211,6 +211,9 @@ module global
   ! Flag for CMFD only
   logical :: cmfd_only = .FALSE.
 
+  ! Flag for coremap accelerator
+  logical :: cmfd_coremap = .FALSE.
+
 contains
 
 !===============================================================================

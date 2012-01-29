@@ -12,7 +12,7 @@ contains
 
   subroutine set_up_cmfd()
 
-    use global,       only: cmfd
+    use global,       only: cmfd,cmfd_coremap
     use cmfd_header,  only: allocate_cmfd
     use cmfd_output,  only: neutron_balance,write_cmfd_hdf5
 
@@ -26,7 +26,7 @@ contains
     call neutron_balance()
 
     ! check for core map
-    if (allocated(cmfd % coremap)) then
+    if (cmfd_coremap) then
       call set_coremap()
     end if
 
@@ -117,7 +117,7 @@ contains
 
             ! detect zero flux
             if ((flux - 0.0D0) < 1.0D-10) then
-              if (.not. allocated(cmfd%coremap)) then
+              if (.not. cmfd_coremap) then
                 write(*,*) 'Fatal: detected zero flux without coremap'
                 stop
               else
@@ -238,7 +238,7 @@ contains
 
   subroutine compute_dtilde()
 
-    use global, only: cmfd
+    use global, only: cmfd,cmfd_coremap
 
     ! local variables
     integer :: nx                 ! maximum number of cells in x direction
@@ -323,7 +323,7 @@ contains
                 neig_hxyz = cmfd%hxyz(:,neig_idx(1),neig_idx(2),neig_idx(3))
 
                 ! check for fuel-reflector interface
-                if (allocated(cmfd % coremap)) then
+                if (cmfd_coremap) then
 
                   if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) ==   &
                  &    99999 .and. cmfd % coremap(i,j,k) /= 99999) then
@@ -374,7 +374,7 @@ contains
 
   subroutine compute_dhat()
 
-    use global, only:cmfd 
+    use global, only:cmfd,cmfd_coremap 
 
     ! local variables
     integer :: nx                 ! maximum number of cells in x direction
@@ -458,7 +458,7 @@ contains
                      product(cmfd%hxyz(:,neig_idx(1),neig_idx(2),neig_idx(3)))
 
                 ! check for fuel-reflector interface
-                if (allocated(cmfd % coremap)) then
+                if (cmfd_coremap) then
 
                   if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) ==   &
                  &    99999 .and. cmfd % coremap(i,j,k) /= 99999) then

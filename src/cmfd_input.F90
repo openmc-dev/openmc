@@ -51,10 +51,11 @@ contains
       allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2),            &
      &         cmfd % indices(3)))
       cmfd % coremap = reshape(mesh_ % map,(cmfd % indices(1:3)))
+      cmfd_coremap = .TRUE.
    end if
 
     ! check for core map activation by printing note
-    if (allocated(cmfd % coremap)) print *,"Core Map Overlay Activated"
+    if (cmfd_coremap) print *,"Core Map Overlay Activated"
 
     ! create tally objects
     call create_cmfd_tally()
@@ -301,7 +302,7 @@ contains
   subroutine read_cmfd_hdf5()
 
     use cmfd_header, only: allocate_cmfd
-    use global,      only: cmfd
+    use global,      only: cmfd,cmfd_coremap
 
 #ifdef HDF5
     use global, only: hdf5_output_file,hdf5_err
@@ -322,6 +323,8 @@ contains
     integer :: ny ! number of mesh cells in y direction
     integer :: nz ! number of mesh cells in z direction
     integer :: ng ! number of energy groups
+
+    integer :: core_map_int 
 
     ! open output file
     call hdf5_open_output()
@@ -407,17 +410,51 @@ contains
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%hxyz,dim4,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
 
-    ! read coremap to cmfd object
-    call h5dopen_f(hdf5_output_file,"cmfd/coremap",dataset_id,hdf5_err)
-    dim3 = (/nx,ny,nz/)
-    call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%coremap,dim3,hdf5_err)
+    ! read in core_map logical 
+    call h5dopen_f(hdf5_output_file,"cmfd/coremap_active",dataset_id,hdf5_err)
+    dim1 = (/1/)
+    call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,core_map_int,dim1,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
 
-    ! read mat_dim to cmfd object
-    call h5dopen_f(hdf5_output_file,"cmfd/mat_dim",dataset_id,hdf5_err)
-    dim1 = (/1/)
-    call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%mat_dim,dim1,hdf5_err)
-    call h5dclose_f(dataset_id,hdf5_err)
+    ! now set coremap depending on logical
+    select case(core_map_int)
+
+      ! core map is not active
+      case(0)
+
+        ! set logical to false
+        cmfd_coremap = .FALSE.
+
+      ! core map is active
+      case(1)
+
+        ! set logical to true
+        cmfd_coremap = .TRUE.
+
+        ! allocate coremap in cmfd obj
+        allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2),          &
+       &         cmfd % indices(3)))
+
+
+        ! read coremap to cmfd object
+        call h5dopen_f(hdf5_output_file,"cmfd/coremap",dataset_id,hdf5_err)
+        dim3 = (/nx,ny,nz/)
+        call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%coremap,dim3,hdf5_err)
+        call h5dclose_f(dataset_id,hdf5_err)
+
+        ! read mat_dim to cmfd object
+        call h5dopen_f(hdf5_output_file,"cmfd/mat_dim",dataset_id,hdf5_err)
+        dim1 = (/1/)
+        call h5dread_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%mat_dim,dim1,hdf5_err)
+        call h5dclose_f(dataset_id,hdf5_err)
+
+      ! something is wrong
+      case default
+
+        write(*,*) 'FATAL ==> Could not detect core map in hdf5 output file'
+        stop
+
+      end select
 
     ! close output file
     call hdf5_close_output()

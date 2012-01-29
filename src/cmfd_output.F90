@@ -112,7 +112,7 @@ contains
 
   subroutine write_cmfd_hdf5()
 
-    use global, only: cmfd
+    use global, only: cmfd,cmfd_coremap
 
 #ifdef HDF5
     use hdf5
@@ -144,8 +144,8 @@ contains
     ! write indices from cmfd object
     dim1 = (/4/)
     call h5screate_simple_f(1,dim1,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/indices",H5T_NATIVE_INTEGER,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/indices",H5T_NATIVE_INTEGER,       &
+   &                 dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%indices,dim1,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
@@ -153,8 +153,8 @@ contains
     ! write totalxs from cmfd object
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/totalxs",H5T_NATIVE_DOUBLE,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/totalxs",H5T_NATIVE_DOUBLE,        &
+   &                 dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%totalxs,dim4,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
@@ -162,8 +162,8 @@ contains
     ! write p1scattxs from cmfd object
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/p1scattxs",H5T_NATIVE_DOUBLE,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/p1scattxs",H5T_NATIVE_DOUBLE,      &
+   &                dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%p1scattxs,dim4,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
@@ -171,8 +171,8 @@ contains
     ! write scattxs from cmfd object
     dim5 = (/ng,ng,nx,ny,nz/)
     call h5screate_simple_f(5,dim5,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/scattxs",H5T_NATIVE_DOUBLE,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/scattxs",H5T_NATIVE_DOUBLE,        &
+   &                dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%scattxs,dim5,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
@@ -180,8 +180,8 @@ contains
     ! write nfissxs from cmfd object
     dim5 = (/ng,ng,nx,ny,nz/)
     call h5screate_simple_f(5,dim5,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/nfissxs",H5T_NATIVE_DOUBLE,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/nfissxs",H5T_NATIVE_DOUBLE,        &
+   &                 dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%nfissxs,dim5,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
@@ -189,8 +189,8 @@ contains
     ! write diffcof from cmfd object
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/diffcof",H5T_NATIVE_DOUBLE,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/diffcof",H5T_NATIVE_DOUBLE,        &
+   &                 dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%diffcof,dim4,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
@@ -198,8 +198,8 @@ contains
     ! write current from cmfd object
     dim5 = (/12,ng,nx,ny,nz/)
     call h5screate_simple_f(5,dim5,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/current",H5T_NATIVE_DOUBLE,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/current",H5T_NATIVE_DOUBLE,        &
+   &                dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%current,dim5,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
@@ -207,8 +207,8 @@ contains
    ! write flux from cmfd object
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/flux",H5T_NATIVE_DOUBLE,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/flux",H5T_NATIVE_DOUBLE,           &
+   &                 dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%flux,dim4,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
@@ -216,8 +216,8 @@ contains
     ! write dtilde from cmfd object
     dim5 = (/6,ng,nx,ny,nz/)
     call h5screate_simple_f(5,dim5,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/dtilde",H5T_NATIVE_DOUBLE,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/dtilde",H5T_NATIVE_DOUBLE,         &
+   &                 dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%dtilde,dim5,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
@@ -225,8 +225,8 @@ contains
     ! write dhat from cmfd object
     dim5 = (/6,ng,nx,ny,nz/)
     call h5screate_simple_f(5,dim5,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/dhat",H5T_NATIVE_DOUBLE,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/dhat",H5T_NATIVE_DOUBLE,           &
+   &                 dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%dhat,dim5,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
@@ -234,8 +234,8 @@ contains
     ! write albedo from cmfd object
     dim1 = (/6/)
     call h5screate_simple_f(1,dim1,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/albedo",H5T_NATIVE_DOUBLE,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/albedo",H5T_NATIVE_DOUBLE,         &
+   &                 dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%albedo,dim1,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
@@ -243,29 +243,54 @@ contains
     ! write hxyz from cmfd object
     dim4 = (/3,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/hxyz",H5T_NATIVE_DOUBLE,dataspace_id, &
-   & dataset_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,"cmfd/hxyz",H5T_NATIVE_DOUBLE,           &
+   &                 dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%hxyz,dim4,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
 
-    ! write coremap from cmfd object
-    dim3 = (/nx,ny,nz/)
-    call h5screate_simple_f(3,dim3,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/coremap",H5T_NATIVE_INTEGER,dataspace_id, &
-   & dataset_id,hdf5_err)
-    call h5dwrite_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%coremap,dim3,hdf5_err)
-    call h5sclose_f(dataspace_id,hdf5_err)
-    call h5dclose_f(dataset_id,hdf5_err)
+    ! only write the following if core map is active
+    if (cmfd_coremap) then
 
-    ! write mat_dim from cmfd object
-    dim1 = (/1/)
-    call h5screate_simple_f(1,dim1,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,"cmfd/mat_dim",H5T_NATIVE_INTEGER,dataspace_id, &
-   & dataset_id,hdf5_err)
-    call h5dwrite_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%mat_dim,dim1,hdf5_err)
-    call h5sclose_f(dataspace_id,hdf5_err)
-    call h5dclose_f(dataset_id,hdf5_err)
+      ! write coremap from cmfd object
+      dim3 = (/nx,ny,nz/)
+      call h5screate_simple_f(3,dim3,dataspace_id,hdf5_err)
+      call h5dcreate_f(hdf5_output_file,"cmfd/coremap",H5T_NATIVE_INTEGER,     &
+     &                 dataspace_id,dataset_id,hdf5_err)
+      call h5dwrite_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%coremap,dim3,hdf5_err)
+      call h5sclose_f(dataspace_id,hdf5_err)
+      call h5dclose_f(dataset_id,hdf5_err)
+
+      ! write mat_dim from cmfd object
+      dim1 = (/1/)
+      call h5screate_simple_f(1,dim1,dataspace_id,hdf5_err)
+      call h5dcreate_f(hdf5_output_file,"cmfd/mat_dim",H5T_NATIVE_INTEGER,     &
+     &                 dataspace_id,dataset_id,hdf5_err)
+      call h5dwrite_f(dataset_id,H5T_NATIVE_INTEGER,cmfd%mat_dim,dim1,hdf5_err)
+      call h5sclose_f(dataspace_id,hdf5_err)
+      call h5dclose_f(dataset_id,hdf5_err)
+
+      ! write core map logical to true (1)
+      dim1 = (/1/)
+      call h5screate_simple_f(1,dim1,dataspace_id,hdf5_err)
+      call h5dcreate_f(hdf5_output_file,"cmfd/coremap_active",                 &
+     &                 H5T_NATIVE_INTEGER,dataspace_id,dataset_id,hdf5_err)
+      call h5dwrite_f(dataset_id,H5T_NATIVE_INTEGER,1,dim1,hdf5_err)
+      call h5sclose_f(dataspace_id,hdf5_err)
+      call h5dclose_f(dataset_id,hdf5_err)
+
+    else
+
+      ! write core map logical to false (0)
+      dim1 = (/1/)
+      call h5screate_simple_f(1,dim1,dataspace_id,hdf5_err)
+      call h5dcreate_f(hdf5_output_file,"cmfd/coremap_active",                 &
+     &                 H5T_NATIVE_INTEGER,dataspace_id,dataset_id,hdf5_err)
+      call h5dwrite_f(dataset_id,H5T_NATIVE_INTEGER,0,dim1,hdf5_err)
+      call h5sclose_f(dataspace_id,hdf5_err)
+      call h5dclose_f(dataset_id,hdf5_err)
+
+    end if
 
     ! close the CMFD group
     call h5gclose_f(group_id, hdf5_err)
@@ -278,7 +303,7 @@ contains
 
   subroutine write_cmfd_vtk()
 
-    use global,      only: cmfd,meshes
+    use global,      only: cmfd,cmfd_coremap,meshes
     use mesh_header, only: StructuredMesh
     use vtk_writer
 
@@ -339,7 +364,7 @@ contains
         XLOOP: do i = 1,nx
 
           ! check for non accelerated region
-          if (allocated(cmfd%coremap)) then
+          if (cmfd_coremap) then
             if (cmfd%coremap(i,j,k) == 99999) then
               cycle
             end if
@@ -405,7 +430,7 @@ contains
 
   function get_matrix_idx(g,i,j,k)
 
-    use global, only: cmfd
+    use global, only: cmfd,cmfd_coremap
 
     ! arguments
     integer :: get_matrix_idx  ! the index location in matrix
@@ -418,7 +443,7 @@ contains
     integer :: nidx            ! index in matrix
 
     ! check if coremap is used
-    if (allocated(cmfd % coremap)) then
+    if (cmfd_coremap) then
 
       ! get idx from core map
       nidx = ng*(cmfd % coremap(i,j,k)) - (ng - g)

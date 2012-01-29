@@ -661,6 +661,9 @@ contains
        allocate(tallies(n_tallies))
     end if
 
+    ! Check for <assume_separate> setting
+    if (separate_ == 'yes') assume_separate = .true.
+
     ! ==========================================================================
     ! READ MESH DATA
 

@@ -95,6 +95,9 @@ module global
   ! Flag for turning tallies on
   logical :: tallies_on
 
+  ! Assume all tallies are spatially distinct
+  logical :: assume_separate = .false.
+
   ! ============================================================================
   ! CRITICALITY SIMULATION VARIABLES
 

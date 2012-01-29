@@ -65,7 +65,7 @@ contains
     integer :: h                 ! iteration counter for outgoing groups
     integer :: ijk(3)            ! indices for mesh cell
     integer :: score_index       ! index to pull from tally object
-    integer :: bins(TALLY_TYPES) ! bins for filters
+    integer :: bins(N_FILTER_TYPES) ! bins for filters
 
     real(8) :: flux   ! temp variable for flux
 
@@ -103,10 +103,10 @@ contains
             ijk = (/ i, j, k /)
 
             ! get bin number for mesh indices
-            bins(T_MESH) = mesh_indices_to_bin(m,ijk)
+            bins(FILTER_MESH) = mesh_indices_to_bin(m,ijk)
 
             ! apply energy in filter
-            bins(T_ENERGYIN) = ng - h + 1
+            bins(FILTER_ENERGYIN) = ng - h + 1
 
             ! calculate score index from bins
             score_index = sum((bins - 1) * t%stride) + 1
@@ -148,7 +148,7 @@ contains
               t => tallies(2)
 
               ! set energy out bin
-              bins(T_ENERGYOUT) = ng - g + 1
+              bins(FILTER_ENERGYOUT) = ng - g + 1
 
               ! calculate score index from bins
               score_index = sum((bins - 1) * t%stride) + 1
@@ -166,59 +166,59 @@ contains
 
             ! initialize and filter for energy
             bins = 1
-            bins(TS_ENERGYIN) = ng - h + 1
+            bins(SURF_FILTER_ENERGYIN) = ng - h + 1
 
             ! left surface
             bins(1:3) = (/ i-1, j, k /) + 1
-            bins(TS_SURFACE) = IN_RIGHT
+            bins(SURF_FILTER_SURFACE) = IN_RIGHT
             score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
             cmfd % current(1,h,i,j,k) = t % scores(score_index,1) % val
-            bins(TS_SURFACE) = OUT_RIGHT
+            bins(SURF_FILTER_SURFACE) = OUT_RIGHT
             score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
             cmfd % current(2,h,i,j,k) = t % scores(score_index,1) % val
 
             ! right surface
             bins(1:3) = (/ i, j, k /) + 1
-            bins(TS_SURFACE) = IN_RIGHT
+            bins(SURF_FILTER_SURFACE) = IN_RIGHT
             score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
             cmfd % current(3,h,i,j,k) = t % scores(score_index,1) % val
-            bins(TS_SURFACE) = OUT_RIGHT
+            bins(SURF_FILTER_SURFACE) = OUT_RIGHT
             score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
             cmfd % current(4,h,i,j,k) = t % scores(score_index,1) % val
 
             ! back surface
             bins(1:3) = (/ i, j-1, k /) + 1
-            bins(TS_SURFACE) = IN_FRONT
+            bins(SURF_FILTER_SURFACE) = IN_FRONT
             score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
             cmfd % current(5,h,i,j,k) = t % scores(score_index,1) % val
-            bins(TS_SURFACE) = OUT_FRONT
+            bins(SURF_FILTER_SURFACE) = OUT_FRONT
             score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
             cmfd % current(6,h,i,j,k) = t % scores(score_index,1) % val
 
             ! front surface
             bins(1:3) = (/ i, j, k /) + 1
-            bins(TS_SURFACE) = IN_FRONT
+            bins(SURF_FILTER_SURFACE) = IN_FRONT
             score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
             cmfd % current(7,h,i,j,k) = t % scores(score_index,1) % val
-            bins(TS_SURFACE) = OUT_FRONT
+            bins(SURF_FILTER_SURFACE) = OUT_FRONT
             score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
             cmfd % current(8,h,i,j,k) = t % scores(score_index,1) % val
 
             ! bottom surface
             bins(1:3) = (/ i, j, k-1 /) + 1
-            bins(TS_SURFACE) = IN_TOP
+            bins(SURF_FILTER_SURFACE) = IN_TOP
             score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
             cmfd % current(9,h,i,j,k) = t % scores(score_index,1) % val
-            bins(TS_SURFACE) = OUT_TOP
+            bins(SURF_FILTER_SURFACE) = OUT_TOP
             score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
             cmfd % current(10,h,i,j,k) = t % scores(score_index,1) % val
 
             ! top surface
             bins(1:3) = (/ i, j, k /) + 1
-            bins(TS_SURFACE) = IN_TOP
+            bins(SURF_FILTER_SURFACE) = IN_TOP
             score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
             cmfd % current(11,h,i,j,k) = t % scores(score_index,1) % val
-            bins(TS_SURFACE) = OUT_TOP
+            bins(SURF_FILTER_SURFACE) = OUT_TOP
             score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
             cmfd % current(12,h,i,j,k) = t % scores(score_index,1) % val
 

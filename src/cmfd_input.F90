@@ -87,6 +87,8 @@ contains
     integer :: n           ! size of arrays in mesh specification
     integer :: ng=1        ! number of energy groups (default 1)
     integer :: n_words     ! number of words read
+    integer :: n_filters   ! number of filters
+    integer :: filters(N_FILTER_TYPES) ! temp list of filters
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: words(MAX_WORDS)
     type(TallyObject),    pointer :: t => null()
@@ -152,14 +154,20 @@ contains
 
     ! begin loop around tallies
     do i = 1,n_tallies
+
+      ! set n filters to 0
+      n_filters = 0
+      filters = 0
+
+      ! point t to tally variable
       t => tallies(i)
 
       ! allocate arrays for number of bins and stride in scores array
-      allocate(t % n_bins(TALLY_TYPES))
-      allocate(t % stride(TALLY_TYPES))
+      allocate(t % n_filter_bins(N_FILTER_TYPES))
+      allocate(t % stride(N_FILTER_TYPES))
 
       ! initialize number of bins and stride
-      t % n_bins = 0
+      t % n_filter_bins = 0
       t % stride = 0
 
       ! record tally id which is equivalent to loop number
@@ -168,7 +176,10 @@ contains
       ! set mesh filter mesh id = 1
       t % mesh = 1
       m => meshes(1)
-      t % n_bins(T_MESH) = t % n_bins(T_MESH) + product(m % dimension)
+      t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) +        &
+     &                                 product(m % dimension)
+      n_filters = n_filters + 1
+      filters(n_filters) = FILTER_MESH
 
       ! read and set incoming energy mesh filter
       if (len_trim(mesh_ % energy) > 0) then
@@ -178,21 +189,40 @@ contains
         do j = 1,n_words
           t % energy_in(j) = str_to_real(words(j))
         end do
-        t % n_bins(T_ENERGYIN) = n_words - 1
+        t % n_filter_bins(FILTER_ENERGYIN) = n_words - 1
+        n_filters = n_filters + 1
+        filters(n_filters) = FILTER_ENERGYIN
       end if
 
       if (i == 1) then
 
+        ! set tally estimator to analog
+        t % estimator = ESTIMATOR_ANALOG
+
+        ! set tally type to volume
+        t % type = TALLY_VOLUME
+
+        ! allocate and set filters
+        t % n_filters = n_filters
+        allocate(t % filters(n_filters))
+        t % filters = filters(1:n_filters)
+
         ! allocate macro reactions
-        allocate(t % macro_bins(3))
-        t % n_macro_bins = 3
+        allocate(t % score_bins(3))
+        t % n_score_bins = 3
 
         ! set macro_bins
-        t % macro_bins(1) % scalar = MACRO_FLUX
-        t % macro_bins(2) % scalar = MACRO_TOTAL
-        t % macro_bins(3) % scalar = MACRO_SCATTER_1
+        t % score_bins(1) % scalar = SCORE_FLUX
+        t % score_bins(2) % scalar = SCORE_TOTAL
+        t % score_bins(3) % scalar = SCORE_SCATTER_1
 
       else if (i == 2) then
+
+        ! set tally estimator to analog
+        t % estimator = ESTIMATOR_ANALOG
+
+        ! set tally type to volume
+        t % type = TALLY_VOLUME
 
         ! read and set outgoing energy mesh filter
         if (len_trim(mesh_ % energy) > 0) then
@@ -201,31 +231,47 @@ contains
           do j = 1, n_words
             t % energy_out(j) = str_to_real(words(j))
           end do
-          t % n_bins(T_ENERGYOUT) = n_words - 1
+          t % n_filter_bins(FILTER_ENERGYOUT) = n_words - 1
+          n_filters = n_filters + 1
+          filters(n_filters) = FILTER_ENERGYOUT
         end if
 
+        ! allocate and set filters
+        t % n_filters = n_filters
+        allocate(t % filters(n_filters))
+        t % filters = filters(1:n_filters)
+
         ! allocate macro reactions
-        allocate(t % macro_bins(2))
-        t % n_macro_bins = 2
+        allocate(t % score_bins(2))
+        t % n_score_bins = 2
 
         ! set macro_bins
-        t % macro_bins(1) % scalar = MACRO_NU_SCATTER
-        t % macro_bins(2) % scalar = MACRO_NU_FISSION
+        t % score_bins(1) % scalar = SCORE_NU_SCATTER
+        t % score_bins(2) % scalar = SCORE_NU_FISSION
 
       else if (i == 3) then
 
+        ! set tally estimator to analog
+        t % estimator = ESTIMATOR_ANALOG
+
+        ! allocate and set filters
+        t % n_filters = n_filters
+        allocate(t % filters(n_filters))
+        t % filters = filters(1:n_filters)
+
         ! allocate macro reactions
-        allocate(t % macro_bins(1))
-        t % n_macro_bins = 1
+        allocate(t % score_bins(1))
+        t % n_score_bins = 1
 
         ! set macro bins
-        t % macro_bins(1) % scalar = MACRO_CURRENT
-        t % surface_current = .true.
+        t % score_bins(1) % scalar = SCORE_CURRENT
+        t % type = TALLY_SURFACE_CURRENT
 
         ! since the number of bins for the mesh filter was already set
         ! assuming it was a flux tally, we need to adjust the number of
         ! bins
-        t % n_bins(T_MESH) = t % n_bins(T_MESH) - product(m % dimension)
+        t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH)        &
+       &                                 - product(m % dimension)
 
         ! get pointer to mesh
         id = t % mesh
@@ -234,12 +280,12 @@ contains
 
         ! we need to increase the dimension by one since we also need
         ! currents coming into and out of the boundary mesh cells.
-        if (size(m % dimension) == 2) then
-          t % n_bins(T_MESH) = t % n_bins(T_MESH) + &
-       &                       product(m % dimension + 1) * 4
+        if (size(m % dimension) == 2) then  ! these lines need changing
+          t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) +    &
+         &                                 product(m % dimension + 1) * 4
         elseif (size(m % dimension) == 3) then
-          t % n_bins(T_MESH) = t % n_bins(T_MESH) + &
-                               product(m % dimension + 1) * 6
+          t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) +    &
+         &                                 product(m % dimension + 1) * 6
         end if
 
       end if

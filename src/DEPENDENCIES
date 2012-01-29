@@ -27,6 +27,7 @@ cmfd_execute.o: cmfd_snes_solver.o
 cmfd_input.o: datatypes.o
 cmfd_input.o: error.o
 cmfd_input.o: global.o
+cmfd_input.o: hdf5_interface.o
 cmfd_input.o: mesh_header.o
 cmfd_input.o: string.o
 cmfd_input.o: tally_header.o

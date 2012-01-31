@@ -111,6 +111,8 @@ contains
     call PCGetType(pc,pctype,ierr)
 
     ! display information to user
+    write(*,'(/,A)') 'SLEPC SOLVER OPTIONS:'
+    write(*,*) '---------------------'
     write(*,*) 'EPS TYPE IS: ',epstype
     write(*,*) 'ST TYPE IS: ',sttype
     write(*,*) 'KSP TYPE IS: ',ksptype

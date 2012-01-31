@@ -15,6 +15,7 @@ implicit none
   type(prod_operator) :: prod
 
   Mat         :: jac         ! jacobian matrix
+  Mat         :: jacpc       ! preconditioned jacobian matrix
   Vec         :: resvec      ! residual vector
   Vec         :: xvec        ! results
   KSP         :: ksp         ! linear solver context
@@ -95,6 +96,8 @@ contains
 
   subroutine init_solver()
 
+    character(LEN=20) :: snestype,ksptype,pctype
+
     ! create SNES context
     call SNESCreate(PETSC_COMM_SELF,snes,ierr)
 
@@ -111,10 +114,24 @@ contains
 
     ! set matrix free finite difference
     call MatCreateSNESMF(snes,jac,ierr)
-    call SNESSetJacobian(snes,jac,jac,MatMFFDComputeJacobian,PETSC_NULL,ierr)
+    call MatCreateSNESMF(snes,jacpc,ierr)
+    call SNESSetJacobian(snes,jac,jacpc,MatMFFDComputeJacobian,PETSC_NULL,ierr)
 
     ! set SNES options
     call SNESSetFromOptions(snes,ierr)
+
+    ! get all types and print
+    call SNESGetType(snes,snestype,ierr)
+    call KSPGetType(ksp,ksptype,ierr)
+    call PCGetType(pc,pctype,ierr)
+
+
+    ! display information to user
+    write(*,'(/,A)') 'SNES SOLVER OPTIONS:'
+    write(*,*) '---------------------'
+    write(*,*) 'SNES TYPE IS: ',snestype
+    write(*,*) 'KSP TYPE IS: ',ksptype
+    write(*,*) 'PC TYPE IS: ',pctype
 
   end subroutine init_solver
 
@@ -197,9 +214,9 @@ contains
 
   end subroutine compute_nonlinear_residual
 
-!==============================================================================
+!===============================================================================
 ! EXTRACT_RESULTS
-!==============================================================================
+!===============================================================================
 
   subroutine extract_results()
 

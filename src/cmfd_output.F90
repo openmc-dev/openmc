@@ -86,6 +86,9 @@ contains
             ! compute residual
             res = leakage + interactions - scattering - (ONE/keff)*fission
 
+            ! normalize by flux
+            res = res/cmfd%flux(g,i,j,k)
+
             ! write output
             label = "MESH (" // trim(int4_to_str(i)) // ". " // &
            & trim(int4_to_str(j)) // ", " // trim(int4_to_str(k)) // &

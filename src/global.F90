@@ -204,9 +204,7 @@ module global
   type(cmfd_obj) :: cmfd
 
   ! Timing objects
-  type(Timer) :: time_cmfd   ! timer for whole calculation
-  type(Timer) :: time_mat    ! timer for mat building
-  type(Timer) :: time_eigen  ! timer for eigenvalue calculation
+  type(Timer) :: time_cmfd   ! timer for whole cmfd calculation
 
   ! Flag for CMFD only
   logical :: cmfd_only = .FALSE.

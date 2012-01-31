@@ -22,9 +22,7 @@ contains
 ! scale to large numbers of processors where other codes cannot.
 !===============================================================================
 
-  subroutine synchronize_bank(i_cycle)
-
-    integer, intent(in) :: i_cycle
+  subroutine synchronize_bank()
 
     integer    :: i, j, k         ! loop indices
     integer(8) :: start           ! starting index in local fission bank
@@ -73,7 +71,7 @@ contains
     end if
 
     ! Make sure all processors start at the same point for random sampling
-    call set_particle_seed(int(i_cycle,8))
+    call set_particle_seed(int(current_cycle,8))
 
     ! Skip ahead however many random numbers are needed
     call prn_skip(start)
@@ -422,9 +420,7 @@ contains
 ! mean and standard deviation of the mean for active cycles and displays them
 !===============================================================================
 
-  subroutine calculate_keff(i_cycle)
-
-    integer, intent(in) :: i_cycle ! index of current cycle
+  subroutine calculate_keff()
 
     integer(8)    :: total_bank ! total number of source sites
     integer       :: n          ! active cycle number
@@ -436,7 +432,7 @@ contains
     call write_message(8)
 
     ! initialize sum and square of sum at beginning of run
-    if (i_cycle == 1) then
+    if (current_cycle == 1) then
        k_sum = ZERO
        k_sum_sq = ZERO
     end if
@@ -457,9 +453,9 @@ contains
 
        k_cycle = real(total_bank)/real(n_particles)*keff
 
-       if (i_cycle > n_inactive) then
+       if (current_cycle > n_inactive) then
           ! Active cycle number
-          n = i_cycle - n_inactive
+          n = current_cycle - n_inactive
 
           ! Accumulate cycle estimate of k
           k_sum =    k_sum    + k_cycle
@@ -470,26 +466,27 @@ contains
           keff_std = sqrt((k_sum_sq/n - keff*keff)/n)
 
           ! Display output for this cycle
-          if (i_cycle > n_inactive+1) then
+          if (current_cycle > n_inactive + 1) then
              if (entropy_on) then
-                write(UNIT=OUTPUT_UNIT, FMT=103) i_cycle, k_cycle, entropy, &
-                     keff, keff_std
+                write(UNIT=OUTPUT_UNIT, FMT=103) current_cycle, k_cycle, &
+                     entropy, keff, keff_std
              else
-                write(UNIT=OUTPUT_UNIT, FMT=101) i_cycle, k_cycle, keff, keff_std
+                write(UNIT=OUTPUT_UNIT, FMT=101) current_cycle, k_cycle, &
+                     keff, keff_std
              end if
           else
              if (entropy_on) then
-                write(UNIT=OUTPUT_UNIT, FMT=102) i_cycle, k_cycle, entropy
+                write(UNIT=OUTPUT_UNIT, FMT=102) current_cycle, k_cycle, entropy
              else
-                write(UNIT=OUTPUT_UNIT, FMT=100) i_cycle, k_cycle
+                write(UNIT=OUTPUT_UNIT, FMT=100) current_cycle, k_cycle
              end if
           end if
        else
           ! Display output for inactive cycle
           if (entropy_on) then
-             write(UNIT=OUTPUT_UNIT, FMT=102) i_cycle, k_cycle, entropy
+             write(UNIT=OUTPUT_UNIT, FMT=102) current_cycle, k_cycle, entropy
           else
-             write(UNIT=OUTPUT_UNIT, FMT=100) i_cycle, k_cycle
+             write(UNIT=OUTPUT_UNIT, FMT=100) current_cycle, k_cycle
           end if
           keff = k_cycle
        end if

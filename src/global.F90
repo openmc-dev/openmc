@@ -104,6 +104,8 @@ module global
   integer(8) :: n_particles = 10000 ! # of particles per cycle
   integer    :: n_cycles    = 500   ! # of cycles
   integer    :: n_inactive  = 50    ! # of inactive cycles
+  integer    :: n_active            ! # of active cycles
+  integer    :: current_cycle       ! current cycle
 
   ! External source
   type(ExtSource), target :: external_source

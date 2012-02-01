@@ -127,11 +127,11 @@ contains
 
 
     ! display information to user
-    write(*,'(/,A)') 'SNES SOLVER OPTIONS:'
-    write(*,*) '---------------------'
-    write(*,*) 'SNES TYPE IS: ',snestype
-    write(*,*) 'KSP TYPE IS: ',ksptype
-    write(*,*) 'PC TYPE IS: ',pctype
+!   write(*,'(/,A)') 'SNES SOLVER OPTIONS:'
+!   write(*,*) '---------------------'
+!   write(*,*) 'SNES TYPE IS: ',snestype
+!   write(*,*) 'KSP TYPE IS: ',ksptype
+!   write(*,*) 'PC TYPE IS: ',pctype
 
   end subroutine init_solver
 

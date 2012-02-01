@@ -54,16 +54,30 @@ contains
 
     ! Display column titles
     if (entropy_on) then
+      if (cmfd_on) then
+       message = " Cycle   k(cycle)   Entropy         Average k         CMFD k"
+       call write_message(1)
+       message = " =====   ========   =======    ===================  =========="
+       call write_message(1)
+     else 
        message = " Cycle   k(cycle)   Entropy         Average k"
        call write_message(1)
        message = " =====   ========   =======    ==================="
        call write_message(1)
-    else
+     end if
+   else
+     if (cmfd_on) then
+       message = " Cycle   k(cycle)          Average k         CMFD k"
+       call write_message(1)
+       message = " =====   ========     ===================  =========="
+       call write_message(1)
+     else 
        message = " Cycle   k(cycle)          Average k"
        call write_message(1)
        message = " =====   ========     ==================="
        call write_message(1)
-    end if
+     end if
+   end if
 
     ! ==========================================================================
     ! LOOP OVER CYCLES

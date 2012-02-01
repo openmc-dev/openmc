@@ -37,15 +37,18 @@ contains
     character(30) :: label
 
     ! open cmfd file for output
-    filename = "cmfd_"//trim(to_str(current_cycle))//".out"
-    open(FILE=filename, UNIT=UNIT_CMFD, STATUS='replace', ACTION='write', &
-         IOSTAT=io_error)
+!   filename = "cmfd_"//trim(to_str(current_cycle))//".out"
+!   open(FILE=filename, UNIT=UNIT_CMFD, STATUS='replace', ACTION='write', &
+!        IOSTAT=io_error)
 
     ! extract spatial and energy indices from object
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
     ng = cmfd % indices(4)
+
+    ! allocate res dataspace
+    if (.not. allocated(cmfd%resnb)) allocate(cmfd%resnb(ng,nx,ny,nz))
 
     ! begin loop around space and energy groups
     ZLOOP: do k = 1,nz
@@ -89,12 +92,15 @@ contains
             ! normalize by flux
             res = res/cmfd%flux(g,i,j,k)
 
+            ! bank res in cmfd object
+            cmfd%resnb(g,i,j,k) = res
+
             ! write output
-            label = "MESH (" // trim(int4_to_str(i)) // ". " // &
-           & trim(int4_to_str(j)) // ", " // trim(int4_to_str(k)) // &
-           & ") GROUP " // trim(int4_to_str(g))
-            write(UNIT=UNIT_CMFD, FMT='(A,T35,A)') label, &
-           & trim(real_to_str(res))
+    !       label = "MESH (" // trim(int4_to_str(i)) // ". " // &
+    !      & trim(int4_to_str(j)) // ", " // trim(int4_to_str(k)) // &
+    !      & ") GROUP " // trim(int4_to_str(g))
+    !       write(UNIT=UNIT_CMFD, FMT='(A,T35,A)') label, &
+    !      & trim(real_to_str(res))
 
           end do GROUPG
 
@@ -257,6 +263,16 @@ contains
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%hxyz,dim4,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
+
+    ! write neutron balance residual information from cmfd object
+    dim4 = (/ng,nx,ny,nz/)
+    call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,trim(cycname)//"/resnb",H5T_NATIVE_DOUBLE,          &
+   &                 dataspace_id,dataset_id,hdf5_err)
+    call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%resnb,dim4,hdf5_err)
+    call h5sclose_f(dataspace_id,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
 
     ! only write the following if core map is active
     if (cmfd_coremap) then

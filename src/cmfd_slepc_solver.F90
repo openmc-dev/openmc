@@ -85,7 +85,7 @@ contains
     character(LEN=20) :: epstype,sttype,ksptype,pctype
 
     ! create EPS Object
-    call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
+    call EPSCreate(PETSC_COMM_SELF,eps,ierr)
     call EPSSetProblemType(eps,EPS_GNHEP,ierr)
     call EPSSetType(eps,EPSPOWER,ierr)
     call EPSSetFromOptions(eps,ierr)
@@ -151,7 +151,7 @@ contains
     cmfd%keff = keff
 
     ! write out results
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'fluxvec.bin',FILE_MODE_WRITE, &
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'fluxvec.bin',FILE_MODE_WRITE,  &
    &                           viewer,ierr)
     call VecView(phi,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)

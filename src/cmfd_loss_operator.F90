@@ -313,8 +313,8 @@ contains
     PetscViewer :: viewer
 
     ! write out matrix in binary file (debugging)
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'lossmat.bin',FILE_MODE_WRITE, &
-                               viewer,ierr)
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'lossmat.bin',FILE_MODE_WRITE,  &
+  &                            viewer,ierr)
     call MatView(this%M,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 

@@ -208,6 +208,9 @@ module global
   ! Main object
   type(cmfd_obj) :: cmfd
 
+  ! Is CMFD active
+  logical :: cmfd_on = .FALSE.
+ 
   ! Timing objects
   type(Timer) :: time_cmfd   ! timer for whole cmfd calculation
 

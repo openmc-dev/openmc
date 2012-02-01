@@ -32,9 +32,6 @@ program main
      call run_problem()
   end if
      
-  ! call cmfd run
-! call execute_cmfd()
-
   ! finalize run
   call finalize_run()
   
@@ -134,7 +131,7 @@ contains
        ! print cycle information
 
        ! run cmfd
-       if (current_cycle > n_inactive) then
+       if (current_cycle > n_inactive .and. cmfd_on) then
          call execute_cmfd()
        end if
 

@@ -57,7 +57,7 @@ contains
     call write_message(5)
 
     ! Check if settings.xml exists
-    filename = "settings.xml"
+    filename = trim(path_input) // "settings.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
        message = "Settings XML file '" // trim(filename) // "' does not exist!"
@@ -203,7 +203,7 @@ contains
     ! READ CELLS FROM GEOMETRY.XML
 
     ! Check if geometry.xml exists
-    filename = "geometry.xml"
+    filename = trim(path_input) // "geometry.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
        message = "Geometry XML file '" // trim(filename) // "' does not exist!"
@@ -470,7 +470,7 @@ contains
     call write_message(5)
 
     ! Check is materials.xml exists
-    filename = "materials.xml"
+    filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
        message = "Material XML file '" // trim(filename) // "' does not exist!"
@@ -628,7 +628,7 @@ contains
     type(StructuredMesh), pointer :: m => null()
 
     ! Check if tallies.xml exists
-    filename = "tallies.xml"
+    filename = trim(path_input) // "tallies.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
        ! Since a tallies.xml file is optional, no error is issued here

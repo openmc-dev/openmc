@@ -33,7 +33,7 @@ program main
   end if
      
   ! call cmfd run
-  call execute_cmfd()
+! call execute_cmfd()
 
   ! finalize run
   call finalize_run()
@@ -132,6 +132,11 @@ contains
        call calculate_keff()
 
        ! print cycle information
+
+       ! run cmfd
+       if (current_cycle > n_inactive) then
+         call execute_cmfd()
+       end if
 
        ! Turn tallies on once inactive cycles are complete
        if (current_cycle == n_inactive) then

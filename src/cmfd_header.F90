@@ -56,6 +56,9 @@ module cmfd_header
     real(8), allocatable :: phi(:)
     real(8) :: keff
 
+    ! residual for neutron balance
+    real(8), allocatable :: resnb(:,:,:,:)
+
   end type cmfd_obj
 
 contains

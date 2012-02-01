@@ -448,6 +448,13 @@ contains
 
        end do
 
+       ! If the user has specified that we can assume all tallies are spatially
+       ! separate, this implies that once a tally has been scored to, we needn't
+       ! check the others. This cuts down on overhead when there are many
+       ! tallies specified
+
+       if (assume_separate) return
+
        ! Reset tally map positioning
        position = 0
 
@@ -587,6 +594,13 @@ contains
           call add_to_score(t % scores(score_index, j), score)
 
        end do
+
+       ! If the user has specified that we can assume all tallies are spatially
+       ! separate, this implies that once a tally has been scored to, we needn't
+       ! check the others. This cuts down on overhead when there are many
+       ! tallies specified
+
+       if (assume_separate) return
 
        ! Reset tally map positioning
        position = 0

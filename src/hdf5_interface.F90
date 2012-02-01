@@ -95,7 +95,7 @@ contains
        ! Use H5LT interface to write n_cycles, n_inactive, and n_active
        call hdf5_make_integer(hdf5_output_file, "n_cycles", n_cycles)
        call hdf5_make_integer(hdf5_output_file, "n_inactive", n_inactive)
-       call hdf5_make_integer(hdf5_output_file, "n_active", n_cycles - n_inactive)
+       call hdf5_make_integer(hdf5_output_file, "n_active", n_active)
 
        ! Add description of each variable
        call h5ltset_attribute_string_f(hdf5_output_file, "n_particles", &

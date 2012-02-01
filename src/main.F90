@@ -96,8 +96,7 @@ contains
 
   subroutine run_problem()
 
-    integer                 :: i_cycle     ! cycle index
-    integer(8)              :: i_particle  ! history index
+    integer(8)              :: particle_seed  ! unique index for particle
     type(Particle), pointer :: p => null()
 
     if (master) call header("BEGIN SIMULATION", level=1)
@@ -120,12 +119,12 @@ contains
 
     ! ==========================================================================
     ! LOOP OVER CYCLES
-    CYCLE_LOOP: do i_cycle = 1, n_cycles
+    CYCLE_LOOP: do current_cycle = 1, n_cycles
 
        ! Start timer for computation
        call timer_start(time_compute)
 
-       message = "Simulating cycle " // trim(to_str(i_cycle)) // "..."
+       message = "Simulating cycle " // trim(to_str(current_cycle)) // "..."
        call write_message(8)
 
        ! Set all tallies to zero
@@ -143,12 +142,12 @@ contains
           end if
 
           ! set random number seed
-          i_particle = (i_cycle-1)*n_particles + p % id
-          call set_particle_seed(i_particle)
+          particle_seed = (current_cycle - 1)*n_particles + p % id
+          call set_particle_seed(particle_seed)
           
           ! set particle trace
           trace = .false.
-          if (i_cycle == trace_cycle .and. &
+          if (current_cycle == trace_cycle .and. &
                p % id == trace_particle) trace = .true.
 
           ! transport particle
@@ -176,15 +175,15 @@ contains
        if (entropy_on) call shannon_entropy()
 
        ! Distribute fission bank across processors evenly
-       call synchronize_bank(i_cycle)
+       call synchronize_bank()
 
        ! Collect results and statistics
-       call calculate_keff(i_cycle)
+       call calculate_keff()
 
        ! print cycle information
 
        ! Turn tallies on once inactive cycles are complete
-       if (i_cycle == n_inactive) then
+       if (current_cycle == n_inactive) then
           tallies_on = .true.
           call timer_stop(time_inactive)
           call timer_start(time_active)

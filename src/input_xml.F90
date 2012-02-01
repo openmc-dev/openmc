@@ -96,6 +96,7 @@ contains
        n_particles = criticality % particles
        n_cycles    = criticality % cycles
        n_inactive  = criticality % inactive
+       n_active    = n_cycles - n_inactive
     end if
 
     ! Verbosity
@@ -662,6 +663,9 @@ contains
        n_tallies = size(tally_)
        allocate(tallies(n_tallies))
     end if
+
+    ! Check for <assume_separate> setting
+    if (separate_ == 'yes') assume_separate = .true.
 
     ! ==========================================================================
     ! READ MESH DATA

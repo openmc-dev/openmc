@@ -44,8 +44,8 @@ contains
       call timer_stop(time_cmfd)
 
       ! print results
-      print *,'SNES Eigenvalue is:',cmfd%keff
-      print *,'CMFD Time:',time_cmfd%elapsed,' seconds.'
+!     print *,'SNES Eigenvalue is:',cmfd%keff
+!     print *,'CMFD Time:',time_cmfd%elapsed,' seconds.'
 
       ! write vtk file
       !if(.not. cmfd_only) call write_cmfd_vtk()

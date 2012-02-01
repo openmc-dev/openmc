@@ -13,6 +13,7 @@ contains
   subroutine read_cmfd_xml()
 
     use global
+    use output
     use string
     use xml_data_cmfd_t
 
@@ -26,8 +27,17 @@ contains
     filename = "cmfd.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      write(*,*) "Cannot perform CMFD"
-      STOP
+      ! Since a tallies.xml file is optional, no error is issued here
+      return
+    else
+
+      ! turn cmfd flag on  
+      cmfd_on = .TRUE.
+
+      ! tell user
+      message = "Reading CMFD XML file..."
+      call write_message(5)
+
     end if
 
     ! parse cmfd.xml file

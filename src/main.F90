@@ -1,8 +1,7 @@
 program main
 
-  use cmfd_execute,    only: execute_cmfd
-  use cmfd_input,      only: read_cmfd_hdf5
   use constants
+  use cmfd_execute,    only: execute_cmfd
   use global
   use finalize,        only: finalize_run
   use initialize,      only: initialize_run
@@ -23,70 +22,22 @@ program main
 
   implicit none
 
-  integer           :: nargs    ! number of arguments
-  character(len=32) :: arg      ! the argument
+  ! set up problem
+  call initialize_run()
 
-  ! set arg to default
-  arg = "none"
-
-  ! get number of command line options
-  nargs = command_argument_count()
-
-  ! read only the first argument
-  if (nargs >= 1) then
-    call get_command_argument(1,arg)
+  ! start problem
+  if (plotting) then
+     call run_plot()
+  else
+     call run_problem()
   end if
+     
+  ! call cmfd run
+  call execute_cmfd()
 
-  ! begin case structure
-  select case(arg)
-
-  ! only perform diffusion
-  case('--cmfd_only')
-
-    ! set CMFD only to true
-    cmfd_only = .TRUE.
-
-#ifdef HDF5
-    ! read in HDF5 file
-    call read_cmfd_hdf5()
-
-    ! run diffusion
-    call execute_cmfd() 
-
-    ! deallocate arrays
-    call free_memory()
-#else
-    write(*,*) 'Restart capability not supported without HDF5'
-#endif
-
-    ! terminate code
-    stop
-
-  case default
-
-    ! set up problem
-    call initialize_run()
-
-    ! start problem
-    if (plotting) then
-       call run_plot()
-    else
-       call run_problem()
-    end if
-
-    ! run diffusion
-    call execute_cmfd()
-
-    ! finalize run
-    call finalize_run()
-
-  end select
-
-#ifdef MPI
-  ! If MPI is in use and enabled, terminate it
-  call MPI_FINALIZE(mpi_err)
-#endif
-
+  ! finalize run
+  call finalize_run()
+  
 contains
 
 !===============================================================================

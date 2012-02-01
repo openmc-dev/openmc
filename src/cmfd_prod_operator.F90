@@ -193,8 +193,8 @@ contains
     type(prod_operator) :: this
 
     ! write out matrix in binary file (debugging)
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'prodmat.bin',FILE_MODE_WRITE, &
-                               viewer,ierr)
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'prodmat.bin',FILE_MODE_WRITE,  &
+   &                           viewer,ierr)
     call MatView(this%F,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 

@@ -241,7 +241,7 @@ contains
     call VecRestoreArrayF90(xvec,xptr,ierr)
 
      ! write out results
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'residual.bin',FILE_MODE_WRITE, &
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'residual.bin',FILE_MODE_WRITE, &
                                viewer,ierr)
     call VecView(resvec,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)

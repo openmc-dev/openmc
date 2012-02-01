@@ -81,18 +81,18 @@ contains
     n = loss%n
 
     ! set up flux vectors
-    call VecCreate(PETSC_COMM_WORLD,phi_n,ierr)
+    call VecCreate(PETSC_COMM_SELF,phi_n,ierr)
     call VecSetSizes(phi_n,PETSC_DECIDE,n,ierr)
     call VecSetFromOptions(phi_n,ierr)
-    call VecCreate(PETSC_COMM_WORLD,phi_o,ierr)
+    call VecCreate(PETSC_COMM_SELF,phi_o,ierr)
     call VecSetSizes(phi_o,PETSC_DECIDE,n,ierr)
     call VecSetFromOptions(phi_o,ierr)
 
     ! set up source vectors
-    call VecCreate(PETSC_COMM_WORLD,S_n,ierr)
+    call VecCreate(PETSC_COMM_SELF,S_n,ierr)
     call VecSetSizes(S_n,PETSC_DECIDE,n,ierr)
     call VecSetFromOptions(S_n,ierr)
-    call VecCreate(PETSC_COMM_WORLD,S_o,ierr)
+    call VecCreate(PETSC_COMM_SELF,S_o,ierr)
     call VecSetSizes(S_o,PETSC_DECIDE,n,ierr)
     call VecSetFromOptions(S_o,ierr)
 
@@ -117,7 +117,7 @@ contains
     solvertol = 1.0e-7_8
 
     ! set up krylov solver
-    call KSPCreate(PETSC_COMM_WORLD,krylov,ierr)
+    call KSPCreate(PETSC_COMM_SELF,krylov,ierr)
     call KSPSetTolerances(krylov,solvertol,PETSC_DEFAULT_DOUBLE_PRECISION,     &
    &                      PETSC_DEFAULT_DOUBLE_PRECISION,                      &
    &                      PETSC_DEFAULT_INTEGER,ierr)
@@ -248,7 +248,7 @@ contains
     cmfd%keff = k_n
 
     ! write out results
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'fluxvec.bin',FILE_MODE_WRITE, &
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'fluxvec.bin',FILE_MODE_WRITE,  &
    &                           viewer,ierr)
     call VecView(phi_n,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)

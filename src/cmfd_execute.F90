@@ -1,5 +1,6 @@
 module cmfd_execute
 
+#ifdef PETSC
   use cmfd_data,         only: set_up_cmfd
   use cmfd_output,       only: write_cmfd_vtk
   use cmfd_power_solver, only: cmfd_power_execute
@@ -9,7 +10,6 @@ module cmfd_execute
   use timing,            only: timer_start,timer_stop
 
   implicit none
-
 
 #include <finclude/petsc.h90>
 #include <finclude/slepcsys.h>
@@ -59,5 +59,7 @@ contains
     call MPI_Barrier(MPI_COMM_WORLD,mpi_err)
 
   end subroutine execute_cmfd
+
+#endif
 
 end module cmfd_execute

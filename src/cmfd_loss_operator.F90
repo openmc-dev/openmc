@@ -1,5 +1,7 @@
 module cmfd_loss_operator
 
+#ifdef PETSC
+
   implicit none
   private
   public :: init_M_operator,build_loss_matrix,destroy_M_operator
@@ -332,5 +334,7 @@ contains
     call MatDestroy(this%M,ierr)
 
   end subroutine destroy_M_operator
+
+#endif
 
 end module cmfd_loss_operator

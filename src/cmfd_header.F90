@@ -54,7 +54,7 @@ module cmfd_header
 
     ! eigenvector/eigenvalue from cmfd run
     real(8), allocatable :: phi(:)
-    real(8) :: keff
+    real(8) :: keff = 0.0_8
 
     ! residual for neutron balance
     real(8), allocatable :: resnb(:,:,:,:)

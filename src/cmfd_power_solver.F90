@@ -1,5 +1,6 @@
 module cmfd_power_solver
 
+#ifdef PETSC
   use cmfd_loss_operator, only: loss_operator,init_M_operator,                 &
  &                        build_loss_matrix,destroy_M_operator
   use cmfd_prod_operator, only: prod_operator,init_F_operator,                 &
@@ -274,5 +275,7 @@ contains
 !   call KSPDestroy(krylov,ierr)
 
   end subroutine finalize
+
+#endif
 
 end module cmfd_power_solver

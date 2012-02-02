@@ -1,5 +1,6 @@
 module cmfd_snes_solver
 
+#ifdef PETSC
   use cmfd_loss_operator, only: loss_operator,init_M_operator,                 &
  &                        build_loss_matrix,destroy_M_operator
   use cmfd_prod_operator, only: prod_operator,init_F_operator,                 &
@@ -9,7 +10,6 @@ module cmfd_snes_solver
 implicit none
 
 #include <finclude/petsc.h90>
-
 
   type(loss_operator) :: loss
   type(prod_operator) :: prod
@@ -264,5 +264,7 @@ contains
     call SNESDestroy(snes,ierr)
 
   end subroutine finalize
+
+#endif
 
 end module cmfd_snes_solver

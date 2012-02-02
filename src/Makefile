@@ -81,7 +81,7 @@ endif
 ifeq ($(COMPILER),petsc)
   F90 = ${FLINKER}
   F90FLAGS := -cpp -ffree-form -I${PETSC_DIR}/include -I${SLEPC_DIR}/include \
-              -ffpe-trap=invalid,overflow,underflow -DMPI
+              -ffpe-trap=invalid,overflow,underflow -DMPI -DPETSC
   include ${SLEPC_DIR}/conf/slepc_common
   LDFLAGS = ${SLEPC_LIB}
 

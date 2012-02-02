@@ -1,6 +1,7 @@
 program main
 
   use constants
+  use cmfd_execute,    only: execute_cmfd
   use global
   use finalize,        only: finalize_run
   use initialize,      only: initialize_run
@@ -17,10 +18,6 @@ program main
 
 #ifdef MPI
   use mpi
-#endif
-
-#ifdef PETSC
-  use cmfd_execute, only: execute_cmfd
 #endif
 
   implicit none
@@ -147,12 +144,10 @@ contains
 
        ! print cycle information
 
-#ifdef PETSC
        ! run cmfd
        if (current_cycle > n_inactive .and. cmfd_on) then
          call execute_cmfd()
        end if
-#endif
 
        ! Turn tallies on once inactive cycles are complete
        if (current_cycle == n_inactive) then

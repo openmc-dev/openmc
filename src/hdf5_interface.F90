@@ -490,14 +490,14 @@ contains
 
        ! Write incoming energy filter
        if (t % n_filter_bins(FILTER_ENERGYIN) > 0) then
-          dims(1) = t % n_filter_bins(FILTER_ENERGYIN)
+          dims(1) = t % n_filter_bins(FILTER_ENERGYIN) + 1
           call h5ltmake_dataset_double_f(temp_group, "energy_in", 1, &
                dims, t % energy_in, hdf5_err)
        end if
 
        ! Write outgoing energy filter
        if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
-          dims(1) = t % n_filter_bins(FILTER_ENERGYOUT)
+          dims(1) = t % n_filter_bins(FILTER_ENERGYOUT) + 1
           call h5ltmake_dataset_double_f(temp_group, "energy_out", 1, &
                dims, t % energy_out, hdf5_err)
        end if

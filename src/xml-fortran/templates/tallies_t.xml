@@ -18,8 +18,8 @@
     <component name="material" type="word" length="250" default="''" />
     <component name="mesh" type="integer" default="0" />
     <component name="cellborn" type="word" length="250" default="''" />
-    <component name="energy" type="word" length="250" default="''" />
-    <component name="energyout" type="word" length="250" default="''" />
+    <component name="energy" type="double-array" />
+    <component name="energyout" type="double-array" />
   </typedef>
 
   <typedef name="tally_xml">

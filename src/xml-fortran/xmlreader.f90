@@ -21,7 +21,7 @@ program xmlreader
    logical                                :: endtag
    character(len=80), dimension(1:2,1:20) :: attribs
    integer                                :: noattribs
-   character(len=200), dimension(1:100)   :: data
+   character(len=200), dimension(1:1000)  :: data
    integer                                :: nodata
    integer                                :: i
    integer                                :: j
@@ -569,7 +569,7 @@ subroutine write_prolog
   &   '   logical                                :: endtag'    , &
   &   '   character(len=80), dimension(1:2,1:20) :: attribs'   , &
   &   '   integer                                :: noattribs' , &
-  &   '   character(len=200), dimension(1:100)   :: data'      , &
+  &   '   character(len=200), dimension(1:1000)  :: data'      , &
   &   '   integer                                :: nodata'
 
    write( lusubs, '(a)' ) &

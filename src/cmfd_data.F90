@@ -12,23 +12,23 @@ contains
 
   subroutine set_up_cmfd()
 
-    use global,       only: cmfd,cmfd_coremap
+    use global,       only: cmfd,cmfd_coremap,current_cycle,n_inactive
     use cmfd_header,  only: allocate_cmfd
     use cmfd_output,  only: neutron_balance,write_cmfd_hdf5
 
     ! initialize data
     call allocate_cmfd(cmfd)
 
+    ! check for core map
+    if ((cmfd_coremap) .and. (current_cycle == n_inactive+1)) then
+      call set_coremap()
+    end if
+
     ! calculate all cross sections based on reaction rates from last batch
     call compute_xs()
 
     ! write out the neutron balance file
     call neutron_balance()
-
-    ! check for core map
-    if (cmfd_coremap) then
-      call set_coremap()
-    end if
 
     ! compute dtilde terms
     call compute_dtilde()
@@ -123,6 +123,7 @@ contains
               else
                 write(*,*) 'Warning: detected zero flux at:',i,j,k
                 flux = 99999.0D0
+                write(*,*) 'Core map location is:',cmfd%coremap(i,j,k)
                 if (.not. cmfd%coremap(i,j,k) == 99999) then
                   write(*,*) 'Fatal: need to check core map with zero flux'
                   stop

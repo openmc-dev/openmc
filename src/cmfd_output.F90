@@ -59,6 +59,14 @@ contains
 
           GROUPG: do g = 1,ng
 
+            ! check for active mesh
+            if (allocated(cmfd%coremap)) then
+              if (cmfd%coremap(i,j,k) == 99999) then
+                cmfd%resnb(g,i,j,k) = 99999.0
+                cycle
+              end if
+            end if
+
             ! get leakage
             leakage = 0.0
             LEAK: do l = 1,3

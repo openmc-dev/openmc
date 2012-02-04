@@ -121,11 +121,12 @@ contains
                 write(*,*) 'Fatal: detected zero flux without coremap'
                 stop
               else
-                write(*,*) 'Warning: detected zero flux at:',i,j,k
+!               write(*,*) 'Warning: detected zero flux at:',i,j,k
                 flux = 99999.0D0
-                write(*,*) 'Core map location is:',cmfd%coremap(i,j,k)
+                cycle
+!               write(*,*) 'Core map location is:',cmfd%coremap(i,j,k)
                 if (.not. cmfd%coremap(i,j,k) == 99999) then
-                  write(*,*) 'Fatal: need to check core map with zero flux'
+!                 write(*,*) 'Fatal: need to check core map with zero flux'
                   stop
                 end if
               end if
@@ -290,10 +291,16 @@ contains
 
           GROUP: do g = 1,ng
 
+            ! check for active mesh cell
+            if (allocated(cmfd%coremap)) then
+              if (cmfd%coremap(i,j,k) == 99999) then
+                cycle
+              end if
+            end if
+
             ! get cell data
             cell_dc = cmfd%diffcof(g,i,j,k)
             cell_hxyz = cmfd%hxyz(:,i,j,k)
-
 
             ! setup of vector to identify boundary conditions
             bound = (/i,i,j,j,k,k/)
@@ -419,6 +426,13 @@ contains
         XLOOP: do i = 1,nx
 
           GROUP: do g = 1,ng
+
+            ! check for active mesh cell
+            if (allocated(cmfd%coremap)) then
+              if (cmfd%coremap(i,j,k) == 99999) then
+                cycle
+              end if
+            end if
 
             ! get cell data
             cell_dtilde = cmfd%dtilde(:,g,i,j,k)

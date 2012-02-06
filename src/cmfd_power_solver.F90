@@ -227,7 +227,7 @@ contains
 
   subroutine extract_results()
 
-    use global, only: cmfd
+    use global, only: cmfd,path_input
 
     PetscViewer :: viewer
     PetscScalar, pointer :: phi_v(:) ! pointer to eigenvector info
@@ -249,8 +249,8 @@ contains
     cmfd%keff = k_n
 
     ! write out results
-    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'fluxvec.bin',FILE_MODE_WRITE,  &
-   &                           viewer,ierr)
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(path_input)//'fluxvec.bin' &
+   &     ,FILE_MODE_WRITE,viewer,ierr)
     call VecView(phi_n,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 

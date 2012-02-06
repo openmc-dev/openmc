@@ -129,7 +129,7 @@ contains
 
   subroutine extract_results()
 
-    use global, only: cmfd
+    use global, only: cmfd,path_input
 
     integer              :: n         ! problem size
     integer              :: i_eig = 0 ! eigenvalue to extract
@@ -154,8 +154,8 @@ contains
     cmfd%keff = keff
 
     ! write out results
-    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'fluxvec.bin',FILE_MODE_WRITE,  &
-   &                           viewer,ierr)
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(path_input)//'fluxvec.bin' &
+   &     ,FILE_MODE_WRITE,viewer,ierr)
     call VecView(phi,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 

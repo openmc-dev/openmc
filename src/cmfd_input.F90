@@ -24,7 +24,7 @@ contains
     character(MAX_WORD_LEN) :: words(MAX_WORDS)
 
     ! read cmfd infput file
-    filename = "cmfd.xml"
+    filename = trim(path_input) // "cmfd.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       ! Since a tallies.xml file is optional, no error is issued here

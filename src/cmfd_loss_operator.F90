@@ -310,13 +310,15 @@ contains
 
   subroutine print_M_operator(this)
 
+    use global, only: path_input
+
     type(loss_operator) :: this
 
     PetscViewer :: viewer
 
     ! write out matrix in binary file (debugging)
-    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'lossmat.bin',FILE_MODE_WRITE,  &
-  &                            viewer,ierr)
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(path_input)//'lossmat.bin' &
+   &     ,FILE_MODE_WRITE,viewer,ierr)
     call MatView(this%M,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 

@@ -23,14 +23,17 @@ contains
 
   subroutine hdf5_create_output()
 
-    character(9), parameter :: filename = "output.h5" ! File name
+    character(MAX_FILE_LEN) :: filename ! File name
     integer :: error  ! Error flag
+
+    ! set output file name
+    filename = trim(path_input) // "output.h5"
 
     ! Initialize FORTRAN interface.
     call h5open_f (error)
 
     ! Create a new file using default properties.
-    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, hdf5_output_file, error)
+    call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, hdf5_output_file, error)
 
   end subroutine hdf5_create_output
 
@@ -40,14 +43,17 @@ contains
 
   subroutine hdf5_open_output()
 
-    character(9), parameter :: filename = "output.h5" ! File name
+    character(MAX_FILE_LEN) :: filename ! File name
     integer :: error ! Error flag
+
+    ! set output file name
+    filename = trim(path_input) // "output.h5"
 
     ! Initialize FORTRAN interface.
     call h5open_f(hdf5_err)
 
     ! Create a new file using default properties.
-    call h5fopen_f(filename, H5F_ACC_RDWR_F, hdf5_output_file, error)
+    call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, hdf5_output_file, error)
 
   end subroutine hdf5_open_output
 

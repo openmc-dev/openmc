@@ -220,7 +220,7 @@ contains
 
   subroutine extract_results()
 
-    use global, only: cmfd
+    use global, only: cmfd,path_input
 
     integer :: n ! problem size
     PetscViewer :: viewer
@@ -241,8 +241,8 @@ contains
     call VecRestoreArrayF90(xvec,xptr,ierr)
 
      ! write out results
-    call PetscViewerBinaryOpen(PETSC_COMM_SELF,'residual.bin',FILE_MODE_WRITE, &
-                               viewer,ierr)
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(path_input)//'residual.bin'&
+   &     ,FILE_MODE_WRITE,viewer,ierr)
     call VecView(resvec,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 

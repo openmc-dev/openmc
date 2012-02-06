@@ -108,6 +108,9 @@ module global
   integer    :: n_active            ! # of active cycles
   integer    :: current_cycle       ! current cycle
 
+  ! Random Number seed
+  integer(8) :: seed = 1_8
+
   ! External source
   type(ExtSource), target :: external_source
 

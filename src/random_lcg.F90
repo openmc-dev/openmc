@@ -49,7 +49,9 @@ contains
 
   subroutine initialize_prng()
 
-    prn_seed0  = 1_8
+    use global, only: seed
+
+    prn_seed0  = seed
     prn_seed   = prn_seed
     prn_mult   = 2806196910506780709_8
     prn_add    = 1_8

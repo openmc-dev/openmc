@@ -21,20 +21,22 @@ contains
 
   subroutine initialize_source()
 
-    type(Particle), pointer :: p => null()
     integer    :: i          ! loop index over processors
     integer(8) :: j          ! loop index over bank sites
     integer    :: k          ! dummy loop index
     integer(8) :: maxwork    ! maxinum # of particles per processor
-    integer    :: alloc_err  ! allocation error code
     integer(8) :: bytes      ! size of fission/source bank
+    integer(8) :: id         ! particle id
+    integer    :: alloc_err  ! allocation error code
     real(8)    :: r(3)       ! sampled coordinates
     real(8)    :: phi        ! azimuthal angle
     real(8)    :: mu         ! cosine of polar angle
     real(8)    :: E          ! outgoing energy
     real(8)    :: p_min(3)   ! minimum coordinates of source
     real(8)    :: p_max(3)   ! maximum coordinates of source
+#ifndef NO_F2008
     type(Bank) :: bank_obj
+#endif
 
     message = "Initializing source particles..."
     call write_message(6)
@@ -68,47 +70,38 @@ contains
        call fatal_error()
     end if
 
-    ! Check external source type
-    if (external_source%type == SRC_BOX) then
-       p_min = external_source%values(1:3)
-       p_max = external_source%values(4:6)
-    else
-       message = "Unsupported external source type: " // &
-            to_str(external_source%type)
-       call fatal_error()
-    end if
-
     ! Initialize first cycle source bank
     do i = 0, n_procs - 1
        if (rank == i) then
           ! ID's of first and last source particles
-          bank_first = i*maxwork + 1
-          bank_last  = min((i+1)*maxwork, n_particles)
+          bank_first = rank*maxwork + 1
+          bank_last  = min((rank+1)*maxwork, n_particles)
 
           ! number of particles for this processor
           work = bank_last - bank_first + 1
 
-          do j = bank_first, bank_last
-             p => source_bank(j - bank_first + 1)
-
-             ! set defaults
-             call initialize_particle(p)
+          do j = 1, work
+             id = bank_first + j - 1
+             source_bank(j) % id = id
 
              ! initialize random number seed
-             call set_particle_seed(int(j,8))
+             call set_particle_seed(id)
 
-             ! sample position
-             r = (/ (prn(), k = 1,3) /)
-             p % id = j
-             p % coord0 % xyz = p_min + r*(p_max - p_min)
-             p % last_xyz = p % coord0 % xyz
+             ! sample position from external source
+             select case (external_source % type)
+             case (SRC_BOX)
+                p_min = external_source % values(1:3)
+                p_max = external_source % values(4:6)
+                r = (/ (prn(), k = 1,3) /)
+                source_bank(j) % xyz = p_min + r*(p_max - p_min)
+             end select
 
              ! sample angle
              phi = TWO*PI*prn()
              mu = TWO*prn() - ONE
-             p % coord0 % uvw(1) = mu
-             p % coord0 % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-             p % coord0 % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+             source_bank(j) % uvw(1) = mu
+             source_bank(j) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+             source_bank(j) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
              ! sample energy from Watt fission energy spectrum for U-235
              do
@@ -118,14 +111,10 @@ contains
              end do
 
              ! set particle energy
-             p % E = E
-             p % last_E = E
+             source_bank(j) % E = E
           end do
        end if
     end do
-
-    ! Reset source index
-    source_index = 0_8
 
   end subroutine initialize_source
 
@@ -133,25 +122,39 @@ contains
 ! GET_SOURCE_PARTICLE returns the next source particle 
 !===============================================================================
 
-  function get_source_particle() result(p)
+  subroutine get_source_particle(p, index_source)
 
     type(Particle), pointer :: p
+    integer(8), intent(in)  :: index_source
 
-    ! increment index
-    source_index = source_index + 1
+    integer(8) :: particle_seed  ! unique index for particle
+    type(Bank), pointer :: src => null()
 
-    ! if at end of bank, return null pointer
-    if (source_index > work) then
-       p => null()
-       return
-    end if
+    ! set defaults
+    call initialize_particle(p)
 
     ! point to next source particle
-    p => source_bank(source_index)
+    src => source_bank(index_source)
 
-    ! set id
-    p % id = bank_first + source_index - 1
+    ! copy attributes from source bank site
+    p % coord % xyz = src % xyz
+    p % coord % uvw = src % uvw
+    p % last_xyz    = src % xyz
+    p % E           = src % E
+    p % last_E      = src % E
 
-  end function get_source_particle
+    ! set identifier for particle
+    p % id = bank_first + index_source - 1
+
+    ! set random number seed
+    particle_seed = (current_cycle - 1)*n_particles + p % id
+    call set_particle_seed(particle_seed)
+          
+    ! set particle trace
+    trace = .false.
+    if (current_cycle == trace_cycle .and. &
+         p % id == trace_particle) trace = .true.
+
+  end subroutine get_source_particle
 
 end module source

@@ -44,6 +44,9 @@ contains
     ! set operators to EPS object
     call EPSSetOperators(eps,prod%F,loss%M,ierr)
 
+    ! set EPS options
+    call EPSSetFromOptions(eps,ierr)
+
     ! solve the system
     call EPSSolve(eps,ierr)
 
@@ -89,9 +92,8 @@ contains
     call EPSCreate(PETSC_COMM_SELF,eps,ierr)
     call EPSSetProblemType(eps,EPS_GNHEP,ierr)
     call EPSSetType(eps,EPSPOWER,ierr)
-    call EPSSetFromOptions(eps,ierr)
     call EPSSetWhichEigenpairs(eps,EPS_LARGEST_MAGNITUDE,ierr)
-
+ 
     ! get ST, KSP and PC objects
     call EPSGetST(eps,st,ierr)
     call STGetKSP(st,ksp,ierr)

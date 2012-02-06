@@ -31,6 +31,9 @@ contains
     integer :: ierr  ! petsc error code
 
 #ifdef PETSC
+    ! sync up procs
+    call MPI_Barrier(MPI_COMM_WORLD,mpi_err)
+
     ! initialize slepc/petsc (communicates to world)
     call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
 #endif

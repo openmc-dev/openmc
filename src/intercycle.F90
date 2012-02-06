@@ -28,9 +28,9 @@ contains
     integer(8) :: start           ! starting index in local fission bank
     integer(8) :: finish          ! ending index in local fission bank
     integer(8) :: total           ! total sites in global fission bank
-    integer(8) :: index_local     ! index for source bank
-    integer    :: send_to_left    ! # of bank sites to send/recv to or from left
-    integer    :: send_to_right   ! # of bank sites to send/recv to or from right
+    integer(8) :: index_temp      ! index in temporary source bank
+    integer    :: send_to_left    ! total # of bank sites to send/recv to or from left
+    integer    :: send_to_right   ! total # of bank sites to send/recv to or from right
     integer(8) :: sites_needed    ! # of sites to be sampled
     real(8)    :: p_sample        ! probability of sampling a site
     type(Bank), allocatable :: &
@@ -48,8 +48,16 @@ contains
     message = "Collecting number of fission sites..."
     call write_message(8)
 
+    ! In order to properly understand the fission bank algorithm, you need to
+    ! think of the fission and source bank as being one global array divided
+    ! over multiple processors. At the start, each processor has a random amount
+    ! of fission bank sites -- each processor needs to know the total number of
+    ! sites in order to figure out the probability for selecting
+    ! sites. Furthermore, each proc also needs to know where in the 'global'
+    ! fission bank its own sites starts in order to ensure reproducibility by
+    ! skipping ahead to the proper seed.
+
 #ifdef MPI
-    ! Determine starting index for fission bank and total sites in fission bank
     start = 0_8
     call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
          MPI_COMM_WORLD, mpi_err)
@@ -64,20 +72,25 @@ contains
     total  = n_bank
 #endif
 
-    ! Check if there are no fission sites
+    ! If there are not that many particles per cycle, it's possible that no
+    ! fission sites were created at all. There is no way to proceed in that
+    ! circumstance so issue a fatal error and stop the simulation.
+
     if (total == 0) then
        message = "No fission sites banked!"
        call fatal_error()
     end if
 
-    ! Make sure all processors start at the same point for random sampling
-    call set_particle_seed(int(current_cycle,8))
+    ! Make sure all processors start at the same point for random sampling by
+    ! using the current_cycle as the starting seed. Then skip ahead in the
+    ! sequence using the starting index in the 'global' fission bank for each
+    ! processor Skip ahead however many random numbers are needed
 
-    ! Skip ahead however many random numbers are needed
+    call set_particle_seed(int(current_cycle,8))
     call prn_skip(start)
 
-    allocate(temp_sites(2*work))
-    index_local = 0_8 ! Index for local source_bank
+    ! Determine how many fission sites we need to sample from the source bank
+    ! and the probability for selecting a site.
 
     if (total < n_particles) then
        sites_needed = mod(n_particles,total)
@@ -93,6 +106,12 @@ contains
 
     ! ==========================================================================
     ! SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
+
+    ! Allocate temporary source bank
+    ! TODO: consider only allocating this once?
+    index_temp = 0_8
+    allocate(temp_sites(2*work))
+
     do i = 1, int(n_bank,4)
 
        ! If there are less than n_particles particles banked, automatically add
@@ -100,34 +119,35 @@ contains
        ! 1000 and 300 were banked, this would add 3 source sites per banked site
        ! and the remaining 100 would be randomly sampled.
        if (total < n_particles) then
-          do j = 1,int(n_particles/total)
-             ! If index is within this node's range, add site to source
-             index_local = index_local + 1
-             temp_sites(index_local) = fission_bank(i)
+          do j = 1, int(n_particles/total)
+             index_temp = index_temp + 1
+             temp_sites(index_temp) = fission_bank(i)
           end do
        end if
 
        ! Randomly sample sites needed
        if (prn() < p_sample) then
-          index_local = index_local + 1
-          temp_sites(index_local) = fission_bank(i)
+          index_temp = index_temp + 1
+          temp_sites(index_temp) = fission_bank(i)
        end if
     end do
 
+    ! At this point, the sampling of source sites is done and now we need to figure out where to send source sites
     ! Now that we've sampled sites, check where the boundaries of data are for
     ! the source bank
+
 #ifdef MPI
     start = 0_8
-    call MPI_EXSCAN(index_local, start, 1, MPI_INTEGER8, MPI_SUM, & 
+    call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, & 
          MPI_COMM_WORLD, mpi_err)
-    finish = start + index_local
+    finish = start + index_temp
     total = finish
     call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
          MPI_COMM_WORLD, mpi_err)
 #else
     start  = 0_8
-    finish = index_local
-    total  = index_local
+    finish = index_temp
+    total  = index_temp
 #endif
 
     ! Determine how many sites to send to adjacent nodes
@@ -146,7 +166,7 @@ contains
           ! If we have extra sites sampled, we will simply discard the extra
           ! ones on the last processor
           if (rank == n_procs - 1) then
-             index_local = index_local - send_to_right
+             index_temp = index_temp - send_to_right
           end if
 
        elseif (total < n_particles) then
@@ -154,8 +174,8 @@ contains
           ! fission bank
           sites_needed = n_particles - total
           do i = 1, int(sites_needed,4)
-             index_local = index_local + 1
-             temp_sites(index_local) = fission_bank(n_bank - sites_needed + i)
+             index_temp = index_temp + 1
+             temp_sites(index_temp) = fission_bank(n_bank - sites_needed + i)
           end do
        end if
 
@@ -176,7 +196,7 @@ contains
     allocate(right_bank(abs(send_to_right)))
 
     if (send_to_right > 0) then
-       i = index_local - send_to_right + 1
+       i = index_temp - send_to_right + 1
        call MPI_ISEND(temp_sites(i), send_to_right, MPI_BANK, rank+1, 0, &
             MPI_COMM_WORLD, request, mpi_err)
     else if (send_to_right < 0) then
@@ -202,29 +222,29 @@ contains
     ! ==========================================================================
     ! RECONSTRUCT SOURCE BANK
     if (send_to_left < 0 .and. send_to_right >= 0) then
-       i = -send_to_left                      ! size of first block
-       j = int(index_local,4) - send_to_right ! size of second block
-       call copy_from_bank(temp_sites, i+1, j)
+       i = -send_to_left                     ! size of first block
+       j = int(index_temp,4) - send_to_right ! size of second block
+       source_bank(i+1:i+j) = temp_sites(1:j)
 #ifdef MPI
        call MPI_WAIT(request_left, status, mpi_err)
 #endif
        call copy_from_bank(left_bank, 1, i)
     else if (send_to_left >= 0 .and. send_to_right < 0) then
-       i = int(index_local,4) - send_to_left ! size of first block
+       i = int(index_temp,4) - send_to_left  ! size of first block
        j = -send_to_right                    ! size of second block
-       call copy_from_bank(temp_sites(1+send_to_left), 1, i)
+       source_bank(1:i) = temp_sites(send_to_left+1:send_to_left+i)
 #ifdef MPI
        call MPI_WAIT(request_right, status, mpi_err)
 #endif
        call copy_from_bank(right_bank, i+1, j)
     else if (send_to_left >= 0 .and. send_to_right >= 0) then
-       i = int(index_local,4) - send_to_left - send_to_right
-       call copy_from_bank(temp_sites(1+send_to_left), 1, i)
+       i = int(index_temp,4) - send_to_left - send_to_right
+       source_bank = temp_sites(send_to_left+1:send_to_left+i)
     else if (send_to_left < 0 .and. send_to_right < 0) then
        i = -send_to_left
-       j = int(index_local,4)
+       j = int(index_temp,4)
        k = -send_to_right
-       call copy_from_bank(temp_sites, i+1, j)
+       source_bank(i+1:i+j) = temp_sites(1:j)
 #ifdef MPI
        call MPI_WAIT(request_left, status, mpi_err)
 #endif
@@ -234,9 +254,6 @@ contains
 #endif
        call copy_from_bank(right_bank, i+j+1, k)
     end if
-
-    ! Reset source index
-    source_index = 0_8
 
     call timer_stop(time_ic_rebuild)
     
@@ -260,21 +277,16 @@ contains
 
     integer :: i        ! index in temp_bank
     integer :: i_source ! index in source_bank
-    type(Particle), pointer :: p
+    type(Bank), pointer :: src => null()
     
     do i = 1, n_sites
        i_source = i_start + i - 1
-       p => source_bank(i_source)
+       src => source_bank(i_source)
 
-       ! set defaults
-       call initialize_particle(p)
-
-       p % coord % xyz = temp_bank(i) % xyz
-       p % coord % uvw = temp_bank(i) % uvw
-       p % last_xyz    = temp_bank(i) % xyz
-       p % E           = temp_bank(i) % E
-       p % last_E      = temp_bank(i) % E
-
+       ! Copy attributes
+       src % xyz = temp_bank(i) % xyz
+       src % uvw = temp_bank(i) % uvw
+       src % E   = temp_bank(i) % E
     end do
 
   end subroutine copy_from_bank

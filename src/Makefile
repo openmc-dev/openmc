@@ -15,6 +15,8 @@ include OBJECTS
 # User Options
 #===============================================================================
 
+F90X = /home/bherman/petsc/release/bin/mpif90 
+F90XFLAGS = -Wall -Wno-unused-variable
 COMPILER = petsc
 DEBUG    = no 
 PROFILE  = no
@@ -206,14 +208,14 @@ endif
 
 all: xml-fortran $(program)
 xml-fortran:
-	cd xml-fortran; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
-	cd xml-fortran/templates; make F90=$(F90) F90FLAGS="$(F90FLAGS)"
+	cd xml-fortran; make MACHINE=$(MACHINE) F90=$(F90X) F90FLAGS="$(F90XFLAGS)"
+	cd xml-fortran/templates; make F90=$(F90X) F90FLAGS="$(F90XFLAGS)"
 $(program): $(objects)
 	$(F90) $(objects) $(templates) $(xml_fort) -o $@ $(LDFLAGS)
 distclean: clean
 	cd xml-fortran; make clean
 	cd xml-fortran/templates; make clean
-clean:
+clean::
 	@rm -f *.o *.mod $(program)
 neat:
 	@rm -f *.o *.mod

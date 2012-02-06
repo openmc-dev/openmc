@@ -7,6 +7,7 @@
     <component name="cycles" type="integer" />
     <component name="inactive" type="integer" />
     <component name="particles" type="integer" />
+    <component name="seed" type="integer" />
   </typedef>
 
   <typedef name="source_xml">

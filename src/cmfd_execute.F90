@@ -63,7 +63,7 @@ contains
 
 #ifdef PETSC
     ! finalize slepc
-    call SlepcFinalize(ierr)     
+    call SlepcFinalize(ierr)
 
     ! sync up procs
     call MPI_Barrier(MPI_COMM_WORLD,mpi_err)

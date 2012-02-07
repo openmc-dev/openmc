@@ -237,18 +237,18 @@ contains
           if (argv(i)(2:5) == 'plot') then
              plotting = .true.
           end if
-
-          last_flag = i
        end if
 
       ! Determine directory where XML input files are
       if (i == argc .and. last_flag /= i) then
-         path_input = argv(last_flag + 1)
+         last_flag = last_flag + 1
+         path_input = argv(last_flag)
          ! Need to add working directory if the given path is a relative path
          if (.not. starts_with(path_input, "/")) then
             path_input = trim(pwd) // "/" // trim(path_input)
          end if
       else
+         last_flag = last_flag + 1
          path_input = pwd
       end if
     end do

@@ -4,7 +4,7 @@ module cmfd_execute
   use cmfd_output,       only: write_cmfd_vtk
   use global,            only: cmfd,cmfd_only,time_cmfd,master,rank,mpi_err,   &
  &                             current_cycle,n_inactive,n_cycles
-  use timing,            only: timer_start,timer_stop
+  use timing,            only: timer_start,timer_stop,timer_reset
 
 
 #ifdef PETSC
@@ -48,11 +48,11 @@ contains
 
 #ifdef PETSC
       ! execute snes solver
-      call cmfd_snes_execute()
+      call cmfd_slepc_execute()
 #endif
 
       ! stop timer
-      call timer_stop(time_cmfd)
+!     call timer_stop(time_cmfd)
 
       ! write vtk file
       !if(.not. cmfd_only) call write_cmfd_vtk()

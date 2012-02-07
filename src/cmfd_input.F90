@@ -65,7 +65,8 @@ contains
    end if
 
     ! check for core map activation by printing note
-    if (cmfd_coremap) print *,"Core Map Overlay Activated"
+
+    if (cmfd_coremap .and. master) write(*,*)"Core Map Overlay Activated"
 
     ! create tally objects
     call create_cmfd_tally()

@@ -160,6 +160,8 @@ intercycle.o: global.o
 intercycle.o: output.o
 intercycle.o: particle_header.o
 intercycle.o: random_lcg.o
+intercycle.o: search.o
+intercycle.o: string.o
 intercycle.o: tally_header.o
 intercycle.o: timing.o
 

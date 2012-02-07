@@ -937,7 +937,6 @@ contains
     write(ou,100) "  Accumulating tallies", time_ic_tallies % elapsed
     write(ou,100) "  Sampling source sites", time_ic_sample % elapsed
     write(ou,100) "  SEND/RECV source sites", time_ic_sendrecv % elapsed
-    write(ou,100) "  Reconstruct source bank", time_ic_rebuild % elapsed
     write(ou,100) "Total time in inactive cycles", time_inactive % elapsed
     write(ou,100) "Total time in active cycles", time_active % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed

@@ -36,7 +36,7 @@ ifeq ($(COMPILER),gnu)
   # Debugging
   ifeq ($(DEBUG),yes)
     F90FLAGS += -g -Wall -pedantic -std=f2008 -fbounds-check \
-                -ffpe-trap=invalid,zero,overflow,underflow
+                -ffpe-trap=invalid,overflow,underflow
     LDFLAGS  += -g
   endif
 
@@ -83,7 +83,7 @@ endif
 ifeq ($(COMPILER),petsc)
   F90 = ${FLINKER}
   F90FLAGS := -cpp -ffree-form -I${PETSC_DIR}/include -I${SLEPC_DIR}/include \
-              -ffpe-trap=invalid,overflow,underflow -DMPI -DPETSC
+              -DMPI -DPETSC
   include ${SLEPC_DIR}/conf/slepc_common
   LDFLAGS = ${SLEPC_LIB}
 

@@ -30,7 +30,10 @@ contains
 !===============================================================================
 
   subroutine cmfd_slepc_execute()
+    use global, only:time_cmfd
+    use timing
 
+call timer_start(time_cmfd)
     ! initialize data
     call init_data()
 
@@ -40,6 +43,7 @@ contains
     ! build operators
     call build_loss_matrix(loss)
     call build_prod_matrix(prod)
+
 
     ! set operators to EPS object
     call EPSSetOperators(eps,prod%F,loss%M,ierr)
@@ -154,10 +158,10 @@ contains
     cmfd%keff = keff
 
     ! write out results
-    call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(path_input)//'fluxvec.bin' &
-   &     ,FILE_MODE_WRITE,viewer,ierr)
-    call VecView(phi,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+!   call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(path_input)//'fluxvec.bin' &
+!  &     ,FILE_MODE_WRITE,viewer,ierr)
+!   call VecView(phi,viewer,ierr)
+!   call PetscViewerDestroy(viewer,ierr)
 
   end subroutine extract_results
 

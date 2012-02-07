@@ -12,9 +12,10 @@ contains
 
   subroutine set_up_cmfd()
 
-    use global,       only: cmfd,cmfd_coremap,current_cycle,n_inactive
+    use global,       only: cmfd,cmfd_coremap,current_cycle,n_inactive,time_cmfd
     use cmfd_header,  only: allocate_cmfd
     use cmfd_output,  only: neutron_balance,write_cmfd_hdf5
+    use timing
 
     ! initialize data
     call allocate_cmfd(cmfd)
@@ -139,9 +140,9 @@ contains
             cmfd % p1scattxs(h,i,j,k) = t % scores(score_index,3) % val / flux
 
             ! calculate diffusion coefficient
-            cmfd % diffcof(h,i,j,k) = 1/(3*(cmfd % totalxs(h,i,j,k) -          &
+            cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k) -  &
            &                                cmfd % p1scattxs(h,i,j,k)))
-            cmfd % diffcof(h,i,j,k) = 1/(3*(cmfd % totalxs(h,i,j,k)))
+            cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k)))
 
             ! begin loop to get energy out tallies
             INGROUP: do g = 1,ng

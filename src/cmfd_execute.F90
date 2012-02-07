@@ -2,7 +2,8 @@ module cmfd_execute
 
   use cmfd_data,         only: set_up_cmfd
   use cmfd_output,       only: write_cmfd_vtk
-  use global,            only: cmfd,cmfd_only,time_cmfd,master,rank,mpi_err
+  use global,            only: cmfd,cmfd_only,time_cmfd,master,rank,mpi_err,   &
+ &                             current_cycle,n_inactive,n_cycles
   use timing,            only: timer_start,timer_stop
 
 
@@ -31,18 +32,16 @@ contains
     integer :: ierr  ! petsc error code
 
 #ifdef PETSC
-    ! sync up procs
-    call MPI_Barrier(MPI_COMM_WORLD,mpi_err)
-
     ! initialize slepc/petsc (communicates to world)
-    call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
+    if(current_cycle == n_inactive + 1) call SlepcInitialize                   &
+   &                                       (PETSC_NULL_CHARACTER,ierr)
 #endif
 
     ! only run if master process
     if (master) then
 
       ! begin timer
-      call timer_start(time_cmfd)
+!     call timer_start(time_cmfd)
 
       ! set up cmfd
       if(.not. cmfd_only) call set_up_cmfd()
@@ -53,7 +52,7 @@ contains
 #endif
 
       ! stop timer
-      call timer_stop(time_cmfd)
+!     call timer_stop(time_cmfd)
 
       ! print results
 !     print *,'SNES Eigenvalue is:',cmfd%keff
@@ -65,8 +64,8 @@ contains
     end if
 
 #ifdef PETSC
-    ! finalize slepc
-    call SlepcFinalize(ierr)
+! finalize slepc
+    if (current_cycle == n_cycles) call SlepcFinalize(ierr)
 
     ! sync up procs
     call MPI_Barrier(MPI_COMM_WORLD,mpi_err)

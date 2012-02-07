@@ -60,6 +60,10 @@ contains
     if (associated(mesh_ % map)) then
       allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2),            &
      &         cmfd % indices(3)))
+      if (size(mesh_ % map) /= product(cmfd % indices(1:3))) then
+        write(*,*) 'FATAL==>CMFD coremap not to correct dimensions'
+        stop
+      end if
       cmfd % coremap = reshape(mesh_ % map,(cmfd % indices(1:3)))
       cmfd_coremap = .TRUE.
    end if

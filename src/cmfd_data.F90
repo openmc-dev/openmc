@@ -88,6 +88,13 @@ contains
 
           OUTGROUP: do h = 1,ng
 
+            ! check for active mesh cell
+            if (allocated(cmfd%coremap)) then
+              if (cmfd%coremap(i,j,k) == 99999) then
+                cycle
+              end if
+            end if
+
             ! begin with first tally 
             t => tallies(1)
             m => meshes(t % mesh)

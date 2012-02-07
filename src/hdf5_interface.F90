@@ -644,7 +644,6 @@ contains
     call hdf5_make_double(timing_group, "time_tallies", time_ic_tallies % elapsed)
     call hdf5_make_double(timing_group, "time_sample", time_ic_sample % elapsed)
     call hdf5_make_double(timing_group, "time_sendrecv", time_ic_sendrecv % elapsed)
-    call hdf5_make_double(timing_group, "time_rebuild", time_ic_rebuild % elapsed)
     call hdf5_make_double(timing_group, "time_inactive", time_inactive % elapsed)
     call hdf5_make_double(timing_group, "time_active", time_active % elapsed)
     call hdf5_make_double(timing_group, "time_total", time_total % elapsed)
@@ -666,8 +665,6 @@ contains
          "description", "Time between cycles sampling source sites (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_sendrecv", &
          "description", "Time between cycles SEND/RECVing source sites (s)", hdf5_err)
-    call h5ltset_attribute_string_f(timing_group, "time_rebuild", &
-         "description", "Time between cycles reconstructing source bank (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_inactive", &
          "description", "Total time in inactive cycles (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_active", &

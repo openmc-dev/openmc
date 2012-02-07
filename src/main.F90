@@ -44,13 +44,16 @@ contains
 
   subroutine run_problem()
 
-    integer(8)              :: particle_seed  ! unique index for particle
+    integer(8) :: i  ! index over histories in single cycle
     type(Particle), pointer :: p => null()
 
     if (master) call header("BEGIN SIMULATION", level=1)
 
     tallies_on = .false.
     call timer_start(time_inactive)
+
+    ! Allocate particle
+    allocate(p)
 
     ! Display column titles
     if (entropy_on) then
@@ -94,23 +97,10 @@ contains
 
        ! =======================================================================
        ! LOOP OVER HISTORIES
-       HISTORY_LOOP: do
+       HISTORY_LOOP: do i = 1, work
 
           ! grab source particle from bank
-          p => get_source_particle()
-          if ( .not. associated(p) ) then
-             ! no particles left in source bank
-             exit HISTORY_LOOP
-          end if
-
-          ! set random number seed
-          particle_seed = (current_cycle - 1)*n_particles + p % id
-          call set_particle_seed(particle_seed)
-          
-          ! set particle trace
-          trace = .false.
-          if (current_cycle == trace_cycle .and. &
-               p % id == trace_particle) trace = .true.
+          call get_source_particle(p, i)
 
           ! transport particle
           call transport(p)

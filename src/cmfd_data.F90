@@ -79,6 +79,9 @@ contains
     nz = cmfd % indices(3)
     ng = cmfd % indices(4)
 
+    ! set flux object to all zeros
+    cmfd % flux = 0.0_8
+
     ! begin loop around space and energy groups
     ZLOOP: do k = 1,nz
 

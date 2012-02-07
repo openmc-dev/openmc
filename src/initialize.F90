@@ -240,18 +240,20 @@ contains
 
           last_flag = i
        end if
+
+      ! Determine directory where XML input files are
+      if (i == argc .and. last_flag /= i) then
+         path_input = argv(last_flag + 1)
+         ! Need to add working directory if the given path is a relative path
+         if (.not. starts_with(path_input, "/")) then
+            path_input = trim(pwd) // "/" // trim(path_input)
+         end if
+      else
+         path_input = pwd
+      end if
     end do
 
-    ! Determine directory where XML input files are
-    if (argc > 0 .and. last_flag < argc) then
-       path_input = argv(last_flag + 1)
-       ! Need to add working directory if the given path is a relative path
-       if (.not. starts_with(path_input, "/")) then
-          path_input = trim(pwd) // "/" // trim(path_input)
-       end if
-    else
-       path_input = pwd
-    end if
+    if (last_flag == 0) path_input = pwd
 
     ! Add slash at end of directory if it isn't there
     if (.not. ends_with(path_input, "/")) then

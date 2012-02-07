@@ -860,26 +860,22 @@ contains
        end if
 
        ! Read incoming energy filter bins
-       if (len_trim(tally_(i) % filters % energy) > 0) then
-          call split_string(tally_(i) % filters % energy, words, n_words)
-          allocate(t % energy_in(n_words))
-          do j = 1, n_words
-             t % energy_in(j) = str_to_real(words(j))
-          end do
-          t % n_filter_bins(FILTER_ENERGYIN) = n_words - 1
+       if (associated(tally_(i) % filters % energy)) then
+          n = size(tally_(i) % filters % energy)
+          allocate(t % energy_in(n))
+          t % energy_in = tally_(i) % filters % energy
+          t % n_filter_bins(FILTER_ENERGYIN) = n - 1
 
           n_filters = n_filters + 1
           filters(n_filters) = FILTER_ENERGYIN
        end if
 
        ! Read outgoing energy filter bins
-       if (len_trim(tally_(i) % filters % energyout) > 0) then
-          call split_string(tally_(i) % filters % energyout, words, n_words)
-          allocate(t % energy_out(n_words))
-          do j = 1, n_words
-             t % energy_out(j) = str_to_real(words(j))
-          end do
-          t % n_filter_bins(FILTER_ENERGYOUT) = n_words - 1
+       if (associated(tally_(i) % filters % energyout)) then
+          n = size(tally_(i) % filters % energyout)
+          allocate(t % energy_out(n))
+          t % energy_out = tally_(i) % filters % energyout
+          t % n_filter_bins(FILTER_ENERGYOUT) = n - 1
 
           ! Set tally estimator to analog
           t % estimator = ESTIMATOR_ANALOG

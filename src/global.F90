@@ -117,6 +117,7 @@ module global
   integer(8) :: bank_first   ! index of first particle in bank
   integer(8) :: bank_last    ! index of last particle in bank
   integer(8) :: work         ! number of particles per processor
+  integer(8) :: maxwork      ! maximum number of particles per processor
 
   ! cycle keff
   real(8) :: keff = ONE
@@ -150,7 +151,6 @@ module global
   type(Timer) :: time_ic_tallies  ! timer for intercycle accumulate tallies
   type(Timer) :: time_ic_sample   ! timer for intercycle sampling
   type(Timer) :: time_ic_sendrecv ! timer for intercycle SEND/RECV
-  type(Timer) :: time_ic_rebuild  ! timer for intercycle source bank rebuild
   type(Timer) :: time_inactive    ! timer for inactive cycles
   type(Timer) :: time_active      ! timer for active cycles
   type(Timer) :: time_compute     ! timer for computation

@@ -1331,7 +1331,7 @@ contains
 
        ! determine index on incoming energy grid and interpolation factor
        lc = 2 + 2*NR
-       i = binary_search(edist % data(lc+1), NE, E_in)
+       i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
        r = (E_in - edist%data(lc+i)) / &
             (edist%data(lc+i+1) - edist%data(lc+i))
 
@@ -1407,7 +1407,7 @@ contains
           i = NE - 1
           r = ONE
        else
-          i = binary_search(edist % data(lc+1), NE, E_in)
+          i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
           r = (E_in - edist%data(lc+i)) / & 
                (edist%data(lc+i+1) - edist%data(lc+i))
        end if
@@ -1633,7 +1633,7 @@ contains
           i = NE - 1
           r = ONE
        else
-          i = binary_search(edist % data(lc+1), NE, E_in)
+          i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
           r = (E_in - edist%data(lc+i)) / & 
                (edist%data(lc+i+1) - edist%data(lc+i))
        end if
@@ -1776,7 +1776,7 @@ contains
           i = NE - 1
           r = ONE
        else
-          i = binary_search(edist % data(lc+1), NE, E_in)
+          i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
           r = (E_in - edist%data(lc+i)) / & 
                (edist%data(lc+i+1) - edist%data(lc+i))
        end if

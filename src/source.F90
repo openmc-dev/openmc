@@ -24,7 +24,6 @@ contains
     integer    :: i          ! loop index over processors
     integer(8) :: j          ! loop index over bank sites
     integer    :: k          ! dummy loop index
-    integer(8) :: maxwork    ! maxinum # of particles per processor
     integer(8) :: bytes      ! size of fission/source bank
     integer(8) :: id         ! particle id
     integer    :: alloc_err  ! allocation error code

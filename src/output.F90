@@ -940,6 +940,7 @@ contains
     write(ou,100) "  Reconstruct source bank", time_ic_rebuild % elapsed
     write(ou,100) "Total time in inactive cycles", time_inactive % elapsed
     write(ou,100) "Total time in active cycles", time_active % elapsed
+    if(cmfd_on) write(ou,100) "Total CMFD time", time_cmfd % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 
     ! display header block

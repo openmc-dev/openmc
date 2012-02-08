@@ -26,13 +26,13 @@ contains
     n = m % n_dimension
 
     ! Check for cases where particle is outside of mesh
-    if (xyz(1) < m % origin(1)) then
+    if (xyz(1) < m % lower_left(1)) then
        bin = NO_BIN_FOUND
        return
     elseif (xyz(1) > m % upper_right(1)) then
        bin = NO_BIN_FOUND
        return
-    elseif (xyz(2) < m % origin(2)) then
+    elseif (xyz(2) < m % lower_left(2)) then
        bin = NO_BIN_FOUND
        return
     elseif (xyz(2) > m % upper_right(2)) then
@@ -40,7 +40,7 @@ contains
        return
     end if
     if (n > 2) then
-       if (xyz(3) < m % origin(3)) then
+       if (xyz(3) < m % lower_left(3)) then
           bin = NO_BIN_FOUND
           return
        elseif (xyz(3) > m % upper_right(3)) then
@@ -73,7 +73,7 @@ contains
     logical, intent(out)          :: in_mesh
 
     ! Find particle in mesh
-    ijk = ceiling((xyz - m % origin)/m % width)
+    ijk = ceiling((xyz - m % lower_left)/m % width)
 
     ! Determine if particle is in mesh
     if (any(ijk < 1) .or. any(ijk > m % dimension)) then

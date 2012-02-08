@@ -24,7 +24,7 @@
     <component name="id" type="integer" />
     <component name="type" type="word" length="12" default="'rectangular'" />
     <component name="dimension" type="integer-array" />
-    <component name="origin" type="double-array" />
+    <component name="lower_left" type="double-array" />
     <component name="width" type="double-array" />
     <component name="universes" type="integer-array" />
   </typedef>

@@ -115,6 +115,8 @@ input_xml.o: xml-fortran/templates/tallies_t.o
 
 intercycle.o: error.o
 intercycle.o: global.o
+intercycle.o: mesh.o
+intercycle.o: mesh_header.o
 intercycle.o: output.o
 intercycle.o: particle_header.o
 intercycle.o: random_lcg.o

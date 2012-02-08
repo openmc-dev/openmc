@@ -883,9 +883,9 @@ contains
        ! Bounding coordinates
        do j = 1, 3
           if (uvw(j) > 0) then
-             xyz_cross(j) = m % origin(j) + ijk0(j) * m % width(j)
+             xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
           else
-             xyz_cross(j) = m % origin(j) + (ijk0(j) - 1) * m % width(j)
+             xyz_cross(j) = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
           end if
        end do
 

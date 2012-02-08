@@ -125,10 +125,9 @@ module global
 
   ! Shannon entropy
   logical :: entropy_on = .false.
-  real(8) :: entropy                ! value of shannon entropy
-  real(8) :: entropy_lower_left(3)  ! lower-left corner for entropy box
-  real(8) :: entropy_upper_right(3) ! upper-right corner for entropy box
-  real(8), allocatable :: entropy_p(:,:,:)
+  real(8) :: entropy                   ! value of shannon entropy
+  real(8), allocatable :: entropy_p(:) ! fraction of source sites in each cell
+  type(StructuredMesh), pointer :: entropy_mesh
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES

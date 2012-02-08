@@ -7,7 +7,7 @@
     <component name="id" type="integer" />
     <component name="type" type="word" length="12" />
     <component name="dimension" type="integer-array" />
-    <component name="origin" type="double-array" />
+    <component name="lower_left" type="double-array" />
     <component name="width" type="double-array" />
   </typedef>
 
@@ -25,7 +25,7 @@
   <typedef name="tally_xml">
     <component name="id" type="integer" />
     <component name="filters" type="filter_xml" />
-    <component name="macros" type="word" length="250" default="''" />
+    <component name="scores" type="word" length="250" default="''" />
     <component name="reactions" type="word" length="250" default="''" />
     <component name="nuclides" type="word" length="250" default="''" />
   </typedef>

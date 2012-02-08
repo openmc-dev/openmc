@@ -4,6 +4,8 @@ module intercycle
 
   use error,           only: fatal_error, warning
   use global
+  use mesh,            only: get_mesh_bin
+  use mesh_header,     only: StructuredMesh
   use output,          only: write_message
   use particle_header, only: Particle, initialize_particle
   use random_lcg,      only: prn, set_particle_seed, prn_skip
@@ -328,15 +330,16 @@ contains
 
   subroutine shannon_entropy()
 
-    integer :: i              ! x-index for entropy mesh
-    integer :: j              ! y-index for entropy mesh
-    integer :: k              ! z-index for entropy mesh
-    integer :: m              ! index for bank sites
+    integer :: i              ! index for bank sites
+    integer :: n              ! # of boxes in each dimension
+    integer :: bin            ! index in entropy_p
     integer(8) :: total_bank  ! total # of fission bank sites
     integer, save :: n_box    ! total # of boxes on mesh
-    integer, save :: n        ! # of boxes in each dimension
-    real(8), save :: width(3) ! width of box in each dimension
     logical :: outside_box    ! were there sites outside entropy box?
+    type(StructuredMesh), pointer :: m => null()
+
+    ! Get pointer to entropy mesh
+    m => entropy_mesh
 
     ! On the first pass through this subroutine, we need to determine how big
     ! the entropy mesh should be in each direction and then allocate a
@@ -344,15 +347,27 @@ contains
     ! box
 
     if (.not. allocated(entropy_p)) then
-       ! determine number of boxes in each direction
-       n = ceiling((n_particles/20)**(1.0/3.0))
-       n_box = n*n*n
+       if (.not. allocated(m % dimension)) then
+          ! If the user did not specify how many mesh cells are to be used in
+          ! each direction, we automatically determine an appropriate number of
+          ! cells
+          n = ceiling((n_particles/20)**(1.0/3.0))
 
-       ! determine width
-       width = (entropy_upper_right - entropy_lower_left)/n
+          ! copy dimensions
+          m % n_dimension = 3
+          allocate(m % dimension(3))
+          m % dimension = n
+       end if
+
+       ! Determine total number of mesh boxes
+       n_box = product(m % dimension)
+
+       ! allocate and determine width
+       allocate(m % width(3))
+       m % width = (m % upper_right - m % lower_left) / m % dimension
 
        ! allocate p
-       allocate(entropy_p(n,n,n))
+       allocate(entropy_p(n_box))
     end if
 
     ! initialize p
@@ -360,21 +375,18 @@ contains
     outside_box = .false.
 
     ! loop over fission sites and count how many are in each mesh box
-    FISSION_SITES: do m = 1, int(n_bank,4)
-       ! determine indices for entropy mesh box
-       i = int((fission_bank(m) % xyz(1) - entropy_lower_left(1))/width(1)) + 1
-       j = int((fission_bank(m) % xyz(2) - entropy_lower_left(2))/width(2)) + 1 
-       k = int((fission_bank(m) % xyz(3) - entropy_lower_left(3))/width(3)) + 1
+    FISSION_SITES: do i = 1, int(n_bank,4)
+       ! determine scoring bin for entropy mesh
+       call get_mesh_bin(m, fission_bank(i) % xyz, bin)
 
        ! if outside mesh, skip particle
-       if (i < 1 .or. i > n .or. j < 1 .or. &
-            j > n .or. k < 1 .or. k > n) then
+       if (bin == NO_BIN_FOUND) then
           outside_box = .true.
           cycle
        end if
 
        ! add to appropriate mesh box
-       entropy_p(i,j,k) = entropy_p(i,j,k) + 1
+       entropy_p(bin) = entropy_p(bin) + 1
     end do FISSION_SITES
 
     ! display warning message if there were sites outside entropy box
@@ -402,8 +414,15 @@ contains
 
     ! sum values to obtain shannon entropy
     if (master) then
+       ! Normalize to number of bank sites
        entropy_p = entropy_p / total_bank
-       entropy = -sum(entropy_p * log(entropy_p)/log(2.0), entropy_p > ZERO)
+
+       entropy = 0
+       do i = 1, n_box
+          if (entropy_p(i) > 0) then
+             entropy = entropy - entropy_p(i) * log(entropy_p(i))/log(2.0)
+          end if
+       end do
     end if
 
   end subroutine shannon_entropy

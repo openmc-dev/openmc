@@ -4,6 +4,24 @@
 Installation
 ============
 
+--------------------
+Obtaining the Source
+--------------------
+
+All OpenMC source code is hosted on GitHub_. This means that you will need to
+have git_ installed on your computer in order to get source code and updates
+directly from the repository. GitHub has a good set of `instructions
+<http://help.github.com/set-up-git-redirect>`_ for how to set up git to work
+with GitHub since this involves setting up ssh_ keys. With git installed and
+setup, the following command will download the full source code from the GitHub
+repository::
+
+    git clone git@github.com:mit-crpg/openmc.git
+
+.. _GitHub: http://github.com
+.. _git: http://git-scm.com
+.. _ssh: http://en.wikipedia.org/wiki/Secure_Shell
+
 -------------
 Prerequisites
 -------------
@@ -18,11 +36,6 @@ the gfortran compiler using the following command::
 
     sudo apt-get install gfortran
 
-.. warning:: The runtime preformance with the Intel Fortran compiler and PGI
- Fortran compiler will likely exceed that of the gfortran compiler. Compiling
- with high optimization on the gfortran compiler may make up for some of the
- performance difference
-
 To compile with support for parallel runs on a distributed-memory architecture,
 you will need to have a valid implementation of MPI installed on your
 machine. The code has been tested and is known to work with the latest versions
@@ -33,9 +46,14 @@ with::
     sudo apt-get install mpich2
     sudo apt-get install openmpi-bin
 
+To compile with support for HDF5_ output (highly recommended), you will need to
+have HDF5 installed on your computer. The installed version will need to have
+been compiled with the same compiler you intend to compile OpenMC with.
+
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
 .. _OpenMPI: http://www.open-mpi.org
 .. _MPICH2: http://www.mcs.anl.gov/mpi/mpich/
+.. _HDF5: http://www.hdfgroup.org/HDF5/
 
 -------------
 Configuration
@@ -65,18 +83,18 @@ OPTIMIZE
   interprocedural optimization.
 
 USE_MPI
-  Enables parallel runs using the Message Passing Interface. Users should
-  also set the MPI root directory by setting the MPI variable further down in
-  the Makefile.
+  Enables parallel runs using the Message Passing Interface. Users should also
+  set the MPI_ROOT directory further down in the Makefile.
 
-USE_OPENMP
-  Enables parallel runs on shared-memory architecture using OpenMP threading.
+USE_HDF5
+  Enables HDF5 output in addition to normal screen and text file output. Users
+  should also set the HDF5_ROOT directory further down in the Makefile.
 
-USE_COARRAY
-  Enables parallel runs using Fortran 2008 coarrays.
+It is also possible to change these options from the command line itself. For
+example, if you want to compile with DEBUG turned on without actually change the
+Makefile, you can enter the following from a terminal::
 
-.. note:: OpenMC does not yet support parallelism using OpenMP or Fortran 2008
- coarrays.
+    make DEBUG=yes
 
 ---------
 Compiling

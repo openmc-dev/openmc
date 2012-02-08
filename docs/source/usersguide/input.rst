@@ -217,7 +217,7 @@ universe. A ``lattice`` accepts the following attributes or sub-elements:
 
     *Default*: None
 
-  :origin:
+  :lower_left:
     The coordinates of the lower-left corner of the lattice.
 
     *Default*: None
@@ -337,22 +337,44 @@ listing.
 ``cutoff`` Element
 ------------------
 
-The ``cutoff`` element has no attributes and indicates the weight cutoff used
-below which particles undergo Russian roulette.
+The ``cutoff`` element indicates the weight cutoff used below which particles
+undergo Russian roulette. Surviving particles are assigned a user-determined
+weight. Note that weight cutoffs and Russian rouletting are not turned on by
+default. This element has the following attributes/sub-elements:
 
-  *Default*: 0.25
+  :weight:
+    The weight below which particles undergo Russian roulette.
 
-``entropy_box`` Element
------------------------
+    *Default*: 0.25
 
-This element describes the lower-left and upper-right corners of a box to be
-used for calculting Shannon entropy. This box should cover all possible
-fissionable materials in the problem. The values given after this element should
-be six numbers, the first of which are the Cartesian coordinates of the
-lower-left corner of the box and the last three of which are the Cartesian
-coordinates of the upper-right corner of the box.
+  :weight_avg:
+    The weight that is assigned to particles that are not killed after Russian
+    roulette.
 
-  *Default*: None
+    *Default*: 1.0
+
+``entropy`` Element
+-------------------
+
+This element describes a mesh that is used for calculting Shannon entropy. This
+mesh should cover all possible fissionable materials in the problem. It has the
+following attributes/sub-elements:
+
+  :dimension:
+    The number of mesh cells in the x, y, and z directions, respectively.
+
+    *Default*: If this tag is not present, the number of mesh cells is
+     automatically determined by the code.
+
+  :lower_left:
+    The Cartersian coordinates of the lower-left corner of the mesh.
+
+    *Default*: None
+
+  :upper_right:
+    The Cartersian coordinates of the upper-right corner of the mesh.
+
+    *Default*: None
 
 ``ptables`` Element
 -------------------
@@ -438,7 +460,7 @@ The ``tally`` element accepts the following sub-elements:
     A list of filters to specify what region of phase space should contribute to
     the tally. See below for full details on what filters are available.
 
-  :macros:
+  :scores:
     The desired responses to be accumulated. See below for full details on what
     responses can be tallied.
 
@@ -523,7 +545,7 @@ attributes/sub-elements:
     The type of structured mesh. Valid options include "rectangular" and
     "hexagonal".
 
-  :origin:
+  :lower_left:
     The lower-left corner of the structured mesh. If only two coordinate are
     given, it is assumed that the mesh is an x-y mesh.
 

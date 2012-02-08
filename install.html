@@ -53,6 +53,17 @@
         
   <div class="section" id="installation">
 <span id="install"></span><h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="obtaining-the-source">
+<h2>Obtaining the Source<a class="headerlink" href="#obtaining-the-source" title="Permalink to this headline">¶</a></h2>
+<p>All OpenMC source code is hosted on <a class="reference external" href="http://github.com">GitHub</a>. This means that you will need to
+have <a class="reference external" href="http://git-scm.com">git</a> installed on your computer in order to get source code and updates
+directly from the repository. GitHub has a good set of <a class="reference external" href="http://help.github.com/set-up-git-redirect">instructions</a> for how to set up git to work
+with GitHub since this involves setting up <a class="reference external" href="http://en.wikipedia.org/wiki/Secure_Shell">ssh</a> keys. With git installed and
+setup, the following command will download the full source code from the GitHub
+repository:</p>
+<div class="highlight-python"><pre>git clone git@github.com:mit-crpg/openmc.git</pre>
+</div>
+</div>
 <div class="section" id="prerequisites">
 <h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
 <p>In order to compile OpenMC, you will need to have a Fortran compiler installed
@@ -63,13 +74,6 @@ choose. For <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran
 the gfortran compiler using the following command:</p>
 <div class="highlight-python"><pre>sudo apt-get install gfortran</pre>
 </div>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">The runtime preformance with the Intel Fortran compiler and PGI
-Fortran compiler will likely exceed that of the gfortran compiler. Compiling
-with high optimization on the gfortran compiler may make up for some of the
-performance difference</p>
-</div>
 <p>To compile with support for parallel runs on a distributed-memory architecture,
 you will need to have a valid implementation of MPI installed on your
 machine. The code has been tested and is known to work with the latest versions
@@ -79,6 +83,9 @@ with:</p>
 <div class="highlight-python"><pre>sudo apt-get install mpich2
 sudo apt-get install openmpi-bin</pre>
 </div>
+<p>To compile with support for <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> output (highly recommended), you will need to
+have HDF5 installed on your computer. The installed version will need to have
+been compiled with the same compiler you intend to compile OpenMC with.</p>
 </div>
 <div class="section" id="configuration">
 <h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h2>
@@ -102,18 +109,16 @@ compiler is used.</dd>
 this compiles with -O3. For Intel Fortran, this compiles with -O3 as well as
 interprocedural optimization.</dd>
 <dt>USE_MPI</dt>
-<dd>Enables parallel runs using the Message Passing Interface. Users should
-also set the MPI root directory by setting the MPI variable further down in
-the Makefile.</dd>
-<dt>USE_OPENMP</dt>
-<dd>Enables parallel runs on shared-memory architecture using OpenMP threading.</dd>
-<dt>USE_COARRAY</dt>
-<dd>Enables parallel runs using Fortran 2008 coarrays.</dd>
+<dd>Enables parallel runs using the Message Passing Interface. Users should also
+set the MPI_ROOT directory further down in the Makefile.</dd>
+<dt>USE_HDF5</dt>
+<dd>Enables HDF5 output in addition to normal screen and text file output. Users
+should also set the HDF5_ROOT directory further down in the Makefile.</dd>
 </dl>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">OpenMC does not yet support parallelism using OpenMP or Fortran 2008
-coarrays.</p>
+<p>It is also possible to change these options from the command line itself. For
+example, if you want to compile with DEBUG turned on without actually change the
+Makefile, you can enter the following from a terminal:</p>
+<div class="highlight-python"><pre>make DEBUG=yes</pre>
 </div>
 </div>
 <div class="section" id="compiling">

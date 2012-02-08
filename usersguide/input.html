@@ -154,8 +154,9 @@ a list a what coefficients to specify for a given surface</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">boundary:</th><td class="field-body"><p class="first">The boundary condition for the surface. This can be <tt class="docutils literal"><span class="pre">vacuum</span></tt> or <tt class="docutils literal"><span class="pre">reflective</span></tt>.</p>
-<p class="last"><em>Default</em>: <tt class="docutils literal"><span class="pre">reflective</span></tt></p>
+<tr class="field-even field"><th class="field-name">boundary:</th><td class="field-body"><p class="first">The boundary condition for the surface. This can be <tt class="docutils literal"><span class="pre">transmission</span></tt>,
+<tt class="docutils literal"><span class="pre">vacuum</span></tt>, or <tt class="docutils literal"><span class="pre">reflective</span></tt>.</p>
+<p class="last"><em>Default</em>: <tt class="docutils literal"><span class="pre">transmission</span></tt></p>
 </td>
 </tr>
 </tbody>
@@ -254,8 +255,8 @@ universe. A <tt class="docutils literal"><span class="pre">lattice</span></tt> a
 <tr class="field-odd field"><th class="field-name">id:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the surface.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">type:</th><td class="field-body"><p class="first">A string indicating the arrangement of lattice cells. Accepted options are
-&#8220;rectangular&#8221; and &#8220;hexagonal&#8221;.</p>
+<tr class="field-even field"><th class="field-name">type:</th><td class="field-body"><p class="first">A string indicating the arrangement of lattice cells. Currently, the
+only accepted option is &#8220;rectangular&#8221;.</p>
 <p><em>Default</em>: rectangular</p>
 </td>
 </tr>
@@ -309,8 +310,8 @@ desired nuclide while the <tt class="docutils literal"><span class="pre">xs</spa
 identifier. Finally, the <tt class="docutils literal"><span class="pre">ao</span></tt> and <tt class="docutils literal"><span class="pre">wo</span></tt> attributes specify the atom or
 weight percent of that nuclide within the material, respectively. One
 example would be as follows:</p>
-<div class="highlight-python"><pre>&lt;nuclide name="H-1" xs="03c" ao="2.0" /&gt;
-&lt;nuclide name="O-16" xs="03c" ao="1.0" /&gt;</pre>
+<div class="highlight-python"><pre>&lt;nuclide name="H-1" xs="70c" ao="2.0" /&gt;
+&lt;nuclide name="O-16" xs="70c" ao="1.0" /&gt;</pre>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -390,6 +391,25 @@ below which particles undergo Russian roulette.</p>
 <blockquote>
 <div><em>Default</em>: 0.25</div></blockquote>
 </div>
+<div class="section" id="entropy-box-element">
+<h3><tt class="docutils literal"><span class="pre">entropy_box</span></tt> Element<a class="headerlink" href="#entropy-box-element" title="Permalink to this headline">¶</a></h3>
+<p>This element describes the lower-left and upper-right corners of a box to be
+used for calculting Shannon entropy. This box should cover all possible
+fissionable materials in the problem. The values given after this element should
+be six numbers, the first of which are the Cartesian coordinates of the
+lower-left corner of the box and the last three of which are the Cartesian
+coordinates of the upper-right corner of the box.</p>
+<blockquote>
+<div><em>Default</em>: None</div></blockquote>
+</div>
+<div class="section" id="ptables-element">
+<h3><tt class="docutils literal"><span class="pre">ptables</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">ptables</span></tt> element determines whether probability tables should be used in
+the unresolved resonance range if available. This element has no attributes or
+sub-elements and can be set to either &#8220;off&#8221; or &#8220;on&#8221;.</p>
+<blockquote>
+<div><em>Default</em>: on</div></blockquote>
+</div>
 <div class="section" id="source-element">
 <h3><tt class="docutils literal"><span class="pre">source</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">source</span></tt> element gives information on an initial source guess for
@@ -418,6 +438,14 @@ value <tt class="docutils literal"><span class="pre">on</span></tt> or <tt class
 survival biasing, otherwise known as implicit capture or absorption.</p>
 <blockquote>
 <div><em>Default</em>: off</div></blockquote>
+</div>
+<div class="section" id="trace-element">
+<h3><tt class="docutils literal"><span class="pre">trace</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">trace</span></tt> element can be used to print out detailed information about a
+single particle during a simulation. This element should be followed by two
+integers, the cycle and one for the particle number.</p>
+<blockquote>
+<div><em>Default</em>: None</div></blockquote>
 </div>
 <div class="section" id="verbosity-element">
 <h3><tt class="docutils literal"><span class="pre">verbosity</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
@@ -561,6 +589,22 @@ given, it is assumed that the mesh is an x-y mesh.</td>
 </table>
 </div></blockquote>
 </div>
+<div class="section" id="assume-separate-element">
+<h3><tt class="docutils literal"><span class="pre">assume_separate</span></tt> Element<a class="headerlink" href="#assume-separate-element" title="Permalink to this headline">¶</a></h3>
+<p>In cases where the user needs to specify many different tallies each of which
+are spatially separate, this tag can be used to cut down on some of the tally
+overhead. The effect of assuming all tallies are spatially separate is that once
+one tally is scored to, the same event is assumed not to score to any other
+tallies. This element should be followed by &#8220;yes&#8221; or &#8220;no&#8221;</p>
+<blockquote>
+<div><div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">If used incorrectly, the assumption that all tallies are spatially
+separate can lead to incorrect results.</p>
+</div>
+<p><em>Default</em>: no</p>
+</div></blockquote>
+</div>
 </div>
 <div class="section" id="geometry-plotting-specification-plot-xml">
 <h2>Geometry Plotting Specification &#8211; plot.xml<a class="headerlink" href="#geometry-plotting-specification-plot-xml" title="Permalink to this headline">¶</a></h2>
@@ -585,14 +629,9 @@ the plot in each of the basis directions.</p>
 <div class="section" id="basis-element">
 <h3><tt class="docutils literal"><span class="pre">basis</span></tt> Element<a class="headerlink" href="#basis-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">basis</span></tt> element has no attributes/sub-elements and indicates the specified
-basis for plotting.</p>
+basis for plotting. The only option option currently accepted is &#8220;xy&#8221;.</p>
 <blockquote>
-<div><div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The only accepted option currently is &#8220;xy&#8221;</p>
-</div>
-<p><em>Default</em>: xy</p>
-</div></blockquote>
+<div><em>Default</em>: xy</div></blockquote>
 </div>
 <div class="section" id="pixel-element">
 <h3><tt class="docutils literal"><span class="pre">pixel</span></tt> Element<a class="headerlink" href="#pixel-element" title="Permalink to this headline">¶</a></h3>

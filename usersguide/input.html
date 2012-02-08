@@ -265,7 +265,7 @@ directions, respectively.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">origin:</th><td class="field-body"><p class="first">The coordinates of the lower-left corner of the lattice.</p>
+<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The coordinates of the lower-left corner of the lattice.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
@@ -386,21 +386,57 @@ listing.</p>
 </div>
 <div class="section" id="cutoff-element">
 <h3><tt class="docutils literal"><span class="pre">cutoff</span></tt> Element<a class="headerlink" href="#cutoff-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">cutoff</span></tt> element has no attributes and indicates the weight cutoff used
-below which particles undergo Russian roulette.</p>
+<p>The <tt class="docutils literal"><span class="pre">cutoff</span></tt> element indicates the weight cutoff used below which particles
+undergo Russian roulette. Surviving particles are assigned a user-determined
+weight. Note that weight cutoffs and Russian rouletting are not turned on by
+default. This element has the following attributes/sub-elements:</p>
 <blockquote>
-<div><em>Default</em>: 0.25</div></blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">weight:</th><td class="field-body"><p class="first">The weight below which particles undergo Russian roulette.</p>
+<p><em>Default</em>: 0.25</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">weight_avg:</th><td class="field-body"><p class="first">The weight that is assigned to particles that are not killed after Russian
+roulette.</p>
+<p class="last"><em>Default</em>: 1.0</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
 </div>
-<div class="section" id="entropy-box-element">
-<h3><tt class="docutils literal"><span class="pre">entropy_box</span></tt> Element<a class="headerlink" href="#entropy-box-element" title="Permalink to this headline">¶</a></h3>
-<p>This element describes the lower-left and upper-right corners of a box to be
-used for calculting Shannon entropy. This box should cover all possible
-fissionable materials in the problem. The values given after this element should
-be six numbers, the first of which are the Cartesian coordinates of the
-lower-left corner of the box and the last three of which are the Cartesian
-coordinates of the upper-right corner of the box.</p>
+<div class="section" id="entropy-element">
+<h3><tt class="docutils literal"><span class="pre">entropy</span></tt> Element<a class="headerlink" href="#entropy-element" title="Permalink to this headline">¶</a></h3>
+<p>This element describes a mesh that is used for calculting Shannon entropy. This
+mesh should cover all possible fissionable materials in the problem. It has the
+following attributes/sub-elements:</p>
 <blockquote>
-<div><em>Default</em>: None</div></blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in the x, y, and z directions, respectively.</p>
+<dl class="docutils">
+<dt><em>Default</em>: If this tag is not present, the number of mesh cells is</dt>
+<dd><p class="first last">automatically determined by the code.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartersian coordinates of the lower-left corner of the mesh.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartersian coordinates of the upper-right corner of the mesh.</p>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
 </div>
 <div class="section" id="ptables-element">
 <h3><tt class="docutils literal"><span class="pre">ptables</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
@@ -492,7 +528,7 @@ post-collision energy, and an arbitrary structured mesh.</p>
 <tr class="field-odd field"><th class="field-name">filters:</th><td class="field-body">A list of filters to specify what region of phase space should contribute to
 the tally. See below for full details on what filters are available.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">macros:</th><td class="field-body">The desired responses to be accumulated. See below for full details on what
+<tr class="field-even field"><th class="field-name">scores:</th><td class="field-body">The desired responses to be accumulated. See below for full details on what
 responses can be tallied.</td>
 </tr>
 </tbody>
@@ -578,7 +614,7 @@ attributes/sub-elements:</p>
 <tr class="field-odd field"><th class="field-name">type:</th><td class="field-body">The type of structured mesh. Valid options include &#8220;rectangular&#8221; and
 &#8220;hexagonal&#8221;.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">origin:</th><td class="field-body">The lower-left corner of the structured mesh. If only two coordinate are
+<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body">The lower-left corner of the structured mesh. If only two coordinate are
 given, it is assumed that the mesh is an x-y mesh.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body">The number of mesh cells in each direction.</td>

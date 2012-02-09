@@ -19,7 +19,7 @@ F90X = /home/bherman/petsc/release/bin/mpif90
 F90XFLAGS = -Wall -Wno-unused-variable
 COMPILER = petsc
 DEBUG    = no
-PROFILE  = no
+PROFILE  = no 
 OPTIMIZE = no
 USE_MPI  = no 
 USE_HDF5 = yes
@@ -82,15 +82,21 @@ endif
 # use petsc compiler
 ifeq ($(COMPILER),petsc)
   F90 = ${FLINKER}
-  F90FLAGS := -cpp -ffree-form -I${PETSC_DIR}/include -I${SLEPC_DIR}/include \
+  F90FLAGS := -ffree-form -I${PETSC_DIR}/include -I${SLEPC_DIR}/include \
               -DMPI -DPETSC
   include ${SLEPC_DIR}/conf/slepc_common
   LDFLAGS = ${SLEPC_LIB}
 
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -fbacktrace -fbounds-check
+    F90FLAGS += -g -fbacktrace -fbounds-check -ffpe-trap=invalid,overflow,underflow,zero
     LDFLAGS  += -g
   endif
+
+   # Profiling
+   ifeq ($(PROFILE),yes)
+     F90FLAGS += -pg
+     LDFLAGS  += -pg
+   endif
 
 endif
 

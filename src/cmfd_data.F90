@@ -25,9 +25,11 @@ contains
       call set_coremap()
     end if
 
+!   call timer_start(time_cmfd)
     ! calculate all cross sections based on reaction rates from last batch
     call compute_xs()
-
+!   call timer_stop(time_cmfd)
+!   print *,'Time is:',time_cmfd%elapsed
     ! write out the neutron balance file
     call neutron_balance()
 
@@ -54,7 +56,7 @@ contains
     use mesh,          only: mesh_indices_to_bin
     use mesh_header,   only: StructuredMesh
     use tally_header,  only: TallyObject, TallyScore
-
+ 
     integer :: nx                ! number of mesh cells in x direction
     integer :: ny                ! number of mesh cells in y direction
     integer :: nz                ! number of mesh cells in z direction

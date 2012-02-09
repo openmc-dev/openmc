@@ -317,10 +317,10 @@ contains
     PetscViewer :: viewer
 
     ! write out matrix in binary file (debugging)
-!   call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(path_input)//'lossmat.bin' &
-!  &     ,FILE_MODE_WRITE,viewer,ierr)
-!   call MatView(this%M,viewer,ierr)
-!   call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(path_input)//'lossmat.bin' &
+   &     ,FILE_MODE_WRITE,viewer,ierr)
+    call MatView(this%M,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
 
   end subroutine print_M_operator
 

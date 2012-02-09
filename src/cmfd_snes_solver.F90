@@ -15,7 +15,7 @@ implicit none
   type(prod_operator) :: prod
 
   Mat         :: jac         ! jacobian matrix
-  Mat         :: jacpc       ! preconditioned jacobian matrix
+  Mat         :: jac_prec    ! preconditioned jacobian matrix
   Vec         :: resvec      ! residual vector
   Vec         :: xvec        ! results
   KSP         :: ksp         ! linear solver context
@@ -61,6 +61,7 @@ contains
 
     integer :: k  ! implied do counter
     integer :: n  ! problem size
+    integer, allocatable :: nnzv(:) ! vector of number of nonzeros in jacobian
     real(8), pointer :: xptr(:) ! solution pointer
 
     ! set up matrices
@@ -88,6 +89,18 @@ contains
     xptr(n+1) = 1.0_8/cmfd%keff
     call VecRestoreArrayF90(xvec,xptr,ierr)
 
+   ! allocate and create number of nonzeros vector
+   if (.not. allocated(nnzv)) allocate(nnzv(n+1))
+   nnzv = loss%nnz + 1
+   nnzv(n+1) = n+1
+
+   ! create the preconditioner matrix
+   call MatCreateSeqAIJ(PETSC_COMM_SELF,n+1,n+1,PETSC_NULL_INTEGER,          &
+  &                     nnzv,jac_prec,ierr)
+   call MatSetOption(jac_prec,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
+   call MatSetOption(jac_prec,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
+   call MatSetOption(jac_prec,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
+
   end subroutine init_data
 
 !===============================================================================
@@ -97,6 +110,9 @@ contains
   subroutine init_solver()
 
     character(LEN=20) :: snestype,ksptype,pctype
+
+    ! turn on mf_operator option
+    call PetscOptionsSetValue("-snes_mf_operator","TRUE",ierr)
 
     ! create SNES context
     call SNESCreate(PETSC_COMM_SELF,snes,ierr)
@@ -110,12 +126,17 @@ contains
 
     ! set preconditioner
     call KSPGetPC(ksp,pc,ierr)
-    call PCSetType(pc,PCNONE,ierr)
+    call PCSetType(pc,PCILU,ierr)
+
+    ! create matrix free jacobian
+    call MatCreateSNESMF(snes,jac,ierr)
 
     ! set matrix free finite difference
-    call MatCreateSNESMF(snes,jac,ierr)
-    call MatCreateSNESMF(snes,jacpc,ierr)
-    call SNESSetJacobian(snes,jac,jacpc,MatMFFDComputeJacobian,PETSC_NULL,ierr)
+    call SNESSetJacobian(snes,jac,jac_prec,compute_jacobian,PETSC_NULL,ierr)
+
+    ! set lags
+    call SNESSetLagJacobian(snes,-2,ierr)
+    call SNESSetLagPreconditioner(snes,-1,ierr)
 
     ! set SNES options
     call SNESSetFromOptions(snes,ierr)
@@ -124,7 +145,6 @@ contains
     call SNESGetType(snes,snestype,ierr)
     call KSPGetType(ksp,ksptype,ierr)
     call PCGetType(pc,pctype,ierr)
-
 
     ! display information to user
 !   write(*,'(/,A)') 'SNES SOLVER OPTIONS:'
@@ -215,15 +235,127 @@ contains
   end subroutine compute_nonlinear_residual
 
 !===============================================================================
+! COMPUTE_JACOBIAN 
+!===============================================================================
+
+  subroutine compute_jacobian(snes,x,jac,jac_prec,flag,user,ierr)
+
+     ! formal variables
+     SNES          :: snes      ! the snes context
+     Vec           :: x         ! the solution vector
+     Mat           :: jac       ! the jacobian matrix
+     Mat           :: jac_prec  ! the jacobian preconditioner
+     MatStructure  :: flag      ! not used
+     integer       :: user(*)   ! not used
+     integer       :: ierr      ! petsc error flag
+
+     ! local varibles
+     Vec                  :: phi      ! flux vector
+     Vec                  :: source   ! source vector
+     integer              :: n        ! problem size
+     integer              :: k        ! implied do loop counter
+     integer              :: ncols    ! number of nonzeros in cols
+     integer              :: irow     ! row counter
+     integer, allocatable :: nnzv(:)  ! vector of number of nonzeros for jac
+     integer, allocatable :: cols(:)  ! vector of column numbers
+     real(8)              :: lambda   ! eigenvalue
+     real(8), pointer     :: xptr(:)  ! pointer to solution vector
+     real(8), pointer     :: sptr(:)  ! pointer to source vector
+     real(8), allocatable :: vals(:)  ! vector of row values
+
+     ! create operators
+     call build_loss_matrix(loss)
+     call build_prod_matrix(prod)
+
+     ! get problem size
+     n = loss%n
+
+     ! allocate cols and rows and initialize to zero
+     if (.not. allocated(cols)) allocate(cols(loss%nnz))
+     if (.not. allocated(vals)) allocate(vals(loss%nnz))
+     cols = 0
+     vals = 0.0_8
+
+     ! get pointers to residual vector 
+     call VecGetArrayF90(x,xptr,ierr)
+
+     ! create petsc vector for flux
+     call VecCreate(PETSC_COMM_SELF,phi,ierr)
+     call VecSetSizes(phi,PETSC_DECIDE,n,ierr)
+     call VecSetFromOptions(phi,ierr)
+
+     ! extract flux and eigenvalue 
+     call VecPlaceArray(phi,xptr,ierr)
+     lambda = xptr(n+1)
+
+     ! compute math (M-lambda*F) M is overwritten here
+     call MatAXPY(loss%M,-1.0_8*lambda,prod%F,SUBSET_NONZERO_PATTERN,ierr)
+
+     ! create tmp petsc vector for source
+     call VecCreate(PETSC_COMM_SELF,source,ierr)
+     call VecSetSizes(source,PETSC_DECIDE,n,ierr)
+     call VecSetFromOptions(source,ierr)
+
+     ! perform math (-F*phi --> source)
+     call MatMult(prod%F,phi,source,ierr)
+     call VecScale(source,-1.0_8,ierr)
+
+     ! get pointer to source
+     call VecGetArrayF90(source,sptr,ierr)
+
+     ! begin loop to insert things into matrix
+     do irow = 0,n-1
+
+       ! get row of matrix
+       call MatGetRow(loss%M,irow,ncols,cols,vals,ierr)
+
+       ! set that row to Jacobian matrix
+       call MatSetValues(jac_prec,1,irow,ncols,cols(1:ncols),vals,INSERT_VALUES,ierr)
+
+       ! restore the row
+       call MatRestoreRow(loss%M,irow,ncols,cols,vals,ierr)
+
+       ! insert source value
+       call MatSetValue(jac_prec,irow,n,sptr(irow+1),INSERT_VALUES,ierr)
+
+     end do
+
+     ! set values in last row of matrix
+     call MatSetValues(jac_prec,1,n,n,(/(k,k=0,n-1)/),xptr(1:n),INSERT_VALUES,ierr)
+     call MatSetValue(jac_prec,n,n,1.0_8,INSERT_VALUES,ierr)
+
+     ! assemble matrix
+     call MatAssemblyBegin(jac_prec,MAT_FINAL_ASSEMBLY,ierr)
+     call MatAssemblyEnd(jac_prec,MAT_FINAL_ASSEMBLY,ierr)
+     call MatAssemblyBegin(jac,MAT_FINAL_ASSEMBLY,ierr)
+     call MatAssemblyEnd(jac,MAT_FINAL_ASSEMBLY,ierr)
+
+     ! reset all vectors
+     call VecResetArray(phi,ierr)
+
+     ! restore all vectors
+     call VecRestoreArrayF90(x,xptr,ierr)
+     call VecRestoreArrayF90(source,sptr,ierr)
+
+     ! destroy all temporary objects
+     call VecDestroy(phi,ierr)
+     call VecDestroy(source,ierr)
+
+     ! deallocate all temporary space
+     if (allocated(cols)) deallocate(cols)
+     if (allocated(vals)) deallocate(vals)
+
+  end subroutine compute_jacobian
+
+!===============================================================================
 ! EXTRACT_RESULTS
 !===============================================================================
 
   subroutine extract_results()
 
-    use global, only: cmfd,path_input
+    use global, only: cmfd
 
     integer :: n ! problem size
-    PetscViewer :: viewer
     PetscScalar, pointer :: xptr(:) ! pointer to eigenvector info
 
     ! get problem size
@@ -239,12 +371,6 @@ contains
     ! save eigenvalue
     cmfd%keff = 1.0_8 / xptr(n+1)
     call VecRestoreArrayF90(xvec,xptr,ierr)
-
-     ! write out results
-    call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(path_input)//'residual.bin'&
-   &     ,FILE_MODE_WRITE,viewer,ierr)
-    call VecView(resvec,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
 
   end subroutine extract_results
 

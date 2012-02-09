@@ -217,7 +217,7 @@ contains
     if(kerr < ktol .and. serr < stol) iconv = .TRUE.
 
     ! print out to user (TODO: make formatted)
-    print *,k_n,kerr,serr
+!   print *,k_n,kerr,serr
 
   end subroutine convergence
 

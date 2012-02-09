@@ -48,11 +48,11 @@ contains
 
 #ifdef PETSC
       ! execute snes solver
-      call cmfd_slepc_execute()
+      call cmfd_snes_execute()
 #endif
 
       ! stop timer
-!     call timer_stop(time_cmfd)
+      call timer_stop(time_cmfd)
 
       ! write vtk file
       !if(.not. cmfd_only) call write_cmfd_vtk()

@@ -38,7 +38,7 @@ contains
 #endif
 
     ! only run if master process
-    if (master) then
+!   if (master) then
 
       ! begin timer
       call timer_start(time_cmfd)
@@ -57,7 +57,7 @@ contains
       ! write vtk file
       !if(.not. cmfd_only) call write_cmfd_vtk()
 
-    end if
+!   end if
 
 #ifdef PETSC
 ! finalize slepc

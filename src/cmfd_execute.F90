@@ -41,11 +41,11 @@ contains
     if (master) then
 
       ! begin timer
-      call timer_start(time_cmfd)
+!     call timer_start(time_cmfd)
 
       ! set up cmfd
       if(.not. cmfd_only) call set_up_cmfd()
-
+call timer_start(time_cmfd)
 #ifdef PETSC
       ! execute snes solver
       call cmfd_snes_execute()
@@ -53,7 +53,7 @@ contains
 
       ! stop timer
       call timer_stop(time_cmfd)
-
+print *,'Time was:',time_cmfd%elapsed
       ! write vtk file
       !if(.not. cmfd_only) call write_cmfd_vtk()
 

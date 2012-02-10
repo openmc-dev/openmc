@@ -38,13 +38,18 @@ contains
 #endif
 
     ! only run if master process
-!   if (master) then
+    if (master) then
 
       ! begin timer
       call timer_start(time_cmfd)
 
       ! set up cmfd
       if(.not. cmfd_only) call set_up_cmfd()
+
+    end if
+
+    ! broadcast cmfd object to all procs
+    call cmfd_bcast()
 
 #ifdef PETSC
       ! execute snes solver
@@ -57,8 +62,6 @@ contains
       ! write vtk file
       !if(.not. cmfd_only) call write_cmfd_vtk()
 
-!   end if
-
 #ifdef PETSC
 ! finalize slepc
     if (current_cycle == n_cycles) call SlepcFinalize(ierr)
@@ -68,5 +71,45 @@ contains
 #endif
 
   end subroutine execute_cmfd
+
+!==============================================================================
+! EXECUTE_CMFD
+!==============================================================================
+
+  subroutine cmfd_bcast()
+
+    use cmfd_header, only: allocate_cmfd
+
+    integer :: nx  ! number of mesh cells in x direction
+    integer :: ny  ! number of mesh cells in y direction
+    integer :: nz  ! number of mesh cells in z direction
+    integer :: ng  ! number of energy groups
+    integer rank
+
+    ! extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! initialize data
+    call allocate_cmfd(cmfd)
+
+    ! broadcast all data
+    call MPI_BCAST(cmfd%flux,ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(cmfd%totalxs,ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(cmfd%p1scattxs,ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(cmfd%scattxs,ng*ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(cmfd%nfissxs,ng*ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(cmfd%diffcof,ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(cmfd%dtilde,6*ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(cmfd%dhat,6*ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(cmfd%hxyz,3*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(cmfd%current,12*ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+
+    ! sync up procs
+    call MPI_Barrier(MPI_COMM_WORLD,mpi_err)
+
+  end subroutine cmfd_bcast
 
 end module cmfd_execute

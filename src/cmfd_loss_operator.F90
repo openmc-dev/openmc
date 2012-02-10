@@ -36,11 +36,11 @@ contains
     call get_M_indices(this)
 
     ! set up M operator
-    call MatCreateSeqAIJ(PETSC_COMM_SELF,this%n,this%n,this%nnz,               &
-   &                     PETSC_NULL_INTEGER,this%M,ierr)
+    call MatCreateMPIAIJ(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,this%n,this%n,this%nnz, &
+   &               PETSC_NULL_INTEGER,this%nnz,PETSC_NULL_INTEGER,this%M,ierr)
     call MatSetOption(this%M,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
     call MatSetOption(this%M,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
-    call MatSetOption(this%M,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
+!   call MatSetOption(this%M,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
 
   end subroutine init_M_operator
 
@@ -78,7 +78,7 @@ contains
 
   subroutine build_loss_matrix(this)
 
-    use global, only: cmfd,cmfd_coremap
+    use global, only: cmfd,cmfd_coremap,mpi_err
 
     type(loss_operator) :: this
 
@@ -89,7 +89,6 @@ contains
     integer :: g                    ! iteration counter for groups
     integer :: l                    ! iteration counter for leakages
     integer :: h                    ! energy group when doing scattering
-    integer :: cell_mat_idx         ! matrix index of current cell
     integer :: neig_mat_idx         ! matrix index of neighbor cell
     integer :: scatt_mat_idx        ! matrix index for h-->g scattering terms
     integer :: bound(6)             ! vector for comparing when looking for bound
@@ -98,6 +97,9 @@ contains
     integer :: neig_idx(3)          ! spatial indices of neighbour
     integer :: shift_idx            ! parameter to shift index by +1 or -1
     integer :: kount                ! integer for counting values in vector
+    integer :: row_start            ! the first local row on the processor
+    integer :: row_finish           ! the last local row on the processor
+    integer :: irow                 ! iteration counter over row
     real(8) :: totxs                ! total macro cross section
     real(8) :: scattxsgg            ! scattering macro cross section g-->g
     real(8) :: scattxshg            ! scattering macro cross section h-->g
@@ -109,158 +111,135 @@ contains
     real(8) :: jnet                 ! net leakage from jo
     real(8) :: val                  ! temporary variable before saving to matrix 
 
-    ! initialize matrix for building
-    call MatAssemblyBegin(this%M,MAT_FLUSH_ASSEMBLY,ierr)
-
     ! create single vector of these indices for boundary calculation
     nxyz(1,:) = (/1,nx/)
     nxyz(2,:) = (/1,ny/)
     nxyz(3,:) = (/1,nz/)
 
+    ! get row bounds for this processor
+    call MatGetOwnershipRange(this%M,row_start,row_finish,ierr)
+
     ! begin iteration loops
-    ZLOOP:  do k = 1,nz
+    ROWS: do irow = row_start,row_finish-1 
 
-      YLOOP: do j = 1,ny
+      ! get indices for that row
+      call matrix_to_indices(irow,g,i,j,k)
 
-        XLOOP: do i = 1,nx
+      ! retrieve cell data
+      totxs = cmfd%totalxs(g,i,j,k)
+      scattxsgg = cmfd%scattxs(g,g,i,j,k)
+      dtilde = cmfd%dtilde(:,g,i,j,k)
+      hxyz = cmfd%hxyz(:,i,j,k)
 
-          ! check if not including reflector
+      ! check and get dhat
+      if (allocated(cmfd%dhat)) then
+        dhat = cmfd%dhat(:,g,i,j,k)
+      else
+        dhat = 0.0_8
+      end if
+
+      ! create boundary vector 
+      bound = (/i,i,j,j,k,k/)
+
+      ! begin loop over leakages
+      ! 1=-x, 2=+x, 3=-y, 4=+y, 5=-z, 6=+z 
+      LEAK: do l = 1,6
+
+        ! define (x,y,z) and (-,+) indices
+        xyz_idx = int(ceiling(real(l)/real(2)))  ! x=1, y=2, z=3
+        dir_idx = 2 - mod(l,2) ! -=1, +=2
+
+        ! calculate spatial indices of neighbor
+        neig_idx = (/i,j,k/)                ! begin with i,j,k
+        shift_idx = -2*mod(l,2) +1          ! shift neig by -1 or +1
+        neig_idx(xyz_idx) = shift_idx + neig_idx(xyz_idx)
+
+        ! check for global boundary
+        if (bound(l) /= nxyz(xyz_idx,dir_idx)) then
+
+          ! check for core map
           if (cmfd_coremap) then
 
-            ! check if at a reflector
-            if (cmfd % coremap(i,j,k) == 99999) then
-              cycle
+            ! check that neighbor is not reflector
+            if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) /=         &
+           &    99999) then
+
+              ! compute leakage coefficient for neighbor
+              jn = -dtilde(l) + shift_idx*dhat(l)
+
+              ! get neighbor matrix index
+              call indices_to_matrix(g,neig_idx(1),neig_idx(2),neig_idx(3),    &
+             &                       neig_mat_idx)
+
+              ! compute value and record to bank
+              val = jn/hxyz(xyz_idx)
+
+              ! record value in matrix
+              call MatSetValue(this%M,irow,neig_mat_idx-1,val,                 &
+             &                 INSERT_VALUES,ierr)
+
             end if
+
+          else
+
+            ! compute leakage coefficient for neighbor
+            jn = -dtilde(l) + shift_idx*dhat(l)
+
+            ! get neighbor matrix index
+            call indices_to_matrix(g,neig_idx(1),neig_idx(2),neig_idx(3),      &
+           &                       neig_mat_idx)
+
+            ! compute value and record to bank
+            val = jn/hxyz(xyz_idx)
+
+            ! record value in matrix
+            call MatSetValue(this%M,irow,neig_mat_idx-1,val,                   &
+            &                 INSERT_VALUES,ierr)
 
           end if
 
-          GROUP: do g = 1,ng
+        end if
 
-            ! get matrix index of cell
-            cell_mat_idx = get_matrix_idx(g,i,j,k)
+        ! compute leakage coefficient for target
+        jo(l) = shift_idx*dtilde(l) + dhat(l)
 
-            ! retrieve cell data
-            totxs = cmfd%totalxs(g,i,j,k)
-            scattxsgg = cmfd%scattxs(g,g,i,j,k)
-            dtilde = cmfd%dtilde(:,g,i,j,k)
-            hxyz = cmfd%hxyz(:,i,j,k)
+      end do LEAK
 
-            ! check and get dhat
-            if (allocated(cmfd%dhat)) then
-              dhat = cmfd%dhat(:,g,i,j,k)
-            else
-              dhat = 0.0
-            end if
+      ! calate net leakage coefficient for target
+      jnet = (jo(2) - jo(1))/hxyz(1) + (jo(4) - jo(3))/hxyz(2) +               &
+     &       (jo(6) - jo(5))/hxyz(3)
 
-            ! create boundary vector 
-            bound = (/i,i,j,j,k,k/)
+      ! calculate loss of neutrons
+      val = jnet + totxs - scattxsgg
 
-            ! begin loop over leakages
-            ! 1=-x, 2=+x, 3=-y, 4=+y, 5=-z, 6=+z 
-            LEAK: do l = 1,6
+      ! record diagonal term
+      call MatSetValue(this%M,irow,irow,val,INSERT_VALUES,ierr)
 
-              ! define (x,y,z) and (-,+) indices
-              xyz_idx = int(ceiling(real(l)/real(2)))  ! x=1, y=2, z=3
-              dir_idx = 2 - mod(l,2) ! -=1, +=2
+      ! begin loop over off diagonal in-scattering
+      SCATTR: do h = 1,ng
 
-              ! calculate spatial indices of neighbor
-              neig_idx = (/i,j,k/)                ! begin with i,j,k
-              shift_idx = -2*mod(l,2) +1          ! shift neig by -1 or +1
-              neig_idx(xyz_idx) = shift_idx + neig_idx(xyz_idx)
+        ! cycle though if h=g
+        if (h == g) then
+          cycle
+        end if
 
-              ! check for global boundary
-              if (bound(l) /= nxyz(xyz_idx,dir_idx)) then
+        ! get neighbor matrix index
+        call indices_to_matrix(h,i,j,k,scatt_mat_idx)
 
-                ! check for core map
-                if (cmfd_coremap) then
+        ! get scattering macro xs
+        scattxshg = cmfd%scattxs(h,g,i,j,k)
 
-                  ! check that neighbor is not reflector
-                  if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) /=   &
-                 &    99999) then
+        ! record value in matrix (negate it)
+        val = -scattxshg
 
-                    ! compute leakage coefficient for neighbor
-                    jn = -dtilde(l) + shift_idx*dhat(l)
+        call MatSetValue(this%M,irow,scatt_mat_idx-1,val, INSERT_VALUES,ierr)
 
-                    ! get neighbor matrix index
-                    neig_mat_idx = get_matrix_idx(g,neig_idx(1),neig_idx(2),   &
-                   &                              neig_idx(3))
+      end do SCATTR
 
-                    ! compute value and record to bank
-                    val = jn/hxyz(xyz_idx)
+    end do ROWS 
 
-                    ! record value in matrix
-                    call MatSetValue(this%M,cell_mat_idx-1,neig_mat_idx-1,val, &
-                   &                 INSERT_VALUES,ierr)
-
-                  end if
-
-                else
-
-                  ! compute leakage coefficient for neighbor
-                  jn = -dtilde(l) + shift_idx*dhat(l)
-
-                  ! get neighbor matrix index
-                  neig_mat_idx = get_matrix_idx(g,neig_idx(1),neig_idx(2),     &
-                 &                              neig_idx(3))
-
-                  ! compute value and record to bank
-                  val = jn/hxyz(xyz_idx)
-
-                  ! record value in matrix
-                  call MatSetValue(this%M,cell_mat_idx-1,neig_mat_idx-1,val,   &
-                 &                 INSERT_VALUES,ierr)
-
-                end if
-
-              end if
-
-              ! compute leakage coefficient for target
-              jo(l) = shift_idx*dtilde(l) + dhat(l)
-
-            end do LEAK
-
-            ! calate net leakage coefficient for target
-            jnet = (jo(2) - jo(1))/hxyz(1) + (jo(4) - jo(3))/hxyz(2) +         &
-           &       (jo(6) - jo(5))/hxyz(3)
-
-            ! calculate loss of neutrons
-            val = jnet + totxs - scattxsgg
-
-            ! record diagonal term
-            call MatSetValue(this%M,cell_mat_idx-1,cell_mat_idx-1,val,         &
-           &                 INSERT_VALUES,ierr)
-
-            ! begin loop over off diagonal in-scattering
-            SCATTR: do h = 1,ng
-
-              ! cycle though if h=g
-              if (h == g) then
-                cycle
-              end if
-
-              ! get matrix index of in-scatter
-              scatt_mat_idx = get_matrix_idx(h,i,j,k)
-
-              ! get scattering macro xs
-              scattxshg = cmfd%scattxs(h,g,i,j,k)
-
-              ! record value in matrix (negate it)
-              val = -scattxshg
-
-              call MatSetValue(this%M,cell_mat_idx-1,scatt_mat_idx-1,val,      &
-             &                 INSERT_VALUES,ierr)
-
-            end do SCATTR
-
-          end do GROUP
-
-        end do XLOOP
-
-      end do YLOOP
-
-    end do ZLOOP
-
-    ! finalize matrix assembly
+    ! assemble matrix
+    call MatAssemblyBegin(this%M,MAT_FLUSH_ASSEMBLY,ierr)
     call MatAssemblyEnd(this%M,MAT_FINAL_ASSEMBLY,ierr)
 
     ! print out operator to file
@@ -269,40 +248,53 @@ contains
   end subroutine build_loss_matrix
 
 !===============================================================================
-! GET_MATRIX_IDX takes (x,y,z,g) indices and computes location in matrix 
+! INDICES_TO_MATRIX takes (x,y,z,g) indices and computes location in matrix 
 !===============================================================================
 
-  function get_matrix_idx(g,i,j,k)
+  subroutine indices_to_matrix(g,i,j,k,matidx)
 
     use global, only: cmfd,cmfd_coremap
 
-    ! arguments
-    integer :: get_matrix_idx  ! the index location in matrix
+    integer :: matidx         ! the index location in matrix
     integer :: i               ! current x index
     integer :: j               ! current y index
     integer :: k               ! current z index
     integer :: g               ! current group index
 
-    ! local variables
-    integer :: nidx            ! index in matrix
-
     ! check if coremap is used
     if (cmfd_coremap) then
 
       ! get idx from core map
-      nidx = ng*(cmfd % coremap(i,j,k)) - (ng - g)
+      matidx = ng*(cmfd % coremap(i,j,k)) - (ng - g)
 
     else
 
       ! compute index
-      nidx = g + ng*(i - 1) + ng*nx*(j - 1) + ng*nx*ny*(k - 1)
+      matidx = g + ng*(i - 1) + ng*nx*(j - 1) + ng*nx*ny*(k - 1)
 
     end if
 
-    ! record value to function
-    get_matrix_idx = nidx
+  end subroutine indices_to_matrix
 
-  end function get_matrix_idx
+!===============================================================================
+! MATRIX_TO_INDICES 
+!===============================================================================
+
+  subroutine matrix_to_indices(irow,g,i,j,k)
+
+    integer :: i                    ! iteration counter for x
+    integer :: j                    ! iteration counter for y
+    integer :: k                    ! iteration counter for z
+    integer :: g                    ! iteration counter for groups
+    integer :: irow                 ! iteration counter over row (0 reference)
+
+    ! compute indices
+    g = irow/(nx*ny*nz) + 1
+    i = mod(irow,nx*ny*nz)/(ny*nz) + 1
+    j = mod(irow,ny*nz)/nz + 1
+    k = mod(irow,nz) + 1 
+
+  end subroutine matrix_to_indices
 
 !===============================================================================
 ! PRINT_M_OPERATOR 
@@ -317,11 +309,11 @@ contains
     PetscViewer :: viewer
 
     ! write out matrix in binary file (debugging)
-    call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(path_input)//'lossmat.bin' &
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,trim(path_input)//'lossmat.bin' &
    &     ,FILE_MODE_WRITE,viewer,ierr)
     call MatView(this%M,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-
+stop
   end subroutine print_M_operator
 
 !==============================================================================

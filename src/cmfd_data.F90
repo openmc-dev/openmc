@@ -25,12 +25,9 @@ contains
       call set_coremap()
     end if
 
-    call timer_reset(time_cmfd)
-    call timer_start(time_cmfd)
     ! calculate all cross sections based on reaction rates from last batch
     call compute_xs()
-    call timer_stop(time_cmfd)
-    print *,'Time is:',time_cmfd%elapsed
+
     ! write out the neutron balance file
     call neutron_balance()
 
@@ -86,6 +83,15 @@ contains
     ! set flux object to all zeros
     cmfd % flux = 0.0_8
 
+    ! associate tallies and mesh
+    t => tallies(1)
+    m => meshes(t % mesh)
+
+    ! set mesh widths
+    cmfd % hxyz(1,:,:,:) = m % width(1) ! set x width
+    cmfd % hxyz(2,:,:,:) = m % width(2) ! set y width
+    cmfd % hxyz(3,:,:,:) = m % width(3) ! set z width
+
     ! begin loop around tallies
     TAL: do ital = 1,3
 
@@ -112,11 +118,6 @@ contains
 
               ! start tally 1
               TALLY: if (ital == 1) then
-
-                ! set mesh widths
-                cmfd % hxyz(1,:,:,:) = m % width(1) ! set x width
-                cmfd % hxyz(2,:,:,:) = m % width(2) ! set y width
-                cmfd % hxyz(3,:,:,:) = m % width(3) ! set z width
 
                 ! reset all bins to 1
                 bins = 1

@@ -537,7 +537,7 @@ contains
 
           ! Write mesh lower-left corner
           call h5ltmake_dataset_double_f(temp_group, "mesh_lower_left", 1, &
-               dims, m % origin, hdf5_err)
+               dims, m % lower_left, hdf5_err)
           
           ! Write mesh element width
           call h5ltmake_dataset_double_f(temp_group, "mesh_element_width", 1, &

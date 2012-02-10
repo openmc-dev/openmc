@@ -36,11 +36,10 @@ contains
     call get_M_indices(this)
 
     ! set up M operator
-    call MatCreateMPIAIJ(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,this%n,this%n,this%nnz, &
-   &               PETSC_NULL_INTEGER,this%nnz,PETSC_NULL_INTEGER,this%M,ierr)
+    call MatCreateMPIAIJ(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,this%n,    &
+   & this%n,this%nnz,PETSC_NULL_INTEGER,this%nnz,PETSC_NULL_INTEGER,this%M,ierr)
     call MatSetOption(this%M,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
     call MatSetOption(this%M,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
-!   call MatSetOption(this%M,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
 
   end subroutine init_M_operator
 
@@ -313,7 +312,7 @@ contains
    &     ,FILE_MODE_WRITE,viewer,ierr)
     call MatView(this%M,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-stop
+
   end subroutine print_M_operator
 
 !==============================================================================

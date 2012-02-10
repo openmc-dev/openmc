@@ -127,6 +127,8 @@ contains
     ! set preconditioner
     call KSPGetPC(ksp,pc,ierr)
     call PCSetType(pc,PCILU,ierr)
+    call PCFactorSetLevels(pc,8,ierr)
+    call KSPSetFromOptions(ksp,ierr)
 
     ! create matrix free jacobian
     call MatCreateSNESMF(snes,jac,ierr)

@@ -117,9 +117,10 @@ Each ``surface`` element can have the following attributes or sub-elements:
     *Default*: None
 
   :boundary:
-    The boundary condition for the surface. This can be ``vacuum`` or ``reflective``.
+    The boundary condition for the surface. This can be ``transmission``,
+    ``vacuum``, or ``reflective``.
 
-    *Default*: ``reflective``
+    *Default*: ``transmission``
 
 The following quadratic surfaces can be modeled:
 
@@ -205,9 +206,8 @@ universe. A ``lattice`` accepts the following attributes or sub-elements:
   :id:
     A unique integer that can be used to identify the surface.
 
-  :type:
-    A string indicating the arrangement of lattice cells. Accepted options are
-    "rectangular" and "hexagonal".
+  :type: A string indicating the arrangement of lattice cells. Currently, the
+    only accepted option is "rectangular".
 
     *Default*: rectangular
 
@@ -217,7 +217,7 @@ universe. A ``lattice`` accepts the following attributes or sub-elements:
 
     *Default*: None
 
-  :origin:
+  :lower_left:
     The coordinates of the lower-left corner of the lattice.
 
     *Default*: None
@@ -266,8 +266,8 @@ Each ``material`` element can have the following attributes or sub-elements:
     weight percent of that nuclide within the material, respectively. One
     example would be as follows::
 
-      <nuclide name="H-1" xs="03c" ao="2.0" />
-      <nuclide name="O-16" xs="03c" ao="1.0" />
+      <nuclide name="H-1" xs="70c" ao="2.0" />
+      <nuclide name="O-16" xs="70c" ao="1.0" />
 
     .. note:: If one nuclide is specified in atom percent, all others must also
               be given in atom percent. The same applies for weight percentages.
@@ -337,10 +337,53 @@ listing.
 ``cutoff`` Element
 ------------------
 
-The ``cutoff`` element has no attributes and indicates the weight cutoff used
-below which particles undergo Russian roulette.
+The ``cutoff`` element indicates the weight cutoff used below which particles
+undergo Russian roulette. Surviving particles are assigned a user-determined
+weight. Note that weight cutoffs and Russian rouletting are not turned on by
+default. This element has the following attributes/sub-elements:
 
-  *Default*: 0.25
+  :weight:
+    The weight below which particles undergo Russian roulette.
+
+    *Default*: 0.25
+
+  :weight_avg:
+    The weight that is assigned to particles that are not killed after Russian
+    roulette.
+
+    *Default*: 1.0
+
+``entropy`` Element
+-------------------
+
+This element describes a mesh that is used for calculting Shannon entropy. This
+mesh should cover all possible fissionable materials in the problem. It has the
+following attributes/sub-elements:
+
+  :dimension:
+    The number of mesh cells in the x, y, and z directions, respectively.
+
+    *Default*: If this tag is not present, the number of mesh cells is
+     automatically determined by the code.
+
+  :lower_left:
+    The Cartersian coordinates of the lower-left corner of the mesh.
+
+    *Default*: None
+
+  :upper_right:
+    The Cartersian coordinates of the upper-right corner of the mesh.
+
+    *Default*: None
+
+``ptables`` Element
+-------------------
+
+The ``ptables`` element determines whether probability tables should be used in
+the unresolved resonance range if available. This element has no attributes or
+sub-elements and can be set to either "off" or "on".
+
+  *Default*: on
 
 ``source`` Element
 ------------------
@@ -366,6 +409,15 @@ value ``on`` or ``off``. If turned on, this option will enable the use of
 survival biasing, otherwise known as implicit capture or absorption.
 
   *Default*: off
+
+``trace`` Element
+-----------------
+
+The ``trace`` element can be used to print out detailed information about a
+single particle during a simulation. This element should be followed by two
+integers, the cycle and one for the particle number.
+
+  *Default*: None
 
 ``verbosity`` Element
 ---------------------
@@ -408,7 +460,7 @@ The ``tally`` element accepts the following sub-elements:
     A list of filters to specify what region of phase space should contribute to
     the tally. See below for full details on what filters are available.
 
-  :macros:
+  :scores:
     The desired responses to be accumulated. See below for full details on what
     responses can be tallied.
 
@@ -493,7 +545,7 @@ attributes/sub-elements:
     The type of structured mesh. Valid options include "rectangular" and
     "hexagonal".
 
-  :origin:
+  :lower_left:
     The lower-left corner of the structured mesh. If only two coordinate are
     given, it is assumed that the mesh is an x-y mesh.
 
@@ -502,6 +554,20 @@ attributes/sub-elements:
 
   :width:
     The width of mesh cells in each direction.
+
+``assume_separate`` Element
+---------------------------
+
+In cases where the user needs to specify many different tallies each of which
+are spatially separate, this tag can be used to cut down on some of the tally
+overhead. The effect of assuming all tallies are spatially separate is that once
+one tally is scored to, the same event is assumed not to score to any other
+tallies. This element should be followed by "yes" or "no"
+
+  .. warning:: If used incorrectly, the assumption that all tallies are spatially
+    separate can lead to incorrect results.
+
+  *Default*: no
 
 -------------------------------------------
 Geometry Plotting Specification -- plot.xml
@@ -532,9 +598,7 @@ the plot in each of the basis directions.
 -----------------
 
 The ``basis`` element has no attributes/sub-elements and indicates the specified
-basis for plotting.
-
-  .. note:: The only accepted option currently is "xy"
+basis for plotting. The only option option currently accepted is "xy".
 
   *Default*: xy
 

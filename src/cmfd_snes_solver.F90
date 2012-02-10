@@ -146,6 +146,9 @@ contains
     ! set SNES options
     call SNESSetFromOptions(snes,ierr)
 
+    ! turn off line searching
+    call SNESLineSearchSet(snes,SNESLineSearchNo,PETSC_NULL,ierr)
+
     ! get all types and print
     call SNESGetType(snes,snestype,ierr)
     call KSPGetType(ksp,ksptype,ierr)

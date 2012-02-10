@@ -1481,8 +1481,8 @@ contains
           if (frac == ZERO) then
              E_out = E_l_k + (r1 - c_k)/p_l_k
           else
-             E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
-                  p_l_k)/frac
+             E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
+                  2*frac*(r1 - c_k))) - p_l_k)/frac
           end if
        else
           message = "Unknown interpolation type: " // trim(to_str(INTT))
@@ -1713,8 +1713,8 @@ contains
           if (frac == ZERO) then
              E_out = E_l_k + (r1 - c_k)/p_l_k
           else
-             E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
-                  p_l_k)/frac
+             E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
+                  2*frac*(r1 - c_k))) - p_l_k)/frac
           end if
 
           ! Determine Kalbach-Mann parameters
@@ -1852,8 +1852,8 @@ contains
           if (frac == ZERO) then
              E_out = E_l_k + (r1 - c_k)/p_l_k
           else
-             E_out = E_l_k + (sqrt(p_l_k*p_l_k + 2*frac*(r1 - c_k)) - & 
-                  p_l_k)/frac
+             E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
+                  2*frac*(r1 - c_k))) - p_l_k)/frac
           end if
        else
           message = "Unknown interpolation type: " // trim(to_str(INTT))

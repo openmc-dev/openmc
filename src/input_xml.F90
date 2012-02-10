@@ -150,24 +150,50 @@ contains
        trace_particle = trace_(2)
     end if
 
-    ! Entropy box
-    if (associated(entropy_box_)) then
+    ! Shannon Entropy mesh
+    if (size(entropy_) > 0) then
        ! Check to make sure enough values were supplied
-       if (size(entropy_box_) /= 6) then
-          message = "Need to supply lower-left and upper-right coordinates &
-               &for Shannon entropy box."
+       if (size(entropy_(1) % lower_left) /= 3) then
+          message = "Need to specify (x,y,z) coordinates of lower-left corner &
+               &of Shannon entropy mesh."
+       elseif (size(entropy_(1) % upper_right) /= 3) then
+          message = "Need to specify (x,y,z) coordinates of upper-right corner &
+               &of Shannon entropy mesh."
+       end if
+
+       ! Allocate mesh object and coordinates on mesh
+       allocate(entropy_mesh)
+       allocate(entropy_mesh % lower_left(3))
+       allocate(entropy_mesh % upper_right(3))
+
+       ! Copy values
+       entropy_mesh % lower_left  = entropy_(1) % lower_left
+       entropy_mesh % upper_right = entropy_(1) % upper_right
+
+       ! Check on values provided
+       if (.not. all(entropy_mesh % upper_right > entropy_mesh % lower_left)) then
+          message = "Upper-right coordinate must be greater than lower-left &
+               &coordinate for Shannon entropy mesh."
           call fatal_error()
        end if
 
-       ! Copy values
-       entropy_lower_left = entropy_box_(1:3)
-       entropy_upper_right = entropy_box_(4:6)
+       ! Check if dimensions were specified -- if not, they will be calculated
+       ! automatically upon first entry into shannon_entropy
 
-       ! Check on values provided
-       if (.not. all(entropy_upper_right > entropy_lower_left)) then
-          message = "Upper-right coordinate must be greater than lower-left &
-               &coordinate for Shannon entropy box."
-          call fatal_error()
+       if (associated(entropy_(1) % dimension)) then
+          ! If so, make sure proper number of values were given
+          if (size(entropy_(1) % dimension) /= 3) then
+             message = "Dimension of entropy mesh must be given as three &
+                  &integers."
+             call fatal_error()
+          end if
+
+          ! Allocate dimensions
+          entropy_mesh % n_dimension = 3
+          allocate(entropy_mesh % dimension(3))
+
+          ! Copy dimensions
+          entropy_mesh % dimension = entropy_(1) % dimension
        end if
 
        ! Turn on Shannon entropy calculation
@@ -414,19 +440,19 @@ contains
        l % n_x = n_x
        l % n_y = n_y
 
-       ! Read lattice origin location
-       if (size(lattice_(i) % dimension) /= size(lattice_(i) % origin)) then
-          message = "Number of entries on <origin> must be the same as " // &
+       ! Read lattice lower-left location
+       if (size(lattice_(i) % dimension) /= size(lattice_(i) % lower_left)) then
+          message = "Number of entries on <lower_left> must be the same as " // &
                "the number of entries on <dimension>."
           call fatal_error()
        end if
-       l % x0 = lattice_(i) % origin(1)
-       l % y0 = lattice_(i) % origin(2)
+       l % x0 = lattice_(i) % lower_left(1)
+       l % y0 = lattice_(i) % lower_left(2)
 
        ! Read lattice widths
-       if (size(lattice_(i) % width) /= size(lattice_(i) % origin)) then
+       if (size(lattice_(i) % width) /= size(lattice_(i) % lower_left)) then
           message = "Number of entries on <width> must be the same as " // &
-               "the number of entries on <origin>."
+               "the number of entries on <lower_left>."
           call fatal_error()
        end if
        l % width_x = lattice_(i) % width(1)
@@ -702,31 +728,31 @@ contains
 
        ! Allocate attribute arrays
        allocate(m % dimension(n))
-       allocate(m % origin(n))
+       allocate(m % lower_left(n))
        allocate(m % width(n))
        allocate(m % upper_right(n))
 
        ! Read dimensions in each direction
        m % dimension = mesh_(i) % dimension
 
-       ! Read mesh origin location
-       if (m % n_dimension /= size(mesh_(i) % origin)) then
-          message = "Number of entries on <origin> must be the same as the &
-               &number of entries on <dimension>."
+       ! Read mesh lower-left corner location
+       if (m % n_dimension /= size(mesh_(i) % lower_left)) then
+          message = "Number of entries on <lower_left> must be the same as &
+               &the number of entries on <dimension>."
           call fatal_error()
        end if
-       m % origin = mesh_(i) % origin
+       m % lower_left = mesh_(i) % lower_left
 
        ! Read mesh widths
-       if (size(mesh_(i) % width) /= size(mesh_(i) % origin)) then
+       if (size(mesh_(i) % width) /= size(mesh_(i) % lower_left)) then
           message = "Number of entries on <width> must be the same as the &
-               &number of entries on <origin>."
+               &number of entries on <lower_left>."
           call fatal_error()
        end if
        m % width = mesh_(i) % width
 
        ! Set upper right coordinate
-       m % upper_right = m % origin + m % dimension * m % width
+       m % upper_right = m % lower_left + m % dimension * m % width
 
        ! Add mesh to dictionary
        call dict_add_key(mesh_dict, m % id, i)
@@ -890,8 +916,8 @@ contains
        t % filters = filters(1:n_filters)
 
        ! Read macro reactions
-       if (len_trim(tally_(i) % macros) > 0) then
-          call split_string(tally_(i) % macros, words, n_words)
+       if (len_trim(tally_(i) % scores) > 0) then
+          call split_string(tally_(i) % scores, words, n_words)
           allocate(t % score_bins(n_words))
           do j = 1, n_words
              word = words(j)

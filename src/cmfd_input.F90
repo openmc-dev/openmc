@@ -135,31 +135,31 @@ contains
 
     ! allocate attribute arrays
     allocate(m % dimension(n))
-    allocate(m % origin(n))
+    allocate(m % lower_left(n))
     allocate(m % width(n))
     allocate(m % upper_right(n))
 
     ! read dimensions in each direction
     m % dimension = mesh_ % dimension
 
-    ! read mesh origin location
-    if (m % n_dimension /= size(mesh_ % origin)) then
-      message = "Number of entries on <origin> must be the same as " // &
+    ! read mesh lower left location
+    if (m % n_dimension /= size(mesh_ % lower_left)) then
+      message = "Number of entries on <lower_left> must be the same as " // &
                 "the number of entries on <dimension>."
       call fatal_error()
     end if
-    m % origin = mesh_ % origin
+    m % lower_left = mesh_ % lower_left
 
     ! read mesh widths
-    if (size(mesh_ % width) /= size(mesh_ % origin)) then
+    if (size(mesh_ % width) /= size(mesh_ % lower_left)) then
        message = "Number of entries on <width> must be the same as " // &
-                 "the number of entries on <origin>."
+                 "the number of entries on <lower_left>."
        call fatal_error()
     end if
     m % width = mesh_ % width
 
     ! set upper right coordinate
-    m % upper_right = m % origin + m % dimension * m % width
+    m % upper_right = m % lower_left + m % dimension * m % width
 
     ! add mesh to dictionary
     call dict_add_key(mesh_dict, m % id, 1)

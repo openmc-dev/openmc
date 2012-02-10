@@ -5,7 +5,7 @@
 
   <typedef name="mesh_xml">
     <component name="dimension" type="integer-array" />
-    <component name="origin" type="double-array" />
+    <component name="lower_left" type="double-array" />
     <component name="width" type="double-array" />
     <component name="albedo" type="double-array" />
     <component name="map" type="integer-array" />

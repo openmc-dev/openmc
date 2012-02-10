@@ -404,13 +404,12 @@ contains
           end if
 
           ! calculate all coordinates
-          x_m = dble(i - 1)*m%width(1) + m%origin(1)
-          x_p = dble(i)*m%width(1) + m%origin(1)
-          y_m = dble(j - 1)*m%width(2) + m%origin(2)
-          y_p = dble(j)*m%width(2) + m%origin(2)
-
-          z_m = dble(k - 1)*m%width(3) + m%origin(3)
-          z_p = dble(k)*m%width(3) + m%origin(3)
+          x_m = dble(i - 1)*m%width(1) + m%lower_left(1)
+          x_p = dble(i)*m%width(1) + m%lower_left(1)
+          y_m = dble(j - 1)*m%width(2) + m%lower_left(2)
+          y_p = dble(j)*m%width(2) + m%lower_left(2)
+          z_m = dble(k - 1)*m%width(3) + m%lower_left(3)
+          z_p = dble(k)*m%width(3) + m%lower_left(3)
 
           ! set up points arrays
           x_uns = (/x_m,x_p,x_m,x_p,x_m,x_p,x_m,x_p/)

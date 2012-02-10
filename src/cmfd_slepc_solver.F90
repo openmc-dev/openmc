@@ -30,10 +30,7 @@ contains
 !===============================================================================
 
   subroutine cmfd_slepc_execute()
-    use global, only:time_cmfd
-    use timing
 
-call timer_start(time_cmfd)
     ! initialize data
     call init_data()
 

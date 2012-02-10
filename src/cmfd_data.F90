@@ -152,7 +152,6 @@ contains
                 ! calculate diffusion coefficient
                 cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k) -&
                &                                cmfd % p1scattxs(h,i,j,k)))
-                cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k)))
 
               else if (ital == 2) then
 

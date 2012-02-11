@@ -231,6 +231,8 @@ plot.o: geometry_header.o
 plot.o: global.o
 plot.o: particle_header.o
 
+random_lcg.o: global.o
+
 search.o: constants.o
 search.o: error.o
 search.o: global.o

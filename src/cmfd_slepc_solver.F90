@@ -39,8 +39,9 @@ contains
 
     ! build operators
     call build_loss_matrix(loss)
-    call build_prod_matrix(prod)
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
 
+    call build_prod_matrix(prod)
 
     ! set operators to EPS object
     call EPSSetOperators(eps,prod%F,loss%M,ierr)
@@ -75,9 +76,7 @@ contains
     n = loss%n
 
     ! set up eigenvector
-    call VecCreate(PETSC_COMM_SELF,phi,ierr)
-    call VecSetSizes(phi,PETSC_DECIDE,n,ierr)
-    call VecSetFromOptions(phi,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n,phi,ierr)
 
   end subroutine init_data
 
@@ -90,7 +89,7 @@ contains
     character(LEN=20) :: epstype,sttype,ksptype,pctype
 
     ! create EPS Object
-    call EPSCreate(PETSC_COMM_SELF,eps,ierr)
+    call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
     call EPSSetProblemType(eps,EPS_GNHEP,ierr)
     call EPSSetType(eps,EPSPOWER,ierr)
     call EPSSetWhichEigenpairs(eps,EPS_LARGEST_MAGNITUDE,ierr)
@@ -104,8 +103,7 @@ contains
     call KSPSetType(ksp,KSPGMRES,ierr)
 
     ! set precursor type
-    call PCSetType(pc,PCILU,ierr)
-    call PCFactorSetLevels(pc,4,ierr)
+    call PCSetType(pc,PCBJACOBI,ierr)
     call PCSetFromOptions(pc,ierr)
 
     ! get all types and print
@@ -144,12 +142,12 @@ contains
     if (.not. allocated(cmfd%phi)) allocate(cmfd%phi(n))
 
     ! extract run information
-    call EPSGetEigenpair(eps,i_eig,keff,PETSC_NULL,phi,PETSC_NULL_OBJECT,ierr)
-
+!   call EPSGetEigenpair(eps,i_eig,keff,PETSC_NULL,phi,PETSC_NULL_OBJECT,ierr)
+    call EPSGetEigenpair(eps,i_eig,keff,PETSC_NULL,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
     ! convert petsc phi_object to cmfd_obj
-    call VecGetArrayF90(phi,phi_v,ierr)
-    cmfd%phi = phi_v
-    call VecRestoreArrayF90(phi,phi_v,ierr)
+!   call VecGetArrayF90(phi,phi_v,ierr)
+!   cmfd%phi = phi_v
+!   call VecRestoreArrayF90(phi,phi_v,ierr)
 
     ! save eigenvalue
     cmfd%keff = keff

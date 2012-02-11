@@ -182,10 +182,10 @@ contains
     integer :: irow                 ! iteration counter over row (0 reference)
 
     ! compute indices
-    g = irow/(nx*ny*nz) + 1
-    i = mod(irow,nx*ny*nz)/(ny*nz) + 1
-    j = mod(irow,ny*nz)/nz + 1
-    k = mod(irow,nz) + 1
+    k = irow/(nx*ny*nz) + 1
+    j = mod(irow,nx*ny*nz)/(ny*nz) + 1
+    i = mod(irow,ny*nz)/nz + 1
+    g = mod(irow,nz) + 1
 
   end subroutine matrix_to_indices
 
@@ -207,7 +207,6 @@ contains
     call MatView(this%F,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 
-stop
   end subroutine print_F_operator
 
 !==============================================================================

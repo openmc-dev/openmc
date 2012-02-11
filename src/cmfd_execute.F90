@@ -41,8 +41,8 @@ contains
     if (master) then
 
       ! begin timer
-      call timer_start(time_cmfd)
-
+!     call timer_start(time_cmfd)
+print *,'Setting up data'
       ! set up cmfd
       if(.not. cmfd_only) call set_up_cmfd()
 
@@ -52,12 +52,13 @@ contains
     call cmfd_bcast()
 
 #ifdef PETSC
+print *,'Executing SLEPC'
       ! execute snes solver
-      call cmfd_snes_execute()
+      call cmfd_slepc_execute()
 #endif
 
       ! stop timer
-      call timer_stop(time_cmfd)
+!     call timer_stop(time_cmfd)
 
       ! write vtk file
       !if(.not. cmfd_only) call write_cmfd_vtk()
@@ -94,6 +95,9 @@ contains
 
     ! initialize data
     call allocate_cmfd(cmfd)
+
+    ! sync up procs
+    call MPI_Barrier(MPI_COMM_WORLD,mpi_err)
 
     ! broadcast all data
     call MPI_BCAST(cmfd%flux,ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)

@@ -53,7 +53,7 @@ contains
 
 #ifdef PETSC
       ! execute snes solver
-      call cmfd_slepc_execute()
+      call cmfd_snes_execute()
 #endif
 
       ! stop timer

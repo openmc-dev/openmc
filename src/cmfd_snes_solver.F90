@@ -30,16 +30,20 @@ contains
 !===============================================================================
 
   subroutine cmfd_snes_execute()
-
+print *,'executing slepc'
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     ! call slepc solver 
     call cmfd_slepc_execute()
-
+print *,'initing data'
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     ! initialize data
     call init_data()
-
+print *,'initing solver'
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     ! initialize solver
     call init_solver()
-
+print *,'solving system'
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
     ! solve the system
     call SNESSolve(snes,PETSC_NULL,xvec,ierr)
 
@@ -59,10 +63,12 @@ contains
 
     use global, only: cmfd
 
-    integer :: k  ! implied do counter
-    integer :: n  ! problem size
-    integer, allocatable :: nnzv(:) ! vector of number of nonzeros in jacobian
-    real(8), pointer :: xptr(:) ! solution pointer
+    integer              :: k         ! implied do counter
+    integer              :: n         ! problem size
+    integer              :: row_start ! local row start
+    integer              :: row_end   ! local row end
+    integer, allocatable :: nnzv(:)   ! vector of number of nonzeros in jacobian
+    real(8), pointer     :: xptr(:)   ! solution pointer
 
     ! set up matrices
     call init_M_operator(loss)
@@ -72,35 +78,55 @@ contains
     n = loss%n
 
     ! create PETSc vectors
-    call VecCreate(PETSC_COMM_SELF,resvec,ierr)
-    call VecSetSizes(resvec,PETSC_DECIDE,n+1,ierr)
-    call VecSetFromOptions(resvec,ierr)
-    call VecCreate(PETSC_COMM_SELF,xvec,ierr)
-    call VecSetSizes(xvec,PETSC_DECIDE,n+1,ierr)
-    call VecSetFromOptions(xvec,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n+1,resvec,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n+1,xvec,ierr)
+
+    ! get the local dimensions for each process
+    call VecGetOwnershipRange(xvec,row_start,row_end,ierr)
+
+    if (row_end == n + 1) row_end = n
 
     ! set flux in guess
-    call VecSetValues(xvec,n,(/(k,k=0,n-1)/),cmfd%phi,INSERT_VALUES,ierr)
+    call VecSetValues(xvec,row_end-row_start-1,(/(k,k=row_start,row_end-1)/),                     &
+   &                  cmfd%phi(row_start+1:row_end),INSERT_VALUES,ierr)
     call VecAssemblyBegin(xvec,ierr)
     call VecAssemblyEnd(xvec,ierr)
 
     ! set keff in guess
-    call VecGetArrayF90(xvec,xptr,ierr)
-    xptr(n+1) = 1.0_8/cmfd%keff
-    call VecRestoreArrayF90(xvec,xptr,ierr)
+    if (row_end == n) then
+      call VecGetArrayF90(xvec,xptr,ierr)
+      xptr(size(xptr)) = 1.0_8/cmfd%keff
+      call VecRestoreArrayF90(xvec,xptr,ierr)
+    end if
 
-   ! allocate and create number of nonzeros vector
-   if (.not. allocated(nnzv)) allocate(nnzv(n+1))
-   nnzv = loss%nnz + 1
-   nnzv(n+1) = n+1
+    ! allocate and create number of nonzeros vector
+    if (row_end /= n) then
+      if (.not. allocated(nnzv)) allocate(nnzv(row_start:row_end-1))
+      nnzv = loss%nnz + 1
+    else
+     if (.not. allocated(nnzv)) allocate(nnzv(row_start:row_end))
+      nnzv = loss%nnz + 1
+      nnzv(n) = n + 1
+    end if
 
-   ! create the preconditioner matrix
-   call MatCreateSeqAIJ(PETSC_COMM_SELF,n+1,n+1,PETSC_NULL_INTEGER,          &
-  &                     nnzv,jac_prec,ierr)
-   call MatSetOption(jac_prec,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
-   call MatSetOption(jac_prec,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
-   call MatSetOption(jac_prec,MAT_USE_HASH_TABLE,PETSC_TRUE,ierr)
+    ! get ownership rows again
+    call VecGetOwnershipRange(xvec,row_start,row_end,ierr)
 
+    ! set local size
+    n = row_end - row_start
+
+    ! take minimum of size (incase the local size is less than the number of nnz)
+    nnzv = min(n,nnzv)
+
+    ! create the preconditioner matrix
+    call MatCreateMPIAIJ(PETSC_COMM_WORLD,n,n,PETSC_DECIDE,PETSC_DECIDE,PETSC_NULL_INTEGER,          &
+   &                     nnzv,PETSC_NULL_INTEGER,nnzv,jac_prec,ierr)
+    call MatSetOption(jac_prec,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
+    call MatSetOption(jac_prec,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
+    call MatGetOwnershipRange(jac_prec,row_start,row_end,ierr)
+
+    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+stop
   end subroutine init_data
 
 !===============================================================================
@@ -115,7 +141,7 @@ contains
     call PetscOptionsSetValue("-snes_mf_operator","TRUE",ierr)
 
     ! create SNES context
-    call SNESCreate(PETSC_COMM_SELF,snes,ierr)
+    call SNESCreate(PETSC_COMM_WORLD,snes,ierr)
 
     ! set the residual function
     call SNESSetFunction(snes,resvec,compute_nonlinear_residual,PETSC_NULL,ierr)
@@ -126,8 +152,9 @@ contains
 
     ! set preconditioner
     call KSPGetPC(ksp,pc,ierr)
-    call PCSetType(pc,PCILU,ierr)
-    call PCFactorSetLevels(pc,25,ierr)
+!   call PCSetType(pc,PCILU,ierr)
+!   call PCFactorSetLevels(pc,25,ierr)
+    call PCSetType(pc,PCBJACOBI,ierr)
     call KSPSetFromOptions(ksp,ierr)
 
     ! create matrix free jacobian
@@ -175,10 +202,14 @@ contains
     Vec         :: res           ! residual vector
     integer     :: ierr          ! error flag
 
+    ! local variables
     Vec         :: phi           ! flux vector
     Vec         :: rphi          ! flux part of residual
     Vec         :: phiM          ! M part of residual flux calc
     integer     :: n             ! problem size
+    integer     :: row_start     ! local row start
+    integer     :: row_end       ! local row end
+    integer     :: rank          ! rank of processor
     real(8)     :: lambda        ! eigenvalue
     real(8)     :: reslamb       ! residual for lambda
 
@@ -188,33 +219,35 @@ contains
     ! get problem size
     n = loss%n
 
+    ! get the local dimensions for each process
+    call VecGetOwnershipRange(x,row_start,row_end,ierr)
+
     ! get pointers to vectors
     call VecGetArrayF90(x,xptr,ierr)
     call VecGetArrayF90(res,rptr,ierr)
 
     ! create petsc vector for flux
-    call VecCreate(PETSC_COMM_SELF,phi,ierr)
-    call VecSetSizes(phi,PETSC_DECIDE,n,ierr)
-    call VecSetFromOptions(phi,ierr)
-    call VecCreate(PETSC_COMM_SELF,rphi,ierr)
-    call VecSetSizes(rphi,PETSC_DECIDE,n,ierr)
-    call VecSetFromOptions(rphi,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n,phi,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n,rphi,ierr)
 
     ! extract flux and place in petsc vector 
     call VecPlaceArray(phi,xptr,ierr)
     call VecPlaceArray(rphi,rptr,ierr)
 
-    ! extract eigenvalue
-    lambda = xptr(n+1)
-
+    ! extract eigenvalue and broadcast
+    if (row_end == n+1) then
+      lambda = xptr(n+1)
+      call MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
+      call MPI_BCAST(lambda,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
+    end if
+print *,lambda
+stop
     ! create operators
     call build_loss_matrix(loss)
     call build_prod_matrix(prod)
 
     ! create new petsc vectors to perform math
-    call VecCreate(PETSC_COMM_SELF,phiM,ierr)
-    call VecSetSizes(phiM,PETSC_DECIDE,n,ierr)
-    call VecSetFromOptions(phiM,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n,phiM,ierr)
 
     ! calculate flux part of residual vector
     call MatMult(loss%M,phi,phiM,ierr)
@@ -225,7 +258,7 @@ contains
     call VecDot(phi,phi,reslamb,ierr)
 
     ! map to ptr
-    rptr(n+1) = 0.5_8 - 0.5_8*reslamb
+    if (row_end == n+1) rptr(n+1) = 0.5_8 - 0.5_8*reslamb
 
     ! reset arrays that are not used
     call VecResetArray(phi,ierr)

@@ -39,8 +39,6 @@ contains
 
     ! build operators
     call build_loss_matrix(loss)
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
-
     call build_prod_matrix(prod)
 
     ! set operators to EPS object
@@ -128,10 +126,13 @@ contains
 
   subroutine extract_results()
 
-    use global, only: cmfd,path_input
+    use global, only: cmfd,path_input,master
 
     integer              :: n         ! problem size
     integer              :: i_eig = 0 ! eigenvalue to extract
+    integer              :: row_start ! starting row 
+    integer              :: row_end   ! ending row
+    real(8),allocatable  :: mybuf(:)  ! temp buffer
     PetscViewer          :: viewer    ! petsc output object
     PetscScalar, pointer :: phi_v(:)  ! pointer to eigenvector info
  
@@ -140,17 +141,33 @@ contains
 
     ! also allocate in cmfd object
     if (.not. allocated(cmfd%phi)) allocate(cmfd%phi(n))
+!   if (.not. allocated(mybuf)) allocate(mybuf(n))
+
+    ! zero out cmfd object
+!   cmfd%phi = 0.0_8
 
     ! extract run information
-!   call EPSGetEigenpair(eps,i_eig,keff,PETSC_NULL,phi,PETSC_NULL_OBJECT,ierr)
-    call EPSGetEigenpair(eps,i_eig,keff,PETSC_NULL,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call EPSGetEigenpair(eps,i_eig,keff,PETSC_NULL,phi,PETSC_NULL_OBJECT,ierr)
+!   call EPSGetEigenpair(eps,i_eig,keff,PETSC_NULL,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+
+    ! get ownership range
+    call VecGetOwnershipRange(phi,row_start,row_end,ierr)
+
     ! convert petsc phi_object to cmfd_obj
-!   call VecGetArrayF90(phi,phi_v,ierr)
-!   cmfd%phi = phi_v
-!   call VecRestoreArrayF90(phi,phi_v,ierr)
+    call VecGetArrayF90(phi,phi_v,ierr)
+    cmfd%phi(row_start+1:row_end) = phi_v
+    call VecRestoreArrayF90(phi,phi_v,ierr)
 
     ! save eigenvalue
     cmfd%keff = keff
+
+    ! reduce result to master
+!   mybuf = 0.0_8
+!   print *,cmfd%phi
+!   call MPI_REDUCE(cmfd%phi,mybuf,n,MPI_SUM,master,MPI_COMM_WORLD,ierr)
+!   call MPI_Barrier(MPI_COMM_WORLD,ierr)
+!   stop
+!   if (master) print *,mybuf
 
     ! write out results
 !   call PetscViewerBinaryOpen(PETSC_COMM_SELF,trim(path_input)//'fluxvec.bin' &

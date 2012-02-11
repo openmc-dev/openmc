@@ -41,7 +41,7 @@ contains
     if (master) then
 
       ! begin timer
-!     call timer_start(time_cmfd)
+      call timer_start(time_cmfd)
 
       ! set up cmfd
       if(.not. cmfd_only) call set_up_cmfd()
@@ -57,7 +57,7 @@ contains
 #endif
 
       ! stop timer
-!     call timer_stop(time_cmfd)
+      call timer_stop(time_cmfd)
 
       ! write vtk file
       !if(.not. cmfd_only) call write_cmfd_vtk()

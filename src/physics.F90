@@ -1163,7 +1163,7 @@ contains
           if (frac == ZERO) then
              mu = mu0 + (xi - c_k)/p0
           else
-             mu = mu0 + (sqrt(p0*p0 + 2*frac*(xi - c_k))-p0)/frac
+             mu = mu0 + (sqrt(max(ZERO, p0*p0 + 2*frac*(xi - c_k))) - p0)/frac
           end if
        else
           message = "Unknown interpolation type: " // trim(to_str(interp))
@@ -1213,8 +1213,8 @@ contains
     ! Precompute factors to save flops
     sinphi = sin(phi)
     cosphi = cos(phi)
-    a = sqrt(ONE - mu*mu)
-    b = sqrt(ONE - w0*w0)
+    a = sqrt(max(ZERO, ONE - mu*mu))
+    b = sqrt(max(ZERO, ONE - w0*w0))
 
     ! Need to treat special case where sqrt(1 - w**2) is close to zero by
     ! expanding about the v component rather than the w component

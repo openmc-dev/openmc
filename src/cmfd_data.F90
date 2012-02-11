@@ -568,6 +568,10 @@ contains
     ! count how many fuel assemblies exist
     cmfd % mat_dim = sum(cmfd % coremap - 1)
 
+    ! allocate indexmap
+    if (.not. allocated(cmfd % indexmap)) allocate                             &
+   &                                      (cmfd % indexmap(cmfd % mat_dim,3))
+
     ! begin loops over spatial indices
     ZLOOP: do k = 1,nz
 
@@ -585,6 +589,9 @@ contains
 
             ! must be a fuel --> give unique id number
             cmfd % coremap(i,j,k) = kount
+            cmfd % indexmap(kount,1) = i
+            cmfd % indexmap(kount,2) = j
+            cmfd % indexmap(kount,3) = k 
             kount = kount + 1
 
           end if

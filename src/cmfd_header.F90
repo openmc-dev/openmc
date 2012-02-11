@@ -50,6 +50,7 @@ module cmfd_header
 
     ! core map for no reflector accel
     integer, allocatable :: coremap(:,:,:)
+    integer, allocatable :: indexmap(:,:)
     integer :: mat_dim
 
     ! eigenvector/eigenvalue from cmfd run
@@ -125,11 +126,11 @@ contains
     if (allocated(this % dhat))          deallocate(this % dhat)
     if (allocated(this % hxyz))          deallocate(this % hxyz)
     if (allocated(this % coremap))       deallocate(this % coremap)
+    if (allocated(this % indexmap))      deallocate(this % indexmap)
     if (allocated(this % phi))           deallocate(this % phi)
     if (allocated(this % sourcepdf))     deallocate(this % sourcepdf)
     if (allocated(this % sourcecounts))  deallocate(this % sourcecounts)
     if (allocated(this % weightfactors)) deallocate(this % weightfactors)
-
 
   end subroutine deallocate_cmfd
 

@@ -42,7 +42,7 @@ contains
 
       ! begin timer
 !     call timer_start(time_cmfd)
-print *,'Setting up data'
+
       ! set up cmfd
       if(.not. cmfd_only) call set_up_cmfd()
 
@@ -52,7 +52,6 @@ print *,'Setting up data'
     call cmfd_bcast()
 
 #ifdef PETSC
-print *,'Executing SLEPC'
       ! execute snes solver
       call cmfd_slepc_execute()
 #endif
@@ -80,6 +79,7 @@ print *,'Executing SLEPC'
   subroutine cmfd_bcast()
 
     use cmfd_header, only: allocate_cmfd
+    use global,      only: cmfd_coremap
 
     integer :: nx  ! number of mesh cells in x direction
     integer :: ny  ! number of mesh cells in y direction
@@ -110,6 +110,15 @@ print *,'Executing SLEPC'
     call MPI_BCAST(cmfd%dhat,6*ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
     call MPI_BCAST(cmfd%hxyz,3*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
     call MPI_BCAST(cmfd%current,12*ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+
+    ! broadcast coremap info
+    if (cmfd_coremap) then
+      call MPI_BCAST(cmfd%coremap,nx*ny*nz,MPI_INT,0,MPI_COMM_WORLD,mpi_err)
+      call MPI_BCAST(cmfd%mat_dim,1,MPI_INT,0,MPI_COMM_WORLD,mpi_err)
+      if (.not. allocated(cmfd % indexmap)) allocate                           &
+     &           (cmfd % indexmap(cmfd % mat_dim,3))
+      call MPI_BCAST(cmfd%indexmap,cmfd%mat_dim*3,MPI_INT,0,MPI_COMM_WORLD,mpi_err)
+    end if
 
     ! sync up procs
     call MPI_Barrier(MPI_COMM_WORLD,mpi_err)

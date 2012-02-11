@@ -281,17 +281,32 @@ contains
 
   subroutine matrix_to_indices(irow,g,i,j,k)
 
+    use global, only: cmfd,cmfd_coremap
+
     integer :: i                    ! iteration counter for x
     integer :: j                    ! iteration counter for y
     integer :: k                    ! iteration counter for z
     integer :: g                    ! iteration counter for groups
     integer :: irow                 ! iteration counter over row (0 reference)
 
-    ! compute indices
-    k = irow/(nx*ny*nz) + 1
-    j = mod(irow,nx*ny*nz)/(ny*nz) + 1
-    i = mod(irow,ny*nz)/nz + 1
-    g = mod(irow,nz) + 1 
+    ! check for core map
+    if (cmfd_coremap) then
+
+      ! get indices from indexmap
+      g = mod(irow,ng) + 1
+      i = cmfd % indexmap(irow+1,1)
+      j = cmfd % indexmap(irow+1,2)
+      k = cmfd % indexmap(irow+1,3)
+
+    else
+
+      ! compute indices
+      g = mod(irow,ng) + 1 
+      i = mod(irow,ng*nx)/ng + 1
+      j = mod(irow,ng*nx*ny)/(ng*nx)+ 1
+      k = mod(irow,ng*nx*ny*nz)/(ng*nx*ny) + 1 
+
+    end if
 
   end subroutine matrix_to_indices
 

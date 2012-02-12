@@ -34,6 +34,8 @@ cmfd_input.o: string.o
 cmfd_input.o: tally_header.o
 cmfd_input.o: xml-fortran/templates/cmfd_t.o
 
+cmfd_jacobian_operator.o: global.o
+
 cmfd_loss_operator.o: global.o
 
 cmfd_output.o: global.o
@@ -49,6 +51,7 @@ cmfd_prod_operator.o: global.o
 cmfd_slepc_solver.o: cmfd_loss_operator.o
 cmfd_slepc_solver.o: cmfd_prod_operator.o
 
+cmfd_snes_solver.o: cmfd_jacobian_operator.o
 cmfd_snes_solver.o: cmfd_loss_operator.o
 cmfd_snes_solver.o: cmfd_prod_operator.o
 cmfd_snes_solver.o: cmfd_slepc_solver.o

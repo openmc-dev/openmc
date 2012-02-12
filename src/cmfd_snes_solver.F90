@@ -1,21 +1,24 @@
 module cmfd_snes_solver
 
 #ifdef PETSC
-  use cmfd_loss_operator, only: loss_operator,init_M_operator,                 &
- &                        build_loss_matrix,destroy_M_operator
-  use cmfd_prod_operator, only: prod_operator,init_F_operator,                 &
- &                        build_prod_matrix,destroy_F_operator
-  use cmfd_slepc_solver,  only: cmfd_slepc_execute
+  use cmfd_loss_operator,     only: loss_operator,init_M_operator,             &
+ &                                  build_loss_matrix,destroy_M_operator
+  use cmfd_prod_operator,     only: prod_operator,init_F_operator,             &
+ &                                  build_prod_matrix,destroy_F_operator
+  use cmfd_jacobian_operator, only: jacobian_operator,init_J_operator,         &
+ &                                  build_jacobian_matrix,destroy_J_operator,  &
+ &                                  operators
+  use cmfd_slepc_solver,      only: cmfd_slepc_execute
 
 implicit none
 
 #include <finclude/petsc.h90>
 
-  type(loss_operator) :: loss
-  type(prod_operator) :: prod
+  type(jacobian_operator) :: jac_prec
+  type(operators) :: ctx
 
   Mat         :: jac         ! jacobian matrix
-  Mat         :: jac_prec    ! preconditioned jacobian matrix
+! Mat         :: jac_prec    ! preconditioned jacobian matrix
   Vec         :: resvec      ! residual vector
   Vec         :: xvec        ! results
   KSP         :: ksp         ! linear solver context
@@ -70,12 +73,13 @@ print *,'solving system'
     integer, allocatable :: nnzv(:)   ! vector of number of nonzeros in jacobian
     real(8), pointer     :: xptr(:)   ! solution pointer
 
-    ! set up matrices
-    call init_M_operator(loss)
-    call init_F_operator(prod)
+    ! set up operator matrices
+    call init_M_operator(ctx%loss)
+    call init_F_operator(ctx%prod)
+    call init_J_operator(jac_prec,ctx)
 
     ! get problem size
-    n = loss%n
+    n = jac_prec%n - 1 
 
     ! create PETSc vectors
     call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n+1,resvec,ierr)
@@ -87,7 +91,7 @@ print *,'solving system'
     if (row_end == n + 1) row_end = n
 
     ! set flux in guess
-    call VecSetValues(xvec,row_end-row_start-1,(/(k,k=row_start,row_end-1)/),                     &
+    call VecSetValues(xvec,row_end-row_start-1,(/(k,k=row_start,row_end-1)/),  &
    &                  cmfd%phi(row_start+1:row_end),INSERT_VALUES,ierr)
     call VecAssemblyBegin(xvec,ierr)
     call VecAssemblyEnd(xvec,ierr)
@@ -99,34 +103,6 @@ print *,'solving system'
       call VecRestoreArrayF90(xvec,xptr,ierr)
     end if
 
-    ! allocate and create number of nonzeros vector
-    if (row_end /= n) then
-      if (.not. allocated(nnzv)) allocate(nnzv(row_start:row_end-1))
-      nnzv = loss%nnz + 1
-    else
-     if (.not. allocated(nnzv)) allocate(nnzv(row_start:row_end))
-      nnzv = loss%nnz + 1
-      nnzv(n) = n + 1
-    end if
-
-    ! get ownership rows again
-    call VecGetOwnershipRange(xvec,row_start,row_end,ierr)
-
-    ! set local size
-    n = row_end - row_start
-
-    ! take minimum of size (incase the local size is less than the number of nnz)
-    nnzv = min(n,nnzv)
-
-    ! create the preconditioner matrix
-    call MatCreateMPIAIJ(PETSC_COMM_WORLD,n,n,PETSC_DECIDE,PETSC_DECIDE,PETSC_NULL_INTEGER,          &
-   &                     nnzv,PETSC_NULL_INTEGER,nnzv,jac_prec,ierr)
-    call MatSetOption(jac_prec,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
-    call MatSetOption(jac_prec,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
-    call MatGetOwnershipRange(jac_prec,row_start,row_end,ierr)
-
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
-stop
   end subroutine init_data
 
 !===============================================================================
@@ -161,7 +137,7 @@ stop
     call MatCreateSNESMF(snes,jac,ierr)
 
     ! set matrix free finite difference
-    call SNESSetJacobian(snes,jac,jac_prec,compute_jacobian,PETSC_NULL,ierr)
+    call SNESSetJacobian(snes,jac,jac_prec,build_jacobian_matrix,ctx,ierr)
 
     ! set lags
     call SNESSetLagJacobian(snes,-2,ierr)
@@ -209,15 +185,20 @@ stop
     integer     :: n             ! problem size
     integer     :: row_start     ! local row start
     integer     :: row_end       ! local row end
-    integer     :: rank          ! rank of processor
+    integer     :: n_procs       ! number of processors
     real(8)     :: lambda        ! eigenvalue
     real(8)     :: reslamb       ! residual for lambda
 
     real(8), pointer :: xptr(:)  ! pointer to solution vector
     real(8), pointer :: rptr(:)  ! pointer to residual vector
+print *,'In residual'
+
+    ! get number of processors
+    call MPI_COMM_SIZE(MPI_COMM_WORLD,n_procs,ierr)
 
     ! get problem size
-    n = loss%n
+    call VecGetSize(x,n,ierr)
+    n = n - 1 ! subtract off last row 
 
     ! get the local dimensions for each process
     call VecGetOwnershipRange(x,row_start,row_end,ierr)
@@ -234,31 +215,29 @@ stop
     call VecPlaceArray(phi,xptr,ierr)
     call VecPlaceArray(rphi,rptr,ierr)
 
-    ! extract eigenvalue and broadcast
+    ! extract eigenvalue and broadcast (going to want to make this more general in future)
     if (row_end == n+1) then
-      lambda = xptr(n+1)
-      call MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
-      call MPI_BCAST(lambda,1,MPI_REAL8,rank,MPI_COMM_WORLD,ierr)
+      lambda = xptr(size(xptr))
     end if
-print *,lambda
-stop
+    call MPI_BCAST(lambda,1,MPI_REAL8,n_procs-1,MPI_COMM_WORLD,ierr)
+
     ! create operators
-    call build_loss_matrix(loss)
-    call build_prod_matrix(prod)
+    call build_loss_matrix(ctx%loss)
+    call build_prod_matrix(ctx%prod)
 
     ! create new petsc vectors to perform math
     call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n,phiM,ierr)
 
     ! calculate flux part of residual vector
-    call MatMult(loss%M,phi,phiM,ierr)
-    call MatMult(prod%F,phi,rphi,ierr)
+    call MatMult(ctx%loss%M,phi,phiM,ierr)
+    call MatMult(ctx%prod%F,phi,rphi,ierr)
     call VecAYPX(rphi,-1.0_8*lambda,phiM,ierr)
 
     ! set eigenvalue part of residual vector
     call VecDot(phi,phi,reslamb,ierr)
 
     ! map to ptr
-    if (row_end == n+1) rptr(n+1) = 0.5_8 - 0.5_8*reslamb
+    if (row_end == n+1) rptr(size(rptr)) = 0.5_8 - 0.5_8*reslamb
 
     ! reset arrays that are not used
     call VecResetArray(phi,ierr)
@@ -276,119 +255,6 @@ stop
   end subroutine compute_nonlinear_residual
 
 !===============================================================================
-! COMPUTE_JACOBIAN 
-!===============================================================================
-
-  subroutine compute_jacobian(snes,x,jac,jac_prec,flag,user,ierr)
-
-     ! formal variables
-     SNES          :: snes      ! the snes context
-     Vec           :: x         ! the solution vector
-     Mat           :: jac       ! the jacobian matrix
-     Mat           :: jac_prec  ! the jacobian preconditioner
-     MatStructure  :: flag      ! not used
-     integer       :: user(*)   ! not used
-     integer       :: ierr      ! petsc error flag
-
-     ! local varibles
-     Vec                  :: phi      ! flux vector
-     Vec                  :: source   ! source vector
-     integer              :: n        ! problem size
-     integer              :: k        ! implied do loop counter
-     integer              :: ncols    ! number of nonzeros in cols
-     integer              :: irow     ! row counter
-     integer, allocatable :: nnzv(:)  ! vector of number of nonzeros for jac
-     integer, allocatable :: cols(:)  ! vector of column numbers
-     real(8)              :: lambda   ! eigenvalue
-     real(8), pointer     :: xptr(:)  ! pointer to solution vector
-     real(8), pointer     :: sptr(:)  ! pointer to source vector
-     real(8), allocatable :: vals(:)  ! vector of row values
-
-     ! create operators
-     call build_loss_matrix(loss)
-     call build_prod_matrix(prod)
-
-     ! get problem size
-     n = loss%n
-
-     ! allocate cols and rows and initialize to zero
-     if (.not. allocated(cols)) allocate(cols(loss%nnz))
-     if (.not. allocated(vals)) allocate(vals(loss%nnz))
-     cols = 0
-     vals = 0.0_8
-
-     ! get pointers to residual vector 
-     call VecGetArrayF90(x,xptr,ierr)
-
-     ! create petsc vector for flux
-     call VecCreate(PETSC_COMM_SELF,phi,ierr)
-     call VecSetSizes(phi,PETSC_DECIDE,n,ierr)
-     call VecSetFromOptions(phi,ierr)
-
-     ! extract flux and eigenvalue 
-     call VecPlaceArray(phi,xptr,ierr)
-     lambda = xptr(n+1)
-
-     ! compute math (M-lambda*F) M is overwritten here
-     call MatAXPY(loss%M,-1.0_8*lambda,prod%F,SUBSET_NONZERO_PATTERN,ierr)
-
-     ! create tmp petsc vector for source
-     call VecCreate(PETSC_COMM_SELF,source,ierr)
-     call VecSetSizes(source,PETSC_DECIDE,n,ierr)
-     call VecSetFromOptions(source,ierr)
-
-     ! perform math (-F*phi --> source)
-     call MatMult(prod%F,phi,source,ierr)
-     call VecScale(source,-1.0_8,ierr)
-
-     ! get pointer to source
-     call VecGetArrayF90(source,sptr,ierr)
-
-     ! begin loop to insert things into matrix
-     do irow = 0,n-1
-
-       ! get row of matrix
-       call MatGetRow(loss%M,irow,ncols,cols,vals,ierr)
-
-       ! set that row to Jacobian matrix
-       call MatSetValues(jac_prec,1,irow,ncols,cols(1:ncols),vals,INSERT_VALUES,ierr)
-
-       ! restore the row
-       call MatRestoreRow(loss%M,irow,ncols,cols,vals,ierr)
-
-       ! insert source value
-       call MatSetValue(jac_prec,irow,n,sptr(irow+1),INSERT_VALUES,ierr)
-
-     end do
-
-     ! set values in last row of matrix
-     call MatSetValues(jac_prec,1,n,n,(/(k,k=0,n-1)/),xptr(1:n),INSERT_VALUES,ierr)
-     call MatSetValue(jac_prec,n,n,1.0_8,INSERT_VALUES,ierr)
-
-     ! assemble matrix
-     call MatAssemblyBegin(jac_prec,MAT_FINAL_ASSEMBLY,ierr)
-     call MatAssemblyEnd(jac_prec,MAT_FINAL_ASSEMBLY,ierr)
-     call MatAssemblyBegin(jac,MAT_FINAL_ASSEMBLY,ierr)
-     call MatAssemblyEnd(jac,MAT_FINAL_ASSEMBLY,ierr)
-
-     ! reset all vectors
-     call VecResetArray(phi,ierr)
-
-     ! restore all vectors
-     call VecRestoreArrayF90(x,xptr,ierr)
-     call VecRestoreArrayF90(source,sptr,ierr)
-
-     ! destroy all temporary objects
-     call VecDestroy(phi,ierr)
-     call VecDestroy(source,ierr)
-
-     ! deallocate all temporary space
-     if (allocated(cols)) deallocate(cols)
-     if (allocated(vals)) deallocate(vals)
-
-  end subroutine compute_jacobian
-
-!===============================================================================
 ! EXTRACT_RESULTS
 !===============================================================================
 
@@ -400,7 +266,7 @@ stop
     PetscScalar, pointer :: xptr(:) ! pointer to eigenvector info
 
     ! get problem size
-    n = loss%n
+    n = ctx%loss%n
 
     ! also allocate in cmfd object
     if (.not. allocated(cmfd%phi)) allocate(cmfd%phi(n))
@@ -422,8 +288,9 @@ stop
   subroutine finalize()
 
     ! finalize data objects
-    call destroy_M_operator(loss)
-    call destroy_F_operator(prod)
+    call destroy_M_operator(ctx%loss)
+    call destroy_F_operator(ctx%prod)
+    call destroy_J_operator(jac_prec)
     call VecDestroy(xvec,ierr)
     call VecDestroy(resvec,ierr)
 

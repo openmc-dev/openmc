@@ -18,6 +18,9 @@ module cmfd_prod_operator
     Mat      :: F    ! petsc matrix for neutronic prod operator
     integer  :: n    ! dimensions of matrix
     integer  :: nnz  ! max number of nonzeros
+    integer  :: localn ! local size on proc
+    integer, allocatable :: d_nnz(:) ! vector of diagonal preallocation
+    integer, allocatable :: o_nnz(:) ! vector of off-diagonal preallocation
 
   end type prod_operator
 
@@ -34,9 +37,13 @@ contains
     ! get indices
     call get_F_indices(this)
 
+    ! get preallocation
+    call preallocate_prod_matrix(this)
+
     ! set up M operator
-    call MatCreateMPIAIJ(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,this%n,    &
-   & this%n,this%nnz,PETSC_NULL_INTEGER,this%nnz,PETSC_NULL_INTEGER,this%F,ierr)
+    call MatCreateMPIAIJ(PETSC_COMM_WORLD,this%localn,this%localn,PETSC_DECIDE,&
+   & PETSC_DECIDE,PETSC_NULL_INTEGER,this%d_nnz,PETSC_NULL_INTEGER,this%o_nnz, &
+   & this%F,ierr)
     call MatSetOption(this%F,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
     call MatSetOption(this%F,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
 
@@ -69,6 +76,94 @@ contains
     end if
 
   end subroutine get_F_indices
+
+!===============================================================================
+! PREALLOCATE_PROD_MATRIX
+!===============================================================================
+
+  subroutine preallocate_prod_matrix(this)
+
+    use global, only: cmfd,cmfd_coremap
+
+    type(prod_operator) :: this
+
+    integer :: rank          ! rank of processor
+    integer :: sizen         ! number of procs
+    integer :: i             ! iteration counter for x
+    integer :: j             ! iteration counter for y
+    integer :: k             ! iteration counter for z
+    integer :: g             ! iteration counter for groups
+    integer :: h             ! energy group when doing scattering
+    integer :: n             ! the extent of the matrix
+    integer :: irow          ! row counter
+    integer :: row_start     ! index of local starting row
+    integer :: row_end       ! index of local final row
+    integer :: hmat_idx      ! index in matrix for energy group h
+
+    ! get rank and max rank of procs
+    call MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
+    call MPI_COMM_SIZE(MPI_COMM_WORLD,sizen,ierr)
+
+    ! get local problem size
+    n = this%n
+
+    ! determine local size, divide evenly between all other procs
+    this%localn = n/(sizen)
+
+    ! add 1 more if less proc id is less than mod
+    if (rank < mod(n,sizen)) this%localn = this%localn + 1
+
+    ! determine local starting row
+    row_start = 0
+    if (rank < mod(n,sizen)) then
+      row_start = rank*(n/sizen+1)
+    else
+      row_start = min(mod(n,sizen)*(n/sizen+1)+(rank - mod(n,sizen))*(n/sizen),n)
+    end if
+
+    ! determine local final row
+    row_end = row_start + this%localn - 1
+
+    ! allocate counters
+    if (.not. allocated(this%d_nnz)) allocate(this%d_nnz(row_start:row_end))
+    if (.not. allocated(this%o_nnz)) allocate(this%o_nnz(row_start:row_end))
+    this % d_nnz = 0
+    this % o_nnz = 0
+
+    ! begin loop around local rows
+    ROWS: do irow = row_start,row_end
+
+      ! initialize counters 
+      this%d_nnz(irow) = 1 ! already add in matrix diagonal
+      this%o_nnz(irow) = 0
+
+      ! get location indices
+      call matrix_to_indices(irow,g,i,j,k)
+
+      ! begin loop over off diagonal in-scattering
+      NFISS: do h = 1,ng
+
+        ! cycle though if h=g
+        if (h == g) then
+          cycle
+        end if
+
+        ! get neighbor matrix index
+        call indices_to_matrix(h,i,j,k,hmat_idx)
+
+        ! record nonzero
+        if (((hmat_idx-1) >= row_start) .and.                        &
+       &   ((hmat_idx-1) <= row_end)) then
+          this%d_nnz(irow) = this%d_nnz(irow) + 1
+        else
+          this%o_nnz(irow) = this%o_nnz(irow) + 1
+        end if
+
+      end do NFISS
+
+    end do ROWS
+
+  end subroutine preallocate_prod_matrix
 
 !===============================================================================
 ! BUILD_PROD_MATRIX creates the matrix representing loss of neutrons
@@ -131,7 +226,7 @@ contains
 
     end do ROWS 
 
-   ! assemble matrix 
+    ! assemble matrix 
     call MatAssemblyBegin(this%F,MAT_FLUSH_ASSEMBLY,ierr)
     call MatAssemblyEnd(this%F,MAT_FINAL_ASSEMBLY,ierr)
 
@@ -234,6 +329,10 @@ contains
 
     ! deallocate matrix
     call MatDestroy(this%F,ierr)
+
+    ! deallocate other parameters
+    if (allocated(this%d_nnz)) deallocate(this%d_nnz)
+    if (allocated(this%o_nnz)) deallocate(this%o_nnz)
 
   end subroutine destroy_F_operator
 

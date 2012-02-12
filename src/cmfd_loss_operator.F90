@@ -20,6 +20,8 @@ module cmfd_loss_operator
     integer  :: n      ! dimensions of matrix
     integer  :: nnz    ! max number of nonzeros
     integer  :: localn ! local size on proc
+    integer, allocatable :: d_nnz(:) ! vector of diagonal preallocation
+    integer, allocatable :: o_nnz(:) ! vector of off-diagonal preallocation
 
   end type loss_operator
 
@@ -40,8 +42,9 @@ contains
     call preallocate_loss_matrix(this)
 
     ! set up M operator
-    call MatCreateMPIAIJ(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,this%n,    &
-   & this%n,this%nnz,PETSC_NULL_INTEGER,this%nnz,PETSC_NULL_INTEGER,this%M,ierr)
+    call MatCreateMPIAIJ(PETSC_COMM_WORLD,this%localn,this%localn,PETSC_DECIDE,&
+   & PETSC_DECIDE,PETSC_NULL_INTEGER,this%d_nnz,PETSC_NULL_INTEGER,this%o_nnz, &
+   & this%M,ierr)
     call MatSetOption(this%M,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
     call MatSetOption(this%M,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
 
@@ -75,47 +78,163 @@ contains
 
   end subroutine get_M_indices
 
-
 !===============================================================================
 ! PREALLOCATE_LOSS_MATRIX
 !===============================================================================
 
   subroutine preallocate_loss_matrix(this)
 
+    use global, only: cmfd,cmfd_coremap
+
     type(loss_operator) :: this
 
-    integer :: rank      ! rank of processor
-    integer :: size      ! number of procs
-    integer :: n         ! the extent of the matrix
-    integer :: row_start ! index of local starting row
-    integer :: row_end   ! index of local final row
+    integer :: rank          ! rank of processor
+    integer :: sizen         ! number of procs
+    integer :: i             ! iteration counter for x
+    integer :: j             ! iteration counter for y
+    integer :: k             ! iteration counter for z
+    integer :: g             ! iteration counter for groups
+    integer :: l             ! iteration counter for leakages
+    integer :: h             ! energy group when doing scattering
+    integer :: n             ! the extent of the matrix
+    integer :: irow          ! row counter
+    integer :: bound(6)      ! vector for comparing when looking for bound
+    integer :: xyz_idx       ! index for determining if x,y or z leakage
+    integer :: dir_idx       ! index for determining - or + face of cell
+    integer :: neig_idx(3)   ! spatial indices of neighbour
+    integer :: nxyz(3,2)     ! single vector containing bound. locations
+    integer :: shift_idx     ! parameter to shift index by +1 or -1
+    integer :: row_start     ! index of local starting row
+    integer :: row_end       ! index of local final row
+    integer :: neig_mat_idx  ! matrix index of neighbor cell
+    integer :: scatt_mat_idx ! matrix index for h-->g scattering terms
 
     ! get rank and max rank of procs
     call MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
-    call MPI_COMM_SIZE(MPI_COMM_WORLD,size,ierr)
+    call MPI_COMM_SIZE(MPI_COMM_WORLD,sizen,ierr)
 
     ! get local problem size
     n = this%n
 
     ! determine local size, divide evenly between all other procs
-    this%localn = n/(size)
+    this%localn = n/(sizen)
         
     ! add 1 more if less proc id is less than mod
-    if (rank < mod(n,size)) this%localn = this%localn + 1
-
+    if (rank < mod(n,sizen)) this%localn = this%localn + 1
 
     ! determine local starting row
     row_start = 0
-    if (rank < mod(n,size)) then
-      row_start = rank*(n/size+1)
+    if (rank < mod(n,sizen)) then
+      row_start = rank*(n/sizen+1)
     else
-      row_start = min(mod(n,size)*(n/size+1)+(rank - mod(n,size))*(n/size),n) 
+      row_start = min(mod(n,sizen)*(n/sizen+1)+(rank - mod(n,sizen))*(n/sizen),n) 
     end if
 
     ! determine local final row
     row_end = row_start + this%localn - 1
 
-    print*,'Me:',rank,this%localn,row_start,row_end
+    ! allocate counters
+    if (.not. allocated(this%d_nnz)) allocate(this%d_nnz(row_start:row_end))
+    if (.not. allocated(this%o_nnz)) allocate(this%o_nnz(row_start:row_end))
+    this % d_nnz = 0
+    this % o_nnz = 0
+
+    ! create single vector of these indices for boundary calculation
+    nxyz(1,:) = (/1,nx/)
+    nxyz(2,:) = (/1,ny/)
+    nxyz(3,:) = (/1,nz/)
+
+    ! begin loop around local rows
+    ROWS: do irow = row_start,row_end
+
+      ! initialize counters 
+      this%d_nnz(irow) = 1 ! already add in matrix diagonal
+      this%o_nnz(irow) = 0
+
+      ! get location indices
+      call matrix_to_indices(irow,g,i,j,k)
+
+      ! create boundary vector
+      bound = (/i,i,j,j,k,k/)
+
+      ! begin loop over leakages
+      LEAK: do l = 1,6
+
+        ! define (x,y,z) and (-,+) indices
+        xyz_idx = int(ceiling(real(l)/real(2)))  ! x=1, y=2, z=3
+        dir_idx = 2 - mod(l,2) ! -=1, +=2
+
+        ! calculate spatial indices of neighbor
+        neig_idx = (/i,j,k/)                ! begin with i,j,k
+        shift_idx = -2*mod(l,2) +1          ! shift neig by -1 or +1
+        neig_idx(xyz_idx) = shift_idx + neig_idx(xyz_idx)
+
+        ! check for global boundary
+        if (bound(l) /= nxyz(xyz_idx,dir_idx)) then
+
+          ! check for coremap 
+          if (cmfd_coremap) then
+
+            ! check for neighbor that is non-acceleartred
+            if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) /=         &
+           &    99999) then
+
+              ! get neighbor matrix index
+              call indices_to_matrix(g,neig_idx(1),neig_idx(2),neig_idx(3),    &
+             &                       neig_mat_idx)
+
+              ! record nonzero
+              if (((neig_mat_idx-1) >= row_start) .and.                        &
+             &   ((neig_mat_idx-1) <= row_end)) then
+                this%d_nnz(irow) = this%d_nnz(irow) + 1
+              else
+                this%o_nnz(irow) = this%o_nnz(irow) + 1
+              end if
+
+            end if
+
+          else
+
+            ! get neighbor matrix index
+            call indices_to_matrix(g,neig_idx(1),neig_idx(2),neig_idx(3),    &
+           &                       neig_mat_idx)
+
+            ! record nonzero
+            if (((neig_mat_idx-1) >= row_start) .and.                        &
+           &   ((neig_mat_idx-1) <= row_end)) then
+              this%d_nnz(irow) = this%d_nnz(irow) + 1
+            else
+              this%o_nnz(irow) = this%o_nnz(irow) + 1
+            end if
+
+          end if
+
+        end if
+
+      end do LEAK
+
+      ! begin loop over off diagonal in-scattering
+      SCATTR: do h = 1,ng
+
+        ! cycle though if h=g
+        if (h == g) then
+          cycle
+        end if
+
+        ! get neighbor matrix index
+        call indices_to_matrix(h,i,j,k,scatt_mat_idx)
+
+        ! record nonzero
+        if (((scatt_mat_idx-1) >= row_start) .and.                        &
+       &   ((scatt_mat_idx-1) <= row_end)) then
+          this%d_nnz(irow) = this%d_nnz(irow) + 1
+        else
+          this%o_nnz(irow) = this%o_nnz(irow) + 1
+        end if
+
+      end do SCATTR
+
+    end do ROWS
 
   end subroutine preallocate_loss_matrix
 
@@ -156,8 +275,8 @@ contains
     real(8) :: jn                   ! direction dependent leakage coeff to neig
     real(8) :: jo(6)                ! leakage coeff in front of cell flux
     real(8) :: jnet                 ! net leakage from jo
-    real(8) :: val                  ! temporary variable before saving to matrix 
-integer :: rank
+    real(8) :: val                  ! temporary variable before saving to 
+
     ! create single vector of these indices for boundary calculation
     nxyz(1,:) = (/1,nx/)
     nxyz(2,:) = (/1,ny/)
@@ -165,8 +284,7 @@ integer :: rank
 
     ! get row bounds for this processor
     call MatGetOwnershipRange(this%M,row_start,row_finish,ierr)
-    call MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
-print *,rank,row_start,row_finish-1
+
     ! begin iteration loops
     ROWS: do irow = row_start,row_finish-1 
 
@@ -292,8 +410,7 @@ print *,rank,row_start,row_finish-1
 
     ! print out operator to file
     call print_M_operator(this)
-    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-    stop
+
   end subroutine build_loss_matrix
 
 !===============================================================================
@@ -390,6 +507,10 @@ print *,rank,row_start,row_finish-1
 
     ! deallocate matrix
     call MatDestroy(this%M,ierr)
+
+    ! deallocate other parameters
+    if (allocated(this%d_nnz)) deallocate(this%d_nnz)
+    if (allocated(this%o_nnz)) deallocate(this%o_nnz)
 
   end subroutine destroy_M_operator
 

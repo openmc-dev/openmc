@@ -1,0 +1,338 @@
+module cmfd_jacobian_operator
+
+  use cmfd_loss_operator,     only: loss_operator,init_M_operator,             &
+ &                                  build_loss_matrix,destroy_M_operator
+  use cmfd_prod_operator,     only: prod_operator,init_F_operator,             &
+ &                                  build_prod_matrix,destroy_F_operator
+
+#ifdef PETSC
+  implicit none
+  private
+  public :: init_J_operator,build_jacobian_matrix,destroy_J_operator
+
+#include <finclude/petsc.h90>
+
+  integer  :: nx   ! maximum number of x cells
+  integer  :: ny   ! maximum number of y cells
+  integer  :: nz   ! maximum number of z cells
+  integer  :: ng   ! maximum number of groups
+  integer  :: ierr ! petsc error code
+
+  type, public :: jacobian_operator
+
+    Mat      :: J    ! petsc matrix for neutronic prod operator
+    integer  :: n    ! dimensions of matrix
+    integer  :: nnz  ! max number of nonzeros
+    integer  :: localn ! local size on proc
+    integer, allocatable :: d_nnz(:) ! vector of diagonal preallocation
+    integer, allocatable :: o_nnz(:) ! vector of off-diagonal preallocation
+
+  end type jacobian_operator
+
+  type, public :: operators 
+    type(loss_operator)   :: loss
+    type(prod_operator)   :: prod
+  end type operators
+
+contains
+
+!==============================================================================
+! INIT_J_OPERATOR
+!==============================================================================
+
+  subroutine init_J_operator(this,ctx)
+
+    type(jacobian_operator) :: this
+    type(operators)         :: ctx
+
+    ! get indices
+    call get_J_indices(this)
+
+    ! get preallocation
+    call preallocate_jacobian_matrix(this,ctx)
+
+    ! set up M operator
+    call MatCreateMPIAIJ(PETSC_COMM_WORLD,this%localn,this%localn,PETSC_DECIDE,&
+   & PETSC_DECIDE,PETSC_NULL_INTEGER,this%d_nnz,PETSC_NULL_INTEGER,this%o_nnz, &
+   & this%J,ierr)
+    call MatSetOption(this%J,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
+    call MatSetOption(this%J,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
+
+  end subroutine init_J_operator
+
+!==============================================================================
+! GET_J_INDICES
+!==============================================================================
+
+  subroutine get_J_indices(this)
+
+    use global, only: cmfd,cmfd_coremap
+
+    type(jacobian_operator) :: this
+
+    ! get maximum number of cells in each direction
+    nx = cmfd%indices(1)
+    ny = cmfd%indices(2)
+    nz = cmfd%indices(3)
+    ng = cmfd%indices(4)
+
+    ! get number of nonzeros
+    this%nnz = 7 + ng - 1
+
+    ! calculate dimensions of matrix
+    if (cmfd_coremap) then
+      this%n = cmfd % mat_dim * ng
+    else
+      this%n = nx*ny*nz*ng
+    end if
+
+    ! add 1 for eigenvalue row
+    this%n = this%n + 1
+
+  end subroutine get_J_indices
+
+!===============================================================================
+! PREALLOCATE_JACOBIAN_MATRIX
+!===============================================================================
+
+  subroutine preallocate_jacobian_matrix(this,ctx)
+
+    use global, only: cmfd,cmfd_coremap
+
+    type(jacobian_operator) :: this
+    type(operators)         :: ctx
+
+    integer :: rank          ! rank of processor
+    integer :: sizen         ! number of procs
+    integer :: i             ! iteration counter for x
+    integer :: j             ! iteration counter for y
+    integer :: k             ! iteration counter for z
+    integer :: g             ! iteration counter for groups
+    integer :: l             ! iteration counter for leakages
+    integer :: h             ! energy group when doing scattering
+    integer :: n             ! the extent of the matrix
+    integer :: irow          ! row counter
+    integer :: bound(6)      ! vector for comparing when looking for bound
+    integer :: xyz_idx       ! index for determining if x,y or z leakage
+    integer :: dir_idx       ! index for determining - or + face of cell
+    integer :: neig_idx(3)   ! spatial indices of neighbour
+    integer :: nxyz(3,2)     ! single vector containing bound. locations
+    integer :: shift_idx     ! parameter to shift index by +1 or -1
+    integer :: row_start     ! index of local starting row
+    integer :: row_end       ! index of local final row
+    integer :: neig_mat_idx  ! matrix index of neighbor cell
+    integer :: scatt_mat_idx ! matrix index for h-->g scattering terms
+
+    ! get rank and max rank of procs
+    call MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
+    call MPI_COMM_SIZE(MPI_COMM_WORLD,sizen,ierr)
+
+    ! get local problem size
+    n = this%n
+
+    ! determine local size, divide evenly between all other procs
+    this%localn = n/(sizen)
+
+    ! add 1 more if less proc id is less than mod
+    if (rank < mod(n,sizen)) this%localn = this%localn + 1
+
+    ! determine local starting row
+    row_start = 0
+    if (rank < mod(n,sizen)) then
+      row_start = rank*(n/sizen+1)
+    else
+      row_start = min(mod(n,sizen)*(n/sizen+1)+(rank - mod(n,sizen))*(n/sizen),n)
+    end if
+
+    ! determine local final row
+    row_end = row_start + this%localn - 1
+
+    ! allocate counters
+    if (.not. allocated(this%d_nnz)) allocate(this%d_nnz(row_start:row_end))
+    if (.not. allocated(this%o_nnz)) allocate(this%o_nnz(row_start:row_end))
+    this % d_nnz = 0
+    this % o_nnz = 0
+
+    ! start with pattern from loss matrix
+    this % d_nnz = ctx%loss%d_nnz
+    this % o_nnz = ctx%loss%o_nnz
+
+    ! append -F*phi term for last processor will take care of 1 for lambda
+    if (row_end == n - 1) then
+      this%d_nnz = this%d_nnz + 1
+    else
+      this%o_nnz = this%o_nnz + 1
+    end if
+
+    ! do last row which has all filled (already did lower left corner above)
+    if (row_end == n - 1) then
+      this % d_nnz(row_end) = this % d_nnz(row_end) + (row_end - row_start)
+      this % o_nnz(row_end) = this % o_nnz(row_end) + ((this%n-1) - (row_end - &
+     &                                                 row_start))
+    end if
+
+  end subroutine preallocate_jacobian_matrix
+
+!===============================================================================
+! BUILD_JACOBIAN_MATRIX creates the matrix representing loss of neutrons
+!===============================================================================
+
+  subroutine build_jacobian_matrix(snes,x,jac,jac_prec,flag,ctx,ierr)
+
+     ! formal variables
+     SNES            :: snes      ! the snes context
+     Vec             :: x         ! the solution vector
+     Mat             :: jac       ! the jacobian matrix
+     Mat             :: jac_prec  ! the jacobian preconditioner
+     MatStructure    :: flag      ! not used
+     type(operators) :: ctx       ! not used
+     integer         :: ierr      ! petsc error flag
+
+     ! local varibles
+     Vec                  :: phi      ! flux vector
+     Vec                  :: source   ! source vector
+     integer              :: n        ! problem size
+     integer              :: k        ! implied do loop counter
+     integer              :: ncols    ! number of nonzeros in cols
+     integer              :: irow     ! row counter
+     integer              :: row_start! starting local row on process
+     integer              :: row_end  ! ending local row on process
+     integer, allocatable :: nnzv(:)  ! vector of number of nonzeros for jac
+     integer, allocatable :: cols(:)  ! vector of column numbers
+     real(8)              :: lambda   ! eigenvalue
+     real(8), pointer     :: xptr(:)  ! pointer to solution vector
+     real(8), pointer     :: sptr(:)  ! pointer to source vector
+     real(8), allocatable :: vals(:)  ! vector of row values
+
+     ! create operators
+     call build_loss_matrix(ctx%loss)
+     call build_prod_matrix(ctx%prod)
+
+     ! get problem size
+     n = ctx%loss%n
+
+     ! get local size on each processor
+     call MatGetOwnershipRange(jac_prec,row_start,row_end,ierr)
+
+     ! allocate cols and  initialize to zero
+     if (.not. allocated(cols)) allocate(cols(maxval(ctx%loss%d_nnz+ctx%loss%o_nnz)))
+     if (.not. allocated(vals)) allocate(vals(maxval(ctx%loss%d_nnz+ctx%loss%o_nnz)))
+     cols = 0
+     vals = 0.0_8
+
+     ! get pointers to residual vector 
+     call VecGetArrayF90(x,xptr,ierr)
+
+     ! create petsc vector for flux
+     call VecCreate(PETSC_COMM_SELF,phi,ierr)
+     call VecSetSizes(phi,PETSC_DECIDE,n,ierr)
+     call VecSetFromOptions(phi,ierr)
+
+     ! extract flux and eigenvalue 
+     call VecPlaceArray(phi,xptr,ierr)
+     lambda = xptr(n+1)
+
+     ! compute math (M-lambda*F) M is overwritten here
+     call MatAXPY(ctx%loss%M,-1.0_8*lambda,ctx%prod%F,SUBSET_NONZERO_PATTERN,ierr)
+
+     ! create tmp petsc vector for source
+     call VecCreate(PETSC_COMM_SELF,source,ierr)
+     call VecSetSizes(source,PETSC_DECIDE,n,ierr)
+     call VecSetFromOptions(source,ierr)
+
+     ! perform math (-F*phi --> source)
+     call MatMult(ctx%prod%F,phi,source,ierr)
+     call VecScale(source,-1.0_8,ierr)
+
+     ! get pointer to source
+     call VecGetArrayF90(source,sptr,ierr)
+
+     ! begin loop to insert things into matrix
+     do irow = row_start,row_end - 1
+
+       ! don't do last row
+       if (irow == n) cycle 
+
+       ! get row of matrix
+       call MatGetRow(ctx%loss%M,irow,ncols,cols,vals,ierr)
+
+       ! set that row to Jacobian matrix
+       call MatSetValues(jac_prec,1,irow,ncols,cols(1:ncols),vals,INSERT_VALUES,ierr)
+
+       ! restore the row
+       call MatRestoreRow(ctx%loss%M,irow,ncols,cols,vals,ierr)
+
+       ! insert source value
+       call MatSetValue(jac_prec,irow,n,sptr(irow+1),INSERT_VALUES,ierr)
+
+     end do
+
+     ! set values in last row of matrix
+     if (row_end - 1 == n) then
+       call MatSetValues(jac_prec,1,n,n,(/(k,k=0,n-1)/),xptr(1:n),INSERT_VALUES,ierr)
+       call MatSetValue(jac_prec,n,n,1.0_8,INSERT_VALUES,ierr)
+     end if
+
+     ! assemble matrix
+     call MatAssemblyBegin(jac_prec,MAT_FINAL_ASSEMBLY,ierr)
+     call MatAssemblyEnd(jac_prec,MAT_FINAL_ASSEMBLY,ierr)
+     call MatAssemblyBegin(jac,MAT_FINAL_ASSEMBLY,ierr)
+     call MatAssemblyEnd(jac,MAT_FINAL_ASSEMBLY,ierr)
+
+     ! reset all vectors
+     call VecResetArray(phi,ierr)
+
+     ! restore all vectors
+     call VecRestoreArrayF90(x,xptr,ierr)
+     call VecRestoreArrayF90(source,sptr,ierr)
+
+     ! destroy all temporary objects
+     call VecDestroy(phi,ierr)
+     call VecDestroy(source,ierr)
+
+     ! deallocate all temporary space
+     if (allocated(cols)) deallocate(cols)
+     if (allocated(vals)) deallocate(vals)
+
+  end subroutine build_jacobian_matrix 
+
+!===============================================================================
+! PRINT_J_OPERATOR 
+!===============================================================================
+
+  subroutine print_J_operator(this)
+
+    use global, only: path_input
+
+    PetscViewer :: viewer
+
+    type(jacobian_operator) :: this
+
+    ! write out matrix in binary file (debugging)
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,trim(path_input)//'jacobian.bin'&
+   &     ,FILE_MODE_WRITE,viewer,ierr)
+    call MatView(this%J,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+
+  end subroutine print_J_operator
+
+!==============================================================================
+! DESTROY_J_OPERATOR
+!==============================================================================
+
+  subroutine destroy_J_operator(this)
+
+    type(jacobian_operator) :: this
+
+    ! deallocate matrix
+    call MatDestroy(this%J,ierr)
+
+    ! deallocate other parameters
+    if (allocated(this%d_nnz)) deallocate(this%d_nnz)
+    if (allocated(this%o_nnz)) deallocate(this%o_nnz)
+
+  end subroutine destroy_J_operator
+
+#endif
+   
+end module cmfd_jacobian_operator

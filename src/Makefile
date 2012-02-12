@@ -18,7 +18,7 @@ include OBJECTS
 F90X = /home/bherman/petsc/release/bin/mpif90 
 F90XFLAGS = -Wall -Wno-unused-variable
 COMPILER = petsc
-DEBUG    = yes
+DEBUG    = no
 PROFILE  = yes
 OPTIMIZE = no
 USE_MPI  = no 

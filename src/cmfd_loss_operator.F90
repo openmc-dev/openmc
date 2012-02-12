@@ -16,9 +16,10 @@ module cmfd_loss_operator
 
   type, public :: loss_operator
 
-    Mat      :: M    ! petsc matrix for neutronic loss operator
-    integer  :: n    ! dimensions of matrix
-    integer  :: nnz  ! max number of nonzeros
+    Mat      :: M      ! petsc matrix for neutronic loss operator
+    integer  :: n      ! dimensions of matrix
+    integer  :: nnz    ! max number of nonzeros
+    integer  :: localn ! local size on proc
 
   end type loss_operator
 
@@ -34,6 +35,9 @@ contains
 
     ! get indices
     call get_M_indices(this)
+
+    ! get preallocation
+    call preallocate_loss_matrix(this)
 
     ! set up M operator
     call MatCreateMPIAIJ(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,this%n,    &
@@ -70,6 +74,50 @@ contains
     end if
 
   end subroutine get_M_indices
+
+
+!===============================================================================
+! PREALLOCATE_LOSS_MATRIX
+!===============================================================================
+
+  subroutine preallocate_loss_matrix(this)
+
+    type(loss_operator) :: this
+
+    integer :: rank      ! rank of processor
+    integer :: size      ! number of procs
+    integer :: n         ! the extent of the matrix
+    integer :: row_start ! index of local starting row
+    integer :: row_end   ! index of local final row
+
+    ! get rank and max rank of procs
+    call MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
+    call MPI_COMM_SIZE(MPI_COMM_WORLD,size,ierr)
+
+    ! get local problem size
+    n = this%n
+
+    ! determine local size, divide evenly between all other procs
+    this%localn = n/(size)
+        
+    ! add 1 more if less proc id is less than mod
+    if (rank < mod(n,size)) this%localn = this%localn + 1
+
+
+    ! determine local starting row
+    row_start = 0
+    if (rank < mod(n,size)) then
+      row_start = rank*(n/size+1)
+    else
+      row_start = min(mod(n,size)*(n/size+1)+(rank - mod(n,size))*(n/size),n) 
+    end if
+
+    ! determine local final row
+    row_end = row_start + this%localn - 1
+
+    print*,'Me:',rank,this%localn,row_start,row_end
+
+  end subroutine preallocate_loss_matrix
 
 !===============================================================================
 ! BUILD_LOSS_MATRIX creates the matrix representing loss of neutrons
@@ -109,7 +157,7 @@ contains
     real(8) :: jo(6)                ! leakage coeff in front of cell flux
     real(8) :: jnet                 ! net leakage from jo
     real(8) :: val                  ! temporary variable before saving to matrix 
-
+integer :: rank
     ! create single vector of these indices for boundary calculation
     nxyz(1,:) = (/1,nx/)
     nxyz(2,:) = (/1,ny/)
@@ -117,7 +165,8 @@ contains
 
     ! get row bounds for this processor
     call MatGetOwnershipRange(this%M,row_start,row_finish,ierr)
-
+    call MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
+print *,rank,row_start,row_finish-1
     ! begin iteration loops
     ROWS: do irow = row_start,row_finish-1 
 
@@ -243,7 +292,8 @@ contains
 
     ! print out operator to file
     call print_M_operator(this)
-
+    call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+    stop
   end subroutine build_loss_matrix
 
 !===============================================================================

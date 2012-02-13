@@ -91,7 +91,15 @@ contains
     ! Criticality information
     if (criticality % cycles > 0) then
        problem_type = PROB_CRITICALITY
-       n_particles = criticality % particles
+
+       ! Check number of particles
+       if (len_trim(criticality % particles) == 0) then
+          message = "Need to specify number of particles per cycles."
+          call fatal_error()
+       end if
+       n_particles = str_to_int(criticality % particles)
+
+       ! Copy cycle information
        n_cycles    = criticality % cycles
        n_inactive  = criticality % inactive
        n_active    = n_cycles - n_inactive

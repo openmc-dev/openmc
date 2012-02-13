@@ -6,7 +6,7 @@
   <typedef name="criticality_xml">
     <component name="cycles" type="integer" />
     <component name="inactive" type="integer" />
-    <component name="particles" type="integer" />
+    <component name="particles" type="word" length="25" default="''" />
   </typedef>
 
   <typedef name="source_xml">

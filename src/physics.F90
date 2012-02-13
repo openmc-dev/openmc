@@ -96,7 +96,8 @@ contains
        end do
 
        ! Score track-length tallies
-       if (tallies_on) call score_tracklength_tally(p, distance)
+       if (tallies_on .and. n_tracklength_tallies > 0) &
+            call score_tracklength_tally(p, distance)
 
        if (d_collision > d_boundary) then
           last_cell = p % coord % cell
@@ -166,7 +167,8 @@ contains
     ! since the direction of the particle will change and we need to use the
     ! pre-collision direction to figure out what mesh surfaces were crossed
 
-    if (tallies_on) call score_surface_current(p)
+    if (tallies_on .and. n_current_tallies > 0) &
+         call score_surface_current(p)
 
     ! Sample nuclide/reaction for the material the particle is in
     call sample_reaction(p)
@@ -190,7 +192,8 @@ contains
     ! information on the outgoing energy for any tallies with an outgoing energy
     ! filter
 
-    if (tallies_on) call score_analog_tally(p)
+    if (tallies_on .and. n_analog_tallies > 0) &
+         call score_analog_tally(p)
 
     ! Reset number of particles banked during collision
     p % n_bank = 0

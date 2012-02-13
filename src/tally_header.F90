@@ -51,8 +51,9 @@ module tally_header
   end type TallyFilter
 
 !===============================================================================
-! TALLY describes a user-specified tally. The region of phase space to tally in
-! is given by the TallyBins and the scores are stored in a TallyScore array.
+! TALLYOBJECT describes a user-specified tally. The region of phase space to
+! tally in is given by the TallyBins and the scores are stored in a TallyScore
+! array.
 !===============================================================================
 
   type TallyObject

@@ -636,15 +636,18 @@ contains
 
     use xml_data_tallies_t
 
-    integer :: i           ! loop over user-specified tallies
-    integer :: j           ! loop over words
-    integer :: id          ! user-specified identifier
-    integer :: i_mesh      ! index in meshes array
-    integer :: n           ! size of arrays in mesh specification
-    integer :: n_words     ! number of words read
-    integer :: n_filters   ! number of filters
+    integer :: i             ! loop over user-specified tallies
+    integer :: j             ! loop over words
+    integer :: i_analog      ! index in analog_tallies array
+    integer :: i_tracklength ! index in tracklength_tallies array
+    integer :: i_current     ! index in current_tallies array
+    integer :: id            ! user-specified identifier
+    integer :: i_mesh        ! index in meshes array
+    integer :: n             ! size of arrays in mesh specification
+    integer :: n_words       ! number of words read
+    integer :: n_filters     ! number of filters
     integer :: filters(N_FILTER_TYPES) ! temporary list of filters
-    logical :: file_exists ! does tallies.xml file exist?
+    logical :: file_exists   ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: words(MAX_WORDS)
@@ -1031,6 +1034,44 @@ contains
           t % n_score_bins = n_words
        end if
 
+       ! Count number of tallies by type
+       if (t % type == TALLY_VOLUME) then
+          if (t % estimator == ESTIMATOR_ANALOG) then
+             n_analog_tallies = n_analog_tallies + 1
+          elseif (t % estimator == ESTIMATOR_TRACKLENGTH) then
+             n_tracklength_tallies = n_tracklength_tallies + 1
+          end if
+       elseif (t % type == TALLY_SURFACE_CURRENT) then
+          n_current_tallies = n_current_tallies + 1
+       end if
+    end do
+
+    ! Allocate list of pointers for tallies by type
+    allocate(analog_tallies(n_analog_tallies))
+    allocate(tracklength_tallies(n_tracklength_tallies))
+    allocate(current_tallies(n_current_tallies))
+
+    ! Set indices for tally pointer lists to zero
+    i_analog = 0
+    i_tracklength = 0
+    i_current = 0
+
+    do i = 1, n_tallies
+       t => tallies(i)
+
+       ! Increment the appropriate index and set pointer
+       if (t % type == TALLY_VOLUME) then
+          if (t % estimator == ESTIMATOR_ANALOG) then
+             i_analog = i_analog + 1
+             analog_tallies(i_analog) = i
+          elseif (t % estimator == ESTIMATOR_TRACKLENGTH) then
+             i_tracklength = i_tracklength + 1
+             tracklength_tallies(i_tracklength) = i
+          end if
+       elseif (t % type == TALLY_SURFACE_CURRENT) then
+          i_current = i_current + 1
+          current_tallies(i_current) = i
+       end if
     end do
 
   end subroutine read_tallies_xml

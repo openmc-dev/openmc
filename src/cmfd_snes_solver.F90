@@ -64,7 +64,7 @@ print *,'solving system'
 
   subroutine init_data()
 
-    use global, only: cmfd
+    use global, only: cmfd,rank,n_procs
 
     integer              :: k         ! implied do counter
     integer              :: n         ! problem size
@@ -79,25 +79,26 @@ print *,'solving system'
     call init_J_operator(jac_prec,ctx)
 
     ! get problem size
-    n = jac_prec%n - 1 
-
+    n = jac_prec%n
+print *,cmfd%phi
+print *,cmfd%keff
     ! create PETSc vectors
-    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n+1,resvec,ierr)
-    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n+1,xvec,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD,jac_prec%localn,PETSC_DECIDE,resvec,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD,jac_prec%localn,PETSC_DECIDE,xvec,ierr)
 
     ! get the local dimensions for each process
     call VecGetOwnershipRange(xvec,row_start,row_end,ierr)
 
-    if (row_end == n + 1) row_end = n
+    if (rank == n_procs - 1) row_end = n
 
     ! set flux in guess
-    call VecSetValues(xvec,row_end-row_start-1,(/(k,k=row_start,row_end-1)/),  &
+    call VecSetValues(xvec,row_end-row_start,(/(k,k=row_start,row_end-1)/),  &
    &                  cmfd%phi(row_start+1:row_end),INSERT_VALUES,ierr)
     call VecAssemblyBegin(xvec,ierr)
     call VecAssemblyEnd(xvec,ierr)
 
     ! set keff in guess
-    if (row_end == n) then
+    if (rank == n_procs - 1) then
       call VecGetArrayF90(xvec,xptr,ierr)
       xptr(size(xptr)) = 1.0_8/cmfd%keff
       call VecRestoreArrayF90(xvec,xptr,ierr)
@@ -172,6 +173,8 @@ print *,'solving system'
 
   subroutine compute_nonlinear_residual(snes,x,res,ierr)
 
+    use global, only: rank,n_procs,path_input
+
     ! arguments
     SNES        :: snes          ! nonlinear solver context
     Vec         :: x             ! independent vector
@@ -183,50 +186,39 @@ print *,'solving system'
     Vec         :: rphi          ! flux part of residual
     Vec         :: phiM          ! M part of residual flux calc
     integer     :: n             ! problem size
-    integer     :: row_start     ! local row start
-    integer     :: row_end       ! local row end
-    integer     :: n_procs       ! number of processors
     real(8)     :: lambda        ! eigenvalue
     real(8)     :: reslamb       ! residual for lambda
 
     real(8), pointer :: xptr(:)  ! pointer to solution vector
     real(8), pointer :: rptr(:)  ! pointer to residual vector
+PetscViewer :: viewer
 print *,'In residual'
 
-    ! get number of processors
-    call MPI_COMM_SIZE(MPI_COMM_WORLD,n_procs,ierr)
+    ! create operators
+    call build_loss_matrix(ctx%loss)
+    call build_prod_matrix(ctx%prod)
 
     ! get problem size
-    call VecGetSize(x,n,ierr)
-    n = n - 1 ! subtract off last row 
-
-    ! get the local dimensions for each process
-    call VecGetOwnershipRange(x,row_start,row_end,ierr)
+    n = ctx%loss%n 
 
     ! get pointers to vectors
     call VecGetArrayF90(x,xptr,ierr)
     call VecGetArrayF90(res,rptr,ierr)
 
     ! create petsc vector for flux
-    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n,phi,ierr)
-    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n,rphi,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD,ctx%loss%localn,PETSC_DECIDE,phi,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD,ctx%loss%localn,PETSC_DECIDE,rphi,ierr)
 
     ! extract flux and place in petsc vector 
     call VecPlaceArray(phi,xptr,ierr)
     call VecPlaceArray(rphi,rptr,ierr)
 
     ! extract eigenvalue and broadcast (going to want to make this more general in future)
-    if (row_end == n+1) then
-      lambda = xptr(size(xptr))
-    end if
+    if (rank == n_procs - 1) lambda = xptr(size(xptr)) 
     call MPI_BCAST(lambda,1,MPI_REAL8,n_procs-1,MPI_COMM_WORLD,ierr)
 
-    ! create operators
-    call build_loss_matrix(ctx%loss)
-    call build_prod_matrix(ctx%prod)
-
     ! create new petsc vectors to perform math
-    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n,phiM,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD,ctx%loss%localn,PETSC_DECIDE,phiM,ierr)
 
     ! calculate flux part of residual vector
     call MatMult(ctx%loss%M,phi,phiM,ierr)
@@ -237,7 +229,7 @@ print *,'In residual'
     call VecDot(phi,phi,reslamb,ierr)
 
     ! map to ptr
-    if (row_end == n+1) rptr(size(rptr)) = 0.5_8 - 0.5_8*reslamb
+    if (rank == n_procs) rptr(size(rptr)) = 0.5_8 - 0.5_8*reslamb
 
     ! reset arrays that are not used
     call VecResetArray(phi,ierr)
@@ -252,6 +244,17 @@ print *,'In residual'
     call VecDestroy(phiM,ierr)
     call VecDestroy(rphi,ierr)
 
+    ! write out matrix in binary file (debugging)
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,trim(path_input)//'residual.bin' &
+   &     ,FILE_MODE_WRITE,viewer,ierr)
+    call VecView(res,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,trim(path_input)//'x.bin' &
+   &     ,FILE_MODE_WRITE,viewer,ierr)
+    call VecView(x,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+
   end subroutine compute_nonlinear_residual
 
 !===============================================================================
@@ -260,9 +263,12 @@ print *,'In residual'
 
   subroutine extract_results()
 
-    use global, only: cmfd
+    use global, only: cmfd,rank,n_procs
 
     integer :: n ! problem size
+    integer              :: row_start ! local row start
+    integer              :: row_end   ! local row end
+    real(8),allocatable  :: mybuf(:)  ! temp buffer
     PetscScalar, pointer :: xptr(:) ! pointer to eigenvector info
 
     ! get problem size
@@ -270,13 +276,29 @@ print *,'In residual'
 
     ! also allocate in cmfd object
     if (.not. allocated(cmfd%phi)) allocate(cmfd%phi(n))
+    if (.not. allocated(mybuf)) allocate(mybuf(n))
+
+    ! get ownership range
+    call VecGetOwnershipRange(xvec,row_start,row_end,ierr)
+
+    ! resize the last proc
+    if (rank == n_procs - 1) row_end = row_end - 1
 
     ! convert petsc phi_object to cmfd_obj
     call VecGetArrayF90(xvec,xptr,ierr)
-    cmfd%phi = xptr(1:n)
+    cmfd%phi(row_start+1:row_end) = xptr(1:row_end - row_start) 
+
+    ! reduce result to all 
+    mybuf = 0.0_8
+    call MPI_ALLREDUCE(cmfd%phi,mybuf,n,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
+
+    ! move buffer to object and deallocate
+    cmfd%phi = mybuf
+    if(allocated(mybuf)) deallocate(mybuf)
 
     ! save eigenvalue
-    cmfd%keff = 1.0_8 / xptr(n+1)
+    if(rank == n_procs - 1) cmfd%keff = 1.0_8 / xptr(size(xptr))
+    call MPI_BCAST(cmfd%keff,1,MPI_REAL8,n_procs-1,MPI_COMM_WORLD,ierr)
     call VecRestoreArrayF90(xvec,xptr,ierr)
 
   end subroutine extract_results

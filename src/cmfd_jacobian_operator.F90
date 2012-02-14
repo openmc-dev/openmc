@@ -87,7 +87,7 @@ contains
     end if
 
     ! add 1 for eigenvalue row
-    this%n = this%n + 1
+!   this%n = this%n + 1
 
   end subroutine get_J_indices
 
@@ -97,13 +97,11 @@ contains
 
   subroutine preallocate_jacobian_matrix(this,ctx)
 
-    use global, only: cmfd,cmfd_coremap
+    use global, only: cmfd,cmfd_coremap,rank,n_procs
 
     type(jacobian_operator) :: this
     type(operators)         :: ctx
 
-    integer :: rank          ! rank of processor
-    integer :: sizen         ! number of procs
     integer :: i             ! iteration counter for x
     integer :: j             ! iteration counter for y
     integer :: k             ! iteration counter for z
@@ -123,25 +121,24 @@ contains
     integer :: neig_mat_idx  ! matrix index of neighbor cell
     integer :: scatt_mat_idx ! matrix index for h-->g scattering terms
 
-    ! get rank and max rank of procs
-    call MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
-    call MPI_COMM_SIZE(MPI_COMM_WORLD,sizen,ierr)
-
     ! get local problem size
     n = this%n
 
     ! determine local size, divide evenly between all other procs
-    this%localn = n/(sizen)
+    this%localn = n/(n_procs)
 
     ! add 1 more if less proc id is less than mod
-    if (rank < mod(n,sizen)) this%localn = this%localn + 1
+    if (rank < mod(n,n_procs)) this%localn = this%localn + 1
+
+    ! add another 1 on last proc
+    if (rank == n_procs - 1) this%localn = this%localn + 1
 
     ! determine local starting row
     row_start = 0
-    if (rank < mod(n,sizen)) then
-      row_start = rank*(n/sizen+1)
+    if (rank < mod(n,n_procs)) then
+      row_start = rank*(n/n_procs+1)
     else
-      row_start = min(mod(n,sizen)*(n/sizen+1)+(rank - mod(n,sizen))*(n/sizen),n)
+      row_start = min(mod(n,n_procs)*(n/n_procs+1)+(rank - mod(n,n_procs))*(n/n_procs),n)
     end if
 
     ! determine local final row
@@ -154,18 +151,23 @@ contains
     this % o_nnz = 0
 
     ! start with pattern from loss matrix
-    this % d_nnz = ctx%loss%d_nnz
-    this % o_nnz = ctx%loss%o_nnz
+    if (rank == n_procs - 1) then
+      this % d_nnz(row_start:row_end-1) = ctx%loss%d_nnz
+      this % o_nnz(row_start:row_end-1) = ctx%loss%o_nnz
+    else
+      this % d_nnz = ctx%loss%d_nnz
+      this % o_nnz = ctx%loss%o_nnz
+    end if
 
     ! append -F*phi term for last processor will take care of 1 for lambda
-    if (row_end == n - 1) then
+    if (rank == n_procs - 1) then
       this%d_nnz = this%d_nnz + 1
     else
       this%o_nnz = this%o_nnz + 1
     end if
 
     ! do last row which has all filled (already did lower left corner above)
-    if (row_end == n - 1) then
+    if (rank == n_procs - 1) then
       this % d_nnz(row_end) = this % d_nnz(row_end) + (row_end - row_start)
       this % o_nnz(row_end) = this % o_nnz(row_end) + ((this%n-1) - (row_end - &
      &                                                 row_start))
@@ -178,6 +180,8 @@ contains
 !===============================================================================
 
   subroutine build_jacobian_matrix(snes,x,jac,jac_prec,flag,ctx,ierr)
+
+     use global, only: rank,n_procs
 
      ! formal variables
      SNES            :: snes      ! the snes context
@@ -197,12 +201,16 @@ contains
      integer              :: irow     ! row counter
      integer              :: row_start! starting local row on process
      integer              :: row_end  ! ending local row on process
+     integer, allocatable :: dims(:)  ! vec of starting and ending rows
+     integer, allocatable :: dims1(:) ! vec of sizes on each proc
      integer, allocatable :: nnzv(:)  ! vector of number of nonzeros for jac
      integer, allocatable :: cols(:)  ! vector of column numbers
      real(8)              :: lambda   ! eigenvalue
      real(8), pointer     :: xptr(:)  ! pointer to solution vector
      real(8), pointer     :: sptr(:)  ! pointer to source vector
      real(8), allocatable :: vals(:)  ! vector of row values
+     real(8), allocatable :: phi_tmp(:) ! temp buffer for flux
+print *,'In Jacobian'
 
      ! create operators
      call build_loss_matrix(ctx%loss)
@@ -224,21 +232,18 @@ contains
      call VecGetArrayF90(x,xptr,ierr)
 
      ! create petsc vector for flux
-     call VecCreate(PETSC_COMM_SELF,phi,ierr)
-     call VecSetSizes(phi,PETSC_DECIDE,n,ierr)
-     call VecSetFromOptions(phi,ierr)
+     call VecCreateMPI(PETSC_COMM_WORLD,ctx%loss%localn,PETSC_DECIDE,phi,ierr)
 
-     ! extract flux and eigenvalue 
+     ! extract flux and eigenvalue
      call VecPlaceArray(phi,xptr,ierr)
-     lambda = xptr(n+1)
+     if (rank == n_procs - 1) lambda = xptr(size(xptr))
+     call MPI_BCAST(lambda,1,MPI_REAL8,n_procs-1,MPI_COMM_WORLD,ierr)
 
      ! compute math (M-lambda*F) M is overwritten here
      call MatAXPY(ctx%loss%M,-1.0_8*lambda,ctx%prod%F,SUBSET_NONZERO_PATTERN,ierr)
 
      ! create tmp petsc vector for source
-     call VecCreate(PETSC_COMM_SELF,source,ierr)
-     call VecSetSizes(source,PETSC_DECIDE,n,ierr)
-     call VecSetFromOptions(source,ierr)
+     call VecCreateMPI(PETSC_COMM_WORLD,ctx%loss%localn,PETSC_DECIDE,source,ierr)
 
      ! perform math (-F*phi --> source)
      call MatMult(ctx%prod%F,phi,source,ierr)
@@ -263,13 +268,33 @@ contains
        call MatRestoreRow(ctx%loss%M,irow,ncols,cols,vals,ierr)
 
        ! insert source value
-       call MatSetValue(jac_prec,irow,n,sptr(irow+1),INSERT_VALUES,ierr)
+       call MatSetValue(jac_prec,irow,n,sptr(irow-row_start+1),INSERT_VALUES,ierr)
 
      end do
 
+     ! allocate space for flux vector buffer
+     if (rank == n_procs - 1) then
+
+       ! temporary receive buffer
+       if (.not. allocated(phi_tmp)) allocate(phi_tmp(0:n-1))
+
+     end if
+
+     ! get size on each proc
+     if (.not. allocated(dims)) allocate(dims(0:n_procs))
+     if (.not. allocated(dims1)) allocate(dims1(0:n_procs-1))
+     call VecGetOwnershipRanges(phi,dims,ierr)
+     do k = 0,n_procs-1
+       dims1(k) = dims(k+1) - dims(k)
+     end do
+
+     ! gather data on all procs (will truncate xptr if needed for last proc)
+     call MPI_GATHERV(xptr,dims1(rank),MPI_REAL8,phi_tmp,dims1,dims(0:n_procs-1),MPI_REAL8,n_procs-1,MPI_COMM_WORLD,ierr)
+
      ! set values in last row of matrix
-     if (row_end - 1 == n) then
-       call MatSetValues(jac_prec,1,n,n,(/(k,k=0,n-1)/),xptr(1:n),INSERT_VALUES,ierr)
+     if (rank == n_procs - 1) then
+       phi_tmp = -1.0_8*phi_tmp ! negate the transpose
+       call MatSetValues(jac_prec,1,n,n,(/(k,k=0,n-1)/),phi_tmp,INSERT_VALUES,ierr)
        call MatSetValue(jac_prec,n,n,1.0_8,INSERT_VALUES,ierr)
      end if
 
@@ -293,6 +318,12 @@ contains
      ! deallocate all temporary space
      if (allocated(cols)) deallocate(cols)
      if (allocated(vals)) deallocate(vals)
+     if (allocated(phi_tmp)) deallocate(phi_tmp)
+     if (allocated(dims)) deallocate(dims)
+     if (allocated(dims1)) deallocate(dims1)
+
+     ! print jacobian out
+     call print_J_operator(jac_prec)
 
   end subroutine build_jacobian_matrix 
 
@@ -300,18 +331,17 @@ contains
 ! PRINT_J_OPERATOR 
 !===============================================================================
 
-  subroutine print_J_operator(this)
+  subroutine print_J_operator(jac)
 
     use global, only: path_input
 
+    Mat :: jac 
     PetscViewer :: viewer
-
-    type(jacobian_operator) :: this
 
     ! write out matrix in binary file (debugging)
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD,trim(path_input)//'jacobian.bin'&
    &     ,FILE_MODE_WRITE,viewer,ierr)
-    call MatView(this%J,viewer,ierr)
+    call MatView(jac,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 
   end subroutine print_J_operator

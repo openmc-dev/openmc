@@ -261,19 +261,13 @@ contains
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
 
-    do i = 1, n_tallies
-       t => tallies(i)
-
-       ! Surface current tallies are treated separately
-       if (t % type == TALLY_SURFACE_CURRENT) cycle
-
-       ! Skip tallies that are handled by track-length estimators
-       if (t % estimator == ESTIMATOR_TRACKLENGTH) cycle
+    do i = 1, n_analog_tallies
+       t => tallies(analog_tallies(i))
 
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(p, i, bins, found_bin)
+       call get_scoring_bins(p, analog_tallies(i), bins, found_bin)
        if (.not. found_bin) cycle
 
        ! =======================================================================
@@ -541,19 +535,13 @@ contains
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
 
-    do i = 1, n_tallies
-       t => tallies(i)
-
-       ! Surface current tallies are treated separately
-       if (t % type == TALLY_SURFACE_CURRENT) cycle
-
-       ! Skip tallies that are handled by track-length estimators
-       if (t % estimator == ESTIMATOR_ANALOG) cycle
+    do i = 1, n_tracklength_tallies
+       t => tallies(tracklength_tallies(i))
 
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(p, i, bins, found_bin)
+       call get_scoring_bins(p, tracklength_tallies(i), bins, found_bin)
        if (.not. found_bin) cycle
 
        ! =======================================================================
@@ -757,16 +745,13 @@ contains
 
     bins = 1
 
-    do i = 1, n_tallies
+    do i = 1, n_current_tallies
        ! Copy starting and ending location of particle
        xyz0 = p % last_xyz
        xyz1 = p % coord0 % xyz
 
        ! Get pointer to tally
-       t => tallies(i)
-
-       ! Skip non-surface-current tallies
-       if (t % type /= TALLY_SURFACE_CURRENT) cycle
+       t => tallies(current_tallies(i))
 
        ! Determine indices for starting and ending location
        m => meshes(t % mesh)

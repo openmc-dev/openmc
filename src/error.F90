@@ -2,7 +2,7 @@ module error
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use global, only: master, free_memory, message, mpi_err
+  use global
 
 #ifdef MPI
   use mpi
@@ -73,6 +73,11 @@ contains
           write(ERROR_UNIT, fmt='(7X,A72)') message(72*(i-1)+1:72*i)
        end if
     end do
+    write(ERROR_UNIT,*)
+
+    ! Write information on current cycle and particle
+    write(ERROR_UNIT,'(1X,A,I11) ') 'Cycle:    ', current_cycle
+    write(ERROR_UNIT,'(1X,A,I11)')  'Particle: ', p % id
     write(ERROR_UNIT,*)
 
     ! Release memory from all allocatable arrays

@@ -323,7 +323,6 @@ contains
     use global, only: hdf5_output_file,hdf5_err
     use hdf5
     use hdf5_interface, only: hdf5_open_output, hdf5_close_output
-#endif
 
 ! integer(HID_T) :: file_id ! File identifier
     integer(HID_T) :: dataset_id ! Dataset identifier
@@ -473,6 +472,8 @@ contains
 
     ! close output file
     call hdf5_close_output()
+
+#endif
 
   end subroutine read_cmfd_hdf5
 

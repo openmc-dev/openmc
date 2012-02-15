@@ -135,7 +135,6 @@ contains
 #ifdef HDF5
     use hdf5
     use global, only: hdf5_output_file,hdf5_err
-#endif
 
 ! character(LEN=7), parameter :: filename = "cmfd.h5" ! File name
 !   character(LEN=4)  :: grpname = "cmfd" ! Group name
@@ -327,6 +326,8 @@ contains
 
     ! close the cycle
     call h5gclose_f(cycle_id,hdf5_err)
+
+#endif
 
   end subroutine write_cmfd_hdf5
 

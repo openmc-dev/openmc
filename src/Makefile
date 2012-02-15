@@ -15,14 +15,14 @@ include OBJECTS
 # User Options
 #===============================================================================
 
-F90X = /home/bherman/petsc/release/bin/mpif90 
+F90X = /home/bherman/petsc/release-ifort/bin/mpif90 
 F90XFLAGS = -Wall -Wno-unused-variable
 COMPILER = petsc
 DEBUG    = no
 PROFILE  = no
 OPTIMIZE = no
 USE_MPI  = no 
-USE_HDF5 = yes
+USE_HDF5 = no
 
 #===============================================================================
 # GNU Fortran compiler options

@@ -210,7 +210,6 @@ contains
      real(8), pointer     :: sptr(:)  ! pointer to source vector
      real(8), allocatable :: vals(:)  ! vector of row values
      real(8), allocatable :: phi_tmp(:) ! temp buffer for flux
-print *,'In Jacobian'
 
      ! create operators
      call build_loss_matrix(ctx%loss)

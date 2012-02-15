@@ -114,8 +114,18 @@ contains
      filename = trim(path_input) // "cmfd.xml"
      call read_xml_file_cmfd_t(filename)
 
-    ! allocate mesh
+    ! set global variables
     n_meshes = 1
+    n_tallies = 3
+    n_analog_tallies = 2
+    n_current_tallies = 1
+
+    ! Allocate list of pointers for tallies by type
+    allocate(analog_tallies(n_analog_tallies))
+    allocate(tracklength_tallies(n_tracklength_tallies))
+    allocate(current_tallies(n_current_tallies))
+
+    ! allocate mesh
     allocate(meshes(n_meshes))
     m => meshes(1)
 
@@ -165,7 +175,6 @@ contains
     call dict_add_key(mesh_dict, m % id, 1)
 
     ! allocate tallies
-    n_tallies = 3
     allocate(tallies(n_tallies))
 
     ! begin loop around tallies
@@ -232,6 +241,9 @@ contains
         t % score_bins(2) % scalar = SCORE_TOTAL
         t % score_bins(3) % scalar = SCORE_SCATTER_1
 
+        ! Increment the appropriate index and set pointer
+        analog_tallies(1) = 1
+
       else if (i == 2) then
 
         ! set tally estimator to analog
@@ -264,6 +276,9 @@ contains
         ! set macro_bins
         t % score_bins(1) % scalar = SCORE_NU_SCATTER
         t % score_bins(2) % scalar = SCORE_NU_FISSION
+
+        ! Increment the appropriate index and set pointer
+        analog_tallies(2) = 2
 
       else if (i == 3) then
 
@@ -303,6 +318,9 @@ contains
           t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) +    &
          &                                 product(m % dimension + 1) * 6
         end if
+
+        ! Increment the appropriate index and set pointer
+        current_tallies(1) = 3
 
       end if
 

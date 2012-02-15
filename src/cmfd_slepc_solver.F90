@@ -40,17 +40,17 @@ call timer_start(time_cmfd)
 
     ! initialize solver
     call init_solver()
-call timer_stop(time_cmfd)
-if(master) print *,'Init Time:',time_cmfd%elapsed
-call timer_reset(time_cmfd)
-call timer_start(time_cmfd)
+!all timer_stop(time_cmfd)
+!f(master) print *,'Init Time:',time_cmfd%elapsed
+!all timer_reset(time_cmfd)
+!all timer_start(time_cmfd)
     ! build operators
     call build_loss_matrix(loss)
     call build_prod_matrix(prod)
-call timer_stop(time_cmfd)
-if(master) print *,'Build Time',time_cmfd%elapsed
-call timer_reset(time_cmfd)
-call timer_start(time_cmfd)
+!all timer_stop(time_cmfd)
+!f(master) print *,'Build Time',time_cmfd%elapsed
+!all timer_reset(time_cmfd)
+!all timer_start(time_cmfd)
     ! set operators to EPS object
     call EPSSetOperators(eps,prod%F,loss%M,ierr)
 
@@ -59,15 +59,15 @@ call timer_start(time_cmfd)
 
     ! solve the system
     call EPSSolve(eps,ierr)
-call timer_stop(time_cmfd)
-if(master) print *,'Solve Time:',time_cmfd%elapsed
-call timer_reset(time_cmfd)
-call timer_start(time_cmfd)
+!all timer_stop(time_cmfd)
+!f(master) print *,'Solve Time:',time_cmfd%elapsed
+!all timer_reset(time_cmfd)
+!all timer_start(time_cmfd)
     ! extracts results to cmfd object
     call extract_results()
-call timer_stop(time_cmfd)
-if(master) print *,'Extraction Time:',time_cmfd%elapsed
-call timer_reset(time_cmfd)
+!all timer_stop(time_cmfd)
+!f(master) print *,'Extraction Time:',time_cmfd%elapsed
+!all timer_reset(time_cmfd)
     ! deallocate all slepc data
     call finalize()
 

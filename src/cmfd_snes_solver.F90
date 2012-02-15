@@ -33,20 +33,16 @@ contains
 !===============================================================================
 
   subroutine cmfd_snes_execute()
-print *,'executing slepc'
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
     ! call slepc solver 
     call cmfd_slepc_execute()
-print *,'initing data'
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
     ! initialize data
     call init_data()
-print *,'initing solver'
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
     ! initialize solver
     call init_solver()
-print *,'solving system'
-    call MPI_Barrier(MPI_COMM_WORLD,ierr)
+
     ! solve the system
     call SNESSolve(snes,PETSC_NULL,xvec,ierr)
 
@@ -80,8 +76,7 @@ print *,'solving system'
 
     ! get problem size
     n = jac_prec%n
-print *,cmfd%phi
-print *,cmfd%keff
+
     ! create PETSc vectors
     call VecCreateMPI(PETSC_COMM_WORLD,jac_prec%localn,PETSC_DECIDE,resvec,ierr)
     call VecCreateMPI(PETSC_COMM_WORLD,jac_prec%localn,PETSC_DECIDE,xvec,ierr)
@@ -129,9 +124,8 @@ print *,cmfd%keff
 
     ! set preconditioner
     call KSPGetPC(ksp,pc,ierr)
-!   call PCSetType(pc,PCILU,ierr)
-!   call PCFactorSetLevels(pc,25,ierr)
-    call PCSetType(pc,PCBJACOBI,ierr)
+    call PCSetType(pc,PCHYPRE,ierr)
+    call PCSetFromOptions(pc,ierr)
     call KSPSetFromOptions(ksp,ierr)
 
     ! create matrix free jacobian
@@ -192,7 +186,6 @@ print *,cmfd%keff
     real(8), pointer :: xptr(:)  ! pointer to solution vector
     real(8), pointer :: rptr(:)  ! pointer to residual vector
 PetscViewer :: viewer
-print *,'In residual'
 
     ! create operators
     call build_loss_matrix(ctx%loss)

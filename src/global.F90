@@ -87,11 +87,19 @@ module global
   type(StructuredMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
 
+  ! Pointers for analog, track-length, and surface-current tallies
+  integer, allocatable :: analog_tallies(:)
+  integer, allocatable :: tracklength_tallies(:)
+  integer, allocatable :: current_tallies(:)
+
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
 
-  integer :: n_meshes         ! # of structured meshes
-  integer :: n_tallies        ! # of tallies
+  integer :: n_meshes                  ! # of structured meshes
+  integer :: n_tallies                 ! # of tallies
+  integer :: n_analog_tallies      = 0 ! # of analog tallies
+  integer :: n_tracklength_tallies = 0 ! # of track-length tallies
+  integer :: n_current_tallies     = 0 ! # of surface current tallies
 
   ! Flag for turning tallies on
   logical :: tallies_on

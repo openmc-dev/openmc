@@ -96,7 +96,8 @@ contains
        end do
 
        ! Score track-length tallies
-       if (tallies_on) call score_tracklength_tally(p, distance)
+       if (tallies_on .and. n_tracklength_tallies > 0) &
+            call score_tracklength_tally(p, distance)
 
        if (d_collision > d_boundary) then
           last_cell = p % coord % cell
@@ -166,7 +167,8 @@ contains
     ! since the direction of the particle will change and we need to use the
     ! pre-collision direction to figure out what mesh surfaces were crossed
 
-    if (tallies_on) call score_surface_current(p)
+    if (tallies_on .and. n_current_tallies > 0) &
+         call score_surface_current(p)
 
     ! Sample nuclide/reaction for the material the particle is in
     call sample_reaction(p)
@@ -190,7 +192,8 @@ contains
     ! information on the outgoing energy for any tallies with an outgoing energy
     ! filter
 
-    if (tallies_on) call score_analog_tally(p)
+    if (tallies_on .and. n_analog_tallies > 0) &
+         call score_analog_tally(p)
 
     ! Reset number of particles banked during collision
     p % n_bank = 0
@@ -1142,7 +1145,7 @@ contains
        xi = prn()
        lc = lc + 2
        c_k = rxn % adist % data(lc + 2*NP + 1)
-       do k = 1, NP-1
+       do k = 1, NP - 1
           c_k1 = rxn % adist % data(lc + 2*NP + k+1)
           if (xi < c_k1) exit
           c_k = c_k1
@@ -1152,7 +1155,11 @@ contains
        mu0 = rxn % adist % data(lc + k)
        if (interp == HISTOGRAM) then
           ! Histogram interpolation
-          mu = mu0 + (xi - c_k)/p0
+          if (p0 > ZERO) then
+             mu = mu0 + (xi - c_k)/p0
+          else
+             mu = mu0
+          end if
 
        elseif (interp == LINEAR_LINEAR) then
           ! Linear-linear interpolation
@@ -1459,7 +1466,7 @@ contains
        r1 = prn()
        lc = lc + 2 ! start of EOUT
        c_k = edist % data(lc + 2*NP + 1)
-       do k = 1, NP-1
+       do k = 1, NP - 1
           c_k1 = edist % data(lc + 2*NP + k+1)
           if (r1 < c_k1) exit
           c_k = c_k1
@@ -1469,7 +1476,11 @@ contains
        p_l_k = edist % data(lc+NP+k)
        if (INTT == HISTOGRAM) then
           ! Histogram interpolation
-          E_out = E_l_k + (r1 - c_k)/p_l_k
+          if (p_l_k > ZERO) then
+             E_out = E_l_k + (r1 - c_k)/p_l_k
+          else
+             E_out = E_l_k
+          end if
 
        elseif (INTT == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about the
@@ -1686,7 +1697,7 @@ contains
        r1 = prn()
        lc = lc + 2 ! start of EOUT
        c_k = edist % data(lc + 2*NP + 1)
-       do k = 1, NP-1
+       do k = 1, NP - 1
           c_k1 = edist % data(lc + 2*NP + k+1)
           if (r1 < c_k1) exit
           c_k = c_k1
@@ -1696,7 +1707,11 @@ contains
        p_l_k = edist % data(lc+NP+k)
        if (INTT == HISTOGRAM) then
           ! Histogram interpolation
-          E_out = E_l_k + (r1 - c_k)/p_l_k
+          if (p_l_k > ZERO) then
+             E_out = E_l_k + (r1 - c_k)/p_l_k
+          else
+             E_out = E_l_k
+          end if
 
           ! Determine Kalbach-Mann parameters
           KM_R = edist % data(lc + 3*NP + k)
@@ -1829,7 +1844,7 @@ contains
        r1 = prn()
        lc = lc + 2 ! start of EOUT
        c_k = edist % data(lc + 2*NP + 1)
-       do k = 1, NP-1
+       do k = 1, NP - 1
           c_k1 = edist % data(lc + 2*NP + k+1)
           if (r1 < c_k1) exit
           c_k = c_k1
@@ -1839,7 +1854,11 @@ contains
        p_l_k = edist % data(lc+NP+k)
        if (INTT == HISTOGRAM) then
           ! Histogram interpolation
-          E_out = E_l_k + (r1 - c_k)/p_l_k
+          if (p_l_k > ZERO) then
+             E_out = E_l_k + (r1 - c_k)/p_l_k
+          else
+             E_out = E_l_k
+          end if
 
        elseif (INTT == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about the
@@ -1884,7 +1903,7 @@ contains
        r3 = prn()
        lc = lc + 2
        c_k = edist % data(lc + 2*NP + 1)
-       do k = 1, NP-1
+       do k = 1, NP - 1
           c_k1 = edist % data(lc + 2*NP + k+1)
           if (r3 < c_k1) exit
           c_k = c_k1
@@ -1894,7 +1913,11 @@ contains
        mu_k = edist % data(lc + k)
        if (JJ == HISTOGRAM) then
           ! Histogram interpolation
-          mu_out = mu_k + (r3 - c_k)/p_k
+          if (p_k > ZERO) then
+             mu_out = mu_k + (r3 - c_k)/p_k
+          else
+             mu_out = mu_k
+          end if
 
        elseif (JJ == LINEAR_LINEAR) then
           ! Linear-linear interpolation -- not sure how you come about the

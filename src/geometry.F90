@@ -266,7 +266,7 @@ contains
        ! forward slightly so that if the mesh boundary is on the surface, it is
        ! still processed
 
-       if (tallies_on) then
+       if (tallies_on .and. n_current_tallies > 0) then
           ! TODO: Find a better solution to score surface currents than
           ! physically moving the particle forward slightly
 
@@ -296,7 +296,7 @@ contains
        ! particle to change -- artificially move the particle slightly back in
        ! case the surface crossing in coincident with a mesh boundary
        
-       if (tallies_on) then
+       if (tallies_on .and. n_current_tallies > 0) then
           p % coord0 % xyz = p % coord0 % xyz - TINY_BIT * p % coord0 % uvw
           call score_surface_current(p)
           p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw

@@ -82,7 +82,7 @@ endif
 # use petsc compiler
 ifeq ($(COMPILER),petsc)
   F90 = ${FLINKER}
-  F90FLAGS := -ffree-form -I${PETSC_DIR}/include -I${SLEPC_DIR}/include \
+  F90FLAGS := -cpp -warn -assume byterecl -traceback -I${PETSC_DIR}/include -I${SLEPC_DIR}/include \
               -DMPI -DPETSC
   include ${SLEPC_DIR}/conf/slepc_common
   LDFLAGS = ${SLEPC_LIB}

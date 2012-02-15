@@ -9,7 +9,7 @@ module output
   use geometry_header, only: Cell, Universe, Surface, BASE_UNIVERSE
   use global
   use mesh_header,     only: StructuredMesh
-  use particle_header, only: Particle, LocalCoord
+  use particle_header, only: LocalCoord
   use string,          only: upper_case, to_str
   use tally_header,    only: TallyObject
 
@@ -199,9 +199,7 @@ contains
 ! PRINT_PARTICLE displays the attributes of a particle
 !===============================================================================
 
-  subroutine print_particle(p)
-
-    type(Particle),   pointer :: p
+  subroutine print_particle()
 
     integer                   :: i
     type(Cell),       pointer :: c => null()

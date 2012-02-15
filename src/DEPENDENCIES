@@ -19,7 +19,6 @@ cross_section.o: error.o
 cross_section.o: fission.o
 cross_section.o: global.o
 cross_section.o: material_header.o
-cross_section.o: particle_header.o
 cross_section.o: random_lcg.o
 cross_section.o: search.o
 
@@ -118,7 +117,6 @@ intercycle.o: global.o
 intercycle.o: mesh.o
 intercycle.o: mesh_header.o
 intercycle.o: output.o
-intercycle.o: particle_header.o
 intercycle.o: random_lcg.o
 intercycle.o: search.o
 intercycle.o: string.o
@@ -137,7 +135,6 @@ main.o: global.o
 main.o: initialize.o
 main.o: intercycle.o
 main.o: output.o
-main.o: particle_header.o
 main.o: physics.o
 main.o: plot.o
 main.o: random_lcg.o
@@ -159,7 +156,6 @@ output.o: string.o
 output.o: tally_header.o
 
 particle_header.o: constants.o
-particle_header.o: geometry_header.o
 
 physics.o: ace_header.o
 physics.o: constants.o
@@ -184,6 +180,7 @@ plot.o: geometry.o
 plot.o: geometry_header.o
 plot.o: global.o
 plot.o: particle_header.o
+plot.o: source.o
 
 search.o: constants.o
 search.o: error.o
@@ -193,6 +190,7 @@ source.o: ace_header.o
 source.o: bank_header.o
 source.o: constants.o
 source.o: error.o
+source.o: geometry_header.o
 source.o: global.o
 source.o: output.o
 source.o: particle_header.o

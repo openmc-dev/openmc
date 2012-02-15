@@ -6,8 +6,8 @@ module plot
                              cross_lattice, cell_contains
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
-  use particle_header, only: Particle, initialize_particle, LocalCoord,      &
-                             deallocate_coord
+  use particle_header, only: LocalCoord, deallocate_coord
+  use source,          only: initialize_particle
 
   implicit none
 
@@ -35,7 +35,6 @@ contains
     character(MAX_LINE_LEN) :: path_plot ! unit for binary plot file
     type(Cell),       pointer :: c    => null()
     type(Universe),   pointer :: univ => null()
-    type(Particle),   pointer :: p    => null()
     type(LocalCoord), pointer :: coord => null()
 
     ! Open plot file for binary writing
@@ -64,7 +63,7 @@ contains
     do while(xyz(2) > last_y_coord)
 
        ! initialize the particle and set starting coordinate and direction
-       call initialize_particle(p)
+       call initialize_particle()
 
        p % coord % xyz = xyz
        p % coord % uvw = (/ 1, 0, 0 /)
@@ -73,7 +72,7 @@ contains
        write(UNIT=UNIT_PLOT) p % coord % xyz
 
        ! Find cell that particle is currently in
-       call find_cell(p, found_cell)
+       call find_cell(found_cell)
 
        ! =======================================================================
        ! MOVE PARTICLE FORWARD TO NEXT CELL
@@ -89,7 +88,7 @@ contains
              p % coord0 % xyz = xyz
              p % coord0 % cell = univ % cells(i)
 
-             call distance_to_boundary(p, d, surface_crossed, lattice_crossed)
+             call distance_to_boundary(d, surface_crossed, lattice_crossed)
              if (d < distance) then
                 ! Check to make sure particle is actually going into this cell
                 ! by moving it slightly forward and seeing if the cell contains
@@ -98,7 +97,7 @@ contains
                 p % coord0 % xyz = p % coord0 % xyz + (d + TINY_BIT) * p % coord0 % uvw
 
                 c => cells(p % coord0 % cell)
-                if (.not. cell_contains(c, p)) cycle
+                if (.not. cell_contains(c)) cycle
 
                 ! Set new distance and retain pointer to this cell
                 distance = d
@@ -123,7 +122,7 @@ contains
           ! Process surface crossing for next cell
           p % coord0 % cell = NONE
           p % surface = -enter_surface
-          call cross_surface(p, enter_surface)
+          call cross_surface(enter_surface)
        end if
 
        ! =======================================================================
@@ -134,7 +133,7 @@ contains
           last_cell = p % coord % cell
 
           ! Calculate distance to next boundary
-          call distance_to_boundary(p, distance, surface_crossed, lattice_crossed)
+          call distance_to_boundary(distance, surface_crossed, lattice_crossed)
 
           ! Advance particle
           coord => p % coord0
@@ -163,10 +162,10 @@ contains
           p % coord % cell = 0
           if (lattice_crossed /= NONE) then
              p % surface = NONE
-             call cross_lattice(p, lattice_crossed)
+             call cross_lattice(lattice_crossed)
           else
              p % surface = surface_crossed
-             call cross_surface(p, last_cell)
+             call cross_surface(last_cell)
 
              ! Since boundary conditions are disabled in plotting mode, we need
              ! to manually add the last segment

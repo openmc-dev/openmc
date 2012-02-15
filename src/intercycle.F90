@@ -7,7 +7,6 @@ module intercycle
   use mesh,            only: get_mesh_bin
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message
-  use particle_header, only: Particle, initialize_particle
   use random_lcg,      only: prn, set_particle_seed, prn_skip
   use search,          only: binary_search
   use string,          only: to_str

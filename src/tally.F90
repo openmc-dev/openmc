@@ -237,9 +237,7 @@ contains
 ! triggered at every collision, not every event
 !===============================================================================
 
-  subroutine score_analog_tally(p)
-
-    type(Particle), pointer :: p
+  subroutine score_analog_tally()
 
     integer :: i
     integer :: j
@@ -267,7 +265,7 @@ contains
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(p, analog_tallies(i), bins, found_bin)
+       call get_scoring_bins(analog_tallies(i), bins, found_bin)
        if (.not. found_bin) cycle
 
        ! =======================================================================
@@ -418,7 +416,7 @@ contains
                 ! energy bins may have been scored to. The following logic treats
                 ! this special case and scores to multiple bins
 
-                call score_fission_eout(p, t, bins, j)
+                call score_fission_eout(t, bins, j)
                 cycle
 
              else
@@ -463,9 +461,8 @@ contains
 ! neutrons produced with different energies.
 !===============================================================================
 
-  subroutine score_fission_eout(p, t, bins, j)
+  subroutine score_fission_eout(t, bins, j)
 
-    type(Particle),    pointer :: p
     type(TallyObject), pointer :: t
     integer, intent(inout)     :: bins(N_FILTER_TYPES)
     integer, intent(in)        :: j
@@ -514,10 +511,9 @@ contains
 ! that require post-collision information.
 !===============================================================================
 
-  subroutine score_tracklength_tally(p, distance)
+  subroutine score_tracklength_tally(distance)
 
-    type(Particle), pointer :: p
-    real(8), intent(in)     :: distance
+    real(8), intent(in) :: distance
 
     integer :: i
     integer :: j
@@ -541,7 +537,7 @@ contains
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(p, tracklength_tallies(i), bins, found_bin)
+       call get_scoring_bins(tracklength_tallies(i), bins, found_bin)
        if (.not. found_bin) cycle
 
        ! =======================================================================
@@ -602,9 +598,8 @@ contains
 ! for a tally based on the particle's current attributes.
 !===============================================================================
 
-  subroutine get_scoring_bins(p, index_tally, bins, found_bin)
+  subroutine get_scoring_bins(index_tally, bins, found_bin)
 
-    type(Particle), pointer :: p
     integer, intent(in)     :: index_tally
     integer, intent(out)    :: bins(N_FILTER_TYPES)
     logical, intent(out)    :: found_bin
@@ -716,9 +711,7 @@ contains
 ! determining which mesh surfaces were crossed
 !===============================================================================
 
-  subroutine score_surface_current(p)
-
-    type(Particle),    pointer :: p
+  subroutine score_surface_current()
 
     integer :: i                    ! loop indices
     integer :: j                    ! loop indices

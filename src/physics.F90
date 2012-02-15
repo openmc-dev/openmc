@@ -1166,12 +1166,11 @@ contains
           call fatal_error()
        end if
 
-       if (abs(mu) > ONE) then
-          message = "Sampled cosine of angle outside [-1, 1)."
-          call warning()
+       ! Because of floating-point roundoff, it may be possible for mu to be
+       ! outside of the range [-1,1). In these cases, we just set mu to exactly
+       ! -1 or 1
 
-          mu = sign(ONE,mu)
-       end if
+       if (abs(mu) > ONE) mu = sign(ONE,mu)
          
     else
        message = "Unknown angular distribution type: " // trim(to_str(type))

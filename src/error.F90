@@ -1,6 +1,6 @@
 module error
 
-  use ISO_FORTRAN_ENV
+  use, intrinsic :: ISO_FORTRAN_ENV
 
   use global, only: master, free_memory, message, mpi_err
 
@@ -63,7 +63,6 @@ contains
        code = -1
     end if
 
-    ! Only allow master to print to screen
     write(ERROR_UNIT, fmt='(1X,A7)', advance='no') 'ERROR: '
 
     n_lines = (len_trim(message)-1)/72 + 1

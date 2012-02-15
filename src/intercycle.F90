@@ -1,6 +1,6 @@
 module intercycle
 
-  use ISO_FORTRAN_ENV
+  use, intrinsic :: ISO_FORTRAN_ENV
 
   use error,           only: fatal_error, warning
   use global

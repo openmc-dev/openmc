@@ -1,6 +1,6 @@
 module output
 
-  use ISO_FORTRAN_ENV
+  use, intrinsic :: ISO_FORTRAN_ENV
 
   use ace_header,      only: Nuclide, Reaction, UrrData
   use constants

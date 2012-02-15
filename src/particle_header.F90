@@ -1,7 +1,6 @@
 module particle_header
 
   use constants, only: NEUTRON, ONE, NONE, ZERO
-  use geometry_header, only: BASE_UNIVERSE
 
   implicit none
 
@@ -74,42 +73,6 @@ module particle_header
   end type Particle
 
 contains
-
-!===============================================================================
-! INITIALIZE_PARTICLE sets default attributes for a particle from the source
-! bank
-!===============================================================================
-
-  subroutine initialize_particle(p)
-
-    type(Particle), pointer :: p
-
-    ! TODO: if information on the cell, lattice, universe, and material is
-    ! passed through the fission bank to the source bank, no lookup would be
-    ! needed at the beginning of a cycle
-
-    p % type              = NEUTRON
-    p % alive             = .true.
-
-    ! clear attributes
-    p % surface       = NONE
-    p % cell_born     = NONE
-    p % material      = NONE
-    p % last_material = NONE
-    p % wgt           = ONE
-    p % last_wgt      = ONE
-    p % n_bank        = 0
-    p % n_collision   = 0
-
-    ! remove any original coordinates
-    call deallocate_coord(p % coord0)
-    
-    ! Set up base level coordinates
-    allocate(p % coord0)
-    p % coord0 % universe = BASE_UNIVERSE
-    p % coord             => p % coord0
-
-  end subroutine initialize_particle
 
 !===============================================================================
 ! DEALLOCATE_COORD removes all levels of coordinates below a given level. This

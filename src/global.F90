@@ -25,6 +25,11 @@ module global
   save
 
   ! ============================================================================
+  ! THE PARTICLE
+
+  type(Particle), pointer :: p => null()
+
+  ! ============================================================================
   ! GEOMETRY-RELATED VARIABLES
 
   ! Main arrays

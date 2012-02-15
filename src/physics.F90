@@ -12,7 +12,7 @@ module physics
   use global
   use interpolation,   only: interpolate_tab1
   use output,          only: write_message
-  use particle_header, only: Particle, LocalCoord
+  use particle_header, only: LocalCoord
   use random_lcg,      only: prn
   use search,          only: binary_search
   use string,          only: to_str
@@ -27,9 +27,7 @@ contains
 ! TRANSPORT encompasses the main logic for moving a particle through geometry.
 !===============================================================================
 
-  subroutine transport(p)
-
-    type(Particle), pointer :: p
+  subroutine transport()
 
     integer :: surface_crossed ! surface which particle is on
     integer :: lattice_crossed ! lattice boundary which particle crossed
@@ -42,7 +40,7 @@ contains
     type(LocalCoord), pointer :: coord => null()
 
     if (p % coord % cell == NONE) then
-       call find_cell(p, found_cell)
+       call find_cell(found_cell)
        ! Particle couldn't be located
        if (.not. found_cell) then
           message = "Could not locate particle " // trim(to_str(p % id))
@@ -73,10 +71,10 @@ contains
        ! material is the same as the last material and the energy of the
        ! particle hasn't changed, we don't need to lookup cross sections again.
 
-       if (p % material /= p % last_material) call calculate_xs(p)
+       if (p % material /= p % last_material) call calculate_xs()
 
        ! Find the distance to the nearest boundary
-       call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)
+       call distance_to_boundary(d_boundary, surface_crossed, lattice_crossed)
 
        ! Sample a distance to collision
        if (material_xs % total == ZERO) then
@@ -97,7 +95,7 @@ contains
 
        ! Score track-length tallies
        if (tallies_on .and. n_tracklength_tallies > 0) &
-            call score_tracklength_tally(p, distance)
+            call score_tracklength_tally(distance)
 
        if (d_collision > d_boundary) then
           last_cell = p % coord % cell
@@ -105,18 +103,18 @@ contains
           if (lattice_crossed /= NONE) then
              ! Particle crosses lattice boundary
              p % surface = NONE
-             call cross_lattice(p, lattice_crossed)
+             call cross_lattice(lattice_crossed)
              p % event = EVENT_LATTICE
           else
              ! Particle crosses surface
              p % surface = surface_crossed
-             call cross_surface(p, last_cell)
+             call cross_surface(last_cell)
              p % event = EVENT_SURFACE
           end if
        else
           ! collision
           p % surface = NONE
-          call collision(p)
+          call collision()
 
           ! Save coordinates at collision for tallying purposes
           p % last_xyz = p % coord0 % xyz
@@ -152,9 +150,7 @@ contains
 ! routine for that reaction
 !===============================================================================
 
-  subroutine collision(p)
-
-    type(Particle), pointer :: p
+  subroutine collision()
 
     ! Store pre-collision particle properties
     p % last_wgt = p % wgt
@@ -168,10 +164,10 @@ contains
     ! pre-collision direction to figure out what mesh surfaces were crossed
 
     if (tallies_on .and. n_current_tallies > 0) &
-         call score_surface_current(p)
+         call score_surface_current()
 
     ! Sample nuclide/reaction for the material the particle is in
-    call sample_reaction(p)
+    call sample_reaction()
 
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
@@ -193,7 +189,7 @@ contains
     ! filter
 
     if (tallies_on .and. n_analog_tallies > 0) &
-         call score_analog_tally(p)
+         call score_analog_tally()
 
     ! Reset number of particles banked during collision
     p % n_bank = 0
@@ -208,9 +204,7 @@ contains
 ! disappearance are treated implicitly.
 !===============================================================================
 
-  subroutine sample_reaction(p)
-
-    type(Particle), pointer :: p
+  subroutine sample_reaction()
 
     integer :: i             ! index over nuclides in a material
     integer :: index_nuclide ! index in nuclides array
@@ -324,7 +318,7 @@ contains
           end if
 
           ! Bank expected number of fission neutrons
-          call create_fission_sites(p, index_nuclide, rxn)
+          call create_fission_sites(index_nuclide, rxn)
 
        else
           ! If survival biasing is not turned on, then fission events can occur
@@ -340,7 +334,7 @@ contains
              prob = prob + micro_xs(index_nuclide) % fission
              if (prob > cutoff) then
                 rxn => nuc % reactions(nuc % index_fission(1))
-                call create_fission_sites(p, index_nuclide, rxn, .true.)
+                call create_fission_sites(index_nuclide, rxn, .true.)
                 p % alive = .false.
                 p % event = EVENT_FISSION
                 return
@@ -367,7 +361,7 @@ contains
 
                 ! Create fission bank sites if fission occus
                 if (prob > cutoff) then
-                   call create_fission_sites(p, index_nuclide, rxn, .true.)
+                   call create_fission_sites(index_nuclide, rxn, .true.)
                    p % alive = .false.
                    p % event = EVENT_FISSION
                    return
@@ -411,14 +405,14 @@ contains
 
        if (micro_xs(index_nuclide) % use_sab) then
           ! S(a,b) scattering
-          call sab_scatter(p, index_nuclide, mat % sab_table)
+          call sab_scatter(index_nuclide, mat % sab_table)
 
        else
           ! get pointer to elastic scattering reaction
           rxn => nuc % reactions(1)
 
           ! Perform collision physics for elastic scattering
-          call elastic_scatter(p, index_nuclide, rxn)
+          call elastic_scatter(index_nuclide, rxn)
 
        end if
 
@@ -460,7 +454,7 @@ contains
        end do
 
        ! Perform collision physics for inelastics scattering
-       call inelastic_scatter(p, nuc, rxn)
+       call inelastic_scatter(nuc, rxn)
 
     end if
 
@@ -476,9 +470,8 @@ contains
 ! need to be fixed
 !===============================================================================
 
-  subroutine elastic_scatter(p, index_nuclide, rxn)
+  subroutine elastic_scatter(index_nuclide, rxn)
 
-    type(Particle), pointer :: p
     integer, intent(in)     :: index_nuclide
     type(Reaction), pointer :: rxn
 
@@ -505,7 +498,7 @@ contains
 
     ! Sample velocity of target nucleus
     if (.not. micro_xs(index_nuclide) % use_ptable) then
-       call sample_target_velocity(p, nuc, v_t)
+       call sample_target_velocity(nuc, v_t)
     else
        v_t = ZERO
     end if
@@ -555,9 +548,8 @@ contains
 ! according to a specified S(a,b) table.
 !===============================================================================
 
-  subroutine sab_scatter(p, index_nuclide, index_sab)
+  subroutine sab_scatter(index_nuclide, index_sab)
 
-    type(Particle), pointer :: p
     integer, intent(in)     :: index_nuclide ! index in micro_xs
     integer, intent(in)     :: index_sab     ! index in sab_tables
 
@@ -721,9 +713,8 @@ contains
 ! for this method can be found in FRA-TM-123.
 !===============================================================================
 
-  subroutine sample_target_velocity(p, nuc, v_target)
+  subroutine sample_target_velocity(nuc, v_target)
 
-    type(Particle), pointer :: p
     type(Nuclide),  pointer :: nuc
     real(8), intent(out)    :: v_target(3)
 
@@ -810,9 +801,8 @@ contains
 ! neutrons produced from fission and creates appropriate bank sites.
 !===============================================================================
 
-  subroutine create_fission_sites(p, index_nuclide, rxn, event)
+  subroutine create_fission_sites(index_nuclide, rxn, event)
 
-    type(Particle), pointer :: p
     integer, intent(in)     :: index_nuclide
     type(Reaction), pointer :: rxn
     logical, optional       :: event
@@ -995,9 +985,8 @@ contains
 ! than fission), i.e. level scattering, (n,np), (n,na), etc.
 !===============================================================================
 
-  subroutine inelastic_scatter(p, nuc, rxn)
+  subroutine inelastic_scatter(nuc, rxn)
 
-    type(Particle), pointer :: p
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
@@ -1199,7 +1188,6 @@ contains
 
   subroutine rotate_angle(u, v, w, mu)
 
-!    type(Particle), pointer :: p
     real(8), intent(inout) :: u
     real(8), intent(inout) :: v
     real(8), intent(inout) :: w

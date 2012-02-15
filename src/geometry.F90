@@ -6,7 +6,7 @@ module geometry
   use geometry_header, only: Cell, Surface, Universe, Lattice
   use global
   use output,          only: write_message
-  use particle_header, only: Particle, LocalCoord, deallocate_coord
+  use particle_header, only: LocalCoord, deallocate_coord
   use string,          only: to_str
   use tally,           only: score_surface_current
 
@@ -18,10 +18,9 @@ contains
 ! CELL_CONTAINS determines whether a given point is inside a cell
 !===============================================================================
 
-  function cell_contains(c, p) result(in_cell)
+  function cell_contains(c) result(in_cell)
 
     type(Cell),     pointer :: c
-    type(Particle), pointer :: p
     logical                 :: in_cell
 
     integer, allocatable :: expression(:) ! copy of surfaces list
@@ -90,9 +89,8 @@ contains
 ! as it's within the geometry
 !===============================================================================
 
-  recursive subroutine find_cell(p, found, search_cells)
+  recursive subroutine find_cell(found, search_cells)
 
-    type(Particle), pointer  :: p
     logical, intent(inout)   :: found
     integer, optional        :: search_cells(:)
 
@@ -134,7 +132,7 @@ contains
        ! get pointer to cell
        c => cells(index_cell)
 
-       if (cell_contains(c, p)) then
+       if (cell_contains(c)) then
           ! Set cell on this level
           p % coord % cell = index_cell
 
@@ -159,7 +157,7 @@ contains
              p % coord => p % coord % next
              p % coord % universe = c % fill
 
-             call find_cell(p, found)
+             call find_cell(found)
              if (.not. found) exit
 
           elseif (c % type == CELL_LATTICE) then
@@ -210,7 +208,7 @@ contains
                 p % coord % universe  = lat % element(x,y)
              end if
 
-             call find_cell(p, found)
+             call find_cell(found)
              if (.not. found) exit
           end if
           
@@ -229,9 +227,8 @@ contains
 ! the geometry, is reflected, or crosses into a new lattice or cell
 !===============================================================================
 
-  subroutine cross_surface(p, last_cell)
+  subroutine cross_surface(last_cell)
 
-    type(Particle), pointer :: p
     integer, intent(in)     :: last_cell  ! last cell particle was in
 
     real(8) :: x        ! x-x0 for sphere
@@ -271,7 +268,7 @@ contains
           ! physically moving the particle forward slightly
 
           p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
-          call score_surface_current(p)
+          call score_surface_current()
        end if
 
        ! Display message
@@ -298,7 +295,7 @@ contains
        
        if (tallies_on .and. n_current_tallies > 0) then
           p % coord0 % xyz = p % coord0 % xyz - TINY_BIT * p % coord0 % uvw
-          call score_surface_current(p)
+          call score_surface_current()
           p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
        end if
 
@@ -396,7 +393,7 @@ contains
 
        if (associated(p % coord0 % next)) then
           call deallocate_coord(p % coord0 % next)
-          call find_cell(p, found)
+          call find_cell(found)
           if (.not. found) then
              message = "Couldn't find particle after reflecting from surface."
              call fatal_error()
@@ -421,14 +418,14 @@ contains
        ! If coming from negative side of surface, search all the neighboring
        ! cells on the positive side
        
-       call find_cell(p, found, surf % neighbor_pos)
+       call find_cell(found, surf % neighbor_pos)
        if (found) return
 
     elseif (p % surface < 0  .and. allocated(surf % neighbor_neg)) then
        ! If coming from positive side of surface, search all the neighboring
        ! cells on the negative side
        
-       call find_cell(p, found, surf % neighbor_neg)
+       call find_cell(found, surf % neighbor_neg)
        if (found) return
 
     end if
@@ -436,7 +433,7 @@ contains
     ! ==========================================================================
     ! COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
-    call find_cell(p, found)
+    call find_cell(found)
 
     ! Couldn't find next cell anywhere!
     if ((.not. found) .and. (.not. plotting)) then
@@ -452,9 +449,8 @@ contains
 ! CROSS_LATTICE moves a particle into a new lattice element
 !===============================================================================
 
-  subroutine cross_lattice(p, lattice_crossed)
+  subroutine cross_lattice(lattice_crossed)
 
-    type(Particle), pointer :: p
     integer, intent(in) :: lattice_crossed
 
     integer :: i_x   ! x index in lattice
@@ -511,7 +507,7 @@ contains
        p % coord => p % coord0
 
        ! Search for particle
-       call find_cell(p, found)
+       call find_cell(found)
        if (.not. found) then
           message = "Could not locate particle " // trim(to_str(p % id)) // &
                " after crossing a lattice boundary."
@@ -522,7 +518,7 @@ contains
        p % coord % universe = lat % element(i_x, i_y)
 
        ! Find cell in next lattice element
-       call find_cell(p, found)
+       call find_cell(found)
        if (.not. found) then
           ! In some circumstances, a particle crossing the corner of a cell may not
           ! be able to be found in the next universe. In this scenario we cut off
@@ -533,7 +529,7 @@ contains
           p % coord => p % coord0
 
           ! Search for particle
-          call find_cell(p, found)
+          call find_cell(found)
           if (.not. found) then
              message = "Could not locate particle " // trim(to_str(p % id)) // &
                   " after crossing a lattice boundary."
@@ -550,9 +546,8 @@ contains
 ! that has a parent cell, also include the surfaces of the edge of the universe.
 !===============================================================================
 
-  subroutine distance_to_boundary(p, dist, surface_crossed, lattice_crossed)
+  subroutine distance_to_boundary(dist, surface_crossed, lattice_crossed)
 
-    type(Particle), pointer     :: p
     real(8),        intent(out) :: dist
     integer,        intent(out) :: surface_crossed
     integer,        intent(out) :: lattice_crossed

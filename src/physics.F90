@@ -911,6 +911,11 @@ contains
              lc = lc + 2 + 2*NR + 2*NE + 1
           end do
 
+          ! if the sum of the probabilities is slightly less than one and the
+          ! random number is greater, j will be greater than nuc %
+          ! n_precursor -- check for this condition
+          j = min(j, nuc % n_precursor)
+
           ! select energy distribution for group j
           law = nuc % nu_d_edist(j) % law
           edist => nuc % nu_d_edist(j)
@@ -1139,6 +1144,9 @@ contains
           if (xi < c_k1) exit
           c_k = c_k1
        end do
+
+       ! check to make sure k is <= NP - 1
+       k = min(k, NP - 1)
 
        p0  = rxn % adist % data(lc + NP + k)
        mu0 = rxn % adist % data(lc + k)
@@ -1459,6 +1467,9 @@ contains
           c_k = c_k1
        end do
 
+       ! check to make sure k is <= NP - 1
+       k = min(k, NP - 1)
+
        E_l_k = edist % data(lc+k)
        p_l_k = edist % data(lc+NP+k)
        if (INTT == HISTOGRAM) then
@@ -1690,6 +1701,9 @@ contains
           c_k = c_k1
        end do
 
+       ! check to make sure k is <= NP - 1
+       k = min(k, NP - 1)
+
        E_l_k = edist % data(lc+k)
        p_l_k = edist % data(lc+NP+k)
        if (INTT == HISTOGRAM) then
@@ -1837,6 +1851,9 @@ contains
           c_k = c_k1
        end do
 
+       ! check to make sure k is <= NP - 1
+       k = min(k, NP - 1)
+
        E_l_k = edist % data(lc+k)
        p_l_k = edist % data(lc+NP+k)
        if (INTT == HISTOGRAM) then
@@ -1895,6 +1912,9 @@ contains
           if (r3 < c_k1) exit
           c_k = c_k1
        end do
+
+       ! check to make sure k is <= NP - 1
+       k = min(k, NP - 1)
 
        p_k  = edist % data(lc + NP + k)
        mu_k = edist % data(lc + k)

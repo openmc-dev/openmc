@@ -118,7 +118,7 @@ module global
   integer    :: n_cycles    = 500   ! # of cycles
   integer    :: n_inactive  = 50    ! # of inactive cycles
   integer    :: n_active            ! # of active cycles
-  integer    :: current_cycle       ! current cycle
+  integer    :: current_cycle = 0   ! current cycle
 
   ! External source
   type(ExtSource), target :: external_source

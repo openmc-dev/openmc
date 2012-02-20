@@ -76,9 +76,11 @@ contains
     write(ERROR_UNIT,*)
 
     ! Write information on current cycle and particle
-    write(ERROR_UNIT,'(1X,A,I11) ') 'Cycle:    ', current_cycle
-    write(ERROR_UNIT,'(1X,A,I11)')  'Particle: ', p % id
-    write(ERROR_UNIT,*)
+    if (current_cycle > 0) then
+       write(ERROR_UNIT,'(1X,A,I11) ') 'Cycle:    ', current_cycle
+       write(ERROR_UNIT,'(1X,A,I11)')  'Particle: ', p % id
+       write(ERROR_UNIT,*)
+    end if
 
     ! Release memory from all allocatable arrays
     call free_memory()

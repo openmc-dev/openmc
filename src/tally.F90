@@ -1482,15 +1482,11 @@ contains
     integer :: i    ! index in tallies array
     integer :: j    ! loop index for filter bins
     integer :: k    ! loop index for scoring bins
-    integer :: n    ! number of active cycles
     real(8) :: val  ! sum(x)
     real(8) :: val2 ! sum(x*x)
     real(8) :: mean ! mean value
     real(8) :: std  ! standard deviation of the mean
     type(TallyObject), pointer :: t
-
-    ! Number of active cycles
-    n = n_cycles - n_inactive
 
     do i = 1, n_tallies
        t => tallies(i)
@@ -1502,8 +1498,8 @@ contains
              val2 = t % scores(j,k) % val_sq
 
              ! Calculate mean and standard deviation
-             mean = val/n
-             std = sqrt((val2/n - mean*mean)/n)
+             mean = val/n_active
+             std = sqrt((val2/n_active - mean*mean)/n_active)
 
              ! Copy back into TallyScore
              t % scores(j,k) % val    = mean

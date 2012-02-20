@@ -77,15 +77,15 @@ module constants
 
   ! Lattice types
   integer, parameter ::  &
-       LATTICE_RECT = 1, &
-       LATTICE_HEX  = 2
+       LATTICE_RECT = 1, & ! Rectangular lattice
+       LATTICE_HEX  = 2    ! Hexagonal lattice
 
   ! Lattice boundary crossings
   integer, parameter ::    &
-       LATTICE_LEFT   = 1, &
-       LATTICE_RIGHT  = 2, &
-       LATTICE_BOTTOM = 3, &
-       LATTICE_TOP    = 4
+       LATTICE_LEFT   = 1, & ! Flag for crossing left lattice boundary
+       LATTICE_RIGHT  = 2, & ! Flag for crossing right lattice boundary
+       LATTICE_BOTTOM = 3, & ! Flag for crossing bottom lattice boundary
+       LATTICE_TOP    = 4    ! Flag for crossing top lattice boundary
 
   ! Surface types
   integer, parameter ::  &
@@ -320,4 +320,3 @@ module constants
   integer, parameter :: UNIT_PLOT    = 13 ! unit # for writing plot file
 
 end module constants
-

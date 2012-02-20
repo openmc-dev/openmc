@@ -6,7 +6,7 @@ module initialize
   use datatypes,        only: dict_create, dict_add_key, dict_get_key,         &
                               dict_has_key, dict_keys
   use datatypes_header, only: ListKeyValueII, DictionaryII
-  use energy_grid,      only: unionized_grid, original_indices
+  use energy_grid,      only: unionized_grid
   use error,            only: fatal_error
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Surface, Universe, Lattice, BASE_UNIVERSE
@@ -106,7 +106,6 @@ contains
        ! Construct unionized energy grid from cross-sections
        call timer_start(time_unionize)
        call unionized_grid()
-       call original_indices()
        call timer_stop(time_unionize)
 
        ! Create tally map
@@ -143,11 +142,9 @@ contains
   subroutine setup_mpi()
 
 #ifdef MPI
-    integer        :: i
     integer        :: bank_blocks(4) ! Count for each datatype
     integer        :: bank_types(4)  ! Datatypes
     integer(MPI_ADDRESS_KIND) :: bank_disp(4)   ! Displacements
-    integer(MPI_ADDRESS_KIND) :: base
     type(Bank)     :: b
 
     mpi_enabled = .true.
@@ -187,10 +184,7 @@ contains
     call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
 
     ! Adjust displacements 
-    base = bank_disp(1)
-    do i = 1, 4
-       bank_disp(i) = bank_disp(i) - base
-    end do
+    bank_disp = bank_disp - bank_disp(1)
     
     ! Define MPI_BANK for fission sites
     bank_blocks = (/ 1, 3, 3, 1 /)
@@ -365,11 +359,11 @@ contains
 
   subroutine adjust_indices()
 
-    integer                 :: i            ! index in cells array
-    integer                 :: j            ! index over surface list
-    integer                 :: k
-    integer                 :: i_array      ! index in surfaces/materials array 
-    integer                 :: id           ! user-specified id
+    integer :: i       ! index for various purposes
+    integer :: j       ! index for various purposes
+    integer :: k       ! loop index for lattices
+    integer :: i_array ! index in surfaces/materials array 
+    integer :: id      ! user-specified id
     type(Cell),        pointer :: c => null()
     type(Lattice),     pointer :: l => null()
     type(TallyObject), pointer :: t => null()

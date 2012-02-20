@@ -166,6 +166,7 @@ module global
   type(Timer) :: time_inactive    ! timer for inactive cycles
   type(Timer) :: time_active      ! timer for active cycles
   type(Timer) :: time_compute     ! timer for computation
+  type(Timer) :: time_finalize    ! timer for finalization
 
   ! ===========================================================================
   ! VARIANCE REDUCTION VARIABLES

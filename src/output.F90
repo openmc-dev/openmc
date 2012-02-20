@@ -937,6 +937,7 @@ contains
     write(ou,100) "  SEND/RECV source sites", time_ic_sendrecv % elapsed
     write(ou,100) "Total time in inactive cycles", time_inactive % elapsed
     write(ou,100) "Total time in active cycles", time_active % elapsed
+    write(ou,100) "Total time for finalization", time_finalize % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 
     ! display header block

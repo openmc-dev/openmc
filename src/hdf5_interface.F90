@@ -622,6 +622,7 @@ contains
     call hdf5_make_double(timing_group, "time_sendrecv", time_ic_sendrecv % elapsed)
     call hdf5_make_double(timing_group, "time_inactive", time_inactive % elapsed)
     call hdf5_make_double(timing_group, "time_active", time_active % elapsed)
+    call hdf5_make_double(timing_group, "time_finalize", time_finalize % elapsed)
     call hdf5_make_double(timing_group, "time_total", time_total % elapsed)
 
     ! Add descriptions to timing data
@@ -645,6 +646,8 @@ contains
          "description", "Total time in inactive cycles (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_active", &
          "description", "Total time in active cycles (s)", hdf5_err)
+    call h5ltset_attribute_string_f(timing_group, "time_finalize", &
+         "description", "Total time for finalization (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_total", &
          "description", "Total time elapsed (s)", hdf5_err)
 

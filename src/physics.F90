@@ -1200,9 +1200,14 @@ contains
     real(8), intent(inout) :: w
     real(8), intent(in)    :: mu ! cosine of angle in lab
 
-    real(8) :: phi, sinphi, cosphi
-    real(8) :: a,b
-    real(8) :: u0, v0, w0
+    real(8) :: phi    ! azimuthal angle
+    real(8) :: sinphi ! sine of azimuthal angle
+    real(8) :: cosphi ! cosine of azimuthal angle
+    real(8) :: a      ! sqrt(1 - mu^2)
+    real(8) :: b      ! sqrt(1 - w^2)
+    real(8) :: u0     ! original cosine in x direction
+    real(8) :: v0     ! original cosine in y direction
+    real(8) :: w0     ! original cosine in z direction
 
     ! Copy original directional cosines
     u0 = u
@@ -1234,17 +1239,18 @@ contains
   end subroutine rotate_angle
     
 !===============================================================================
-! SAMPLE_ENERGY
+! SAMPLE_ENERGY samples an outgoing energy distribution, either for a secondary
+! neutron from a collision or for a prompt/delayed fission neutron
 !===============================================================================
 
   recursive subroutine sample_energy(edist, E_in, E_out, mu_out, A, Q)
 
     type(DistEnergy),  pointer       :: edist
-    real(8), intent(in)              :: E_in
-    real(8), intent(out)             :: E_out
-    real(8), intent(inout), optional :: mu_out
-    real(8), intent(in),    optional :: A
-    real(8), intent(in),    optional :: Q
+    real(8), intent(in)              :: E_in   ! incoming energy of neutron
+    real(8), intent(out)             :: E_out  ! outgoing energy
+    real(8), intent(inout), optional :: mu_out ! outgoing cosine of angle
+    real(8), intent(in),    optional :: A      ! mass number of nuclide
+    real(8), intent(in),    optional :: Q      ! Q-value of reaction
 
     integer :: i           ! index on incoming energy grid
     integer :: k           ! sampled index on outgoing grid
@@ -1282,7 +1288,6 @@ contains
     real(8) :: p_k     ! angular pdf in bin k
     real(8) :: p_k1    ! angular pdf in bin k+1
 
-    real(8) :: E_cm
     real(8) :: r           ! interpolation factor on incoming energy
     real(8) :: frac        ! interpolation factor on outgoing energy
     real(8) :: U           ! restriction energy
@@ -1381,9 +1386,7 @@ contains
        ! =======================================================================
        ! INELASTIC LEVEL SCATTERING
 
-       E_cm = edist%data(2) * (E_in - edist%data(1))
-       
-       E_out = E_cm
+       E_out = edist%data(2) * (E_in - edist%data(1))
 
     case (4)
        ! =======================================================================

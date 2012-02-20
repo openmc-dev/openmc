@@ -937,7 +937,9 @@ contains
     integer, intent(in) :: lid    ! length of interpolation data
     integer             :: length ! length of energy distribution (LDAT)
 
-    integer :: i,j,k
+    integer :: i     ! loop index for incoming energies
+    integer :: j     ! loop index for outgoing energies
+    integer :: k     ! dummy index in XSS
     integer :: NR    ! number of interpolation regions
     integer :: NE    ! number of incoming energies
     integer :: NP    ! number of points in outgoing energy distribution

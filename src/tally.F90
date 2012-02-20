@@ -239,16 +239,16 @@ contains
 
   subroutine score_analog_tally()
 
-    integer :: i
-    integer :: j
-    integer :: bins(N_FILTER_TYPES)
-    integer :: score_index
-    integer :: score_bin
-    real(8) :: score
-    real(8) :: last_wgt
-    real(8) :: wgt
-    real(8) :: mu
-    logical :: found_bin
+    integer :: i                    ! loop index for analog tallies
+    integer :: j                    ! loop index for scoring bins
+    integer :: bins(N_FILTER_TYPES) ! scoring bin combination
+    integer :: score_index          ! single index for single bin
+    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
+    real(8) :: score                ! analog tally score
+    real(8) :: last_wgt             ! pre-collision particle weight
+    real(8) :: wgt                  ! post-collision particle weight
+    real(8) :: mu                   ! cosine of angle of collision
+    logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer :: t => null()
 
     ! Copy particle's pre- and post-collision weight and angle
@@ -465,13 +465,13 @@ contains
 
     type(TallyObject), pointer :: t
     integer, intent(inout)     :: bins(N_FILTER_TYPES)
-    integer, intent(in)        :: j
+    integer, intent(in)        :: j ! index for score
 
-    integer :: k
-    integer :: bin_energyout
-    integer :: score_index
-    real(8) :: score
-    real(8) :: E_out
+    integer :: k             ! loop index for bank sites
+    integer :: bin_energyout ! original outgoing energy bin
+    integer :: score_index   ! index for scoring bin combination
+    real(8) :: score         ! actualy score
+    real(8) :: E_out         ! energy of fission bank site
 
     ! save original outgoing energy bin and score index
     bin_energyout = bins(FILTER_ENERGYOUT)
@@ -515,14 +515,14 @@ contains
 
     real(8), intent(in) :: distance
 
-    integer :: i
-    integer :: j
-    integer :: bins(N_FILTER_TYPES)
-    integer :: score_index
-    integer :: score_bin
-    real(8) :: flux
-    real(8) :: score
-    logical :: found_bin
+    integer :: i                    ! loop index for tracklength tallies
+    integer :: j                    ! loop index for scoring bins
+    integer :: bins(N_FILTER_TYPES) ! scoring bin combination
+    integer :: score_index          ! single index for single bin
+    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
+    real(8) :: flux                 ! tracklength estimate of flux
+    real(8) :: score                ! actual score (e.g., flux*xs)
+    logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer :: t => null()
 
     ! Determine track-length estimate of flux
@@ -604,9 +604,9 @@ contains
     integer, intent(out)    :: bins(N_FILTER_TYPES)
     logical, intent(out)    :: found_bin
 
-    integer :: i
-    integer :: n
-    integer :: mesh_bin
+    integer :: i        ! loop index for filters
+    integer :: n        ! number of bins for single filter
+    integer :: mesh_bin ! index for mesh bin
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 
@@ -1424,7 +1424,7 @@ contains
     type(TallyObject), pointer :: t           ! tally object
     integer, intent(in)        :: filter_type ! type of filter
     integer, intent(in)        :: bin         ! bin in filter array
-    character(30)              :: label         ! user-specified identifier
+    character(30)              :: label       ! user-specified identifier
 
     integer              :: i      ! index in cells/surfaces/etc array
     integer, allocatable :: ijk(:) ! indices in mesh
@@ -1486,7 +1486,7 @@ contains
     real(8) :: val2 ! sum(x*x)
     real(8) :: mean ! mean value
     real(8) :: std  ! standard deviation of the mean
-    type(TallyObject), pointer :: t
+    type(TallyObject), pointer :: t => null()
 
     do i = 1, n_tallies
        t => tallies(i)

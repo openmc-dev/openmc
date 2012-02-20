@@ -280,12 +280,12 @@ contains
 #ifdef MPI
   subroutine reduce_tallies()
 
-    integer :: i
-    integer :: n
-    integer :: m
-    integer :: n_bins
-    real(8), allocatable :: tally_temp(:,:)
-    type(TallyObject), pointer :: t
+    integer :: i      ! loop index for tallies
+    integer :: n      ! number of filter bins
+    integer :: m      ! number of score bins
+    integer :: n_bins ! total number of bins
+    real(8), allocatable :: tally_temp(:,:) ! contiguous array of scores
+    type(TallyObject), pointer :: t => null()
 
     do i = 1, n_tallies
        t => tallies(i)

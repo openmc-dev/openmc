@@ -81,14 +81,14 @@ contains
 
   subroutine header(msg, unit, level)
 
-    character(*), intent(in) :: msg
-    integer, optional :: unit
-    integer, optional :: level
+    character(*), intent(in) :: msg ! header message
+    integer, optional :: unit       ! unit to write to
+    integer, optional :: level      ! specified header level
 
     integer :: n
     integer :: m
-    integer :: unit_
-    integer :: header_level
+    integer :: unit_        ! unit to write to
+    integer :: header_level ! actual header level
     character(MAX_LINE_LEN) :: line
 
     ! set default level
@@ -738,7 +738,7 @@ contains
     integer :: size_angle
     integer :: size_energy
     type(Reaction), pointer :: rxn => null()
-    type(UrrData), pointer :: urr => null()
+    type(UrrData),  pointer :: urr => null()
 
     ! set default unit for writing information
     if (present(unit)) then

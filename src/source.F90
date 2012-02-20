@@ -1,8 +1,7 @@
 module source
 
-  use ace_header,      only: Nuclide
   use bank_header,     only: Bank
-  use constants,       only: ONE, MAX_LINE_LEN
+  use constants,       only: ONE
   use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
   use global
@@ -163,12 +162,9 @@ contains
 
   subroutine initialize_particle()
 
-    ! TODO: if information on the cell, lattice, universe, and material is
-    ! passed through the fission bank to the source bank, no lookup would be
-    ! needed at the beginning of a cycle
-
-    p % type              = NEUTRON
-    p % alive             = .true.
+    ! Set particle to neutron that's alive
+    p % type  = NEUTRON
+    p % alive = .true.
 
     ! clear attributes
     p % surface       = NONE

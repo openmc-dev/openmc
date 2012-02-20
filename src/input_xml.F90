@@ -485,14 +485,15 @@ contains
 
     use xml_data_materials_t
 
-    integer :: i, j
-    integer :: n
-    real(8) :: val
-    logical :: file_exists
-    character(3) :: default_xs
-    character(MAX_WORD_LEN) :: units
-    character(12)           :: name
-    character(MAX_LINE_LEN) :: filename
+    integer :: i           ! loop index for materials
+    integer :: j           ! loop index for nuclides
+    integer :: n           ! number of nuclides
+    real(8) :: val         ! value entered for density
+    logical :: file_exists ! does materials.xml exist?
+    character(3)            :: default_xs ! default xs identifier (e.g. 70c)
+    character(12)           :: name       ! name of nuclide
+    character(MAX_WORD_LEN) :: units      ! units on density
+    character(MAX_LINE_LEN) :: filename   ! absolute path to materials.xml
     type(Material),    pointer :: m => null()
     type(nuclide_xml), pointer :: nuc => null()
     type(sab_xml),     pointer :: sab => null()
@@ -1093,8 +1094,8 @@ contains
 
     use xml_data_plot_t
 
-    logical :: file_exists ! does tallies.xml file exist?
-    character(MAX_LINE_LEN) :: filename
+    logical :: file_exists              ! does tallies.xml file exist?
+    character(MAX_LINE_LEN) :: filename ! absolute path to tallies.xml
 
     ! Check if plot.xml exists
     filename = trim(path_input) // "plot.xml"
@@ -1150,7 +1151,7 @@ contains
     integer :: recl        ! default record length
     integer :: entries     ! default number of entries
     logical :: file_exists ! does cross_sections.xml exist?
-    character(MAX_WORD_LEN)  :: directory
+    character(MAX_WORD_LEN)  :: directory ! directory with cross sections
     type(XsListing), pointer :: listing => null()
 
     ! Check if cross_sections.xml exists

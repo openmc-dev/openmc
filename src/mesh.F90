@@ -14,13 +14,13 @@ contains
 
   subroutine get_mesh_bin(m, xyz, bin)
 
-    type(StructuredMesh), pointer :: m
-    real(8), intent(in)           :: xyz(:)
-    integer, intent(out)          :: bin
+    type(StructuredMesh), pointer :: m      ! mesh pointer
+    real(8), intent(in)           :: xyz(:) ! coordinates
+    integer, intent(out)          :: bin    ! tally bin
 
-    integer :: n
-    integer :: ijk(3)
-    logical :: in_mesh
+    integer :: n       ! size of mesh (2 or 3)
+    integer :: ijk(3)  ! indices in mesh
+    logical :: in_mesh ! was given coordinate in mesh at all?
 
     ! Get number of dimensions
     n = m % n_dimension
@@ -68,9 +68,9 @@ contains
   subroutine get_mesh_indices(m, xyz, ijk, in_mesh)
 
     type(StructuredMesh), pointer :: m
-    real(8), intent(in)           :: xyz(:)
-    integer, intent(out)          :: ijk(:)
-    logical, intent(out)          :: in_mesh
+    real(8), intent(in)           :: xyz(:)  ! coordinates to check
+    integer, intent(out)          :: ijk(:)  ! indices in mesh
+    logical, intent(out)          :: in_mesh ! were given coords in mesh?
 
     ! Find particle in mesh
     ijk = ceiling((xyz - m % lower_left)/m % width)
@@ -95,11 +95,9 @@ contains
     integer, intent(in)           :: ijk(:)
     integer                       :: bin
 
-    integer :: n_x
-    integer :: n_y
-    integer :: n_z
+    integer :: n_y ! number of mesh cells in y direction
+    integer :: n_z ! number of mesh cells in z direction
 
-    n_x = m % dimension(1)
     n_y = m % dimension(2)
 
     if (m % n_dimension == 2) then
@@ -122,18 +120,16 @@ contains
     integer, intent(in)           :: bin
     integer, intent(out)          :: ijk(:)
 
-    integer :: n_y
-    integer :: n_z
+    integer :: n_y ! number of mesh cells in y direction
+    integer :: n_z ! number of mesh cells in z direction
+
+    n_y = m % dimension(2)
 
     if (m % n_dimension == 2) then
-       n_y = m % dimension(2)
-
        ijk(1) = (bin - 1)/n_y + 1
        ijk(2) = mod(bin - 1, n_y) + 1
     else if (m % n_dimension == 3) then
-       n_y = m % dimension(2)
        n_z = m % dimension(3)
-
        ijk(1) = (bin - 1)/(n_y*n_z) + 1
        ijk(2) = mod(bin - 1, n_y*n_z)/n_z + 1
        ijk(3) = mod(bin - 1, n_z) + 1

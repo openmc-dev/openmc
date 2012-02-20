@@ -165,7 +165,7 @@ module global
   type(Timer) :: time_ic_sendrecv ! timer for intercycle SEND/RECV
   type(Timer) :: time_inactive    ! timer for inactive cycles
   type(Timer) :: time_active      ! timer for active cycles
-  type(Timer) :: time_compute     ! timer for computation
+  type(Timer) :: time_transport   ! timer for transport only
   type(Timer) :: time_finalize    ! timer for finalization
 
   ! ===========================================================================

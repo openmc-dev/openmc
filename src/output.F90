@@ -930,13 +930,15 @@ contains
     write(ou,100) "Total time for initialization", time_initialize % elapsed
     write(ou,100) "  Reading cross sections", time_read_xs % elapsed
     write(ou,100) "  Unionizing energy grid", time_unionize % elapsed
-    write(ou,100) "Total time in computation", time_compute % elapsed
-    write(ou,100) "Total time between cycles", time_intercycle % elapsed
-    write(ou,100) "  Accumulating tallies", time_ic_tallies % elapsed
-    write(ou,100) "  Sampling source sites", time_ic_sample % elapsed
-    write(ou,100) "  SEND/RECV source sites", time_ic_sendrecv % elapsed
-    write(ou,100) "Total time in inactive cycles", time_inactive % elapsed
-    write(ou,100) "Total time in active cycles", time_active % elapsed
+    write(ou,100) "Total time in simulation", time_inactive % elapsed + &
+         time_active % elapsed
+    write(ou,100) "  Time in transport only", time_transport % elapsed
+    write(ou,100) "  Time in inactive cycles", time_inactive % elapsed
+    write(ou,100) "  Time in active cycles", time_active % elapsed
+    write(ou,100) "  Time between cycles", time_intercycle % elapsed
+    write(ou,100) "    Accumulating tallies", time_ic_tallies % elapsed
+    write(ou,100) "    Sampling source sites", time_ic_sample % elapsed
+    write(ou,100) "    SEND/RECV source sites", time_ic_sendrecv % elapsed
     write(ou,100) "Total time for finalization", time_finalize % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 
@@ -945,7 +947,8 @@ contains
 
     ! display calculate rate and final keff
     total_particles = n_particles * n_cycles
-    speed = real(total_particles) / time_compute % elapsed
+    speed = real(total_particles) / (time_inactive % elapsed + &
+         time_active % elapsed)
     string = to_str(speed)
     write(ou,101) "Calculation Rate", trim(string)
     write(ou,102) "Final Keff", keff, keff_std

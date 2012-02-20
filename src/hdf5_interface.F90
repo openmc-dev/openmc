@@ -615,7 +615,7 @@ contains
     call hdf5_make_double(timing_group, "time_initialize", time_initialize % elapsed)
     call hdf5_make_double(timing_group, "time_read_xs", time_read_xs % elapsed)
     call hdf5_make_double(timing_group, "time_unionize", time_unionize % elapsed)
-    call hdf5_make_double(timing_group, "time_compute", time_compute % elapsed)
+    call hdf5_make_double(timing_group, "time_transport", time_transport % elapsed)
     call hdf5_make_double(timing_group, "time_intercycle", time_intercycle % elapsed)
     call hdf5_make_double(timing_group, "time_tallies", time_ic_tallies % elapsed)
     call hdf5_make_double(timing_group, "time_sample", time_ic_sample % elapsed)
@@ -632,8 +632,8 @@ contains
          "description", "Time reading cross-section libraries (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_unionize", &
          "description", "Time unionizing energy grid (s)", hdf5_err)
-    call h5ltset_attribute_string_f(timing_group, "time_compute", &
-         "description", "Total time in computation (s)", hdf5_err)
+    call h5ltset_attribute_string_f(timing_group, "time_transport", &
+         "description", "Time in transport only (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_intercycle", &
          "description", "Total time between cycles (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_tallies", &
@@ -653,7 +653,8 @@ contains
 
     ! Write calculation rate
     total_particles = n_particles * n_cycles
-    speed = real(total_particles) / time_compute % elapsed
+    speed = real(total_particles) / (time_inactive % elapsed + &
+         time_active % elapsed)
     call hdf5_make_double(timing_group, "neutrons_per_second", speed)
 
     ! Close timing group

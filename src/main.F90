@@ -69,9 +69,6 @@ contains
     ! LOOP OVER CYCLES
     CYCLE_LOOP: do current_cycle = 1, n_cycles
 
-       ! Start timer for computation
-       call timer_start(time_compute)
-
        message = "Simulating cycle " // trim(to_str(current_cycle)) // "..."
        call write_message(8)
 
@@ -80,6 +77,10 @@ contains
 
        ! =======================================================================
        ! LOOP OVER HISTORIES
+
+       ! Start timer for transport
+       call timer_start(time_transport)
+
        HISTORY_LOOP: do i = 1, work
 
           ! grab source particle from bank
@@ -90,8 +91,8 @@ contains
 
        end do HISTORY_LOOP
 
-       ! Accumulate time for computation
-       call timer_stop(time_compute)
+       ! Accumulate time for transport
+       call timer_stop(time_transport)
 
        ! =======================================================================
        ! WRAP UP FISSION BANK AND COMPUTE TALLIES, KEFF, ETC

@@ -215,29 +215,39 @@ module global
 contains
 
 !===============================================================================
-! FREE_MEMORY deallocates all allocatable arrays in the program, namely the
-! cells, surfaces, materials, and sources
+! FREE_MEMORY deallocates all global allocatable arrays in the program
 !===============================================================================
 
   subroutine free_memory()
 
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)
+    if (allocated(universes)) deallocate(universes)
+    if (allocated(lattices)) deallocate(lattices)
     if (allocated(surfaces)) deallocate(surfaces)
     if (allocated(materials)) deallocate(materials)
-    if (allocated(lattices)) deallocate(lattices)
 
-    ! Deallocate cross section data and listings
+    ! Deallocate cross section data, listings, and cache
     if (allocated(nuclides)) deallocate(nuclides)
     if (allocated(sab_tables)) deallocate(sab_tables)
     if (allocated(xs_listings)) deallocate(xs_listings)
+    if (allocated(micro_xs)) deallocate(micro_xs)
+
+    ! Deallocate tally-related arrays
+    if (allocated(meshes)) deallocate(meshes)
+    if (allocated(tallies)) deallocate(tallies)
+    if (allocated(analog_tallies)) deallocate(analog_tallies)
+    if (allocated(tracklength_tallies)) deallocate(tracklength_tallies)
+    if (allocated(current_tallies)) deallocate(current_tallies)
+    if (allocated(tally_maps)) deallocate(tally_maps)
 
     ! Deallocate energy grid
     if (allocated(e_grid)) deallocate(e_grid)
 
-    ! Deallocate fission and source bank
+    ! Deallocate fission and source bank and entropy
     if (allocated(fission_bank)) deallocate(fission_bank)
     if (allocated(source_bank)) deallocate(source_bank)
+    if (allocated(entropy_p)) deallocate(entropy_p)
 
   end subroutine free_memory
 

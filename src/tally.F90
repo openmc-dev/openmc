@@ -1070,8 +1070,8 @@ contains
        t => tallies(i)
 
        ! Loop over all filter and scoring bins
-       do j = 1, t % n_total_bins
-          do k = 1, t % n_score_bins
+       do k = 1, t % n_score_bins
+          do j = 1, t % n_total_bins
              ! Add the sum and square of the sum of contributions from each
              ! history within a cycle to the variables val and val_sq. This will
              ! later allow us to calculate a variance on the tallies
@@ -1491,8 +1491,8 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
-       do j = 1, t % n_total_bins
-          do k = 1, t % n_score_bins
+       do k = 1, t % n_score_bins
+          do j = 1, t % n_total_bins
              ! Copy values from tallies
              val  = t % scores(j,k) % val
              val2 = t % scores(j,k) % val_sq

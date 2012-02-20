@@ -78,7 +78,7 @@ contains
     ! runs enough particles to avoid this in the first place.
 
     if (n_bank == 0) then
-       message = "No fission sites banked on procesor " // to_str(rank)
+       message = "No fission sites banked on processor " // to_str(rank)
        call fatal_error()
     end if
 

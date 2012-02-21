@@ -222,6 +222,7 @@ module global
  
   ! Timing objects
   type(Timer) :: time_cmfd   ! timer for whole cmfd calculation
+  type(Timer) :: time_snes   ! timer for just nonlinear calc
 
   ! Flag for CMFD only
   logical :: cmfd_only = .FALSE.

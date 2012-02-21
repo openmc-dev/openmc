@@ -34,6 +34,9 @@ contains
 
   subroutine cmfd_snes_execute()
 
+    use global, only: time_snes,master
+    use timing
+
     ! call slepc solver 
     call cmfd_slepc_execute()
 
@@ -42,10 +45,12 @@ contains
 
     ! initialize solver
     call init_solver()
-
+call timer_reset(time_snes)
+call timer_start(time_snes)
     ! solve the system
     call SNESSolve(snes,PETSC_NULL,xvec,ierr)
-
+call timer_stop(time_snes)
+if(master) print *,'SNES Solution Time:',time_snes%elapsed
     ! extracts results to cmfd object
     call extract_results()
 
@@ -145,7 +150,7 @@ contains
     call SNESSetFromOptions(snes,ierr)
 
     ! turn off line searching
-    call SNESLineSearchSet(snes,SNESLineSearchNo,PETSC_NULL,ierr)
+!   call SNESLineSearchSet(snes,SNESLineSearchNo,PETSC_NULL,ierr)
 
     ! get all types and print
     call SNESGetType(snes,snestype,ierr)

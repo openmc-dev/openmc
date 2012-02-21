@@ -1,12 +1,12 @@
 module source
 
-  use ace_header,      only: Nuclide
   use bank_header,     only: Bank
-  use constants,       only: ONE, MAX_LINE_LEN
+  use constants,       only: ONE
   use error,           only: fatal_error
+  use geometry_header, only: BASE_UNIVERSE
   use global
   use output,          only: write_message
-  use particle_header, only: Particle, initialize_particle
+  use particle_header, only: deallocate_coord
   use physics,         only: watt_spectrum
   use random_lcg,      only: prn, set_particle_seed
   use string,          only: to_str
@@ -121,16 +121,15 @@ contains
 ! GET_SOURCE_PARTICLE returns the next source particle 
 !===============================================================================
 
-  subroutine get_source_particle(p, index_source)
+  subroutine get_source_particle(index_source)
 
-    type(Particle), pointer :: p
-    integer(8), intent(in)  :: index_source
+    integer(8), intent(in) :: index_source
 
     integer(8) :: particle_seed  ! unique index for particle
     type(Bank), pointer :: src => null()
 
     ! set defaults
-    call initialize_particle(p)
+    call initialize_particle()
 
     ! point to next source particle
     src => source_bank(index_source)
@@ -155,5 +154,36 @@ contains
          p % id == trace_particle) trace = .true.
 
   end subroutine get_source_particle
+
+!===============================================================================
+! INITIALIZE_PARTICLE sets default attributes for a particle from the source
+! bank
+!===============================================================================
+
+  subroutine initialize_particle()
+
+    ! Set particle to neutron that's alive
+    p % type  = NEUTRON
+    p % alive = .true.
+
+    ! clear attributes
+    p % surface       = NONE
+    p % cell_born     = NONE
+    p % material      = NONE
+    p % last_material = NONE
+    p % wgt           = ONE
+    p % last_wgt      = ONE
+    p % n_bank        = 0
+    p % n_collision   = 0
+
+    ! remove any original coordinates
+    call deallocate_coord(p % coord0)
+    
+    ! Set up base level coordinates
+    allocate(p % coord0)
+    p % coord0 % universe = BASE_UNIVERSE
+    p % coord             => p % coord0
+
+  end subroutine initialize_particle
 
 end module source

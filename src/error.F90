@@ -1,8 +1,8 @@
 module error
 
-  use ISO_FORTRAN_ENV
+  use, intrinsic :: ISO_FORTRAN_ENV
 
-  use global, only: master, free_memory, message, mpi_err
+  use global
 
 #ifdef MPI
   use mpi
@@ -63,7 +63,6 @@ contains
        code = -1
     end if
 
-    ! Only allow master to print to screen
     write(ERROR_UNIT, fmt='(1X,A7)', advance='no') 'ERROR: '
 
     n_lines = (len_trim(message)-1)/72 + 1
@@ -75,6 +74,13 @@ contains
        end if
     end do
     write(ERROR_UNIT,*)
+
+    ! Write information on current cycle and particle
+    if (current_cycle > 0) then
+       write(ERROR_UNIT,'(1X,A,I11) ') 'Cycle:    ', current_cycle
+       write(ERROR_UNIT,'(1X,A,I11)')  'Particle: ', p % id
+       write(ERROR_UNIT,*)
+    end if
 
     ! Release memory from all allocatable arrays
     call free_memory()

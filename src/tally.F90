@@ -237,20 +237,18 @@ contains
 ! triggered at every collision, not every event
 !===============================================================================
 
-  subroutine score_analog_tally(p)
+  subroutine score_analog_tally()
 
-    type(Particle), pointer :: p
-
-    integer :: i
-    integer :: j
-    integer :: bins(N_FILTER_TYPES)
-    integer :: score_index
-    integer :: score_bin
-    real(8) :: score
-    real(8) :: last_wgt
-    real(8) :: wgt
-    real(8) :: mu
-    logical :: found_bin
+    integer :: i                    ! loop index for analog tallies
+    integer :: j                    ! loop index for scoring bins
+    integer :: bins(N_FILTER_TYPES) ! scoring bin combination
+    integer :: score_index          ! single index for single bin
+    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
+    real(8) :: score                ! analog tally score
+    real(8) :: last_wgt             ! pre-collision particle weight
+    real(8) :: wgt                  ! post-collision particle weight
+    real(8) :: mu                   ! cosine of angle of collision
+    logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer :: t => null()
 
     ! Copy particle's pre- and post-collision weight and angle
@@ -267,7 +265,7 @@ contains
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(p, analog_tallies(i), bins, found_bin)
+       call get_scoring_bins(analog_tallies(i), bins, found_bin)
        if (.not. found_bin) cycle
 
        ! =======================================================================
@@ -418,7 +416,7 @@ contains
                 ! energy bins may have been scored to. The following logic treats
                 ! this special case and scores to multiple bins
 
-                call score_fission_eout(p, t, bins, j)
+                call score_fission_eout(t, bins, j)
                 cycle
 
              else
@@ -463,18 +461,17 @@ contains
 ! neutrons produced with different energies.
 !===============================================================================
 
-  subroutine score_fission_eout(p, t, bins, j)
+  subroutine score_fission_eout(t, bins, j)
 
-    type(Particle),    pointer :: p
     type(TallyObject), pointer :: t
     integer, intent(inout)     :: bins(N_FILTER_TYPES)
-    integer, intent(in)        :: j
+    integer, intent(in)        :: j ! index for score
 
-    integer :: k
-    integer :: bin_energyout
-    integer :: score_index
-    real(8) :: score
-    real(8) :: E_out
+    integer :: k             ! loop index for bank sites
+    integer :: bin_energyout ! original outgoing energy bin
+    integer :: score_index   ! index for scoring bin combination
+    real(8) :: score         ! actualy score
+    real(8) :: E_out         ! energy of fission bank site
 
     ! save original outgoing energy bin and score index
     bin_energyout = bins(FILTER_ENERGYOUT)
@@ -514,19 +511,18 @@ contains
 ! that require post-collision information.
 !===============================================================================
 
-  subroutine score_tracklength_tally(p, distance)
+  subroutine score_tracklength_tally(distance)
 
-    type(Particle), pointer :: p
-    real(8), intent(in)     :: distance
+    real(8), intent(in) :: distance
 
-    integer :: i
-    integer :: j
-    integer :: bins(N_FILTER_TYPES)
-    integer :: score_index
-    integer :: score_bin
-    real(8) :: flux
-    real(8) :: score
-    logical :: found_bin
+    integer :: i                    ! loop index for tracklength tallies
+    integer :: j                    ! loop index for scoring bins
+    integer :: bins(N_FILTER_TYPES) ! scoring bin combination
+    integer :: score_index          ! single index for single bin
+    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
+    real(8) :: flux                 ! tracklength estimate of flux
+    real(8) :: score                ! actual score (e.g., flux*xs)
+    logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer :: t => null()
 
     ! Determine track-length estimate of flux
@@ -541,7 +537,7 @@ contains
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(p, tracklength_tallies(i), bins, found_bin)
+       call get_scoring_bins(tracklength_tallies(i), bins, found_bin)
        if (.not. found_bin) cycle
 
        ! =======================================================================
@@ -602,16 +598,15 @@ contains
 ! for a tally based on the particle's current attributes.
 !===============================================================================
 
-  subroutine get_scoring_bins(p, index_tally, bins, found_bin)
+  subroutine get_scoring_bins(index_tally, bins, found_bin)
 
-    type(Particle), pointer :: p
     integer, intent(in)     :: index_tally
     integer, intent(out)    :: bins(N_FILTER_TYPES)
     logical, intent(out)    :: found_bin
 
-    integer :: i
-    integer :: n
-    integer :: mesh_bin
+    integer :: i        ! loop index for filters
+    integer :: n        ! number of bins for single filter
+    integer :: mesh_bin ! index for mesh bin
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 
@@ -716,9 +711,7 @@ contains
 ! determining which mesh surfaces were crossed
 !===============================================================================
 
-  subroutine score_surface_current(p)
-
-    type(Particle),    pointer :: p
+  subroutine score_surface_current()
 
     integer :: i                    ! loop indices
     integer :: j                    ! loop indices
@@ -1077,8 +1070,8 @@ contains
        t => tallies(i)
 
        ! Loop over all filter and scoring bins
-       do j = 1, t % n_total_bins
-          do k = 1, t % n_score_bins
+       do k = 1, t % n_score_bins
+          do j = 1, t % n_total_bins
              ! Add the sum and square of the sum of contributions from each
              ! history within a cycle to the variables val and val_sq. This will
              ! later allow us to calculate a variance on the tallies
@@ -1431,7 +1424,7 @@ contains
     type(TallyObject), pointer :: t           ! tally object
     integer, intent(in)        :: filter_type ! type of filter
     integer, intent(in)        :: bin         ! bin in filter array
-    character(30)              :: label         ! user-specified identifier
+    character(30)              :: label       ! user-specified identifier
 
     integer              :: i      ! index in cells/surfaces/etc array
     integer, allocatable :: ijk(:) ! indices in mesh
@@ -1489,28 +1482,24 @@ contains
     integer :: i    ! index in tallies array
     integer :: j    ! loop index for filter bins
     integer :: k    ! loop index for scoring bins
-    integer :: n    ! number of active cycles
     real(8) :: val  ! sum(x)
     real(8) :: val2 ! sum(x*x)
     real(8) :: mean ! mean value
     real(8) :: std  ! standard deviation of the mean
-    type(TallyObject), pointer :: t
-
-    ! Number of active cycles
-    n = n_cycles - n_inactive
+    type(TallyObject), pointer :: t => null()
 
     do i = 1, n_tallies
        t => tallies(i)
 
-       do j = 1, t % n_total_bins
-          do k = 1, t % n_score_bins
+       do k = 1, t % n_score_bins
+          do j = 1, t % n_total_bins
              ! Copy values from tallies
              val  = t % scores(j,k) % val
              val2 = t % scores(j,k) % val_sq
 
              ! Calculate mean and standard deviation
-             mean = val/n
-             std = sqrt((val2/n - mean*mean)/n)
+             mean = val/n_active
+             std = sqrt((val2/n_active - mean*mean)/n_active)
 
              ! Copy back into TallyScore
              t % scores(j,k) % val    = mean

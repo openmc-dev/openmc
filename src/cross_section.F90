@@ -6,7 +6,6 @@ module cross_section
   use fission,         only: nu_total
   use global
   use material_header, only: Material
-  use particle_header, only: Particle
   use random_lcg,      only: prn
   use search,          only: binary_search
 
@@ -19,9 +18,7 @@ contains
 ! particle is currently traveling through.
 !===============================================================================
 
-  subroutine calculate_xs(p)
-
-    type(Particle), pointer :: p
+  subroutine calculate_xs()
 
     integer :: i             ! loop index over nuclides
     integer :: index_nuclide ! index into nuclides array
@@ -40,7 +37,7 @@ contains
     mat => materials(p % material)
 
     ! Find energy index on unionized grid
-    call find_energy_index(p)
+    call find_energy_index()
 
     ! Check if there's an S(a,b) table for this material
     if (mat % has_sab_table) then
@@ -64,7 +61,7 @@ contains
 
        ! Calculate microscopic cross section for this nuclide
        if (p % E /= micro_xs(index_nuclide) % last_E) then
-          call calculate_nuclide_xs(p, index_nuclide, index_sab)
+          call calculate_nuclide_xs(index_nuclide, index_sab)
        end if
 
        ! Copy atom density of nuclide in material
@@ -98,11 +95,10 @@ contains
 ! given index in the nuclides array at the energy of the given particle
 !===============================================================================
 
-  subroutine calculate_nuclide_xs(p, index_nuclide, index_sab)
+  subroutine calculate_nuclide_xs(index_nuclide, index_sab)
 
-    type(Particle), pointer :: p
-    integer, intent(in)     :: index_nuclide ! index into nuclides array
-    integer, intent(in)     :: index_sab     ! index into sab_tables array
+    integer, intent(in) :: index_nuclide ! index into nuclides array
+    integer, intent(in) :: index_sab     ! index into sab_tables array
 
     integer :: IE        ! index on nuclide energy grid
     real(8) :: f         ! interp factor on nuclide energy grid
@@ -162,7 +158,7 @@ contains
     ! need to correct it by subtracting the non-S(a,b) elastic cross section and
     ! then add back in the calculated S(a,b) elastic+inelastic cross section.
 
-    if (index_sab > 0) call calculate_sab_xs(p, index_nuclide, index_sab)
+    if (index_sab > 0) call calculate_sab_xs(index_nuclide, index_sab)
 
     ! if the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
@@ -170,7 +166,7 @@ contains
     if (urr_ptables_on .and. nuc % urr_present) then
        if (p % E > nuc % urr_data % energy(1) .and. &
             p % E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
-          call calculate_urr_xs(p, index_nuclide)
+          call calculate_urr_xs(index_nuclide)
        end if
     end if
 
@@ -185,11 +181,10 @@ contains
 ! whatever data were taken from the normal Nuclide table.
 !===============================================================================
 
-  subroutine calculate_sab_xs(p, index_nuclide, index_sab)
+  subroutine calculate_sab_xs(index_nuclide, index_sab)
 
-    type(Particle), pointer :: p
-    integer, intent(in)     :: index_nuclide ! index into nuclides array
-    integer, intent(in)     :: index_sab     ! index into sab_tables array
+    integer, intent(in) :: index_nuclide ! index into nuclides array
+    integer, intent(in) :: index_sab     ! index into sab_tables array
 
     integer :: IE        ! index on S(a,b) energy grid
     real(8) :: f         ! interp factor on S(a,b) energy grid
@@ -268,10 +263,9 @@ contains
 ! from probability tables
 !===============================================================================
 
-  subroutine calculate_urr_xs(p, index_nuclide)
+  subroutine calculate_urr_xs(index_nuclide)
 
-    type(Particle), pointer :: p
-    integer, intent(in)     :: index_nuclide ! index into nuclides array
+    integer, intent(in) :: index_nuclide ! index into nuclides array
 
     integer :: i_energy   ! index for energy
     integer :: i_table    ! index for table
@@ -370,9 +364,7 @@ contains
 ! interpolation factor for a particle at a certain energy
 !===============================================================================
 
-  subroutine find_energy_index(p)
-
-    type(Particle), pointer :: p
+  subroutine find_energy_index()
 
     integer :: IE     ! index on union energy grid
     real(8) :: E      ! energy of particle

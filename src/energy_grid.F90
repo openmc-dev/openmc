@@ -20,11 +20,11 @@ contains
 
   subroutine unionized_grid()
 
-    integer        :: i              ! index in materials array
-    integer        :: j              ! index over nuclides in material
-    integer        :: index_list     ! index in xs_listings array
-    character(12)  :: name           ! name of isotope, e.g. 92235.03c
-    character(12)  :: alias          ! alias of nuclide, e.g. U-235.03c
+    integer        :: i          ! index in materials array
+    integer        :: j          ! index over nuclides in material
+    integer        :: index_list ! index in xs_listings array
+    character(12)  :: name       ! name of isotope, e.g. 92235.03c
+    character(12)  :: alias      ! alias of nuclide, e.g. U-235.03c
     type(ListReal),     pointer :: list => null()
     type(ListReal),     pointer :: current => null()
     type(Material),     pointer :: mat => null()
@@ -74,6 +74,9 @@ contains
     call list_delete(list)
     call dict_delete(already_added)
 
+    ! Set pointers to unionized energy grid for each nuclide
+    call grid_pointers()
+
   end subroutine unionized_grid
 
 !===============================================================================
@@ -86,9 +89,9 @@ contains
     type(ListReal), pointer :: list
     real(8), intent(in) :: energy(:)
 
-    integer :: i
-    integer :: n
-    real(8) :: E
+    integer :: i  ! index in energy array
+    integer :: n  ! size of energy array
+    real(8) :: E  ! actual energy value
     type(ListReal), pointer :: current => null()
     type(ListReal), pointer :: previous => null()
     type(ListReal), pointer :: head => null()
@@ -169,22 +172,21 @@ contains
   end subroutine add_grid_points
 
 !===============================================================================
-! ORIGINAL_INDICES
+! GRID_POINTERS creates an array of pointers (ints) for each nuclide to link
+! each point on the nuclide energy grid to one on the unionized energy grid
 !===============================================================================
 
-  subroutine original_indices()
+  subroutine grid_pointers()
 
-    integer :: i
-    integer :: j
-    integer :: index_e
-    integer :: n_grid_nuclide
-    real(8) :: union_energy
-    real(8) :: energy
-    type(Nuclide), pointer :: nuc
+    integer :: i            ! loop index for nuclides
+    integer :: j            ! loop index for nuclide energy grid
+    integer :: index_e      ! index on union energy grid
+    real(8) :: union_energy ! energy on union grid
+    real(8) :: energy       ! energy on nuclide grid
+    type(Nuclide), pointer :: nuc => null()
 
     do i = 1, n_nuclides_total
        nuc => nuclides(i)
-       n_grid_nuclide = size(nuc % energy)
        allocate(nuc % grid_index(n_grid))
 
        index_e = 1
@@ -192,7 +194,7 @@ contains
 
        do j = 1, n_grid
           union_energy = e_grid(j)
-          if (union_energy >= energy .and. index_e < n_grid_nuclide) then
+          if (union_energy >= energy .and. index_e < nuc % n_grid) then
              index_e = index_e + 1
              energy = nuc % energy(index_e)
           end if
@@ -200,6 +202,6 @@ contains
        end do
     end do
 
-  end subroutine original_indices
+  end subroutine grid_pointers
 
 end module energy_grid

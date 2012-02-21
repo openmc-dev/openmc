@@ -1,6 +1,6 @@
 module output
 
-  use ISO_FORTRAN_ENV
+  use, intrinsic :: ISO_FORTRAN_ENV
 
   use ace_header,      only: Nuclide, Reaction, UrrData
   use constants
@@ -9,7 +9,7 @@ module output
   use geometry_header, only: Cell, Universe, Surface, BASE_UNIVERSE
   use global
   use mesh_header,     only: StructuredMesh
-  use particle_header, only: Particle, LocalCoord
+  use particle_header, only: LocalCoord
   use string,          only: upper_case, to_str
   use tally_header,    only: TallyObject
 
@@ -81,14 +81,14 @@ contains
 
   subroutine header(msg, unit, level)
 
-    character(*), intent(in) :: msg
-    integer, optional :: unit
-    integer, optional :: level
+    character(*), intent(in) :: msg ! header message
+    integer, optional :: unit       ! unit to write to
+    integer, optional :: level      ! specified header level
 
     integer :: n
     integer :: m
-    integer :: unit_
-    integer :: header_level
+    integer :: unit_        ! unit to write to
+    integer :: header_level ! actual header level
     character(MAX_LINE_LEN) :: line
 
     ! set default level
@@ -199,9 +199,7 @@ contains
 ! PRINT_PARTICLE displays the attributes of a particle
 !===============================================================================
 
-  subroutine print_particle(p)
-
-    type(Particle),   pointer :: p
+  subroutine print_particle()
 
     integer                   :: i
     type(Cell),       pointer :: c => null()
@@ -740,7 +738,7 @@ contains
     integer :: size_angle
     integer :: size_energy
     type(Reaction), pointer :: rxn => null()
-    type(UrrData), pointer :: urr => null()
+    type(UrrData),  pointer :: urr => null()
 
     ! set default unit for writing information
     if (present(unit)) then
@@ -932,14 +930,17 @@ contains
     write(ou,100) "Total time for initialization", time_initialize % elapsed
     write(ou,100) "  Reading cross sections", time_read_xs % elapsed
     write(ou,100) "  Unionizing energy grid", time_unionize % elapsed
-    write(ou,100) "Total time in computation", time_compute % elapsed
-    write(ou,100) "Total time between cycles", time_intercycle % elapsed
-    write(ou,100) "  Accumulating tallies", time_ic_tallies % elapsed
-    write(ou,100) "  Sampling source sites", time_ic_sample % elapsed
-    write(ou,100) "  SEND/RECV source sites", time_ic_sendrecv % elapsed
-    write(ou,100) "Total time in inactive cycles", time_inactive % elapsed
-    write(ou,100) "Total time in active cycles", time_active % elapsed
+    write(ou,100) "Total time in simulation", time_inactive % elapsed + &
+         time_active % elapsed
+    write(ou,100) "  Time in transport only", time_transport % elapsed
+    write(ou,100) "  Time in inactive cycles", time_inactive % elapsed
+    write(ou,100) "  Time in active cycles", time_active % elapsed
+    write(ou,100) "  Time between cycles", time_intercycle % elapsed
     if(cmfd_on) write(ou,100) "Total CMFD time", time_cmfd % elapsed
+    write(ou,100) "    Accumulating tallies", time_ic_tallies % elapsed
+    write(ou,100) "    Sampling source sites", time_ic_sample % elapsed
+    write(ou,100) "    SEND/RECV source sites", time_ic_sendrecv % elapsed
+    write(ou,100) "Total time for finalization", time_finalize % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 
     ! display header block
@@ -947,7 +948,8 @@ contains
 
     ! display calculate rate and final keff
     total_particles = n_particles * n_cycles
-    speed = real(total_particles) / time_compute % elapsed
+    speed = real(total_particles) / (time_inactive % elapsed + &
+         time_active % elapsed)
     string = to_str(speed)
     write(ou,101) "Calculation Rate", trim(string)
     write(ou,102) "Final Keff", keff, keff_std

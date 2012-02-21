@@ -7,7 +7,6 @@ program main
   use initialize,      only: initialize_run
   use intercycle,      only: shannon_entropy, calculate_keff, synchronize_bank
   use output,          only: write_message, header
-  use particle_header, only: Particle
   use plot,            only: run_plot
   use physics,         only: transport
   use random_lcg,      only: set_particle_seed
@@ -45,7 +44,6 @@ contains
   subroutine run_problem()
 
     integer(8) :: i  ! index over histories in single cycle
-    type(Particle), pointer :: p => null()
 
     if (master) call header("BEGIN SIMULATION", level=1)
 
@@ -86,9 +84,6 @@ contains
     ! LOOP OVER CYCLES
     CYCLE_LOOP: do current_cycle = 1, n_cycles
 
-       ! Start timer for computation
-       call timer_start(time_compute)
-
        message = "Simulating cycle " // trim(to_str(current_cycle)) // "..."
        call write_message(8)
 
@@ -97,18 +92,22 @@ contains
 
        ! =======================================================================
        ! LOOP OVER HISTORIES
+
+       ! Start timer for transport
+       call timer_start(time_transport)
+
        HISTORY_LOOP: do i = 1, work
 
           ! grab source particle from bank
-          call get_source_particle(p, i)
+          call get_source_particle(i)
 
           ! transport particle
-          call transport(p)
+          call transport()
 
        end do HISTORY_LOOP
 
-       ! Accumulate time for computation
-       call timer_stop(time_compute)
+       ! Accumulate time for transport
+       call timer_stop(time_transport)
 
        ! =======================================================================
        ! WRAP UP FISSION BANK AND COMPUTE TALLIES, KEFF, ETC

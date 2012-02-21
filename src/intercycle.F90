@@ -1,13 +1,12 @@
 module intercycle
 
-  use ISO_FORTRAN_ENV
+  use, intrinsic :: ISO_FORTRAN_ENV
 
   use error,           only: fatal_error, warning
   use global
   use mesh,            only: get_mesh_bin
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message
-  use particle_header, only: Particle, initialize_particle
   use random_lcg,      only: prn, set_particle_seed, prn_skip
   use search,          only: binary_search
   use string,          only: to_str
@@ -79,7 +78,7 @@ contains
     ! runs enough particles to avoid this in the first place.
 
     if (n_bank == 0) then
-       message = "No fission sites banked on procesor " // to_str(rank)
+       message = "No fission sites banked on processor " // to_str(rank)
        call fatal_error()
     end if
 
@@ -281,12 +280,12 @@ contains
 #ifdef MPI
   subroutine reduce_tallies()
 
-    integer :: i
-    integer :: n
-    integer :: m
-    integer :: n_bins
-    real(8), allocatable :: tally_temp(:,:)
-    type(TallyObject), pointer :: t
+    integer :: i      ! loop index for tallies
+    integer :: n      ! number of filter bins
+    integer :: m      ! number of score bins
+    integer :: n_bins ! total number of bins
+    real(8), allocatable :: tally_temp(:,:) ! contiguous array of scores
+    type(TallyObject), pointer :: t => null()
 
     do i = 1, n_tallies
        t => tallies(i)

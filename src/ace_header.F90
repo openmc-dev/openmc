@@ -61,8 +61,8 @@ module ace_header
      integer :: inelastic_flag  ! inelastic competition flag
      integer :: absorption_flag ! other absorption flag
      logical :: multiply_smooth ! multiply by smooth cross section?
-     real(8), allocatable :: energy(:)
-     real(8), allocatable :: prob(:,:,:)
+     real(8), allocatable :: energy(:)   ! incident energies
+     real(8), allocatable :: prob(:,:,:) ! actual probabibility tables
   end type UrrData
 
 !===============================================================================

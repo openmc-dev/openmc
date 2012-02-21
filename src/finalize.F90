@@ -3,7 +3,7 @@ module finalize
   use global
   use output,         only: print_runtime
   use tally,          only: write_tallies, tally_statistics
-  use timing,         only: timer_stop
+  use timing,         only: timer_start, timer_stop
 
 #ifdef HDF5
   use hdf5_interface, only: hdf5_write_timing, hdf5_close_output
@@ -14,10 +14,14 @@ module finalize
 contains
 
 !===============================================================================
-! FINALIZE_RUN
+! FINALIZE_RUN does all post-simulation tasks such as calculating tally
+! statistics, writing out tallies, and writing hdf5 output.
 !===============================================================================
 
   subroutine finalize_run()
+
+    ! Start finalization timer
+    call timer_start(time_finalize)
 
     ! Calculate statistics for tallies and write to tallies.out
     if (.not. plotting) then
@@ -25,11 +29,13 @@ contains
        if (master) call write_tallies()
     end if
 
-    ! show timing statistics
+    ! stop timers and show timing statistics
+    call timer_stop(time_finalize)
     call timer_stop(time_total)
     if (master .and. (.not. plotting)) call print_runtime()
 
 #ifdef HDF5
+    ! Write time statistics to HDF5 output 
     if (master) then
        call hdf5_write_timing()
        call hdf5_close_output()

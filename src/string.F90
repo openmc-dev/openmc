@@ -159,7 +159,7 @@ contains
     integer :: i
     integer :: ic
 
-    do i = 1,len(word)
+    do i = 1, len(word)
        ic = ichar(word(i:i))
        if (ic >= 65 .and. ic < 90) word(i:i) = char(ic+32)
     end do
@@ -177,7 +177,7 @@ contains
     integer :: i
     integer :: ic
 
-    do i = 1,len(word)
+    do i = 1, len(word)
        ic = ichar(word(i:i))
        if (ic >= 97 .and. ic < 122) word(i:i) = char(ic-32)
     end do
@@ -214,7 +214,8 @@ contains
     character(*) :: str ! string to check
     character(*) :: seq ! sequence of characters
 
-    integer :: i, i_start
+    integer :: i
+    integer :: i_start
     integer :: str_len
     integer :: seq_len
 

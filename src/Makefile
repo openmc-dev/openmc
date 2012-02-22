@@ -22,7 +22,7 @@ DEBUG    = no
 PROFILE  = no
 OPTIMIZE = no
 USE_MPI  = no 
-USE_HDF5 = no
+USE_HDF5 = yes
 
 #===============================================================================
 # GNU Fortran compiler options
@@ -88,7 +88,7 @@ ifeq ($(COMPILER),petsc)
   LDFLAGS = ${SLEPC_LIB}
 
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -fbacktrace -fbounds-check -ffpe-trap=invalid,overflow,underflow,zero
+    F90FLAGS += -g -ftrapuv -fp-stack-check -check all -fpe0 
     LDFLAGS  += -g
   endif
 

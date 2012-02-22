@@ -110,8 +110,8 @@ contains
     integer :: scatt_mat_idx ! matrix index for h-->g scattering terms
 
     ! get rank and max rank of procs
-    call MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
-    call MPI_COMM_SIZE(MPI_COMM_WORLD,sizen,ierr)
+    call MPI_COMM_RANK(PETSC_COMM_WORLD,rank,ierr)
+    call MPI_COMM_SIZE(PETSC_COMM_WORLD,sizen,ierr)
 
     ! get local problem size
     n = this%n

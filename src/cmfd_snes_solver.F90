@@ -34,9 +34,6 @@ contains
 
   subroutine cmfd_snes_execute()
 
-    use global, only: time_snes,master
-    use timing
-
     ! call slepc solver 
     call cmfd_slepc_execute()
 
@@ -45,12 +42,10 @@ contains
 
     ! initialize solver
     call init_solver()
-call timer_reset(time_snes)
-call timer_start(time_snes)
+
     ! solve the system
     call SNESSolve(snes,PETSC_NULL,xvec,ierr)
-call timer_stop(time_snes)
-if(master) print *,'SNES Solution Time:',time_snes%elapsed
+
     ! extracts results to cmfd object
     call extract_results()
 
@@ -65,7 +60,7 @@ if(master) print *,'SNES Solution Time:',time_snes%elapsed
 
   subroutine init_data()
 
-    use global, only: cmfd,rank,n_procs
+    use global, only: cmfd,rank,n_procs_cmfd
 
     integer              :: k         ! implied do counter
     integer              :: n         ! problem size
@@ -89,7 +84,7 @@ if(master) print *,'SNES Solution Time:',time_snes%elapsed
     ! get the local dimensions for each process
     call VecGetOwnershipRange(xvec,row_start,row_end,ierr)
 
-    if (rank == n_procs - 1) row_end = n
+    if (rank == n_procs_cmfd - 1) row_end = n
 
     ! set flux in guess
     call VecSetValues(xvec,row_end-row_start,(/(k,k=row_start,row_end-1)/),  &
@@ -98,7 +93,7 @@ if(master) print *,'SNES Solution Time:',time_snes%elapsed
     call VecAssemblyEnd(xvec,ierr)
 
     ! set keff in guess
-    if (rank == n_procs - 1) then
+    if (rank == n_procs_cmfd - 1) then
       call VecGetArrayF90(xvec,xptr,ierr)
       xptr(size(xptr)) = 1.0_8/cmfd%keff
       call VecRestoreArrayF90(xvec,xptr,ierr)
@@ -172,7 +167,7 @@ if(master) print *,'SNES Solution Time:',time_snes%elapsed
 
   subroutine compute_nonlinear_residual(snes,x,res,ierr)
 
-    use global, only: rank,n_procs,path_input
+    use global, only: rank,n_procs_cmfd,path_input
 
     ! arguments
     SNES        :: snes          ! nonlinear solver context
@@ -212,8 +207,8 @@ PetscViewer :: viewer
     call VecPlaceArray(rphi,rptr,ierr)
 
     ! extract eigenvalue and broadcast (going to want to make this more general in future)
-    if (rank == n_procs - 1) lambda = xptr(size(xptr)) 
-    call MPI_BCAST(lambda,1,MPI_REAL8,n_procs-1,MPI_COMM_WORLD,ierr)
+    if (rank == n_procs_cmfd - 1) lambda = xptr(size(xptr)) 
+    call MPI_BCAST(lambda,1,MPI_REAL8,n_procs_cmfd-1,PETSC_COMM_WORLD,ierr)
 
     ! create new petsc vectors to perform math
     call VecCreateMPI(PETSC_COMM_WORLD,ctx%loss%localn,PETSC_DECIDE,phiM,ierr)
@@ -227,7 +222,7 @@ PetscViewer :: viewer
     call VecDot(phi,phi,reslamb,ierr)
 
     ! map to ptr
-    if (rank == n_procs) rptr(size(rptr)) = 0.5_8 - 0.5_8*reslamb
+    if (rank == n_procs_cmfd) rptr(size(rptr)) = 0.5_8 - 0.5_8*reslamb
 
     ! reset arrays that are not used
     call VecResetArray(phi,ierr)
@@ -261,7 +256,7 @@ PetscViewer :: viewer
 
   subroutine extract_results()
 
-    use global, only: cmfd,rank,n_procs
+    use global, only: cmfd,rank,n_procs_cmfd
 
     integer :: n ! problem size
     integer              :: row_start ! local row start
@@ -280,7 +275,7 @@ PetscViewer :: viewer
     call VecGetOwnershipRange(xvec,row_start,row_end,ierr)
 
     ! resize the last proc
-    if (rank == n_procs - 1) row_end = row_end - 1
+    if (rank == n_procs_cmfd - 1) row_end = row_end - 1
 
     ! convert petsc phi_object to cmfd_obj
     call VecGetArrayF90(xvec,xptr,ierr)
@@ -288,15 +283,15 @@ PetscViewer :: viewer
 
     ! reduce result to all 
     mybuf = 0.0_8
-    call MPI_ALLREDUCE(cmfd%phi,mybuf,n,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
+    call MPI_ALLREDUCE(cmfd%phi,mybuf,n,MPI_REAL8,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
     ! move buffer to object and deallocate
     cmfd%phi = mybuf
     if(allocated(mybuf)) deallocate(mybuf)
 
     ! save eigenvalue
-    if(rank == n_procs - 1) cmfd%keff = 1.0_8 / xptr(size(xptr))
-    call MPI_BCAST(cmfd%keff,1,MPI_REAL8,n_procs-1,MPI_COMM_WORLD,ierr)
+    if(rank == n_procs_cmfd - 1) cmfd%keff = 1.0_8 / xptr(size(xptr))
+    call MPI_BCAST(cmfd%keff,1,MPI_REAL8,n_procs_cmfd-1,PETSC_COMM_WORLD,ierr)
     call VecRestoreArrayF90(xvec,xptr,ierr)
 
   end subroutine extract_results

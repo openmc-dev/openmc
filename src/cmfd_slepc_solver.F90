@@ -177,7 +177,7 @@ call timer_start(time_cmfd)
 
     ! reduce result to master
     mybuf = 0.0_8
-    call MPI_ALLREDUCE(cmfd%phi,mybuf,n,MPI_REAL8,MPI_SUM,MPI_COMM_WORLD,ierr)
+    call MPI_ALLREDUCE(cmfd%phi,mybuf,n,MPI_REAL8,MPI_SUM,PETSC_COMM_WORLD,ierr)
 
     ! move buffer to object and deallocate
     cmfd%phi = mybuf

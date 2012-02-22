@@ -236,6 +236,9 @@ module global
   ! Flag for coremap accelerator
   logical :: cmfd_coremap = .FALSE.
 
+  ! number of processors for cmfd
+  integer :: n_procs_cmfd
+
 contains
 
 !===============================================================================

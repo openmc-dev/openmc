@@ -97,7 +97,7 @@ contains
 
   subroutine preallocate_jacobian_matrix(this,ctx)
 
-    use global, only: cmfd,cmfd_coremap,rank,n_procs
+    use global, only: cmfd,cmfd_coremap,rank,n_procs_cmfd
 
     type(jacobian_operator) :: this
     type(operators)         :: ctx
@@ -125,20 +125,20 @@ contains
     n = this%n
 
     ! determine local size, divide evenly between all other procs
-    this%localn = n/(n_procs)
+    this%localn = n/(n_procs_cmfd)
 
     ! add 1 more if less proc id is less than mod
-    if (rank < mod(n,n_procs)) this%localn = this%localn + 1
+    if (rank < mod(n,n_procs_cmfd)) this%localn = this%localn + 1
 
     ! add another 1 on last proc
-    if (rank == n_procs - 1) this%localn = this%localn + 1
+    if (rank == n_procs_cmfd - 1) this%localn = this%localn + 1
 
     ! determine local starting row
     row_start = 0
-    if (rank < mod(n,n_procs)) then
-      row_start = rank*(n/n_procs+1)
+    if (rank < mod(n,n_procs_cmfd)) then
+      row_start = rank*(n/n_procs_cmfd+1)
     else
-      row_start = min(mod(n,n_procs)*(n/n_procs+1)+(rank - mod(n,n_procs))*(n/n_procs),n)
+      row_start = min(mod(n,n_procs_cmfd)*(n/n_procs_cmfd+1)+(rank - mod(n,n_procs_cmfd))*(n/n_procs_cmfd),n)
     end if
 
     ! determine local final row
@@ -151,7 +151,7 @@ contains
     this % o_nnz = 0
 
     ! start with pattern from loss matrix
-    if (rank == n_procs - 1) then
+    if (rank == n_procs_cmfd - 1) then
       this % d_nnz(row_start:row_end-1) = ctx%loss%d_nnz
       this % o_nnz(row_start:row_end-1) = ctx%loss%o_nnz
     else
@@ -160,14 +160,14 @@ contains
     end if
 
     ! append -F*phi term for last processor will take care of 1 for lambda
-    if (rank == n_procs - 1) then
+    if (rank == n_procs_cmfd - 1) then
       this%d_nnz = this%d_nnz + 1
     else
       this%o_nnz = this%o_nnz + 1
     end if
 
     ! do last row which has all filled (already did lower left corner above)
-    if (rank == n_procs - 1) then
+    if (rank == n_procs_cmfd - 1) then
       this % d_nnz(row_end) = this % d_nnz(row_end) + (row_end - row_start)
       this % o_nnz(row_end) = this % o_nnz(row_end) + ((this%n-1) - (row_end - &
      &                                                 row_start))
@@ -181,7 +181,7 @@ contains
 
   subroutine build_jacobian_matrix(snes,x,jac,jac_prec,flag,ctx,ierr)
 
-     use global, only: rank,n_procs
+     use global, only: rank,n_procs_cmfd
 
      ! formal variables
      SNES            :: snes      ! the snes context
@@ -235,8 +235,8 @@ contains
 
      ! extract flux and eigenvalue
      call VecPlaceArray(phi,xptr,ierr)
-     if (rank == n_procs - 1) lambda = xptr(size(xptr))
-     call MPI_BCAST(lambda,1,MPI_REAL8,n_procs-1,MPI_COMM_WORLD,ierr)
+     if (rank == n_procs_cmfd - 1) lambda = xptr(size(xptr))
+     call MPI_BCAST(lambda,1,MPI_REAL8,n_procs_cmfd-1,PETSC_COMM_WORLD,ierr)
 
      ! compute math (M-lambda*F) M is overwritten here
      call MatAXPY(ctx%loss%M,-1.0_8*lambda,ctx%prod%F,SUBSET_NONZERO_PATTERN,ierr)
@@ -272,26 +272,26 @@ contains
      end do
 
      ! allocate space for flux vector buffer
-     if (rank == n_procs - 1) then
+!    if (rank == n_procs_cmfd - 1) then
 
        ! temporary receive buffer
        if (.not. allocated(phi_tmp)) allocate(phi_tmp(0:n-1))
 
-     end if
+!    end if
 
      ! get size on each proc
-     if (.not. allocated(dims)) allocate(dims(0:n_procs))
-     if (.not. allocated(dims1)) allocate(dims1(0:n_procs-1))
+     if (.not. allocated(dims)) allocate(dims(0:n_procs_cmfd))
+     if (.not. allocated(dims1)) allocate(dims1(0:n_procs_cmfd-1))
      call VecGetOwnershipRanges(phi,dims,ierr)
-     do k = 0,n_procs-1
+     do k = 0,n_procs_cmfd-1
        dims1(k) = dims(k+1) - dims(k)
      end do
 
      ! gather data on all procs (will truncate xptr if needed for last proc)
-     call MPI_GATHERV(xptr,dims1(rank),MPI_REAL8,phi_tmp,dims1,dims(0:n_procs-1),MPI_REAL8,n_procs-1,MPI_COMM_WORLD,ierr)
+     call MPI_GATHERV(xptr,dims1(rank),MPI_REAL8,phi_tmp,dims1,dims(0:n_procs_cmfd-1),MPI_REAL8,n_procs_cmfd-1,PETSC_COMM_WORLD,ierr)
 
      ! set values in last row of matrix
-     if (rank == n_procs - 1) then
+     if (rank == n_procs_cmfd - 1) then
        phi_tmp = -1.0_8*phi_tmp ! negate the transpose
        call MatSetValues(jac_prec,1,n,n,(/(k,k=0,n-1)/),phi_tmp,INSERT_VALUES,ierr)
        call MatSetValue(jac_prec,n,n,1.0_8,INSERT_VALUES,ierr)

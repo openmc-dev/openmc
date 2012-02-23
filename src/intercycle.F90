@@ -481,7 +481,7 @@ contains
              if (entropy_on) then
                 if (cmfd_on) then
                   write(UNIT=OUTPUT_UNIT, FMT=104) current_cycle, k_cycle, &
-                       entropy, keff, keff_std, cmfd%keff
+                       entropy, keff, keff_std, cmfd%keff, cmfd%entropy
                 else
                   write(UNIT=OUTPUT_UNIT, FMT=103) current_cycle, k_cycle, &
                        entropy, keff, keff_std
@@ -522,7 +522,7 @@ contains
 101 format (2X,I5,2X,F8.5,5X,F8.5," +/-",F8.5)
 102 format (2X,I5,2X,F8.5,3X,F8.5)
 103 format (2X,I5,2X,F8.5,3X,F8.5,3X,F8.5," +/-",F8.5)
-104 format (2X,I5,2X,F8.5,3X,F8.5,3X,F8.5," +/-",F8.5,2X,F8.5)
+104 format (2X,I5,2X,F8.5,3X,F8.5,3X,F8.5," +/-",F8.5,2X,F8.5,4X,F8.5)
 105 format (2X,I5,2X,F8.5,5X,F8.5," +/-",F8.5,2X,F8.5)
 
   end subroutine calculate_keff

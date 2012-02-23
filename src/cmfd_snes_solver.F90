@@ -66,7 +66,6 @@ contains
     integer              :: n         ! problem size
     integer              :: row_start ! local row start
     integer              :: row_end   ! local row end
-    integer, allocatable :: nnzv(:)   ! vector of number of nonzeros in jacobian
     real(8), pointer     :: xptr(:)   ! solution pointer
 
     ! set up operator matrices

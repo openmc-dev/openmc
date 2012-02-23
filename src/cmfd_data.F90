@@ -287,10 +287,8 @@ contains
     integer :: neig_idx(3)        ! spatial indices of neighbour
     integer :: bound(6)           ! vector containing indices for boudary check
     real(8) :: albedo(6)          ! albedo vector with global boundaries
-    real(8) :: cell_totxs         ! total cross section of current ijk cell
     real(8) :: cell_dc            ! diffusion coef of current cell
     real(8) :: cell_hxyz(3)       ! cell dimensions of current ijk cell
-    real(8) :: neig_totxs         ! total xs of neighbor cell
     real(8) :: neig_dc            ! diffusion coefficient of neighbor cell
     real(8) :: neig_hxyz(3)       ! cell dimensions of neighbor cell
     real(8) :: dtilde             ! finite difference coupling parameter 
@@ -555,7 +553,6 @@ contains
     integer :: nx                ! number of mesh cells in x direction
     integer :: ny                ! number of mesh cells in y direction
     integer :: nz                ! number of mesh cells in z direction
-    integer :: ng                ! number of energy groups
     integer :: i                 ! iteration counter for x
     integer :: j                 ! iteration counter for y
     integer :: k                 ! iteration counter for z

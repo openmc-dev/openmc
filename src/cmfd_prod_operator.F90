@@ -179,9 +179,7 @@ contains
     integer :: j                  ! iteration counter for y
     integer :: k                  ! iteration counter for z
     integer :: g                  ! iteration counter for groups
-    integer :: l                  ! iteration counter for leakages
     integer :: h                  ! energy group when doing scattering
-    integer :: gmat_idx           ! index in matrix for energy group g
     integer :: hmat_idx           ! index in matrix for energy group h
     integer :: ierr               ! Petsc error code
     integer :: row_start            ! the first local row on the processor

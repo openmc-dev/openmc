@@ -194,13 +194,9 @@ contains
     real(8)     :: stol = 1.e-5_8 ! tolerance on source
     real(8)     :: kerr           ! error in keff
     real(8)     :: serr           ! error in source
-    real(8)     :: one = -1.0_8   ! one
     real(8)     :: norm_n         ! L2 norm of new source
     real(8)     :: norm_o         ! L2 norm of old source
-    integer     :: floc           ! location of max error in flux
-    integer     :: sloc           ! location of max error in source
     integer     :: ierr           ! petsc error code
-    integer     :: n              ! vector size
 
     ! reset convergence flag
     iconv = .FALSE.

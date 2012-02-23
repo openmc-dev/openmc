@@ -262,7 +262,6 @@ contains
     integer :: dir_idx              ! index for determining - or + face of cell
     integer :: neig_idx(3)          ! spatial indices of neighbour
     integer :: shift_idx            ! parameter to shift index by +1 or -1
-    integer :: kount                ! integer for counting values in vector
     integer :: row_start            ! the first local row on the processor
     integer :: row_finish           ! the last local row on the processor
     integer :: irow                 ! iteration counter over row

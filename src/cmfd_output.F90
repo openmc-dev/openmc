@@ -27,19 +27,11 @@ contains
     integer :: g            ! iteration counter for g
     integer :: h            ! iteration counter for outgoing groups
     integer :: l            ! iteration counter for leakage
-    integer :: io_error     ! error for opening file unit
     real(8) :: leakage      ! leakage term in neutron balance
     real(8) :: interactions ! total number of interactions in balance
     real(8) :: scattering   ! scattering term in neutron balance
     real(8) :: fission      ! fission term in neutron balance
     real(8) :: res          ! residual of neutron balance
-    character(MAX_FILE_LEN) :: filename
-    character(30) :: label
-
-    ! open cmfd file for output
-!   filename = "cmfd_"//trim(to_str(current_cycle))//".out"
-!   open(FILE=filename, UNIT=UNIT_CMFD, STATUS='replace', ACTION='write', &
-!        IOSTAT=io_error)
 
     ! extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -136,16 +128,10 @@ contains
     use hdf5
     use global, only: hdf5_output_file,hdf5_err
 
-! character(LEN=7), parameter :: filename = "cmfd.h5" ! File name
-!   character(LEN=4)  :: grpname = "cmfd" ! Group name
-    character(LEN=20) :: cycname ! cycle name
-
-! integer(HID_T) :: file_id ! File identifier
-    integer(HID_T) :: group_id ! Group identifier
-    integer(HID_T) :: cycle_id ! Another group id denoting cycle
-    integer(HID_T) :: dataspace_id ! Data space identifier
-    integer(HID_T) :: dataset_id ! Dataset identifier
-
+    character(LEN=20) :: cycname           ! cycle name
+    integer(HID_T) :: cycle_id             ! Another group id denoting cycle
+    integer(HID_T) :: dataspace_id         ! Data space identifier
+    integer(HID_T) :: dataset_id           ! Dataset identifier
     integer(HSIZE_T), dimension(1) :: dim1 ! vector for hdf5 dimensions
     integer(HSIZE_T), dimension(3) :: dim3 ! vector for hdf5 dimensions
     integer(HSIZE_T), dimension(4) :: dim4 ! vector for hdf5 dimensions

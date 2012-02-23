@@ -56,14 +56,16 @@ contains
     ! broadcast cmfd object to all procs
     call cmfd_bcast()
 
-      ! execute snes solver
-      call cmfd_snes_execute()
+    ! execute snes solver
+    call cmfd_snes_execute()
 
-      ! stop timer
-      call timer_stop(time_cmfd)
+    ! stop timer
+    call timer_stop(time_cmfd)
 
-      ! write vtk file
-      !if(.not. cmfd_only) call write_cmfd_vtk()
+    ! write vtk file
+    !if(.not. cmfd_only) call write_cmfd_vtk()
+
+    call calc_fission_source()
 
     ! finalize slepc
     if (current_cycle == n_cycles) call SlepcFinalize(ierr)
@@ -161,6 +163,106 @@ contains
     PETSC_COMM_WORLD = new_comm
 
   end subroutine petsc_init_mpi
+
+!===============================================================================
+! CALC_FISSION_SOURCE calculates the cmfd fission source
+!===============================================================================
+
+  subroutine calc_fission_source()
+
+    use global, only: cmfd,cmfd_coremap 
+
+    ! local variables
+    integer :: nx ! maximum number of cells in x direction
+    integer :: ny ! maximum number of cells in y direction
+    integer :: nz ! maximum number of cells in z direction
+    integer :: ng ! maximum number of energy groups
+    integer :: i ! iteration counter for x
+    integer :: j ! iteration counter for y
+    integer :: k ! iteration counter for z
+    integer :: g ! iteration counter for groups
+    integer :: idx ! index in vector
+    real(8) :: hxyz(3) ! cell dimensions of current ijk cell
+    real(8) :: vol     ! volume of cell
+
+    ! get maximum of spatial and group indices
+    nx = cmfd%indices(1)
+    ny = cmfd%indices(2)
+    nz = cmfd%indices(3)
+    ng = cmfd%indices(4)
+
+    ! loop around indices to map to cmfd object
+    ZLOOP: do k = 1,nz
+
+      YLOOP: do j = 1,ny
+
+        XLOOP: do i = 1,nx
+
+          GROUP: do g = 1,ng
+
+            ! check for core map
+            if (cmfd_coremap) then
+              if (cmfd%coremap(i,j,k) == 99999) then
+                cycle
+              end if
+            end if
+
+            ! get dimensions of cell
+            hxyz = cmfd%hxyz(:,i,j,k)
+
+            ! calculate volume
+            vol = hxyz(1)*hxyz(2)*hxyz(3)
+
+            ! get first index
+            idx = get_matrix_idx(1,i,j,k,ng,nx,ny)
+
+            ! compute fission source
+            cmfd%source(g,i,j,k) = sum(cmfd%nfissxs(:,g,i,j,k)*cmfd%phi(idx:idx+(ng-1)))*vol 
+
+          end do GROUP
+
+        end do XLOOP
+
+      end do YLOOP
+
+    end do ZLOOP
+
+    ! normalize source such that it sums to 1.0
+    cmfd%source = cmfd%source/sum(cmfd%source)
+
+  end subroutine calc_fission_source 
+
+!===============================================================================
+! GET_MATRIX_IDX takes (x,y,z,g) indices and computes location in matrix 
+!===============================================================================
+  
+  function get_matrix_idx(g,i,j,k,ng,nx,ny) result (matidx)
+
+    use global, only: cmfd,cmfd_coremap
+
+    integer :: matidx         ! the index location in matrix
+    integer :: i               ! current x index
+    integer :: j               ! current y index
+    integer :: k               ! current z index
+    integer :: g               ! current group index
+    integer :: nx ! maximum number of cells in x direction
+    integer :: ny ! maximum number of cells in y direction
+    integer :: ng ! maximum number of energy groups
+
+    ! check if coremap is used
+    if (cmfd_coremap) then
+
+      ! get idx from core map
+      matidx = ng*(cmfd % coremap(i,j,k)) - (ng - g)
+
+    else
+
+      ! compute index
+      matidx = g + ng*(i - 1) + ng*nx*(j - 1) + ng*nx*ny*(k - 1)
+
+    end if
+  
+  end function get_matrix_idx
 
 #endif
 

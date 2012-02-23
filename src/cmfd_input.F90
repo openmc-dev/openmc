@@ -342,20 +342,15 @@ contains
     use hdf5
     use hdf5_interface, only: hdf5_open_output, hdf5_close_output
 
-! integer(HID_T) :: file_id ! File identifier
     integer(HID_T) :: dataset_id ! Dataset identifier
-    integer :: error ! Error flag
-
     integer(HSIZE_T), dimension(1) :: dim1
     integer(HSIZE_T), dimension(3) :: dim3
     integer(HSIZE_T), dimension(4) :: dim4
     integer(HSIZE_T), dimension(5) :: dim5
-
     integer :: nx ! number of mesh cells in x direction
     integer :: ny ! number of mesh cells in y direction
     integer :: nz ! number of mesh cells in z direction
     integer :: ng ! number of energy groups
-
     integer :: core_map_int 
 
     ! open output file

@@ -29,7 +29,6 @@ contains
   subroutine execute_cmfd()
 
     integer :: ierr  ! petsc error code
-    integer :: myrank 
 
     ! initialize mpi communicator
     call petsc_init_mpi()
@@ -89,7 +88,6 @@ contains
     integer :: ny  ! number of mesh cells in y direction
     integer :: nz  ! number of mesh cells in z direction
     integer :: ng  ! number of energy groups
-    integer rank
 
     ! extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -132,12 +130,11 @@ contains
 
   subroutine petsc_init_mpi()
 
-    integer   :: new_comm       ! new communicator
-    integer   :: orig_group     ! original MPI group for MPI_COMM_WORLD
-    integer   :: new_group      ! new MPI group subset of orig_group
-    integer,allocatable   :: ranks(:)       ! ranks to include for petsc
-    integer   :: k              ! iteration counter
-    integer   :: myrank=9999
+    integer               :: new_comm   ! new communicator
+    integer               :: orig_group ! original MPI group for MPI_COMM_WORLD
+    integer               :: new_group  ! new MPI group subset of orig_group
+    integer,allocatable   :: ranks(:)   ! ranks to include for petsc
+    integer               :: k          ! iteration counter
 
     ! set ranks 0-6 or min
     if (n_procs >= 6) then
@@ -166,4 +163,5 @@ contains
   end subroutine petsc_init_mpi
 
 #endif
+
 end module cmfd_execute

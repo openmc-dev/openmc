@@ -102,24 +102,9 @@ contains
     type(jacobian_operator) :: this
     type(operators)         :: ctx
 
-    integer :: i             ! iteration counter for x
-    integer :: j             ! iteration counter for y
-    integer :: k             ! iteration counter for z
-    integer :: g             ! iteration counter for groups
-    integer :: l             ! iteration counter for leakages
-    integer :: h             ! energy group when doing scattering
     integer :: n             ! the extent of the matrix
-    integer :: irow          ! row counter
-    integer :: bound(6)      ! vector for comparing when looking for bound
-    integer :: xyz_idx       ! index for determining if x,y or z leakage
-    integer :: dir_idx       ! index for determining - or + face of cell
-    integer :: neig_idx(3)   ! spatial indices of neighbour
-    integer :: nxyz(3,2)     ! single vector containing bound. locations
-    integer :: shift_idx     ! parameter to shift index by +1 or -1
     integer :: row_start     ! index of local starting row
     integer :: row_end       ! index of local final row
-    integer :: neig_mat_idx  ! matrix index of neighbor cell
-    integer :: scatt_mat_idx ! matrix index for h-->g scattering terms
 
     ! get local problem size
     n = this%n
@@ -203,7 +188,6 @@ contains
      integer              :: row_end  ! ending local row on process
      integer, allocatable :: dims(:)  ! vec of starting and ending rows
      integer, allocatable :: dims1(:) ! vec of sizes on each proc
-     integer, allocatable :: nnzv(:)  ! vector of number of nonzeros for jac
      integer, allocatable :: cols(:)  ! vector of column numbers
      real(8)              :: lambda   ! eigenvalue
      real(8), pointer     :: xptr(:)  ! pointer to solution vector

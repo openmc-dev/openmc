@@ -148,7 +148,7 @@ call timer_start(time_cmfd)
     integer              :: row_start ! starting row 
     integer              :: row_end   ! ending row
     real(8),allocatable  :: mybuf(:)  ! temp buffer
-    PetscViewer          :: viewer    ! petsc output object
+!   PetscViewer          :: viewer    ! petsc output object
     PetscScalar, pointer :: phi_v(:)  ! pointer to eigenvector info
  
     ! get problem size

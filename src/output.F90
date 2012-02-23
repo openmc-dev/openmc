@@ -974,7 +974,7 @@ contains
     character(MAX_FILE_LEN) :: path ! path of summary file
 
     ! Create filename for log file
-    path = "summary.out"
+    path = trim(path_input)//"summary.out"
 
     ! Check if log file already exists
     inquire(FILE=path, EXIST=file_exists)

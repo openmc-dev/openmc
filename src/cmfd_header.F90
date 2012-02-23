@@ -40,7 +40,7 @@ module cmfd_header
     real(8), allocatable :: hxyz(:,:,:,:)
 
     ! source probability distribution
-    real(8), allocatable :: sourcepdf(:,:,:,:)
+    real(8), allocatable :: source(:,:,:,:)
 
     ! source sites in each mesh box
     real(8), allocatable :: sourcecounts(:,:,:,:)
@@ -59,6 +59,9 @@ module cmfd_header
 
     ! residual for neutron balance
     real(8), allocatable :: resnb(:,:,:,:)
+
+    ! entropy calculation
+    real(8) :: entropy
 
   end type cmfd_obj
 
@@ -98,8 +101,8 @@ contains
     ! allocate dimensions for each box (here for general case)
     if (.not. allocated(this % hxyz)) allocate(this % hxyz(3,nx,ny,nz))
 
-    ! allocate this fission source pdf
-    !allocate( this % sourcepdf(ng,nx,ny,nz) )
+    ! allocate this fission source
+    if (.not. allocated(this % source)) allocate(this % source(ng,nx,ny,nz))
 
     ! allocate surface currents
     if (.not. allocated(this % current)) allocate(this % current(12,ng,nx,ny,nz))
@@ -128,7 +131,7 @@ contains
     if (allocated(this % coremap))       deallocate(this % coremap)
     if (allocated(this % indexmap))      deallocate(this % indexmap)
     if (allocated(this % phi))           deallocate(this % phi)
-    if (allocated(this % sourcepdf))     deallocate(this % sourcepdf)
+    if (allocated(this % source))        deallocate(this % source)
     if (allocated(this % sourcecounts))  deallocate(this % sourcecounts)
     if (allocated(this % weightfactors)) deallocate(this % weightfactors)
 

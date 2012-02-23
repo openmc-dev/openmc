@@ -35,6 +35,8 @@ cmfd_input.o: tally_header.o
 cmfd_input.o: xml-fortran/templates/cmfd_t.o
 
 cmfd_jacobian_operator.o: global.o
+cmfd_jacobian_operator.o: cmfd_loss_operator.o
+cmfd_jacobian_operator.o: cmfd_prod_operator.o
 
 cmfd_loss_operator.o: global.o
 
@@ -193,6 +195,7 @@ main.o: tally.o
 main.o: timing.o
 
 mesh.o: mesh_header.o
+mesh.o: particle_header.o
 
 output.o: constants.o
 output.o: datatypes.o

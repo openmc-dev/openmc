@@ -108,7 +108,7 @@ contains
     end if
 
     ! Random number seed
-    if (dble(criticality % seed) > 0_8)  seed = dble(criticality % seed)
+    if (dble(criticality % seed) > 0.0_8)  seed = dble(criticality % seed)
 
     ! Verbosity
     if (verbosity_ > 0) verbosity = verbosity_

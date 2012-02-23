@@ -56,9 +56,9 @@ contains
     ! Display column titles
     if (entropy_on) then
       if (cmfd_on) then
-       message = " Cycle   k(cycle)   Entropy         Average k         CMFD k"
+       message = " Cycle   k(cycle)   Entropy         Average k         CMFD k    CMFD Ent."
        call write_message(1)
-       message = " =====   ========   =======    ===================  =========="
+       message = " =====   ========   =======    ===================  ==========  ========="
        call write_message(1)
      else 
        message = " Cycle   k(cycle)   Entropy         Average k"

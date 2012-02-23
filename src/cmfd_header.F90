@@ -61,7 +61,7 @@ module cmfd_header
     real(8), allocatable :: resnb(:,:,:,:)
 
     ! entropy calculation
-    real(8) :: entropy
+    real(8) :: entropy = 0.0_8
 
   end type cmfd_obj
 

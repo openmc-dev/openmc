@@ -33,42 +33,49 @@ contains
     ! initialize mpi communicator
     call petsc_init_mpi()
 
+    ! filter procs
     if (rank < 6) then
 
-    ! initialize slepc/petsc (communicates to world)
-    if(current_cycle == n_inactive + 1) call SlepcInitialize                   &
-   &                                       (PETSC_NULL_CHARACTER,ierr)
+      ! initialize slepc/petsc (communicates to world)
+      if(current_cycle == n_inactive + 1) call SlepcInitialize                 &
+     &                                       (PETSC_NULL_CHARACTER,ierr)
 
-    ! set global variable for number of procs in cmfd calc
-    call MPI_COMM_SIZE(PETSC_COMM_WORLD,n_procs_cmfd,ierr)
+      ! set global variable for number of procs in cmfd calc
+      call MPI_COMM_SIZE(PETSC_COMM_WORLD,n_procs_cmfd,ierr)
 
-    ! only run if master process
-    if (master) then
+      ! only run if master process
+      if (master) then
 
-      ! begin timer
-      call timer_start(time_cmfd)
+        ! begin timer
+        call timer_start(time_cmfd)
 
-      ! set up cmfd
-      if(.not. cmfd_only) call set_up_cmfd()
+        ! set up cmfd
+        if(.not. cmfd_only) call set_up_cmfd()
 
-    end if
+      end if
 
-    ! broadcast cmfd object to all procs
-    call cmfd_bcast()
+      ! broadcast cmfd object to all procs
+      call cmfd_bcast()
 
-    ! execute snes solver
-    call cmfd_snes_execute()
+      ! execute snes solver
+      call cmfd_snes_execute()
+      
+      ! only run if master process
+      if (master) then
+  
+        ! stop timer
+        call timer_stop(time_cmfd)
 
-    ! stop timer
-    call timer_stop(time_cmfd)
+        ! write vtk file
+        !if(.not. cmfd_only) call write_cmfd_vtk()
 
-    ! write vtk file
-    !if(.not. cmfd_only) call write_cmfd_vtk()
+        ! compute fission source for reweighting
+        call calc_fission_source()
 
-    call calc_fission_source()
+      end if
 
-    ! finalize slepc
-    if (current_cycle == n_cycles) call SlepcFinalize(ierr)
+      ! finalize slepc
+      if (current_cycle == n_cycles) call SlepcFinalize(ierr)
 
     end if
 
@@ -170,7 +177,7 @@ contains
 
   subroutine calc_fission_source()
 
-    use global, only: cmfd,cmfd_coremap 
+    use global, only: cmfd,cmfd_coremap,entropy_on 
 
     ! local variables
     integer :: nx ! maximum number of cells in x direction
@@ -184,6 +191,7 @@ contains
     integer :: idx ! index in vector
     real(8) :: hxyz(3) ! cell dimensions of current ijk cell
     real(8) :: vol     ! volume of cell
+    real(8),allocatable :: source(:,:,:,:)  ! tmp source array for entropy
 
     ! get maximum of spatial and group indices
     nx = cmfd%indices(1)
@@ -229,6 +237,28 @@ contains
 
     ! normalize source such that it sums to 1.0
     cmfd%source = cmfd%source/sum(cmfd%source)
+
+    ! compute entropy
+    if (entropy_on) then
+
+      ! allocate tmp array
+      if (.not.allocated(source)) allocate(source(ng,nx,ny,nz))
+
+      ! initialize the source
+      source = 0.0_8
+
+      ! compute log
+      where (cmfd%source > 0.0_8)
+        source = cmfd%source*log(cmfd%source)/log(2.0)
+      end where
+
+      ! sum that source
+      cmfd%entropy = -1.0_8*sum(source)
+
+      ! deallocate tmp array
+      if (allocated(source)) deallocate(source)
+
+    end if
 
   end subroutine calc_fission_source 
 

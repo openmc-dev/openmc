@@ -1522,6 +1522,20 @@ contains
   end function get_label
 
 !===============================================================================
+! CALCULATE_STATISTICS
+!===============================================================================
+
+  elemental subroutine calculate_statistics(score)
+
+    type(TallyScore), intent(inout) :: score
+
+    ! Calculate mean and standard deviation of the mean
+    score % sum    = score % sum/n_active
+    score % sum_sq = sqrt((score % sum_sq/n_active - score % sum**2)/n_active)
+
+  end subroutine calculate_statistics
+
+!===============================================================================
 ! TALLY_STATISTICS computes the mean and standard deviation of the mean of each
 ! tally and stores them in the val and val_sq attributes of the TallyScores
 ! respectively
@@ -1530,33 +1544,12 @@ contains
   subroutine tally_statistics()
 
     integer :: i    ! index in tallies array
-    integer :: j    ! loop index for filter bins
-    integer :: k    ! loop index for scoring bins
-    real(8) :: val  ! sum(x)
-    real(8) :: val2 ! sum(x*x)
-    real(8) :: mean ! mean value
-    real(8) :: std  ! standard deviation of the mean
     type(TallyObject), pointer :: t => null()
 
     do i = 1, n_tallies
        t => tallies(i)
 
-       do k = 1, t % n_score_bins
-          do j = 1, t % n_total_bins
-             ! Copy values from tallies
-             val  = t % scores(j,k) % sum
-             val2 = t % scores(j,k) % sum_sq
-
-             ! Calculate mean and standard deviation
-             mean = val/n_active
-             std = sqrt((val2/n_active - mean*mean)/n_active)
-
-             ! Copy back into TallyScore
-             t % scores(j,k) % sum    = mean
-             t % scores(j,k) % sum_sq = std
-          end do
-       end do
-
+       call calculate_statistics(t % scores)
     end do
 
   end subroutine tally_statistics

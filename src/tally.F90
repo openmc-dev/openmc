@@ -1049,6 +1049,26 @@ contains
   end subroutine add_to_score
 
 !===============================================================================
+! ACCUMULATE_CYCLE_ESTIMATE
+!===============================================================================
+
+  elemental subroutine accumulate_cycle_estimate(score)
+
+    type(TallyScore), intent(inout) :: score
+
+    ! Add the sum and square of the sum of contributions from each history
+    ! within a cycle to the variables val and val_sq. This will later allow us
+    ! to calculate a variance on the tallies
+
+    score % val    = score % val    + score % val_history/n_particles
+    score % val_sq = score % val_sq + (score % val_history/n_particles)**2
+
+    ! Reset the single cycle estimate
+    score % val_history = ZERO
+
+  end subroutine accumulate_cycle_estimate
+
+!===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
 ! within the cycle to a new random variable
 !===============================================================================
@@ -1056,10 +1076,7 @@ contains
   subroutine synchronize_tallies()
 
     integer :: i   ! index in tallies array
-    integer :: j   ! index over filter bins
-    integer :: k   ! index over scoring bins
-    real(8) :: val ! value of accumulated tally
-    type(TallyObject), pointer :: t
+    type(TallyObject), pointer :: t => null()
 
 #ifdef MPI
     call reduce_tallies()
@@ -1070,22 +1087,7 @@ contains
        t => tallies(i)
 
        ! Loop over all filter and scoring bins
-       do k = 1, t % n_score_bins
-          do j = 1, t % n_total_bins
-             ! Add the sum and square of the sum of contributions from each
-             ! history within a cycle to the variables val and val_sq. This will
-             ! later allow us to calculate a variance on the tallies
-
-             val = t % scores(j,k) % val_history / n_particles
-             t % scores(j,k) % val    = t % scores(j,k) % val    + val
-             t % scores(j,k) % val_sq = t % scores(j,k) % val_sq + val*val
-
-             ! Reset the within-cycle accumulation variable
-
-             t % scores(j,k) % val_history = ZERO
-          end do
-       end do
-
+       call accumulate_cycle_estimate(t % scores)
     end do
 
   end subroutine synchronize_tallies

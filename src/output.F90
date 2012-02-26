@@ -968,7 +968,6 @@ contains
 
   subroutine create_summary_file()
 
-    integer :: io_error
     logical :: file_exists  ! does log file already exist?
     character(MAX_FILE_LEN) :: path ! path of summary file
 
@@ -983,8 +982,32 @@ contains
 
     ! Open log file for writing
     open(UNIT=UNIT_SUMMARY, FILE=path, STATUS='replace', &
-         ACTION='write', IOSTAT=io_error)
+         ACTION='write')
 
   end subroutine create_summary_file
+
+!===============================================================================
+! CREATE_XS_SUMMARY_FILE
+!===============================================================================
+
+  subroutine create_xs_summary_file()
+
+    logical :: file_exists  ! does log file already exist?
+    character(MAX_FILE_LEN) :: path ! path of summary file
+
+    ! Create filename for log file
+    path = "cross_sections.out"
+
+    ! Check if log file already exists
+    inquire(FILE=path, EXIST=file_exists)
+    if (file_exists) then
+       ! Possibly copy old log file
+    end if
+
+    ! Open log file for writing
+    open(UNIT=UNIT_XS, FILE=path, STATUS='replace', &
+         ACTION='write')
+
+  end subroutine create_xs_summary_file
 
 end module output

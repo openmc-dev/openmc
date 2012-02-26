@@ -11,7 +11,6 @@ module tally
   use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement
 
 #ifdef MPI
-  use intercycle,    only: reduce_tallies
   use mpi
 #endif
 
@@ -1091,6 +1090,55 @@ contains
     end do
 
   end subroutine synchronize_tallies
+
+!===============================================================================
+! REDUCE_TALLIES collects all the results from tallies onto one processor
+!===============================================================================
+
+#ifdef MPI
+  subroutine reduce_tallies()
+
+    integer :: i      ! loop index for tallies
+    integer :: n      ! number of filter bins
+    integer :: m      ! number of score bins
+    integer :: n_bins ! total number of bins
+    real(8), allocatable :: tally_temp(:,:) ! contiguous array of scores
+    type(TallyObject), pointer :: t => null()
+
+    do i = 1, n_tallies
+       t => tallies(i)
+
+       n = t % n_total_bins
+       m = t % n_score_bins
+       n_bins = n*m
+
+       allocate(tally_temp(n,m))
+
+       tally_temp = t % scores(:,:) % val_history
+
+       if (master) then
+          ! The MPI_IN_PLACE specifier allows the master to copy values into a
+          ! receive buffer without having a temporary variable
+          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
+               0, MPI_COMM_WORLD, mpi_err)
+
+          ! Transfer values to val_history on master
+          t % scores(:,:) % val_history = tally_temp
+       else
+          ! Receive buffer not significant at other processors
+          call MPI_REDUCE(tally_temp, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
+               0, MPI_COMM_WORLD, mpi_err)
+
+          ! Reset val_history on other processors
+          t % scores(:,:) % val_history = 0
+       end if
+
+       deallocate(tally_temp)
+
+    end do
+
+  end subroutine reduce_tallies
+#endif
 
 !===============================================================================
 ! WRITE_TALLIES creates an output file and writes out the mean values of all

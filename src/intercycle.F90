@@ -10,6 +10,7 @@ module intercycle
   use random_lcg,      only: prn, set_particle_seed, prn_skip
   use search,          only: binary_search
   use string,          only: to_str
+  use tally,           only: accumulate_cycle_estimate
   use tally_header,    only: TallyObject
   use timing,          only: timer_start, timer_stop
 
@@ -274,55 +275,6 @@ contains
   end subroutine synchronize_bank
 
 !===============================================================================
-! REDUCE_TALLIES collects all the results from tallies onto one processor
-!===============================================================================
-
-#ifdef MPI
-  subroutine reduce_tallies()
-
-    integer :: i      ! loop index for tallies
-    integer :: n      ! number of filter bins
-    integer :: m      ! number of score bins
-    integer :: n_bins ! total number of bins
-    real(8), allocatable :: tally_temp(:,:) ! contiguous array of scores
-    type(TallyObject), pointer :: t => null()
-
-    do i = 1, n_tallies
-       t => tallies(i)
-
-       n = t % n_total_bins
-       m = t % n_score_bins
-       n_bins = n*m
-
-       allocate(tally_temp(n,m))
-
-       tally_temp = t % scores(:,:) % val_history
-
-       if (master) then
-          ! The MPI_IN_PLACE specifier allows the master to copy values into a
-          ! receive buffer without having a temporary variable
-          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
-               0, MPI_COMM_WORLD, mpi_err)
-
-          ! Transfer values to val_history on master
-          t % scores(:,:) % val_history = tally_temp
-       else
-          ! Receive buffer not significant at other processors
-          call MPI_REDUCE(tally_temp, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
-               0, MPI_COMM_WORLD, mpi_err)
-
-          ! Reset val_history on other processors
-          t % scores(:,:) % val_history = 0
-       end if
-
-       deallocate(tally_temp)
-
-    end do
-
-  end subroutine reduce_tallies
-#endif
-
-!===============================================================================
 ! SHANNON_ENTROPY calculates the Shannon entropy of the fission source
 ! distribution to assess source convergence
 !===============================================================================
@@ -436,17 +388,9 @@ contains
     integer(8)    :: total_bank ! total number of source sites
     integer       :: n          ! active cycle number
     real(8)       :: k_cycle    ! single cycle estimate of keff
-    real(8), save :: k_sum      ! accumulated keff
-    real(8), save :: k_sum_sq   ! accumulated keff**2
 
     message = "Calculate cycle keff..."
     call write_message(8)
-
-    ! initialize sum and square of sum at beginning of run
-    if (current_cycle == 1) then
-       k_sum = ZERO
-       k_sum_sq = ZERO
-    end if
 
 #ifdef MPI
     ! Collect number bank sites onto master process
@@ -462,19 +406,21 @@ contains
        ! cycle keff, we need to multiply by that keff to get the current cycle's
        ! value
 
-       k_cycle = real(total_bank)/real(n_particles)*keff
+       k_analog % val_history = real(total_bank) * keff
+       k_cycle = k_analog % val_history/n_particles
 
        if (current_cycle > n_inactive) then
           ! Active cycle number
           n = current_cycle - n_inactive
 
-          ! Accumulate cycle estimate of k
-          k_sum =    k_sum    + k_cycle
-          k_sum_sq = k_sum_sq + k_cycle*k_cycle
+          ! Accumulate single cycle realizations of k
+          call accumulate_cycle_estimate(k_analog)
+          call accumulate_cycle_estimate(k_tracklength)
+          call accumulate_cycle_estimate(k_collision)
 
           ! Determine mean and standard deviation of mean
-          keff = k_sum/n
-          keff_std = sqrt((k_sum_sq/n - keff*keff)/n)
+          keff = k_analog % val/n
+          keff_std = sqrt((k_analog % val_sq/n - keff*keff)/n)
 
           ! Display output for this cycle
           if (current_cycle > n_inactive + 1) then

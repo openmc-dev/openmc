@@ -122,6 +122,7 @@ intercycle.o: output.o
 intercycle.o: random_lcg.o
 intercycle.o: search.o
 intercycle.o: string.o
+intercycle.o: tally.o
 intercycle.o: tally_header.o
 intercycle.o: timing.o
 
@@ -206,7 +207,6 @@ string.o: global.o
 tally.o: constants.o
 tally.o: error.o
 tally.o: global.o
-tally.o: intercycle.o
 tally.o: mesh.o
 tally.o: mesh_header.o
 tally.o: output.o

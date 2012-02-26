@@ -10,7 +10,7 @@ module global
   use mesh_header,      only: StructuredMesh
   use particle_header,  only: Particle
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap
+  use tally_header,     only: TallyObject, TallyMap, TallyScore
   use timing,           only: Timer
 
 #ifdef MPI
@@ -135,6 +135,12 @@ module global
   ! cycle keff
   real(8) :: keff = ONE
   real(8) :: keff_std
+
+  ! Estimators for the effective neutron multiplication factor
+  
+  type(TallyScore) :: k_analog
+  type(TallyScore) :: k_tracklength
+  type(TallyScore) :: k_collision
 
   ! Shannon entropy
   logical :: entropy_on = .false.

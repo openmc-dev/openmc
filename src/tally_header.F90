@@ -34,10 +34,10 @@ module tally_header
 !===============================================================================
 
   type TallyScore
-     integer :: n_events    = 0
-     real(8) :: val_history = 0.
-     real(8) :: val         = 0.
-     real(8) :: val_sq      = 0.
+     integer :: n_events = 0
+     real(8) :: value    = 0.
+     real(8) :: sum      = 0.
+     real(8) :: sum_sq   = 0.
   end type TallyScore
 
 !===============================================================================

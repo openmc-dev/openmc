@@ -99,8 +99,8 @@ contains
                call score_tracklength_tally(distance)
 
           ! Score track-length estimate of k-eff
-          call add_to_score(k_tracklength, p % wgt * distance * &
-               material_xs % nu_fission)
+          call add_to_score(global_tallies(K_TRACKLENGTH), &
+               p % wgt * distance * material_xs % nu_fission)
        end if
 
        if (d_collision > d_boundary) then
@@ -126,8 +126,8 @@ contains
 
           ! Score collision estimate of keff
           if (tallies_on) then
-             call add_to_score(k_collision,  p % wgt * &
-                  material_xs % nu_fission / material_xs % total)
+             call add_to_score(global_tallies(K_COLLISION), &
+                  p % wgt * material_xs % nu_fission / material_xs % total)
           end if
 
           p % surface = NONE

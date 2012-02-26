@@ -385,42 +385,53 @@ contains
 
   subroutine calculate_keff()
 
-    integer(8)    :: total_bank ! total number of source sites
-    integer       :: n          ! active cycle number
-    real(8)       :: k_cycle    ! single cycle estimate of keff
+    integer :: n        ! active cycle number
+    real(8) :: k_cycle  ! single cycle estimate of keff
+    real(8) :: global_temp(N_GLOBAL_TALLIES)
 
     message = "Calculate cycle keff..."
     call write_message(8)
 
+    ! Since the creation of bank sites was originally weighted by the last
+    ! cycle keff, we need to multiply by that keff to get the current cycle's
+    ! value
 #ifdef MPI
-    ! Collect number bank sites onto master process
-    call MPI_REDUCE(n_bank, total_bank, 1, MPI_INTEGER8, MPI_SUM, 0, &
-         MPI_COMM_WORLD, mpi_err)
+    global_tallies(K_ANALOG) % value = n_bank * keff
+
+    ! Copy global tallies into array to be reduced
+    global_temp = global_tallies(:) % value
+
+    if (master) then
+       call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
+            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+
+       ! Transfer values back to global_tallies on master
+       global_tallies(:) % value = global_temp
+    else
+       call MPI_REDUCE(global_temp, global_temp, N_GLOBAL_TALLIES, &
+            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+       
+       ! Reset value on other processors
+       global_tallies(:) % value = ZERO
+    end if
 #else
-    total_bank = n_bank
+    global_tallies(K_ANALOG) % value = n_bank * keff
 #endif
 
     ! Collect statistics and print output
     if (master) then
-       ! Since the creation of bank sites was originally weighted by the last
-       ! cycle keff, we need to multiply by that keff to get the current cycle's
-       ! value
-
-       k_analog % value = real(total_bank) * keff
-       k_cycle = k_analog % value/n_particles
+       k_cycle = global_tallies(K_ANALOG) % value/n_particles
 
        if (current_cycle > n_inactive) then
           ! Active cycle number
           n = current_cycle - n_inactive
 
           ! Accumulate single cycle realizations of k
-          call accumulate_cycle_estimate(k_analog)
-          call accumulate_cycle_estimate(k_tracklength)
-          call accumulate_cycle_estimate(k_collision)
+          call accumulate_cycle_estimate(global_tallies)
 
           ! Determine mean and standard deviation of mean
-          keff = k_analog % sum/n
-          keff_std = sqrt((k_analog % sum_sq/n - keff*keff)/n)
+          keff = global_tallies(K_ANALOG) % sum/n
+          keff_std = sqrt((global_tallies(K_ANALOG) % sum_sq/n - keff*keff)/n)
 
           ! Display output for this cycle
           if (current_cycle > n_inactive + 1) then

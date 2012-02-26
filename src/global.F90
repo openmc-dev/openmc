@@ -96,6 +96,14 @@ module global
   integer, allocatable :: tracklength_tallies(:)
   integer, allocatable :: current_tallies(:)
 
+  ! Global tallies
+  !   1) analog estimate of k-eff
+  !   2) collision estimate of k-eff
+  !   3) track-length estimate of k-eff
+  !   4) leakage fraction
+
+  type(TallyScore) :: global_tallies(N_GLOBAL_TALLIES)
+
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
 
@@ -135,12 +143,6 @@ module global
   ! cycle keff
   real(8) :: keff = ONE
   real(8) :: keff_std
-
-  ! Estimators for the effective neutron multiplication factor
-  
-  type(TallyScore) :: k_analog
-  type(TallyScore) :: k_tracklength
-  type(TallyScore) :: k_collision
 
   ! Shannon entropy
   logical :: entropy_on = .false.

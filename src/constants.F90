@@ -293,6 +293,14 @@ module constants
        IN_TOP    = 5,   &
        OUT_TOP   = 6
 
+  ! Global tallY parameters
+  integer, parameter :: N_GLOBAL_TALLIES = 4
+  integer, parameter :: &
+       K_ANALOG      = 1, &
+       K_COLLISION   = 2, &
+       K_TRACKLENGTH = 3, &
+       LEAKAGE       = 4
+
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
 

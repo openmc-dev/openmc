@@ -406,8 +406,8 @@ contains
        ! cycle keff, we need to multiply by that keff to get the current cycle's
        ! value
 
-       k_analog % val_history = real(total_bank) * keff
-       k_cycle = k_analog % val_history/n_particles
+       k_analog % value = real(total_bank) * keff
+       k_cycle = k_analog % value/n_particles
 
        if (current_cycle > n_inactive) then
           ! Active cycle number
@@ -419,8 +419,8 @@ contains
           call accumulate_cycle_estimate(k_collision)
 
           ! Determine mean and standard deviation of mean
-          keff = k_analog % val/n
-          keff_std = sqrt((k_analog % val_sq/n - keff*keff)/n)
+          keff = k_analog % sum/n
+          keff_std = sqrt((k_analog % sum_sq/n - keff*keff)/n)
 
           ! Display output for this cycle
           if (current_cycle > n_inactive + 1) then

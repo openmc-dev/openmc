@@ -1042,8 +1042,8 @@ contains
     type(TallyScore), intent(inout) :: score
     real(8),          intent(in)    :: val
     
-    score % n_events    = score % n_events    + 1
-    score % val_history = score % val_history + val
+    score % n_events = score % n_events + 1
+    score % value    = score % value    + val
     
   end subroutine add_to_score
 
@@ -1055,15 +1055,15 @@ contains
 
     type(TallyScore), intent(inout) :: score
 
-    ! Add the sum and square of the sum of contributions from each history
-    ! within a cycle to the variables val and val_sq. This will later allow us
+    ! Add the sum and square of the sum of contributions from each cycle
+    ! within a cycle to the variables sum and sum_sq. This will later allow us
     ! to calculate a variance on the tallies
 
-    score % val    = score % val    + score % val_history/n_particles
-    score % val_sq = score % val_sq + (score % val_history/n_particles)**2
+    score % sum    = score % sum    + score % value/n_particles
+    score % sum_sq = score % sum_sq + (score % value/n_particles)**2
 
     ! Reset the single cycle estimate
-    score % val_history = ZERO
+    score % value = ZERO
 
   end subroutine accumulate_cycle_estimate
 
@@ -1114,7 +1114,7 @@ contains
 
        allocate(tally_temp(n,m))
 
-       tally_temp = t % scores(:,:) % val_history
+       tally_temp = t % scores(:,:) % value
 
        if (master) then
           ! The MPI_IN_PLACE specifier allows the master to copy values into a
@@ -1122,15 +1122,15 @@ contains
           call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
                0, MPI_COMM_WORLD, mpi_err)
 
-          ! Transfer values to val_history on master
-          t % scores(:,:) % val_history = tally_temp
+          ! Transfer values to value on master
+          t % scores(:,:) % value = tally_temp
        else
           ! Receive buffer not significant at other processors
           call MPI_REDUCE(tally_temp, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
                0, MPI_COMM_WORLD, mpi_err)
 
-          ! Reset val_history on other processors
-          t % scores(:,:) % val_history = 0
+          ! Reset value on other processors
+          t % scores(:,:) % value = 0
        end if
 
        deallocate(tally_temp)
@@ -1290,8 +1290,8 @@ contains
           do k = 1, t % n_score_bins
              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                   repeat(" ", indent), score_name(abs(t % score_bins(k) % scalar)), &
-                  to_str(t % scores(score_index,k) % val), &
-                  trim(to_str(t % scores(score_index,k) % val_sq))
+                  to_str(t % scores(score_index,k) % sum), &
+                  trim(to_str(t % scores(score_index,k) % sum_sq))
           end do
           indent = indent - 2
 
@@ -1367,15 +1367,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Left", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
 
                 bins(SURF_FILTER_SURFACE) = OUT_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Left", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
 
                 ! Right Surface
                 bins(1:3) = (/ i, j, k /) + 1
@@ -1383,15 +1383,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Right", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
 
                 bins(SURF_FILTER_SURFACE) = OUT_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Right", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
 
                 ! Back Surface
                 bins(1:3) = (/ i, j-1, k /) + 1
@@ -1399,15 +1399,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Back", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
 
                 bins(SURF_FILTER_SURFACE) = OUT_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Back", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
 
                 ! Front Surface
                 bins(1:3) = (/ i, j, k /) + 1
@@ -1415,15 +1415,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Front", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
 
                 bins(SURF_FILTER_SURFACE) = OUT_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Front", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
 
                 ! Bottom Surface
                 bins(1:3) = (/ i, j, k-1 /) + 1
@@ -1431,15 +1431,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Bottom", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
 
                 bins(SURF_FILTER_SURFACE) = OUT_TOP
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Bottom", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
 
                 ! Top Surface
                 bins(1:3) = (/ i, j, k /) + 1
@@ -1447,15 +1447,15 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Top", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
 
                 bins(SURF_FILTER_SURFACE) = OUT_TOP
                 score_index = sum((bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Top", &
-                     to_str(t % scores(score_index,1) % val), &
-                     trim(to_str(t % scores(score_index,1) % val_sq))
+                     to_str(t % scores(score_index,1) % sum), &
+                     trim(to_str(t % scores(score_index,1) % sum_sq))
              end do
 
           end do
@@ -1544,16 +1544,16 @@ contains
        do k = 1, t % n_score_bins
           do j = 1, t % n_total_bins
              ! Copy values from tallies
-             val  = t % scores(j,k) % val
-             val2 = t % scores(j,k) % val_sq
+             val  = t % scores(j,k) % sum
+             val2 = t % scores(j,k) % sum_sq
 
              ! Calculate mean and standard deviation
              mean = val/n_active
              std = sqrt((val2/n_active - mean*mean)/n_active)
 
              ! Copy back into TallyScore
-             t % scores(j,k) % val    = mean
-             t % scores(j,k) % val_sq = std
+             t % scores(j,k) % sum    = mean
+             t % scores(j,k) % sum_sq = std
           end do
        end do
 

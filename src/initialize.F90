@@ -14,7 +14,8 @@ module initialize
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict
   use output,           only: title, header, print_summary, print_geometry,    &
-                              print_plot, create_summary_file
+                              print_plot, create_summary_file,                 &
+                              create_xs_summary_file
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use string,           only: to_str, starts_with, ends_with, lower_case
@@ -56,8 +57,9 @@ contains
     call read_command_line()
 
     if (master) then
-       ! Create summary.out file
+       ! Create output files
        call create_summary_file()
+       call create_xs_summary_file()
 
 #ifdef HDF5
        ! Open HDF5 output file for writing and write header information

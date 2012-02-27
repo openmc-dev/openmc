@@ -102,6 +102,17 @@ contains
   end subroutine hdf5_write_summary
 
 !===============================================================================
+! HDF5_WRITE_RESULTS
+!===============================================================================
+
+  subroutine hdf5_write_results()
+
+    call hdf5_write_timing()
+    call hdf5_write_global_tallies()
+
+  end subroutine hdf5_write_results
+
+!===============================================================================
 ! HDF5_WRITE_GEOMETRY
 !===============================================================================
 
@@ -409,6 +420,30 @@ contains
     call h5gclose_f(materials_group, hdf5_err)
 
   end subroutine hdf5_write_materials
+
+!===============================================================================
+! HDF5_WRITE_GLOBAL_TALLIES
+!===============================================================================
+
+  subroutine hdf5_write_global_tallies()
+
+    integer          :: rank = 1
+    integer(HSIZE_T) :: dims(1) = (/ 2 /)
+
+    call h5ltmake_dataset_double_f(hdf5_output_file, "k_analog", &
+         rank, dims, (/ global_tallies(K_ANALOG) % sum, &
+         global_tallies(K_ANALOG) % sum_sq /), hdf5_err)
+    call h5ltmake_dataset_double_f(hdf5_output_file, "k_collision", &
+         rank, dims, (/ global_tallies(K_COLLISION) % sum, &
+         global_tallies(K_COLLISION) % sum_sq /), hdf5_err)
+    call h5ltmake_dataset_double_f(hdf5_output_file, "k_tracklength", &
+         rank, dims, (/ global_tallies(K_TRACKLENGTH) % sum, &
+         global_tallies(K_TRACKLENGTH) % sum_sq /), hdf5_err)
+    call h5ltmake_dataset_double_f(hdf5_output_file, "leakage", &
+         rank, dims, (/ global_tallies(LEAKAGE) % sum, &
+         global_tallies(LEAKAGE) % sum_sq /), hdf5_err)
+
+  end subroutine hdf5_write_global_tallies
 
 !===============================================================================
 ! HDF5_WRITE_TALLIES

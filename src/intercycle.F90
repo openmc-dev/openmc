@@ -387,7 +387,9 @@ contains
 
     integer :: n        ! active cycle number
     real(8) :: k_cycle  ! single cycle estimate of keff
+#ifdef MPI
     real(8) :: global_temp(N_GLOBAL_TALLIES)
+#endif
 
     message = "Calculate cycle keff..."
     call write_message(8)

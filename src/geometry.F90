@@ -8,7 +8,7 @@ module geometry
   use output,          only: write_message
   use particle_header, only: LocalCoord, deallocate_coord
   use string,          only: to_str
-  use tally,           only: score_surface_current
+  use tally,           only: score_surface_current, add_to_score
 
   implicit none
      
@@ -263,12 +263,17 @@ contains
        ! forward slightly so that if the mesh boundary is on the surface, it is
        ! still processed
 
-       if (tallies_on .and. n_current_tallies > 0) then
-          ! TODO: Find a better solution to score surface currents than
-          ! physically moving the particle forward slightly
+       if (tallies_on) then
+          if (n_current_tallies > 0) then
+             ! TODO: Find a better solution to score surface currents than
+             ! physically moving the particle forward slightly
 
-          p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
-          call score_surface_current()
+             p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
+             call score_surface_current()
+          end if
+
+          ! Score to global leakage tally
+          call add_to_score(global_tallies(LEAKAGE), p % wgt)
        end if
 
        ! Display message

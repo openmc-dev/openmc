@@ -942,22 +942,31 @@ contains
     write(ou,100) "Total time for finalization", time_finalize % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 
-    ! display header block
-    call header("Run Statistics")
-
     ! display calculate rate and final keff
     total_particles = n_particles * n_cycles
     speed = real(total_particles) / (time_inactive % elapsed + &
          time_active % elapsed)
     string = to_str(speed)
     write(ou,101) "Calculation Rate", trim(string)
-    write(ou,102) "Final Keff", keff, keff_std
+
+    ! display header block for results
+    call header("Results")
+
+    ! write global tallies
+    write(ou,102) "k-effective (Analog)", global_tallies(K_ANALOG) % sum, &
+         global_tallies(K_ANALOG) % sum_sq
+    write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) % sum, &
+         global_tallies(K_COLLISION) % sum_sq
+    write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) % sum, &
+         global_tallies(K_TRACKLENGTH) % sum_sq
+    write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
+         global_tallies(LEAKAGE) % sum_sq
     write(ou,*)
 
     ! format for write statements
 100 format (1X,A,T35,"= ",ES11.4," seconds")
-101 format (1X,A,T20,"= ",A," neutrons/second")
-102 format (1X,A,T20,"= ",F8.5," +/- ",F8.5)
+101 format (1X,A,T35,"=  ",A," neutrons/second")
+102 format (1X,A,T30,"= ",F8.5," +/- ",F8.5)
  
   end subroutine print_runtime
 

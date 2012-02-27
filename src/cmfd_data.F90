@@ -80,8 +80,9 @@ contains
     nz = cmfd % indices(3)
     ng = cmfd % indices(4)
 
-    ! set flux object to all zeros
+    ! set flux object and source distribution to all zeros
     cmfd % flux = 0.0_8
+    cmfd % openmc_src = 0.0_8
 
     ! associate tallies and mesh
     t => tallies(1)
@@ -179,12 +180,16 @@ contains
                   score_index = sum((bins - 1) * t%stride) + 1
 
                   ! get scattering
-                  cmfd % scattxs(h,g,i,j,k) = t % scores(score_index,1) % val /  &
+                  cmfd % scattxs(h,g,i,j,k) = t % scores(score_index,1) % val /&
                  &                            cmfd % flux(h,i,j,k)
 
                   ! get nu-fission
-                  cmfd % nfissxs(h,g,i,j,k) = t % scores(score_index,2) % val /  &
+                  cmfd % nfissxs(h,g,i,j,k) = t % scores(score_index,2) % val /&
                  &                            cmfd % flux(h,i,j,k)
+
+                  ! bank source
+                  cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) +    &
+                 &                             cmfd % nfissxs(h,g,i,j,k)
 
                 end do INGROUP
 
@@ -259,6 +264,9 @@ contains
       end do ZLOOP
 
     end do TAL
+
+    ! normalize openmc source distribution
+    cmfd % openmc_src = cmfd % openmc_src/sum(cmfd % openmc_src)
 
   end subroutine compute_xs
 

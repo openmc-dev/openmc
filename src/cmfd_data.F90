@@ -189,7 +189,7 @@ contains
 
                   ! bank source
                   cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) +    &
-                 &                             cmfd % nfissxs(h,g,i,j,k)
+                 &                             t % scores(score_index,2) % val 
 
                 end do INGROUP
 

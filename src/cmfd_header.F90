@@ -63,6 +63,9 @@ module cmfd_header
     ! entropy calculation
     real(8) :: entropy = 0.0_8
 
+    ! openmc source
+    real(8), allocatable  :: openmc_src(:,:,:,:)
+
   end type cmfd_obj
 
 contains
@@ -107,6 +110,9 @@ contains
     ! allocate surface currents
     if (.not. allocated(this % current)) allocate(this % current(12,ng,nx,ny,nz))
 
+    ! allocate openmc source distribution
+    if (.not. allocated(this % openmc_src)) allocate(this % openmc_src(ng,nx,ny,nz))
+
   end subroutine allocate_cmfd
 
 !===============================================================================
@@ -134,6 +140,7 @@ contains
     if (allocated(this % source))        deallocate(this % source)
     if (allocated(this % sourcecounts))  deallocate(this % sourcecounts)
     if (allocated(this % weightfactors)) deallocate(this % weightfactors)
+    if (allocated(this % openmc_src))    deallocate(this % openmc_src)
 
   end subroutine deallocate_cmfd
 

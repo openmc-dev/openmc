@@ -1546,11 +1546,15 @@ contains
     integer :: i    ! index in tallies array
     type(TallyObject), pointer :: t => null()
 
+    ! Calculate statistics for user-defined tallies
     do i = 1, n_tallies
        t => tallies(i)
 
        call calculate_statistics(t % scores)
     end do
+
+    ! Calculate statistics for global tallies
+    call calculate_statistics(global_tallies)
 
   end subroutine tally_statistics
 

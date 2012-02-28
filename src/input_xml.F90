@@ -1143,7 +1143,10 @@ contains
       pl % aspect   = plot_(i) % aspect
 
       if (size(plot_(i) % pixels) == 2) then
-        pl % pixels   = plot_(i) % pixels
+        pl % pixels = plot_(i) % pixels
+      else
+        message = "<pixels> must be length 2 in plot " // to_str(i)
+        call fatal_error()
       end if
 
       select case (plot_(i) % color)

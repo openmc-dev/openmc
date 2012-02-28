@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <template>
 
-  <options rootname="plot" />
+  <options rootname="plots" />
 
   <typedef name="plot_xml">
     <component name="id" type="integer" />

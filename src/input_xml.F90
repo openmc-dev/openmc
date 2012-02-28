@@ -32,7 +32,7 @@ contains
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
-    if (plotting) call read_plot_xml()
+    if (plotting) call read_plots_xml()
 
   end subroutine read_input_xml
 
@@ -1104,23 +1104,23 @@ contains
   end subroutine read_tallies_xml
 
 !===============================================================================
-! READ_PLOT_XML reads data from a plot.xml file
+! READ_PLOTS_XML reads data from a plots.xml file
 !===============================================================================
 
-  subroutine read_plot_xml
+  subroutine read_plots_xml
 
-    use xml_data_plot_t
+    use xml_data_plots_t
 
     integer i
-    logical :: file_exists              ! does plot.xml file exist?
-    character(MAX_LINE_LEN) :: filename ! absolute path to plot.xml
+    logical :: file_exists              ! does plots.xml file exist?
+    character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
     type(Plot),    pointer :: pl => null()
 
-    ! Check if plot.xml exists
-    filename = trim(path_input) // "plot.xml"
+    ! Check if plots.xml exists
+    filename = trim(path_input) // "plots.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-       message = "Plot XML file '" // trim(filename) // "' does not exist!"
+       message = "Plots XML file '" // trim(filename) // "' does not exist!"
        call fatal_error()
     end if
     
@@ -1128,8 +1128,8 @@ contains
     message = "Reading plot XML file..."
     call write_message(5)
 
-    ! Parse plot.xml file
-    call read_xml_file_plot_t(filename)
+    ! Parse plots.xml file
+    call read_xml_file_plots_t(filename)
 
     ! Allocate plots array
     n_plots = size(plot_)
@@ -1208,7 +1208,7 @@ contains
 
     end do
 
-  end subroutine read_plot_xml
+  end subroutine read_plots_xml
 
 !===============================================================================
 ! READ_CROSS_SECTIONS_XML reads information from a cross_sections.xml file. This

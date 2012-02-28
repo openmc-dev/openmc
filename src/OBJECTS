@@ -28,6 +28,8 @@ output.o \
 particle_header.o \
 physics.o \
 plot.o \
+plot_header.o \
+ppmlib.o \
 random_lcg.o \
 search.o \
 source.o \

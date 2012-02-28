@@ -28,7 +28,7 @@ USE_HDF5 = no
 
 ifeq ($(COMPILER),gnu)
   F90 = gfortran
-  F90FLAGS := -cpp -fbacktrace
+  F90FLAGS := -cpp -fbacktrace -DNO_F2008
   LDFLAGS =
 
   # Debugging

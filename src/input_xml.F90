@@ -8,6 +8,8 @@ module input_xml
   use global
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message
+  use plot_header
+  use random_lcg,      only: prn
   use string,          only: lower_case, to_str, str_to_int, str_to_real, &
                              split_string, starts_with, ends_with
   use tally_header,    only: TallyObject
@@ -258,6 +260,14 @@ contains
        c % universe = cell_(i) % universe
        c % material = cell_(i) % material
        c % fill     = cell_(i) % fill
+
+       ! Set plot color
+       if (plotting) then
+          allocate(c % rgb(3))
+          c % rgb(1) = prn()*255
+          c % rgb(2) = prn()*255
+          c % rgb(3) = prn()*255
+       end if
 
        ! Check to make sure that either material or fill was specified
        if (c % material == 0 .and. c % fill == 0) then
@@ -528,6 +538,14 @@ contains
 
        ! Copy material id
        m % id = material_(i) % id
+
+       ! Set plot color
+       if (plotting) then
+          allocate(m % rgb(3))
+          m % rgb(1) = prn()*255
+          m % rgb(2) = prn()*255
+          m % rgb(3) = prn()*255
+       end if
 
        ! Copy density -- the default value for the units is given in the
        ! material_t.xml file and doesn't need to be specified here, hence case
@@ -1086,16 +1104,17 @@ contains
   end subroutine read_tallies_xml
 
 !===============================================================================
-! READ_TALLIES_XML reads data from a tallies.xml file and parses it, checking
-! for errors and placing properly-formatted data in the right data structures
+! READ_PLOT_XML reads data from a plot.xml file
 !===============================================================================
 
   subroutine read_plot_xml
 
     use xml_data_plot_t
 
-    logical :: file_exists              ! does tallies.xml file exist?
-    character(MAX_LINE_LEN) :: filename ! absolute path to tallies.xml
+    integer i
+    logical :: file_exists              ! does plot.xml file exist?
+    character(MAX_LINE_LEN) :: filename ! absolute path to plot.xml
+    type(Plot),    pointer :: pl => null()
 
     ! Check if plot.xml exists
     filename = trim(path_input) // "plot.xml"
@@ -1112,28 +1131,79 @@ contains
     ! Parse plot.xml file
     call read_xml_file_plot_t(filename)
 
-    ! Copy plotting origin
-    if (size(origin_) == 3) then
-       plot_origin = origin_
-    end if
+    ! Allocate plots array
+    n_plots = size(plot_)
+    allocate(plots(n_plots))
 
-    ! Copy plotting width
-    if (size(width_) == 2) then
-       plot_width = width_
-    end if
+    do i = 1, n_plots
+      pl => plots(i)
 
-    ! Read basis
-    select case (basis_)
-    case ("xy")
-       plot_basis = (/ 1, 0, 0, 0, 1, 0 /)
-    case ("yz")
-       plot_basis = (/ 0, 1, 0, 0, 0, 1 /)
-    case ("xz")
-       plot_basis = (/ 1, 0, 0, 0, 0, 1 /)
-    end select
+      ! Copy data into plots
+      pl % id       = plot_(i) % id
+      pl % aspect   = plot_(i) % aspect
 
-    ! Read pixel width
-    pixel = pixel_
+      if (size(plot_(i) % pixels) == 2) then
+        pl % pixels   = plot_(i) % pixels
+      end if
+
+      select case (plot_(i) % color)
+        case ("cell")
+          pl % color = PLOT_COLOR_CELLS
+        case ("mat")
+          pl % color = PLOT_COLOR_MATS
+        case default
+          message = "Unsupported plot color '" // plot_(i) % color &
+                    // "' in plot " // trim(to_str(i))
+          call fatal_error()
+      end select
+
+      select case (plot_(i) % type)
+        case ("slice")
+          pl % type = PLOT_TYPE_SLICE
+        !case ("points")
+        !  pl % type = PLOT_TYPE_POINTS
+        case default
+          message = "Unsupported plot type '" // plot_(i) % type &
+                    // "' in plot " // trim(to_str(i))
+          call fatal_error()
+      end select
+
+      select case (plot_(i) % basis)
+        case ("xy")
+          pl % basis = PLOT_BASIS_XY
+        case ("xz")
+          pl % basis = PLOT_BASIS_XZ
+        case ("yz")
+          pl % basis = PLOT_BASIS_YZ
+        case default
+          message = "Unsupported plot basis '" // plot_(i) % basis &
+                    // "' in plot " // trim(to_str(i))
+          call fatal_error()
+      end select
+
+      ! Copy plotting origin
+      if (size(plot_(i) % origin) == 3) then
+         pl % origin = plot_(i) % origin
+      else
+          message = "Origin must be length 3 " &
+                    // "in plot " // trim(to_str(i))
+          call fatal_error()
+      end if
+
+      ! Copy plotting width
+      if (size(plot_(i) % width) == 3) then
+         pl % width = plot_(i) % width
+      else if (size(plot_(i) % width) == 2) then
+         pl % width(1) = plot_(i) % width(1)
+         pl % width(2) = plot_(i) % width(2)
+      else
+          message = "Bad plot width " &
+                    // "in plot " // trim(to_str(i))
+          call fatal_error()
+      end if
+
+
+    end do
 
   end subroutine read_plot_xml
 

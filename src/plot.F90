@@ -106,9 +106,9 @@ contains
         call find_cell(found_cell)
 
         if (.not. found_cell) then
-          r = 0
-          g = 0
-          b = 0
+          r = 255
+          g = 255
+          b = 255
         else
           c => cells(p % coord % cell)
           if (pl % color == PLOT_COLOR_MATS) then

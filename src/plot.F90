@@ -76,18 +76,18 @@ contains
       in_i  = 1
       out_i = 3
       in_pixel  = pl % width(1)/dble(pl % pixels(1))
-      out_pixel = pl % width(3)/dble(pl % pixels(2))
+      out_pixel = pl % width(2)/dble(pl % pixels(2))
       xyz(1) = pl % origin(1) - pl % width(1) / 2.0
       xyz(2) = pl % origin(2)
-      xyz(3) = pl % origin(3) - pl % width(3) / 2.0
+      xyz(3) = pl % origin(3) - pl % width(2) / 2.0
     else if (pl % basis == PLOT_BASIS_YZ) then
       in_i  = 2
       out_i = 3
-      in_pixel  = pl % width(2)/dble(pl % pixels(1))
-      out_pixel = pl % width(3)/dble(pl % pixels(2))
+      in_pixel  = pl % width(1)/dble(pl % pixels(1))
+      out_pixel = pl % width(2)/dble(pl % pixels(2))
       xyz(1) = pl % origin(1)
-      xyz(2) = pl % origin(2) - pl % width(2) / 2.0
-      xyz(3) = pl % origin(3) - pl % width(3) / 2.0
+      xyz(2) = pl % origin(2) - pl % width(1) / 2.0
+      xyz(3) = pl % origin(3) - pl % width(2) / 2.0
     end if
 
     ! allocate and initialize particle

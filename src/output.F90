@@ -10,6 +10,7 @@ module output
   use global
   use mesh_header,     only: StructuredMesh
   use particle_header, only: LocalCoord
+  use plot_header
   use string,          only: upper_case, to_str
   use tally_header,    only: TallyObject
 
@@ -891,21 +892,46 @@ contains
 
   subroutine print_plot()
 
+    integer i
+    type(Plot),    pointer :: pl => null()
+
     ! Display header for plotting
     call header("PLOTTING SUMMARY")
 
-    ! Print plotting origin
-    write(ou,100) "Plotting Origin:", trim(to_str(plot_origin(1))) // &
-         " " // trim(to_str(plot_origin(2))) // " " // &
-         trim(to_str(plot_origin(3)))
+    do i=1,n_plots
+      pl => plots(i)
 
-    ! Print plotting width
-    write(ou,100) "Plotting Width:", trim(to_str(plot_width(1))) // &
-         " " // trim(to_str(plot_width(2)))
+      ! Print plot id
+      write(ou,100) "Plot ID:", trim(to_str(pl % id))
 
-    ! Print pixel width
-    write(ou,100) "Pixel Width:", trim(to_str(pixel))
-    write(ou,*)
+      ! Print plotting origin
+      write(ou,100) "Origin:", trim(to_str(pl % origin(1))) // &
+           " " // trim(to_str(pl % origin(2))) // " " // &
+           trim(to_str(pl % origin(3)))
+
+      ! Print plotting width
+      if (pl % type == PLOT_TYPE_SLICE) then
+
+        write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
+             " " // trim(to_str(pl % width(2)))
+        write(ou,100) "Coloring:", trim(to_str(pl % color))
+        write(ou,100) "Basis:", trim(to_str(pl % basis))
+        write(ou,100) "Pixels:", trim(to_str(pl % pixels(1))) // " " // &
+                                 trim(to_str(pl % pixels(2)))
+
+      else if (pl % type == PLOT_TYPE_POINTS) then
+
+        write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
+             " " // trim(to_str(pl % width(2))) // " " &
+                 // trim(to_str(pl % width(3)))
+        write(ou,100) "Coloring:", trim(to_str(pl % color))
+        write(ou,100) "Ray Spacing:", trim(to_str(pl % aspect))
+
+      end if
+
+      write(ou,*)
+
+    end do
 
     ! Format descriptor for columns
 100 format (1X,A,T25,A)

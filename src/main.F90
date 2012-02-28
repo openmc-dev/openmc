@@ -6,7 +6,7 @@ program main
   use initialize,      only: initialize_run
   use intercycle,      only: shannon_entropy, calculate_keff, synchronize_bank
   use output,          only: write_message, header
-  use plot,            only: run_plot
+  use plotter,         only: run_plot
   use physics,         only: transport
   use random_lcg,      only: set_particle_seed
   use source,          only: get_source_particle

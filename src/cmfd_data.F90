@@ -266,7 +266,7 @@ contains
     end do TAL
 
     ! normalize openmc source distribution
-    cmfd % openmc_src = cmfd % openmc_src/sum(cmfd % openmc_src)
+    cmfd % openmc_src = cmfd % openmc_src/sum(cmfd % openmc_src)*cmfd%norm
 
   end subroutine compute_xs
 

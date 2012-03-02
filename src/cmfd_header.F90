@@ -66,6 +66,9 @@ module cmfd_header
     ! openmc source
     real(8), allocatable  :: openmc_src(:,:,:,:)
 
+    ! openmc source normalization factor
+    real(8) :: norm = 1.0_8
+
   end type cmfd_obj
 
 contains

@@ -191,6 +191,7 @@ contains
     integer :: idx ! index in vector
     real(8) :: hxyz(3) ! cell dimensions of current ijk cell
     real(8) :: vol     ! volume of cell
+    real(8) :: norm    ! normalization factor for entropy
     real(8),allocatable :: source(:,:,:,:)  ! tmp source array for entropy
 
     ! get maximum of spatial and group indices
@@ -235,11 +236,14 @@ contains
 
     end do ZLOOP
 
-    ! normalize source such that it sums to 1.0
-    cmfd%source = cmfd%source/sum(cmfd%source)
+    ! normalize source such that it sums to 1.0 (1 group for now)
+    cmfd%source = cmfd%source/sum(cmfd%source)*cmfd%norm
 
     ! compute entropy
     if (entropy_on) then
+
+      ! compute normalization factor
+      norm = sum(cmfd%source)
 
       ! allocate tmp array
       if (.not.allocated(source)) allocate(source(ng,nx,ny,nz))
@@ -249,7 +253,7 @@ contains
 
       ! compute log
       where (cmfd%source > 0.0_8)
-        source = cmfd%source*log(cmfd%source)/log(2.0)
+        source = cmfd%source/norm*log(cmfd%source/norm)/log(2.0)
       end where
 
       ! sum that source

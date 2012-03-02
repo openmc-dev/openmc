@@ -69,8 +69,12 @@ contains
    end if
 
     ! check for core map activation by printing note
-
     if (cmfd_coremap .and. master) write(*,*)"Core Map Overlay Activated"
+
+    ! check for normalization constant
+    if (norm_ > 0.0_8) then
+      cmfd % norm = norm_
+    end if
 
     ! create tally objects
     call create_cmfd_tally()

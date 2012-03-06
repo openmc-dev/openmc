@@ -17,6 +17,7 @@ class EigenFunction:
 		'''Initializes the eigenfunction'''
 		self.function = 0.
 		self.data = data
+		self.meanfunction = 0.
 #
         def read_hdf5(self,h5_file,cycle):
 #
@@ -27,7 +28,7 @@ class EigenFunction:
                 dataset = f[group]
                 self.function = np.empty(dataset.shape,dataset.dtype)
                 dataset.read_direct(self.function)
-		self.function = self.function * ((16)**2-5*2**2)*177 
+		self.function = self.function
                 self.iamref = 'F'
 #
 	def set_reference(self):
@@ -40,8 +41,8 @@ class EigenFunction:
 #
 		'''Computes RMS value'''
 		Np = self.function.size
-		Np = ((16)**2-5*2**2)*177
-                tmp = (self.function - EigenFunction.reference)**2
+		Np = 41772
+                tmp = (self.meanfunction - EigenFunction.reference)**2
                 tmp2 = tmp.sum()
                 self.rms = np.sqrt((1.0/float(Np))*tmp2)
 #
@@ -58,8 +59,11 @@ def read_runs(runpath,hdfile,cycle_start,cycle_end,run_start,run_end,data):
 		while j <= run_end:
 			tmp.read_hdf5(runpath+str(j)+'/'+hdfile,i) # read hdf5 file
 			runs[j-run_start] = tmp.function # put function into runs
+			if i == cycle_start:
+				print runs[j-run_start,0,150,150,0]
 			j += 1
-		meantmp.function = np.average(runs, axis=0) # compute the mean
+		meantmp.meanfunction = np.average(runs, axis=0) # compute the mean
+		meantmp.function = runs
 		runlist.append(meantmp)
 		print 'Read in from path: '+runpath+' Cycle: '+str(i)
 		i += 1
@@ -71,13 +75,14 @@ def create_reference(runpath,hdfile,cycle,run_start,run_end,data):
 	print 'Calculating Reference solution...'
 	tmp = EigenFunction(data)
 	tmp.read_hdf5(runpath+str(run_start)+'/'+hdfile,cycle) # load first eigenfunction
+	print 'Read in: '+runpath+str(1)+hdfile+' '+str(tmp.function[0,150,150,0])
 	indices = tmp.function.shape # extent of all dimensions
 	ref = np.zeros((run_end,indices[0],indices[1],indices[2],indices[3])) # initialize ref array
 	ref[0] = tmp.function # set the first run in ref
 	i = run_start + 1
 	while i <= run_end: # begin loop around all runs
 		tmp.read_hdf5(runpath+str(i)+'/'+hdfile,cycle)
-		print 'Read in: '+runpath+str(i)+hdfile
+		print 'Read in: '+runpath+str(i)+hdfile+' '+str(tmp.function[0,150,150,0])
 		ref[i - run_start] = tmp.function
 		i += 1
 	meanref = np.average(ref, axis=0) # compute average of all runs
@@ -101,7 +106,7 @@ def plot_rms(rms):
 	ax = plt.subplot(111)
 	size = rms.shape[0]
 	x = np.linspace(1,size,size)*1e6
-	y = (rms[size-1]/x[size-1]**(-0.5))*x**(-0.5)
+	y = (rms[0]/x[0]**(-0.5))*x**(-0.5)
 	plt.loglog(x,rms*100,'b+')
 	plt.loglog(x,y*100,'g--')
 	ax.xaxis.grid(True,'minor')
@@ -162,11 +167,11 @@ if __name__ == "__main__":
 	else:
 
 		# calculate reference solution
-		runpath = '/media/Backup/opr_runs/1mil/run'
+		runpath = '/media/Backup/opr_runs/64mil/run'
 		hdfile = 'output.h5'
-		cycle = 840
+		cycle = 210
 		run_start = 1
-		run_end = 25
+		run_end = 4
 		data = 'openmc_src'
 		meanref = create_reference(runpath,hdfile,cycle,run_start,run_end,data)
 
@@ -176,7 +181,7 @@ if __name__ == "__main__":
 		cycle_start = 201
 		cycle_end = 840
 		run_start = 1
-		run_end = 1
+		run_end = 10
 		data = 'openmc_src'
 		onemil = read_runs(runpath,hdfile,cycle_start,cycle_end,run_start,run_end,data)
 

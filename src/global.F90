@@ -10,8 +10,9 @@ module global
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
   use particle_header,  only: Particle
+  use plot_header,      only: Plot
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap
+  use tally_header,     only: TallyObject, TallyMap, TallyScore
   use timing,           only: Timer
 
 #ifdef MPI
@@ -39,6 +40,7 @@ module global
   type(Lattice),  allocatable, target :: lattices(:)
   type(Surface),  allocatable, target :: surfaces(:)
   type(Material), allocatable, target :: materials(:)
+  type(Plot),     allocatable, target :: plots(:)
 
   ! Size of main arrays
   integer :: n_cells     ! # of cells
@@ -46,6 +48,7 @@ module global
   integer :: n_lattices  ! # of lattices
   integer :: n_surfaces  ! # of surfaces
   integer :: n_materials ! # of materials
+  integer :: n_plots     ! # of plots
 
   ! These dictionaries provide a fast lookup mechanism -- the key is the
   ! user-specified identifier and the value is the index in the corresponding
@@ -96,6 +99,14 @@ module global
   integer, allocatable :: analog_tallies(:)
   integer, allocatable :: tracklength_tallies(:)
   integer, allocatable :: current_tallies(:)
+
+  ! Global tallies
+  !   1) analog estimate of k-eff
+  !   2) collision estimate of k-eff
+  !   3) track-length estimate of k-eff
+  !   4) leakage fraction
+
+  type(TallyScore) :: global_tallies(N_GLOBAL_TALLIES)
 
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
@@ -183,10 +194,6 @@ module global
   ! PLOTTING VARIABLES
 
   logical :: plotting = .false.
-  real(8) :: plot_origin(3)
-  real(8) :: plot_width(2)
-  real(8) :: plot_basis(6)
-  real(8) :: pixel
 
   ! ============================================================================
   ! HDF5 VARIABLES
@@ -253,6 +260,7 @@ contains
     if (allocated(lattices)) deallocate(lattices)
     if (allocated(surfaces)) deallocate(surfaces)
     if (allocated(materials)) deallocate(materials)
+    if (allocated(plots)) deallocate(plots)
 
     ! Deallocate cross section data, listings, and cache
     if (allocated(nuclides)) deallocate(nuclides)

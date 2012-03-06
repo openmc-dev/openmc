@@ -136,7 +136,7 @@ contains
                 score_index = sum((bins - 1) * t%stride) + 1
 
                 ! get flux
-                flux = t % scores(score_index,1) % val
+                flux = t % scores(score_index,1) % sum
                 cmfd % flux(h,i,j,k) = flux
 
                 ! detect zero flux
@@ -146,10 +146,10 @@ contains
                 end if
 
                 ! get total rr and convert to total xs
-                cmfd % totalxs(h,i,j,k) = t % scores(score_index,2) % val / flux
+                cmfd % totalxs(h,i,j,k) = t % scores(score_index,2) % sum / flux
 
                 ! get p1 scatter rr and convert to p1 scatter xs
-                cmfd % p1scattxs(h,i,j,k) = t % scores(score_index,3) % val / flux
+                cmfd % p1scattxs(h,i,j,k) = t % scores(score_index,3) % sum / flux
 
                 ! calculate diffusion coefficient
                 cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k) -&
@@ -180,16 +180,16 @@ contains
                   score_index = sum((bins - 1) * t%stride) + 1
 
                   ! get scattering
-                  cmfd % scattxs(h,g,i,j,k) = t % scores(score_index,1) % val /&
+                  cmfd % scattxs(h,g,i,j,k) = t % scores(score_index,1) % sum /&
                  &                            cmfd % flux(h,i,j,k)
 
                   ! get nu-fission
-                  cmfd % nfissxs(h,g,i,j,k) = t % scores(score_index,2) % val /&
+                  cmfd % nfissxs(h,g,i,j,k) = t % scores(score_index,2) % sum /&
                  &                            cmfd % flux(h,i,j,k)
 
                   ! bank source
                   cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) +    &
-                 &                             t % scores(score_index,2) % val 
+                 &                             t % scores(score_index,2) % sum 
 
                 end do INGROUP
 
@@ -203,55 +203,55 @@ contains
                 bins(1:3) = (/ i-1, j, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(1,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(1,h,i,j,k) = t % scores(score_index,1) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(2,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(2,h,i,j,k) = t % scores(score_index,1) % sum
 
                 ! right surface
                 bins(1:3) = (/ i, j, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(3,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(3,h,i,j,k) = t % scores(score_index,1) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
-                cmfd % current(4,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(4,h,i,j,k) = t % scores(score_index,1) % sum
 
                 ! back surface
                 bins(1:3) = (/ i, j-1, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(5,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(5,h,i,j,k) = t % scores(score_index,1) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(6,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(6,h,i,j,k) = t % scores(score_index,1) % sum
 
                 ! front surface
                 bins(1:3) = (/ i, j, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(7,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(7,h,i,j,k) = t % scores(score_index,1) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
-                cmfd % current(8,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(8,h,i,j,k) = t % scores(score_index,1) % sum
 
                 ! bottom surface
                 bins(1:3) = (/ i, j, k-1 /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_TOP
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(9,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(9,h,i,j,k) = t % scores(score_index,1) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_TOP
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(10,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(10,h,i,j,k) = t % scores(score_index,1) % sum
 
                 ! top surface
                 bins(1:3) = (/ i, j, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_TOP
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(11,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(11,h,i,j,k) = t % scores(score_index,1) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_TOP
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
-                cmfd % current(12,h,i,j,k) = t % scores(score_index,1) % val
+                cmfd % current(12,h,i,j,k) = t % scores(score_index,1) % sum
 
               end if TALLY
 

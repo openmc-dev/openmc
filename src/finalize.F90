@@ -6,7 +6,7 @@ module finalize
   use timing,         only: timer_start, timer_stop
 
 #ifdef HDF5
-  use hdf5_interface, only: hdf5_write_timing, hdf5_close_output
+  use hdf5_interface, only: hdf5_write_results, hdf5_close_output
 #endif
 
   implicit none
@@ -37,7 +37,7 @@ contains
 #ifdef HDF5
     ! Write time statistics to HDF5 output 
     if (master) then
-       call hdf5_write_timing()
+       call hdf5_write_results()
        call hdf5_close_output()
     end if
 #endif

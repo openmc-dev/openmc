@@ -17,7 +17,7 @@ module physics
   use search,          only: binary_search
   use string,          only: to_str
   use tally,           only: score_analog_tally, score_tracklength_tally, &
-                             score_surface_current
+                             score_surface_current, add_to_score
 
   implicit none
 
@@ -93,11 +93,20 @@ contains
           coord => coord % next
        end do
 
-       ! Score track-length tallies
-       if (tallies_on .and. n_tracklength_tallies > 0) &
-            call score_tracklength_tally(distance)
+       if (tallies_on) then
+          ! Score track-length tallies
+          if (n_tracklength_tallies > 0) &
+               call score_tracklength_tally(distance)
+
+          ! Score track-length estimate of k-eff
+          call add_to_score(global_tallies(K_TRACKLENGTH), &
+               p % wgt * distance * material_xs % nu_fission)
+       end if
 
        if (d_collision > d_boundary) then
+          ! ====================================================================
+          ! PARTICLE CROSSES SURFACE
+
           last_cell = p % coord % cell
           p % coord % cell = NONE
           if (lattice_crossed /= NONE) then
@@ -112,7 +121,15 @@ contains
              p % event = EVENT_SURFACE
           end if
        else
-          ! collision
+          ! ====================================================================
+          ! PARTICLE HAS COLLISION
+
+          ! Score collision estimate of keff
+          if (tallies_on) then
+             call add_to_score(global_tallies(K_COLLISION), &
+                  p % wgt * material_xs % nu_fission / material_xs % total)
+          end if
+
           p % surface = NONE
           call collision()
 

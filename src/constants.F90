@@ -293,6 +293,14 @@ module constants
        IN_TOP    = 5,   &
        OUT_TOP   = 6
 
+  ! Global tallY parameters
+  integer, parameter :: N_GLOBAL_TALLIES = 4
+  integer, parameter :: &
+       K_ANALOG      = 1, &
+       K_COLLISION   = 2, &
+       K_TRACKLENGTH = 3, &
+       LEAKAGE       = 4
+
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
 
@@ -318,6 +326,6 @@ module constants
   integer, parameter :: UNIT_SUMMARY = 11 ! unit # for writing summary file
   integer, parameter :: UNIT_TALLY   = 12 ! unit # for writing tally file
   integer, parameter :: UNIT_PLOT    = 13 ! unit # for writing plot file
-  integer, parameter :: UNIT_CMFD    = 14 ! unit # for writing cmfd file
+  integer, parameter :: UNIT_XS      = 14 ! unit # for writing xs summary file
 
 end module constants

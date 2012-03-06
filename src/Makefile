@@ -16,7 +16,6 @@ include OBJECTS
 #===============================================================================
 
 F90X = /home/bherman/petsc/release-ifort/bin/mpif90 
-F90XFLAGS = -Wall -Wno-unused-variable
 COMPILER = petsc
 DEBUG    = no
 PROFILE  = no
@@ -30,7 +29,7 @@ USE_HDF5 = yes
 
 ifeq ($(COMPILER),gnu)
   F90 = gfortran
-  F90FLAGS := -cpp -fbacktrace -DN2008
+  F90FLAGS := -cpp -fbacktrace -DNO_F2008
   LDFLAGS =
 
   # Debugging

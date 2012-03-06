@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<template>
+
+  <options rootname="plots" />
+
+  <typedef name="plot_xml">
+    <component name="id" type="integer" />
+    <component name="type" type="word" length="10" default="'slice'"/>
+    <component name="color" type="word" length="10" default="'cell'"/>
+    <component name="origin" type="double-array" />
+    <component name="width" type="double-array" />
+    <component name="basis" type="word" length="3" default="'xy'" />
+    <component name="pixels" type="integer-array" />
+    <component name="aspect" type="double" default="0.1" />
+  </typedef>
+
+  <variable name="plot_" tag="plot" type="plot_xml" dimension="1" />
+
+</template>

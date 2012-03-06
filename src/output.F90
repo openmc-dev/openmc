@@ -10,6 +10,7 @@ module output
   use global
   use mesh_header,     only: StructuredMesh
   use particle_header, only: LocalCoord
+  use plot_header
   use string,          only: upper_case, to_str
   use tally_header,    only: TallyObject
 
@@ -891,21 +892,46 @@ contains
 
   subroutine print_plot()
 
+    integer i
+    type(Plot),    pointer :: pl => null()
+
     ! Display header for plotting
     call header("PLOTTING SUMMARY")
 
-    ! Print plotting origin
-    write(ou,100) "Plotting Origin:", trim(to_str(plot_origin(1))) // &
-         " " // trim(to_str(plot_origin(2))) // " " // &
-         trim(to_str(plot_origin(3)))
+    do i=1,n_plots
+      pl => plots(i)
 
-    ! Print plotting width
-    write(ou,100) "Plotting Width:", trim(to_str(plot_width(1))) // &
-         " " // trim(to_str(plot_width(2)))
+      ! Print plot id
+      write(ou,100) "Plot ID:", trim(to_str(pl % id))
 
-    ! Print pixel width
-    write(ou,100) "Pixel Width:", trim(to_str(pixel))
-    write(ou,*)
+      ! Print plotting origin
+      write(ou,100) "Origin:", trim(to_str(pl % origin(1))) // &
+           " " // trim(to_str(pl % origin(2))) // " " // &
+           trim(to_str(pl % origin(3)))
+
+      ! Print plotting width
+      if (pl % type == PLOT_TYPE_SLICE) then
+
+        write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
+             " " // trim(to_str(pl % width(2)))
+        write(ou,100) "Coloring:", trim(to_str(pl % color))
+        write(ou,100) "Basis:", trim(to_str(pl % basis))
+        write(ou,100) "Pixels:", trim(to_str(pl % pixels(1))) // " " // &
+                                 trim(to_str(pl % pixels(2)))
+
+      else if (pl % type == PLOT_TYPE_POINTS) then
+
+        write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
+             " " // trim(to_str(pl % width(2))) // " " &
+                 // trim(to_str(pl % width(3)))
+        write(ou,100) "Coloring:", trim(to_str(pl % color))
+        write(ou,100) "Ray Spacing:", trim(to_str(pl % aspect))
+
+      end if
+
+      write(ou,*)
+
+    end do
 
     ! Format descriptor for columns
 100 format (1X,A,T25,A)
@@ -943,22 +969,31 @@ contains
     write(ou,100) "Total time for finalization", time_finalize % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 
-    ! display header block
-    call header("Run Statistics")
-
     ! display calculate rate and final keff
     total_particles = n_particles * n_cycles
     speed = real(total_particles) / (time_inactive % elapsed + &
          time_active % elapsed)
     string = to_str(speed)
     write(ou,101) "Calculation Rate", trim(string)
-    write(ou,102) "Final Keff", keff, keff_std
+
+    ! display header block for results
+    call header("Results")
+
+    ! write global tallies
+    write(ou,102) "k-effective (Analog)", global_tallies(K_ANALOG) % sum, &
+         global_tallies(K_ANALOG) % sum_sq
+    write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) % sum, &
+         global_tallies(K_COLLISION) % sum_sq
+    write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) % sum, &
+         global_tallies(K_TRACKLENGTH) % sum_sq
+    write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
+         global_tallies(LEAKAGE) % sum_sq
     write(ou,*)
 
     ! format for write statements
 100 format (1X,A,T35,"= ",ES11.4," seconds")
-101 format (1X,A,T20,"= ",A," neutrons/second")
-102 format (1X,A,T20,"= ",F8.5," +/- ",F8.5)
+101 format (1X,A,T35,"=  ",A," neutrons/second")
+102 format (1X,A,T30,"= ",F8.5," +/- ",F8.5)
  
   end subroutine print_runtime
 
@@ -969,7 +1004,6 @@ contains
 
   subroutine create_summary_file()
 
-    integer :: io_error
     logical :: file_exists  ! does log file already exist?
     character(MAX_FILE_LEN) :: path ! path of summary file
 
@@ -984,8 +1018,32 @@ contains
 
     ! Open log file for writing
     open(UNIT=UNIT_SUMMARY, FILE=path, STATUS='replace', &
-         ACTION='write', IOSTAT=io_error)
+         ACTION='write')
 
   end subroutine create_summary_file
+
+!===============================================================================
+! CREATE_XS_SUMMARY_FILE
+!===============================================================================
+
+  subroutine create_xs_summary_file()
+
+    logical :: file_exists  ! does log file already exist?
+    character(MAX_FILE_LEN) :: path ! path of summary file
+
+    ! Create filename for log file
+    path = "cross_sections.out"
+
+    ! Check if log file already exists
+    inquire(FILE=path, EXIST=file_exists)
+    if (file_exists) then
+       ! Possibly copy old log file
+    end if
+
+    ! Open log file for writing
+    open(UNIT=UNIT_XS, FILE=path, STATUS='replace', &
+         ACTION='write')
+
+  end subroutine create_xs_summary_file
 
 end module output

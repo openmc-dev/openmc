@@ -64,6 +64,7 @@ module geometry_header
           & surfaces(:)    ! List of surfaces bounding cell -- note that
                            ! parentheses, union, etc operators will be listed
                            ! here too
+     integer, allocatable :: rgb(:) ! plotting color
   end type Cell
 
   ! array index of universe 0

@@ -18,7 +18,7 @@ contains
   subroutine neutron_balance()
 
     use constants, only: ONE
-    use global,    only: cmfd,UNIT_CMFD,keff,MAX_FILE_LEN,current_cycle
+    use global,    only: cmfd,keff,MAX_FILE_LEN,current_cycle
     use string
 
     integer :: i            ! iteration counter for x
@@ -95,13 +95,6 @@ contains
             ! bank res in cmfd object
             cmfd%resnb(g,i,j,k) = res
 
-            ! write output
-    !       label = "MESH (" // trim(int4_to_str(i)) // ". " // &
-    !      & trim(int4_to_str(j)) // ", " // trim(int4_to_str(k)) // &
-    !      & ") GROUP " // trim(int4_to_str(g))
-    !       write(UNIT=UNIT_CMFD, FMT='(A,T35,A)') label, &
-    !      & trim(real_to_str(res))
-
           end do GROUPG
 
         end do XLOOP
@@ -109,9 +102,6 @@ contains
       end do YLOOP
 
     end do ZLOOP
-
-    ! close file
-    close(UNIT=UNIT_CMFD)
 
   end subroutine neutron_balance
 

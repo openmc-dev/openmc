@@ -70,7 +70,7 @@ contains
       in_pixel  = pl % width(1)/dble(pl % pixels(1))
       out_pixel = pl % width(2)/dble(pl % pixels(2))
       xyz(1) = pl % origin(1) - pl % width(1) / 2.0
-      xyz(2) = pl % origin(2) - pl % width(2) / 2.0
+      xyz(2) = pl % origin(2) + pl % width(2) / 2.0
       xyz(3) = pl % origin(3)
     else if (pl % basis == PLOT_BASIS_XZ) then
       in_i  = 1
@@ -79,7 +79,7 @@ contains
       out_pixel = pl % width(2)/dble(pl % pixels(2))
       xyz(1) = pl % origin(1) - pl % width(1) / 2.0
       xyz(2) = pl % origin(2)
-      xyz(3) = pl % origin(3) - pl % width(2) / 2.0
+      xyz(3) = pl % origin(3) + pl % width(2) / 2.0
     else if (pl % basis == PLOT_BASIS_YZ) then
       in_i  = 2
       out_i = 3
@@ -87,7 +87,7 @@ contains
       out_pixel = pl % width(2)/dble(pl % pixels(2))
       xyz(1) = pl % origin(1)
       xyz(2) = pl % origin(2) - pl % width(1) / 2.0
-      xyz(3) = pl % origin(3) - pl % width(2) / 2.0
+      xyz(3) = pl % origin(3) + pl % width(2) / 2.0
     end if
 
     ! allocate and initialize particle
@@ -132,7 +132,7 @@ contains
       end do
 
       p % coord0 % xyz(in_i)  = xyz(in_i)
-      p % coord0 % xyz(out_i) = p % coord0 % xyz(out_i) + out_pixel
+      p % coord0 % xyz(out_i) = p % coord0 % xyz(out_i) - out_pixel
     end do
 
     call output_ppm(pl,img)

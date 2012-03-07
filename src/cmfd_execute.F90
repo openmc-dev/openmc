@@ -178,6 +178,7 @@ contains
   subroutine calc_fission_source()
 
     use global, only: cmfd,cmfd_coremap,entropy_on 
+    use tally,  only: tally_reset
 
     ! local variables
     integer :: nx ! maximum number of cells in x direction
@@ -191,7 +192,6 @@ contains
     integer :: idx ! index in vector
     real(8) :: hxyz(3) ! cell dimensions of current ijk cell
     real(8) :: vol     ! volume of cell
-    real(8) :: norm    ! normalization factor for entropy
     real(8),allocatable :: source(:,:,:,:)  ! tmp source array for entropy
 
     ! get maximum of spatial and group indices
@@ -199,6 +199,9 @@ contains
     ny = cmfd%indices(2)
     nz = cmfd%indices(3)
     ng = cmfd%indices(4)
+
+    ! reset cmfd source to 0
+    cmfd%source = 0.0_8
 
     ! loop around indices to map to cmfd object
     ZLOOP: do k = 1,nz
@@ -236,14 +239,11 @@ contains
 
     end do ZLOOP
 
-    ! normalize source such that it sums to 1.0 (1 group for now)
-    cmfd%source = cmfd%source/sum(cmfd%source)*cmfd%norm
+    ! normalize source such that it sums to 1.0
+    cmfd%source = cmfd%source/sum(cmfd%source)
 
     ! compute entropy
     if (entropy_on) then
-
-      ! compute normalization factor
-      norm = sum(cmfd%source)
 
       ! allocate tmp array
       if (.not.allocated(source)) allocate(source(ng,nx,ny,nz))
@@ -253,7 +253,7 @@ contains
 
       ! compute log
       where (cmfd%source > 0.0_8)
-        source = cmfd%source/norm*log(cmfd%source/norm)/log(2.0)
+        source = cmfd%source*log(cmfd%source)/log(2.0_8)
       end where
 
       ! sum that source
@@ -263,6 +263,9 @@ contains
       if (allocated(source)) deallocate(source)
 
     end if
+
+    ! normalize source so average is 1.0
+    cmfd%source = cmfd%source*cmfd%norm
 
   end subroutine calc_fission_source 
 

@@ -1111,10 +1111,11 @@ contains
 
     use xml_data_plots_t
 
-    integer i
+    integer i, j
+    integer n_cols, col_id
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
-    type(Plot),    pointer :: pl => null()
+    type(Plot),         pointer :: pl => null()
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"
@@ -1145,7 +1146,7 @@ contains
       if (size(plot_(i) % pixels) == 2) then
         pl % pixels = plot_(i) % pixels
       else
-        message = "<pixels> must be length 2 in plot " // to_str(i)
+        message = "<pixels> must be length 2 in plot " // to_str(pl % id)
         call fatal_error()
       end if
 
@@ -1156,7 +1157,7 @@ contains
           pl % color = PLOT_COLOR_MATS
         case default
           message = "Unsupported plot color '" // plot_(i) % color &
-                    // "' in plot " // trim(to_str(i))
+                    // "' in plot " // trim(to_str(pl % id))
           call fatal_error()
       end select
 
@@ -1167,7 +1168,7 @@ contains
         !  pl % type = PLOT_TYPE_POINTS
         case default
           message = "Unsupported plot type '" // plot_(i) % type &
-                    // "' in plot " // trim(to_str(i))
+                    // "' in plot " // trim(to_str(pl % id))
           call fatal_error()
       end select
 
@@ -1180,7 +1181,7 @@ contains
           pl % basis = PLOT_BASIS_YZ
         case default
           message = "Unsupported plot basis '" // plot_(i) % basis &
-                    // "' in plot " // trim(to_str(i))
+                    // "' in plot " // trim(to_str(pl % id))
           call fatal_error()
       end select
 
@@ -1189,7 +1190,7 @@ contains
          pl % origin = plot_(i) % origin
       else
           message = "Origin must be length 3 " &
-                    // "in plot " // trim(to_str(i))
+                    // "in plot " // trim(to_str(pl % id))
           call fatal_error()
       end if
 
@@ -1201,10 +1202,48 @@ contains
          pl % width(2) = plot_(i) % width(2)
       else
           message = "Bad plot width " &
-                    // "in plot " // trim(to_str(i))
+                    // "in plot " // trim(to_str(pl % id))
           call fatal_error()
       end if
 
+      ! Copy user specified colors
+      n_cols = size(plot_(i) % col_spec_)
+      do j = 1, n_cols
+        if (size(plot_(i) % col_spec_(j) % rgb) /= 3) then
+          message = "Bad RGB " &
+                    // "in plot " // trim(to_str(pl % id))
+          call fatal_error()          
+        end if
+
+        col_id = plot_(i) % col_spec_(j) % id
+
+        if (pl % color == PLOT_COLOR_CELLS) then
+
+          if (dict_has_key(cell_dict, col_id)) then
+            cells(col_id) % rgb(1) = plot_(i) % col_spec_(j) % rgb(1)
+            cells(col_id) % rgb(2) = plot_(i) % col_spec_(j) % rgb(2)
+            cells(col_id) % rgb(3) = plot_(i) % col_spec_(j) % rgb(3)
+          else
+            message = "Could not find cell " // trim(to_str(col_id)) // &
+                      " specified in plot " // trim(to_str(pl % id))
+            call fatal_error()
+          end if
+
+        else if (pl % color == PLOT_COLOR_MATS) then
+
+          if (dict_has_key(material_dict, col_id)) then
+            materials(col_id) % rgb(1) = plot_(i) % col_spec_(j) % rgb(1)
+            materials(col_id) % rgb(2) = plot_(i) % col_spec_(j) % rgb(2)
+            materials(col_id) % rgb(3) = plot_(i) % col_spec_(j) % rgb(3)
+          else
+            message = "Could not find material " // trim(to_str(col_id)) // &
+                      " specified in plot " // trim(to_str(pl % id))
+            call fatal_error()
+          end if
+
+        end if
+
+      end do
 
     end do
 

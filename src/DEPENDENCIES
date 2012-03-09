@@ -180,6 +180,8 @@ physics.o: search.o
 physics.o: string.o
 physics.o: tally.o
 
+plot_header.o: constants.o
+
 plot.o: constants.o
 plot.o: error.o
 plot.o: geometry.o

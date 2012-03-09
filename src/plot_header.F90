@@ -1,5 +1,7 @@
 module plot_header
 
+  use constants
+
   implicit none
 
 !===============================================================================
@@ -16,6 +18,7 @@ module plot_header
 
   type Plot
      integer :: id                    ! Unique ID
+     character(MAX_LINE_LEN) :: path_plot ! path for plot file
      integer :: type                  ! Type
      integer :: color_by              ! quantity to color regions by
      real(8) :: origin(3)             ! xyz center of plot location

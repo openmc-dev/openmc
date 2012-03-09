@@ -106,19 +106,19 @@ contains
         call find_cell(found_cell)
 
         if (.not. found_cell) then
-          r = 255
-          g = 255
-          b = 255
+          r = pl % not_found % rgb(1)
+          g = pl % not_found % rgb(2)
+          b = pl % not_found % rgb(3)
         else
-          c => cells(p % coord % cell)
-          if (pl % color == PLOT_COLOR_MATS) then
-            r = materials(c % material) % rgb(1)
-            g = materials(c % material) % rgb(2)
-            b = materials(c % material) % rgb(3)
-          else if (pl % color == PLOT_COLOR_CELLS) then
-            r = c % rgb(1)
-            g = c % rgb(2)
-            b = c % rgb(3)
+          if (pl % color_by == PLOT_COLOR_MATS) then
+            c => cells(p % coord % cell)
+            r = pl % colors(c % material) % rgb(1)
+            g = pl % colors(c % material) % rgb(2)
+            b = pl % colors(c % material) % rgb(3)
+          else if (pl % color_by == PLOT_COLOR_CELLS) then
+            r = pl % colors(p % coord % cell) % rgb(1)
+            g = pl % colors(p % coord % cell) % rgb(2)
+            b = pl % colors(p % coord % cell) % rgb(3)
           else
             r = 0
             g = 0

@@ -151,10 +151,8 @@ contains
     type(Image),    intent(in) :: img
 
     integer :: i, j
-    character(MAX_LINE_LEN)    :: path_plot ! unit for binary plot file
 
-    path_plot = trim(path_input) // "slice" // trim(to_str(pl % id)) // ".ppm"
-    open(UNIT=UNIT_PLOT, FILE=path_plot)
+    open(UNIT=UNIT_PLOT, FILE=pl % path_plot)
 
     write(UNIT_PLOT, '(A2)') 'P6'
     write(UNIT_PLOT, '(I0,'' '',I0)') img%width, img%height

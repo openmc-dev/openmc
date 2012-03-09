@@ -1127,6 +1127,10 @@ contains
       pl % id       = plot_(i) % id
       pl % aspect   = plot_(i) % aspect
 
+      ! Set output file path
+      pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
+                       "_" // trim(plot_(i) % filename) // ".ppm"
+
       ! Copy plot pixel size
       if (size(plot_(i) % pixels) == 2) then
         pl % pixels = plot_(i) % pixels

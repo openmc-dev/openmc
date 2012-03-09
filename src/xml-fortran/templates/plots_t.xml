@@ -15,6 +15,7 @@
 
   <typedef name="plot_xml">
     <component name="id" type="integer" />
+    <component name="filename" type="word" length="50" default="'plot'" />
     <component name="type" type="word" length="10" default="'slice'"/>
     <component name="color" type="word" length="10" default="'cell'"/>
     <component name="origin" type="double-array" />

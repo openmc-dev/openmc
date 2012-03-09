@@ -22,7 +22,6 @@
     <component name="width" type="double-array" />
     <component name="basis" type="word" length="3" default="'xy'" />
     <component name="pixels" type="integer-array" />
-    <component name="aspect" type="double" default="0.1" />
     <component name="background" type="integer-array"/>
     <component name="col_spec_" tag="col_spec" type="col_spec_xml" dimension="1" />
     <component name="mask_" tag="mask" type="mask_xml" dimension="1" />

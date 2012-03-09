@@ -1260,11 +1260,11 @@ contains
       end do
 
       ! Alter colors based on mask information
-      if (size(plot_(i) % mask_) /= 1) then
+      if (size(plot_(i) % mask_) > 1) then
         message = "Mutliple masks" // &
                   " specified in plot " // trim(to_str(pl % id))
         call fatal_error()
-      else
+      else if (.not. size(plot_(i) % mask_) == 0) then
           do j=1,size(pl % colors)
             if (.not. any(j .eq. plot_(i) % mask_(1) % components)) then
               pl % colors(j) % rgb = plot_(i) % mask_(1) % background

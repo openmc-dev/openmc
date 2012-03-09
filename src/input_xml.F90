@@ -261,14 +261,6 @@ contains
        c % material = cell_(i) % material
        c % fill     = cell_(i) % fill
 
-       ! Set plot color
-       if (plotting) then
-          allocate(c % rgb(3))
-          c % rgb(1) = prn()*255
-          c % rgb(2) = prn()*255
-          c % rgb(3) = prn()*255
-       end if
-
        ! Check to make sure that either material or fill was specified
        if (c % material == 0 .and. c % fill == 0) then
           message = "Neither material nor fill was specified for cell " // & 
@@ -538,14 +530,6 @@ contains
 
        ! Copy material id
        m % id = material_(i) % id
-
-       ! Set plot color
-       if (plotting) then
-          allocate(m % rgb(3))
-          m % rgb(1) = prn()*255
-          m % rgb(2) = prn()*255
-          m % rgb(3) = prn()*255
-       end if
 
        ! Copy density -- the default value for the units is given in the
        ! material_t.xml file and doesn't need to be specified here, hence case
@@ -1143,6 +1127,7 @@ contains
       pl % id       = plot_(i) % id
       pl % aspect   = plot_(i) % aspect
 
+      ! Copy plot pixel size
       if (size(plot_(i) % pixels) == 2) then
         pl % pixels = plot_(i) % pixels
       else
@@ -1150,17 +1135,18 @@ contains
         call fatal_error()
       end if
 
-      select case (plot_(i) % color)
-        case ("cell")
-          pl % color = PLOT_COLOR_CELLS
-        case ("mat")
-          pl % color = PLOT_COLOR_MATS
-        case default
-          message = "Unsupported plot color '" // plot_(i) % color &
-                    // "' in plot " // trim(to_str(pl % id))
+      ! Copy plot background color
+      if (size(plot_(i) % background) == 3) then
+         pl % not_found % rgb = plot_(i) % background
+      else if (size(plot_(i) % background) == 0) then
+         pl % not_found % rgb = (/ 0, 0, 0 /)
+      else
+          message = "Bad background RGB " &
+                    // "in plot " // trim(to_str(pl % id))
           call fatal_error()
-      end select
+      end if
 
+      ! Copy plot type
       select case (plot_(i) % type)
         case ("slice")
           pl % type = PLOT_TYPE_SLICE
@@ -1172,6 +1158,7 @@ contains
           call fatal_error()
       end select
 
+      ! Copy plot basis
       select case (plot_(i) % basis)
         case ("xy")
           pl % basis = PLOT_BASIS_XY
@@ -1206,6 +1193,34 @@ contains
           call fatal_error()
       end if
 
+      ! Copy plot color type and initialize all colors randomly
+      select case (plot_(i) % color)
+        case ("cell")
+
+          pl % color_by = PLOT_COLOR_CELLS
+          allocate(pl % colors(n_cells))
+          do j = 1, n_cells
+            pl % colors(j) % rgb(1) = prn()*255
+            pl % colors(j) % rgb(2) = prn()*255
+            pl % colors(j) % rgb(3) = prn()*255
+          end do
+
+        case ("mat")
+
+          pl % color_by = PLOT_COLOR_MATS
+          allocate(pl % colors(n_materials))
+          do j = 1, n_materials
+            pl % colors(j) % rgb(1) = prn()*255
+            pl % colors(j) % rgb(2) = prn()*255
+            pl % colors(j) % rgb(3) = prn()*255
+          end do
+
+        case default
+          message = "Unsupported plot color type '" // plot_(i) % color &
+                    // "' in plot " // trim(to_str(pl % id))
+          call fatal_error()
+      end select
+
       ! Copy user specified colors
       n_cols = size(plot_(i) % col_spec_)
       do j = 1, n_cols
@@ -1217,24 +1232,20 @@ contains
 
         col_id = plot_(i) % col_spec_(j) % id
 
-        if (pl % color == PLOT_COLOR_CELLS) then
+        if (pl % color_by == PLOT_COLOR_CELLS) then
 
           if (dict_has_key(cell_dict, col_id)) then
-            cells(col_id) % rgb(1) = plot_(i) % col_spec_(j) % rgb(1)
-            cells(col_id) % rgb(2) = plot_(i) % col_spec_(j) % rgb(2)
-            cells(col_id) % rgb(3) = plot_(i) % col_spec_(j) % rgb(3)
+            pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
           else
             message = "Could not find cell " // trim(to_str(col_id)) // &
                       " specified in plot " // trim(to_str(pl % id))
             call fatal_error()
           end if
 
-        else if (pl % color == PLOT_COLOR_MATS) then
+        else if (pl % color_by == PLOT_COLOR_MATS) then
 
           if (dict_has_key(material_dict, col_id)) then
-            materials(col_id) % rgb(1) = plot_(i) % col_spec_(j) % rgb(1)
-            materials(col_id) % rgb(2) = plot_(i) % col_spec_(j) % rgb(2)
-            materials(col_id) % rgb(3) = plot_(i) % col_spec_(j) % rgb(3)
+            pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
           else
             message = "Could not find material " // trim(to_str(col_id)) // &
                       " specified in plot " // trim(to_str(pl % id))
@@ -1244,6 +1255,22 @@ contains
         end if
 
       end do
+
+      ! Alter colors based on mask information
+      if (size(plot_(i) % mask_) /= 1) then
+        message = "Mutliple masks" // &
+                  " specified in plot " // trim(to_str(pl % id))
+        call fatal_error()
+      else
+          do j=1,size(pl % colors)
+            if (.not. any(j .eq. plot_(i) % mask_(1) % components)) then
+              pl % colors(j) % rgb = plot_(i) % mask_(1) % background
+            end if
+          end do
+      end if
+      
+      
+
 
     end do
 

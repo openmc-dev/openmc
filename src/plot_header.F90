@@ -22,7 +22,6 @@ module plot_header
      integer :: type                  ! Type
      integer :: color_by              ! quantity to color regions by
      real(8) :: origin(3)             ! xyz center of plot location
-     real(8) :: aspect                ! spacing between rays in raytracer
      real(8) :: width(3)              ! xyz widths of plot
      integer :: basis                 ! direction of plot slice 
      integer :: pixels(2)             ! pixel width/height of plot slice

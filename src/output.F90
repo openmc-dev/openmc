@@ -918,15 +918,6 @@ contains
         write(ou,100) "Basis:", trim(to_str(pl % basis))
         write(ou,100) "Pixels:", trim(to_str(pl % pixels(1))) // " " // &
                                  trim(to_str(pl % pixels(2)))
-
-      else if (pl % type == PLOT_TYPE_POINTS) then
-
-        write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
-             " " // trim(to_str(pl % width(2))) // " " &
-                 // trim(to_str(pl % width(3)))
-        write(ou,100) "Coloring:", trim(to_str(pl % color_by))
-        write(ou,100) "Ray Spacing:", trim(to_str(pl % aspect))
-
       end if
 
       write(ou,*)

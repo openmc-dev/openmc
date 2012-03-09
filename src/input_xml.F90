@@ -1125,7 +1125,6 @@ contains
 
       ! Copy data into plots
       pl % id       = plot_(i) % id
-      pl % aspect   = plot_(i) % aspect
 
       ! Set output file path
       pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &

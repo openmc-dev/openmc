@@ -1142,7 +1142,7 @@ contains
       if (size(plot_(i) % background) == 3) then
          pl % not_found % rgb = plot_(i) % background
       else if (size(plot_(i) % background) == 0) then
-         pl % not_found % rgb = (/ 0, 0, 0 /)
+         pl % not_found % rgb = (/ 255, 255, 255 /)
       else
           message = "Bad background RGB " &
                     // "in plot " // trim(to_str(pl % id))

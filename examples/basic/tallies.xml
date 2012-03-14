@@ -5,7 +5,7 @@
     <filters>
       <cell>100</cell>
     </filters>
-    <macros>total scatter nu-scatter absorption fission nu-fission</macros>
+    <scores>total scatter nu-scatter absorption fission nu-fission</scores>
   </tally>
 
   <tally id="2">
@@ -13,7 +13,7 @@
       <cell>100</cell>
       <energy>0 20.0</energy>
     </filters>
-    <macros>total scatter nu-scatter absorption fission nu-fission</macros>
+    <scores>total scatter nu-scatter absorption fission nu-fission</scores>
   </tally>
 
   <tally id="3">
@@ -22,7 +22,7 @@
       <energy>0 20.0</energy>
       <energyout>0 20.0</energyout>
     </filters>
-    <macros>scatter nu-scatter nu-fission</macros>
+    <scores>scatter nu-scatter nu-fission</scores>
   </tally>
 
 </tallies>

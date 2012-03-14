@@ -4,7 +4,7 @@
   <mesh id="1">
     <type>rectangular</type>
     <dimension>4 4</dimension>
-    <origin>-2.0 -2.0</origin>
+    <lower_left>-2.0 -2.0</lower_left>
     <width>1.0 1.0</width>
   </mesh>
 
@@ -13,7 +13,7 @@
       <mesh>1</mesh>
     </filters>
 
-    <macros>total</macros>
+    <scores>total</scores>
   </tally>
 
 </tallies>

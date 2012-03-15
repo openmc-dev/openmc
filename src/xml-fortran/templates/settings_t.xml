@@ -4,9 +4,10 @@
   <options rootname="settings" />
 
   <typedef name="criticality_xml">
-    <component name="cycles" type="integer" />
+    <component name="batches" type="integer" default="0" />
     <component name="inactive" type="integer" />
     <component name="particles" type="word" length="25" default="''" />
+    <component name="generations_per_batch" type="integer" default="1" />
   </typedef>
 
   <typedef name="source_xml">

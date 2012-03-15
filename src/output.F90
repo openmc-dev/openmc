@@ -830,8 +830,9 @@ contains
     call header("PROBLEM SUMMARY", unit=UNIT_SUMMARY)
     if (problem_type == PROB_CRITICALITY) then
        write(UNIT_SUMMARY,100) 'Problem type:', 'Criticality'
-       write(UNIT_SUMMARY,101) 'Number of Cycles:', n_cycles
-       write(UNIT_SUMMARY,101) 'Number of Inactive Cycles:', n_inactive
+       write(UNIT_SUMMARY,101) 'Number of Batches:', n_batches
+       write(UNIT_SUMMARY,101) 'Number of Inactive Batches:', n_inactive
+       write(UNIT_SUMMARY,101) 'Generations per Batch:', gen_per_batch
     elseif (problem_type == PROB_SOURCE) then
        write(UNIT_SUMMARY,100) 'Problem type:', 'External Source'
     end if
@@ -950,9 +951,9 @@ contains
     write(ou,100) "Total time in simulation", time_inactive % elapsed + &
          time_active % elapsed
     write(ou,100) "  Time in transport only", time_transport % elapsed
-    write(ou,100) "  Time in inactive cycles", time_inactive % elapsed
-    write(ou,100) "  Time in active cycles", time_active % elapsed
-    write(ou,100) "  Time between cycles", time_intercycle % elapsed
+    write(ou,100) "  Time in inactive batches", time_inactive % elapsed
+    write(ou,100) "  Time in active batches", time_active % elapsed
+    write(ou,100) "  Time between generations", time_intercycle % elapsed
     write(ou,100) "    Accumulating tallies", time_ic_tallies % elapsed
     write(ou,100) "    Sampling source sites", time_ic_sample % elapsed
     write(ou,100) "    SEND/RECV source sites", time_ic_sendrecv % elapsed
@@ -960,7 +961,7 @@ contains
     write(ou,100) "Total time elapsed", time_total % elapsed
 
     ! display calculate rate and final keff
-    total_particles = n_particles * n_cycles
+    total_particles = n_particles * n_batches * gen_per_batch
     speed = real(total_particles) / (time_inactive % elapsed + &
          time_active % elapsed)
     string = to_str(speed)

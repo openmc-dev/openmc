@@ -145,12 +145,13 @@ contains
     p % id = bank_first + index_source - 1
 
     ! set random number seed
-    particle_seed = (current_cycle - 1)*n_particles + p % id
+    particle_seed = ((current_batch - 1)*gen_per_batch + & 
+         current_gen - 1)*n_particles + p % id
     call set_particle_seed(particle_seed)
           
     ! set particle trace
     trace = .false.
-    if (current_cycle == trace_cycle .and. &
+    if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
          p % id == trace_particle) trace = .true.
 
   end subroutine get_source_particle

@@ -77,19 +77,22 @@ contains
        call hdf5_make_double(hdf5_output_file, "n_particles", real(n_particles,8))
 
        ! Use H5LT interface to write n_cycles, n_inactive, and n_active
-       call hdf5_make_integer(hdf5_output_file, "n_cycles", n_cycles)
+       call hdf5_make_integer(hdf5_output_file, "n_batches", n_batches)
        call hdf5_make_integer(hdf5_output_file, "n_inactive", n_inactive)
        call hdf5_make_integer(hdf5_output_file, "n_active", n_active)
+       call hdf5_make_integer(hdf5_output_file, "gen_per_batch", gen_per_batch)
 
        ! Add description of each variable
        call h5ltset_attribute_string_f(hdf5_output_file, "n_particles", &
             "description", "Number of particles per cycle", hdf5_err)
-       call h5ltset_attribute_string_f(hdf5_output_file, "n_cycles", &
-            "description", "Total number of cycles", hdf5_err)
+       call h5ltset_attribute_string_f(hdf5_output_file, "n_batches", &
+            "description", "Total number of batches", hdf5_err)
        call h5ltset_attribute_string_f(hdf5_output_file, "n_inactive", &
             "description", "Number of inactive cycles", hdf5_err)
        call h5ltset_attribute_string_f(hdf5_output_file, "n_active", &
             "description", "Number of active cycles", hdf5_err)
+       call h5ltset_attribute_string_f(hdf5_output_file, "gen_per_batch", &
+            "description", "Number of generations per batch", hdf5_err)
     end if
 
     call hdf5_write_geometry()
@@ -788,7 +791,7 @@ contains
     call h5ltset_attribute_string_f(timing_group, "time_transport", &
          "description", "Time in transport only (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_intercycle", &
-         "description", "Total time between cycles (s)", hdf5_err)
+         "description", "Total time between generations (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_tallies", &
          "description", "Time between cycles accumulating tallies (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_sample", &
@@ -796,16 +799,16 @@ contains
     call h5ltset_attribute_string_f(timing_group, "time_sendrecv", &
          "description", "Time between cycles SEND/RECVing source sites (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_inactive", &
-         "description", "Total time in inactive cycles (s)", hdf5_err)
+         "description", "Total time in inactive batches (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_active", &
-         "description", "Total time in active cycles (s)", hdf5_err)
+         "description", "Total time in active batches (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_finalize", &
          "description", "Total time for finalization (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_total", &
          "description", "Total time elapsed (s)", hdf5_err)
 
     ! Write calculation rate
-    total_particles = n_particles * n_cycles
+    total_particles = n_particles * n_batches * gen_per_batch
     speed = real(total_particles) / (time_inactive % elapsed + &
          time_active % elapsed)
     call hdf5_make_double(timing_group, "neutrons_per_second", speed)

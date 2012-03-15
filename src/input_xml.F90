@@ -91,7 +91,7 @@ contains
     end if
 
     ! Criticality information
-    if (criticality % cycles > 0) then
+    if (criticality % batches > 0) then
        problem_type = PROB_CRITICALITY
 
        ! Check number of particles
@@ -102,9 +102,13 @@ contains
        n_particles = str_to_int(criticality % particles)
 
        ! Copy cycle information
-       n_cycles    = criticality % cycles
-       n_inactive  = criticality % inactive
-       n_active    = n_cycles - n_inactive
+       n_batches     = criticality % batches
+       n_inactive    = criticality % inactive
+       n_active      = n_batches - n_inactive
+       gen_per_batch = criticality % generations_per_batch
+    else
+       message = "Need to specify number of batches with <batches> tag."
+       call fatal_error()
     end if
 
     ! Verbosity
@@ -151,8 +155,9 @@ contains
 
     ! Particle trace
     if (associated(trace_)) then
-       trace_cycle    = trace_(1)
-       trace_particle = trace_(2)
+       trace_batch    = trace_(1)
+       trace_gen      = trace_(2)
+       trace_particle = trace_(3)
     end if
 
     ! Shannon Entropy mesh

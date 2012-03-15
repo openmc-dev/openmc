@@ -125,11 +125,13 @@ module global
   ! ============================================================================
   ! CRITICALITY SIMULATION VARIABLES
 
-  integer(8) :: n_particles = 10000 ! # of particles per cycle
-  integer    :: n_cycles    = 500   ! # of cycles
-  integer    :: n_inactive  = 50    ! # of inactive cycles
-  integer    :: n_active            ! # of active cycles
-  integer    :: current_cycle = 0   ! current cycle
+  integer(8) :: n_particles       ! # of particles per generation
+  integer    :: n_batches         ! # of batches
+  integer    :: n_inactive        ! # of inactive batches
+  integer    :: n_active          ! # of active batches
+  integer    :: gen_per_batch = 1 ! # of generations per batch
+  integer    :: current_batch = 0 ! current batch
+  integer    :: current_gen   = 0 ! current generation
 
   ! External source
   type(ExtSource), target :: external_source
@@ -143,7 +145,7 @@ module global
   integer(8) :: work         ! number of particles per processor
   integer(8) :: maxwork      ! maximum number of particles per processor
 
-  ! cycle keff
+  ! single-genreation keff
   real(8) :: keff = ONE
   real(8) :: keff_std
 
@@ -217,7 +219,8 @@ module global
 
   ! Trace for single particle
   logical    :: trace
-  integer    :: trace_cycle
+  integer    :: trace_batch
+  integer    :: trace_gen
   integer(8) :: trace_particle
 
 contains

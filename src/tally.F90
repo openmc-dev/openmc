@@ -1048,28 +1048,31 @@ contains
   end subroutine add_to_score
 
 !===============================================================================
-! ACCUMULATE_CYCLE_ESTIMATE
+! ACCUMULATE_BATCH_ESTIMATE
 !===============================================================================
 
-  elemental subroutine accumulate_cycle_estimate(score)
+  elemental subroutine accumulate_batch_estimate(score)
 
     type(TallyScore), intent(inout) :: score
+
+    real(8) :: val
 
     ! Add the sum and square of the sum of contributions from each cycle
     ! within a cycle to the variables sum and sum_sq. This will later allow us
     ! to calculate a variance on the tallies
 
-    score % sum    = score % sum    + score % value/n_particles
-    score % sum_sq = score % sum_sq + (score % value/n_particles)**2
+    val = score % value/(n_particles*gen_per_batch)
+    score % sum    = score % sum    + val
+    score % sum_sq = score % sum_sq + val*val
 
-    ! Reset the single cycle estimate
+    ! Reset the single batch estimate
     score % value = ZERO
 
-  end subroutine accumulate_cycle_estimate
+  end subroutine accumulate_batch_estimate
 
 !===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
-! within the cycle to a new random variable
+! within the batch to a new random variable
 !===============================================================================
 
   subroutine synchronize_tallies()
@@ -1086,7 +1089,7 @@ contains
        t => tallies(i)
 
        ! Loop over all filter and scoring bins
-       call accumulate_cycle_estimate(t % scores)
+       call accumulate_batch_estimate(t % scores)
     end do
 
   end subroutine synchronize_tallies

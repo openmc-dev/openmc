@@ -76,9 +76,10 @@ contains
     write(ERROR_UNIT,*)
 
     ! Write information on current cycle and particle
-    if (current_cycle > 0) then
-       write(ERROR_UNIT,'(1X,A,I11) ') 'Cycle:    ', current_cycle
-       write(ERROR_UNIT,'(1X,A,I11)')  'Particle: ', p % id
+    if (current_batch > 0) then
+       write(ERROR_UNIT,'(1X,A,I12) ') 'Batch:     ', current_batch
+       write(ERROR_UNIT,'(1X,A,I12) ') 'Generation:', current_gen
+       write(ERROR_UNIT,'(1X,A,I12)')  'Particle:  ', p % id
        write(ERROR_UNIT,*)
     end if
 

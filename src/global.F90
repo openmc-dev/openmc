@@ -82,7 +82,8 @@ module global
   type(DictionaryCI), pointer :: xs_listing_dict => null()
 
   ! Unionized energy grid
-  integer              :: n_grid    ! number of points on unionized grid
+  integer :: grid_method ! how to treat the energy grid
+  integer :: n_grid      ! number of points on unionized grid
   real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
   ! Unreoslved resonance probablity tables

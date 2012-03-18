@@ -106,9 +106,11 @@ contains
        call timer_stop(time_read_xs)
 
        ! Construct unionized energy grid from cross-sections
-       call timer_start(time_unionize)
-       call unionized_grid()
-       call timer_stop(time_unionize)
+       if (grid_method == GRID_UNION) then
+          call timer_start(time_unionize)
+          call unionized_grid()
+          call timer_stop(time_unionize)
+       end if
 
        ! Create tally map
        call create_tally_map()

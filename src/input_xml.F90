@@ -67,6 +67,7 @@ contains
     ! Initialize XML scalar variables
     cross_sections_ = ""
     verbosity_ = 0
+    energy_grid_ = "union"
 
     ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
@@ -110,6 +111,20 @@ contains
        message = "Need to specify number of batches with <batches> tag."
        call fatal_error()
     end if
+
+    ! Energy grid methods
+    select case (energy_grid_)
+    case ('nuclide')
+       grid_method = GRID_NUCLIDE
+    case ('union')
+       grid_method = GRID_UNION
+    case ('lethargy')
+       message = "Lethargy mapped energy grid not yet supported."
+       call fatal_error()
+    case default
+       message = "Unknown energy grid method: " // energy_grid_
+       call fatal_error()
+    end select
 
     ! Verbosity
     if (verbosity_ > 0) verbosity = verbosity_

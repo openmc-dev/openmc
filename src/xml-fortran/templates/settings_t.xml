@@ -27,13 +27,14 @@
   </typedef>
 
   <variable name="criticality" type="criticality_xml" />
-  <variable name="verbosity_" tag="verbosity" type="integer" />
+  <variable name="cross_sections_" tag="cross_sections" type="word" length="255" />
+  <variable name="cutoff_" tag="cutoff" type="cutoff_xml" dimension="1" />
+  <variable name="energy_grid_" tag="energy_grid" type="word" length="7" />
+  <variable name="entropy_" tag="entropy" type="entropy_xml" dimension="1" />
+  <variable name="ptables_" tag="ptables" type="word" length="3" />
   <variable name="source_" tag="source" type="source_xml" />
   <variable name="survival_" tag="survival_biasing" type="word" length="3" />
-  <variable name="ptables_" tag="ptables" type="word" length="3" />
-  <variable name="cutoff_" tag="cutoff" type="cutoff_xml" dimension="1" />
-  <variable name="cross_sections_" tag="cross_sections" type="word" length="255" />
+  <variable name="verbosity_" tag="verbosity" type="integer" />
   <variable name="trace_" tag="trace" type="integer-array" />
-  <variable name="entropy_" tag="entropy" type="entropy_xml" dimension="1" />
 
 </template>

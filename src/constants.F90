@@ -312,6 +312,12 @@ module constants
   integer, parameter :: ERROR_INT  = -huge(0)
   real(8), parameter :: ERROR_REAL = -huge(0.0_8) * 0.917826354_8
 
+  ! Energy grid methods
+  integer, parameter :: &
+       GRID_NUCLIDE  = 1, & ! non-unionized energy grid (MCNP)
+       GRID_UNION    = 2, & ! union grid with pointers
+       GRID_LETHARGY = 3    ! lethargy mapping (MC21)
+
   ! Source types
   integer, parameter ::   &
        SRC_BOX     = 1, & ! Source in a rectangular prism

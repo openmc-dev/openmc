@@ -357,18 +357,25 @@ performed. It has the following attributes/sub-elements:</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">cycles:</th><td class="field-body"><p class="first">The number of total fission source iterations.</p>
+<tr class="field-odd field"><th class="field-name">batches:</th><td class="field-body"><p class="first">The total number of batches, where each batch corresponds to multiple
+fission source iterations. Batching is done to eliminate correlation between
+realizations of random variables.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">inactive:</th><td class="field-body"><p class="first">The number of inactive fission source iterations. In general, the starting
-cycles in a criticality calculation can not be used to contribute to tallies
-since the fission source distribution and eigenvalue are generally not
-converged immediately</p>
+<tr class="field-even field"><th class="field-name" colspan="2">generations_per_batch:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first">The number of total fission source iterations per batch.</p>
+<p><em>Default</em>: 1</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">inactive:</th><td class="field-body"><p class="first">The number of inactive batches. In general, the starting cycles in a
+criticality calculation can not be used to contribute to tallies since the
+fission source distribution and eigenvalue are generally not converged
+immediately.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">particles:</th><td class="field-body"><p class="first">The number of neutrons to simulate per fission source iteration.</p>
+<tr class="field-even field"><th class="field-name">particles:</th><td class="field-body"><p class="first">The number of neutrons to simulate per fission source iteration.</p>
 <p class="last"><em>Default</em>: None</p>
 </td>
 </tr>
@@ -407,6 +414,17 @@ roulette.</p>
 </tbody>
 </table>
 </div></blockquote>
+</div>
+<div class="section" id="energy-grid-element">
+<h3><tt class="docutils literal"><span class="pre">energy_grid</span></tt> Element<a class="headerlink" href="#energy-grid-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">energy_grid</span></tt> element determines the treatment of the energy grid during a
+simulation. Setting this element to &#8220;nuclide&#8221; will cause OpenMC to use a
+nuclide&#8217;s energy grid when determining what points to interpolate between for
+determining cross sections (i.e. non-unionized energy grid). To use a unionized
+energy grid, set this element to &#8220;union&#8221;. Note that the unionized energy grid
+treatment is slightly different than that employed in Serpent.</p>
+<blockquote>
+<div><em>Default</em>: union</div></blockquote>
 </div>
 <div class="section" id="entropy-element">
 <h3><tt class="docutils literal"><span class="pre">entropy</span></tt> Element<a class="headerlink" href="#entropy-element" title="Permalink to this headline">¶</a></h3>
@@ -644,38 +662,136 @@ separate can lead to incorrect results.</p>
 </div>
 <div class="section" id="geometry-plotting-specification-plot-xml">
 <h2>Geometry Plotting Specification &#8211; plot.xml<a class="headerlink" href="#geometry-plotting-specification-plot-xml" title="Permalink to this headline">¶</a></h2>
-<p>A rudimentary plotting capability is available in OpenMC by specifying a
-plot.xml file and subsequently running with the command-line flag <tt class="docutils literal"><span class="pre">-plot</span></tt>. The
-root element of the plot.xml is simply <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> and four sub-elements can be
-defined to configure the plotting range and resolution.</p>
-<div class="section" id="origin-element">
-<h3><tt class="docutils literal"><span class="pre">origin</span></tt> Element<a class="headerlink" href="#origin-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">origin</span></tt> element has no attributes/sub-elements and indicates the
-Cartesian coordinates of the center of the plot.</p>
+<p>A basic 2D plotting capability is available in OpenMC by creating a
+plots.xml file and subsequently running with the command-line flag <tt class="docutils literal"><span class="pre">-plot</span></tt>. The
+root element of the plot.xml is simply <tt class="docutils literal"><span class="pre">&lt;plots&gt;</span></tt> and any number output
+figures can be defined with <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> sub-elements.</p>
+<div class="section" id="plot-element">
+<h3><tt class="docutils literal"><span class="pre">plot</span></tt> Element<a class="headerlink" href="#plot-element" title="Permalink to this headline">¶</a></h3>
+<p>Each plot must contain a combination of the following attributes or sub-elements:</p>
 <blockquote>
-<div><em>Default</em>: None</div></blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">id:</th><td class="field-body"><p class="first">The unique <tt class="docutils literal"><span class="pre">id</span></tt> of the plot.</p>
+<p><em>Default</em>: None - Required entry</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">filename:</th><td class="field-body"><p class="first">Filename for the output plot file.</p>
+<p><em>Default</em>: &#8220;plot&#8221;</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">color:</th><td class="field-body"><p class="first">Keyword for plot coloring.  This can only be either <tt class="docutils literal"><span class="pre">cell</span></tt> or <tt class="docutils literal"><span class="pre">mat</span></tt>,
+which colors regions by cells and materials, respectively.</p>
+<p><em>Default</em>: <tt class="docutils literal"><span class="pre">cell</span></tt></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">origin:</th><td class="field-body"><p class="first">Specifies the XYZ coordinate of the center of the plot.  Should be 3 floats
+separated by spaces.</p>
+<p><em>Default</em>: None - Required entry</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body"><p class="first">Specifies the width of the plot along each of the basis directions.
+Should be 2 or 3 floats separated by spaces for 2D plots and 3D plots,
+respectively.</p>
+<p><em>Default</em>: None - Required entry</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">type:</th><td class="field-body"><p class="first">Keyword for type of plot to be produced.  Currently only <tt class="docutils literal"><span class="pre">slice</span></tt> plots are
+implemented, which create 2D pixel maps saved in the PPM file format.  PPM
+files can be displayed in most viewers (e.g. the default Gnome viewer,
+IrfanView, etc.).</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Since the PPM format is saved without any kind of compression,
+the resulting file sizes can be quite large.  Saving the image in
+the PNG format can often times reduce the file size by orders of
+magnitude without any loss of image quality.</p>
 </div>
-<div class="section" id="width-element">
-<h3><tt class="docutils literal"><span class="pre">width</span></tt> Element<a class="headerlink" href="#width-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">width</span></tt> element has no attributes/sub-elements and indicates the width of
-the plot in each of the basis directions.</p>
+<p class="last"><em>Default</em>: &#8220;slice&#8221;</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p><tt class="docutils literal"><span class="pre">plot</span></tt> elements of <tt class="docutils literal"><span class="pre">type</span></tt> <tt class="docutils literal"><span class="pre">slice</span></tt> also contain the following attributes or
+sub-elements:</p>
 <blockquote>
-<div><em>Default</em>: None</div></blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">basis:</th><td class="field-body"><p class="first">Keyword specifying the plane of the plot for <tt class="docutils literal"><span class="pre">slice</span></tt> type plots.  Can be
+one of: <tt class="docutils literal"><span class="pre">xy</span></tt>, <tt class="docutils literal"><span class="pre">xz</span></tt>, <tt class="docutils literal"><span class="pre">yz</span></tt>.</p>
+<p><em>Default</em>: <tt class="docutils literal"><span class="pre">xy</span></tt></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">pixels:</th><td class="field-body"><p class="first">Specifies the number of pixes to be used along each of the basis directions for
+<tt class="docutils literal"><span class="pre">slice</span></tt> plots. Should be 2 integers separated by spaces.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The <tt class="docutils literal"><span class="pre">pixels</span></tt> input determines the output file size.  For the PPM
+format, 10 million pixels will result in a file just under 30 MB in
+size.</p>
 </div>
-<div class="section" id="basis-element">
-<h3><tt class="docutils literal"><span class="pre">basis</span></tt> Element<a class="headerlink" href="#basis-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">basis</span></tt> element has no attributes/sub-elements and indicates the specified
-basis for plotting. The only option option currently accepted is &#8220;xy&#8221;.</p>
-<blockquote>
-<div><em>Default</em>: xy</div></blockquote>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">If the aspect ratio defined in <tt class="docutils literal"><span class="pre">pixels</span></tt> does not match the aspect
+ratio defined in <tt class="docutils literal"><span class="pre">width</span></tt> the plot may appear stretched or squeezed.</p>
 </div>
-<div class="section" id="pixel-element">
-<h3><tt class="docutils literal"><span class="pre">pixel</span></tt> Element<a class="headerlink" href="#pixel-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">pixel</span></tt> element has no attributes/sub-elements and indicates the distance
-between horizontal rays sent through the geometry to record surface crossings. A
-smaller <tt class="docutils literal"><span class="pre">pixel</span></tt> will result in a higher-resolution plot.</p>
-<blockquote>
-<div><em>Default</em>: 0.01</div></blockquote>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Geometry features along a basis direction smaller than <tt class="docutils literal"><span class="pre">width</span></tt>/<tt class="docutils literal"><span class="pre">pixels</span></tt>
+along that basis direction may not appear in the plot.</p>
+</div>
+<p><em>Default</em>: None - Required entry for <tt class="docutils literal"><span class="pre">slice</span></tt> plots</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">background:</th><td class="field-body"><p class="first">Specifies the RGB color of the regions where no OpenMC cell can be found. Should
+be 3 integers deparated by spaces.</p>
+<p><em>Default</em>: 0 0 0 (white)</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">col_spec:</th><td class="field-body"><p class="first">Any number of this optional tag may be included in each <tt class="docutils literal"><span class="pre">plot</span></tt> element, which can
+override the default random colors for cells or materials.  Each <tt class="docutils literal"><span class="pre">col_spec</span></tt>
+element must contain <tt class="docutils literal"><span class="pre">id</span></tt> and <tt class="docutils literal"><span class="pre">rgb</span></tt> sub-elements.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">id:</th><td class="field-body">Specifies the cell or material unique id for the color specification.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">rgb:</th><td class="field-body">Specifies the custom color for the cell or material.  Should be 3 intergers separated
+by spaces.</td>
+</tr>
+</tbody>
+</table>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">mask:</th><td class="field-body"><p class="first">The special <tt class="docutils literal"><span class="pre">mask</span></tt> sub-element allows for the selective plotting of <em>only</em>
+user-specified cells or materials.  Only one <tt class="docutils literal"><span class="pre">mask</span></tt> element is allowed per <tt class="docutils literal"><span class="pre">plot</span></tt>
+element, and it must contain as atributes or sub-elements a background masking color and
+a list of cells or materials to plot:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">components:</th><td class="field-body">List of unique <tt class="docutils literal"><span class="pre">id</span></tt> numbers of the cells or materials to plot.  Should be any number
+of integers separated by spaces.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">background:</th><td class="field-body">Color to apply to all cells or materials not in the <tt class="docutils literal"><span class="pre">components</span></tt> list of cells or
+materials to plot.  This overrides any <tt class="docutils literal"><span class="pre">col_spec</span></tt> color specifications.</td>
+</tr>
+</tbody>
+</table>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
 </div>
 </div>
 </div>

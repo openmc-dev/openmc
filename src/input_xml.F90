@@ -140,6 +140,9 @@ contains
        case ('box')
           external_source % type = SRC_BOX
           coeffs_reqd = 6
+       case ('point')
+          external_source % type = SRC_POINT
+          coeffs_reqd = 3
        case default
           message = "Invalid source type: " // trim(source_ % type)
           call fatal_error()

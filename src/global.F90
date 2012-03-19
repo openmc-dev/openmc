@@ -211,6 +211,9 @@ module global
   ! Message used in message/warning/fatal_error
   character(MAX_LINE_LEN) :: message
 
+  ! Random number seed
+  integer(8) :: seed = 1_8
+
   ! Problem type
   integer :: problem_type = PROB_CRITICALITY
 

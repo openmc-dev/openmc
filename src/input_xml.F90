@@ -68,6 +68,7 @@ contains
     cross_sections_ = ""
     verbosity_ = 0
     energy_grid_ = "union"
+    seed_ = 0_8
 
     ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
@@ -111,6 +112,9 @@ contains
        message = "Need to specify number of batches with <batches> tag."
        call fatal_error()
     end if
+
+    ! Copy random number seed if specified
+    if (seed_ > 0) seed = seed_
 
     ! Energy grid methods
     select case (energy_grid_)

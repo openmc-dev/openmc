@@ -25,6 +25,7 @@ Contents
     :maxdepth: 1
 
     install
+    releasenotes/index
     methods/index
     usersguide/index
     developers

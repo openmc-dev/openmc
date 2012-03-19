@@ -4,7 +4,7 @@ module intercycle
 
   use error,           only: fatal_error, warning
   use global
-  use mesh,            only: get_mesh_bin
+  use mesh,            only: count_fission_sites
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message
   use random_lcg,      only: prn, set_particle_seed, prn_skip
@@ -283,12 +283,10 @@ contains
 
   subroutine shannon_entropy()
 
-    integer :: i              ! index for bank sites
+    integer :: i, j, k        ! index for bank sites
     integer :: n              ! # of boxes in each dimension
-    integer :: bin            ! index in entropy_p
-    integer(8) :: total_bank  ! total # of fission bank sites
-    integer, save :: n_box    ! total # of boxes on mesh
-    logical :: outside_box    ! were there sites outside entropy box?
+    real(8) :: total          ! total weight of fission bank sites
+    logical :: sites_outside    ! were there sites outside entropy box?
     type(StructuredMesh), pointer :: m => null()
 
     ! Get pointer to entropy mesh
@@ -312,69 +310,39 @@ contains
           m % dimension = n
        end if
 
-       ! Determine total number of mesh boxes
-       n_box = product(m % dimension)
-
        ! allocate and determine width
        allocate(m % width(3))
        m % width = (m % upper_right - m % lower_left) / m % dimension
 
        ! allocate p
-       allocate(entropy_p(n_box))
+       allocate(entropy_p(m % dimension(1), m % dimension(2), &
+            m % dimension(3)))
     end if
 
-    ! initialize p
-    entropy_p = ZERO
-    outside_box = .false.
-
-    ! loop over fission sites and count how many are in each mesh box
-    FISSION_SITES: do i = 1, int(n_bank,4)
-       ! determine scoring bin for entropy mesh
-       call get_mesh_bin(m, fission_bank(i) % xyz, bin)
-
-       ! if outside mesh, skip particle
-       if (bin == NO_BIN_FOUND) then
-          outside_box = .true.
-          cycle
-       end if
-
-       ! add to appropriate mesh box
-       entropy_p(bin) = entropy_p(bin) + 1
-    end do FISSION_SITES
+    ! count number of fission sites over mesh
+    call count_fission_sites(m, entropy_p, total, sites_outside)
 
     ! display warning message if there were sites outside entropy box
-    if (outside_box) then
+    if (sites_outside) then
        message = "Fission source site(s) outside of entropy box."
        call warning()
     end if
 
-#ifdef MPI
-    ! collect values from all processors
-    if (master) then
-       call MPI_REDUCE(MPI_IN_PLACE, entropy_p, n_box, MPI_REAL8, MPI_SUM, &
-            0, MPI_COMM_WORLD, mpi_err)
-    else
-       call MPI_REDUCE(entropy_p, entropy_p, n_box, MPI_REAL8, MPI_SUM, &
-            0, MPI_COMM_WORLD, mpi_err)
-    end if
-
-    ! determine total number of bank sites
-    call MPI_REDUCE(n_bank, total_bank, 1, MPI_INTEGER8, MPI_SUM, 0, &
-         MPI_COMM_WORLD, mpi_err)
-#else
-    total_bank = n_bank
-#endif
-
     ! sum values to obtain shannon entropy
     if (master) then
-       ! Normalize to number of bank sites
-       entropy_p = entropy_p / total_bank
+       ! Normalize to total weight of bank sites
+       entropy_p = entropy_p / total
 
        entropy = 0
-       do i = 1, n_box
-          if (entropy_p(i) > 0) then
-             entropy = entropy - entropy_p(i) * log(entropy_p(i))/log(2.0)
-          end if
+       do i = 1, m % dimension(1)
+          do j = 1, m % dimension(2)
+             do k = 1, m % dimension(3)
+                if (entropy_p(i,j,k) > ZERO) then
+                   entropy = entropy - entropy_p(i,j,k) * &
+                        log(entropy_p(i,j,k))/log(2.0)
+                end if
+             end do
+          end do
        end do
     end if
 

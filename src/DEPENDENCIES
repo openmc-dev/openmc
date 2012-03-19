@@ -148,7 +148,10 @@ main.o: string.o
 main.o: tally.o
 main.o: timing.o
 
+mesh.o: constants.o
+mesh.o: global.o
 mesh.o: mesh_header.o
+mesh.o: particle_header.o
 
 output.o: constants.o
 output.o: datatypes.o

@@ -307,16 +307,23 @@ settings.xml file.
 The ``criticality`` element indicates that a criticality calculation should be
 performed. It has the following attributes/sub-elements:
 
-  :cycles:
-    The number of total fission source iterations.
+  :batches: 
+    The total number of batches, where each batch corresponds to multiple
+    fission source iterations. Batching is done to eliminate correlation between
+    realizations of random variables.
 
     *Default*: None
 
+  :generations_per_batch:
+    The number of total fission source iterations per batch.
+
+    *Default*: 1
+
   :inactive:
-    The number of inactive fission source iterations. In general, the starting
-    cycles in a criticality calculation can not be used to contribute to tallies
-    since the fission source distribution and eigenvalue are generally not
-    converged immediately
+    The number of inactive batches. In general, the starting cycles in a
+    criticality calculation can not be used to contribute to tallies since the
+    fission source distribution and eigenvalue are generally not converged
+    immediately.
 
     *Default*: None
 
@@ -352,6 +359,18 @@ default. This element has the following attributes/sub-elements:
     roulette.
 
     *Default*: 1.0
+
+``energy_grid`` Element
+-----------------------
+
+The ``energy_grid`` element determines the treatment of the energy grid during a
+simulation. Setting this element to "nuclide" will cause OpenMC to use a
+nuclide's energy grid when determining what points to interpolate between for
+determining cross sections (i.e. non-unionized energy grid). To use a unionized
+energy grid, set this element to "union". Note that the unionized energy grid
+treatment is slightly different than that employed in Serpent.
+
+  *Default*: union
 
 ``entropy`` Element
 -------------------

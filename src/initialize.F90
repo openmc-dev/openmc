@@ -72,14 +72,14 @@ contains
        call header("INITIALIZATION", level=1)
     end if
 
-    ! Initialize random number generator
-    call initialize_prng()
-
     ! set up dictionaries
     call create_dictionaries()
 
     ! Read XML input files
     call read_input_xml()
+
+    ! Initialize random number generator
+    call initialize_prng()
 
     ! Set up universe structures
     call prepare_universes()

@@ -404,6 +404,14 @@ sub-elements and can be set to either "off" or "on".
 
   *Default*: on
 
+``seed`` Element
+----------------
+
+The ``seed`` element is used to set the seed used for the linear congruential
+pseudo-random number generator.
+
+  *Default*: 1
+
 ``source`` Element
 ------------------
 

@@ -93,6 +93,8 @@ contains
                 p_max = external_source % values(4:6)
                 r = (/ (prn(), k = 1,3) /)
                 source_bank(j) % xyz = p_min + r*(p_max - p_min)
+             case (SRC_POINT)
+                source_bank(j) % xyz = external_source % values
              end select
 
              ! sample angle

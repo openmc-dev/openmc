@@ -12,7 +12,7 @@ module initialize
   use geometry_header,  only: Cell, Surface, Universe, Lattice, BASE_UNIVERSE
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
-                              cells_in_univ_dict
+                              cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, print_summary, print_geometry,    &
                               print_plot, create_summary_file,                 &
                               create_xs_summary_file
@@ -80,6 +80,10 @@ contains
 
     ! Initialize random number generator
     call initialize_prng()
+
+    ! Read plots.xml if it exists -- this has to be done separate from the other
+    ! XML files because we need the PRNG to be initialized first
+    if (plotting) call read_plots_xml()
 
     ! Set up universe structures
     call prepare_universes()

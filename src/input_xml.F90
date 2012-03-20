@@ -32,7 +32,6 @@ contains
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
-    if (plotting) call read_plots_xml()
 
   end subroutine read_input_xml
 
@@ -1163,14 +1162,16 @@ contains
       end if
 
       ! Copy plot background color
-      if (size(plot_(i) % background) == 3) then
-         pl % not_found % rgb = plot_(i) % background
-      else if (size(plot_(i) % background) == 0) then
-         pl % not_found % rgb = (/ 255, 255, 255 /)
+      if (associated(plot_(i) % background)) then
+         if (size(plot_(i) % background) == 3) then
+            pl % not_found % rgb = plot_(i) % background
+         else
+            message = "Bad background RGB " &
+                 // "in plot " // trim(to_str(pl % id))
+            call fatal_error()
+         end if
       else
-          message = "Bad background RGB " &
-                    // "in plot " // trim(to_str(pl % id))
-          call fatal_error()
+         pl % not_found % rgb = (/ 255, 255, 255 /)
       end if
 
       ! Copy plot type
@@ -1232,7 +1233,7 @@ contains
             pl % colors(j) % rgb(3) = prn()*255
           end do
 
-        case ("mat")
+        case ("mat", "material")
 
           pl % color_by = PLOT_COLOR_MATS
           allocate(pl % colors(n_materials))
@@ -1249,55 +1250,55 @@ contains
       end select
 
       ! Copy user specified colors
-      n_cols = size(plot_(i) % col_spec_)
-      do j = 1, n_cols
-        if (size(plot_(i) % col_spec_(j) % rgb) /= 3) then
-          message = "Bad RGB " &
+      if (associated(plot_(i) % col_spec_)) then
+         n_cols = size(plot_(i) % col_spec_)
+         do j = 1, n_cols
+            if (size(plot_(i) % col_spec_(j) % rgb) /= 3) then
+               message = "Bad RGB " &
                     // "in plot " // trim(to_str(pl % id))
-          call fatal_error()          
-        end if
+               call fatal_error()          
+            end if
 
-        col_id = plot_(i) % col_spec_(j) % id
+            col_id = plot_(i) % col_spec_(j) % id
 
-        if (pl % color_by == PLOT_COLOR_CELLS) then
+            if (pl % color_by == PLOT_COLOR_CELLS) then
 
-          if (dict_has_key(cell_dict, col_id)) then
-            pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
-          else
-            message = "Could not find cell " // trim(to_str(col_id)) // &
-                      " specified in plot " // trim(to_str(pl % id))
-            call fatal_error()
-          end if
+               if (dict_has_key(cell_dict, col_id)) then
+                  pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
+               else
+                  message = "Could not find cell " // trim(to_str(col_id)) // &
+                       " specified in plot " // trim(to_str(pl % id))
+                  call fatal_error()
+               end if
 
-        else if (pl % color_by == PLOT_COLOR_MATS) then
+            else if (pl % color_by == PLOT_COLOR_MATS) then
 
-          if (dict_has_key(material_dict, col_id)) then
-            pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
-          else
-            message = "Could not find material " // trim(to_str(col_id)) // &
-                      " specified in plot " // trim(to_str(pl % id))
-            call fatal_error()
-          end if
+               if (dict_has_key(material_dict, col_id)) then
+                  pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
+               else
+                  message = "Could not find material " // trim(to_str(col_id)) // &
+                       " specified in plot " // trim(to_str(pl % id))
+                  call fatal_error()
+               end if
 
-        end if
-
-      end do
+            end if
+         end do
+      end if
 
       ! Alter colors based on mask information
-      if (size(plot_(i) % mask_) > 1) then
-        message = "Mutliple masks" // &
-                  " specified in plot " // trim(to_str(pl % id))
-        call fatal_error()
-      else if (.not. size(plot_(i) % mask_) == 0) then
-          do j=1,size(pl % colors)
-            if (.not. any(j .eq. plot_(i) % mask_(1) % components)) then
-              pl % colors(j) % rgb = plot_(i) % mask_(1) % background
-            end if
-          end do
+      if (associated(plot_(i) % mask_)) then
+         if (size(plot_(i) % mask_) > 1) then
+            message = "Mutliple masks" // &
+                 " specified in plot " // trim(to_str(pl % id))
+            call fatal_error()
+         else if (.not. size(plot_(i) % mask_) == 0) then
+            do j=1,size(pl % colors)
+               if (.not. any(j .eq. plot_(i) % mask_(1) % components)) then
+                  pl % colors(j) % rgb = plot_(i) % mask_(1) % background
+               end if
+            end do
+         end if
       end if
-      
-      
-
 
     end do
 

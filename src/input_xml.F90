@@ -518,6 +518,7 @@ contains
     integer :: n           ! number of nuclides
     real(8) :: val         ! value entered for density
     logical :: file_exists ! does materials.xml exist?
+    logical :: sum_density ! density is taken to be sum of nuclide densities
     character(3)            :: default_xs ! default xs identifier (e.g. 70c)
     character(12)           :: name       ! name of nuclide
     character(MAX_WORD_LEN) :: units      ! units on density
@@ -557,32 +558,43 @@ contains
        ! Copy material id
        m % id = material_(i) % id
 
-       ! Copy density -- the default value for the units is given in the
-       ! material_t.xml file and doesn't need to be specified here, hence case
-       ! default results in an error.
-       val = material_(i) % density % value
-       if (val <= ZERO) then
-          message = "Need to specify a positive density on material " // &
-               trim(to_str(m % id)) // "."
-          call fatal_error()
-       end if
-
+       ! Copy value and units
+       val   = material_(i) % density % value
        units = material_(i) % density % units
-       call lower_case(units)
-       select case(trim(units))
-       case ('g/cc', 'g/cm3')
-          m % density = -val
-       case ('kg/m3')
-          m % density = -0.001 * val
-       case ('atom/b-cm')
-          m % density = val
-       case ('atom/cm3', 'atom/cc')
-          m % density = 1.0e-24 * val
-       case default
-          message = "Unkwown units '" // trim(material_(i) % density % units) &
-               // "' specified on material " // trim(to_str(m % id))
-          call fatal_error()
-       end select
+
+       if (units == 'sum') then
+          ! If the user gave the units as 'sum', then the total density of the
+          ! material is taken to be the sum of the atom fractions listed on the
+          ! nuclides
+
+          sum_density = .true.
+
+       else
+          ! Check for erroneous density
+          sum_density = .false.
+          if (val <= ZERO) then
+             message = "Need to specify a positive density on material " // &
+                  trim(to_str(m % id)) // "."
+             call fatal_error()
+          end if
+
+          ! Adjust material density based on specified units
+          call lower_case(units)
+          select case(trim(units))
+          case ('g/cc', 'g/cm3')
+             m % density = -val
+          case ('kg/m3')
+             m % density = -0.001 * val
+          case ('atom/b-cm')
+             m % density = val
+          case ('atom/cm3', 'atom/cc')
+             m % density = 1.0e-24 * val
+          case default
+             message = "Unkwown units '" // trim(material_(i) % density % units) &
+                  // "' specified on material " // trim(to_str(m % id))
+             call fatal_error()
+          end select
+       end if
        
        ! Check to ensure material has at least one nuclide
        if (.not. associated(material_(i) % nuclides)) then
@@ -656,6 +668,9 @@ contains
              call fatal_error()
           end if
        end do
+
+       ! Determine density if it is a sum value
+       if (sum_density) m % density = sum(m % atom_percent)
 
        ! Add material to dictionary
        call dict_add_key(material_dict, m % id, i)

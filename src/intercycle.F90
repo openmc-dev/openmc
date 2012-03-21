@@ -394,12 +394,15 @@ contains
           ! Accumulate single batch realizations of k
           call accumulate_batch_estimate(global_tallies)
 
-          ! Determine mean and standard deviation of mean
+          ! Determine sample mean of keff
           keff = global_tallies(K_ANALOG) % sum/n
-          keff_std = sqrt((global_tallies(K_ANALOG) % sum_sq/n - keff*keff)/n)
 
           ! Display output for this batch
           if (current_batch > n_inactive + 1) then
+             ! Determine standard deviation of the sample mean of keff
+             keff_std = sqrt((global_tallies(K_ANALOG) % sum_sq/n - &
+                  keff*keff)/(n - 1))
+
              if (entropy_on) then
                 write(UNIT=OUTPUT_UNIT, FMT=103) current_batch, k_batch, &
                      entropy, keff, keff_std

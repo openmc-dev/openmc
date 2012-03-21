@@ -1532,9 +1532,13 @@ contains
 
     type(TallyScore), intent(inout) :: score
 
-    ! Calculate mean and standard deviation of the mean
+    ! Calculate sample mean and standard deviation of the mean -- note that we
+    ! have used Bessel's correction so that the estimator of the variance of the
+    ! sample mean is unbiased.
+
     score % sum    = score % sum/n_active
-    score % sum_sq = sqrt((score % sum_sq/n_active - score % sum**2)/n_active)
+    score % sum_sq = sqrt((score % sum_sq/n_active - score % sum**2) / &
+         (n_active - 1))
 
   end subroutine calculate_statistics
 

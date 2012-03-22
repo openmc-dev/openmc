@@ -207,8 +207,7 @@ contains
 
   subroutine write_source_binary()
     
-    integer(8) :: i
-
+    ! open binary source file for writing
     open(UNIT=UNIT_SOURCE, FILE='source.binary', STATUS='replace', &
          ACCESS='stream')
 
@@ -216,11 +215,7 @@ contains
     write(UNIT=UNIT_SOURCE) n_particles
 
     ! write information from the source bank
-    do i = 1_8, work
-       write(UNIT=UNIT_SOURCE) source_bank(i) % xyz
-       write(UNIT=UNIT_SOURCE) source_bank(i) % uvw
-       write(UNIT=UNIT_SOURCE) source_bank(i) % E
-    end do
+    write(UNIT=UNIT_SOURCE) source_bank(1:work)
 
     ! close binary source file
     close(UNIT=UNIT_SOURCE)
@@ -234,7 +229,6 @@ contains
 
   subroutine read_source_binary()
 
-    integer(8) :: i       ! index in source_bank
     integer(8) :: n_sites ! number of sites in binary file
 #ifdef MPI
     integer                  :: fh     ! file handle
@@ -254,20 +248,11 @@ contains
          MPI_STATUS_IGNORE, mpi_err)
 
     ! Set proper offset for source data on this processor
-    offset = 8*(1 + rank*maxwork*7)
+    offset = 8*(1 + rank*maxwork*8)
 
-    do i = 1, work
-       ! Read position, angle, and energy -- note that we have used some
-       ! trickery here! The third argument gives the starting memory location,
-       ! and we have told it to read seven real(8)'s. Since xyz is only three
-       ! real(8)'s, it will write to the uvw and E members since those come next
-       ! in memory. We have guaranteed this by making the Bank type sequential.
-
-       call MPI_FILE_READ_AT(fh, offset, source_bank(i) % xyz, 7, MPI_REAL8, &
-            MPI_STATUS_IGNORE, mpi_err)
-       offset = offset + 56
-
-    end do
+    ! Read all source sites
+    call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
+         MPI_STATUS_IGNORE, mpi_err)
 
     ! Close binary source file
     call MPI_FILE_CLOSE(fh, mpi_err)
@@ -283,14 +268,8 @@ contains
     ! Read number of source sites in file
     read(UNIT=UNIT_SOURCE) n_sites
 
-    do i = 1, work
-       ! Set ID for source site
-       source_bank(i) % id = i ! bank_first + i - 1
-
-       ! Read position, angle, and energy
-       read(UNIT=UNIT_SOURCE) source_bank(i) % xyz, &
-            source_bank(i) % uvw, source_bank(i) % E
-    end do
+    ! Read position, angle, and energy
+    read(UNIT=UNIT_SOURCE) source_bank(1:work)
 
     ! Close binary source file
     close(UNIT=UNIT_SOURCE)

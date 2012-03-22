@@ -43,6 +43,13 @@ contains
     ! Determine maximum amount of particles to simulate on each processor
     maxwork = ceiling(real(n_particles)/n_procs,8)
 
+    ! ID's of first and last source particles
+    bank_first = rank*maxwork + 1
+    bank_last  = min((rank+1)*maxwork, n_particles)
+
+    ! number of particles for this processor
+    work = bank_last - bank_first + 1
+
     ! Allocate source bank
     allocate(source_bank(maxwork), STAT=alloc_err)
     if (alloc_err /= 0) then
@@ -69,16 +76,16 @@ contains
        call fatal_error()
     end if
 
+    ! Read the source from a binary file instead of sampling from some assumed
+    ! source distribution
+    if (external_source % type == SRC_FILE) then
+       call read_source_binary()
+       return
+    end if
+
     ! Initialize first cycle source bank
     do i = 0, n_procs - 1
        if (rank == i) then
-          ! ID's of first and last source particles
-          bank_first = rank*maxwork + 1
-          bank_last  = min((rank+1)*maxwork, n_particles)
-
-          ! number of particles for this processor
-          work = bank_last - bank_first + 1
-
           do j = 1, work
              id = bank_first + j - 1
              source_bank(j) % id = id
@@ -215,5 +222,36 @@ contains
     close(UNIT=UNIT_SOURCE)
 
   end subroutine write_source_binary
+
+!===============================================================================
+! READ_SOURCE reads a source distribution from a source.binary file and
+! initializes the source bank
+!===============================================================================
+
+  subroutine read_source_binary()
+
+    integer(8) :: i       ! index in source_bank
+    integer(8) :: n_sites ! number of sites in binary file
+
+    ! Open binary source file for reading
+    open(UNIT=UNIT_SOURCE, FILE='source.binary', STATUS='old', &
+         ACCESS='stream')
+
+    ! Read number of source sites in file
+    read(UNIT=UNIT_SOURCE) n_sites
+
+    do i = 1, maxwork
+       ! Set ID for source site
+       source_bank(i) % id = i ! bank_first + i - 1
+
+       ! Read position, angle, and energy
+       read(UNIT=UNIT_SOURCE) source_bank(i) % xyz, &
+            source_bank(i) % uvw, source_bank(i) % E
+    end do
+
+    ! Close binary source file
+    close(UNIT=UNIT_SOURCE)
+
+  end subroutine read_source_binary
 
 end module source

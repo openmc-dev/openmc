@@ -322,7 +322,8 @@ module constants
   ! Source types
   integer, parameter ::   &
        SRC_BOX     = 1, & ! Source in a rectangular prism
-       SRC_POINT   = 2    ! Source at a single point
+       SRC_POINT   = 2, & ! Source at a single point
+       SRC_FILE    = 3    ! Source from a file
 
   integer, parameter ::        &
        PROB_SOURCE      = 1, & ! External source problem

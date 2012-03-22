@@ -207,18 +207,50 @@ contains
 
   subroutine write_source_binary()
     
-    ! open binary source file for writing
+#ifdef MPI
+    integer                  :: fh     ! file handle
+    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
+
+    ! ==========================================================================
+    ! PARALLEL I/O USING MPI-2 ROUTINES
+
+    ! Open binary source file for reading
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, 'source.binary', MPI_MODE_CREATE + &
+         MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
+
+    if (master) then
+       offset = 0
+       call MPI_FILE_WRITE_AT(fh, offset, n_particles, 1, MPI_INTEGER8, &
+            MPI_STATUS_IGNORE, mpi_err)
+    end if
+
+    ! Set proper offset for source data on this processor
+    offset = 8*(1 + rank*maxwork*8)
+
+    ! Write all source sites
+    call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Close binary source file
+    call MPI_FILE_CLOSE(fh, mpi_err)
+
+#else
+    ! ==========================================================================
+    ! SERIAL I/O USING FORTRAN INTRINSIC ROUTINES
+
+    ! Open binary source file for writing
     open(UNIT=UNIT_SOURCE, FILE='source.binary', STATUS='replace', &
          ACCESS='stream')
 
-    ! write the number of particles
+    ! Write the number of particles
     write(UNIT=UNIT_SOURCE) n_particles
 
-    ! write information from the source bank
+    ! Write information from the source bank
     write(UNIT=UNIT_SOURCE) source_bank(1:work)
 
-    ! close binary source file
+    ! Close binary source file
     close(UNIT=UNIT_SOURCE)
+#endif
 
   end subroutine write_source_binary
 

@@ -137,7 +137,7 @@ contains
           p % coord % cell = index_cell
 
           ! Show cell information on trace
-          if (trace) then
+          if (verbosity >= 10 .or. trace) then
              message = "    Entering cell " // trim(to_str(c % id))
              call write_message()
           end if

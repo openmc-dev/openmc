@@ -182,9 +182,18 @@ contains
 
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
-!!$       message = "    " // trim(reaction_name(MT)) // ". Energy = " // &
-!!$            trim(to_str(p % E * 1e6_8)) // " eV."
-!!$       call write_message()
+       select case (p % event)
+       case (EVENT_SCATTER)
+          message = "    Scattered off of"
+       case (EVENT_FISSION)
+          message = "    Fissioned in"
+       case (EVENT_ABSORB)
+          message = "    Absorbed in"
+       end select
+       message = trim(message) // " " // trim(nuclides(&
+            p % event_nuclide) % name) // ". Energy = " // &
+            trim(to_str(p % E * 1e6_8)) // " eV." 
+       call write_message()
     end if
 
     ! check for very low energy
@@ -261,6 +270,9 @@ contains
     nuc => nuclides(index_nuclide)
     IE  =  micro_xs(index_nuclide) % index_grid
     f   =  micro_xs(index_nuclide) % interp_factor
+
+    ! Save which nuclide particle had collision with
+    p % event_nuclide = index_nuclide
 
     ! ==========================================================================
     ! DISAPPEARANCE REACTIONS (ANALOG) OR IMPLICIT CAPTURE (SURVIVAL BIASING)

@@ -69,6 +69,7 @@ contains
     energy_grid_ = "union"
     seed_ = 0_8
     write_source = ""
+    source_ % type = ""
 
     ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
@@ -133,7 +134,7 @@ contains
     ! Verbosity
     if (verbosity_ > 0) verbosity = verbosity_
 
-    if (associated(source_ % coeffs)) then
+    if (len(source_ % type) > 0) then
        ! Determine external source type
        type = source_ % type
        call lower_case(type)

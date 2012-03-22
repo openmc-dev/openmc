@@ -137,29 +137,33 @@ contains
        ! Determine external source type
        type = source_ % type
        call lower_case(type)
-       select case (trim(type))
+       select case (type)
        case ('box')
           external_source % type = SRC_BOX
           coeffs_reqd = 6
        case ('point')
           external_source % type = SRC_POINT
           coeffs_reqd = 3
+       case ('file')
+          external_source % type = SRC_FILE
        case default
           message = "Invalid source type: " // trim(source_ % type)
           call fatal_error()
        end select
 
        ! Coefficients for external surface
-       n = size(source_ % coeffs)
-       if (n < coeffs_reqd) then
-          message = "Not enough coefficients specified for external source."
-          call fatal_error()
-       elseif (n > coeffs_reqd) then
-          message = "Too many coefficients specified for external source."
-          call fatal_error()
-       else
-          allocate(external_source % values(n))
-          external_source % values = source_ % coeffs
+       if (type /= 'file') then
+          n = size(source_ % coeffs)
+          if (n < coeffs_reqd) then
+             message = "Not enough coefficients specified for external source."
+             call fatal_error()
+          elseif (n > coeffs_reqd) then
+             message = "Too many coefficients specified for external source."
+             call fatal_error()
+          else
+             allocate(external_source % values(n))
+             external_source % values = source_ % coeffs
+          end if
        end if
     end if
 

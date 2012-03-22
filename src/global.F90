@@ -156,6 +156,9 @@ module global
   real(8), allocatable :: entropy_p(:,:,:) ! % of source sites in each cell
   type(StructuredMesh), pointer :: entropy_mesh
 
+  ! Write source at end of simulation
+  logical :: write_source = .false.
+
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
 

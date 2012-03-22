@@ -2,6 +2,7 @@ module finalize
 
   use global
   use output,         only: print_runtime
+  use source,         only: write_source_binary
   use tally,          only: write_tallies, tally_statistics
   use timing,         only: timer_start, timer_stop
 
@@ -23,10 +24,13 @@ contains
     ! Start finalization timer
     call timer_start(time_finalize)
 
-    ! Calculate statistics for tallies and write to tallies.out
     if (.not. plotting) then
+       ! Calculate statistics for tallies and write to tallies.out
        call tally_statistics()
        if (master) call write_tallies()
+
+       ! Write out binary source
+       if (write_source) call write_source_binary()
     end if
 
     ! stop timers and show timing statistics

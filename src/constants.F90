@@ -333,5 +333,6 @@ module constants
   integer, parameter :: UNIT_TALLY   = 12 ! unit # for writing tally file
   integer, parameter :: UNIT_PLOT    = 13 ! unit # for writing plot file
   integer, parameter :: UNIT_XS      = 14 ! unit # for writing xs summary file
+  integer, parameter :: UNIT_SOURCE  = 15 ! unit # for writing source file
 
 end module constants

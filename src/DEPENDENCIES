@@ -40,6 +40,7 @@ energy_grid.o: output.o
 finalize.o: global.o
 finalize.o: hdf5_interface.o
 finalize.o: output.o
+finalize.o: source.o
 finalize.o: tally.o
 finalize.o: timing.o
 

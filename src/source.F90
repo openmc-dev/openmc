@@ -189,4 +189,31 @@ contains
 
   end subroutine initialize_particle
 
+!===============================================================================
+! WRITE_SOURCE writes out the final source distribution to a binary file that
+! can be used as a starting source in a new simulation
+!===============================================================================
+
+  subroutine write_source_binary()
+    
+    integer(8) :: i
+
+    open(UNIT=UNIT_SOURCE, FILE='source.binary', STATUS='replace', &
+         ACCESS='stream')
+
+    ! write the number of particles
+    write(UNIT=UNIT_SOURCE) n_particles
+
+    ! write information from the source bank
+    do i = 1_8, work
+       write(UNIT=UNIT_SOURCE) source_bank(i) % xyz
+       write(UNIT=UNIT_SOURCE) source_bank(i) % uvw
+       write(UNIT=UNIT_SOURCE) source_bank(i) % E
+    end do
+
+    ! close binary source file
+    close(UNIT=UNIT_SOURCE)
+
+  end subroutine write_source_binary
+
 end module source

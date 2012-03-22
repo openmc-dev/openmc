@@ -68,6 +68,7 @@ contains
     verbosity_ = 0
     energy_grid_ = "union"
     seed_ = 0_8
+    write_source = ""
 
     ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
@@ -230,6 +231,9 @@ contains
        ! Turn on Shannon entropy calculation
        entropy_on = .true.
     end if
+
+    ! Check if the user has specified to write binary source file
+    if (trim(write_source_) == 'on') write_source = .true.
 
   end subroutine read_settings_xml
 

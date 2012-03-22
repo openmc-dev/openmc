@@ -8,7 +8,7 @@ class SourceFile(object):
         self.f = open(filename, 'r')
 
         # Read number of source sites
-        self.n_sites = struct.unpack('l', self.f.read(8))[0]
+        self.n_sites = struct.unpack('q', self.f.read(8))[0]
 
         # Create list to store source sites
         self.sites = []

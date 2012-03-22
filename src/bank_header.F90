@@ -9,6 +9,7 @@ module bank_header
 !===============================================================================
 
   type Bank
+     sequence
      integer(8) :: id     ! Unique ID
      real(8)    :: xyz(3) ! location of bank particle
      real(8)    :: uvw(3) ! diretional cosines

@@ -11,6 +11,10 @@ module source
   use random_lcg,      only: prn, set_particle_seed
   use string,          only: to_str
 
+#ifdef MPI
+  use mpi
+#endif
+
   implicit none
 
 contains
@@ -232,6 +236,45 @@ contains
 
     integer(8) :: i       ! index in source_bank
     integer(8) :: n_sites ! number of sites in binary file
+#ifdef MPI
+    integer                  :: fh     ! file handle
+    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
+#endif
+
+#ifdef MPI
+    ! ==========================================================================
+    ! PARALLEL I/O USING MPI-2 ROUTINES
+
+    ! Open binary source file for reading
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, 'source.binary', MPI_MODE_RDONLY, &
+         MPI_INFO_NULL, fh, mpi_err)
+
+    offset = 0
+    call MPI_FILE_READ_AT(fh, offset, n_sites, 1, MPI_INTEGER8, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Set proper offset for source data on this processor
+    offset = 8*(1 + rank*maxwork*7)
+
+    do i = 1, work
+       ! Read position, angle, and energy -- note that we have used some
+       ! trickery here! The third argument gives the starting memory location,
+       ! and we have told it to read seven real(8)'s. Since xyz is only three
+       ! real(8)'s, it will write to the uvw and E members since those come next
+       ! in memory. We have guaranteed this by making the Bank type sequential.
+
+       call MPI_FILE_READ_AT(fh, offset, source_bank(i) % xyz, 7, MPI_REAL8, &
+            MPI_STATUS_IGNORE, mpi_err)
+       offset = offset + 56
+
+    end do
+
+    ! Close binary source file
+    call MPI_FILE_CLOSE(fh, mpi_err)
+
+#else
+    ! ==========================================================================
+    ! SERIAL I/O USING FORTRAN INTRINSIC ROUTINES
 
     ! Open binary source file for reading
     open(UNIT=UNIT_SOURCE, FILE='source.binary', STATUS='old', &
@@ -240,7 +283,7 @@ contains
     ! Read number of source sites in file
     read(UNIT=UNIT_SOURCE) n_sites
 
-    do i = 1, maxwork
+    do i = 1, work
        ! Set ID for source site
        source_bank(i) % id = i ! bank_first + i - 1
 
@@ -251,6 +294,7 @@ contains
 
     ! Close binary source file
     close(UNIT=UNIT_SOURCE)
+#endif
 
   end subroutine read_source_binary
 

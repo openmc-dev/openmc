@@ -39,6 +39,11 @@ contains
     logical :: found_cell      ! found cell which particle is in?
     type(LocalCoord), pointer :: coord => null()
 
+    if (verbosity >= 9 .or. trace) then
+       message = "Simulating Particle " // trim(to_str(p % id))
+       call write_message()
+    end if
+
     if (p % coord % cell == NONE) then
        call find_cell(found_cell)
        ! Particle couldn't be located
@@ -49,17 +54,6 @@ contains
 
        ! set birth cell attribute
        p % cell_born = p % coord % cell
-    end if
-
-    if (verbosity >= 9 .or. trace) then
-       message = "Simulating Particle " // trim(to_str(p % id))
-       call write_message()
-    end if
-
-    if (verbosity >= 10 .or. trace) then
-       message = "    Born in cell " // trim(to_str(&
-            cells(p % coord % cell) % id))
-       call write_message()
     end if
 
     ! Initialize number of events to zero

@@ -275,9 +275,17 @@ contains
     call MPI_FILE_OPEN(MPI_COMM_WORLD, 'source.binary', MPI_MODE_RDONLY, &
          MPI_INFO_NULL, fh, mpi_err)
 
+    ! Read number of source sites in file
     offset = 0
     call MPI_FILE_READ_AT(fh, offset, n_sites, 1, MPI_INTEGER8, &
          MPI_STATUS_IGNORE, mpi_err)
+
+    ! Check that number of source sites matches
+    if (n_sites /= n_particles) then
+       message = "No support yet for source files of different size than &
+            &specified number of particles per generation."
+       call fatal_error()
+    end if
 
     ! Set proper offset for source data on this processor
     offset = 8*(1 + rank*maxwork*8)
@@ -299,6 +307,13 @@ contains
 
     ! Read number of source sites in file
     read(UNIT=UNIT_SOURCE) n_sites
+
+    ! Check that number of source sites matches
+    if (n_sites /= n_particles) then
+       message = "No support yet for source files of different size than &
+            &specified number of particles per generation."
+       call fatal_error()
+    end if
 
     ! Read position, angle, and energy
     read(UNIT=UNIT_SOURCE) source_bank(1:work)

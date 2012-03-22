@@ -68,7 +68,7 @@ contains
     verbosity_ = 0
     energy_grid_ = "union"
     seed_ = 0_8
-    write_source = ""
+    write_source_ = ""
     source_ % type = ""
 
     ! Parse settings.xml file

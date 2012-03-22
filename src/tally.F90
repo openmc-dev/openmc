@@ -345,6 +345,20 @@ contains
 
              score = last_wgt * 0.5*(5.0*mu*mu*mu - 3.0*mu)
 
+          case (SCORE_DIFFUSION)
+             ! Skip any event where the particle didn't scatter
+             if (p % event /= EVENT_SCATTER) cycle
+             
+             ! Temporarily store the scattering cross section
+             score = material_xs % total - material_xs % absorption
+
+             ! Since this only gets tallied at every scattering event, the flux
+             ! estimator is 1/Sigma_s. Therefore, the diffusion coefficient
+             ! times flux is 1/(3*Sigma_s*(Sigma_t - mu*Sigma_s)).
+
+             score = last_wgt / (3.0_8 * score * (material_xs % total - &
+                  mu * score))
+
           case (SCORE_N_1N)
              ! Skip any event where the particle didn't scatter
              if (p % event /= EVENT_SCATTER) cycle
@@ -1186,6 +1200,7 @@ contains
     score_name(abs(SCORE_SCATTER_1))  = "First Scattering Moment"
     score_name(abs(SCORE_SCATTER_2))  = "Second Scattering Moment"
     score_name(abs(SCORE_SCATTER_3))  = "Third Scattering Moment"
+    score_name(abs(SCORE_DIFFUSION))  = "Diffusion Coefficient"
     score_name(abs(SCORE_N_1N))       = "(n,1n) Rate"
     score_name(abs(SCORE_N_2N))       = "(n,2n) Rate"
     score_name(abs(SCORE_N_3N))       = "(n,3n) Rate"

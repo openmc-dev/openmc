@@ -243,7 +243,7 @@ module constants
        EVENT_FISSION =  3 
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 15
+  integer, parameter :: N_SCORE_TYPES = 16
   integer, parameter :: &
        SCORE_FLUX       = -1,  & ! flux
        SCORE_TOTAL      = -2,  & ! total reaction rate
@@ -252,14 +252,15 @@ module constants
        SCORE_SCATTER_1  = -5,  & ! first scattering moment
        SCORE_SCATTER_2  = -6,  & ! second scattering moment
        SCORE_SCATTER_3  = -7,  & ! third scattering moment
-       SCORE_N_1N       = -8,  & ! (n,1n) rate
-       SCORE_N_2N       = -9,  & ! (n,2n) rate
-       SCORE_N_3N       = -10, & ! (n,3n) rate
-       SCORE_N_4N       = -11, & ! (n,4n) rate
-       SCORE_ABSORPTION = -12, & ! absorption rate
-       SCORE_FISSION    = -13, & ! fission rate
-       SCORE_NU_FISSION = -14, & ! neutron production rate
-       SCORE_CURRENT    = -15    ! partial current
+       SCORE_DIFFUSION  = -8,  & ! diffusion coefficient
+       SCORE_N_1N       = -9,  & ! (n,1n) rate
+       SCORE_N_2N       = -10, & ! (n,2n) rate
+       SCORE_N_3N       = -11, & ! (n,3n) rate
+       SCORE_N_4N       = -12, & ! (n,4n) rate
+       SCORE_ABSORPTION = -13, & ! absorption rate
+       SCORE_FISSION    = -14, & ! fission rate
+       SCORE_NU_FISSION = -15, & ! neutron production rate
+       SCORE_CURRENT    = -16    ! partial current
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1

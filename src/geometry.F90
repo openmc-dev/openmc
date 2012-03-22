@@ -136,6 +136,12 @@ contains
           ! Set cell on this level
           p % coord % cell = index_cell
 
+          ! Show cell information on trace
+          if (trace) then
+             message = "    Entering cell " // trim(to_str(c % id))
+             call write_message()
+          end if
+
           if (c % type == CELL_NORMAL) then
              ! =================================================================
              ! AT LOWEST UNIVERSE, TERMINATE SEARCH

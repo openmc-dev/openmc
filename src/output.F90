@@ -50,6 +50,9 @@ contains
          '     Developed At:  Massachusetts Institute of Technology'
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",7X,I1,".",I1,".",I1)') &
          VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
+#ifdef GIT_SHA1
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Git SHA1:",6X,A)') GIT_SHA1
+#endif
 
     ! Write the date and time
     call get_today(today_date, today_time)

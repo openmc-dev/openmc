@@ -23,6 +23,12 @@ USE_MPI  = no
 USE_HDF5 = no
 
 #===============================================================================
+# Add git SHA-1 hash
+#===============================================================================
+
+GIT_SHA1 = $(shell git log -1 | head -n 1 | awk '{print $$2}')
+
+#===============================================================================
 # GNU Fortran compiler options
 #===============================================================================
 
@@ -212,7 +218,7 @@ neat:
 .PHONY: all xml-fortran clean neat distclean 
 
 %.o: %.F90
-	$(F90) $(F90FLAGS) -Ixml-fortran -Ixml-fortran/templates -c $<
+	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Ixml-fortran/templates -c $<
 
 #===============================================================================
 # Dependencies

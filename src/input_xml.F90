@@ -1,8 +1,7 @@
 module input_xml
 
   use constants
-  use datatypes,       only: dict_create, dict_add_key, dict_has_key, &
-                             dict_get_key
+  use datatypes,       only: dict_add_key, dict_has_key, dict_get_key
   use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Surface, Lattice
   use global

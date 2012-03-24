@@ -1,7 +1,7 @@
 module source
 
   use bank_header,     only: Bank
-  use constants,       only: ONE
+  use constants
   use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
   use global

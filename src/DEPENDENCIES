@@ -99,6 +99,7 @@ initialize.o: random_lcg.o
 initialize.o: source.o
 initialize.o: string.o
 initialize.o: tally.o
+initialize.o: tally_header.o
 initialize.o: timing.o
 
 input_xml.o: constants.o
@@ -143,7 +144,6 @@ main.o: intercycle.o
 main.o: output.o
 main.o: physics.o
 main.o: plot.o
-main.o: random_lcg.o
 main.o: source.o
 main.o: string.o
 main.o: tally.o
@@ -177,6 +177,7 @@ physics.o: geometry.o
 physics.o: geometry_header.o
 physics.o: global.o
 physics.o: interpolation.o
+physics.o: material_header.o
 physics.o: output.o
 physics.o: particle_header.o
 physics.o: random_lcg.o
@@ -198,7 +199,6 @@ plot.o: ppmlib.o
 plot.o: source.o
 plot.o: string.o
 
-search.o: constants.o
 search.o: error.o
 search.o: global.o
 

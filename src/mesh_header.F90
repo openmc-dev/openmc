@@ -8,13 +8,13 @@ module mesh_header
 !===============================================================================
 
   type StructuredMesh
-     integer :: id
-     integer :: type
-     integer :: n_dimension
-     integer, allocatable :: dimension(:)
-     real(8), allocatable :: lower_left(:)
-     real(8), allocatable :: upper_right(:)
-     real(8), allocatable :: width(:)
+     integer :: id                          ! user-specified id
+     integer :: type                        ! rectangular, hexagonal
+     integer :: n_dimension                 ! rank of mesh
+     integer, allocatable :: dimension(:)   ! number of cells in each direction
+     real(8), allocatable :: lower_left(:)  ! lower-left corner of mesh
+     real(8), allocatable :: upper_right(:) ! upper-right corner of mesh
+     real(8), allocatable :: width(:)       ! width of each mesh cell
   end type StructuredMesh
 
 end module mesh_header

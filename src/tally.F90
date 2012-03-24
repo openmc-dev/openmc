@@ -1062,7 +1062,8 @@ contains
   end subroutine add_to_score
 
 !===============================================================================
-! ACCUMULATE_BATCH_ESTIMATE
+! ACCUMULATE_BATCH_ESTIMATE accumulates scores from many histories (or many
+! generations) into a single realization of a random variable.
 !===============================================================================
 
   elemental subroutine accumulate_batch_estimate(score)
@@ -1540,7 +1541,8 @@ contains
   end function get_label
 
 !===============================================================================
-! CALCULATE_STATISTICS
+! CALCULATE_STATISTICS determines the sample mean and the standard deviation of
+! the mean for a TallyScore.
 !===============================================================================
 
   elemental subroutine calculate_statistics(score)

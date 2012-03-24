@@ -1,6 +1,5 @@
 module search
 
-  use constants, only: ONE, MAX_LINE_LEN
   use error,     only: fatal_error
   use global,    only: message
 

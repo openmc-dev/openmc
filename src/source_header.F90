@@ -8,7 +8,7 @@ module source_header
 !===============================================================================
 
   type ExtSource
-     integer :: type                    ! type of source, e.g. 'box' or 'cell'
+     integer :: type                    ! type of source, e.g. 'box' or 'point'
      real(8), allocatable :: values(:)  ! values for particular source type
   end type ExtSource
 

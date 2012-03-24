@@ -29,8 +29,8 @@ contains
 
   subroutine title()
 
-    character(10) :: today_date
-    character(8)  :: today_time
+    character(10) :: date_
+    character(10) :: time_
 
     write(UNIT=OUTPUT_UNIT, FMT='(/11(A/))') &
          '       .d88888b.                             888b     d888  .d8888b.', &
@@ -55,18 +55,23 @@ contains
 #endif
 
     ! Write the date and time
-    call get_today(today_date, today_time)
+    call date_and_time(DATE=date_, TIME=time_)
+    date_ = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8)
+    time_ = time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",5X,A,1X,A)') &
-         trim(today_date), trim(today_time)
+         trim(date_), trim(time_)
 
     ! Write information to summary file
     call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
     write(UNIT=UNIT_SUMMARY, FMT=*) &
-         "Copyright:     2011 Massachusetts Institute of Technology"
+         "Copyright:     2011-2012 Massachusetts Institute of Technology"
     write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
          "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
+#ifdef GIT_SHA1
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Git SHA1:",6X,A)') GIT_SHA1
+#endif
     write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A,1X,A)') &
-         trim(today_date), trim(today_time)
+         trim(date_), trim(time_)
 
     ! Write information on number of processors
 #ifdef MPI
@@ -89,8 +94,8 @@ contains
     integer, optional :: unit       ! unit to write to
     integer, optional :: level      ! specified header level
 
-    integer :: n
-    integer :: m
+    integer :: n            ! number of = signs on left
+    integer :: m            ! number of = signs on right
     integer :: unit_        ! unit to write to
     integer :: header_level ! actual header level
     character(MAX_LINE_LEN) :: line
@@ -140,14 +145,15 @@ contains
 
   subroutine write_message(level)
 
-    integer, optional :: level
+    integer, optional :: level ! verbosity level
 
-    integer :: n_lines
-    integer :: i
+    integer :: n_lines ! number of lines needed
+    integer :: i       ! index for lines
 
     ! Only allow master to print to screen
     if (.not. master .and. present(level)) return
 
+    ! TODO: Take care of line wrapping so words don't get cut off
     if (.not. present(level) .or. level <= verbosity) then
        n_lines = (len_trim(message)-1)/79 + 1
        do i = 1, n_lines
@@ -158,54 +164,12 @@ contains
   end subroutine write_message
 
 !===============================================================================
-! GET_TODAY determines the date and time at which the program began execution
-! and returns it in a readable format
-!===============================================================================
-
-  subroutine get_today(today_date, today_time)
-
-    character(10), intent(out) :: today_date
-    character(8),  intent(out) :: today_time
-
-    integer       :: val(8)
-    character(8)  :: date_
-    character(10) :: time_
-    character(5)  :: zone
-
-    call date_and_time(date_, time_, zone, val)
-    ! val(1) = year (YYYY)
-    ! val(2) = month (MM)
-    ! val(3) = day (DD)
-    ! val(4) = timezone
-    ! val(5) = hours (HH)
-    ! val(6) = minutes (MM)
-    ! val(7) = seconds (SS)
-    ! val(8) = milliseconds
-
-    if (val(2) < 10) then
-       if (val(3) < 10) then
-          today_date = date_(6:6) // "/" // date_(8:8) // "/" // date_(1:4)
-       else
-          today_date = date_(6:6) // "/" // date_(7:8) // "/" // date_(1:4)
-       end if
-    else
-       if (val(3) < 10) then
-          today_date = date_(5:6) // "/" // date_(8:8) // "/" // date_(1:4)
-       else
-          today_date = date_(5:6) // "/" // date_(7:8) // "/" // date_(1:4)
-       end if
-    end if
-    today_time = time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
-
-  end subroutine get_today
-
-!===============================================================================
 ! PRINT_PARTICLE displays the attributes of a particle
 !===============================================================================
 
   subroutine print_particle()
 
-    integer                   :: i
+    integer :: i ! index for coordinate levels
     type(Cell),       pointer :: c => null()
     type(Surface),    pointer :: s => null()
     type(Universe),   pointer :: u => null()
@@ -266,6 +230,7 @@ contains
        write(ou,*) '  Surface = ' // to_str(sign(s % id, p % surface))
     end if
 
+    ! Display weight, energy, grid index, and interpolation factor
     write(ou,*) '  Weight = ' // to_str(p % wgt)
     write(ou,*) '  Energy = ' // to_str(p % E)
     write(ou,*) '  IE = ' // to_str(p % IE)
@@ -301,27 +266,35 @@ contains
   subroutine print_cell(c, unit)
 
     type(Cell), pointer :: c
-    integer,   optional :: unit
+    integer,   optional :: unit ! specified unit to write to
 
-    integer :: temp
-    integer :: i
-    integer :: unit_
+    integer :: index_cell ! index in cells array
+    integer :: i          ! loop index for surfaces
+    integer :: unit_      ! unit to write to
     character(MAX_LINE_LEN) :: string
     type(Universe), pointer :: u => null()
     type(Lattice),  pointer :: l => null()
     type(Material), pointer :: m => null()
 
+    ! Set unit to stdout if not already set
     if (present(unit)) then
        unit_ = unit
     else
        unit_ = OUTPUT_UNIT
     end if
 
+    ! Write user-specified id for cell
     write(unit_,*) 'Cell ' // to_str(c % id)
-    temp = dict_get_key(cell_dict, c % id)
-    write(unit_,*) '    Array Index = ' // to_str(temp)
+
+    ! Find index in cells array and write
+    index_cell = dict_get_key(cell_dict, c % id)
+    write(unit_,*) '    Array Index = ' // to_str(index_cell)
+
+    ! Write what universe this cell is in
     u => universes(c % universe)
     write(unit_,*) '    Universe = ' // to_str(u % id)
+
+    ! Write information on fill for cell
     select case (c % type)
     case (CELL_NORMAL)
        write(unit_,*) '    Fill = NONE'
@@ -332,12 +305,16 @@ contains
        l => lattices(c % fill)
        write(unit_,*) '    Fill = Lattice ' // to_str(l % id)
     end select
+
+    ! Write information on material
     if (c % material == 0) then
        write(unit_,*) '    Material = NONE'
     else
        m => materials(c % material)
        write(unit_,*) '    Material = ' // to_str(m % id)
     end if
+
+    ! Write surface specification
     string = ""
     do i = 1, c % n_surfaces
        select case (c % surfaces(i))
@@ -367,24 +344,31 @@ contains
     type(Universe), pointer :: univ
     integer,       optional :: unit
 
-    integer :: i
-    integer :: unit_
+    integer :: i     ! loop index for cells in this universe
+    integer :: unit_ ! unit to write to
     character(MAX_LINE_LEN) :: string
     type(Cell), pointer     :: c => null()
-    type(Universe), pointer :: base_u
+    type(Universe), pointer :: base_u => null()
 
+    ! Set default unit to stdout if not specified
     if (present(unit)) then
        unit_ = unit
     else
        unit_ = OUTPUT_UNIT
     end if
 
+    ! Get a pointer to the base universe
     base_u => universes(BASE_UNIVERSE)
 
+    ! Write user-specified id for this universe
     write(unit_,*) 'Universe ' // to_str(univ % id)
+
+    ! If this is the base universe, indicate so
     if (associated(univ, base_u)) then
        write(unit_,*) '    Base Universe'
     end if
+
+    ! Write list of cells in this universe
     string = ""
     do i = 1, univ % n_cells
        c => cells(univ % cells(i))
@@ -404,14 +388,16 @@ contains
     type(Lattice), pointer :: lat
     integer,      optional :: unit
 
-    integer :: unit_
+    integer :: unit_ ! unit to write to
 
+    ! set default unit if not specified
     if (present(unit)) then
        unit_ = unit
     else
        unit_ = OUTPUT_UNIT
     end if
 
+    ! Write information about lattice
     write(unit_,*) 'Lattice ' // to_str(lat % id)
     write(unit_,*) '    n_x = ' // to_str(lat % n_x)
     write(unit_,*) '    n_y = ' // to_str(lat % n_y)
@@ -430,19 +416,23 @@ contains
   subroutine print_surface(surf, unit)
 
     type(Surface), pointer :: surf
-    integer,      optional :: unit
+    integer,      optional :: unit ! specified unit to write to
 
-    integer :: i
-    integer :: unit_
+    integer :: i     ! loop index for coefficients
+    integer :: unit_ ! unit to write to
     character(MAX_LINE_LEN) :: string
 
+    ! set default unit if not specified
     if (present(unit)) then
        unit_ = unit
     else
        unit_ = OUTPUT_UNIT
     end if
 
+    ! Write user-specified id of surface
     write(unit_,*) 'Surface ' // to_str(surf % id)
+
+    ! Write type of surface
     select case (surf % type)
     case (SURF_PX)
        string = "X Plane"
@@ -469,12 +459,14 @@ contains
     end select
     write(unit_,*) '    Type = ' // trim(string)
 
+    ! Write coefficients for this surface
     string = ""
     do i = 1, size(surf % coeffs)
        string = trim(string) // ' ' // to_str(surf % coeffs(i), 4)
     end do
     write(unit_,*) '    Coefficients = ' // trim(string)
 
+    ! Write neighboring cells on positive side of this surface
     string = ""
     if (allocated(surf % neighbor_pos)) then
        do i = 1, size(surf % neighbor_pos)
@@ -483,6 +475,7 @@ contains
     end if
     write(unit_,*) '    Positive Neighbors = ' // trim(string)
 
+    ! Write neighboring cells on negative side of this surface
     string = ""
     if (allocated(surf % neighbor_neg)) then
        do i = 1, size(surf % neighbor_neg)
@@ -490,6 +483,8 @@ contains
        end do
     end if
     write(unit_,*) '    Negative Neighbors =' // trim(string)
+
+    ! Write boundary condition for this surface
     select case (surf % bc)
     case (BC_TRANSMIT)
        write(unit_,*) '    Boundary Condition = Transmission'
@@ -513,12 +508,13 @@ contains
     type(Material), pointer :: mat
     integer,       optional :: unit
 
-    integer :: i
-    integer :: unit_
-    real(8) :: density
+    integer :: i       ! loop index for nuclides
+    integer :: unit_   ! unit to write to
+    real(8) :: density ! density in atom/b-cm
     character(MAX_LINE_LEN) :: string
     type(Nuclide),  pointer :: nuc => null()
 
+    ! set default unit to stdout if not specified
     if (present(unit)) then
        unit_ = unit
     else
@@ -559,9 +555,9 @@ contains
     type(TallyObject), pointer :: t
     integer,          optional :: unit
 
-    integer :: i
-    integer :: id
-    integer :: unit_
+    integer :: i     ! index for filter or score bins
+    integer :: id    ! user-specified id
+    integer :: unit_ ! unit to write to
     character(MAX_LINE_LEN) :: string
     type(Cell),           pointer :: c => null()
     type(Surface),        pointer :: s => null()
@@ -569,14 +565,17 @@ contains
     type(Material),       pointer :: m => null()
     type(StructuredMesh), pointer :: sm => null()
 
+    ! set default unit to stdout if not specified
     if (present(unit)) then
        unit_ = unit
     else
        unit_ = OUTPUT_UNIT
     end if
 
+    ! Write user-specified id of tally
     write(unit_,*) 'Tally ' // to_str(t % id)
 
+    ! Write any cells bins if present
     if (t % n_filter_bins(FILTER_CELL) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_CELL)
@@ -587,6 +586,7 @@ contains
        write(unit_, *) '    Cell Bins:' // trim(string)
     end if
 
+    ! Write any surface bins if present
     if (t % n_filter_bins(FILTER_SURFACE) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_SURFACE)
@@ -597,6 +597,7 @@ contains
        write(unit_, *) '    Surface Bins:' // trim(string)
     end if
 
+    ! Write any universe bins if present
     if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_UNIVERSE)
@@ -607,6 +608,7 @@ contains
        write(unit_, *) '    Material Bins:' // trim(string)
     end if
 
+    ! Write any material bins if present
     if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_MATERIAL)
@@ -617,6 +619,7 @@ contains
        write(unit_, *) '    Material Bins:' // trim(string)
     end if
 
+    ! Write any mesh bins if present
     if (t % n_filter_bins(FILTER_MESH) > 0) then
        string = ""
        id = t % mesh
@@ -628,6 +631,7 @@ contains
        write(unit_, *) '    Mesh Bins:' // trim(string)
     end if
 
+    ! Write any birth region bins if present
     if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_CELLBORN)
@@ -638,6 +642,7 @@ contains
        write(unit_, *) '    Birth Region Bins:' // trim(string)
     end if
 
+    ! Write any incoming energy bins if present
     if (t % n_filter_bins(FILTER_ENERGYIN) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_ENERGYIN) + 1
@@ -647,6 +652,7 @@ contains
        write(unit_,*) '    Incoming Energy Bins:' // trim(string)
     end if
 
+    ! Write any outgoing energy bins if present
     if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_ENERGYOUT) + 1
@@ -656,6 +662,7 @@ contains
        write(unit_,*) '    Outgoing Energy Bins:' // trim(string)
     end if
 
+    ! Write any score bins if present
     if (t % n_score_bins > 0) then
        string = ""
        do i = 1, t % n_score_bins
@@ -674,7 +681,7 @@ contains
              string = trim(string) // ' nu-fission'
           end select
        end do
-       write(unit_,*) '    Macro Reactions:' // trim(string)
+       write(unit_,*) '    Scores:' // trim(string)
     end if
     write(unit_,*)
 
@@ -687,7 +694,7 @@ contains
 
   subroutine print_geometry()
 
-    integer :: i
+    integer :: i ! loop index for various arrays
     type(Surface),     pointer :: s => null()
     type(Cell),        pointer :: c => null()
     type(Universe),    pointer :: u => null()
@@ -735,12 +742,12 @@ contains
     type(Nuclide), pointer :: nuc
     integer,      optional :: unit
 
-    integer :: i
-    integer :: unit_
-    integer :: size_total
-    integer :: size_xs
-    integer :: size_angle
-    integer :: size_energy
+    integer :: i           ! loop index over nuclides
+    integer :: unit_       ! unit to write to
+    integer :: size_total  ! memory used by nuclide (bytes)
+    integer :: size_xs     ! memory used for cross-sections (bytes)
+    integer :: size_angle  ! memory used for angle distributions (bytes)
+    integer :: size_energy ! memory used for energy distributions (bytes)
     type(Reaction), pointer :: rxn => null()
     type(UrrData),  pointer :: urr => null()
 
@@ -824,7 +831,7 @@ contains
 
   subroutine print_summary()
 
-    integer :: i
+    integer :: i ! loop index
     character(15) :: string
     type(Material),    pointer :: m => null()
     type(TallyObject), pointer :: t => null()
@@ -896,24 +903,24 @@ contains
 
   subroutine print_plot()
 
-    integer i
-    type(Plot),    pointer :: pl => null()
+    integer :: i ! loop index for plots
+    type(Plot), pointer :: pl => null()
 
     ! Display header for plotting
     call header("PLOTTING SUMMARY")
 
-    do i=1,n_plots
+    do i = 1, n_plots
       pl => plots(i)
 
-      ! Print plot id
+      ! Write plot id
       write(ou,100) "Plot ID:", trim(to_str(pl % id))
 
-      ! Print plotting origin
+      ! Write plotting origin
       write(ou,100) "Origin:", trim(to_str(pl % origin(1))) // &
            " " // trim(to_str(pl % origin(2))) // " " // &
            trim(to_str(pl % origin(3)))
 
-      ! Print plotting width
+      ! Write plotting width
       if (pl % type == PLOT_TYPE_SLICE) then
 
         write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
@@ -940,8 +947,8 @@ contains
 
   subroutine print_runtime()
 
-    integer(8)    :: total_particles
-    real(8)       :: speed
+    integer(8)    :: total_particles ! total # of particles simulated
+    real(8)       :: speed           ! # of neutrons/second
     character(15) :: string
 
     ! display header block
@@ -1017,7 +1024,8 @@ contains
   end subroutine create_summary_file
 
 !===============================================================================
-! CREATE_XS_SUMMARY_FILE
+! CREATE_XS_SUMMARY_FILE creates an output file to write information about the
+! cross section tables used in the simulation.
 !===============================================================================
 
   subroutine create_xs_summary_file()

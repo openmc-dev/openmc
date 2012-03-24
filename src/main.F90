@@ -8,7 +8,6 @@ program main
   use output,          only: write_message, header
   use plotter,         only: run_plot
   use physics,         only: transport
-  use random_lcg,      only: set_particle_seed
   use source,          only: get_source_particle
   use string,          only: to_str
   use tally,           only: synchronize_tallies, add_to_score

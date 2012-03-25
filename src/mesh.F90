@@ -217,4 +217,91 @@ contains
 
   end subroutine count_fission_sites
 
+!===============================================================================
+! MESH_INTERSECT
+!===============================================================================
+
+  function mesh_intersects(m, xyz0, xyz1) result(intersects)
+
+    type(StructuredMesh), pointer :: m
+    real(8), intent(in) :: xyz0(3)
+    real(8), intent(in) :: xyz1(3)
+    logical :: intersects
+
+    real(8) :: x0, y0, z0 ! track start point
+    real(8) :: x1, y1, z1 ! track end point
+    real(8) :: xi, yi, zi ! track intersection point with mesh
+
+    ! Copy coordinates of starting point
+    x0 = xyz0(1)
+    y0 = xyz0(2)
+    z0 = xyz0(3)
+
+    ! Copy coordinates of ending point
+    x1 = xyz1(1)
+    y1 = xyz1(2)
+    z1 = xyz1(3)
+
+    ! Check if line intersects bottom surface -- calculate the intersection
+    ! point (y,z)
+    xi = m % lower_left(1)
+    yi = y0 + (xi - x0) * (y1 - y0) / (x1 - x0)
+    zi = z0 + (xi - x0) * (z1 - z0) / (x1 - x0)
+    if (yi >= y0 .and. yi < y1 .and. zi >= z0 .and. zi < z1) then
+       intersects = .true.
+       return
+    end if
+    
+    ! Check if line intersects left surface -- calculate the intersection point
+    ! (x,z)
+    yi = m % lower_left(2)
+    xi = x0 + (yi - y0) * (x1 - x0) / (y1 - y0)
+    zi = z0 + (yi - y0) * (z1 - z0) / (y1 - y0)
+    if (xi >= x0 .and. xi < x1 .and. zi >= z0 .and. zi < z1) then
+       intersects = .true.
+       return
+    end if
+    
+    ! Check if line intersects front surface -- calculate the intersection point
+    ! (x,y)
+    zi = m % lower_left(3)
+    xi = x0 + (zi - z0) * (x1 - x0) / (z1 - z0)
+    yi = y0 + (zi - z0) * (y1 - y0) / (z1 - z0)
+    if (xi >= x0 .and. xi < x1 .and. yi >= y0 .and. yi < y1) then
+       intersects = .true.
+       return
+    end if
+    
+    ! Check if line intersects top surface -- calculate the intersection
+    ! point (y,z)
+    xi = m % upper_right(1)
+    yi = y0 + (xi - x0) * (y1 - y0) / (x1 - x0)
+    zi = z0 + (xi - x0) * (z1 - z0) / (x1 - x0)
+    if (yi >= y0 .and. yi < y1 .and. zi >= z0 .and. zi < z1) then
+       intersects = .true.
+       return
+    end if
+    
+    ! Check if line intersects right surface -- calculate the intersection point
+    ! (x,z)
+    yi = m % upper_right(2)
+    xi = x0 + (yi - y0) * (x1 - x0) / (y1 - y0)
+    zi = z0 + (yi - y0) * (z1 - z0) / (y1 - y0)
+    if (xi >= x0 .and. xi < x1 .and. zi >= z0 .and. zi < z1) then
+       intersects = .true.
+       return
+    end if
+    
+    ! Check if line intersects back surface -- calculate the intersection point
+    ! (x,y)
+    zi = m % upper_right(3)
+    xi = x0 + (zi - z0) * (x1 - x0) / (z1 - z0)
+    yi = y0 + (zi - z0) * (y1 - y0) / (z1 - z0)
+    if (xi >= x0 .and. xi < x1 .and. yi >= y0 .and. yi < y1) then
+       intersects = .true.
+       return
+    end if
+
+  end function mesh_intersects
+
 end module mesh

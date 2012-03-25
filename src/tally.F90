@@ -3,7 +3,8 @@ module tally
   use constants
   use error,         only: fatal_error
   use global
-  use mesh,          only: get_mesh_bin, bin_to_mesh_indices, get_mesh_indices
+  use mesh,          only: get_mesh_bin, bin_to_mesh_indices, get_mesh_indices, &
+                           mesh_indices_to_bin, mesh_intersects
   use mesh_header,   only: StructuredMesh
   use output,        only: header
   use search,        only: binary_search
@@ -547,6 +548,14 @@ contains
     do i = 1, n_tracklength_tallies
        t => tallies(tracklength_tallies(i))
 
+       ! Check if this tally has a mesh filter -- if so, we treat it separately
+       ! since multiple bins can be scored to with a single track
+       
+       if (t % n_filter_bins(FILTER_MESH) > 0) then
+          call score_tl_on_mesh(tracklength_tallies(i))
+          cycle
+       end if
+
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
@@ -605,6 +614,234 @@ contains
     end do
 
   end subroutine score_tracklength_tally
+
+!===============================================================================
+! SCORE_TL_ON_MESH calculate fluxes and reaction rates based on the track-length
+! estimate of the flux specifically for tallies that have mesh filters. For
+! these tallies, it is possible to score to multiple mesh cells for each track.
+!===============================================================================
+
+  subroutine score_tl_on_mesh(index_tally)
+
+    integer, intent(in) :: index_tally
+
+    integer :: i                    ! loop index for filter/score bins
+    integer :: j                    ! loop index for direction
+    integer :: k                    ! loop index for mesh cell crossings
+    integer :: ijk0(3)              ! indices of starting coordinates
+    integer :: ijk1(3)              ! indices of ending coordinates
+    integer :: ijk_cross(3)         ! indices of mesh cell crossed
+    integer :: n_cross              ! number of surface crossings
+    integer :: bins(N_FILTER_TYPES) ! scoring bin combination
+    integer :: score_index          ! single index for single bin
+    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
+    real(8) :: flux                 ! tracklength estimate of flux
+    real(8) :: score                ! actual score (e.g., flux*xs)
+    real(8) :: uvw(3)               ! cosine of angle of particle
+    real(8) :: xyz0(3)              ! starting/intermediate coordinates
+    real(8) :: xyz1(3)              ! ending coordinates of particle
+    real(8) :: xyz_cross(3)         ! coordinates of next boundary
+    real(8) :: d(3)                 ! distance to each bounding surface
+    real(8) :: distance             ! distance traveled in mesh cell
+    logical :: found_bin            ! was a scoring bin found?
+    logical :: start_in_mesh        ! starting coordinates inside mesh?
+    logical :: end_in_mesh          ! ending coordinates inside mesh?
+    type(TallyObject),    pointer :: t => null()
+    type(StructuredMesh), pointer :: m => null()
+
+    found_bin = .true.
+    bins = 1
+    t => tallies(index_tally)
+
+    ! ==========================================================================
+    ! CHECK IF THIS TRACK INTERSECTS THE MESH
+
+    ! Copy starting and ending location of particle
+    xyz0 = p % last_xyz
+    xyz1 = p % coord0 % xyz
+
+    ! Determine indices for starting and ending location
+    m => meshes(t % mesh)
+    call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
+    call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
+
+    ! Check if start or end is in mesh -- if not, check if track still
+    ! intersects with mesh
+    if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
+       if (.not. mesh_intersects(m, xyz0, xyz1)) return
+    end if
+
+    ! =========================================================================
+    ! CHECK FOR SCORING COMBINATION FOR FILTERS OTHER THAN MESH
+
+    FILTER_LOOP: do i = 1, t % n_filters
+
+       select case (t % filters(i))
+       case (FILTER_UNIVERSE)
+          ! determine next universe bin
+          ! TODO: Account for multiple universes when performing this filter
+          bins(FILTER_UNIVERSE) = get_next_bin(FILTER_UNIVERSE, &
+               p % coord % universe, index_tally)
+          if (bins(FILTER_UNIVERSE) == NO_BIN_FOUND) then
+             found_bin = .false.
+             return
+          end if
+
+       case (FILTER_MATERIAL)
+          bins(FILTER_MATERIAL) = get_next_bin(FILTER_MATERIAL, &
+               p % material, index_tally)
+          if (bins(FILTER_MATERIAL) == NO_BIN_FOUND) then
+             found_bin = .false.
+             return
+          end if
+
+       case (FILTER_CELL)
+          ! determine next cell bin
+          ! TODO: Account for cells in multiple levels when performing this filter
+          bins(FILTER_CELL) = get_next_bin(FILTER_CELL, &
+               p % coord % cell, index_tally)
+          if (bins(FILTER_CELL) == NO_BIN_FOUND) then
+             found_bin = .false.
+             return
+          end if
+
+       case (FILTER_CELLBORN)
+          ! determine next cellborn bin
+          bins(FILTER_CELLBORN) = get_next_bin(FILTER_CELLBORN, &
+               p % cell_born, index_tally)
+          if (bins(FILTER_CELLBORN) == NO_BIN_FOUND) then
+             found_bin = .false.
+             return
+          end if
+
+       case (FILTER_SURFACE)
+          ! determine next surface bin
+          bins(FILTER_SURFACE) = get_next_bin(FILTER_SURFACE, &
+               p % surface, index_tally)
+          if (bins(FILTER_SURFACE) == NO_BIN_FOUND) then
+             found_bin = .false.
+             return
+          end if
+
+       case (FILTER_ENERGYIN)
+          ! determine incoming energy bin
+          k = t % n_filter_bins(FILTER_ENERGYIN)
+          ! check if energy of the particle is within energy bins
+          if (p % last_E < t % energy_in(1) .or. &
+               p % last_E > t % energy_in(k + 1)) then
+             found_bin = .false.
+             return
+          end if
+
+          ! search to find incoming energy bin
+          bins(FILTER_ENERGYIN) = binary_search(t % energy_in, k + 1, p % last_E)
+
+       end select
+    end do FILTER_LOOP
+
+    ! ==========================================================================
+    ! DETERMINE WHICH MESH CELLS TO SCORE TO
+
+    ! Calculate number of surface crossings
+    n_cross = sum(abs(ijk1 - ijk0)) + 1
+
+    ! Copy particle's direction
+    uvw = p % coord0 % uvw
+
+    ! Bounding coordinates
+    do j = 1, 3
+       if (uvw(j) > 0) then
+          xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
+       else
+          xyz_cross(j) = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
+       end if
+    end do
+
+    MESH_LOOP: do k = 1, n_cross
+       found_bin = .false.
+
+       ! Calculate distance to each bounding surface. We need to treat special
+       ! case where the cosine of the angle is zero since this would result in a
+       ! divide-by-zero.
+
+       if (k == n_cross) xyz_cross = xyz1
+          
+       do j = 1, 3
+          if (uvw(j) == 0) then
+             d(j) = INFINITY
+          else
+             d(j) = (xyz_cross(j) - xyz0(j))/uvw(j)
+          end if
+       end do
+
+       ! Determine the closest bounding surface of the mesh cell by calculating
+       ! the minimum distance
+          
+       j = minloc(d, 1)
+       distance = d(j)
+
+       ! Now use the minimum distance and diretion of the particle to determine
+       ! which surface was crossed
+
+       if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
+          ijk_cross = ijk0
+          found_bin = .true.
+       end if
+
+       ! Increment indices and determine new crossing point
+       if (uvw(j) > 0) then
+          ijk0(j) = ijk0(j) + 1
+          xyz_cross(j) = xyz_cross(j) + m % width(j)
+       else
+          ijk0(j) = ijk0(j) - 1
+          xyz_cross(j) = xyz_cross(j) - m % width(j)
+       end if
+
+       ! =======================================================================
+       ! SCORE TO THIS MESH CELL
+
+       if (found_bin) then
+          ! Calculate track-length estimate of flux
+          flux = p % wgt * distance
+
+          ! Determine mesh bin
+          bins(FILTER_MESH) = mesh_indices_to_bin(m, ijk_cross)
+
+          ! Determining scoring index
+          score_index = sum((bins - 1) * t % stride) + 1
+
+          ! Determine score for each bin
+          SCORE_LOOP: do i = 1, t % n_score_bins
+             ! determine what type of score bin
+             score_bin = t % score_bins(i) % scalar
+             
+             ! Determine cross section 
+             select case(score_bin)
+             case (SCORE_FLUX)
+                score = flux
+             case (SCORE_TOTAL)
+                score = material_xs % total * flux
+             case (SCORE_SCATTER)
+                score = (material_xs % total - material_xs % absorption) * flux
+             case (SCORE_ABSORPTION)
+                score = material_xs % absorption * flux
+             case (SCORE_FISSION)
+                score = material_xs % fission * flux
+             case (SCORE_NU_FISSION)
+                score = material_xs % nu_fission * flux
+             end select
+
+             ! Add score to tally
+             call add_to_score(t % scores(score_index, i), score)
+          end do SCORE_LOOP
+       end if
+
+       ! Calculate new coordinates
+       xyz0 = xyz0 + distance * uvw
+
+    end do MESH_LOOP
+
+  end subroutine score_tl_on_mesh
 
 !===============================================================================
 ! GET_SCORING_BINS determines a combination of filter bins that should be scored

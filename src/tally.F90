@@ -552,7 +552,7 @@ contains
        ! since multiple bins can be scored to with a single track
        
        if (t % n_filter_bins(FILTER_MESH) > 0) then
-          call score_tl_on_mesh(tracklength_tallies(i))
+          call score_tl_on_mesh(tracklength_tallies(i), distance)
           cycle
        end if
 
@@ -621,9 +621,10 @@ contains
 ! these tallies, it is possible to score to multiple mesh cells for each track.
 !===============================================================================
 
-  subroutine score_tl_on_mesh(index_tally)
+  subroutine score_tl_on_mesh(index_tally, d_track)
 
     integer, intent(in) :: index_tally
+    real(8), intent(in) :: d_track
 
     integer :: i                    ! loop index for filter/score bins
     integer :: j                    ! loop index for direction
@@ -657,8 +658,8 @@ contains
     ! CHECK IF THIS TRACK INTERSECTS THE MESH
 
     ! Copy starting and ending location of particle
-    xyz0 = p % last_xyz
-    xyz1 = p % coord0 % xyz
+    xyz0 = p % coord0 % xyz - (d_track - TINY_BIT) * p % coord0 % uvw
+    xyz1 = p % coord0 % xyz  - TINY_BIT * p % coord0 % uvw
 
     ! Determine indices for starting and ending location
     m => meshes(t % mesh)
@@ -670,6 +671,10 @@ contains
     if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
        if (.not. mesh_intersects(m, xyz0, xyz1)) return
     end if
+
+    ! Reset starting and ending location
+    xyz0 = p % coord0 % xyz - d_track * p % coord0 % uvw
+    xyz1 = p % coord0 % xyz
 
     ! =========================================================================
     ! CHECK FOR SCORING COMBINATION FOR FILTERS OTHER THAN MESH

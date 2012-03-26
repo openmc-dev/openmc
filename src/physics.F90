@@ -81,9 +81,6 @@ contains
        ! Select smaller of the two distances
        distance = min(d_boundary, d_collision)
 
-       ! Save coordinates for tallying purposes
-       p % last_xyz = p % coord0 % xyz
-
        ! Advance particle
        coord => p % coord0
        do while (associated(coord))
@@ -130,6 +127,9 @@ contains
 
           p % surface = NONE
           call collision()
+
+          ! Save coordinates for tallying purposes
+          p % last_xyz = p % coord0 % xyz
 
           ! Set last material to none since cross sections will need to be
           ! re-evaluated

@@ -727,14 +727,14 @@ contains
           ! determine incoming energy bin
           k = t % n_filter_bins(FILTER_ENERGYIN)
           ! check if energy of the particle is within energy bins
-          if (p % last_E < t % energy_in(1) .or. &
-               p % last_E > t % energy_in(k + 1)) then
+          if (p % E < t % energy_in(1) .or. &
+               p % E > t % energy_in(k + 1)) then
              found_bin = .false.
              return
           end if
 
           ! search to find incoming energy bin
-          bins(FILTER_ENERGYIN) = binary_search(t % energy_in, k + 1, p % last_E)
+          bins(FILTER_ENERGYIN) = binary_search(t % energy_in, k + 1, p % E)
 
        end select
     end do FILTER_LOOP
@@ -857,6 +857,7 @@ contains
     integer :: i        ! loop index for filters
     integer :: n        ! number of bins for single filter
     integer :: mesh_bin ! index for mesh bin
+    real(8) :: E        ! particle energy
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 
@@ -928,15 +929,22 @@ contains
        case (FILTER_ENERGYIN)
           ! determine incoming energy bin
           n = t % n_filter_bins(FILTER_ENERGYIN)
+
+          ! make sure the correct energy is used
+          if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+             E = p % E
+          else
+             E = p % last_E
+          end if
+
           ! check if energy of the particle is within energy bins
-          if (p % last_E < t % energy_in(1) .or. &
-               p % last_E > t % energy_in(n + 1)) then
+          if (E < t % energy_in(1) .or. E > t % energy_in(n + 1)) then
              found_bin = .false.
              return
           end if
 
           ! search to find incoming energy bin
-          bins(FILTER_ENERGYIN) = binary_search(t % energy_in, n + 1, p % last_E)
+          bins(FILTER_ENERGYIN) = binary_search(t % energy_in, n + 1, E)
 
        case (FILTER_ENERGYOUT)
           ! determine outgoing energy bin

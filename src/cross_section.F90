@@ -188,7 +188,7 @@ contains
     end if
 
     ! Set last evaluated energy
-    micro_xs(index_nuclide) % last_E = p % E
+    if (index_sab == 0) micro_xs(index_nuclide) % last_E = p % E
 
   end subroutine calculate_nuclide_xs
 

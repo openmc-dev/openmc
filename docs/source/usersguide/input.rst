@@ -307,16 +307,23 @@ settings.xml file.
 The ``criticality`` element indicates that a criticality calculation should be
 performed. It has the following attributes/sub-elements:
 
-  :cycles:
-    The number of total fission source iterations.
+  :batches: 
+    The total number of batches, where each batch corresponds to multiple
+    fission source iterations. Batching is done to eliminate correlation between
+    realizations of random variables.
 
     *Default*: None
 
+  :generations_per_batch:
+    The number of total fission source iterations per batch.
+
+    *Default*: 1
+
   :inactive:
-    The number of inactive fission source iterations. In general, the starting
-    cycles in a criticality calculation can not be used to contribute to tallies
-    since the fission source distribution and eigenvalue are generally not
-    converged immediately
+    The number of inactive batches. In general, the starting cycles in a
+    criticality calculation can not be used to contribute to tallies since the
+    fission source distribution and eigenvalue are generally not converged
+    immediately.
 
     *Default*: None
 
@@ -353,6 +360,18 @@ default. This element has the following attributes/sub-elements:
 
     *Default*: 1.0
 
+``energy_grid`` Element
+-----------------------
+
+The ``energy_grid`` element determines the treatment of the energy grid during a
+simulation. Setting this element to "nuclide" will cause OpenMC to use a
+nuclide's energy grid when determining what points to interpolate between for
+determining cross sections (i.e. non-unionized energy grid). To use a unionized
+energy grid, set this element to "union". Note that the unionized energy grid
+treatment is slightly different than that employed in Serpent.
+
+  *Default*: union
+
 ``entropy`` Element
 -------------------
 
@@ -384,6 +403,14 @@ the unresolved resonance range if available. This element has no attributes or
 sub-elements and can be set to either "off" or "on".
 
   *Default*: on
+
+``seed`` Element
+----------------
+
+The ``seed`` element is used to set the seed used for the linear congruential
+pseudo-random number generator.
+
+  *Default*: 1
 
 ``source`` Element
 ------------------
@@ -573,40 +600,115 @@ tallies. This element should be followed by "yes" or "no"
 Geometry Plotting Specification -- plot.xml
 -------------------------------------------
 
-A rudimentary plotting capability is available in OpenMC by specifying a
-plot.xml file and subsequently running with the command-line flag ``-plot``. The
-root element of the plot.xml is simply ``<plot>`` and four sub-elements can be
-defined to configure the plotting range and resolution.
+A basic 2D plotting capability is available in OpenMC by creating a
+plots.xml file and subsequently running with the command-line flag ``-plot``. The
+root element of the plot.xml is simply ``<plots>`` and any number output
+figures can be defined with ``<plot>`` sub-elements.
 
-``origin`` Element
+``plot`` Element
 ------------------
 
-The ``origin`` element has no attributes/sub-elements and indicates the
-Cartesian coordinates of the center of the plot.
+Each plot must contain a combination of the following attributes or sub-elements:
 
-  *Default*: None
+  :id:
+    The unique ``id`` of the plot.
 
-``width`` Element
------------------
+    *Default*: None - Required entry
 
-The ``width`` element has no attributes/sub-elements and indicates the width of
-the plot in each of the basis directions.
+  :filename:
+    Filename for the output plot file.
 
-  *Default*: None
+    *Default*: "plot"
 
-``basis`` Element
------------------
+  :color:
+    Keyword for plot coloring.  This can only be either ``cell`` or ``mat``,
+    which colors regions by cells and materials, respectively.
 
-The ``basis`` element has no attributes/sub-elements and indicates the specified
-basis for plotting. The only option option currently accepted is "xy".
+    *Default*: ``cell``
 
-  *Default*: xy
+  :origin:
+    Specifies the XYZ coordinate of the center of the plot.  Should be 3 floats
+    separated by spaces.
 
-``pixel`` Element
------------------
+    *Default*: None - Required entry
 
-The ``pixel`` element has no attributes/sub-elements and indicates the distance
-between horizontal rays sent through the geometry to record surface crossings. A
-smaller ``pixel`` will result in a higher-resolution plot.
+  :width:
+    Specifies the width of the plot along each of the basis directions.
+    Should be 2 or 3 floats separated by spaces for 2D plots and 3D plots,
+    respectively.
 
-  *Default*: 0.01
+    *Default*: None - Required entry
+
+  :type:
+    Keyword for type of plot to be produced.  Currently only ``slice`` plots are
+    implemented, which create 2D pixel maps saved in the PPM file format.  PPM
+    files can be displayed in most viewers (e.g. the default Gnome viewer,
+    IrfanView, etc.).
+
+    .. note:: Since the PPM format is saved without any kind of compression,
+              the resulting file sizes can be quite large.  Saving the image in
+              the PNG format can often times reduce the file size by orders of
+              magnitude without any loss of image quality.
+
+    *Default*: "slice"
+
+``plot`` elements of ``type`` ``slice`` also contain the following attributes or
+sub-elements:  
+
+  :basis:
+    Keyword specifying the plane of the plot for ``slice`` type plots.  Can be
+    one of: ``xy``, ``xz``, ``yz``.
+
+    *Default*: ``xy``
+
+  :pixels:
+    Specifies the number of pixes to be used along each of the basis directions for
+    ``slice`` plots. Should be 2 integers separated by spaces.
+
+    .. warning:: The ``pixels`` input determines the output file size.  For the PPM
+                 format, 10 million pixels will result in a file just under 30 MB in
+                 size.
+
+    .. warning:: If the aspect ratio defined in ``pixels`` does not match the aspect
+              ratio defined in ``width`` the plot may appear stretched or squeezed.
+
+    .. warning:: Geometry features along a basis direction smaller than ``width``/``pixels``
+                 along that basis direction may not appear in the plot.
+
+    *Default*: None - Required entry for ``slice`` plots
+
+  :background:
+    Specifies the RGB color of the regions where no OpenMC cell can be found. Should
+    be 3 integers deparated by spaces.
+
+    *Default*: 0 0 0 (white)
+
+  :col_spec:
+    Any number of this optional tag may be included in each ``plot`` element, which can
+    override the default random colors for cells or materials.  Each ``col_spec``
+    element must contain ``id`` and ``rgb`` sub-elements.
+  
+    :id:
+      Specifies the cell or material unique id for the color specification.
+
+    :rgb:
+      Specifies the custom color for the cell or material.  Should be 3 intergers separated
+      by spaces.
+
+    *Default*: None
+
+  :mask:
+    The special ``mask`` sub-element allows for the selective plotting of *only*
+    user-specified cells or materials.  Only one ``mask`` element is allowed per ``plot``
+    element, and it must contain as atributes or sub-elements a background masking color and
+    a list of cells or materials to plot:
+
+    :components:
+      List of unique ``id`` numbers of the cells or materials to plot.  Should be any number
+      of integers separated by spaces.
+
+    :background:
+      Color to apply to all cells or materials not in the ``components`` list of cells or
+      materials to plot.  This overrides any ``col_spec`` color specifications.
+
+    *Default*: None

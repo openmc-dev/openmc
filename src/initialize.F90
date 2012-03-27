@@ -3,23 +3,24 @@ module initialize
   use ace,              only: read_xs
   use bank_header,      only: Bank
   use constants
-  use datatypes,        only: dict_create, dict_add_key, dict_get_key,         &
-                              dict_has_key, dict_keys
+  use datatypes,        only: dict_create, dict_get_key, dict_has_key, &
+                              dict_keys
   use datatypes_header, only: ListKeyValueII, DictionaryII
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error
   use geometry,         only: neighbor_lists
-  use geometry_header,  only: Cell, Surface, Universe, Lattice, BASE_UNIVERSE
+  use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
-                              cells_in_univ_dict
+                              cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, print_summary, print_geometry,    &
                               print_plot, create_summary_file,                 &
                               create_xs_summary_file
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use string,           only: to_str, starts_with, ends_with, lower_case
-  use tally,            only: create_tally_map, TallyObject
+  use tally,            only: create_tally_map
+  use tally_header,     only: TallyObject
   use timing,           only: timer_start, timer_stop
 
 #ifdef MPI
@@ -32,8 +33,6 @@ module initialize
 #endif
 
   implicit none
-
-  type(DictionaryII), pointer :: build_dict => null()
 
 contains
 
@@ -81,6 +80,10 @@ contains
     ! Initialize random number generator
     call initialize_prng()
 
+    ! Read plots.xml if it exists -- this has to be done separate from the other
+    ! XML files because we need the PRNG to be initialized first
+    if (plotting) call read_plots_xml()
+
     ! Set up universe structures
     call prepare_universes()
 
@@ -106,9 +109,11 @@ contains
        call timer_stop(time_read_xs)
 
        ! Construct unionized energy grid from cross-sections
-       call timer_start(time_unionize)
-       call unionized_grid()
-       call timer_stop(time_unionize)
+       if (grid_method == GRID_UNION) then
+          call timer_start(time_unionize)
+          call unionized_grid()
+          call timer_stop(time_unionize)
+       end if
 
        ! Create tally map
        call create_tally_map()
@@ -282,9 +287,6 @@ contains
 
     ! Create special dictionary used in input_xml
     call dict_create(cells_in_univ_dict)
-
-    ! Create special dictionary for building universes
-    call dict_create(build_dict)
     
   end subroutine create_dictionaries
 

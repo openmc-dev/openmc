@@ -7,7 +7,7 @@ module constants
 
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 4
-  integer, parameter :: VERSION_RELEASE = 0
+  integer, parameter :: VERSION_RELEASE = 1
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS 
@@ -243,7 +243,7 @@ module constants
        EVENT_FISSION =  3 
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 15
+  integer, parameter :: N_SCORE_TYPES = 16
   integer, parameter :: &
        SCORE_FLUX       = -1,  & ! flux
        SCORE_TOTAL      = -2,  & ! total reaction rate
@@ -252,14 +252,15 @@ module constants
        SCORE_SCATTER_1  = -5,  & ! first scattering moment
        SCORE_SCATTER_2  = -6,  & ! second scattering moment
        SCORE_SCATTER_3  = -7,  & ! third scattering moment
-       SCORE_N_1N       = -8,  & ! (n,1n) rate
-       SCORE_N_2N       = -9,  & ! (n,2n) rate
-       SCORE_N_3N       = -10, & ! (n,3n) rate
-       SCORE_N_4N       = -11, & ! (n,4n) rate
-       SCORE_ABSORPTION = -12, & ! absorption rate
-       SCORE_FISSION    = -13, & ! fission rate
-       SCORE_NU_FISSION = -14, & ! neutron production rate
-       SCORE_CURRENT    = -15    ! partial current
+       SCORE_DIFFUSION  = -8,  & ! diffusion coefficient
+       SCORE_N_1N       = -9,  & ! (n,1n) rate
+       SCORE_N_2N       = -10, & ! (n,2n) rate
+       SCORE_N_3N       = -11, & ! (n,3n) rate
+       SCORE_N_4N       = -12, & ! (n,4n) rate
+       SCORE_ABSORPTION = -13, & ! absorption rate
+       SCORE_FISSION    = -14, & ! fission rate
+       SCORE_NU_FISSION = -15, & ! neutron production rate
+       SCORE_CURRENT    = -16    ! partial current
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1
@@ -312,11 +313,17 @@ module constants
   integer, parameter :: ERROR_INT  = -huge(0)
   real(8), parameter :: ERROR_REAL = -huge(0.0_8) * 0.917826354_8
 
+  ! Energy grid methods
+  integer, parameter :: &
+       GRID_NUCLIDE  = 1, & ! non-unionized energy grid (MCNP)
+       GRID_UNION    = 2, & ! union grid with pointers
+       GRID_LETHARGY = 3    ! lethargy mapping (MC21)
+
   ! Source types
   integer, parameter ::   &
        SRC_BOX     = 1, & ! Source in a rectangular prism
-       SRC_CELL    = 2, & ! Source in a cell
-       SRC_SURFACE = 3    ! Source on a surface
+       SRC_POINT   = 2, & ! Source at a single point
+       SRC_FILE    = 3    ! Source from a file
 
   integer, parameter ::        &
        PROB_SOURCE      = 1, & ! External source problem
@@ -327,5 +334,6 @@ module constants
   integer, parameter :: UNIT_TALLY   = 12 ! unit # for writing tally file
   integer, parameter :: UNIT_PLOT    = 13 ! unit # for writing plot file
   integer, parameter :: UNIT_XS      = 14 ! unit # for writing xs summary file
+  integer, parameter :: UNIT_SOURCE  = 15 ! unit # for writing source file
 
 end module constants

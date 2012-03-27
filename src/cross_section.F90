@@ -37,7 +37,7 @@ contains
     mat => materials(p % material)
 
     ! Find energy index on unionized grid
-    call find_energy_index()
+    if (grid_method == GRID_UNION) call find_energy_index()
 
     ! Check if there's an S(a,b) table for this material
     if (mat % has_sab_table) then
@@ -107,11 +107,28 @@ contains
     ! Set pointer to nuclide
     nuc => nuclides(index_nuclide)
 
-    ! TODO: If not using unionized energy grid, we need to find the index on the
-    ! nuclide energy grid using lethargy mapping or whatever other technique
+    ! Determine index on nuclide energy grid
+    select case (grid_method)
+    case (GRID_UNION)
+       ! If we're using the unionized grid with pointers, finding the index on
+       ! the nuclide energy grid is as simple as looking up the pointer
 
-    ! get index on nuclide energy grid
-    IE = nuc % grid_index(p % IE)
+       IE = nuc % grid_index(p % IE)
+
+    case (GRID_NUCLIDE)
+       ! If we're not using the unionized grid, we have to do a binary search on
+       ! the nuclide energy grid in order to determine which points to
+       ! interpolate between
+
+       if (p % E < nuc % energy(1)) then
+          IE = 1
+       elseif (p % E > nuc % energy(nuc % n_grid)) then
+          IE = nuc % n_grid - 1
+       else
+          IE = binary_search(nuc % energy, nuc % n_grid, p % E)
+       end if
+
+    end select
 
     ! check for rare case where two energy points are the same
     if (nuc % energy(IE) == nuc % energy(IE+1)) IE = IE + 1
@@ -171,7 +188,7 @@ contains
     end if
 
     ! Set last evaluated energy
-    micro_xs(index_nuclide) % last_E = p % E
+    if (index_sab == 0) micro_xs(index_nuclide) % last_E = p % E
 
   end subroutine calculate_nuclide_xs
 

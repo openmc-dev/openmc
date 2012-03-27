@@ -2,8 +2,7 @@ module input_xml
 
   use cmfd_input,      only: read_cmfd_xml 
   use constants
-  use datatypes,       only: dict_create, dict_add_key, dict_has_key, &
-                             dict_get_key
+  use datatypes,       only: dict_add_key, dict_has_key, dict_get_key
   use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Surface, Lattice
   use global
@@ -34,7 +33,6 @@ contains
     call read_materials_xml()
     call read_tallies_xml()
     call read_cmfd_xml()
-    if (plotting) call read_plots_xml()
 
   end subroutine read_input_xml
 
@@ -69,6 +67,10 @@ contains
     ! Initialize XML scalar variables
     cross_sections_ = ""
     verbosity_ = 0
+    energy_grid_ = "union"
+    seed_ = 0_8
+    write_source_ = ""
+    source_ % type = ""
 
     ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
@@ -93,7 +95,7 @@ contains
     end if
 
     ! Criticality information
-    if (criticality % cycles > 0) then
+    if (criticality % batches > 0) then
        problem_type = PROB_CRITICALITY
 
        ! Check number of particles
@@ -104,41 +106,71 @@ contains
        n_particles = str_to_int(criticality % particles)
 
        ! Copy cycle information
-       n_cycles    = criticality % cycles
-       n_inactive  = criticality % inactive
-       n_active    = n_cycles - n_inactive
+       n_batches     = criticality % batches
+       n_inactive    = criticality % inactive
+       n_active      = n_batches - n_inactive
+       gen_per_batch = criticality % generations_per_batch
+    else
+       message = "Need to specify number of batches with <batches> tag."
+       call fatal_error()
     end if
 
+<<<<<<< HEAD:src/input_xml.F90
     ! Random number seed
     if (dble(criticality % seed) > 0.0_8)  seed = dble(criticality % seed)
+=======
+    ! Copy random number seed if specified
+    if (seed_ > 0) seed = seed_
+
+    ! Energy grid methods
+    select case (energy_grid_)
+    case ('nuclide')
+       grid_method = GRID_NUCLIDE
+    case ('union')
+       grid_method = GRID_UNION
+    case ('lethargy')
+       message = "Lethargy mapped energy grid not yet supported."
+       call fatal_error()
+    case default
+       message = "Unknown energy grid method: " // energy_grid_
+       call fatal_error()
+    end select
+>>>>>>> master:src/input_xml.F90
 
     ! Verbosity
     if (verbosity_ > 0) verbosity = verbosity_
 
-    if (associated(source_ % coeffs)) then
+    if (len(source_ % type) > 0) then
        ! Determine external source type
        type = source_ % type
        call lower_case(type)
-       select case (trim(type))
+       select case (type)
        case ('box')
           external_source % type = SRC_BOX
           coeffs_reqd = 6
+       case ('point')
+          external_source % type = SRC_POINT
+          coeffs_reqd = 3
+       case ('file')
+          external_source % type = SRC_FILE
        case default
           message = "Invalid source type: " // trim(source_ % type)
           call fatal_error()
        end select
 
        ! Coefficients for external surface
-       n = size(source_ % coeffs)
-       if (n < coeffs_reqd) then
-          message = "Not enough coefficients specified for external source."
-          call fatal_error()
-       elseif (n > coeffs_reqd) then
-          message = "Too many coefficients specified for external source."
-          call fatal_error()
-       else
-          allocate(external_source % values(n))
-          external_source % values = source_ % coeffs
+       if (type /= 'file') then
+          n = size(source_ % coeffs)
+          if (n < coeffs_reqd) then
+             message = "Not enough coefficients specified for external source."
+             call fatal_error()
+          elseif (n > coeffs_reqd) then
+             message = "Too many coefficients specified for external source."
+             call fatal_error()
+          else
+             allocate(external_source % values(n))
+             external_source % values = source_ % coeffs
+          end if
        end if
     end if
 
@@ -156,8 +188,9 @@ contains
 
     ! Particle trace
     if (associated(trace_)) then
-       trace_cycle    = trace_(1)
-       trace_particle = trace_(2)
+       trace_batch    = trace_(1)
+       trace_gen      = trace_(2)
+       trace_particle = trace_(3)
     end if
 
     ! Shannon Entropy mesh
@@ -209,6 +242,9 @@ contains
        ! Turn on Shannon entropy calculation
        entropy_on = .true.
     end if
+
+    ! Check if the user has specified to write binary source file
+    if (trim(write_source_) == 'on') write_source = .true.
 
   end subroutine read_settings_xml
 
@@ -265,14 +301,6 @@ contains
        c % universe = cell_(i) % universe
        c % material = cell_(i) % material
        c % fill     = cell_(i) % fill
-
-       ! Set plot color
-       if (plotting) then
-          allocate(c % rgb(3))
-          c % rgb(1) = prn()*255
-          c % rgb(2) = prn()*255
-          c % rgb(3) = prn()*255
-       end if
 
        ! Check to make sure that either material or fill was specified
        if (c % material == 0 .and. c % fill == 0) then
@@ -505,6 +533,7 @@ contains
     integer :: n           ! number of nuclides
     real(8) :: val         ! value entered for density
     logical :: file_exists ! does materials.xml exist?
+    logical :: sum_density ! density is taken to be sum of nuclide densities
     character(3)            :: default_xs ! default xs identifier (e.g. 70c)
     character(12)           :: name       ! name of nuclide
     character(MAX_WORD_LEN) :: units      ! units on density
@@ -544,40 +573,43 @@ contains
        ! Copy material id
        m % id = material_(i) % id
 
-       ! Set plot color
-       if (plotting) then
-          allocate(m % rgb(3))
-          m % rgb(1) = prn()*255
-          m % rgb(2) = prn()*255
-          m % rgb(3) = prn()*255
-       end if
-
-       ! Copy density -- the default value for the units is given in the
-       ! material_t.xml file and doesn't need to be specified here, hence case
-       ! default results in an error.
-       val = material_(i) % density % value
-       if (val <= ZERO) then
-          message = "Need to specify a positive density on material " // &
-               trim(to_str(m % id)) // "."
-          call fatal_error()
-       end if
-
+       ! Copy value and units
+       val   = material_(i) % density % value
        units = material_(i) % density % units
-       call lower_case(units)
-       select case(trim(units))
-       case ('g/cc', 'g/cm3')
-          m % density = -val
-       case ('kg/m3')
-          m % density = -0.001 * val
-       case ('atom/b-cm')
-          m % density = val
-       case ('atom/cm3', 'atom/cc')
-          m % density = 1.0e-24 * val
-       case default
-          message = "Unkwown units '" // trim(material_(i) % density % units) &
-               // "' specified on material " // trim(to_str(m % id))
-          call fatal_error()
-       end select
+
+       if (units == 'sum') then
+          ! If the user gave the units as 'sum', then the total density of the
+          ! material is taken to be the sum of the atom fractions listed on the
+          ! nuclides
+
+          sum_density = .true.
+
+       else
+          ! Check for erroneous density
+          sum_density = .false.
+          if (val <= ZERO) then
+             message = "Need to specify a positive density on material " // &
+                  trim(to_str(m % id)) // "."
+             call fatal_error()
+          end if
+
+          ! Adjust material density based on specified units
+          call lower_case(units)
+          select case(trim(units))
+          case ('g/cc', 'g/cm3')
+             m % density = -val
+          case ('kg/m3')
+             m % density = -0.001 * val
+          case ('atom/b-cm')
+             m % density = val
+          case ('atom/cm3', 'atom/cc')
+             m % density = 1.0e-24 * val
+          case default
+             message = "Unkwown units '" // trim(material_(i) % density % units) &
+                  // "' specified on material " // trim(to_str(m % id))
+             call fatal_error()
+          end select
+       end if
        
        ! Check to ensure material has at least one nuclide
        if (.not. associated(material_(i) % nuclides)) then
@@ -651,6 +683,9 @@ contains
              call fatal_error()
           end if
        end do
+
+       ! Determine density if it is a sum value
+       if (sum_density) m % density = sum(m % atom_percent)
 
        ! Add material to dictionary
        call dict_add_key(material_dict, m % id, i)
@@ -988,6 +1023,11 @@ contains
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
+             case ('diffusion')
+                t % score_bins(j) % scalar = SCORE_DIFFUSION
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('n1n')
                 t % score_bins(j) % scalar = SCORE_N_1N
 
@@ -1116,10 +1156,11 @@ contains
 
     use xml_data_plots_t
 
-    integer i
+    integer i, j
+    integer n_cols, col_id
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
-    type(Plot),    pointer :: pl => null()
+    type(Plot),         pointer :: pl => null()
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"
@@ -1145,26 +1186,33 @@ contains
 
       ! Copy data into plots
       pl % id       = plot_(i) % id
-      pl % aspect   = plot_(i) % aspect
 
+      ! Set output file path
+      pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
+                       "_" // trim(plot_(i) % filename) // ".ppm"
+
+      ! Copy plot pixel size
       if (size(plot_(i) % pixels) == 2) then
         pl % pixels = plot_(i) % pixels
       else
-        message = "<pixels> must be length 2 in plot " // to_str(i)
+        message = "<pixels> must be length 2 in plot " // to_str(pl % id)
         call fatal_error()
       end if
 
-      select case (plot_(i) % color)
-        case ("cell")
-          pl % color = PLOT_COLOR_CELLS
-        case ("mat")
-          pl % color = PLOT_COLOR_MATS
-        case default
-          message = "Unsupported plot color '" // plot_(i) % color &
-                    // "' in plot " // trim(to_str(i))
-          call fatal_error()
-      end select
+      ! Copy plot background color
+      if (associated(plot_(i) % background)) then
+         if (size(plot_(i) % background) == 3) then
+            pl % not_found % rgb = plot_(i) % background
+         else
+            message = "Bad background RGB " &
+                 // "in plot " // trim(to_str(pl % id))
+            call fatal_error()
+         end if
+      else
+         pl % not_found % rgb = (/ 255, 255, 255 /)
+      end if
 
+      ! Copy plot type
       select case (plot_(i) % type)
         case ("slice")
           pl % type = PLOT_TYPE_SLICE
@@ -1172,10 +1220,11 @@ contains
         !  pl % type = PLOT_TYPE_POINTS
         case default
           message = "Unsupported plot type '" // plot_(i) % type &
-                    // "' in plot " // trim(to_str(i))
+                    // "' in plot " // trim(to_str(pl % id))
           call fatal_error()
       end select
 
+      ! Copy plot basis
       select case (plot_(i) % basis)
         case ("xy")
           pl % basis = PLOT_BASIS_XY
@@ -1185,7 +1234,7 @@ contains
           pl % basis = PLOT_BASIS_YZ
         case default
           message = "Unsupported plot basis '" // plot_(i) % basis &
-                    // "' in plot " // trim(to_str(i))
+                    // "' in plot " // trim(to_str(pl % id))
           call fatal_error()
       end select
 
@@ -1194,7 +1243,7 @@ contains
          pl % origin = plot_(i) % origin
       else
           message = "Origin must be length 3 " &
-                    // "in plot " // trim(to_str(i))
+                    // "in plot " // trim(to_str(pl % id))
           call fatal_error()
       end if
 
@@ -1206,10 +1255,88 @@ contains
          pl % width(2) = plot_(i) % width(2)
       else
           message = "Bad plot width " &
-                    // "in plot " // trim(to_str(i))
+                    // "in plot " // trim(to_str(pl % id))
           call fatal_error()
       end if
 
+      ! Copy plot color type and initialize all colors randomly
+      select case (plot_(i) % color)
+        case ("cell")
+
+          pl % color_by = PLOT_COLOR_CELLS
+          allocate(pl % colors(n_cells))
+          do j = 1, n_cells
+            pl % colors(j) % rgb(1) = prn()*255
+            pl % colors(j) % rgb(2) = prn()*255
+            pl % colors(j) % rgb(3) = prn()*255
+          end do
+
+        case ("mat", "material")
+
+          pl % color_by = PLOT_COLOR_MATS
+          allocate(pl % colors(n_materials))
+          do j = 1, n_materials
+            pl % colors(j) % rgb(1) = prn()*255
+            pl % colors(j) % rgb(2) = prn()*255
+            pl % colors(j) % rgb(3) = prn()*255
+          end do
+
+        case default
+          message = "Unsupported plot color type '" // plot_(i) % color &
+                    // "' in plot " // trim(to_str(pl % id))
+          call fatal_error()
+      end select
+
+      ! Copy user specified colors
+      if (associated(plot_(i) % col_spec_)) then
+         n_cols = size(plot_(i) % col_spec_)
+         do j = 1, n_cols
+            if (size(plot_(i) % col_spec_(j) % rgb) /= 3) then
+               message = "Bad RGB " &
+                    // "in plot " // trim(to_str(pl % id))
+               call fatal_error()          
+            end if
+
+            col_id = plot_(i) % col_spec_(j) % id
+
+            if (pl % color_by == PLOT_COLOR_CELLS) then
+
+               if (dict_has_key(cell_dict, col_id)) then
+                  pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
+               else
+                  message = "Could not find cell " // trim(to_str(col_id)) // &
+                       " specified in plot " // trim(to_str(pl % id))
+                  call fatal_error()
+               end if
+
+            else if (pl % color_by == PLOT_COLOR_MATS) then
+
+               if (dict_has_key(material_dict, col_id)) then
+                  pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
+               else
+                  message = "Could not find material " // trim(to_str(col_id)) // &
+                       " specified in plot " // trim(to_str(pl % id))
+                  call fatal_error()
+               end if
+
+            end if
+         end do
+      end if
+
+      ! Alter colors based on mask information
+      if (associated(plot_(i) % mask_)) then
+         if (size(plot_(i) % mask_) > 1) then
+            message = "Mutliple masks" // &
+                 " specified in plot " // trim(to_str(pl % id))
+            call fatal_error()
+         else if (.not. size(plot_(i) % mask_) == 0) then
+            do j=1,size(pl % colors)
+               if (.not. any(j .eq. plot_(i) % mask_(1) % components)) then
+                  pl % colors(j) % rgb = plot_(i) % mask_(1) % background
+               end if
+            end do
+         end if
+      end if
 
     end do
 

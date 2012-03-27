@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <tally id="1">
+    <filters>
+      <cell>100</cell>
+    </filters>
+    <scores>total scatter nu-scatter absorption fission nu-fission</scores>
+  </tally>
+
+  <tally id="2">
+    <filters>
+      <cell>100</cell>
+      <energy>0 20.0</energy>
+    </filters>
+    <scores>total scatter nu-scatter absorption fission nu-fission</scores>
+  </tally>
+
+  <tally id="3">
+    <filters>
+      <cell>100</cell>
+      <energy>0 20.0</energy>
+      <energyout>0 20.0</energyout>
+    </filters>
+    <scores>scatter nu-scatter nu-fission</scores>
+  </tally>
+
+</tallies>

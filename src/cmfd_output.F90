@@ -339,11 +339,11 @@ contains
     end if
 
     ! write out cmfd eigenvector
-    dim1 = (/cmfd%mat_dim*cmfd%indices(4)/)
-    call h5screate_simple_f(1,dim1,dataspace_id,hdf5_err)
+    dim4 = (/ng,nx,ny,nz/)
+    call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
     call h5dcreate_f(hdf5_output_file,trim(cycname)//"/cmfd_source",             &
    &                 H5T_NATIVE_DOUBLE,dataspace_id,dataset_id,hdf5_err)
-    call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%source,dim1,hdf5_err)
+    call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%source,dim4,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
 
     ! write out openmc source vector

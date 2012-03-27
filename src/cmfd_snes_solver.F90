@@ -138,7 +138,7 @@ contains
     call SNESSetLagPreconditioner(snes,-1,ierr)
 
     ! set convergence
-    call SNESSetTolerances(snes,1.0e-8_8,1.0e-8_8,1.0e-8_8,50,10000,ierr)
+!   call SNESSetTolerances(snes,1.0e-8_8,1.0e-8_8,1.0e-8_8,50,10000,ierr)
 
     ! set SNES options
     call SNESSetFromOptions(snes,ierr)

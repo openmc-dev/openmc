@@ -23,6 +23,7 @@ cmfd_execute.o: cmfd_output.o
 cmfd_execute.o: cmfd_power_solver.o
 cmfd_execute.o: cmfd_slepc_solver.o
 cmfd_execute.o: cmfd_snes_solver.o
+cmfd_execute.o: tally.o
 cmfd_execute.o: timing.o
 
 cmfd_input.o: datatypes.o

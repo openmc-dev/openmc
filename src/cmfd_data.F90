@@ -536,6 +536,7 @@ contains
 
               ! record dtilde in cmfd object
               cmfd%dhat(l,g,i,j,k) = dhat
+!             cmfd%dhat(l,g,i,j,k) = 0.0_8
 
             end do LEAK
 

@@ -34,7 +34,7 @@ contains
     call petsc_init_mpi()
 
     ! filter procs
-    if (rank < 6) then
+    if (rank < 1) then
 
       ! initialize slepc/petsc (communicates to world)
       if(current_cycle == n_inactive + 1) call SlepcInitialize                 &
@@ -59,6 +59,7 @@ contains
 
       ! execute snes solver
       call cmfd_snes_execute()
+!     call cmfd_slepc_execute()
       
       ! only run if master process
       if (master) then
@@ -136,6 +137,44 @@ contains
 !===============================================================================
 ! PETSC_INIT_MPI
 !===============================================================================
+!
+! subroutine petsc_init_mpi()
+!
+!   integer               :: new_comm   ! new communicator
+!   integer               :: orig_group ! original MPI group for MPI_COMM_WORLD
+!   integer               :: new_group  ! new MPI group subset of orig_group
+!   integer,allocatable   :: ranks(:)   ! ranks to include for petsc
+!   integer               :: k          ! iteration counter
+!
+!   ! set ranks 0-6 or min
+!   if (n_procs >= 6) then
+!     if (.not. allocated(ranks)) allocate(ranks(0:5))
+!     ranks = (/0,1,2,3,4,5/)
+!   else
+!     if (.not. allocated(ranks)) allocate(ranks(0:n_procs-1))
+!     ranks = (/(k,k=0,n_procs-1)/) 
+!   end if
+!
+!   ! get the original mpi group
+!   call MPI_COMM_GROUP(MPI_COMM_WORLD,orig_group,mpi_err)
+!
+!   ! new group init
+!   call MPI_GROUP_INCL(orig_group,size(ranks),ranks,new_group,mpi_err)
+!
+!   ! create new communicator
+!   call MPI_COMM_CREATE(MPI_COMM_WORLD,new_group,new_comm,mpi_err)
+!
+!   ! deallocate ranks
+!   if (allocated(ranks)) deallocate(ranks)
+!
+!   ! set PETSC_COMM_WORLD to this subset
+!   PETSC_COMM_WORLD = new_comm
+!
+! end subroutine petsc_init_mpi
+
+!===============================================================================
+! PETSC_INIT_MPI
+!===============================================================================
 
   subroutine petsc_init_mpi()
 
@@ -144,28 +183,31 @@ contains
     integer               :: new_group  ! new MPI group subset of orig_group
     integer,allocatable   :: ranks(:)   ! ranks to include for petsc
     integer               :: k          ! iteration counter
+    integer               :: nprocs
+
+    nprocs = 1
 
     ! set ranks 0-6 or min
-    if (n_procs >= 6) then
+    if (nprocs >= 6) then
       if (.not. allocated(ranks)) allocate(ranks(0:5))
       ranks = (/0,1,2,3,4,5/)
     else
-      if (.not. allocated(ranks)) allocate(ranks(0:n_procs-1))
-      ranks = (/(k,k=0,n_procs-1)/) 
+      if (.not. allocated(ranks)) allocate(ranks(0:nprocs-1))
+      ranks = (/(k,k=0,nprocs-1)/) 
     end if
-
+    
     ! get the original mpi group
     call MPI_COMM_GROUP(MPI_COMM_WORLD,orig_group,mpi_err)
-
+    
     ! new group init
     call MPI_GROUP_INCL(orig_group,size(ranks),ranks,new_group,mpi_err)
-
+    
     ! create new communicator
     call MPI_COMM_CREATE(MPI_COMM_WORLD,new_group,new_comm,mpi_err)
-
+    
     ! deallocate ranks
     if (allocated(ranks)) deallocate(ranks)
-
+    
     ! set PETSC_COMM_WORLD to this subset
     PETSC_COMM_WORLD = new_comm
 

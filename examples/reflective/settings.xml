@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <settings>
 
-  <!-- Path for cross section library -->
-  <cross_sections>
-      /home/paulromano/openmc/cross_sections_serpent.xml
-  </cross_sections>
-
   <!-- Parameters for criticality calculation -->
   <criticality>
-    <cycles>500</cycles>
+    <batches>500</batches>
     <inactive>10</inactive>
     <particles>10000</particles>
   </criticality>

@@ -22,8 +22,6 @@ module ace
   real(8), allocatable :: XSS(:) ! Cross section data
   integer :: XSS_index           ! current index in XSS data
 
-  type(DictionaryCI), pointer :: already_read => null()
-
   private :: NXS
   private :: JXS
   private :: XSS
@@ -47,6 +45,7 @@ contains
     type(Material),  pointer :: mat => null()
     type(Nuclide),   pointer :: nuc => null()
     type(SAB_Table), pointer :: sab => null()
+    type(DictionaryCI), pointer :: already_read => null()
 
     ! ==========================================================================
     ! COUNT NUMBER OF TABLES AND CREATE DICTIONARIES
@@ -154,6 +153,8 @@ contains
              name  = xs_listings(index_list) % name
              alias = xs_listings(index_list) % alias
 
+             ! Read the ACE table into the appropriate entry on the nuclides
+             ! array
              call read_ace_table(index_nuclides, index_list)
 
              ! Print out information on table to cross_sections.out file
@@ -172,6 +173,8 @@ contains
              index_list = dict_get_key(xs_listing_dict, name)
              index_sab  = dict_get_key(sab_dict, name)
 
+             ! Read the ACE table into the appropriate entry on the sab_tables
+             ! array
              call read_ace_table(index_sab, index_list)
 
              call dict_add_key(already_read, name, 0)

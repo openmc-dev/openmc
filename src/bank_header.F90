@@ -9,6 +9,11 @@ module bank_header
 !===============================================================================
 
   type Bank
+     ! The 'sequence' attribute is used here to ensure that the data listed
+     ! appears in the given order. This is important for MPI purposes when bank
+     ! sites are sent from one processor to another.
+     sequence
+
      integer(8) :: id     ! Unique ID
      real(8)    :: xyz(3) ! location of bank particle
      real(8)    :: uvw(3) ! diretional cosines

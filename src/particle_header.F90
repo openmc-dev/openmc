@@ -52,7 +52,8 @@ module particle_header
      real(8)    :: last_E        ! last energy
 
      ! What event last took place
-     integer    :: event
+     integer    :: event         ! scatter, absorption, fission
+     integer    :: event_nuclide ! index in nuclides array
 
      ! Post-collision physical data
      integer    :: n_bank        ! number of fission sites banked

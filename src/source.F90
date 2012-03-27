@@ -1,7 +1,7 @@
 module source
 
   use bank_header,     only: Bank
-  use constants,       only: ONE
+  use constants
   use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
   use global
@@ -10,6 +10,10 @@ module source
   use physics,         only: watt_spectrum
   use random_lcg,      only: prn, set_particle_seed
   use string,          only: to_str
+
+#ifdef MPI
+  use mpi
+#endif
 
   implicit none
 
@@ -43,6 +47,13 @@ contains
     ! Determine maximum amount of particles to simulate on each processor
     maxwork = ceiling(real(n_particles)/n_procs,8)
 
+    ! ID's of first and last source particles
+    bank_first = rank*maxwork + 1
+    bank_last  = min((rank+1)*maxwork, n_particles)
+
+    ! number of particles for this processor
+    work = bank_last - bank_first + 1
+
     ! Allocate source bank
     allocate(source_bank(maxwork), STAT=alloc_err)
     if (alloc_err /= 0) then
@@ -69,16 +80,16 @@ contains
        call fatal_error()
     end if
 
+    ! Read the source from a binary file instead of sampling from some assumed
+    ! source distribution
+    if (external_source % type == SRC_FILE) then
+       call read_source_binary()
+       return
+    end if
+
     ! Initialize first cycle source bank
     do i = 0, n_procs - 1
        if (rank == i) then
-          ! ID's of first and last source particles
-          bank_first = rank*maxwork + 1
-          bank_last  = min((rank+1)*maxwork, n_particles)
-
-          ! number of particles for this processor
-          work = bank_last - bank_first + 1
-
           do j = 1, work
              id = bank_first + j - 1
              source_bank(j) % id = id
@@ -93,6 +104,8 @@ contains
                 p_max = external_source % values(4:6)
                 r = (/ (prn(), k = 1,3) /)
                 source_bank(j) % xyz = p_min + r*(p_max - p_min)
+             case (SRC_POINT)
+                source_bank(j) % xyz = external_source % values
              end select
 
              ! sample angle
@@ -145,12 +158,13 @@ contains
     p % id = bank_first + index_source - 1
 
     ! set random number seed
-    particle_seed = (current_cycle - 1)*n_particles + p % id
+    particle_seed = ((current_batch - 1)*gen_per_batch + & 
+         current_gen - 1)*n_particles + p % id
     call set_particle_seed(particle_seed)
           
     ! set particle trace
     trace = .false.
-    if (current_cycle == trace_cycle .and. &
+    if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
          p % id == trace_particle) trace = .true.
 
   end subroutine get_source_particle
@@ -185,5 +199,129 @@ contains
     p % coord             => p % coord0
 
   end subroutine initialize_particle
+
+!===============================================================================
+! WRITE_SOURCE writes out the final source distribution to a binary file that
+! can be used as a starting source in a new simulation
+!===============================================================================
+
+  subroutine write_source_binary()
+    
+#ifdef MPI
+    integer                  :: fh     ! file handle
+    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
+
+    ! ==========================================================================
+    ! PARALLEL I/O USING MPI-2 ROUTINES
+
+    ! Open binary source file for reading
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, 'source.binary', MPI_MODE_CREATE + &
+         MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
+
+    if (master) then
+       offset = 0
+       call MPI_FILE_WRITE_AT(fh, offset, n_particles, 1, MPI_INTEGER8, &
+            MPI_STATUS_IGNORE, mpi_err)
+    end if
+
+    ! Set proper offset for source data on this processor
+    offset = 8*(1 + rank*maxwork*8)
+
+    ! Write all source sites
+    call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Close binary source file
+    call MPI_FILE_CLOSE(fh, mpi_err)
+
+#else
+    ! ==========================================================================
+    ! SERIAL I/O USING FORTRAN INTRINSIC ROUTINES
+
+    ! Open binary source file for writing
+    open(UNIT=UNIT_SOURCE, FILE='source.binary', STATUS='replace', &
+         ACCESS='stream')
+
+    ! Write the number of particles
+    write(UNIT=UNIT_SOURCE) n_particles
+
+    ! Write information from the source bank
+    write(UNIT=UNIT_SOURCE) source_bank(1:work)
+
+    ! Close binary source file
+    close(UNIT=UNIT_SOURCE)
+#endif
+
+  end subroutine write_source_binary
+
+!===============================================================================
+! READ_SOURCE reads a source distribution from a source.binary file and
+! initializes the source bank
+!===============================================================================
+
+  subroutine read_source_binary()
+
+    integer(8) :: n_sites ! number of sites in binary file
+#ifdef MPI
+    integer                  :: fh     ! file handle
+    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
+#endif
+
+#ifdef MPI
+    ! ==========================================================================
+    ! PARALLEL I/O USING MPI-2 ROUTINES
+
+    ! Open binary source file for reading
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, 'source.binary', MPI_MODE_RDONLY, &
+         MPI_INFO_NULL, fh, mpi_err)
+
+    ! Read number of source sites in file
+    offset = 0
+    call MPI_FILE_READ_AT(fh, offset, n_sites, 1, MPI_INTEGER8, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Check that number of source sites matches
+    if (n_sites /= n_particles) then
+       message = "No support yet for source files of different size than &
+            &specified number of particles per generation."
+       call fatal_error()
+    end if
+
+    ! Set proper offset for source data on this processor
+    offset = 8*(1 + rank*maxwork*8)
+
+    ! Read all source sites
+    call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Close binary source file
+    call MPI_FILE_CLOSE(fh, mpi_err)
+
+#else
+    ! ==========================================================================
+    ! SERIAL I/O USING FORTRAN INTRINSIC ROUTINES
+
+    ! Open binary source file for reading
+    open(UNIT=UNIT_SOURCE, FILE='source.binary', STATUS='old', &
+         ACCESS='stream')
+
+    ! Read number of source sites in file
+    read(UNIT=UNIT_SOURCE) n_sites
+
+    ! Check that number of source sites matches
+    if (n_sites /= n_particles) then
+       message = "No support yet for source files of different size than &
+            &specified number of particles per generation."
+       call fatal_error()
+    end if
+
+    ! Read position, angle, and energy
+    read(UNIT=UNIT_SOURCE) source_bank(1:work)
+
+    ! Close binary source file
+    close(UNIT=UNIT_SOURCE)
+#endif
+
+  end subroutine read_source_binary
 
 end module source

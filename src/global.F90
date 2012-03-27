@@ -83,7 +83,8 @@ module global
   type(DictionaryCI), pointer :: xs_listing_dict => null()
 
   ! Unionized energy grid
-  integer              :: n_grid    ! number of points on unionized grid
+  integer :: grid_method ! how to treat the energy grid
+  integer :: n_grid      ! number of points on unionized grid
   real(8), allocatable :: e_grid(:) ! energies on unionized grid
 
   ! Unreoslved resonance probablity tables
@@ -126,11 +127,13 @@ module global
   ! ============================================================================
   ! CRITICALITY SIMULATION VARIABLES
 
-  integer(8) :: n_particles = 10000 ! # of particles per cycle
-  integer    :: n_cycles    = 500   ! # of cycles
-  integer    :: n_inactive  = 50    ! # of inactive cycles
-  integer    :: n_active            ! # of active cycles
-  integer    :: current_cycle = 0   ! current cycle
+  integer(8) :: n_particles       ! # of particles per generation
+  integer    :: n_batches         ! # of batches
+  integer    :: n_inactive        ! # of inactive batches
+  integer    :: n_active          ! # of active batches
+  integer    :: gen_per_batch = 1 ! # of generations per batch
+  integer    :: current_batch = 0 ! current batch
+  integer    :: current_gen   = 0 ! current generation
 
   ! Random Number seed
   integer(8) :: seed = 1_8
@@ -147,15 +150,18 @@ module global
   integer(8) :: work         ! number of particles per processor
   integer(8) :: maxwork      ! maximum number of particles per processor
 
-  ! cycle keff
+  ! single-genreation keff
   real(8) :: keff = ONE
   real(8) :: keff_std
 
   ! Shannon entropy
   logical :: entropy_on = .false.
-  real(8) :: entropy                   ! value of shannon entropy
-  real(8), allocatable :: entropy_p(:) ! fraction of source sites in each cell
+  real(8) :: entropy                       ! value of shannon entropy
+  real(8), allocatable :: entropy_p(:,:,:) ! % of source sites in each cell
   type(StructuredMesh), pointer :: entropy_mesh
+
+  ! Write source at end of simulation
+  logical :: write_source = .false.
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
@@ -212,6 +218,9 @@ module global
   ! Message used in message/warning/fatal_error
   character(MAX_LINE_LEN) :: message
 
+  ! Random number seed
+  integer(8) :: seed = 1_8
+
   ! Problem type
   integer :: problem_type = PROB_CRITICALITY
 
@@ -221,7 +230,8 @@ module global
 
   ! Trace for single particle
   logical    :: trace
-  integer    :: trace_cycle
+  integer    :: trace_batch
+  integer    :: trace_gen
   integer(8) :: trace_particle
 
   ! ============================================================================

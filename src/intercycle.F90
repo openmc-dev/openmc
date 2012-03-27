@@ -4,13 +4,13 @@ module intercycle
 
   use error,           only: fatal_error, warning
   use global
-  use mesh,            only: get_mesh_bin
+  use mesh,            only: count_fission_sites
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message
   use random_lcg,      only: prn, set_particle_seed, prn_skip
   use search,          only: binary_search
   use string,          only: to_str
-  use tally,           only: accumulate_cycle_estimate
+  use tally,           only: accumulate_batch_estimate
   use tally_header,    only: TallyObject
   use timing,          only: timer_start, timer_stop
 
@@ -22,8 +22,8 @@ contains
 
 !===============================================================================
 ! SYNCHRONIZE_BANK samples source sites from the fission sites that were
-! accumulated during the cycle. This routine is what allows this Monte Carlo to
-! scale to large numbers of processors where other codes cannot.
+! accumulated during the generation. This routine is what allows this Monte
+! Carlo to scale to large numbers of processors where other codes cannot.
 !===============================================================================
 
   subroutine synchronize_bank()
@@ -73,7 +73,7 @@ contains
     total  = n_bank
 #endif
 
-    ! If there are not that many particles per cycle, it's possible that no
+    ! If there are not that many particles per generation, it's possible that no
     ! fission sites were created at all on a single processor. Rather than add
     ! extra logic to treat this circumstance, we really want to ensure the user
     ! runs enough particles to avoid this in the first place.
@@ -83,12 +83,12 @@ contains
        call fatal_error()
     end if
 
-    ! Make sure all processors start at the same point for random sampling by
-    ! using the current_cycle as the starting seed. Then skip ahead in the
-    ! sequence using the starting index in the 'global' fission bank for each
-    ! processor Skip ahead however many random numbers are needed
+    ! Make sure all processors start at the same point for random sampling. Then
+    ! skip ahead in the sequence using the starting index in the 'global'
+    ! fission bank for each processor.
 
-    call set_particle_seed(int(current_cycle,8))
+    call set_particle_seed(int((current_batch - 1)*gen_per_batch + &
+         current_gen,8))
     call prn_skip(start)
 
     ! Determine how many fission sites we need to sample from the source bank
@@ -257,20 +257,22 @@ contains
 
     ! Send we initiated a series of asynchronous ISENDs and IRECVs, now we have
     ! to ensure that the data has actually been communicated before moving on to
-    ! the next cycle
+    ! the next generation
 
     call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
 
-    ! Deallocate space for bank_position on the last cycle
-    if (current_cycle == n_cycles) deallocate(bank_position)
+    ! Deallocate space for bank_position on the very last generation
+    if (current_batch == n_batches .and. current_gen == gen_per_batch) &
+         deallocate(bank_position)
 #else
     source_bank = temp_sites(1:n_particles)
 #endif
 
     call timer_stop(time_ic_sendrecv)
 
-    ! Deallocate space for the temporary source bank on the last cycle
-    if (current_cycle == n_cycles) deallocate(temp_sites)
+    ! Deallocate space for the temporary source bank on the last generation
+    if (current_batch == n_batches .and. current_gen == gen_per_batch) &
+         deallocate(temp_sites)
 
   end subroutine synchronize_bank
 
@@ -281,12 +283,10 @@ contains
 
   subroutine shannon_entropy()
 
-    integer :: i              ! index for bank sites
+    integer :: i, j, k        ! index for bank sites
     integer :: n              ! # of boxes in each dimension
-    integer :: bin            ! index in entropy_p
-    integer(8) :: total_bank  ! total # of fission bank sites
-    integer, save :: n_box    ! total # of boxes on mesh
-    logical :: outside_box    ! were there sites outside entropy box?
+    real(8) :: total          ! total weight of fission bank sites
+    logical :: sites_outside    ! were there sites outside entropy box?
     type(StructuredMesh), pointer :: m => null()
 
     ! Get pointer to entropy mesh
@@ -310,96 +310,61 @@ contains
           m % dimension = n
        end if
 
-       ! Determine total number of mesh boxes
-       n_box = product(m % dimension)
-
        ! allocate and determine width
        allocate(m % width(3))
        m % width = (m % upper_right - m % lower_left) / m % dimension
 
        ! allocate p
-       allocate(entropy_p(n_box))
+       allocate(entropy_p(m % dimension(1), m % dimension(2), &
+            m % dimension(3)))
     end if
 
-    ! initialize p
-    entropy_p = ZERO
-    outside_box = .false.
-
-    ! loop over fission sites and count how many are in each mesh box
-    FISSION_SITES: do i = 1, int(n_bank,4)
-       ! determine scoring bin for entropy mesh
-       call get_mesh_bin(m, fission_bank(i) % xyz, bin)
-
-       ! if outside mesh, skip particle
-       if (bin == NO_BIN_FOUND) then
-          outside_box = .true.
-          cycle
-       end if
-
-       ! add to appropriate mesh box
-       entropy_p(bin) = entropy_p(bin) + 1
-    end do FISSION_SITES
+    ! count number of fission sites over mesh
+    call count_fission_sites(m, entropy_p, total, sites_outside)
 
     ! display warning message if there were sites outside entropy box
-    if (outside_box) then
+    if (sites_outside) then
        message = "Fission source site(s) outside of entropy box."
        call warning()
     end if
 
-#ifdef MPI
-    ! collect values from all processors
-    if (master) then
-       call MPI_REDUCE(MPI_IN_PLACE, entropy_p, n_box, MPI_REAL8, MPI_SUM, &
-            0, MPI_COMM_WORLD, mpi_err)
-    else
-       call MPI_REDUCE(entropy_p, entropy_p, n_box, MPI_REAL8, MPI_SUM, &
-            0, MPI_COMM_WORLD, mpi_err)
-    end if
-
-    ! determine total number of bank sites
-    call MPI_REDUCE(n_bank, total_bank, 1, MPI_INTEGER8, MPI_SUM, 0, &
-         MPI_COMM_WORLD, mpi_err)
-#else
-    total_bank = n_bank
-#endif
-
     ! sum values to obtain shannon entropy
     if (master) then
-       ! Normalize to number of bank sites
-       entropy_p = entropy_p / total_bank
+       ! Normalize to total weight of bank sites
+       entropy_p = entropy_p / total
 
        entropy = 0
-       do i = 1, n_box
-          if (entropy_p(i) > 0) then
-             entropy = entropy - entropy_p(i) * log(entropy_p(i))/log(2.0)
-          end if
+       do i = 1, m % dimension(1)
+          do j = 1, m % dimension(2)
+             do k = 1, m % dimension(3)
+                if (entropy_p(i,j,k) > ZERO) then
+                   entropy = entropy - entropy_p(i,j,k) * &
+                        log(entropy_p(i,j,k))/log(2.0)
+                end if
+             end do
+          end do
        end do
     end if
 
   end subroutine shannon_entropy
 
 !===============================================================================
-! CALCULATE_KEFF calculates the single cycle estimate of keff as well as the
-! mean and standard deviation of the mean for active cycles and displays them
+! CALCULATE_KEFF calculates the single batch estimate of keff as well as the
+! mean and standard deviation of the mean for active batches and displays them
 !===============================================================================
 
   subroutine calculate_keff()
 
-    integer :: n        ! active cycle number
-    real(8) :: k_cycle  ! single cycle estimate of keff
+    integer :: n        ! active batch number
+    real(8) :: k_batch  ! single batch estimate of keff
 #ifdef MPI
     real(8) :: global_temp(N_GLOBAL_TALLIES)
 #endif
 
-    message = "Calculate cycle keff..."
+    message = "Calculate batch keff..."
     call write_message(8)
 
-    ! Since the creation of bank sites was originally weighted by the last
-    ! cycle keff, we need to multiply by that keff to get the current cycle's
-    ! value
 #ifdef MPI
-    global_tallies(K_ANALOG) % value = n_bank * keff
-
     ! Copy global tallies into array to be reduced
     global_temp = global_tallies(:) % value
 
@@ -416,59 +381,65 @@ contains
        ! Reset value on other processors
        global_tallies(:) % value = ZERO
     end if
-#else
-    global_tallies(K_ANALOG) % value = n_bank * keff
 #endif
 
     ! Collect statistics and print output
     if (master) then
-       k_cycle = global_tallies(K_ANALOG) % value/n_particles
+       k_batch = global_tallies(K_ANALOG) % value/(n_particles*gen_per_batch)
 
-       if (current_cycle > n_inactive) then
-          ! Active cycle number
-          n = current_cycle - n_inactive
+       if (tallies_on) then
+          ! Active batch number
+          n = current_batch - n_inactive
 
-          ! Accumulate single cycle realizations of k
-          call accumulate_cycle_estimate(global_tallies)
+          ! Accumulate single batch realizations of k
+          call accumulate_batch_estimate(global_tallies)
 
-          ! Determine mean and standard deviation of mean
+          ! Determine sample mean of keff
           keff = global_tallies(K_ANALOG) % sum/n
-          keff_std = sqrt((global_tallies(K_ANALOG) % sum_sq/n - keff*keff)/n)
 
-          ! Display output for this cycle
-          if (current_cycle > n_inactive + 1) then
+          ! Display output for this batch
+          if (current_batch > n_inactive + 1) then
+             ! Determine standard deviation of the sample mean of keff
+             keff_std = sqrt((global_tallies(K_ANALOG) % sum_sq/n - &
+                  keff*keff)/(n - 1))
+
              if (entropy_on) then
                 if (cmfd_on) then
-                  write(UNIT=OUTPUT_UNIT, FMT=104) current_cycle, k_cycle, &
+                  write(UNIT=OUTPUT_UNIT, FMT=104) current_batch, k_batch, &
                        entropy, keff, keff_std, cmfd%keff, cmfd%entropy
                 else
-                  write(UNIT=OUTPUT_UNIT, FMT=103) current_cycle, k_cycle, &
+                  write(UNIT=OUTPUT_UNIT, FMT=103) current_batch, k_batch, &
                        entropy, keff, keff_std
                 end if
              else
                 if (cmfd_on) then
-                  write(UNIT=OUTPUT_UNIT, FMT=105) current_cycle, k_cycle, &
+                  write(UNIT=OUTPUT_UNIT, FMT=105) current_batch, k_batch, &
                        keff, keff_std, cmfd%keff
                 else
-                  write(UNIT=OUTPUT_UNIT, FMT=101) current_cycle, k_cycle, &
+                  write(UNIT=OUTPUT_UNIT, FMT=101) current_batch, k_batch, &
                        keff, keff_std
                 end if
              end if
           else
              if (entropy_on) then
-                write(UNIT=OUTPUT_UNIT, FMT=102) current_cycle, k_cycle, entropy
+                write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, k_batch, entropy
              else
-                write(UNIT=OUTPUT_UNIT, FMT=100) current_cycle, k_cycle
+                write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, k_batch
              end if
           end if
        else
-          ! Display output for inactive cycle
+          ! Display output for inactive batch
           if (entropy_on) then
-             write(UNIT=OUTPUT_UNIT, FMT=102) current_cycle, k_cycle, entropy
+             write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, k_batch, entropy
           else
-             write(UNIT=OUTPUT_UNIT, FMT=100) current_cycle, k_cycle
+             write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, k_batch
           end if
-          keff = k_cycle
+
+          ! Set keff
+          keff = k_batch
+
+          ! Reset tally values
+          global_tallies(:) % value = ZERO
        end if
     end if
 

@@ -13,7 +13,7 @@ module timing
   type Timer
      logical :: running      = .false. ! is timer running?
      integer :: start_counts = 0       ! counts when started
-     real(8) :: elapsed      = 0.      ! total time elapsed in seconds
+     real(8) :: elapsed      = ZERO    ! total time elapsed in seconds
 !!$   contains
 !!$     procedure :: start     => timer_start
 !!$     procedure :: get_value => timer_get_value
@@ -24,7 +24,7 @@ module timing
 contains
 
 !===============================================================================
-! TIMER_START
+! TIMER_START starts running a timer and measures the current time
 !===============================================================================
 
   subroutine timer_start(self)
@@ -38,7 +38,7 @@ contains
   end subroutine timer_start
 
 !===============================================================================
-! TIMER_GET_VALUE
+! TIMER_GET_VALUE returns the current value of the timer
 !===============================================================================
 
   function timer_get_value(self) result(elapsed)
@@ -61,7 +61,7 @@ contains
   end function timer_get_value
 
 !===============================================================================
-! TIMER_STOP
+! TIMER_STOP stops the timer and sets the elapsed time
 !===============================================================================
 
   subroutine timer_stop(self)
@@ -78,7 +78,7 @@ contains
   end subroutine timer_stop
 
 !===============================================================================
-! TIMER_RESET
+! TIMER_RESET resets a timer to have a zero value
 !===============================================================================
 
   subroutine timer_reset(self)

@@ -37,7 +37,7 @@ contains
     ! Create dictionary for keeping track of cross sections already added
     call dict_create(already_added)
 
-    ! Loop over all files
+    ! Loop over all materials
     do i = 1, n_materials
        mat => materials(i)
 

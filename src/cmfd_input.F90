@@ -237,13 +237,14 @@ contains
         t % filters = filters(1:n_filters)
 
         ! allocate macro reactions
-        allocate(t % score_bins(3))
-        t % n_score_bins = 3
+        allocate(t % score_bins(4))
+        t % n_score_bins = 4
 
         ! set macro_bins
         t % score_bins(1) % scalar = SCORE_FLUX
         t % score_bins(2) % scalar = SCORE_TOTAL
         t % score_bins(3) % scalar = SCORE_SCATTER_1
+        t % score_bins(4) % scalar = SCORE_DIFFUSION
 
         ! Increment the appropriate index and set pointer
         analog_tallies(1) = 1

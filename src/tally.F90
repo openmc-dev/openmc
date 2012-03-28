@@ -748,13 +748,13 @@ contains
     ! DETERMINE WHICH MESH CELLS TO SCORE TO
 
     ! Calculate number of surface crossings
-    n_cross = sum(abs(ijk1 - ijk0)) + 1
+    n_cross = sum(abs(ijk1(:m % n_dimension) - ijk0(:m % n_dimension))) + 1
 
     ! Copy particle's direction
     uvw = p % coord0 % uvw
 
     ! Bounding coordinates
-    do j = 1, 3
+    do j = 1, m % n_dimension
        if (uvw(j) > 0) then
           xyz_cross(j) = m % lower_left(j) + ijk0(j) * m % width(j)
        else
@@ -771,7 +771,7 @@ contains
 
        if (k == n_cross) xyz_cross = xyz1
           
-       do j = 1, 3
+       do j = 1, m % n_dimension
           if (uvw(j) == 0) then
              d(j) = INFINITY
           else
@@ -782,13 +782,13 @@ contains
        ! Determine the closest bounding surface of the mesh cell by calculating
        ! the minimum distance
           
-       j = minloc(d, 1)
+       j = minloc(d(:m % n_dimension), 1)
        distance = d(j)
 
        ! Now use the minimum distance and diretion of the particle to determine
        ! which surface was crossed
 
-       if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
+       if (all(ijk0(:m % n_dimension) >= 1) .and. all(ijk0(:m % n_dimension) <= m % dimension)) then
           ijk_cross = ijk0
           found_bin = .true.
        end if

@@ -81,7 +81,8 @@ contains
     ijk = ceiling((xyz - m % lower_left)/m % width)
 
     ! Determine if particle is in mesh
-    if (any(ijk < 1) .or. any(ijk > m % dimension)) then
+    if (any(ijk(:m % n_dimension) < 1) .or. &
+        any(ijk(:m % n_dimension) > m % dimension)) then
        in_mesh = .false.
     else
        in_mesh = .true.

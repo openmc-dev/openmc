@@ -3,7 +3,8 @@ module cmfd_execute
   use cmfd_data,         only: set_up_cmfd
   use cmfd_output,       only: write_cmfd_vtk
   use global,            only: cmfd,cmfd_only,time_cmfd,master,rank,mpi_err,   &
- &                             current_cycle,n_inactive,n_cycles,n_procs,n_procs_cmfd
+ &                             current_batch,n_inactive,n_batches,n_procs,     &
+ &                             n_procs_cmfd
   use timing,            only: timer_start,timer_stop,timer_reset
 
 
@@ -37,7 +38,7 @@ contains
     if (rank < 1) then
 
       ! initialize slepc/petsc (communicates to world)
-      if(current_cycle == n_inactive + 1) call SlepcInitialize                 &
+      if(current_batch == n_inactive + 1) call SlepcInitialize                 &
      &                                       (PETSC_NULL_CHARACTER,ierr)
 
       ! set global variable for number of procs in cmfd calc
@@ -76,7 +77,7 @@ contains
       end if
 
       ! finalize slepc
-      if (current_cycle == n_cycles) call SlepcFinalize(ierr)
+      if (current_batch == n_batches) call SlepcFinalize(ierr)
 
     end if
 

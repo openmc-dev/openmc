@@ -54,7 +54,6 @@ contains
 
     ! Display column titles
     if (entropy_on) then
-<<<<<<< HEAD:src/main.F90
       if (cmfd_on) then
        message = " Cycle   k(batch)   Entropy         Average k         CMFD k    CMFD Ent."
        call write_message(1)

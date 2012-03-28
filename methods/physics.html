@@ -1,0 +1,149 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>3. Physics &mdash; OpenMC Documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.4.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="../index.html" />
+    <link rel="up" title="Theory and Methodology" href="index.html" />
+    <link rel="next" title="4. Tallies" href="tallies.html" />
+    <link rel="prev" title="2. Geometry" href="geometry.html" /> 
+  </head>
+  <body>
+      <div class="header">
+        <a href="../index.html">
+          <img class="logo" src="../_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="geometry.html">2. Geometry</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="tallies.html">4. Tallies</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="physics">
+<span id="methods-physics"></span><h1>3. Physics<a class="headerlink" href="#physics" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="free-gas-scattering-kinematics">
+<h2>3.1. Free Gas Scattering Kinematics<a class="headerlink" href="#free-gas-scattering-kinematics" title="Permalink to this headline">¶</a></h2>
+<p>When a neutron scatters off of a nucleus, many times it is assumed that the
+target nucleus is at rest. However, if the material is at a temperature greater
+than 0 K, it will have motion associated with the thermal vibration. Thus, the
+velocity of the neutrno relative to the target nucleus is in general not the
+same as the velocity of the neutron entering the collision.</p>
+<p>The affect of the thermal motion on the interaction probability can be written
+as</p>
+<div class="math" id="equation-freegas1">
+<p><span class="eqno">(1)</span><img src="../_images/math/db25952de85aad3ab2e5021f9bef21af86c4412b.png" alt="v_n \sigma (v_n, T) = \int_0^\infty d\mathbf{v}_T \sigma(v_r, 0)
+\mathbf{v}_r p(\mathbf{v}_T)"/></p>
+</div><p>One assumption we can make here is that the velocity distribution for the
+thermal motion is isotropic, i.e.</p>
+<div class="math" id="equation-freegas2">
+<p><span class="eqno">(2)</span><img src="../_images/math/24b2a39a312faab1a8bdb1f47c259f55fa7ce423.png" alt="p(\mathbf{v}_T) d\mathbf{v}_T = \frac{1}{4\pi} p(v_T) dv_T d\mu d\phi"/></p>
+</div><p>With this assumption, we can now rewrite equation <a href="#equation-freegas1">(1)</a> as</p>
+<div class="math" id="equation-freegas3">
+<p><span class="eqno">(3)</span><img src="../_images/math/8b08005bd89e764367f2bc021edb8a49adb05939.png" alt="v_n \sigma (v_n, T) = \frac{1}{2} \int_{-1}^1 d\mu \int\limits_{v_r &gt; 0}
+v_r \sigma (v_r, 0) p(v_T) dv_T"/></p>
+</div><p>To change the outer variable of integration from <img class="math" src="../_images/math/2d8c833ed800824727cd7bd2fb9de1a12ad7e674.png" alt="\mu"/> to <img class="math" src="../_images/math/d7894ae3288ad5bc502fe262d7a4da6475d65284.png" alt="v_r"/>, we
+can establish a relation between these variables based on the law of cosines.</p>
+<div class="math" id="equation-lawcosine">
+<p><span class="eqno">(4)</span><img src="../_images/math/22894185a4626c5744e7def1ebf1a8cce3b4b75b.png" alt="2 v_n v_T \mu = v_n^2 + v_T^2 - v_r^2"/></p>
+</div><p>The probability distribution for the magnitude of the velocity of the target
+nucleus and the angle between the neutron and target velocity is</p>
+<div class="math" id="equation-freegas4">
+<p><span class="eqno">(5)</span><img src="../_images/math/14c6609efaa364753fa5a4e4107b712efc452d4f.png" alt="P(v_T, \mu) = \frac{\sigma (v_r, 0) v_r P(v_T)}{2 \sigma (v_n, T) v_n}"/></p>
+</div><p>It is normally assumed that <img class="math" src="../_images/math/721e7751ac40592f56d87682fdfbeb87c369d639.png" alt="\sigma (v_r, 0)"/> is constant over the range
+of relative velocities of interest. This is a good assumption for almost all
+cases since the elastic scattering cross section varies slowly with velocity for
+light nuclei, and for heavy nuclei where large variations can occur due to
+resonance scattering, the moderating effect is rather small. Nonetheless, this
+assumption can cause incorrect answers in systems with U-238 where the low-lying
+resonances can cause a significant amount of upscatter that would be ignored by
+this assumption.</p>
+<p>With this (sometimes incorrect) assumption, we see that the probability
+distribution is proportional to</p>
+<div class="math" id="equation-freegas5">
+<p><span class="eqno">(6)</span><img src="../_images/math/5789c1d317eacdee5178a4952472f30929d8712d.png" alt="P(v_T, \mu) \propto v_r P(v_T) = | v_n - v_T | P(v_T)"/></p>
+</div><p>We can divide this probability distribution into two parts as such:</p>
+<div class="math" id="equation-freegas6">
+<p><span class="eqno">(7)</span><img src="../_images/math/e65fa53d0a31b171a144bb7486bd94fb2451165e.png" alt="P(v_T, \mu) &amp;= f_1(v_T, \mu) f_2(v_T) \\
+f_1(v_T, \mu) &amp;= \frac{| v_n - v_T |}{\hat{f_1} (v_n + v_T)} \\
+f_2(v_T) &amp;= (v_n + v_T) P(v_T)"/></p>
+</div><p>In general, any probability distribution function of the form <img class="math" src="../_images/math/18b2137a12545c12040053d62af1f6a009747f7b.png" alt="p(x) =
+f_1(x) f_2(x)"/> with <img class="math" src="../_images/math/81060fd5c50bb0771dc33e40b10a02530402154a.png" alt="f_1(x)"/> bounded can be sampled by sampling
+<img class="math" src="../_images/math/548e5a87f82147560af3911d5fa37e1102c698ca.png" alt="x_s"/> from the distribution</p>
+<div class="math">
+<p><img src="../_images/math/85c312cfda33ddfaf27195ac27959dfdd00b170c.png" alt="\frac{f_2(x)}{\int f_2(x) dx}"/></p>
+</div><p>and accepting it with probability</p>
+<div class="math">
+<p><img src="../_images/math/b28a4c74d4d8125ccf305eae582fd770bfa0dbd6.png" alt="\frac{f_1(x_s)}{\max f_1(x)}"/></p>
+</div><p>It is normally assumed that the velocity distribution of the target nucleus
+assumes a Maxwellian distribution in velocity.</p>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="geometry.html">2. Geometry</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="tallies.html">4. Tallies</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+
+    <div class="footer">
+        &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Creating XML Input Files &mdash; OpenMC Documentation</title>
+    <title>3. Writing XML Input Files &mdash; OpenMC Documentation</title>
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.3.2',
+        VERSION:     '0.4.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -29,8 +29,8 @@
     <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="User’s Guide" href="index.html" />
-    <link rel="next" title="Development Team" href="../developers.html" />
-    <link rel="prev" title="User’s Guide" href="index.html" /> 
+    <link rel="next" title="4. Troubleshooting OpenMC" href="troubleshoot.html" />
+    <link rel="prev" title="2. Installation and Configuration" href="setup.html" /> 
   </head>
   <body>
       <div class="header">
@@ -41,19 +41,19 @@
       <div class="topnav">
       
         <p>
-        «&#160;&#160;<a href="index.html">User&#8217;s Guide</a>
+        «&#160;&#160;<a href="setup.html">2. Installation and Configuration</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="../developers.html">Development Team</a>&#160;&#160;»
+        <a href="troubleshoot.html">4. Troubleshooting OpenMC</a>&#160;&#160;»
         </p>
 
       </div>
       <div class="content">
         
         
-  <div class="section" id="creating-xml-input-files">
-<span id="usersguide-input"></span><h1>Creating XML Input Files<a class="headerlink" href="#creating-xml-input-files" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="writing-xml-input-files">
+<span id="usersguide-input"></span><h1>3. Writing XML Input Files<a class="headerlink" href="#writing-xml-input-files" title="Permalink to this headline">¶</a></h1>
 <p>Unlike many other Monte Carlo codes which use an arbitrary-format ASCII file
 with &#8220;cards&#8221; to specify a particular geometry, materials, and associated run
 settings, the input files for OpenMC are structured in a set of <a class="reference external" href="http://www.w3.org/XML/">XML</a> files. XML,
@@ -62,12 +62,13 @@ to be exchanged efficiently between different programs and interfaces.</p>
 <p>Anyone who has ever seen webpages written in HTML will be familiar with the
 structure of XML whereby &#8220;tags&#8221; enclosed in angle brackets denote that a
 particular piece of data will follow. Let us examine the follow example:</p>
-<div class="highlight-python"><pre>&lt;person&gt;
-  &lt;firstname&gt;John&lt;/firstname&gt;
-  &lt;lastname&gt;Smith&lt;/lastname&gt;
-  &lt;age&gt;27&lt;/age&gt;
-  &lt;occupation&gt;Health Physicist&lt;/occupation&gt;
-&lt;/person&gt;</pre>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;person&gt;</span>
+  <span class="nt">&lt;firstname&gt;</span>John<span class="nt">&lt;/firstname&gt;</span>
+  <span class="nt">&lt;lastname&gt;</span>Smith<span class="nt">&lt;/lastname&gt;</span>
+  <span class="nt">&lt;age&gt;</span>27<span class="nt">&lt;/age&gt;</span>
+  <span class="nt">&lt;occupation&gt;</span>Health Physicist<span class="nt">&lt;/occupation&gt;</span>
+<span class="nt">&lt;/person&gt;</span>
+</pre></div>
 </div>
 <p>Here we see that the first tag indicates that the following data will describe a
 person. The nested tags <em>firstname</em>, <em>lastname</em>, <em>age</em>, and <em>occupation</em>
@@ -75,20 +76,213 @@ indicate characteristics about the person being described.</p>
 <p>In much the same way, OpenMC input uses XML tags to describe the geometry, the
 materials, and settings for a Monte Carlo simulation.</p>
 <div class="section" id="overview-of-files">
-<h2>Overview of Files<a class="headerlink" href="#overview-of-files" title="Permalink to this headline">¶</a></h2>
+<h2>3.1. Overview of Files<a class="headerlink" href="#overview-of-files" title="Permalink to this headline">¶</a></h2>
 <p>To assemble a complete model for OpenMC, one needs to create separate XML files
-for the geometry, materials, and settings. Additionally, an optional tallies XML
-file specifies physical quantities to be tallied. OpenMC expects that these
-files are called:</p>
+for the geometry, materials, and settings. Additionally, there are two optional
+input files. The first is a tallies XML file that specifies physical quantities
+to be tallied. The second is a plots XML file that specifies regions of geometry
+which should be plotted. OpenMC expects that these files are called:</p>
 <ul class="simple">
 <li><tt class="docutils literal"><span class="pre">geometry.xml</span></tt></li>
 <li><tt class="docutils literal"><span class="pre">materials.xml</span></tt></li>
 <li><tt class="docutils literal"><span class="pre">setings.xml</span></tt></li>
 <li><tt class="docutils literal"><span class="pre">tallies.xml</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">plots.xml</span></tt></li>
 </ul>
 </div>
+<div class="section" id="settings-specification-settings-xml">
+<h2>3.2. Settings Specification &#8211; settings.xml<a class="headerlink" href="#settings-specification-settings-xml" title="Permalink to this headline">¶</a></h2>
+<p>All simulation parameters and miscellaneous options are specified in the
+settings.xml file.</p>
+<div class="section" id="criticality-element">
+<h3>3.2.1. <tt class="docutils literal"><span class="pre">&lt;criticality&gt;</span></tt> Element<a class="headerlink" href="#criticality-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;criticality&gt;</span></tt> element indicates that a criticality calculation should be
+performed. It has the following attributes/sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">batches:</th><td class="field-body"><p class="first">The total number of batches, where each batch corresponds to multiple
+fission source iterations. Batching is done to eliminate correlation between
+realizations of random variables.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">generations_per_batch:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first">The number of total fission source iterations per batch.</p>
+<p><em>Default</em>: 1</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">inactive:</th><td class="field-body"><p class="first">The number of inactive batches. In general, the starting cycles in a
+criticality calculation can not be used to contribute to tallies since the
+fission source distribution and eigenvalue are generally not converged
+immediately.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">particles:</th><td class="field-body"><p class="first">The number of neutrons to simulate per fission source iteration.</p>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div>
+<div class="section" id="cross-sections-element">
+<span id="cross-sections"></span><h3>3.2.2. <tt class="docutils literal"><span class="pre">&lt;cross_sections&gt;</span></tt> Element<a class="headerlink" href="#cross-sections-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;cross_sections&gt;</span></tt> element has no attributes and simply indicates the path
+to an XML cross section listing file (usually named cross_sections.xml). If this
+element is absent from the settings.xml file, the <span class="target" id="index-0"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt>
+environment variable will be used to find the path to the XML cross section
+listing.</p>
+</div>
+<div class="section" id="cutoff-element">
+<h3>3.2.3. <tt class="docutils literal"><span class="pre">&lt;cutoff&gt;</span></tt> Element<a class="headerlink" href="#cutoff-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;cutoff&gt;</span></tt> element indicates the weight cutoff used below which particles
+undergo Russian roulette. Surviving particles are assigned a user-determined
+weight. Note that weight cutoffs and Russian rouletting are not turned on by
+default. This element has the following attributes/sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">weight:</th><td class="field-body"><p class="first">The weight below which particles undergo Russian roulette.</p>
+<p><em>Default</em>: 0.25</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">weight_avg:</th><td class="field-body"><p class="first">The weight that is assigned to particles that are not killed after Russian
+roulette.</p>
+<p class="last"><em>Default</em>: 1.0</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div>
+<div class="section" id="energy-grid-element">
+<h3>3.2.4. <tt class="docutils literal"><span class="pre">&lt;energy_grid&gt;</span></tt> Element<a class="headerlink" href="#energy-grid-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;energy_grid&gt;</span></tt> element determines the treatment of the energy grid during
+a simulation. Setting this element to &#8220;nuclide&#8221; will cause OpenMC to use a
+nuclide&#8217;s energy grid when determining what points to interpolate between for
+determining cross sections (i.e. non-unionized energy grid). To use a unionized
+energy grid, set this element to &#8220;union&#8221;. Note that the unionized energy grid
+treatment is slightly different than that employed in Serpent.</p>
+<blockquote>
+<div><em>Default</em>: union</div></blockquote>
+</div>
+<div class="section" id="entropy-element">
+<h3>3.2.5. <tt class="docutils literal"><span class="pre">&lt;entropy&gt;</span></tt> Element<a class="headerlink" href="#entropy-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;entropy&gt;</span></tt> element describes a mesh that is used for calculting Shannon
+entropy. This mesh should cover all possible fissionable materials in the
+problem. It has the following attributes/sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in the x, y, and z directions, respectively.</p>
+<dl class="docutils">
+<dt><em>Default</em>: If this tag is not present, the number of mesh cells is</dt>
+<dd><p class="first last">automatically determined by the code.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartersian coordinates of the lower-left corner of the mesh.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartersian coordinates of the upper-right corner of the mesh.</p>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div>
+<div class="section" id="ptables-element">
+<h3>3.2.6. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> element determines whether probability tables should be used
+in the unresolved resonance range if available. This element has no attributes
+or sub-elements and can be set to either &#8220;off&#8221; or &#8220;on&#8221;.</p>
+<blockquote>
+<div><em>Default</em>: on</div></blockquote>
+</div>
+<div class="section" id="seed-element">
+<h3>3.2.7. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">seed</span></tt> element is used to set the seed used for the linear congruential
+pseudo-random number generator.</p>
+<blockquote>
+<div><em>Default</em>: 1</div></blockquote>
+</div>
+<div class="section" id="source-element">
+<h3>3.2.8. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">source</span></tt> element gives information on an initial source guess for
+criticality calculations. It takes the following attributes:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of source distribution. Setting this to &#8220;box&#8221; indicates that the
+starting source should be sampled uniformly in a parallelepiped. Setting
+this to &#8220;point&#8221; indicates that the starting source should be sampled from an
+isotropic point source. Setting this to &#8220;file&#8221; indicates that the starting
+source should be sampled from a <tt class="docutils literal"><span class="pre">source.binary</span></tt> file.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">coeffs:</th><td class="field-body"><p class="first">For a &#8220;box&#8221; source distribution, <tt class="docutils literal"><span class="pre">coeffs</span></tt> should be given as six real
+numbers, the first three of which specify the lower-left corner of a
+parallelepiped and the last three of which specify the upper-right
+corner. Source sites are sampled uniformly through that parallelepiped.</p>
+<p>For a &#8220;point&#8221; source distribution, <tt class="docutils literal"><span class="pre">coeffs</span></tt> should be given as three real
+numbers which specify the (x,y,z) location of an isotropic point source</p>
+<p class="last">For a &#8220;file&#8221; source distribution, <tt class="docutils literal"><span class="pre">coeffs</span></tt> should not be specified.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div>
+<div class="section" id="survival-biasing-element">
+<h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> element has no attributes and assumes wither the
+value <tt class="docutils literal"><span class="pre">on</span></tt> or <tt class="docutils literal"><span class="pre">off</span></tt>. If turned on, this option will enable the use of
+survival biasing, otherwise known as implicit capture or absorption.</p>
+<blockquote>
+<div><em>Default</em>: off</div></blockquote>
+</div>
+<div class="section" id="trace-element">
+<h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> element can be used to print out detailed information about a
+single particle during a simulation. This element should be followed by three
+integers: the batch number, generation number, and particle number.</p>
+<blockquote>
+<div><em>Default</em>: None</div></blockquote>
+</div>
+<div class="section" id="verbosity-element">
+<h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> element tells the code how much information to display to
+the standard output. A higher verbosity corresponds to more information being
+displayed. This element takes the following attributes:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">value:</th><td class="field-body"><p class="first">The specified verbosity between 1 and 10.</p>
+<p class="last"><em>Default</em>: 5</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div>
+</div>
 <div class="section" id="geometry-specification-geometry-xml">
-<h2>Geometry Specification &#8211; geometry.xml<a class="headerlink" href="#geometry-specification-geometry-xml" title="Permalink to this headline">¶</a></h2>
+<h2>3.3. Geometry Specification &#8211; geometry.xml<a class="headerlink" href="#geometry-specification-geometry-xml" title="Permalink to this headline">¶</a></h2>
 <p>The geometry in OpenMC is described using <a class="reference external" href="http://en.wikipedia.org/wiki/Constructive_solid_geometry">constructive solid geometry</a> (CSG),
 also sometimes referred to as combinatorial geometry. CSG allows a user to
 create complex objects using Boolean operators on a set of simpler surfaces. In
@@ -98,24 +292,25 @@ bounding surfaces.</p>
 <p>Every geometry.xml must have an XML declaration at the beginning of the file and
 a root element named geometry. Within the root element the user can define any
 number of cells, surfaces, and lattices. Let us look at the following example:</p>
-<div class="highlight-python"><pre>&lt;?xml version="1.0"&gt;
-&lt;geometry&gt;
-  &lt;!-- This is a comment --&gt;
+<div class="highlight-xml"><div class="highlight"><pre><span class="cp">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
+<span class="nt">&lt;geometry&gt;</span>
+  <span class="c">&lt;!-- This is a comment --&gt;</span>
 
-  &lt;surface&gt;
-    &lt;id&gt;1&lt;/id&gt;
-    &lt;type&gt;sphere&lt;/type&gt;
-    &lt;coeffs&gt;0.0 0.0 0.0 5.0&lt;/coeffs&gt;
-    &lt;boundary&gt;vacuum&lt;/boundary&gt;
-  &lt;surface&gt;
+  <span class="nt">&lt;surface&gt;</span>
+    <span class="nt">&lt;id&gt;</span>1<span class="nt">&lt;/id&gt;</span>
+    <span class="nt">&lt;type&gt;</span>sphere<span class="nt">&lt;/type&gt;</span>
+    <span class="nt">&lt;coeffs&gt;</span>0.0 0.0 0.0 5.0<span class="nt">&lt;/coeffs&gt;</span>
+    <span class="nt">&lt;boundary&gt;</span>vacuum<span class="nt">&lt;/boundary&gt;</span>
+  <span class="nt">&lt;surface&gt;</span>
 
-  &lt;cell&gt;
-    &lt;id&gt;1&lt;/id&gt;
-    &lt;universe&gt;0&lt;/universe&gt;
-    &lt;material&gt;1&lt;/material&gt;
-    &lt;surfaces&gt;-1&lt;/surfaces&gt;
-  &lt;/cell&gt;
-&lt;/geometry&gt;</pre>
+  <span class="nt">&lt;cell&gt;</span>
+    <span class="nt">&lt;id&gt;</span>1<span class="nt">&lt;/id&gt;</span>
+    <span class="nt">&lt;universe&gt;</span>0<span class="nt">&lt;/universe&gt;</span>
+    <span class="nt">&lt;material&gt;</span>1<span class="nt">&lt;/material&gt;</span>
+    <span class="nt">&lt;surfaces&gt;</span>-1<span class="nt">&lt;/surfaces&gt;</span>
+  <span class="nt">&lt;/cell&gt;</span>
+<span class="nt">&lt;/geometry&gt;</span>
+</pre></div>
 </div>
 <p>At the beginning of this file is a comment, denoted by a tag starting with
 <tt class="docutils literal"><span class="pre">&lt;!--</span></tt> and ending with <tt class="docutils literal"><span class="pre">--&gt;</span></tt>. Comments, as well as any other type of input,
@@ -123,7 +318,7 @@ may span multiple lines. One convenient feature of the XML input format is that
 sub-elements of the <tt class="docutils literal"><span class="pre">cell</span></tt> and <tt class="docutils literal"><span class="pre">surface</span></tt> elements can also be equivalently
 expressed of attributes of the original element, e.g. the geometry file above
 could be written as:</p>
-<div class="highlight-python"><pre>&lt;?xml version="1.0"&gt;
+<div class="highlight-xml"><pre>&lt;?xml version="1.0"&gt;
 &lt;geometry&gt;
   &lt;!-- This is a comment --&gt;
 
@@ -133,8 +328,8 @@ could be written as:</p>
 &lt;/geometry&gt;</pre>
 </div>
 <div class="section" id="surface-element">
-<h3><tt class="docutils literal"><span class="pre">surface</span></tt> Element<a class="headerlink" href="#surface-element" title="Permalink to this headline">¶</a></h3>
-<p>Each <tt class="docutils literal"><span class="pre">surface</span></tt> element can have the following attributes or sub-elements:</p>
+<h3>3.3.1. <tt class="docutils literal"><span class="pre">&lt;surface&gt;</span></tt> Element<a class="headerlink" href="#surface-element" title="Permalink to this headline">¶</a></h3>
+<p>Each <tt class="docutils literal"><span class="pre">&lt;surface&gt;</span></tt> element can have the following attributes or sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -144,8 +339,8 @@ could be written as:</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of the surfaces. This can be <tt class="docutils literal"><span class="pre">x-plane</span></tt>, <tt class="docutils literal"><span class="pre">y-plane</span></tt>, <tt class="docutils literal"><span class="pre">z-plane</span></tt>,
-<tt class="docutils literal"><span class="pre">plane</span></tt>, <tt class="docutils literal"><span class="pre">x-cylinder</span></tt>, <tt class="docutils literal"><span class="pre">y-cylinder</span></tt>, <tt class="docutils literal"><span class="pre">z-cylinder</span></tt>, or <tt class="docutils literal"><span class="pre">sphere</span></tt>.</p>
+<tr class="field-even field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of the surfaces. This can be &#8220;x-plane&#8221;, &#8220;y-plane&#8221;, &#8220;z-plane&#8221;,
+&#8220;plane&#8221;, &#8220;x-cylinder&#8221;, &#8220;y-cylinder&#8221;, &#8220;z-cylinder&#8221;, or &#8220;sphere&#8221;.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
@@ -154,9 +349,9 @@ a list a what coefficients to specify for a given surface</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">boundary:</th><td class="field-body"><p class="first">The boundary condition for the surface. This can be <tt class="docutils literal"><span class="pre">transmission</span></tt>,
-<tt class="docutils literal"><span class="pre">vacuum</span></tt>, or <tt class="docutils literal"><span class="pre">reflective</span></tt>.</p>
-<p class="last"><em>Default</em>: <tt class="docutils literal"><span class="pre">transmission</span></tt></p>
+<tr class="field-even field"><th class="field-name">boundary:</th><td class="field-body"><p class="first">The boundary condition for the surface. This can be &#8220;transmission&#8221;,
+&#8220;vacuum&#8221;, or &#8220;reflective&#8221;.</p>
+<p class="last"><em>Default</em>: &#8220;transmission&#8221;</p>
 </td>
 </tr>
 </tbody>
@@ -200,8 +395,8 @@ R^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/
 </div></blockquote>
 </div>
 <div class="section" id="cell-element">
-<h3><tt class="docutils literal"><span class="pre">cell</span></tt> Element<a class="headerlink" href="#cell-element" title="Permalink to this headline">¶</a></h3>
-<p>Each <tt class="docutils literal"><span class="pre">cell</span></tt> element can have the following attributes or sub-elements:</p>
+<h3>3.3.2. <tt class="docutils literal"><span class="pre">&lt;cell&gt;</span></tt> Element<a class="headerlink" href="#cell-element" title="Permalink to this headline">¶</a></h3>
+<p>Each <tt class="docutils literal"><span class="pre">&lt;cell&gt;</span></tt> element can have the following attributes or sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -242,11 +437,11 @@ bounding surfaces would be given as &#8220;-3 5&#8221;.</p>
 </div></blockquote>
 </div>
 <div class="section" id="lattice-element">
-<h3><tt class="docutils literal"><span class="pre">lattice</span></tt> Element<a class="headerlink" href="#lattice-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">lattice</span></tt> can be used to represent repeating structures (e.g. fuel pins in
-an assembly) or other geometry which naturally fits into a two-dimensional
+<h3>3.3.3. <tt class="docutils literal"><span class="pre">&lt;lattice&gt;</span></tt> Element<a class="headerlink" href="#lattice-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;lattice&gt;</span></tt> can be used to represent repeating structures (e.g. fuel pins
+in an assembly) or other geometry which naturally fits into a two-dimensional
 structured mesh. Each cell within the lattice is filled with a specified
-universe. A <tt class="docutils literal"><span class="pre">lattice</span></tt> accepts the following attributes or sub-elements:</p>
+universe. A <tt class="docutils literal"><span class="pre">&lt;lattice&gt;</span></tt> accepts the following attributes or sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -283,9 +478,9 @@ directions, respectively.</p>
 </div>
 </div>
 <div class="section" id="materials-specification-materials-xml">
-<h2>Materials Specification &#8211; materials.xml<a class="headerlink" href="#materials-specification-materials-xml" title="Permalink to this headline">¶</a></h2>
+<h2>3.4. Materials Specification &#8211; materials.xml<a class="headerlink" href="#materials-specification-materials-xml" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="material-element">
-<h3><tt class="docutils literal"><span class="pre">material</span></tt> Element<a class="headerlink" href="#material-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.4.1. <tt class="docutils literal"><span class="pre">&lt;material&gt;</span></tt> Element<a class="headerlink" href="#material-element" title="Permalink to this headline">¶</a></h3>
 <p>Each <tt class="docutils literal"><span class="pre">material</span></tt> element can have the following attributes or sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
@@ -297,10 +492,10 @@ directions, respectively.</p>
 </tr>
 <tr class="field-even field"><th class="field-name">density:</th><td class="field-body"><p class="first">An element with attributes/sub-elements called <tt class="docutils literal"><span class="pre">value</span></tt> and <tt class="docutils literal"><span class="pre">units</span></tt>. The
 <tt class="docutils literal"><span class="pre">value</span></tt> attribute is the numeric value of the density while the <tt class="docutils literal"><span class="pre">units</span></tt>
-can be &#8220;g/cm3&#8221;, &#8220;kg/m3&#8221;, &#8220;atom/b-cm&#8221;, or &#8220;atom/cm3&#8221;. For example, this could
-be specified as:</p>
-<div class="highlight-python"><pre>&lt;density value="4.5" units="g/cm3" /&gt;</pre>
-</div>
+can be &#8220;g/cm3&#8221;, &#8220;kg/m3&#8221;, &#8220;atom/b-cm&#8221;, &#8220;atom/cm3&#8221;, or &#8220;sum&#8221;. The &#8220;sum&#8221; unit
+indicates that the density should be calculated as the sum of the atom
+fractions for each nuclide in the material. This should not be used in
+conjunction with weight percents.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
@@ -333,10 +528,10 @@ and <tt class="docutils literal"><span class="pre">xs</span></tt> is the cross-s
 </div></blockquote>
 </div>
 <div class="section" id="default-xs-element">
-<h3><tt class="docutils literal"><span class="pre">default_xs</span></tt> Element<a class="headerlink" href="#default-xs-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.4.2. <tt class="docutils literal"><span class="pre">&lt;default_xs&gt;</span></tt> Element<a class="headerlink" href="#default-xs-element" title="Permalink to this headline">¶</a></h3>
 <p>In some circumstances, the cross-section identifier may be the same for many or
 all nuclides in a given problem. In this case, rather than specifying the
-<tt class="docutils literal"><span class="pre">xs=...</span></tt> attribute on every nuclide, a <tt class="docutils literal"><span class="pre">default_xs</span></tt> element can be used to
+<tt class="docutils literal"><span class="pre">xs=...</span></tt> attribute on every nuclide, a <tt class="docutils literal"><span class="pre">&lt;default_xs&gt;</span></tt> element can be used to
 set the default cross-section identifier for any nuclide without an identifier
 explicitly listed. This element has no attributes and accepts a 3-letter string
 that indicates the default cross-section identifier, e.g. &#8220;70c&#8221;.</p>
@@ -344,184 +539,8 @@ that indicates the default cross-section identifier, e.g. &#8220;70c&#8221;.</p>
 <div><em>Default</em>: None</div></blockquote>
 </div>
 </div>
-<div class="section" id="settings-specification-settings-xml">
-<h2>Settings Specification &#8211; settings.xml<a class="headerlink" href="#settings-specification-settings-xml" title="Permalink to this headline">¶</a></h2>
-<p>All simulation parameters and miscellaneous options are specified in the
-settings.xml file.</p>
-<div class="section" id="criticality-element">
-<h3><tt class="docutils literal"><span class="pre">criticality</span></tt> Element<a class="headerlink" href="#criticality-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">criticality</span></tt> element indicates that a criticality calculation should be
-performed. It has the following attributes/sub-elements:</p>
-<blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">batches:</th><td class="field-body"><p class="first">The total number of batches, where each batch corresponds to multiple
-fission source iterations. Batching is done to eliminate correlation between
-realizations of random variables.</p>
-<p><em>Default</em>: None</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">generations_per_batch:</th></tr>
-<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first">The number of total fission source iterations per batch.</p>
-<p><em>Default</em>: 1</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">inactive:</th><td class="field-body"><p class="first">The number of inactive batches. In general, the starting cycles in a
-criticality calculation can not be used to contribute to tallies since the
-fission source distribution and eigenvalue are generally not converged
-immediately.</p>
-<p><em>Default</em>: None</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">particles:</th><td class="field-body"><p class="first">The number of neutrons to simulate per fission source iteration.</p>
-<p class="last"><em>Default</em>: None</p>
-</td>
-</tr>
-</tbody>
-</table>
-</div></blockquote>
-</div>
-<div class="section" id="cross-sections-element">
-<h3><tt class="docutils literal"><span class="pre">cross_sections</span></tt> Element<a class="headerlink" href="#cross-sections-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">cross_sections</span></tt> element has no attributes and simply indicates the path
-to an XML cross section listing file (usually named cross_sections.xml). If this
-element is absent from the settings.xml file, the environment variable
-<tt class="docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> will be used to find the path to the XML cross section
-listing.</p>
-</div>
-<div class="section" id="cutoff-element">
-<h3><tt class="docutils literal"><span class="pre">cutoff</span></tt> Element<a class="headerlink" href="#cutoff-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">cutoff</span></tt> element indicates the weight cutoff used below which particles
-undergo Russian roulette. Surviving particles are assigned a user-determined
-weight. Note that weight cutoffs and Russian rouletting are not turned on by
-default. This element has the following attributes/sub-elements:</p>
-<blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">weight:</th><td class="field-body"><p class="first">The weight below which particles undergo Russian roulette.</p>
-<p><em>Default</em>: 0.25</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">weight_avg:</th><td class="field-body"><p class="first">The weight that is assigned to particles that are not killed after Russian
-roulette.</p>
-<p class="last"><em>Default</em>: 1.0</p>
-</td>
-</tr>
-</tbody>
-</table>
-</div></blockquote>
-</div>
-<div class="section" id="energy-grid-element">
-<h3><tt class="docutils literal"><span class="pre">energy_grid</span></tt> Element<a class="headerlink" href="#energy-grid-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">energy_grid</span></tt> element determines the treatment of the energy grid during a
-simulation. Setting this element to &#8220;nuclide&#8221; will cause OpenMC to use a
-nuclide&#8217;s energy grid when determining what points to interpolate between for
-determining cross sections (i.e. non-unionized energy grid). To use a unionized
-energy grid, set this element to &#8220;union&#8221;. Note that the unionized energy grid
-treatment is slightly different than that employed in Serpent.</p>
-<blockquote>
-<div><em>Default</em>: union</div></blockquote>
-</div>
-<div class="section" id="entropy-element">
-<h3><tt class="docutils literal"><span class="pre">entropy</span></tt> Element<a class="headerlink" href="#entropy-element" title="Permalink to this headline">¶</a></h3>
-<p>This element describes a mesh that is used for calculting Shannon entropy. This
-mesh should cover all possible fissionable materials in the problem. It has the
-following attributes/sub-elements:</p>
-<blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in the x, y, and z directions, respectively.</p>
-<dl class="docutils">
-<dt><em>Default</em>: If this tag is not present, the number of mesh cells is</dt>
-<dd><p class="first last">automatically determined by the code.</p>
-</dd>
-</dl>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartersian coordinates of the lower-left corner of the mesh.</p>
-<p><em>Default</em>: None</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartersian coordinates of the upper-right corner of the mesh.</p>
-<p class="last"><em>Default</em>: None</p>
-</td>
-</tr>
-</tbody>
-</table>
-</div></blockquote>
-</div>
-<div class="section" id="ptables-element">
-<h3><tt class="docutils literal"><span class="pre">ptables</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">ptables</span></tt> element determines whether probability tables should be used in
-the unresolved resonance range if available. This element has no attributes or
-sub-elements and can be set to either &#8220;off&#8221; or &#8220;on&#8221;.</p>
-<blockquote>
-<div><em>Default</em>: on</div></blockquote>
-</div>
-<div class="section" id="source-element">
-<h3><tt class="docutils literal"><span class="pre">source</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">source</span></tt> element gives information on an initial source guess for
-criticality calculations. It takes the following attributes:</p>
-<blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body">The type of source distribution. Currently, the only accepted option is
-&#8220;box&#8221;</td>
-</tr>
-<tr class="field-even field"><th class="field-name">coeffs:</th><td class="field-body">For a &#8220;box&#8221; source distribution, <tt class="docutils literal"><span class="pre">coeffs</span></tt> should be given as six integers,
-the first three of which specify the lower-left corner of a parallelepiped
-and the last three of which specify the upper-right corner. Source sites are
-sampled uniformly through that parallelepiped.</td>
-</tr>
-</tbody>
-</table>
-</div></blockquote>
-</div>
-<div class="section" id="survival-biasing-element">
-<h3><tt class="docutils literal"><span class="pre">survival_biasing</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">survival_biasing</span></tt> element has no attributes and assumes wither the
-value <tt class="docutils literal"><span class="pre">on</span></tt> or <tt class="docutils literal"><span class="pre">off</span></tt>. If turned on, this option will enable the use of
-survival biasing, otherwise known as implicit capture or absorption.</p>
-<blockquote>
-<div><em>Default</em>: off</div></blockquote>
-</div>
-<div class="section" id="trace-element">
-<h3><tt class="docutils literal"><span class="pre">trace</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">trace</span></tt> element can be used to print out detailed information about a
-single particle during a simulation. This element should be followed by two
-integers, the cycle and one for the particle number.</p>
-<blockquote>
-<div><em>Default</em>: None</div></blockquote>
-</div>
-<div class="section" id="verbosity-element">
-<h3><tt class="docutils literal"><span class="pre">verbosity</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">verbosity</span></tt> element tells the code how much information to display to the
-standard output. A higher verbosity corresponds to more information being
-displayed. This element takes the following attributes:</p>
-<blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">value:</th><td class="field-body"><p class="first">The specified verbosity between 1 and 10.</p>
-<p class="last"><em>Default</em>: 5</p>
-</td>
-</tr>
-</tbody>
-</table>
-</div></blockquote>
-</div>
-</div>
 <div class="section" id="tallies-specification-tallies-xml">
-<h2>Tallies Specification &#8211; tallies.xml<a class="headerlink" href="#tallies-specification-tallies-xml" title="Permalink to this headline">¶</a></h2>
+<h2>3.5. Tallies Specification &#8211; tallies.xml<a class="headerlink" href="#tallies-specification-tallies-xml" title="Permalink to this headline">¶</a></h2>
 <p>The tallies.xml file allows the user to tell the code what results he/she is
 interested in, e.g. the fission rate in a given cell or the current across a
 given surface. There are two pieces of information that determine what
@@ -534,10 +553,10 @@ preventing others from scoring to the tally.</p>
 filters can be used for a tally. The following types of filter are available:
 cell, universe, material, surface, birth region, pre-collision energy,
 post-collision energy, and an arbitrary structured mesh.</p>
-<p>The two valid elements in the tallies.xml file are <tt class="docutils literal"><span class="pre">tally</span></tt> and <tt class="docutils literal"><span class="pre">mesh</span></tt>.</p>
+<p>The two valid elements in the tallies.xml file are <tt class="docutils literal"><span class="pre">&lt;tally&gt;</span></tt> and <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt>.</p>
 <div class="section" id="tally-element">
-<h3><tt class="docutils literal"><span class="pre">tally</span></tt> Element<a class="headerlink" href="#tally-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">tally</span></tt> element accepts the following sub-elements:</p>
+<h3>3.5.1. <tt class="docutils literal"><span class="pre">&lt;tally&gt;</span></tt> Element<a class="headerlink" href="#tally-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;tally&gt;</span></tt> element accepts the following sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -620,9 +639,9 @@ secondary neutrons.</td>
 </div></blockquote>
 </div>
 <div class="section" id="mesh-element">
-<h3><tt class="docutils literal"><span class="pre">mesh</span></tt> Element<a class="headerlink" href="#mesh-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.5.2. <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt> Element<a class="headerlink" href="#mesh-element" title="Permalink to this headline">¶</a></h3>
 <p>If a structured mesh is desired as a filter for a tally, it must be specified in
-a separate element with the tag name <tt class="docutils literal"><span class="pre">mesh</span></tt>. This element has the following
+a separate element with the tag name <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt>. This element has the following
 attributes/sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
@@ -644,7 +663,7 @@ given, it is assumed that the mesh is an x-y mesh.</td>
 </div></blockquote>
 </div>
 <div class="section" id="assume-separate-element">
-<h3><tt class="docutils literal"><span class="pre">assume_separate</span></tt> Element<a class="headerlink" href="#assume-separate-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.5.3. <tt class="docutils literal"><span class="pre">&lt;assume_separate&gt;</span></tt> Element<a class="headerlink" href="#assume-separate-element" title="Permalink to this headline">¶</a></h3>
 <p>In cases where the user needs to specify many different tallies each of which
 are spatially separate, this tag can be used to cut down on some of the tally
 overhead. The effect of assuming all tallies are spatially separate is that once
@@ -660,14 +679,14 @@ separate can lead to incorrect results.</p>
 </div></blockquote>
 </div>
 </div>
-<div class="section" id="geometry-plotting-specification-plot-xml">
-<h2>Geometry Plotting Specification &#8211; plot.xml<a class="headerlink" href="#geometry-plotting-specification-plot-xml" title="Permalink to this headline">¶</a></h2>
-<p>A basic 2D plotting capability is available in OpenMC by creating a
-plots.xml file and subsequently running with the command-line flag <tt class="docutils literal"><span class="pre">-plot</span></tt>. The
-root element of the plot.xml is simply <tt class="docutils literal"><span class="pre">&lt;plots&gt;</span></tt> and any number output
-figures can be defined with <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> sub-elements.</p>
+<div class="section" id="geometry-plotting-specification-plots-xml">
+<h2>3.6. Geometry Plotting Specification &#8211; plots.xml<a class="headerlink" href="#geometry-plotting-specification-plots-xml" title="Permalink to this headline">¶</a></h2>
+<p>A basic 2D plotting capability is available in OpenMC by creating a plots.xml
+file and subsequently running with the command-line flag <tt class="docutils literal"><span class="pre">-plot</span></tt>. The root
+element of the plots.xml is simply <tt class="docutils literal"><span class="pre">&lt;plots&gt;</span></tt> and any number output figures can
+be defined with <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> sub-elements.</p>
 <div class="section" id="plot-element">
-<h3><tt class="docutils literal"><span class="pre">plot</span></tt> Element<a class="headerlink" href="#plot-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.6.1. <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> Element<a class="headerlink" href="#plot-element" title="Permalink to this headline">¶</a></h3>
 <p>Each plot must contain a combination of the following attributes or sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
@@ -687,13 +706,13 @@ which colors regions by cells and materials, respectively.</p>
 <p><em>Default</em>: <tt class="docutils literal"><span class="pre">cell</span></tt></p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">origin:</th><td class="field-body"><p class="first">Specifies the XYZ coordinate of the center of the plot.  Should be 3 floats
-separated by spaces.</p>
+<tr class="field-even field"><th class="field-name">origin:</th><td class="field-body"><p class="first">Specifies the (x,y,z) coordinate of the center of the plot.  Should be three
+floats separated by spaces.</p>
 <p><em>Default</em>: None - Required entry</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body"><p class="first">Specifies the width of the plot along each of the basis directions.
-Should be 2 or 3 floats separated by spaces for 2D plots and 3D plots,
+<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body"><p class="first">Specifies the width of the plot along each of the basis directions.  Should
+be two or three floats separated by spaces for 2D plots and 3D plots,
 respectively.</p>
 <p><em>Default</em>: None - Required entry</p>
 </td>
@@ -715,7 +734,7 @@ magnitude without any loss of image quality.</p>
 </tbody>
 </table>
 </div></blockquote>
-<p><tt class="docutils literal"><span class="pre">plot</span></tt> elements of <tt class="docutils literal"><span class="pre">type</span></tt> <tt class="docutils literal"><span class="pre">slice</span></tt> also contain the following attributes or
+<p><tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> elements of <tt class="docutils literal"><span class="pre">type</span></tt> &#8220;slice&#8221; also contain the following attributes or
 sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
@@ -723,12 +742,12 @@ sub-elements:</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">basis:</th><td class="field-body"><p class="first">Keyword specifying the plane of the plot for <tt class="docutils literal"><span class="pre">slice</span></tt> type plots.  Can be
-one of: <tt class="docutils literal"><span class="pre">xy</span></tt>, <tt class="docutils literal"><span class="pre">xz</span></tt>, <tt class="docutils literal"><span class="pre">yz</span></tt>.</p>
-<p><em>Default</em>: <tt class="docutils literal"><span class="pre">xy</span></tt></p>
+one of: &#8220;xy&#8221;, &#8220;xz&#8221;, &#8220;yz&#8221;.</p>
+<p><em>Default</em>: &#8220;xy&#8221;</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">pixels:</th><td class="field-body"><p class="first">Specifies the number of pixes to be used along each of the basis directions for
-<tt class="docutils literal"><span class="pre">slice</span></tt> plots. Should be 2 integers separated by spaces.</p>
+<tr class="field-even field"><th class="field-name">pixels:</th><td class="field-body"><p class="first">Specifies the number of pixes to be used along each of the basis directions
+for &#8220;slice&#8221; plots. Should be two integers separated by spaces.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
 <p class="last">The <tt class="docutils literal"><span class="pre">pixels</span></tt> input determines the output file size.  For the PPM
@@ -745,15 +764,15 @@ ratio defined in <tt class="docutils literal"><span class="pre">width</span></tt
 <p class="last">Geometry features along a basis direction smaller than <tt class="docutils literal"><span class="pre">width</span></tt>/<tt class="docutils literal"><span class="pre">pixels</span></tt>
 along that basis direction may not appear in the plot.</p>
 </div>
-<p><em>Default</em>: None - Required entry for <tt class="docutils literal"><span class="pre">slice</span></tt> plots</p>
+<p><em>Default</em>: None - Required entry for &#8220;slice&#8221; plots</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">background:</th><td class="field-body"><p class="first">Specifies the RGB color of the regions where no OpenMC cell can be found. Should
-be 3 integers deparated by spaces.</p>
+be three integers separated by spaces.</p>
 <p><em>Default</em>: 0 0 0 (white)</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">col_spec:</th><td class="field-body"><p class="first">Any number of this optional tag may be included in each <tt class="docutils literal"><span class="pre">plot</span></tt> element, which can
+<tr class="field-even field"><th class="field-name">col_spec:</th><td class="field-body"><p class="first">Any number of this optional tag may be included in each <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> element, which can
 override the default random colors for cells or materials.  Each <tt class="docutils literal"><span class="pre">col_spec</span></tt>
 element must contain <tt class="docutils literal"><span class="pre">id</span></tt> and <tt class="docutils literal"><span class="pre">rgb</span></tt> sub-elements.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -801,18 +820,33 @@ materials to plot.  This overrides any <tt class="docutils literal"><span class=
       <div class="bottomnav">
       
         <p>
-        «&#160;&#160;<a href="index.html">User&#8217;s Guide</a>
+        «&#160;&#160;<a href="setup.html">2. Installation and Configuration</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="../developers.html">Development Team</a>&#160;&#160;»
+        <a href="troubleshoot.html">4. Troubleshooting OpenMC</a>&#160;&#160;»
         </p>
 
       </div>
 
+
     <div class="footer">
-        &copy; Copyright 2011, Massachusetts Institute of Technology.
+        &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
     </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
   </body>
 </html>

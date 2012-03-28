@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Theory and Methodology &mdash; OpenMC Documentation</title>
+    <title>2. Geometry &mdash; OpenMC Documentation</title>
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -28,8 +28,9 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
-    <link rel="next" title="1. Introduction" href="introduction.html" />
-    <link rel="prev" title="Release Notes for OpenMC 0.4.0" href="../releasenotes/notes_0.4.0.html" /> 
+    <link rel="up" title="Theory and Methodology" href="index.html" />
+    <link rel="next" title="3. Physics" href="physics.html" />
+    <link rel="prev" title="1. Introduction" href="introduction.html" /> 
   </head>
   <body>
       <div class="header">
@@ -40,43 +41,32 @@
       <div class="topnav">
       
         <p>
-        «&#160;&#160;<a href="../releasenotes/notes_0.4.0.html">Release Notes for OpenMC 0.4.0</a>
+        «&#160;&#160;<a href="introduction.html">1. Introduction</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="introduction.html">1. Introduction</a>&#160;&#160;»
+        <a href="physics.html">3. Physics</a>&#160;&#160;»
         </p>
 
       </div>
       <div class="content">
         
         
-  <div class="section" id="theory-and-methodology">
-<span id="methods"></span><h1>Theory and Methodology<a class="headerlink" href="#theory-and-methodology" title="Permalink to this headline">¶</a></h1>
-<p>The OpenMC code solves the neutron transport equation using the Monte Carlo
-method whereby particles are tracked as they randomly move through a geometry,
-undergoing collisions, and creating secondary particles.</p>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="introduction.html">1. Introduction</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#criticality-algorithm">1.1. Criticality Algorithm</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="geometry.html">2. Geometry</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="geometry.html#reflective-surfaces">2.1. Reflective Surfaces</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="physics.html">3. Physics</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="physics.html#free-gas-scattering-kinematics">3.1. Free Gas Scattering Kinematics</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="tallies.html">4. Tallies</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tallies.html#analog-estimator">4.1. Analog Estimator</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tallies.html#track-length-estimator">4.2. Track-length Estimator</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tallies.html#surface-current">4.3. Surface Current</a></li>
-</ul>
-</li>
-</ul>
+  <div class="section" id="geometry">
+<span id="methods-geometry"></span><h1>2. Geometry<a class="headerlink" href="#geometry" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="reflective-surfaces">
+<h2>2.1. Reflective Surfaces<a class="headerlink" href="#reflective-surfaces" title="Permalink to this headline">¶</a></h2>
+<p>In general, a surface can be written in the form <img class="math" src="../_images/math/7a618bda1847d33ede0ff905641965782665226a.png" alt="f(x,y,z) = 0"/>. If a
+neutron is traveling in direction <img class="math" src="../_images/math/0e25809cc8ec81373d3c46ff247a7c6d3a63dcaf.png" alt="\vec{v}"/> and crosses a reflective
+surface of the above form, it can be shown that the velocity vector will then
+become</p>
+<div class="math">
+<p><img src="../_images/math/ec1573ce905ac3e6758c191cd5c52441ed093cf8.png" alt="\mathbf{v'} = \mathbf{v} - 2 (\mathbf{v} \cdot \hat{\mathbf{n}})
+\hat{\mathbf{n}}"/></p>
+</div><p>where <img class="math" src="../_images/math/c784dcc2598753df9d694c4439b2320311b94dca.png" alt="\hat{\mathbf{n}}"/> is a unit vector normal to the surface at the
+point of the surface crossing. The direction of the surface normal will be the
+gradient to the surface at the point of crossing, i.e. <img class="math" src="../_images/math/c4301d4bf1894216758b926b70a378c73b059d9a.png" alt="\mathbf{n} =
+\nabla f(x,y,z)"/>.</p>
 </div>
 </div>
 
@@ -85,11 +75,11 @@ undergoing collisions, and creating secondary particles.</p>
       <div class="bottomnav">
       
         <p>
-        «&#160;&#160;<a href="../releasenotes/notes_0.4.0.html">Release Notes for OpenMC 0.4.0</a>
+        «&#160;&#160;<a href="introduction.html">1. Introduction</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="introduction.html">1. Introduction</a>&#160;&#160;»
+        <a href="physics.html">3. Physics</a>&#160;&#160;»
         </p>
 
       </div>

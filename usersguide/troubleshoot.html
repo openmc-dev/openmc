@@ -1,0 +1,176 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>4. Troubleshooting OpenMC &mdash; OpenMC Documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.4.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="../index.html" />
+    <link rel="up" title="User’s Guide" href="index.html" />
+    <link rel="next" title="Developer’s Guide" href="../devguide/index.html" />
+    <link rel="prev" title="3. Writing XML Input Files" href="input.html" /> 
+  </head>
+  <body>
+      <div class="header">
+        <a href="../index.html">
+          <img class="logo" src="../_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="input.html">3. Writing XML Input Files</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="../devguide/index.html">Developer&#8217;s Guide</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="troubleshooting-openmc">
+<span id="usersguide-troubleshoot"></span><h1>4. Troubleshooting OpenMC<a class="headerlink" href="#troubleshooting-openmc" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="problems-with-compilation">
+<h2>4.1. Problems with Compilation<a class="headerlink" href="#problems-with-compilation" title="Permalink to this headline">¶</a></h2>
+<p>If you are experiencing problems trying to compile OpenMC, first check if the
+error you are receiving is among the following options.</p>
+<div class="section" id="fatal-error-file-xml-data-settings-t-mod-opened-at-1-is-not-a-gfortran-module-file">
+<h3>4.1.1. Fatal Error: File &#8216;xml_data_settings_t.mod&#8217; opened at (1) is not a GFORTRAN module file<a class="headerlink" href="#fatal-error-file-xml-data-settings-t-mod-opened-at-1-is-not-a-gfortran-module-file" title="Permalink to this headline">¶</a></h3>
+<p>When OpenMC compiles, the first thing it needs to do is compile source in the
+xml-fortran subdirectory. If you compiled everything with a compiler other than
+gfortran, performed a <strong class="program">make clean</strong>, and then tried to <strong class="program">make</strong>
+with gfortran, the xml-fortran modules would have been compiled with a different
+compiler. To fix this, try clearing out all modules and object files with
+<strong class="program">make distclean</strong> and then recompiling.</p>
+</div>
+<div class="section" id="gfortran-unrecognized-option-cpp">
+<h3>4.1.2. gfortran: unrecognized option &#8216;-cpp&#8217;<a class="headerlink" href="#gfortran-unrecognized-option-cpp" title="Permalink to this headline">¶</a></h3>
+<p>You are probably using a version of the gfortran compiler that is too
+old. Download and install the latestest version of <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a>.</p>
+</div>
+<div class="section" id="f951-error-unrecognized-command-line-option-fbacktrace">
+<h3>4.1.3. f951: error: unrecognized command line option &#8220;-fbacktrace&#8221;<a class="headerlink" href="#f951-error-unrecognized-command-line-option-fbacktrace" title="Permalink to this headline">¶</a></h3>
+<p>You are probably using a version of the gfortran compiler that is too
+old. Download and install the latestest version of <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a>.</p>
+</div>
+<div class="section" id="make-1-ifort-command-not-found">
+<h3>4.1.4. make[1]: ifort: Command not found<a class="headerlink" href="#make-1-ifort-command-not-found" title="Permalink to this headline">¶</a></h3>
+<p>You tried compiling with the Intel Fortran compiler and it was not found on your
+<span class="target" id="index-0"></span><tt class="xref std std-envvar docutils literal"><span class="pre">PATH</span></tt>. If you have the Intel compiler installed, make sure the shell
+can locate it (this can be tested with <strong class="program">which ifort</strong>).</p>
+</div>
+<div class="section" id="make-1-pgf90-command-not-found">
+<h3>4.1.5. make[1]: pgf90: Command not found<a class="headerlink" href="#make-1-pgf90-command-not-found" title="Permalink to this headline">¶</a></h3>
+<p>You tried compiling with the PGI Fortran compiler and it was not found on your
+<span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">PATH</span></tt>. If you have the PGI compiler installed, make sure the shell can
+locate it (this can be tested with <strong class="program">which ifort</strong>).</p>
+</div>
+</div>
+<div class="section" id="problems-with-simulations">
+<h2>4.2. Problems with Simulations<a class="headerlink" href="#problems-with-simulations" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="segmentation-fault">
+<h3>4.2.1. Segmentation Fault<a class="headerlink" href="#segmentation-fault" title="Permalink to this headline">¶</a></h3>
+<p>A segmentation fault occurs when the program tries to access a variable in
+memory that was outside the memory allocated for the program. The best way to
+debug a segmentation fault is to re-compile OpenMC with debug options turned
+on. First go to your <tt class="docutils literal"><span class="pre">openmc/src</span></tt> directory where OpenMC was compiled and type
+the following commands:</p>
+<div class="highlight-sh"><div class="highlight"><pre>make distclean
+make <span class="nv">DEBUG</span><span class="o">=</span>yes
+</pre></div>
+</div>
+<p>Now when you re-run your problem, it should report exactly where the program
+failed. If after reading the debug output, you are still unsure why the program
+failed, send an email to the OpenMC <a class="reference external" href="mailto:paul&#46;k&#46;romano&#37;&#52;&#48;gmail&#46;com">developers</a>.</p>
+</div>
+<div class="section" id="error-no-cross-sections-xml-file-was-specified-in-settings-xml-or-in-the-cross-sections-environment-variable">
+<h3>4.2.2. ERROR: No cross_sections.xml file was specified in settings.xml or in the CROSS_SECTIONS environment variable.<a class="headerlink" href="#error-no-cross-sections-xml-file-was-specified-in-settings-xml-or-in-the-cross-sections-environment-variable" title="Permalink to this headline">¶</a></h3>
+<p>OpenMC needs to know where to find cross section data for each
+nuclide. Information on what data is available and in what files is summarized
+in a cross_sections.xml file. You need to tell OpenMC where to find the
+cross_sections.xml file either with the <a class="reference internal" href="input.html#cross-sections"><em>&lt;cross_sections&gt; Element</em></a> in settings.xml or
+with the <span class="target" id="index-2"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable. It is recommended to add
+a line in your <tt class="docutils literal"><span class="pre">.profile</span></tt> or <tt class="docutils literal"><span class="pre">.bash_profile</span></tt> setting the
+<span class="target" id="index-3"></span><tt class="xref std std-envvar docutils literal"><span class="pre">CROSS_SECTIONS</span></tt> environment variable.</p>
+</div>
+<div class="section" id="error-after-particle-crossed-surface-it-could-not-be-located-in-any-cell-and-it-did-not-leak">
+<h3>4.2.3. ERROR: After particle __ crossed surface __ it could not be located in any cell and it did not leak.<a class="headerlink" href="#error-after-particle-crossed-surface-it-could-not-be-located-in-any-cell-and-it-did-not-leak" title="Permalink to this headline">¶</a></h3>
+<p>This error can arise either if a problem is specified with no boundary
+conditions or if there is an error in the geometry itself. First check to ensure
+that all of the outer surfaces of your geometry have been given vacuum or
+reflective boundary conditions. If proper boundary conditions have been applied
+and you still receive this error, it means that a surface/cell/lattice in your
+geometry has been specified incorrectly or is missing.</p>
+<p>The best way to debug this error is to turn on a trace for the particle getting
+lost. After the error message, the code will display what batch, generation, and
+particle number caused the error. In your settings.xml, add a &lt;trace&gt; tag
+followed by the batch, generation, and particle number. This will give you
+detailed output every time that particle enters a cell, crosses a boundary, or
+has a collision. For example, if you received this error at cycle 5, generation
+1, particle 4032, you would enter:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;trace&gt;</span>5 1 4032<span class="nt">&lt;/trace&gt;</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="input.html">3. Writing XML Input Files</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="../devguide/index.html">Developer&#8217;s Guide</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+
+    <div class="footer">
+        &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

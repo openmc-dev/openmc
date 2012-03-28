@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Theory and Methodology &mdash; OpenMC Documentation</title>
+    <title>Release Notes for OpenMC 0.4.0 &mdash; OpenMC Documentation</title>
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -28,8 +28,9 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
-    <link rel="next" title="1. Introduction" href="introduction.html" />
-    <link rel="prev" title="Release Notes for OpenMC 0.4.0" href="../releasenotes/notes_0.4.0.html" /> 
+    <link rel="up" title="Release Notes" href="index.html" />
+    <link rel="next" title="Theory and Methodology" href="../methods/index.html" />
+    <link rel="prev" title="Release Notes for OpenMC 0.4.1" href="notes_0.4.1.html" /> 
   </head>
   <body>
       <div class="header">
@@ -40,42 +41,46 @@
       <div class="topnav">
       
         <p>
-        «&#160;&#160;<a href="../releasenotes/notes_0.4.0.html">Release Notes for OpenMC 0.4.0</a>
+        «&#160;&#160;<a href="notes_0.4.1.html">Release Notes for OpenMC 0.4.1</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="introduction.html">1. Introduction</a>&#160;&#160;»
+        <a href="../methods/index.html">Theory and Methodology</a>&#160;&#160;»
         </p>
 
       </div>
       <div class="content">
         
         
-  <div class="section" id="theory-and-methodology">
-<span id="methods"></span><h1>Theory and Methodology<a class="headerlink" href="#theory-and-methodology" title="Permalink to this headline">¶</a></h1>
-<p>The OpenMC code solves the neutron transport equation using the Monte Carlo
-method whereby particles are tracked as they randomly move through a geometry,
-undergoing collisions, and creating secondary particles.</p>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="introduction.html">1. Introduction</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#criticality-algorithm">1.1. Criticality Algorithm</a></li>
+  <div class="section" id="release-notes-for-openmc-0-4-0">
+<span id="notes-0-4-0"></span><h1>Release Notes for OpenMC 0.4.0<a class="headerlink" href="#release-notes-for-openmc-0-4-0" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="system-requirements">
+<h2>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h2>
+<p>There are no special requirements for running the OpenMC code. As of this
+release, OpenMC has been tested on a variety of Linux distributions as well as
+Mac OS X. However, it has not been tested yet on any releases of Microsoft
+Windows. Memory requirements will vary depending on the size of the problem at
+hand (mostly on the number of nuclides in the problem).</p>
+</div>
+<div class="section" id="new-features">
+<h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>The probability table method for treatment of energy self-shielding in the
+unresolved resonance range has been implemented and is now turned on by
+default.</li>
+<li>Calculation of Shannon entropy for assessing convergence of the fission source
+distribution.</li>
+<li>Ability to compile with the PGI Fortran compiler.</li>
+<li>Ability to run on IBM BlueGene/P machines.</li>
+<li>Completely rewrote how nested universes are handled. Geometry is now much more
+robust.</li>
 </ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="geometry.html">2. Geometry</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="geometry.html#reflective-surfaces">2.1. Reflective Surfaces</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="physics.html">3. Physics</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="physics.html#free-gas-scattering-kinematics">3.1. Free Gas Scattering Kinematics</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="tallies.html">4. Tallies</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tallies.html#analog-estimator">4.1. Analog Estimator</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tallies.html#track-length-estimator">4.2. Track-length Estimator</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tallies.html#surface-current">4.3. Surface Current</a></li>
-</ul>
-</li>
+</div>
+<div class="section" id="bug-fixes">
+<h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Many geometry errors have been fixed. The Monte Carlo performance benchmark
+can now be successfully run in OpenMC.</li>
 </ul>
 </div>
 </div>
@@ -85,11 +90,11 @@ undergoing collisions, and creating secondary particles.</p>
       <div class="bottomnav">
       
         <p>
-        «&#160;&#160;<a href="../releasenotes/notes_0.4.0.html">Release Notes for OpenMC 0.4.0</a>
+        «&#160;&#160;<a href="notes_0.4.1.html">Release Notes for OpenMC 0.4.1</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="introduction.html">1. Introduction</a>&#160;&#160;»
+        <a href="../methods/index.html">Theory and Methodology</a>&#160;&#160;»
         </p>
 
       </div>

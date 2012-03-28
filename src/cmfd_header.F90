@@ -22,6 +22,7 @@ module cmfd_header
 
     ! diffusion coefficient
     real(8), allocatable :: diffcof(:,:,:,:)
+    real(8), allocatable :: diffusion(:,:,:,:)
 
     ! current 
     real(8), allocatable :: current(:,:,:,:,:)
@@ -99,6 +100,7 @@ contains
     if (.not. allocated(this % scattxs)) allocate(this % scattxs(ng,ng,nx,ny,nz))
     if (.not. allocated(this % nfissxs)) allocate(this % nfissxs(ng,ng,nx,ny,nz))
     if (.not. allocated(this % diffcof)) allocate(this % diffcof(ng,nx,ny,nz))
+    if (.not. allocated(this % diffusion)) allocate(this%diffusion(ng,nx,ny,nz))
 
     ! allocate dtilde and dhat
     if (.not. allocated(this % dtilde)) allocate(this % dtilde(6,ng,nx,ny,nz))
@@ -132,6 +134,7 @@ contains
     if (allocated(this % scattxs))       deallocate(this % scattxs)
     if (allocated(this % nfissxs))       deallocate(this % nfissxs)
     if (allocated(this % diffcof))       deallocate(this % diffcof)
+    if (allocated(this % diffusion))     deallocate(this % diffusion)
     if (allocated(this % current))       deallocate(this % current)
     if (allocated(this % flux))          deallocate(this % flux)
     if (allocated(this % dtilde))        deallocate(this % dtilde)

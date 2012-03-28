@@ -12,7 +12,7 @@ contains
 
   subroutine set_up_cmfd()
 
-    use global,       only: cmfd,cmfd_coremap,current_cycle,n_inactive,time_cmfd
+    use global,       only: cmfd,cmfd_coremap,current_batch,n_inactive,time_cmfd
     use cmfd_header,  only: allocate_cmfd
     use cmfd_output,  only: neutron_balance,write_cmfd_hdf5
     use timing
@@ -21,7 +21,7 @@ contains
     call allocate_cmfd(cmfd)
 
     ! check for core map
-    if ((cmfd_coremap) .and. (current_cycle == n_inactive+1)) then
+    if ((cmfd_coremap) .and. (current_batch == n_inactive+1)) then
       call set_coremap()
     end if
 
@@ -151,9 +151,14 @@ contains
                 ! get p1 scatter rr and convert to p1 scatter xs
                 cmfd % p1scattxs(h,i,j,k) = t % scores(score_index,3) % sum / flux
 
+                ! extract diffusion coefficient tally
+                cmfd % diffusion(h,i,j,k) = t % scores(score_index,4) % sum / flux
+
                 ! calculate diffusion coefficient
-                cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k) -&
-               &                                cmfd % p1scattxs(h,i,j,k)))
+                cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*cmfd%totalxs(h,i,j,k))
+!               cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k) -&
+!              &                                cmfd % p1scattxs(h,i,j,k)))
+!               cmfd % diffcof(h,i,j,k) = cmfd % diffusion(h,i,j,k)
 
               else if (ital == 2) then
 

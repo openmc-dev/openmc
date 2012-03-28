@@ -1,7 +1,7 @@
 module cmfd_execute
 
   use cmfd_data,         only: set_up_cmfd
-  use cmfd_output,       only: write_cmfd_vtk
+  use cmfd_output,       only: write_cmfd_hdf5
   use global,            only: cmfd,cmfd_only,time_cmfd,master,rank,mpi_err,   &
  &                             current_batch,n_inactive,n_batches,n_procs,     &
  &                             n_procs_cmfd
@@ -60,21 +60,9 @@ contains
 
       ! execute snes solver
       call cmfd_snes_execute()
-!     call cmfd_slepc_execute()
       
       ! only run if master process
-      if (master) then
-  
-        ! stop timer
-        call timer_stop(time_cmfd)
-
-        ! write vtk file
-        !if(.not. cmfd_only) call write_cmfd_vtk()
-
-        ! compute fission source for reweighting
-        call calc_fission_source()
-
-      end if
+      if (master) call timer_stop(time_cmfd)
 
       ! finalize slepc
       if (current_batch == n_batches) call SlepcFinalize(ierr)
@@ -84,10 +72,20 @@ contains
     ! sync up procs
     call MPI_Barrier(MPI_COMM_WORLD,mpi_err)
 
+    ! compute fission source for reweighting
+    call calc_fission_source()
+
+    ! write out hdf5 file for cmfd object
+    if (master) then
+#     ifdef HDF5
+        call write_cmfd_hdf5()
+#     endif
+    end if
+
   end subroutine execute_cmfd
 
 !==============================================================================
-! EXECUTE_CMFD
+! CMFD_BCAST 
 !==============================================================================
 
   subroutine cmfd_bcast()
@@ -246,70 +244,82 @@ contains
     ! reset cmfd source to 0
     cmfd%source = 0.0_8
 
-    ! loop around indices to map to cmfd object
-    ZLOOP: do k = 1,nz
+    ! only perform for master
+    if (master) then
 
-      YLOOP: do j = 1,ny
+      ! loop around indices to map to cmfd object
+      ZLOOP: do k = 1,nz
 
-        XLOOP: do i = 1,nx
+        YLOOP: do j = 1,ny
 
-          GROUP: do g = 1,ng
+          XLOOP: do i = 1,nx
 
-            ! check for core map
-            if (cmfd_coremap) then
-              if (cmfd%coremap(i,j,k) == 99999) then
-                cycle
+            GROUP: do g = 1,ng
+
+              ! check for core map
+              if (cmfd_coremap) then
+                if (cmfd%coremap(i,j,k) == 99999) then
+                  cycle
+                end if
               end if
-            end if
 
-            ! get dimensions of cell
-            hxyz = cmfd%hxyz(:,i,j,k)
+              ! get dimensions of cell
+              hxyz = cmfd%hxyz(:,i,j,k)
 
-            ! calculate volume
-            vol = hxyz(1)*hxyz(2)*hxyz(3)
+              ! calculate volume
+              vol = hxyz(1)*hxyz(2)*hxyz(3)
 
-            ! get first index
-            idx = get_matrix_idx(1,i,j,k,ng,nx,ny)
+              ! get first index
+              idx = get_matrix_idx(1,i,j,k,ng,nx,ny)
 
-            ! compute fission source
-            cmfd%source(g,i,j,k) = sum(cmfd%nfissxs(:,g,i,j,k)*cmfd%phi(idx:idx+(ng-1)))*vol 
+              ! compute fission source
+              cmfd%source(g,i,j,k) = sum(cmfd%nfissxs(:,g,i,j,k)*cmfd%phi(idx:idx+(ng-1)))*vol 
 
-          end do GROUP
+            end do GROUP
 
-        end do XLOOP
+          end do XLOOP
 
-      end do YLOOP
+        end do YLOOP
 
-    end do ZLOOP
+      end do ZLOOP
 
-    ! normalize source such that it sums to 1.0
-    cmfd%source = cmfd%source/sum(cmfd%source)
+      ! normalize source such that it sums to 1.0
+      cmfd%source = cmfd%source/sum(cmfd%source)
 
-    ! compute entropy
-    if (entropy_on) then
+      ! compute entropy
+      if (entropy_on) then
 
-      ! allocate tmp array
-      if (.not.allocated(source)) allocate(source(ng,nx,ny,nz))
+        ! allocate tmp array
+        if (.not.allocated(source)) allocate(source(ng,nx,ny,nz))
 
-      ! initialize the source
-      source = 0.0_8
+        ! initialize the source
+        source = 0.0_8
 
-      ! compute log
-      where (cmfd%source > 0.0_8)
-        source = cmfd%source*log(cmfd%source)/log(2.0_8)
-      end where
+        ! compute log
+        where (cmfd%source > 0.0_8)
+          source = cmfd%source*log(cmfd%source)/log(2.0_8)
+        end where
 
-      ! sum that source
-      cmfd%entropy = -1.0_8*sum(source)
+        ! sum that source
+        cmfd%entropy = -1.0_8*sum(source)
 
-      ! deallocate tmp array
-      if (allocated(source)) deallocate(source)
+        ! deallocate tmp array
+        if (allocated(source)) deallocate(source)
+
+      end if
+
+      ! normalize source so average is 1.0
+      cmfd%source = cmfd%source*cmfd%norm
 
     end if
 
-    ! normalize source so average is 1.0
-    cmfd%source = cmfd%source*cmfd%norm
+    ! allocate cmfd source if not already allocated and allocate buffer
+    if (.not. allocated(cmfd%source)) allocate(cmfd%source(ng,nx,ny,nz))
 
+    ! broadcast full source to all procs 
+    call MPI_BCAST(cmfd%source,ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+print *,cmfd%source
+stop
   end subroutine calc_fission_source 
 
 !===============================================================================

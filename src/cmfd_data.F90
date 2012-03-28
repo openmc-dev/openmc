@@ -14,7 +14,7 @@ contains
 
     use global,       only: cmfd,cmfd_coremap,current_batch,n_inactive,time_cmfd
     use cmfd_header,  only: allocate_cmfd
-    use cmfd_output,  only: neutron_balance,write_cmfd_hdf5
+    use cmfd_output,  only: neutron_balance
     use timing
 
     ! initialize data
@@ -28,7 +28,7 @@ contains
     ! calculate all cross sections based on reaction rates from last batch
     call compute_xs()
 
-    ! write out the neutron balance file
+    ! compute neutron balance 
     call neutron_balance()
 
     ! compute dtilde terms
@@ -36,11 +36,6 @@ contains
 
     ! compute dhat terms
     call compute_dhat()
-
-#ifdef HDF5
-    ! write out hdf5 file for cmfd object
-    call write_cmfd_hdf5()
-#endif
 
   end subroutine set_up_cmfd
 

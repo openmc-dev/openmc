@@ -18,7 +18,7 @@ contains
   subroutine neutron_balance()
 
     use constants, only: ONE
-    use global,    only: cmfd,keff,MAX_FILE_LEN,current_cycle
+    use global,    only: cmfd,keff,MAX_FILE_LEN
     use string
 
     integer :: i            ! iteration counter for x
@@ -111,7 +111,7 @@ contains
 
   subroutine write_cmfd_hdf5()
 
-    use global, only: cmfd,cmfd_coremap,current_cycle,keff,entropy,entropy_on
+    use global, only: cmfd,cmfd_coremap,current_batch,keff,entropy,entropy_on
     use string, only: to_str
 
 #ifdef HDF5
@@ -133,8 +133,8 @@ contains
     nz = cmfd % indices(3)
     ng = cmfd % indices(4)
 
-    ! get the cycle name
-    cycname = "cycle"//trim(to_str(current_cycle))
+    ! get the batch name
+    cycname = "batch"//trim(to_str(current_batch))
 
     ! create the CMFD group
     call h5gcreate_f(hdf5_output_file,trim(cycname),cycle_id,hdf5_err)

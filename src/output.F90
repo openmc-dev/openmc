@@ -961,16 +961,10 @@ contains
     write(ou,100) "Total time in simulation", time_inactive % elapsed + &
          time_active % elapsed
     write(ou,100) "  Time in transport only", time_transport % elapsed
-<<<<<<< HEAD:src/output.F90
-    write(ou,100) "  Time in inactive cycles", time_inactive % elapsed
-    write(ou,100) "  Time in active cycles", time_active % elapsed
-    write(ou,100) "  Time between cycles", time_intercycle % elapsed
     if(cmfd_on) write(ou,100) "Total CMFD time", time_cmfd % elapsed
-=======
     write(ou,100) "  Time in inactive batches", time_inactive % elapsed
     write(ou,100) "  Time in active batches", time_active % elapsed
     write(ou,100) "  Time between generations", time_intercycle % elapsed
->>>>>>> master:src/output.F90
     write(ou,100) "    Accumulating tallies", time_ic_tallies % elapsed
     write(ou,100) "    Sampling source sites", time_ic_sample % elapsed
     write(ou,100) "    SEND/RECV source sites", time_ic_sendrecv % elapsed

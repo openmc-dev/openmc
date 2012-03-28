@@ -115,10 +115,6 @@ contains
        call fatal_error()
     end if
 
-<<<<<<< HEAD:src/input_xml.F90
-    ! Random number seed
-    if (dble(criticality % seed) > 0.0_8)  seed = dble(criticality % seed)
-=======
     ! Copy random number seed if specified
     if (seed_ > 0) seed = seed_
 
@@ -135,7 +131,6 @@ contains
        message = "Unknown energy grid method: " // energy_grid_
        call fatal_error()
     end select
->>>>>>> master:src/input_xml.F90
 
     ! Verbosity
     if (verbosity_ > 0) verbosity = verbosity_

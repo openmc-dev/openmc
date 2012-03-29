@@ -14,6 +14,9 @@ module cmfd_header
     ! array indices([1-x,2-y,3-z,4-g],upper bound)
     integer              :: indices(4)
 
+    ! energy grid
+    real(8), allocatable :: egrid(:)
+
     ! cross sections
     real(8), allocatable :: totalxs(:,:,:,:)
     real(8), allocatable :: p1scattxs(:,:,:,:)
@@ -94,26 +97,26 @@ contains
     ng = this % indices(4)
 
     ! allocate flux, cross sections and diffusion coefficient
-    if (.not. allocated(this % flux)) allocate(this % flux(ng,nx,ny,nz))
-    if (.not. allocated(this % totalxs)) allocate(this % totalxs(ng,nx,ny,nz))
-    if (.not. allocated(this % p1scattxs)) allocate(this % p1scattxs(ng,nx,ny,nz))
-    if (.not. allocated(this % scattxs)) allocate(this % scattxs(ng,ng,nx,ny,nz))
-    if (.not. allocated(this % nfissxs)) allocate(this % nfissxs(ng,ng,nx,ny,nz))
-    if (.not. allocated(this % diffcof)) allocate(this % diffcof(ng,nx,ny,nz))
-    if (.not. allocated(this % diffusion)) allocate(this%diffusion(ng,nx,ny,nz))
+    if (.not. allocated(this % flux))       allocate(this % flux(ng,nx,ny,nz))
+    if (.not. allocated(this % totalxs))    allocate(this % totalxs(ng,nx,ny,nz))
+    if (.not. allocated(this % p1scattxs))  allocate(this % p1scattxs(ng,nx,ny,nz))
+    if (.not. allocated(this % scattxs))    allocate(this % scattxs(ng,ng,nx,ny,nz))
+    if (.not. allocated(this % nfissxs))    allocate(this % nfissxs(ng,ng,nx,ny,nz))
+    if (.not. allocated(this % diffcof))    allocate(this % diffcof(ng,nx,ny,nz))
+    if (.not. allocated(this % diffusion))  allocate(this%diffusion(ng,nx,ny,nz))
 
     ! allocate dtilde and dhat
-    if (.not. allocated(this % dtilde)) allocate(this % dtilde(6,ng,nx,ny,nz))
-    if (.not. allocated(this % dhat)) allocate(this % dhat(6,ng,nx,ny,nz))
+    if (.not. allocated(this % dtilde))     allocate(this % dtilde(6,ng,nx,ny,nz))
+    if (.not. allocated(this % dhat))       allocate(this % dhat(6,ng,nx,ny,nz))
 
     ! allocate dimensions for each box (here for general case)
-    if (.not. allocated(this % hxyz)) allocate(this % hxyz(3,nx,ny,nz))
+    if (.not. allocated(this % hxyz))       allocate(this % hxyz(3,nx,ny,nz))
 
     ! allocate this fission source
-    if (.not. allocated(this % source)) allocate(this % source(ng,nx,ny,nz))
+    if (.not. allocated(this % source))     allocate(this % source(ng,nx,ny,nz))
 
     ! allocate surface currents
-    if (.not. allocated(this % current)) allocate(this % current(12,ng,nx,ny,nz))
+    if (.not. allocated(this % current))    allocate(this % current(12,ng,nx,ny,nz))
 
     ! allocate openmc source distribution
     if (.not. allocated(this % openmc_src)) allocate(this % openmc_src(ng,nx,ny,nz))
@@ -129,6 +132,7 @@ contains
     type(cmfd_obj) :: this
 
     ! deallocate cmfd
+    if (allocated(this % egrid))         deallocate(this % egrid)
     if (allocated(this % totalxs))       deallocate(this % totalxs)
     if (allocated(this % p1scattxs))     deallocate(this % p1scattxs)
     if (allocated(this % scattxs))       deallocate(this % scattxs)

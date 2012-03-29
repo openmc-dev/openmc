@@ -76,7 +76,7 @@ contains
     call calc_fission_source()
 
     ! perform cmfd re-weighting
-!   call cmfd_reweight()
+    call cmfd_reweight()
 
     ! write out hdf5 file for cmfd object
     if (master) then
@@ -368,8 +368,9 @@ contains
     cmfd%weightfactors = 0.0_8
 
     ! count fission sites in mesh
-    call count_fission_sites(m,cmfd%sourcecounts,total,outside)
-
+!   call count_fission_sites(m,cmfd%sourcecounts,total,outside)
+print *,'CMFD energy grid:',cmfd%egrid
+stop
     ! check for source sites outside of mesh
     if (outside) then
       write(*,*) 'FATAL: source sites found outside of mesh'

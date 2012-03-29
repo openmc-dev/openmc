@@ -189,7 +189,7 @@ contains
 
     ! Determine number of energies in group structure
     if (present(energies)) then
-       n_groups = size(energies)
+       n_groups = size(energies) - 1
     else
        n_groups = 1
     end if

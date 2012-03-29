@@ -76,7 +76,7 @@ contains
     call calc_fission_source()
 
     ! perform cmfd re-weighting
-    call cmfd_reweight()
+!   call cmfd_reweight()
 
     ! write out hdf5 file for cmfd object
     if (master) then
@@ -376,17 +376,14 @@ contains
     ! have master compute weight factors
     if (master) then
       where(cmfd%source > 0.0_8)
-        cmfd%weightfactors = cmfd%source/sum(cmfd%source)*n_particles /        &
-     &                      cmfd%sourcecounts
+        cmfd%weightfactors = cmfd%source/sum(cmfd%source)*dble(n_particles) /  &
+     &                      dble(cmfd%sourcecounts)
       end where
     end if
-print *,'Number of source counts',sum(cmfd%sourcecounts)
-stop
+
     ! broadcast weight factors to all procs
     call MPI_BCAST(cmfd%weightfactors,ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,  &
    &               mpi_err)
-
-    print *,cmfd%weightfactors
 
     ! begin loop over source bank
     do i = 1, int(work,4)
@@ -402,7 +399,6 @@ stop
       end if
 
       ! reweight particle
-      print *,"XYZ",source_bank(i)%xyz,' IJK:',ijk,' Ene:',source_bank(i)%E
 !     source_bank(i)%w = source_bank(i)%w *                                    &
 !    &                   cmfd%weightfactors(ijk(1),ijk(2),ijk(3))
 

@@ -330,7 +330,7 @@ contains
 
   subroutine cmfd_reweight()
 
-    use global,      only: n_particles,meshes,source_bank,n_bank
+    use global,      only: n_particles,meshes,source_bank,work
     use mesh_header, only: StructuredMesh
     use mesh,        only: count_fission_sites,get_mesh_indices
 

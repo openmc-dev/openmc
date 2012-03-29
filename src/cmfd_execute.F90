@@ -339,10 +339,7 @@ contains
     integer :: ny ! maximum number of cells in y direction
     integer :: nz ! maximum number of cells in z direction
     integer :: ng ! maximum number of energy groups
-    integer :: i ! iteration counter for x
-    integer :: j ! iteration counter for y
-    integer :: k ! iteration counter for z
-    integer :: g ! iteration counter for groups
+    integer :: i ! iteration counter
     integer :: ijk(3) ! spatial bin location
     real(8) :: total ! total weight of sites
     logical :: outside ! any source sites outside mesh
@@ -360,17 +357,16 @@ contains
 
     ! allocate arrays in cmfd object (can take out later extend to multigroup)
     if (.not.allocated(cmfd%sourcecounts))                                     &
-   &         allocate(cmfd%sourcecounts(nx,ny,nz))
+   &         allocate(cmfd%sourcecounts(ng,nx,ny,nz))
     if (.not.allocated(cmfd%weightfactors))                                    &
-   &         allocate(cmfd%weightfactors(nx,ny,nz))
+   &         allocate(cmfd%weightfactors(ng,nx,ny,nz))
 
     ! zero out weights
     cmfd%weightfactors = 0.0_8
 
     ! count fission sites in mesh
-!   call count_fission_sites(m,cmfd%sourcecounts,total,outside)
-print *,'CMFD energy grid:',cmfd%egrid
-stop
+    call count_fission_sites(m,source_bank,cmfd%sourcecounts,total,cmfd%egrid,sites_outside=outside)
+
     ! check for source sites outside of mesh
     if (outside) then
       write(*,*) 'FATAL: source sites found outside of mesh'
@@ -379,20 +375,21 @@ stop
 
     ! have master compute weight factors
     if (master) then
-      where(sum(cmfd%source,1) > 0.0_8)
-        cmfd%weightfactors = sum(cmfd%source/sum(cmfd%source),1)*n_particles / &
+      where(cmfd%source > 0.0_8)
+        cmfd%weightfactors = cmfd%source/sum(cmfd%source)*n_particles /        &
      &                      cmfd%sourcecounts
       end where
     end if
 print *,'Number of source counts',sum(cmfd%sourcecounts)
+stop
     ! broadcast weight factors to all procs
-    call MPI_BCAST(cmfd%weightfactors,nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,     &
+    call MPI_BCAST(cmfd%weightfactors,ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,  &
    &               mpi_err)
 
     print *,cmfd%weightfactors
 
     ! begin loop over source bank
-    do i = 1, int(n_bank,4)
+    do i = 1, int(work,4)
 
       ! determine spatial bin
       call get_mesh_indices(m,source_bank(i)%xyz,ijk,in_mesh)

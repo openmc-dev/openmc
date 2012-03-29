@@ -47,10 +47,10 @@ module cmfd_header
     real(8), allocatable :: source(:,:,:,:)
 
     ! source sites in each mesh box
-    real(8), allocatable :: sourcecounts(:,:,:)
+    real(8), allocatable :: sourcecounts(:,:,:,:)
 
     ! weight adjustment factors
-    real(8), allocatable :: weightfactors(:,:,:)
+    real(8), allocatable :: weightfactors(:,:,:,:)
 
     ! core map for no reflector accel
     integer, allocatable :: coremap(:,:,:)

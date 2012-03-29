@@ -17,7 +17,8 @@ contains
     use string
     use xml_data_cmfd_t
 
-    integer :: ng=1        ! number of energy groups (default 1)
+    integer :: j           ! iteration counter
+    integer :: ng          ! number of energy groups
     integer :: n_words     ! number of words read
     logical :: file_exists ! does cmfd.xml exist?
     character(MAX_LINE_LEN) :: filename
@@ -50,8 +51,16 @@ contains
     if (len_trim(mesh_ % energy) > 0) then
       call split_string(mesh_ % energy, words, n_words)
       ng = n_words - 1
+      if(.not.allocated(cmfd%egrid)) allocate(cmfd%egrid(n_words))
+      do j = 1,n_words
+        cmfd%egrid(j) = str_to_real(words(j))
+      end do
+      cmfd % indices(4) = ng  ! sets energy group dimension
+    else
+      if(.not.allocated(cmfd%egrid)) allocate(cmfd%egrid(2))
+      cmfd%egrid = (/0.0_8,20.0_8/)
+      cmfd % indices(4) = 1 ! one energy group
     end if
-    cmfd % indices(4) = ng  ! sets energy group dimension
 
     ! set global albedo
     cmfd % albedo = mesh_ % albedo

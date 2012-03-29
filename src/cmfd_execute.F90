@@ -75,6 +75,9 @@ contains
     ! compute fission source for reweighting
     call calc_fission_source()
 
+    ! perform cmfd re-weighting
+!   call cmfd_reweight()
+
     ! write out hdf5 file for cmfd object
     if (master) then
 #     ifdef HDF5
@@ -318,9 +321,96 @@ contains
 
     ! broadcast full source to all procs 
     call MPI_BCAST(cmfd%source,ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
-print *,cmfd%source
-stop
+
   end subroutine calc_fission_source 
+
+!===============================================================================
+! CMFD_REWEIGHT
+!===============================================================================
+
+  subroutine cmfd_reweight()
+
+    use global,      only: n_particles,meshes,source_bank,n_bank
+    use mesh_header, only: StructuredMesh
+    use mesh,        only: count_fission_sites,get_mesh_indices
+
+    ! local variables
+    integer :: nx ! maximum number of cells in x direction
+    integer :: ny ! maximum number of cells in y direction
+    integer :: nz ! maximum number of cells in z direction
+    integer :: ng ! maximum number of energy groups
+    integer :: i ! iteration counter for x
+    integer :: j ! iteration counter for y
+    integer :: k ! iteration counter for z
+    integer :: g ! iteration counter for groups
+    integer :: ijk(3) ! spatial bin location
+    real(8) :: total ! total weight of sites
+    logical :: outside ! any source sites outside mesh
+    logical :: in_mesh ! source site is inside mesh
+    type(StructuredMesh), pointer :: m ! point to mesh
+
+    ! associate pointer
+    m => meshes(1)
+
+    ! get maximum of spatial and group indices
+    nx = cmfd%indices(1)
+    ny = cmfd%indices(2)
+    nz = cmfd%indices(3)
+    ng = cmfd%indices(4)
+
+    ! allocate arrays in cmfd object (can take out later extend to multigroup)
+    if (.not.allocated(cmfd%sourcecounts))                                     &
+   &         allocate(cmfd%sourcecounts(nx,ny,nz))
+    if (.not.allocated(cmfd%weightfactors))                                    &
+   &         allocate(cmfd%weightfactors(nx,ny,nz))
+
+    ! zero out weights
+    cmfd%weightfactors = 0.0_8
+
+    ! count fission sites in mesh
+    call count_fission_sites(m,cmfd%sourcecounts,total,outside)
+
+    ! check for source sites outside of mesh
+    if (outside) then
+      write(*,*) 'FATAL: source sites found outside of mesh'
+      stop
+    end if
+
+    ! have master compute weight factors
+    if (master) then
+      where(sum(cmfd%source,1) > 0.0_8)
+        cmfd%weightfactors = sum(cmfd%source/sum(cmfd%source),1)*n_particles / &
+     &                      cmfd%sourcecounts
+      end where
+    end if
+print *,'Number of source counts',sum(cmfd%sourcecounts)
+    ! broadcast weight factors to all procs
+    call MPI_BCAST(cmfd%weightfactors,nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,     &
+   &               mpi_err)
+
+    print *,cmfd%weightfactors
+
+    ! begin loop over source bank
+    do i = 1, int(n_bank,4)
+
+      ! determine spatial bin
+      call get_mesh_indices(m,source_bank(i)%xyz,ijk,in_mesh)
+
+      ! check for outside of mesh
+      if (.not. in_mesh) then
+        write(*,*) 'FATAL: source site found outside of mesh'
+        write(*,*) 'XYZ:',source_bank(i)%xyz
+        stop
+      end if
+
+      ! reweight particle
+      print *,"XYZ",source_bank(i)%xyz,' IJK:',ijk,' Ene:',source_bank(i)%E
+!     source_bank(i)%w = source_bank(i)%w *                                    &
+!    &                   cmfd%weightfactors(ijk(1),ijk(2),ijk(3))
+
+    end do 
+stop
+  end subroutine cmfd_reweight
 
 !===============================================================================
 ! GET_MATRIX_IDX takes (x,y,z,g) indices and computes location in matrix 

@@ -315,12 +315,13 @@ contains
        m % width = (m % upper_right - m % lower_left) / m % dimension
 
        ! allocate p
-       allocate(entropy_p(m % dimension(1), m % dimension(2), &
+       allocate(entropy_p(1, m % dimension(1), m % dimension(2), &
             m % dimension(3)))
     end if
 
     ! count number of fission sites over mesh
-    call count_fission_sites(m, entropy_p, total, sites_outside)
+    call count_fission_sites(m, fission_bank, entropy_p, total, &
+         size_bank=n_bank, sites_outside=sites_outside)
 
     ! display warning message if there were sites outside entropy box
     if (sites_outside) then
@@ -337,9 +338,9 @@ contains
        do i = 1, m % dimension(1)
           do j = 1, m % dimension(2)
              do k = 1, m % dimension(3)
-                if (entropy_p(i,j,k) > ZERO) then
-                   entropy = entropy - entropy_p(i,j,k) * &
-                        log(entropy_p(i,j,k))/log(2.0)
+                if (entropy_p(1,i,j,k) > ZERO) then
+                   entropy = entropy - entropy_p(1,i,j,k) * &
+                        log(entropy_p(1,i,j,k))/log(2.0)
                 end if
              end do
           end do

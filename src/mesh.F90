@@ -4,6 +4,7 @@ module mesh
   use global
   use mesh_header
   use particle_header, only: Particle
+  use search,          only: binary_search
 
 #ifdef MPI
   use mpi
@@ -145,35 +146,58 @@ contains
 
 !===============================================================================
 ! COUNT_FISSION_SITES determines the number of fission bank sites in each cell
-! of a given mesh. This can be used for a variety of purposes (Shannon entropy,
-! CMFD, uniform fission source weighting)
+! of a given mesh as well as an optional energy group structure. This can be
+! used for a variety of purposes (Shannon entropy, CMFD, uniform fission source
+! weighting)
 !===============================================================================
 
-  subroutine count_fission_sites(m, count, total, sites_outside)
+  subroutine count_fission_sites(m, bank_array, cnt, total, &
+       energies, size_bank, sites_outside)
 
     type(StructuredMesh), pointer :: m             ! mesh to count sites
-    real(8), intent(out)          :: count(:,:,:)  ! weight of sites in each cell
-    real(8), intent(out)          :: total         ! total weight of sites
-    logical, optional             :: sites_outside ! were there sites outside mesh?
+    type(Bank), intent(in)        :: bank_array(:) ! fission or source bank
+    real(8),    intent(out)       :: cnt(:,:,:,:)  ! weight of sites in each
+                                                   ! cell and energy group
+    real(8),    intent(out)       :: total         ! total weight of sites
+    real(8),    optional          :: energies(:)   ! energy grid to search
+    integer(8), optional          :: size_bank     ! # of bank sites (on each proc)
+    logical,    optional          :: sites_outside ! were there sites outside mesh?
 
-    integer :: i       ! loop index for local fission sites
-    integer :: ijk(3)  ! indices on mesh
-    real(8) :: weight  ! accumulated weight of sites
-    logical :: in_mesh ! was single site outside mesh?
-    logical :: outside ! was any site outside mesh?
+    integer :: i        ! loop index for local fission sites
+    integer :: n_sites  ! size of bank array
+    integer :: ijk(3)   ! indices on mesh
+    integer :: n_groups ! number of groups in energies
+    integer :: e_bin    ! energy_bin
+    real(8) :: weight   ! accumulated weight of sites
+    logical :: in_mesh  ! was single site outside mesh?
+    logical :: outside  ! was any site outside mesh?
 #ifdef MPI
     integer :: n       ! total size of count variable
 #endif
 
     ! initialize variables
-    count = ZERO
+    cnt = ZERO
     weight = ZERO
     outside = .false.
 
+    ! Set size of bank
+    if (present(size_bank)) then
+       n_sites = int(size_bank,4)
+    else
+       n_sites = size(bank_array)
+    end if
+
+    ! Determine number of energies in group structure
+    if (present(energies)) then
+       n_groups = size(energies)
+    else
+       n_groups = 1
+    end if
+
     ! loop over fission sites and count how many are in each mesh box
-    FISSION_SITES: do i = 1, int(n_bank,4)
+    FISSION_SITES: do i = 1, n_sites
        ! determine scoring bin for entropy mesh
-       call get_mesh_indices(m, fission_bank(i) % xyz, ijk, in_mesh)
+       call get_mesh_indices(m, bank_array(i) % xyz, ijk, in_mesh)
 
        ! if outside mesh, skip particle
        if (.not. in_mesh) then
@@ -184,21 +208,34 @@ contains
        ! add weight
        weight = weight + ONE
 
+       ! determine energy bin
+       if (present(energies)) then
+          if (bank_array(i) % E < energies(1)) then
+             e_bin = 1
+          elseif (bank_array(i) % E > energies(n_groups+1)) then
+             e_bin = n_groups
+          else
+             e_bin = binary_search(energies, n_groups + 1, bank_array(i) % E)
+          end if
+       else
+          e_bin = 1
+       end if
+
        ! add to appropriate mesh box
        ! TODO: if tracking weight through bank, add weight instead
-       count(ijk(1),ijk(2),ijk(3)) = count(ijk(1),ijk(2),ijk(3)) + 1
+       cnt(e_bin,ijk(1),ijk(2),ijk(3)) = cnt(e_bin,ijk(1),ijk(2),ijk(3)) + 1
     end do FISSION_SITES
 
 #ifdef MPI
     ! determine total number of mesh cells
-    n = size(count,1) * size(count,2) * size(count,3)
+    n = n_groups * size(cnt,2) * size(cnt,3) * size(cnt,4)
 
     ! collect values from all processors
     if (master) then
-       call MPI_REDUCE(MPI_IN_PLACE, count, n, MPI_REAL8, MPI_SUM, 0, &
+       call MPI_REDUCE(MPI_IN_PLACE, cnt, n, MPI_REAL8, MPI_SUM, 0, &
             MPI_COMM_WORLD, mpi_err)
     else
-       call MPI_REDUCE(count, count, n, MPI_REAL8, MPI_SUM, 0, &
+       call MPI_REDUCE(cnt, cnt, n, MPI_REAL8, MPI_SUM, 0, &
             MPI_COMM_WORLD, mpi_err)
     end if
 

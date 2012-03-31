@@ -285,8 +285,7 @@ contains
 
     integer :: i, j, k        ! index for bank sites
     integer :: n              ! # of boxes in each dimension
-    real(8) :: total          ! total weight of fission bank sites
-    logical :: sites_outside    ! were there sites outside entropy box?
+    logical :: sites_outside  ! were there sites outside entropy box?
     type(StructuredMesh), pointer :: m => null()
 
     ! Get pointer to entropy mesh
@@ -320,7 +319,7 @@ contains
     end if
 
     ! count number of fission sites over mesh
-    call count_bank_sites(m, fission_bank, entropy_p, total, &
+    call count_bank_sites(m, fission_bank, entropy_p, &
          size_bank=n_bank, sites_outside=sites_outside)
 
     ! display warning message if there were sites outside entropy box
@@ -332,7 +331,7 @@ contains
     ! sum values to obtain shannon entropy
     if (master) then
        ! Normalize to total weight of bank sites
-       entropy_p = entropy_p / total
+       entropy_p = entropy_p / sum(entropy_p)
 
        entropy = 0
        do i = 1, m % dimension(1)
@@ -470,7 +469,7 @@ contains
 
     else
        ! count number of source sites in each ufs mesh cell
-       call count_bank_sites(ufs_mesh, source_bank, source_frac, total, &
+       call count_bank_sites(ufs_mesh, source_bank, source_frac, &
             sites_outside=sites_outside)
 
        ! Check for sites outside of the mesh
@@ -479,15 +478,15 @@ contains
           call fatal_error()
        end if
 
-       ! Normalize to total weight to get fraction of source in each cell
-       if (master) source_frac = source_frac / total
-
 #ifdef MPI
        ! Send source fraction to all processors
        n = product(ufs_mesh % dimension)
        call MPI_BCAST(source_frac, n, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
-       call MPI_BCAST(total, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
 #endif
+
+       ! Normalize to total weight to get fraction of source in each cell
+       total = sum(source_frac)
+       source_frac = source_frac / total
 
        ! Since the total starting weight is not equal to n_particles, we need to
        ! renormalize the weight of the source sites

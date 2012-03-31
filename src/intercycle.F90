@@ -4,7 +4,7 @@ module intercycle
 
   use error,           only: fatal_error, warning
   use global
-  use mesh,            only: count_fission_sites
+  use mesh,            only: count_bank_sites
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message
   use random_lcg,      only: prn, set_particle_seed, prn_skip
@@ -320,7 +320,7 @@ contains
     end if
 
     ! count number of fission sites over mesh
-    call count_fission_sites(m, fission_bank, entropy_p, total, &
+    call count_bank_sites(m, fission_bank, entropy_p, total, &
          size_bank=n_bank, sites_outside=sites_outside)
 
     ! display warning message if there were sites outside entropy box

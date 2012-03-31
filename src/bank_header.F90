@@ -15,6 +15,7 @@ module bank_header
      sequence
 
      integer(8) :: id     ! Unique ID
+     real(8)    :: wgt    ! weight of bank site
      real(8)    :: xyz(3) ! location of bank particle
      real(8)    :: uvw(3) ! diretional cosines
      real(8)    :: E      ! energy

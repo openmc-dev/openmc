@@ -145,13 +145,13 @@ contains
   end subroutine bin_to_mesh_indices
 
 !===============================================================================
-! COUNT_FISSION_SITES determines the number of fission bank sites in each cell
-! of a given mesh as well as an optional energy group structure. This can be
-! used for a variety of purposes (Shannon entropy, CMFD, uniform fission source
+! COUNT_BANK_SITES determines the number of fission bank sites in each cell of a
+! given mesh as well as an optional energy group structure. This can be used for
+! a variety of purposes (Shannon entropy, CMFD, uniform fission source
 ! weighting)
 !===============================================================================
 
-  subroutine count_fission_sites(m, bank_array, cnt, total, &
+  subroutine count_bank_sites(m, bank_array, cnt, total, &
        energies, size_bank, sites_outside)
 
     type(StructuredMesh), pointer :: m             ! mesh to count sites
@@ -206,7 +206,7 @@ contains
        end if
 
        ! add weight
-       weight = weight + ONE
+       weight = weight + bank_array(i) % wgt
 
        ! determine energy bin
        if (present(energies)) then
@@ -222,8 +222,8 @@ contains
        end if
 
        ! add to appropriate mesh box
-       ! TODO: if tracking weight through bank, add weight instead
-       cnt(e_bin,ijk(1),ijk(2),ijk(3)) = cnt(e_bin,ijk(1),ijk(2),ijk(3)) + 1
+       cnt(e_bin,ijk(1),ijk(2),ijk(3)) = cnt(e_bin,ijk(1),ijk(2),ijk(3)) + &
+            bank_array(i) % wgt
     end do FISSION_SITES
 
 #ifdef MPI
@@ -253,7 +253,7 @@ contains
     sites_outside = outside
 #endif
 
-  end subroutine count_fission_sites
+  end subroutine count_bank_sites
 
 !===============================================================================
 ! MESH_INTERSECT determines if a line between xyz0 and xyz1 intersects the outer

@@ -94,6 +94,9 @@ contains
              id = bank_first + j - 1
              source_bank(j) % id = id
 
+             ! Set weight to one
+             source_bank(j) % wgt = ONE
+
              ! initialize random number seed
              call set_particle_seed(id)
 
@@ -148,6 +151,8 @@ contains
     src => source_bank(index_source)
 
     ! copy attributes from source bank site
+    p % wgt         = src % wgt
+    p % last_wgt    = src % wgt
     p % coord % xyz = src % xyz
     p % coord % uvw = src % uvw
     p % last_xyz    = src % xyz
@@ -315,7 +320,7 @@ contains
        call fatal_error()
     end if
 
-    ! Read position, angle, and energy
+    ! Read source sites
     read(UNIT=UNIT_SOURCE) source_bank(1:work)
 
     ! Close binary source file

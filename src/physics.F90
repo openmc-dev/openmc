@@ -906,6 +906,9 @@ contains
        fission_bank(i) % id  = p % id
        fission_bank(i) % xyz = p % coord0 % xyz
 
+       ! Set weight of fission bank site
+       fission_bank(i) % wgt = ONE
+
        ! sample cosine of angle
        mu = sample_angle(rxn, E)
 

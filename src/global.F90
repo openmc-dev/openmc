@@ -156,6 +156,11 @@ module global
   real(8), allocatable :: entropy_p(:,:,:,:) ! % of source sites in each cell
   type(StructuredMesh), pointer :: entropy_mesh
 
+  ! Uniform fission source weighting
+  logical :: ufs = .false.
+  type(StructuredMesh), pointer :: ufs_mesh => null()
+  real(8), allocatable :: source_frac(:,:,:,:)
+
   ! Write source at end of simulation
   logical :: write_source = .false.
 

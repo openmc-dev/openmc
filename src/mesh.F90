@@ -151,14 +151,13 @@ contains
 ! weighting)
 !===============================================================================
 
-  subroutine count_bank_sites(m, bank_array, cnt, total, &
-       energies, size_bank, sites_outside)
+  subroutine count_bank_sites(m, bank_array, cnt, energies, size_bank, &
+       sites_outside)
 
     type(StructuredMesh), pointer :: m             ! mesh to count sites
     type(Bank), intent(in)        :: bank_array(:) ! fission or source bank
     real(8),    intent(out)       :: cnt(:,:,:,:)  ! weight of sites in each
                                                    ! cell and energy group
-    real(8),    intent(out)       :: total         ! total weight of sites
     real(8),    optional          :: energies(:)   ! energy grid to search
     integer(8), optional          :: size_bank     ! # of bank sites (on each proc)
     logical,    optional          :: sites_outside ! were there sites outside mesh?
@@ -168,7 +167,6 @@ contains
     integer :: ijk(3)   ! indices on mesh
     integer :: n_groups ! number of groups in energies
     integer :: e_bin    ! energy_bin
-    real(8) :: weight   ! accumulated weight of sites
     logical :: in_mesh  ! was single site outside mesh?
     logical :: outside  ! was any site outside mesh?
 #ifdef MPI
@@ -177,7 +175,6 @@ contains
 
     ! initialize variables
     cnt = ZERO
-    weight = ZERO
     outside = .false.
 
     ! Set size of bank
@@ -204,9 +201,6 @@ contains
           outside = .true.
           cycle
        end if
-
-       ! add weight
-       weight = weight + bank_array(i) % wgt
 
        ! determine energy bin
        if (present(energies)) then
@@ -245,11 +239,7 @@ contains
             MPI_COMM_WORLD, mpi_err)
     end if
 
-    ! determine total weight of bank sites
-    call MPI_REDUCE(weight, total, 1, MPI_REAL8, MPI_SUM, 0, &
-         MPI_COMM_WORLD, mpi_err)
 #else
-    total = weight
     sites_outside = outside
 #endif
 

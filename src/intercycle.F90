@@ -446,4 +446,55 @@ contains
 
   end subroutine calculate_keff
 
+!===============================================================================
+! COUNT_SOURCE_FOR_UFS determines the source fraction in each UFS mesh cell and
+! reweights the source bank so that the sum of the weights is equal to
+! n_particles. The 'source_frac' variable is used later to bias the production
+! of fission sites
+!===============================================================================
+
+  subroutine count_source_for_ufs()
+
+    real(8) :: total         ! total weight in source bank
+    logical :: sites_outside ! were there sites outside the ufs mesh?
+#ifdef MPI
+    integer :: n             ! total number of ufs mesh cells
+#endif
+
+    if (current_batch == 1 .and. current_gen == 1) then
+       ! On the first cycle, just assume that the source is already evenly
+       ! distributed so that effectively the production of fission sites is not
+       ! biased
+
+       source_frac = ufs_mesh % volume_frac
+
+    else
+       ! count number of source sites in each ufs mesh cell
+       call count_bank_sites(ufs_mesh, source_bank, source_frac, total, &
+            sites_outside=sites_outside)
+
+       ! Check for sites outside of the mesh
+       if (master .and. sites_outside) then
+          message = "Source sites outside of the UFS mesh!"
+          call fatal_error()
+       end if
+
+       ! Normalize to total weight to get fraction of source in each cell
+       if (master) source_frac = source_frac / total
+
+#ifdef MPI
+       ! Send source fraction to all processors
+       n = product(ufs_mesh % dimension)
+       call MPI_BCAST(source_frac, n, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
+       call MPI_BCAST(total, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
+#endif
+
+       ! Since the total starting weight is not equal to n_particles, we need to
+       ! renormalize the weight of the source sites
+
+       source_bank % wgt = source_bank % wgt * n_particles / total
+    end if
+
+  end subroutine count_source_for_ufs
+
 end module intercycle

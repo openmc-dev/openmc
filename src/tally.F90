@@ -1014,8 +1014,11 @@ contains
        call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
        call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
 
-       ! Check to make sure start or end is in mesh
-       if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) cycle
+       ! Check to if start or end is in mesh -- if not, check if track still
+       ! intersects with mesh
+       if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
+          if (.not. mesh_intersects(m, xyz0, xyz1)) cycle
+       end if
 
        ! Calculate number of surface crossings
        n_cross = sum(abs(ijk1 - ijk0))

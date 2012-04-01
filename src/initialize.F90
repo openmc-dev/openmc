@@ -14,8 +14,8 @@ module initialize
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, print_summary, print_geometry,    &
-                              print_plot, create_summary_file,                 &
-                              create_xs_summary_file
+                              print_plot, create_summary_file, print_usage,    &
+                              create_xs_summary_file, print_version
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use string,           only: to_str, starts_with, ends_with, lower_case
@@ -236,9 +236,19 @@ contains
 
        ! Check for flags
        if (starts_with(argv(i), "-")) then
-          if (argv(i)(2:5) == 'plot') then
+          select case (argv(i))
+          case ('-p', '-plot', '--plot')
              plotting = .true.
-          end if
+          case ('-?', '-help', '--help')
+             call print_usage()
+             stop
+          case ('-v', '-version', '--version')
+             call print_version()
+             stop
+          case default
+             message = "Unknown command line option: " // argv(i)
+             call fatal_error()
+          end select
 
           last_flag = i
        end if

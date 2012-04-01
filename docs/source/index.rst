@@ -29,4 +29,5 @@ Contents
     usersguide/index
     devguide/index
     publications
+    license
     developers

@@ -1312,11 +1312,11 @@ contains
   end subroutine add_to_score
 
 !===============================================================================
-! ACCUMULATE_BATCH_ESTIMATE accumulates scores from many histories (or many
-! generations) into a single realization of a random variable.
+! ACCUMULATE_SCORE accumulates scores from many histories (or many generations)
+! into a single realization of a random variable.
 !===============================================================================
 
-  elemental subroutine accumulate_batch_estimate(score)
+  elemental subroutine accumulate_score(score)
 
     type(TallyScore), intent(inout) :: score
 
@@ -1333,7 +1333,7 @@ contains
     ! Reset the single batch estimate
     score % value = ZERO
 
-  end subroutine accumulate_batch_estimate
+  end subroutine accumulate_score
 
 !===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
@@ -1354,7 +1354,7 @@ contains
        t => tallies(i)
 
        ! Loop over all filter and scoring bins
-       call accumulate_batch_estimate(t % scores)
+       call accumulate_score(t % scores)
     end do
 
   end subroutine synchronize_tallies
@@ -1795,7 +1795,7 @@ contains
 ! the mean for a TallyScore.
 !===============================================================================
 
-  elemental subroutine calculate_statistics(score)
+  elemental subroutine statistics_score(score)
 
     type(TallyScore), intent(inout) :: score
 
@@ -1807,7 +1807,7 @@ contains
     score % sum_sq = sqrt((score % sum_sq/n_active - score % sum**2) / &
          (n_active - 1))
 
-  end subroutine calculate_statistics
+  end subroutine statistics_score
 
 !===============================================================================
 ! TALLY_STATISTICS computes the mean and standard deviation of the mean of each
@@ -1824,11 +1824,11 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
-       call calculate_statistics(t % scores)
+       call statistics_score(t % scores)
     end do
 
     ! Calculate statistics for global tallies
-    call calculate_statistics(global_tallies)
+    call statistics_score(global_tallies)
 
   end subroutine tally_statistics
 

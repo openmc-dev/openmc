@@ -10,7 +10,7 @@ module intercycle
   use random_lcg,      only: prn, set_particle_seed, prn_skip
   use search,          only: binary_search
   use string,          only: to_str
-  use tally,           only: accumulate_batch_estimate
+  use tally,           only: accumulate_score
   use tally_header,    only: TallyObject
   use timing,          only: timer_start, timer_stop
 
@@ -392,7 +392,7 @@ contains
           n = current_batch - n_inactive
 
           ! Accumulate single batch realizations of k
-          call accumulate_batch_estimate(global_tallies)
+          call accumulate_score(global_tallies)
 
           ! Determine sample mean of keff
           keff = global_tallies(K_ANALOG) % sum/n

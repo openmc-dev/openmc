@@ -41,9 +41,11 @@ been compiled with the same compiler you intend to compile OpenMC with.
 Obtaining the Source
 --------------------
 
-All OpenMC source code is hosted on GitHub_. This means that you will need to
-have git_ installed on your computer in order to get source code and updates
-directly from the repository. GitHub has a good set of `instructions
+All OpenMC source code is hosted on GitHub_. You can download the source code
+directly from GitHub or, if you have the git_ version control software installed
+on your computer, you can use git to obtain the source code. The latter method
+has the benefit that it is easy to receive updates directly from the GitHub
+repository. GitHub has a good set of `instructions
 <http://help.github.com/set-up-git-redirect>`_ for how to set up git to work
 with GitHub since this involves setting up ssh_ keys. With git installed and
 setup, the following command will download the full source code from the GitHub
@@ -96,12 +98,12 @@ Makefile, you can enter the following from a terminal::
 
     make DEBUG=yes
 
----------
-Compiling
----------
+-------------------------------
+Compiling on Linux and Mac OS X
+-------------------------------
 
-To compile the code, run the following commands from within the root directory
-for OpenMC:
+To compile OpenMC on Linux or Max OS X, run the following commands from within
+the root directory of the source code:
 
 .. code-block:: sh
 
@@ -109,6 +111,25 @@ for OpenMC:
     make
 
 This will build an executable named ``openmc``.
+
+--------------------
+Compiling on Windows
+--------------------
+
+To compile OpenMC on a Windows operating system, you will need to first install
+Cygwin_, a Linux-like environment for Windows. When configuring Cygwin, make
+sure you install both the gfortran compiler as well as git. Once you have
+obtained the source code, run the following commands from within the source code
+root directory:
+
+.. code-block:: sh
+
+    cd src
+    make
+
+This will build an executable named ``openmc``.
+
+.. _Cygwin: http://www.cygwin.com/
 
 ---------------------------
 Cross-Section Configuration
@@ -130,3 +151,28 @@ directory of the OpenMC distribution to the location of the Serpent
 cross-sections. Then, either set the :ref:`cross_sections` in a settings.xml
 file or the :envvar:`CROSS_SECTIONS` environment variable to the absolute path
 of the ``cross_sections_serpent.xml`` file.
+
+--------------
+Running OpenMC
+--------------
+
+Once you have a model built (see :ref:`usersguide_input`), you can either run
+the openmc executable directly from the directory containing your XML input
+files, or you can specify as a command-line argument the directory containing
+the XML input files. For example, if the path of your OpenMC exectuable is
+``/home/username/openmc/src/openmc`` and your XML input files are in the
+directory ``/home/username/somemodel/``, one way to run the simulation would be:
+
+.. code-block:: sh
+
+    cd /home/username/somemodel
+    openmc
+
+Alternatively, you could run from any directory:
+
+.. code-block:: sh
+
+    openmc /home/username/somemodel
+
+Note that in the latter case, any output files will be placed in the present
+working directory which may be different from ``/home/username/somemodel``.

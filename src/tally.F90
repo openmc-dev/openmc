@@ -1296,46 +1296,6 @@ contains
   end function get_next_bin
 
 !===============================================================================
-! ADD_TO_SCORE accumulates a scoring contribution to a specific tally bin and
-! specific response function. Note that we don't need to add the square of the
-! contribution since that is done at the cycle level, not the history level
-!===============================================================================
-
-  subroutine add_to_score(score, val)
-
-    type(TallyScore), intent(inout) :: score
-    real(8),          intent(in)    :: val
-    
-    score % n_events = score % n_events + 1
-    score % value    = score % value    + val
-    
-  end subroutine add_to_score
-
-!===============================================================================
-! ACCUMULATE_SCORE accumulates scores from many histories (or many generations)
-! into a single realization of a random variable.
-!===============================================================================
-
-  elemental subroutine accumulate_score(score)
-
-    type(TallyScore), intent(inout) :: score
-
-    real(8) :: val
-
-    ! Add the sum and square of the sum of contributions from each cycle
-    ! within a cycle to the variables sum and sum_sq. This will later allow us
-    ! to calculate a variance on the tallies
-
-    val = score % value/(n_particles*gen_per_batch)
-    score % sum    = score % sum    + val
-    score % sum_sq = score % sum_sq + val*val
-
-    ! Reset the single batch estimate
-    score % value = ZERO
-
-  end subroutine accumulate_score
-
-!===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
 ! within the batch to a new random variable
 !===============================================================================
@@ -1791,25 +1751,6 @@ contains
   end function get_label
 
 !===============================================================================
-! CALCULATE_STATISTICS determines the sample mean and the standard deviation of
-! the mean for a TallyScore.
-!===============================================================================
-
-  elemental subroutine statistics_score(score)
-
-    type(TallyScore), intent(inout) :: score
-
-    ! Calculate sample mean and standard deviation of the mean -- note that we
-    ! have used Bessel's correction so that the estimator of the variance of the
-    ! sample mean is unbiased.
-
-    score % sum    = score % sum/n_active
-    score % sum_sq = sqrt((score % sum_sq/n_active - score % sum**2) / &
-         (n_active - 1))
-
-  end subroutine statistics_score
-
-!===============================================================================
 ! TALLY_STATISTICS computes the mean and standard deviation of the mean of each
 ! tally and stores them in the val and val_sq attributes of the TallyScores
 ! respectively
@@ -1831,5 +1772,80 @@ contains
     call statistics_score(global_tallies)
 
   end subroutine tally_statistics
+
+!===============================================================================
+! ADD_TO_SCORE accumulates a scoring contribution to a specific tally bin and
+! specific response function. Note that we don't need to add the square of the
+! contribution since that is done at the cycle level, not the history level
+!===============================================================================
+
+  subroutine add_to_score(score, val)
+
+    type(TallyScore), intent(inout) :: score
+    real(8),          intent(in)    :: val
+    
+    score % n_events = score % n_events + 1
+    score % value    = score % value    + val
+    
+  end subroutine add_to_score
+
+!===============================================================================
+! ACCUMULATE_SCORE accumulates scores from many histories (or many generations)
+! into a single realization of a random variable.
+!===============================================================================
+
+  elemental subroutine accumulate_score(score)
+
+    type(TallyScore), intent(inout) :: score
+
+    real(8) :: val
+
+    ! Add the sum and square of the sum of contributions from each cycle
+    ! within a cycle to the variables sum and sum_sq. This will later allow us
+    ! to calculate a variance on the tallies
+
+    val = score % value/(n_particles*gen_per_batch)
+    score % sum    = score % sum    + val
+    score % sum_sq = score % sum_sq + val*val
+
+    ! Reset the single batch estimate
+    score % value = ZERO
+
+  end subroutine accumulate_score
+
+!===============================================================================
+! STATISTICS_SCORE determines the sample mean and the standard deviation of the
+! mean for a TallyScore.
+!===============================================================================
+
+  elemental subroutine statistics_score(score)
+
+    type(TallyScore), intent(inout) :: score
+
+    ! Calculate sample mean and standard deviation of the mean -- note that we
+    ! have used Bessel's correction so that the estimator of the variance of the
+    ! sample mean is unbiased.
+
+    score % sum    = score % sum/n_active
+    score % sum_sq = sqrt((score % sum_sq/n_active - score % sum**2) / &
+         (n_active - 1))
+
+  end subroutine statistics_score
+
+!===============================================================================
+! RESET_SCORE zeroes out the value and accumulated sum and sum-squared for a
+! single TallyScore.
+!===============================================================================
+
+  elemental subroutine reset_score(score)
+
+    type(TallyScore), intent(inout) :: score
+
+    score % n_events = 0
+    score % value    = ZERO
+    score % sum      = ZERO
+    score % sum_sq   = ZERO
+
+  end subroutine reset_score
 
 end module tally

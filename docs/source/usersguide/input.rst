@@ -210,6 +210,31 @@ integers: the batch number, generation number, and particle number.
 
   *Default*: None
 
+``<uniform_fs>`` Element
+------------------------
+
+The ``<uniform_fs>`` element describes a mesh that is used for re-weighting
+source sites at every generation based on the uniform fission site methodology
+described in Kelly et al., "MC21 Analysis of the Nuclear Energy Agency Monte
+Carlo Performance Benchmark Problem," Proceedings of *Physor 2012*, Knoxville,
+TN (2012). This mesh should cover all possible fissionable materials in the
+problem. It has the following attributes/sub-elements:
+
+  :dimension:
+    The number of mesh cells in the x, y, and z directions, respectively.
+
+    *Default*: None
+
+  :lower_left:
+    The Cartersian coordinates of the lower-left corner of the mesh.
+
+    *Default*: None
+
+  :upper_right:
+    The Cartersian coordinates of the upper-right corner of the mesh.
+
+    *Default*: None
+
 ``<verbosity>`` Element
 -----------------------
 

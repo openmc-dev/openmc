@@ -3,16 +3,17 @@ program main
   use constants
   use cmfd_execute,    only: execute_cmfd
   use global
-  use finalize,        only: finalize_run
-  use initialize,      only: initialize_run
-  use intercycle,      only: shannon_entropy, calculate_keff, synchronize_bank
-  use output,          only: write_message, header
-  use plotter,         only: run_plot
-  use physics,         only: transport
-  use source,          only: get_source_particle
-  use string,          only: to_str
-  use tally,           only: synchronize_tallies, add_to_score
-  use timing,          only: timer_start, timer_stop
+  use finalize,   only: finalize_run
+  use initialize, only: initialize_run
+  use intercycle, only: shannon_entropy, calculate_keff, synchronize_bank, &
+                        count_source_for_ufs
+  use output,     only: write_message, header
+  use plotter,    only: run_plot
+  use physics,    only: transport
+  use source,     only: get_source_particle
+  use string,     only: to_str
+  use tally,      only: synchronize_tallies
+  use timing,     only: timer_start, timer_stop
 
 #ifdef MPI
   use mpi
@@ -93,6 +94,9 @@ contains
           ! Set all tallies to zero
           n_bank = 0
 
+          ! Count source sites if using uniform fission source weighting
+          if (ufs) call count_source_for_ufs()
+
           ! ====================================================================
           ! LOOP OVER HISTORIES
 
@@ -120,11 +124,6 @@ contains
 
           ! Distribute fission bank across processors evenly
           call synchronize_bank()
-
-          ! Add to analog estimate of keff -- since the creation of bank sites
-          ! was originally weighted by the last cycle keff, we need to multiply
-          ! by that keff to get the current cycle's value
-          call add_to_score(global_tallies(K_ANALOG), n_bank * keff)
 
           ! Stop timer for inter-cycle synchronization
           call timer_stop(time_intercycle)

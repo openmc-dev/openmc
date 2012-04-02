@@ -231,6 +231,7 @@ physics.o: geometry_header.o
 physics.o: global.o
 physics.o: interpolation.o
 physics.o: material_header.o
+physics.o: mesh.o
 physics.o: output.o
 physics.o: particle_header.o
 physics.o: random_lcg.o

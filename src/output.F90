@@ -139,6 +139,41 @@ contains
   end subroutine header
 
 !===============================================================================
+! PRINT_VERSION shows the current version as well as copright and license
+! information
+!===============================================================================
+
+  subroutine print_version()
+
+    if (master) then
+       write(UNIT=OUTPUT_UNIT, FMT='(1X,A,1X,I1,".",I1,".",I1)') &
+            "OpenMC version", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
+       write(UNIT=OUTPUT_UNIT, FMT=*) "Copyright (c) 2011-2012 &
+            &Massachusetts Institute of Technology"
+       write(UNIT=OUTPUT_UNIT, FMT=*) "MIT/X license at &
+            &<http://mit-crpg.github.com/openmc/license.html>"
+    end if
+
+  end subroutine print_version
+
+!===============================================================================
+! PRINT_USAGE displays information about command line usage of OpenMC
+!===============================================================================
+
+  subroutine print_usage()
+
+    if (master) then
+       write(OUTPUT_UNIT,*) 'Usage: openmc [options] [directory]'
+       write(OUTPUT_UNIT,*)
+       write(OUTPUT_UNIT,*) 'Options:'
+       write(OUTPUT_UNIT,*) '  -p, --plot      Run in plotting mode'
+       write(OUTPUT_UNIT,*) '  -v, --version   Show version information'
+       write(OUTPUT_UNIT,*) '  -?, --help      Show this message'
+    end if
+
+  end subroutine print_usage
+
+!===============================================================================
 ! WRITE_MESSAGE displays an informational message to the log file and the 
 ! standard output stream.
 !===============================================================================

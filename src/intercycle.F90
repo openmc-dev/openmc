@@ -4,13 +4,13 @@ module intercycle
 
   use error,           only: fatal_error, warning
   use global
-  use mesh,            only: count_fission_sites
+  use mesh,            only: count_bank_sites
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message
   use random_lcg,      only: prn, set_particle_seed, prn_skip
   use search,          only: binary_search
   use string,          only: to_str
-  use tally,           only: accumulate_batch_estimate
+  use tally,           only: accumulate_score
   use tally_header,    only: TallyObject
   use timing,          only: timer_start, timer_stop
 
@@ -285,8 +285,7 @@ contains
 
     integer :: i, j, k        ! index for bank sites
     integer :: n              ! # of boxes in each dimension
-    real(8) :: total          ! total weight of fission bank sites
-    logical :: sites_outside    ! were there sites outside entropy box?
+    logical :: sites_outside  ! were there sites outside entropy box?
     type(StructuredMesh), pointer :: m => null()
 
     ! Get pointer to entropy mesh
@@ -320,7 +319,7 @@ contains
     end if
 
     ! count number of fission sites over mesh
-    call count_fission_sites(m, fission_bank, entropy_p, total, &
+    call count_bank_sites(m, fission_bank, entropy_p, &
          size_bank=n_bank, sites_outside=sites_outside)
 
     ! display warning message if there were sites outside entropy box
@@ -332,7 +331,7 @@ contains
     ! sum values to obtain shannon entropy
     if (master) then
        ! Normalize to total weight of bank sites
-       entropy_p = entropy_p / total
+       entropy_p = entropy_p / sum(entropy_p)
 
        entropy = 0
        do i = 1, m % dimension(1)
@@ -393,7 +392,7 @@ contains
           n = current_batch - n_inactive
 
           ! Accumulate single batch realizations of k
-          call accumulate_batch_estimate(global_tallies)
+          call accumulate_score(global_tallies)
 
           ! Determine sample mean of keff
           keff = global_tallies(K_ANALOG) % sum/n
@@ -457,5 +456,56 @@ contains
 105 format (2X,I5,2X,F8.5,5X,F8.5," +/-",F8.5,2X,F8.5)
 
   end subroutine calculate_keff
+
+!===============================================================================
+! COUNT_SOURCE_FOR_UFS determines the source fraction in each UFS mesh cell and
+! reweights the source bank so that the sum of the weights is equal to
+! n_particles. The 'source_frac' variable is used later to bias the production
+! of fission sites
+!===============================================================================
+
+  subroutine count_source_for_ufs()
+
+    real(8) :: total         ! total weight in source bank
+    logical :: sites_outside ! were there sites outside the ufs mesh?
+#ifdef MPI
+    integer :: n             ! total number of ufs mesh cells
+#endif
+
+    if (current_batch == 1 .and. current_gen == 1) then
+       ! On the first cycle, just assume that the source is already evenly
+       ! distributed so that effectively the production of fission sites is not
+       ! biased
+
+       source_frac = ufs_mesh % volume_frac
+
+    else
+       ! count number of source sites in each ufs mesh cell
+       call count_bank_sites(ufs_mesh, source_bank, source_frac, &
+            sites_outside=sites_outside)
+
+       ! Check for sites outside of the mesh
+       if (master .and. sites_outside) then
+          message = "Source sites outside of the UFS mesh!"
+          call fatal_error()
+       end if
+
+#ifdef MPI
+       ! Send source fraction to all processors
+       n = product(ufs_mesh % dimension)
+       call MPI_BCAST(source_frac, n, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
+#endif
+
+       ! Normalize to total weight to get fraction of source in each cell
+       total = sum(source_frac)
+       source_frac = source_frac / total
+
+       ! Since the total starting weight is not equal to n_particles, we need to
+       ! renormalize the weight of the source sites
+
+       source_bank % wgt = source_bank % wgt * n_particles / total
+    end if
+
+  end subroutine count_source_for_ufs
 
 end module intercycle

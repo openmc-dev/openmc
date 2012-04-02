@@ -221,19 +221,24 @@ contains
     integer :: argc      ! number of command line arguments
     integer :: last_flag ! index of last flag
     character(MAX_FILE_LEN) :: pwd      ! present working directory
-    character(MAX_WORD_LEN) :: argv(10) ! command line arguments
+    character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
     
     ! Get working directory
     call GET_ENVIRONMENT_VARIABLE("PWD", pwd)
 
-    ! Check number of command line arguments
+    ! Check number of command line arguments and allocate argv
     argc = COMMAND_ARGUMENT_COUNT()
 
-    ! Get all command line arguments
-    last_flag = 0
+    ! Allocate and retrieve command arguments
+    allocate(argv(argc))
     do i = 1, argc
        call GET_COMMAND_ARGUMENT(i, argv(i))
+    end do
 
+    ! Process command arguments
+    last_flag = 0
+    i = 1
+    do while (i <= argc)
        ! Check for flags
        if (starts_with(argv(i), "-")) then
           select case (argv(i))
@@ -245,6 +250,9 @@ contains
           case ('-v', '-version', '--version')
              call print_version()
              stop
+          case ('-eps_tol', '-ksp_gmres_restart')
+             ! Handle options that would be based to PETSC
+             i = i + 1
           case default
              message = "Unknown command line option: " // argv(i)
              call fatal_error()
@@ -252,6 +260,9 @@ contains
 
           last_flag = i
        end if
+
+       ! Increment counter
+       i = i + 1
     end do
 
     ! Determine directory where XML input files are
@@ -269,6 +280,9 @@ contains
     if (.not. ends_with(path_input, "/")) then
        path_input = trim(path_input) // "/"
     end if
+
+    ! Free memory from argv
+    deallocate(argv)
 
     ! TODO: Check that directory exists
 

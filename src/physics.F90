@@ -12,6 +12,7 @@ module physics
   use global
   use interpolation,   only: interpolate_tab1
   use material_header, only: Material
+  use mesh,            only: get_mesh_indices
   use output,          only: write_message
   use particle_header, only: LocalCoord
   use random_lcg,      only: prn
@@ -839,6 +840,7 @@ contains
     integer :: nu           ! actual number of neutrons produced
     integer :: law          ! energy distribution law
     integer :: n_sample     ! number of times resampling
+    integer :: ijk(3)       ! indices in ufs mesh
     real(8) :: E            ! incoming energy of neutron
     real(8) :: E_out        ! outgoing energy of fission neutron
     real(8) :: nu_t         ! total nu
@@ -850,7 +852,9 @@ contains
     real(8) :: xi           ! random number
     real(8) :: yield        ! delayed neutron precursor yield
     real(8) :: prob         ! cumulative probability
+    real(8) :: weight       ! weight adjustment for ufs method
     logical :: actual_event ! did fission actually occur? (no survival biasing)
+    logical :: in_mesh      ! source site in ufs mesh?
     type(Nuclide),    pointer :: nuc
     type(DistEnergy), pointer :: edist => null()
 
@@ -886,12 +890,32 @@ contains
 
     ! TODO: Heat generation from fission
 
+    ! If uniform fission source weighting is turned on, we increase of decrease
+    ! the expected number of fission sites produced
+
+    if (ufs) then
+       ! Determine indices on ufs mesh for current location
+       call get_mesh_indices(ufs_mesh, p % coord0 % xyz, ijk, in_mesh)
+       if (.not. in_mesh) then
+          message = "Source site outside UFS mesh!"
+          call fatal_error()
+       end if
+
+       if (source_frac(1,ijk(1),ijk(2),ijk(3)) /= ZERO) then
+          weight = ufs_mesh % volume_frac / source_frac(1,ijk(1),ijk(2),ijk(3))
+       else
+          weight = ONE
+       end if
+    else
+       weight = ONE
+    end if
+
     ! Sample number of neutrons produced
     if (actual_event) then
-       nu_t = p % wgt / keff * nu_t
+       nu_t = p % wgt / keff * nu_t * weight
     else
        nu_t = p % last_wgt * micro_xs(index_nuclide) % fission / (keff * &
-            micro_xs(index_nuclide) % total) * nu_t
+            micro_xs(index_nuclide) % total) * nu_t * weight
     end if
     if (prn() > nu_t - int(nu_t)) then
        nu = int(nu_t)
@@ -899,12 +923,22 @@ contains
        nu = int(nu_t) + 1
     end if
 
+    ! Add to analog estimate of keff
+    call add_to_score(global_tallies(K_ANALOG), nu/weight * keff)
+
     ! Bank source neutrons
     if (nu == 0 .or. n_bank == 3*work) return
     do i = int(n_bank,4) + 1, int(min(n_bank + nu, 3*work),4)
        ! Bank source neutrons by copying particle data
        fission_bank(i) % id  = p % id
        fission_bank(i) % xyz = p % coord0 % xyz
+
+       ! Set weight of fission bank site
+       if (ufs) then
+          fission_bank(i) % wgt = ONE/weight
+       else
+          fission_bank(i) % wgt = ONE
+       end if
 
        ! sample cosine of angle
        mu = sample_angle(rxn, E)

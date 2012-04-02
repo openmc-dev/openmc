@@ -14,8 +14,8 @@ module initialize
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, print_summary, print_geometry,    &
-                              print_plot, create_summary_file,                 &
-                              create_xs_summary_file
+                              print_plot, create_summary_file, print_usage,    &
+                              create_xs_summary_file, print_version
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use string,           only: to_str, starts_with, ends_with, lower_case
@@ -149,9 +149,9 @@ contains
   subroutine setup_mpi()
 
 #ifdef MPI
-    integer        :: bank_blocks(4) ! Count for each datatype
-    integer        :: bank_types(4)  ! Datatypes
-    integer(MPI_ADDRESS_KIND) :: bank_disp(4)   ! Displacements
+    integer        :: bank_blocks(5) ! Count for each datatype
+    integer        :: bank_types(5)  ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: bank_disp(5)   ! Displacements
     type(Bank)     :: b
 
     mpi_enabled = .true.
@@ -186,17 +186,18 @@ contains
 
     ! Determine displacements for MPI_BANK type
     call MPI_GET_ADDRESS(b % id,  bank_disp(1), mpi_err)
-    call MPI_GET_ADDRESS(b % xyz, bank_disp(2), mpi_err)
-    call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
-    call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
+    call MPI_GET_ADDRESS(b % wgt, bank_disp(2), mpi_err)
+    call MPI_GET_ADDRESS(b % xyz, bank_disp(3), mpi_err)
+    call MPI_GET_ADDRESS(b % uvw, bank_disp(4), mpi_err)
+    call MPI_GET_ADDRESS(b % E,   bank_disp(5), mpi_err)
 
     ! Adjust displacements 
     bank_disp = bank_disp - bank_disp(1)
     
     ! Define MPI_BANK for fission sites
-    bank_blocks = (/ 1, 3, 3, 1 /)
-    bank_types = (/ MPI_INTEGER8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
+    bank_blocks = (/ 1, 1, 3, 3, 1 /)
+    bank_types = (/ MPI_INTEGER8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
+    call MPI_TYPE_CREATE_STRUCT(5, bank_blocks, bank_disp, & 
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
@@ -235,9 +236,21 @@ contains
 
        ! Check for flags
        if (starts_with(argv(i), "-")) then
-          if (argv(i)(2:5) == 'plot') then
+          select case (argv(i))
+          case ('-p', '-plot', '--plot')
              plotting = .true.
-          end if
+          case ('-?', '-help', '--help')
+             call print_usage()
+             stop
+          case ('-v', '-version', '--version')
+             call print_version()
+             stop
+          case default
+             message = "Unknown command line option: " // argv(i)
+             call fatal_error()
+          end select
+
+          last_flag = i
        end if
 
       ! Determine directory where XML input files are

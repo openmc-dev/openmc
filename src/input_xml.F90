@@ -238,6 +238,60 @@ contains
        entropy_on = .true.
     end if
 
+    ! Uniform fission source weighting mesh
+    if (size(uniform_fs_) > 0) then
+       ! Check to make sure enough values were supplied
+       if (size(uniform_fs_(1) % lower_left) /= 3) then
+          message = "Need to specify (x,y,z) coordinates of lower-left corner &
+               &of UFS mesh."
+       elseif (size(uniform_fs_(1) % upper_right) /= 3) then
+          message = "Need to specify (x,y,z) coordinates of upper-right corner &
+               &of UFS mesh."
+       elseif (size(uniform_fs_(1) % dimension) /= 3) then
+          message = "Dimension of UFS mesh must be given as three &
+               &integers."
+          call fatal_error()
+       end if
+
+       ! Allocate mesh object and coordinates on mesh
+       allocate(ufs_mesh)
+       allocate(ufs_mesh % lower_left(3))
+       allocate(ufs_mesh % upper_right(3))
+       allocate(ufs_mesh % width(3))
+
+       ! Allocate dimensions
+       ufs_mesh % n_dimension = 3
+       allocate(ufs_mesh % dimension(3))
+
+       ! Copy dimensions
+       ufs_mesh % dimension = uniform_fs_(1) % dimension
+
+       ! Copy values
+       ufs_mesh % lower_left  = uniform_fs_(1) % lower_left
+       ufs_mesh % upper_right = uniform_fs_(1) % upper_right
+
+       ! Check on values provided
+       if (.not. all(ufs_mesh % upper_right > ufs_mesh % lower_left)) then
+          message = "Upper-right coordinate must be greater than lower-left &
+               &coordinate for UFS mesh."
+          call fatal_error()
+       end if
+
+       ! Calculate width
+       ufs_mesh % width = (ufs_mesh % upper_right - &
+            ufs_mesh % lower_left) / ufs_mesh % dimension
+
+       ! Calculate volume fraction of each cell
+       ufs_mesh % volume_frac = ONE/real(product(ufs_mesh % dimension),8)
+
+       ! Turn on uniform fission source weighting
+       ufs = .true.
+
+       ! Allocate source_frac
+       allocate(source_frac(1, ufs_mesh % dimension(1), &
+            ufs_mesh % dimension(2), ufs_mesh % dimension(3)))
+    end if
+
     ! Check if the user has specified to write binary source file
     if (trim(write_source_) == 'on') write_source = .true.
 
@@ -813,6 +867,9 @@ contains
 
        ! Set upper right coordinate
        m % upper_right = m % lower_left + m % dimension * m % width
+
+       ! Set volume fraction
+       m % volume_frac = ONE/real(product(m % dimension),8)
 
        ! Add mesh to dictionary
        call dict_add_key(mesh_dict, m % id, i)

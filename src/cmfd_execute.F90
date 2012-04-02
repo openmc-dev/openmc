@@ -332,7 +332,7 @@ contains
 
     use global,      only: n_particles,meshes,source_bank,work
     use mesh_header, only: StructuredMesh
-    use mesh,        only: count_fission_sites,get_mesh_indices
+    use mesh,        only: count_bank_sites,get_mesh_indices
 
     ! local variables
     integer :: nx ! maximum number of cells in x direction
@@ -364,8 +364,8 @@ contains
     ! zero out weights
     cmfd%weightfactors = 0.0_8
 
-    ! count fission sites in mesh
-    call count_fission_sites(m,source_bank,cmfd%sourcecounts,total,cmfd%egrid,sites_outside=outside)
+    ! count bank sites in mesh
+    call count_bank_sites(m,source_bank,cmfd%sourcecounts,total,cmfd%egrid,sites_outside=outside)
 
     ! check for source sites outside of mesh
     if (outside) then

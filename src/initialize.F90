@@ -245,6 +245,7 @@ contains
           case ('-v', '-version', '--version')
              call print_version()
              stop
+          case('-eps_tol','-ksp_gmres_restart')
           case default
              message = "Unknown command line option: " // argv(i)
              call fatal_error()

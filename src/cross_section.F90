@@ -187,8 +187,13 @@ contains
        end if
     end if
 
-    ! Set last evaluated energy
-    if (index_sab == 0) micro_xs(index_nuclide) % last_E = p % E
+    ! Set last evaluated energy -- if we're in S(a,b) region, force
+    ! re-calculation of cross-section
+    if (index_sab == 0) then
+       micro_xs(index_nuclide) % last_E = p % E
+    else
+       micro_xs(index_nuclide) % last_E = ZERO
+    end if
 
   end subroutine calculate_nuclide_xs
 

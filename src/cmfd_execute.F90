@@ -341,7 +341,6 @@ contains
     integer :: ng ! maximum number of energy groups
     integer :: i ! iteration counter
     integer :: ijk(3) ! spatial bin location
-    real(8) :: total ! total weight of sites
     logical :: outside ! any source sites outside mesh
     logical :: in_mesh ! source site is inside mesh
     type(StructuredMesh), pointer :: m ! point to mesh
@@ -365,7 +364,7 @@ contains
     cmfd%weightfactors = 0.0_8
 
     ! count bank sites in mesh
-    call count_bank_sites(m,source_bank,cmfd%sourcecounts,total,cmfd%egrid,sites_outside=outside)
+    call count_bank_sites(m,source_bank,cmfd%sourcecounts,cmfd%egrid,sites_outside=outside)
 
     ! check for source sites outside of mesh
     if (outside) then

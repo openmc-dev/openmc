@@ -281,9 +281,9 @@ contains
 
       ! get indices from indexmap
       g = mod(irow,ng) + 1
-      i = cmfd % indexmap(irow+1,1)
-      j = cmfd % indexmap(irow+1,2)
-      k = cmfd % indexmap(irow+1,3)
+      i = cmfd % indexmap(irow/ng+1,1)
+      j = cmfd % indexmap(irow/ng+1,2)
+      k = cmfd % indexmap(irow/ng+1,3)
 
     else
 

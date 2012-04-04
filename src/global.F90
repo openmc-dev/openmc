@@ -258,6 +258,9 @@ module global
   ! number of processors for cmfd
   integer :: n_procs_cmfd
 
+  ! reset dhats to zero
+  logical :: dhat_reset = .FALSE.
+
 contains
 
 !===============================================================================

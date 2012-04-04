@@ -144,7 +144,7 @@ contains
     call SNESSetFromOptions(snes,ierr)
 
     ! turn off line searching
-!   call SNESLineSearchSet(snes,SNESLineSearchNo,PETSC_NULL,ierr)
+    call SNESLineSearchSet(snes,SNESLineSearchNo,PETSC_NULL,ierr)
 
     ! get all types and print
     call SNESGetType(snes,snestype,ierr)
@@ -221,7 +221,7 @@ PetscViewer :: viewer
     call VecDot(phi,phi,reslamb,ierr)
 
     ! map to ptr
-    if (rank == n_procs_cmfd) rptr(size(rptr)) = 0.5_8 - 0.5_8*reslamb
+    if (rank == n_procs_cmfd -  1) rptr(size(rptr)) = 0.5_8 - 0.5_8*reslamb
 
     ! reset arrays that are not used
     call VecResetArray(phi,ierr)

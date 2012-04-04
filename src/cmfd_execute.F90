@@ -60,6 +60,7 @@ contains
 
       ! execute snes solver
       call cmfd_snes_execute()
+!     call cmfd_slepc_execute()
       
       ! only run if master process
       if (master) call timer_stop(time_cmfd)
@@ -244,6 +245,9 @@ contains
     nz = cmfd%indices(3)
     ng = cmfd%indices(4)
 
+    ! allocate cmfd source if not already allocated and allocate buffer
+    if (.not. allocated(cmfd%source)) allocate(cmfd%source(ng,nx,ny,nz))
+
     ! reset cmfd source to 0
     cmfd%source = 0.0_8
 
@@ -315,9 +319,6 @@ contains
       cmfd%source = cmfd%source*cmfd%norm
 
     end if
-
-    ! allocate cmfd source if not already allocated and allocate buffer
-    if (.not. allocated(cmfd%source)) allocate(cmfd%source(ng,nx,ny,nz))
 
     ! broadcast full source to all procs 
     call MPI_BCAST(cmfd%source,ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)

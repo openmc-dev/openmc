@@ -28,6 +28,9 @@ contains
     ! calculate all cross sections based on reaction rates from last batch
     call compute_xs()
 
+    ! overwrite xs
+    call static_1_grp()
+
     ! compute neutron balance 
     call neutron_balance()
 
@@ -376,7 +379,7 @@ contains
                     ! compute dtilde
                     dtilde = (2*cell_dc*(1-ref_albedo))/(4*cell_dc*(1+         &
                  &         ref_albedo)+(1-ref_albedo)*cell_hxyz(xyz_idx))
-
+                    dtilde = 0.0_8
                   else ! not next to a reflector or no core map
 
                     ! compute dtilde
@@ -416,7 +419,7 @@ contains
 
   subroutine compute_dhat()
 
-    use global, only:cmfd,cmfd_coremap 
+    use global, only:cmfd,cmfd_coremap,dhat_reset 
 
     ! local variables
     integer :: nx                 ! maximum number of cells in x direction
@@ -536,7 +539,9 @@ contains
 
               ! record dtilde in cmfd object
               cmfd%dhat(l,g,i,j,k) = dhat
-!             cmfd%dhat(l,g,i,j,k) = 0.0_8
+
+              ! check for dhat reset
+              if (dhat_reset) cmfd%dhat(l,g,i,j,k) = 0.0_8
 
             end do LEAK
 
@@ -645,4 +650,26 @@ contains
 
   end function get_reflector_albedo
 
-end module cmfd_data 
+end module cmfd_data
+
+!==============================================================================
+! STATIC_1_GRP modifies xs for benchmark with stand alone (homogeneous)
+!==============================================================================
+
+  subroutine static_1_grp()
+
+    use global, only: cmfd,dhat_reset
+
+    ! overwrite cross sections
+    cmfd % totalxs = 1.0_8
+    cmfd % scattxs = 0.5_8
+    cmfd % nfissxs = 0.48_8
+    cmfd % diffcof = 0.3_8
+    cmfd % hxyz(1,:,:,:) = 2.0_8
+    cmfd % hxyz(2,:,:,:) = 0.1_8
+    cmfd % hxyz(3,:,:,:) = 0.1_8
+
+    ! set dhat reset to true
+    dhat_reset = .true.
+
+  end subroutine static_1_grp

@@ -223,7 +223,7 @@ contains
      call MPI_BCAST(lambda,1,MPI_REAL8,n_procs_cmfd-1,PETSC_COMM_WORLD,ierr)
 
      ! compute math (M-lambda*F) M is overwritten here
-     call MatAXPY(ctx%loss%M,-1.0_8*lambda,ctx%prod%F,SUBSET_NONZERO_PATTERN,ierr)
+     call MatAXPY(ctx%loss%M,-1.0_8*lambda,ctx%prod%F,DIFFERENT_NONZERO_PATTERN,ierr)
 
      ! create tmp petsc vector for source
      call VecCreateMPI(PETSC_COMM_WORLD,ctx%loss%localn,PETSC_DECIDE,source,ierr)

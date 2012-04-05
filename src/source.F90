@@ -230,7 +230,7 @@ contains
     end if
 
     ! Set proper offset for source data on this processor
-    offset = 8*(1 + rank*maxwork*8)
+    offset = 8*(1 + rank*maxwork*9)
 
     ! Write all source sites
     call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
@@ -260,18 +260,19 @@ contains
   end subroutine write_source_binary
 
 !===============================================================================
-! READ_SOURCE reads a source distribution from a source.binary file and
+! READ_SOURCE_BINARY reads a source distribution from a source.binary file and
 ! initializes the source bank
 !===============================================================================
 
   subroutine read_source_binary()
 
     integer(8) :: n_sites  ! number of sites in binary file
+#ifdef MPI
+    integer    :: fh       ! file handle
+    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
+#else
     integer    :: i        ! loop over repeating sites
     integer    :: n_repeat ! number of times to repeat a site
-#ifdef MPI
-    integer                  :: fh     ! file handle
-    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
 #endif
 
 #ifdef MPI
@@ -287,22 +288,21 @@ contains
     call MPI_FILE_READ_AT(fh, offset, n_sites, 1, MPI_INTEGER8, &
          MPI_STATUS_IGNORE, mpi_err)
 
-    ! Check that number of source sites matches
-    if (n_sites /= n_particles) then
-       message = "No support yet for source files of different size than &
+    if (n_particles > n_sites) then
+       message = "No support yet for source files of smaller size than &
             &specified number of particles per generation."
        call fatal_error()
+    else
+       ! Set proper offset for source data on this processor
+       offset = 8*(1 + rank*maxwork*9)
+
+       ! Read all source sites
+       call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
+            MPI_STATUS_IGNORE, mpi_err)
+
+       ! Close binary source file
+       call MPI_FILE_CLOSE(fh, mpi_err)
     end if
-
-    ! Set proper offset for source data on this processor
-    offset = 8*(1 + rank*maxwork*8)
-
-    ! Read all source sites
-    call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    ! Close binary source file
-    call MPI_FILE_CLOSE(fh, mpi_err)
 
 #else
     ! ==========================================================================

@@ -29,7 +29,8 @@ contains
     call compute_xs()
 
     ! overwrite xs
-    call static_1_grp()
+!   call static_1_grp()
+!   call static_2_grp()
 
     ! compute neutron balance 
     call neutron_balance()
@@ -652,9 +653,9 @@ contains
 
 end module cmfd_data
 
-!==============================================================================
+!===============================================================================
 ! STATIC_1_GRP modifies xs for benchmark with stand alone (homogeneous)
-!==============================================================================
+!===============================================================================
 
   subroutine static_1_grp()
 
@@ -673,3 +674,33 @@ end module cmfd_data
     dhat_reset = .true.
 
   end subroutine static_1_grp
+
+!===============================================================================
+! STATIC_2_GRP modifies xs for benchmark with stand alone (homogeneous)
+!===============================================================================
+
+  subroutine static_2_grp()
+
+    use global, only: cmfd,dhat_reset
+
+    ! overwrite cross sections
+    cmfd % totalxs(1,:,:,:) = 0.6451_8
+    cmfd % totalxs(2,:,:,:) = 1.4050_8
+    cmfd % scattxs(1,1,:,:,:) = 0.6134_8
+    cmfd % scattxs(1,2,:,:,:) = 0.0219_8
+    cmfd % scattxs(2,1,:,:,:) = 0.0_8
+    cmfd % scattxs(2,2,:,:,:) = 1.2929_8
+    cmfd % nfissxs(1,1,:,:,:) = 0.0064_8
+    cmfd % nfissxs(1,2,:,:,:) = 0.0_8
+    cmfd % nfissxs(2,1,:,:,:) = 0.1923_8
+    cmfd % nfissxs(2,2,:,:,:) = 0.0_8
+    cmfd % diffcof(1,:,:,:) = 1.3050_8
+    cmfd % diffcof(2,:,:,:) = 0.5112_8
+    cmfd % hxyz(1,:,:,:) = 2.0_8
+    cmfd % hxyz(2,:,:,:) = 0.1_8
+    cmfd % hxyz(3,:,:,:) = 0.1_8
+
+    ! set dhat reset to true
+    dhat_reset = .true.
+
+  end subroutine static_2_grp

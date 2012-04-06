@@ -68,6 +68,7 @@ contains
     energy_grid_ = "union"
     seed_ = 0_8
     write_source_ = ""
+    no_reduce_ = ""
     source_ % type = ""
 
     ! Parse settings.xml file
@@ -292,6 +293,18 @@ contains
 
     ! Check if the user has specified to write binary source file
     if (trim(write_source_) == 'on') write_source = .true.
+
+    ! Check if the user has specified to not reduce tallies at the end of every
+    ! batch
+    if (trim(no_reduce_) == 'on') no_reduce = .true.
+
+    ! Determine number of realizations
+    if (no_reduce) then
+       n_realizations = n_active * n_procs
+    else
+       n_realizations = n_active
+    end if
+       
 
   end subroutine read_settings_xml
 

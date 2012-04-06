@@ -193,6 +193,7 @@ contains
     p % wgt           = ONE
     p % last_wgt      = ONE
     p % n_bank        = 0
+    p % wgt_bank      = ZERO
     p % n_collision   = 0
 
     ! remove any original coordinates

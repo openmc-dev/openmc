@@ -440,7 +440,7 @@ contains
                 ! bank. Since this was weighted by 1/keff, we multiply by keff
                 ! to get the proper score.
 
-                score = keff * p % n_bank
+                score = keff * p % wgt_bank
 
              end if
 
@@ -495,10 +495,11 @@ contains
     ! score by keff to get the true nu-fission rate. Otherwise, the sum
     ! of all nu-fission rates would be ~1.0.
 
-    score = keff
-
     ! loop over number of particles banked
     do k = 1, p % n_bank
+       ! determine score based on bank site weight and keff
+       score = keff * fission_bank(n_bank - p % n_bank + k) % wgt
+
        ! determine outgoing energy from fission bank
        E_out = fission_bank(n_bank - p % n_bank + k) % E
 

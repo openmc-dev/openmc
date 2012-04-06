@@ -72,6 +72,9 @@ contains
        message = "Simulating batch " // trim(to_str(current_batch)) // "..."
        call write_message(8)
 
+       ! Reset total starting weight
+       total_weight = ZERO
+
        ! =======================================================================
        ! LOOP OVER GENERATIONS
        GENERATION_LOOP: do current_gen = 1, gen_per_batch

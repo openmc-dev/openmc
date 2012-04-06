@@ -117,6 +117,10 @@ module global
   integer :: n_tracklength_tallies = 0 ! # of track-length tallies
   integer :: n_current_tallies     = 0 ! # of surface current tallies
 
+  ! Normalization for statistics
+  integer :: n_realizations ! # of independent realizations
+  real(8) :: total_weight   ! total starting particle weight in realization
+
   ! Flag for turning tallies on
   logical :: tallies_on
 
@@ -173,6 +177,9 @@ module global
   logical :: mpi_enabled ! is MPI in use and initialized?
   integer :: mpi_err     ! MPI error code
   integer :: MPI_BANK    ! MPI datatype for fission bank
+
+  ! No reduction at end of batch
+  logical :: no_reduce = .false.
 
   ! ============================================================================
   ! TIMING VARIABLES

@@ -1310,8 +1310,12 @@ contains
     type(TallyObject), pointer :: t => null()
 
 #ifdef MPI
-    call reduce_tallies()
-    if (.not. master) return
+    if (no_reduce) then
+       if (current_batch == n_batches) call reduce_tallies()
+    else
+       call reduce_tallies()
+       if (.not. master) return
+    end if
 #endif
 
     do i = 1, n_tallies
@@ -1368,6 +1372,19 @@ contains
        deallocate(tally_temp)
 
     end do
+
+    ! We also need to determine the total starting weight of particles from the
+    ! last realization
+    if (.not. no_reduce) then
+       if (master) then
+          call MPI_REDUCE(MPI_IN_PLACE, total_weight, 1, MPI_REAL8, MPI_SUM, &
+               0, MPI_COMM_WORLD, mpi_err)
+       else
+          call MPI_REDUCE(total_weight, total_weight, 1, MPI_REAL8, MPI_SUM, &
+               0, MPI_COMM_WORLD, mpi_err)
+       end if
+    end if
+
 
   end subroutine reduce_tallies
 #endif
@@ -1808,7 +1825,7 @@ contains
     ! within a cycle to the variables sum and sum_sq. This will later allow us
     ! to calculate a variance on the tallies
 
-    val = score % value/(n_particles*gen_per_batch)
+    val = score % value/total_weight
     score % sum    = score % sum    + val
     score % sum_sq = score % sum_sq + val*val
 
@@ -1830,9 +1847,9 @@ contains
     ! have used Bessel's correction so that the estimator of the variance of the
     ! sample mean is unbiased.
 
-    score % sum    = score % sum/n_active
-    score % sum_sq = sqrt((score % sum_sq/n_active - score % sum**2) / &
-         (n_active - 1))
+    score % sum    = score % sum/n_realizations
+    score % sum_sq = sqrt((score % sum_sq/n_realizations - score % sum * &
+         score % sum) / (n_realizations - 1))
 
   end subroutine statistics_score
 

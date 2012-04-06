@@ -261,6 +261,9 @@ module global
   ! reset dhats to zero
   logical :: dhat_reset = .FALSE.
 
+  ! activate neutronic feedback
+  logical :: neut_feedback = .FALSE.
+
 contains
 
 !===============================================================================

@@ -4,7 +4,7 @@ module cmfd_execute
   use cmfd_output,       only: write_cmfd_hdf5
   use global,            only: cmfd,cmfd_only,time_cmfd,master,rank,mpi_err,   &
  &                             current_batch,n_inactive,n_batches,n_procs,     &
- &                             n_procs_cmfd
+ &                             n_procs_cmfd,neut_feedback
   use timing,            only: timer_start,timer_stop,timer_reset
 
 
@@ -77,7 +77,7 @@ contains
     call calc_fission_source()
 
     ! perform cmfd re-weighting
-!   call cmfd_reweight()
+    if (neut_feedback) call cmfd_reweight()
 
     ! write out hdf5 file for cmfd object
     if (master) then
@@ -334,6 +334,7 @@ contains
     use global,      only: n_particles,meshes,source_bank,work
     use mesh_header, only: StructuredMesh
     use mesh,        only: count_bank_sites,get_mesh_indices
+    use search,      only: binary_search
 
     ! local variables
     integer :: nx ! maximum number of cells in x direction
@@ -342,6 +343,8 @@ contains
     integer :: ng ! maximum number of energy groups
     integer :: i ! iteration counter
     integer :: ijk(3) ! spatial bin location
+    integer :: e_bin ! energy bin of source particle
+    integer :: n_groups ! number of energy groups
     logical :: outside ! any source sites outside mesh
     logical :: in_mesh ! source site is inside mesh
     type(StructuredMesh), pointer :: m ! point to mesh
@@ -368,10 +371,10 @@ contains
     call count_bank_sites(m,source_bank,cmfd%sourcecounts,cmfd%egrid,sites_outside=outside)
 
     ! check for source sites outside of mesh
-    if (outside) then
-      write(*,*) 'FATAL: source sites found outside of mesh'
-      stop
-    end if
+!   if (outside) then
+!     write(*,*) 'FATAL: source sites found outside of mesh'
+!     stop
+!   end if
 
     ! have master compute weight factors
     if (master) then
@@ -391,6 +394,16 @@ contains
       ! determine spatial bin
       call get_mesh_indices(m,source_bank(i)%xyz,ijk,in_mesh)
 
+      ! determine energy bin
+      n_groups = size(cmfd%egrid) - 1
+      if (source_bank(i) % E < cmfd%egrid(1)) then
+        e_bin = 1
+      elseif (source_bank(i) % E > cmfd%egrid(n_groups+1)) then
+        e_bin = n_groups
+      else
+        e_bin = binary_search(cmfd%egrid, n_groups + 1, source_bank(i) % E)
+      end if
+
       ! check for outside of mesh
       if (.not. in_mesh) then
         write(*,*) 'FATAL: source site found outside of mesh'
@@ -399,11 +412,11 @@ contains
       end if
 
       ! reweight particle
-!     source_bank(i)%w = source_bank(i)%w *                                    &
-!    &                   cmfd%weightfactors(ijk(1),ijk(2),ijk(3))
+      source_bank(i)%wgt = source_bank(i)%wgt *                                &
+     &                   cmfd%weightfactors(e_bin,ijk(1),ijk(2),ijk(3))
 
-    end do 
-stop
+    end do
+
   end subroutine cmfd_reweight
 
 !===============================================================================

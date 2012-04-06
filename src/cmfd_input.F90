@@ -85,6 +85,9 @@ contains
       cmfd % norm = norm_
     end if
 
+    ! set feedback logical
+    neut_feedback = feedback_
+
     ! create tally objects
     call create_cmfd_tally()
 

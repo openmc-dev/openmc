@@ -255,7 +255,7 @@ PetscViewer :: viewer
 
   subroutine extract_results()
 
-    use global, only: cmfd,rank,n_procs_cmfd
+    use global, only: cmfd,rank,n_procs_cmfd,master
 
     integer :: n ! problem size
     integer              :: row_start ! local row start

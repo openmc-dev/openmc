@@ -213,8 +213,9 @@ contains
     if (tallies_on .and. n_analog_tallies > 0) &
          call score_analog_tally()
 
-    ! Reset number of particles banked during collision
-    p % n_bank = 0
+    ! Reset banked weight during collision
+    p % n_bank   = 0
+    p % wgt_bank = ZERO
 
   end subroutine collision
 
@@ -934,11 +935,7 @@ contains
        fission_bank(i) % xyz = p % coord0 % xyz
 
        ! Set weight of fission bank site
-       if (ufs) then
-          fission_bank(i) % wgt = ONE/weight
-       else
-          fission_bank(i) % wgt = ONE
-       end if
+       fission_bank(i) % wgt = ONE/weight
 
        ! sample cosine of angle
        mu = sample_angle(rxn, E)
@@ -1039,7 +1036,10 @@ contains
 
     ! increment number of bank sites
     n_bank = min(n_bank + nu, 3*work)
-    p % n_bank = nu
+
+    ! Store total weight banked for analog fission tallies
+    p % n_bank   = nu
+    p % wgt_bank = nu/weight
 
   end subroutine create_fission_sites
 

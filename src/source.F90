@@ -193,6 +193,7 @@ contains
     p % wgt           = ONE
     p % last_wgt      = ONE
     p % n_bank        = 0
+    p % wgt_bank      = ZERO
     p % n_collision   = 0
 
     ! remove any original coordinates
@@ -230,7 +231,7 @@ contains
     end if
 
     ! Set proper offset for source data on this processor
-    offset = 8*(1 + rank*maxwork*8)
+    offset = 8*(1 + rank*maxwork*9)
 
     ! Write all source sites
     call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
@@ -260,16 +261,19 @@ contains
   end subroutine write_source_binary
 
 !===============================================================================
-! READ_SOURCE reads a source distribution from a source.binary file and
+! READ_SOURCE_BINARY reads a source distribution from a source.binary file and
 ! initializes the source bank
 !===============================================================================
 
   subroutine read_source_binary()
 
-    integer(8) :: n_sites ! number of sites in binary file
+    integer(8) :: n_sites  ! number of sites in binary file
 #ifdef MPI
-    integer                  :: fh     ! file handle
+    integer    :: fh       ! file handle
     integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
+#else
+    integer    :: i        ! loop over repeating sites
+    integer    :: n_repeat ! number of times to repeat a site
 #endif
 
 #ifdef MPI
@@ -285,22 +289,21 @@ contains
     call MPI_FILE_READ_AT(fh, offset, n_sites, 1, MPI_INTEGER8, &
          MPI_STATUS_IGNORE, mpi_err)
 
-    ! Check that number of source sites matches
-    if (n_sites /= n_particles) then
-       message = "No support yet for source files of different size than &
+    if (n_particles > n_sites) then
+       message = "No support yet for source files of smaller size than &
             &specified number of particles per generation."
        call fatal_error()
+    else
+       ! Set proper offset for source data on this processor
+       offset = 8*(1 + rank*maxwork*9)
+
+       ! Read all source sites
+       call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
+            MPI_STATUS_IGNORE, mpi_err)
+
+       ! Close binary source file
+       call MPI_FILE_CLOSE(fh, mpi_err)
     end if
-
-    ! Set proper offset for source data on this processor
-    offset = 8*(1 + rank*maxwork*8)
-
-    ! Read all source sites
-    call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
-         MPI_STATUS_IGNORE, mpi_err)
-
-    ! Close binary source file
-    call MPI_FILE_CLOSE(fh, mpi_err)
 
 #else
     ! ==========================================================================
@@ -313,15 +316,34 @@ contains
     ! Read number of source sites in file
     read(UNIT=UNIT_SOURCE) n_sites
 
-    ! Check that number of source sites matches
-    if (n_sites /= n_particles) then
-       message = "No support yet for source files of different size than &
-            &specified number of particles per generation."
-       call fatal_error()
-    end if
+    if (n_particles > n_sites) then
+       ! The size of the source file is smaller than the number of particles we
+       ! need. Thus, read all sites and then duplicate sites as necessary.
 
-    ! Read source sites
-    read(UNIT=UNIT_SOURCE) source_bank(1:work)
+       read(UNIT=UNIT_SOURCE) source_bank(1:n_sites)
+
+       ! Let's say we have 300 sites and we need to fill in 1000. This do loop
+       ! will fill in sites 301 - 900.
+
+       n_repeat = int(n_particles / n_sites)
+       do i = 1, n_repeat - 1
+          source_bank(i*n_sites + 1:(i+1)*n_sites) = &
+               source_bank((i-1)*n_sites + 1:i*n_sites)
+       end do
+
+       ! This final statement would fill sites 901 - 1000 in the above example.
+
+       source_bank(n_repeat*n_sites + 1:n_particles) = &
+            source_bank(1:n_particles - n_repeat * n_sites)
+
+    else
+       ! The size of the source file is bigger than or equal to the number of
+       ! particles we need for one generation. Thus, we can just read as many
+       ! sites as we need.
+
+       read(UNIT=UNIT_SOURCE) source_bank(1:n_particles)
+
+    end if
 
     ! Close binary source file
     close(UNIT=UNIT_SOURCE)

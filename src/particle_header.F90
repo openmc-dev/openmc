@@ -57,6 +57,7 @@ module particle_header
 
      ! Post-collision physical data
      integer    :: n_bank        ! number of fission sites banked
+     real(8)    :: wgt_bank      ! weight of fission sites banked
 
      ! Energy grid data
      integer    :: IE            ! index on energy grid

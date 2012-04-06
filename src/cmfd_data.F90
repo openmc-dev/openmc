@@ -154,10 +154,10 @@ contains
                 cmfd % diffusion(h,i,j,k) = t % scores(score_index,4) % sum / flux
 
                 ! calculate diffusion coefficient
-                cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*cmfd%totalxs(h,i,j,k))
+!               cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*cmfd%totalxs(h,i,j,k))
 !               cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k) -&
 !              &                                cmfd % p1scattxs(h,i,j,k)))
-!               cmfd % diffcof(h,i,j,k) = cmfd % diffusion(h,i,j,k)
+                cmfd % diffcof(h,i,j,k) = cmfd % diffusion(h,i,j,k)
 
               else if (ital == 2) then
 
@@ -380,7 +380,7 @@ contains
                     ! compute dtilde
                     dtilde = (2*cell_dc*(1-ref_albedo))/(4*cell_dc*(1+         &
                  &         ref_albedo)+(1-ref_albedo)*cell_hxyz(xyz_idx))
-                    dtilde = 0.0_8
+      !             dtilde = 0.0_8
                   else ! not next to a reflector or no core map
 
                     ! compute dtilde

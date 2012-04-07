@@ -94,7 +94,7 @@ geometry has been specified incorrectly or is missing.
 
 The best way to debug this error is to turn on a trace for the particle getting
 lost. After the error message, the code will display what batch, generation, and
-particle number caused the error. In your settings.xml, add a <trace> tag
+particle number caused the error. In your settings.xml, add a :ref:`trace`
 followed by the batch, generation, and particle number. This will give you
 detailed output every time that particle enters a cell, crosses a boundary, or
 has a collision. For example, if you received this error at cycle 5, generation

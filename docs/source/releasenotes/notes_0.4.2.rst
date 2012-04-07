@@ -22,6 +22,8 @@ hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
+- Option to not reduce tallies across processors at end of each batch.
+- Uniform fission site method for reducing variance on local tallies.
 - Reading/writing binary source files.
 - Added more messages for <trace> or high verbosity.
 - Estimator for diffusion coefficient.
@@ -35,11 +37,13 @@ New Features
 Bug Fixes
 ---------
 
-- `b2c40e`_: Fixed bug in incoming energy filter for track-length tallies.
-- `5524fd`_: Mesh filter now works with track-length tallies.
-- `d050c7`_: Added Bessel's correction to make estimate of variance unbiased.
-- `2a5b9c`_: Fixed regression in plotting.
+- 671f30_: Fixed surface currents on mesh not encompassing geometry.
+- b2c40e_: Fixed bug in incoming energy filter for track-length tallies.
+- 5524fd_: Mesh filter now works with track-length tallies.
+- d050c7_: Added Bessel's correction to make estimate of variance unbiased.
+- 2a5b9c_: Fixed regression in plotting.
 
+.. _671f30: https://github.com/mit-crpg/openmc/commit/671f30
 .. _b2c40e: https://github.com/mit-crpg/openmc/commit/b2c40e
 .. _5524fd: https://github.com/mit-crpg/openmc/commit/5524fd
 .. _d050c7: https://github.com/mit-crpg/openmc/commit/d050c7

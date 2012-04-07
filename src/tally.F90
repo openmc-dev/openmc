@@ -1307,38 +1307,46 @@ contains
   subroutine synchronize_tallies()
 
     integer :: i   ! index in tallies array
-    type(TallyObject), pointer :: t => null()
 
 #ifdef MPI
-    if (no_reduce) then
-       if (current_batch == n_batches) call reduce_tallies()
-    else
-       call reduce_tallies()
+    if (.not. no_reduce) then
+       call reduce_tally_values()
        if (.not. master) return
     end if
 #endif
 
+    ! Accumulate scores for each tally
     do i = 1, n_tallies
-       t => tallies(i)
-
-       ! Loop over all filter and scoring bins
-       call accumulate_score(t % scores)
+       call accumulate_score(tallies(i) % scores)
     end do
+
+    ! Before accumulating scores for global_tallies, we need to get the current
+    ! batch estimate of k_analog for displaying to output
+    k_batch = global_tallies(K_ANALOG) % value
+
+    ! Accumulate scores for global tallies
+    call accumulate_score(global_tallies)
+
+#ifdef MPI
+    if (no_reduce .and. current_batch == n_batches) &
+         call reduce_tally_sums()
+#endif
 
   end subroutine synchronize_tallies
 
 !===============================================================================
-! REDUCE_TALLIES collects all the results from tallies onto one processor
+! REDUCE_TALLY_VALUES collects all the results from tallies onto one processor
 !===============================================================================
 
 #ifdef MPI
-  subroutine reduce_tallies()
+  subroutine reduce_tally_values()
 
     integer :: i      ! loop index for tallies
     integer :: n      ! number of filter bins
     integer :: m      ! number of score bins
     integer :: n_bins ! total number of bins
     real(8), allocatable :: tally_temp(:,:) ! contiguous array of scores
+    real(8) :: global_temp(N_GLOBAL_TALLIES)
     type(TallyObject), pointer :: t => null()
 
     do i = 1, n_tallies
@@ -1353,25 +1361,41 @@ contains
        tally_temp = t % scores(:,:) % value
 
        if (master) then
-          ! The MPI_IN_PLACE specifier allows the master to copy values into a
-          ! receive buffer without having a temporary variable
-          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
-               0, MPI_COMM_WORLD, mpi_err)
+          ! The MPI_IN_PLACE specifier allows the master to copy values into
+          ! a receive buffer without having a temporary variable
+          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
+               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
           ! Transfer values to value on master
           t % scores(:,:) % value = tally_temp
        else
           ! Receive buffer not significant at other processors
-          call MPI_REDUCE(tally_temp, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
-               0, MPI_COMM_WORLD, mpi_err)
+          call MPI_REDUCE(tally_temp, tally_temp, n_bins, MPI_REAL8, &
+               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
           ! Reset value on other processors
           t % scores(:,:) % value = 0
        end if
 
        deallocate(tally_temp)
-
     end do
+
+    ! Copy global tallies into array to be reduced
+    global_temp = global_tallies(:) % value
+
+    if (master) then
+       call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
+            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+
+       ! Transfer values back to global_tallies on master
+       global_tallies(:) % value = global_temp
+    else
+       call MPI_REDUCE(global_temp, global_temp, N_GLOBAL_TALLIES, &
+            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+       
+       ! Reset value on other processors
+       global_tallies(:) % value = ZERO
+    end if
 
     ! We also need to determine the total starting weight of particles from the
     ! last realization
@@ -1385,8 +1409,79 @@ contains
        end if
     end if
 
+  end subroutine reduce_tally_values
+#endif
 
-  end subroutine reduce_tallies
+!===============================================================================
+! REDUCE_TALLY_SUMS gathers data from the sum and sum_sq member variables of
+! TallyScores rather than the data from values. This is used if no_reduce is
+! turned on and scores are accumulated on every processor *before* being
+! reduced.
+!===============================================================================
+
+#ifdef MPI
+  subroutine reduce_tally_sums()
+
+    integer :: i      ! loop index for tallies
+    integer :: n      ! number of filter bins
+    integer :: m      ! number of score bins
+    integer :: n_bins ! total number of bins
+    real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of scores
+    real(8) :: global_temp(2,N_GLOBAL_TALLIES)
+    type(TallyObject), pointer :: t => null()
+
+    do i = 1, n_tallies
+       t => tallies(i)
+
+       n = t % n_total_bins
+       m = t % n_score_bins
+       n_bins = n*m*2
+
+       allocate(tally_temp(2,n,m))
+
+       tally_temp(1,:,:) = t % scores(:,:) % sum
+       tally_temp(2,:,:) = t % scores(:,:) % sum_sq
+
+       if (master) then
+          ! The MPI_IN_PLACE specifier allows the master to copy values into a
+          ! receive buffer without having a temporary variable
+          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
+               0, MPI_COMM_WORLD, mpi_err)
+
+          ! Transfer values to value on master
+          t % scores(:,:) % sum    = tally_temp(1,:,:)
+          t % scores(:,:) % sum_sq = tally_temp(2,:,:)
+       else
+          ! Receive buffer not significant at other processors
+          call MPI_REDUCE(tally_temp, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
+               0, MPI_COMM_WORLD, mpi_err)
+       end if
+
+       deallocate(tally_temp)
+
+    end do
+
+    n_bins = 2 * N_GLOBAL_TALLIES
+
+    global_temp(1,:) = global_tallies(:) % sum
+    global_temp(2,:) = global_tallies(:) % sum_sq
+
+    if (master) then
+       ! The MPI_IN_PLACE specifier allows the master to copy values into a
+       ! receive buffer without having a temporary variable
+       call MPI_REDUCE(MPI_IN_PLACE, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
+            0, MPI_COMM_WORLD, mpi_err)
+       
+       ! Transfer values to value on master
+       global_tallies(:) % sum    = global_temp(1,:)
+       global_tallies(:) % sum_sq = global_temp(2,:)
+    else
+       ! Receive buffer not significant at other processors
+       call MPI_REDUCE(global_temp, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
+            0, MPI_COMM_WORLD, mpi_err)
+    end if
+
+  end subroutine reduce_tally_sums
 #endif
 
 !===============================================================================

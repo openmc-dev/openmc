@@ -82,7 +82,7 @@ contains
 
     ! Read plots.xml if it exists -- this has to be done separate from the other
     ! XML files because we need the PRNG to be initialized first
-    if (plotting) call read_plots_xml()
+    if (run_mode == MODE_PLOTTING) call read_plots_xml()
 
     ! Set up universe structures
     call prepare_universes()
@@ -94,7 +94,7 @@ contains
     ! neighboring cells for efficient tracking
     call neighbor_lists()
 
-    if (.not. plotting) then
+    if (run_mode /= MODE_PLOTTING) then
        ! Read cross section summary file to determine what files contain
        ! cross-sections
        call read_cross_sections_xml()
@@ -124,7 +124,7 @@ contains
 
     ! stop timer for initialization
     if (master) then
-       if (plotting) then
+       if (run_mode == MODE_PLOTTING) then
           call print_geometry()
           call print_plot()
        else
@@ -243,7 +243,7 @@ contains
        if (starts_with(argv(i), "-")) then
           select case (argv(i))
           case ('-p', '-plot', '--plot')
-             plotting = .true.
+             run_mode = MODE_PLOTTING
           case ('-?', '-help', '--help')
              call print_usage()
              stop

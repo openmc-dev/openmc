@@ -325,9 +325,11 @@ module constants
        SRC_POINT   = 2, & ! Source at a single point
        SRC_FILE    = 3    ! Source from a file
 
+  ! Running modes
   integer, parameter ::        &
-       PROB_SOURCE      = 1, & ! External source problem
-       PROB_CRITICALITY = 2    ! Criticality problem
+       MODE_FIXEDSOURCE = 1, & ! Fixed source mode
+       MODE_CRITICALITY = 2, & ! Criticality mode
+       MODE_PLOTTING    = 3    ! Plotting mode
 
   ! Unit numbers
   integer, parameter :: UNIT_SUMMARY = 11 ! unit # for writing summary file

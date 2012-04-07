@@ -873,14 +873,15 @@ contains
 
     ! Display problem summary
     call header("PROBLEM SUMMARY", unit=UNIT_SUMMARY)
-    if (problem_type == PROB_CRITICALITY) then
+    select case(run_mode)
+    case (MODE_CRITICALITY)
        write(UNIT_SUMMARY,100) 'Problem type:', 'Criticality'
        write(UNIT_SUMMARY,101) 'Number of Batches:', n_batches
        write(UNIT_SUMMARY,101) 'Number of Inactive Batches:', n_inactive
        write(UNIT_SUMMARY,101) 'Generations per Batch:', gen_per_batch
-    elseif (problem_type == PROB_SOURCE) then
+    case (MODE_FIXEDSOURCE)
        write(UNIT_SUMMARY,100) 'Problem type:', 'External Source'
-    end if
+    end select
     write(UNIT_SUMMARY,101) 'Number of Particles:', n_particles
 
     ! Display geometry summary

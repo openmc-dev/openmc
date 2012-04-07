@@ -206,11 +206,6 @@ module global
   real(8) :: weight_survive = 1.0
 
   ! ============================================================================
-  ! PLOTTING VARIABLES
-
-  logical :: plotting = .false.
-
-  ! ============================================================================
   ! HDF5 VARIABLES
 
 #ifdef HDF5
@@ -221,6 +216,9 @@ module global
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
+  ! Mode to run in (fixed source, criticality, plotting, etc)
+  integer :: run_mode = MODE_CRITICALITY
+
   character(MAX_FILE_LEN) :: path_input          ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections ! Path to cross_sections.xml
 
@@ -229,9 +227,6 @@ module global
 
   ! Random number seed
   integer(8) :: seed = 1_8
-
-  ! Problem type
-  integer :: problem_type = PROB_CRITICALITY
 
   ! The verbosity controls how much information will be printed to the
   ! screen and in logs

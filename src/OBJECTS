@@ -3,6 +3,7 @@ ace.o \
 ace_header.o \
 bank_header.o \
 cross_section.o \
+criticality.o \
 datatypes.o \
 datatypes_header.o \
 doppler.o \

@@ -150,9 +150,10 @@ module global
   integer(8) :: work         ! number of particles per processor
   integer(8) :: maxwork      ! maximum number of particles per processor
 
-  ! single-genreation keff
-  real(8) :: keff = ONE
-  real(8) :: keff_std
+  ! Temporary k-effective values
+  real(8) :: k_batch    ! single batch estimate of k
+  real(8) :: keff = ONE ! average k over active cycles
+  real(8) :: keff_std   ! standard deviation of average k
 
   ! Shannon entropy
   logical :: entropy_on = .false.

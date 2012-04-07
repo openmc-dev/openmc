@@ -355,54 +355,84 @@ contains
 
   subroutine calculate_keff()
 
-    integer :: n        ! active batch number
-    real(8) :: k_batch  ! single batch estimate of keff
-#ifdef MPI
-    real(8) :: global_temp(N_GLOBAL_TALLIES)
-#endif
+    integer :: n       ! active batch number
+    real(8) :: temp(2) ! used to reduce sum and sum_sq
 
     message = "Calculate batch keff..."
     call write_message(8)
 
+    ! =========================================================================
+    ! SINGLE-BATCH ESTIMATE OF K-EFFECTIVE
+
+    if (.not. tallies_on) k_batch = global_tallies(K_ANALOG) % value
+
 #ifdef MPI
-    ! Copy global tallies into array to be reduced
-    global_temp = global_tallies(:) % value
-
+    ! Reduce value of k_batch if running in parallel
     if (master) then
-       call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
-            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-
-       ! Transfer values back to global_tallies on master
-       global_tallies(:) % value = global_temp
+       call MPI_REDUCE(MPI_IN_PLACE, k_batch, 1, MPI_REAL8, MPI_SUM, 0, &
+            MPI_COMM_WORLD, mpi_err)
     else
-       call MPI_REDUCE(global_temp, global_temp, N_GLOBAL_TALLIES, &
-            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-       
-       ! Reset value on other processors
-       global_tallies(:) % value = ZERO
+       call MPI_REDUCE(k_batch, k_batch, 1, MPI_REAL8, MPI_SUM, 0, &
+            MPI_COMM_WORLD, mpi_err)
     end if
 #endif
 
-    ! Collect statistics and print output
-    if (master) then
-       k_batch = global_tallies(K_ANALOG) % value/(n_particles*gen_per_batch)
+    ! Normalize single batch estimate of k
+    k_batch = k_batch/(n_particles * gen_per_batch)
 
-       if (tallies_on) then
-          ! Active batch number
+    if (tallies_on) then
+       ! =======================================================================
+       ! ACTIVE BATCHES
+
+       if (no_reduce) then
+          ! In this case, no reduce was ever done on global_tallies. Thus, we
+          ! need to reduce the values in sum and sum^2 to get the sample mean
+          ! and its standard deviation
+
+          ! Define number of realizations
+          n = (current_batch - n_inactive) * n_procs
+
+#ifdef MPI
+          if (current_batch /= n_batches) then
+             call MPI_REDUCE(global_tallies(K_ANALOG) % sum, temp, 2, &
+                  MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+          else
+             temp(1) = global_tallies(K_ANALOG) % sum
+             temp(2) = global_tallies(K_ANALOG) % sum_sq
+          end if
+#else
+          temp(1) = global_tallies(K_ANALOG) % sum
+          temp(2) = global_tallies(K_ANALOG) % sum_sq
+#endif
+
+          ! Sample mean of k
+          keff = temp(1) / n
+          
+          if (n > 1) then
+             ! Standard deviation of the sample mean of k
+             keff_std = sqrt((temp(2)/n - keff*keff)/(n - 1))
+          end if
+       else
+          ! In this case, global_tallies has already been reduced, so we don't
+          ! need to perform any more reductions and just take the values from
+          ! global_tallies directly
+
+          ! Define number of realizations
           n = current_batch - n_inactive
 
-          ! Accumulate single batch realizations of k
-          call accumulate_score(global_tallies)
+          ! Sample mean of keff
+          keff = global_tallies(K_ANALOG) % sum / n
 
-          ! Determine sample mean of keff
-          keff = global_tallies(K_ANALOG) % sum/n
-
-          ! Display output for this batch
-          if (current_batch > n_inactive + 1) then
-             ! Determine standard deviation of the sample mean of keff
+          if (n > 1) then
+             ! Standard deviation of the sample mean of k
              keff_std = sqrt((global_tallies(K_ANALOG) % sum_sq/n - &
                   keff*keff)/(n - 1))
+          end if
+       end if
 
+       ! Display output for this batch
+       if (master) then
+          if (current_batch > n_inactive + 1) then
              if (entropy_on) then
                 write(UNIT=OUTPUT_UNIT, FMT=103) current_batch, k_batch, &
                      entropy, keff, keff_std
@@ -417,20 +447,25 @@ contains
                 write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, k_batch
              end if
           end if
-       else
-          ! Display output for inactive batch
+       end if
+    else
+       ! =======================================================================
+       ! INACTIVE BATCHES
+
+       ! Display output for inactive batch
+       if (master) then
           if (entropy_on) then
              write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, k_batch, entropy
           else
              write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, k_batch
           end if
-
-          ! Set keff
-          keff = k_batch
-
-          ! Reset tally values
-          global_tallies(:) % value = ZERO
        end if
+
+       ! Set keff
+       keff = k_batch
+
+       ! Reset tally values
+       global_tallies(:) % value = ZERO
     end if
 
 #ifdef MPI

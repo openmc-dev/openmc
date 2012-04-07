@@ -23,12 +23,13 @@ program main
   ! set up problem
   call initialize_run()
 
-  ! start problem
-  if (plotting) then
+  ! start problem based on mode
+  select case (run_mode)
+  case (MODE_CRITICALITY)
+     call run_criticality()
+  case (MODE_PLOTTING)
      call run_plot()
-  else
-     call run_problem()
-  end if
+  end select
      
   ! finalize run
   call finalize_run()
@@ -36,11 +37,11 @@ program main
 contains
 
 !===============================================================================
-! RUN_PROBLEM encompasses all the main logic where iterations are performed over
-! the cycles and histories.
+! RUN_CRITICALITY encompasses all the main logic where iterations are performed
+! over the cycles and histories.
 !===============================================================================
 
-  subroutine run_problem()
+  subroutine run_criticality()
 
     integer(8) :: i  ! index over histories in single cycle
 
@@ -147,6 +148,6 @@ contains
 
     if (master) call header("SIMULATION FINISHED", level=1)
 
-  end subroutine run_problem
+  end subroutine run_criticality
 
 end program main

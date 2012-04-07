@@ -95,7 +95,7 @@ contains
 
     ! Criticality information
     if (criticality % batches > 0) then
-       problem_type = PROB_CRITICALITY
+       if (run_mode /= MODE_PLOTTING) run_mode = MODE_CRITICALITY
 
        ! Check number of particles
        if (len_trim(criticality % particles) == 0) then

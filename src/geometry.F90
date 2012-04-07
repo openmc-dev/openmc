@@ -258,7 +258,7 @@ contains
        call write_message()
     end if
 
-    if (surf % bc == BC_VACUUM .and. (.not. plotting)) then
+    if (surf % bc == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
        ! =======================================================================
        ! PARTICLE LEAKS OUT OF PROBLEM
 
@@ -289,7 +289,7 @@ contains
        end if
        return
 
-    elseif (surf % bc == BC_REFLECT .and. (.not. plotting)) then
+    elseif (surf % bc == BC_REFLECT .and. (run_mode /= MODE_PLOTTING)) then
        ! =======================================================================
        ! PARTICLE REFLECTS FROM SURFACE
 
@@ -447,7 +447,7 @@ contains
     call find_cell(found)
 
     ! Couldn't find next cell anywhere!
-    if ((.not. found) .and. (.not. plotting)) then
+    if ((.not. found) .and. (run_mode /= MODE_PLOTTING)) then
        message = "After particle " // trim(to_str(p % id)) // " crossed surface " &
             // trim(to_str(surfaces(abs(p%surface)) % id)) // " it could not be &
             &located in any cell and it did not leak."

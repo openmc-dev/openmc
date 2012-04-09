@@ -109,6 +109,12 @@ contains
        n_inactive    = criticality % inactive
        n_active      = n_batches - n_inactive
        gen_per_batch = criticality % generations_per_batch
+
+       ! Check number of active batches
+       if (n_active <= 0) then
+          message = "Number of active batches must be greater than 0."
+          call fatal_error()
+       end if
     else
        message = "Need to specify number of batches with <batches> tag."
        call fatal_error()

@@ -14,6 +14,7 @@ cmfd_prod_operator.o \
 cmfd_slepc_solver.o \
 cmfd_snes_solver.o \
 cross_section.o \
+criticality.o \
 datatypes.o \
 datatypes_header.o \
 doppler.o \

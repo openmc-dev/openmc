@@ -118,6 +118,10 @@ module global
   integer :: n_tracklength_tallies = 0 ! # of track-length tallies
   integer :: n_current_tallies     = 0 ! # of surface current tallies
 
+  ! Normalization for statistics
+  integer :: n_realizations ! # of independent realizations
+  real(8) :: total_weight   ! total starting particle weight in realization
+
   ! Flag for turning tallies on
   logical :: tallies_on
 
@@ -135,9 +139,6 @@ module global
   integer    :: current_batch = 0 ! current batch
   integer    :: current_gen   = 0 ! current generation
 
-  ! Random Number seed
-  integer(8) :: seed = 1_8
-
   ! External source
   type(ExtSource), target :: external_source
 
@@ -150,9 +151,10 @@ module global
   integer(8) :: work         ! number of particles per processor
   integer(8) :: maxwork      ! maximum number of particles per processor
 
-  ! single-genreation keff
-  real(8) :: keff = ONE
-  real(8) :: keff_std
+  ! Temporary k-effective values
+  real(8) :: k_batch    ! single batch estimate of k
+  real(8) :: keff = ONE ! average k over active cycles
+  real(8) :: keff_std   ! standard deviation of average k
 
   ! Shannon entropy
   logical :: entropy_on = .false.
@@ -178,6 +180,9 @@ module global
   integer :: mpi_err     ! MPI error code
   integer :: MPI_BANK    ! MPI datatype for fission bank
 
+  ! No reduction at end of batch
+  logical :: no_reduce = .false.
+
   ! ============================================================================
   ! TIMING VARIABLES
 
@@ -202,11 +207,6 @@ module global
   real(8) :: weight_survive = 1.0
 
   ! ============================================================================
-  ! PLOTTING VARIABLES
-
-  logical :: plotting = .false.
-
-  ! ============================================================================
   ! HDF5 VARIABLES
 
 #ifdef HDF5
@@ -217,14 +217,17 @@ module global
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
+  ! Mode to run in (fixed source, criticality, plotting, etc)
+  integer :: run_mode = MODE_CRITICALITY
+
   character(MAX_FILE_LEN) :: path_input          ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections ! Path to cross_sections.xml
 
   ! Message used in message/warning/fatal_error
   character(MAX_LINE_LEN) :: message
 
-  ! Problem type
-  integer :: problem_type = PROB_CRITICALITY
+  ! Random number seed
+  integer(8) :: seed = 1_8
 
   ! The verbosity controls how much information will be printed to the
   ! screen and in logs

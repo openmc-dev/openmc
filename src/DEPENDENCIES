@@ -68,6 +68,16 @@ cross_section.o: material_header.o
 cross_section.o: random_lcg.o
 cross_section.o: search.o
 
+criticality.o: constants.o
+criticality.o: global.o
+criticality.o: intercycle.o
+criticality.o: output.o
+criticality.o: physics.o
+criticality.o: source.o
+criticality.o: string.o
+criticality.o: tally.o
+criticality.o: timing.o
+
 datatypes.o: datatypes_header.o
 
 doppler.o: constants.o
@@ -190,16 +200,11 @@ logging.o: global.o
 
 main.o: cmfd_execute.o
 main.o: constants.o
+main.o: criticality.o
+main.o: finalize.o
 main.o: global.o
 main.o: initialize.o
-main.o: intercycle.o
-main.o: output.o
-main.o: physics.o
 main.o: plot.o
-main.o: source.o
-main.o: string.o
-main.o: tally.o
-main.o: timing.o
 
 mesh.o: constants.o
 mesh.o: global.o

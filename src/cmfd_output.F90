@@ -74,8 +74,8 @@ contains
             interactions = cmfd % totalxs(g,i,j,k) * cmfd % flux(g,i,j,k)
 
             ! get scattering and fission
-            scattering = 0.0
-            fission = 0.0
+            scattering = 0.0_8
+            fission = 0.0_8
             GROUPH: do h = 1,ng
 
               scattering = scattering + cmfd % scattxs(h,g,i,j,k) * &
@@ -88,6 +88,13 @@ contains
 
             ! compute residual
             res = leakage + interactions - scattering - (ONE/keff)*fission
+            write(670,*) 'Group:',g
+            write(670,*) 'Leakage:',leakage
+            write(670,*) 'Interactions:',interactions
+            write(670,*) 'Scattering:',scattering
+            write(670,*) 'Fission:',fission
+            write(670,*) 'k-eff:',keff
+            write(670,*) 'Balance:',res
 
             ! normalize by flux
             res = res/cmfd%flux(g,i,j,k)

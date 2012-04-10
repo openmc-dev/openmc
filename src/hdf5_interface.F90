@@ -95,7 +95,7 @@ contains
   subroutine hdf5_write_summary()
 
     ! Write criticality information
-    if (problem_type == PROB_CRITICALITY) then
+    if (run_mode == MODE_CRITICALITY) then
        ! Need to write integer(8)'s using double instead since there is no H5LT
        ! call for making a dataset of type long
        call hdf5_make_double(hdf5_output_file, "n_particles", real(n_particles,8))

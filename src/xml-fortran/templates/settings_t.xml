@@ -32,6 +32,7 @@
   <variable name="cutoff_" tag="cutoff" type="cutoff_xml" dimension="1" />
   <variable name="energy_grid_" tag="energy_grid" type="word" length="7" />
   <variable name="entropy_" tag="entropy" type="mesh_xml" dimension="1" />
+  <variable name="no_reduce_" tag="no_reduce" type="word" length="3" />
   <variable name="ptables_" tag="ptables" type="word" length="3" />
   <variable name="seed_" tag="seed" type="integer" />
   <variable name="source_" tag="source" type="source_xml" />

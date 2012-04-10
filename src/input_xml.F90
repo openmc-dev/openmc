@@ -70,6 +70,7 @@ contains
     energy_grid_ = "union"
     seed_ = 0_8
     write_source_ = ""
+    no_reduce_ = ""
     source_ % type = ""
 
     ! Parse settings.xml file
@@ -96,7 +97,7 @@ contains
 
     ! Criticality information
     if (criticality % batches > 0) then
-       problem_type = PROB_CRITICALITY
+       if (run_mode /= MODE_PLOTTING) run_mode = MODE_CRITICALITY
 
        ! Check number of particles
        if (len_trim(criticality % particles) == 0) then
@@ -110,6 +111,12 @@ contains
        n_inactive    = criticality % inactive
        n_active      = n_batches - n_inactive
        gen_per_batch = criticality % generations_per_batch
+
+       ! Check number of active batches
+       if (n_active <= 0) then
+          message = "Number of active batches must be greater than 0."
+          call fatal_error()
+       end if
     else
        message = "Need to specify number of batches with <batches> tag."
        call fatal_error()
@@ -294,6 +301,18 @@ contains
 
     ! Check if the user has specified to write binary source file
     if (trim(write_source_) == 'on') write_source = .true.
+
+    ! Check if the user has specified to not reduce tallies at the end of every
+    ! batch
+    if (trim(no_reduce_) == 'on') no_reduce = .true.
+
+    ! Determine number of realizations
+    if (no_reduce) then
+       n_realizations = n_active * n_procs
+    else
+       n_realizations = n_active
+    end if
+       
 
   end subroutine read_settings_xml
 

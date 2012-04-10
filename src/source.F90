@@ -172,6 +172,9 @@ contains
     if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
          p % id == trace_particle) trace = .true.
 
+    ! Add paricle's starting weight to count for normalizing tallies later
+    total_weight = total_weight + src % wgt
+
   end subroutine get_source_particle
 
 !===============================================================================

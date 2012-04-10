@@ -151,6 +151,19 @@ problem. It has the following attributes/sub-elements:
 
     *Default*: None
 
+``<no_reduce>`` Element
+-----------------------
+
+The ``<no_reduce>`` element has no attributes and has an accepted value of "on"
+or "off". If set to "on", all user-defined tallies and global tallies will not
+be reduced across processors in a parallel calculation. This means that the
+accumulate score in one batch on a single processor is considered as an
+independent realization for the tally random variable. For a problem with large
+tally data, this option can significantly improve the parallel efficiency.
+
+  *Default*: off
+
+
 ``<ptables>`` Element
 ---------------------
 
@@ -195,11 +208,13 @@ criticality calculations. It takes the following attributes:
 ``<survival_biasing>`` Element
 ------------------------------
 
-The ``<survival_biasing>`` element has no attributes and assumes wither the
-value ``on`` or ``off``. If turned on, this option will enable the use of
-survival biasing, otherwise known as implicit capture or absorption.
+The ``<survival_biasing>`` element has no attributes and has an accepted value
+of "on" or "off". If set to "on", this option will enable the use of survival
+biasing, otherwise known as implicit capture or absorption.
 
   *Default*: off
+
+.. _trace:
 
 ``<trace>`` Element
 -------------------
@@ -246,6 +261,15 @@ displayed. This element takes the following attributes:
     The specified verbosity between 1 and 10.
 
     *Default*: 5
+
+``<write_source>`` Element
+------------------------------
+
+The ``<write_source>`` element has no attributes and has an accepted value of
+"on" or "off". If set to "on", a binary source file will be written to diskat
+the end of the run that can be used as a starting source for another run.
+
+  *Default*: off
 
 --------------------------------------
 Geometry Specification -- geometry.xml

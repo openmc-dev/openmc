@@ -1032,11 +1032,11 @@ contains
        n = t % n_filter_bins(FILTER_ENERGYIN)
        if (n > 0) then
           ! check if energy of the particle is within energy bins
-          if (p % last_E < t % energy_in(1) .or. &
-               p % last_E > t % energy_in(n + 1)) cycle
+          if (p % E < t % energy_in(1) .or. &
+               p % E > t % energy_in(n + 1)) cycle
 
           ! search to find incoming energy bin
-          bins(SURF_FILTER_ENERGYIN) = binary_search(t % energy_in, n + 1, p % last_E)
+          bins(SURF_FILTER_ENERGYIN) = binary_search(t % energy_in, n + 1, p % E)
        else
           bins(SURF_FILTER_ENERGYIN) = 1
        end if

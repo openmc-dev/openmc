@@ -61,7 +61,7 @@ contains
       ! execute snes solver
       call cmfd_snes_execute()
 !     call cmfd_slepc_execute()
-      
+
       ! only run if master process
       if (master) call timer_stop(time_cmfd)
 
@@ -348,6 +348,7 @@ contains
     logical :: outside ! any source sites outside mesh
     logical :: in_mesh ! source site is inside mesh
     type(StructuredMesh), pointer :: m ! point to mesh
+    real(8), allocatable :: egrid(:)
 
     ! associate pointer
     m => meshes(1)
@@ -364,17 +365,15 @@ contains
     if (.not.allocated(cmfd%weightfactors))                                    &
    &         allocate(cmfd%weightfactors(ng,nx,ny,nz))
 
+    ! allocate energy grid and reverse cmfd energy grid
+    if (.not. allocated(egrid)) allocate(egrid(ng+1))
+    egrid = (/(cmfd%egrid(ng-i+2),i = 1,ng+1)/)
+
     ! zero out weights
     cmfd%weightfactors = 0.0_8
 
     ! count bank sites in mesh
-    call count_bank_sites(m,source_bank,cmfd%sourcecounts,cmfd%egrid,sites_outside=outside)
-
-    ! check for source sites outside of mesh
-!   if (outside) then
-!     write(*,*) 'FATAL: source sites found outside of mesh'
-!     stop
-!   end if
+    call count_bank_sites(m,source_bank,cmfd%sourcecounts,egrid,sites_outside=outside)
 
     ! have master compute weight factors
     if (master) then
@@ -398,11 +397,16 @@ contains
       n_groups = size(cmfd%egrid) - 1
       if (source_bank(i) % E < cmfd%egrid(1)) then
         e_bin = 1
+        write(*,*) 'Warning, Source pt below energy grid'
       elseif (source_bank(i) % E > cmfd%egrid(n_groups+1)) then
         e_bin = n_groups
+        write(*,*) 'Warning, Source pt above energy grid'
       else
         e_bin = binary_search(cmfd%egrid, n_groups + 1, source_bank(i) % E)
       end if
+
+      ! reverese energy bin (lowest grp is highest energy bin)
+      e_bin = n_groups - e_bin + 1
 
       ! check for outside of mesh
       if (.not. in_mesh) then
@@ -416,6 +420,9 @@ contains
      &                   cmfd%weightfactors(e_bin,ijk(1),ijk(2),ijk(3))
 
     end do
+
+    ! deallocate
+    if (allocated(egrid)) deallocate(egrid)
 
   end subroutine cmfd_reweight
 

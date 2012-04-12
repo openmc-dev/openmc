@@ -11,7 +11,8 @@ contains
 !===============================================================================
 
   subroutine read_cmfd_xml()
-
+    
+    use error
     use global
     use output
     use string
@@ -28,12 +29,13 @@ contains
     filename = trim(path_input) // "cmfd.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      ! Since a tallies.xml file is optional, no error is issued here
+      ! CMFD is optional unless it is in on from settings
+      if (cmfd_on) then
+        message = "No CMFD XML file, '" // trim(filename) // "' does not exist!"
+        call fatal_error()
+      end if
       return
     else
-
-      ! turn cmfd flag on  
-!     cmfd_on = .TRUE.
 
       ! tell user
       message = "Reading CMFD XML file..."

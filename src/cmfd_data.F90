@@ -29,8 +29,8 @@ contains
     call compute_xs()
 
     ! overwrite xs
-!   call static_1_grp()
-!   call static_2_grp()
+!   call fix_1_grp()
+!   call fix_2_grp()
 
     ! compute neutron balance 
     call neutron_balance()
@@ -651,13 +651,11 @@ contains
 
   end function get_reflector_albedo
 
-end module cmfd_data
-
 !===============================================================================
-! STATIC_1_GRP modifies xs for benchmark with stand alone (homogeneous)
+! FIX_1_GRP modifies xs for benchmark with stand alone (homogeneous)
 !===============================================================================
 
-  subroutine static_1_grp()
+  subroutine fix_1_grp()
 
     use global, only: cmfd,dhat_reset
 
@@ -673,13 +671,13 @@ end module cmfd_data
     ! set dhat reset to true
     dhat_reset = .true.
 
-  end subroutine static_1_grp
+  end subroutine fix_1_grp
 
 !===============================================================================
-! STATIC_2_GRP modifies xs for benchmark with stand alone (homogeneous)
+! FIX_2_GRP modifies xs for benchmark with stand alone (homogeneous)
 !===============================================================================
 
-  subroutine static_2_grp()
+  subroutine fix_2_grp()
 
     use global, only: cmfd,dhat_reset
 
@@ -703,4 +701,6 @@ end module cmfd_data
     ! set dhat reset to true
     dhat_reset = .true.
 
-  end subroutine static_2_grp
+  end subroutine fix_2_grp
+
+end module cmfd_data

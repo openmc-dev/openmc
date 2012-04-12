@@ -934,6 +934,27 @@ contains
   end subroutine print_summary
 
 !===============================================================================
+! PRINT_COLUMNS displays a header listing what physical values will displayed
+! below them
+!===============================================================================
+
+  subroutine print_columns()
+
+    if (entropy_on) then
+       message = " Batch   k(batch)   Entropy         Average k"
+       call write_message(1)
+       message = " =====   ========   =======    ==================="
+       call write_message(1)
+    else
+       message = " Batch   k(batch)          Average k"
+       call write_message(1)
+       message = " =====   ========     ==================="
+       call write_message(1)
+    end if
+
+  end subroutine print_columns
+
+!===============================================================================
 ! PRINT_BATCH_KEFF displays the last batch's tallied value of the neutron
 ! multiplication factor as well as the average value if we're in active batches
 !===============================================================================

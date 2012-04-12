@@ -191,7 +191,7 @@ contains
     m % upper_right = m % lower_left + m % dimension * m % width
 
     ! add mesh to dictionary
-    call dict_add_key(mesh_dict, m % id, 1)
+    call dict_add_key(mesh_dict, m % id, n_user_meshes + 1)
 
     ! allocate tallies
     if (.not. allocated(tallies)) allocate(tallies(n_tallies))

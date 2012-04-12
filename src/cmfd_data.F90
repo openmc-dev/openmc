@@ -84,7 +84,7 @@ contains
     cmfd % openmc_src = 0.0_8
 
     ! associate tallies and mesh
-    t => tallies(1)
+    t => tallies(n_user_tallies + 1)
     m => meshes(t % mesh)
 
     ! set mesh widths
@@ -93,7 +93,7 @@ contains
     cmfd % hxyz(3,:,:,:) = m % width(3) ! set z width
 
     ! begin loop around tallies
-    TAL: do ital = 1,3
+    TAL: do ital = n_user_tallies + 1,n_tallies 
 
       ! associate tallies and mesh
       t => tallies(ital)
@@ -117,7 +117,7 @@ contains
             OUTGROUP: do h = 1,ng
 
               ! start tally 1
-              TALLY: if (ital == 1) then
+              TALLY: if (ital == n_user_tallies + 1) then
 
                 ! reset all bins to 1
                 bins = 1
@@ -159,7 +159,7 @@ contains
 !              &                                cmfd % p1scattxs(h,i,j,k)))
                 cmfd % diffcof(h,i,j,k) = cmfd % diffusion(h,i,j,k)
 
-              else if (ital == 2) then
+              else if (ital == n_user_tallies + 2) then
 
                 ! begin loop to get energy out tallies
                 INGROUP: do g = 1,ng

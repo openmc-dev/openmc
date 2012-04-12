@@ -4,7 +4,7 @@ module criticality
   use global
   use intercycle, only: shannon_entropy, calculate_keff, synchronize_bank, &
                         count_source_for_ufs
-  use output,     only: write_message, header
+  use output,     only: write_message, header, print_columns
   use physics,    only: transport
   use source,     only: get_source_particle
   use string,     only: to_str
@@ -31,17 +31,7 @@ contains
     allocate(p)
 
     ! Display column titles
-    if (entropy_on) then
-       message = " Batch   k(batch)   Entropy         Average k"
-       call write_message(1)
-       message = " =====   ========   =======    ==================="
-       call write_message(1)
-    else
-       message = " Batch   k(batch)          Average k"
-       call write_message(1)
-       message = " =====   ========     ==================="
-       call write_message(1)
-    end if
+    call print_columns()
 
     ! ==========================================================================
     ! LOOP OVER BATCHES

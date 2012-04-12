@@ -116,7 +116,7 @@ call timer_start(time_cmfd)
     call KSPSetType(ksp,KSPGMRES,ierr)
 
     ! set precursor type
-    call PCSetType(pc,PCBJACOBI,ierr)
+    call PCSetType(pc,PCHYPRE,ierr)
     call PCSetFromOptions(pc,ierr)
 
     ! get all types and print

@@ -112,8 +112,16 @@ module global
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
 
-  integer :: n_meshes                  ! # of structured meshes
-  integer :: n_tallies                 ! # of tallies
+  ! user-defined tally information
+  integer :: n_user_meshes              = 0 ! # of structured meshes
+  integer :: n_user_tallies             = 0 ! # of user-defined tallies
+  integer :: n_user_analog_tallies      = 0 ! # of analog tallies
+  integer :: n_user_tracklength_tallies = 0 ! # of track-length tallies
+  integer :: n_user_current_tallies     = 0 ! # of surface current tallies
+
+  ! total tally information (includes CMFD possibly)
+  integer :: n_meshes              = 0 ! # of structured meshes
+  integer :: n_tallies             = 0 ! # of total tallies
   integer :: n_analog_tallies      = 0 ! # of analog tallies
   integer :: n_tracklength_tallies = 0 ! # of track-length tallies
   integer :: n_current_tallies     = 0 ! # of surface current tallies
@@ -266,6 +274,16 @@ module global
 
   ! activate neutronic feedback
   logical :: neut_feedback = .FALSE.
+
+  ! user-defined tally information
+  integer :: n_cmfd_meshes              = 1 ! # of structured meshes
+  integer :: n_cmfd_tallies             = 3 ! # of user-defined tallies
+  integer :: n_cmfd_analog_tallies      = 2 ! # of analog tallies
+  integer :: n_cmfd_tracklength_tallies = 0 ! # of track-length tallies
+  integer :: n_cmfd_current_tallies     = 1 ! # of surface current tallies
+
+  ! cmfd mesh
+  type(StructuredMesh), target :: cmfd_mesh
 
 contains
 

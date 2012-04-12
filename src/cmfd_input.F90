@@ -33,7 +33,7 @@ contains
     else
 
       ! turn cmfd flag on  
-      cmfd_on = .TRUE.
+!     cmfd_on = .TRUE.
 
       ! tell user
       message = "Reading CMFD XML file..."
@@ -131,22 +131,23 @@ contains
      call read_xml_file_cmfd_t(filename)
 
     ! set global variables
-    n_meshes = 1
-    n_tallies = 3
-    n_analog_tallies = 2
-    n_current_tallies = 1
+    n_meshes = n_user_meshes + n_cmfd_meshes
+    n_tallies = n_user_tallies + n_cmfd_tallies
+    n_analog_tallies = n_user_analog_tallies + n_cmfd_analog_tallies
+    n_tracklength_tallies = n_user_tracklength_tallies + n_cmfd_tracklength_tallies
+    n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies
 
     ! Allocate list of pointers for tallies by type
-    allocate(analog_tallies(n_analog_tallies))
-    allocate(tracklength_tallies(n_tracklength_tallies))
-    allocate(current_tallies(n_current_tallies))
+    if (.not. allocated(analog_tallies))      allocate(analog_tallies(n_analog_tallies))
+    if (.not. allocated(tracklength_tallies)) allocate(tracklength_tallies(n_tracklength_tallies))
+    if (.not. allocated(current_tallies))     allocate(current_tallies(n_current_tallies))
 
     ! allocate mesh
-    allocate(meshes(n_meshes))
-    m => meshes(1)
+    if (.not. allocated(meshes)) allocate(meshes(n_meshes))
+    m => meshes(n_user_meshes+1)
 
     ! set mesh id
-    m % id = 1
+    m % id = n_user_meshes + 1 
 
     ! set mesh type to rectangular
     m % type = LATTICE_RECT
@@ -191,10 +192,10 @@ contains
     call dict_add_key(mesh_dict, m % id, 1)
 
     ! allocate tallies
-    allocate(tallies(n_tallies))
+    if (.not. allocated(tallies)) allocate(tallies(n_tallies))
 
     ! begin loop around tallies
-    do i = 1,n_tallies
+    do i = n_user_tallies+1,n_tallies
 
       ! set n filters to 0
       n_filters = 0
@@ -214,9 +215,8 @@ contains
       ! record tally id which is equivalent to loop number
       t % id = i
 
-      ! set mesh filter mesh id = 1
-      t % mesh = 1
-      m => meshes(1)
+      ! set mesh filter mesh id
+      t % mesh = n_user_meshes + 1 
       t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) +        &
      &                                 product(m % dimension)
       n_filters = n_filters + 1
@@ -235,7 +235,7 @@ contains
         filters(n_filters) = FILTER_ENERGYIN
       end if
 
-      if (i == 1) then
+      if (i == n_user_tallies+1) then
 
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
@@ -259,9 +259,9 @@ contains
         t % score_bins(4) % scalar = SCORE_DIFFUSION
 
         ! Increment the appropriate index and set pointer
-        analog_tallies(1) = 1
+        analog_tallies(n_user_analog_tallies + 1) = i
 
-      else if (i == 2) then
+      else if (i == n_user_tallies + 2) then
 
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
@@ -295,9 +295,9 @@ contains
         t % score_bins(2) % scalar = SCORE_NU_FISSION
 
         ! Increment the appropriate index and set pointer
-        analog_tallies(2) = 2
+        analog_tallies(n_user_analog_tallies + 2) = i
 
-      else if (i == 3) then
+      else if (i == n_user_tallies + 3) then
 
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
@@ -337,7 +337,7 @@ contains
         end if
 
         ! Increment the appropriate index and set pointer
-        current_tallies(1) = 3
+        current_tallies(n_user_current_tallies + 1) = i 
 
       end if
 

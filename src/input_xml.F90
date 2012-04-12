@@ -32,7 +32,7 @@ contains
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
-    call read_cmfd_xml()
+    if (cmfd_on) call read_cmfd_xml()
 
   end subroutine read_input_xml
 
@@ -313,6 +313,8 @@ contains
        n_realizations = n_active
     end if
        
+    ! check for cmfd run
+    if (run_cmfd_) cmfd_on = .true.
 
   end subroutine read_settings_xml
 
@@ -812,7 +814,8 @@ contains
     if (.not. associated(mesh_)) then
        n_meshes = 0
     else
-       n_meshes = size(mesh_)
+       n_user_meshes = size(mesh_)
+       n_meshes = n_user_meshes + n_cmfd_meshes
        allocate(meshes(n_meshes))
     end if
 
@@ -822,7 +825,8 @@ contains
        message = "No tallies present in tallies.xml file!"
        call warning()
     else
-       n_tallies = size(tally_)
+       n_user_tallies = size(tally_)
+       if (cmfd_on) n_tallies = n_user_tallies + n_cmfd_tallies
        allocate(tallies(n_tallies))
     end if
 
@@ -832,7 +836,7 @@ contains
     ! ==========================================================================
     ! READ MESH DATA
 
-    do i = 1, n_meshes
+    do i = 1, n_user_meshes
        m => meshes(i)
 
        ! copy mesh id
@@ -897,7 +901,7 @@ contains
     ! ==========================================================================
     ! READ TALLY DATA
 
-    do i = 1, n_tallies
+    do i = 1, n_user_tallies
        t => tallies(i)
 
        ! Allocate arrays for number of bins and stride in scores array
@@ -1180,14 +1184,19 @@ contains
        ! Count number of tallies by type
        if (t % type == TALLY_VOLUME) then
           if (t % estimator == ESTIMATOR_ANALOG) then
-             n_analog_tallies = n_analog_tallies + 1
+             n_user_analog_tallies = n_user_analog_tallies + 1
           elseif (t % estimator == ESTIMATOR_TRACKLENGTH) then
-             n_tracklength_tallies = n_tracklength_tallies + 1
+             n_user_tracklength_tallies = n_user_tracklength_tallies + 1
           end if
        elseif (t % type == TALLY_SURFACE_CURRENT) then
-          n_current_tallies = n_current_tallies + 1
+          n_user_current_tallies = n_user_current_tallies + 1
        end if
     end do
+
+    ! Determine number of types of tallies
+    n_analog_tallies = n_user_analog_tallies + n_cmfd_analog_tallies
+    n_tracklength_tallies = n_user_tracklength_tallies + n_cmfd_tracklength_tallies
+    n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies
 
     ! Allocate list of pointers for tallies by type
     allocate(analog_tallies(n_analog_tallies))
@@ -1199,7 +1208,7 @@ contains
     i_tracklength = 0
     i_current = 0
 
-    do i = 1, n_tallies
+    do i = 1, n_user_tallies
        t => tallies(i)
 
        ! Increment the appropriate index and set pointer

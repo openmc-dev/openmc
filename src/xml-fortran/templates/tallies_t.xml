@@ -24,6 +24,7 @@
 
   <typedef name="tally_xml">
     <component name="id" type="integer" />
+    <component name="estimator" type="word" length="250" default="''" />
     <component name="filters" type="filter_xml" />
     <component name="scores" type="word" length="250" default="''" />
     <component name="reactions" type="word" length="250" default="''" />

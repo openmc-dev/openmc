@@ -93,6 +93,10 @@ contains
     ! create tally objects
     call create_cmfd_tally()
 
+    ! set number of CMFD processors and report to user
+    n_procs_cmfd = n_cmfd_procs_ 
+    if (master) write(*,*) "CMFD Running on",n_procs_cmfd," processors."
+
   end subroutine read_cmfd_xml
 
 !===============================================================================

@@ -282,9 +282,6 @@ module global
   integer :: n_cmfd_tracklength_tallies = 0 ! # of track-length tallies
   integer :: n_cmfd_current_tallies     = 1 ! # of surface current tallies
 
-  ! cmfd mesh
-  type(StructuredMesh), target :: cmfd_mesh
-
 contains
 
 !===============================================================================

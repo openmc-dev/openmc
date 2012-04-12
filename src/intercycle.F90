@@ -6,7 +6,7 @@ module intercycle
   use global
   use mesh,            only: count_bank_sites
   use mesh_header,     only: StructuredMesh
-  use output,          only: write_message
+  use output,          only: write_message, print_batch_keff
   use random_lcg,      only: prn, set_particle_seed, prn_skip
   use search,          only: binary_search
   use string,          only: to_str
@@ -350,7 +350,7 @@ contains
 
 !===============================================================================
 ! CALCULATE_KEFF calculates the single batch estimate of keff as well as the
-! mean and standard deviation of the mean for active batches and displays them
+! mean and standard deviation of the mean for active batches
 !===============================================================================
 
   subroutine calculate_keff()
@@ -430,36 +430,9 @@ contains
           end if
        end if
 
-       ! Display output for this batch
-       if (master) then
-          if (current_batch > n_inactive + 1) then
-             if (entropy_on) then
-                write(UNIT=OUTPUT_UNIT, FMT=103) current_batch, k_batch, &
-                     entropy, keff, keff_std
-             else
-                write(UNIT=OUTPUT_UNIT, FMT=101) current_batch, k_batch, &
-                     keff, keff_std
-             end if
-          else
-             if (entropy_on) then
-                write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, k_batch, entropy
-             else
-                write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, k_batch
-             end if
-          end if
-       end if
     else
        ! =======================================================================
        ! INACTIVE BATCHES
-
-       ! Display output for inactive batch
-       if (master) then
-          if (entropy_on) then
-             write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, k_batch, entropy
-          else
-             write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, k_batch
-          end if
-       end if
 
        ! Set keff
        keff = k_batch
@@ -468,15 +441,13 @@ contains
        global_tallies(:) % value = ZERO
     end if
 
+    ! Display output
+    if (master) call print_batch_keff()
+
 #ifdef MPI
     ! Broadcast new keff value to all processors
     call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
 #endif
-
-100 format (2X,I5,2X,F8.5)
-101 format (2X,I5,2X,F8.5,5X,F8.5," +/-",F8.5)
-102 format (2X,I5,2X,F8.5,3X,F8.5)
-103 format (2X,I5,2X,F8.5,3X,F8.5,3X,F8.5," +/-",F8.5)
 
   end subroutine calculate_keff
 

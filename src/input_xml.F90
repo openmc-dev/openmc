@@ -815,7 +815,11 @@ contains
        n_meshes = 0
     else
        n_user_meshes = size(mesh_)
-       n_meshes = n_user_meshes + n_cmfd_meshes
+       if (cmfd_on) then
+         n_meshes = n_user_meshes + n_cmfd_meshes
+       else
+         n_meshes = n_user_meshes
+       end if
        allocate(meshes(n_meshes))
     end if
 
@@ -826,7 +830,11 @@ contains
        call warning()
     else
        n_user_tallies = size(tally_)
-       if (cmfd_on) n_tallies = n_user_tallies + n_cmfd_tallies
+       if (cmfd_on) then
+         n_tallies = n_user_tallies + n_cmfd_tallies
+       else
+         n_tallies = n_user_tallies
+       end if
        allocate(tallies(n_tallies))
     end if
 
@@ -1198,9 +1206,15 @@ contains
     end do
 
     ! Determine number of types of tallies
-    n_analog_tallies = n_user_analog_tallies + n_cmfd_analog_tallies
-    n_tracklength_tallies = n_user_tracklength_tallies + n_cmfd_tracklength_tallies
-    n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies
+    if (cmfd_on) then
+      n_analog_tallies = n_user_analog_tallies + n_cmfd_analog_tallies
+      n_tracklength_tallies = n_user_tracklength_tallies + n_cmfd_tracklength_tallies
+      n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies
+    else
+      n_analog_tallies = n_user_analog_tallies
+      n_tracklength_tallies = n_user_tracklength_tallies
+      n_current_tallies = n_user_current_tallies
+    end if
 
     ! Allocate list of pointers for tallies by type
     allocate(analog_tallies(n_analog_tallies))

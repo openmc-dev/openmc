@@ -939,6 +939,9 @@ contains
          t % estimator = ESTIMATOR_TRACKLENGTH
        end if
 
+       ! set tally reset property
+       t % reset = tally_(i) % reset
+
        ! Copy material id
        t % id = tally_(i) % id
 

@@ -5,6 +5,7 @@ module cmfd_execute
   use global,            only: cmfd,cmfd_only,time_cmfd,master,rank,mpi_err,   &
  &                             current_batch,n_inactive,n_batches,n_procs,     &
  &                             n_procs_cmfd,neut_feedback
+  use tally,             only: tally_reset
   use timing,            only: timer_start,timer_stop,timer_reset
 
 
@@ -85,6 +86,9 @@ contains
         call write_cmfd_hdf5()
 #     endif
     end if
+
+    ! perform a tally reset
+    call tally_reset()
 
   end subroutine execute_cmfd
 

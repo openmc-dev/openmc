@@ -210,6 +210,9 @@ contains
       ! point t to tally variable
       t => tallies(i)
 
+      ! set reset property
+      if (reset_) t % reset = .true.
+
       ! allocate arrays for number of bins and stride in scores array
       allocate(t % n_filter_bins(N_FILTER_TYPES))
       allocate(t % stride(N_FILTER_TYPES))

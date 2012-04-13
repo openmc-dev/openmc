@@ -16,5 +16,6 @@
   <variable name="norm_" tag="norm" type="double" />
   <variable name="feedback_" tag="feedback" type="logical" default=".false."/>
   <variable name="n_cmfd_procs_" tag = "n_procs" type="integer" default="1" />
+  <variable name="reset_" tag = "reset" type="logical" default=".false." />
 
 </template>

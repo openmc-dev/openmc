@@ -68,7 +68,8 @@ module cmfd_header
     real(8) :: entropy = 0.0_8
 
     ! openmc source
-    real(8), allocatable  :: openmc_src(:,:,:,:)
+    real(8), allocatable  :: openmc_src(:,:,:)
+    real(8), allocatable  :: openmc_cycle_src(:,:,:,:)
 
     ! openmc source normalization factor
     real(8) :: norm = 1.0_8
@@ -119,7 +120,8 @@ contains
     if (.not. allocated(this % current))    allocate(this % current(12,ng,nx,ny,nz))
 
     ! allocate openmc source distribution
-    if (.not. allocated(this % openmc_src)) allocate(this % openmc_src(ng,nx,ny,nz))
+    if (.not. allocated(this % openmc_src)) allocate(this % openmc_src(nx,ny,nz))
+    if (.not. allocated(this % openmc_cycle_src)) allocate(this % openmc_cycle_src(ng,nx,ny,nz))
 
   end subroutine allocate_cmfd
 
@@ -151,6 +153,7 @@ contains
     if (allocated(this % sourcecounts))  deallocate(this % sourcecounts)
     if (allocated(this % weightfactors)) deallocate(this % weightfactors)
     if (allocated(this % openmc_src))    deallocate(this % openmc_src)
+    if (allocated(this % openmc_cycle_src)) deallocate(this % openmc_cycle_src)
 
   end subroutine deallocate_cmfd
 

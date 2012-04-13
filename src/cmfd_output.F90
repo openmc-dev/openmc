@@ -130,7 +130,7 @@ contains
     integer(HID_T) :: dataspace_id         ! Data space identifier
     integer(HID_T) :: dataset_id           ! Dataset identifier
     integer(HSIZE_T), dimension(1) :: dim1 ! vector for hdf5 dimensions
-!   integer(HSIZE_T), dimension(3) :: dim3 ! vector for hdf5 dimensions
+    integer(HSIZE_T), dimension(3) :: dim3 ! vector for hdf5 dimensions
     integer(HSIZE_T), dimension(4) :: dim4 ! vector for hdf5 dimensions
     integer(HSIZE_T), dimension(5) :: dim5 ! vector for hdf5 dimensions
 
@@ -354,11 +354,20 @@ contains
     call h5dclose_f(dataset_id,hdf5_err)
 
     ! write out openmc source vector
-    dim4 = (/ng,nx,ny,nz/)
-    call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
+    dim3 = (/nx,ny,nz/)
+    call h5screate_simple_f(3,dim4,dataspace_id,hdf5_err)
     call h5dcreate_f(hdf5_output_file,trim(cycname)//"/openmc_src",            &
    &                 H5T_NATIVE_DOUBLE,dataspace_id,dataset_id,hdf5_err)
-    call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%openmc_src,dim4,hdf5_err)
+    call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%openmc_src,dim3,hdf5_err)
+    call h5sclose_f(dataspace_id,hdf5_err)
+    call h5dclose_f(dataset_id,hdf5_err)
+
+    ! write out openmc source vector
+    dim4 = (/ng,nx,ny,nz/)
+    call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
+    call h5dcreate_f(hdf5_output_file,trim(cycname)//"/openmc_cycle_src",      &
+   &                 H5T_NATIVE_DOUBLE,dataspace_id,dataset_id,hdf5_err)
+    call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%openmc_cycle_src,dim4,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
 

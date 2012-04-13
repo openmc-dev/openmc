@@ -81,6 +81,7 @@ contains
 
     ! set flux object and source distribution to all zeros
     cmfd % flux = 0.0_8
+    cmfd % openmc_cycle_src = 0.0_8
     cmfd % openmc_src = 0.0_8
 
     ! associate tallies and mesh
@@ -112,6 +113,9 @@ contains
                 cycle
               end if
             end if
+
+            ! extract accumulated fission source
+            if (ital == 1) call extract_accum_fsrc(i,j,k)
 
             ! loop around energy groups
             OUTGROUP: do h = 1,ng
@@ -168,14 +172,13 @@ contains
                   bins = 1
 
                   ! set ijk as mesh indices
-                 ijk = (/ i, j, k /)
+                  ijk = (/ i, j, k /)
 
                   ! get bin number for mesh indices
                   bins(FILTER_MESH) = mesh_indices_to_bin(m,ijk)
 
                   ! apply energy in filter
                   bins(FILTER_ENERGYIN) = ng - h + 1
-
 
                   ! set energy out bin
                   bins(FILTER_ENERGYOUT) = ng - g + 1
@@ -192,7 +195,7 @@ contains
                  &                            cmfd % flux(h,i,j,k)
 
                   ! bank source
-                  cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) +    &
+                  cmfd % openmc_cycle_src(g,i,j,k) = cmfd % openmc_cycle_src(g,i,j,k) +    &
                  &                             t % scores(score_index,2) % sum 
 
                 end do INGROUP
@@ -271,6 +274,7 @@ contains
 
     ! normalize openmc source distribution
     cmfd % openmc_src = cmfd % openmc_src/sum(cmfd % openmc_src)*cmfd%norm
+    cmfd % openmc_cycle_src = cmfd % openmc_cycle_src/sum(cmfd % openmc_cycle_src)*cmfd%norm
 
   end subroutine compute_xs
 
@@ -702,5 +706,56 @@ contains
     dhat_reset = .true.
 
   end subroutine fix_2_grp
+
+!==============================================================================
+! EXTRACT_ACCUM_FSRC
+!==============================================================================
+
+  subroutine extract_accum_fsrc(i,j,k)
+
+    use global
+    use mesh,          only: mesh_indices_to_bin
+    use mesh_header,   only: StructuredMesh
+    use tally_header,  only: TallyObject, TallyScore
+
+    integer :: nx                ! number of mesh cells in x direction
+    integer :: ny                ! number of mesh cells in y direction
+    integer :: nz                ! number of mesh cells in z direction
+    integer :: ng                ! number of energy groups
+    integer :: i                 ! iteration counter for x
+    integer :: j                 ! iteration counter for y
+    integer :: k                 ! iteration counter for z
+    integer :: g                 ! iteration counter for g
+    integer :: h                 ! iteration counter for outgoing groups
+    integer :: ital              ! tally object index
+    integer :: ijk(3)            ! indices for mesh cell
+    integer :: score_index       ! index to pull from tally object
+    integer :: bins(N_FILTER_TYPES) ! bins for filters
+
+    real(8) :: flux   ! temp variable for flux
+
+    type(TallyObject), pointer :: t    ! pointer for tally object
+    type(StructuredMesh), pointer :: m ! pointer for mesh object
+
+    ! associate tallies and mesh
+    t => tallies(1)
+    m => meshes(t % mesh)
+
+    ! reset all bins to 1
+    bins = 1
+
+    ! set ijk as mesh indices
+    ijk = (/ i, j, k /)
+
+    ! get bin number for mesh indices
+    bins(FILTER_MESH) = mesh_indices_to_bin(m,ijk)
+
+    ! calculate score index from bins
+    score_index = sum((bins - 1) * t%stride) + 1
+
+    ! bank source
+    cmfd % openmc_src(i,j,k) = t % scores(score_index,1) % sum
+
+  end subroutine extract_accum_fsrc
 
 end module cmfd_data

@@ -107,6 +107,9 @@ module tally_header
 
      type(TallyScore), allocatable :: scores(:,:)
 
+     ! reset property - allows a tally to be reset after every batch
+     logical :: reset = .false.
+
   end type TallyObject
 
 end module tally_header

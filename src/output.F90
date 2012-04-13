@@ -934,6 +934,91 @@ contains
   end subroutine print_summary
 
 !===============================================================================
+! PRINT_COLUMNS displays a header listing what physical values will displayed
+! below them
+!===============================================================================
+
+  subroutine print_columns()
+
+    if (entropy_on) then
+      if (cmfd_on) then
+        message = " Cycle   k(batch)   Entropy         Average k         CMFD k    CMFD Ent."
+        call write_message(1)
+        message = " =====   ========   =======    ===================  ==========  ========="
+        call write_message(1)
+      else
+        message = " Cycle   k(batch)   Entropy         Average k"
+        call write_message(1)
+        message = " =====   ========   =======    ==================="
+        call write_message(1)
+      end if
+    else
+      if (cmfd_on) then
+        message = " Cycle   k(batch)          Average k         CMFD k"
+        call write_message(1)
+        message = " =====   ========     ===================  =========="
+        call write_message(1)
+      else
+        message = " Cycle   k(batch)          Average k"
+        call write_message(1)
+        message = " =====   ========     ==================="
+        call write_message(1)
+      end if
+    end if
+
+  end subroutine print_columns
+
+!===============================================================================
+! PRINT_BATCH_KEFF displays the last batch's tallied value of the neutron
+! multiplication factor as well as the average value if we're in active batches
+!===============================================================================
+
+  subroutine print_batch_keff()
+
+    if (current_batch <= n_inactive) then
+       ! ======================================================================
+       ! INACTIVE BATCHES
+
+       if (entropy_on) then
+          write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, k_batch, entropy
+       else
+          write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, k_batch
+       end if
+
+    elseif (current_batch >= n_inactive + 1) then
+       ! ======================================================================
+       ! ACTIVE BATCHES
+
+       if (entropy_on) then
+         if (cmfd_on) then
+           write(UNIT=OUTPUT_UNIT, FMT=104) current_batch, k_batch, &
+                 entropy, keff, keff_std, cmfd%keff, cmfd%entropy
+         else
+           write(UNIT=OUTPUT_UNIT, FMT=103) current_batch, k_batch, &
+                 entropy, keff, keff_std
+         end if
+       else
+         if (cmfd_on) then
+           write(UNIT=OUTPUT_UNIT, FMT=105) current_batch, k_batch, &
+                 keff, keff_std, cmfd%keff
+         else
+           write(UNIT=OUTPUT_UNIT, FMT=101) current_batch, k_batch, &
+                 keff, keff_std
+         end if
+       end if
+
+    end if
+
+100 format (2X,I5,2X,F8.5)
+101 format (2X,I5,2X,F8.5,5X,F8.5," +/-",F8.5)
+102 format (2X,I5,2X,F8.5,3X,F8.5)
+103 format (2X,I5,2X,F8.5,3X,F8.5,3X,F8.5," +/-",F8.5)
+104 format (2X,I5,2X,F8.5,3X,F8.5,3X,F8.5," +/-",F8.5,2X,F8.5,4X,F8.5)
+105 format (2X,I5,2X,F8.5,5X,F8.5," +/-",F8.5,2X,F8.5)
+
+  end subroutine print_batch_keff
+
+!===============================================================================
 ! PRINT_PLOT displays selected options for plotting
 !===============================================================================
 

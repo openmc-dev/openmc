@@ -4,7 +4,7 @@ module criticality
   use global
   use intercycle, only: shannon_entropy, calculate_keff, synchronize_bank, &
                         count_source_for_ufs
-  use output,     only: write_message, header
+  use output,     only: write_message, header, print_columns
   use physics,    only: transport
   use source,     only: get_source_particle
   use string,     only: to_str
@@ -31,31 +31,7 @@ contains
     allocate(p)
 
     ! Display column titles
-    if (entropy_on) then
-      if (cmfd_on) then
-        message = " Cycle   k(batch)   Entropy         Average k         CMFD k    CMFD Ent."
-        call write_message(1)
-        message = " =====   ========   =======    ===================  ==========  ========="
-        call write_message(1)
-      else
-        message = " Cycle   k(batch)   Entropy         Average k"
-        call write_message(1)
-        message = " =====   ========   =======    ==================="
-        call write_message(1)
-      end if
-    else
-      if (cmfd_on) then
-        message = " Cycle   k(batch)          Average k         CMFD k"
-        call write_message(1)
-        message = " =====   ========     ===================  =========="
-        call write_message(1)
-      else
-        message = " Cycle   k(batch)          Average k"
-        call write_message(1)
-        message = " =====   ========     ==================="
-        call write_message(1)
-      end if
-    end if
+    call print_columns()
 
     ! ==========================================================================
     ! LOOP OVER BATCHES
@@ -143,8 +119,6 @@ contains
 
   subroutine finalize_batch()
 
-    use cmfd_execute, only: execute_cmfd
-
     ! Collect tallies
     if (tallies_on) then
        call timer_start(time_ic_tallies)
@@ -157,11 +131,6 @@ contains
 
     ! Collect results and statistics
     call calculate_keff()
-
-    ! run cmfd
-    if (current_batch > n_inactive .and. cmfd_on) then
-      call execute_cmfd()
-    end if
 
     ! Turn tallies on once inactive cycles are complete
     if (current_batch == n_inactive) then

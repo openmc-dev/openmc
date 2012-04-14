@@ -94,7 +94,8 @@ contains
     cmfd % hxyz(3,:,:,:) = m % width(3) ! set z width
 
     ! begin loop around tallies
-    TAL: do ital = n_user_tallies + 1,n_tallies 
+!   TAL: do ital = n_user_tallies + 1,n_tallies 
+    TAL: do ital = 1,n_tallies
 
       ! associate tallies and mesh
       t => tallies(ital)
@@ -107,15 +108,18 @@ contains
 
           XLOOP: do i = 1,nx
  
+            ! extract accumulated fission source
+            if (ital == 1) then
+              call extract_accum_fsrc(i,j,k)
+              cycle
+            end if
+
             ! check for active mesh cell
             if (allocated(cmfd%coremap)) then
               if (cmfd%coremap(i,j,k) == 99999) then
                 cycle
               end if
             end if
-
-            ! extract accumulated fission source
-            if (ital == 1) call extract_accum_fsrc(i,j,k)
 
             ! loop around energy groups
             OUTGROUP: do h = 1,ng

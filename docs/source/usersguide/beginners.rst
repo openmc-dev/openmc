@@ -22,7 +22,7 @@ quantity one is interested in) very accurately.
 Using Monte Carlo methods to determine the average behavior of various physical
 quantities in a nuclear reactor is quite different from other means of solving
 the same problem. The other class of methods for determining the behavior of
-neutrons and reactions rates in a reactor is so-called `determinstic`_
+neutrons and reactions rates in a reactor is so-called `deterministic`_
 methods. In these methods, the starting point is not randomly simulating
 particles but rather writing an equation that describes the average behavior of
 the particles. The equation that describes the average behavior of neutrons is
@@ -138,7 +138,7 @@ and `Volume II`_. You may also find it helpful to review the following terms:
 .. _nuclear reactor: http://en.wikipedia.org/wiki/Nuclear_reactor
 .. _Monte Carlo: http://en.wikipedia.org/wiki/Monte_Carlo_method
 .. _fission: http://en.wikipedia.org/wiki/Nuclear_fission
-.. _determinstic: http://en.wikipedia.org/wiki/Deterministic_algorithm
+.. _deterministic: http://en.wikipedia.org/wiki/Deterministic_algorithm
 .. _neutron transport: http://en.wikipedia.org/wiki/Neutron_transport
 .. _discretization: http://en.wikipedia.org/wiki/Discretization
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry

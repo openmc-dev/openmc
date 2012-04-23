@@ -61,6 +61,9 @@ contains
     ! Initialize number of events to zero
     n_event = 0
 
+    ! Force calculation of cross-sections by setting last energy to zero 
+    micro_xs % last_E = ZERO
+
     do while (p % alive)
 
        ! Calculate microscopic and macroscopic cross sections -- note: if the

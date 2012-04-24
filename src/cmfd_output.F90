@@ -88,13 +88,13 @@ contains
 
             ! compute residual
             res = leakage + interactions - scattering - (ONE/keff)*fission
-            write(670,*) 'Group:',g
-            write(670,*) 'Leakage:',leakage
-            write(670,*) 'Interactions:',interactions
-            write(670,*) 'Scattering:',scattering
-            write(670,*) 'Fission:',fission
-            write(670,*) 'k-eff:',keff
-            write(670,*) 'Balance:',res
+!           write(670,*) 'Group:',g
+!           write(670,*) 'Leakage:',leakage
+!           write(670,*) 'Interactions:',interactions
+!           write(670,*) 'Scattering:',scattering
+!           write(670,*) 'Fission:',fission
+!           write(670,*) 'k-eff:',keff
+!           write(670,*) 'Balance:',res
 
             ! normalize by flux
             res = res/cmfd%flux(g,i,j,k)
@@ -348,26 +348,17 @@ contains
     ! write out cmfd eigenvector
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,trim(cycname)//"/cmfd_source",             &
+    call h5dcreate_f(hdf5_output_file,trim(cycname)//"/cmfd_source",           &
    &                 H5T_NATIVE_DOUBLE,dataspace_id,dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%source,dim4,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
 
     ! write out openmc source vector
-    dim3 = (/nx,ny,nz/)
-    call h5screate_simple_f(3,dim4,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,trim(cycname)//"/openmc_src",            &
-   &                 H5T_NATIVE_DOUBLE,dataspace_id,dataset_id,hdf5_err)
-    call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%openmc_src,dim3,hdf5_err)
-    call h5sclose_f(dataspace_id,hdf5_err)
-    call h5dclose_f(dataset_id,hdf5_err)
-
-    ! write out openmc source vector
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
-    call h5dcreate_f(hdf5_output_file,trim(cycname)//"/openmc_cycle_src",      &
+    call h5dcreate_f(hdf5_output_file,trim(cycname)//"/openmc_src",            &
    &                 H5T_NATIVE_DOUBLE,dataspace_id,dataset_id,hdf5_err)
-    call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%openmc_cycle_src,dim4,hdf5_err)
+    call h5dwrite_f(dataset_id,H5T_NATIVE_DOUBLE,cmfd%openmc_src,dim4,hdf5_err)
     call h5sclose_f(dataspace_id,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
 

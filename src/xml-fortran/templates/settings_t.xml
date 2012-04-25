@@ -13,6 +13,7 @@
 
   <typedef name="source_xml">
     <component name="type" type="word" length="10" />
+    <component name="path" type="word" length="255" default="''"/>
     <component name="coeffs" type="double-array" />
   </typedef>
 

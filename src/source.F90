@@ -224,7 +224,7 @@ contains
     ! PARALLEL I/O USING MPI-2 ROUTINES
 
     ! Open binary source file for reading
-    call MPI_FILE_OPEN(MPI_COMM_WORLD, 'source.binary', MPI_MODE_CREATE + &
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, 'source.binary', MPI_MODE_CREATE +      &
          MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
 
     if (master) then
@@ -284,8 +284,8 @@ contains
     ! PARALLEL I/O USING MPI-2 ROUTINES
 
     ! Open binary source file for reading
-    call MPI_FILE_OPEN(MPI_COMM_WORLD, 'source.binary', MPI_MODE_RDONLY, &
-         MPI_INFO_NULL, fh, mpi_err)
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, trim(external_source % path)//          &
+         'source.binary', MPI_MODE_RDONLY, MPI_INFO_NULL, fh, mpi_err)
 
     ! Read number of source sites in file
     offset = 0
@@ -299,11 +299,11 @@ contains
     else
        ! Set proper offset for source data on this processor
        offset = 8*(1 + rank*maxwork*9)
-
+print *,'reading in'
        ! Read all source sites
        call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
             MPI_STATUS_IGNORE, mpi_err)
-
+print *,'done reading'
        ! Close binary source file
        call MPI_FILE_CLOSE(fh, mpi_err)
     end if
@@ -313,8 +313,8 @@ contains
     ! SERIAL I/O USING FORTRAN INTRINSIC ROUTINES
 
     ! Open binary source file for reading
-    open(UNIT=UNIT_SOURCE, FILE='source.binary', STATUS='old', &
-         ACCESS='stream')
+    open(UNIT=UNIT_SOURCE, FILE=trim(external_source % path)//'source.binary', &
+         STATUS='old', ACCESS='stream')
 
     ! Read number of source sites in file
     read(UNIT=UNIT_SOURCE) n_sites

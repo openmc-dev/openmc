@@ -579,17 +579,16 @@ The following filters can be specified for a tally:
 
   :energy:
     A monotonically increasing list of bounding **pre-collision** energies for a
-    number of groups. For example, if the following energy filter is specified
-    as ``<energy>0.0 1.0 20.0</energy>``, then two energy bins will be created,
-    one with energies between 0 and 1 MeV and the other with energies between 1
-    and 20 MeV.
+    number of groups. For example, if this filter is specified as ``<energy>0.0
+    1.0 20.0</energy>``, then two energy bins will be created, one with energies
+    between 0 and 1 MeV and the other with energies between 1 and 20 MeV.
 
   :energyout:
     A monotonically increasing list of bounding **post-collision** energies for
-    a number of groups. For example, if the following energy filter is specified
-    as ``<energy>0.0 1.0 20.0</energy>``, then two energy bins will be created,
-    one with energies between 0 and 1 MeV and the other with energies between 1
-    and 20 MeV.
+    a number of groups. For example, if this filter is specified as
+    ``<energyout>0.0 1.0 20.0</energyout>``, then two post-collision energy bins
+    will be created, one with energies between 0 and 1 MeV and the other with
+    energies between 1 and 20 MeV.
 
   :mesh:
     The ``id`` of a structured mesh to be tallied over.

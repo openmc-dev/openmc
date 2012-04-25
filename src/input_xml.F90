@@ -155,6 +155,7 @@ contains
           coeffs_reqd = 3
        case ('file')
           external_source % type = SRC_FILE
+          external_source % path = trim(source_ % path)
        case default
           message = "Invalid source type: " // trim(source_ % type)
           call fatal_error()

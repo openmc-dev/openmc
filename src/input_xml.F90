@@ -102,7 +102,10 @@ contains
           message = "Need to specify number of particles per cycles."
           call fatal_error()
        end if
-       n_particles = str_to_int(criticality % particles)
+
+       ! If the number of particles was specified as a command-line argument, we
+       ! don't set it here
+       if (n_particles == 0) n_particles = str_to_int(criticality % particles)
 
        ! Copy cycle information
        n_batches     = criticality % batches

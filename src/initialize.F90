@@ -3,7 +3,7 @@ module initialize
   use ace,              only: read_xs
   use bank_header,      only: Bank
   use constants
-  use datatypes,        only: dict_create, dict_get_key, dict_has_key, &
+  use datatypes,        only: dict_create, dict_get_key, dict_has_key,         &
                               dict_keys
   use datatypes_header, only: ListKeyValueII, DictionaryII
   use energy_grid,      only: unionized_grid
@@ -18,7 +18,8 @@ module initialize
                               create_xs_summary_file, print_version
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
-  use string,           only: to_str, starts_with, ends_with, lower_case
+  use string,           only: to_str, str_to_int, starts_with, ends_with,      &
+                              lower_case
   use tally,            only: create_tally_map
   use tally_header,     only: TallyObject
   use timing,           only: timer_start, timer_stop
@@ -28,7 +29,7 @@ module initialize
 #endif
 
 #ifdef HDF5
-  use hdf5_interface,   only: hdf5_create_output, hdf5_write_header, &
+  use hdf5_interface,   only: hdf5_create_output, hdf5_write_header,            &
                               hdf5_write_summary
 #endif
 
@@ -244,6 +245,17 @@ contains
           select case (argv(i))
           case ('-p', '-plot', '--plot')
              run_mode = MODE_PLOTTING
+          case ('-n', '-n_particles', '--n_particles')
+             i = i + 1
+             ! Read number of particles per cycle
+             n_particles = str_to_int(argv(i))
+
+             ! Check that number specified was valid
+             if (n_particles == ERROR_INT) then
+                message = "Must specify integer after " // trim(argv(i-1)) // &
+                     " command-line flag."
+                call fatal_error()
+             end if
           case ('-?', '-help', '--help')
              call print_usage()
              stop

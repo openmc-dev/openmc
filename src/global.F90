@@ -130,7 +130,7 @@ module global
   ! ============================================================================
   ! CRITICALITY SIMULATION VARIABLES
 
-  integer(8) :: n_particles       ! # of particles per generation
+  integer(8) :: n_particles = 0   ! # of particles per generation
   integer    :: n_batches         ! # of batches
   integer    :: n_inactive        ! # of inactive batches
   integer    :: n_active          ! # of active batches

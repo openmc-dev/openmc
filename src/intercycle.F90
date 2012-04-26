@@ -372,7 +372,8 @@ contains
        call MPI_REDUCE(MPI_IN_PLACE, k_batch, 1, MPI_REAL8, MPI_SUM, 0, &
             MPI_COMM_WORLD, mpi_err)
     else
-       call MPI_REDUCE(k_batch, k_batch, 1, MPI_REAL8, MPI_SUM, 0, &
+       ! Receive buffer not significant at other processors
+       call MPI_REDUCE(k_batch, temp, 1, MPI_REAL8, MPI_SUM, 0, &
             MPI_COMM_WORLD, mpi_err)
     end if
 #endif

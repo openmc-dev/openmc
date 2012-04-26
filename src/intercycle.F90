@@ -186,11 +186,11 @@ contains
     index_local = 1
     n_request = 0
 
-    SEND_SITES: do while (start < finish)
-       ! Determine the index of the processor which has the first part of the
-       ! source_bank for the local processor
-       neighbor = start / maxwork
+    ! Determine the index of the processor which has the first part of the
+    ! source_bank for the local processor
+    neighbor = start / maxwork
 
+    SEND_SITES: do while (start < finish)
        ! Determine the number of sites to send
        n = min((neighbor + 1)*maxwork, finish) - start
 
@@ -206,6 +206,11 @@ contains
        start       = start       + n
        index_local = index_local + n
        neighbor    = neighbor    + 1
+
+       ! Check for sites out of bounds -- this only happens in the rare
+       ! circumstance that a processor close to the end has so many sites that
+       ! it would exceed the bank on the last processor
+       if (neighbor > n_procs - 1) exit
     end do SEND_SITES
 
     ! ==========================================================================
@@ -255,7 +260,7 @@ contains
        neighbor    = neighbor    + 1
     end do RECV_SITES
 
-    ! Send we initiated a series of asynchronous ISENDs and IRECVs, now we have
+    ! Since we initiated a series of asynchronous ISENDs and IRECVs, now we have
     ! to ensure that the data has actually been communicated before moving on to
     ! the next generation
 

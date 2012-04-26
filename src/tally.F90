@@ -1347,6 +1347,7 @@ contains
     integer :: n_bins ! total number of bins
     real(8), allocatable :: tally_temp(:,:) ! contiguous array of scores
     real(8) :: global_temp(N_GLOBAL_TALLIES)
+    real(8) :: dummy  ! temporary receive buffer for non-root reduces
     type(TallyObject), pointer :: t => null()
 
     do i = 1, n_tallies
@@ -1370,7 +1371,7 @@ contains
           t % scores(:,:) % value = tally_temp
        else
           ! Receive buffer not significant at other processors
-          call MPI_REDUCE(tally_temp, tally_temp, n_bins, MPI_REAL8, &
+          call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, &
                MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
           ! Reset value on other processors
@@ -1390,7 +1391,8 @@ contains
        ! Transfer values back to global_tallies on master
        global_tallies(:) % value = global_temp
     else
-       call MPI_REDUCE(global_temp, global_temp, N_GLOBAL_TALLIES, &
+       ! Receive buffer not significant at other processors
+       call MPI_REDUCE(global_temp, dummy, N_GLOBAL_TALLIES, &
             MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
        
        ! Reset value on other processors
@@ -1404,7 +1406,8 @@ contains
           call MPI_REDUCE(MPI_IN_PLACE, total_weight, 1, MPI_REAL8, MPI_SUM, &
                0, MPI_COMM_WORLD, mpi_err)
        else
-          call MPI_REDUCE(total_weight, total_weight, 1, MPI_REAL8, MPI_SUM, &
+          ! Receive buffer not significant at other processors
+          call MPI_REDUCE(total_weight, dummy, 1, MPI_REAL8, MPI_SUM, &
                0, MPI_COMM_WORLD, mpi_err)
        end if
     end if
@@ -1428,6 +1431,7 @@ contains
     integer :: n_bins ! total number of bins
     real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of scores
     real(8) :: global_temp(2,N_GLOBAL_TALLIES)
+    real(8) :: dummy  ! temporary receive buffer for non-root reduces
     type(TallyObject), pointer :: t => null()
 
     do i = 1, n_tallies
@@ -1453,7 +1457,7 @@ contains
           t % scores(:,:) % sum_sq = tally_temp(2,:,:)
        else
           ! Receive buffer not significant at other processors
-          call MPI_REDUCE(tally_temp, tally_temp, n_bins, MPI_REAL8, MPI_SUM, &
+          call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
                0, MPI_COMM_WORLD, mpi_err)
        end if
 
@@ -1477,7 +1481,7 @@ contains
        global_tallies(:) % sum_sq = global_temp(2,:)
     else
        ! Receive buffer not significant at other processors
-       call MPI_REDUCE(global_temp, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
+       call MPI_REDUCE(global_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
             0, MPI_COMM_WORLD, mpi_err)
     end if
 

@@ -170,7 +170,8 @@ contains
     logical :: in_mesh  ! was single site outside mesh?
     logical :: outside  ! was any site outside mesh?
 #ifdef MPI
-    integer :: n       ! total size of count variable
+    integer :: n        ! total size of count variable
+    real(8) :: dummy    ! temporary receive buffer for non-root reductions
 #endif
 
     ! initialize variables
@@ -229,7 +230,8 @@ contains
        call MPI_REDUCE(MPI_IN_PLACE, cnt, n, MPI_REAL8, MPI_SUM, 0, &
             MPI_COMM_WORLD, mpi_err)
     else
-       call MPI_REDUCE(cnt, cnt, n, MPI_REAL8, MPI_SUM, 0, &
+       ! Receive buffer not significant at other processors
+       call MPI_REDUCE(cnt, dummy, n, MPI_REAL8, MPI_SUM, 0, &
             MPI_COMM_WORLD, mpi_err)
     end if
 

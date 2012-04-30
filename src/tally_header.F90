@@ -99,11 +99,10 @@ module tally_header
      type(TallyFilter), pointer :: score_bins(:) => null()
      integer :: n_score_bins = 0
      
-     ! Scores for each bin -- the most natural way to have scores would be to
-     ! have a dimension for each different type of bin, but older Fortran
-     ! standards are limited to 7 dimensions or less, so instead we map a
-     ! combination of the filter bins into one integer and have that as the
-     ! index into a one-dimensional array
+     ! Scores for each bin -- the first dimenion of the array is for scores
+     ! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the
+     ! second dimension of the array is for the combination of filters
+     ! (e.g. specific cell, specific energy group, etc.)
 
      type(TallyScore), allocatable :: scores(:,:)
 

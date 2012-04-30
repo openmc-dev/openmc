@@ -299,11 +299,11 @@ contains
     else
        ! Set proper offset for source data on this processor
        offset = 8*(1 + rank*maxwork*9)
-print *,'reading in'
+
        ! Read all source sites
        call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
             MPI_STATUS_IGNORE, mpi_err)
-print *,'done reading'
+
        ! Close binary source file
        call MPI_FILE_CLOSE(fh, mpi_err)
     end if

@@ -135,7 +135,7 @@ contains
                 score_index = sum((bins - 1) * t%stride) + 1
 
                 ! get flux
-                flux = t % scores(score_index,1) % sum
+                flux = t % scores(1,score_index) % sum
                 cmfd % flux(h,i,j,k) = flux
 
                 ! detect zero flux
@@ -145,13 +145,13 @@ contains
                 end if
 
                 ! get total rr and convert to total xs
-                cmfd % totalxs(h,i,j,k) = t % scores(score_index,2) % sum / flux
+                cmfd % totalxs(h,i,j,k) = t % scores(2,score_index) % sum / flux
 
                 ! get p1 scatter rr and convert to p1 scatter xs
-                cmfd % p1scattxs(h,i,j,k) = t % scores(score_index,3) % sum / flux
+                cmfd % p1scattxs(h,i,j,k) = t % scores(3,score_index) % sum / flux
 
                 ! extract diffusion coefficient tally
-                cmfd % diffusion(h,i,j,k) = t % scores(score_index,4) % sum / flux
+                cmfd % diffusion(h,i,j,k) = t % scores(4,score_index) % sum / flux
 
                 ! calculate diffusion coefficient
 !               cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*cmfd%totalxs(h,i,j,k))
@@ -183,16 +183,16 @@ contains
                   score_index = sum((bins - 1) * t%stride) + 1
 
                   ! get scattering
-                  cmfd % scattxs(h,g,i,j,k) = t % scores(score_index,1) % sum /&
+                  cmfd % scattxs(h,g,i,j,k) = t % scores(1,score_index) % sum /&
                  &                            cmfd % flux(h,i,j,k)
 
                   ! get nu-fission
-                  cmfd % nfissxs(h,g,i,j,k) = t % scores(score_index,2) % sum /&
+                  cmfd % nfissxs(h,g,i,j,k) = t % scores(2,score_index) % sum /&
                  &                            cmfd % flux(h,i,j,k)
 
                   ! bank source
                   cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) +    &
-                 &                             t % scores(score_index,2) % sum 
+                 &                             t % scores(2,score_index) % sum 
 
                 end do INGROUP
 
@@ -206,55 +206,55 @@ contains
                 bins(1:3) = (/ i-1, j, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(1,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(1,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(2,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(2,h,i,j,k) = t % scores(1,score_index) % sum
 
                 ! right surface
                 bins(1:3) = (/ i, j, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(3,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(3,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_RIGHT
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
-                cmfd % current(4,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(4,h,i,j,k) = t % scores(1,score_index) % sum
 
                 ! back surface
                 bins(1:3) = (/ i, j-1, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(5,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(5,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(6,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(6,h,i,j,k) = t % scores(1,score_index) % sum
 
                 ! front surface
                 bins(1:3) = (/ i, j, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(7,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(7,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_FRONT
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
-                cmfd % current(8,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(8,h,i,j,k) = t % scores(1,score_index) % sum
 
                 ! bottom surface
                 bins(1:3) = (/ i, j, k-1 /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_TOP
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(9,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(9,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_TOP
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(10,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(10,h,i,j,k) = t % scores(1,score_index) % sum
 
                 ! top surface
                 bins(1:3) = (/ i, j, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_TOP
                 score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
-                cmfd % current(11,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(11,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_TOP
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
-                cmfd % current(12,h,i,j,k) = t % scores(score_index,1) % sum
+                cmfd % current(12,h,i,j,k) = t % scores(1,score_index) % sum
 
               end if TALLY
 
@@ -749,7 +749,7 @@ contains
 !    score_index = sum((bins - 1) * t%stride) + 1
 !
 !    ! bank source
-!    cmfd % openmc_accum_src(i,j,k) = t % scores(score_index,1) % sum
+!    cmfd % openmc_accum_src(i,j,k) = t % scores(1,score_index) % sum
 !
 !  end subroutine extract_accum_fsrc
 

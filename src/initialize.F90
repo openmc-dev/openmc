@@ -17,7 +17,7 @@ module initialize
                               print_plot, create_summary_file, print_usage,    &
                               create_xs_summary_file, print_version
   use random_lcg,       only: initialize_prng
-  use source,           only: initialize_source
+  use source,           only: allocate_banks, initialize_source
   use string,           only: to_str, str_to_int, starts_with, ends_with,      &
                               lower_case
   use tally,            only: create_tally_map
@@ -119,7 +119,8 @@ contains
        ! Create tally map
        call create_tally_map()
 
-       ! create source particles
+       ! allocate banks and create source particles
+       call allocate_banks()
        call initialize_source()
     end if
 

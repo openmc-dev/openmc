@@ -25,9 +25,8 @@ contains
 
   subroutine initialize_source()
 
-    integer    :: i          ! loop index over processors
-    integer(8) :: j          ! loop index over bank sites
-    integer    :: k          ! dummy loop index
+    integer(8) :: i          ! loop index over bank sites
+    integer    :: j          ! dummy loop index
     integer(8) :: bytes      ! size of fission/source bank
     integer(8) :: id         ! particle id
     integer    :: alloc_err  ! allocation error code
@@ -80,57 +79,54 @@ contains
        call fatal_error()
     end if
 
-    ! Read the source from a binary file instead of sampling from some assumed
-    ! source distribution
     if (external_source % type == SRC_FILE) then
+       ! Read the source from a binary file instead of sampling from some
+       ! assumed source distribution
+
        call read_source_binary()
-       return
-    end if
 
-    ! Initialize first cycle source bank
-    do i = 0, n_procs - 1
-       if (rank == i) then
-          do j = 1, work
-             id = bank_first + j - 1
-             source_bank(j) % id = id
+    else
+       ! Generation source sites from specified distribution in user input
+       do i = 1, work
+          id = bank_first + i - 1
+          source_bank(i) % id = id
 
-             ! Set weight to one
-             source_bank(j) % wgt = ONE
+          ! Set weight to one
+          source_bank(i) % wgt = ONE
 
-             ! initialize random number seed
-             call set_particle_seed(id)
+          ! initialize random number seed
+          call set_particle_seed(id)
 
-             ! sample position from external source
-             select case (external_source % type)
-             case (SRC_BOX)
-                p_min = external_source % values(1:3)
-                p_max = external_source % values(4:6)
-                r = (/ (prn(), k = 1,3) /)
-                source_bank(j) % xyz = p_min + r*(p_max - p_min)
-             case (SRC_POINT)
-                source_bank(j) % xyz = external_source % values
-             end select
+          ! sample position from external source
+          select case (external_source % type)
+          case (SRC_BOX)
+             p_min = external_source % values(1:3)
+             p_max = external_source % values(4:6)
+             r = (/ (prn(), j = 1,3) /)
+             source_bank(i) % xyz = p_min + r*(p_max - p_min)
+          case (SRC_POINT)
+             source_bank(i) % xyz = external_source % values
+          end select
 
-             ! sample angle
-             phi = TWO*PI*prn()
-             mu = TWO*prn() - ONE
-             source_bank(j) % uvw(1) = mu
-             source_bank(j) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-             source_bank(j) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
-
-             ! sample energy from Watt fission energy spectrum for U-235
-             do
-                E = watt_spectrum(0.988_8, 2.249_8)
-                ! resample if energy is >= 20 MeV
-                if (E < 20) exit
-             end do
-
-             ! set particle energy
-             source_bank(j) % E = E
+          ! sample angle
+          phi = TWO*PI*prn()
+          mu = TWO*prn() - ONE
+          source_bank(i) % uvw(1) = mu
+          source_bank(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+          source_bank(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+          
+          ! sample energy from Watt fission energy spectrum for U-235
+          do
+             E = watt_spectrum(0.988_8, 2.249_8)
+             ! resample if energy is >= 20 MeV
+             if (E < 20) exit
           end do
-       end if
-    end do
 
+          ! set particle energy
+          source_bank(i) % E = E
+       end do
+    end if
+ 
   end subroutine initialize_source
 
 !===============================================================================

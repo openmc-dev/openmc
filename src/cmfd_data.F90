@@ -6,16 +6,16 @@ module cmfd_data
 
 contains
 
-!==============================================================================
+!===============================================================================
 ! SET_UP_CMFD
 !===============================================================================
 
   subroutine set_up_cmfd()
 
-    use global,       only: cmfd,cmfd_coremap,current_batch,n_inactive,time_cmfd
+    use global,       only: cmfd,cmfd_coremap,current_batch,n_inactive,        &
+   &                        cmfd_balance,cmfd_downscatter
     use cmfd_header,  only: allocate_cmfd
     use cmfd_output,  only: neutron_balance
-    use timing
 
     ! initialize data
     call allocate_cmfd(cmfd)
@@ -31,6 +31,12 @@ contains
     ! overwrite xs
 !   call fix_1_grp()
 !   call fix_2_grp()
+
+    ! fix balance of neutrons
+    if (cmfd_balance) call fix_neutron_balance()
+
+    ! compute effective downscatter
+    if (cmfd_downscatter) call compute_effective_downscatter()
 
     ! compute neutron balance 
     call neutron_balance()
@@ -701,6 +707,249 @@ contains
     dhat_reset = .true.
 
   end subroutine fix_2_grp
+
+!===============================================================================
+! FIX_NEUTRON_BALANCE
+!===============================================================================
+
+  subroutine fix_neutron_balance()
+
+    use constants, only: ONE,ZERO
+    use global, only: cmfd,cmfd_balance,keff 
+
+    integer :: nx                ! number of mesh cells in x direction
+    integer :: ny                ! number of mesh cells in y direction
+    integer :: nz                ! number of mesh cells in z direction
+    integer :: ng                ! number of energy groups
+    integer :: i                 ! iteration counter for x
+    integer :: j                 ! iteration counter for y
+    integer :: k                 ! iteration counter for z
+    integer :: l                 ! iteration counter for surface
+    real(8) :: leak1             ! leakage rate in group 1
+    real(8) :: leak2             ! leakage rate in group 2
+    real(8) :: flux1             ! group 1 volume int flux
+    real(8) :: flux2             ! group 2 volume int flux
+    real(8) :: sigt1             ! group 1 total xs
+    real(8) :: sigt2             ! group 2 total xs
+    real(8) :: sigs11            ! scattering transfer 1 --> 1
+    real(8) :: sigs21            ! scattering transfer 2 --> 1
+    real(8) :: sigs12            ! scattering transfer 1 --> 2
+    real(8) :: sigs22            ! scattering transfer 2 --> 2
+    real(8) :: nsigf11           ! fission transfer 1 --> 1
+    real(8) :: nsigf21           ! fission transfer 2 --> 1
+    real(8) :: nsigf12           ! fission transfer 1 --> 2
+    real(8) :: nsigf22           ! fission transfer 2 --> 2
+    real(8) :: siga1             ! group 1 abs xs
+    real(8) :: siga2             ! group 2 abs xs
+    real(8) :: sigs12_eff        ! effective downscatter xs
+
+    ! check for balance
+    if (.not. cmfd_balance) return
+
+    ! extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! return if not two groups
+    if (ng /= 2) return
+
+    ! begin loop around space and energy groups
+    ZLOOP: do k = 1,nz
+
+      YLOOP: do j = 1,ny
+
+        XLOOP: do i = 1,nx
+
+          ! check for active mesh
+          if (allocated(cmfd%coremap)) then
+            if (cmfd%coremap(i,j,k) == 99999) cycle 
+          end if
+
+          ! compute leakage in groups 1 and 2
+          leak1 = ZERO 
+          leak2 = ZERO
+          LEAK: do l = 1,3
+
+            leak1 = leak1 + ((cmfd % current(4*l,1,i,j,k) - &
+             & cmfd % current(4*l-1,1,i,j,k))) - &
+             & ((cmfd % current(4*l-2,1,i,j,k) - &
+             & cmfd % current(4*l-3,1,i,j,k)))
+
+            leak2 = leak2 + ((cmfd % current(4*l,2,i,j,k) - &
+             & cmfd % current(4*l-1,2,i,j,k))) - &
+             & ((cmfd % current(4*l-2,2,i,j,k) - &
+             & cmfd % current(4*l-3,2,i,j,k)))
+
+
+          end do LEAK
+
+          ! extract cross sections and flux from object
+          flux1 = cmfd % flux(1,i,j,k)
+          flux2 = cmfd % flux(2,i,j,k)
+          sigt1 = cmfd % totalxs(1,i,j,k)
+          sigt2 = cmfd % totalxs(2,i,j,k)
+          sigs11 = cmfd % scattxs(1,1,i,j,k)
+          sigs21 = cmfd % scattxs(2,1,i,j,k)
+          sigs12 = cmfd % scattxs(1,2,i,j,k)
+          sigs22 = cmfd % scattxs(2,2,i,j,k)
+          nsigf11 = cmfd % nfissxs(1,1,i,j,k)
+          nsigf21 = cmfd % nfissxs(2,1,i,j,k)
+          nsigf12 = cmfd % nfissxs(1,2,i,j,k)
+          nsigf22 = cmfd % nfissxs(2,2,i,j,k)
+
+          ! check for no fission into group 2
+          if (.not.(nsigf12 < 1e-8_8 .and. nsigf22 < 1e-8_8)) then
+            write(*,*) 'Downscatter rebalance not valid for this group struct'
+            stop
+          end if
+
+          ! compute absorption xs
+          siga1 = sigt1 - sigs11 - sigs12
+          siga2 = sigt2 - sigs22 - sigs21
+
+          ! compute effective downscatter xs
+          sigs12_eff = ( ONE/keff*nsigf11*flux1 - leak1 - siga1*flux1          &
+         &               - ONE/keff*nsigf21/siga2*leak2 ) / ( flux1*(ONE       &
+         &               - ONE/keff*nsigf21/siga2) )
+
+          ! redefine flux 2
+          flux2 = (sigs12_eff*flux1 - leak2)/siga2
+          cmfd % flux(2,i,j,k) = flux2
+ 
+          ! recompute total cross sections (use effective and no upscattering)
+          sigt1 = siga1 + sigs11 + sigs12_eff
+          sigt2 = siga2 + sigs22
+
+          ! record total xs
+          cmfd % totalxs(1,i,j,k) = sigt1
+          cmfd % totalxs(2,i,j,k) = sigt2
+
+          ! record effective downscatter xs
+          cmfd % scattxs(1,2,i,j,k) = sigs12_eff
+
+          ! zero out upscatter cross section
+          cmfd % scattxs(2,1,i,j,k) = ZERO 
+
+!         print *,'Leakage g=1:',leak1
+!         print *,'Leakage g=2:',leak2
+!         print *,'Flux g=1:',flux1
+!         print *,'Flux g=2:',flux2
+!         print *,'Total g=1:',sigt1
+!         print *,'Total g=2:',sigt2
+!         print *,'Scattering 1-->1:',sigs11
+!         print *,'Scattering 2-->1:',sigs21
+!         print *,'Scattering 1-->2:',sigs12
+!         print *,'Scattering 2-->2:',sigs22
+!         print *,'Fission 1-->1:',nsigf11
+!         print *,'Fission 2-->1:',nsigf21
+!         print *,'Fission 1-->2:',nsigf12
+!         print *,'Fission 2-->2:',nsigf22
+!         print *,'keff:',keff
+!         print *,'Effective Downscatter:',sigs12_eff
+!
+!         print *,'Group 1 balance:',leak1+sigt1*flux1-sigs11*flux1-ONE/keff*(nsigf11*flux1+nsigf21*flux2)
+!         print *,'Group 2 balance:',leak2+sigt2*flux2-sigs12_eff*flux1-sigs22*flux2
+! stop
+        end do XLOOP
+
+      end do YLOOP
+
+    end do ZLOOP
+
+  end subroutine fix_neutron_balance
+
+!===============================================================================
+! FIX_NEUTRON_BALANCE
+!===============================================================================
+
+  subroutine compute_effective_downscatter()
+
+    use constants, only: ZERO
+    use global, only: cmfd,cmfd_downscatter,keff
+
+    integer :: nx                ! number of mesh cells in x direction
+    integer :: ny                ! number of mesh cells in y direction
+    integer :: nz                ! number of mesh cells in z direction
+    integer :: ng                ! number of energy groups
+    integer :: i                 ! iteration counter for x
+    integer :: j                 ! iteration counter for y
+    integer :: k                 ! iteration counter for z
+    real(8) :: flux1             ! group 1 volume int flux
+    real(8) :: flux2             ! group 2 volume int flux
+    real(8) :: sigt1             ! group 1 total xs
+    real(8) :: sigt2             ! group 2 total xs
+    real(8) :: sigs11            ! scattering transfer 1 --> 1
+    real(8) :: sigs21            ! scattering transfer 2 --> 1
+    real(8) :: sigs12            ! scattering transfer 1 --> 2
+    real(8) :: sigs22            ! scattering transfer 2 --> 2
+    real(8) :: siga1             ! group 1 abs xs
+    real(8) :: siga2             ! group 2 abs xs
+    real(8) :: sigs12_eff        ! effective downscatter xs
+
+    ! check for balance
+    if (.not. cmfd_downscatter) return
+
+    ! extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! return if not two groups
+    if (ng /= 2) return
+
+    ! begin loop around space and energy groups
+    ZLOOP: do k = 1,nz
+
+      YLOOP: do j = 1,ny
+
+        XLOOP: do i = 1,nx
+
+          ! check for active mesh
+          if (allocated(cmfd%coremap)) then
+            if (cmfd%coremap(i,j,k) == 99999) cycle
+          end if
+
+          ! extract cross sections and flux from object
+          flux1 = cmfd % flux(1,i,j,k)
+          flux2 = cmfd % flux(2,i,j,k)
+          sigt1 = cmfd % totalxs(1,i,j,k)
+          sigt2 = cmfd % totalxs(2,i,j,k)
+          sigs11 = cmfd % scattxs(1,1,i,j,k)
+          sigs21 = cmfd % scattxs(2,1,i,j,k)
+          sigs12 = cmfd % scattxs(1,2,i,j,k)
+          sigs22 = cmfd % scattxs(2,2,i,j,k)
+
+          ! compute absorption xs
+          siga1 = sigt1 - sigs11 - sigs12
+          siga2 = sigt2 - sigs22 - sigs21
+
+          ! compute effective downscatter xs
+          sigs12_eff = sigs12 - sigs21*flux2/flux1 
+
+          ! recompute total cross sections (use effective and no upscattering)
+          sigt1 = siga1 + sigs11 + sigs12_eff
+          sigt2 = siga2 + sigs22
+    
+          ! record total xs
+          cmfd % totalxs(1,i,j,k) = sigt1
+          cmfd % totalxs(2,i,j,k) = sigt2
+
+          ! record effective downscatter xs
+          cmfd % scattxs(1,2,i,j,k) = sigs12_eff
+
+          ! zero out upscatter cross section
+          cmfd % scattxs(2,1,i,j,k) = ZERO 
+
+        end do XLOOP
+
+      end do YLOOP
+    
+    end do ZLOOP
+
+  end subroutine compute_effective_downscatter 
 
 !==============================================================================
 ! EXTRACT_ACCUM_FSRC

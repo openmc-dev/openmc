@@ -90,6 +90,12 @@ contains
     ! set feedback logical
     neut_feedback = feedback_
 
+    ! set balance logical
+    cmfd_balance = balance_
+
+    ! set downscatter logical
+    cmfd_downscatter = downscatter_
+
     ! create tally objects
     call create_cmfd_tally()
 

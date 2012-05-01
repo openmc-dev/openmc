@@ -20,28 +20,16 @@ module source
 contains
 
 !===============================================================================
-! INITIALIZE_SOURCE initializes particles in the source bank
+! ALLOCATE_BANKS allocates memory for the fission and source banks
 !===============================================================================
 
-  subroutine initialize_source()
+  subroutine allocate_banks()
 
-    integer(8) :: i          ! loop index over bank sites
-    integer    :: j          ! dummy loop index
     integer(8) :: bytes      ! size of fission/source bank
-    integer(8) :: id         ! particle id
     integer    :: alloc_err  ! allocation error code
-    real(8)    :: r(3)       ! sampled coordinates
-    real(8)    :: phi        ! azimuthal angle
-    real(8)    :: mu         ! cosine of polar angle
-    real(8)    :: E          ! outgoing energy
-    real(8)    :: p_min(3)   ! minimum coordinates of source
-    real(8)    :: p_max(3)   ! maximum coordinates of source
 #ifndef NO_F2008
     type(Bank) :: bank_obj
 #endif
-
-    message = "Initializing source particles..."
-    call write_message(6)
 
     ! Determine maximum amount of particles to simulate on each processor
     maxwork = ceiling(real(n_particles)/n_procs,8)
@@ -55,6 +43,8 @@ contains
 
     ! Allocate source bank
     allocate(source_bank(maxwork), STAT=alloc_err)
+
+    ! Check for allocation errors 
     if (alloc_err /= 0) then
 #ifndef NO_F2008
        bytes = maxwork * storage_size(bank_obj) / 8
@@ -68,6 +58,8 @@ contains
 
     ! Allocate fission bank
     allocate(fission_bank(3*maxwork), STAT=alloc_err)
+
+    ! Check for allocation errors 
     if (alloc_err /= 0) then
 #ifndef NO_F2008
        bytes = 3 * maxwork * storage_size(bank_obj) / 8
@@ -78,6 +70,27 @@ contains
             // trim(to_str(bytes)) // " bytes."
        call fatal_error()
     end if
+
+  end subroutine allocate_banks
+
+!===============================================================================
+! INITIALIZE_SOURCE initializes particles in the source bank
+!===============================================================================
+
+  subroutine initialize_source()
+
+    integer(8) :: i          ! loop index over bank sites
+    integer    :: j          ! dummy loop index
+    integer(8) :: id         ! particle id
+    real(8)    :: r(3)       ! sampled coordinates
+    real(8)    :: phi        ! azimuthal angle
+    real(8)    :: mu         ! cosine of polar angle
+    real(8)    :: E          ! outgoing energy
+    real(8)    :: p_min(3)   ! minimum coordinates of source
+    real(8)    :: p_max(3)   ! maximum coordinates of source
+
+    message = "Initializing source particles..."
+    call write_message(6)
 
     if (external_source % type == SRC_FILE) then
        ! Read the source from a binary file instead of sampling from some

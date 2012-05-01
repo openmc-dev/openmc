@@ -275,6 +275,12 @@ module global
   ! activate neutronic feedback
   logical :: neut_feedback = .FALSE.
 
+  ! activate auto-balance of tallies (2grp only)
+  logical :: cmfd_balance = .FALSE.
+
+  ! calculate effective downscatter
+  logical :: cmfd_downscatter = .FALSE.
+
   ! user-defined tally information
   integer :: n_cmfd_meshes              = 1 ! # of structured meshes
   integer :: n_cmfd_tallies             = 3 ! # of user-defined tallies

@@ -25,11 +25,7 @@ contains
 
   subroutine allocate_banks()
 
-    integer(8) :: bytes      ! size of fission/source bank
     integer    :: alloc_err  ! allocation error code
-#ifndef NO_F2008
-    type(Bank) :: bank_obj
-#endif
 
     ! Determine maximum amount of particles to simulate on each processor
     maxwork = ceiling(real(n_particles)/n_procs,8)
@@ -46,13 +42,7 @@ contains
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then
-#ifndef NO_F2008
-       bytes = maxwork * storage_size(bank_obj) / 8
-#else
-       bytes = maxwork * 64 / 8
-#endif
-       message = "Could not allocate source bank. Attempted to allocate " &
-            // trim(to_str(bytes)) // " bytes."
+       message = "Failed to allocate source bank."
        call fatal_error()
     end if
 
@@ -61,13 +51,7 @@ contains
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then
-#ifndef NO_F2008
-       bytes = 3 * maxwork * storage_size(bank_obj) / 8
-#else
-       bytes = 3 * maxwork * 64 / 8
-#endif
-       message = "Could not allocate fission bank. Attempted to allocate " &
-            // trim(to_str(bytes)) // " bytes."
+       message = "Failed to allocate fission bank."
        call fatal_error()
     end if
 

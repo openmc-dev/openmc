@@ -305,13 +305,13 @@ contains
 
     ! Check if the user has specified to not reduce tallies at the end of every
     ! batch
-    if (trim(no_reduce_) == 'on') no_reduce = .true.
+    if (trim(no_reduce_) == 'on') reduce_tallies = .false.
 
     ! Determine number of realizations
-    if (no_reduce) then
-       n_realizations = n_active * n_procs
-    else
+    if (reduce_tallies) then
        n_realizations = n_active
+    else
+       n_realizations = n_active * n_procs
     end if
        
 

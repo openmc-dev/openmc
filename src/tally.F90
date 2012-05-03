@@ -1309,26 +1309,25 @@ contains
     integer :: i   ! index in tallies array
 
 #ifdef MPI
-    if (.not. no_reduce) then
-       call reduce_tally_values()
-       if (.not. master) return
-    end if
+    if (reduce_tallies) call reduce_tally_values()
 #endif
 
-    ! Accumulate scores for each tally
-    do i = 1, n_tallies
-       call accumulate_score(tallies(i) % scores)
-    end do
+    if (master .or. (.not. reduce_tallies)) then
+       ! Accumulate scores for each tally
+       do i = 1, n_tallies
+          call accumulate_score(tallies(i) % scores)
+       end do
 
-    ! Before accumulating scores for global_tallies, we need to get the current
-    ! batch estimate of k_analog for displaying to output
-    k_batch = global_tallies(K_ANALOG) % value
+       ! Before accumulating scores for global_tallies, we need to get the
+       ! current batch estimate of k_analog for displaying to output
+       k_batch = global_tallies(K_ANALOG) % value
 
-    ! Accumulate scores for global tallies
-    call accumulate_score(global_tallies)
+       ! Accumulate scores for global tallies
+       call accumulate_score(global_tallies)
+    end if
 
 #ifdef MPI
-    if (no_reduce .and. current_batch == n_batches) &
+    if ((.not. reduce_tallies) .and. current_batch == n_batches) &
          call reduce_tally_sums()
 #endif
 
@@ -1401,15 +1400,13 @@ contains
 
     ! We also need to determine the total starting weight of particles from the
     ! last realization
-    if (.not. no_reduce) then
-       if (master) then
-          call MPI_REDUCE(MPI_IN_PLACE, total_weight, 1, MPI_REAL8, MPI_SUM, &
-               0, MPI_COMM_WORLD, mpi_err)
-       else
-          ! Receive buffer not significant at other processors
-          call MPI_REDUCE(total_weight, dummy, 1, MPI_REAL8, MPI_SUM, &
-               0, MPI_COMM_WORLD, mpi_err)
-       end if
+    if (master) then
+       call MPI_REDUCE(MPI_IN_PLACE, total_weight, 1, MPI_REAL8, MPI_SUM, &
+            0, MPI_COMM_WORLD, mpi_err)
+    else
+       ! Receive buffer not significant at other processors
+       call MPI_REDUCE(total_weight, dummy, 1, MPI_REAL8, MPI_SUM, &
+            0, MPI_COMM_WORLD, mpi_err)
     end if
 
   end subroutine reduce_tally_values
@@ -1417,10 +1414,10 @@ contains
 
 !===============================================================================
 ! REDUCE_TALLY_SUMS gathers data from the sum and sum_sq member variables of
-! TallyScores rather than the data from values. This is used if no_reduce is
-! turned on and scores are accumulated on every processor *before* being
-! reduced.
-!===============================================================================
+! TallyScores rather than the data from values. This is used if the user
+! specified that tallies should not be reduced and scores are accumulated on
+! every processor *before* being reduced.
+! ===============================================================================
 
 #ifdef MPI
   subroutine reduce_tally_sums()

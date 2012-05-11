@@ -52,7 +52,7 @@ contains
         call timer_start(time_cmfd)
 
         ! set up cmfd
-        if(.not. cmfd_only) call set_up_cmfd()
+        call set_up_cmfd()
 
       end if
 
@@ -289,7 +289,7 @@ contains
 
   subroutine cmfd_reweight()
 
-    use global,      only: n_particles,meshes,source_bank,work
+    use global,      only: n_particles,meshes,source_bank,work,n_user_meshes
     use mesh_header, only: StructuredMesh
     use mesh,        only: count_bank_sites,get_mesh_indices
     use search,      only: binary_search
@@ -309,7 +309,7 @@ contains
     real(8), allocatable :: egrid(:)
 
     ! associate pointer
-    m => meshes(1)
+    m => meshes(n_user_meshes + 1)
 
     ! get maximum of spatial and group indices
     nx = cmfd%indices(1)

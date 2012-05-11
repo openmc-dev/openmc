@@ -543,6 +543,13 @@ contains
 
               end if
 
+              ! check for zero net current
+              if ((abs(current(2*l)-current(2*l-1)) < 1e-8_8).and.xyz_idx/=3) then
+                print *,'Zero net current interface',g,i,j,k
+                print *,current(2*l),current(2*l-1),net_current
+                dhat = 0.0_8
+              end if
+
               ! record dtilde in cmfd object
               cmfd%dhat(l,g,i,j,k) = dhat
 
@@ -800,9 +807,8 @@ contains
           nsigf22 = cmfd % nfissxs(2,2,i,j,k)
 
           ! check for no fission into group 2
-          if (.not.(nsigf12 < 1e-8_8 .and. nsigf22 < 1e-8_8)) then
-            write(*,*) 'Downscatter rebalance not valid for this group struct'
-            stop
+          if (.not.(nsigf12 < 1e-6_8 .and. nsigf22 < 1e-6_8)) then
+            write(*,*) 'Fission in G=2',nsigf12,nsigf22
           end if
 
           ! compute absorption xs

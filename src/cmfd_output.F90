@@ -88,13 +88,13 @@ contains
 
             ! compute residual
             res = leakage + interactions - scattering - (ONE/keff)*fission
-            write(670,*) 'Location',i,j,k,' Group:',g
+            write(670,*) 'Location',i,j,k,' Group:',g,'Balance:',res
 !           write(670,*) 'Leakage:',leakage
 !           write(670,*) 'Interactions:',interactions
 !           write(670,*) 'Scattering:',scattering
 !           write(670,*) 'Fission:',fission
 !           write(670,*) 'k-eff:',keff
-            write(670,*) 'Balance:',res
+!           write(670,*) 'Balance:',res
 
             ! normalize by flux
             res = res/cmfd%flux(g,i,j,k)

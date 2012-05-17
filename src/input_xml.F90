@@ -1095,6 +1095,11 @@ contains
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
+             case('transport')
+                t % score_bins(j) % scalar = SCORE_TRANSPORT
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
              case ('diffusion')
                 t % score_bins(j) % scalar = SCORE_DIFFUSION
 

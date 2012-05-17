@@ -1262,7 +1262,7 @@ contains
     real(8), intent(inout) :: u
     real(8), intent(inout) :: v
     real(8), intent(inout) :: w
-    real(8), intent(in)    :: mu ! cosine of angle in lab
+    real(8), intent(in)    :: mu ! cosine of angle in lab or CM
 
     real(8) :: phi    ! azimuthal angle
     real(8) :: sinphi ! sine of azimuthal angle

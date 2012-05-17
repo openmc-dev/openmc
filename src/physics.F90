@@ -563,6 +563,9 @@ contains
     E = dot_product(v_n, v_n)
     vel = sqrt(E)
 
+    ! convert cosine of scattering angle from CM to LAB
+    mu = (ONE + awr*mu)/sqrt(awr**2 + TWO*awr*mu + ONE)
+
     ! Set energy and direction of particle in LAB frame
     p % E = E
     p % coord0 % uvw = v_n / vel

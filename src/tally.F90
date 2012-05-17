@@ -248,6 +248,8 @@ contains
     real(8) :: last_wgt             ! pre-collision particle weight
     real(8) :: wgt                  ! post-collision particle weight
     real(8) :: mu                   ! cosine of angle of collision
+    real(8) :: macro_total          ! material macro total xs
+    real(8) :: macro_scatt          ! material macro scatt xs
     logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer :: t => null()
 
@@ -345,6 +347,20 @@ contains
              ! neutron's angle due to the collision
 
              score = last_wgt * 0.5*(5.0*mu*mu*mu - 3.0*mu)
+
+          case (SCORE_TRANSPORT)
+            ! Skip any event where the particle didn't scatter
+            if (p % event /= EVENT_SCATTER) cycle
+
+            ! get material macros
+            macro_total = material_xs % total
+            macro_scatt = material_xs % total - material_xs % absorption
+
+            ! Score total rate - p1 scatter rate
+            ! Note estimator needs to be adjusted since tallying is only
+            ! occuring when a scatter has happend. Effectively this means
+            ! multiplying the estimator by total/scatter macro
+            score = (macro_total - mu*macro_scatt)*(ONE/macro_scatt)
 
           case (SCORE_DIFFUSION)
              ! Skip any event where the particle didn't scatter
@@ -1528,6 +1544,7 @@ contains
     score_name(abs(SCORE_SCATTER_1))  = "First Scattering Moment"
     score_name(abs(SCORE_SCATTER_2))  = "Second Scattering Moment"
     score_name(abs(SCORE_SCATTER_3))  = "Third Scattering Moment"
+    score_name(abs(SCORE_TRANSPORT))  = "Transport Rate"
     score_name(abs(SCORE_DIFFUSION))  = "Diffusion Coefficient"
     score_name(abs(SCORE_N_1N))       = "(n,1n) Rate"
     score_name(abs(SCORE_N_2N))       = "(n,2n) Rate"

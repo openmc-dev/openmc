@@ -41,8 +41,9 @@ module ace_header
   type Reaction
      integer :: MT                      ! ENDF MT value
      real(8) :: Q_value                 ! Reaction Q value
-     integer :: TY                      ! Number of neutrons released
+     integer :: multiplicity            ! Number of neutrons released
      integer :: IE                      ! Starting energy grid index
+     logical :: scatter_in_cm           ! scattering system in center-of-mass?
      real(8), allocatable :: sigma(:)   ! Cross section values
      logical :: has_angle_dist          ! Angle distribution present?
      logical :: has_energy_dist         ! Energy distribution present?

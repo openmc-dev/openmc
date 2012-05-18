@@ -1059,7 +1059,6 @@ contains
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
-    integer :: n_secondary ! number of secondary particles
     integer :: law         ! secondary energy distribution law
     real(8) :: A           ! atomic weight ratio of nuclide
     real(8) :: E_in        ! incoming energy
@@ -1093,7 +1092,7 @@ contains
 
     ! if scattering system is in center-of-mass, transfer cosine of scattering
     ! angle and outgoing energy from CM to LAB
-    if (rxn % TY < 0) then
+    if (rxn % scatter_in_cm) then
        E_cm = E
 
        ! determine outgoing energy in lab
@@ -1120,8 +1119,7 @@ contains
     p % mu = mu
 
     ! change weight of particle based on multiplicity
-    n_secondary = abs(rxn % TY)
-    p % wgt = n_secondary * p % wgt
+    p % wgt = rxn % multiplicity * p % wgt
 
   end subroutine inelastic_scatter
 

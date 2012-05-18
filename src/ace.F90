@@ -639,10 +639,11 @@ contains
 
     ! Store elastic scattering cross-section on reaction one
     rxn => nuc % reactions(1)
-    rxn % MT      = 2
-    rxn % Q_value = ZERO
-    rxn % TY      = 1
-    rxn % IE      = 1
+    rxn % MT            = 2
+    rxn % Q_value       = ZERO
+    rxn % multiplicity  = 1
+    rxn % IE            = 1
+    rxn % scatter_in_cm = .true.
     rxn % has_angle_dist = .false.
     rxn % has_energy_dist = .false.
     allocate(rxn % sigma(nuc % n_grid))
@@ -666,9 +667,10 @@ contains
        rxn % has_energy_dist = .false.
 
        ! read MT number, Q-value, and neutrons produced
-       rxn % MT      = int(XSS(LMT + i - 1))
-       rxn % Q_value = XSS(JXS4 + i - 1)
-       rxn % TY      = int(XSS(JXS5 + i - 1))
+       rxn % MT            = int(XSS(LMT + i - 1))
+       rxn % Q_value       = XSS(JXS4 + i - 1)
+       rxn % multiplicity  = abs(nint(XSS(JXS5 + i - 1)))
+       rxn % scatter_in_cm = (nint(XSS(JXS5 + i - 1)) < 0)
 
        ! read starting energy index
        LOCA = int(XSS(LXS + i - 1))

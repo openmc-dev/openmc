@@ -285,7 +285,7 @@ contains
     write(ou,*) 'Reaction ' // reaction_name(rxn % MT)
     write(ou,*) '    MT = ' // to_str(rxn % MT)
     write(ou,*) '    Q-value = ' // to_str(rxn % Q_value)
-    write(ou,*) '    TY = ' // to_str(rxn % TY)
+    write(ou,*) '    Multiplicity = ' // to_str(rxn % multiplicity)
     write(ou,*) '    Starting index = ' // to_str(rxn % IE)
     if (rxn % has_energy_dist) then
        write(ou,*) '    Energy: Law ' // to_str(rxn % edist % law)
@@ -829,8 +829,8 @@ contains
        end if
 
        write(unit_,'(3X,A11,1X,F8.3,2X,I4,2X,I6,1X,I11,1X,I11)') &
-            reaction_name(rxn % MT), rxn % Q_value, rxn % TY, rxn % IE, &
-            size_angle, size_energy
+            reaction_name(rxn % MT), rxn % Q_value, rxn % multiplicity, &
+            rxn % IE, size_angle, size_energy
 
        ! Accumulate data size
        size_total = size_total + size_angle + size_energy

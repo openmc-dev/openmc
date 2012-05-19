@@ -23,7 +23,7 @@ Contents
 .. toctree::
     :maxdepth: 1
 
-    install
+    quickinstall
     releasenotes/index
     methods/index
     usersguide/index

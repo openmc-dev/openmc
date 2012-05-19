@@ -12,6 +12,6 @@ essential aspects of using OpenMC to perform neutronic simulations.
     :maxdepth: 3
 
     beginners
-    setup
+    install
     input
     troubleshoot

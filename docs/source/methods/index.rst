@@ -9,6 +9,8 @@ Theory and Methodology
     :maxdepth: 2
 
     introduction
+    statistics
     geometry
     physics
     tallies
+    parallelization

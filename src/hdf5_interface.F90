@@ -166,9 +166,13 @@ contains
        select case (c % type)
        case (CELL_NORMAL)
           call h5ltmake_dataset_string_f(temp_group, "fill_type", "normal", &
-               hdf5_err) 
-          call hdf5_make_integer(temp_group, "material", &
-               materials(c % material) % id)
+               hdf5_err)
+          if (c % material == MATERIAL_VOID) then
+             call hdf5_make_integer(temp_group, "material", -1)
+          else
+             call hdf5_make_integer(temp_group, "material", &
+                  materials(c % material) % id)
+          end if
        case (CELL_FILL)
           call h5ltmake_dataset_string_f(temp_group, "fill_type", "universe", &
                hdf5_err) 

@@ -344,6 +344,8 @@ contains
     ! Write information on material
     if (c % material == 0) then
        write(unit_,*) '    Material = NONE'
+    elseif (c % material == MATERIAL_VOID) then
+       write(unit_,*) '    Material = Void'
     else
        m => materials(c % material)
        write(unit_,*) '    Material = ' // to_str(m % id)

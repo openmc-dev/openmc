@@ -34,6 +34,9 @@ contains
     material_xs % fission    = ZERO
     material_xs % nu_fission = ZERO
 
+    ! Exit subroutine if material is void
+    if (p % material == MATERIAL_VOID) return
+
     mat => materials(p % material)
 
     ! Find energy index on unionized grid

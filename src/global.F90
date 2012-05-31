@@ -189,7 +189,7 @@ module global
   integer :: MPI_BANK    ! MPI datatype for fission bank
 
   ! No reduction at end of batch
-  logical :: no_reduce = .false.
+  logical :: reduce_tallies = .true.
 
   ! ============================================================================
   ! TIMING VARIABLES

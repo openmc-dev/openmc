@@ -1,4 +1,4 @@
-.. _usersguide_setup:
+.. _usersguide_install:
 
 ==============================
 Installation and Configuration
@@ -53,7 +53,7 @@ repository::
 
     git clone git@github.com:mit-crpg/openmc.git
 
-.. _GitHub: http://github.com
+.. _GitHub: https://github.com/mit-crpg/openmc
 .. _git: http://git-scm.com
 .. _ssh: http://en.wikipedia.org/wiki/Secure_Shell
 
@@ -137,7 +137,7 @@ Cross-Section Configuration
 
 In order to run a simulation with OpenMC, you will need cross-section data for
 each nuclide in your problem. Since OpenMC uses ACE format cross-sections, you
-can use nuclear data distributed with MCNP or Serpent.
+can use nuclear data distributed with MCNP_ or Serpent_.
 
 To use cross sections distributed with MCNP, change the <directory> element in
 the ``cross_sections.xml`` file in the root directory of the OpenMC distribution
@@ -151,6 +151,9 @@ directory of the OpenMC distribution to the location of the Serpent
 cross-sections. Then, either set the :ref:`cross_sections` in a settings.xml
 file or the :envvar:`CROSS_SECTIONS` environment variable to the absolute path
 of the ``cross_sections_serpent.xml`` file.
+
+.. _MCNP: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/
+.. _Serpent: http://montecarlo.vtt.fi
 
 --------------
 Running OpenMC

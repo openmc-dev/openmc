@@ -286,6 +286,9 @@ contains
     ym1 = m % upper_right(2)
     zm1 = m % upper_right(3)
 
+    ! Set default value for intersects
+    intersects = .false.
+
     ! Check if line intersects bottom surface -- calculate the intersection
     ! point (y,z)
     yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0)

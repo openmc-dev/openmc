@@ -391,7 +391,23 @@ contains
        ! =======================================================================
        ! ACTIVE BATCHES
 
-       if (no_reduce) then
+       if (reduce_tallies) then
+          ! In this case, global_tallies has already been reduced, so we don't
+          ! need to perform any more reductions and just take the values from
+          ! global_tallies directly
+
+          ! Define number of realizations
+          n = current_batch - n_inactive
+
+          ! Sample mean of keff
+          keff = global_tallies(K_ANALOG) % sum / n
+
+          if (n > 1) then
+             ! Standard deviation of the sample mean of k
+             keff_std = sqrt((global_tallies(K_ANALOG) % sum_sq/n - &
+                  keff*keff)/(n - 1))
+          end if
+       else
           ! In this case, no reduce was ever done on global_tallies. Thus, we
           ! need to reduce the values in sum and sum^2 to get the sample mean
           ! and its standard deviation
@@ -418,22 +434,6 @@ contains
           if (n > 1) then
              ! Standard deviation of the sample mean of k
              keff_std = sqrt((temp(2)/n - keff*keff)/(n - 1))
-          end if
-       else
-          ! In this case, global_tallies has already been reduced, so we don't
-          ! need to perform any more reductions and just take the values from
-          ! global_tallies directly
-
-          ! Define number of realizations
-          n = current_batch - n_inactive
-
-          ! Sample mean of keff
-          keff = global_tallies(K_ANALOG) % sum / n
-
-          if (n > 1) then
-             ! Standard deviation of the sample mean of k
-             keff_std = sqrt((global_tallies(K_ANALOG) % sum_sq/n - &
-                  keff*keff)/(n - 1))
           end if
        end if
 

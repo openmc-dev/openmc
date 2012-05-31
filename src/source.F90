@@ -20,29 +20,12 @@ module source
 contains
 
 !===============================================================================
-! INITIALIZE_SOURCE initializes particles in the source bank
+! ALLOCATE_BANKS allocates memory for the fission and source banks
 !===============================================================================
 
-  subroutine initialize_source()
+  subroutine allocate_banks()
 
-    integer    :: i          ! loop index over processors
-    integer(8) :: j          ! loop index over bank sites
-    integer    :: k          ! dummy loop index
-    integer(8) :: bytes      ! size of fission/source bank
-    integer(8) :: id         ! particle id
     integer    :: alloc_err  ! allocation error code
-    real(8)    :: r(3)       ! sampled coordinates
-    real(8)    :: phi        ! azimuthal angle
-    real(8)    :: mu         ! cosine of polar angle
-    real(8)    :: E          ! outgoing energy
-    real(8)    :: p_min(3)   ! minimum coordinates of source
-    real(8)    :: p_max(3)   ! maximum coordinates of source
-#ifndef NO_F2008
-    type(Bank) :: bank_obj
-#endif
-
-    message = "Initializing source particles..."
-    call write_message(6)
 
     ! Determine maximum amount of particles to simulate on each processor
     maxwork = ceiling(real(n_particles)/n_procs,8)
@@ -56,81 +39,91 @@ contains
 
     ! Allocate source bank
     allocate(source_bank(maxwork), STAT=alloc_err)
+
+    ! Check for allocation errors 
     if (alloc_err /= 0) then
-!#ifndef NO_F2008
-!      bytes = maxwork * storage_size(bank_obj) / 8
-!#else
-       bytes = maxwork * 64 / 8
-!#endif
-       message = "Could not allocate source bank. Attempted to allocate " &
-            // trim(to_str(bytes)) // " bytes."
+       message = "Failed to allocate source bank."
        call fatal_error()
     end if
 
     ! Allocate fission bank
     allocate(fission_bank(3*maxwork), STAT=alloc_err)
+
+    ! Check for allocation errors 
     if (alloc_err /= 0) then
-!#ifndef NO_F2008
-!      bytes = 3 * maxwork * storage_size(bank_obj) / 8
-!#else
-       bytes = 3 * maxwork * 64 / 8
-!#endif
-       message = "Could not allocate fission bank. Attempted to allocate " &
-            // trim(to_str(bytes)) // " bytes."
+       message = "Failed to allocate fission bank."
        call fatal_error()
     end if
 
-    ! Read the source from a binary file instead of sampling from some assumed
-    ! source distribution
+  end subroutine allocate_banks
+
+!===============================================================================
+! INITIALIZE_SOURCE initializes particles in the source bank
+!===============================================================================
+
+  subroutine initialize_source()
+
+    integer(8) :: i          ! loop index over bank sites
+    integer    :: j          ! dummy loop index
+    integer(8) :: id         ! particle id
+    real(8)    :: r(3)       ! sampled coordinates
+    real(8)    :: phi        ! azimuthal angle
+    real(8)    :: mu         ! cosine of polar angle
+    real(8)    :: E          ! outgoing energy
+    real(8)    :: p_min(3)   ! minimum coordinates of source
+    real(8)    :: p_max(3)   ! maximum coordinates of source
+
+    message = "Initializing source particles..."
+    call write_message(6)
+
     if (external_source % type == SRC_FILE) then
+       ! Read the source from a binary file instead of sampling from some
+       ! assumed source distribution
+
        call read_source_binary()
-       return
-    end if
 
-    ! Initialize first cycle source bank
-    do i = 0, n_procs - 1
-       if (rank == i) then
-          do j = 1, work
-             id = bank_first + j - 1
-             source_bank(j) % id = id
+    else
+       ! Generation source sites from specified distribution in user input
+       do i = 1, work
+          id = bank_first + i - 1
+          source_bank(i) % id = id
 
-             ! Set weight to one
-             source_bank(j) % wgt = ONE
+          ! Set weight to one
+          source_bank(i) % wgt = ONE
 
-             ! initialize random number seed
-             call set_particle_seed(id)
+          ! initialize random number seed
+          call set_particle_seed(id)
 
-             ! sample position from external source
-             select case (external_source % type)
-             case (SRC_BOX)
-                p_min = external_source % values(1:3)
-                p_max = external_source % values(4:6)
-                r = (/ (prn(), k = 1,3) /)
-                source_bank(j) % xyz = p_min + r*(p_max - p_min)
-             case (SRC_POINT)
-                source_bank(j) % xyz = external_source % values
-             end select
+          ! sample position from external source
+          select case (external_source % type)
+          case (SRC_BOX)
+             p_min = external_source % values(1:3)
+             p_max = external_source % values(4:6)
+             r = (/ (prn(), j = 1,3) /)
+             source_bank(i) % xyz = p_min + r*(p_max - p_min)
+          case (SRC_POINT)
+             source_bank(i) % xyz = external_source % values
+          end select
 
-             ! sample angle
-             phi = TWO*PI*prn()
-             mu = TWO*prn() - ONE
-             source_bank(j) % uvw(1) = mu
-             source_bank(j) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-             source_bank(j) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
-
-             ! sample energy from Watt fission energy spectrum for U-235
-             do
-                E = watt_spectrum(0.988_8, 2.249_8)
-                ! resample if energy is >= 20 MeV
-                if (E < 20) exit
-             end do
-
-             ! set particle energy
-             source_bank(j) % E = E
+          ! sample angle
+          phi = TWO*PI*prn()
+          mu = TWO*prn() - ONE
+          source_bank(i) % uvw(1) = mu
+          source_bank(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+          source_bank(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+          
+          ! sample energy from Watt fission energy spectrum for U-235
+          do
+             E = watt_spectrum(0.988_8, 2.249_8)
+             ! resample if energy is >= 20 MeV
+             if (E < 20) exit
           end do
-       end if
-    end do
 
+          ! set particle energy
+          source_bank(i) % E = E
+       end do
+    end if
+ 
   end subroutine initialize_source
 
 !===============================================================================

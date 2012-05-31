@@ -36,8 +36,9 @@ Overview of Program Flow
 ------------------------
 
 OpenMC performs a Monte Carlo simulation one particle at a time -- at no point
-is more than one particle being tracked. Before any particles are tracked, the
-problem must be initialized. This involves the following steps:
+is more than one particle being tracked on a single program instance. Before any
+particles are tracked, the problem must be initialized. This involves the
+following steps:
 
   - Read input files and building data structures for the geometry, materials,
     tallies, and other associated variables.

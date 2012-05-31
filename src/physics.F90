@@ -563,6 +563,9 @@ contains
     E = dot_product(v_n, v_n)
     vel = sqrt(E)
 
+    ! convert cosine of scattering angle from CM to LAB
+    mu = (ONE + awr*mu)/sqrt(awr**2 + TWO*awr*mu + ONE)
+
     ! Set energy and direction of particle in LAB frame
     p % E = E
     p % coord0 % uvw = v_n / vel
@@ -1056,7 +1059,6 @@ contains
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
 
-    integer :: n_secondary ! number of secondary particles
     integer :: law         ! secondary energy distribution law
     real(8) :: A           ! atomic weight ratio of nuclide
     real(8) :: E_in        ! incoming energy
@@ -1090,7 +1092,7 @@ contains
 
     ! if scattering system is in center-of-mass, transfer cosine of scattering
     ! angle and outgoing energy from CM to LAB
-    if (rxn % TY < 0) then
+    if (rxn % scatter_in_cm) then
        E_cm = E
 
        ! determine outgoing energy in lab
@@ -1117,8 +1119,7 @@ contains
     p % mu = mu
 
     ! change weight of particle based on multiplicity
-    n_secondary = abs(rxn % TY)
-    p % wgt = n_secondary * p % wgt
+    p % wgt = rxn % multiplicity * p % wgt
 
   end subroutine inelastic_scatter
 
@@ -1259,7 +1260,7 @@ contains
     real(8), intent(inout) :: u
     real(8), intent(inout) :: v
     real(8), intent(inout) :: w
-    real(8), intent(in)    :: mu ! cosine of angle in lab
+    real(8), intent(in)    :: mu ! cosine of angle in lab or CM
 
     real(8) :: phi    ! azimuthal angle
     real(8) :: sinphi ! sine of azimuthal angle

@@ -8,7 +8,7 @@
   <typedef name="cell_xml">
     <component name="id" type="integer" />
     <component name="universe" type="integer" default="0" />
-    <component name="material" type="integer" default="0" />
+    <component name="material" type="word" length="12" default="''" />
     <component name="fill" type="integer" default="0" />
     <component name="surfaces" type="integer-array" />
   </typedef>

@@ -72,8 +72,10 @@ module constants
   integer, parameter ::  &
        CELL_NORMAL  = 1, & ! Cell with a specified material
        CELL_FILL    = 2, & ! Cell filled by a separate universe
-       CELL_LATTICE = 3, & ! Cell filled with a lattice
-       CELL_VOID    = -1
+       CELL_LATTICE = 3    ! Cell filled with a lattice
+
+  ! Void material
+  integer, parameter :: MATERIAL_VOID = -1
 
   ! Lattice types
   integer, parameter ::  &

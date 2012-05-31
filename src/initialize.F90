@@ -445,7 +445,9 @@ contains
        ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
 
        id = c % material
-       if (id /= 0) then
+       if (id == MATERIAL_VOID) then
+          c % type = CELL_NORMAL
+       elseif (id /= 0) then
           if (dict_has_key(material_dict, id)) then
              c % type = CELL_NORMAL
              c % material = dict_get_key(material_dict, id)

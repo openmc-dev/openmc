@@ -368,8 +368,28 @@ contains
        ! Copy data into cells
        c % id       = cell_(i) % id
        c % universe = cell_(i) % universe
-       c % material = cell_(i) % material
        c % fill     = cell_(i) % fill
+
+       ! Read material
+       word = cell_(i) % material
+       call lower_case(word)
+       select case(word)
+       case ('void')
+          c % material = MATERIAL_VOID
+
+       case ('')
+          ! This case is called if no material was specified
+          c % material = 0
+
+       case default
+          c % material = str_to_int(word)
+
+          ! Check for error
+          if (c % material == ERROR_INT) then
+             message = "Invalid material specified on cell " // to_str(c % id)
+             call fatal_error()
+          end if
+       end select
 
        ! Check to make sure that either material or fill was specified
        if (c % material == 0 .and. c % fill == 0) then

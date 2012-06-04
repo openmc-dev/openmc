@@ -495,8 +495,7 @@ contains
 
 !===============================================================================
 ! ELASTIC_SCATTER treats the elastic scattering of a neutron with a
-! target. Currently this assumes target-at-rest kinematics -- obviously will
-! need to be fixed
+! target.
 !===============================================================================
 
   subroutine elastic_scatter(index_nuclide, rxn)

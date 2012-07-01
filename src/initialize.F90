@@ -596,13 +596,11 @@ contains
     integer        :: index_list      ! index in xs_listings array
     integer        :: i               ! index in materials array
     integer        :: j               ! index over nuclides in material
-    integer        :: n               ! length of string
-    real(8)        :: sum_percent     ! 
+    real(8)        :: sum_percent     ! summation
     real(8)        :: awr             ! atomic weight ratio
     real(8)        :: x               ! atom percent
     logical        :: percent_in_atom ! nuclides specified in atom percent?
     logical        :: density_in_atom ! density specified in atom/b-cm?
-    character(12)  :: key             ! name of nuclide, e.g. 92235.03c
     type(Material), pointer :: mat => null()
     
     ! first find the index in the xs_listings array for each nuclide in each
@@ -610,40 +608,13 @@ contains
     do i = 1, n_materials
        mat => materials(i)
 
-       ! Check to make sure either all atom percents or all weight percents are
-       ! given
-       if (.not. (all(mat%atom_percent > ZERO) .or. & 
-            all(mat%atom_percent < ZERO))) then
-          message = "Cannot mix atom and weight percents in material " // &
-               to_str(mat % id)
-          call fatal_error()
-       end if
-
-       percent_in_atom = (mat%atom_percent(1) > ZERO)
-       density_in_atom = (mat%density > ZERO)
+       percent_in_atom = (mat % atom_percent(1) > ZERO)
+       density_in_atom = (mat % density > ZERO)
 
        sum_percent = ZERO
        do j = 1, mat % n_nuclides
-          ! Set indices for nuclides
-          key = mat % names(j)
-
-          ! Check to make sure cross-section is continuous energy neutron table
-          n = len_trim(key)
-          if (key(n:n) /= 'c') then
-             message = "Cross-section table " // trim(key) // & 
-                  " is not a continuous-energy neutron table."
-             call fatal_error()
-          end if
-
-          if (dict_has_key(xs_listing_dict, key)) then
-             index_list = dict_get_key(xs_listing_dict, key)
-          else
-             message = "Cannot find cross-section " // trim(key) // &
-                  " in specified cross_sections.xml file."
-             call fatal_error()
-          end if
-
           ! determine atomic weight ratio
+          index_list = dict_get_key(xs_listing_dict, mat % names(j))
           awr = xs_listings(index_list) % awr
 
           ! if given weight percent, convert all values so that they are divided
@@ -657,7 +628,7 @@ contains
        ! determine normalized atom percents. if given atom percents, this is
        ! straightforward. if given weight percents, the value is w/awr and is
        ! divided by sum(w/awr)
-       sum_percent = sum(mat%atom_percent)
+       sum_percent = sum(mat % atom_percent)
        mat % atom_percent = mat % atom_percent / sum_percent
 
        ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom

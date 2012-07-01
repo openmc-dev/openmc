@@ -716,7 +716,7 @@ contains
        allocate(mat % atom_density(n))
        allocate(mat % atom_percent(n))
 
-       do j = 1, n
+       do j = 1, mat % n_nuclides
           ! Combine nuclide identifier and cross section and copy into names
           nuc => material_(i) % nuclides(j)
 
@@ -742,6 +742,21 @@ contains
           name = trim(nuc % name) // "." // trim(nuc % xs)
           mat % names(j) = name
 
+          ! Check that this nuclide is listed in the cross_sections.xml file
+          if (.not. dict_has_key(xs_listing_dict, name)) then
+             message = "Could not find nuclide " // trim(name) // &
+                  " in cross_sections.xml file!"
+             call fatal_error()
+          end if
+
+          ! Check to make sure cross-section is continuous energy neutron table
+          n = len_trim(name)
+          if (name(n:n) /= 'c') then
+             message = "Cross-section table " // trim(name) // & 
+                  " is not a continuous-energy neutron table."
+             call fatal_error()
+          end if
+
           ! Check if no atom/weight percents were specified or if both atom and
           ! weight percents were specified
           if (nuc % ao == ZERO .and. nuc % wo == ZERO) then
@@ -763,15 +778,35 @@ contains
 
           ! Read S(a,b) table information
           if (size(material_(i) % sab) == 1) then
+             ! Get pointer to S(a,b) table
              sab => material_(i) % sab(1)
+
+             ! Determine name of S(a,b) table
              name = trim(sab % name) // "." // trim(sab % xs)
              mat % sab_name = name
+
+             ! Check that this nuclide is listed in the cross_sections.xml file
+             if (.not. dict_has_key(xs_listing_dict, name)) then
+                message = "Could not find S(a,b) table " // trim(name) // &
+                     " in cross_sections.xml file!"
+                call fatal_error()
+             end if
              mat % has_sab_table = .true.
+
           elseif (size(material_(i) % sab) > 1) then
              message = "Cannot have multiple S(a,b) tables on a single material."
              call fatal_error()
           end if
        end do
+
+       ! Check to make sure either all atom percents or all weight percents are
+       ! given
+       if (.not. (all(mat % atom_percent > ZERO) .or. & 
+            all(mat % atom_percent < ZERO))) then
+          message = "Cannot mix atom and weight percents in material " // &
+               to_str(mat % id)
+          call fatal_error()
+       end if
 
        ! Determine density if it is a sum value
        if (sum_density) mat % density = sum(mat % atom_percent)

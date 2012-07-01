@@ -96,10 +96,6 @@ contains
     call neighbor_lists()
 
     if (run_mode /= MODE_PLOTTING) then
-       ! Read cross section summary file to determine what files contain
-       ! cross-sections
-       call read_cross_sections_xml()
-
        ! With the AWRs from the xs_listings, change all material specifications
        ! so that they contain atom percents summing to 1
        call normalize_ao()

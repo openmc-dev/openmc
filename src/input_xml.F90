@@ -720,7 +720,6 @@ contains
        allocate(mat % names(n))
        allocate(mat % nuclide(n))
        allocate(mat % atom_density(n))
-       allocate(mat % atom_percent(n))
 
        do j = 1, mat % n_nuclides
           ! Combine nuclide identifier and cross section and copy into names
@@ -777,23 +776,23 @@ contains
 
           ! Copy atom/weight percents
           if (nuc % ao /= ZERO) then
-             mat % atom_percent(j) = nuc % ao
+             mat % atom_density(j) = nuc % ao
           else
-             mat % atom_percent(j) = -nuc % wo
+             mat % atom_density(j) = -nuc % wo
           end if
        end do
 
        ! Check to make sure either all atom percents or all weight percents are
        ! given
-       if (.not. (all(mat % atom_percent > ZERO) .or. & 
-            all(mat % atom_percent < ZERO))) then
+       if (.not. (all(mat % atom_density > ZERO) .or. & 
+            all(mat % atom_density < ZERO))) then
           message = "Cannot mix atom and weight percents in material " // &
                to_str(mat % id)
           call fatal_error()
        end if
 
        ! Determine density if it is a sum value
-       if (sum_density) mat % density = sum(mat % atom_percent)
+       if (sum_density) mat % density = sum(mat % atom_density)
 
        ! =======================================================================
        ! READ AND PARSE <sab> TAG FOR S(a,b) DATA

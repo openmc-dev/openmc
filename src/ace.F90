@@ -65,14 +65,6 @@ contains
        do j = 1, mat % n_nuclides
           name = mat % names(j)
 
-          ! First check that this nuclide is listed in the cross_sections.xml
-          ! file
-          if (.not. dict_has_key(xs_listing_dict, name)) then
-             message = "Could not find nuclide " // trim(name) // &
-                  " in cross_sections.xml file!"
-             call fatal_error()
-          end if
-
           ! Find index in xs_listing and set the name and alias according to the
           ! listing
           index_list = dict_get_key(xs_listing_dict, name)
@@ -95,14 +87,6 @@ contains
        ! Check if S(a,b) exists on other materials
        if (mat % has_sab_table) then
           name = mat % sab_name
-
-          ! First check that this nuclide is listed in the cross_sections.xml
-          ! file
-          if (.not. dict_has_key(xs_listing_dict, name)) then
-             message = "Could not find S(a,b) table " // trim(name) // &
-                  " in cross_sections.xml file!"
-             call fatal_error()
-          end if
 
           ! Find index in xs_listing and set the name and alias according to the
           ! listing

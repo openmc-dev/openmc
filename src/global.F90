@@ -89,6 +89,9 @@ module global
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.
 
+  ! Default xs identifier (e.g. 70c)
+  character(3):: default_xs
+
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 

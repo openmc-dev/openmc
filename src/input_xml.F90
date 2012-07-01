@@ -663,6 +663,9 @@ contains
        ! Copy material id
        mat % id = material_(i) % id
 
+       ! =======================================================================
+       ! READ AND PARSE <density> TAG
+
        ! Copy value and units
        val   = material_(i) % density % value
        units = material_(i) % density % units
@@ -701,6 +704,9 @@ contains
           end select
        end if
        
+       ! =======================================================================
+       ! READ AND PARSE <nuclide> TAGS
+
        ! Check to ensure material has at least one nuclide
        if (.not. associated(material_(i) % nuclides)) then
           message = "No nuclides specified on material " // &
@@ -777,7 +783,21 @@ contains
           end if
        end do
 
-       ! Read S(a,b) table information
+       ! Check to make sure either all atom percents or all weight percents are
+       ! given
+       if (.not. (all(mat % atom_percent > ZERO) .or. & 
+            all(mat % atom_percent < ZERO))) then
+          message = "Cannot mix atom and weight percents in material " // &
+               to_str(mat % id)
+          call fatal_error()
+       end if
+
+       ! Determine density if it is a sum value
+       if (sum_density) mat % density = sum(mat % atom_percent)
+
+       ! =======================================================================
+       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
+
        if (size(material_(i) % sab) == 1) then
           ! Get pointer to S(a,b) table
           sab => material_(i) % sab(1)
@@ -798,18 +818,6 @@ contains
           message = "Cannot have multiple S(a,b) tables on a single material."
           call fatal_error()
        end if
-
-       ! Check to make sure either all atom percents or all weight percents are
-       ! given
-       if (.not. (all(mat % atom_percent > ZERO) .or. & 
-            all(mat % atom_percent < ZERO))) then
-          message = "Cannot mix atom and weight percents in material " // &
-               to_str(mat % id)
-          call fatal_error()
-       end if
-
-       ! Determine density if it is a sum value
-       if (sum_density) mat % density = sum(mat % atom_percent)
 
        ! Add material to dictionary
        call dict_add_key(material_dict, mat % id, i)

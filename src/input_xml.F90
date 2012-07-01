@@ -618,16 +618,20 @@ contains
 
     use xml_data_materials_t
 
-    integer :: i           ! loop index for materials
-    integer :: j           ! loop index for nuclides
-    integer :: n           ! number of nuclides
-    real(8) :: val         ! value entered for density
-    logical :: file_exists ! does materials.xml exist?
-    logical :: sum_density ! density is taken to be sum of nuclide densities
-    character(3)            :: default_xs ! default xs identifier (e.g. 70c)
-    character(12)           :: name       ! name of nuclide
-    character(MAX_WORD_LEN) :: units      ! units on density
-    character(MAX_LINE_LEN) :: filename   ! absolute path to materials.xml
+    integer :: i             ! loop index for materials
+    integer :: j             ! loop index for nuclides
+    integer :: n             ! number of nuclides
+    integer :: index_list    ! index in xs_listings array
+    integer :: index_nuclide ! index in nuclides
+    integer :: index_sab     ! index in sab_tables
+    real(8) :: val           ! value entered for density
+    logical :: file_exists   ! does materials.xml exist?
+    logical :: sum_density   ! density is taken to be sum of nuclide densities
+    character(3)  :: default_xs ! default xs identifier (e.g. 70c)
+    character(12) :: name       ! name of isotope, e.g. 92235.03c
+    character(12) :: alias      ! alias of nuclide, e.g. U-235.03c
+    character(MAX_WORD_LEN) :: units    ! units on density
+    character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
     type(Material),    pointer :: mat => null()
     type(nuclide_xml), pointer :: nuc => null()
     type(sab_xml),     pointer :: sab => null()
@@ -646,7 +650,7 @@ contains
 
     ! Initialize default cross section variable
     default_xs_ = ""
-
+    
     ! Parse materials.xml file
     call read_xml_file_materials_t(filename)
 
@@ -656,6 +660,10 @@ contains
     ! Allocate cells array
     n_materials = size(material_)
     allocate(materials(n_materials))
+
+    ! Initialize count for number of nuclides/S(a,b) tables
+    index_nuclide = 0
+    index_sab = 0
 
     do i = 1, n_materials
        mat => materials(i)
@@ -762,6 +770,23 @@ contains
              call fatal_error()
           end if
 
+          ! Find xs_listing and set the name/alias according to the listing
+          index_list = dict_get_key(xs_listing_dict, name)
+          name       = xs_listings(index_list) % name
+          alias      = xs_listings(index_list) % alias
+
+          ! If this nuclide hasn't been encountered yet, we need to add its name
+          ! and alias to the nuclide_dict
+          if (.not. dict_has_key(nuclide_dict, name)) then
+             index_nuclide    = index_nuclide + 1
+             mat % nuclide(j) = index_nuclide
+
+             call dict_add_key(nuclide_dict, name,  index_nuclide)
+             call dict_add_key(nuclide_dict, alias, index_nuclide)
+          else
+             mat % nuclide(j) = dict_get_key(nuclide_dict, name)
+          end if
+
           ! Check if no atom/weight percents were specified or if both atom and
           ! weight percents were specified
           if (nuc % ao == ZERO .and. nuc % wo == ZERO) then
@@ -813,6 +838,24 @@ contains
           end if
           mat % has_sab_table = .true.
 
+          ! Find index in xs_listing and set the name and alias according to the
+          ! listing
+          index_list = dict_get_key(xs_listing_dict, name)
+          name       = xs_listings(index_list) % name
+          alias      = xs_listings(index_list) % alias
+
+          ! If this S(a,b) table hasn't been encountered yet, we need to add its
+          ! name and alias to the sab_dict
+          if (.not. dict_has_key(sab_dict, name)) then
+             index_sab       = index_sab + 1
+             mat % sab_table = index_sab
+
+             call dict_add_key(sab_dict, name,  index_sab)
+             call dict_add_key(sab_dict, alias, index_sab)
+          else
+             mat % sab_table = dict_get_key(sab_dict, name)
+          end if
+
        elseif (size(material_(i) % sab) > 1) then
           message = "Cannot have multiple S(a,b) tables on a single material."
           call fatal_error()
@@ -820,8 +863,11 @@ contains
 
        ! Add material to dictionary
        call dict_add_key(material_dict, mat % id, i)
-
     end do
+
+    ! Set total number of nuclides and S(a,b) tables
+    n_nuclides_total = index_nuclide
+    n_sab_tables     = index_sab
 
   end subroutine read_materials_xml
 

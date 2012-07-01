@@ -627,7 +627,6 @@ contains
     real(8) :: val           ! value entered for density
     logical :: file_exists   ! does materials.xml exist?
     logical :: sum_density   ! density is taken to be sum of nuclide densities
-    character(3)  :: default_xs ! default xs identifier (e.g. 70c)
     character(12) :: name       ! name of isotope, e.g. 92235.03c
     character(12) :: alias      ! alias of nuclide, e.g. U-235.03c
     character(MAX_WORD_LEN) :: units    ! units on density

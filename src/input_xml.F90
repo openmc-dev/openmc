@@ -775,29 +775,29 @@ contains
           else
              mat % atom_percent(j) = -nuc % wo
           end if
+       end do
 
-          ! Read S(a,b) table information
-          if (size(material_(i) % sab) == 1) then
-             ! Get pointer to S(a,b) table
-             sab => material_(i) % sab(1)
+       ! Read S(a,b) table information
+       if (size(material_(i) % sab) == 1) then
+          ! Get pointer to S(a,b) table
+          sab => material_(i) % sab(1)
 
-             ! Determine name of S(a,b) table
-             name = trim(sab % name) // "." // trim(sab % xs)
-             mat % sab_name = name
+          ! Determine name of S(a,b) table
+          name = trim(sab % name) // "." // trim(sab % xs)
+          mat % sab_name = name
 
-             ! Check that this nuclide is listed in the cross_sections.xml file
-             if (.not. dict_has_key(xs_listing_dict, name)) then
-                message = "Could not find S(a,b) table " // trim(name) // &
-                     " in cross_sections.xml file!"
-                call fatal_error()
-             end if
-             mat % has_sab_table = .true.
-
-          elseif (size(material_(i) % sab) > 1) then
-             message = "Cannot have multiple S(a,b) tables on a single material."
+          ! Check that this nuclide is listed in the cross_sections.xml file
+          if (.not. dict_has_key(xs_listing_dict, name)) then
+             message = "Could not find S(a,b) table " // trim(name) // &
+                  " in cross_sections.xml file!"
              call fatal_error()
           end if
-       end do
+          mat % has_sab_table = .true.
+
+       elseif (size(material_(i) % sab) > 1) then
+          message = "Cannot have multiple S(a,b) tables on a single material."
+          call fatal_error()
+       end if
 
        ! Check to make sure either all atom percents or all weight percents are
        ! given

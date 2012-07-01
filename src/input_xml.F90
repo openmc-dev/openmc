@@ -713,7 +713,6 @@ contains
        m % n_nuclides = n
        allocate(m % names(n))
        allocate(m % nuclide(n))
-       allocate(m % xs_listing(n))
        allocate(m % atom_density(n))
        allocate(m % atom_percent(n))
 

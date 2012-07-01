@@ -637,7 +637,6 @@ contains
 
           if (dict_has_key(xs_listing_dict, key)) then
              index_list = dict_get_key(xs_listing_dict, key)
-             mat % xs_listing(j) = index_list
           else
              message = "Cannot find cross-section " // trim(key) // &
                   " in specified cross_sections.xml file."
@@ -666,7 +665,7 @@ contains
        if (.not. density_in_atom) then
           sum_percent = ZERO
           do j = 1, mat % n_nuclides
-             index_list = mat % xs_listing(j)
+             index_list = dict_get_key(xs_listing_dict, mat % names(j))
              awr = xs_listings(index_list) % awr
              x = mat % atom_percent(j)
              sum_percent = sum_percent + x*awr

@@ -38,7 +38,7 @@ contains
     integer        :: i              ! index in materials array
     integer        :: j              ! index over nuclides in material
     integer        :: index_list     ! index in xs_listings array
-    integer        :: index_nuclides ! index in nuclides
+    integer        :: index_nuclide  ! index in nuclides
     integer        :: index_sab      ! index in sab_tables
     character(12)  :: name           ! name of isotope, e.g. 92235.03c
     character(12)  :: alias          ! alias of nuclide, e.g. U-235.03c
@@ -46,70 +46,6 @@ contains
     type(Nuclide),   pointer :: nuc => null()
     type(SAB_Table), pointer :: sab => null()
     type(DictionaryCI), pointer :: already_read => null()
-
-    ! ==========================================================================
-    ! COUNT NUMBER OF TABLES AND CREATE DICTIONARIES
-
-    ! First we need to determine how many continuous-energy tables and how many
-    ! S(a,b) thermal scattering tables there are -- this loop doesn't actually
-    ! read the data, it simply counts the number of nuclides and S(a,b) tables
-    index_nuclides = 0
-    index_sab = 0
-    do i = 1, n_materials
-       ! Get pointer to material
-       mat => materials(i)
-
-       ! First go through all the nuclide and check if they exist on other
-       ! materials -- if not, then increment the count for the number of
-       ! nuclides and add to dictionary
-       do j = 1, mat % n_nuclides
-          name = mat % names(j)
-
-          ! Find index in xs_listing and set the name and alias according to the
-          ! listing
-          index_list = dict_get_key(xs_listing_dict, name)
-          name       = xs_listings(index_list) % name
-          alias      = xs_listings(index_list) % alias
-
-          ! If this nuclide hasn't been encountered yet, we need to add its name
-          ! and alias to the nuclide_dict
-          if (.not. dict_has_key(nuclide_dict, name)) then
-             index_nuclides   = index_nuclides + 1
-             mat % nuclide(j) = index_nuclides
-
-             call dict_add_key(nuclide_dict, name,  index_nuclides)
-             call dict_add_key(nuclide_dict, alias, index_nuclides)
-          else
-             mat % nuclide(j) = dict_get_key(nuclide_dict, name)
-          end if
-       end do
-
-       ! Check if S(a,b) exists on other materials
-       if (mat % has_sab_table) then
-          name = mat % sab_name
-
-          ! Find index in xs_listing and set the name and alias according to the
-          ! listing
-          index_list = dict_get_key(xs_listing_dict, name)
-          name       = xs_listings(index_list) % name
-          alias      = xs_listings(index_list) % alias
-
-          ! If this S(a,b) table hasn't been encountered yet, we need to add its
-          ! name and alias to the sab_dict
-          if (.not. dict_has_key(sab_dict, name)) then
-             index_sab       = index_sab + 1
-             mat % sab_table = index_sab
-
-             call dict_add_key(sab_dict, name,  index_sab)
-             call dict_add_key(sab_dict, alias, index_sab)
-          else
-             mat % sab_table = dict_get_key(sab_dict, name)
-          end if
-       end if
-    end do
-
-    n_nuclides_total = index_nuclides
-    n_sab_tables     = index_sab
 
     ! allocate arrays for ACE table storage and cross section cache
     allocate(nuclides(n_nuclides_total))
@@ -133,16 +69,16 @@ contains
 
           if (.not. dict_has_key(already_read, name)) then
              index_list = dict_get_key(xs_listing_dict, name)
-             index_nuclides = dict_get_key(nuclide_dict, name)
+             index_nuclide = dict_get_key(nuclide_dict, name)
              name  = xs_listings(index_list) % name
              alias = xs_listings(index_list) % alias
 
              ! Read the ACE table into the appropriate entry on the nuclides
              ! array
-             call read_ace_table(index_nuclides, index_list)
+             call read_ace_table(index_nuclide, index_list)
 
              ! Print out information on table to cross_sections.out file
-             nuc => nuclides(index_nuclides)
+             nuc => nuclides(index_nuclide)
              if (master) call print_nuclide(nuc, unit=UNIT_XS)
 
              call dict_add_key(already_read, name, 0)

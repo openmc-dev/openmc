@@ -28,6 +28,7 @@ contains
   subroutine read_input_xml()
 
     call read_settings_xml()
+    call read_cross_sections_xml()
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()

@@ -20,45 +20,18 @@ contains
 
   subroutine unionized_grid()
 
-    integer        :: i          ! index in materials array
-    integer        :: j          ! index over nuclides in material
-    integer        :: index_list ! index in xs_listings array
-    character(12)  :: name       ! name of isotope, e.g. 92235.03c
-    character(12)  :: alias      ! alias of nuclide, e.g. U-235.03c
-    type(ListReal),     pointer :: list => null()
-    type(ListReal),     pointer :: current => null()
-    type(Material),     pointer :: mat => null()
-    type(Nuclide),      pointer :: nuc => null()
-    type(DictionaryCI), pointer :: already_added => null()
+    integer                 :: i ! index in nuclides array
+    type(ListReal), pointer :: list => null()
+    type(ListReal), pointer :: current => null()
+    type(Nuclide),  pointer :: nuc => null()
 
     message = "Creating unionized energy grid..."
     call write_message(5)
 
-    ! Create dictionary for keeping track of cross sections already added
-    call dict_create(already_added)
-
-    ! Loop over all materials
-    do i = 1, n_materials
-       mat => materials(i)
-
-       do j = 1, mat % n_nuclides
-          name = mat % names(j)
-
-          if (.not. dict_has_key(already_added, name)) then
-             ! loop over energy points
-             nuc => nuclides(mat % nuclide(j))
-             call add_grid_points(list, nuc % energy)
-
-             ! determine name and alias from xs_listings
-             index_list = dict_get_key(xs_listing_dict, name)
-             name  = xs_listings(index_list) % name
-             alias = xs_listings(index_list) % alias
-
-             ! add name and alias to dictionary
-             call dict_add_key(already_added, name, 0)
-             call dict_add_key(already_added, alias, 0)
-          end if
-       end do
+    ! Add grid points for each nuclide in the problem
+    do i = 1, n_nuclides_total
+       nuc => nuclides(i)
+       call add_grid_points(list, nuc % energy)
     end do
 
     ! create allocated array from linked list
@@ -72,7 +45,6 @@ contains
 
     ! delete linked list and dictionary
     call list_delete(list)
-    call dict_delete(already_added)
 
     ! Set pointers to unionized energy grid for each nuclide
     call grid_pointers()

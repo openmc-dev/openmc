@@ -628,7 +628,7 @@ contains
     character(12)           :: name       ! name of nuclide
     character(MAX_WORD_LEN) :: units      ! units on density
     character(MAX_LINE_LEN) :: filename   ! absolute path to materials.xml
-    type(Material),    pointer :: m => null()
+    type(Material),    pointer :: mat => null()
     type(nuclide_xml), pointer :: nuc => null()
     type(sab_xml),     pointer :: sab => null()
 
@@ -658,10 +658,10 @@ contains
     allocate(materials(n_materials))
 
     do i = 1, n_materials
-       m => materials(i)
+       mat => materials(i)
 
        ! Copy material id
-       m % id = material_(i) % id
+       mat % id = material_(i) % id
 
        ! Copy value and units
        val   = material_(i) % density % value
@@ -679,7 +679,7 @@ contains
           sum_density = .false.
           if (val <= ZERO) then
              message = "Need to specify a positive density on material " // &
-                  trim(to_str(m % id)) // "."
+                  trim(to_str(mat % id)) // "."
              call fatal_error()
           end if
 
@@ -687,16 +687,16 @@ contains
           call lower_case(units)
           select case(trim(units))
           case ('g/cc', 'g/cm3')
-             m % density = -val
+             mat % density = -val
           case ('kg/m3')
-             m % density = -0.001 * val
+             mat % density = -0.001 * val
           case ('atom/b-cm')
-             m % density = val
+             mat % density = val
           case ('atom/cm3', 'atom/cc')
-             m % density = 1.0e-24 * val
+             mat % density = 1.0e-24 * val
           case default
              message = "Unkwown units '" // trim(material_(i) % density % units) &
-                  // "' specified on material " // trim(to_str(m % id))
+                  // "' specified on material " // trim(to_str(mat % id))
              call fatal_error()
           end select
        end if
@@ -704,17 +704,17 @@ contains
        ! Check to ensure material has at least one nuclide
        if (.not. associated(material_(i) % nuclides)) then
           message = "No nuclides specified on material " // &
-               trim(to_str(m % id))
+               trim(to_str(mat % id))
           call fatal_error()
        end if
 
        ! allocate arrays in Material object
        n = size(material_(i) % nuclides)
-       m % n_nuclides = n
-       allocate(m % names(n))
-       allocate(m % nuclide(n))
-       allocate(m % atom_density(n))
-       allocate(m % atom_percent(n))
+       mat % n_nuclides = n
+       allocate(mat % names(n))
+       allocate(mat % nuclide(n))
+       allocate(mat % atom_density(n))
+       allocate(mat % atom_percent(n))
 
        do j = 1, n
           ! Combine nuclide identifier and cross section and copy into names
@@ -723,7 +723,7 @@ contains
           ! Check for empty name on nuclide
           if (len_trim(nuc % name) == 0) then
              message = "No name specified on nuclide in material " // &
-                  trim(to_str(m % id))
+                  trim(to_str(mat % id))
              call fatal_error()
           end if
 
@@ -731,7 +731,7 @@ contains
           if (len_trim(nuc % xs) == 0) then
              if (default_xs == '') then
                 message = "No cross section specified for nuclide in material " &
-                     // trim(to_str(m % id))
+                     // trim(to_str(mat % id))
                 call fatal_error()
              else
                 nuc % xs = default_xs
@@ -740,7 +740,7 @@ contains
 
           ! copy full name
           name = trim(nuc % name) // "." // trim(nuc % xs)
-          m % names(j) = name
+          mat % names(j) = name
 
           ! Check if no atom/weight percents were specified or if both atom and
           ! weight percents were specified
@@ -756,17 +756,17 @@ contains
 
           ! Copy atom/weight percents
           if (nuc % ao /= ZERO) then
-             m % atom_percent(j) = nuc % ao
+             mat % atom_percent(j) = nuc % ao
           else
-             m % atom_percent(j) = -nuc % wo
+             mat % atom_percent(j) = -nuc % wo
           end if
 
           ! Read S(a,b) table information
           if (size(material_(i) % sab) == 1) then
              sab => material_(i) % sab(1)
              name = trim(sab % name) // "." // trim(sab % xs)
-             m % sab_name = name
-             m % has_sab_table = .true.
+             mat % sab_name = name
+             mat % has_sab_table = .true.
           elseif (size(material_(i) % sab) > 1) then
              message = "Cannot have multiple S(a,b) tables on a single material."
              call fatal_error()
@@ -774,10 +774,10 @@ contains
        end do
 
        ! Determine density if it is a sum value
-       if (sum_density) m % density = sum(m % atom_percent)
+       if (sum_density) mat % density = sum(mat % atom_percent)
 
        ! Add material to dictionary
-       call dict_add_key(material_dict, m % id, i)
+       call dict_add_key(material_dict, mat % id, i)
 
     end do
 

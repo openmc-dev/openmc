@@ -1034,6 +1034,9 @@ contains
        ! Copy material id
        t % id = tally_(i) % id
 
+       ! =======================================================================
+       ! READ DATA FOR FILTERS
+
        ! Check to make sure that both cells and surfaces were not specified
        if (len_trim(tally_(i) % filters % cell) > 0 .and. &
             len_trim(tally_(i) % filters % surface) > 0) then
@@ -1159,7 +1162,57 @@ contains
        allocate(t % filters(n_filters))
        t % filters = filters(1:n_filters)
 
-       ! Read macro reactions
+       ! =======================================================================
+       ! READ DATA FOR NUCLIDES
+
+       if (len_trim(tally_(i) % nuclides) > 0) then
+          call split_string(tally_(i) % nuclides, words, n_words)
+
+          if (words(1) == 'all') then
+             ! Handle special case <nuclides>all</nuclides>
+             allocate(t % nuclide_bins(n_nuclides_total + 1))
+
+             ! Set bins to 1, 2, 3, ..., n_nuclides_total, -1
+             t % nuclide_bins(1:n_nuclides_total) % scalar = &
+                  (/ (j, j=1, n_nuclides_total) /)
+             t % nuclide_bins(n_nuclides_total + 1) % scalar = -1
+
+             ! Set flag so we can treat this case specially
+             t % all_nuclides = .true.
+          else
+             ! Any other case, e.g. <nuclides>U-235 Pu-239</nuclides>
+             allocate(t % nuclide_bins(n_words))
+             do j = 1, n_words
+                ! Check if xs specifier was given
+                if (ends_with(words(j), 'c')) then
+                   word = words(j)
+                else
+                   word = trim(words(j)) // "." // default_xs
+                end if
+
+                ! Check to make sure nuclide specified is in problem
+                if (.not. dict_has_key(nuclide_dict, word)) then
+                   message = "Could not find nuclide " // trim(word) // &
+                        " from tally " // trim(to_str(t % id)) // &
+                        " in cross_sections.xml file."
+                   call fatal_error()
+                end if
+                
+                ! Set bin to index in nuclides array
+                t % nuclide_bins(j) % scalar = dict_get_key(nuclide_dict, word)
+             end do
+          end if
+
+       else
+          ! No <nuclides> were specified -- create only one bin will be added
+          ! for the total material.
+          allocate(t % nuclide_bins(1))
+          t % nuclide_bins(1) % scalar = -1
+       end if
+
+       ! =======================================================================
+       ! READ DATA FOR SCORES
+
        if (len_trim(tally_(i) % scores) > 0) then
           call split_string(tally_(i) % scores, words, n_words)
           allocate(t % score_bins(n_words))

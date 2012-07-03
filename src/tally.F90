@@ -817,6 +817,7 @@ contains
     integer :: i                    ! loop index for filter/score bins
     integer :: j                    ! loop index for direction
     integer :: k                    ! loop index for mesh cell crossings
+    integer :: b                    ! loop index for nuclide bins
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: ijk_cross(3)         ! indices of mesh cell crossed
@@ -824,6 +825,9 @@ contains
     integer :: bins(N_FILTER_TYPES) ! scoring bin combination
     integer :: filter_index         ! single index for single bin
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
+    integer :: index_nuclide        ! index in nuclides array
+    integer :: score_index          ! scoring bin index
+    real(8) :: atom_density         ! density of individual nuclide in atom/b-cm
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: score                ! actual score (e.g., flux*xs)
     real(8) :: uvw(3)               ! cosine of angle of particle
@@ -837,6 +841,7 @@ contains
     logical :: end_in_mesh          ! ending coordinates inside mesh?
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
+    type(Material),       pointer :: mat => null()
 
     found_bin = .true.
     bins = 1
@@ -1003,30 +1008,99 @@ contains
           ! Determining scoring index
           filter_index = sum((bins - 1) * t % stride) + 1
 
-          ! Determine score for each bin
-          SCORE_LOOP: do i = 1, t % n_score_bins
-             ! determine what type of score bin
-             score_bin = t % score_bins(i) % scalar
-             
-             ! Determine cross section 
-             select case(score_bin)
-             case (SCORE_FLUX)
-                score = flux
-             case (SCORE_TOTAL)
-                score = material_xs % total * flux
-             case (SCORE_SCATTER)
-                score = (material_xs % total - material_xs % absorption) * flux
-             case (SCORE_ABSORPTION)
-                score = material_xs % absorption * flux
-             case (SCORE_FISSION)
-                score = material_xs % fission * flux
-             case (SCORE_NU_FISSION)
-                score = material_xs % nu_fission * flux
-             end select
+          if (t % all_nuclides) then
+             ! Score reaction rates for each nuclide in material
+             call score_all_nuclides(t, flux, filter_index)
 
-             ! Add score to tally
-             call add_to_score(t % scores(i, filter_index), score)
-          end do SCORE_LOOP
+          else
+             NUCLIDE_BIN_LOOP: do b = 1, t % n_nuclide_bins
+                ! Get index of nuclide in nuclides array
+                index_nuclide = t % nuclide_bins(b) % scalar
+
+                if (index_nuclide > 0) then
+                   ! Get pointer to current material
+                   mat => materials(p % material)
+
+                   ! Determine if nuclide is actually in material
+                   NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
+                      ! If index of nuclide matches the j-th nuclide listed in
+                      ! the material, break out of the loop
+                      if (index_nuclide == mat % nuclide(j)) &
+                           exit
+
+                      ! If we've reached the last nuclide in the material, it
+                      ! means the specified nuclide to be tallied is not in this
+                      ! material
+                      if (j == mat % n_nuclides) then
+                         cycle NUCLIDE_BIN_LOOP
+                      end if
+                   end do NUCLIDE_MAT_LOOP
+
+                   atom_density = mat % atom_density(j)
+                end if
+
+                ! Determine score for each bin
+                SCORE_LOOP: do j = 1, t % n_score_bins
+                   ! determine what type of score bin
+                   score_bin = t % score_bins(j) % scalar
+
+                   if (index_nuclide > 0) then
+                      ! Determine macroscopic nuclide cross section 
+                      select case(score_bin)
+                      case (SCORE_TOTAL)
+                         score = micro_xs(index_nuclide) % total * &
+                              atom_density * flux
+                      case (SCORE_SCATTER)
+                         score = (micro_xs(index_nuclide) % total - &
+                              micro_xs(index_nuclide) % absorption) * &
+                              atom_density * flux
+                      case (SCORE_ABSORPTION)
+                         score = micro_xs(index_nuclide) % absorption * &
+                              atom_density * flux
+                      case (SCORE_FISSION)
+                         score = micro_xs(index_nuclide) % fission * &
+                              atom_density * flux
+                      case (SCORE_NU_FISSION)
+                         score = micro_xs(index_nuclide) % nu_fission * &
+                              atom_density * flux
+                      case default
+                         message = "Invalid score type on tally " // &
+                              to_str(t % id) // "."
+                         call fatal_error()
+                      end select
+
+                   else
+                      ! Determine macroscopic material cross section 
+                      select case(score_bin)
+                      case (SCORE_FLUX)
+                         score = flux
+                      case (SCORE_TOTAL)
+                         score = material_xs % total * flux
+                      case (SCORE_SCATTER)
+                         score = (material_xs % total - material_xs % absorption) * flux
+                      case (SCORE_ABSORPTION)
+                         score = material_xs % absorption * flux
+                      case (SCORE_FISSION)
+                         score = material_xs % fission * flux
+                      case (SCORE_NU_FISSION)
+                         score = material_xs % nu_fission * flux
+                      case default
+                         message = "Invalid score type on tally " // &
+                              to_str(t % id) // "."
+                         call fatal_error()
+                      end select
+                   end if
+
+                   ! Determine scoring bin index
+                   score_index = (b - 1)*t % n_score_bins + j
+
+                   ! Add score to tally
+                   call add_to_score(t % scores(score_index, filter_index), score)
+
+                end do SCORE_LOOP
+
+             end do NUCLIDE_BIN_LOOP
+          end if
        end if
 
        ! Calculate new coordinates

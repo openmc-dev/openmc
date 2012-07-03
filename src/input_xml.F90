@@ -1177,6 +1177,9 @@ contains
                   (/ (j, j=1, n_nuclides_total) /)
              t % nuclide_bins(n_nuclides_total + 1) % scalar = -1
 
+             ! Set number of nuclide bins
+             t % n_nuclide_bins = n_nuclides_total + 1
+
              ! Set flag so we can treat this case specially
              t % all_nuclides = .true.
           else
@@ -1201,6 +1204,9 @@ contains
                 ! Set bin to index in nuclides array
                 t % nuclide_bins(j) % scalar = dict_get_key(nuclide_dict, word)
              end do
+
+             ! Set number of nuclide bins
+             t % n_nuclide_bins = n_words
           end if
 
        else
@@ -1208,6 +1214,7 @@ contains
           ! for the total material.
           allocate(t % nuclide_bins(1))
           t % nuclide_bins(1) % scalar = -1
+          t % n_nuclide_bins = 1
        end if
 
        ! =======================================================================

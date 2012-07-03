@@ -96,6 +96,7 @@ module tally_header
 
      ! Individual nuclides to tally
      type(TallyFilter), pointer :: nuclide_bins(:) => null()
+     integer :: n_nuclide_bins = 0
      logical :: all_nuclides = .false.
 
      ! Values to score, e.g. flux, absorption, etc.

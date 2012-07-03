@@ -698,7 +698,8 @@ contains
   end subroutine score_tracklength_tally
 
 !===============================================================================
-! SCORE_ALL_NUCLIDES
+! SCORE_ALL_NUCLIDES tallies individual nuclide reaction rates specifically when
+! the user requests <nuclides>all</nuclides>.
 !===============================================================================
 
   subroutine score_all_nuclides(t, flux, filter_index)
@@ -720,6 +721,9 @@ contains
     ! nuclides are in the material
     mat => materials(p % material)
 
+    ! ==========================================================================
+    ! SCORE ALL INDIVIDUAL NUCLIDE REACTION RATES
+
     NUCLIDE_LOOP: do i = 1, mat % n_nuclides
 
        ! Determine index in nuclides array and atom density for i-th nuclide in
@@ -732,53 +736,27 @@ contains
           ! determine what type of score bin
           score_bin = t % score_bins(j) % scalar
 
-          if (index_nuclide > 0) then
-             ! Determine macroscopic nuclide cross section 
-             select case(score_bin)
-             case (SCORE_TOTAL)
-                score = micro_xs(index_nuclide) % total * atom_density * flux
-             case (SCORE_SCATTER)
-                score = (micro_xs(index_nuclide) % total - &
-                     micro_xs(index_nuclide) % absorption) * atom_density * flux
-             case (SCORE_ABSORPTION)
-                score = micro_xs(index_nuclide) % absorption * atom_density * flux
-             case (SCORE_FISSION)
-                score = micro_xs(index_nuclide) % fission * atom_density * flux
-             case (SCORE_NU_FISSION)
-                score = micro_xs(index_nuclide) % nu_fission * atom_density * flux
-             case default
-                message = "Invalid score type on tally " // to_str(t % id) // "."
-                call fatal_error()
-             end select
-
-          else
-             ! Determine macroscopic material cross section 
-             select case(score_bin)
-             case (SCORE_FLUX)
-                score = flux
-             case (SCORE_TOTAL)
-                score = material_xs % total * flux
-             case (SCORE_SCATTER)
-                score = (material_xs % total - material_xs % absorption) * flux
-             case (SCORE_ABSORPTION)
-                score = material_xs % absorption * flux
-             case (SCORE_FISSION)
-                score = material_xs % fission * flux
-             case (SCORE_NU_FISSION)
-                score = material_xs % nu_fission * flux
-             case default
-                message = "Invalid score type on tally " // to_str(t % id) // "."
-                call fatal_error()
-             end select
-          end if
+          ! Determine macroscopic nuclide cross section 
+          select case(score_bin)
+          case (SCORE_TOTAL)
+             score = micro_xs(index_nuclide) % total * atom_density * flux
+          case (SCORE_SCATTER)
+             score = (micro_xs(index_nuclide) % total - &
+                  micro_xs(index_nuclide) % absorption) * atom_density * flux
+          case (SCORE_ABSORPTION)
+             score = micro_xs(index_nuclide) % absorption * atom_density * flux
+          case (SCORE_FISSION)
+             score = micro_xs(index_nuclide) % fission * atom_density * flux
+          case (SCORE_NU_FISSION)
+             score = micro_xs(index_nuclide) % nu_fission * atom_density * flux
+          case default
+             message = "Invalid score type on tally " // to_str(t % id) // "."
+             call fatal_error()
+          end select
 
           ! Determine scoring bin index based on what the index of the nuclide
           ! is in the nuclides array
-          if (index_nuclide > 0) then
-             score_index = (index_nuclide - 1)*t % n_score_bins + j
-          else
-             score_index = mat % n_nuclides*t % n_score_bins + j
-          end if
+          score_index = (index_nuclide - 1)*t % n_score_bins + j
 
           ! Add score to tally
           call add_to_score(t % scores(score_index, filter_index), score)
@@ -786,6 +764,42 @@ contains
        end do SCORE_LOOP
 
     end do NUCLIDE_LOOP
+
+    ! ==========================================================================
+    ! SCORE ALL INDIVIDUAL NUCLIDE REACTION RATES
+
+    ! Loop over score types for each bin
+    MATERIAL_SCORE_LOOP: do j = 1, t % n_score_bins
+       ! determine what type of score bin
+       score_bin = t % score_bins(j) % scalar
+
+       ! Determine macroscopic material cross section 
+       select case(score_bin)
+       case (SCORE_FLUX)
+          score = flux
+       case (SCORE_TOTAL)
+          score = material_xs % total * flux
+       case (SCORE_SCATTER)
+          score = (material_xs % total - material_xs % absorption) * flux
+       case (SCORE_ABSORPTION)
+          score = material_xs % absorption * flux
+       case (SCORE_FISSION)
+          score = material_xs % fission * flux
+       case (SCORE_NU_FISSION)
+          score = material_xs % nu_fission * flux
+       case default
+          message = "Invalid score type on tally " // to_str(t % id) // "."
+          call fatal_error()
+       end select
+
+       ! Determine scoring bin index based on what the index of the nuclide
+       ! is in the nuclides array
+       score_index = n_nuclides_total*t % n_score_bins + j
+
+       ! Add score to tally
+       call add_to_score(t % scores(score_index, filter_index), score)
+
+    end do MATERIAL_SCORE_LOOP
 
   end subroutine score_all_nuclides
 
@@ -1668,11 +1682,15 @@ contains
     integer :: i                          ! index in tallies array
     integer :: j                          ! level in tally hierarchy
     integer :: k                          ! loop index for scoring bins
+    integer :: n                          ! loop index for nuclides
     integer :: bins(N_FILTER_TYPES) = 0   ! bins corresponding to each filter
     integer :: indent                     ! number of spaces to preceed output
     integer :: io_error                   ! error in opening/writing file
     integer :: last_filter                ! lowest level filter type
     integer :: filter_index               ! index in scores array for filters
+    integer :: score_index                ! scoring bin index
+    integer :: index_nuclide              ! index in nuclides array
+    integer :: index_list                 ! index in xs_listings array
     logical :: file_exists                ! does tallies.out file already exists? 
     logical :: has_filter(N_FILTER_TYPES) ! does tally have this filter?
     character(MAX_FILE_LEN) :: filename                    ! name of output file
@@ -1806,12 +1824,30 @@ contains
           filter_index = sum((max(bins,1) - 1) * t % stride) + 1
 
           ! Write scores for this filter bin combination
+          score_index = 0
           indent = indent + 2
-          do k = 1, t % n_score_bins
-             write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
-                  repeat(" ", indent), score_name(abs(t % score_bins(k) % scalar)), &
-                  to_str(t % scores(k,filter_index) % sum), &
-                  trim(to_str(t % scores(k,filter_index) % sum_sq))
+          do n = 1, t % n_nuclide_bins
+             ! Write label for nuclide
+             index_nuclide = t % nuclide_bins(n) % scalar
+             if (index_nuclide == -1) then
+                write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
+                     "Total Material"
+             else
+                index_list = nuclides(index_nuclide) % listing
+                write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
+                     trim(xs_listings(index_list) % alias)
+             end if
+
+             indent = indent + 2
+             do k = 1, t % n_score_bins
+                score_index = score_index + 1
+                write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+                     repeat(" ", indent), score_name(abs(t % score_bins(k) % scalar)), &
+                     to_str(t % scores(score_index,filter_index) % sum), &
+                     trim(to_str(t % scores(score_index,filter_index) % sum_sq))
+             end do
+             indent = indent - 2
+
           end do
           indent = indent - 2
 

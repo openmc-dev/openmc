@@ -73,12 +73,15 @@ contains
              name  = xs_listings(index_list) % name
              alias = xs_listings(index_list) % alias
 
+             ! Keep track of what listing is associated with this nuclide
+             nuc => nuclides(index_nuclide)
+             nuc % listing = index_list
+
              ! Read the ACE table into the appropriate entry on the nuclides
              ! array
              call read_ace_table(index_nuclide, index_list)
 
              ! Print out information on table to cross_sections.out file
-             nuc => nuclides(index_nuclide)
              if (master) call print_nuclide(nuc, unit=UNIT_XS)
 
              call dict_add_key(already_read, name, 0)

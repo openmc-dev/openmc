@@ -1228,6 +1228,13 @@ contains
              call lower_case(word)
              select case (trim(word))
              case ('flux')
+                ! Prohibit user from tallying flux for an individual nuclide
+                if (.not. (t % n_nuclide_bins == 1 .and. &
+                     t % nuclide_bins(1) % scalar == -1)) then
+                   message = "Cannot tally flux for an individual nuclide."
+                   call fatal_error()
+                end if
+
                 t % score_bins(j) % scalar = SCORE_FLUX
                 if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally flux with an outgoing energy filter."

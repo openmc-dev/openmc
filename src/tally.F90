@@ -239,9 +239,12 @@ contains
 
     integer :: i                    ! loop index for analog tallies
     integer :: j                    ! loop index for scoring bins
+    integer :: k                    ! loop index for nuclide bins
     integer :: bins(N_FILTER_TYPES) ! scoring bin combination
     integer :: filter_index         ! single index for single bin
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
+    integer :: index_nuclide        ! index in nuclides array
+    integer :: score_index          ! scoring bin index
     real(8) :: score                ! analog tally score
     real(8) :: last_wgt             ! pre-collision particle weight
     real(8) :: wgt                  ! post-collision particle weight
@@ -259,7 +262,7 @@ contains
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
 
-    do i = 1, n_analog_tallies
+    TALLY_LOOP: do i = 1, n_analog_tallies
        t => tallies(analog_tallies(i))
 
        ! =======================================================================
@@ -278,196 +281,241 @@ contains
        ! Determine scoring index for this filter combination
        filter_index = sum((bins - 1) * t % stride) + 1
 
-       ! Determine score for each bin
-       do j = 1, t % n_score_bins
-          ! determine what type of score bin
-          score_bin = t % score_bins(j) % scalar
+       ! Check for nuclide bins
+       k = 0
+       NUCLIDE_LOOP: do while (k <= t % n_nuclide_bins)
 
-          select case (score_bin)
-          case (SCORE_FLUX)
-             ! All events score to a flux bin. We actually use a collision
-             ! estimator since there is no way to count 'events' exactly for the
-             ! flux
+          ! Increment the index in the list of nuclide bins
+          k = k + 1
 
-             score = last_wgt / material_xs % total
-
-          case (SCORE_TOTAL)
-             ! All events will score to the total reaction rate. We can just use
-             ! the weight of the particle entering the collision as the score
-
-             score = last_wgt
-
-          case (SCORE_SCATTER)
-             ! Skip any event where the particle didn't scatter
-             if (p % event /= EVENT_SCATTER) cycle
-
-             ! Since only scattering events make it here, again we can use the
-             ! weight entering the collision as the estimator for the reaction
-             ! rate
-
-             score = last_wgt
-
-          case (SCORE_NU_SCATTER) 
-             ! Skip any event where the particle didn't scatter
-             if (p % event /= EVENT_SCATTER) cycle
-
-             ! For scattering production, we need to use the post-collision
-             ! weight as the estimate for the number of neutrons exiting a
-             ! reaction with neutrons in the exit channel
-
-             score = wgt
-
-          case (SCORE_SCATTER_1)
-             ! Skip any event where the particle didn't scatter
-             if (p % event /= EVENT_SCATTER) cycle
-
-             ! The first scattering moment can be determined by using the rate
-             ! of scattering reactions multiplied by the cosine of the change in
-             ! neutron's angle due to the collision
-
-             score = last_wgt * mu
-
-          case (SCORE_SCATTER_2)
-             ! Skip any event where the particle didn't scatter
-             if (p % event /= EVENT_SCATTER) cycle
-
-             ! The second scattering moment can be determined in a similar
-             ! manner to the first scattering moment
-
-             score = last_wgt * 0.5*(3.0*mu*mu - ONE)
-
-          case (SCORE_SCATTER_3)
-             ! Skip any event where the particle didn't scatter
-             if (p % event /= EVENT_SCATTER) cycle
-
-             ! The first scattering moment can be determined by using the rate
-             ! of scattering reactions multiplied by the cosine of the change in
-             ! neutron's angle due to the collision
-
-             score = last_wgt * 0.5*(5.0*mu*mu*mu - 3.0*mu)
-
-          case (SCORE_TRANSPORT)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle
-
-            ! get material macros
-            macro_total = material_xs % total
-            macro_scatt = material_xs % total - material_xs % absorption
-
-            ! Score total rate - p1 scatter rate
-            ! Note estimator needs to be adjusted since tallying is only
-            ! occuring when a scatter has happend. Effectively this means
-            ! multiplying the estimator by total/scatter macro
-            score = (macro_total - mu*macro_scatt)*(ONE/macro_scatt)
-
-          case (SCORE_DIFFUSION)
-             ! Skip any event where the particle didn't scatter
-             if (p % event /= EVENT_SCATTER) cycle
-             
-             ! Temporarily store the scattering cross section
-             score = material_xs % total - material_xs % absorption
-
-             ! Since this only gets tallied at every scattering event, the flux
-             ! estimator is 1/Sigma_s. Therefore, the diffusion coefficient
-             ! times flux is 1/(3*Sigma_s*(Sigma_t - mu*Sigma_s)).
-
-             score = last_wgt / (3.0_8 * score * (material_xs % total - &
-                  mu * score))
-
-          case (SCORE_N_1N)
-             ! Skip any event where the particle didn't scatter
-             if (p % event /= EVENT_SCATTER) cycle
-
-             ! Skip any events where weight of particle changed
-             if (wgt /= last_wgt) cycle
-
-             ! All events that reach this point are (n,1n) reactions
-             score = last_wgt
-
-          case (SCORE_N_2N)
-             ! Skip any event where the particle didn't scatter
-             if (p % event /= EVENT_SCATTER) cycle
-
-             ! Skip any scattering events where the weight didn't double
-             if (nint(wgt/last_wgt) /= 2) cycle
-
-             ! All events that reach this point are (n,2n) reactions
-             score = last_wgt
-
-          case (SCORE_N_3N)
-             ! Skip any event where the particle didn't scatter
-             if (p % event /= EVENT_SCATTER) cycle
-
-             ! Skip any scattering events where the weight didn't double
-             if (nint(wgt/last_wgt) /= 3) cycle
-
-             ! All events that reach this point are (n,3n) reactions
-             score = last_wgt
-
-          case (SCORE_N_4N)
-             ! Skip any event where the particle didn't scatter
-             if (p % event /= EVENT_SCATTER) cycle
-
-             ! Skip any scattering events where the weight didn't double
-             if (nint(wgt/last_wgt) /= 4) cycle
-
-             ! All events that reach this point are (n,3n) reactions
-             score = last_wgt
-
-          case (SCORE_ABSORPTION)
-             ! Skip any event where the particle wasn't absorbed
-             if (p % event == EVENT_SCATTER) cycle
-
-             ! All fission and absorption events will contribute here, so we can
-             ! just use the particle's weight entering the collision
-
-             score = last_wgt
-
-          case (SCORE_FISSION)
-             ! Skip any non-fission events
-             if (p % event /= EVENT_FISSION) cycle
-
-             ! All fission events will contribute, so again we can use
-             ! particle's weight entering the collision as the estimate for the
-             ! fission reaction rate
-
-             score = last_wgt
-
-          case (SCORE_NU_FISSION)
-             ! Skip any non-fission events
-             if (p % event /= EVENT_FISSION) cycle
-
-             if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
-                ! Normally, we only need to make contributions to one scoring
-                ! bin. However, in the case of fission, since multiple fission
-                ! neutrons were emitted with different energies, multiple outgoing
-                ! energy bins may have been scored to. The following logic treats
-                ! this special case and scores to multiple bins
-
-                call score_fission_eout(t, bins, j)
-                cycle
-
+          if (t % all_nuclides) then
+             ! In the case that the user has requested to tally all nuclides, we
+             ! can take advantage of the fact that we know exactly how nuclide
+             ! bins correspond to nuclide indices.
+             if (k == 1) then
+                ! If we just entered, set the nuclide bin index to the index in
+                ! the nuclides array since this will match the index in the
+                ! nuclide bin array.
+                k = p % event_nuclide
+             elseif (k == p % event_nuclide + 1) then
+                ! After we've tallied the individual nuclide bin, we also need
+                ! to contribute to the total material bin which is the last bin
+                k = n_nuclides_total + 1
              else
-                ! If there is no outgoing energy filter, than we only need to
-                ! score to one bin. For the score to be 'analog', we need to
-                ! score the number of particles that were banked in the fission
-                ! bank. Since this was weighted by 1/keff, we multiply by keff
-                ! to get the proper score.
-
-                score = keff * p % wgt_bank
-
+                ! After we've tallied in both the individual nuclide bin and the
+                ! total material bin, we're done
+                exit
              end if
 
-          case default
-             message = "Invalid score type on tally " // to_str(t % id) // "."
-             call fatal_error()
-          end select
+          else
+             ! If the user has explicitly specified nuclides (or specified
+             ! none), we need to search through the nuclide bin list one by
+             ! one. First we need to get the value of the nuclide bin
+             index_nuclide = t % nuclide_bins(k) % scalar
+
+             ! Now compare the value against that of the colliding nuclide.
+             if (index_nuclide /= p % event_nuclide .and. &
+                  index_nuclide /= -1) cycle
+          end if
+
+          ! Determine score for each bin
+          SCORE_LOOP: do j = 1, t % n_score_bins
+             ! determine what type of score bin
+             score_bin = t % score_bins(j) % scalar
+
+             ! determine scoring bin index
+             score_index = (k - 1)*t % n_score_bins + j
+
+             select case (score_bin)
+             case (SCORE_FLUX)
+                ! All events score to a flux bin. We actually use a collision
+                ! estimator since there is no way to count 'events' exactly for
+                ! the flux
+
+                score = last_wgt / material_xs % total
+
+             case (SCORE_TOTAL)
+                ! All events will score to the total reaction rate. We can just
+                ! use the weight of the particle entering the collision as the
+                ! score
+
+                score = last_wgt
+
+             case (SCORE_SCATTER)
+                ! Skip any event where the particle didn't scatter
+                if (p % event /= EVENT_SCATTER) cycle
+
+                ! Since only scattering events make it here, again we can use
+                ! the weight entering the collision as the estimator for the
+                ! reaction rate
+
+                score = last_wgt
+
+             case (SCORE_NU_SCATTER) 
+                ! Skip any event where the particle didn't scatter
+                if (p % event /= EVENT_SCATTER) cycle
+
+                ! For scattering production, we need to use the post-collision
+                ! weight as the estimate for the number of neutrons exiting a
+                ! reaction with neutrons in the exit channel
+
+                score = wgt
+
+             case (SCORE_SCATTER_1)
+                ! Skip any event where the particle didn't scatter
+                if (p % event /= EVENT_SCATTER) cycle
+
+                ! The first scattering moment can be determined by using the
+                ! rate of scattering reactions multiplied by the cosine of the
+                ! change in neutron's angle due to the collision
+
+                score = last_wgt * mu
+
+             case (SCORE_SCATTER_2)
+                ! Skip any event where the particle didn't scatter
+                if (p % event /= EVENT_SCATTER) cycle
+
+                ! The second scattering moment can be determined in a similar
+                ! manner to the first scattering moment
+
+                score = last_wgt * 0.5*(3.0*mu*mu - ONE)
+
+             case (SCORE_SCATTER_3)
+                ! Skip any event where the particle didn't scatter
+                if (p % event /= EVENT_SCATTER) cycle
+
+                ! The first scattering moment can be determined by using the
+                ! rate of scattering reactions multiplied by the cosine of the
+                ! change in neutron's angle due to the collision
+
+                score = last_wgt * 0.5*(5.0*mu*mu*mu - 3.0*mu)
+
+             case (SCORE_TRANSPORT)
+                ! Skip any event where the particle didn't scatter
+                if (p % event /= EVENT_SCATTER) cycle
+
+                ! get material macros
+                macro_total = material_xs % total
+                macro_scatt = material_xs % total - material_xs % absorption
+
+                ! Score total rate - p1 scatter rate Note estimator needs to be
+                ! adjusted since tallying is only occuring when a scatter has
+                ! happend. Effectively this means multiplying the estimator by
+                ! total/scatter macro
+                score = (macro_total - mu*macro_scatt)*(ONE/macro_scatt)
+
+             case (SCORE_DIFFUSION)
+                ! Skip any event where the particle didn't scatter
+                if (p % event /= EVENT_SCATTER) cycle
+
+                ! Temporarily store the scattering cross section
+                score = material_xs % total - material_xs % absorption
+
+                ! Since this only gets tallied at every scattering event, the
+                ! flux estimator is 1/Sigma_s. Therefore, the diffusion
+                ! coefficient times flux is 1/(3*Sigma_s*(Sigma_t -
+                ! mu*Sigma_s)).
+
+                score = last_wgt / (3.0_8 * score * (material_xs % total - &
+                     mu * score))
+
+             case (SCORE_N_1N)
+                ! Skip any event where the particle didn't scatter
+                if (p % event /= EVENT_SCATTER) cycle
+
+                ! Skip any events where weight of particle changed
+                if (wgt /= last_wgt) cycle
+
+                ! All events that reach this point are (n,1n) reactions
+                score = last_wgt
+
+             case (SCORE_N_2N)
+                ! Skip any event where the particle didn't scatter
+                if (p % event /= EVENT_SCATTER) cycle
+
+                ! Skip any scattering events where the weight didn't double
+                if (nint(wgt/last_wgt) /= 2) cycle
+
+                ! All events that reach this point are (n,2n) reactions
+                score = last_wgt
+
+             case (SCORE_N_3N)
+                ! Skip any event where the particle didn't scatter
+                if (p % event /= EVENT_SCATTER) cycle
+
+                ! Skip any scattering events where the weight didn't double
+                if (nint(wgt/last_wgt) /= 3) cycle
+
+                ! All events that reach this point are (n,3n) reactions
+                score = last_wgt
+
+             case (SCORE_N_4N)
+                ! Skip any event where the particle didn't scatter
+                if (p % event /= EVENT_SCATTER) cycle
+
+                ! Skip any scattering events where the weight didn't double
+                if (nint(wgt/last_wgt) /= 4) cycle
+
+                ! All events that reach this point are (n,3n) reactions
+                score = last_wgt
+
+             case (SCORE_ABSORPTION)
+                ! Skip any event where the particle wasn't absorbed
+                if (p % event == EVENT_SCATTER) cycle
+
+                ! All fission and absorption events will contribute here, so we
+                ! can just use the particle's weight entering the collision
+
+                score = last_wgt
+
+             case (SCORE_FISSION)
+                ! Skip any non-fission events
+                if (p % event /= EVENT_FISSION) cycle
+
+                ! All fission events will contribute, so again we can use
+                ! particle's weight entering the collision as the estimate for
+                ! the fission reaction rate
+
+                score = last_wgt
+
+             case (SCORE_NU_FISSION)
+                ! Skip any non-fission events
+                if (p % event /= EVENT_FISSION) cycle
+
+                if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
+                   ! Normally, we only need to make contributions to one scoring
+                   ! bin. However, in the case of fission, since multiple
+                   ! fission neutrons were emitted with different energies,
+                   ! multiple outgoing energy bins may have been scored to. The
+                   ! following logic treats this special case and scores to
+                   ! multiple bins
+
+                   call score_fission_eout(t, bins, score_index)
+                   cycle
+
+                else
+                   ! If there is no outgoing energy filter, than we only need to
+                   ! score to one bin. For the score to be 'analog', we need to
+                   ! score the number of particles that were banked in the
+                   ! fission bank. Since this was weighted by 1/keff, we
+                   ! multiply by keff to get the proper score.
+
+                   score = keff * p % wgt_bank
+
+                end if
+
+             case default
+                message = "Invalid score type on tally " // to_str(t % id) // "."
+                call fatal_error()
+             end select
              
-          ! Add score to tally
-          call add_to_score(t % scores(j, filter_index), score)
+             ! Add score to tally
+             call add_to_score(t % scores(score_index, filter_index), score)
 
-       end do
+          end do SCORE_LOOP
 
+       end do NUCLIDE_LOOP
+             
        ! If the user has specified that we can assume all tallies are spatially
        ! separate, this implies that once a tally has been scored to, we needn't
        ! check the others. This cuts down on overhead when there are many
@@ -478,7 +526,7 @@ contains
        ! Reset tally map positioning
        position = 0
 
-    end do
+    end do TALLY_LOOP
 
   end subroutine score_analog_tally
 

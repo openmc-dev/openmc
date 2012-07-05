@@ -11,7 +11,8 @@ module ace
   use fission,              only: nu_total
   use global
   use material_header,      only: Material
-  use output,               only: write_message, print_nuclide, header
+  use output,               only: write_message, print_nuclide, header, &
+                                  print_sab_table
   use string,               only: split_string, str_to_int, str_to_real, &
                                   lower_case, to_str
 
@@ -99,6 +100,10 @@ contains
              ! Read the ACE table into the appropriate entry on the sab_tables
              ! array
              call read_ace_table(index_sab, index_list)
+
+             ! Print out information on table to cross_sections.out file
+             sab => sab_tables(index_sab)
+             if (master) call print_sab_table(sab, unit=UNIT_XS)
 
              call dict_add_key(already_read, name, 0)
           end if

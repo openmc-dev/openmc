@@ -779,12 +779,15 @@ contains
     type(Nuclide), pointer :: nuc
     integer,      optional :: unit
 
-    integer :: i           ! loop index over nuclides
-    integer :: unit_       ! unit to write to
-    integer :: size_total  ! memory used by nuclide (bytes)
-    integer :: size_xs     ! memory used for cross-sections (bytes)
-    integer :: size_angle  ! memory used for angle distributions (bytes)
-    integer :: size_energy ! memory used for energy distributions (bytes)
+    integer :: i                 ! loop index over nuclides
+    integer :: unit_             ! unit to write to
+    integer :: size_total        ! memory used by nuclide (bytes)
+    integer :: size_angle_total  ! total memory used for angle dist. (bytes)
+    integer :: size_energy_total ! total memory used for energy dist. (bytes)
+    integer :: size_xs           ! memory used for cross-sections (bytes)
+    integer :: size_angle        ! memory used for an angle distribution (bytes)
+    integer :: size_energy       ! memory used for a  energy distributions (bytes)
+    integer :: size_urr          ! memory used for probability tables (bytes)
     type(Reaction), pointer :: rxn => null()
     type(UrrData),  pointer :: urr => null()
 
@@ -795,9 +798,13 @@ contains
        unit_ = OUTPUT_UNIT
     end if
 
+    ! Initialize totals
+    size_angle_total = 0
+    size_energy_total = 0
+    size_urr = 0
+
     ! Determine size of cross-sections
     size_xs = (5 + nuc % n_reaction) * nuc % n_grid * 8
-    size_total = size_xs
 
     ! Basic nuclide information
     write(unit_,*) 'Nuclide ' // trim(nuc % name)
@@ -808,12 +815,10 @@ contains
     write(unit_,*) '  Fissionable = ', nuc % fissionable
     write(unit_,*) '  # of fission reactions = ' // trim(to_str(nuc % n_fission))
     write(unit_,*) '  # of reactions = ' // trim(to_str(nuc % n_reaction))
-    write(unit_,*) '  Size of cross sections = ' // trim(to_str(&
-         size_xs)) // ' bytes'
 
+    ! Information on each reaction
     write(unit_,*) '  Reaction    Q-value   Mult    IE    size(angle) size(energy)'
     do i = 1, nuc % n_reaction
-       ! Information on each reaction
        rxn => nuc % reactions(i)
 
        ! Determine size of angle distribution
@@ -835,10 +840,12 @@ contains
             rxn % IE, size_angle, size_energy
 
        ! Accumulate data size
-       size_total = size_total + size_angle + size_energy
+       size_angle_total = size_angle_total + size_angle
+       size_energy_total = size_energy_total + size_energy
     end do
 
     ! Write information about URR probability tables
+    size_urr = 0
     if (nuc % urr_present) then
        urr => nuc % urr_data
        write(unit_,*) '  Unresolved resonance probability table:'
@@ -850,11 +857,24 @@ contains
        write(unit_,*) '    Multiply by smooth? ', urr % multiply_smooth
        write(unit_,*) '    Min energy = ', trim(to_str(urr % energy(1)))
        write(unit_,*) '    Max energy = ', trim(to_str(urr % energy(urr % n_energy)))
+
+       ! Calculate memory used by probability tables and add to total
+       size_urr = urr % n_energy * (urr % n_prob * 6 + 1) * 8
     end if
 
-    ! Write total memory used
-    write(unit_,*) '  Total memory used = ' // trim(to_str(size_total)) &
-         // ' bytes'
+    ! Calculate total memory
+    size_total = size_xs + size_angle_total + size_energy_total + size_urr
+
+    ! Write memory used
+    write(unit_,*) '  Memory Requirements'
+    write(unit_,*) '    Cross sections = ' // trim(to_str(size_xs)) // ' bytes'
+    write(unit_,*) '    Secondary angle distributions = ' // &
+         trim(to_str(size_angle_total)) // ' bytes'
+    write(unit_,*) '    Secondary energy distributions = ' // &
+         trim(to_str(size_energy_total)) // ' bytes'
+    write(unit_,*) '    Probability Tables = ' // &
+         trim(to_str(size_urr)) // ' bytes'
+    write(unit_,*) '    Total = ' // trim(to_str(size_total)) // ' bytes'
 
     ! Blank line at end of nuclide
     write(unit_,*)

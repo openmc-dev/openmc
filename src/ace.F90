@@ -565,7 +565,9 @@ contains
     nuc % n_reaction = NMT + 1
     allocate(nuc % reactions(NMT+1))
 
-    ! Store elastic scattering cross-section on reaction one
+    ! Store elastic scattering cross-section on reaction one -- note that the
+    ! sigma array is not allocated or stored for elastic scattering since it is
+    ! already stored in nuc % elastic
     rxn => nuc % reactions(1)
     rxn % MT            = 2
     rxn % Q_value       = ZERO
@@ -574,8 +576,6 @@ contains
     rxn % scatter_in_cm = .true.
     rxn % has_angle_dist = .false.
     rxn % has_energy_dist = .false.
-    allocate(rxn % sigma(nuc % n_grid))
-    rxn % sigma = nuc % elastic
     
     ! Add contribution of elastic scattering to total cross section
     nuc % total = nuc % total + nuc % elastic

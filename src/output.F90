@@ -882,6 +882,63 @@ contains
   end subroutine print_nuclide
 
 !===============================================================================
+! PRINT_SAB_TABLE displays information about a S(a,b) table containing data
+! describing thermal scattering from bound materials such as hydrogen in water.
+!===============================================================================
+
+  subroutine print_sab_table(sab, unit)
+
+    type(SAB_Table), pointer :: sab
+    integer,        optional :: unit
+
+    integer :: size  ! memory used by S(a,b) table
+    integer :: unit_ ! unit to write to
+
+    ! set default unit for writing information
+    if (present(unit)) then
+       unit_ = unit
+    else
+       unit_ = OUTPUT_UNIT
+    end if
+
+    ! Basic S(a,b) table information
+    write(unit_,*) 'S(a,b) Table ' // trim(sab % name)
+    write(unit_,*) '  zaid = ' // trim(to_str(sab % zaid))
+    write(unit_,*) '  awr = ' // trim(to_str(sab % awr))
+    write(unit_,*) '  kT = ' // trim(to_str(sab % kT))
+
+    ! Inelastic data
+    write(unit_,*) '  # of Incoming Energies (Inelastic) = ' // &
+         trim(to_str(sab % n_inelastic_e_in))
+    write(unit_,*) '  # of Outgoing Energies (Inelastic) = ' // &
+         trim(to_str(sab % n_inelastic_e_out))
+    write(unit_,*) '  # of Outgoing Angles (Inelastic) = ' // &
+         trim(to_str(sab % n_inelastic_mu))
+    write(unit_,*) '  Threshold for Inelastic = ' // &
+         trim(to_str(sab % threshold_inelastic))
+
+    ! Elastic data
+    if (sab % n_elastic_e_in > 0) then
+       write(unit_,*) '  # of Incoming Energies (Elastic) = ' // &
+            trim(to_str(sab % n_elastic_e_in))
+       write(unit_,*) '  # of Outgoing Angles (Elastic) = ' // &
+            trim(to_str(sab % n_elastic_mu))
+       write(unit_,*) '  Threshold for Elastic = ' // &
+            trim(to_str(sab % threshold_elastic))
+    end if
+
+    ! Determine memory used by S(a,b) table and write out
+    size = 8 * (sab % n_inelastic_e_in * (2 + sab % n_inelastic_e_out * &
+         (1 + sab % n_inelastic_mu)) + sab % n_elastic_e_in * &
+         (2 + sab % n_elastic_mu))
+    write(unit_,*) '  Memory Used = ' // trim(to_str(size)) // ' bytes'
+
+    ! Blank line at end
+    write(unit_,*)
+
+  end subroutine print_sab_table
+
+!===============================================================================
 ! PRINT_SUMMARY displays summary information about the problem about to be run
 ! after reading all input files
 !===============================================================================

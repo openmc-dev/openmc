@@ -803,9 +803,6 @@ contains
     size_energy_total = 0
     size_urr = 0
 
-    ! Determine size of cross-sections
-    size_xs = (5 + nuc % n_reaction) * nuc % n_grid * 8
-
     ! Basic nuclide information
     write(unit_,*) 'Nuclide ' // trim(nuc % name)
     write(unit_,*) '  zaid = ' // trim(to_str(nuc % zaid))
@@ -840,9 +837,14 @@ contains
             rxn % IE, size_angle, size_energy
 
        ! Accumulate data size
+       size_xs = size_xs + (nuc % n_grid - rxn%IE + 1) * 8
        size_angle_total = size_angle_total + size_angle
        size_energy_total = size_energy_total + size_energy
     end do
+
+    ! Add memory required for summary reactions (total, absorption, fission,
+    ! nu-fission)
+    size_xs = 8 * nuc % n_grid * 4
 
     ! Write information about URR probability tables
     size_urr = 0

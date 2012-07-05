@@ -314,7 +314,6 @@ contains
     allocate(nuc % fission(NE))
     allocate(nuc % nu_fission(NE))
     allocate(nuc % absorption(NE))
-    allocate(nuc % heating(NE))
 
     ! initialize cross sections
     nuc % total      = ZERO
@@ -322,7 +321,6 @@ contains
     nuc % fission    = ZERO
     nuc % nu_fission = ZERO
     nuc % absorption = ZERO
-    nuc % heating    = ZERO
 
     ! Read data from XSS -- only the energy grid, elastic scattering and heating
     ! cross section values are actually read from here. The total and absorption
@@ -336,7 +334,6 @@ contains
 
     ! Continue reading elastic scattering and heating
     nuc % elastic = get_real(NE)
-    nuc % heating = get_real(NE)
     
   end subroutine read_esz
 

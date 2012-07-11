@@ -413,7 +413,8 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     *Default*: None
 
   :material:
-    The ``id`` of the material that this cell contains.
+    The ``id`` of the material that this cell contains. If the cell should
+    contain no material, this can also be set to "void".
 
     .. note:: If a material is specified, no fill should be given.
 

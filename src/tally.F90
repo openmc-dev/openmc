@@ -1869,7 +1869,7 @@ contains
 
        ! Write header block
        call header("TALLY " // trim(to_str(t % id)), unit=UNIT_TALLY, level=3)
-
+       write(*,*) t % label
        ! Handle surface current tallies separately
        if (t % type == TALLY_SURFACE_CURRENT) then
           call write_surface_current(t)

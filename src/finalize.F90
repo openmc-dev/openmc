@@ -28,7 +28,7 @@ contains
        ! Calculate statistics for tallies and write to tallies.out
        call tally_statistics()
        if (master) call write_tallies()
-
+       
        ! Write out binary source
        if (write_source) call write_source_binary()
     end if

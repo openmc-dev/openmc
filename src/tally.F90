@@ -1868,8 +1868,12 @@ contains
        t => tallies(i)
 
        ! Write header block
-       call header("TALLY " // trim(to_str(t % id)), unit=UNIT_TALLY, level=3)
-       write(*,*) t % label
+       if (t % label == "") then
+          call header("TALLY " // trim(to_str(t % id)), unit=UNIT_TALLY, level=3)
+       else
+          call header("TALLY " // trim(t % label), unit=UNIT_TALLY, level=3)
+       endif
+       
        ! Handle surface current tallies separately
        if (t % type == TALLY_SURFACE_CURRENT) then
           call write_surface_current(t)

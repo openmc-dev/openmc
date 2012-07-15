@@ -1869,9 +1869,11 @@ contains
 
        ! Write header block
        if (t % label == "") then
-          call header("TALLY " // trim(to_str(t % id)), unit=UNIT_TALLY, level=3)
+          call header("TALLY " // trim(to_str(t % id)), unit=UNIT_TALLY, &
+             level=3)
        else
-          call header("TALLY " // trim(t % label), unit=UNIT_TALLY, level=3)
+          call header("TALLY " // trim(to_str(t % id)) // ": " &
+             // trim(t % label), unit=UNIT_TALLY, level=3)
        endif
        
        ! Handle surface current tallies separately

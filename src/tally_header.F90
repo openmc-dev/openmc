@@ -60,7 +60,7 @@ module tally_header
      ! Basic data
 
      integer :: id               ! user-defined identifier
-     character(len=55) :: label  ! user-defined label
+     character(len=52) :: label  ! user-defined label
      integer :: type             ! volume, surface current
      integer :: estimator        ! collision, track-length
      real(8) :: volume           ! volume of region

@@ -1033,6 +1033,9 @@ contains
 
        ! Copy material id
        t % id = tally_(i) % id
+       
+       ! Copy tally labe
+       t % label = tally_(i) % label
 
        ! =======================================================================
        ! READ DATA FOR FILTERS

@@ -552,6 +552,11 @@ The two valid elements in the tallies.xml file are ``<tally>`` and ``<mesh>``.
 
 The ``<tally>`` element accepts the following sub-elements:
 
+  :label:
+    This is an optional sub-element specifying the name of this tally to be used
+    for output purposes. This string is limited to 52 characters for formatting 
+    purposes.
+
   :filters:
     A list of filters to specify what region of phase space should contribute to
     the tally. See below for full details on what filters are available.

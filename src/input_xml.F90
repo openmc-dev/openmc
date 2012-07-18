@@ -358,8 +358,16 @@ contains
     ! Parse geometry.xml file
     call read_xml_file_geometry_t(filename)
 
-    ! Allocate cells array
+    ! Get number of <cell> tags
     n_cells = size(cell_)
+
+    ! Check for no cells
+    if (n_cells == 0) then
+       message = "No cells found in geometry.xml!"
+       call fatal_error()
+    end if
+
+    ! Allocate cells array
     allocate(cells(n_cells))
 
     n_universes = 0
@@ -440,8 +448,16 @@ contains
     ! ==========================================================================
     ! READ SURFACES FROM GEOMETRY.XML
 
-    ! Allocate cells array
+    ! Get number of <surface> tags
     n_surfaces = size(surface_)
+
+    ! Check for no surfaces
+    if (n_surfaces == 0) then
+       message = "No surfaces found in geometry.xml!"
+       call fatal_error()
+    end if
+
+    ! Allocate cells array
     allocate(surfaces(n_surfaces))
 
     do i = 1, n_surfaces

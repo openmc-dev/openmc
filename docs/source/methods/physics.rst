@@ -4,14 +4,14 @@
 Physics
 =======
 
-------------------------------
-Free Gas Scattering Kinematics
-------------------------------
+------------------------------------------
+Effect of Thermal Motion on Cross-Sections
+------------------------------------------
 
 When a neutron scatters off of a nucleus, many times it is assumed that the
 target nucleus is at rest. However, if the material is at a temperature greater
 than 0 K, it will have motion associated with the thermal vibration. Thus, the
-velocity of the neutrno relative to the target nucleus is in general not the
+velocity of the neutron relative to the target nucleus is in general not the
 same as the velocity of the neutron entering the collision.
 
 The affect of the thermal motion on the interaction probability can be written
@@ -23,8 +23,49 @@ as
     v_n \sigma (v_n, T) = \int_0^\infty d\mathbf{v}_T \sigma(v_r, 0)
     \mathbf{v}_r p(\mathbf{v}_T)
     
-One assumption we can make here is that the velocity distribution for the
-thermal motion is isotropic, i.e.
+where :math:`v_n` is the magnitude of the velocity of the neutron,
+:math:`\mathbf{v}_T` is the velocity of the target nucleus, :math:`\mathbf{v}_r`
+is the relative velocity, and :math:`T` is the temperature of the target
+material. In a Monte Carlo code, one must account for the effect of the thermal
+motion on both the integrated cross-section as well as secondary angle and
+energy distributions. For integrated cross-sections, it is possible to calculate
+thermally-averaged cross-sections by applying a kernel Doppler broadening
+algorithm to data at 0 K (or some temperature lower than the desired
+temperature). The most ubiquitous algorithm for this purpose is the [SIGMA1]_
+method developed by Red Cullen and subsequently refined by others. This method
+is used in the NJOY_ and PREPRO_ data processing codes.
+
+The effect of thermal motion on secondary angle and energy distributions can be
+accounted for on-the-fly in a Monte Carlo simulation. We must first qualify
+where it is actually used however. All threshold reactions are treated as being
+independent of temperature, and therefore they are not Doppler broadened in NJOY
+and no special procedure is used to adjust the secondary angle and energy
+distributions. The only non-threhold reactions with secondary neutrons are
+elastic scattering and fission. For fission, it is assumed that neutrons are
+emitted isotropically (this is not strictly true, but is nevertheless a good
+approximation). This leaves only elastic scattering that needs a special thermal
+treatment for secondary distributions.
+
+Fortunately, it is possible to directly sample the velocity of the target
+nuclide and then use it directly in the kinematic calculations. However, this
+calculation is a bit more nuanced than it might seem at first glance. One might
+be tempted to simply sample a Maxwellian distribution for the velocity of the
+target nuclide.  Careful inspection of equation :eq:`freegas1` however tells us
+that target velocities that produce relative velocities which correspond to high
+cross sections will have a greater contribution to the effection reaction
+rate. This is most important when the velocity of the incoming neutron is close
+to a resonance. For example, if the neutron's velocity corresponds to a trough
+in a resonance elastic scattering cross-section, a very small target velocity
+can cause the relative velocity to correpond to the peak of the resonance, thus
+making a disproportionate contribution to the reaction rate. The conclusion is
+that if we are to sample a target velocity in the Monte Carlo code, it must be
+done in such a way that preserves the thermally-averaged reaction rate as per
+equation :eq:`freegas`.
+
+The method by which most Monte Carlo codes sample the target velocity for use in
+elastic scattering kinematics is outlined in detail by [Gelbard]_. The
+derivation here largely follows that of Gelbard. The first assumption we can
+make is that the velocity distribution for the thermal motion is isotropic, i.e.
 
 .. math::
     :label: freegas2
@@ -37,10 +78,11 @@ With this assumption, we can now rewrite equation :eq:`freegas1` as
     :label: freegas3
 
     v_n \sigma (v_n, T) = \frac{1}{2} \int_{-1}^1 d\mu \int\limits_{v_r > 0}
-    v_r \sigma (v_r, 0) p(v_T) dv_T
+    dv_T v_r \sigma (v_r, 0) p(v_T)
 
-To change the outer variable of integration from :math:`\mu` to :math:`v_r`, we
-can establish a relation between these variables based on the law of cosines.
+after integrating over :math:`d\phi`. To change the outer variable of
+integration from :math:`\mu` to :math:`v_r`, we can establish a relation between
+these variables based on the law of cosines.
 
 .. math::
     :label: lawcosine
@@ -78,12 +120,13 @@ We can divide this probability distribution into two parts as such:
     :label: freegas6
 
     P(v_T, \mu) &= f_1(v_T, \mu) f_2(v_T) \\
-    f_1(v_T, \mu) &= \frac{| v_n - v_T |}{\hat{f_1} (v_n + v_T)} \\
+    f_1(v_T, \mu) &= \frac{| v_n - v_T |}{C (v_n + v_T)} \\
     f_2(v_T) &= (v_n + v_T) P(v_T)
 
-In general, any probability distribution function of the form :math:`p(x) =
-f_1(x) f_2(x)` with :math:`f_1(x)` bounded can be sampled by sampling
-:math:`x_s` from the distribution
+where :math:`C = \int dv_T \sigma v_r P(v_T)`. In general, any probability
+distribution function of the form :math:`p(x) = f_1(x) f_2(x)` with
+:math:`f_1(x)` bounded can be sampled by sampling :math:`x_s` from the
+distribution
 
 .. math:: \frac{f_2(x)}{\int f_2(x) dx}
 
@@ -93,3 +136,20 @@ and accepting it with probability
 
 It is normally assumed that the velocity distribution of the target nucleus
 assumes a Maxwellian distribution in velocity.
+
+---------------------------------------
+S(:math:`\alpha`, :math:`\beta`) Tables
+---------------------------------------
+
+----------------------------------------------
+Unresolved Resonance Region Probability Tables
+----------------------------------------------
+
+.. _NJOY: http://t2.lanl.gov/codes.shtml
+.. _PREPRO: http://www-nds.iaea.org/ndspub/endf/prepro/
+
+.. [SIGMA1] Dermett E. Cullen and Charles R. Weisbin, "Exact Doppler Broadening
+   of Tabulated Cross Sections," *Nucl. Sci. Eng.*, **60**, pp. 199-229 (1976).
+
+.. [Gelbard] Ely M. Gelbard, "Epithermal Scattering in VIM," FRA-TM-123, Argonne
+   National Laboratory (1979).

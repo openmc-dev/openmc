@@ -638,6 +638,10 @@ contains
           ! Also need to add fission cross sections to absorption
           nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
 
+          ! If total fission reaction is present, there's no need to store the
+          ! reaction cross-section since it was copied to nuc % fission
+          if (rxn % MT == N_FISSION) deallocate(rxn % sigma)
+
           ! Keep track of this reaction for easy searching later
           i_fission = i_fission + 1
           nuc % index_fission(i_fission) = i + 1

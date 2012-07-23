@@ -647,7 +647,7 @@ contains
              k = binary_search(sab % elastic_P(1:i+1), i+1, prob)
           end if
 
-          ! Characteristic scattering cosine for this Bragg egg
+          ! Characteristic scattering cosine for this Bragg edge
           mu = ONE - 2.0*sab % elastic_e_in(k) / p % E
 
        end if

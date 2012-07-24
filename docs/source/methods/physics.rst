@@ -30,6 +30,29 @@ Sampling Secondary Energy and Correlated Angle/Energy Distributions
 Transforming a Particle's Coordinates
 -------------------------------------
 
+Once the cosine of the scattering angle :math:`\mu` has been sampled either from
+a angle distribution or a correlated angle-energy distribution, we are still
+left with the task of transforming the particle's coordinates. The scattering
+cosine that we sampled only tells us the cosine of the angle between the
+original direction of the particle and the new direction of the particle. If we
+express the pre-collision direction of the particle as :math:`\mathbf{\Omega} =
+(u,v,w)` and the post-collision direction of the particle as
+:math:`\mathbf{\Omega}' = (u',v',w')`, it is possible to relate the pre- and
+post-collision components. We first need to uniformly sample an azimuthal angle
+:math:`\phi` in :math:`[0, 2\pi)`. After the azimuthal angle has been sampled,
+the post-collision direction is calculated as
+
+.. math::
+    :label: post-collision-angle
+
+    u' = \mu u + \frac{\sqrt{1 - \mu^2} ( uw \cos\phi - v \sin\phi )}{\sqrt{1 -
+    w^2}} \\
+
+    v' = \mu v + \frac{\sqrt{1 - \mu^2} ( vw \cos\phi + u \sin\phi )}{\sqrt{1 -
+    w^2}} \\
+
+    w' = \mu w - \sqrt{1 - \mu^2} \sqrt{1 - w^2} \cos\phi
+
 ------------------
 Elastic Scattering
 ------------------

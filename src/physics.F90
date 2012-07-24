@@ -562,8 +562,9 @@ contains
     E = dot_product(v_n, v_n)
     vel = sqrt(E)
 
-    ! convert cosine of scattering angle from CM to LAB
-    mu = (ONE + awr*mu)/sqrt(awr**2 + TWO*awr*mu + ONE)
+    ! compute cosine of scattering angle in LAB frame by taking dot product of
+    ! neutron's pre- and post-collision angle
+    mu = dot_product(p % coord0 % uvw, v_n) / vel
 
     ! Set energy and direction of particle in LAB frame
     p % E = E

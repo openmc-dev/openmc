@@ -137,6 +137,11 @@ scattering cosine in the lab system can be calculated as
 
     \mu_{lab} = \frac{1 + A\mu}{\sqrt{A^2 + 2A\mu + 1}}.
 
+However, this formula is only valid if the target was at rest. When the target
+nucleus does have thermal motion, the cosine of the scattering angle can be
+determined by simply taking the dot product of the neutron's initial and final
+direction in the lab system.
+
 .. _freegas:
 
 ------------------------------------------

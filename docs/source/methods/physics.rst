@@ -4,6 +4,118 @@
 Physics
 =======
 
+-----------------------------------------
+Secondary Angles and Energy Distributions
+-----------------------------------------
+
+For a variety of reactions, it is necessary to sample secondary angle and energy
+distributions. In some cases, these distributions may be specified separately,
+and in other cases, they may be specified as a correlated angle-energy
+distribution. In this section, we will outline the methods used to sample
+secondary distributions as well as how they are used to modify the state of a
+particle.
+
+.. _sample-angle:
+
+Sampling Secondary Angle Distributions
+--------------------------------------
+
+.. _sample-energy:
+
+Sampling Secondary Energy and Correlated Angle/Energy Distributions
+-------------------------------------------------------------------
+
+.. _rotate-angle:
+
+Transforming a Particle's Coordinates
+-------------------------------------
+
+------------------
+Elastic Scattering
+------------------
+
+Elastic scattering refers to the process by which a neutron scatters off a
+nucleus and does not leave it in an excited. It is referred to as "elastic"
+because in the center-of-mass system, the neutron does not actually lose
+energy. However, in lab coordinates, the neutron does indeed lose
+energy. Elastic scattering can be treated exactly in a Monte Carlo code thanks
+to its simplicity.
+
+Let us discuss how OpenMC handles two-body elastic scattering kinematics. The
+first step is to determine whether the target nucleus has any associated
+motion. Above a certain energy threshold (400 kT by default), all scattering is
+assumed to take place with the target at rest. Below this threshold though, we
+must account for the thermal motion of the target nucleus. Methods to sample the
+velocity of the target nucleus are described later in section
+:ref:`freegas`. For the time being, let us assume that we have sampled the
+target velocity :math:`v_t`. The velocity of the center-of-mass system is
+calculated as
+
+.. math::
+    :label: velocity-com
+
+    \mathbf{v}_{cm} = \frac{\mathbf{v}_n + A \mathbf{v}_t}{A + 1}
+
+where :math:`\mathbf{v}_n` is the velocity of the neutron and :math:`A` is the
+atomic mass of the target nucleus measured in neutron masses (commonly referred
+to as the atomic weight ratio). With the velocity of the center-of-mass
+calculated, we can then determine the neutron's velocity in the center-of-mass
+system:
+
+.. math::
+    :label: velocity-neutron-com
+
+    \mathbf{V}_n = \mathbf{v}_n - \mathbf{v}_{cm}
+
+where we have used uppercase :math:`\mathbf{V}` to denote the center-of-mass
+system. The direction of the neutron in the center-of-mass system is
+
+.. math::
+    :label: angle-neutron-com
+
+    \mathbf{\Omega}_n = \frac{\mathbf{V}_n}{|| \mathbf{V}_n ||}
+
+At low energies, elastic scattering will be isotropic in the center-of-mass
+system, but for higher energies, there may be p-wave and higher order scattering
+that leads to anisotropic scattering. Thus, in general, we need to sample a
+cosine of the scattering angle which we will refer to as :math:`\mu`. For
+elastic scattering, the secondary angle distribution is always given in the
+center-of-mass system and is sampled according to the procedure outlined in
+:ref:`sample-angle`. After the cosine of the angle of scattering has been
+sampled, we need to determine the neutron's new direction
+:math:`\mathbf{\Omega}'_n` in the center-of-mass system. This is done with the
+procedure in :ref:`rotate-angle`. The new direction is multiplied by the speed
+of the neutron in the center-of-mass system to obtain the new velocity vector in
+the center-of-mass:
+
+.. math::
+    :label: velocity-neutron-com-2
+
+    \mathbf{V}'_n = || \mathbf{V}_n || \mathbf{\Omega}'_n.
+
+Finally, we transform the velocity in the center-of-mass system back to lab
+coordinates:
+
+.. math::
+    :label: velocity-neutron-lab
+
+    \mathbf{v}'_n = \mathbf{V}'_n + \mathbf{v}_{cm}
+
+In OpenMC, the angle and energy of the neutron are stored rather than the
+velocity vector itself, so the post-collision angle and energy can be inferred
+from the post-collision velocity of the neutron in the lab system.
+
+For tally purposes, it is also important to keep track of the scattering cosine
+in the lab system. If we know the scattering cosine in the center-of-mass, the
+scattering cosine in the lab system can be calculated as
+
+.. math::
+    :label: cosine-lab
+
+    \mu_{lab} = \frac{1 + A\mu}{\sqrt{A^2 + 2A\mu + 1}}.
+
+.. _freegas:
+
 ------------------------------------------
 Effect of Thermal Motion on Cross-Sections
 ------------------------------------------
@@ -40,7 +152,7 @@ accounted for on-the-fly in a Monte Carlo simulation. We must first qualify
 where it is actually used however. All threshold reactions are treated as being
 independent of temperature, and therefore they are not Doppler broadened in NJOY
 and no special procedure is used to adjust the secondary angle and energy
-distributions. The only non-threhold reactions with secondary neutrons are
+distributions. The only non-threshold reactions with secondary neutrons are
 elastic scattering and fission. For fission, it is assumed that neutrons are
 emitted isotropically (this is not strictly true, but is nevertheless a good
 approximation). This leaves only elastic scattering that needs a special thermal
@@ -52,11 +164,11 @@ calculation is a bit more nuanced than it might seem at first glance. One might
 be tempted to simply sample a Maxwellian distribution for the velocity of the
 target nuclide.  Careful inspection of equation :eq:`freegas1` however tells us
 that target velocities that produce relative velocities which correspond to high
-cross sections will have a greater contribution to the effection reaction
+cross sections will have a greater contribution to the effective reaction
 rate. This is most important when the velocity of the incoming neutron is close
 to a resonance. For example, if the neutron's velocity corresponds to a trough
 in a resonance elastic scattering cross-section, a very small target velocity
-can cause the relative velocity to correpond to the peak of the resonance, thus
+can cause the relative velocity to correspond to the peak of the resonance, thus
 making a disproportionate contribution to the reaction rate. The conclusion is
 that if we are to sample a target velocity in the Monte Carlo code, it must be
 done in such a way that preserves the thermally-averaged reaction rate as per
@@ -103,7 +215,7 @@ cases since the elastic scattering cross section varies slowly with velocity for
 light nuclei, and for heavy nuclei where large variations can occur due to
 resonance scattering, the moderating effect is rather small. Nonetheless, this
 assumption can cause incorrect answers in systems with U-238 where the low-lying
-resonances can cause a significant amount of upscatter that would be ignored by
+resonances can cause a significant amount of up-scatter that would be ignored by
 this assumption.
 
 With this (sometimes incorrect) assumption, we see that the probability
@@ -262,13 +374,13 @@ Outgoing Energy and Angle for Inelastic Scattering
 
 On each |sab| table, there is a correlated angle-energy secondary distribution
 for neutron thermal inelastic scattering. While the documentation for the ACE
-format implies that there are a series of equiprobably outgoing energies, the
+format implies that there are a series of equiprobable outgoing energies, the
 outgoing energies may have non-uniform probability distribution. In particular,
 if the thermal data were processed with :math:`iwt = 0` in NJOY, then the first
 and last outgoing energies have a relative probability of 1, the second and
 second to last energies have a relative probability of 4, and all other energies
 have a relative probability of 10. The procedure to determine the outgoing
-energy and angle is as such. First, the inteprolation factor is determined from
+energy and angle is as such. First, the interpolation factor is determined from
 equation :eq:`sab-interpolation-factor`. Then, an outgoing energy bin is sampled
 either from a uniform distribution or from a skewed distribution as
 discussed. The outgoing energy is then interpolated between values corresponding

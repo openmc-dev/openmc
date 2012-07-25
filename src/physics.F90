@@ -1821,8 +1821,8 @@ contains
        ! Sampled correlated angle from Kalbach-Mann parameters
        r3 = prn()
        r4 = prn()
-       T = (TWO*r4 - ONE) * sinh(KM_A)
        if (r3 > KM_R) then
+          T = (TWO*r4 - ONE) * sinh(KM_A)
           mu_out = log(T + sqrt(T*T + ONE))/KM_A
        else
           mu_out = log(r4*exp(KM_A) + (ONE - r4)*exp(-KM_A))/KM_A

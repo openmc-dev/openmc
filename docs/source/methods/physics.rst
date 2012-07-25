@@ -220,7 +220,55 @@ for the data.
 ACE Law 1 - Tabular Equiprobable Energy Bins
 ++++++++++++++++++++++++++++++++++++++++++++
 
+In the tabular equiprobable bin representation, an array of equiprobably
+outgoing energy bins is given for a number of incident energies. While the
+representation itself is simple, the complexity lies in how one interpolates
+between incident as well as outgoing energies on such a table. If one does
+simple interpolation between tables for neighboring incident energies, it is
+possible for the resulting energies to violate laws governing the kinematics,
+i.e. the outgoing energy may be outside the range of available energy in the
+reaction.
 
+To avoid this situation, the accepted practice is to use a process known as
+scaled interpolation [Doyas]_. First, we find the tabulated incident energies
+which bound the actual incoming energy of the particle, i.e. find :math:`i` such
+that :math:`E_i < E < E_{i+1}` and calculate the interpolation factor :math:`f`
+via :eq:`interpolation-factor`. Then, we intepolate between the minimum and
+maximum energies of the outgoing energy distributions corresponding to
+:math:`E_i` and :math:`E_{i+1}`:
+
+.. math::
+    :label: ace-law-1-minmax
+
+    E_{min} = E_{i,1} + f ( E_{i+1,1} - E_i ) \\
+    E_{max} = E_{i,M} + f ( E_{i+1,M} - E_M )
+
+where :math:`E_{min}` and :math:`E_{max}` are the minimum and maximum outgoing
+energies of a scaled distribution, :math:`E_{i,j}` is the j-th outgoing energy
+corresponding to the incoming energy :math:`E_i`, and :math:`M` is the number of
+outgoing energy bins. Next, statistical interpolation is performed to choose
+between using the outgoing energy distributions corresponding to energy
+:math:`E_i` or :math:`E_{i+1}`. Let :math:`\ell` be the chosen table where
+:math:`\ell = i` if :math:`\xi_1 > f` and :math:`\ell = i + 1` otherwise where
+:math:`\xi_1` is a random number. Now, we randomly sample an equiprobable
+outgoing energy bin :math:`j` and interpolate between successive values on the
+outgoing energy distribution:
+
+.. math::
+    :label: ace-law-1-intermediate
+
+    \hat{E} = E_{\ell,j} + \xi_2 (E_{\ell,j+1} - E_{\ell,j})
+
+where :math:`\xi_2` is a random number sampled uniformly on :math:`[0,1)`. Since
+this outgoing energy may violate reaction kinematics, we then scale it to the
+minimum and maximum energies we calculated earlier to get the final outgoing
+energy:
+
+.. math::
+    :label: ace-law-1-energy
+
+    E' = E_{min} + \frac{\hat{E} - E_{\ell,1}}{E_{\ell,M} - E_{\ell,1}}
+    (E_{max} - E_{min})
 
 ACE Law 3 - Inelastic Level Scattering
 ++++++++++++++++++++++++++++++++++++++
@@ -801,25 +849,35 @@ the unresolved range to get the actual cross sections. Lastly, the total cross
 section is calculated as the sum of the elastic, fission, capture, and inelastic
 cross sections.
 
-.. [Foderaro] Anthony Foderaro, *The Elements of Neutron Interaction Theory*,
-   MIT Press, Cambridge, Massachusetts (1971).
+----------
+References
+----------
 
-.. [SIGMA1] Dermett E. Cullen and Charles R. Weisbin, "Exact Doppler Broadening
-   of Tabulated Cross Sections," *Nucl. Sci. Eng.*, **60**, pp. 199-229 (1976).
+.. [Doyas] Richard J. Doyas and Sterrett T. Perkins, "Interpolation of Tabular
+   Secondary Neutron and Photon Energy Distributions," *Nucl. Sci. Eng.*,
+   **50**, 390-392 (1972).
+
+.. [Foderaro] Anthony Foderaro, *The Elements of Neutron Interaction Theory*,
+   MIT Press, Cambridge, Massachusetts (1971). **Note:** Students, faculty, and
+   staff at MIT can obtian a PDF copy of this book for free from the `MIT
+   Press`_.
 
 .. [Gelbard] Ely M. Gelbard, "Epithermal Scattering in VIM," FRA-TM-123, Argonne
    National Laboratory (1979).
 
-.. [Williams] M. M. R. Williams, *The Slowing Down and Thermalization of
-   Neutrons*, North-Holland Publishing Co., Amsterdam (1966). This book can be
-   obtained for free from the OECD_.
+.. [Levitt] Leo B. Levitt, "The Probability Table Method for Treating Unresolved
+   Neutron Resonances in Monte Carlo Calculations," *Nucl. Sci. Eng.*, **49**,
+   pp. 450-457 (1972).
+
+.. [SIGMA1] Dermett E. Cullen and Charles R. Weisbin, "Exact Doppler Broadening
+   of Tabulated Cross Sections," *Nucl. Sci. Eng.*, **60**, pp. 199-229 (1976).
 
 .. [Squires] G. L. Squires, *Introduction to the Theory of Thermal Neutron
    Scattering*, Cambridge University Press (1978).
 
-.. [Levitt] Leo B. Levitt, "The Probability Table Method for Treating Unresolved
-   Neutron Resonances in Monte Carlo Calculations," *Nucl. Sci. Eng.*, **49**,
-   pp. 450-457 (1972).
+.. [Williams] M. M. R. Williams, *The Slowing Down and Thermalization of
+   Neutrons*, North-Holland Publishing Co., Amsterdam (1966). **Note:** This
+   book can be obtained for free from the OECD_.
 
 .. |sab| replace:: S(:math:`\alpha,\beta`)
 
@@ -836,3 +894,5 @@ cross sections.
 .. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf
 
 .. _Sutton and Brown: http://www.osti.gov/bridge/product.biblio.jsp?osti_id=307911
+
+.. _MIT Press: http://hdl.handle.net/1721.1/1716

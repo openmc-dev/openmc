@@ -352,6 +352,8 @@ energy distributions to get the final outgoing energy:
 where :math:`E_{min}` and :math:`E_{max}` are defined the same as in equation
 :eq:`ace-law-1-minmax`.
 
+.. _maxwell:
+
 ACE Law 7 - Maxwell Fission Spectrum
 ++++++++++++++++++++++++++++++++++++
 
@@ -420,9 +422,37 @@ where :math:`\xi_1, \xi_2` are random numbers sampled on the unit
 interval. The outgoing energy is only accepted according to a specified
 restriction energy as in equation :eq:`maxwell-restriction`.
 
-
 ACE Law 11 - Energy-Dependent Watt Spectrum
 +++++++++++++++++++++++++++++++++++++++++++
+
+The probability distribution for a Watt fission spectrum can be written in the
+form
+
+.. math::
+    :label: watt-spectrum
+
+    p(E') dE' = c e^{-E'/a(E)} \sinh \sqrt{b(E) \, E'} dE'
+
+where :math:`a` and :math:`b` are parameters for the distribution and are given
+as tabulated functions of the incoming energy of the neutron in the ACE
+format. These two parameters are interpolated on the incoming energy grid using
+a specified interpolation law. Once the parameters have been determined, we
+sample a Maxwellian spectrum with nuclear temperature :math:`a` using the
+algorithm described in :ref:`maxwell` to get an energy :math:`W`. Then, the
+outgoing energy is calculated as
+
+.. math::
+    :label: watt-E
+
+    E' = W + \frac{a^2 b}{4} + (2\xi - 1) \sqrt{a^2 b W}
+
+where :math:`\xi` is a random number sampled on the interval :math:`[0,1)`. The
+outgoing energy is only accepted according to a specified restriction energy
+:math:`U` as defined in equation :eq:`maxwell-restriction`.
+
+This algorithm can be found in Forrest Brown's lectures_ on Monte Carlo methods
+and is an unpublished sampling scheme based on the original Watt spectrum
+derivation [Watt]_.
 
 ACE Law 44 - Kalbach-Mann Correlated Scattering
 +++++++++++++++++++++++++++++++++++++++++++++++
@@ -940,6 +970,9 @@ References
 .. [Squires] G. L. Squires, *Introduction to the Theory of Thermal Neutron
    Scattering*, Cambridge University Press (1978).
 
+.. [Watt] B. E. Watt, "Energy Spectrum of Neutrons from Thermal Fission of
+   U235," *Phys. Rev.*, **87** (6), 1037-1041 (1952).
+
 .. [Williams] M. M. R. Williams, *The Slowing Down and Thermalization of
    Neutrons*, North-Holland Publishing Co., Amsterdam (1966). **Note:** This
    book can be obtained for free from the OECD_.
@@ -961,3 +994,5 @@ References
 .. _Sutton and Brown: http://www.osti.gov/bridge/product.biblio.jsp?osti_id=307911
 
 .. _MIT Press: http://hdl.handle.net/1721.1/1716
+
+.. _lectures: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-05-4983.pdf

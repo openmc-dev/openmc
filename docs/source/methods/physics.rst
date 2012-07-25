@@ -8,17 +8,177 @@ Physics
 Secondary Angles and Energy Distributions
 -----------------------------------------
 
-For a variety of reactions, it is necessary to sample secondary angle and energy
-distributions. In some cases, these distributions may be specified separately,
-and in other cases, they may be specified as a correlated angle-energy
-distribution. In this section, we will outline the methods used to sample
-secondary distributions as well as how they are used to modify the state of a
-particle.
+For any reactions with secondary neutrons, it is necessary to sample secondary
+angle and energy distributions. This includes elastic and inelastic scattering,
+fission, and (n,xn) reactions. In some cases, the distributions may be specified
+separately, and in other cases, they may be specified as a correlated
+angle-energy distribution. In this section, we will outline the methods used to
+sample secondary distributions as well as how they are used to modify the state
+of a particle.
 
 .. _sample-angle:
 
 Sampling Secondary Angle Distributions
 --------------------------------------
+
+For elastic scattering, it is only necessary to specific a secondary angle
+distribution since the outgoing energy can be determined analytically. Other
+reactions may also have separate secondary angle and secondary energy
+distributions that are uncorrelated. In these cases, the secondary angle
+distribution is represented as either
+
+- An Isotropic angular distribution,
+- An equiprobable distribution with 32 bins, or
+- A tabular distribution.
+
+In the first case, no data needs to be stored on the ACE table, and the cosine
+of the scattering angle is simply calculated as
+
+.. math::
+    :label: isotropic-angle
+
+    \mu = 2\xi - 1
+
+where :math:`\xi` is a random number sampled uniformly on :math:`[0,1)`.
+
+For a 32 equiprobable bin distribution, the procedure to determine the
+scattering cosine is as follows. First, we select a random number :math:`\xi` to
+sample a cosine bin :math:`i` such that
+
+.. math::
+    :label: equiprobable-bin
+
+    i = 1 + \lfloor 32\xi \rfloor
+
+The same random number can then also be used to interpolate between neighboring
+:math:`\mu` values to get the final scattering cosine:
+
+.. math::
+    :label: equiprobable-cosine
+
+    \mu = \mu_i + (32\xi - i) (\mu_{i+1} - \mu_i)
+
+As the MCNP Manual points out, using an equiprobable bin distribution works well
+for high-probability regions of the scattering cosine probability, but for
+low-probability regions it is not very accurate. Thus, a more typical treatment
+is to represent the scattering cosine with a tabular distribution. In this case,
+we have a table of cosines and their corresponding values for a probability
+distributions function and cumulative distribution function. For each incoming
+neutron energy :math:`E_i`, let us call :math:`p_{i,j}` the j-th value in the
+probability distribution function and :math:`c_i,j` the j-th value in the
+cumulative distribution function. We first find the interpolation factor on the
+incoming energy grid:
+
+.. math::
+    :label: interpolation-factor
+
+    f = \frac{E - E_i}{E_{i+1} - E_i}
+
+Then, statistical interpolation is performed to choose between using the cosines
+and distribution functions corresponding to energy :math:`E_i` or
+:math:`E_{i+1}`. Let :math:`\ell` be the chosen table where :math:`\ell = i` if
+:math:`\xi > f` and :math:`\ell = i + 1` otherwise where :math:`\xi` is a random
+number. A different random number is used to sample a scattering cosine bin
+:math:`j` using the cumulative distribution function:
+
+.. math::
+    :label: sample-cdf
+
+    c_{l,j} < \xi < c_{l,j+1}
+
+The final scattering cosine will depend on whether histogram or linear-linear
+interpolation is used. In general, we can write the cumulative distribution
+function as
+
+.. math::
+    :label: cdf
+
+    c(\mu) = \int_{-1}^\mu p(\mu') d\mu'
+
+where :math:`c(\mu)` is the cumulative distribution function and :math:`p(\mu)`
+is the probability distribution function. Since we know that :math:`c(\mu_{l,k})
+= c_{l,k}`, this implies that for :math:`\mu > \mu_{l,k}`,
+
+.. math::
+    :label: cdf-2
+
+    c(\mu) = c_{l,k} + \int_{\mu_{l,k}}^{\mu} p(\mu') d\mu'
+
+For histogram interpolation, we have that :math:`p(\mu') = p_{l,k}`. Thus,
+after integration we have that
+
+.. math::
+    :label: cumulative-dist-histogram
+
+    c(\mu) = c_{l,k} + (\mu - \mu_{l,k}) p_{l,k} = \xi
+
+Solving for the scattering cosine, we obtain the final form for histogram
+interpolation:
+
+.. math::
+    :label: cosine-histogram
+
+    \mu = \mu_{l,k} + \frac{\xi - c_{l,k}}{p_{l,k}}
+
+For linear-linear interpolation, we represent the function :math:`p(\mu')` as a
+first-order polynomial in :math:`\mu'`. If we interpolate between successive
+values on the probability distribution function, we know that
+
+.. math::
+    :label: pdf-interpolation
+
+    p(\mu') - p_{l,k} = \frac{p_{l,k+1} - p_{l,k}}{\mu_{l,k+1} - \mu_{l,k}}
+    (\mu' - \mu_{l,k})
+
+Solving for :math:`p(\mu')` in equation :eq:`pdf-interpolation` and inserting it
+into :eq:`cdf-2`, we obtain
+
+.. math::
+    :label: cdf-linlin
+
+    c(\mu) = c_{l,k} + \int_{\mu_{l,k}}^{\mu} \left [ \frac{p_{l,k+1} -
+    p_{l,k}}{\mu_{l,k+1} - \mu_{l,k}} (\mu' - \mu_{l,k}) + p_{l,k} \right ]
+    d\mu'
+
+Let us now make a change of variables using
+
+.. math::
+    :label: introduce-eta
+
+    \eta = \frac{p_{l,k+1} - p_{l,k}}{\mu_{l,k+1} - \mu_{l,k}}
+    (\mu' - \mu_{l,k})
+
+Equation :eq:`cdf-linlin` then becomes
+
+.. math::
+    :label: cdf-linlin-eta
+
+    c(\mu) = c_{l,k} + \frac{1}{m} \int_{p_{l,k}}^{m(\mu - \mu_{l,k}) + p_{l,k}}
+    \eta \, d\eta
+
+where we have used
+
+.. math::
+    :label: slope
+
+    m = \frac{p_{l,k+1} - p_{l,k}}{\mu_{l,k+1} - \mu_{l,k}}
+
+Integrating equation :eq:`cdf-linlin-eta`, we have
+
+.. math::
+    :label: cdf-linlin-integrated
+
+    c(\mu) = c_{l,k} + \frac{1}{2m} \left ( \left [ m (\mu - \mu_{l,k} ) +
+    p_{l,k} \right ]^2 - p_{l,k}^2 \right ) = \xi
+
+Solving for :math:`\mu`, we have the final form for the scattering cosine using
+linear-linear interpolation:
+
+.. math::
+    :label: cosine-linlin
+
+    \mu = \mu_{l,k} + \frac{1}{m} \left ( \sqrt{p_{l,k}^2 + 2 m (\xi - c_{l,k}
+    )} - p_{l,k} \right )
 
 .. _sample-energy:
 

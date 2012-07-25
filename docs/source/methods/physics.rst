@@ -44,8 +44,8 @@ of the scattering angle is simply calculated as
 
 where :math:`\xi` is a random number sampled uniformly on :math:`[0,1)`.
 
-Equiprobable Bin Distribution
-+++++++++++++++++++++++++++++
+Equiprobable Angle Bin Distribution
++++++++++++++++++++++++++++++++++++
 
 For a 32 equiprobable bin distribution, the procedure to determine the
 scattering cosine is as follows. First, we select a random number :math:`\xi` to
@@ -64,8 +64,10 @@ The same random number can then also be used to interpolate between neighboring
 
     \mu = \mu_i + (32\xi - i) (\mu_{i+1} - \mu_i)
 
-Tabular Distribution
-++++++++++++++++++++
+.. _angle-tabular:
+
+Tabular Angular Distribution
+++++++++++++++++++++++++++++
 
 As the MCNP Manual points out, using an equiprobable bin distribution works well
 for high-probability regions of the scattering cosine probability, but for
@@ -74,7 +76,7 @@ is to represent the scattering cosine with a tabular distribution. In this case,
 we have a table of cosines and their corresponding values for a probability
 distributions function and cumulative distribution function. For each incoming
 neutron energy :math:`E_i`, let us call :math:`p_{i,j}` the j-th value in the
-probability distribution function and :math:`c_i,j` the j-th value in the
+probability distribution function and :math:`c_{i,j}` the j-th value in the
 cumulative distribution function. We first find the interpolation factor on the
 incoming energy grid:
 
@@ -83,17 +85,18 @@ incoming energy grid:
 
     f = \frac{E - E_i}{E_{i+1} - E_i}
 
-Then, statistical interpolation is performed to choose between using the cosines
-and distribution functions corresponding to energy :math:`E_i` or
-:math:`E_{i+1}`. Let :math:`\ell` be the chosen table where :math:`\ell = i` if
-:math:`\xi > f` and :math:`\ell = i + 1` otherwise where :math:`\xi` is a random
-number. A different random number is used to sample a scattering cosine bin
-:math:`j` using the cumulative distribution function:
+where :math:`E` is the incoming energy of the particle. Then, statistical
+interpolation is performed to choose between using the cosines and distribution
+functions corresponding to energy :math:`E_i` and :math:`E_{i+1}`. Let
+:math:`\ell` be the chosen table where :math:`\ell = i` if :math:`\xi > f` and
+:math:`\ell = i + 1` otherwise where :math:`\xi` is a random number. A different
+random number is used to sample a scattering cosine bin :math:`j` using the
+cumulative distribution function:
 
 .. math::
     :label: sample-cdf
 
-    c_{l,j} < \xi < c_{l,j+1}
+    c_{\ell,j} < \xi < c_{\ell,j+1}
 
 The final scattering cosine will depend on whether histogram or linear-linear
 interpolation is used. In general, we can write the cumulative distribution
@@ -105,21 +108,22 @@ function as
     c(\mu) = \int_{-1}^\mu p(\mu') d\mu'
 
 where :math:`c(\mu)` is the cumulative distribution function and :math:`p(\mu)`
-is the probability distribution function. Since we know that :math:`c(\mu_{l,k})
-= c_{l,k}`, this implies that for :math:`\mu > \mu_{l,k}`,
+is the probability distribution function. Since we know that
+:math:`c(\mu_{\ell,j}) = c_{\ell,j}`, this implies that for :math:`\mu >
+\mu_{\ell,j}`,
 
 .. math::
     :label: cdf-2
 
-    c(\mu) = c_{l,k} + \int_{\mu_{l,k}}^{\mu} p(\mu') d\mu'
+    c(\mu) = c_{\ell,j} + \int_{\mu_{\ell,j}}^{\mu} p(\mu') d\mu'
 
-For histogram interpolation, we have that :math:`p(\mu') = p_{l,k}`. Thus,
+For histogram interpolation, we have that :math:`p(\mu') = p_{\ell,j}`. Thus,
 after integration we have that
 
 .. math::
     :label: cumulative-dist-histogram
 
-    c(\mu) = c_{l,k} + (\mu - \mu_{l,k}) p_{l,k} = \xi
+    c(\mu) = c_{\ell,j} + (\mu - \mu_{\ell,j}) p_{\ell,j} = \xi
 
 Solving for the scattering cosine, we obtain the final form for histogram
 interpolation:
@@ -127,7 +131,7 @@ interpolation:
 .. math::
     :label: cosine-histogram
 
-    \mu = \mu_{l,k} + \frac{\xi - c_{l,k}}{p_{l,k}}
+    \mu = \mu_{\ell,j} + \frac{\xi - c_{\ell,j}}{p_{\ell,j}}
 
 For linear-linear interpolation, we represent the function :math:`p(\mu')` as a
 first-order polynomial in :math:`\mu'`. If we interpolate between successive
@@ -136,8 +140,8 @@ values on the probability distribution function, we know that
 .. math::
     :label: pdf-interpolation
 
-    p(\mu') - p_{l,k} = \frac{p_{l,k+1} - p_{l,k}}{\mu_{l,k+1} - \mu_{l,k}}
-    (\mu' - \mu_{l,k})
+    p(\mu') - p_{\ell,j} = \frac{p_{\ell,j+1} - p_{\ell,j}}{\mu_{\ell,j+1} -
+    \mu_{\ell,j}} (\mu' - \mu_{\ell,j})
 
 Solving for :math:`p(\mu')` in equation :eq:`pdf-interpolation` and inserting it
 into equation :eq:`cdf-2`, we obtain
@@ -145,40 +149,40 @@ into equation :eq:`cdf-2`, we obtain
 .. math::
     :label: cdf-linlin
 
-    c(\mu) = c_{l,k} + \int_{\mu_{l,k}}^{\mu} \left [ \frac{p_{l,k+1} -
-    p_{l,k}}{\mu_{l,k+1} - \mu_{l,k}} (\mu' - \mu_{l,k}) + p_{l,k} \right ]
-    d\mu'
+    c(\mu) = c_{\ell,j} + \int_{\mu_{\ell,j}}^{\mu} \left [ \frac{p_{\ell,j+1} -
+    p_{\ell,j}}{\mu_{\ell,j+1} - \mu_{\ell,j}} (\mu' - \mu_{\ell,j}) +
+    p_{\ell,j} \right ] d\mu'
 
 Let us now make a change of variables using
 
 .. math::
     :label: introduce-eta
 
-    \eta = \frac{p_{l,k+1} - p_{l,k}}{\mu_{l,k+1} - \mu_{l,k}}
-    (\mu' - \mu_{l,k})
+    \eta = \frac{p_{\ell,j+1} - p_{\ell,j}}{\mu_{\ell,j+1} - \mu_{\ell,j}}
+    (\mu' - \mu_{\ell,j})
 
 Equation :eq:`cdf-linlin` then becomes
 
 .. math::
     :label: cdf-linlin-eta
 
-    c(\mu) = c_{l,k} + \frac{1}{m} \int_{p_{l,k}}^{m(\mu - \mu_{l,k}) + p_{l,k}}
-    \eta \, d\eta
+    c(\mu) = c_{\ell,j} + \frac{1}{m} \int_{p_{\ell,j}}^{m(\mu - \mu_{\ell,j}) +
+    p_{\ell,j}} \eta \, d\eta
 
 where we have used
 
 .. math::
     :label: slope
 
-    m = \frac{p_{l,k+1} - p_{l,k}}{\mu_{l,k+1} - \mu_{l,k}}
+    m = \frac{p_{\ell,j+1} - p_{\ell,j}}{\mu_{\ell,j+1} - \mu_{\ell,j}}
 
 Integrating equation :eq:`cdf-linlin-eta`, we have
 
 .. math::
     :label: cdf-linlin-integrated
 
-    c(\mu) = c_{l,k} + \frac{1}{2m} \left ( \left [ m (\mu - \mu_{l,k} ) +
-    p_{l,k} \right ]^2 - p_{l,k}^2 \right ) = \xi
+    c(\mu) = c_{\ell,j} + \frac{1}{2m} \left ( \left [ m (\mu - \mu_{\ell,j} ) +
+    p_{\ell,j} \right ]^2 - p_{\ell,j}^2 \right ) = \xi
 
 Solving for :math:`\mu`, we have the final form for the scattering cosine using
 linear-linear interpolation:
@@ -186,8 +190,8 @@ linear-linear interpolation:
 .. math::
     :label: cosine-linlin
 
-    \mu = \mu_{l,k} + \frac{1}{m} \left ( \sqrt{p_{l,k}^2 + 2 m (\xi - c_{l,k}
-    )} - p_{l,k} \right )
+    \mu = \mu_{\ell,j} + \frac{1}{m} \left ( \sqrt{p_{\ell,j}^2 + 2 m (\xi -
+    c_{\ell,j} )} - p_{\ell,j} \right )
 
 .. _sample-energy:
 
@@ -216,6 +220,8 @@ if more than one is present.
 Once a secondary energy distribution has been sampled, the procedure for
 determining the outgoing energy will depend on which ACE law has been specified
 for the data.
+
+.. _ace-law-1:
 
 ACE Law 1 - Tabular Equiprobable Energy Bins
 ++++++++++++++++++++++++++++++++++++++++++++
@@ -248,7 +254,7 @@ energies of a scaled distribution, :math:`E_{i,j}` is the j-th outgoing energy
 corresponding to the incoming energy :math:`E_i`, and :math:`M` is the number of
 outgoing energy bins. Next, statistical interpolation is performed to choose
 between using the outgoing energy distributions corresponding to energy
-:math:`E_i` or :math:`E_{i+1}`. Let :math:`\ell` be the chosen table where
+:math:`E_i` and :math:`E_{i+1}`. Let :math:`\ell` be the chosen table where
 :math:`\ell = i` if :math:`\xi_1 > f` and :math:`\ell = i + 1` otherwise where
 :math:`\xi_1` is a random number. Now, we randomly sample an equiprobable
 outgoing energy bin :math:`j` and interpolate between successive values on the
@@ -286,6 +292,65 @@ where :math:`A` is the mass of the target nucleus measured in neutron masses.
 
 ACE Law 4 - Continuous Tabular Distribution
 +++++++++++++++++++++++++++++++++++++++++++
+
+This representation is very similar to :ref:`ace-law-1` except that instead of
+equiprobable outgoing energy bins, the outgoing energy distribution for each
+incoming energy is represented with a probability distribution function. For
+each incoming neutron energy :math:`E_i`, let us call :math:`p_{i,j}` the j-th
+value in the probability distribution function, :math:`c_{i,j}` the j-th value
+in the cumulative distribution function, and :math:`E_{i,j}` the j-th outgoing
+energy.
+
+Weproceed first as we did for ACE Law 1, determining the bounding energies of
+the particle's incoming energy such that :math:`E_i < E < E_{i+1}` and
+calculating an interpolationg factor :math:`f` with equation
+:eq:`interpolation-factor`. Next, statistical interpolation is performed to
+choose between using the outgoing energy distributions corresponding to energy
+:math:`E_i` and :math:`E_{i+1}`. Let :math:`\ell` be the chosen table where
+:math:`\ell = i` if :math:`\xi_1 > f` and :math:`\ell = i + 1` otherwise where
+:math:`\xi_1` is a random number. Then, we sample an outgoing energy bin
+:math:`j` using the cumulative distribution function:
+
+.. math::
+    :label: ace-law-4-sample-cdf
+
+    c_{\ell,j} < \xi_2 < c_{\ell,j+1}
+
+where :math:`\xi_2` is a random number sampled uniformly on :math:`[0,1)`. At
+this point, we need to inteporlate between the successive values on the outgoing
+energy distribution using either histogram or linear-linear interpolation. The
+formulas for these can be derived along the same lines as those found in
+:ref:`angle-tabular`. For histogram interpolation, the interpolated outgoing
+energy on the :math:`\ell`-th distribution is
+
+.. math::
+    :label: energy-histogram
+
+    \hat{E} = E_{\ell,j} + \frac{\xi_2 - c_{\ell,j}}{p_{\ell,j}}
+
+If linear-linear interpolation is to be used, the outgoing energy on the
+:math:`\ell`-th distribution is
+
+.. math::
+    :label: energy-linlin
+
+    \hat{E} = E_{\ell,j} + \frac{E_{\ell,j+1} - E_{\ell,j}}{p_{\ell,j+1} -
+    p_{\ell,j}} \left ( \sqrt{p_{\ell,j}^2 + 2 \frac{p_{\ell,j+1} -
+    p_{\ell,j}}{E_{\ell,j+1} - E_{\ell,j}} ( \xi_2 - c_{\ell,j} )} - p_{\ell,j}
+    \right )
+
+Since this outgoing energy may violate reaction kinematics, we then scale it to
+minimum and maximum energies interpolated between the neighboring outgoing
+energy distributions to get the final outgoing energy:
+
+.. math::
+    :label: ace-law-4-energy
+
+    E' = E_{min} + \frac{\hat{E} - E_{\ell,1}}{E_{\ell,M} - E_{\ell,1}}
+    (E_{max} - E_{min})
+
+where :math:`E_{min}` and :math:`E_{max}` are defined the same as in equation
+:eq:`ace-law-1-minmax`.
 
 ACE Law 7 - Maxwell Fission Spectrum
 ++++++++++++++++++++++++++++++++++++

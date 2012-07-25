@@ -549,6 +549,67 @@ sample the chosen tabular angular distribution has been previously described in
 ACE Law 66 - N-Body Phase Space Distribution
 ++++++++++++++++++++++++++++++++++++++++++++
 
+Reactions in which there are more than two products of similar masses are
+sometimes best treated by using what's known as an N-body phase
+distribution. This distribution has the following probability density function
+for outgoing energy of the :math:`i`-th particle in the center-of-mass system:
+
+.. math::
+    :label: n-body-pdf
+
+    p_i(E') dE' = C_n \sqrt{E'} (E_i^{max} - E')^{(3n/2) - 4} dE'
+
+where :math:`n` is the number of outgoing particles, :math:`C_n` is a
+normalization constant, :math:`E_i^{max}` is the maximum center-of-mass energy
+for particle :math:`i`, and :math:`E'` is the outgoing energy. The algorithm for
+sampling the outgoing energy is based on algorithms R28, C45, and C64 in the
+`Monte Carlo Sampler`_. First we calculate the maximum energy in the
+center-of-mass using the following equation:
+
+.. math::
+    :label: n-body-emax
+
+    E_i^{max} = \frac{A_p - 1}{A_p} \left ( \frac{A}{A+1} E + Q \right )
+
+where :math:`A_p` is the total mass of the outgoing particles in neutron masses,
+:math:`A` is the mass of the original target nucleus in neutron masses, and
+:math:`Q` is the Q-value of the reaction. Next we sample a value :math:`x` from
+a Maxwell distribution with a nuclear temperature of one using the algorithm
+outlined in :ref:`maxwell`. We then need to determine a value :math:`y` that
+will depend on how many outgoing particles there are. For :math:`n = 3`, we
+simply sample another Maxwell distribution with unity nuclear temperature. For
+:math:`n = 4`, we use the equation
+
+.. math::
+    :label: n-body-y4
+
+    y = -\ln ( \xi_1 \xi_2 \xi_3 )
+
+where :math:`\xi_i` are random numbers sampled on the interval
+:math:`[0,1)`. For :math:`n = 5`, we use the equation
+
+.. math::
+    :label: n-body-y5
+
+    y = -\ln ( \xi_1 \xi_2 \xi_3 \xi_4 ) - \ln ( \xi_5 ) \cos^2 \left (
+    \frac{\pi}{2} \xi_6 \right )
+
+After :math:`x` and :math:`y` have been determined, the outgoing energy is then
+calculated as
+
+.. math::
+    :label: n-body-energy
+
+    E' = \frac{x}{x + y} E_i^{max}
+
+There are two important notes to make regarding the N-body phase space
+distribution. First, the documentation (and code) for MCNP5 has a mistake in the
+algorithm for :math:`n = 4`. That being said, there are no existing nuclear data
+evaluations which use an N-body phase space distribution with :math:`n = 4`, so
+the error would not affect any calculations. In the ENDF/B-VII.0 nuclear data
+evaluation, only one reaction uses an N-body phase space distribution at all,
+the (n,2n) reaction with H-2.
+
 .. _rotate-angle:
 
 Transforming a Particle's Coordinates

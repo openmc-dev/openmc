@@ -290,6 +290,8 @@ and the incoming energy:
 
 where :math:`A` is the mass of the target nucleus measured in neutron masses.
 
+.. _ace-law-4:
+
 ACE Law 4 - Continuous Tabular Distribution
 +++++++++++++++++++++++++++++++++++++++++++
 
@@ -456,6 +458,68 @@ derivation [Watt]_.
 
 ACE Law 44 - Kalbach-Mann Correlated Scattering
 +++++++++++++++++++++++++++++++++++++++++++++++
+
+This law is very similar to ACE Law 4 except now the outgoing angle of the
+neutron is correlated to the outgoing energy and is not sampled from a separate
+distribution. For each incident neutron energy :math:`E_i` tabulated, there is
+an array of precompoung factors :math:`R_{i,j}` and angular distribution slopes
+:math:`A_{i,j}` corresponding to each outgoing energy bin :math:`j` in addition
+to the outgoing energies and distribution functions as in ACE Law 4.
+
+The calculation of the outgoing energy of the neutron proceeds exactly the same
+as in the algorithm described in :ref:`ace-law-4`. In that algorithm, we found
+an interpolation factor :math:`f`, statistically sampled an incoming energy bin
+:math:`\ell`, and sampled an outgoing energy bin :math:`j` based on the
+tabulated cumulative distribution function. Once the outgoing energy has been
+determined with equation :eq:`ace-law-4-energy`, we then need to calculate the
+outgoing angle based on the tabulated Kalbach-Mann parameters. These parameters
+themselves are subject to either histogram or linear-linear interpolation on the
+outgoing energy grid. For histogram interpolation, the parameters are
+
+.. math::
+    :label: KM-parameters-histogram
+
+    R = R_{\ell,j} \\
+    A = A_{\ell,j}
+
+If linear-linear interpolation is specified, the parameters are
+
+.. math::
+    :label: KM-parameters-linlin
+
+    R = R_{\ell,j} + \frac{\hat{E} - E_{\ell,j}}{E_{\ell,j+1} - E_{\ell,j}} (
+    R_{\ell,j+1} - R_{\ell,j} ) \\
+    A = A_{\ell,j} + \frac{\hat{E} - E_{\ell,j}}{E_{\ell,j+1} - E_{\ell,j}} (
+    A_{\ell,j+1} - A_{\ell,j} )
+
+where :math:`\hat{E}` is defined in equation :eq:`energy-linlin`. With the
+parameters determined, the probability distribution function for the cosine of
+the scattering angle is
+
+.. math::
+    :label: KM-pdf-angle
+
+    p(\mu) d\mu = \frac{A}{2 \sinh (A)} \left [ \cosh (A\mu) + R \sinh (A\mu)
+    \right ] d\mu
+
+The rules for sampling this probability distribution function can be derived
+based on rules C39 and C40 in the `Monte Carlo Sampler`_. First, we sample two
+random numbers :math:`\xi_3, \xi_4` on the unit interval. If :math:`\xi_3 > R`
+then the outgoing angle is
+
+.. math::
+    :label: KM-angle-1
+
+    \mu = \frac{1}{A} \ln \left ( T + \sqrt{T^2 + 1} \right )
+
+where :math:`T = (2 \xi_4 - 1) \sinh (A)`. If :math:`\xi_3 \le R`, then the
+outgoing angle is
+
+.. math::
+    :label: KM-angle-2
+
+    \mu = \frac{1}{A} \ln \left ( \xi_4 e^A + (1 - \xi_4) e^{-A} \right )
+
 
 ACE Law 61 - Correlated Energy and Angle Distribution
 +++++++++++++++++++++++++++++++++++++++++++++++++++++

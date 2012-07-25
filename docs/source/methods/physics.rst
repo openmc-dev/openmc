@@ -524,6 +524,28 @@ outgoing angle is
 ACE Law 61 - Correlated Energy and Angle Distribution
 +++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+This law is very similar to ACE Law 44 in the sense that the outgoing angle of
+the neutron is correlated to the outgoing energy and is not sampled from a
+separate distribution. In this case though, rather than being determined from an
+analytical distribution function, the cosine of the scattering angle is
+determined from a tabulated distribution. For each incident energy :math:`i` and
+outgoing energy :math:`j`, there is a tabulated angular distribution.
+
+The calculation of the outgoing energy of the neutron proceeds exactly the same
+as in the algorithm described in :ref:`ace-law-4`. In that algorithm, we found
+an interpolation factor :math:`f`, statistically sampled an incoming energy bin
+:math:`\ell`, and sampled an outgoing energy bin :math:`j` based on the
+tabulated cumulative distribution function. Once the outgoing energy has been
+determined with equation :eq:`ace-law-4-energy`, we then need to decide which
+angular distribution to use. If histogram interpolation was used on the outgoing
+energy bins, then we use the angular distribution corresponding to incoming
+energy bin :math:`\ell` and outgoing energy bin :math:`j`. If linear-linear
+interpolation was used on the outgoing energy bins, then we use the whichever
+angular distribution was closer to the sampled value of the cumulative
+distribution function for the outgoing energy. The actual algorithm used to
+sample the chosen tabular angular distribution has been previously described in
+:ref:`angle-tabular`.
+
 ACE Law 66 - N-Body Phase Space Distribution
 ++++++++++++++++++++++++++++++++++++++++++++
 

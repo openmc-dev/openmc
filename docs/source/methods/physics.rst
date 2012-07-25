@@ -31,6 +31,9 @@ distribution is represented as either
 - An equiprobable distribution with 32 bins, or
 - A tabular distribution.
 
+Isotropic Angular Distribution
+++++++++++++++++++++++++++++++
+
 In the first case, no data needs to be stored on the ACE table, and the cosine
 of the scattering angle is simply calculated as
 
@@ -40,6 +43,9 @@ of the scattering angle is simply calculated as
     \mu = 2\xi - 1
 
 where :math:`\xi` is a random number sampled uniformly on :math:`[0,1)`.
+
+Equiprobable Bin Distribution
++++++++++++++++++++++++++++++
 
 For a 32 equiprobable bin distribution, the procedure to determine the
 scattering cosine is as follows. First, we select a random number :math:`\xi` to
@@ -57,6 +63,9 @@ The same random number can then also be used to interpolate between neighboring
     :label: equiprobable-cosine
 
     \mu = \mu_i + (32\xi - i) (\mu_{i+1} - \mu_i)
+
+Tabular Distribution
+++++++++++++++++++++
 
 As the MCNP Manual points out, using an equiprobable bin distribution works well
 for high-probability regions of the scattering cosine probability, but for
@@ -131,7 +140,7 @@ values on the probability distribution function, we know that
     (\mu' - \mu_{l,k})
 
 Solving for :math:`p(\mu')` in equation :eq:`pdf-interpolation` and inserting it
-into :eq:`cdf-2`, we obtain
+into equation :eq:`cdf-2`, we obtain
 
 .. math::
     :label: cdf-linlin
@@ -184,6 +193,132 @@ linear-linear interpolation:
 
 Sampling Secondary Energy and Correlated Angle/Energy Distributions
 -------------------------------------------------------------------
+
+For a reaction with secondary neutrons, it is necessary to determine the
+outgoing energy of the neutrons. For anything other than elastic scattering, the
+outgoing energy must be determined based on tabulated or parameterized data. The
+`ENDF-6 Format`_ specifies a variety of ways that the secondary energy
+distribution can be represented. ENDF File 5 contains uncorrelated energy
+distribution where ENDF File 6 contains correlated energy-angle
+distributions. The ACE format specifies its own representations based loosely on
+the formats given in ENDF-6. In this section, we will describe how the outgoing
+energy of secondary particles is determined based on each ACE law.
+
+One of the subtleties in the ACE format is the fact that a single reaction can
+have multiple secondary energy distributions. This is mainly useful for
+reactions with multiple neutrons in the exit channel such as (n,2n) or
+(n,3n). In these types of reactions, each neutron is emitted corresponding to a
+different excitation level of the compound nucleus, and thus in general the
+neutrons will originate from different energy distributions. The first step in
+sampling a secondary energy is to sample between multiple energy distributions
+if more than one is present.
+
+Once a secondary energy distribution has been sampled, the procedure for
+determining the outgoing energy will depend on which ACE law has been specified
+for the data.
+
+ACE Law 1 - Tabular Equiprobable Energy Bins
+++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+ACE Law 3 - Inelastic Level Scattering
+++++++++++++++++++++++++++++++++++++++
+
+It can be shown [Foderaro]_ that in inelastic level scattering, the outgoing
+energy of the neutron :math:`E'` can be related to the Q-value of the reaction
+and the incoming energy:
+
+.. math::
+    :label: level-scattering
+
+    E' = \left ( \frac{A}{A+1} \right )^2 \left ( E - \frac{A + 1}{A} Q \right )
+
+where :math:`A` is the mass of the target nucleus measured in neutron masses.
+
+ACE Law 4 - Continuous Tabular Distribution
++++++++++++++++++++++++++++++++++++++++++++
+
+ACE Law 7 - Maxwell Fission Spectrum
+++++++++++++++++++++++++++++++++++++
+
+One representation of the secondary energies for neutrons from fission is the
+so-called Maxwell spectrum. A probability distribution for the Maxwell spectrum
+can be written in the form
+
+.. math::
+    :label: maxwell-spectrum
+
+    p(E') dE' = c E'^{1/2} e^{-E'/T(E)} dE'
+
+where :math:`E` is the incoming energy of the neutron and :math:`T` is the
+so-called nuclear temperature, which is a function of the incoming energy of the
+neutron. The ACE format contains a list of nuclear temperatures versus incoming
+energies. The nuclear temperature is interpolated between neighboring incoming
+energies using a specified interpolation law. Once the temperature :math:`T` is
+determined, we then calculate a candidate outgoing energy based on rule C64 in
+the `Monte Carlo Sampler`_:
+
+.. math::
+    :label: maxwell-E-candidate
+
+    E' = -T \left [ \log (\xi_1) + \log (\xi_2) \cos^2 \left ( \frac{\pi
+    \xi_3}{2} \right ) \right ]
+
+where :math:`\xi_1, \xi_2, \xi_3` are random numbers sampled on the unit
+interval. The outgoing energy is only accepted if
+
+.. math::
+    :label: maxwell-restriction
+
+    0 \le E' \le E - U
+
+where :math:`U` is called the restriction energy and is specified on the ACE
+table. If the outgoing energy is rejected, it is resampled using equation
+:eq:`maxwell-E-candidate`.
+
+ACE Law 9 - Evaporation Spectrum
+++++++++++++++++++++++++++++++++
+
+Evaporation spectra are primarily used in compound nucleus processes where a
+secondary particle can "evaporate" from the compound nucleus if it has
+sufficient energy. The probability distribution for an evaporation spectrum can
+be written in the form
+
+.. math::
+    :label: evaporation-spectrum
+
+    p(E') dE' = c E' e^{-E'/T(E)} dE'
+
+where :math:`E` is the incoming energy of the neutron and :math:`T` is the
+nuclear temperature, which is a function of the incoming energy of the
+neutron. The ACE format contains a list of nuclear temperatures versus incoming
+energies. The nuclear temperature is interpolated between neighboring incoming
+energies using a specified interpolation law. Once the temperature :math:`T` is
+determined, we then calculate a candidate outgoing energy based on rule C45 in
+the `Monte Carlo Sampler`_:
+
+.. math::
+    :label: evaporation-E
+
+    E' = -T \log (\xi_1 \xi_2)
+
+where :math:`\xi_1, \xi_2` are random numbers sampled on the unit
+interval. The outgoing energy is only accepted according to a specified
+restriction energy as in equation :eq:`maxwell-restriction`.
+
+
+ACE Law 11 - Energy-Dependent Watt Spectrum
++++++++++++++++++++++++++++++++++++++++++++
+
+ACE Law 44 - Kalbach-Mann Correlated Scattering
++++++++++++++++++++++++++++++++++++++++++++++++
+
+ACE Law 61 - Correlated Energy and Angle Distribution
++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ACE Law 66 - N-Body Phase Space Distribution
+++++++++++++++++++++++++++++++++++++++++++++
 
 .. _rotate-angle:
 
@@ -607,9 +742,9 @@ incorrect results.
 
 Probability tables in the ACE format are generated from the UNRESR module in
 NJOY following the method of Levitt. A similar method employed for the RACER and
-MC21_ Monte Carlo codes is described in [Sutton]_. For the discussion here, we
-will focus only on use of the probability table table as it appears in the ACE
-format.
+MC21_ Monte Carlo codes is described in a paper by `Sutton and Brown`_. For the
+discussion here, we will focus only on use of the probability table table as it
+appears in the ACE format.
 
 Each probability table for a nuclide contains the following information at a
 number of incoming energies within the unresolved resonance range:
@@ -666,11 +801,8 @@ the unresolved range to get the actual cross sections. Lastly, the total cross
 section is calculated as the sum of the elastic, fission, capture, and inelastic
 cross sections.
 
-.. _NJOY: http://t2.lanl.gov/codes.shtml
-
-.. _PREPRO: http://www-nds.iaea.org/ndspub/endf/prepro/
-
-.. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf
+.. [Foderaro] Anthony Foderaro, *The Elements of Neutron Interaction Theory*,
+   MIT Press, Cambridge, Massachusetts (1971).
 
 .. [SIGMA1] Dermett E. Cullen and Charles R. Weisbin, "Exact Doppler Broadening
    of Tabulated Cross Sections," *Nucl. Sci. Eng.*, **60**, pp. 199-229 (1976).
@@ -679,7 +811,8 @@ cross sections.
    National Laboratory (1979).
 
 .. [Williams] M. M. R. Williams, *The Slowing Down and Thermalization of
-   Neutrons*, North-Holland Publishing Co., Amsterdam (1966).
+   Neutrons*, North-Holland Publishing Co., Amsterdam (1966). This book can be
+   obtained for free from the OECD_.
 
 .. [Squires] G. L. Squires, *Introduction to the Theory of Thermal Neutron
    Scattering*, Cambridge University Press (1978).
@@ -688,9 +821,18 @@ cross sections.
    Neutron Resonances in Monte Carlo Calculations," *Nucl. Sci. Eng.*, **49**,
    pp. 450-457 (1972).
 
-.. [Sutton] Thomas M. Sutton and Forrest B. Brown, "Implementation of
-   the Probability Table Method in a Continuous-Energy Monte Carlo Code System,"
-   *Proc. International Conf. on the Physics of Nucl. Sci. and Technology*,
-   October 5-8, Long Island, New York (1998).
-
 .. |sab| replace:: S(:math:`\alpha,\beta`)
+
+.. _OECD: http://www.oecd-nea.org/dbprog/MMRW-BOOKS.html
+
+.. _NJOY: http://t2.lanl.gov/codes.shtml
+
+.. _PREPRO: http://www-nds.iaea.org/ndspub/endf/prepro/
+
+.. _ENDF-6 Format: http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
+
+.. _Monte Carlo Sampler: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-9721_3rdmcsampler.pdf
+
+.. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf
+
+.. _Sutton and Brown: http://www.osti.gov/bridge/product.biblio.jsp?osti_id=307911

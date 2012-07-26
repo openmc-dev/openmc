@@ -797,7 +797,8 @@ second-chance fission, etc. An ACE table either lists the partial fission
 reactions with secondary energy distributions for each one, or a total fission
 reaction with a single secondary energy distribution.
 
-When a fission reaction is sampled in OpenMC, the following algorithm is used to
+When a fission reaction is sampled in OpenMC (either total fission or, if data
+exists, first- or second-chance fission), the following algorithm is used to
 create and store fission sites for the following generation. First, the average
 number of prompt and delayed neutrons must be determined to decide whether the
 secondary neutrons will be prompt or delayed. This is important because delayed

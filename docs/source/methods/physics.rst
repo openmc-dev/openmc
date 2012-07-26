@@ -767,6 +767,17 @@ of the particle is changed also using the procedure in
 Although inelastic scattering leaves the target nucleus in an excited state, no
 secondary photons from nuclear de-excitation are tracked in OpenMC.
 
+------------------------
+:math:`(n,xn)` Reactions
+------------------------
+
+These types of reactions are just treated as inelastic scattering and as such
+are subject to the same procedure as described in
+:ref:`inelastic-scatter`. Rather than tracking multiple secondary neutrons, the
+weight of the outgoing neutron is multiplied by the number of secondary
+neutrons, e.g. for (n,2n), only one outgoing neutron is tracked but its weight
+is doubled.
+
 -------
 Fission
 -------
@@ -842,20 +853,34 @@ position of the collision site are stored in an array called the fission
 bank. In a subsequent generation, these fission bank sites are used as starting
 source sites.
 
-------------------------
-:math:`(n,xn)` Reactions
-------------------------
+----------------------------------------------------
+:math:`(n,\gamma)` and Other Disappearance Reactions
+----------------------------------------------------
 
-These types of reactions are just treated as inelastic scattering and as such
-are subject to the same procedure as described in
-:ref:`inelastic-scatter`. Rather than tracking multiple secondary neutrons, the
-weight of the outgoing neutron is multiplied by the number of secondary
-neutrons, e.g. for (n,2n), only one outgoing neutron is tracked but its weight
-is doubled.
+All absorption reactions other than fission do not produce any secondary
+neutrons. As a result, these are the easiest type of reactions to handle. When a
+collision occurs, the first step is to sample a nuclide within a material. Once
+the nuclide has been sampled, then a specific reaction for that nuclide is
+sampled. Since the total absorption cross section is pre-calculated at the
+beginning of a simulation, the first step in sampling a reaction is to determine
+whether a "disappearance" reaction occurs where no secondary neutrons are
+produced. This is done by sampling a random number :math:`\xi` on the interval
+:math:`[0,1)` and checking whether
 
--------------------------------------------------
-:math:`(n,\gamma)` and Other Absorption Reactions
--------------------------------------------------
+.. math::
+    :label: absorption-condition
+
+    \xi \sigma_t (E) < \sigma_a (E) - \sigma_f (E)
+
+where :math:`\sigma_t` is the total cross section, :math:`\sigma_a` is the
+absorption cross section (this includes fission), and :math:`\sigma_f` is the
+total fission cross section. If this condition is met, then the neutron is
+killed and we proceed to simulate the next neutron from the source bank.
+
+No secondary particles from disappearance reactions such as photons or
+alpha-particles are produced or tracked. To truly capture the affects of gamma
+heating in a problem, it would be necessary to explicitly track photons
+originating from :math:`(n,\gamma)` and other reactions.
 
 .. _freegas:
 

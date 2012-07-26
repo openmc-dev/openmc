@@ -610,7 +610,7 @@ the error would not affect any calculations. In the ENDF/B-VII.0 nuclear data
 evaluation, only one reaction uses an N-body phase space distribution at all,
 the (n,2n) reaction with H-2.
 
-.. _rotate-angle:
+.. _transform-coordinates:
 
 Transforming a Particle's Coordinates
 -------------------------------------
@@ -714,9 +714,9 @@ center-of-mass system and is sampled according to the procedure outlined in
 :ref:`sample-angle`. After the cosine of the angle of scattering has been
 sampled, we need to determine the neutron's new direction
 :math:`\mathbf{\Omega}'_n` in the center-of-mass system. This is done with the
-procedure in :ref:`rotate-angle`. The new direction is multiplied by the speed
-of the neutron in the center-of-mass system to obtain the new velocity vector in
-the center-of-mass:
+procedure in :ref:`transform-coordinates`. The new direction is multiplied by
+the speed of the neutron in the center-of-mass system to obtain the new velocity
+vector in the center-of-mass:
 
 .. math::
     :label: velocity-neutron-com-2
@@ -748,6 +748,43 @@ However, this formula is only valid if the target was at rest. When the target
 nucleus does have thermal motion, the cosine of the scattering angle can be
 determined by simply taking the dot product of the neutron's initial and final
 direction in the lab system.
+
+.. _inelastic-scatter:
+
+--------------------
+Inelastic Scattering
+--------------------
+
+The major algorithms for inelastic scattering were described in previous
+sections. First, a scattering cosine is sampled using the algorithms in
+:ref:`sample-angle`. Then an outgoing energy is sampled using the algorithms in
+:ref:`sample-energy`. If the outgoing energy and scattering cosine were given in
+the center-of-mass system, they are transformed to laboratory coordinates using
+the algorithm described in :ref:`transform-coordinates`. Finally, the direction
+of the particle is changed also using the procedure in
+:ref:`transform-coordinates`.
+
+Although inelastic scattering leaves the target nucleus in an excited state, no
+secondary photons from nuclear de-excitation are tracked in OpenMC.
+
+-------
+Fission
+-------
+
+------------------------
+:math:`(n,xn)` Reactions
+------------------------
+
+These types of reactions are just treated as inelastic scattering and as such
+are subject to the same procedure as described in
+:ref:`inelastic-scatter`. Rather than tracking multiple secondary neutrons, the
+weight of the outgoing neutron is multiplied by the number of secondary
+neutrons, e.g. for (n,2n), only one outgoing neutron is tracked but its weight
+is doubled.
+
+-------------------------------------------------
+:math:`(n,\gamma)` and Other Absorption Reactions
+-------------------------------------------------
 
 .. _freegas:
 

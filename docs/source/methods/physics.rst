@@ -771,6 +771,77 @@ secondary photons from nuclear de-excitation are tracked in OpenMC.
 Fission
 -------
 
+While fission is normally considered an absorption reaction, as far as it
+concerns a Monte Carlo simulation it actually bears more similarities to
+inelastic scattering since fission results in secondary neutrons in the exit
+channel. Other absorption reactions like :math:`(n,\gamma)` or
+:math:`(n,\alpha)`, on the contrary, produce no neutrons. There are a few other
+idiosyncracies in treating fission. In a criticality calculation, secondary
+neutrons from fission are only "banked" for use in the next generation rather
+than being tracked as secondary neutrons from elastic and inelastic scattering
+would be. On top of this, fission is sometimes broken into first-chance fission,
+second-chance fission, etc. An ACE table either lists the partial fission
+reactions with secondary energy distributions for each one, or a total fission
+reaction with a single secondary energy distribution.
+
+When a fission reaction is sampled in OpenMC, the following algorithm is used to
+create and store fission sites for the following generation. First, the average
+number of prompt and delayed neutrons must be determined to decide whether the
+secondary neutrons will be prompt or delayed. This is important because delayed
+neutrons have a markedly different spectrum from prompt neutrons, one that has a
+lower average energy of emission. The total number of neutrons emitted
+:math:`\nu_t` is given as a function of incident energy in the ACE format. Two
+representations exist for :math:`\nu_t`. The first is a polynomial of arbitrary
+order with coefficients :math:`c_0,c_1,\dots`. If :math:`\nu_t` has this format,
+we can evaluate it at incoming energy :math:`E` by using the equation
+
+.. math::
+    :label: nu-polynomial
+
+    \nu_t (E) = \sum_{i = 0}^N c_i E^i
+
+where :math:`N` is the order of the polynomial. The other representation is just
+a tabulated function with a specified interpolation law. The number of prompt
+neutrons released per fission event :math:`\nu_p` is also given as a function of
+incident energy and can be specified in a polynomial or tabular format. The
+number of delayed neutrons released per fission event :math:`\nu_d` can only be
+specified in a tabular format. In practice, we only need to determine
+:math:`nu_t` and :math:`nu_d`. Once these have been determined, we can
+calculated the delayed neutron fraction
+
+.. math::
+    :label: beta
+
+    \beta = \frac{\nu_d}{\nu_t}
+
+We then need to determine how many total neutrons should be emitted from
+fission. If no suvival biasing is being used, then the number of neutrons
+emitted is
+
+.. math::
+    :label: fission-neutrons
+
+    \nu = \frac{w \nu_t}{k_{eff}}
+
+where :math:`w` is the statistical weight and :math:`k_{eff}` is the effective
+multiplication factor from the previous generation. The number of neutrons
+produced is biased in this manner so that the expected number of fission
+neutrons produced is the number of source particles that we started with in the
+generation. Since :math:`\nu` is not an integer, we use the following procedure
+to obtain an integral number of fission neutrons to produce. If :math:`\xi >
+\nu - \lfloor \nu \rfloor`, then we produce :math:`\lfloor \nu \rfloor`
+neutrons. Otherwise, we produce :math:`\lfloor \nu \rfloor + 1` neutrons. Then,
+for each fission site produced, we sample the outgoing angle and energy
+according to the algorithms given in :ref:`sample-angle` and
+:ref:`sample-energy` respectively. If the neutron is to be born delayed, then
+there is an extra step of sampling a delayed neutron precursor group since they
+each have an associated secondary energy distribution.
+
+The sampled outgoing angle and energy of fission neutrons along with the
+position of the collision site are stored in an array called the fission
+bank. In a subsequent generation, these fission bank sites are used as starting
+source sites.
+
 ------------------------
 :math:`(n,xn)` Reactions
 ------------------------

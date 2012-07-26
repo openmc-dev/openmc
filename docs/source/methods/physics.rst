@@ -947,21 +947,25 @@ than 0 K, it will have motion associated with the thermal vibration. Thus, the
 velocity of the neutron relative to the target nucleus is in general not the
 same as the velocity of the neutron entering the collision.
 
-The affect of the thermal motion on the interaction probability can be written
+The effect of the thermal motion on the interaction probability can be written
 as
 
 .. math::
-    :label: freegas1
+    :label: doppler-broaden
 
-    v_n \sigma (v_n, T) = \int_0^\infty d\mathbf{v}_T \sigma(v_r, 0)
-    \mathbf{v}_r p(\mathbf{v}_T)
+    v_n \bar{\sigma} (v_n, T) = \int d\mathbf{v}_T v_r \sigma(v_r)
+    \phi (\mathbf{v}_T, T)
     
 where :math:`v_n` is the magnitude of the velocity of the neutron,
-:math:`\mathbf{v}_T` is the velocity of the target nucleus, :math:`\mathbf{v}_r`
-is the relative velocity, and :math:`T` is the temperature of the target
-material. In a Monte Carlo code, one must account for the effect of the thermal
-motion on both the integrated cross-section as well as secondary angle and
-energy distributions. For integrated cross-sections, it is possible to calculate
+:math:`\bar{\sigma}` is an effective cross section, :math:`T` is the temperature
+of the target material, :math:`\mathbf{v}_T` is the velocity of the target
+nucleus, :math:`v_r = || \mathbf{v}_n - \mathbf{v}_T ||` is the magnitude of the
+relative velocity, :math:`\sigma` is the cross section at 0 K, and :math:`\phi
+(\mathbf{v}_T, T)` is the probability distribution for the target nucleus
+velocity at temperature :math:`T` (normally a Maxwellian). In a Monte Carlo
+code, one must account for the effect of the thermal motion on both the
+integrated cross-section as well as secondary angle and energy
+distributions. For integrated cross-sections, it is possible to calculate
 thermally-averaged cross-sections by applying a kernel Doppler broadening
 algorithm to data at 0 K (or some temperature lower than the desired
 temperature). The most ubiquitous algorithm for this purpose is the [SIGMA1]_
@@ -983,83 +987,129 @@ Fortunately, it is possible to directly sample the velocity of the target
 nuclide and then use it directly in the kinematic calculations. However, this
 calculation is a bit more nuanced than it might seem at first glance. One might
 be tempted to simply sample a Maxwellian distribution for the velocity of the
-target nuclide.  Careful inspection of equation :eq:`freegas1` however tells us
-that target velocities that produce relative velocities which correspond to high
-cross sections will have a greater contribution to the effective reaction
-rate. This is most important when the velocity of the incoming neutron is close
-to a resonance. For example, if the neutron's velocity corresponds to a trough
-in a resonance elastic scattering cross-section, a very small target velocity
-can cause the relative velocity to correspond to the peak of the resonance, thus
-making a disproportionate contribution to the reaction rate. The conclusion is
-that if we are to sample a target velocity in the Monte Carlo code, it must be
-done in such a way that preserves the thermally-averaged reaction rate as per
-equation :eq:`freegas`.
+target nuclide.  Careful inspection of equation :eq:`doppler-broaden` however
+tells us that target velocities that produce relative velocities which
+correspond to high cross sections will have a greater contribution to the
+effective reaction rate. This is most important when the velocity of the
+incoming neutron is close to a resonance. For example, if the neutron's velocity
+corresponds to a trough in a resonance elastic scattering cross-section, a very
+small target velocity can cause the relative velocity to correspond to the peak
+of the resonance, thus making a disproportionate contribution to the reaction
+rate. The conclusion is that if we are to sample a target velocity in the Monte
+Carlo code, it must be done in such a way that preserves the thermally-averaged
+reaction rate as per equation :eq:`doppler-broaden`.
 
 The method by which most Monte Carlo codes sample the target velocity for use in
 elastic scattering kinematics is outlined in detail by [Gelbard]_. The
-derivation here largely follows that of Gelbard. The first assumption we can
-make is that the velocity distribution for the thermal motion is isotropic, i.e.
+derivation here largely follows that of Gelbard. Let us first write the reaction
+rate as a function of the velocity of the target nucleus:
 
 .. math::
-    :label: freegas2
+    :label: reaction-rate
 
-    p(\mathbf{v}_T) d\mathbf{v}_T = \frac{1}{4\pi} p(v_T) dv_T d\mu d\phi
+    R(\mathbf{v}_T) = || \mathbf{v}_n - \mathbf{v}_T || \sigma ( ||
+    \mathbf{v}_n - \mathbf{v}_T || ) \phi ( \mathbf{v}_T, T )
 
-With this assumption, we can now rewrite equation :eq:`freegas1` as
+where :math:`R` is the reaction rate. Note that this is just the right-hand side
+of equation :eq:`doppler-broaden`. Based on the discussion above, we want to
+construct a probability distribution function for sampling the target velocity
+to preserve the reaction rate -- this is different from the overall probability
+distribution function for the target velocity, :math:`\phi (\mathbf{v}_T,
+T)`. This probability distribution function can be found by integrating equation
+:eq:`reaction-rate` to obtain a normalization factor:
 
 .. math::
-    :label: freegas3
+    :label: target-pdf-1
 
-    v_n \sigma (v_n, T) = \frac{1}{2} \int_{-1}^1 d\mu \int\limits_{v_r > 0}
-    dv_T v_r \sigma (v_r, 0) p(v_T)
+    p( \mathbf{v}_T ) d\mathbf{v}_T = \frac{R(\mathbf{v}_T) d\mathbf{v}_T}{\int
+    d\mathbf{v}_T \, R(\mathbf{v}_T)}
 
-after integrating over :math:`d\phi`. To change the outer variable of
-integration from :math:`\mu` to :math:`v_r`, we can establish a relation between
-these variables based on the law of cosines.
+Let us call the normalization factor in the denominator of equation
+:eq:`target-pdf-1` :math:`C`.
+
+It is normally assumed that :math:`\sigma (v_r)` is constant over the range of
+relative velocities of interest. This is a good assumption for almost all cases
+since the elastic scattering cross section varies slowly with velocity for light
+nuclei, and for heavy nuclei where large variations can occur due to resonance
+scattering, the moderating effect is rather small. Nonetheless, this assumption
+can cause incorrect answers in systems with U-238 where the low-lying resonances
+can cause a significant amount of up-scatter that would be ignored by this
+assumption. Nevertheless, with this assumption, we write :math:`\sigma (v_r) =
+\sigma_s` which simplifies :eq:`target-pdf-1` to
+
+.. math::
+    :label: target-pdf-2
+
+    p( \mathbf{v}_T ) d\mathbf{v}_T = \frac{\sigma_s}{C} || \mathbf{v}_n -
+    \mathbf{v}_T || \phi ( \mathbf{v}_T, T ) d\mathbf{v}_T
+
+At this point, we'd like to go from a distribution in :math:`\mathbf{v}_T` to
+one in :math:`v_T` and :math:`\mu`, the angle between the neutron and target
+velocity vectors. This can be done in the following manner. First we note that
+the velocity distribution for the thermal motion (a Maxwellian) is isotropic and
+therefore we can write
+
+.. math::
+    :label: velocity-isotropic
+
+    \phi (\mathbf{v}_T, T) d\mathbf{v}_T = \frac{1}{4\pi} \phi (v_T, T) dv_T
+    d\mu d\phi
+
+Integrating out the azimuthal angle, we can rewrite our desired probability
+distribution function as
+
+.. math::
+    :label: target-pdf-3
+
+    p( v_T, \mu ) dv_T d\mu = \frac{\sigma_s}{C'} || \mathbf{v}_n - \mathbf{v}_T
+    || \phi ( v_T, T ) dv_T d\mu
+
+Note that the Maxwellian distribution for the speed of the target nucleus has no
+dependence on the angle between the neutron and target velocity vectors. Thus,
+only the term :math:`|| \mathbf{v}_n - \mathbf{v}_T ||` imposes any constraint
+on the allowed angle. Our last task is to take that term and write it in terms
+of magnitudes of the velocity vectors and the angle rather than the vectors
+themselves. We can establish this relation based on the law of cosines which
+tells us that
 
 .. math::
     :label: lawcosine
 
     2 v_n v_T \mu = v_n^2 + v_T^2 - v_r^2
 
-The probability distribution for the magnitude of the velocity of the target
-nucleus and the angle between the neutron and target velocity is
+Thus, we can infer that
 
 .. math::
-    :label: freegas4
+    :label: change-terms
 
-    P(v_T, \mu) = \frac{\sigma (v_r, 0) v_r P(v_T)}{2 \sigma (v_n, T) v_n}
+    || \mathbf{v}_n - \mathbf{v}_T || = || \mathbf{v}_r || = v_r = \sqrt{v_n^2 +
+       v_T^2 - 2v_n v_T \mu}
 
-It is normally assumed that :math:`\sigma (v_r, 0)` is constant over the range
-of relative velocities of interest. This is a good assumption for almost all
-cases since the elastic scattering cross section varies slowly with velocity for
-light nuclei, and for heavy nuclei where large variations can occur due to
-resonance scattering, the moderating effect is rather small. Nonetheless, this
-assumption can cause incorrect answers in systems with U-238 where the low-lying
-resonances can cause a significant amount of up-scatter that would be ignored by
-this assumption.
-
-With this (sometimes incorrect) assumption, we see that the probability
-distribution is proportional to
+Inserting equation :eq:`change-terms` into :eq:`target-pdf-3`, we obtain
 
 .. math::
-    :label: freegas5
+    :label: target-pdf-4
 
-    P(v_T, \mu) \propto v_r P(v_T) = | v_n - v_T | P(v_T)
+    p( v_T, \mu ) dv_T d\mu = \frac{\sigma_s}{C'} \sqrt{v_n^2 + v_T^2 - 2v_n v_T
+       \mu} \, \phi ( v_T, T ) dv_T d\mu
 
-We can divide this probability distribution into two parts as such:
+This expression is still quite formidable and does not lend itself to any
+natural sampling scheme. We can divide this probability distribution into two
+parts as such:
 
 .. math::
-    :label: freegas6
+    :label: divide-pdf
 
-    P(v_T, \mu) &= f_1(v_T, \mu) f_2(v_T) \\
-    f_1(v_T, \mu) &= \frac{| v_n - v_T |}{C (v_n + v_T)} \\
-    f_2(v_T) &= (v_n + v_T) P(v_T)
+    p(v_T, \mu) &= f_1(v_T, \mu) f_2(v_T) \\
 
-where :math:`C = \int dv_T \sigma v_r P(v_T)`. In general, any probability
-distribution function of the form :math:`p(x) = f_1(x) f_2(x)` with
-:math:`f_1(x)` bounded can be sampled by sampling :math:`x_s` from the
-distribution
+    f_1(v_T, \mu) &= \frac{\sigma_s \sqrt{v_n^2 + v_T^2 - 2v_n v_T \mu}}{C'
+       (v_n + v_T)} \\
+
+    f_2(v_T) &= (v_n + v_T) \phi(v_T, T)
+
+In general, any probability distribution function of the form :math:`p(x) =
+f_1(x) f_2(x)` with :math:`f_1(x)` bounded can be sampled by sampling
+:math:`x_s` from the distribution
 
 .. math::
     :label: freegas7
@@ -1309,7 +1359,7 @@ References
 
 .. [Foderaro] Anthony Foderaro, *The Elements of Neutron Interaction Theory*,
    MIT Press, Cambridge, Massachusetts (1971). **Note:** Students, faculty, and
-   staff at MIT can obtian a PDF copy of this book for free from the `MIT
+   staff at MIT can obtain a PDF copy of this book for free from the `MIT
    Press`_.
 
 .. [Gelbard] Ely M. Gelbard, "Epithermal Scattering in VIM," FRA-TM-123, Argonne

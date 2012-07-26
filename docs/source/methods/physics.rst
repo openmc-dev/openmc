@@ -617,8 +617,30 @@ Transforming a Particle's Coordinates
 
 Once the cosine of the scattering angle :math:`\mu` has been sampled either from
 a angle distribution or a correlated angle-energy distribution, we are still
-left with the task of transforming the particle's coordinates. The scattering
-cosine that we sampled only tells us the cosine of the angle between the
+left with the task of transforming the particle's coordinates. If the outgoing
+energy and scattering cosine were given in the center-of-mass system, then we
+first need to transform these into the laboratory system. The relationship
+between the outgoing energy in center-of-mass and laboratory is
+
+.. math::
+    :label: energy-com-to-lab
+
+    E' = E'_{cm} + \frac{E + 2\mu_{cm} (A + 1) \sqrt{EE'_{cm}}}{(A+1)^2}.
+
+where :math:`E'_{cm}` is the outgoing energy in the center-of-mass system,
+:math:`\mu_{cm}` is the scattering cosine in the center-of-mass system,
+:math:`E'` is the outgoing energy in the laboratory system, and :math:`E` is the
+incident neutron energy. The relationship between the scattering cosine in
+center-of-mass and laboratory is
+
+.. math::
+    :label: angle-com-to-lab
+
+    \mu = \mu_{cm} \sqrt{\frac{E'_{cm}}{E'}} + \frac{1}{A + 1}
+    \sqrt{\frac{E}{E'}}.
+
+where :math:`\mu` is the scattering cosine in the laboratory system. The
+scattering cosine still only tells us the cosine of the angle between the
 original direction of the particle and the new direction of the particle. If we
 express the pre-collision direction of the particle as :math:`\mathbf{\Omega} =
 (u,v,w)` and the post-collision direction of the particle as

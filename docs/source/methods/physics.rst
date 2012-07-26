@@ -954,23 +954,22 @@ as
     :label: doppler-broaden
 
     v_n \bar{\sigma} (v_n, T) = \int d\mathbf{v}_T v_r \sigma(v_r)
-    \phi (\mathbf{v}_T, T)
+    M (\mathbf{v}_T)
     
 where :math:`v_n` is the magnitude of the velocity of the neutron,
 :math:`\bar{\sigma}` is an effective cross section, :math:`T` is the temperature
 of the target material, :math:`\mathbf{v}_T` is the velocity of the target
 nucleus, :math:`v_r = || \mathbf{v}_n - \mathbf{v}_T ||` is the magnitude of the
-relative velocity, :math:`\sigma` is the cross section at 0 K, and :math:`\phi
-(\mathbf{v}_T, T)` is the probability distribution for the target nucleus
-velocity at temperature :math:`T` (normally a Maxwellian). In a Monte Carlo
-code, one must account for the effect of the thermal motion on both the
-integrated cross-section as well as secondary angle and energy
-distributions. For integrated cross-sections, it is possible to calculate
-thermally-averaged cross-sections by applying a kernel Doppler broadening
-algorithm to data at 0 K (or some temperature lower than the desired
-temperature). The most ubiquitous algorithm for this purpose is the [SIGMA1]_
-method developed by Red Cullen and subsequently refined by others. This method
-is used in the NJOY_ and PREPRO_ data processing codes.
+relative velocity, :math:`\sigma` is the cross section at 0 K, and :math:`M
+(\mathbf{v}_T)` is the probability distribution for the target nucleus velocity
+at temperature :math:`T` (a Maxwellian). In a Monte Carlo code, one must account
+for the effect of the thermal motion on both the integrated cross-section as
+well as secondary angle and energy distributions. For integrated cross-sections,
+it is possible to calculate thermally-averaged cross-sections by applying a
+kernel Doppler broadening algorithm to data at 0 K (or some temperature lower
+than the desired temperature). The most ubiquitous algorithm for this purpose is
+the [SIGMA1]_ method developed by Red Cullen and subsequently refined by
+others. This method is used in the NJOY_ and PREPRO_ data processing codes.
 
 The effect of thermal motion on secondary angle and energy distributions can be
 accounted for on-the-fly in a Monte Carlo simulation. We must first qualify
@@ -978,7 +977,7 @@ where it is actually used however. All threshold reactions are treated as being
 independent of temperature, and therefore they are not Doppler broadened in NJOY
 and no special procedure is used to adjust the secondary angle and energy
 distributions. The only non-threshold reactions with secondary neutrons are
-elastic scattering and fission. For fission, it is assumed that neutrons are
+elastic scattering and fission. For fission, it is assumed that the neutrons are
 emitted isotropically (this is not strictly true, but is nevertheless a good
 approximation). This leaves only elastic scattering that needs a special thermal
 treatment for secondary distributions.
@@ -1008,14 +1007,14 @@ rate as a function of the velocity of the target nucleus:
     :label: reaction-rate
 
     R(\mathbf{v}_T) = || \mathbf{v}_n - \mathbf{v}_T || \sigma ( ||
-    \mathbf{v}_n - \mathbf{v}_T || ) \phi ( \mathbf{v}_T, T )
+    \mathbf{v}_n - \mathbf{v}_T || ) M ( \mathbf{v}_T )
 
 where :math:`R` is the reaction rate. Note that this is just the right-hand side
 of equation :eq:`doppler-broaden`. Based on the discussion above, we want to
 construct a probability distribution function for sampling the target velocity
 to preserve the reaction rate -- this is different from the overall probability
-distribution function for the target velocity, :math:`\phi (\mathbf{v}_T,
-T)`. This probability distribution function can be found by integrating equation
+distribution function for the target velocity, :math:`M ( \mathbf{v}_T )`. This
+probability distribution function can be found by integrating equation
 :eq:`reaction-rate` to obtain a normalization factor:
 
 .. math::
@@ -1032,7 +1031,7 @@ relative velocities of interest. This is a good assumption for almost all cases
 since the elastic scattering cross section varies slowly with velocity for light
 nuclei, and for heavy nuclei where large variations can occur due to resonance
 scattering, the moderating effect is rather small. Nonetheless, this assumption
-can cause incorrect answers in systems with U-238 where the low-lying resonances
+may cause incorrect answers in systems with U-238 where the low-lying resonances
 can cause a significant amount of up-scatter that would be ignored by this
 assumption. Nevertheless, with this assumption, we write :math:`\sigma (v_r) =
 \sigma_s` which simplifies :eq:`target-pdf-1` to
@@ -1041,30 +1040,61 @@ assumption. Nevertheless, with this assumption, we write :math:`\sigma (v_r) =
     :label: target-pdf-2
 
     p( \mathbf{v}_T ) d\mathbf{v}_T = \frac{\sigma_s}{C} || \mathbf{v}_n -
-    \mathbf{v}_T || \phi ( \mathbf{v}_T, T ) d\mathbf{v}_T
+    \mathbf{v}_T || M ( \mathbf{v}_T ) d\mathbf{v}_T
 
-At this point, we'd like to go from a distribution in :math:`\mathbf{v}_T` to
-one in :math:`v_T` and :math:`\mu`, the angle between the neutron and target
-velocity vectors. This can be done in the following manner. First we note that
-the velocity distribution for the thermal motion (a Maxwellian) is isotropic and
-therefore we can write
+The Maxwellian distribution in velocity is
 
 .. math::
-    :label: velocity-isotropic
+    :label: maxwellian-velocity
 
-    \phi (\mathbf{v}_T, T) d\mathbf{v}_T = \frac{1}{4\pi} \phi (v_T, T) dv_T
-    d\mu d\phi
+    M (\mathbf{v}_T) = \left ( \frac{m}{2\pi kT} \right )^{3/2} \exp \left (
+    \frac{-m || \mathbf{v}_T^2 ||}{2kT} \right )
 
-Integrating out the azimuthal angle, we can rewrite our desired probability
-distribution function as
+where :math:`m` is the mass of the target nucleus and :math:`k` is Boltzmann's
+constant. Notice here that the term in the exponential is dependent only on the
+speed of the target, not on the actual direction. Thus, we can change the
+Maxwellian into a distribution for speed rather than velocity. The differential
+element of velocity is
+
+.. math::
+    :label: differential-velocity
+
+    d\mathbf{v}_T = v_T^2 dv_T d\mu d\phi
+
+Let us define the Maxwellian distribution in speed as
+
+.. math::
+    :label: maxwellian-speed
+
+    M (v_T) dv_T = \int_{-1}^1 d\mu \int_{0}^{2\pi} d\phi \, dv_T \, v_T^2
+    M(\mathbf{v}_T) = \sqrt{ \frac{2}{\pi} \left ( \frac{m}{kT} \right )^3}
+    v_T^2 \exp \left ( \frac{-m v_T}{2kT} \right ) dv_T
+
+To simplify things a bit, we'll define a parameter
+
+.. math::
+    :label: maxwellian-beta
+
+    \beta = \sqrt{\frac{m}{2kT}}
+
+Substituting this into equation :eq:`maxwellian-speed`, we get
+
+.. math::
+    :label: maxwellian-speed2
+
+    M (v_T) dv_T = \frac{4}{\sqrt{\pi}} \beta^3 v_T^2 \exp \left ( -\beta^2
+    v_T^2 \right ) dv_T
+
+Now, changing variables in equation :eq:`target-pdf-2` by using the result from
+equation :eq:`maxwellian-speed`, our new probabilty distribution function is
 
 .. math::
     :label: target-pdf-3
 
-    p( v_T, \mu ) dv_T d\mu = \frac{\sigma_s}{C'} || \mathbf{v}_n - \mathbf{v}_T
-    || \phi ( v_T, T ) dv_T d\mu
+    p( v_T, \mu ) dv_T d\mu = \frac{4\sigma_s}{\sqrt{\pi}C'} || \mathbf{v}_n -
+    \mathbf{v}_T || \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2 \right ) dv_T d\mu
 
-Note that the Maxwellian distribution for the speed of the target nucleus has no
+Again, the Maxwellian distribution for the speed of the target nucleus has no
 dependence on the angle between the neutron and target velocity vectors. Thus,
 only the term :math:`|| \mathbf{v}_n - \mathbf{v}_T ||` imposes any constraint
 on the allowed angle. Our last task is to take that term and write it in terms
@@ -1090,8 +1120,9 @@ Inserting equation :eq:`change-terms` into :eq:`target-pdf-3`, we obtain
 .. math::
     :label: target-pdf-4
 
-    p( v_T, \mu ) dv_T d\mu = \frac{\sigma_s}{C'} \sqrt{v_n^2 + v_T^2 - 2v_n v_T
-       \mu} \, \phi ( v_T, T ) dv_T d\mu
+    p( v_T, \mu ) dv_T d\mu = \frac{4\sigma_s}{\sqrt{\pi}C'} \sqrt{v_n^2 +
+       v_T^2 - 2v_n v_T \mu} \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2 \right )
+       dv_T d\mu
 
 This expression is still quite formidable and does not lend itself to any
 natural sampling scheme. We can divide this probability distribution into two
@@ -1102,29 +1133,101 @@ parts as such:
 
     p(v_T, \mu) &= f_1(v_T, \mu) f_2(v_T) \\
 
-    f_1(v_T, \mu) &= \frac{\sigma_s \sqrt{v_n^2 + v_T^2 - 2v_n v_T \mu}}{C'
-       (v_n + v_T)} \\
+    f_1(v_T, \mu) &= \frac{4\sigma_s}{\sqrt{\pi} C'} \frac{ \sqrt{v_n^2 +
+       v_T^2 - 2v_n v_T \mu}}{v_n + v_T} \\
 
-    f_2(v_T) &= (v_n + v_T) \phi(v_T, T)
+    f_2(v_T) &= (v_n + v_T) \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2 \right )
 
 In general, any probability distribution function of the form :math:`p(x) =
 f_1(x) f_2(x)` with :math:`f_1(x)` bounded can be sampled by sampling
-:math:`x_s` from the distribution
+:math:`x'` from the distribution
 
 .. math::
-    :label: freegas7
+    :label: freegas-f2
 
-    \frac{f_2(x)}{\int f_2(x) dx}
+    q(x) dx = \frac{f_2(x) dx}{\int f_2(x) dx}
 
 and accepting it with probability
 
 .. math::
-    :label: freegas8
+    :label: freegas-accept
 
-    \frac{f_1(x_s)}{\max f_1(x)}
+    p_{accept} = \frac{f_1(x')}{\max f_1(x)}
 
-It is normally assumed that the velocity distribution of the target nucleus
-assumes a Maxwellian distribution in velocity.
+The reason for dividing and multiplying the terms by :math:`v_n + v_T` is to
+ensure that the first term is bounded. In general, :math:`|| \mathbf{v}_n -
+\mathbf{v}_T ||` can take on arbitrarily large values, but if we divide it by
+its maximum value :math:`v_n + v_T`, then it ensures that the function will be
+bounded. We now must come up with a sampling scheme for equation
+:eq:`freegas-f2`. To determine :math:`q(v_T)`, we need to integrate :math:`f_2`
+in equation :eq:`divide-pdf`. Doing so we find that
+
+.. math::
+    :label: integrate-f2
+
+    \int_0^{\infty} dv_T (v_n + v_T) \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2
+    \right ) = \frac{1}{4\beta} \left ( \sqrt{\pi} \beta v_n + 2 \right )
+
+Thus, we need to sample the probability distribution function
+
+.. math::
+    :label: freegas-f2-2
+
+    q(v_T) dv_T = \left ( \frac{4\beta^2 v_n v_T^2}{\sqrt{\pi} \beta v_n + 2} +
+    \frac{4\beta^4 v_T^3}{\sqrt{\pi} \beta v_n + 2} \right ) exp \left (
+    -\beta^2 v_T^2 \right )
+
+Now, let us do a change of variables with the following defintions
+
+.. math::
+    :label: beta-to-x
+
+    x = \beta v_T \\
+    y = \beta v_n.
+
+Substituting equation :eq:`beta-to-x` into equation :eq:`freegas-f2-2` along
+with :math:`dx = \beta dv_T` and doing some crafty rearranging of terms yields
+
+.. math::
+    :label: freegas-f2-3
+
+    q(x) dx = \left [ \left ( \frac{\sqrt{\pi} y}{\sqrt{\pi} y + 2} \right )
+    \frac{4}{\sqrt{\pi}} x^2 e^{-x^2} + \left ( \frac{2}{\sqrt{\pi} y + 2}
+    \right ) 2x^3 e^{-x^2} \right ] dx
+
+It's important to make note of the following two facts. First, the terms outside
+the parentheses are properly normalized probability distribution functions that
+can be sampled directly. Secondly, the terms inside the parentheses are always
+less than unity. Thus, the sampling scheme for :math:`q(x)` is as follows. We
+sample a random number :math:`\xi_1` on the interval :math:`[0,1)` and if
+
+.. math::
+    :label: freegas-alpha
+
+    \xi_1 < \frac{2}{\sqrt{\pi} y + 2}
+
+then we sample the probability distribution :math:`2x^3 e^{-x^2}` for :math:`x`
+using rule C49 in the `Monte Carlo Sampler`_ which we can then use to determine
+the speed of the target nucleus :math:`v_T` from equation
+:eq:`beta-to-x`. Otherwise, we sample the probability distribution
+:math:`\frac{4}{\sqrt{\pi}} x^2 e^{-x^2}` for :math:`x` using rule C61 in the
+`Monte Carlo Sampler`_.
+
+With a target speed sampled, we must then decide whether to accept it based on
+the probability in equation :eq:`freegas-accept`. The cosine can be sampled
+isotropically as :math:`\mu = 2\xi_2 - 1` where :math:`\xi_2` is a random number
+on the unit interval. Since the maximum value of :math:`f_1(v_T, \mu)` is
+:math:`4\sigma_s / \sqrt{\pi} C'`, we then sample another random number
+:math:`\xi_3` and accept the sampled target speed and cosine if
+
+.. math::
+    :label: freegas-accept-2
+
+    \xi_3 < \frac{\sqrt{v_n^2 + v_T^2 - 2 v_n v_T \mu}}{v_n + v_T}
+
+If is not accepted, then we repeat the process and resample a target speed and
+cosine until a combination is found that satisfies equation
+:eq:`freegas-accept-2`.
 
 ------------
 |sab| Tables

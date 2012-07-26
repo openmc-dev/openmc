@@ -778,6 +778,8 @@ weight of the outgoing neutron is multiplied by the number of secondary
 neutrons, e.g. for (n,2n), only one outgoing neutron is tracked but its weight
 is doubled.
 
+.. _fission:
+
 -------
 Fission
 -------
@@ -868,7 +870,7 @@ produced. This is done by sampling a random number :math:`\xi` on the interval
 :math:`[0,1)` and checking whether
 
 .. math::
-    :label: absorption-condition
+    :label: disappearance
 
     \xi \sigma_t (E) < \sigma_a (E) - \sigma_f (E)
 
@@ -881,6 +883,56 @@ No secondary particles from disappearance reactions such as photons or
 alpha-particles are produced or tracked. To truly capture the affects of gamma
 heating in a problem, it would be necessary to explicitly track photons
 originating from :math:`(n,\gamma)` and other reactions.
+
+----------------
+Survival Biasing
+----------------
+
+In problems with highly absorbing materials, a large fraction of neutrons may be
+killed through absorption reactions thus leading to tallies with very few events
+scoring in them. To remedy this situation, an algorithm known as survival
+biasing or implicit absorption (or sometimes implicit capture, even though this
+is a misnomer) is commonly used.
+
+In survival biasing, rather than ever sample absorption reactions, at every
+collision, the weight of neutron is reduced by probability of absorption
+occurring, i.e.
+
+.. math::
+    :label: survival-biasing-weight
+
+    w' = w \left ( 1 - \frac{\sigma_a (E)}{\sigma_t (E)} \right )
+
+where :math:`w'` is the weight of the neutron after adjustment and :math:`w` is
+the weight of the neutron before adjustment. A few other things need to be
+handled differently if survival biasing is turned on. Although fission reactions
+never actually occur with survival biasing, we still need to create fission
+sites to preserve the basic criticality algorithm. The algorithm for sampling
+fission sites is the same as that described in :ref:`fission`. The only
+difference is in equation :eq:`fission-neutrons`. We now need to produce
+
+.. math::
+    :label: fission-neutrons-survival
+
+    \nu = \frac{w}{k} \frac{\nu_t \sigma_f(E)}{\sigma_t (E)}
+
+fission sites, where :math:`w` is the weight of the neutron before being
+adjusted. One should note this is just the expected number of neutrons produced
+*per collision* rather than the expected number of neutrons produced given that
+fission has already occurred.
+
+Additionally, since survival biasing can reduce the weight of the neutron to
+very low values, it is always used in conjunction with a weight cutoff and
+Russian rouletting. Two user adjustable parameters :math:`w_c` and :math:`w_s`
+are given which are the weight below which neutrons should undergo Russian
+roulette and the weight should they survive Russian roulette. The algorithm for
+Russian rouletting is as follows. After a collision if :math:`w < w_c`, then the
+neutron is killed with probability :math:`1 - w/w_s`. If it survives, the weight
+is set equal to :math:`w_s`. One can confirm that the average weight following
+Russian roulette is simply :math:`w`, so the game can be considered "fair". By
+default, the cutoff weight in OpenMC is :math:`w_c = 0.25` and the survival
+weight is :math:`w_s = 1.0`. These parameters vary from one Monte Carlo code to
+another.
 
 .. _freegas:
 

@@ -5,7 +5,7 @@ module physics
   use cross_section,   only: calculate_xs
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
-  use fission,         only: nu_total, nu_prompt, nu_delayed
+  use fission,         only: nu_total, nu_delayed
   use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
                              cross_lattice
   use geometry_header, only: Universe, BASE_UNIVERSE
@@ -851,7 +851,6 @@ contains
     real(8) :: E            ! incoming energy of neutron
     real(8) :: E_out        ! outgoing energy of fission neutron
     real(8) :: nu_t         ! total nu
-    real(8) :: nu_p         ! prompt nu
     real(8) :: nu_d         ! delayed nu
     real(8) :: mu           ! fission neutron angular cosine
     real(8) :: phi          ! fission neutron azimuthal angle
@@ -882,13 +881,6 @@ contains
     ! Determine total nu
     nu_t = nu_total(nuc, E)
 
-    ! Determine prompt nu
-    if (nuc % nu_p_type == NU_NONE) then
-       nu_p = nu_t
-    else
-       nu_p = nu_prompt(nuc, E)
-    end if
-          
     ! Determine delayed nu
     nu_d = nu_delayed(nuc, E)
 

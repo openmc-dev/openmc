@@ -226,7 +226,7 @@ for the data.
 ACE Law 1 - Tabular Equiprobable Energy Bins
 ++++++++++++++++++++++++++++++++++++++++++++
 
-In the tabular equiprobable bin representation, an array of equiprobably
+In the tabular equiprobable bin representation, an array of equiprobable
 outgoing energy bins is given for a number of incident energies. While the
 representation itself is simple, the complexity lies in how one interpolates
 between incident as well as outgoing energies on such a table. If one does
@@ -239,7 +239,7 @@ To avoid this situation, the accepted practice is to use a process known as
 scaled interpolation [Doyas]_. First, we find the tabulated incident energies
 which bound the actual incoming energy of the particle, i.e. find :math:`i` such
 that :math:`E_i < E < E_{i+1}` and calculate the interpolation factor :math:`f`
-via :eq:`interpolation-factor`. Then, we intepolate between the minimum and
+via :eq:`interpolation-factor`. Then, we interpolate between the minimum and
 maximum energies of the outgoing energy distributions corresponding to
 :math:`E_i` and :math:`E_{i+1}`:
 
@@ -303,9 +303,9 @@ value in the probability distribution function, :math:`c_{i,j}` the j-th value
 in the cumulative distribution function, and :math:`E_{i,j}` the j-th outgoing
 energy.
 
-Weproceed first as we did for ACE Law 1, determining the bounding energies of
+We proceed first as we did for ACE Law 1, determining the bounding energies of
 the particle's incoming energy such that :math:`E_i < E < E_{i+1}` and
-calculating an interpolationg factor :math:`f` with equation
+calculating an interpolation factor :math:`f` with equation
 :eq:`interpolation-factor`. Next, statistical interpolation is performed to
 choose between using the outgoing energy distributions corresponding to energy
 :math:`E_i` and :math:`E_{i+1}`. Let :math:`\ell` be the chosen table where
@@ -319,7 +319,7 @@ choose between using the outgoing energy distributions corresponding to energy
     c_{\ell,j} < \xi_2 < c_{\ell,j+1}
 
 where :math:`\xi_2` is a random number sampled uniformly on :math:`[0,1)`. At
-this point, we need to inteporlate between the successive values on the outgoing
+this point, we need to interpolate between the successive values on the outgoing
 energy distribution using either histogram or linear-linear interpolation. The
 formulas for these can be derived along the same lines as those found in
 :ref:`angle-tabular`. For histogram interpolation, the interpolated outgoing
@@ -462,7 +462,7 @@ ACE Law 44 - Kalbach-Mann Correlated Scattering
 This law is very similar to ACE Law 4 except now the outgoing angle of the
 neutron is correlated to the outgoing energy and is not sampled from a separate
 distribution. For each incident neutron energy :math:`E_i` tabulated, there is
-an array of precompoung factors :math:`R_{i,j}` and angular distribution slopes
+an array of precompound factors :math:`R_{i,j}` and angular distribution slopes
 :math:`A_{i,j}` corresponding to each outgoing energy bin :math:`j` in addition
 to the outgoing energies and distribution functions as in ACE Law 4.
 
@@ -789,7 +789,7 @@ concerns a Monte Carlo simulation it actually bears more similarities to
 inelastic scattering since fission results in secondary neutrons in the exit
 channel. Other absorption reactions like :math:`(n,\gamma)` or
 :math:`(n,\alpha)`, on the contrary, produce no neutrons. There are a few other
-idiosyncracies in treating fission. In a criticality calculation, secondary
+idiosyncrasies in treating fission. In a criticality calculation, secondary
 neutrons from fission are only "banked" for use in the next generation rather
 than being tracked as secondary neutrons from elastic and inelastic scattering
 would be. On top of this, fission is sometimes broken into first-chance fission,
@@ -829,7 +829,7 @@ calculated the delayed neutron fraction
     \beta = \frac{\nu_d}{\nu_t}
 
 We then need to determine how many total neutrons should be emitted from
-fission. If no suvival biasing is being used, then the number of neutrons
+fission. If no survival biasing is being used, then the number of neutrons
 emitted is
 
 .. math::
@@ -1086,7 +1086,7 @@ Substituting this into equation :eq:`maxwellian-speed`, we get
     v_T^2 \right ) dv_T
 
 Now, changing variables in equation :eq:`target-pdf-2` by using the result from
-equation :eq:`maxwellian-speed`, our new probabilty distribution function is
+equation :eq:`maxwellian-speed`, our new probability distribution function is
 
 .. math::
     :label: target-pdf-3
@@ -1177,7 +1177,7 @@ Thus, we need to sample the probability distribution function
     \frac{4\beta^4 v_T^3}{\sqrt{\pi} \beta v_n + 2} \right ) exp \left (
     -\beta^2 v_T^2 \right )
 
-Now, let us do a change of variables with the following defintions
+Now, let us do a change of variables with the following definitions
 
 .. math::
     :label: beta-to-x

@@ -73,20 +73,58 @@ Computing the Distance to Nearest Boundary
 ------------------------------------------
 
 One of the most basic algorithms in any Monte Carlo code is determining the
-distance to the nearest boundary within a cell. Since each cell is defined by
+distance to the nearest surface within a cell. Since each cell is defined by
 the surfaces that bound it, if we compute the distance to all surfaces bounding
-a cell, we can determine the nearest one. Let us suppose we have a particle at
-:math:`(x,y,z)` traveling in the direction :math:`u,v,w`. To find the distance
-:math:`d` to a surface :math:`f(x,y,z) = 0`, we need to solve the equation:
+a cell, we can determine the nearest one.
+
+With the possibility of a particle having coordinates on multiple levels
+(universes) in a geometry, we must exercise care when calculating the distance
+to the nearest surface. Each different level of geometry has a set of boundaries
+with which the particle's direction of travel may intersect. Thus, it is
+necessary to check the distance to the surfaces bounding the cell in each
+level. This should be done starting the highest (most global) level going down
+to the lowest (most local) level. That ensures that if two surfaces on different
+levels are coincident, by default the one on the higher level will be selected
+as the nearest surface.
+
+The following procedure is used to calculate the distance to each bounding
+surface. Suppose we have a particle at :math:`(x,y,z)` traveling in the
+direction :math:`u,v,w`. To find the distance :math:`d` to a surface
+:math:`f(x,y,z) = 0`, we need to solve the equation:
 
 .. math::
     :label: dist-to-boundary-1
 
     f(x + du, y + dv, z + dw) = 0
 
-If the solution to equation :eq:`dist-to-boundary-1` is negative, this means
-that the surface is "behind" the particle, i.e. if the particle continues
-traveling in its current direction, it will not hit the surface.
+If no solutions to equation :eq:`dist-to-boundary-1` exists or the only
+solutions are complex, then the particle's direction of travel will not
+intersect the surface. If the solution to equation :eq:`dist-to-boundary-1` is
+negative, this means that the surface is "behind" the particle, i.e. if the
+particle continues traveling in its current direction, it will not hit the
+surface. The complete derivation for different types of surfaces used in OpenMC
+will be presented in the following sections.
+
+Once a distance has been computed to a boundary, we need to check if it is
+closer than previously-computed distances to surfaces. Unfortunately, we cannot
+just use the minimum function because some distances may be almost identical but
+still different due to the use of floating-point arithmetic. Consequently, we
+should first check for floating-point equality of the current distance
+calculated and the minimum found thus far. This is done by checking if
+
+.. math::
+    :label: fp-distance
+
+    \frac{| d - d_{min} |}{d_{min}} < \epsilon
+
+where :math:`d` is the distance to a surface just calculated, :math:`d_{min}` is
+the minimum distance found thus far, and :math:`\epsilon` is a small number. In
+OpenMC, this parameter is set to :math:`\epsilon = 10^{-14}` since all floating
+calculations are done on 8-byte floating point numbers.
+
+Although they are not explicitly defined, it is also necessary to check the
+distance to surfaces representing lattice boundaries if a lattice exists on a
+given level.
 
 Plane Perpendicular to an Axis
 ------------------------------

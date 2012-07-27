@@ -260,6 +260,8 @@ will then be either both positive or both negative. If they are both positive,
 the smaller (closer) one will be the solution with a negative sign on the square
 root of the discriminant.
 
+.. _find-cell:
+
 ----------------------------
 Finding a Cell Given a Point
 ----------------------------
@@ -331,9 +333,31 @@ are satisfied, than the point is indeed inside the cell.
 Handling Surface Crossings
 --------------------------
 
+A particle will cross a surface if the distance to the nearest surface is closer
+than the distance sampled to the next collision. A number of things happen when
+a particle hits a surface. First, we need to check if a non-transmissive
+boundary condition has been applied to the surface. If a vacuum boundary
+condition has been applied, the particle is killed and any surface current
+tallies are scored to as needed. If a reflective boundary condition has been
+applied to the surface, surface current tallies are scored to and then the
+particle's direction is changed according to the procedure in :ref:`reflection`.
+
+Next, we need to determine what cell is beyond the surface in the direction of
+travel of the particle so that we can evaluate cross sections based on its
+material properties. At initialization, a list of neighboring cells is created
+for each surface in the problem as described in :ref:`neighbor-lists`. The
+algorithm outlined in :ref:`find-cell` is used to find a cell containing the
+particle except rather than searching all cells in the base universe, only the
+list of neighboring cells is searched. If this search is unsuccessful, then a
+search is done over every cell in the base universe.
+
+.. _neighbor-lists:
+
 -----------------------
 Building Neighbor Lists
 -----------------------
+
+.. _reflection:
 
 -------------------
 Reflective Surfaces

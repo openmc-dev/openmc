@@ -357,26 +357,199 @@ search is done over every cell in the base universe.
 Building Neighbor Lists
 -----------------------
 
+After the geometry has been loaded and stored in memory from an input file,
+OpenMC builts a list for each surface containing any cells that contain the
+surface in their specification in order to speed up processing of surface
+crossings. The algorithm to build these lists is as follows. First, we loop over
+all cells in the geometry and count up how many times each surface appears in a
+specification as bounding a negative half-space and bounding a positive
+half-space. Two arrays are then allocated for each surface, one that lists each
+cell that contains the negative half-space of the surface and one that lists
+each cell that contains the positive half-space of the surface. Another loop is
+performed over all cells and the neighbor lists are populated for each surface.
+
 .. _reflection:
 
--------------------
-Reflective Surfaces
--------------------
+------------------------------
+Reflective Boundary Conditions
+------------------------------
 
-In general, a surface can be written in the form :math:`f(x,y,z) = 0`. If a
-neutron is traveling in direction :math:`\mathbf{v}` and crosses a reflective
-surface of the above form, it can be shown that the velocity vector will then
-become
+If the velocity of a particle is :math:`\mathbf{v}` and it crosses a surface of
+the form :math:`f(x,y,z) = 0` with a reflective boundary condition, it can be
+shown based on geometric arguments that the velocity vector will then become
 
 .. math::
+    :label: reflection-v
 
     \mathbf{v'} = \mathbf{v} - 2 (\mathbf{v} \cdot \hat{\mathbf{n}})
     \hat{\mathbf{n}}
 
 where :math:`\hat{\mathbf{n}}` is a unit vector normal to the surface at the
-point of the surface crossing. The direction of the surface normal will be the
-gradient to the surface at the point of crossing, i.e. :math:`\mathbf{n} =
-\nabla f(x,y,z)`.
+point of the surface crossing. The rationale for this can be understood by
+noting that :math:`(\mathbf{v} \cdot \hat{\mathbf{n}}) \hat{\mathbf{n}}` is the
+projection of the velocity vector onto the normal vector. By subtracting two
+times this projection, the velocity is reflected with respect to the surface
+normal. Since the velocity of the particle will not change as it undergoes
+reflection, we can work with the direction of the particle instead, simplifying
+equation :eq:`reflection-v` to
+
+.. math::
+    :label: reflection-omega
+
+    \mathbf{\Omega'} = \mathbf{\Omega} - 2 (\mathbf{\Omega} \cdot
+    \hat{\mathbf{n}}) \hat{\mathbf{n}}
+
+
+The direction of the surface normal will be the gradient to the surface at the
+point of crossing, i.e. :math:`\mathbf{n} = \nabla f(x,y,z)`. Substituting this
+into equation :eq:`reflection-omega`, we get
+
+.. math::
+    :label: reflection-omega-2
+
+    \mathbf{\Omega'} = \mathbf{\Omega} - \frac{2 ( \mathbf{\Omega} \cdot \nabla
+    f )}{|| \nabla f ||^2} \nabla f
+
+
+If we write the initial and final directions in terms of their vector
+components, :math:`\mathbf{\Omega} = (u,v,w)` and :math:`\mathbf{\Omega'} = (u',
+v', w')`, this allows us to represent equation :eq:`reflection-omega` as a
+series of equations:
+
+.. math::
+    :label: reflection-system
+
+    u' = u - \frac{2 ( \mathbf{\Omega} \cdot \nabla f )}{|| \nabla f ||^2}
+    \frac{\partial f}{\partial x} \\
+
+    v' = v - \frac{2 ( \mathbf{\Omega} \cdot \nabla f )}{|| \nabla f ||^2}
+    \frac{\partial f}{\partial y} \\
+
+    w' = w - \frac{2 ( \mathbf{\Omega} \cdot \nabla f )}{|| \nabla f ||^2}
+    \frac{\partial f}{\partial z}
+
+We can now use this form to develop rules for how to transform a particle's
+direction for different types of surfaces.
+
+Plane Perpendicular to an Axis
+------------------------------
+
+For a plane that is perpendicular to an axis, the rule for reflection is almost
+so simple that no derivation is needed at all. Nevertheless, we will proceed
+with the derivation to confirm that the rules of geometry agree with our
+intuition. The gradient of the surface :math:`f(x,y,z) = x - x_0 = 0` is simply
+:math:`\nabla f = (1, 0, 0)`. Note that this vector is already normalized,
+i.e. :math:`|| \nabla f || = 1`. The second two equations in
+:eq:`reflection-system` tell us that :math:`v` and :math:`w` do not change and
+the first tell us that
+
+.. math::
+    :label: reflection-xplane
+
+    u' = u - 2u = -u
+
+We see that reflection for a plane perpendicular to an axis only entails
+negating the directional cosine for that axis.
+
+Generic Plane
+-------------
+
+A generic plane has the form :math:`f(x,y,z) = Ax + By + Cz - D = 0`. Thus, the
+gradient to the surface is simply :math:`\nabla f = (A,B,C)` whose norm squared
+is :math:`A^2 + B^2 + C^2`. This implies that
+
+.. math::
+    :label: reflection-plane-constant
+
+    \frac{2 (\mathbf{\Omega} \cdot \nabla f)}{|| \nabla f ||^2} = \frac{2(Au +
+    Bv + Cw)}{A^2 + B^2 + C^2}
+
+Substituting equation :eq:`reflection-plane-constant` into equation
+:eq:`reflection-system` gives us the form of the solution. For example, the
+x-component of the reflected direction will be
+
+.. math::
+    :label: reflection-plane
+
+    u' = u - \frac{2A(Au + Bv + Cw)}{A^2 + B^2 + C^2}
+
+
+Cylinder Parallel to an Axis
+----------------------------
+
+A cylinder parallel to, for example, the x-axis has the form :math:`f(x,y,z) =
+(y - y_0)^2 + (z - z_0)^2 - R^2 = 0`. Thus, the gradient to the surface is
+
+.. math:: :label: reflection-cylinder-grad
+
+    \nabla f = 2 \left ( \begin{array}{c} 0 \\ y - y_0 \\ z - z_0 \end{array}
+    \right ) = 2 \left ( \begin{array}{c} 0 \\ \bar{y} \\ \bar{z} \end{array}
+    \right )
+
+where we have introduced the constants :math:`\bar{y}` and
+:math:`\bar{z}`. Taking the square of the norm of the gradient, we find that
+
+.. math:: :label: reflection-cylinder-norm
+
+    || \nabla f ||^2 = 4 \bar{y}^2 + 4 \bar{z}^2 = 4 R^2
+
+This imples that
+
+.. math:: :label: reflection-cylinder-constant
+
+    \frac{2 (\mathbf{\Omega} \cdot \nabla f)}{|| \nabla f ||^2} =
+    \frac{\bar{y}v + \bar{z}w}{R^2}
+
+Substituting equations :eq:`reflection-cylinder-constant` and
+:eq:`reflection-cylinder-grad` into equation :eq:`reflection-system` gives us
+the form of the solution. In this case, the x-component will not change. The y-
+and z-components of the reflected direction will be
+
+.. math:: :label: reflection-cylinder
+
+    v' = v - \frac{2 ( \bar{y}v + \bar{z}w ) \bar{y}}{R^2} \\
+
+    w' = w - \frac{2 ( \bar{y}v + \bar{z}w ) \bar{z}}{R^2}
+
+
+Sphere
+------
+
+The surface equation for a sphere has the form :math:`f(x,y,z) = (x - x_0)^2 +
+(y - y_0)^2 + (z - z_0)^2 - R^2 = 0`. Thus, the gradient to the surface is
+
+.. math:: :label: reflection-sphere-grad
+
+    \nabla f = 2 \left ( \begin{array}{c} x - x_0 \\ y - y_0 \\ z - z_0
+    \end{array} \right ) = 2 \left ( \begin{array}{c} \bar{x} \\ \bar{y} \\
+    \bar{z} \end{array} \right )
+
+where we have introduced the constants :math:`\bar{x}, \bar{y}, \bar{z}`. Taking
+the square of the norm of the gradient, we find that
+
+.. math:: :label: reflection-sphere-norm
+
+    || \nabla f ||^2 = 4 \bar{x}^2 + 4 \bar{y}^2 + 4 \bar{z}^2 = 4 R^2
+
+This imples that
+
+.. math:: :label: reflection-sphere-constant
+
+    \frac{2 (\mathbf{\Omega} \cdot \nabla f)}{|| \nabla f ||^2} =
+    \frac{\bar{x}u + \bar{y}v + \bar{z}w}{R^2}
+
+Substituting equations :eq:`reflection-sphere-constant` and
+:eq:`reflection-sphere-grad` into equation :eq:`reflection-system` gives us the
+form of the solution:
+
+.. math:: :label: reflection-sphere
+
+    u' = u - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{x} }{R^2} \\
+
+    v' = v - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{y} }{R^2} \\
+
+    w' = w - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{z} }{R^2} \\
+
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _surfaces: http://en.wikipedia.org/wiki/Surface

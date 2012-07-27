@@ -358,7 +358,7 @@ Building Neighbor Lists
 -----------------------
 
 After the geometry has been loaded and stored in memory from an input file,
-OpenMC builts a list for each surface containing any cells that contain the
+OpenMC builds a list for each surface containing any cells that contain the
 surface in their specification in order to speed up processing of surface
 crossings. The algorithm to build these lists is as follows. First, we loop over
 all cells in the geometry and count up how many times each surface appears in a
@@ -493,7 +493,7 @@ where we have introduced the constants :math:`\bar{y}` and
 
     || \nabla f ||^2 = 4 \bar{y}^2 + 4 \bar{z}^2 = 4 R^2
 
-This imples that
+This implies that
 
 .. math:: :label: reflection-cylinder-constant
 
@@ -531,7 +531,7 @@ the square of the norm of the gradient, we find that
 
     || \nabla f ||^2 = 4 \bar{x}^2 + 4 \bar{y}^2 + 4 \bar{z}^2 = 4 R^2
 
-This imples that
+This implies that
 
 .. math:: :label: reflection-sphere-constant
 

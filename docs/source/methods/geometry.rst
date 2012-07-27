@@ -260,13 +260,72 @@ will then be either both positive or both negative. If they are both positive,
 the smaller (closer) one will be the solution with a negative sign on the square
 root of the discriminant.
 
+----------------------------
+Finding a Cell Given a Point
+----------------------------
+
+Another basic algorithm is to determine which cell contains a given point in the
+global coordinate system, i.e. if the particle's position is :math:`(x,y,z)`,
+what cell is it currently in. This is done in the following manner in
+OpenMC. With the possibility of multiple levels of coordinates, we must perform
+a recursive search for the cell. First, we start in the highest (most global)
+universe which we call the base universe and do a loop over each cell within
+that universe. For each cell, we check whether the specified point is inside the
+cell using the algorithm described in :ref:`cell-contains`. If the cell is
+filled with a normal material, the search is done and we have identified the
+cell containing the point. If the cell is filled with another universe, we then
+search all cells within that universe to see if any of them contain the
+specified point. If the cell is filled with a lattice, the position within the
+lattice is determined, and then whatever universe fills that lattice position is
+recursively searched. The search ends once a cell containing a normal material
+is found that contains the specified point.
+
+.. _cell-contains:
+
 ----------------------------------------
 Determining if a Coordinate is in a Cell
 ----------------------------------------
 
-----------------------------
-Finding a Cell Given a Point
-----------------------------
+One aspect of being able to determine what cell a particle is in is determining
+if a particle's coordinates lie within a given cell. The current geometry
+implementation in OpenMC limits all cells to being simple cells, i.e. they are
+defined only with intersection of half-spaces and not unions, differences,
+etc. This makes the job of determining if a point is in a cell quite simple.
+
+The algorithm for determining if a cell contains a point is as follows. For each
+surface that bounds a cell, we determine the particle's sense with respect to
+the surface. As explained earlier, if we have a point :math:`(x_0,y_0,z_0)` and
+a surface :math:`f(x,y,z) = 0`, the point is said to have negative sense if
+:math:`f(x_0,y_0,z_0) < 0` and positive sense if :math:`f(x_0,y_0,z_0) > 0`. If
+for all surfaces, the sense of the particle with respect to the surface matches
+the specified sense that defines the half-space within the cell, then the point
+is inside the cell.
+
+Let us illustrate this idea with a concept. Let's say we have a cell defined as
+
+.. code-block:: xml
+
+    <cell id="1" surfaces="-1 2 -3" />
+
+    <surface id="1" type="sphere"  coeffs="0 0 0 10" />
+    <surface id="2" type="x-plane" coeffs="-3" />
+    <surface id="3" type="y-plane" coeffs="2" />
+
+This means that the cell is defined as the intersection of the negative half
+space of a sphere, the positive half-space of an x-plane, and the negative
+half-space of a y-plane. Said another way, any point inside this cell must
+satisfy the following equations
+
+.. math::
+    :label: cell-contains-example
+
+    x^2 + y^2 + z^2 - 10^2 < 0 \\
+    x - (-3) > 0 \\
+    x - 2 < 0
+
+So in order to determine if a point is inside the cell, we would plug its
+coordinates into equation :eq:`cell-contains-example` and if the inequalities
+are satisfied, than the point is indeed inside the cell.
 
 --------------------------
 Handling Surface Crossings

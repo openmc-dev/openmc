@@ -788,6 +788,7 @@ contains
     integer :: size_angle        ! memory used for an angle distribution (bytes)
     integer :: size_energy       ! memory used for a  energy distributions (bytes)
     integer :: size_urr          ! memory used for probability tables (bytes)
+    character(4) :: law          ! secondary energy distribution law
     type(Reaction), pointer :: rxn => null()
     type(UrrData),  pointer :: urr => null()
 
@@ -814,7 +815,7 @@ contains
     write(unit_,*) '  # of reactions = ' // trim(to_str(nuc % n_reaction))
 
     ! Information on each reaction
-    write(unit_,*) '  Reaction    Q-value   Mult    IE    size(angle) size(energy)'
+    write(unit_,*) '  Reaction     Q-value  COM  Law    IE    size(angle) size(energy)'
     do i = 1, nuc % n_reaction
        rxn => nuc % reactions(i)
 
@@ -825,16 +826,18 @@ contains
           size_angle = 0
        end if
 
-       ! Determine size of energy distribution
+       ! Determine size of energy distribution and law
        if (rxn % has_energy_dist) then
           size_energy = size(rxn % edist % data) * 8
+          law = to_str(rxn % edist % law)
        else
           size_energy = 0
+          law = 'None'
        end if
 
-       write(unit_,'(3X,A11,1X,F8.3,2X,I4,2X,I6,1X,I11,1X,I11)') &
-            reaction_name(rxn % MT), rxn % Q_value, rxn % multiplicity, &
-            rxn % IE, size_angle, size_energy
+       write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
+            reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
+            law, rxn % IE, size_angle, size_energy
 
        ! Accumulate data size
        size_xs = size_xs + (nuc % n_grid - rxn%IE + 1) * 8

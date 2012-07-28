@@ -15,73 +15,52 @@ module geometry
 contains
 
 !===============================================================================
-! CELL_CONTAINS determines whether a given point is inside a cell
+! SIMPLE_CELL_CONTAINS determines whether a given the current coordinates of the
+! particle are inside a cell defined as the intersection of a series of surfaces
 !===============================================================================
 
-  function cell_contains(c) result(in_cell)
+  function simple_cell_contains(c) result(in_cell)
 
-    type(Cell),     pointer :: c
-    logical                 :: in_cell
+    type(Cell), pointer :: c
+    logical             :: in_cell
 
-    integer, allocatable :: expression(:) ! copy of surfaces list
-    integer :: specified_sense ! specified sense of surface in list
-    integer :: actual_sense    ! sense of particle wrt surface
-    integer :: n_surf          ! number of surfaces in cell
     integer :: i               ! index of surfaces in cell
-    integer :: surf_num        ! index in surfaces array (with sign)
-    integer :: current_surface ! current surface of particle (with sign)
-    type(Surface), pointer  :: surf => null()
+    integer :: i_surface       ! index in surfaces array (with sign)
+    logical :: specified_sense ! specified sense of surface in list
+    logical :: actual_sense    ! sense of particle wrt surface
+    type(Surface), pointer :: s => null()
 
-    current_surface = p % surface
-
-    n_surf = size(c % surfaces)
-    allocate(expression(n_surf))
-    expression = c % surfaces
-    do i = 1, n_surf
-
-       ! Don't change logical operator
-       if (expression(i) >= OP_DIFFERENCE) then
-          cycle
-       end if
-
+    SURFACE_LOOP: do i = 1, c % n_surfaces
        ! Lookup surface
-       surf_num = expression(i)
-       surf => surfaces(abs(surf_num))
+       i_surface = c % surfaces(i)
 
        ! Check if the particle is currently on the specified surface
-       if (surf_num == current_surface) then
-          ! particle is on specified surface heading into cell
-          expression(i) = 1
+       if (i_surface == p % surface) then
+          ! Particle is heading into the cell
           cycle
-       elseif (surf_num == -current_surface) then
-          ! particle is on specified surface, but heading other direction
-          expression(i) = 0
-          cycle
+       elseif (i_surface == -p % surface) then
+          ! Particle is heading out of the cell
+          in_cell = .false.
+          return
        end if
+
+       ! Determine the specified sense of the surface in the cell and the actual
+       ! sense of the particle with respect to the surface
+       s => surfaces(abs(i_surface))
+       actual_sense = sense(s, p % coord % xyz)
+       specified_sense = (c % surfaces(i) > 0)
 
        ! Compare sense of point to specified sense
-       specified_sense = sign(1,expression(i))
-       actual_sense = sense(surf, p % coord % xyz)
-       if (actual_sense == specified_sense) then
-          expression(i) = 1
-       else
-          expression(i) = 0
+       if (actual_sense .neqv. specified_sense) then
+          in_cell = .false.
+          return
        end if
+    end do SURFACE_LOOP
 
-    end do
+    ! If we've reached here, then the sense matched on every surface
+    in_cell = .true.
 
-    ! TODO: Need to replace this with a 'lgeval' like subroutine that can
-    ! actually test expressions with unions and parentheses
-    if (all(expression == 1)) then
-       in_cell = .true.
-    else
-       in_cell = .false.
-    end if
-
-    ! Free up memory from expression
-    deallocate(expression)
-
-  end function cell_contains
+  end function simple_cell_contains
 
 !===============================================================================
 ! FIND_CELL determines what cell a source particle is in within a particular
@@ -132,7 +111,7 @@ contains
        ! get pointer to cell
        c => cells(index_cell)
 
-       if (cell_contains(c)) then
+       if (simple_cell_contains(c)) then
           ! Set cell on this level
           p % coord % cell = index_cell
 
@@ -968,7 +947,7 @@ contains
 
     type(Surface), pointer    :: surf   ! surface
     real(8),       intent(in) :: xyz(3) ! coordinates of particle
-    integer                   :: s      ! sense of particle
+    logical                   :: s      ! sense of particle
 
     real(8) :: x,y,z    ! coordinates of particle
     real(8) :: func     ! surface function evaluated at point
@@ -1050,9 +1029,9 @@ contains
        y1 = surf % coeffs(3)
        z1 = surf % coeffs(4)
        if (y >= y0 .and. y < y1 .and. z >= z0 .and. z < z1) then
-          s = SENSE_NEGATIVE
+          s = .false.
        else
-          s = SENSE_POSITIVE
+          s = .true.
        end if
        return
 
@@ -1062,9 +1041,9 @@ contains
        x1 = surf % coeffs(3)
        z1 = surf % coeffs(4)
        if (x >= x0 .and. x < x1 .and. z >= z0 .and. z < z1) then
-          s = SENSE_NEGATIVE
+          s = .false.
        else
-          s = SENSE_POSITIVE
+          s = .true.
        end if
        return
 
@@ -1074,9 +1053,9 @@ contains
        x1 = surf % coeffs(3)
        y1 = surf % coeffs(4)
        if (x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1) then
-          s = SENSE_NEGATIVE
+          s = .false.
        else
-          s = SENSE_POSITIVE
+          s = .true.
        end if
        return
 
@@ -1089,9 +1068,9 @@ contains
        z1 = surf % coeffs(6)
        if (x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1 .and. & 
             z >= z0 .and. z < z1) then
-          s = SENSE_NEGATIVE
+          s = .false.
        else
-          s = SENSE_POSITIVE
+          s = .true.
        end if
        return
 
@@ -1113,9 +1092,9 @@ contains
 
     ! Check which side of surface the point is on
     if (func > 0) then
-       s = SENSE_POSITIVE
+       s = .true.
     else
-       s = SENSE_NEGATIVE
+       s = .false.
     end if
 
   end function sense

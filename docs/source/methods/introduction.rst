@@ -125,10 +125,6 @@ be performed before the run is finished. This include the following:
 
   - All allocatable arrays are deallocated.
 
----------------------
-Criticality Algorithm
----------------------
-
 .. _probability distributions: http://en.wikipedia.org/wiki/Probability_distribution
 .. _Monte Carlo: http://en.wikipedia.org/wiki/Monte_Carlo_method
 .. _central limit theorem: http://en.wikipedia.org/wiki/Central_limit_theorem

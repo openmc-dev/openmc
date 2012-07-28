@@ -9,6 +9,7 @@ Theory and Methodology
     :maxdepth: 3
 
     introduction
+    criticality
     statistics
     geometry
     physics

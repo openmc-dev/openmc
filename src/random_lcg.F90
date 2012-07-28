@@ -101,12 +101,11 @@ contains
     integer(8), intent(in) :: seed     ! original seed
     integer(8)             :: new_seed ! new seed
 
-    integer(8) :: nskip
-    integer(8) :: gen
-    integer(8) :: g
-    integer(8) :: inc
-    integer(8) :: c
-    integer(8) :: gp
+    integer(8) :: nskip ! positive number of seeds to skip
+    integer(8) :: g     ! original multiplicative constant
+    integer(8) :: c     ! original additive constnat
+    integer(8) :: g_new ! new effective multiplicative constant
+    integer(8) :: c_new ! new effective additive constant
 
     ! In cases where we want to skip backwards, we add the period of the random
     ! number generator until the number of PRNs to skip is positive since
@@ -116,7 +115,10 @@ contains
     nskip = n
     do while (nskip < 0_8)
        nskip = nskip + prn_mod
-    enddo
+    end do
+
+    ! Make sure nskip is less than 2^M
+    nskip = iand(nskip, prn_mask)
 
     ! The algorithm here to determine the parameters used to skip ahead is
     ! described in F. Brown, "Random Number Generation with Arbitrary Stride,"
@@ -124,25 +126,26 @@ contains
     ! O(log2(N)) operations instead of O(N). Basically, it computes parameters G
     ! and C which can then be used to find x_N = G*x_0 + C mod 2^M.
 
-    nskip = iand(nskip, prn_mask)
-    gen   = 1
+    ! Initialize constants
     g     = prn_mult
-    inc   = 0
     c     = prn_add
-    do while (nskip > 0_8)
+    g_new = 1
+    c_new = 0
+    BIT_LOOP: do while (nskip > 0_8)
+       ! Check if least significant bit is 1
        if (btest(nskip,0)) then
-          gen = iand(gen*g, prn_mask)
-          inc = iand(inc*g, prn_mask)
-          inc = iand(inc+c, prn_mask)
+          g_new = iand(g_new*g, prn_mask)
+          c_new = iand(c_new*g + c, prn_mask)
        endif
-       gp    = iand(g+1,  prn_mask)
-       g     = iand(g*g,  prn_mask)
-       c     = iand(gp*c, prn_mask)
+       c = iand((g+1)*c, prn_mask)
+       g = iand(g*g, prn_mask)
+
+       ! Move bits right, dropping least significant bit
        nskip = ishft(nskip, -1)
-    enddo
+    end do BIT_LOOP
 
     ! With G and C, we can now find the new seed
-    new_seed = iand(gen*seed + inc, prn_mask)
+    new_seed = iand(g_new*seed + c_new, prn_mask)
 
   end function prn_skip_ahead
 

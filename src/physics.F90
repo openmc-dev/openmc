@@ -935,8 +935,11 @@ contains
        ! Set weight of fission bank site
        fission_bank(i) % wgt = ONE/weight
 
-       ! sample cosine of angle
-       mu = sample_angle(rxn, E)
+       ! Sample cosine of angle -- fission neutrons are always emitted
+       ! isotropically. Sometimes in ACE data, fission reactions actually have
+       ! an angular distribution listed, but for those that do, it's simply just
+       ! a uniform distribution in mu
+       mu = TWO * prn() - ONE
 
        ! sample between delayed and prompt neutrons
        if (prn() < beta) then

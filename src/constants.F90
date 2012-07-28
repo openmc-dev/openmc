@@ -105,11 +105,6 @@ module constants
        SURF_BOX    = 12, & ! Rectangular prism
        SURF_GQ     = 13    ! General quadratic surface
 
-  ! Surface senses
-  integer, parameter ::    &
-       SENSE_POSITIVE = 1, &
-       SENSE_NEGATIVE = -1
-
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS
 

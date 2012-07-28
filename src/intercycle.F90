@@ -344,7 +344,7 @@ contains
              do k = 1, m % dimension(3)
                 if (entropy_p(1,i,j,k) > ZERO) then
                    entropy = entropy - entropy_p(1,i,j,k) * &
-                        log(entropy_p(1,i,j,k))/log(2.0)
+                        log(entropy_p(1,i,j,k))/log(TWO)
                 end if
              end do
           end do

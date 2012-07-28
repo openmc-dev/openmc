@@ -649,7 +649,7 @@ contains
           end if
 
           ! Characteristic scattering cosine for this Bragg edge
-          mu = ONE - 2.0*sab % elastic_e_in(k) / p % E
+          mu = ONE - TWO*sab % elastic_e_in(k) / p % E
 
        end if
 
@@ -774,7 +774,7 @@ contains
     ! calculate beta
     beta_vn = sqrt(nuc%awr * p%E / kT)
 
-    alpha = ONE/(ONE + sqrt(pi)*beta_vn/2.0)
+    alpha = ONE/(ONE + sqrt(pi)*beta_vn/TWO)
 
     do
        ! Sample two random numbers
@@ -793,7 +793,7 @@ contains
           ! e^(-y^2). This can be done with sampling scheme C61 from the Monte
           ! Carlo sampler
 
-          c = cos(PI/2.0 * prn())
+          c = cos(PI/TWO * prn())
           beta_vt_sq = -log(r1) - log(r2)*c*c
        end if
 
@@ -801,7 +801,7 @@ contains
        beta_vt = sqrt(beta_vt_sq)
 
        ! Sample cosine of angle between neutron and target velocity
-       mu = 2.0*prn() - ONE
+       mu = TWO*prn() - ONE
 
        ! Determine rejection probability
        accept_prob = sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
@@ -2029,7 +2029,7 @@ contains
           r4 = prn()
           r5 = prn()
           r6 = prn()
-          y = -log(r1*r2*r3*r4) - log(r5) * cos(PI/2.*r6)**2
+          y = -log(r1*r2*r3*r4) - log(r5) * cos(PI/TWO*r6)**2
        end select
 
        ! now determine v and E_out
@@ -2064,7 +2064,7 @@ contains
     r3 = prn()
 
     ! determine cosine of pi/2*r
-    c = cos(PI/2.*r3)
+    c = cos(PI/TWO*r3)
 
     ! determine outgoing energy
     E_out = -T*(log(r1) + log(r2)*c*c)
@@ -2088,7 +2088,7 @@ contains
     real(8) :: w ! sampled from Maxwellian
 
     w     = maxwell_spectrum(a)
-    E_out = w + a*a*b/4. + (2.*prn() - ONE)*sqrt(a*a*b*w)
+    E_out = w + a*a*b/4. + (TWO*prn() - ONE)*sqrt(a*a*b*w)
 
   end function watt_spectrum
 

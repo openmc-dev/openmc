@@ -151,6 +151,19 @@ problem. It has the following attributes/sub-elements:
 
     *Default*: None
 
+``<no_reduce>`` Element
+-----------------------
+
+The ``<no_reduce>`` element has no attributes and has an accepted value of "on"
+or "off". If set to "on", all user-defined tallies and global tallies will not
+be reduced across processors in a parallel calculation. This means that the
+accumulate score in one batch on a single processor is considered as an
+independent realization for the tally random variable. For a problem with large
+tally data, this option can significantly improve the parallel efficiency.
+
+  *Default*: off
+
+
 ``<ptables>`` Element
 ---------------------
 
@@ -195,11 +208,13 @@ criticality calculations. It takes the following attributes:
 ``<survival_biasing>`` Element
 ------------------------------
 
-The ``<survival_biasing>`` element has no attributes and assumes wither the
-value ``on`` or ``off``. If turned on, this option will enable the use of
-survival biasing, otherwise known as implicit capture or absorption.
+The ``<survival_biasing>`` element has no attributes and has an accepted value
+of "on" or "off". If set to "on", this option will enable the use of survival
+biasing, otherwise known as implicit capture or absorption.
 
   *Default*: off
+
+.. _trace:
 
 ``<trace>`` Element
 -------------------
@@ -209,6 +224,31 @@ single particle during a simulation. This element should be followed by three
 integers: the batch number, generation number, and particle number.
 
   *Default*: None
+
+``<uniform_fs>`` Element
+------------------------
+
+The ``<uniform_fs>`` element describes a mesh that is used for re-weighting
+source sites at every generation based on the uniform fission site methodology
+described in Kelly et al., "MC21 Analysis of the Nuclear Energy Agency Monte
+Carlo Performance Benchmark Problem," Proceedings of *Physor 2012*, Knoxville,
+TN (2012). This mesh should cover all possible fissionable materials in the
+problem. It has the following attributes/sub-elements:
+
+  :dimension:
+    The number of mesh cells in the x, y, and z directions, respectively.
+
+    *Default*: None
+
+  :lower_left:
+    The Cartersian coordinates of the lower-left corner of the mesh.
+
+    *Default*: None
+
+  :upper_right:
+    The Cartersian coordinates of the upper-right corner of the mesh.
+
+    *Default*: None
 
 ``<verbosity>`` Element
 -----------------------
@@ -221,6 +261,15 @@ displayed. This element takes the following attributes:
     The specified verbosity between 1 and 10.
 
     *Default*: 5
+
+``<write_source>`` Element
+------------------------------
+
+The ``<write_source>`` element has no attributes and has an accepted value of
+"on" or "off". If set to "on", a binary source file will be written to diskat
+the end of the run that can be used as a starting source for another run.
+
+  *Default*: off
 
 --------------------------------------
 Geometry Specification -- geometry.xml
@@ -364,7 +413,8 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     *Default*: None
 
   :material:
-    The ``id`` of the material that this cell contains.
+    The ``id`` of the material that this cell contains. If the cell should
+    contain no material, this can also be set to "void".
 
     .. note:: If a material is specified, no fill should be given.
 
@@ -502,6 +552,11 @@ The two valid elements in the tallies.xml file are ``<tally>`` and ``<mesh>``.
 
 The ``<tally>`` element accepts the following sub-elements:
 
+  :label:
+    This is an optional sub-element specifying the name of this tally to be used
+    for output purposes. This string is limited to 52 characters for formatting 
+    purposes.
+
   :filters:
     A list of filters to specify what region of phase space should contribute to
     the tally. See below for full details on what filters are available.
@@ -530,17 +585,16 @@ The following filters can be specified for a tally:
 
   :energy:
     A monotonically increasing list of bounding **pre-collision** energies for a
-    number of groups. For example, if the following energy filter is specified
-    as ``<energy>0.0 1.0 20.0</energy>``, then two energy bins will be created,
-    one with energies between 0 and 1 MeV and the other with energies between 1
-    and 20 MeV.
+    number of groups. For example, if this filter is specified as ``<energy>0.0
+    1.0 20.0</energy>``, then two energy bins will be created, one with energies
+    between 0 and 1 MeV and the other with energies between 1 and 20 MeV.
 
   :energyout:
     A monotonically increasing list of bounding **post-collision** energies for
-    a number of groups. For example, if the following energy filter is specified
-    as ``<energy>0.0 1.0 20.0</energy>``, then two energy bins will be created,
-    one with energies between 0 and 1 MeV and the other with energies between 1
-    and 20 MeV.
+    a number of groups. For example, if this filter is specified as
+    ``<energyout>0.0 1.0 20.0</energyout>``, then two post-collision energy bins
+    will be created, one with energies between 0 and 1 MeV and the other with
+    energies between 1 and 20 MeV.
 
   :mesh:
     The ``id`` of a structured mesh to be tallied over.

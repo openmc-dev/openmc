@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.4.2',
+        VERSION:     '0.4.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -30,7 +30,7 @@
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="Release Notes" href="index.html" />
     <link rel="next" title="Release Notes for OpenMC 0.4.1" href="notes_0.4.1.html" />
-    <link rel="prev" title="Release Notes" href="index.html" /> 
+    <link rel="prev" title="Release Notes for OpenMC 0.4.3" href="notes_0.4.3.html" /> 
   </head>
   <body>
       <div class="header">
@@ -41,7 +41,7 @@
       <div class="topnav">
       
         <p>
-        «&#160;&#160;<a href="index.html">Release Notes</a>
+        «&#160;&#160;<a href="notes_0.4.3.html">Release Notes for OpenMC 0.4.3</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
@@ -54,35 +54,38 @@
         
   <div class="section" id="release-notes-for-openmc-0-4-2">
 <span id="notes-0-4-2"></span><h1>Release Notes for OpenMC 0.4.2<a class="headerlink" href="#release-notes-for-openmc-0-4-2" title="Permalink to this headline">¶</a></h1>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">These release notes are for an upcoming release of OpenMC and are still
-subject to change.</p>
-</div>
 <div class="section" id="system-requirements">
 <h2>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h2>
 <p>There are no special requirements for running the OpenMC code. As of this
-release, OpenMC has been tested on a variety of Linux distributions as well as
-Mac OS X. However, it has not been tested yet on any versions of Microsoft
-Windows. Memory requirements will vary depending on the size of the problem at
-hand (mostly on the number of nuclides in the problem).</p>
+release, OpenMC has been tested on a variety of Linux distributions, Mac OS X,
+and Microsoft Windows 7. Memory requirements will vary depending on the size of
+the problem at hand (mostly on the number of nuclides in the problem).</p>
 </div>
 <div class="section" id="new-features">
 <h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li>Ability to specify void materials.</li>
+<li>Option to not reduce tallies across processors at end of each batch.</li>
+<li>Uniform fission site method for reducing variance on local tallies.</li>
 <li>Reading/writing binary source files.</li>
 <li>Added more messages for &lt;trace&gt; or high verbosity.</li>
 <li>Estimator for diffusion coefficient.</li>
 <li>Ability to specify &#8216;point&#8217; source type.</li>
 <li>Ability to change random number seed.</li>
-<li>User&#8217;s can now specify units=&#8217;sum&#8217; on a &lt;density&gt; tag. This tells the code
-that the total material density is the sum of the atom fractions listed for
-each nuclide on the material.</li>
+<li>Users can now specify units=&#8217;sum&#8217; on a &lt;density&gt; tag. This tells the code that
+the total material density is the sum of the atom fractions listed for each
+nuclide on the material.</li>
 </ul>
 </div>
 <div class="section" id="bug-fixes">
 <h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/a27f8f">a27f8f</a>: Fixed runtime error bug when using Intel compiler with DEBUG on.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/afe121">afe121</a>: Fixed minor bug in fission bank algorithms.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/e0968e">e0968e</a>: Force re-evaluation of cross-sections when each particle is born.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/298db8">298db8</a>: Fixed bug in surface currents when using energy-in filter.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/2f3bbe">2f3bbe</a>: Fixed subtle bug in S(a,b) cross section calculation.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/671f30">671f30</a>: Fixed surface currents on mesh not encompassing geometry.</li>
 <li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/b2c40e">b2c40e</a>: Fixed bug in incoming energy filter for track-length tallies.</li>
 <li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/5524fd">5524fd</a>: Mesh filter now works with track-length tallies.</li>
 <li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/d050c7">d050c7</a>: Added Bessel&#8217;s correction to make estimate of variance unbiased.</li>
@@ -96,7 +99,7 @@ each nuclide on the material.</li>
       <div class="bottomnav">
       
         <p>
-        «&#160;&#160;<a href="index.html">Release Notes</a>
+        «&#160;&#160;<a href="notes_0.4.3.html">Release Notes for OpenMC 0.4.3</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
@@ -108,7 +111,7 @@ each nuclide on the material.</li>
 
     <div class="footer">
         &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">
 

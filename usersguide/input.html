@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.4.2',
+        VERSION:     '0.4.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -30,7 +30,7 @@
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="User’s Guide" href="index.html" />
     <link rel="next" title="4. Troubleshooting OpenMC" href="troubleshoot.html" />
-    <link rel="prev" title="2. Installation and Configuration" href="setup.html" /> 
+    <link rel="prev" title="2. Installation and Configuration" href="install.html" /> 
   </head>
   <body>
       <div class="header">
@@ -41,7 +41,7 @@
       <div class="topnav">
       
         <p>
-        «&#160;&#160;<a href="setup.html">2. Installation and Configuration</a>
+        «&#160;&#160;<a href="install.html">2. Installation and Configuration</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
@@ -202,8 +202,19 @@ problem. It has the following attributes/sub-elements:</p>
 </table>
 </div></blockquote>
 </div>
+<div class="section" id="no-reduce-element">
+<h3>3.2.6. <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> Element<a class="headerlink" href="#no-reduce-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> element has no attributes and has an accepted value of &#8220;on&#8221;
+or &#8220;off&#8221;. If set to &#8220;on&#8221;, all user-defined tallies and global tallies will not
+be reduced across processors in a parallel calculation. This means that the
+accumulate score in one batch on a single processor is considered as an
+independent realization for the tally random variable. For a problem with large
+tally data, this option can significantly improve the parallel efficiency.</p>
+<blockquote>
+<div><em>Default</em>: off</div></blockquote>
+</div>
 <div class="section" id="ptables-element">
-<h3>3.2.6. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.7. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> element determines whether probability tables should be used
 in the unresolved resonance range if available. This element has no attributes
 or sub-elements and can be set to either &#8220;off&#8221; or &#8220;on&#8221;.</p>
@@ -211,14 +222,14 @@ or sub-elements and can be set to either &#8220;off&#8221; or &#8220;on&#8221;.<
 <div><em>Default</em>: on</div></blockquote>
 </div>
 <div class="section" id="seed-element">
-<h3>3.2.7. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.8. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">seed</span></tt> element is used to set the seed used for the linear congruential
 pseudo-random number generator.</p>
 <blockquote>
 <div><em>Default</em>: 1</div></blockquote>
 </div>
 <div class="section" id="source-element">
-<h3>3.2.8. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">source</span></tt> element gives information on an initial source guess for
 criticality calculations. It takes the following attributes:</p>
 <blockquote>
@@ -247,23 +258,52 @@ numbers which specify the (x,y,z) location of an isotropic point source</p>
 </div></blockquote>
 </div>
 <div class="section" id="survival-biasing-element">
-<h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> element has no attributes and assumes wither the
-value <tt class="docutils literal"><span class="pre">on</span></tt> or <tt class="docutils literal"><span class="pre">off</span></tt>. If turned on, this option will enable the use of
-survival biasing, otherwise known as implicit capture or absorption.</p>
+<h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> element has no attributes and has an accepted value
+of &#8220;on&#8221; or &#8220;off&#8221;. If set to &#8220;on&#8221;, this option will enable the use of survival
+biasing, otherwise known as implicit capture or absorption.</p>
 <blockquote>
 <div><em>Default</em>: off</div></blockquote>
 </div>
 <div class="section" id="trace-element">
-<h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
+<span id="trace"></span><h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> element can be used to print out detailed information about a
 single particle during a simulation. This element should be followed by three
 integers: the batch number, generation number, and particle number.</p>
 <blockquote>
 <div><em>Default</em>: None</div></blockquote>
 </div>
+<div class="section" id="uniform-fs-element">
+<h3>3.2.12. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> element describes a mesh that is used for re-weighting
+source sites at every generation based on the uniform fission site methodology
+described in Kelly et al., &#8220;MC21 Analysis of the Nuclear Energy Agency Monte
+Carlo Performance Benchmark Problem,&#8221; Proceedings of <em>Physor 2012</em>, Knoxville,
+TN (2012). This mesh should cover all possible fissionable materials in the
+problem. It has the following attributes/sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in the x, y, and z directions, respectively.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartersian coordinates of the lower-left corner of the mesh.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartersian coordinates of the upper-right corner of the mesh.</p>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div>
 <div class="section" id="verbosity-element">
-<h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.13. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> element tells the code how much information to display to
 the standard output. A higher verbosity corresponds to more information being
 displayed. This element takes the following attributes:</p>
@@ -279,6 +319,14 @@ displayed. This element takes the following attributes:</p>
 </tbody>
 </table>
 </div></blockquote>
+</div>
+<div class="section" id="write-source-element">
+<h3>3.2.14. <tt class="docutils literal"><span class="pre">&lt;write_source&gt;</span></tt> Element<a class="headerlink" href="#write-source-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;write_source&gt;</span></tt> element has no attributes and has an accepted value of
+&#8220;on&#8221; or &#8220;off&#8221;. If set to &#8220;on&#8221;, a binary source file will be written to diskat
+the end of the run that can be used as a starting source for another run.</p>
+<blockquote>
+<div><em>Default</em>: off</div></blockquote>
 </div>
 </div>
 <div class="section" id="geometry-specification-geometry-xml">
@@ -418,7 +466,8 @@ R^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">material:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">id</span></tt> of the material that this cell contains.</p>
+<tr class="field-even field"><th class="field-name">material:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">id</span></tt> of the material that this cell contains. If the cell should
+contain no material, this can also be set to &#8220;void&#8221;.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">If a material is specified, no fill should be given.</p>
@@ -562,10 +611,14 @@ post-collision energy, and an arbitrary structured mesh.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">filters:</th><td class="field-body">A list of filters to specify what region of phase space should contribute to
+<tr class="field-odd field"><th class="field-name">label:</th><td class="field-body">This is an optional sub-element specifying the name of this tally to be used
+for output purposes. This string is limited to 52 characters for formatting
+purposes.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">filters:</th><td class="field-body">A list of filters to specify what region of phase space should contribute to
 the tally. See below for full details on what filters are available.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">scores:</th><td class="field-body">The desired responses to be accumulated. See below for full details on what
+<tr class="field-odd field"><th class="field-name">scores:</th><td class="field-body">The desired responses to be accumulated. See below for full details on what
 responses can be tallied.</td>
 </tr>
 </tbody>
@@ -589,16 +642,15 @@ originally born in a specified cell.</td>
 <tr class="field-odd field"><th class="field-name">universe:</th><td class="field-body">A list of universes for which the tally should be accumulated.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">energy:</th><td class="field-body">A monotonically increasing list of bounding <strong>pre-collision</strong> energies for a
-number of groups. For example, if the following energy filter is specified
-as <tt class="docutils literal"><span class="pre">&lt;energy&gt;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&lt;/energy&gt;</span></tt>, then two energy bins will be created,
-one with energies between 0 and 1 MeV and the other with energies between 1
-and 20 MeV.</td>
+number of groups. For example, if this filter is specified as <tt class="docutils literal"><span class="pre">&lt;energy&gt;0.0</span>
+<span class="pre">1.0</span> <span class="pre">20.0&lt;/energy&gt;</span></tt>, then two energy bins will be created, one with energies
+between 0 and 1 MeV and the other with energies between 1 and 20 MeV.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">energyout:</th><td class="field-body">A monotonically increasing list of bounding <strong>post-collision</strong> energies for
-a number of groups. For example, if the following energy filter is specified
-as <tt class="docutils literal"><span class="pre">&lt;energy&gt;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&lt;/energy&gt;</span></tt>, then two energy bins will be created,
-one with energies between 0 and 1 MeV and the other with energies between 1
-and 20 MeV.</td>
+a number of groups. For example, if this filter is specified as
+<tt class="docutils literal"><span class="pre">&lt;energyout&gt;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&lt;/energyout&gt;</span></tt>, then two post-collision energy bins
+will be created, one with energies between 0 and 1 MeV and the other with
+energies between 1 and 20 MeV.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">mesh:</th><td class="field-body">The <tt class="docutils literal"><span class="pre">id</span></tt> of a structured mesh to be tallied over.</td>
 </tr>
@@ -820,7 +872,7 @@ materials to plot.  This overrides any <tt class="docutils literal"><span class=
       <div class="bottomnav">
       
         <p>
-        «&#160;&#160;<a href="setup.html">2. Installation and Configuration</a>
+        «&#160;&#160;<a href="install.html">2. Installation and Configuration</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
@@ -832,7 +884,7 @@ materials to plot.  This overrides any <tt class="docutils literal"><span class=
 
     <div class="footer">
         &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">
 

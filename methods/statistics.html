@@ -1,0 +1,154 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>3. Statistics &mdash; OpenMC Documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.4.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="../index.html" />
+    <link rel="up" title="Theory and Methodology" href="index.html" />
+    <link rel="next" title="4. Geometry" href="geometry.html" />
+    <link rel="prev" title="2. Criticality Calculations" href="criticality.html" /> 
+  </head>
+  <body>
+      <div class="header">
+        <a href="../index.html">
+          <img class="logo" src="../_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="criticality.html">2. Criticality Calculations</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="geometry.html">4. Geometry</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="statistics">
+<span id="methods-statistics"></span><h1>3. Statistics<a class="headerlink" href="#statistics" title="Permalink to this headline">¶</a></h1>
+<p>As was discussed briefly in <a class="reference internal" href="introduction.html#methods-introduction"><em>Introduction</em></a>, any given result from a
+Monte Carlo calculation, colloquially known as a &#8220;tally&#8221;, represents an estimate
+of the mean of some random variable of interest. This random variable typically
+corresponds to some physical quantity like a reaction rate, a net current across
+some surface, or the neutron flux in a region. Given that all tallies are
+produced by a stochastic process, there is an associated uncertainty with each
+value reported. It is important to understand how the uncertainty is calculated
+and what it tells us about our results. To that end, we will introduce a number
+of theorems and results from statistics that should shed some light on the
+interpretation of uncertainties.</p>
+<div class="section" id="law-of-large-numbers">
+<h2>3.1. Law of Large Numbers<a class="headerlink" href="#law-of-large-numbers" title="Permalink to this headline">¶</a></h2>
+<p>Let <img class="math" src="../_images/math/c0e436a4c473266b3c2ed35c65e3d384f91ba131.png" alt="X_1, X_2, \dots, X_n"/> be an infinite sequence of independent,
+identically-distributed random variables with expected values <img class="math" src="../_images/math/32dae0bce8afa63ef96324685abd41df435cd92e.png" alt="E(X_1) =
+E(X_2) = \mu"/>. The sample mean <img class="math" src="../_images/math/2ad0a92f0036a3d39d78a8e8ed331b3b05cfd4e4.png" alt="\bar{X_n} = \frac{X_1 + \dots + X_n}{n}"/>
+converges in probability to the true mean, i.e. for all <img class="math" src="../_images/math/ce56cfc237a035a5b060ddc685c710b3fa4af2e8.png" alt="\epsilon &gt; 0"/></p>
+<div class="math">
+<p><img src="../_images/math/54b533b0558a6c319ad7d12a02144a6f255efef8.png" alt="\lim\limits_{n\rightarrow\infty} P \left ( \left | \bar{X}_n - \mu \right |
+\ge \epsilon \right ) = 0."/></p>
+</div></div>
+<div class="section" id="random-number-generation">
+<h2>3.2. Random Number Generation<a class="headerlink" href="#random-number-generation" title="Permalink to this headline">¶</a></h2>
+<p>In order to sample probability distributions, one must be able to produce random
+numbers. The standard technique to do this is to generate numbers on the
+interval <img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/> from a deterministic sequence that has a properties that
+make it appear to be random, e.g. being uniformly distributed and not exhibiting
+correlation between successive terms. Since the numbers are not truly &#8220;random&#8221;
+in the strict sense, they are typically referred to as pseudo-random numbers,
+and the techniques used to generate them are pseudo-random number generators
+(PRNGs). Numbers sampled on the unit interval can then be used transformed for
+the purpose of sampling other continuous or discrete probability distributions.</p>
+<p>There are a great number of algorithms for generating random numbers. One of the
+simplest and commonly used algorithms is called a <a class="reference external" href="http://en.wikipedia.org/wiki/Linear_congruential_generator">linear congruential
+generator</a>. We start with some random number seed <img class="math" src="../_images/math/da04290a79211712a58bf7241c9fb64251e000c3.png" alt="\xi_0"/> and a sequence
+of random numbers is generated using the following recurrence relation:</p>
+<div class="math" id="equation-lcg">
+<p><span class="eqno">(1)</span><img src="../_images/math/838ea831f2458960d581811d15ea37bae3f20014.png" alt="\xi_{i+1} = g \xi_i + c \mod M"/></p>
+</div><p>where <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>, <img class="math" src="../_images/math/3372c1cb6d68cf97c2d231acc0b47b95a9ed04cc.png" alt="c"/>, and <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/> are constants. The choice of these
+constants will have a profound effect on the quality and performance of the
+generator, so they should not be chosen arbitrarily. As Donald Knuth said in his
+seminal work <em>The Art of Computer Programming</em>, &#8220;random numbers should not be
+generated with a method chosen at random&#8221;. Some theory should be used.&#8221;
+Typically, <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/> is chosen to be a power of two as this enables <img class="math" src="../_images/math/8a943d203cece3a9ae19aeb2cd2d5afb399e5629.png" alt="x
+\mod M"/> to be performed using the binary AND operator with a bit mask. The
+constants for the linear congruential generator used by default in OpenMC are
+<img class="math" src="../_images/math/2851e2495cc772b3cbe5edf2b4e75115af0d534d.png" alt="g = 2806196910506780709"/>, <img class="math" src="../_images/math/5351998230e216d9d0f2884c159326cfe6622263.png" alt="c = 1"/>, and <img class="math" src="../_images/math/03c1a3989f49e90c6425937a97a8ef5e26862238.png" alt="M = 2^{63}"/>.</p>
+<p>One of the important capabilities for a random number generator is to be able to
+skip ahead in the sequence of random numbers. Without this capability, it would
+be very difficult to maintain reproducibility in a parallel calculation. If we
+want to skip ahead <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/> random numbers and <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/> is large, the cost of
+just sampling <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/> random numbers to get to that position may be
+prohibitively expensive. Fortunately, algorithms have been developed that allow
+us to skip ahead in <img class="math" src="../_images/math/c0db20de736ea9b9091c56adbd1e4111cc026472.png" alt="O(\log N)"/> operations instead of <img class="math" src="../_images/math/b9d0fa8c3afe5b2fc32d90e0c5b2d65f69b9ebf8.png" alt="O(N)"/>. One
+algorithm to do so is described in a paper by <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl_rn_arb-strides_1994.pdf">Brown</a>. This algorithm relies on
+the following relationship:</p>
+<div class="math" id="equation-lcg-skipahead">
+<p><span class="eqno">(2)</span><img src="../_images/math/29e04a6d8160c6dd91ec828d9133bcdeff0f1fdc.png" alt="\xi_{i+k} = g^k \xi_i + c \frac{g^k - 1}{g - 1} \mod M"/></p>
+</div><p>Note that equation <a href="#equation-lcg-skipahead">(2)</a> has the same form as equation <a href="#equation-lcg">(1)</a>
+so the idea is to determine the new multiplicative and additive constants in
+<img class="math" src="../_images/math/c0db20de736ea9b9091c56adbd1e4111cc026472.png" alt="O(\log N)"/> operations.</p>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="criticality.html">2. Criticality Calculations</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="geometry.html">4. Geometry</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+
+    <div class="footer">
+        &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

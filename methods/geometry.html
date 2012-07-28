@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>2. Geometry &mdash; OpenMC Documentation</title>
+    <title>4. Geometry &mdash; OpenMC Documentation</title>
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.4.2',
+        VERSION:     '0.4.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -29,8 +29,8 @@
     <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="Theory and Methodology" href="index.html" />
-    <link rel="next" title="3. Physics" href="physics.html" />
-    <link rel="prev" title="1. Introduction" href="introduction.html" /> 
+    <link rel="next" title="5. Physics" href="physics.html" />
+    <link rel="prev" title="3. Statistics" href="statistics.html" /> 
   </head>
   <body>
       <div class="header">
@@ -41,11 +41,11 @@
       <div class="topnav">
       
         <p>
-        «&#160;&#160;<a href="introduction.html">1. Introduction</a>
+        «&#160;&#160;<a href="statistics.html">3. Statistics</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="physics.html">3. Physics</a>&#160;&#160;»
+        <a href="physics.html">5. Physics</a>&#160;&#160;»
         </p>
 
       </div>
@@ -53,20 +53,391 @@
         
         
   <div class="section" id="geometry">
-<span id="methods-geometry"></span><h1>2. Geometry<a class="headerlink" href="#geometry" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="reflective-surfaces">
-<h2>2.1. Reflective Surfaces<a class="headerlink" href="#reflective-surfaces" title="Permalink to this headline">¶</a></h2>
-<p>In general, a surface can be written in the form <img class="math" src="../_images/math/7a618bda1847d33ede0ff905641965782665226a.png" alt="f(x,y,z) = 0"/>. If a
-neutron is traveling in direction <img class="math" src="../_images/math/0e25809cc8ec81373d3c46ff247a7c6d3a63dcaf.png" alt="\vec{v}"/> and crosses a reflective
-surface of the above form, it can be shown that the velocity vector will then
-become</p>
+<span id="methods-geometry"></span><h1>4. Geometry<a class="headerlink" href="#geometry" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="constructive-solid-geometry">
+<h2>4.1. Constructive Solid Geometry<a class="headerlink" href="#constructive-solid-geometry" title="Permalink to this headline">¶</a></h2>
+<p>OpenMC uses a technique known as <a class="reference external" href="http://en.wikipedia.org/wiki/Constructive_solid_geometry">constructive solid geometry</a> (CSG) to build
+arbitrarily complex three-dimensional models in Euclidean space. In a CSG model,
+every unique object is described as the union, intersection, or difference of
+half-spaces created by bounding <a class="reference external" href="http://en.wikipedia.org/wiki/Surface">surfaces</a>. Every surface divides all of space
+into exactly two half-spaces. We can mathematically define a surface as a
+collection of points that satisfy an equation of the form <img class="math" src="../_images/math/7a618bda1847d33ede0ff905641965782665226a.png" alt="f(x,y,z) = 0"/>
+where <img class="math" src="../_images/math/84e54f95933186f54643a5cdfcf3ba5bbeb15cbe.png" alt="f(x,y,z)"/> is a given function. The region for which <img class="math" src="../_images/math/e11d5b4233cfcb148da95272d25a97c69e14f88e.png" alt="f(x,y,z)
+&lt; 0"/> can be called the negative half-space (or simply the &#8220;negative side&#8221;) and
+the region for which <img class="math" src="../_images/math/0432656583b9d022cbfc26ee144bc86dca260bbf.png" alt="f(x,y,z) &gt; 0"/> can be called the positive half-space.</p>
+<p>Let us take the example of a sphere centered at the point <img class="math" src="../_images/math/7245d49359f8c8c13b14f96061fac66b438cd96c.png" alt="(x_0,y_0,z_0)"/>
+with radius <img class="math" src="../_images/math/eff43e84f8a3bcf7b6965f0a3248bc4d3a9d0cd4.png" alt="R"/>. One would normally write the equation of the sphere as</p>
 <div class="math">
-<p><img src="../_images/math/ec1573ce905ac3e6758c191cd5c52441ed093cf8.png" alt="\mathbf{v'} = \mathbf{v} - 2 (\mathbf{v} \cdot \hat{\mathbf{n}})
+<p><img src="../_images/math/6af9dc356b69290567be1ba77869f260e7878658.png" alt="(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 = R^2"/></p>
+</div><p>By subtracting the right-hand term from both sides of the equation, we can then
+write the surface equation:</p>
+<div class="math">
+<p><img src="../_images/math/39665b0464c468ea0d6cd2a77305e14a67e08ab7.png" alt="f(x,y,z) = (x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - R^2 = 0"/></p>
+</div><p>One can confirm that any point inside this sphere will correspond to
+<img class="math" src="../_images/math/1604bf914aa13876506e25fccafd05ba52c235ff.png" alt="f(x,y,z) &lt; 0"/> and any point outside the sphere will correspond to
+<img class="math" src="../_images/math/0432656583b9d022cbfc26ee144bc86dca260bbf.png" alt="f(x,y,z) &gt; 0"/>.</p>
+<p>In OpenMC, every surface defined by the user is assigned an integer to uniquely
+identify it. We can then refer to either of the two half-spaces created by a
+surface by a combination of the unique ID of the surface and a positive/negative
+sign. For example, to refer to the negative half-space of a sphere (the volume
+inside the sphere) with unique ID 35, the reference would be -35. These
+references to half-spaces are used in created regions in space of homogeneous
+material, known as &#8220;cells&#8221;.</p>
+<div class="align-center figure align-center">
+<img src="../_images/halfspace.svg" /></div>
+<div class="align-center figure align-center">
+<img src="../_images/union.svg" /></div>
+<p>In OpenMC, any second-order surface of the form</p>
+<div class="math">
+<p><img src="../_images/math/cc0382cba422757f5ad3072ea3edddfdb75568f4.png" alt="f(x,y,z) = Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0"/></p>
+</div><p>can be modeled in OpenMC. For example, the equation for a sphere centered at
+<img class="math" src="../_images/math/044ccf810d8b9fed4efe9df70dc0e70667c10381.png" alt="(\bar{x},\bar{y},\bar{z})"/> and of radius <img class="math" src="../_images/math/eff43e84f8a3bcf7b6965f0a3248bc4d3a9d0cd4.png" alt="R"/> can be written as</p>
+<div class="section" id="universes">
+<h3>4.1.1. Universes<a class="headerlink" href="#universes" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="lattices">
+<h3>4.1.2. Lattices<a class="headerlink" href="#lattices" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="computing-the-distance-to-nearest-boundary">
+<h2>4.2. Computing the Distance to Nearest Boundary<a class="headerlink" href="#computing-the-distance-to-nearest-boundary" title="Permalink to this headline">¶</a></h2>
+<p>One of the most basic algorithms in any Monte Carlo code is determining the
+distance to the nearest surface within a cell. Since each cell is defined by
+the surfaces that bound it, if we compute the distance to all surfaces bounding
+a cell, we can determine the nearest one.</p>
+<p>With the possibility of a particle having coordinates on multiple levels
+(universes) in a geometry, we must exercise care when calculating the distance
+to the nearest surface. Each different level of geometry has a set of boundaries
+with which the particle&#8217;s direction of travel may intersect. Thus, it is
+necessary to check the distance to the surfaces bounding the cell in each
+level. This should be done starting the highest (most global) level going down
+to the lowest (most local) level. That ensures that if two surfaces on different
+levels are coincident, by default the one on the higher level will be selected
+as the nearest surface.</p>
+<p>The following procedure is used to calculate the distance to each bounding
+surface. Suppose we have a particle at <img class="math" src="../_images/math/c73ed093cc73a8d9a14185fa525e7067e5c3725d.png" alt="(x,y,z)"/> traveling in the
+direction <img class="math" src="../_images/math/fcae97afd50afd36ef27d7eeff7e8a693e403e6a.png" alt="u,v,w"/>. To find the distance <img class="math" src="../_images/math/96ab646de7704969b91c76a214126b45f2b07b25.png" alt="d"/> to a surface
+<img class="math" src="../_images/math/7a618bda1847d33ede0ff905641965782665226a.png" alt="f(x,y,z) = 0"/>, we need to solve the equation:</p>
+<div class="math" id="equation-dist-to-boundary-1">
+<p><span class="eqno">(1)</span><img src="../_images/math/03699541fd58481a75e0abad276ffecfd3767678.png" alt="f(x + du, y + dv, z + dw) = 0"/></p>
+</div><p>If no solutions to equation <a href="#equation-dist-to-boundary-1">(1)</a> exists or the only
+solutions are complex, then the particle&#8217;s direction of travel will not
+intersect the surface. If the solution to equation <a href="#equation-dist-to-boundary-1">(1)</a> is
+negative, this means that the surface is &#8220;behind&#8221; the particle, i.e. if the
+particle continues traveling in its current direction, it will not hit the
+surface. The complete derivation for different types of surfaces used in OpenMC
+will be presented in the following sections.</p>
+<p>Once a distance has been computed to a boundary, we need to check if it is
+closer than previously-computed distances to surfaces. Unfortunately, we cannot
+just use the minimum function because some distances may be almost identical but
+still different due to the use of floating-point arithmetic. Consequently, we
+should first check for floating-point equality of the current distance
+calculated and the minimum found thus far. This is done by checking if</p>
+<div class="math" id="equation-fp-distance">
+<p><span class="eqno">(2)</span><img src="../_images/math/805ab2394e98d49017a525d4de5f66d820de1914.png" alt="\frac{| d - d_{min} |}{d_{min}} &lt; \epsilon"/></p>
+</div><p>where <img class="math" src="../_images/math/96ab646de7704969b91c76a214126b45f2b07b25.png" alt="d"/> is the distance to a surface just calculated, <img class="math" src="../_images/math/3bf67af3365f4a79643a8f83ccb546ab0465f8c6.png" alt="d_{min}"/> is
+the minimum distance found thus far, and <img class="math" src="../_images/math/eaf4418fbe935c15a606516d8f55dc380cd8e822.png" alt="\epsilon"/> is a small number. In
+OpenMC, this parameter is set to <img class="math" src="../_images/math/fe73ff328f5390abe4321dedca99491e5136e5c7.png" alt="\epsilon = 10^{-14}"/> since all floating
+calculations are done on 8-byte floating point numbers.</p>
+<p>Although they are not explicitly defined, it is also necessary to check the
+distance to surfaces representing lattice boundaries if a lattice exists on a
+given level.</p>
+<div class="section" id="plane-perpendicular-to-an-axis">
+<h3>4.2.1. Plane Perpendicular to an Axis<a class="headerlink" href="#plane-perpendicular-to-an-axis" title="Permalink to this headline">¶</a></h3>
+<p>The equation for a plane perpendicular to, for example, the x-axis is simply
+<img class="math" src="../_images/math/006d7ad8cb8d2c3b8ad5ec7b2542af99f91bb8c6.png" alt="x - x_0 = 0"/>. As such, we need to solve <img class="math" src="../_images/math/bb3fffdb83748cc9f5ab0b8c7df6cee8dafd8f51.png" alt="x + du - x_0 = 0"/>. The
+solution for the distance is</p>
+<div class="math" id="equation-dist-xplane">
+<p><span class="eqno">(3)</span><img src="../_images/math/c45ce0d87e6ca560da0708c3e321ad7c63bade68.png" alt="d = \frac{x_0 - x}{u}"/></p>
+</div><p>Note that if the particle&#8217;s direction of flight is parallel to the x-axis,
+i.e. <img class="math" src="../_images/math/7d43eae6892d884f8e8f4345b93c83fcf7db3481.png" alt="u = 0"/>, the distance to the surface will be infinity. While the
+example here was for a plane perpendicular to the x-axis, the same formula can
+be applied for the surfaces <img class="math" src="../_images/math/386d08a29da93cc135285d42a82a3ed49000d5f1.png" alt="y = y_0"/> and <img class="math" src="../_images/math/c77b4a481469dbcd2486262e16623f483c16fb9d.png" alt="z = z_0"/>.</p>
+</div>
+<div class="section" id="generic-plane">
+<h3>4.2.2. Generic Plane<a class="headerlink" href="#generic-plane" title="Permalink to this headline">¶</a></h3>
+<p>The equation for a generic plane is <img class="math" src="../_images/math/eb8661ea00d3e9e10ef23de03755960eec4b554f.png" alt="Ax + By + Cz = D"/>. Thus, we need to
+solve the equation <img class="math" src="../_images/math/c6d0eaa4590b6b777c41f96430ba714713a71498.png" alt="A(x + du) + B(y + dv) + C(z + dw) = D"/>. The solution
+to this equation for the distance is</p>
+<div class="math" id="equation-dist-plane">
+<p><span class="eqno">(4)</span><img src="../_images/math/065d9778ccf955e57611bb0d67e60512630aeb6e.png" alt="d = \frac{D - Ax - By - Cz}{Au + Bv + Cw}"/></p>
+</div><p>Again, we need to check whether the denominator is zero. If so, this means that
+the particle&#8217;s direction of flight is parallel to the plane and it will
+therefore never hit the plane.</p>
+</div>
+<div class="section" id="cylinder-parallel-to-an-axis">
+<h3>4.2.3. Cylinder Parallel to an Axis<a class="headerlink" href="#cylinder-parallel-to-an-axis" title="Permalink to this headline">¶</a></h3>
+<p>The equation for a cylinder parallel to, for example, the x-axis is <img class="math" src="../_images/math/6fdd896e948380781202b4f1b7689e5901b4d8e8.png" alt="(y -
+y_0)^2 + (z - z_0)^2 = R^2"/>. Thus, we need to solve <img class="math" src="../_images/math/01b03dce6c6a8661c94399bda49265d52cae9c72.png" alt="(y + dv - y_0)^2 +
+(z + dw - z_0)^2 = R^2"/>. Let us define <img class="math" src="../_images/math/0a00d0284d1808a4f2b2e78591f2207e848b7231.png" alt="\bar{y} = y - y_0"/> and
+<img class="math" src="../_images/math/72f232750ca08ddc2c2143c1e5de9d18ae93a35a.png" alt="\bar{z} = z - z_0"/>. We then have</p>
+<div class="math" id="equation-dist-xcylinder-1">
+<p><span class="eqno">(5)</span><img src="../_images/math/023e5f78508abf67433d9e0ff4b5d6f735638975.png" alt="(\bar{y} + dv)^2 + (\bar{z} + dw)^2 = R^2"/></p>
+</div><p>Expanding equation <a href="#equation-dist-xcylinder-1">(5)</a> and rearranging terms, we obtain</p>
+<div class="math" id="equation-dist-xcylinder-2">
+<p><span class="eqno">(6)</span><img src="../_images/math/2ddcddfefa7b01420efa31ea67ef8b5abf23eedd.png" alt="(v^2 + w^2) d^2 + 2 (\bar{y}v + \bar{z}w) d + (\bar{y}^2 + \bar{z}^2 - R^2)
+= 0"/></p>
+</div><p>This is a quadratic equation for <img class="math" src="../_images/math/96ab646de7704969b91c76a214126b45f2b07b25.png" alt="d"/>. To simplify notation, let us define
+<img class="math" src="../_images/math/552c7b5303abab999dc5733916f14a21cc0c12ab.png" alt="a = v^2 + w^2"/>, <img class="math" src="../_images/math/0b42151a7e81b90d33d9a8cd22aaf2b3433e8ecf.png" alt="k = \bar{y}v + \bar{z}w"/>, and <img class="math" src="../_images/math/3880717638f9e93894d243d195f073474aedd47e.png" alt="c =
+\bar{y}^2 + \bar{z}^2 - R^2"/>. Thus, the distance is just the solution to
+<img class="math" src="../_images/math/9b71db75317a4244ae00249612c4ae395798002c.png" alt="ad^2 + 2kd + c = 0"/>:</p>
+<div class="math" id="equation-dist-xcylinder-3">
+<p><span class="eqno">(7)</span><img src="../_images/math/4be78a435d229d2d0e048b4c14a2f53a6f186790.png" alt="d = \frac{-k \pm \sqrt{k^2 - ac}}{a}"/></p>
+</div><p>A few conditions must be checked for. If <img class="math" src="../_images/math/b5969c2cfb1ffadf981fbbddcf796c8eb0037546.png" alt="a = 0"/>, this means the particle
+is parallel to the cylinder and will thus never intersect it. Also, if
+<img class="math" src="../_images/math/41c1468d83188091c8cc09cc72a6eba119946889.png" alt="k^2 - ac &lt; 0"/>, this means that both solutions to the quadratic are
+complex. In physical terms, this means that the ray along which the particle is
+traveling does not make any intersections with the cylinder.</p>
+<p>If we do have intersections and <img class="math" src="../_images/math/b3dd417591a694e2339db5d9c3666343ee396e70.png" alt="c &lt; 0"/>, this means that the particle is
+inside the cylinder. Thus, one solution should be positive and one should be
+negative. Clearly, the positive distance will occur when the sign on the
+square root of the discriminant is positive since <img class="math" src="../_images/math/d25634d7212302efdeb3702974863759bfb74d6a.png" alt="a &gt; 0"/>.</p>
+<p>If we have intersections and <img class="math" src="../_images/math/40c60c289e0343a236653229b2132befdfeabd04.png" alt="c &gt; 0"/> this means that the particle is
+outside the cylinder. Thus, the solutions to the quadratic are either both
+positive or both negative. If they are both positive, the smaller (closer) one
+will be the solution with a negative sign on the square root of the
+discriminant.</p>
+<p>The same equations and logic here can be used for cylinders that are parallel to
+the y- or z-axis with appropriate substitution of constants.</p>
+</div>
+<div class="section" id="sphere">
+<h3>4.2.4. Sphere<a class="headerlink" href="#sphere" title="Permalink to this headline">¶</a></h3>
+<p>The equation for a sphere is <img class="math" src="../_images/math/62a745995df775198e16354b6b1ed9887e88c8a2.png" alt="(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
+R^2"/>. Thus, we need to solve the equation</p>
+<div class="math" id="equation-dist-sphere-1">
+<p><span class="eqno">(8)</span><img src="../_images/math/0c0c7c7a36ede0ff443adf06fea0aac3b95d4574.png" alt="(x + du - x_0)^2 + (y + dv - y_0)^2 + (z + dw - z_0)^2 = R^2"/></p>
+</div><p>Let us define <img class="math" src="../_images/math/5522c7baeeb345c4c79eeefd6f8c143569d7124e.png" alt="\bar{x} = x - x_0"/>, <img class="math" src="../_images/math/0a00d0284d1808a4f2b2e78591f2207e848b7231.png" alt="\bar{y} = y - y_0"/>, and
+<img class="math" src="../_images/math/72f232750ca08ddc2c2143c1e5de9d18ae93a35a.png" alt="\bar{z} = z - z_0"/>. We then have</p>
+<div class="math" id="equation-dist-sphere-2">
+<p><span class="eqno">(9)</span><img src="../_images/math/f3f870e629b4f6f8cddd2f9c584d1d7b86b9a1d9.png" alt="(\bar{x} + du)^2 + (\bar{y} + dv)^2 + (\bar{z} - dw)^2 = R^2"/></p>
+</div><p>Expanding equation <a href="#equation-dist-sphere-2">(9)</a> and rearranging terms, we obtain</p>
+<div class="math" id="equation-dist-sphere-3">
+<p><span class="eqno">(10)</span><img src="../_images/math/29839d6d8734f2b93d9830405ad0d0c17ebeb793.png" alt="d^2 + 2 (\bar{x}u + \bar{y}v + \bar{z}w) d + (\bar{x}^2 + \bar{y}^2 +
+\bar{z}^2 - R^2) = 0"/></p>
+</div><p>This is a quadratic equation for <img class="math" src="../_images/math/96ab646de7704969b91c76a214126b45f2b07b25.png" alt="d"/>. To simplify notation, let us define
+<img class="math" src="../_images/math/f967083137ca6bc489a7d760500f1626950348ec.png" alt="k = \bar{x}u + \bar{y}v + \bar{z}w"/> and <img class="math" src="../_images/math/e1c4f2d842a96c281126d6a9c96e6178c8cc2906.png" alt="c = \bar{x}^2 +
+\bar{y}^2 + \bar{z}^2 - R^2"/>. Thus, the distance is just the solution to
+<img class="math" src="../_images/math/ea7f4f738e809d175c21c4d61ff338d0a8cc22f2.png" alt="d^2 + 2kd + c = 0"/>:</p>
+<div class="math" id="equation-dist-sphere-4">
+<p><span class="eqno">(11)</span><img src="../_images/math/b41787afffa93c2dc63e78e824cf5a5f6380e57c.png" alt="d = -k \pm \sqrt{k^2 - c}"/></p>
+</div><p>If the discriminant <img class="math" src="../_images/math/fc119d611e5569f18a2ee709788edbc042337dbb.png" alt="k^2 - c &lt; 0"/>, this means that both solutions to the
+quadratic are complex. In physical terms, this means that the ray along which
+the particle is traveling does not make any intersections with the sphere.</p>
+<p>If we do have intersections and <img class="math" src="../_images/math/b3dd417591a694e2339db5d9c3666343ee396e70.png" alt="c &lt; 0"/>, this means that the particle is
+inside the sphere. Thus, one solution should be positive and one should be
+negative. The positive distance will occur when the sign on the square root of
+the discriminant is positive. If we have intersections but <img class="math" src="../_images/math/40c60c289e0343a236653229b2132befdfeabd04.png" alt="c &gt; 0"/> this
+means that the particle is outside the sphere. The solutions to the quadratic
+will then be either both positive or both negative. If they are both positive,
+the smaller (closer) one will be the solution with a negative sign on the square
+root of the discriminant.</p>
+</div>
+</div>
+<div class="section" id="finding-a-cell-given-a-point">
+<span id="find-cell"></span><h2>4.3. Finding a Cell Given a Point<a class="headerlink" href="#finding-a-cell-given-a-point" title="Permalink to this headline">¶</a></h2>
+<p>Another basic algorithm is to determine which cell contains a given point in the
+global coordinate system, i.e. if the particle&#8217;s position is <img class="math" src="../_images/math/c73ed093cc73a8d9a14185fa525e7067e5c3725d.png" alt="(x,y,z)"/>,
+what cell is it currently in. This is done in the following manner in
+OpenMC. With the possibility of multiple levels of coordinates, we must perform
+a recursive search for the cell. First, we start in the highest (most global)
+universe which we call the base universe and do a loop over each cell within
+that universe. For each cell, we check whether the specified point is inside the
+cell using the algorithm described in <a class="reference internal" href="#cell-contains"><em>Determining if a Coordinate is in a Cell</em></a>. If the cell is
+filled with a normal material, the search is done and we have identified the
+cell containing the point. If the cell is filled with another universe, we then
+search all cells within that universe to see if any of them contain the
+specified point. If the cell is filled with a lattice, the position within the
+lattice is determined, and then whatever universe fills that lattice position is
+recursively searched. The search ends once a cell containing a normal material
+is found that contains the specified point.</p>
+</div>
+<div class="section" id="determining-if-a-coordinate-is-in-a-cell">
+<span id="cell-contains"></span><h2>4.4. Determining if a Coordinate is in a Cell<a class="headerlink" href="#determining-if-a-coordinate-is-in-a-cell" title="Permalink to this headline">¶</a></h2>
+<p>One aspect of being able to determine what cell a particle is in is determining
+if a particle&#8217;s coordinates lie within a given cell. The current geometry
+implementation in OpenMC limits all cells to being simple cells, i.e. they are
+defined only with intersection of half-spaces and not unions, differences,
+etc. This makes the job of determining if a point is in a cell quite simple.</p>
+<p>The algorithm for determining if a cell contains a point is as follows. For each
+surface that bounds a cell, we determine the particle&#8217;s sense with respect to
+the surface. As explained earlier, if we have a point <img class="math" src="../_images/math/7245d49359f8c8c13b14f96061fac66b438cd96c.png" alt="(x_0,y_0,z_0)"/> and
+a surface <img class="math" src="../_images/math/7a618bda1847d33ede0ff905641965782665226a.png" alt="f(x,y,z) = 0"/>, the point is said to have negative sense if
+<img class="math" src="../_images/math/860e2acce7d054c36953080c1211011f2c8a39d0.png" alt="f(x_0,y_0,z_0) &lt; 0"/> and positive sense if <img class="math" src="../_images/math/ae3922163fc49193b1771ba183a49bfcc4c387d5.png" alt="f(x_0,y_0,z_0) &gt; 0"/>. If
+for all surfaces, the sense of the particle with respect to the surface matches
+the specified sense that defines the half-space within the cell, then the point
+is inside the cell.</p>
+<p>Let us illustrate this idea with a concept. Let&#8217;s say we have a cell defined as</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;cell</span> <span class="na">id=</span><span class="s">&quot;1&quot;</span> <span class="na">surfaces=</span><span class="s">&quot;-1 2 -3&quot;</span> <span class="nt">/&gt;</span>
+
+<span class="nt">&lt;surface</span> <span class="na">id=</span><span class="s">&quot;1&quot;</span> <span class="na">type=</span><span class="s">&quot;sphere&quot;</span>  <span class="na">coeffs=</span><span class="s">&quot;0 0 0 10&quot;</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;surface</span> <span class="na">id=</span><span class="s">&quot;2&quot;</span> <span class="na">type=</span><span class="s">&quot;x-plane&quot;</span> <span class="na">coeffs=</span><span class="s">&quot;-3&quot;</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;surface</span> <span class="na">id=</span><span class="s">&quot;3&quot;</span> <span class="na">type=</span><span class="s">&quot;y-plane&quot;</span> <span class="na">coeffs=</span><span class="s">&quot;2&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
+<p>This means that the cell is defined as the intersection of the negative half
+space of a sphere, the positive half-space of an x-plane, and the negative
+half-space of a y-plane. Said another way, any point inside this cell must
+satisfy the following equations</p>
+<div class="math" id="equation-cell-contains-example">
+<p><span class="eqno">(12)</span><img src="../_images/math/62884471151b5b416440a48eebf15dabbcda3ee9.png" alt="x^2 + y^2 + z^2 - 10^2 &lt; 0 \\
+x - (-3) &gt; 0 \\
+x - 2 &lt; 0"/></p>
+</div><p>So in order to determine if a point is inside the cell, we would plug its
+coordinates into equation <a href="#equation-cell-contains-example">(12)</a> and if the inequalities
+are satisfied, than the point is indeed inside the cell.</p>
+</div>
+<div class="section" id="handling-surface-crossings">
+<h2>4.5. Handling Surface Crossings<a class="headerlink" href="#handling-surface-crossings" title="Permalink to this headline">¶</a></h2>
+<p>A particle will cross a surface if the distance to the nearest surface is closer
+than the distance sampled to the next collision. A number of things happen when
+a particle hits a surface. First, we need to check if a non-transmissive
+boundary condition has been applied to the surface. If a vacuum boundary
+condition has been applied, the particle is killed and any surface current
+tallies are scored to as needed. If a reflective boundary condition has been
+applied to the surface, surface current tallies are scored to and then the
+particle&#8217;s direction is changed according to the procedure in <a class="reference internal" href="#reflection"><em>Reflective Boundary Conditions</em></a>.</p>
+<p>Next, we need to determine what cell is beyond the surface in the direction of
+travel of the particle so that we can evaluate cross sections based on its
+material properties. At initialization, a list of neighboring cells is created
+for each surface in the problem as described in <a class="reference internal" href="#neighbor-lists"><em>Building Neighbor Lists</em></a>. The
+algorithm outlined in <a class="reference internal" href="#find-cell"><em>Finding a Cell Given a Point</em></a> is used to find a cell containing the
+particle except rather than searching all cells in the base universe, only the
+list of neighboring cells is searched. If this search is unsuccessful, then a
+search is done over every cell in the base universe.</p>
+</div>
+<div class="section" id="building-neighbor-lists">
+<span id="neighbor-lists"></span><h2>4.6. Building Neighbor Lists<a class="headerlink" href="#building-neighbor-lists" title="Permalink to this headline">¶</a></h2>
+<p>After the geometry has been loaded and stored in memory from an input file,
+OpenMC builds a list for each surface containing any cells that contain the
+surface in their specification in order to speed up processing of surface
+crossings. The algorithm to build these lists is as follows. First, we loop over
+all cells in the geometry and count up how many times each surface appears in a
+specification as bounding a negative half-space and bounding a positive
+half-space. Two arrays are then allocated for each surface, one that lists each
+cell that contains the negative half-space of the surface and one that lists
+each cell that contains the positive half-space of the surface. Another loop is
+performed over all cells and the neighbor lists are populated for each surface.</p>
+</div>
+<div class="section" id="reflective-boundary-conditions">
+<span id="reflection"></span><h2>4.7. Reflective Boundary Conditions<a class="headerlink" href="#reflective-boundary-conditions" title="Permalink to this headline">¶</a></h2>
+<p>If the velocity of a particle is <img class="math" src="../_images/math/1c39926efbcdc7d77c9337f5d48dd8e1761aec2d.png" alt="\mathbf{v}"/> and it crosses a surface of
+the form <img class="math" src="../_images/math/7a618bda1847d33ede0ff905641965782665226a.png" alt="f(x,y,z) = 0"/> with a reflective boundary condition, it can be
+shown based on geometric arguments that the velocity vector will then become</p>
+<div class="math" id="equation-reflection-v">
+<p><span class="eqno">(13)</span><img src="../_images/math/ec1573ce905ac3e6758c191cd5c52441ed093cf8.png" alt="\mathbf{v'} = \mathbf{v} - 2 (\mathbf{v} \cdot \hat{\mathbf{n}})
 \hat{\mathbf{n}}"/></p>
 </div><p>where <img class="math" src="../_images/math/c784dcc2598753df9d694c4439b2320311b94dca.png" alt="\hat{\mathbf{n}}"/> is a unit vector normal to the surface at the
-point of the surface crossing. The direction of the surface normal will be the
-gradient to the surface at the point of crossing, i.e. <img class="math" src="../_images/math/c4301d4bf1894216758b926b70a378c73b059d9a.png" alt="\mathbf{n} =
-\nabla f(x,y,z)"/>.</p>
+point of the surface crossing. The rationale for this can be understood by
+noting that <img class="math" src="../_images/math/6cc64cef9dd78d8ebeaac5be511a9c7a2e7c46c1.png" alt="(\mathbf{v} \cdot \hat{\mathbf{n}}) \hat{\mathbf{n}}"/> is the
+projection of the velocity vector onto the normal vector. By subtracting two
+times this projection, the velocity is reflected with respect to the surface
+normal. Since the velocity of the particle will not change as it undergoes
+reflection, we can work with the direction of the particle instead, simplifying
+equation <a href="#equation-reflection-v">(13)</a> to</p>
+<div class="math" id="equation-reflection-omega">
+<p><span class="eqno">(14)</span><img src="../_images/math/c30255f7373ba4c0c669ac42c49de7a2aada0e78.png" alt="\mathbf{\Omega'} = \mathbf{\Omega} - 2 (\mathbf{\Omega} \cdot
+\hat{\mathbf{n}}) \hat{\mathbf{n}}"/></p>
+</div><p>The direction of the surface normal will be the gradient to the surface at the
+point of crossing, i.e. <img class="math" src="../_images/math/b6d0248415e45cef5618aa27e4eba785b557a247.png" alt="\mathbf{n} = \nabla f(x,y,z)"/>. Substituting this
+into equation <a href="#equation-reflection-omega">(14)</a>, we get</p>
+<div class="math" id="equation-reflection-omega-2">
+<p><span class="eqno">(15)</span><img src="../_images/math/6691142bd6d03bb1d1d04127d50cb2d64c259351.png" alt="\mathbf{\Omega'} = \mathbf{\Omega} - \frac{2 ( \mathbf{\Omega} \cdot \nabla
+f )}{|| \nabla f ||^2} \nabla f"/></p>
+</div><p>If we write the initial and final directions in terms of their vector
+components, <img class="math" src="../_images/math/0a52937936569faf92ef9903c95786bb6dc7fe92.png" alt="\mathbf{\Omega} = (u,v,w)"/> and <img class="math" src="../_images/math/2b6b36e5469ce3bdaab26de02fd55dba0ed5c79c.png" alt="\mathbf{\Omega'} = (u',
+v', w')"/>, this allows us to represent equation <a href="#equation-reflection-omega">(14)</a> as a
+series of equations:</p>
+<div class="math" id="equation-reflection-system">
+<p><span class="eqno">(16)</span><img src="../_images/math/4b398a5353ed741fb0f0b389335aace34966a175.png" alt="u' = u - \frac{2 ( \mathbf{\Omega} \cdot \nabla f )}{|| \nabla f ||^2}
+\frac{\partial f}{\partial x} \\
+
+v' = v - \frac{2 ( \mathbf{\Omega} \cdot \nabla f )}{|| \nabla f ||^2}
+\frac{\partial f}{\partial y} \\
+
+w' = w - \frac{2 ( \mathbf{\Omega} \cdot \nabla f )}{|| \nabla f ||^2}
+\frac{\partial f}{\partial z}"/></p>
+</div><p>We can now use this form to develop rules for how to transform a particle&#8217;s
+direction for different types of surfaces.</p>
+<div class="section" id="id1">
+<h3>4.7.1. Plane Perpendicular to an Axis<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>For a plane that is perpendicular to an axis, the rule for reflection is almost
+so simple that no derivation is needed at all. Nevertheless, we will proceed
+with the derivation to confirm that the rules of geometry agree with our
+intuition. The gradient of the surface <img class="math" src="../_images/math/014208a5d23e58ca0506590366fd439d8bd4c9c8.png" alt="f(x,y,z) = x - x_0 = 0"/> is simply
+<img class="math" src="../_images/math/48a15a1d1e8a0de7a5baa25f67441b19f0454b0e.png" alt="\nabla f = (1, 0, 0)"/>. Note that this vector is already normalized,
+i.e. <img class="math" src="../_images/math/932b703c250c884b7e59a99a749303b233c10257.png" alt="|| \nabla f || = 1"/>. The second two equations in
+<a href="#equation-reflection-system">(16)</a> tell us that <img class="math" src="../_images/math/a9f23bf124b6b2b2a993eb313c72e678664ac74a.png" alt="v"/> and <img class="math" src="../_images/math/9ee4b825a2e36ae093ed7be5e4851ef453b34914.png" alt="w"/> do not change and
+the first tell us that</p>
+<div class="math" id="equation-reflection-xplane">
+<p><span class="eqno">(17)</span><img src="../_images/math/c1f5bd38a6e006fbfddb9d99442aff7f79c231de.png" alt="u' = u - 2u = -u"/></p>
+</div><p>We see that reflection for a plane perpendicular to an axis only entails
+negating the directional cosine for that axis.</p>
+</div>
+<div class="section" id="id2">
+<h3>4.7.2. Generic Plane<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>A generic plane has the form <img class="math" src="../_images/math/320357accceeb2f8fc933f629b9af3ab513e9468.png" alt="f(x,y,z) = Ax + By + Cz - D = 0"/>. Thus, the
+gradient to the surface is simply <img class="math" src="../_images/math/6e5e48810a5cf01884bc6dd93293920d02fa3a4e.png" alt="\nabla f = (A,B,C)"/> whose norm squared
+is <img class="math" src="../_images/math/b8314fe89d6a6080868132447c26fdf3a41466f2.png" alt="A^2 + B^2 + C^2"/>. This implies that</p>
+<div class="math" id="equation-reflection-plane-constant">
+<p><span class="eqno">(18)</span><img src="../_images/math/cd79c917ed9869131ec06e249294fedcf74422c3.png" alt="\frac{2 (\mathbf{\Omega} \cdot \nabla f)}{|| \nabla f ||^2} = \frac{2(Au +
+Bv + Cw)}{A^2 + B^2 + C^2}"/></p>
+</div><p>Substituting equation <a href="#equation-reflection-plane-constant">(18)</a> into equation
+<a href="#equation-reflection-system">(16)</a> gives us the form of the solution. For example, the
+x-component of the reflected direction will be</p>
+<div class="math" id="equation-reflection-plane">
+<p><span class="eqno">(19)</span><img src="../_images/math/823b09cef32bbcf3b6d605a8574ae69bddc480e6.png" alt="u' = u - \frac{2A(Au + Bv + Cw)}{A^2 + B^2 + C^2}"/></p>
+</div></div>
+<div class="section" id="id3">
+<h3>4.7.3. Cylinder Parallel to an Axis<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>A cylinder parallel to, for example, the x-axis has the form <img class="math" src="../_images/math/b815ff99327142275d747ade16d9c36e05d84274.png" alt="f(x,y,z) =
+(y - y_0)^2 + (z - z_0)^2 - R^2 = 0"/>. Thus, the gradient to the surface is</p>
+<div class="math" id="equation-reflection-cylinder-grad">
+<p><span class="eqno">(20)</span><img src="../_images/math/55b4c1d4ebe989491368fc80ba15ac48821d33af.png" alt="\nabla f = 2 \left ( \begin{array}{c} 0 \\ y - y_0 \\ z - z_0 \end{array}
+\right ) = 2 \left ( \begin{array}{c} 0 \\ \bar{y} \\ \bar{z} \end{array}
+\right )"/></p>
+</div><p>where we have introduced the constants <img class="math" src="../_images/math/e1d96428f0b377d49f1f2facce5de7e3eefd1e1d.png" alt="\bar{y}"/> and
+<img class="math" src="../_images/math/e2af86094c2d1dd57039c8e83bcc4193cf421714.png" alt="\bar{z}"/>. Taking the square of the norm of the gradient, we find that</p>
+<div class="math" id="equation-reflection-cylinder-norm">
+<p><span class="eqno">(21)</span><img src="../_images/math/c0151caa65f844b855cf3fd07e211abf5a1e7a5f.png" alt="|| \nabla f ||^2 = 4 \bar{y}^2 + 4 \bar{z}^2 = 4 R^2"/></p>
+</div><p>This implies that</p>
+<div class="math" id="equation-reflection-cylinder-constant">
+<p><span class="eqno">(22)</span><img src="../_images/math/18ef0d7a11968a68c1d350abe6cfc663b76a3658.png" alt="\frac{2 (\mathbf{\Omega} \cdot \nabla f)}{|| \nabla f ||^2} =
+\frac{\bar{y}v + \bar{z}w}{R^2}"/></p>
+</div><p>Substituting equations <a href="#equation-reflection-cylinder-constant">(22)</a> and
+<a href="#equation-reflection-cylinder-grad">(20)</a> into equation <a href="#equation-reflection-system">(16)</a> gives us
+the form of the solution. In this case, the x-component will not change. The y-
+and z-components of the reflected direction will be</p>
+<div class="math" id="equation-reflection-cylinder">
+<p><span class="eqno">(23)</span><img src="../_images/math/f6a2bb6638cb922c39d5953cd537000b0630df92.png" alt="v' = v - \frac{2 ( \bar{y}v + \bar{z}w ) \bar{y}}{R^2} \\
+
+w' = w - \frac{2 ( \bar{y}v + \bar{z}w ) \bar{z}}{R^2}"/></p>
+</div></div>
+<div class="section" id="id4">
+<h3>4.7.4. Sphere<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>The surface equation for a sphere has the form <img class="math" src="../_images/math/565a202d4c73fb023d968d521bf6059d65f51b74.png" alt="f(x,y,z) = (x - x_0)^2 +
+(y - y_0)^2 + (z - z_0)^2 - R^2 = 0"/>. Thus, the gradient to the surface is</p>
+<div class="math" id="equation-reflection-sphere-grad">
+<p><span class="eqno">(24)</span><img src="../_images/math/614be9af23eb04ebb0b8ca697165544ee84ad961.png" alt="\nabla f = 2 \left ( \begin{array}{c} x - x_0 \\ y - y_0 \\ z - z_0
+\end{array} \right ) = 2 \left ( \begin{array}{c} \bar{x} \\ \bar{y} \\
+\bar{z} \end{array} \right )"/></p>
+</div><p>where we have introduced the constants <img class="math" src="../_images/math/374727b5a3db983a8bfd53606a5bcad52974fa0e.png" alt="\bar{x}, \bar{y}, \bar{z}"/>. Taking
+the square of the norm of the gradient, we find that</p>
+<div class="math" id="equation-reflection-sphere-norm">
+<p><span class="eqno">(25)</span><img src="../_images/math/93b0d92e3acc21309711b805308919421fa3d156.png" alt="|| \nabla f ||^2 = 4 \bar{x}^2 + 4 \bar{y}^2 + 4 \bar{z}^2 = 4 R^2"/></p>
+</div><p>This implies that</p>
+<div class="math" id="equation-reflection-sphere-constant">
+<p><span class="eqno">(26)</span><img src="../_images/math/2323375a7b3e25e197da1c2ec06dfd9d9a2de68b.png" alt="\frac{2 (\mathbf{\Omega} \cdot \nabla f)}{|| \nabla f ||^2} =
+\frac{\bar{x}u + \bar{y}v + \bar{z}w}{R^2}"/></p>
+</div><p>Substituting equations <a href="#equation-reflection-sphere-constant">(26)</a> and
+<a href="#equation-reflection-sphere-grad">(24)</a> into equation <a href="#equation-reflection-system">(16)</a> gives us the
+form of the solution:</p>
+<div class="math" id="equation-reflection-sphere">
+<p><span class="eqno">(27)</span><img src="../_images/math/03ebd74b62217730b500ee083515c436dad85fb6.png" alt="u' = u - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{x} }{R^2} \\
+
+v' = v - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{y} }{R^2} \\
+
+w' = w - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{z} }{R^2} \\"/></p>
+</div></div>
 </div>
 </div>
 
@@ -75,11 +446,11 @@ gradient to the surface at the point of crossing, i.e. <img class="math" src="..
       <div class="bottomnav">
       
         <p>
-        «&#160;&#160;<a href="introduction.html">1. Introduction</a>
+        «&#160;&#160;<a href="statistics.html">3. Statistics</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="physics.html">3. Physics</a>&#160;&#160;»
+        <a href="physics.html">5. Physics</a>&#160;&#160;»
         </p>
 
       </div>
@@ -87,7 +458,7 @@ gradient to the surface at the point of crossing, i.e. <img class="math" src="..
 
     <div class="footer">
         &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">
 

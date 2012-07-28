@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.4.2',
+        VERSION:     '0.4.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -53,29 +53,84 @@
         
   <div class="section" id="theory-and-methodology">
 <span id="methods"></span><h1>Theory and Methodology<a class="headerlink" href="#theory-and-methodology" title="Permalink to this headline">¶</a></h1>
-<p>The OpenMC code solves the neutron transport equation using the Monte Carlo
-method whereby particles are tracked as they randomly move through a geometry,
-undergoing collisions, and creating secondary particles.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="introduction.html">1. Introduction</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="introduction.html#criticality-algorithm">1.1. Criticality Algorithm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#overview-of-program-flow">1.1. Overview of Program Flow</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="geometry.html">2. Geometry</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="geometry.html#reflective-surfaces">2.1. Reflective Surfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="criticality.html">2. Criticality Calculations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="criticality.html#method-of-successive-generations">2.1. Method of Successive Generations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="criticality.html#source-convergence-issues">2.2. Source Convergence Issues</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="criticality.html#diagnosing-convergence-with-shannon-entropy">2.2.1. Diagnosing Convergence with Shannon Entropy</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="physics.html">3. Physics</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="physics.html#free-gas-scattering-kinematics">3.1. Free Gas Scattering Kinematics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="criticality.html#fission-and-source-bank">2.3. Fission and Source Bank</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tallies.html">4. Tallies</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tallies.html#analog-estimator">4.1. Analog Estimator</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tallies.html#track-length-estimator">4.2. Track-length Estimator</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tallies.html#surface-current">4.3. Surface Current</a></li>
+<li class="toctree-l1"><a class="reference internal" href="statistics.html">3. Statistics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="statistics.html#law-of-large-numbers">3.1. Law of Large Numbers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="statistics.html#random-number-generation">3.2. Random Number Generation</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="geometry.html">4. Geometry</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#constructive-solid-geometry">4.1. Constructive Solid Geometry</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#universes">4.1.1. Universes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#lattices">4.1.2. Lattices</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#computing-the-distance-to-nearest-boundary">4.2. Computing the Distance to Nearest Boundary</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#plane-perpendicular-to-an-axis">4.2.1. Plane Perpendicular to an Axis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#generic-plane">4.2.2. Generic Plane</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#cylinder-parallel-to-an-axis">4.2.3. Cylinder Parallel to an Axis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#sphere">4.2.4. Sphere</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#finding-a-cell-given-a-point">4.3. Finding a Cell Given a Point</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#determining-if-a-coordinate-is-in-a-cell">4.4. Determining if a Coordinate is in a Cell</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#handling-surface-crossings">4.5. Handling Surface Crossings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#building-neighbor-lists">4.6. Building Neighbor Lists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html#reflective-boundary-conditions">4.7. Reflective Boundary Conditions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#id1">4.7.1. Plane Perpendicular to an Axis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#id2">4.7.2. Generic Plane</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#id3">4.7.3. Cylinder Parallel to an Axis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="geometry.html#id4">4.7.4. Sphere</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">5. Physics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#secondary-angles-and-energy-distributions">5.1. Secondary Angles and Energy Distributions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="physics.html#sampling-secondary-angle-distributions">5.1.1. Sampling Secondary Angle Distributions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="physics.html#sampling-secondary-energy-and-correlated-angle-energy-distributions">5.1.2. Sampling Secondary Energy and Correlated Angle/Energy Distributions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="physics.html#transforming-a-particle-s-coordinates">5.1.3. Transforming a Particle&#8217;s Coordinates</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#elastic-scattering">5.2. Elastic Scattering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#inelastic-scattering">5.3. Inelastic Scattering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#reactions">5.4. <img class="math" src="../_images/math/11d9b3efac04551ca81659b5409aec4281b4bed3.png" alt="(n,xn)"/> Reactions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#fission">5.5. Fission</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#and-other-disappearance-reactions">5.6. <img class="math" src="../_images/math/3b5fe4c3b6f25cd9becd9e7f729b4d28bbd77c88.png" alt="(n,\gamma)"/> and Other Disappearance Reactions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#survival-biasing">5.7. Survival Biasing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#effect-of-thermal-motion-on-cross-sections">5.8. Effect of Thermal Motion on Cross-Sections</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#sab-tables">5.9. S(<img class="math" src="../_images/math/a4b143dd085345dc8e90d189bb3459976592c654.png" alt="\alpha,\beta"/>) Tables</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="physics.html#calculating-integrated-cross-sections">5.9.1. Calculating Integrated Cross Sections</a></li>
+<li class="toctree-l3"><a class="reference internal" href="physics.html#outgoing-angle-for-coherent-elastic-scattering">5.9.2. Outgoing Angle for Coherent Elastic Scattering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="physics.html#outgoing-angle-for-incoherent-elastic-scattering">5.9.3. Outgoing Angle for Incoherent Elastic Scattering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="physics.html#outgoing-energy-and-angle-for-inelastic-scattering">5.9.4. Outgoing Energy and Angle for Inelastic Scattering</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#unresolved-resonance-region-probability-tables">5.10. Unresolved Resonance Region Probability Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="physics.html#references">5.11. References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tallies.html">6. Tallies</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tallies.html#analog-estimator">6.1. Analog Estimator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tallies.html#track-length-estimator">6.2. Track-length Estimator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tallies.html#surface-current">6.3. Surface Current</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parallelization.html">7. Parallelization</a></li>
 </ul>
 </div>
 </div>
@@ -97,7 +152,7 @@ undergoing collisions, and creating secondary particles.</p>
 
     <div class="footer">
         &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">
 

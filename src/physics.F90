@@ -1950,8 +1950,12 @@ contains
           E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
        end if
 
-       ! Find location of correlated angular distribution
-       lc = int(edist % data(lc+3*NP+k))
+       ! Find correlated angular distribution for closest outgoing energy bin
+       if (r1 - c_k < c_k1 - r1) then
+          lc = int(edist % data(lc + 3*NP + k))
+       else
+          lc = int(edist % data(lc + 3*NP + k + 1))
+       end if
 
        ! Check if angular distribution is isotropic
        if (lc == 0) then

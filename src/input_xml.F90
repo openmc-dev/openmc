@@ -70,7 +70,9 @@ contains
     seed_ = 0_8
     write_source_ = ""
     no_reduce_ = ""
-    source_ % type = ""
+    source_ % space % type = ''
+    source_ % angle % type = ''
+    source_ % energy % type = ''
 
     ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
@@ -144,9 +146,13 @@ contains
     ! Verbosity
     if (verbosity_ > 0) verbosity = verbosity_
 
-    if (len(source_ % type) > 0) then
-       ! Determine external source type
-       type = source_ % type
+    ! ==========================================================================
+    ! EXTERNAL SOURCE
+
+    ! Spatial distribution for external source
+    if (source_ % space % type /= '') then
+       ! Read type of spatial distribution
+       type = source_ % space % type
        call lower_case(type)
        select case (type)
        case ('box')
@@ -158,27 +164,76 @@ contains
        case ('file')
           external_source % type_space = SRC_SPACE_FILE
        case default
-          message = "Invalid source type: " // trim(source_ % type)
+          message = "Invalid spatial distribution for external source: " &
+               // trim(source_ % space % type)
           call fatal_error()
        end select
 
-       ! Coefficients for external surface
+       ! Read parameters for spatial distribution
        if (type /= 'file') then
-          n = size(source_ % coeffs)
+          n = size(source_ % space % parameters)
           if (n < coeffs_reqd) then
-             message = "Not enough coefficients specified for external source."
+             message = "Not enough parameters specified for spatial " &
+                  // "distribution of external source."
              call fatal_error()
           elseif (n > coeffs_reqd) then
-             message = "Too many coefficients specified for external source."
+             message = "Too many parameters specified for spatial " &
+                  // "distribution of external source."
              call fatal_error()
           else
-             allocate(external_source % values(n))
-             external_source % values = source_ % coeffs
+             allocate(external_source % params_space(n))
+             external_source % params_space = source_ % space % parameters
           end if
        end if
+    else
+       message = "No spatial distribution specified for external source!"
+       call fatal_error()
+    end if
 
-       ! Set defaults for angle and energy distributions
+    ! Determine external source angular distribution
+    if (source_ % angle % type /= '') then
+       ! Read type of angular distribution
+       type = source_ % angle % type
+       call lower_case(type)
+       select case (type)
+       case ('isotropic')
+          external_source % type_angle = SRC_ANGLE_ISOTROPIC
+       case ('monoenergtic')
+          external_source % type_angle = SRC_ANGLE_MONO
+          coeffs_reqd = 1
+       case ('tabular')
+          external_source % type_angle = SRC_ANGLE_TABULAR
+       case default
+          message = "Invalid angular distribution for external source: " &
+               // trim(source_ % angle % type)
+          call fatal_error()
+       end select
+    else
+       ! Set default angular distribution isotropic
        external_source % type_angle  = SRC_ANGLE_ISOTROPIC
+    end if
+
+    ! Determine external source energy distribution
+    if (source_ % energy % type /= '') then
+       ! Read type of energy distribution
+       type = source_ % energy % type
+       call lower_case(type)
+       select case (type)
+       case ('monoenergetic')
+          external_source % type_energy = SRC_ENERGY_MONO
+       case ('maxwell')
+          external_source % type_energy = SRC_ENERGY_MAXWELL
+          coeffs_reqd = 1
+       case ('watt')
+          external_source % type_energy = SRC_ENERGY_WATT
+       case ('tabular')
+          external_source % type_energy = SRC_ENERGY_TABULAR
+       case default
+          message = "Invalid energy distribution for external source: " &
+               // trim(source_ % energy % type)
+          call fatal_error()
+       end select
+    else
        external_source % type_energy = SRC_ENERGY_WATT
     end if
 

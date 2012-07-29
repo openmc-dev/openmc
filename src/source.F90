@@ -112,12 +112,12 @@ contains
     ! Sample position
     select case (external_source % type_space)
     case (SRC_SPACE_BOX)
-       p_min = external_source % values(1:3)
-       p_max = external_source % values(4:6)
+       p_min = external_source % params_space(1:3)
+       p_max = external_source % params_space(4:6)
        r = (/ (prn(), i = 1,3) /)
        site % xyz = p_min + r*(p_max - p_min)
     case (SRC_SPACE_POINT)
-       site % xyz = external_source % values
+       site % xyz = external_source % params_space
     end select
     
     ! Sample angle

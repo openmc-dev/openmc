@@ -150,13 +150,13 @@ contains
        call lower_case(type)
        select case (type)
        case ('box')
-          external_source % type = SRC_BOX
+          external_source % type_space = SRC_SPACE_BOX
           coeffs_reqd = 6
        case ('point')
-          external_source % type = SRC_POINT
+          external_source % type_space = SRC_SPACE_POINT
           coeffs_reqd = 3
        case ('file')
-          external_source % type = SRC_FILE
+          external_source % type_space = SRC_SPACE_FILE
        case default
           message = "Invalid source type: " // trim(source_ % type)
           call fatal_error()
@@ -176,6 +176,10 @@ contains
              external_source % values = source_ % coeffs
           end if
        end if
+
+       ! Set defaults for angle and energy distributions
+       external_source % type_angle  = SRC_ANGLE_ISOTROPIC
+       external_source % type_energy = SRC_ENERGY_WATT
     end if
 
     ! Survival biasing

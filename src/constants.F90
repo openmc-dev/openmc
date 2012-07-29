@@ -7,7 +7,7 @@ module constants
 
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 4
-  integer, parameter :: VERSION_RELEASE = 1
+  integer, parameter :: VERSION_RELEASE = 3
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS 

@@ -88,15 +88,15 @@ incoming energy grid:
 where :math:`E` is the incoming energy of the particle. Then, statistical
 interpolation is performed to choose between using the cosines and distribution
 functions corresponding to energy :math:`E_i` and :math:`E_{i+1}`. Let
-:math:`\ell` be the chosen table where :math:`\ell = i` if :math:`\xi > f` and
-:math:`\ell = i + 1` otherwise where :math:`\xi` is a random number. A different
-random number is used to sample a scattering cosine bin :math:`j` using the
-cumulative distribution function:
+:math:`\ell` be the chosen table where :math:`\ell = i` if :math:`\xi_1 > f` and
+:math:`\ell = i + 1` otherwise where :math:`\xi_1` is a random number. Another
+random number :math:`\xi_2` is used to sample a scattering cosine bin :math:`j`
+using the cumulative distribution function:
 
 .. math::
     :label: sample-cdf
 
-    c_{\ell,j} < \xi < c_{\ell,j+1}
+    c_{\ell,j} < \xi_2 < c_{\ell,j+1}
 
 The final scattering cosine will depend on whether histogram or linear-linear
 interpolation is used. In general, we can write the cumulative distribution
@@ -123,7 +123,7 @@ after integration we have that
 .. math::
     :label: cumulative-dist-histogram
 
-    c(\mu) = c_{\ell,j} + (\mu - \mu_{\ell,j}) p_{\ell,j} = \xi
+    c(\mu) = c_{\ell,j} + (\mu - \mu_{\ell,j}) p_{\ell,j} = \xi_2
 
 Solving for the scattering cosine, we obtain the final form for histogram
 interpolation:
@@ -131,7 +131,7 @@ interpolation:
 .. math::
     :label: cosine-histogram
 
-    \mu = \mu_{\ell,j} + \frac{\xi - c_{\ell,j}}{p_{\ell,j}}
+    \mu = \mu_{\ell,j} + \frac{\xi_2 - c_{\ell,j}}{p_{\ell,j}}
 
 For linear-linear interpolation, we represent the function :math:`p(\mu')` as a
 first-order polynomial in :math:`\mu'`. If we interpolate between successive
@@ -159,7 +159,7 @@ Let us now make a change of variables using
     :label: introduce-eta
 
     \eta = \frac{p_{\ell,j+1} - p_{\ell,j}}{\mu_{\ell,j+1} - \mu_{\ell,j}}
-    (\mu' - \mu_{\ell,j})
+    (\mu' - \mu_{\ell,j}) + p_{\ell,j}
 
 Equation :eq:`cdf-linlin` then becomes
 
@@ -182,7 +182,7 @@ Integrating equation :eq:`cdf-linlin-eta`, we have
     :label: cdf-linlin-integrated
 
     c(\mu) = c_{\ell,j} + \frac{1}{2m} \left ( \left [ m (\mu - \mu_{\ell,j} ) +
-    p_{\ell,j} \right ]^2 - p_{\ell,j}^2 \right ) = \xi
+    p_{\ell,j} \right ]^2 - p_{\ell,j}^2 \right ) = \xi_2
 
 Solving for :math:`\mu`, we have the final form for the scattering cosine using
 linear-linear interpolation:
@@ -190,7 +190,7 @@ linear-linear interpolation:
 .. math::
     :label: cosine-linlin
 
-    \mu = \mu_{\ell,j} + \frac{1}{m} \left ( \sqrt{p_{\ell,j}^2 + 2 m (\xi -
+    \mu = \mu_{\ell,j} + \frac{1}{m} \left ( \sqrt{p_{\ell,j}^2 + 2 m (\xi_2 -
     c_{\ell,j} )} - p_{\ell,j} \right )
 
 .. _sample-energy:

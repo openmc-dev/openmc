@@ -102,12 +102,14 @@ contains
 
     type(Bank), intent(inout) :: site ! source site
 
-    integer    :: i          ! dummy loop index
-    real(8)    :: r(3)       ! sampled coordinates
-    real(8)    :: phi        ! azimuthal angle
-    real(8)    :: mu         ! cosine of polar angle
-    real(8)    :: p_min(3)   ! minimum coordinates of source
-    real(8)    :: p_max(3)   ! maximum coordinates of source
+    integer :: i          ! dummy loop index
+    real(8) :: r(3)       ! sampled coordinates
+    real(8) :: phi        ! azimuthal angle
+    real(8) :: mu         ! cosine of polar angle
+    real(8) :: p_min(3)   ! minimum coordinates of source
+    real(8) :: p_max(3)   ! maximum coordinates of source
+    real(8) :: Watt_a     ! Watt spectrum parameter 'a'
+    real(8) :: Watt_b     ! Watt spectrum parameter 'b'
 
     ! Sample position
     select case (external_source % type_space)
@@ -136,9 +138,12 @@ contains
     ! Sample energy
     select case (external_source % type_energy)
     case (SRC_ENERGY_WATT)
+       Watt_a = external_source % params_energy(1)
+       Watt_b = external_source % params_energy(2)
+
        do
           ! Sample Watt fission spectrum
-          site % E = watt_spectrum(0.988_8, 2.249_8)
+          site % E = watt_spectrum(Watt_a, Watt_b)
 
           ! resample if energy is >= 20 MeV
           if (site % E < 20) exit

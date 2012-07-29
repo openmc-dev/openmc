@@ -11,7 +11,7 @@
   </typedef>
 
   <typedef name="distribution_xml">
-    <component name="type" type="word" length="10" />
+    <component name="type" type="word" length="16" />
     <component name="length" type="integer" />
     <component name="interpolation" type="word" length="10" />
     <component name="parameters" type="double-array" />

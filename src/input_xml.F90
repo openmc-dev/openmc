@@ -170,7 +170,7 @@ contains
        end select
 
        ! Read parameters for spatial distribution
-       if (type /= 'file') then
+       if (type /= 'file' .and. associated(source_ % space % parameters)) then
           n = size(source_ % space % parameters)
           if (n < coeffs_reqd) then
              message = "Not enough parameters specified for spatial " &
@@ -198,9 +198,10 @@ contains
        select case (type)
        case ('isotropic')
           external_source % type_angle = SRC_ANGLE_ISOTROPIC
-       case ('monoenergtic')
+          coeffs_reqd = 0
+       case ('monodirectional')
           external_source % type_angle = SRC_ANGLE_MONO
-          coeffs_reqd = 1
+          coeffs_reqd = 3
        case ('tabular')
           external_source % type_angle = SRC_ANGLE_TABULAR
        case default
@@ -208,6 +209,23 @@ contains
                // trim(source_ % angle % type)
           call fatal_error()
        end select
+
+       ! Read parameters for angle distribution
+       if (associated(source_ % angle % parameters)) then
+          n = size(source_ % angle % parameters)
+          if (n < coeffs_reqd) then
+             message = "Not enough parameters specified for angle " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > coeffs_reqd) then
+             message = "Too many parameters specified for angle " &
+                  // "distribution of external source."
+             call fatal_error()
+          else
+             allocate(external_source % params_angle(n))
+             external_source % params_angle = source_ % angle % parameters
+          end if
+       end if
     else
        ! Set default angular distribution isotropic
        external_source % type_angle  = SRC_ANGLE_ISOTROPIC
@@ -221,11 +239,13 @@ contains
        select case (type)
        case ('monoenergetic')
           external_source % type_energy = SRC_ENERGY_MONO
+          coeffs_reqd = 1
        case ('maxwell')
           external_source % type_energy = SRC_ENERGY_MAXWELL
           coeffs_reqd = 1
        case ('watt')
           external_source % type_energy = SRC_ENERGY_WATT
+          coeffs_reqd = 2
        case ('tabular')
           external_source % type_energy = SRC_ENERGY_TABULAR
        case default
@@ -233,6 +253,23 @@ contains
                // trim(source_ % energy % type)
           call fatal_error()
        end select
+
+       ! Read parameters for energy distribution
+       if (associated(source_ % energy % parameters)) then
+          n = size(source_ % energy % parameters)
+          if (n < coeffs_reqd) then
+             message = "Not enough parameters specified for energy " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > coeffs_reqd) then
+             message = "Too many parameters specified for energy " &
+                  // "distribution of external source."
+             call fatal_error()
+          else
+             allocate(external_source % params_energy(n))
+             external_source % params_energy = source_ % energy % parameters
+          end if
+       end if
     else
        ! Set default energy distribution to Watt fission spectrum
        external_source % type_energy = SRC_ENERGY_WATT

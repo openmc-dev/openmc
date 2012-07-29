@@ -7,7 +7,7 @@ module source
   use global
   use output,          only: write_message
   use particle_header, only: deallocate_coord
-  use physics,         only: watt_spectrum
+  use physics,         only: maxwell_spectrum, watt_spectrum
   use random_lcg,      only: prn, set_particle_seed
   use string,          only: to_str
 
@@ -108,8 +108,8 @@ contains
     real(8) :: mu         ! cosine of polar angle
     real(8) :: p_min(3)   ! minimum coordinates of source
     real(8) :: p_max(3)   ! maximum coordinates of source
-    real(8) :: Watt_a     ! Watt spectrum parameter 'a'
-    real(8) :: Watt_b     ! Watt spectrum parameter 'b'
+    real(8) :: a          ! Arbitrary parameter 'a'
+    real(8) :: b          ! Arbitrary parameter 'b'
 
     ! Sample position
     select case (external_source % type_space)
@@ -125,29 +125,48 @@ contains
     ! Sample angle
     select case (external_source % type_angle)
     case (SRC_ANGLE_ISOTROPIC)
+       ! Sample isotropic distribution
        phi = TWO*PI*prn()
        mu = TWO*prn() - ONE
        site % uvw(1) = mu
        site % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
        site % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+
+    case (SRC_ANGLE_MONO)
+       site % uvw = external_source % params_angle
+
     case default
        message = "No angle distribution specified for external source!"
        call fatal_error()
     end select
           
-    ! Sample energy
+    ! Sample energy distribution
     select case (external_source % type_energy)
-    case (SRC_ENERGY_WATT)
-       Watt_a = external_source % params_energy(1)
-       Watt_b = external_source % params_energy(2)
+    case (SRC_ENERGY_MONO)
+       ! Monoenergtic source
+       site % E = external_source % params_energy(1)
 
+    case (SRC_ENERGY_MAXWELL)
+       a = external_source % params_energy(1)
        do
-          ! Sample Watt fission spectrum
-          site % E = watt_spectrum(Watt_a, Watt_b)
+          ! Sample Maxwellian fission spectrum
+          site % E = maxwell_spectrum(a)
 
           ! resample if energy is >= 20 MeV
           if (site % E < 20) exit
        end do
+
+    case (SRC_ENERGY_WATT)
+       a = external_source % params_energy(1)
+       b = external_source % params_energy(2)
+       do
+          ! Sample Watt fission spectrum
+          site % E = watt_spectrum(a, b)
+
+          ! resample if energy is >= 20 MeV
+          if (site % E < 20) exit
+       end do
+
     case default
        message = "No energy distribution specified for external source!"
        call fatal_error()

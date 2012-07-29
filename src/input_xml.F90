@@ -234,7 +234,10 @@ contains
           call fatal_error()
        end select
     else
+       ! Set default energy distribution to Watt fission spectrum
        external_source % type_energy = SRC_ENERGY_WATT
+       allocate(external_source % params_energy(2))
+       external_source % params_energy = (/ 0.988_8, 2.249_8 /)
     end if
 
     ! Survival biasing

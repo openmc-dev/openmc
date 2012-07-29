@@ -116,7 +116,7 @@ contains
        call create_tally_map()
 
        ! allocate banks and create source particles
-       call allocate_banks()
+       if (run_mode == MODE_CRITICALITY) call allocate_banks()
        call initialize_source()
     end if
 

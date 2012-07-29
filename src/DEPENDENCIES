@@ -61,6 +61,15 @@ fission.o: global.o
 fission.o: interpolation.o
 fission.o: search.o
 
+fixed_source.o: constants.o
+fixed_source.o: global.o
+fixed_source.o: output.o
+fixed_source.o: physics.o
+fixed_source.o: source.o
+fixed_source.o: string.o
+fixed_source.o: tally.o
+fixed_source.o: timing.o
+
 geometry.o: constants.o
 geometry.o: datatypes.o
 geometry.o: error.o

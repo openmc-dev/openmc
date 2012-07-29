@@ -13,6 +13,7 @@ energy_grid.o \
 error.o \
 finalize.o \
 fission.o \
+fixed_source.o \
 geometry.o \
 geometry_header.o \
 global.o \

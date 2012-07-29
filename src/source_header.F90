@@ -8,7 +8,9 @@ module source_header
 !===============================================================================
 
   type ExtSource
-     integer :: type                    ! type of source, e.g. 'box' or 'point'
+     integer :: type_space              ! spacial distributione, e.g. 'box' or 'point'
+     integer :: type_angle              ! angle distribution, e.g. 'isotropic'
+     integer :: type_energy             ! energy distribution, e.g. 'Watt'
      real(8), allocatable :: values(:)  ! values for particular source type
   end type ExtSource
 

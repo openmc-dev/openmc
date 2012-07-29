@@ -64,19 +64,12 @@ contains
   subroutine initialize_source()
 
     integer(8) :: i          ! loop index over bank sites
-    integer    :: j          ! dummy loop index
     integer(8) :: id         ! particle id
-    real(8)    :: r(3)       ! sampled coordinates
-    real(8)    :: phi        ! azimuthal angle
-    real(8)    :: mu         ! cosine of polar angle
-    real(8)    :: E          ! outgoing energy
-    real(8)    :: p_min(3)   ! minimum coordinates of source
-    real(8)    :: p_max(3)   ! maximum coordinates of source
 
     message = "Initializing source particles..."
     call write_message(6)
 
-    if (external_source % type == SRC_FILE) then
+    if (external_source % type_space == SRC_SPACE_FILE) then
        ! Read the source from a binary file instead of sampling from some
        ! assumed source distribution
 
@@ -94,37 +87,68 @@ contains
           ! initialize random number seed
           call set_particle_seed(id)
 
-          ! sample position from external source
-          select case (external_source % type)
-          case (SRC_BOX)
-             p_min = external_source % values(1:3)
-             p_max = external_source % values(4:6)
-             r = (/ (prn(), j = 1,3) /)
-             source_bank(i) % xyz = p_min + r*(p_max - p_min)
-          case (SRC_POINT)
-             source_bank(i) % xyz = external_source % values
-          end select
-
-          ! sample angle
-          phi = TWO*PI*prn()
-          mu = TWO*prn() - ONE
-          source_bank(i) % uvw(1) = mu
-          source_bank(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-          source_bank(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
-          
-          ! sample energy from Watt fission energy spectrum for U-235
-          do
-             E = watt_spectrum(0.988_8, 2.249_8)
-             ! resample if energy is >= 20 MeV
-             if (E < 20) exit
-          end do
-
-          ! set particle energy
-          source_bank(i) % E = E
+          ! sample external source distribution
+          call sample_external_source(source_bank(i))
        end do
     end if
  
   end subroutine initialize_source
+
+!===============================================================================
+! SAMPLE_EXTERNAL_SOURCE
+!===============================================================================
+
+  subroutine sample_external_source(site)
+
+    type(Bank), intent(inout) :: site ! source site
+
+    integer    :: i          ! dummy loop index
+    real(8)    :: r(3)       ! sampled coordinates
+    real(8)    :: phi        ! azimuthal angle
+    real(8)    :: mu         ! cosine of polar angle
+    real(8)    :: p_min(3)   ! minimum coordinates of source
+    real(8)    :: p_max(3)   ! maximum coordinates of source
+
+    ! Sample position
+    select case (external_source % type_space)
+    case (SRC_SPACE_BOX)
+       p_min = external_source % values(1:3)
+       p_max = external_source % values(4:6)
+       r = (/ (prn(), i = 1,3) /)
+       site % xyz = p_min + r*(p_max - p_min)
+    case (SRC_SPACE_POINT)
+       site % xyz = external_source % values
+    end select
+    
+    ! Sample angle
+    select case (external_source % type_angle)
+    case (SRC_ANGLE_ISOTROPIC)
+       phi = TWO*PI*prn()
+       mu = TWO*prn() - ONE
+       site % uvw(1) = mu
+       site % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+       site % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+    case default
+       message = "No angle distribution specified for external source!"
+       call fatal_error()
+    end select
+          
+    ! Sample energy
+    select case (external_source % type_energy)
+    case (SRC_ENERGY_WATT)
+       do
+          ! Sample Watt fission spectrum
+          site % E = watt_spectrum(0.988_8, 2.249_8)
+
+          ! resample if energy is >= 20 MeV
+          if (site % E < 20) exit
+       end do
+    case default
+       message = "No energy distribution specified for external source!"
+       call fatal_error()
+    end select
+
+  end subroutine sample_external_source
 
 !===============================================================================
 ! GET_SOURCE_PARTICLE returns the next source particle 

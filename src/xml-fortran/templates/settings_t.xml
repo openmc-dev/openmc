@@ -10,9 +10,17 @@
     <component name="generations_per_batch" type="integer" default="1" />
   </typedef>
 
-  <typedef name="source_xml">
+  <typedef name="distribution_xml">
     <component name="type" type="word" length="10" />
-    <component name="coeffs" type="double-array" />
+    <component name="length" type="integer" />
+    <component name="interpolation" type="word" length="10" />
+    <component name="parameters" type="double-array" />
+  </typedef>
+
+  <typedef name="source_xml">
+    <component name="space" type="distribution_xml" />
+    <component name="angle" type="distribution_xml"  />
+    <component name="energy" type="distribution_xml" />
   </typedef>
 
   <typedef name="cutoff_xml">

@@ -69,7 +69,7 @@ contains
     message = "Initializing source particles..."
     call write_message(6)
 
-    if (external_source % type_space == SRC_SPACE_FILE) then
+    if (path_source /= '') then
        ! Read the source from a binary file instead of sampling from some
        ! assumed source distribution
 
@@ -114,12 +114,16 @@ contains
     ! Sample position
     select case (external_source % type_space)
     case (SRC_SPACE_BOX)
+       ! Coordinates sampled uniformly over a box
        p_min = external_source % params_space(1:3)
        p_max = external_source % params_space(4:6)
        r = (/ (prn(), i = 1,3) /)
        site % xyz = p_min + r*(p_max - p_min)
+
     case (SRC_SPACE_POINT)
+       ! Point source
        site % xyz = external_source % params_space
+
     end select
     
     ! Sample angle
@@ -133,6 +137,7 @@ contains
        site % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
     case (SRC_ANGLE_MONO)
+       ! Monodirectional source
        site % uvw = external_source % params_angle
 
     case default
@@ -325,7 +330,7 @@ contains
     ! PARALLEL I/O USING MPI-2 ROUTINES
 
     ! Open binary source file for reading
-    call MPI_FILE_OPEN(MPI_COMM_WORLD, 'source.binary', MPI_MODE_RDONLY, &
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, path_source, MPI_MODE_RDONLY, &
          MPI_INFO_NULL, fh, mpi_err)
 
     ! Read number of source sites in file
@@ -354,7 +359,7 @@ contains
     ! SERIAL I/O USING FORTRAN INTRINSIC ROUTINES
 
     ! Open binary source file for reading
-    open(UNIT=UNIT_SOURCE, FILE='source.binary', STATUS='old', &
+    open(UNIT=UNIT_SOURCE, FILE=path_source, STATUS='old', &
          ACCESS='stream')
 
     ! Read number of source sites in file

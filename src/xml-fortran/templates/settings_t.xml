@@ -18,6 +18,7 @@
   </typedef>
 
   <typedef name="source_xml">
+    <component name="file" type="word" length="256" />
     <component name="space" type="distribution_xml" />
     <component name="angle" type="distribution_xml"  />
     <component name="energy" type="distribution_xml" />

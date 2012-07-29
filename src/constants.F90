@@ -306,8 +306,7 @@ module constants
   ! Source spatial distribution types
   integer, parameter :: &
        SRC_SPACE_BOX   = 1, & ! Source in a rectangular prism
-       SRC_SPACE_POINT = 2, & ! Source at a single point
-       SRC_SPACE_FILE  = 3    ! Source from a file
+       SRC_SPACE_POINT = 2    ! Source at a single point
 
   ! Source angular distribution types
   integer, parameter :: &

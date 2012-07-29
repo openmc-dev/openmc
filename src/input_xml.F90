@@ -70,6 +70,7 @@ contains
     seed_ = 0_8
     write_source_ = ""
     no_reduce_ = ""
+    source_ % file = ''
     source_ % space % type = ''
     source_ % angle % type = ''
     source_ % energy % type = ''
@@ -149,132 +150,147 @@ contains
     ! ==========================================================================
     ! EXTERNAL SOURCE
 
-    ! Spatial distribution for external source
-    if (source_ % space % type /= '') then
-       ! Read type of spatial distribution
-       type = source_ % space % type
-       call lower_case(type)
-       select case (type)
-       case ('box')
-          external_source % type_space = SRC_SPACE_BOX
-          coeffs_reqd = 6
-       case ('point')
-          external_source % type_space = SRC_SPACE_POINT
-          coeffs_reqd = 3
-       case ('file')
-          external_source % type_space = SRC_SPACE_FILE
-       case default
-          message = "Invalid spatial distribution for external source: " &
-               // trim(source_ % space % type)
+    if (source_ % file /= '') then
+       ! Copy path of source file
+       path_source = source_ % file
+       
+       ! Check if source file exists
+       inquire(FILE=path_source, EXIST=file_exists)
+       if (.not. file_exists) then
+          message = "Binary source file '" // trim(path_source) // &
+               "' does not exist!"
           call fatal_error()
-       end select
-
-       ! Read parameters for spatial distribution
-       if (type /= 'file' .and. associated(source_ % space % parameters)) then
-          n = size(source_ % space % parameters)
-          if (n < coeffs_reqd) then
-             message = "Not enough parameters specified for spatial " &
-                  // "distribution of external source."
-             call fatal_error()
-          elseif (n > coeffs_reqd) then
-             message = "Too many parameters specified for spatial " &
-                  // "distribution of external source."
-             call fatal_error()
-          else
-             allocate(external_source % params_space(n))
-             external_source % params_space = source_ % space % parameters
-          end if
        end if
-    else
-       message = "No spatial distribution specified for external source!"
-       call fatal_error()
-    end if
 
-    ! Determine external source angular distribution
-    if (source_ % angle % type /= '') then
-       ! Read type of angular distribution
-       type = source_ % angle % type
-       call lower_case(type)
-       select case (type)
-       case ('isotropic')
-          external_source % type_angle = SRC_ANGLE_ISOTROPIC
-          coeffs_reqd = 0
-       case ('monodirectional')
-          external_source % type_angle = SRC_ANGLE_MONO
-          coeffs_reqd = 3
-       case ('tabular')
-          external_source % type_angle = SRC_ANGLE_TABULAR
-       case default
-          message = "Invalid angular distribution for external source: " &
-               // trim(source_ % angle % type)
+    else
+       ! Spatial distribution for external source
+       if (source_ % space % type /= '') then
+          ! Read type of spatial distribution
+          type = source_ % space % type
+          call lower_case(type)
+          select case (type)
+          case ('box')
+             external_source % type_space = SRC_SPACE_BOX
+             coeffs_reqd = 6
+          case ('point')
+             external_source % type_space = SRC_SPACE_POINT
+             coeffs_reqd = 3
+          case default
+             message = "Invalid spatial distribution for external source: " &
+                  // trim(source_ % space % type)
+             call fatal_error()
+          end select
+
+          ! Read parameters for spatial distribution
+          if (type /= 'file' .and. associated(source_ % space % parameters)) then
+             n = size(source_ % space % parameters)
+             if (n < coeffs_reqd) then
+                message = "Not enough parameters specified for spatial " &
+                     // "distribution of external source."
+                call fatal_error()
+             elseif (n > coeffs_reqd) then
+                message = "Too many parameters specified for spatial " &
+                     // "distribution of external source."
+                call fatal_error()
+             else
+                allocate(external_source % params_space(n))
+                external_source % params_space = source_ % space % parameters
+             end if
+          end if
+       else
+          message = "No spatial distribution specified for external source!"
           call fatal_error()
-       end select
-
-       ! Read parameters for angle distribution
-       if (associated(source_ % angle % parameters)) then
-          n = size(source_ % angle % parameters)
-          if (n < coeffs_reqd) then
-             message = "Not enough parameters specified for angle " &
-                  // "distribution of external source."
-             call fatal_error()
-          elseif (n > coeffs_reqd) then
-             message = "Too many parameters specified for angle " &
-                  // "distribution of external source."
-             call fatal_error()
-          else
-             allocate(external_source % params_angle(n))
-             external_source % params_angle = source_ % angle % parameters
-          end if
        end if
-    else
-       ! Set default angular distribution isotropic
-       external_source % type_angle  = SRC_ANGLE_ISOTROPIC
-    end if
 
-    ! Determine external source energy distribution
-    if (source_ % energy % type /= '') then
-       ! Read type of energy distribution
-       type = source_ % energy % type
-       call lower_case(type)
-       select case (type)
-       case ('monoenergetic')
-          external_source % type_energy = SRC_ENERGY_MONO
-          coeffs_reqd = 1
-       case ('maxwell')
-          external_source % type_energy = SRC_ENERGY_MAXWELL
-          coeffs_reqd = 1
-       case ('watt')
+       ! Determine external source angular distribution
+       if (source_ % angle % type /= '') then
+          ! Read type of angular distribution
+          type = source_ % angle % type
+          call lower_case(type)
+          select case (type)
+          case ('isotropic')
+             external_source % type_angle = SRC_ANGLE_ISOTROPIC
+             coeffs_reqd = 0
+          case ('monodirectional')
+             external_source % type_angle = SRC_ANGLE_MONO
+             coeffs_reqd = 3
+          case ('tabular')
+             external_source % type_angle = SRC_ANGLE_TABULAR
+          case default
+             message = "Invalid angular distribution for external source: " &
+                  // trim(source_ % angle % type)
+             call fatal_error()
+          end select
+
+          ! Read parameters for angle distribution
+          if (associated(source_ % angle % parameters)) then
+             n = size(source_ % angle % parameters)
+             if (n < coeffs_reqd) then
+                message = "Not enough parameters specified for angle " &
+                     // "distribution of external source."
+                call fatal_error()
+             elseif (n > coeffs_reqd) then
+                message = "Too many parameters specified for angle " &
+                     // "distribution of external source."
+                call fatal_error()
+             else
+                allocate(external_source % params_angle(n))
+                external_source % params_angle = source_ % angle % parameters
+             end if
+          end if
+       else
+          ! Set default angular distribution isotropic
+          external_source % type_angle  = SRC_ANGLE_ISOTROPIC
+       end if
+
+       ! Determine external source energy distribution
+       if (source_ % energy % type /= '') then
+          ! Read type of energy distribution
+          type = source_ % energy % type
+          call lower_case(type)
+          select case (type)
+          case ('monoenergetic')
+             external_source % type_energy = SRC_ENERGY_MONO
+             coeffs_reqd = 1
+          case ('maxwell')
+             external_source % type_energy = SRC_ENERGY_MAXWELL
+             coeffs_reqd = 1
+          case ('watt')
+             external_source % type_energy = SRC_ENERGY_WATT
+             coeffs_reqd = 2
+          case ('tabular')
+             external_source % type_energy = SRC_ENERGY_TABULAR
+          case default
+             message = "Invalid energy distribution for external source: " &
+                  // trim(source_ % energy % type)
+             call fatal_error()
+          end select
+
+          ! Read parameters for energy distribution
+          if (associated(source_ % energy % parameters)) then
+             n = size(source_ % energy % parameters)
+             if (n < coeffs_reqd) then
+                message = "Not enough parameters specified for energy " &
+                     // "distribution of external source."
+                call fatal_error()
+             elseif (n > coeffs_reqd) then
+                message = "Too many parameters specified for energy " &
+                     // "distribution of external source."
+                call fatal_error()
+             else
+                allocate(external_source % params_energy(n))
+                external_source % params_energy = source_ % energy % parameters
+             end if
+          end if
+       else
+          ! Set default energy distribution to Watt fission spectrum
           external_source % type_energy = SRC_ENERGY_WATT
-          coeffs_reqd = 2
-       case ('tabular')
-          external_source % type_energy = SRC_ENERGY_TABULAR
-       case default
-          message = "Invalid energy distribution for external source: " &
-               // trim(source_ % energy % type)
-          call fatal_error()
-       end select
-
-       ! Read parameters for energy distribution
-       if (associated(source_ % energy % parameters)) then
-          n = size(source_ % energy % parameters)
-          if (n < coeffs_reqd) then
-             message = "Not enough parameters specified for energy " &
-                  // "distribution of external source."
-             call fatal_error()
-          elseif (n > coeffs_reqd) then
-             message = "Too many parameters specified for energy " &
-                  // "distribution of external source."
-             call fatal_error()
-          else
-             allocate(external_source % params_energy(n))
-             external_source % params_energy = source_ % energy % parameters
-          end if
+          allocate(external_source % params_energy(2))
+          external_source % params_energy = (/ 0.988_8, 2.249_8 /)
        end if
-    else
-       ! Set default energy distribution to Watt fission spectrum
-       external_source % type_energy = SRC_ENERGY_WATT
-       allocate(external_source % params_energy(2))
-       external_source % params_energy = (/ 0.988_8, 2.249_8 /)
+
+       ! Set null path for source file
+       path_source = ""
     end if
 
     ! Survival biasing

@@ -803,6 +803,7 @@ contains
     size_angle_total = 0
     size_energy_total = 0
     size_urr = 0
+    size_xs = 0
 
     ! Basic nuclide information
     write(unit_,*) 'Nuclide ' // trim(nuc % name)

@@ -3,7 +3,7 @@
 
   <options rootname="settings" />
 
-  <typedef name="criticality_xml">
+  <typedef name="run_parameters_xml">
     <component name="batches" type="integer" default="0" />
     <component name="inactive" type="integer" />
     <component name="particles" type="word" length="25" default="''" />
@@ -35,11 +35,12 @@
     <component name="upper_right" type="double-array" />
   </typedef>
 
-  <variable name="criticality" type="criticality_xml" />
+  <variable name="criticality_" tag="criticality" type="run_parameters_xml" />
   <variable name="cross_sections_" tag="cross_sections" type="word" length="255" />
   <variable name="cutoff_" tag="cutoff" type="cutoff_xml" dimension="1" />
   <variable name="energy_grid_" tag="energy_grid" type="word" length="7" />
   <variable name="entropy_" tag="entropy" type="mesh_xml" dimension="1" />
+  <variable name="fixed_source_" tag="fixed_source" type="run_parameters_xml" />
   <variable name="no_reduce_" tag="no_reduce" type="word" length="3" />
   <variable name="ptables_" tag="ptables" type="word" length="3" />
   <variable name="seed_" tag="seed" type="integer" />

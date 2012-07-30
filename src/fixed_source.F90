@@ -86,7 +86,7 @@ contains
   subroutine initialize_batch()
 
        message = "Simulating batch " // trim(to_str(current_batch)) // "..."
-       call write_message()
+       call write_message(1)
 
        ! Reset total starting particle weight used for normalizing tallies
        total_weight = ZERO

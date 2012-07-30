@@ -57,7 +57,7 @@ where :math:`g`, :math:`c`, and :math:`M` are constants. The choice of these
 constants will have a profound effect on the quality and performance of the
 generator, so they should not be chosen arbitrarily. As Donald Knuth said in his
 seminal work *The Art of Computer Programming*, "random numbers should not be
-generated with a method chosen at random". Some theory should be used."
+generated with a method chosen at random. Some theory should be used."
 Typically, :math:`M` is chosen to be a power of two as this enables :math:`x
 \mod M` to be performed using the binary AND operator with a bit mask. The
 constants for the linear congruential generator used by default in OpenMC are

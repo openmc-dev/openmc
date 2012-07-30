@@ -268,6 +268,14 @@ contains
        call read_energy_dist(nuc)
        call read_unr_res(nuc)
 
+       ! Currently subcritical fixed source calculations are not allowed. Thus,
+       ! if any fissionable material is found in a fixed source calculation,
+       ! abort the run.
+       if (run_mode == MODE_FIXEDSOURCE .and. nuc % fissionable) then
+          message = "Cannot have fissionable material in a fixed source run."
+          call fatal_error()
+       end if
+
        ! for fissionable nuclides, precalculate microscopic nu-fission cross
        ! sections so that we don't need to call the nu_total function during
        ! cross section lookups

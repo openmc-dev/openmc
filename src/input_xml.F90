@@ -97,33 +97,58 @@ contains
        path_cross_sections = trim(cross_sections_)
     end if
 
+    ! Make sure that either criticality or fixed source was specified
+    if (criticality_ % batches == 0 .and. fixed_source_ % batches == 0) then
+       message = "Number of batches on <criticality> or <fixed_source> " &
+            // "tag was zero."
+       call fatal_error()
+    end if
+
     ! Criticality information
-    if (criticality % batches > 0) then
+    if (criticality_ % batches > 0) then
+       ! Set run mode
        if (run_mode /= MODE_PLOTTING) run_mode = MODE_CRITICALITY
 
        ! Check number of particles
-       if (len_trim(criticality % particles) == 0) then
+       if (len_trim(criticality_ % particles) == 0) then
           message = "Need to specify number of particles per cycles."
           call fatal_error()
        end if
 
        ! If the number of particles was specified as a command-line argument, we
        ! don't set it here
-       if (n_particles == 0) n_particles = str_to_int(criticality % particles)
+       if (n_particles == 0) n_particles = str_to_int(criticality_ % particles)
 
-       ! Copy cycle information
-       n_batches     = criticality % batches
-       n_inactive    = criticality % inactive
+       ! Copy batch and generation information
+       n_batches     = criticality_ % batches
+       n_inactive    = criticality_ % inactive
        n_active      = n_batches - n_inactive
-       gen_per_batch = criticality % generations_per_batch
+       gen_per_batch = criticality_ % generations_per_batch
+    end if
 
-       ! Check number of active batches
-       if (n_active <= 0) then
-          message = "Number of active batches must be greater than 0."
+    ! Fixed source calculation information
+    if (fixed_source_ % batches > 0) then
+       ! Set run mode
+       if (run_mode /= MODE_PLOTTING) run_mode = MODE_FIXEDSOURCE
+
+       ! Check number of particles
+       if (len_trim(fixed_source_ % particles) == 0) then
+          message = "Need to specify number of particles per cycles."
           call fatal_error()
        end if
-    else
-       message = "Need to specify number of batches with <batches> tag."
+
+       ! If the number of particles was specified as a command-line argument, we
+       ! don't set it here
+       if (n_particles == 0) n_particles = str_to_int(fixed_source_ % particles)
+
+       ! Copy batch information
+       n_batches = fixed_source_ % batches
+       n_active  = fixed_source_ % batches
+    end if
+
+    ! Check number of active batches
+    if (n_active <= 0) then
+       message = "Number of active batches must be greater than 0."
        call fatal_error()
     end if
 

@@ -142,8 +142,9 @@ contains
        if (n_particles == 0) n_particles = str_to_int(fixed_source_ % particles)
 
        ! Copy batch information
-       n_batches = fixed_source_ % batches
-       n_active  = fixed_source_ % batches
+       n_batches     = fixed_source_ % batches
+       n_active      = fixed_source_ % batches
+       gen_per_batch = 1
     end if
 
     ! Check number of active batches

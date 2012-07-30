@@ -17,7 +17,7 @@ module initialize
                               print_plot, create_summary_file, print_usage,    &
                               create_xs_summary_file, print_version
   use random_lcg,       only: initialize_prng
-  use source,           only: allocate_banks, initialize_source
+  use source,           only: initialize_source
   use string,           only: to_str, str_to_int, starts_with, ends_with,      &
                               lower_case
   use tally,            only: create_tally_map
@@ -115,9 +115,16 @@ contains
        ! Create tally map
        call create_tally_map()
 
-       ! allocate banks and create source particles
-       if (run_mode == MODE_CRITICALITY) call allocate_banks()
-       call initialize_source()
+       ! Determine how much work each processor should do
+       call calculate_work()
+
+       ! Allocate banks and create source particles -- for a fixed source
+       ! calculation, the external source distribution is sampled during the
+       ! run, not at initialization
+       if (run_mode == MODE_CRITICALITY) then
+          call allocate_banks()
+          call initialize_source()
+       end if
     end if
 
     ! stop timer for initialization
@@ -651,5 +658,51 @@ contains
     end do
 
   end subroutine normalize_ao
+
+!===============================================================================
+! CALCULATE_WORK
+!===============================================================================
+
+  subroutine calculate_work()
+
+    ! Determine maximum amount of particles to simulate on each processor
+    maxwork = ceiling(real(n_particles)/n_procs,8)
+
+    ! ID's of first and last source particles
+    bank_first = rank*maxwork + 1
+    bank_last  = min((rank+1)*maxwork, n_particles)
+
+    ! number of particles for this processor
+    work = bank_last - bank_first + 1
+
+  end subroutine calculate_work
+
+!===============================================================================
+! ALLOCATE_BANKS allocates memory for the fission and source banks
+!===============================================================================
+
+  subroutine allocate_banks()
+
+    integer    :: alloc_err  ! allocation error code
+
+    ! Allocate source bank
+    allocate(source_bank(maxwork), STAT=alloc_err)
+
+    ! Check for allocation errors 
+    if (alloc_err /= 0) then
+       message = "Failed to allocate source bank."
+       call fatal_error()
+    end if
+
+    ! Allocate fission bank
+    allocate(fission_bank(3*maxwork), STAT=alloc_err)
+
+    ! Check for allocation errors 
+    if (alloc_err /= 0) then
+       message = "Failed to allocate fission bank."
+       call fatal_error()
+    end if
+
+  end subroutine allocate_banks
 
 end module initialize

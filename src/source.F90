@@ -20,44 +20,6 @@ module source
 contains
 
 !===============================================================================
-! ALLOCATE_BANKS allocates memory for the fission and source banks
-!===============================================================================
-
-  subroutine allocate_banks()
-
-    integer    :: alloc_err  ! allocation error code
-
-    ! Determine maximum amount of particles to simulate on each processor
-    maxwork = ceiling(real(n_particles)/n_procs,8)
-
-    ! ID's of first and last source particles
-    bank_first = rank*maxwork + 1
-    bank_last  = min((rank+1)*maxwork, n_particles)
-
-    ! number of particles for this processor
-    work = bank_last - bank_first + 1
-
-    ! Allocate source bank
-    allocate(source_bank(maxwork), STAT=alloc_err)
-
-    ! Check for allocation errors 
-    if (alloc_err /= 0) then
-       message = "Failed to allocate source bank."
-       call fatal_error()
-    end if
-
-    ! Allocate fission bank
-    allocate(fission_bank(3*maxwork), STAT=alloc_err)
-
-    ! Check for allocation errors 
-    if (alloc_err /= 0) then
-       message = "Failed to allocate fission bank."
-       call fatal_error()
-    end if
-
-  end subroutine allocate_banks
-
-!===============================================================================
 ! INITIALIZE_SOURCE initializes particles in the source bank
 !===============================================================================
 

@@ -22,7 +22,7 @@ contains
 
     integer(8) :: i  ! index over histories in single cycle
 
-    if (master) call header("BEGIN SIMULATION", level=1)
+    if (master) call header("CRITICALITY TRANSPORT SIMULATION", level=1)
 
     tallies_on = .false.
     call timer_start(time_inactive)

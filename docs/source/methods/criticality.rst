@@ -9,8 +9,8 @@ neutrons includes a fissionable material. Some common criticality calculations
 include the simulation of nuclear reactors, spent fuel pools, nuclear weapons,
 and other fissile systems. The term criticality calculation is also synonymous
 with the term eigenvalue calculation. The reason for this is that the transport
-equation becomes an eigenvalue value equation if a fissionable source is present
-since then the source of neutrons will depend on the flux of neutrons
+equation becomes an eigenvalue equation if a fissionable source is present since
+then the source of neutrons will depend on the flux of neutrons
 itself. Criticality simulations using Monte Carlo methods are becoming
 increasingly common with the advent of high-performance computing.
 

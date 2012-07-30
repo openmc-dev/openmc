@@ -65,6 +65,7 @@ fixed_source.o: constants.o
 fixed_source.o: global.o
 fixed_source.o: output.o
 fixed_source.o: physics.o
+fixed_source.o: random_lcg.o
 fixed_source.o: source.o
 fixed_source.o: string.o
 fixed_source.o: tally.o

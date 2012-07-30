@@ -1661,7 +1661,7 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
-       m = t % n_score_bins
+       m = t % n_score_bins * t % n_nuclide_bins
        n = t % n_total_bins
        n_bins = m*n
 
@@ -1743,7 +1743,7 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
-       m = t % n_score_bins
+       m = t % n_score_bins * t % n_nuclide_bins
        n = t % n_total_bins
        n_bins = m*n*2
 

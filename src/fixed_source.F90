@@ -19,7 +19,7 @@ contains
 
     integer(8) :: i ! index over histories in single cycle
 
-    if (master) call header("BEGIN SIMULATION", level=1)
+    if (master) call header("FIXED SOURCE TRANSPORT SIMULATION", level=1)
 
     ! Allocate particle and dummy source site
     allocate(p)

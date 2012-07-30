@@ -28,6 +28,8 @@ contains
     integer(8) :: i          ! loop index over bank sites
     integer(8) :: id         ! particle id
 
+    type(Bank), pointer :: src => null() ! source bank site
+
     message = "Initializing source particles..."
     call write_message(6)
 
@@ -40,17 +42,21 @@ contains
     else
        ! Generation source sites from specified distribution in user input
        do i = 1, work
+          ! Get pointer to source bank site
+          src => source_bank(i)
+
+          ! Set ID of source bank site
           id = bank_first + i - 1
-          source_bank(i) % id = id
+          src % id = id
 
           ! Set weight to one
-          source_bank(i) % wgt = ONE
+          src % wgt = ONE
 
           ! initialize random number seed
           call set_particle_seed(id)
 
           ! sample external source distribution
-          call sample_external_source(source_bank(i))
+          call sample_external_source(src)
        end do
     end if
  
@@ -62,7 +68,7 @@ contains
 
   subroutine sample_external_source(site)
 
-    type(Bank), intent(inout) :: site ! source site
+    type(Bank), pointer :: site ! source site
 
     integer :: i          ! dummy loop index
     real(8) :: r(3)       ! sampled coordinates
@@ -72,6 +78,9 @@ contains
     real(8) :: p_max(3)   ! maximum coordinates of source
     real(8) :: a          ! Arbitrary parameter 'a'
     real(8) :: b          ! Arbitrary parameter 'b'
+
+    ! Set weight to one by default
+    site % wgt = ONE
 
     ! Sample position
     select case (external_source % type_space)
@@ -155,17 +164,9 @@ contains
     ! set defaults
     call initialize_particle()
 
-    ! point to next source particle
+    ! Copy attributes from source to particle
     src => source_bank(index_source)
-
-    ! copy attributes from source bank site
-    p % wgt         = src % wgt
-    p % last_wgt    = src % wgt
-    p % coord % xyz = src % xyz
-    p % coord % uvw = src % uvw
-    p % last_xyz    = src % xyz
-    p % E           = src % E
-    p % last_E      = src % E
+    call copy_source_attributes(src)
 
     ! set identifier for particle
     p % id = bank_first + index_source - 1
@@ -180,10 +181,26 @@ contains
     if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
          p % id == trace_particle) trace = .true.
 
-    ! Add paricle's starting weight to count for normalizing tallies later
-    total_weight = total_weight + src % wgt
-
   end subroutine get_source_particle
+
+!===============================================================================
+! COPY_SOURCE_ATTRIBUTES
+!===============================================================================
+
+  subroutine copy_source_attributes(src)
+
+    type(Bank), pointer :: src
+
+    ! copy attributes from source bank site
+    p % wgt         = src % wgt
+    p % last_wgt    = src % wgt
+    p % coord % xyz = src % xyz
+    p % coord % uvw = src % uvw
+    p % last_xyz    = src % xyz
+    p % E           = src % E
+    p % last_E      = src % E
+
+  end subroutine copy_source_attributes
 
 !===============================================================================
 ! INITIALIZE_PARTICLE sets default attributes for a particle from the source

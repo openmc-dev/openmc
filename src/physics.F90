@@ -41,13 +41,17 @@ contains
     logical :: found_cell      ! found cell which particle is in?
     type(LocalCoord), pointer :: coord => null()
 
+    ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
        message = "Simulating Particle " // trim(to_str(p % id))
        call write_message()
     end if
 
+    ! If the cell hasn't been determined based on the particle's location,
+    ! initiate a search for the current cell
     if (p % coord % cell == NONE) then
        call find_cell(found_cell)
+
        ! Particle couldn't be located
        if (.not. found_cell) then
           message = "Could not locate particle " // trim(to_str(p % id))
@@ -60,6 +64,9 @@ contains
 
     ! Initialize number of events to zero
     n_event = 0
+
+    ! Add paricle's starting weight to count for normalizing tallies later
+    total_weight = total_weight + p % wgt
 
     ! Force calculation of cross-sections by setting last energy to zero 
     micro_xs % last_E = ZERO

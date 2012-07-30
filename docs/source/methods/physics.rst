@@ -4,6 +4,49 @@
 Physics
 =======
 
+-----------------------------------
+Sampling Distance to Next Collision
+-----------------------------------
+
+As a particle travels through a homogeneous material, the probability
+distribution function for the distance to its next collision :math:`\ell` is
+
+.. math::
+    :label: distance-pdf
+
+    p(\ell) d\ell = \Sigma_t e^{-\Sigma_t \ell} d\ell
+
+where :math:`\Sigma_t` is the total macroscopic cross section of the
+material. Equation :eq:`distance-pdf` tells us that the further the distance is
+to the next collision, the less likely the particle will travel that distance,
+which should agree with your intuition. In order to sample the probability
+distribution function, we first need to convert it to a cumulative distribution
+function
+
+.. math::
+    :label: distance-cdf
+
+    \int_0^{\ell} d\ell' p(\ell') = \int_0^{\ell} d\ell' \Sigma_t e^{-\Sigma_t
+    \ell'} = 1 - e^{-\Sigma_t \ell}
+
+By setting the cumulative distribution function equal to :math:`\xi`, a random
+number on the unit interval, and solving for the distance :math:`\ell`, we
+obtain a formula for sampling the distance to next collision:
+
+.. math::
+    :label: sample-distance-1
+
+    \ell = -\frac{\ln (1 - \xi)}{\Sigma_t}
+
+Since :math:`\xi` is uniformly distributed on :math:`[0,1)`, this implies that
+:math:`1 - \xi` is also uniformly distributed on :math:`[0,1)` as well. Thus,
+the formula usually used to calculate the distance to next collision is
+
+.. math::
+    :label: sample-distance-2
+
+    \ell = -\frac{\ln \xi}{\Sigma_t}
+
 -----------------------------------------
 Secondary Angles and Energy Distributions
 -----------------------------------------

@@ -207,21 +207,25 @@ contains
              call fatal_error()
           end select
 
-          ! Read parameters for spatial distribution
-          if (type /= 'file' .and. associated(source_ % space % parameters)) then
+          ! Determine number of parameters specified
+          if (associated(source_ % space % parameters)) then
              n = size(source_ % space % parameters)
-             if (n < coeffs_reqd) then
-                message = "Not enough parameters specified for spatial " &
-                     // "distribution of external source."
-                call fatal_error()
-             elseif (n > coeffs_reqd) then
-                message = "Too many parameters specified for spatial " &
-                     // "distribution of external source."
-                call fatal_error()
-             else
-                allocate(external_source % params_space(n))
-                external_source % params_space = source_ % space % parameters
-             end if
+          else
+             n = 0
+          end if
+
+          ! Read parameters for spatial distribution
+          if (n < coeffs_reqd) then
+             message = "Not enough parameters specified for spatial " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > coeffs_reqd) then
+             message = "Too many parameters specified for spatial " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > 0) then
+             allocate(external_source % params_space(n))
+             external_source % params_space = source_ % space % parameters
           end if
        else
           message = "No spatial distribution specified for external source!"
@@ -248,21 +252,25 @@ contains
              call fatal_error()
           end select
 
-          ! Read parameters for angle distribution
+          ! Determine number of parameters specified
           if (associated(source_ % angle % parameters)) then
              n = size(source_ % angle % parameters)
-             if (n < coeffs_reqd) then
-                message = "Not enough parameters specified for angle " &
-                     // "distribution of external source."
-                call fatal_error()
-             elseif (n > coeffs_reqd) then
-                message = "Too many parameters specified for angle " &
-                     // "distribution of external source."
-                call fatal_error()
-             else
-                allocate(external_source % params_angle(n))
-                external_source % params_angle = source_ % angle % parameters
-             end if
+          else
+             n = 0
+          end if
+
+          ! Read parameters for angle distribution
+          if (n < coeffs_reqd) then
+             message = "Not enough parameters specified for angle " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > coeffs_reqd) then
+             message = "Too many parameters specified for angle " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > 0) then
+             allocate(external_source % params_angle(n))
+             external_source % params_angle = source_ % angle % parameters
           end if
        else
           ! Set default angular distribution isotropic
@@ -292,21 +300,25 @@ contains
              call fatal_error()
           end select
 
-          ! Read parameters for energy distribution
+          ! Determine number of parameters specified
           if (associated(source_ % energy % parameters)) then
              n = size(source_ % energy % parameters)
-             if (n < coeffs_reqd) then
-                message = "Not enough parameters specified for energy " &
-                     // "distribution of external source."
-                call fatal_error()
-             elseif (n > coeffs_reqd) then
-                message = "Too many parameters specified for energy " &
-                     // "distribution of external source."
-                call fatal_error()
-             else
-                allocate(external_source % params_energy(n))
-                external_source % params_energy = source_ % energy % parameters
-             end if
+          else
+             n = 0
+          end if
+
+          ! Read parameters for energy distribution
+          if (n < coeffs_reqd) then
+             message = "Not enough parameters specified for energy " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > coeffs_reqd) then
+             message = "Too many parameters specified for energy " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > 0) then
+             allocate(external_source % params_energy(n))
+             external_source % params_energy = source_ % energy % parameters
           end if
        else
           ! Set default energy distribution to Watt fission spectrum

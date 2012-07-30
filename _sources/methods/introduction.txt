@@ -78,24 +78,24 @@ proceed. The life of a single particle will proceed as follows:
 
          d = -\frac{\ln \xi}{\Sigma_t}
 
-     where :math:`\sigma` is a `pseudorandom number`_ sampled from a uniform
-     distribution on [0,1).
+     where :math:`\xi` is a `pseudorandom number`_ sampled from a uniform
+     distribution on :math:`[0,1)`.
 
-  5. If the distance to the nearest boundary is less than the distance to the next
+  6. If the distance to the nearest boundary is less than the distance to the next
      collision, the particle is moved forward to this boundary. Then, the process
      is repeated from step 2. If the distance to collision is closer than the
      distance to the nearest boundary, then the particle will undergo a collision.
 
-  6. The material at the collision site may consist of multiple nuclides. First,
+  7. The material at the collision site may consist of multiple nuclides. First,
      the nuclide with which the collision will happen is sampled based on the
      total cross-sections. If the total cross section of material :math:`i` is
      :math:`\Sigma_{t,i}`, then the probability that any nuclide is sampled is
 
      .. math::
 
-         P(i) = \frac{\Sigma_{t,i}}{\Sigma_t}
+         P(i) = \frac{\Sigma_{t,i}}{\Sigma_t}.
 
-  7. Once the specific nuclide is sampled, the random samples a reaction for
+  8. Once the specific nuclide is sampled, the random samples a reaction for
      that nuclide based on the microscopic cross sections. If the microscopic
      cross-section for some reaction :math:`x` is :math:`\sigma_x` and the total
      microscopic cross section for the nuclide is :math:`\sigma_t`, then the
@@ -103,9 +103,9 @@ proceed. The life of a single particle will proceed as follows:
 
      .. math::
 
-         P(x) = \frac{\sigma_x}{\sigma_t}
+         P(x) = \frac{\sigma_x}{\sigma_t}.
 
-  8. If the sampled reaction is elastic or inelastic scattering, the outgoing
+  9. If the sampled reaction is elastic or inelastic scattering, the outgoing
      energy and angle is sampled from the appropriate distribution.  If the
      reaction is (n,xn), it's also treated as scattering and the weight of the
      particle is increased by the multiplicity of the reaction. The particle

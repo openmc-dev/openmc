@@ -202,8 +202,30 @@ problem. It has the following attributes/sub-elements:</p>
 </table>
 </div></blockquote>
 </div>
+<div class="section" id="fixed-source-element">
+<h3>3.2.6. <tt class="docutils literal"><span class="pre">&lt;fixed_source&gt;</span></tt> Element<a class="headerlink" href="#fixed-source-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;fixed_source&gt;</span></tt> element indicates that a fixed source calculation should be
+performed. It has the following attributes/sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">batches:</th><td class="field-body"><p class="first">The total number of batches. For fixed source calculations, each batch
+represents a realization of random variables for tallies.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">particles:</th><td class="field-body"><p class="first">The number of particles to simulate per batch.</p>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div>
 <div class="section" id="no-reduce-element">
-<h3>3.2.6. <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> Element<a class="headerlink" href="#no-reduce-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.7. <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> Element<a class="headerlink" href="#no-reduce-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> element has no attributes and has an accepted value of &#8220;on&#8221;
 or &#8220;off&#8221;. If set to &#8220;on&#8221;, all user-defined tallies and global tallies will not
 be reduced across processors in a parallel calculation. This means that the
@@ -214,7 +236,7 @@ tally data, this option can significantly improve the parallel efficiency.</p>
 <div><em>Default</em>: off</div></blockquote>
 </div>
 <div class="section" id="ptables-element">
-<h3>3.2.7. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.8. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> element determines whether probability tables should be used
 in the unresolved resonance range if available. This element has no attributes
 or sub-elements and can be set to either &#8220;off&#8221; or &#8220;on&#8221;.</p>
@@ -222,35 +244,108 @@ or sub-elements and can be set to either &#8220;off&#8221; or &#8220;on&#8221;.<
 <div><em>Default</em>: on</div></blockquote>
 </div>
 <div class="section" id="seed-element">
-<h3>3.2.8. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">seed</span></tt> element is used to set the seed used for the linear congruential
 pseudo-random number generator.</p>
 <blockquote>
 <div><em>Default</em>: 1</div></blockquote>
 </div>
 <div class="section" id="source-element">
-<h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">source</span></tt> element gives information on an initial source guess for
-criticality calculations. It takes the following attributes:</p>
+<h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">source</span></tt> element gives information on an external source distribution to
+be used either as the source for a fixed source calculation or the initial
+source guess for criticality calculations. It takes the following
+attributes/sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of source distribution. Setting this to &#8220;box&#8221; indicates that the
-starting source should be sampled uniformly in a parallelepiped. Setting
-this to &#8220;point&#8221; indicates that the starting source should be sampled from an
-isotropic point source. Setting this to &#8220;file&#8221; indicates that the starting
-source should be sampled from a <tt class="docutils literal"><span class="pre">source.binary</span></tt> file.</p>
+<tr class="field-odd field"><th class="field-name">file:</th><td class="field-body"><p class="first">If this attribute is given, it indicates that the source is to be read from
+a binary source file whose path is given by the value of this element</p>
+<p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">coeffs:</th><td class="field-body"><p class="first">For a &#8220;box&#8221; source distribution, <tt class="docutils literal"><span class="pre">coeffs</span></tt> should be given as six real
-numbers, the first three of which specify the lower-left corner of a
+<tr class="field-even field"><th class="field-name">space:</th><td class="field-body"><p class="first">An element specifying the spatial distribution of source sites. This element
+has the following attributes:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of spatial distribution. Valid options are &#8220;box&#8221; and &#8220;point&#8221;. A
+&#8220;box&#8221; spatial distribution has coordinates sampled uniformly in a
+parallelepiped. A &#8220;point&#8221; spatial distribution has coordinates specified
+by a triplet.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">parameters:</th><td class="field-body"><p class="first">For a &#8220;box&#8221; spatial distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should be given as six
+real numbers, the first three of which specify the lower-left corner of a
 parallelepiped and the last three of which specify the upper-right
 corner. Source sites are sampled uniformly through that parallelepiped.</p>
-<p>For a &#8220;point&#8221; source distribution, <tt class="docutils literal"><span class="pre">coeffs</span></tt> should be given as three real
-numbers which specify the (x,y,z) location of an isotropic point source</p>
-<p class="last">For a &#8220;file&#8221; source distribution, <tt class="docutils literal"><span class="pre">coeffs</span></tt> should not be specified.</p>
+<p>For a &#8220;point&#8221; spatial distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should be given as
+three real numbers which specify the (x,y,z) location of an isotropic
+point source</p>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">angle:</th><td class="field-body"><p class="first">An element specifying the angular distribution of source sites. This element
+has the following attributes:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of angular distribution. Valid options are &#8220;isotropic&#8221; and
+&#8220;monodirectional&#8221;. The angle of the particle emitted from a source site is
+isotropic if the &#8220;isotropic&#8221; option is given. The angle of the particle
+emitted from a source site is the direction specified in the &lt;parameters&gt;
+attribute if &#8220;monodirectional&#8221; option is given.</p>
+<p><em>Default</em>: isotropic</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">parameters:</th><td class="field-body"><p class="first">For an &#8220;isotropic&#8221; angular distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should not be
+specified</p>
+<p>For a &#8220;monodirectional&#8221; angular distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should be
+given as three real numbers which specify the angular cosines with respect
+to each axis.</p>
+<p class="last"><em>Default</em>: None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">energy:</th><td class="field-body"><p class="first">An element specifying the energy distribution of source sites. This element
+has the following attributes:</p>
+<table class="last docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of energy distribution. Valid options are &#8220;monoenergetic&#8221;,
+&#8220;watt&#8221;, and &#8220;maxwell&#8221;. The &#8220;monoenergetic&#8221; option produces source sites at
+a single energy. The &#8220;watt&#8221; option produces source sites whose energy is
+sampled from a Watt fission spectrum. The &#8220;maxwell&#8221; option produce source
+sites whose energy is sampled from a Maxwell fission spectrum</p>
+<p><em>Default</em>: watt</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">parameters:</th><td class="field-body"><p class="first">For a &#8220;monoenergetic&#8221; energy distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should not be
+given as the energy in MeV of the source sites.</p>
+<p>For a &#8220;watt&#8221; energy distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should be given as two
+real numbers <img class="math" src="../_images/math/c7d457e388298246adb06c587bccd419ea67f7e8.png" alt="a"/> and <img class="math" src="../_images/math/8136a7ef6a03334a7246df9097e5bcc31ba33fd2.png" alt="b"/> that parameterize the distribution
+<img class="math" src="../_images/math/08237a127a96bfc4531a8f04aec0c9811718f4bd.png" alt="p(E) dE = c e^{-E/a} \sinh \sqrt{b \, E} dE"/>.</p>
+<p>For a &#8220;maxwell&#8221; energy distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should be given as one
+real number <img class="math" src="../_images/math/c7d457e388298246adb06c587bccd419ea67f7e8.png" alt="a"/> that parameterizes the distribution <img class="math" src="../_images/math/fa4cf565fe0c2b4c1e2e58d6b7faad24322d11cc.png" alt="p(E) dE =
+c E e^{-E/a} dE"/>.</p>
+<p class="last"><em>Default</em>: 0.988 2.249</p>
+</td>
+</tr>
+</tbody>
+</table>
 </td>
 </tr>
 </tbody>
@@ -258,7 +353,7 @@ numbers which specify the (x,y,z) location of an isotropic point source</p>
 </div></blockquote>
 </div>
 <div class="section" id="survival-biasing-element">
-<h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> element has no attributes and has an accepted value
 of &#8220;on&#8221; or &#8220;off&#8221;. If set to &#8220;on&#8221;, this option will enable the use of survival
 biasing, otherwise known as implicit capture or absorption.</p>
@@ -266,7 +361,7 @@ biasing, otherwise known as implicit capture or absorption.</p>
 <div><em>Default</em>: off</div></blockquote>
 </div>
 <div class="section" id="trace-element">
-<span id="trace"></span><h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
+<span id="trace"></span><h3>3.2.12. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> element can be used to print out detailed information about a
 single particle during a simulation. This element should be followed by three
 integers: the batch number, generation number, and particle number.</p>
@@ -274,7 +369,7 @@ integers: the batch number, generation number, and particle number.</p>
 <div><em>Default</em>: None</div></blockquote>
 </div>
 <div class="section" id="uniform-fs-element">
-<h3>3.2.12. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.13. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> element describes a mesh that is used for re-weighting
 source sites at every generation based on the uniform fission site methodology
 described in Kelly et al., &#8220;MC21 Analysis of the Nuclear Energy Agency Monte
@@ -303,7 +398,7 @@ problem. It has the following attributes/sub-elements:</p>
 </div></blockquote>
 </div>
 <div class="section" id="verbosity-element">
-<h3>3.2.13. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.14. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> element tells the code how much information to display to
 the standard output. A higher verbosity corresponds to more information being
 displayed. This element takes the following attributes:</p>
@@ -321,7 +416,7 @@ displayed. This element takes the following attributes:</p>
 </div></blockquote>
 </div>
 <div class="section" id="write-source-element">
-<h3>3.2.14. <tt class="docutils literal"><span class="pre">&lt;write_source&gt;</span></tt> Element<a class="headerlink" href="#write-source-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.15. <tt class="docutils literal"><span class="pre">&lt;write_source&gt;</span></tt> Element<a class="headerlink" href="#write-source-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;write_source&gt;</span></tt> element has no attributes and has an accepted value of
 &#8220;on&#8221; or &#8220;off&#8221;. If set to &#8220;on&#8221;, a binary source file will be written to diskat
 the end of the run that can be used as a starting source for another run.</p>

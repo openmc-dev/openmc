@@ -22,13 +22,15 @@ Let us take the example of a sphere centered at the point :math:`(x_0,y_0,z_0)`
 with radius :math:`R`. One would normally write the equation of the sphere as
 
 .. math::
+    :label: sphere-equation
 
     (x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 = R^2
 
-By subtracting the right-hand term from both sides of the equation, we can then
-write the surface equation:
+By subtracting the right-hand term from both sides of equation
+:eq:`sphere-equation`, we can then write the surface equation for the sphere:
 
 .. math::
+    :label: surface-equation-sphere
 
     f(x,y,z) = (x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - R^2 = 0
 
@@ -97,20 +99,21 @@ direction :math:`u,v,w`. To find the distance :math:`d` to a surface
 
     f(x + du, y + dv, z + dw) = 0
 
-If no solutions to equation :eq:`dist-to-boundary-1` exists or the only
-solutions are complex, then the particle's direction of travel will not
-intersect the surface. If the solution to equation :eq:`dist-to-boundary-1` is
-negative, this means that the surface is "behind" the particle, i.e. if the
-particle continues traveling in its current direction, it will not hit the
-surface. The complete derivation for different types of surfaces used in OpenMC
-will be presented in the following sections.
+If no solutions to equation :eq:`dist-to-boundary-1` exist or the only solutions
+are complex, then the particle's direction of travel will not intersect the
+surface. If the solution to equation :eq:`dist-to-boundary-1` is negative, this
+means that the surface is "behind" the particle, i.e. if the particle continues
+traveling in its current direction, it will not hit the surface. The complete
+derivation for different types of surfaces used in OpenMC will be presented in
+the following sections.
 
-Once a distance has been computed to a boundary, we need to check if it is
-closer than previously-computed distances to surfaces. Unfortunately, we cannot
-just use the minimum function because some distances may be almost identical but
-still different due to the use of floating-point arithmetic. Consequently, we
-should first check for floating-point equality of the current distance
-calculated and the minimum found thus far. This is done by checking if
+Once a distance has been computed to a surface, we need to check if it is closer
+than previously-computed distances to surfaces. Unfortunately, we cannot just
+use the minimum function because some of the calculated distances, which should
+be the same in theory (e.g. coincident surfaces), may be slightly different due
+to the use of floating-point arithmetic. Consequently, we should first check for
+floating-point equality of the current distance calculated and the minimum found
+thus far. This is done by checking if
 
 .. math::
     :label: fp-distance

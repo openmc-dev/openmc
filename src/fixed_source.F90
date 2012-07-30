@@ -21,12 +21,13 @@ contains
 
     if (master) call header("BEGIN SIMULATION", level=1)
 
-    tallies_on = .true.
-    call timer_start(time_inactive)
-
     ! Allocate particle and dummy source site
     allocate(p)
     allocate(source_site)
+
+    ! Turn timer and tallier on
+    tallies_on = .true.
+    call timer_start(time_active)
 
     ! ==========================================================================
     ! LOOP OVER BATCHES

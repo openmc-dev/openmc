@@ -1346,6 +1346,12 @@ contains
              ! Any other case, e.g. <nuclides>U-235 Pu-239</nuclides>
              allocate(t % nuclide_bins(n_words))
              do j = 1, n_words
+                ! Check if total material was specified
+                if (words(j) == 'total') then
+                   t % nuclide_bins(j) % scalar = -1
+                   cycle
+                end if
+
                 ! Check if xs specifier was given
                 if (ends_with(words(j), 'c')) then
                    word = words(j)

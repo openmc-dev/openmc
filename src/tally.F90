@@ -283,7 +283,7 @@ contains
 
        ! Check for nuclide bins
        k = 0
-       NUCLIDE_LOOP: do while (k <= t % n_nuclide_bins)
+       NUCLIDE_LOOP: do while (k < t % n_nuclide_bins)
 
           ! Increment the index in the list of nuclide bins
           k = k + 1

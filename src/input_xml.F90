@@ -124,6 +124,9 @@ contains
        n_inactive    = criticality_ % inactive
        n_active      = n_batches - n_inactive
        gen_per_batch = criticality_ % generations_per_batch
+
+       ! Allocate array for batch keff
+       allocate(k_batch(n_batches))
     end if
 
     ! Fixed source calculation information

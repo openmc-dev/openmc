@@ -154,7 +154,7 @@ module global
   integer(8) :: maxwork      ! maximum number of particles per processor
 
   ! Temporary k-effective values
-  real(8) :: k_batch    ! single batch estimate of k
+  real(8), allocatable :: k_batch(:) ! batch estimates of k
   real(8) :: keff = ONE ! average k over active cycles
   real(8) :: keff_std   ! standard deviation of average k
 

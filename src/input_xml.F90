@@ -461,14 +461,6 @@ contains
     ! batch
     if (trim(no_reduce_) == 'on') reduce_tallies = .false.
 
-    ! Determine number of realizations
-    if (reduce_tallies) then
-       n_realizations = n_active
-    else
-       n_realizations = n_active * n_procs
-    end if
-       
-
   end subroutine read_settings_xml
 
 !===============================================================================

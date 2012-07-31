@@ -38,6 +38,13 @@ contains
     ! LOOP OVER BATCHES
     BATCH_LOOP: do current_batch = 1, n_batches
 
+       ! In a restart run, skip any batches that have already been simulated
+       if (restart_run .and. current_batch <= restart_batch) then
+          if (current_batch == n_inactive) tallies_on = .true.
+          if (current_batch > n_inactive) n_realizations = n_realizations + 1
+          cycle BATCH_LOOP
+       end if
+
        call initialize_batch()
 
        ! =======================================================================

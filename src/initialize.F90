@@ -18,6 +18,7 @@ module initialize
                               create_xs_summary_file, print_version
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
+  use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with,      &
                               lower_case
   use tally,            only: create_tally_map
@@ -125,6 +126,10 @@ contains
           call allocate_banks()
           call initialize_source()
        end if
+
+       ! If this is a restart run, load the state point data and binary source
+       ! file
+       if (restart_run) call load_state_point()
     end if
 
     ! stop timer for initialization
@@ -260,6 +265,14 @@ contains
                      " command-line flag."
                 call fatal_error()
              end if
+          case ('-r', '-restart', '--restart')
+             i = i + 1
+             ! Read path for state point
+             path_state_point = argv(i)
+             restart_run = .true.
+
+             ! Set path for binary source file
+             path_source = 'source.' // path_state_point(9:10) // '.binary'
           case ('-?', '-help', '--help')
              call print_usage()
              stop

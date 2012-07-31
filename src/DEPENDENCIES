@@ -120,6 +120,7 @@ initialize.o: input_xml.o
 initialize.o: output.o
 initialize.o: random_lcg.o
 initialize.o: source.o
+initialize.o: state_point.o
 initialize.o: string.o
 initialize.o: tally.o
 initialize.o: tally_header.o
@@ -233,6 +234,7 @@ source.o: physics.o
 source.o: random_lcg.o
 source.o: string.o
 
+state_point.o: error.o
 state_point.o: global.o
 state_point.o: output.o
 state_point.o: string.o

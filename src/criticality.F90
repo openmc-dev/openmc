@@ -1,15 +1,16 @@
 module criticality
 
-  use constants,  only: ZERO
+  use constants,   only: ZERO
   use global
-  use intercycle, only: shannon_entropy, calculate_keff, synchronize_bank, &
-                        count_source_for_ufs
-  use output,     only: write_message, header, print_columns
-  use physics,    only: transport
-  use source,     only: get_source_particle
-  use string,     only: to_str
-  use tally,      only: synchronize_tallies
-  use timing,     only: timer_start, timer_stop
+  use intercycle,  only: shannon_entropy, calculate_keff, synchronize_bank, &
+                         count_source_for_ufs
+  use output,      only: write_message, header, print_columns
+  use physics,     only: transport
+  use source,      only: get_source_particle 
+  use state_point, only: create_state_point
+  use string,      only: to_str
+  use tally,       only: synchronize_tallies
+  use timing,      only: timer_start, timer_stop
 
 contains
 
@@ -138,6 +139,8 @@ contains
        call timer_stop(time_inactive)
        call timer_start(time_active)
     end if
+
+    ! TODO: Write out state point if requested
 
   end subroutine finalize_batch
 

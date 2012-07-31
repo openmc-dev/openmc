@@ -5,9 +5,14 @@ module constants
   ! ============================================================================
   ! VERSIONING NUMBERS
 
+  ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 4
   integer, parameter :: VERSION_RELEASE = 3
+
+  ! Revision numbers for binary files
+  integer, parameter :: REVISION_SOURCE     = 1
+  integer, parameter :: REVISION_STATEPOINT = 1
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS 
@@ -350,5 +355,6 @@ module constants
   integer, parameter :: UNIT_PLOT    = 13 ! unit # for writing plot file
   integer, parameter :: UNIT_XS      = 14 ! unit # for writing xs summary file
   integer, parameter :: UNIT_SOURCE  = 15 ! unit # for writing source file
+  integer, parameter :: UNIT_STATE   = 16 ! unit # for writing state point
 
 end module constants

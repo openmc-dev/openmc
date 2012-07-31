@@ -23,11 +23,13 @@ cross_section.o: random_lcg.o
 cross_section.o: search.o
 
 criticality.o: constants.o
+criticality.o: finalize.o
 criticality.o: global.o
 criticality.o: intercycle.o
 criticality.o: output.o
 criticality.o: physics.o
 criticality.o: source.o
+criticality.o: state_point.o
 criticality.o: string.o
 criticality.o: tally.o
 criticality.o: timing.o
@@ -229,6 +231,10 @@ source.o: particle_header.o
 source.o: physics.o
 source.o: random_lcg.o
 source.o: string.o
+
+state_point.o: global.o
+state_point.o: source.o
+state_point.o: string.o
 
 string.o: constants.o
 string.o: error.o

@@ -45,8 +45,11 @@ contains
     ! Write out current batch number
     write(UNIT_STATE) current_batch
 
-    ! Write out k_batch information
-    if (run_mode == RUN_CRITICALITY) write(UNIT_STATE) k_batch(1:current_batch)
+    ! Write out keff and entropy for each batch
+    if (run_mode == MODE_CRITICALITY) then
+       write(UNIT_STATE) k_batch(1:current_batch)
+       if (entropy_on) write(UNIT_STATE) entropy(1:current_batch)
+    end if
 
     ! Write out global tallies sum and sum_sq
     write(UNIT_STATE) N_GLOBAL_TALLIES
@@ -114,8 +117,11 @@ contains
     ! Read batch number to restart at
     read(UNIT_STATE) restart_batch
 
-    ! Write out keff information
-    if (run_mode == RUN_CRITICALITY) read(UNIT_STATE) k_batch(1:restart_batch)
+    ! Read keff and entropy for each batch
+    if (run_mode == MODE_CRITICALITY) then
+       read(UNIT_STATE) k_batch(1:restart_batch)
+       if (entropy_on) read(UNIT_STATE) entropy(1:restart_batch)
+    end if
 
     if (master) then
        ! Read number of global tallies and make sure it matches

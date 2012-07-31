@@ -1053,7 +1053,7 @@ contains
 
        if (entropy_on) then
           write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, &
-               k_batch(current_batch), entropy
+               k_batch(current_batch), entropy(current_batch)
        else
           write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, &
                k_batch(current_batch)
@@ -1065,7 +1065,7 @@ contains
 
        if (entropy_on) then
           write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, &
-               k_batch(current_batch), entropy
+               k_batch(current_batch), entropy(current_batch)
        else
           write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, &
                k_batch(current_batch)
@@ -1075,7 +1075,7 @@ contains
 
        if (entropy_on) then
           write(UNIT=OUTPUT_UNIT, FMT=103) current_batch, &
-               k_batch(current_batch), entropy, keff, keff_std
+               k_batch(current_batch), entropy(current_batch), keff, keff_std
        else
           write(UNIT=OUTPUT_UNIT, FMT=101) current_batch, &
                k_batch(current_batch), keff, keff_std

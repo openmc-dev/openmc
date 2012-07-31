@@ -220,7 +220,7 @@ module global
   ! MISCELLANEOUS VARIABLES
 
   ! Mode to run in (fixed source, criticality, plotting, etc)
-  integer :: run_mode = MODE_CRITICALITY
+  integer :: run_mode = NONE
 
   ! Restart run
   logical :: restart_run = .false.

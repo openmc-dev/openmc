@@ -107,7 +107,7 @@ contains
     ! Criticality information
     if (criticality_ % batches > 0) then
        ! Set run mode
-       if (run_mode /= MODE_PLOTTING) run_mode = MODE_CRITICALITY
+       if (run_mode == NONE) run_mode = MODE_CRITICALITY
 
        ! Check number of particles
        if (len_trim(criticality_ % particles) == 0) then
@@ -133,7 +133,7 @@ contains
     ! Fixed source calculation information
     if (fixed_source_ % batches > 0) then
        ! Set run mode
-       if (run_mode /= MODE_PLOTTING) run_mode = MODE_FIXEDSOURCE
+       if (run_mode == NONE) run_mode = MODE_FIXEDSOURCE
 
        ! Check number of particles
        if (len_trim(fixed_source_ % particles) == 0) then

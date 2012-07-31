@@ -1861,7 +1861,12 @@ contains
     score_name(abs(SCORE_NU_FISSION)) = "Nu-Fission Rate"
 
     ! Create filename for tally output
-    filename = trim(path_input) // "tallies.out"
+    if (run_mode == MODE_TALLIES) then
+       filename = trim(path_input) // "tallies." // &
+            trim(to_str(restart_batch)) // ".out"
+    else
+       filename = trim(path_input) // "tallies.out"
+    end if
 
     ! Check if tally file already exists
     inquire(FILE=filename, EXIST=file_exists)

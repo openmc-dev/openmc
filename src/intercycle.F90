@@ -368,22 +368,23 @@ contains
     ! =========================================================================
     ! SINGLE-BATCH ESTIMATE OF K-EFFECTIVE
 
-    if (.not. tallies_on) k_batch = global_tallies(K_ANALOG) % value
+    if (.not. tallies_on) k_batch(current_batch) = global_tallies(K_ANALOG) % value
 
 #ifdef MPI
     ! Reduce value of k_batch if running in parallel
     if (master) then
-       call MPI_REDUCE(MPI_IN_PLACE, k_batch, 1, MPI_REAL8, MPI_SUM, 0, &
-            MPI_COMM_WORLD, mpi_err)
+       call MPI_REDUCE(MPI_IN_PLACE, k_batch(current_batch), 1, MPI_REAL8, &
+            MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
     else
        ! Receive buffer not significant at other processors
-       call MPI_REDUCE(k_batch, temp, 1, MPI_REAL8, MPI_SUM, 0, &
-            MPI_COMM_WORLD, mpi_err)
+       call MPI_REDUCE(k_batch(current_batch), temp, 1, MPI_REAL8, &
+            MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
     end if
 #endif
 
     ! Normalize single batch estimate of k
-    k_batch = k_batch/(n_particles * gen_per_batch)
+    k_batch(current_batch) = k_batch(current_batch) / &
+         (n_particles * gen_per_batch)
 
     if (tallies_on) then
        ! =======================================================================
@@ -435,7 +436,7 @@ contains
        ! INACTIVE BATCHES
 
        ! Set keff
-       keff = k_batch
+       keff = k_batch(current_batch)
 
        ! Reset tally values
        global_tallies(:) % value = ZERO

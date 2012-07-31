@@ -1636,7 +1636,7 @@ contains
 
        ! Before accumulating scores for global_tallies, we need to get the
        ! current batch estimate of k_analog for displaying to output
-       k_batch = global_tallies(K_ANALOG) % value
+       k_batch(current_batch) = global_tallies(K_ANALOG) % value
 
        ! Accumulate scores for global tallies
        call accumulate_score(global_tallies)

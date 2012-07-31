@@ -80,7 +80,7 @@ contains
 
     ! Write message
     message = "Loading state point " // trim(path_state_point) // "..."
-    call write_message()
+    call write_message(1)
 
     ! Open binary state point file for writing
     open(UNIT=UNIT_STATE, FILE=path_state_point, STATUS='old', &

@@ -1052,9 +1052,11 @@ contains
        ! INACTIVE BATCHES
 
        if (entropy_on) then
-          write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, k_batch, entropy
+          write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, &
+               k_batch(current_batch), entropy
        else
-          write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, k_batch
+          write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, &
+               k_batch(current_batch)
        end if
 
     elseif (current_batch == n_inactive + 1) then
@@ -1062,19 +1064,21 @@ contains
        ! ACTIVE BATCHES
 
        if (entropy_on) then
-          write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, k_batch, entropy
+          write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, &
+               k_batch(current_batch), entropy
        else
-          write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, k_batch
+          write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, &
+               k_batch(current_batch)
        end if
 
     elseif (current_batch > n_inactive + 1) then
 
        if (entropy_on) then
-          write(UNIT=OUTPUT_UNIT, FMT=103) current_batch, k_batch, &
-               entropy, keff, keff_std
+          write(UNIT=OUTPUT_UNIT, FMT=103) current_batch, &
+               k_batch(current_batch), entropy, keff, keff_std
        else
-          write(UNIT=OUTPUT_UNIT, FMT=101) current_batch, k_batch, &
-               keff, keff_std
+          write(UNIT=OUTPUT_UNIT, FMT=101) current_batch, &
+               k_batch(current_batch), keff, keff_std
        end if
 
     end if

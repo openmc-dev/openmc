@@ -79,6 +79,7 @@ contains
   subroutine load_state_point()
 
     integer :: i       ! loop index
+    integer :: mode    ! specified run mode
     integer :: temp(3) ! temporary variable
 
     ! Write message
@@ -111,14 +112,14 @@ contains
     read(UNIT_STATE) seed
 
     ! Read and overwrite run information
-    read(UNIT_STATE) run_mode, n_particles, n_batches, &
+    read(UNIT_STATE) mode, n_particles, n_batches, &
          n_inactive, gen_per_batch
 
     ! Read batch number to restart at
     read(UNIT_STATE) restart_batch
 
     ! Read keff and entropy for each batch
-    if (run_mode == MODE_CRITICALITY) then
+    if (mode == MODE_CRITICALITY) then
        read(UNIT_STATE) k_batch(1:restart_batch)
        if (entropy_on) read(UNIT_STATE) entropy(1:restart_batch)
     end if

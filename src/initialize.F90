@@ -255,8 +255,8 @@ contains
           case ('-p', '-plot', '--plot')
              run_mode = MODE_PLOTTING
           case ('-n', '-n_particles', '--n_particles')
-             i = i + 1
              ! Read number of particles per cycle
+             i = i + 1
              n_particles = str_to_int(argv(i))
 
              ! Check that number specified was valid
@@ -266,8 +266,19 @@ contains
                 call fatal_error()
              end if
           case ('-r', '-restart', '--restart')
-             i = i + 1
              ! Read path for state point
+             i = i + 1
+             path_state_point = argv(i)
+             restart_run = .true.
+
+             ! Set path for binary source file
+             path_source = 'source.' // path_state_point(9 : &
+                  len_trim(path_state_point))
+          case ('-t', '-tallies', '--tallies')
+             run_mode = MODE_TALLIES
+
+             ! Read path for state point
+             i = i + 1
              path_state_point = argv(i)
              restart_run = .true.
 

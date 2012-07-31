@@ -1,10 +1,10 @@
 program main
 
-  use constants,    only: MODE_CRITICALITY, MODE_PLOTTING, MODE_FIXEDSOURCE
+  use constants
   use criticality,  only: run_criticality
   use finalize,     only: finalize_run
   use fixed_source, only: run_fixedsource
-  use global,       only: run_mode
+  use global
   use initialize,   only: initialize_run
   use plotter,      only: run_plot
 
@@ -21,6 +21,10 @@ program main
      call run_criticality()
   case (MODE_PLOTTING)
      call run_plot()
+  case (MODE_TALLIES)
+     ! For tallies-only mode, we just skip straight to finalize_run to write out
+     ! the tally results
+     n_realizations = restart_batch - n_inactive
   end select
      
   ! finalize run

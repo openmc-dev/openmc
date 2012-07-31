@@ -64,9 +64,7 @@ contains
        ! Accumulate time for transport
        call timer_stop(time_transport)
 
-       call timer_start(time_ic_tallies)
-       call synchronize_tallies()
-       call timer_stop(time_ic_tallies)
+       call finalize_batch()
 
     end do BATCH_LOOP
 
@@ -92,6 +90,18 @@ contains
        total_weight = ZERO
 
   end subroutine initialize_batch
+
+!===============================================================================
+! FINALIZE_BATCH
+!===============================================================================
+
+  subroutine finalize_batch()
+
+    call timer_start(time_ic_tallies)
+    call synchronize_tallies()
+    call timer_stop(time_ic_tallies)
+
+  end subroutine finalize_batch
 
 !===============================================================================
 ! SAMPLE_SOURCE_PARTICLE

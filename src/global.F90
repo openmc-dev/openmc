@@ -243,6 +243,10 @@ module global
   integer    :: trace_gen
   integer(8) :: trace_particle
 
+  ! Information about state points to be written
+  integer :: n_state_points = 0
+  integer, allocatable :: statepoint_batch(:)
+
 contains
 
 !===============================================================================

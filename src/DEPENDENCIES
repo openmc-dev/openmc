@@ -69,6 +69,7 @@ fixed_source.o: output.o
 fixed_source.o: physics.o
 fixed_source.o: random_lcg.o
 fixed_source.o: source.o
+fixed_source.o: state_point.o
 fixed_source.o: string.o
 fixed_source.o: tally.o
 fixed_source.o: timing.o
@@ -233,7 +234,7 @@ source.o: random_lcg.o
 source.o: string.o
 
 state_point.o: global.o
-state_point.o: source.o
+state_point.o: output.o
 state_point.o: string.o
 
 string.o: constants.o

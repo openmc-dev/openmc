@@ -6,7 +6,7 @@ module criticality
                          count_source_for_ufs
   use output,      only: write_message, header, print_columns
   use physics,     only: transport
-  use source,      only: get_source_particle 
+  use source,      only: get_source_particle, write_source_binary
   use state_point, only: create_state_point
   use string,      only: to_str
   use tally,       only: synchronize_tallies
@@ -120,6 +120,8 @@ contains
 
   subroutine finalize_batch()
 
+    integer :: i ! loop index for state point batches
+
     ! Collect tallies
     if (tallies_on) then
        call timer_start(time_ic_tallies)
@@ -133,14 +135,25 @@ contains
     ! Collect results and statistics
     call calculate_keff()
 
+    ! Write out state point if it's been specified for this batch
+    do i = 1, n_state_points
+       if (current_batch == statepoint_batch(i)) then
+          ! Create state point file
+          if (master) call create_state_point()
+
+          ! Create binary source file
+          call write_source_binary('source.' // &
+               trim(to_str(current_batch)) // '.binary')
+          exit
+       end if
+    end do
+
     ! Turn tallies on once inactive cycles are complete
     if (current_batch == n_inactive) then
        tallies_on = .true.
        call timer_stop(time_inactive)
        call timer_start(time_active)
     end if
-
-    ! TODO: Write out state point if requested
 
   end subroutine finalize_batch
 

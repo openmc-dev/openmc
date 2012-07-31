@@ -1,15 +1,16 @@
 module fixed_source
 
-  use constants,  only: ZERO
+  use constants,   only: ZERO
   use global
-  use output,     only: write_message, header
-  use physics,    only: transport
-  use random_lcg, only: set_particle_seed
-  use source,     only: initialize_particle, sample_external_source, &
-                        copy_source_attributes
-  use string,     only: to_str
-  use tally,      only: synchronize_tallies
-  use timing,     only: timer_start, timer_stop
+  use output,      only: write_message, header
+  use physics,     only: transport
+  use random_lcg,  only: set_particle_seed
+  use source,      only: initialize_particle, sample_external_source, &
+                         copy_source_attributes
+  use state_point, only: create_state_point
+  use string,      only: to_str
+  use tally,       only: synchronize_tallies
+  use timing,      only: timer_start, timer_stop
 
   type(Bank), pointer :: source_site => null()
 
@@ -97,9 +98,22 @@ contains
 
   subroutine finalize_batch()
 
+    integer :: i ! loop index for state point batches
+
+    ! Collect and accumulate tallies
     call timer_start(time_ic_tallies)
     call synchronize_tallies()
     call timer_stop(time_ic_tallies)
+
+    ! Write out state point if it's been specified for this batch
+    if (master) then
+       do i = 1, n_state_points
+          if (current_batch == statepoint_batch(i)) then
+             call create_state_point()
+             exit
+          end if
+       end do
+    end if
 
   end subroutine finalize_batch
 

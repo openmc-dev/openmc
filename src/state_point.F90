@@ -1,7 +1,7 @@
 module state_point
 
   use global
-  use source, only: write_source_binary
+  use output, only: write_message
   use string, only: to_str
 
   implicit none
@@ -20,6 +20,10 @@ contains
     ! Set filename for binary state point
     path_state_point = 'restart.' // trim(to_str(current_batch)) // '.binary'
 
+    ! Write message
+    message = "Creating state point " // trim(path_state_point) // "..."
+    call write_message()
+
     ! Open binary state point file for writing
     open(UNIT=UNIT_STATE, FILE=path_state_point, STATUS='replace', &
          ACCESS='stream')
@@ -37,25 +41,27 @@ contains
     ! Write out current batch number
     write(UNIT_STATE) current_batch
 
+    ! Write out random number seed
+    write(UNIT_STATE) seed
+
     ! Write out global tallies sum and sum_sq
     write(UNIT_STATE) N_GLOBAL_TALLIES
     write(UNIT_STATE) global_tallies(:) % sum
     write(UNIT_STATE) global_tallies(:) % sum_sq
 
     ! Write out tallies sum and sum_sq
-    write(UNIT_STATE) n_tallies
-    do i = 1, n_tallies
-       write(UNIT_STATE) size(tallies(i) % scores, 1)
-       write(UNIT_STATE) size(tallies(i) % scores, 2)
-       write(UNIT_STATE) tallies(i) % scores(:,:) % sum
-       write(UNIT_STATE) tallies(i) % scores(:,:) % sum_sq
-    end do
+    if (tallies_on) then
+       write(UNIT_STATE) n_tallies
+       do i = 1, n_tallies
+          write(UNIT_STATE) size(tallies(i) % scores, 1)
+          write(UNIT_STATE) size(tallies(i) % scores, 2)
+          write(UNIT_STATE) tallies(i) % scores(:,:) % sum
+          write(UNIT_STATE) tallies(i) % scores(:,:) % sum_sq
+       end do
+    end if
 
     ! Close binary state point file
     close(UNIT_STATE)
-
-    ! For a criticality simulation, write the source file
-    if (run_mode == MODE_CRITICALITY) call write_source_binary()
 
   end subroutine create_state_point
 

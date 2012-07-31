@@ -136,7 +136,7 @@ contains
        read(UNIT_STATE) global_tallies(:) % sum_sq
 
        ! Read tally data 
-       if (current_batch > n_inactive) then
+       if (restart_batch > n_inactive) then
           ! Read number of tallies and make sure it matches
           read(UNIT_STATE) temp(1)
           if (temp(1) /= n_tallies) then
@@ -193,6 +193,8 @@ contains
        keff = temp(1) / n_realizations
        keff_std = sqrt((temp(2)/n_realizations - keff*keff) &
             / (n_realizations - 1))
+    else
+       keff = k_batch(current_batch)
     end if
 
     ! print out batch keff

@@ -1622,6 +1622,13 @@ contains
 #endif
 
     if (master .or. (.not. reduce_tallies)) then
+       ! Increase number of realizations
+       if (reduce_tallies) then
+          n_realizations = n_realizations + 1
+       else
+          n_realizations = n_realizations + n_procs
+       end if
+
        ! Accumulate scores for each tally
        do i = 1, n_tallies
           call accumulate_score(tallies(i) % scores)

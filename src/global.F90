@@ -121,8 +121,8 @@ module global
   integer :: n_current_tallies     = 0 ! # of surface current tallies
 
   ! Normalization for statistics
-  integer :: n_realizations ! # of independent realizations
-  real(8) :: total_weight   ! total starting particle weight in realization
+  integer :: n_realizations = 0 ! # of independent realizations
+  real(8) :: total_weight       ! total starting particle weight in realization
 
   ! Flag for turning tallies on
   logical :: tallies_on

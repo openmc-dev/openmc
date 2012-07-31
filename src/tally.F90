@@ -1634,9 +1634,11 @@ contains
           call accumulate_score(tallies(i) % scores)
        end do
 
-       ! Before accumulating scores for global_tallies, we need to get the
-       ! current batch estimate of k_analog for displaying to output
-       k_batch(current_batch) = global_tallies(K_ANALOG) % value
+       if (run_mode == MODE_CRITICALITY) then
+          ! Before accumulating scores for global_tallies, we need to get the
+          ! current batch estimate of k_analog for displaying to output
+          k_batch(current_batch) = global_tallies(K_ANALOG) % value
+       end if
 
        ! Accumulate scores for global tallies
        call accumulate_score(global_tallies)

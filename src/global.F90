@@ -222,9 +222,13 @@ module global
   ! Mode to run in (fixed source, criticality, plotting, etc)
   integer :: run_mode = MODE_CRITICALITY
 
+  ! Restart run
+  logical :: restart_run = .false.
+  integer :: restart_batch
+
   character(MAX_FILE_LEN) :: path_input          ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections ! Path to cross_sections.xml
-  character(MAX_FILE_LEN) :: path_source         ! Path to binary source
+  character(MAX_FILE_LEN) :: path_source = ''    ! Path to binary source
   character(MAX_FILE_LEN) :: path_state_point    ! Path to binary state point
 
   ! Message used in message/warning/fatal_error

@@ -167,6 +167,7 @@ contains
        write(OUTPUT_UNIT,*)
        write(OUTPUT_UNIT,*) 'Options:'
        write(OUTPUT_UNIT,*) '  -p, --plot      Run in plotting mode'
+       write(OUTPUT_UNIT,*) '  -r, --restart   Restart a previous run'
        write(OUTPUT_UNIT,*) '  -v, --version   Show version information'
        write(OUTPUT_UNIT,*) '  -?, --help      Show this message'
     end if

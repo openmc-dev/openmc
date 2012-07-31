@@ -327,9 +327,6 @@ contains
           allocate(external_source % params_energy(2))
           external_source % params_energy = (/ 0.988_8, 2.249_8 /)
        end if
-
-       ! Set null path for source file
-       path_source = ""
     end if
 
     ! Survival biasing

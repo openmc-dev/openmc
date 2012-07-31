@@ -7,7 +7,7 @@ module criticality
   use output,      only: write_message, header, print_columns
   use physics,     only: transport
   use source,      only: get_source_particle, write_source_binary
-  use state_point, only: create_state_point
+  use state_point, only: create_state_point, replay_batch_history
   use string,      only: to_str
   use tally,       only: synchronize_tallies
   use timing,      only: timer_start, timer_stop
@@ -38,10 +38,9 @@ contains
     ! LOOP OVER BATCHES
     BATCH_LOOP: do current_batch = 1, n_batches
 
-       ! In a restart run, skip any batches that have already been simulated
+       ! Handle restart runs
        if (restart_run .and. current_batch <= restart_batch) then
-          if (current_batch == n_inactive) tallies_on = .true.
-          if (current_batch > n_inactive) n_realizations = n_realizations + 1
+          call replay_batch_history()
           cycle BATCH_LOOP
        end if
 

@@ -2,7 +2,7 @@ module state_point
 
   use error,  only: warning, fatal_error
   use global
-  use output, only: write_message
+  use output, only: write_message, print_batch_keff
   use string, only: to_str
 
   implicit none
@@ -35,6 +35,9 @@ contains
     ! Write OpenMC version
     write(UNIT_STATE) VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 
+    ! Write out random number seed
+    write(UNIT_STATE) seed
+
     ! Write run information
     write(UNIT_STATE) run_mode, n_particles, n_batches, &
          n_inactive, gen_per_batch
@@ -42,11 +45,8 @@ contains
     ! Write out current batch number
     write(UNIT_STATE) current_batch
 
-    ! Write out random number seed
-    write(UNIT_STATE) seed
-
-    ! Write out keff information
-    write(UNIT_STATE) keff, keff_std
+    ! Write out k_batch information
+    if (run_mode == RUN_CRITICALITY) write(UNIT_STATE) k_batch(1:current_batch)
 
     ! Write out global tallies sum and sum_sq
     write(UNIT_STATE) N_GLOBAL_TALLIES
@@ -104,6 +104,9 @@ contains
        call warning()
     end if
 
+    ! Read and overwrite random number seed
+    read(UNIT_STATE) seed
+
     ! Read and overwrite run information
     read(UNIT_STATE) run_mode, n_particles, n_batches, &
          n_inactive, gen_per_batch
@@ -111,11 +114,8 @@ contains
     ! Read batch number to restart at
     read(UNIT_STATE) restart_batch
 
-    ! Read and overwrite random number seed
-    read(UNIT_STATE) seed
-
     ! Write out keff information
-    read(UNIT_STATE) keff, keff_std
+    if (run_mode == RUN_CRITICALITY) read(UNIT_STATE) k_batch(1:restart_batch)
 
     if (master) then
        ! Read number of global tallies and make sure it matches
@@ -158,5 +158,46 @@ contains
     close(UNIT_STATE)
 
   end subroutine load_state_point
+
+!===============================================================================
+! REPLAY_BATCH_HISTORY
+!===============================================================================
+
+  subroutine replay_batch_history
+
+    real(8), save :: temp(2) = ZERO
+
+    ! Write message at beginning
+    if (current_batch == 1) then
+       message = "Replaying history from state point..."
+       call write_message(1)
+    end if
+
+    ! For criticality calculations, turn on tallies if we've reached active
+    ! batches
+    if (current_batch == n_inactive) tallies_on = .true.
+
+    ! Add to number of realizations
+    if (current_batch > n_inactive) then
+       n_realizations = n_realizations + 1
+
+       temp(1) = temp(1) + k_batch(current_batch)
+       temp(2) = temp(2) + k_batch(current_batch)*k_batch(current_batch)
+
+       keff = temp(1) / n_realizations
+       keff_std = sqrt((temp(2)/n_realizations - keff*keff) &
+            / (n_realizations - 1))
+    end if
+
+    ! print out batch keff
+    call print_batch_keff()
+
+    ! Write message at end
+    if (current_batch == restart_batch) then
+       message = "Resuming simulation..."
+       call write_message(1)
+    end if
+
+  end subroutine replay_batch_history
 
 end module state_point

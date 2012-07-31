@@ -50,5 +50,6 @@
   <variable name="trace_" tag="trace" type="integer-array" />
   <variable name="uniform_fs_" tag="uniform_fs" type="mesh_xml" dimension="1" />
   <variable name="write_source_" tag="write_source" type="word" length="3" />
+  <variable name="write_state_point_" tag="write_state_point" type="integer-array" />
 
 </template>

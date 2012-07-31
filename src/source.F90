@@ -239,17 +239,28 @@ contains
 ! can be used as a starting source in a new simulation
 !===============================================================================
 
-  subroutine write_source_binary()
-    
+  subroutine write_source_binary(path)
+
+    character(*), optional :: path
+
 #ifdef MPI
     integer                  :: fh     ! file handle
     integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
+#endif
 
+    ! Determine path to binary source file to write
+    if (present(path)) then
+       path_source = path
+    else
+       path_source = 'source.binary'
+    end if
+
+#ifdef MPI
     ! ==========================================================================
     ! PARALLEL I/O USING MPI-2 ROUTINES
 
     ! Open binary source file for reading
-    call MPI_FILE_OPEN(MPI_COMM_WORLD, 'source.binary', MPI_MODE_CREATE + &
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, path_source, MPI_MODE_CREATE + &
          MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
 
     if (master) then
@@ -273,7 +284,7 @@ contains
     ! SERIAL I/O USING FORTRAN INTRINSIC ROUTINES
 
     ! Open binary source file for writing
-    open(UNIT=UNIT_SOURCE, FILE='source.binary', STATUS='replace', &
+    open(UNIT=UNIT_SOURCE, FILE=path_source, STATUS='replace', &
          ACCESS='stream')
 
     ! Write the number of particles

@@ -144,6 +144,7 @@ contains
        ! Copy batch information
        n_batches     = fixed_source_ % batches
        n_active      = fixed_source_ % batches
+       n_inactive    = 0
        gen_per_batch = 1
     end if
 
@@ -456,6 +457,16 @@ contains
 
     ! Check if the user has specified to write binary source file
     if (trim(write_source_) == 'on') write_source = .true.
+
+    ! Check if the user has specified to write state points
+    if (associated(write_state_point_)) then
+       ! Determine number of batches at which to store state points
+       n_state_points = size(write_state_point_)
+
+       ! Allocate and store batches
+       allocate(statepoint_batch(n_state_points))
+       statepoint_batch = write_state_point_
+    end if
 
     ! Check if the user has specified to not reduce tallies at the end of every
     ! batch

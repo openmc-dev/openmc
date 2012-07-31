@@ -338,13 +338,13 @@ contains
        ! Normalize to total weight of bank sites
        entropy_p = entropy_p / sum(entropy_p)
 
-       entropy = 0
+       entropy(current_batch) = ZERO
        do i = 1, m % dimension(1)
           do j = 1, m % dimension(2)
              do k = 1, m % dimension(3)
                 if (entropy_p(1,i,j,k) > ZERO) then
-                   entropy = entropy - entropy_p(1,i,j,k) * &
-                        log(entropy_p(1,i,j,k))/log(TWO)
+                   entropy(current_batch) = entropy(current_batch) - &
+                        entropy_p(1,i,j,k) * log(entropy_p(1,i,j,k))/log(TWO)
                 end if
              end do
           end do

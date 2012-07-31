@@ -160,7 +160,7 @@ module global
 
   ! Shannon entropy
   logical :: entropy_on = .false.
-  real(8) :: entropy                         ! value of shannon entropy
+  real(8), allocatable :: entropy(:)         ! shannon entropy at each batch
   real(8), allocatable :: entropy_p(:,:,:,:) ! % of source sites in each cell
   type(StructuredMesh), pointer :: entropy_mesh
 

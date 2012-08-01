@@ -371,14 +371,16 @@ contains
     if (.not. tallies_on) k_batch(current_batch) = global_tallies(K_ANALOG) % value
 
 #ifdef MPI
-    ! Reduce value of k_batch if running in parallel
-    if (master) then
-       call MPI_REDUCE(MPI_IN_PLACE, k_batch(current_batch), 1, MPI_REAL8, &
-            MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-    else
-       ! Receive buffer not significant at other processors
-       call MPI_REDUCE(k_batch(current_batch), temp, 1, MPI_REAL8, &
-            MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+    if ((.not. tallies_on) .or. (.not. reduce_tallies)) then
+       ! Reduce value of k_batch if running in parallel
+       if (master) then
+          call MPI_REDUCE(MPI_IN_PLACE, k_batch(current_batch), 1, MPI_REAL8, &
+               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+       else
+          ! Receive buffer not significant at other processors
+          call MPI_REDUCE(k_batch(current_batch), temp, 1, MPI_REAL8, &
+               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+       end if
     end if
 #endif
 

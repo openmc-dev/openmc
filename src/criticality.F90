@@ -25,8 +25,12 @@ contains
 
     if (master) call header("CRITICALITY TRANSPORT SIMULATION", level=1)
 
-    tallies_on = .false.
-    call timer_start(time_inactive)
+    ! Start timer
+    if (tallies_on) then
+       call timer_start(time_active)
+    else
+       call timer_start(time_inactive)
+    end if
 
     ! Allocate particle
     allocate(p)

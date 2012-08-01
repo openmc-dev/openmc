@@ -125,7 +125,7 @@ module global
   real(8) :: total_weight       ! total starting particle weight in realization
 
   ! Flag for turning tallies on
-  logical :: tallies_on
+  logical :: tallies_on = .false.
 
   ! Assume all tallies are spatially distinct
   logical :: assume_separate = .false.

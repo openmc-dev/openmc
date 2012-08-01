@@ -11,6 +11,8 @@
     <component name="material" type="word" length="12" default="''" />
     <component name="fill" type="integer" default="0" />
     <component name="surfaces" type="integer-array" />
+    <component name="rotation" type="double-array" />
+    <component name="translation" type="double-array" />
   </typedef>
 
   <typedef name="surface_xml">

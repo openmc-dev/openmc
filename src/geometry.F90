@@ -142,6 +142,18 @@ contains
              p % coord => p % coord % next
              p % coord % universe = c % fill
 
+             ! Apply translation
+             if (allocated(c % translation)) then
+                p % coord % xyz = p % coord % xyz - c % translation
+             end if
+
+             ! Apply rotation
+             if (allocated(c % rotation)) then
+                p % coord % xyz = matmul(c % rotation, p % coord % xyz)
+                p % coord % uvw = matmul(c % rotation, p % coord % uvw)
+                p % coord % rotated = .true.
+             end if
+
              call find_cell(found)
              if (.not. found) exit
 

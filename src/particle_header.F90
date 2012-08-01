@@ -22,6 +22,9 @@ module particle_header
      real(8) :: xyz(3)
      real(8) :: uvw(3)
 
+     ! Is this level rotated?
+     logical :: rotated = .false.
+
      ! Pointer to next (more local) set of coordinates
      type(LocalCoord), pointer :: next => null()
   end type LocalCoord

@@ -149,8 +149,17 @@ contains
           ! Set all uvws to base level -- right now, after a collision, only the
           ! base level uvws are changed
           coord => p % coord0
-          do while(associated(coord))
-             coord % uvw = p % coord0 % uvw
+          do while(associated(coord % next))
+             if (coord % next % rotated) then
+                ! If next level is rotated, apply rotation matrix
+                coord % next % uvw = matmul(cells(coord % cell) % &
+                     rotation, coord % uvw)
+             else
+                ! Otherwise, copy this level's direction
+                coord % next % uvw = coord % uvw
+             end if
+
+             ! Advance coordinate level
              coord => coord % next
           end do
        end if

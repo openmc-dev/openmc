@@ -1621,14 +1621,14 @@ contains
     if (reduce_tallies) call reduce_tally_values()
 #endif
 
-    if (master .or. (.not. reduce_tallies)) then
-       ! Increase number of realizations
-       if (reduce_tallies) then
-          n_realizations = n_realizations + 1
-       else
-          n_realizations = n_realizations + n_procs
-       end if
+    ! Increase number of realizations
+    if (reduce_tallies) then
+       n_realizations = n_realizations + 1
+    else
+       n_realizations = n_realizations + n_procs
+    end if
 
+    if (master .or. (.not. reduce_tallies)) then
        ! Accumulate scores for each tally
        do i = 1, n_tallies
           call accumulate_score(tallies(i) % scores)

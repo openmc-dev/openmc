@@ -493,6 +493,7 @@ contains
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
+    real(8) :: phi, theta, psi
     logical :: file_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
@@ -561,7 +562,7 @@ contains
        end select
 
        ! Check to make sure that either material or fill was specified
-       if (c % material == 0 .and. c % fill == 0) then
+       if (c % material == NONE .and. c % fill == NONE) then
           message = "Neither material nor fill was specified for cell " // & 
                trim(to_str(c % id))
           call fatal_error()
@@ -569,7 +570,7 @@ contains
 
        ! Check to make sure that both material and fill haven't been
        ! specified simultaneously
-       if (c % material /= 0 .and. c % fill /= 0) then
+       if (c % material /= NONE .and. c % fill /= NONE) then
           message = "Cannot specify material and fill simultaneously"
           call fatal_error()
        end if
@@ -586,6 +587,64 @@ contains
        c % n_surfaces = n
        allocate(c % surfaces(n))
        c % surfaces = cell_(i) % surfaces
+
+       ! Rotation matrix
+       if (associated(cell_(i) % rotation)) then
+          ! Rotations can only be applied to cells that are being filled with
+          ! another universe
+          if (c % fill == NONE) then
+             message = "Cannot apply a rotation to cell " // trim(to_str(&
+                  c % id)) // " because it is not filled with another universe"
+             call fatal_error()
+          end if
+
+          ! Read number of rotation parameters
+          n = size(cell_(i) % rotation)
+          if (n /= 3) then
+             message = "Incorrect number of rotation parameters on cell " // &
+                  to_str(c % id)
+             call fatal_error()
+          end if
+
+          ! Copy rotation angles in x,y,z directions
+          phi   = -cell_(i) % rotation(1) * PI/180.0
+          theta = -cell_(i) % rotation(2) * PI/180.0
+          psi   = -cell_(i) % rotation(3) * PI/180.0
+          
+          ! Calculate rotation matrix based on angles given
+          allocate(c % rotation(3,3))
+          c % rotation = reshape((/ &
+               cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta), &
+               -cos(phi)*sin(psi) + sin(phi)*sin(theta)*cos(psi), &
+               cos(phi)*cos(psi) + sin(phi)*sin(theta)*sin(psi), &
+               sin(phi)*cos(theta), &
+               sin(phi)*sin(psi) + cos(phi)*sin(theta)*cos(psi), &
+               -sin(phi)*cos(psi) + cos(phi)*sin(theta)*sin(psi), &
+               cos(phi)*cos(theta) /), (/ 3,3 /))
+       end if
+
+       ! Translation vector
+       if (associated(cell_(i) % translation)) then
+          ! Translations can only be applied to cells that are being filled with
+          ! another universe
+          if (c % fill == NONE) then
+             message = "Cannot apply a translation to cell " // trim(to_str(&
+                  c % id)) // " because it is not filled with another universe"
+             call fatal_error()
+          end if
+
+          ! Read number of translation parameters
+          n = size(cell_(i) % translation)
+          if (n /= 3) then
+             message = "Incorrect number of translation parameters on cell " &
+                  // to_str(c % id)
+             call fatal_error()
+          end if
+
+          ! Copy translation vector
+          allocate(c % translation(3))
+          c % translation = cell_(i) % translation
+       end if
 
        ! Add cell to dictionary
        call dict_add_key(cell_dict, c % id, i)

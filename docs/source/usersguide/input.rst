@@ -44,7 +44,7 @@ which should be plotted. OpenMC expects that these files are called:
 
 * ``geometry.xml``
 * ``materials.xml``
-* ``setings.xml``
+* ``settings.xml``
 * ``tallies.xml``
 * ``plots.xml``
 
@@ -131,7 +131,7 @@ treatment is slightly different than that employed in Serpent.
 ``<entropy>`` Element
 ---------------------
 
-The ``<entropy>`` element describes a mesh that is used for calculting Shannon
+The ``<entropy>`` element describes a mesh that is used for calculating Shannon
 entropy. This mesh should cover all possible fissionable materials in the
 problem. It has the following attributes/sub-elements:
 
@@ -142,12 +142,12 @@ problem. It has the following attributes/sub-elements:
      automatically determined by the code.
 
   :lower_left:
-    The Cartersian coordinates of the lower-left corner of the mesh.
+    The Cartesian coordinates of the lower-left corner of the mesh.
 
     *Default*: None
 
   :upper_right:
-    The Cartersian coordinates of the upper-right corner of the mesh.
+    The Cartesian coordinates of the upper-right corner of the mesh.
 
     *Default*: None
 
@@ -323,12 +323,12 @@ problem. It has the following attributes/sub-elements:
     *Default*: None
 
   :lower_left:
-    The Cartersian coordinates of the lower-left corner of the mesh.
+    The Cartesian coordinates of the lower-left corner of the mesh.
 
     *Default*: None
 
   :upper_right:
-    The Cartersian coordinates of the upper-right corner of the mesh.
+    The Cartesian coordinates of the upper-right corner of the mesh.
 
     *Default*: None
 
@@ -348,7 +348,7 @@ displayed. This element takes the following attributes:
 ------------------------------
 
 The ``<write_source>`` element has no attributes and has an accepted value of
-"on" or "off". If set to "on", a binary source file will be written to diskat
+"on" or "off". If set to "on", a binary source file will be written to disk at
 the end of the run that can be used as a starting source for another run.
 
   *Default*: off
@@ -454,17 +454,17 @@ The following quadratic surfaces can be modeled:
     specified are ":math:`A \: B \: C \: D`".
 
   :x-cylinder:
-    An infinite cylinder whose length is paralle to the x-axis. This is a
+    An infinite cylinder whose length is parallel to the x-axis. This is a
     quadratic surface of the form :math:`(y - y_0)^2 + (z - z_0)^2 = R^2`. The
     coefficients specified are ":math:`y_0 \: z_0 \: R`".
 
   :y-cylinder:
-    An infinite cylinder whose length is paralle to the y-axis. This is a
+    An infinite cylinder whose length is parallel to the y-axis. This is a
     quadratic surface of the form :math:`(x - x_0)^2 + (z - z_0)^2 = R^2`. The
     coefficients specified are ":math:`x_0 \: z_0 \: R`".
 
   :z-cylinder:
-    An infinite cylinder whose length is paralle to the z-axis. This is a
+    An infinite cylinder whose length is parallel to the z-axis. This is a
     quadratic surface of the form :math:`(x - x_0)^2 + (y - y_0)^2 = R^2`. The
     coefficients specified are ":math:`x_0 \: y_0 \: R`".
 
@@ -847,7 +847,7 @@ sub-elements:
       Specifies the cell or material unique id for the color specification.
 
     :rgb:
-      Specifies the custom color for the cell or material.  Should be 3 intergers separated
+      Specifies the custom color for the cell or material.  Should be 3 integers separated
       by spaces.
 
     *Default*: None
@@ -855,7 +855,7 @@ sub-elements:
   :mask:
     The special ``mask`` sub-element allows for the selective plotting of *only*
     user-specified cells or materials.  Only one ``mask`` element is allowed per ``plot``
-    element, and it must contain as atributes or sub-elements a background masking color and
+    element, and it must contain as attributes or sub-elements a background masking color and
     a list of cells or materials to plot:
 
     :components:

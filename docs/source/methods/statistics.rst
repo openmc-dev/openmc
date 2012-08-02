@@ -37,6 +37,27 @@ X_n}{n}` `converges in probability`_ to the true mean, i.e. for all
 Central Limit Theorem
 ---------------------
 
+The `central limit theorem`_ (CLT) is perhaps the most well-known and ubiquitous
+statistical theorem that has far-reaching implications across many
+disciplines. The CLT is similar to the law of large numbers in that it tells us
+the limiting behavior of the sample mean. Whereas the law of large numbers tells
+us only that the value of the sample mean will converge to the expected value of
+the distribution, the CLT says that the distribution of the sample mean will
+converge to a `normal distribution`_. As we defined before, let :math:`X_1, X_2,
+\dots, X_n` be an infinite sequence of independent, identically-distributed
+random variables with expected values :math:`E(X_i) = \mu` and variances
+:math:`\text{Var} (X_i) = \sigma^2 < \infty`. Note that we don't require that
+these random variables take on any particular distribution -- they can be
+normal, log-normal, Weibull, etc. The central limit theorem states that as
+:math:`n \rightarrow \infty`, the random variable :math:`\sqrt{n} (\bar{X}_n -
+\mu)` `converges in distribution`_ to the standard normal distribution:
+
+.. math::
+    :label: central-limit-theorem
+
+    \sqrt{n} \left ( \frac{1}{n} \sum_{i=1}^n X_i - \mu \right ) \xrightarrow{d}
+    \mathcal{N} (0, \sigma^2)
+
 ------------------------------------------
 Estimating Statistics of a Random Variable
 ------------------------------------------
@@ -220,3 +241,7 @@ so the idea is to determine the new multiplicative and additive constants in
 .. _expected value: http://en.wikipedia.org/wiki/Expected_value
 
 .. _converges in probability: http://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_probability
+
+.. _normal distribution: http://en.wikipedia.org/wiki/Normal_distribution
+
+.. _converges in distribution: http://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_distribution

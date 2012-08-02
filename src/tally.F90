@@ -1824,10 +1824,14 @@ contains
     integer :: index_list                 ! index in xs_listings array
     logical :: file_exists                ! does tallies.out file already exists? 
     logical :: has_filter(N_FILTER_TYPES) ! does tally have this filter?
+    logical :: no_filters                 ! does tally have no filters at all?
     character(MAX_FILE_LEN) :: filename                    ! name of output file
     character(15)           :: filter_name(N_FILTER_TYPES) ! names of tally filters
     character(27)           :: score_name(N_SCORE_TYPES)   ! names of scoring function
     type(TallyObject), pointer :: t
+
+    ! Initialize status of no filters
+    no_filters = .false.
 
     ! Skip if there are no tallies
     if (n_tallies == 0) return
@@ -1906,6 +1910,9 @@ contains
           end if
        end do
 
+       ! Check if this tally has no filters
+       if (all(has_filter == .false.)) no_filters = .true.
+
        ! WARNING: Admittedly, the logic for moving for printing scores is
        ! extremely confusing and took quite a bit of time to get correct. The
        ! logic is structured this way since it is not practical to have a do
@@ -1940,6 +1947,7 @@ contains
              ! VALID BIN -- WRITE FILTER INFORMATION OR EXIT TO WRITE SCORES
 
              else
+                if (no_filters) exit find_bin
                 if (j == last_filter) then
                    exit find_bin
                 else
@@ -1956,8 +1964,10 @@ contains
           end do find_bin
 
           ! Print filter information
-          write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-               trim(filter_name(j)), trim(get_label(t, j, bins(j)))
+          if (.not. no_filters) then
+             write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
+                  trim(filter_name(j)), trim(get_label(t, j, bins(j)))
+          end if
 
           ! Determine scoring index for this bin combination -- note that unlike
           ! in the score_tally subroutine, we have to use max(bins,1) since all
@@ -1967,7 +1977,7 @@ contains
 
           ! Write scores for this filter bin combination
           score_index = 0
-          indent = indent + 2
+          if (.not. no_filters) indent = indent + 2
           do n = 1, t % n_nuclide_bins
              ! Write label for nuclide
              index_nuclide = t % nuclide_bins(n) % scalar

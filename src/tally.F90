@@ -521,12 +521,12 @@ contains
        ! check the others. This cuts down on overhead when there are many
        ! tallies specified
 
-       if (assume_separate) return
-
-       ! Reset tally map positioning
-       position = 0
+       if (assume_separate) exit TALLY_LOOP
 
     end do TALLY_LOOP
+
+    ! Reset tally map positioning
+    position = 0
 
   end subroutine score_analog_tally
 
@@ -736,12 +736,12 @@ contains
        ! check the others. This cuts down on overhead when there are many
        ! tallies specified
 
-       if (assume_separate) return
-
-       ! Reset tally map positioning
-       position = 0
+       if (assume_separate) exit TALLY_LOOP
 
     end do TALLY_LOOP
+
+    ! Reset tally map positioning
+    position = 0
 
   end subroutine score_tracklength_tally
 

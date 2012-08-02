@@ -25,13 +25,13 @@ gfortran: unrecognized option '-cpp'
 ************************************
 
 You are probably using a version of the gfortran compiler that is too
-old. Download and install the latestest version of gfortran_.
+old. Download and install the latest version of gfortran_.
 
 f951: error: unrecognized command line option "-fbacktrace"
 ***********************************************************
 
 You are probably using a version of the gfortran compiler that is too
-old. Download and install the latestest version of gfortran_.
+old. Download and install the latest version of gfortran_.
 
 
 make[1]: ifort: Command not found
@@ -46,7 +46,7 @@ make[1]: pgf90: Command not found
 
 You tried compiling with the PGI Fortran compiler and it was not found on your
 :envvar:`PATH`. If you have the PGI compiler installed, make sure the shell can
-locate it (this can be tested with :program:`which ifort`).
+locate it (this can be tested with :program:`which pgf90`).
 
 -------------------------
 Problems with Simulations

@@ -152,7 +152,7 @@ cross-sections. Then, either set the :ref:`cross_sections` in a settings.xml
 file or the :envvar:`CROSS_SECTIONS` environment variable to the absolute path
 of the ``cross_sections_serpent.xml`` file.
 
-.. _MCNP: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/
+.. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 
 --------------
@@ -162,7 +162,7 @@ Running OpenMC
 Once you have a model built (see :ref:`usersguide_input`), you can either run
 the openmc executable directly from the directory containing your XML input
 files, or you can specify as a command-line argument the directory containing
-the XML input files. For example, if the path of your OpenMC exectuable is
+the XML input files. For example, if the path of your OpenMC executable is
 ``/home/username/openmc/src/openmc`` and your XML input files are in the
 directory ``/home/username/somemodel/``, one way to run the simulation would be:
 

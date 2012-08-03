@@ -21,6 +21,30 @@ calculations in a Monte Carlo code.
 Method of Successive Generations
 --------------------------------
 
+The method used to converge on the fission source distribution in a criticality
+calculation, known as the method of successive generations, was first introduced
+by [Lieberoth]_. In this method, a finite number of neutron histories,
+:math:`N`, are tracked through their lifetime iteratively. If fission occurs,
+rather than tracking the resulting fission neutrons, the spatial coordinates of
+the fission site, the sampled outgoing energy and direction of the fission
+neutron, and the weight of the neutron are stored for use in the subsequent
+generation. In OpenMC, the array used for storing the fission site information
+is called the *fission bank*. At the end of each fission generation, :math:`N`
+source sites for the next generation must be randomly sampled from the :math:`M`
+fission sites that were stored to ensure that the neutron population does not
+grow exponentially. The sampled source sites are stored in an array called the
+*source bank* and can be retrieved during the subsequent generation.
+
+It's important to recognize that in the method of successive generations, we
+must start with some assumption on how the fission source sites are distributed
+since the distribution is not known *a priori*. Typically, a user will make a
+guess as to what the distribution is -- this guess could be a uniform
+distribution over some region of the geometry or simply a point
+source. Fortunately, regardless of the choice of initial source distribution,
+the method is guaranteed to converge to the true source distribution. Until the
+source distribution converges, tallies should not be scored to since they will
+otherwsie include contributions from an unconverged source distribution.
+
 -------------------------
 Source Convergence Issues
 -------------------------
@@ -78,11 +102,11 @@ at plots of :math:`k_{eff}` and the Shannon entropy. A number of methods have
 been proposed (see e.g. [Romano]_, [Ueki]_), but each of these is not without
 problems.
 
------------------------
-Fission and Source Bank
------------------------
-
 .. _Shannon entropy: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-06-3737_entropy.pdf
+
+.. [Lieberoth] J. Lieberoth, "A Monte Carlo Technique to Solve the Static
+   Eigenvalue Problem of the Boltzmann Transport Equation," *Nukleonik*, **11**,
+   213-219 (1968).
 
 .. [Romano] Paul K. Romano, "Application of the Stochastic Oscillator to Assess
    Source Convergence in Monte Carlo Criticality Calculations,"

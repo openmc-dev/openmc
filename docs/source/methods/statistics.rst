@@ -33,6 +33,8 @@ X_n}{n}` `converges in probability`_ to the true mean, i.e. for all
     \lim\limits_{n\rightarrow\infty} P \left ( \left | \bar{X}_n - \mu \right |
     \ge \epsilon \right ) = 0.
 
+.. _central-limit-theorem:
+
 ---------------------
 Central Limit Theorem
 ---------------------

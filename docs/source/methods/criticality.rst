@@ -17,6 +17,8 @@ increasingly common with the advent of high-performance computing.
 This section will explore the theory behind and implementation of criticality
 calculations in a Monte Carlo code.
 
+.. _method-successive-generations:
+
 --------------------------------
 Method of Successive Generations
 --------------------------------
@@ -43,7 +45,11 @@ distribution over some region of the geometry or simply a point
 source. Fortunately, regardless of the choice of initial source distribution,
 the method is guaranteed to converge to the true source distribution. Until the
 source distribution converges, tallies should not be scored to since they will
-otherwsie include contributions from an unconverged source distribution.
+otherwise include contributions from an unconverged source distribution.
+
+The method by which the fission source iterations are parallelized can have a
+large impact on the achiable parallel scaling. This topic is discussed at length
+in :ref:`fission-bank-algorithms`.
 
 -------------------------
 Source Convergence Issues

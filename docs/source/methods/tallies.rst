@@ -8,10 +8,56 @@ Tallies
 Filters and Scores
 ------------------
 
+The tally capability in OpenMC takes a similar philosophy as that employed in
+the MC21_ Monte Carlo code to give maximum flexibility in specifying tallies
+while still maintaining scalability. Any tally in a Monte Carlo simulation can
+be written in the following form:
+
+.. math::
+    :label: tally-integral
+
+    X = \underbrace{\int d\mathbf{r} \int d\mathbf{\Omega} \int
+    dE}_{\text{filters}} \underbrace{f(\mathbf{r}, \mathbf{\Omega},
+    E)}_{\text{scores}} \psi (\mathbf{r}, \mathbf{\Omega}, E)
+
+
+A user can specify one or more filters which identify which regions of phase
+space should score to a given tally (the limits of integration as shown in
+equation :eq:`tally-integral`) as well as the scoring function (:math:`f` in
+equation :eq:`tally-integral`). For example, if the desired tally was the
+:math:`(n,\gamma)` reaction rate in a fuel pin, the filter would specify the
+cell which contains the fuel pin and the scoring function would be the radiative
+capture macroscopic cross section. The following quantities can be scored in
+OpenMC: flux, total reaction rate, scattering reaction rate, neutron production
+from scattering, higher scattering moments, (n,xn) reaction rates, absorption
+reaction rate, fission reaction rate, neutron production rate from fission, and
+surface currents. The following variables can be used as filters: universe,
+material, cell, birth cell, surface, mesh, pre-collision energy, and
+post-collision energy.
+
+With filters for pre- and post-collision energy and scoring functions for
+scattering and fission production, it is possible to use OpenMC to generate
+cross sections with user-defined group structures. These multigroup cross
+sections can subsequently be used in deterministic solvers such as coarse-mesh
+finite difference (CMFD) diffusion.
+
 ------------------------------
 Using Maps for Filter-Matching
 ------------------------------
 
+Some Monte Carlo codes suffer severe performance penalties when tallying a large
+number of quantities. Care must be taken to ensure that a tally system scales
+well with the total number of tally bins. In OpenMC, a mapping technique is used
+that allows for a fast determination of what tally/bin combinations need to be
+scored to a given particle's phase space coordinates. For each discrete filter
+variable, a list is stored that contains the tally/bin combinations that could
+be scored to for each value of the filter variable. If a particle is in cell
+:math:`n`, the mapping would identify what tally/bin combinations specify cell
+:math:`n` for the cell filter variable. In this manner, it is not necessary to
+check the phase space variables against each tally. Note that this technique
+only applies to discrete filter variables and cannot be applied to energy
+bins. For energy filters, it is necessary to perform a binary search on the
+specified energy grid.
 
 -----------------------------------------
 Volume-Integrated Flux and Reaction Rates
@@ -22,7 +68,6 @@ simulation is the flux or a reaction rate integrated over a finite volume. The
 volume may be a particular cell, a collection of cells, or the entire
 geometry. There are various methods by which we can estimate reaction rates
 
-----------------
 Analog Estimator
 ----------------
 
@@ -44,7 +89,6 @@ and :math:`w_i` is the pre-collision weight of the particle as it enters event
 volume-integrated so if we want a volume-averaged quantity, we need to divided
 by the volume of the region of integration.
 
--------------------
 Collision Estimator
 -------------------
 
@@ -88,7 +132,6 @@ equation :eq:`analog-estimator`, we see that the collision estimate will result
 in a tally with a larger number of events that score to it with smaller
 contributions (since we have multiplied it by :math:`\Sigma_x / \Sigma_t`).
 
-----------------------
 Track-length Estimator
 ----------------------
 
@@ -157,3 +200,5 @@ had a collision at every event. Thus, for tallies with outgoing-energy filters
 ---------------
 Surface Current
 ---------------
+
+.. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf

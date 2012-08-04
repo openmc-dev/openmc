@@ -34,6 +34,7 @@ New Features
 Bug Fixes
 ---------
 
+- 1c472d_: Fixed survival biasing with probability tables.
 - 3c6e80_: Fixed writing tallies with no filters.
 - 460ef1_: Invalid results for duplicate tallies.
 - 0069d5_: Fixed bug with 0 inactive batches.
@@ -42,6 +43,7 @@ Bug Fixes
 - 3212f5_: Fixed issue with blank line at beginning of XML files.
 
 .. _nelsonag: https://github.com/nelsonag
+.. _1c472d: https://github.com/mit-crpg/openmc/commit/1c472d
 .. _3c6e80: https://github.com/mit-crpg/openmc/commit/3c6e80
 .. _3bd35b: https://github.com/mit-crpg/openmc/commit/3bd35b
 .. _0069d5: https://github.com/mit-crpg/openmc/commit/0069d5

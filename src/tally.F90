@@ -1908,7 +1908,7 @@ contains
        end do
 
        ! Check if this tally has no filters
-       if (all(has_filter == .false.)) no_filters = .true.
+       if (all(has_filter .eqv. .false.)) no_filters = .true.
 
        ! WARNING: Admittedly, the logic for moving for printing scores is
        ! extremely confusing and took quite a bit of time to get correct. The

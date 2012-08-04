@@ -325,97 +325,75 @@ contains
     ! FISSION EVENTS (ANALOG) OR BANK EXPECTED FISSION SITES (IMPLICIT)
 
     if (nuc % fissionable) then
+       ! If survival biasing is turned on, then no fission events actually occur
+       ! since absorption is treated implicitly. However, we still need to bank
+       ! sites so we sample a fission reaction (if there are multiple) and bank
+       ! the expected number of fission neutrons created.
+
        if (survival_biasing) then
-          ! If survival biasing is turned on, then no fission events actually
-          ! occur since absorption is treated implicitly. However, we still need
-          ! to bank sites so we sample a fission reaction (if there are
-          ! multiple) and bank the expected number of fission neutrons
-          ! created.
-
-          if (nuc % has_partial_fission) then
-             cutoff = prn() * micro_xs(index_nuclide) % fission
-             prob = ZERO
-
-             i = 0
-             do while (prob < cutoff)
-                i = i + 1
-
-                ! Check to make sure partial fission reaction sampled
-                if (i > nuc % n_fission) then
-                   message = "Did not sample any partial fission reaction " // &
-                        "for survival biasing in " // trim(nuc % name)
-                   call fatal_error()
-                end if
-
-                rxn => nuc % reactions(nuc % index_fission(i))
-
-                ! if energy is below threshold for this reaction, skip it
-                if (IE < rxn%IE) cycle
-
-                ! add to cumulative probability
-                prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-                     + f*(rxn%sigma(IE-rxn%IE+2)))
-             end do
-          else
-             ! For nuclides with only total fission reaction, get a pointer to
-             ! the fission reaction
-             rxn => nuc % reactions(nuc % index_fission(1))
-          end if
-
-          ! Bank expected number of fission neutrons
-          call create_fission_sites(index_nuclide, rxn)
-
-       else
-          ! If survival biasing is not turned on, then fission events can occur
-          ! just like any other reaction. Here we loop through the fission
-          ! reactions for the nuclide and see if any of them occur
+          cutoff = prn() * micro_xs(index_nuclide) % fission
+          prob = ZERO
+       end if
           
-          if (micro_xs(index_nuclide) % use_ptable) then
+       if (micro_xs(index_nuclide) % use_ptable) then
 
-             ! In the case that the particle is in the unresolved resonance
-             ! region and probability tables are being used, we should only
-             ! check the first fission reaction
+          ! In the case that the particle is in the unresolved resonance region
+          ! and probability tables are being used, we should only check the
+          ! first fission reaction
 
-             prob = prob + micro_xs(index_nuclide) % fission
-             if (prob > cutoff) then
-                rxn => nuc % reactions(nuc % index_fission(1))
-                call create_fission_sites(index_nuclide, rxn)
+          prob = prob + micro_xs(index_nuclide) % fission
+
+          if (prob > cutoff) then
+             rxn => nuc % reactions(nuc % index_fission(1))
+             call create_fission_sites(index_nuclide, rxn)
+
+             ! With no survival biasing, the particle is absorbed and so its
+             ! life is over
+             if (.not. survival_biasing) then
                 p % alive = .false.
                 p % event = EVENT_FISSION
                 return
              end if
+          end if
+          
+       else
+          ! With no probability tables, we need to loop through each fission
+          ! reaction type -- note that this loop still works even if there is
+          ! only one fission reaction
 
-          else
+          FISSION_REACTION_LOOP: do i = 1, nuc % n_fission
+             rxn => nuc % reactions(nuc % index_fission(i))
 
-             ! With no probability tables, we need to loop through each fission
-             ! reaction type
+             ! if energy is below threshold for this reaction, skip it
+             if (IE < rxn%IE) cycle
 
-             do i = 1, nuc % n_fission
-                rxn => nuc % reactions(nuc % index_fission(i))
+             ! add to cumulative probability
+             if (nuc % has_partial_fission) then
+                prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
+                     + f*(rxn%sigma(IE-rxn%IE+2)))
+             else
+                prob = prob + micro_xs(index_nuclide) % fission
+             end if
 
-                ! if energy is below threshold for this reaction, skip it
-                if (IE < rxn%IE) cycle
+             ! Create fission bank sites if fission occus
+             if (prob > cutoff) then
+                call create_fission_sites(index_nuclide, rxn)
 
-                ! add to cumulative probability
-                if (nuc % has_partial_fission) then
-                   prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-                        + f*(rxn%sigma(IE-rxn%IE+2)))
+                if (survival_biasing) then
+                   ! Since a fission reaction has been sampled, we can exit this
+                   ! loop
+                   exit FISSION_REACTION_LOOP
                 else
-                   prob = prob + micro_xs(index_nuclide) % fission
-                end if
-
-                ! Create fission bank sites if fission occus
-                if (prob > cutoff) then
-                   call create_fission_sites(index_nuclide, rxn)
+                   ! With no survival biasing, the particle is absorbed and so
+                   ! its life is over
                    p % alive = .false.
                    p % event = EVENT_FISSION
                    return
                 end if
-             end do
+             end if
+          end do FISSION_REACTION_LOOP
 
-          end if
        end if
-
     end if
 
     ! ==========================================================================

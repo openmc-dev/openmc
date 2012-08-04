@@ -379,7 +379,7 @@ contains
              prob = prob + micro_xs(index_nuclide) % fission
              if (prob > cutoff) then
                 rxn => nuc % reactions(nuc % index_fission(1))
-                call create_fission_sites(index_nuclide, rxn, .true.)
+                call create_fission_sites(index_nuclide, rxn)
                 p % alive = .false.
                 p % event = EVENT_FISSION
                 return
@@ -406,7 +406,7 @@ contains
 
                 ! Create fission bank sites if fission occus
                 if (prob > cutoff) then
-                   call create_fission_sites(index_nuclide, rxn, .true.)
+                   call create_fission_sites(index_nuclide, rxn)
                    p % alive = .false.
                    p % event = EVENT_FISSION
                    return
@@ -849,11 +849,10 @@ contains
 ! neutrons produced from fission and creates appropriate bank sites.
 !===============================================================================
 
-  subroutine create_fission_sites(index_nuclide, rxn, event)
+  subroutine create_fission_sites(index_nuclide, rxn)
 
     integer, intent(in)     :: index_nuclide
     type(Reaction), pointer :: rxn
-    logical, optional       :: event
 
     integer :: i            ! loop index
     integer :: j            ! index on nu energy grid / precursor group
@@ -875,21 +874,12 @@ contains
     real(8) :: yield        ! delayed neutron precursor yield
     real(8) :: prob         ! cumulative probability
     real(8) :: weight       ! weight adjustment for ufs method
-    logical :: actual_event ! did fission actually occur? (no survival biasing)
     logical :: in_mesh      ! source site in ufs mesh?
     type(Nuclide),    pointer :: nuc
     type(DistEnergy), pointer :: edist => null()
 
     ! Get pointer to nuclide
     nuc => nuclides(index_nuclide)
-
-    ! check whether actual fission event occurred for when survival biasing is
-    ! turned off -- assume by default that no event occurs
-    if (present(event)) then
-       actual_event = event
-    else
-       actual_event = .false.
-    end if
 
     ! copy energy of neutron
     E = p % E
@@ -926,11 +916,11 @@ contains
     end if
 
     ! Sample number of neutrons produced
-    if (actual_event) then
-       nu_t = p % wgt / keff * nu_t * weight
-    else
+    if (survival_biasing) then 
        nu_t = p % last_wgt * micro_xs(index_nuclide) % fission / (keff * &
             micro_xs(index_nuclide) % total) * nu_t * weight
+    else 
+       nu_t = p % wgt / keff * nu_t * weight
     end if
     if (prn() > nu_t - int(nu_t)) then
        nu = int(nu_t)

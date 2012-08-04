@@ -379,9 +379,9 @@ contains
        f = micro_xs(index_nuclide) % interp_factor
 
        ! Determine inelastic scattering cross section
-       if (i_energy >= rxn % IE) then
-          inelastic = (ONE - f) * rxn % sigma(i_energy - rxn%IE + 1) + &
-               f * rxn % sigma(i_energy - rxn%IE + 2)
+       if (i_energy >= rxn % threshold) then
+          inelastic = (ONE - f) * rxn % sigma(i_energy - rxn%threshold + 1) + &
+               f * rxn % sigma(i_energy - rxn%threshold + 2)
        end if
     end if
 

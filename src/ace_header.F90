@@ -42,7 +42,7 @@ module ace_header
      integer :: MT                      ! ENDF MT value
      real(8) :: Q_value                 ! Reaction Q value
      integer :: multiplicity            ! Number of secondary particles released
-     integer :: IE                      ! Starting energy grid index
+     integer :: threshold               ! Energy grid index of threshold
      logical :: scatter_in_cm           ! scattering system in center-of-mass?
      real(8), allocatable :: sigma(:)   ! Cross section values
      logical :: has_angle_dist          ! Angle distribution present?

@@ -577,7 +577,7 @@ contains
     rxn % MT            = 2
     rxn % Q_value       = ZERO
     rxn % multiplicity  = 1
-    rxn % IE            = 1
+    rxn % threshold     = 1
     rxn % scatter_in_cm = .true.
     rxn % has_angle_dist = .false.
     rxn % has_energy_dist = .false.
@@ -608,7 +608,7 @@ contains
        ! read starting energy index
        LOCA = int(XSS(LXS + i - 1))
        IE   = int(XSS(JXS7 + LOCA - 1))
-       rxn % IE = IE
+       rxn % threshold = IE
 
        ! read number of energies cross section values
        NE = int(XSS(JXS7 + LOCA))

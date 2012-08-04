@@ -365,12 +365,12 @@ contains
              rxn => nuc % reactions(nuc % index_fission(i))
 
              ! if energy is below threshold for this reaction, skip it
-             if (IE < rxn%IE) cycle
+             if (IE < rxn % threshold) cycle
 
              ! add to cumulative probability
              if (nuc % has_partial_fission) then
-                prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-                     + f*(rxn%sigma(IE-rxn%IE+2)))
+                prob = prob + ((ONE - f)*rxn%sigma(IE - rxn%threshold + 1) & 
+                     + f*(rxn%sigma(IE - rxn%threshold + 2)))
              else
                 prob = prob + micro_xs(index_nuclide) % fission
              end if
@@ -469,11 +469,11 @@ contains
           if (rxn%MT >= 200 .or. rxn%MT == N_LEVEL) cycle
           
           ! if energy is below threshold for this reaction, skip it
-          if (IE < rxn%IE) cycle
+          if (IE < rxn % threshold) cycle
 
           ! add to cumulative probability
-          prob = prob + ((ONE-f)*rxn%sigma(IE-rxn%IE+1) & 
-               + f*(rxn%sigma(IE-rxn%IE+2)))
+          prob = prob + ((ONE - f)*rxn%sigma(IE - rxn%threshold + 1) & 
+               + f*(rxn%sigma(IE - rxn%threshold + 2)))
        end do
 
        ! Perform collision physics for inelastics scattering

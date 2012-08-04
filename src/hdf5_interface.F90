@@ -719,7 +719,7 @@ contains
           ! Write information on reaction
           call hdf5_make_double(rxn_group, "Q_value", rxn % Q_value)
           call hdf5_make_integer(rxn_group, "multiplicity", rxn % multiplicity)
-          call hdf5_make_integer(rxn_group, "grid_index", rxn % IE)
+          call hdf5_make_integer(rxn_group, "threshold", rxn % threshold)
           call hdf5_make_integer(rxn_group, "size_angle", size_angle)
           call hdf5_make_integer(rxn_group, "size_energy", size_energy)
 

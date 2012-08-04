@@ -248,14 +248,14 @@ contains
 
   subroutine sample_reaction()
 
-    integer :: i             ! index over nuclides in a material
-    integer :: index_nuclide ! index in nuclides array
-    integer :: IE            ! index on nuclide energy grid
-    real(8) :: f             ! interpolation factor
-    real(8) :: sigma         ! microscopic total xs for nuclide
-    real(8) :: prob          ! cumulative probability
-    real(8) :: cutoff        ! random number
-    real(8) :: atom_density  ! atom density of nuclide in atom/b-cm
+    integer :: i            ! index over nuclides in a material
+    integer :: i_nuclide    ! index in nuclides array
+    integer :: i_grid       ! index on nuclide energy grid
+    real(8) :: f            ! interpolation factor
+    real(8) :: sigma        ! microscopic total xs for nuclide
+    real(8) :: prob         ! cumulative probability
+    real(8) :: cutoff       ! random number
+    real(8) :: atom_density ! atom density of nuclide in atom/b-cm
     type(Material), pointer :: mat => null()
     type(Nuclide),  pointer :: nuc => null()
     type(Reaction), pointer :: rxn => null()
@@ -280,38 +280,38 @@ contains
        end if
 
        ! Find atom density and microscopic total cross section
-       index_nuclide = mat % nuclide(i)
+       i_nuclide    = mat % nuclide(i)
        atom_density = mat % atom_density(i)
-       sigma = atom_density * micro_xs(index_nuclide) % total
+       sigma        = atom_density * micro_xs(i_nuclide) % total
 
        ! Increment probability to compare to cutoff
        prob = prob + sigma
     end do
 
     ! Get pointer to table, nuclide grid index and interpolation factor
-    nuc => nuclides(index_nuclide)
-    IE  =  micro_xs(index_nuclide) % index_grid
-    f   =  micro_xs(index_nuclide) % interp_factor
+    nuc    => nuclides(i_nuclide)
+    i_grid =  micro_xs(i_nuclide) % index_grid
+    f      =  micro_xs(i_nuclide) % interp_factor
 
     ! Save which nuclide particle had collision with
-    p % event_nuclide = index_nuclide
+    p % event_nuclide = i_nuclide
 
     ! ==========================================================================
     ! DISAPPEARANCE REACTIONS (ANALOG) OR IMPLICIT CAPTURE (SURVIVAL BIASING)
 
     if (survival_biasing) then
        ! adjust weight of particle by probability of absorption
-       p % wgt = p % wgt * (ONE - micro_xs(index_nuclide) % absorption / &
-            micro_xs(index_nuclide) % total)
+       p % wgt = p % wgt * (ONE - micro_xs(i_nuclide) % absorption / &
+            micro_xs(i_nuclide) % total)
 
     else
        ! set cutoff variable for analog cases
-       cutoff = prn() * micro_xs(index_nuclide) % total
+       cutoff = prn() * micro_xs(i_nuclide) % total
        prob = ZERO
 
        ! Add disappearance cross-section to prob
-       prob = prob + micro_xs(index_nuclide) % absorption - &
-            micro_xs(index_nuclide) % fission
+       prob = prob + micro_xs(i_nuclide) % absorption - &
+            micro_xs(i_nuclide) % fission
 
        ! See if disappearance reaction happens
        if (prob > cutoff) then
@@ -331,21 +331,21 @@ contains
        ! the expected number of fission neutrons created.
 
        if (survival_biasing) then
-          cutoff = prn() * micro_xs(index_nuclide) % fission
+          cutoff = prn() * micro_xs(i_nuclide) % fission
           prob = ZERO
        end if
           
-       if (micro_xs(index_nuclide) % use_ptable) then
+       if (micro_xs(i_nuclide) % use_ptable) then
 
           ! In the case that the particle is in the unresolved resonance region
           ! and probability tables are being used, we should only check the
           ! first fission reaction
 
-          prob = prob + micro_xs(index_nuclide) % fission
+          prob = prob + micro_xs(i_nuclide) % fission
 
           if (prob > cutoff) then
              rxn => nuc % reactions(nuc % index_fission(1))
-             call create_fission_sites(index_nuclide, rxn)
+             call create_fission_sites(i_nuclide, rxn)
 
              ! With no survival biasing, the particle is absorbed and so its
              ! life is over
@@ -365,19 +365,19 @@ contains
              rxn => nuc % reactions(nuc % index_fission(i))
 
              ! if energy is below threshold for this reaction, skip it
-             if (IE < rxn % threshold) cycle
+             if (i_grid < rxn % threshold) cycle
 
              ! add to cumulative probability
              if (nuc % has_partial_fission) then
-                prob = prob + ((ONE - f)*rxn%sigma(IE - rxn%threshold + 1) & 
-                     + f*(rxn%sigma(IE - rxn%threshold + 2)))
+                prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) & 
+                     + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
              else
-                prob = prob + micro_xs(index_nuclide) % fission
+                prob = prob + micro_xs(i_nuclide) % fission
              end if
 
              ! Create fission bank sites if fission occus
              if (prob > cutoff) then
-                call create_fission_sites(index_nuclide, rxn)
+                call create_fission_sites(i_nuclide, rxn)
 
                 if (survival_biasing) then
                    ! Since a fission reaction has been sampled, we can exit this
@@ -413,29 +413,29 @@ contains
        ! survival biasing. The cutoff will be a random number times the
        ! scattering cross section
 
-       cutoff = prn() * (micro_xs(index_nuclide) % total - &
-            micro_xs(index_nuclide) % absorption)
+       cutoff = prn() * (micro_xs(i_nuclide) % total - &
+            micro_xs(i_nuclide) % absorption)
        prob = ZERO
     end if
 
     ! ==========================================================================
     ! SCATTERING REACTIONS
 
-    prob = prob + micro_xs(index_nuclide) % elastic
+    prob = prob + micro_xs(i_nuclide) % elastic
     if (prob > cutoff) then
        ! =======================================================================
        ! ELASTIC SCATTERING
 
-       if (micro_xs(index_nuclide) % use_sab) then
+       if (micro_xs(i_nuclide) % use_sab) then
           ! S(a,b) scattering
-          call sab_scatter(index_nuclide, mat % sab_table)
+          call sab_scatter(i_nuclide, mat % sab_table)
 
        else
           ! get pointer to elastic scattering reaction
           rxn => nuc % reactions(1)
 
           ! Perform collision physics for elastic scattering
-          call elastic_scatter(index_nuclide, rxn)
+          call elastic_scatter(i_nuclide, rxn)
 
        end if
 
@@ -460,20 +460,20 @@ contains
           rxn => nuc % reactions(i)
 
           ! Skip fission reactions
-          if (rxn%MT == N_FISSION .or. rxn%MT == N_F .or. rxn%MT == N_NF &
-               .or. rxn%MT == N_2NF .or. rxn%MT == N_3NF) cycle
+          if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
+               .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
              
           ! some materials have gas production cross sections with MT > 200 that
           ! are duplicates. Also MT=4 is total level inelastic scattering which
           ! should be skipped
-          if (rxn%MT >= 200 .or. rxn%MT == N_LEVEL) cycle
+          if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
           
           ! if energy is below threshold for this reaction, skip it
-          if (IE < rxn % threshold) cycle
+          if (i_grid < rxn % threshold) cycle
 
           ! add to cumulative probability
-          prob = prob + ((ONE - f)*rxn%sigma(IE - rxn%threshold + 1) & 
-               + f*(rxn%sigma(IE - rxn%threshold + 2)))
+          prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) & 
+               + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
        end do
 
        ! Perform collision physics for inelastics scattering
@@ -492,9 +492,9 @@ contains
 ! target.
 !===============================================================================
 
-  subroutine elastic_scatter(index_nuclide, rxn)
+  subroutine elastic_scatter(i_nuclide, rxn)
 
-    integer, intent(in)     :: index_nuclide
+    integer, intent(in)     :: i_nuclide
     type(Reaction), pointer :: rxn
 
     real(8) :: awr     ! atomic weight ratio of target
@@ -510,7 +510,7 @@ contains
     type(Nuclide), pointer :: nuc => null()
 
     ! get pointer to nuclide
-    nuc => nuclides(index_nuclide)
+    nuc => nuclides(i_nuclide)
 
     vel = sqrt(p % E)
     awr = nuc % awr
@@ -519,7 +519,7 @@ contains
     v_n = vel * p % coord0 % uvw
 
     ! Sample velocity of target nucleus
-    if (.not. micro_xs(index_nuclide) % use_ptable) then
+    if (.not. micro_xs(i_nuclide) % use_ptable) then
        call sample_target_velocity(nuc, v_t)
     else
        v_t = ZERO
@@ -574,10 +574,10 @@ contains
 ! according to a specified S(a,b) table.
 !===============================================================================
 
-  subroutine sab_scatter(index_nuclide, index_sab)
+  subroutine sab_scatter(i_nuclide, i_sab)
 
-    integer, intent(in)     :: index_nuclide ! index in micro_xs
-    integer, intent(in)     :: index_sab     ! index in sab_tables
+    integer, intent(in)     :: i_nuclide ! index in micro_xs
+    integer, intent(in)     :: i_sab     ! index in sab_tables
 
     integer :: i            ! incoming energy bin
     integer :: j            ! outgoing energy bin
@@ -596,11 +596,11 @@ contains
     type(SAB_Table), pointer :: sab => null()
 
     ! Get pointer to S(a,b) table
-    sab => sab_tables(index_sab)
+    sab => sab_tables(i_sab)
 
     ! Determine whether inelastic or elastic scattering will occur
-    if (prn() < micro_xs(index_nuclide) % elastic_sab / &
-         micro_xs(index_nuclide) % elastic) then
+    if (prn() < micro_xs(i_nuclide) % elastic_sab / &
+         micro_xs(i_nuclide) % elastic) then
        ! elastic scattering
 
        ! Get index and interpolation factor for elastic grid
@@ -827,9 +827,9 @@ contains
 ! neutrons produced from fission and creates appropriate bank sites.
 !===============================================================================
 
-  subroutine create_fission_sites(index_nuclide, rxn)
+  subroutine create_fission_sites(i_nuclide, rxn)
 
-    integer, intent(in)     :: index_nuclide
+    integer, intent(in)     :: i_nuclide
     type(Reaction), pointer :: rxn
 
     integer :: i            ! loop index
@@ -857,7 +857,7 @@ contains
     type(DistEnergy), pointer :: edist => null()
 
     ! Get pointer to nuclide
-    nuc => nuclides(index_nuclide)
+    nuc => nuclides(i_nuclide)
 
     ! copy energy of neutron
     E = p % E
@@ -895,8 +895,8 @@ contains
 
     ! Sample number of neutrons produced
     if (survival_biasing) then 
-       nu_t = p % last_wgt * micro_xs(index_nuclide) % fission / (keff * &
-            micro_xs(index_nuclide) % total) * nu_t * weight
+       nu_t = p % last_wgt * micro_xs(i_nuclide) % fission / (keff * &
+            micro_xs(i_nuclide) % total) * nu_t * weight
     else 
        nu_t = p % wgt / keff * nu_t * weight
     end if

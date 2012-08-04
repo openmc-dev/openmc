@@ -288,7 +288,7 @@ contains
     write(ou,*) '    MT = ' // to_str(rxn % MT)
     write(ou,*) '    Q-value = ' // to_str(rxn % Q_value)
     write(ou,*) '    Multiplicity = ' // to_str(rxn % multiplicity)
-    write(ou,*) '    Starting index = ' // to_str(rxn % IE)
+    write(ou,*) '    Threshold = ' // to_str(rxn % threshold)
     if (rxn % has_energy_dist) then
        write(ou,*) '    Energy: Law ' // to_str(rxn % edist % law)
     end if
@@ -840,10 +840,10 @@ contains
 
        write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
             reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
-            law, rxn % IE, size_angle, size_energy
+            law, rxn % threshold, size_angle, size_energy
 
        ! Accumulate data size
-       size_xs = size_xs + (nuc % n_grid - rxn%IE + 1) * 8
+       size_xs = size_xs + (nuc % n_grid - rxn%threshold + 1) * 8
        size_angle_total = size_angle_total + size_angle
        size_energy_total = size_energy_total + size_energy
     end do

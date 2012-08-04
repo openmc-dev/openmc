@@ -63,7 +63,7 @@ module particle_header
      real(8)    :: wgt_bank      ! weight of fission sites banked
 
      ! Energy grid data
-     integer    :: IE            ! index on energy grid
+     integer    :: index_grid    ! index on unionized energy grid
      real(8)    :: interp        ! interpolation factor for energy grid
 
      ! Indices for various arrays

@@ -614,6 +614,22 @@ contains
     ! Write user-specified id of tally
     write(unit_,*) 'Tally ' // to_str(t % id)
 
+    ! Write the type of tally
+    select case(t % type)
+    case (TALLY_VOLUME)
+       write(unit_,*) '    Type: Volume'
+    case (TALLY_SURFACE_CURRENT)
+       write(unit_,*) '    Type: Surface Current'
+    end select
+
+    ! Write the estimator used
+    select case(t % estimator)
+    case(ESTIMATOR_ANALOG)
+       write(unit_,*) '    Estimator: Analog'
+    case(ESTIMATOR_TRACKLENGTH)
+       write(unit_,*) '    Estimator: Track-length'
+    end select
+
     ! Write any cells bins if present
     if (t % n_filter_bins(FILTER_CELL) > 0) then
        string = ""
@@ -644,7 +660,7 @@ contains
           u => universes(id)
           string = trim(string) // ' ' // trim(to_str(u % id))
        end do
-       write(unit_, *) '    Material Bins:' // trim(string)
+       write(unit_, *) '    Universe Bins:' // trim(string)
     end if
 
     ! Write any material bins if present
@@ -712,12 +728,34 @@ contains
              string = trim(string) // ' total'
           case (SCORE_SCATTER)
              string = trim(string) // ' scatter'
+          case (SCORE_NU_SCATTER)
+             string = trim(string) // ' nu-scatter'
+          case (SCORE_SCATTER_1)
+             string = trim(string) // ' scatter-1'
+          case (SCORE_SCATTER_2)
+             string = trim(string) // ' scatter-2'
+          case (SCORE_SCATTER_3)
+             string = trim(string) // ' scatter-3'
+          case (SCORE_TRANSPORT)
+             string = trim(string) // ' transport'
+          case (SCORE_DIFFUSION)
+             string = trim(string) // ' diffusion'
+          case (SCORE_N_1N)
+             string = trim(string) // ' n1n'
+          case (SCORE_N_2N)
+             string = trim(string) // ' n2n'
+          case (SCORE_N_3N)
+             string = trim(string) // ' n3n'
+          case (SCORE_N_4N)
+             string = trim(string) // ' n4n'
           case (SCORE_ABSORPTION)
              string = trim(string) // ' absorption'
           case (SCORE_FISSION)
              string = trim(string) // ' fission'
           case (SCORE_NU_FISSION)
              string = trim(string) // ' nu-fission'
+          case (SCORE_CURRENT)
+             string = trim(string) // ' current'
           end select
        end do
        write(unit_,*) '    Scores:' // trim(string)

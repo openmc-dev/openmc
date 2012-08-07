@@ -1599,6 +1599,10 @@ contains
              end select
           end do
           t % n_score_bins = n_words
+       else
+          message = "No <scores> specified on tally " // trim(to_str(t % id)) &
+               // "."
+          call fatal_error()
        end if
 
        ! Count number of tallies by type

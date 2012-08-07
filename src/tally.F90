@@ -180,10 +180,6 @@ contains
 
        ! Finally add scoring bins for the tally
        score_bins = t % n_score_bins * t % n_nuclide_bins
-       if (score_bins <= 0) then
-          message = "Must have scoring bins!"
-          call fatal_error()
-       end if
 
        ! Allocate scores for tally
        t % n_total_bins = filter_bins

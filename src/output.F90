@@ -717,49 +717,62 @@ contains
        write(unit_,*) '    Outgoing Energy Bins:' // trim(string)
     end if
 
-    ! Write any score bins if present
-    if (t % n_score_bins > 0) then
-       string = ""
-       do i = 1, t % n_score_bins
-          select case (t % score_bins(i) % scalar)
-          case (SCORE_FLUX)
-             string = trim(string) // ' flux'
-          case (SCORE_TOTAL)
-             string = trim(string) // ' total'
-          case (SCORE_SCATTER)
-             string = trim(string) // ' scatter'
-          case (SCORE_NU_SCATTER)
-             string = trim(string) // ' nu-scatter'
-          case (SCORE_SCATTER_1)
-             string = trim(string) // ' scatter-1'
-          case (SCORE_SCATTER_2)
-             string = trim(string) // ' scatter-2'
-          case (SCORE_SCATTER_3)
-             string = trim(string) // ' scatter-3'
-          case (SCORE_TRANSPORT)
-             string = trim(string) // ' transport'
-          case (SCORE_DIFFUSION)
-             string = trim(string) // ' diffusion'
-          case (SCORE_N_1N)
-             string = trim(string) // ' n1n'
-          case (SCORE_N_2N)
-             string = trim(string) // ' n2n'
-          case (SCORE_N_3N)
-             string = trim(string) // ' n3n'
-          case (SCORE_N_4N)
-             string = trim(string) // ' n4n'
-          case (SCORE_ABSORPTION)
-             string = trim(string) // ' absorption'
-          case (SCORE_FISSION)
-             string = trim(string) // ' fission'
-          case (SCORE_NU_FISSION)
-             string = trim(string) // ' nu-fission'
-          case (SCORE_CURRENT)
-             string = trim(string) // ' current'
-          end select
-       end do
-       write(unit_,*) '    Scores:' // trim(string)
-    end if
+    ! Write nuclides bins
+    write(unit_,fmt='(1X,A)',advance='no') '    Nuclide Bins:'
+    do i = 1, t % n_nuclide_bins
+       if (t % nuclide_bins(i) % scalar == -1) then
+          write(unit_,fmt='(A)',advance='no') ' total'
+       else
+          write(unit_,fmt='(A)',advance='no') ' ' // trim(adjustl(&
+               nuclides(t % nuclide_bins(i) % scalar) % name))
+       end if
+       if (mod(i,4) == 0 .and. i /= t % n_nuclide_bins) &
+            write(unit_,'(/18X)',advance='no')
+    end do
+    write(unit_,*)
+
+
+    ! Write score bins
+    string = ""
+    do i = 1, t % n_score_bins
+       select case (t % score_bins(i) % scalar)
+       case (SCORE_FLUX)
+          string = trim(string) // ' flux'
+       case (SCORE_TOTAL)
+          string = trim(string) // ' total'
+       case (SCORE_SCATTER)
+          string = trim(string) // ' scatter'
+       case (SCORE_NU_SCATTER)
+          string = trim(string) // ' nu-scatter'
+       case (SCORE_SCATTER_1)
+          string = trim(string) // ' scatter-1'
+       case (SCORE_SCATTER_2)
+          string = trim(string) // ' scatter-2'
+       case (SCORE_SCATTER_3)
+          string = trim(string) // ' scatter-3'
+       case (SCORE_TRANSPORT)
+          string = trim(string) // ' transport'
+       case (SCORE_DIFFUSION)
+          string = trim(string) // ' diffusion'
+       case (SCORE_N_1N)
+          string = trim(string) // ' n1n'
+       case (SCORE_N_2N)
+          string = trim(string) // ' n2n'
+       case (SCORE_N_3N)
+          string = trim(string) // ' n3n'
+       case (SCORE_N_4N)
+          string = trim(string) // ' n4n'
+       case (SCORE_ABSORPTION)
+          string = trim(string) // ' absorption'
+       case (SCORE_FISSION)
+          string = trim(string) // ' fission'
+       case (SCORE_NU_FISSION)
+          string = trim(string) // ' nu-fission'
+       case (SCORE_CURRENT)
+          string = trim(string) // ' current'
+       end select
+    end do
+    write(unit_,*) '    Scores:' // trim(string)
     write(unit_,*)
 
   end subroutine print_tally

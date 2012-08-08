@@ -855,9 +855,9 @@ contains
 ! these tallies, it is possible to score to multiple mesh cells for each track.
 !===============================================================================
 
-  subroutine score_tl_on_mesh(index_tally, d_track)
+  subroutine score_tl_on_mesh(i_tally, d_track)
 
-    integer, intent(in) :: index_tally
+    integer, intent(in) :: i_tally
     real(8), intent(in) :: d_track
 
     integer :: i                    ! loop index for filter/score bins
@@ -891,7 +891,7 @@ contains
 
     found_bin = .true.
     bins = 1
-    t => tallies(index_tally)
+    t => tallies(i_tally)
 
     ! ==========================================================================
     ! CHECK IF THIS TRACK INTERSECTS THE MESH
@@ -925,7 +925,7 @@ contains
           ! determine next universe bin
           ! TODO: Account for multiple universes when performing this filter
           bins(FILTER_UNIVERSE) = get_next_bin(FILTER_UNIVERSE, &
-               p % coord % universe, index_tally)
+               p % coord % universe, i_tally)
           if (bins(FILTER_UNIVERSE) == NO_BIN_FOUND) then
              found_bin = .false.
              return
@@ -933,7 +933,7 @@ contains
 
        case (FILTER_MATERIAL)
           bins(FILTER_MATERIAL) = get_next_bin(FILTER_MATERIAL, &
-               p % material, index_tally)
+               p % material, i_tally)
           if (bins(FILTER_MATERIAL) == NO_BIN_FOUND) then
              found_bin = .false.
              return
@@ -943,7 +943,7 @@ contains
           ! determine next cell bin
           ! TODO: Account for cells in multiple levels when performing this filter
           bins(FILTER_CELL) = get_next_bin(FILTER_CELL, &
-               p % coord % cell, index_tally)
+               p % coord % cell, i_tally)
           if (bins(FILTER_CELL) == NO_BIN_FOUND) then
              found_bin = .false.
              return
@@ -952,7 +952,7 @@ contains
        case (FILTER_CELLBORN)
           ! determine next cellborn bin
           bins(FILTER_CELLBORN) = get_next_bin(FILTER_CELLBORN, &
-               p % cell_born, index_tally)
+               p % cell_born, i_tally)
           if (bins(FILTER_CELLBORN) == NO_BIN_FOUND) then
              found_bin = .false.
              return
@@ -961,7 +961,7 @@ contains
        case (FILTER_SURFACE)
           ! determine next surface bin
           bins(FILTER_SURFACE) = get_next_bin(FILTER_SURFACE, &
-               p % surface, index_tally)
+               p % surface, i_tally)
           if (bins(FILTER_SURFACE) == NO_BIN_FOUND) then
              found_bin = .false.
              return
@@ -1056,7 +1056,7 @@ contains
 
           if (t % all_nuclides) then
              ! Score reaction rates for each nuclide in material
-             call score_all_nuclides(index_tally, flux, filter_index)
+             call score_all_nuclides(i_tally, flux, filter_index)
 
           else
              NUCLIDE_BIN_LOOP: do b = 1, t % n_nuclide_bins
@@ -1160,9 +1160,9 @@ contains
 ! for a tally based on the particle's current attributes.
 !===============================================================================
 
-  subroutine get_scoring_bins(index_tally, bins, found_bin)
+  subroutine get_scoring_bins(i_tally, bins, found_bin)
 
-    integer, intent(in)     :: index_tally
+    integer, intent(in)     :: i_tally
     integer, intent(out)    :: bins(N_FILTER_TYPES)
     logical, intent(out)    :: found_bin
 
@@ -1174,7 +1174,7 @@ contains
     type(StructuredMesh), pointer :: m => null()
 
     found_bin = .true.
-    t => tallies(index_tally)
+    t => tallies(i_tally)
     bins = 1
 
     FILTER_LOOP: do i = 1, t % n_filters
@@ -1196,7 +1196,7 @@ contains
           ! determine next universe bin
           ! TODO: Account for multiple universes when performing this filter
           bins(FILTER_UNIVERSE) = get_next_bin(FILTER_UNIVERSE, &
-               p % coord % universe, index_tally)
+               p % coord % universe, i_tally)
           if (bins(FILTER_UNIVERSE) == NO_BIN_FOUND) then
              found_bin = .false.
              return
@@ -1204,7 +1204,7 @@ contains
 
        case (FILTER_MATERIAL)
           bins(FILTER_MATERIAL) = get_next_bin(FILTER_MATERIAL, &
-               p % material, index_tally)
+               p % material, i_tally)
           if (bins(FILTER_MATERIAL) == NO_BIN_FOUND) then
              found_bin = .false.
              return
@@ -1214,7 +1214,7 @@ contains
           ! determine next cell bin
           ! TODO: Account for cells in multiple levels when performing this filter
           bins(FILTER_CELL) = get_next_bin(FILTER_CELL, &
-               p % coord % cell, index_tally)
+               p % coord % cell, i_tally)
           if (bins(FILTER_CELL) == NO_BIN_FOUND) then
              found_bin = .false.
              return
@@ -1223,7 +1223,7 @@ contains
        case (FILTER_CELLBORN)
           ! determine next cellborn bin
           bins(FILTER_CELLBORN) = get_next_bin(FILTER_CELLBORN, &
-               p % cell_born, index_tally)
+               p % cell_born, i_tally)
           if (bins(FILTER_CELLBORN) == NO_BIN_FOUND) then
              found_bin = .false.
              return
@@ -1232,7 +1232,7 @@ contains
        case (FILTER_SURFACE)
           ! determine next surface bin
           bins(FILTER_SURFACE) = get_next_bin(FILTER_SURFACE, &
-               p % surface, index_tally)
+               p % surface, i_tally)
           if (bins(FILTER_SURFACE) == NO_BIN_FOUND) then
              found_bin = .false.
              return

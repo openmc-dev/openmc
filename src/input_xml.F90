@@ -1605,6 +1605,31 @@ contains
           call fatal_error()
        end if
 
+       ! Check if user specified estimator
+       if (len_trim(tally_(i) % estimator) > 0) then
+          select case(tally_(i) % estimator)
+          case ('analog')
+             t % estimator = ESTIMATOR_ANALOG
+
+          case ('tracklength', 'track-length', 'pathlength', 'path-length')
+             ! If the estimator was set to an analog estimator, this means the
+             ! tally needs post-collision information
+             if (t % estimator == ESTIMATOR_ANALOG) then
+                message = "Cannot use track-length estimator for tally " &
+                     // to_str(t % id)
+                call fatal_error()
+             end if
+
+             ! Set estimator to track-length estimator
+             t % estimator = ESTIMATOR_TRACKLENGTH
+
+          case default
+             message = "Invalid estimator '" // trim(tally_(i) % estimator) &
+                  // "' on tally " // to_str(t % id)
+             call fatal_error()
+          end select
+       end if
+
        ! Count number of tallies by type
        if (t % type == TALLY_VOLUME) then
           if (t % estimator == ESTIMATOR_ANALOG) then

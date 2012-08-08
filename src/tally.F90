@@ -889,7 +889,6 @@ contains
     type(StructuredMesh), pointer :: m => null()
     type(Material),       pointer :: mat => null()
 
-    found_bin = .true.
     bins = 1
     t => tallies(i_tally)
 
@@ -926,56 +925,38 @@ contains
           ! TODO: Account for multiple universes when performing this filter
           bins(FILTER_UNIVERSE) = get_next_bin(FILTER_UNIVERSE, &
                p % coord % universe, i_tally)
-          if (bins(FILTER_UNIVERSE) == NO_BIN_FOUND) then
-             found_bin = .false.
-             return
-          end if
+          if (bins(FILTER_UNIVERSE) == NO_BIN_FOUND) return
 
        case (FILTER_MATERIAL)
           bins(FILTER_MATERIAL) = get_next_bin(FILTER_MATERIAL, &
                p % material, i_tally)
-          if (bins(FILTER_MATERIAL) == NO_BIN_FOUND) then
-             found_bin = .false.
-             return
-          end if
+          if (bins(FILTER_MATERIAL) == NO_BIN_FOUND) return
 
        case (FILTER_CELL)
           ! determine next cell bin
           ! TODO: Account for cells in multiple levels when performing this filter
           bins(FILTER_CELL) = get_next_bin(FILTER_CELL, &
                p % coord % cell, i_tally)
-          if (bins(FILTER_CELL) == NO_BIN_FOUND) then
-             found_bin = .false.
-             return
-          end if
+          if (bins(FILTER_CELL) == NO_BIN_FOUND) return
 
        case (FILTER_CELLBORN)
           ! determine next cellborn bin
           bins(FILTER_CELLBORN) = get_next_bin(FILTER_CELLBORN, &
                p % cell_born, i_tally)
-          if (bins(FILTER_CELLBORN) == NO_BIN_FOUND) then
-             found_bin = .false.
-             return
-          end if
+          if (bins(FILTER_CELLBORN) == NO_BIN_FOUND) return
 
        case (FILTER_SURFACE)
           ! determine next surface bin
           bins(FILTER_SURFACE) = get_next_bin(FILTER_SURFACE, &
                p % surface, i_tally)
-          if (bins(FILTER_SURFACE) == NO_BIN_FOUND) then
-             found_bin = .false.
-             return
-          end if
+          if (bins(FILTER_SURFACE) == NO_BIN_FOUND) return
 
        case (FILTER_ENERGYIN)
           ! determine incoming energy bin
           k = t % n_filter_bins(FILTER_ENERGYIN)
           ! check if energy of the particle is within energy bins
           if (p % E < t % energy_in(1) .or. &
-               p % E > t % energy_in(k + 1)) then
-             found_bin = .false.
-             return
-          end if
+               p % E > t % energy_in(k + 1)) return
 
           ! search to find incoming energy bin
           bins(FILTER_ENERGYIN) = binary_search(t % energy_in, k + 1, p % E)

@@ -398,7 +398,7 @@ could be written as:
 
 .. code-block:: xml
 
-    <?xml version="1.0">
+    <?xml version="1.0"?>
     <geometry>
       <!-- This is a comment -->
 
@@ -509,6 +509,30 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+  :rotation:
+    If the cell is filled with a universe, this element specifies the angles in
+    degrees about the x, y, and z axes that the filled universe should be
+    rotated. Should be given as three real numbers.For example, if you wanted to
+    rotate the filled universe by 90 degrees about the z-axis, the cell element
+    would look something like:
+
+    .. code-block:: xml
+
+        <cell fill="..." rotation="0 0 90" />
+
+    *Default*: None
+
+  :translation:
+    If the cell is filled with a universe, this element specifies a vector that
+    is used to translate (shift) the universe. Should be given as three real
+    numbers.
+
+    .. note:: Any translation operation is applied after a rotation, if also
+              specified.
+
+    *Default*: None
+
+
 ``<lattice>`` Element
 ---------------------
 
@@ -520,8 +544,9 @@ universe. A ``<lattice>`` accepts the following attributes or sub-elements:
   :id:
     A unique integer that can be used to identify the surface.
 
-  :type: A string indicating the arrangement of lattice cells. Currently, the
-    only accepted option is "rectangular".
+  :type:
+    A string indicating the arrangement of lattice cells. Currently, the only
+    accepted option is "rectangular".
 
     *Default*: rectangular
 
@@ -563,7 +588,6 @@ Each ``material`` element can have the following attributes or sub-elements:
     A unique integer that can be used to identify the material.
 
   :density:
-
     An element with attributes/sub-elements called ``value`` and ``units``. The
     ``value`` attribute is the numeric value of the density while the ``units``
     can be "g/cm3", "kg/m3", "atom/b-cm", "atom/cm3", or "sum". The "sum" unit
@@ -579,10 +603,12 @@ Each ``material`` element can have the following attributes or sub-elements:
     desired nuclide while the ``xs`` attribute is the cross-section
     identifier. Finally, the ``ao`` and ``wo`` attributes specify the atom or
     weight percent of that nuclide within the material, respectively. One
-    example would be as follows::
+    example would be as follows:
 
-      <nuclide name="H-1" xs="70c" ao="2.0" />
-      <nuclide name="O-16" xs="70c" ao="1.0" />
+    .. code-block:: xml
+
+        <nuclide name="H-1" xs="70c" ao="2.0" />
+        <nuclide name="O-16" xs="70c" ao="1.0" />
 
     .. note:: If one nuclide is specified in atom percent, all others must also
               be given in atom percent. The same applies for weight percentages.

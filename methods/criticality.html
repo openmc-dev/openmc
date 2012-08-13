@@ -66,7 +66,32 @@ increasingly common with the advent of high-performance computing.</p>
 <p>This section will explore the theory behind and implementation of criticality
 calculations in a Monte Carlo code.</p>
 <div class="section" id="method-of-successive-generations">
-<h2>2.1. Method of Successive Generations<a class="headerlink" href="#method-of-successive-generations" title="Permalink to this headline">¶</a></h2>
+<span id="method-successive-generations"></span><h2>2.1. Method of Successive Generations<a class="headerlink" href="#method-of-successive-generations" title="Permalink to this headline">¶</a></h2>
+<p>The method used to converge on the fission source distribution in a criticality
+calculation, known as the method of successive generations, was first introduced
+by <a class="reference internal" href="#lieberoth">[Lieberoth]</a>. In this method, a finite number of neutron histories,
+<img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/>, are tracked through their lifetime iteratively. If fission occurs,
+rather than tracking the resulting fission neutrons, the spatial coordinates of
+the fission site, the sampled outgoing energy and direction of the fission
+neutron, and the weight of the neutron are stored for use in the subsequent
+generation. In OpenMC, the array used for storing the fission site information
+is called the <em>fission bank</em>. At the end of each fission generation, <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/>
+source sites for the next generation must be randomly sampled from the <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/>
+fission sites that were stored to ensure that the neutron population does not
+grow exponentially. The sampled source sites are stored in an array called the
+<em>source bank</em> and can be retrieved during the subsequent generation.</p>
+<p>It&#8217;s important to recognize that in the method of successive generations, we
+must start with some assumption on how the fission source sites are distributed
+since the distribution is not known <em>a priori</em>. Typically, a user will make a
+guess as to what the distribution is &#8211; this guess could be a uniform
+distribution over some region of the geometry or simply a point
+source. Fortunately, regardless of the choice of initial source distribution,
+the method is guaranteed to converge to the true source distribution. Until the
+source distribution converges, tallies should not be scored to since they will
+otherwise include contributions from an unconverged source distribution.</p>
+<p>The method by which the fission source iterations are parallelized can have a
+large impact on the achiable parallel scaling. This topic is discussed at length
+in <a class="reference internal" href="parallelization.html#fission-bank-algorithms"><em>Fission Bank Algorithms</em></a>.</p>
 </div>
 <div class="section" id="source-convergence-issues">
 <h2>2.2. Source Convergence Issues<a class="headerlink" href="#source-convergence-issues" title="Permalink to this headline">¶</a></h2>
@@ -110,14 +135,18 @@ assessing source convergence to relieve the burden on the user of having to look
 at plots of <img class="math" src="../_images/math/56a4ca4edce4a1ea8da11edbc5adc54ed45163b2.png" alt="k_{eff}"/> and the Shannon entropy. A number of methods have
 been proposed (see e.g. <a class="reference internal" href="#romano">[Romano]</a>, <a class="reference internal" href="#ueki">[Ueki]</a>), but each of these is not without
 problems.</p>
-</div>
-</div>
-<div class="section" id="fission-and-source-bank">
-<h2>2.3. Fission and Source Bank<a class="headerlink" href="#fission-and-source-bank" title="Permalink to this headline">¶</a></h2>
+<table class="docutils citation" frame="void" id="lieberoth" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[Lieberoth]</a></td><td>J. Lieberoth, &#8220;A Monte Carlo Technique to Solve the Static
+Eigenvalue Problem of the Boltzmann Transport Equation,&#8221; <em>Nukleonik</em>, <strong>11</strong>,
+213-219 (1968).</td></tr>
+</tbody>
+</table>
 <table class="docutils citation" frame="void" id="romano" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[Romano]</a></td><td>Paul K. Romano, &#8220;Application of the Stochastic Oscillator to Assess
+<tr><td class="label"><a class="fn-backref" href="#id2">[Romano]</a></td><td>Paul K. Romano, &#8220;Application of the Stochastic Oscillator to Assess
 Source Convergence in Monte Carlo Criticality Calculations,&#8221;
 <em>Proc. International Conference on Mathematics, Computational Methods, and
 Reactor Physics</em>, Saratoga Springs, New York (2009).</td></tr>
@@ -126,10 +155,11 @@ Reactor Physics</em>, Saratoga Springs, New York (2009).</td></tr>
 <table class="docutils citation" frame="void" id="ueki" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id2">[Ueki]</a></td><td>Taro Ueki, &#8220;On-the-Fly Judgments of Monte Carlo Fission Source
+<tr><td class="label"><a class="fn-backref" href="#id3">[Ueki]</a></td><td>Taro Ueki, &#8220;On-the-Fly Judgments of Monte Carlo Fission Source
 Convergence,&#8221; <em>Trans. Am. Nucl. Soc.</em>, <strong>98</strong>, 512 (2008).</td></tr>
 </tbody>
 </table>
+</div>
 </div>
 </div>
 

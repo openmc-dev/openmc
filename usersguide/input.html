@@ -85,7 +85,7 @@ which should be plotted. OpenMC expects that these files are called:</p>
 <ul class="simple">
 <li><tt class="docutils literal"><span class="pre">geometry.xml</span></tt></li>
 <li><tt class="docutils literal"><span class="pre">materials.xml</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">setings.xml</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">settings.xml</span></tt></li>
 <li><tt class="docutils literal"><span class="pre">tallies.xml</span></tt></li>
 <li><tt class="docutils literal"><span class="pre">plots.xml</span></tt></li>
 </ul>
@@ -174,7 +174,7 @@ treatment is slightly different than that employed in Serpent.</p>
 </div>
 <div class="section" id="entropy-element">
 <h3>3.2.5. <tt class="docutils literal"><span class="pre">&lt;entropy&gt;</span></tt> Element<a class="headerlink" href="#entropy-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;entropy&gt;</span></tt> element describes a mesh that is used for calculting Shannon
+<p>The <tt class="docutils literal"><span class="pre">&lt;entropy&gt;</span></tt> element describes a mesh that is used for calculating Shannon
 entropy. This mesh should cover all possible fissionable materials in the
 problem. It has the following attributes/sub-elements:</p>
 <blockquote>
@@ -190,11 +190,11 @@ problem. It has the following attributes/sub-elements:</p>
 </dl>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartersian coordinates of the lower-left corner of the mesh.</p>
+<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartesian coordinates of the lower-left corner of the mesh.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartersian coordinates of the upper-right corner of the mesh.</p>
+<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartesian coordinates of the upper-right corner of the mesh.</p>
 <p class="last"><em>Default</em>: None</p>
 </td>
 </tr>
@@ -385,11 +385,11 @@ problem. It has the following attributes/sub-elements:</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartersian coordinates of the lower-left corner of the mesh.</p>
+<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartesian coordinates of the lower-left corner of the mesh.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartersian coordinates of the upper-right corner of the mesh.</p>
+<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartesian coordinates of the upper-right corner of the mesh.</p>
 <p class="last"><em>Default</em>: None</p>
 </td>
 </tr>
@@ -418,7 +418,7 @@ displayed. This element takes the following attributes:</p>
 <div class="section" id="write-source-element">
 <h3>3.2.15. <tt class="docutils literal"><span class="pre">&lt;write_source&gt;</span></tt> Element<a class="headerlink" href="#write-source-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;write_source&gt;</span></tt> element has no attributes and has an accepted value of
-&#8220;on&#8221; or &#8220;off&#8221;. If set to &#8220;on&#8221;, a binary source file will be written to diskat
+&#8220;on&#8221; or &#8220;off&#8221;. If set to &#8220;on&#8221;, a binary source file will be written to disk at
 the end of the run that can be used as a starting source for another run.</p>
 <blockquote>
 <div><em>Default</em>: off</div></blockquote>
@@ -461,14 +461,15 @@ may span multiple lines. One convenient feature of the XML input format is that
 sub-elements of the <tt class="docutils literal"><span class="pre">cell</span></tt> and <tt class="docutils literal"><span class="pre">surface</span></tt> elements can also be equivalently
 expressed of attributes of the original element, e.g. the geometry file above
 could be written as:</p>
-<div class="highlight-xml"><pre>&lt;?xml version="1.0"&gt;
-&lt;geometry&gt;
-  &lt;!-- This is a comment --&gt;
+<div class="highlight-xml"><div class="highlight"><pre><span class="cp">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
+<span class="nt">&lt;geometry&gt;</span>
+  <span class="c">&lt;!-- This is a comment --&gt;</span>
 
-  &lt;surface id="1" type="sphere" coeffs="0.0 0.0 0.0 5.0" boundary="vacuum" /&gt;
-  &lt;cell id="1" universe="0" material="1" surfaces="-1" /&gt;
+  <span class="nt">&lt;surface</span> <span class="na">id=</span><span class="s">&quot;1&quot;</span> <span class="na">type=</span><span class="s">&quot;sphere&quot;</span> <span class="na">coeffs=</span><span class="s">&quot;0.0 0.0 0.0 5.0&quot;</span> <span class="na">boundary=</span><span class="s">&quot;vacuum&quot;</span> <span class="nt">/&gt;</span>
+  <span class="nt">&lt;cell</span> <span class="na">id=</span><span class="s">&quot;1&quot;</span> <span class="na">universe=</span><span class="s">&quot;0&quot;</span> <span class="na">material=</span><span class="s">&quot;1&quot;</span> <span class="na">surfaces=</span><span class="s">&quot;-1&quot;</span> <span class="nt">/&gt;</span>
 
-&lt;/geometry&gt;</pre>
+<span class="nt">&lt;/geometry&gt;</span>
+</pre></div>
 </div>
 <div class="section" id="surface-element">
 <h3>3.3.1. <tt class="docutils literal"><span class="pre">&lt;surface&gt;</span></tt> Element<a class="headerlink" href="#surface-element" title="Permalink to this headline">¶</a></h3>
@@ -518,15 +519,15 @@ z_0 = 0"/>. The coefficients specified are &#8220;<img class="math" src="../_ima
 <tr class="field-even field"><th class="field-name">plane:</th><td class="field-body">An arbitrary plane of the form <img class="math" src="../_images/math/eb8661ea00d3e9e10ef23de03755960eec4b554f.png" alt="Ax + By + Cz = D"/>. The coefficients
 specified are &#8220;<img class="math" src="../_images/math/5d687cb5bc98aa30d5460e4d0f34feaa8ec52008.png" alt="A \: B \: C \: D"/>&#8221;.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">x-cylinder:</th><td class="field-body">An infinite cylinder whose length is paralle to the x-axis. This is a
+<tr class="field-odd field"><th class="field-name">x-cylinder:</th><td class="field-body">An infinite cylinder whose length is parallel to the x-axis. This is a
 quadratic surface of the form <img class="math" src="../_images/math/c70e001674ec3ce487852ca76aab6d872c634cbf.png" alt="(y - y_0)^2 + (z - z_0)^2 = R^2"/>. The
 coefficients specified are &#8220;<img class="math" src="../_images/math/8f0dd3d5d7c73c87564b7aa9d05b3b933a107e6c.png" alt="y_0 \: z_0 \: R"/>&#8221;.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">y-cylinder:</th><td class="field-body">An infinite cylinder whose length is paralle to the y-axis. This is a
+<tr class="field-even field"><th class="field-name">y-cylinder:</th><td class="field-body">An infinite cylinder whose length is parallel to the y-axis. This is a
 quadratic surface of the form <img class="math" src="../_images/math/883b49d218bf8cf809fae9decb62b4231ecf964f.png" alt="(x - x_0)^2 + (z - z_0)^2 = R^2"/>. The
 coefficients specified are &#8220;<img class="math" src="../_images/math/c495d88c348c2f010641c13f26fdd9d841973a6b.png" alt="x_0 \: z_0 \: R"/>&#8221;.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">z-cylinder:</th><td class="field-body">An infinite cylinder whose length is paralle to the z-axis. This is a
+<tr class="field-odd field"><th class="field-name">z-cylinder:</th><td class="field-body">An infinite cylinder whose length is parallel to the z-axis. This is a
 quadratic surface of the form <img class="math" src="../_images/math/9486fcc643d149a10bc21b05ac1e123031f400da.png" alt="(x - x_0)^2 + (y - y_0)^2 = R^2"/>. The
 coefficients specified are &#8220;<img class="math" src="../_images/math/d9efe2f18fee6e45486f86bf704b28646bcc2867.png" alt="x_0 \: y_0 \: R"/>&#8221;.</td>
 </tr>
@@ -573,6 +574,28 @@ contain no material, this can also be set to &#8220;void&#8221;.</p>
 <tr class="field-odd field"><th class="field-name">surfaces:</th><td class="field-body"><p class="first">A list of the <tt class="docutils literal"><span class="pre">ids</span></tt> for surfaces that bound this cell, e.g. if the cell
 is on the negative side of surface 3 and the positive side of surface 5, the
 bounding surfaces would be given as &#8220;-3 5&#8221;.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">rotation:</th><td class="field-body"><p class="first">If the cell is filled with a universe, this element specifies the angles in
+degrees about the x, y, and z axes that the filled universe should be
+rotated. Should be given as three real numbers.For example, if you wanted to
+rotate the filled universe by 90 degrees about the z-axis, the cell element
+would look something like:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;cell</span> <span class="na">fill=</span><span class="s">&quot;...&quot;</span> <span class="na">rotation=</span><span class="s">&quot;0 0 90&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">translation:</th><td class="field-body"><p class="first">If the cell is filled with a universe, this element specifies a vector that
+is used to translate (shift) the universe. Should be given as three real
+numbers.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Any translation operation is applied after a rotation, if also
+specified.</p>
+</div>
 <p class="last"><em>Default</em>: None</p>
 </td>
 </tr>
@@ -594,8 +617,8 @@ universe. A <tt class="docutils literal"><span class="pre">&lt;lattice&gt;</span
 <tr class="field-odd field"><th class="field-name">id:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the surface.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">type:</th><td class="field-body"><p class="first">A string indicating the arrangement of lattice cells. Currently, the
-only accepted option is &#8220;rectangular&#8221;.</p>
+<tr class="field-even field"><th class="field-name">type:</th><td class="field-body"><p class="first">A string indicating the arrangement of lattice cells. Currently, the only
+accepted option is &#8220;rectangular&#8221;.</p>
 <p><em>Default</em>: rectangular</p>
 </td>
 </tr>
@@ -649,8 +672,9 @@ desired nuclide while the <tt class="docutils literal"><span class="pre">xs</spa
 identifier. Finally, the <tt class="docutils literal"><span class="pre">ao</span></tt> and <tt class="docutils literal"><span class="pre">wo</span></tt> attributes specify the atom or
 weight percent of that nuclide within the material, respectively. One
 example would be as follows:</p>
-<div class="highlight-python"><pre>&lt;nuclide name="H-1" xs="70c" ao="2.0" /&gt;
-&lt;nuclide name="O-16" xs="70c" ao="1.0" /&gt;</pre>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;nuclide</span> <span class="na">name=</span><span class="s">&quot;H-1&quot;</span> <span class="na">xs=</span><span class="s">&quot;70c&quot;</span> <span class="na">ao=</span><span class="s">&quot;2.0&quot;</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;nuclide</span> <span class="na">name=</span><span class="s">&quot;O-16&quot;</span> <span class="na">xs=</span><span class="s">&quot;70c&quot;</span> <span class="na">ao=</span><span class="s">&quot;1.0&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -928,7 +952,7 @@ element must contain <tt class="docutils literal"><span class="pre">id</span></t
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">id:</th><td class="field-body">Specifies the cell or material unique id for the color specification.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">rgb:</th><td class="field-body">Specifies the custom color for the cell or material.  Should be 3 intergers separated
+<tr class="field-even field"><th class="field-name">rgb:</th><td class="field-body">Specifies the custom color for the cell or material.  Should be 3 integers separated
 by spaces.</td>
 </tr>
 </tbody>
@@ -938,7 +962,7 @@ by spaces.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">mask:</th><td class="field-body"><p class="first">The special <tt class="docutils literal"><span class="pre">mask</span></tt> sub-element allows for the selective plotting of <em>only</em>
 user-specified cells or materials.  Only one <tt class="docutils literal"><span class="pre">mask</span></tt> element is allowed per <tt class="docutils literal"><span class="pre">plot</span></tt>
-element, and it must contain as atributes or sub-elements a background masking color and
+element, and it must contain as attributes or sub-elements a background masking color and
 a list of cells or materials to plot:</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />

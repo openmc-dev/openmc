@@ -44,7 +44,7 @@ which should be plotted. OpenMC expects that these files are called:
 
 * ``geometry.xml``
 * ``materials.xml``
-* ``setings.xml``
+* ``settings.xml``
 * ``tallies.xml``
 * ``plots.xml``
 
@@ -131,7 +131,7 @@ treatment is slightly different than that employed in Serpent.
 ``<entropy>`` Element
 ---------------------
 
-The ``<entropy>`` element describes a mesh that is used for calculting Shannon
+The ``<entropy>`` element describes a mesh that is used for calculating Shannon
 entropy. This mesh should cover all possible fissionable materials in the
 problem. It has the following attributes/sub-elements:
 
@@ -142,12 +142,12 @@ problem. It has the following attributes/sub-elements:
      automatically determined by the code.
 
   :lower_left:
-    The Cartersian coordinates of the lower-left corner of the mesh.
+    The Cartesian coordinates of the lower-left corner of the mesh.
 
     *Default*: None
 
   :upper_right:
-    The Cartersian coordinates of the upper-right corner of the mesh.
+    The Cartesian coordinates of the upper-right corner of the mesh.
 
     *Default*: None
 
@@ -323,12 +323,12 @@ problem. It has the following attributes/sub-elements:
     *Default*: None
 
   :lower_left:
-    The Cartersian coordinates of the lower-left corner of the mesh.
+    The Cartesian coordinates of the lower-left corner of the mesh.
 
     *Default*: None
 
   :upper_right:
-    The Cartersian coordinates of the upper-right corner of the mesh.
+    The Cartesian coordinates of the upper-right corner of the mesh.
 
     *Default*: None
 
@@ -348,7 +348,7 @@ displayed. This element takes the following attributes:
 ------------------------------
 
 The ``<write_source>`` element has no attributes and has an accepted value of
-"on" or "off". If set to "on", a binary source file will be written to diskat
+"on" or "off". If set to "on", a binary source file will be written to disk at
 the end of the run that can be used as a starting source for another run.
 
   *Default*: off
@@ -398,7 +398,7 @@ could be written as:
 
 .. code-block:: xml
 
-    <?xml version="1.0">
+    <?xml version="1.0"?>
     <geometry>
       <!-- This is a comment -->
 
@@ -454,17 +454,17 @@ The following quadratic surfaces can be modeled:
     specified are ":math:`A \: B \: C \: D`".
 
   :x-cylinder:
-    An infinite cylinder whose length is paralle to the x-axis. This is a
+    An infinite cylinder whose length is parallel to the x-axis. This is a
     quadratic surface of the form :math:`(y - y_0)^2 + (z - z_0)^2 = R^2`. The
     coefficients specified are ":math:`y_0 \: z_0 \: R`".
 
   :y-cylinder:
-    An infinite cylinder whose length is paralle to the y-axis. This is a
+    An infinite cylinder whose length is parallel to the y-axis. This is a
     quadratic surface of the form :math:`(x - x_0)^2 + (z - z_0)^2 = R^2`. The
     coefficients specified are ":math:`x_0 \: z_0 \: R`".
 
   :z-cylinder:
-    An infinite cylinder whose length is paralle to the z-axis. This is a
+    An infinite cylinder whose length is parallel to the z-axis. This is a
     quadratic surface of the form :math:`(x - x_0)^2 + (y - y_0)^2 = R^2`. The
     coefficients specified are ":math:`x_0 \: y_0 \: R`".
 
@@ -509,6 +509,30 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+  :rotation:
+    If the cell is filled with a universe, this element specifies the angles in
+    degrees about the x, y, and z axes that the filled universe should be
+    rotated. Should be given as three real numbers.For example, if you wanted to
+    rotate the filled universe by 90 degrees about the z-axis, the cell element
+    would look something like:
+
+    .. code-block:: xml
+
+        <cell fill="..." rotation="0 0 90" />
+
+    *Default*: None
+
+  :translation:
+    If the cell is filled with a universe, this element specifies a vector that
+    is used to translate (shift) the universe. Should be given as three real
+    numbers.
+
+    .. note:: Any translation operation is applied after a rotation, if also
+              specified.
+
+    *Default*: None
+
+
 ``<lattice>`` Element
 ---------------------
 
@@ -520,8 +544,9 @@ universe. A ``<lattice>`` accepts the following attributes or sub-elements:
   :id:
     A unique integer that can be used to identify the surface.
 
-  :type: A string indicating the arrangement of lattice cells. Currently, the
-    only accepted option is "rectangular".
+  :type:
+    A string indicating the arrangement of lattice cells. Currently, the only
+    accepted option is "rectangular".
 
     *Default*: rectangular
 
@@ -563,7 +588,6 @@ Each ``material`` element can have the following attributes or sub-elements:
     A unique integer that can be used to identify the material.
 
   :density:
-
     An element with attributes/sub-elements called ``value`` and ``units``. The
     ``value`` attribute is the numeric value of the density while the ``units``
     can be "g/cm3", "kg/m3", "atom/b-cm", "atom/cm3", or "sum". The "sum" unit
@@ -579,10 +603,12 @@ Each ``material`` element can have the following attributes or sub-elements:
     desired nuclide while the ``xs`` attribute is the cross-section
     identifier. Finally, the ``ao`` and ``wo`` attributes specify the atom or
     weight percent of that nuclide within the material, respectively. One
-    example would be as follows::
+    example would be as follows:
 
-      <nuclide name="H-1" xs="70c" ao="2.0" />
-      <nuclide name="O-16" xs="70c" ao="1.0" />
+    .. code-block:: xml
+
+        <nuclide name="H-1" xs="70c" ao="2.0" />
+        <nuclide name="O-16" xs="70c" ao="1.0" />
 
     .. note:: If one nuclide is specified in atom percent, all others must also
               be given in atom percent. The same applies for weight percentages.
@@ -847,7 +873,7 @@ sub-elements:
       Specifies the cell or material unique id for the color specification.
 
     :rgb:
-      Specifies the custom color for the cell or material.  Should be 3 intergers separated
+      Specifies the custom color for the cell or material.  Should be 3 integers separated
       by spaces.
 
     *Default*: None
@@ -855,7 +881,7 @@ sub-elements:
   :mask:
     The special ``mask`` sub-element allows for the selective plotting of *only*
     user-specified cells or materials.  Only one ``mask`` element is allowed per ``plot``
-    element, and it must contain as atributes or sub-elements a background masking color and
+    element, and it must contain as attributes or sub-elements a background masking color and
     a list of cells or materials to plot:
 
     :components:

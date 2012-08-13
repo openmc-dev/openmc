@@ -69,6 +69,10 @@ the problem at hand (mostly on the number of nuclides in the problem).</p>
 <div class="section" id="new-features">
 <h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li>Rotation and translation for filled cells.</li>
+<li>Ability to store state points and use them to restart runs.</li>
+<li>Fixed source calculations (no subcritical multiplication however).</li>
+<li>Expanded options for external source distribution.</li>
 <li>Ability to tally reaction rates for individual nuclides within a material.</li>
 <li>Reduced memory usage by removing redundant storage or some cross-sections.</li>
 <li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/3bd35b">3bd35b</a>: Log-log interpolation for URR probability tables.</li>
@@ -78,6 +82,12 @@ the problem at hand (mostly on the number of nuclides in the problem).</p>
 <div class="section" id="bug-fixes">
 <h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/1c472d">1c472d</a>: Fixed survival biasing with probability tables.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/3c6e80">3c6e80</a>: Fixed writing tallies with no filters.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/460ef1">460ef1</a>: Invalid results for duplicate tallies.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/0069d5">0069d5</a>: Fixed bug with 0 inactive batches.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/7af2cf">7af2cf</a>: Fixed bug in score_analog_tallies.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/85a60e">85a60e</a>: Pick closest angular distribution for law 61.</li>
 <li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/3212f5">3212f5</a>: Fixed issue with blank line at beginning of XML files.</li>
 </ul>
 </div>

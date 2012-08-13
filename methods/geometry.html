@@ -94,9 +94,41 @@ material, known as &#8220;cells&#8221;.</p>
 <img class="math" src="../_images/math/044ccf810d8b9fed4efe9df70dc0e70667c10381.png" alt="(\bar{x},\bar{y},\bar{z})"/> and of radius <img class="math" src="../_images/math/eff43e84f8a3bcf7b6965f0a3248bc4d3a9d0cd4.png" alt="R"/> can be written as</p>
 <div class="section" id="universes">
 <h3>4.1.1. Universes<a class="headerlink" href="#universes" title="Permalink to this headline">¶</a></h3>
+<p>OpenMC supports universe-based geometry similar to the likes of <a class="reference external" href="http://mcnp.lanl.gov">MCNP</a> and
+<a class="reference external" href="http://montecarlo.vtt.fi">Serpent</a>. This capability enables user to model any identical repeated
+structures once and then fill them in various spots in the geometry. A
+prototypical example of a repeated structure would be a fuel pin within a fuel
+assembly or a fuel assembly within a core.</p>
+<p>Each closed volume, or cell, in OpenMC can either be filled with a normal
+material or with a universe. If the cell is filled with a univese, only the
+region of the universe that is within the defined boundaries of the parent cell
+will be present in the geometry. That is to say, even though a collection of
+cells in a universe may extend to infinity, not all of the universe will be
+&#8220;visible&#8221; in the geometry since it will be truncated by the boundaries of the
+cell that contains it.</p>
+<p>When a cell is filled with a universe, it is possible to specify that the
+universe filling the cell should be rotated and translated. This is done through
+the <tt class="docutils literal"><span class="pre">rotation</span></tt> and <tt class="docutils literal"><span class="pre">translation</span></tt> attributes on a cell (note though that
+these can only be specified on a cell that is filled with another universe, not
+a material).</p>
+<p>It is not necessary to use or assign universes in a geometry if there are no
+repeated structures. Any cell in the geometry that is not assigned to a
+specified universe is automatically part of the &#8220;base&#8221; universe whose
+coordinates are just the normal coordinates in Euclidean space.</p>
 </div>
 <div class="section" id="lattices">
 <h3>4.1.2. Lattices<a class="headerlink" href="#lattices" title="Permalink to this headline">¶</a></h3>
+<p>Often times, repeated structures in a geometry occur in a regular pattern such
+as a rectangular or hexagonal lattice. In such a case, it would be cumbersome
+for a user to have to define the boundaries of each of the cells to be filled
+with a universe. Thus, OpenMC provides a lattice capability similar to that used
+in <a class="reference external" href="http://mcnp.lanl.gov">MCNP</a> and <a class="reference external" href="http://montecarlo.vtt.fi">Serpent</a>.</p>
+<p>The implementation of lattices is similar in principle to universes &#8211; instead
+of a cell being filled with a universe, the user can specify that it is filled
+with a finite lattice. The lattice is then defined by a two-dimensional array of
+universes that are to fill each position in the lattice. A good example of the
+use of lattices and universes can be seen in the OpenMC model for the <a class="reference external" href="https://github.com/paulromano/benchmarks/tree/master/mc-performance/openmc">Monte
+Carlo Performance benchmark</a>.</p>
 </div>
 </div>
 <div class="section" id="computing-the-distance-to-nearest-boundary">

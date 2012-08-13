@@ -151,7 +151,7 @@ make
 <h2>2.6. Cross-Section Configuration<a class="headerlink" href="#cross-section-configuration" title="Permalink to this headline">¶</a></h2>
 <p>In order to run a simulation with OpenMC, you will need cross-section data for
 each nuclide in your problem. Since OpenMC uses ACE format cross-sections, you
-can use nuclear data distributed with <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/">MCNP</a> or <a class="reference external" href="http://montecarlo.vtt.fi">Serpent</a>.</p>
+can use nuclear data distributed with <a class="reference external" href="http://mcnp.lanl.gov">MCNP</a> or <a class="reference external" href="http://montecarlo.vtt.fi">Serpent</a>.</p>
 <p>To use cross sections distributed with MCNP, change the &lt;directory&gt; element in
 the <tt class="docutils literal"><span class="pre">cross_sections.xml</span></tt> file in the root directory of the OpenMC distribution
 to the location of the MCNP cross-sections. Then, either set the
@@ -169,7 +169,7 @@ of the <tt class="docutils literal"><span class="pre">cross_sections_serpent.xml
 <p>Once you have a model built (see <a class="reference internal" href="input.html#usersguide-input"><em>Writing XML Input Files</em></a>), you can either run
 the openmc executable directly from the directory containing your XML input
 files, or you can specify as a command-line argument the directory containing
-the XML input files. For example, if the path of your OpenMC exectuable is
+the XML input files. For example, if the path of your OpenMC executable is
 <tt class="docutils literal"><span class="pre">/home/username/openmc/src/openmc</span></tt> and your XML input files are in the
 directory <tt class="docutils literal"><span class="pre">/home/username/somemodel/</span></tt>, one way to run the simulation would be:</p>
 <div class="highlight-sh"><div class="highlight"><pre><span class="nb">cd</span> /home/username/somemodel

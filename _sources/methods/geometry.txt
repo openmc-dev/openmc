@@ -67,8 +67,46 @@ can be modeled in OpenMC. For example, the equation for a sphere centered at
 Universes
 ---------
 
+OpenMC supports universe-based geometry similar to the likes of MCNP_ and
+Serpent_. This capability enables user to model any identical repeated
+structures once and then fill them in various spots in the geometry. A
+prototypical example of a repeated structure would be a fuel pin within a fuel
+assembly or a fuel assembly within a core.
+
+Each closed volume, or cell, in OpenMC can either be filled with a normal
+material or with a universe. If the cell is filled with a univese, only the
+region of the universe that is within the defined boundaries of the parent cell
+will be present in the geometry. That is to say, even though a collection of
+cells in a universe may extend to infinity, not all of the universe will be
+"visible" in the geometry since it will be truncated by the boundaries of the
+cell that contains it.
+
+When a cell is filled with a universe, it is possible to specify that the
+universe filling the cell should be rotated and translated. This is done through
+the ``rotation`` and ``translation`` attributes on a cell (note though that
+these can only be specified on a cell that is filled with another universe, not
+a material).
+
+It is not necessary to use or assign universes in a geometry if there are no
+repeated structures. Any cell in the geometry that is not assigned to a
+specified universe is automatically part of the "base" universe whose
+coordinates are just the normal coordinates in Euclidean space.
+
 Lattices
 --------
+
+Often times, repeated structures in a geometry occur in a regular pattern such
+as a rectangular or hexagonal lattice. In such a case, it would be cumbersome
+for a user to have to define the boundaries of each of the cells to be filled
+with a universe. Thus, OpenMC provides a lattice capability similar to that used
+in MCNP_ and Serpent_.
+
+The implementation of lattices is similar in principle to universes -- instead
+of a cell being filled with a universe, the user can specify that it is filled
+with a finite lattice. The lattice is then defined by a two-dimensional array of
+universes that are to fill each position in the lattice. A good example of the
+use of lattices and universes can be seen in the OpenMC model for the `Monte
+Carlo Performance benchmark`_.
 
 ------------------------------------------
 Computing the Distance to Nearest Boundary
@@ -556,3 +594,6 @@ form of the solution:
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _surfaces: http://en.wikipedia.org/wiki/Surface
+.. _MCNP: http://mcnp.lanl.gov
+.. _Serpent: http://montecarlo.vtt.fi
+.. _Monte Carlo Performance benchmark: https://github.com/paulromano/benchmarks/tree/master/mc-performance/openmc

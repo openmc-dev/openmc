@@ -56,26 +56,131 @@
 <span id="methods-statistics"></span><h1>3. Statistics<a class="headerlink" href="#statistics" title="Permalink to this headline">¶</a></h1>
 <p>As was discussed briefly in <a class="reference internal" href="introduction.html#methods-introduction"><em>Introduction</em></a>, any given result from a
 Monte Carlo calculation, colloquially known as a &#8220;tally&#8221;, represents an estimate
-of the mean of some random variable of interest. This random variable typically
-corresponds to some physical quantity like a reaction rate, a net current across
-some surface, or the neutron flux in a region. Given that all tallies are
-produced by a stochastic process, there is an associated uncertainty with each
-value reported. It is important to understand how the uncertainty is calculated
-and what it tells us about our results. To that end, we will introduce a number
-of theorems and results from statistics that should shed some light on the
-interpretation of uncertainties.</p>
+of the mean of some <a class="reference external" href="http://en.wikipedia.org/wiki/Random_variable">random variable</a> of interest. This random variable
+typically corresponds to some physical quantity like a reaction rate, a net
+current across some surface, or the neutron flux in a region. Given that all
+tallies are produced by a <a class="reference external" href="http://en.wikipedia.org/wiki/Stochastic_process">stochastic process</a>, there is an associated
+uncertainty with each value reported. It is important to understand how the
+uncertainty is calculated and what it tells us about our results. To that end,
+we will introduce a number of theorems and results from statistics that should
+shed some light on the interpretation of uncertainties.</p>
 <div class="section" id="law-of-large-numbers">
 <h2>3.1. Law of Large Numbers<a class="headerlink" href="#law-of-large-numbers" title="Permalink to this headline">¶</a></h2>
-<p>Let <img class="math" src="../_images/math/c0e436a4c473266b3c2ed35c65e3d384f91ba131.png" alt="X_1, X_2, \dots, X_n"/> be an infinite sequence of independent,
-identically-distributed random variables with expected values <img class="math" src="../_images/math/32dae0bce8afa63ef96324685abd41df435cd92e.png" alt="E(X_1) =
-E(X_2) = \mu"/>. The sample mean <img class="math" src="../_images/math/2ad0a92f0036a3d39d78a8e8ed331b3b05cfd4e4.png" alt="\bar{X_n} = \frac{X_1 + \dots + X_n}{n}"/>
-converges in probability to the true mean, i.e. for all <img class="math" src="../_images/math/ce56cfc237a035a5b060ddc685c710b3fa4af2e8.png" alt="\epsilon &gt; 0"/></p>
+<p>The <a class="reference external" href="http://en.wikipedia.org/wiki/Law_of_large_numbers">law of large numbers</a> is an important statistical result that tells us
+that the average value of the result a large number of repeated experiments
+should be close to the <a class="reference external" href="http://en.wikipedia.org/wiki/Expected_value">expected value</a>. Let <img class="math" src="../_images/math/c0e436a4c473266b3c2ed35c65e3d384f91ba131.png" alt="X_1, X_2, \dots, X_n"/> be an
+infinite sequence of <a class="reference external" href="http://en.wikipedia.org/wiki/Independent_and_identically_distributed_random_variables">independent, identically-distributed random variables</a>
+with expected values <img class="math" src="../_images/math/07bb11ae1c5b7ecec7b86faa534909490bd0833e.png" alt="E(X_1) = E(X_2) = \mu"/>. One form of the law of large
+numbers states that the sample mean <img class="math" src="../_images/math/5bb8b0299f0ba3f1661e8e4c62232751eab8fd33.png" alt="\bar{X_n} = \frac{X_1 + \dots +
+X_n}{n}"/> <a class="reference external" href="http://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_probability">converges in probability</a> to the true mean, i.e. for all
+<img class="math" src="../_images/math/ce56cfc237a035a5b060ddc685c710b3fa4af2e8.png" alt="\epsilon &gt; 0"/></p>
 <div class="math">
 <p><img src="../_images/math/54b533b0558a6c319ad7d12a02144a6f255efef8.png" alt="\lim\limits_{n\rightarrow\infty} P \left ( \left | \bar{X}_n - \mu \right |
 \ge \epsilon \right ) = 0."/></p>
 </div></div>
+<div class="section" id="central-limit-theorem">
+<span id="id1"></span><h2>3.2. Central Limit Theorem<a class="headerlink" href="#central-limit-theorem" title="Permalink to this headline">¶</a></h2>
+<p>The <a class="reference internal" href="#id1">central limit theorem</a> (CLT) is perhaps the most well-known and ubiquitous
+statistical theorem that has far-reaching implications across many
+disciplines. The CLT is similar to the law of large numbers in that it tells us
+the limiting behavior of the sample mean. Whereas the law of large numbers tells
+us only that the value of the sample mean will converge to the expected value of
+the distribution, the CLT says that the distribution of the sample mean will
+converge to a <a class="reference external" href="http://en.wikipedia.org/wiki/Normal_distribution">normal distribution</a>. As we defined before, let <img class="math" src="../_images/math/e9b82abfdfa6e7c071c9f09f7fba17587aca1a7b.png" alt="X_1, X_2,
+\dots, X_n"/> be an infinite sequence of independent, identically-distributed
+random variables with expected values <img class="math" src="../_images/math/579131a66a6e936a82c576949963378c8d39df53.png" alt="E(X_i) = \mu"/> and variances
+<img class="math" src="../_images/math/2803543713e7a11fa363ad2e73f90ccc54e6e0de.png" alt="\text{Var} (X_i) = \sigma^2 &lt; \infty"/>. Note that we don&#8217;t require that
+these random variables take on any particular distribution &#8211; they can be
+normal, log-normal, Weibull, etc. The central limit theorem states that as
+<img class="math" src="../_images/math/2fb36611168cc2a44bd204a770f1787f9f0c758f.png" alt="n \rightarrow \infty"/>, the random variable <img class="math" src="../_images/math/62ec91bdf7b606c4842e9d449a0171a168435fb0.png" alt="\sqrt{n} (\bar{X}_n -
+\mu)"/> <a class="reference external" href="http://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_distribution">converges in distribution</a> to the standard normal distribution:</p>
+<div class="math" id="equation-central-limit-theorem">
+<p><span class="eqno">(1)</span><img src="../_images/math/2869a05d52d095973e44b463f47d55eafcc70fa7.png" alt="\sqrt{n} \left ( \frac{1}{n} \sum_{i=1}^n X_i - \mu \right ) \xrightarrow{d}
+\mathcal{N} (0, \sigma^2)"/></p>
+</div></div>
+<div class="section" id="estimating-statistics-of-a-random-variable">
+<h2>3.3. Estimating Statistics of a Random Variable<a class="headerlink" href="#estimating-statistics-of-a-random-variable" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="mean">
+<h3>3.3.1. Mean<a class="headerlink" href="#mean" title="Permalink to this headline">¶</a></h3>
+<p>Given independent samples drawn from a random variable, the sample mean is
+simply an estimate of the average value of the random variable. In a Monte Carlo
+simulation, the random variable represents physical quantities that we want
+tallied. If <img class="math" src="../_images/math/6a47ca0fe7cb276abc022af6ac88ddae1a9d6894.png" alt="X"/> is the random variable with <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/> observations
+<img class="math" src="../_images/math/aa142101c9e55be687db5ed934821fd144de6ac4.png" alt="x_1, x_2, \dots, x_N"/>, then an unbiased estimator for the population mean
+is the sample mean, defined as</p>
+<div class="math" id="equation-sample-mean">
+<p><span class="eqno">(2)</span><img src="../_images/math/a375bac6a25dbabfdda5b25012ebb0648f18fed8.png" alt="\bar{x} = \frac{1}{N} \sum_{i=1}^N x_i."/></p>
+</div></div>
+<div class="section" id="variance">
+<h3>3.3.2. Variance<a class="headerlink" href="#variance" title="Permalink to this headline">¶</a></h3>
+<p>The variance of a population indicates how spread out different members of the
+population are. For a Monte Carlo simulation, the variance of a tally is a
+measure of how precisely we know the tally value, with a lower variance
+indicating a higher precision. There are a few different estimators for the
+population variance. One of these is the second central moment of the
+distribution also known as the biased sample variance:</p>
+<div class="math" id="equation-biased-variance">
+<p><span class="eqno">(3)</span><img src="../_images/math/c4e66f263a29337cbd2e5eb6510b34456dc79f72.png" alt="s_N^2 = \frac{1}{N} \sum_{i=1}^N \left ( x_i - \bar{x} \right )^2 = \left (
+\frac{1}{N} \sum_{i=1}^N x_i^2 \right ) - \bar{x}^2."/></p>
+</div><p>This estimator is biased because its expected value is actually not equal to the
+population variance:</p>
+<div class="math" id="equation-biased-variance-expectation">
+<p><span class="eqno">(4)</span><img src="../_images/math/457ebbdd58a1797c6a781adc38ba91884c2f568b.png" alt="E[s_N^2] = \frac{N - 1}{N} \sigma^2"/></p>
+</div><p>where <img class="math" src="../_images/math/741fb9098efcb98055f467f87630a5d0ca599b6b.png" alt="\sigma^2"/> is the actual population variance. As a result, this
+estimator should not be used in practice. Instead, one can use <a class="reference external" href="http://en.wikipedia.org/wiki/Bessel's_correction">Bessel&#8217;s
+correction</a> to come up with an unbiased sample variance estimator:</p>
+<div class="math" id="equation-unbiased-variance">
+<p><span class="eqno">(5)</span><img src="../_images/math/888d03a43b4a11529ee58d8f91c4285100073191.png" alt="s^2 = \frac{1}{N - 1} \sum_{i=1}^N \left ( x_i - \bar{x} \right )^2 =
+\frac{1}{N - 1} \left ( \sum_{i=1}^N x_i^2 - N\bar{x}^2 \right )."/></p>
+</div><p>This is the estimator normally used to calculate sample variance. The final form
+in equation <a href="#equation-unbiased-variance">(5)</a> is especially suitable for computation since
+we do not need to store the values at every realization of the random variable
+as the simulation proceeds. Instead, we can simply keep a running sum and sum of
+squares of the values at each realization of the random variable and use that to
+calulate the variance.</p>
+</div>
+<div class="section" id="variance-of-the-mean">
+<h3>3.3.3. Variance of the Mean<a class="headerlink" href="#variance-of-the-mean" title="Permalink to this headline">¶</a></h3>
+<p>The previous sections discussed how to estimate the mean and variance of a
+random variable using statistics on a finite sample. However, we are generally
+not interested in the <em>variance of the random variable</em> itself; we are more
+interested in the <em>variance of the estimated mean</em>. The sample mean is the
+result of our simulation, and the variance of the sample mean will tell us how
+confident we should be in our answers.</p>
+<p>Fortunately, it is quite easy to estimate the variance of the mean if we are
+able to estimate the variance of the random variable. We start with the
+observation that if we have a series of uncorrelated random variables, we can
+write the variance of their sum as the sum of their variances:</p>
+<div class="math" id="equation-bienayme-formula">
+<p><span class="eqno">(6)</span><img src="../_images/math/f0291a889cbdc42198c8566b4c98813a9cc5edec.png" alt="\text{Var} \left ( \sum_{i=1}^N X_i \right ) = \sum_{i=1}^N \text{Var} \left
+( X_i \right )"/></p>
+</div><p>This result is known as the Bienaymé formula. We can use this result to
+determine a formula for the variance of the sample mean. Assuming that the
+realizations of our random variable are again identical,
+independently-distributed samples, then we have that</p>
+<div class="math" id="equation-sample-variance-mean">
+<p><span class="eqno">(7)</span><img src="../_images/math/e7cc6034d7dabf98113bd86b88588c54c9d48249.png" alt="\text{Var} \left ( \bar{X} \right ) = \text{Var} \left ( \frac{1}{N}
+\sum_{i=1}^N X_i \right ) = \frac{1}{N^2} \sum_{i=1}^N \text{Var} \left (
+X_i \right ) = \frac{1}{N^2} \left ( N\sigma^2 \right ) =
+\frac{\sigma^2}{N}."/></p>
+</div><p>We can combine this result with equation <a href="#equation-unbiased-variance">(5)</a> to come up with
+an unbiased estimator for the variance of the sample mean:</p>
+<div class="math" id="equation-sample-variance-mean-formula">
+<p><span class="eqno">(8)</span><img src="../_images/math/f07519008c3f2c717af15cd95f7acf81ec574563.png" alt="s_{\bar{X}}^2 = \frac{1}{N - 1} \left ( \frac{1}{N} \sum_{i=1}^N x_i^2 -
+\bar{x}^2 \right )."/></p>
+</div><p>At this point, an important distinction should be made between the estimator for
+the variance of the population and the estimator for the variance of the
+mean. As the number of realizations increases, the estimated variance of the
+population based on equation <a href="#equation-unbiased-variance">(5)</a> will tend to the true
+population variance. On the other hand, the estimated variance of the mean will
+tend to zero as the number of realizations increases. A practical interpretation
+of this is that the longer you run a simulation, the better you know your
+results. Therefore, by running a simulation long enough, it is possible to
+reduce the stochastic uncertainty to arbitrarily low levels.</p>
+</div>
+</div>
 <div class="section" id="random-number-generation">
-<h2>3.2. Random Number Generation<a class="headerlink" href="#random-number-generation" title="Permalink to this headline">¶</a></h2>
+<h2>3.4. Random Number Generation<a class="headerlink" href="#random-number-generation" title="Permalink to this headline">¶</a></h2>
 <p>In order to sample probability distributions, one must be able to produce random
 numbers. The standard technique to do this is to generate numbers on the
 interval <img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/> from a deterministic sequence that has a properties that
@@ -90,7 +195,7 @@ simplest and commonly used algorithms is called a <a class="reference external" 
 generator</a>. We start with some random number seed <img class="math" src="../_images/math/da04290a79211712a58bf7241c9fb64251e000c3.png" alt="\xi_0"/> and a sequence
 of random numbers is generated using the following recurrence relation:</p>
 <div class="math" id="equation-lcg">
-<p><span class="eqno">(1)</span><img src="../_images/math/838ea831f2458960d581811d15ea37bae3f20014.png" alt="\xi_{i+1} = g \xi_i + c \mod M"/></p>
+<p><span class="eqno">(9)</span><img src="../_images/math/838ea831f2458960d581811d15ea37bae3f20014.png" alt="\xi_{i+1} = g \xi_i + c \mod M"/></p>
 </div><p>where <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>, <img class="math" src="../_images/math/3372c1cb6d68cf97c2d231acc0b47b95a9ed04cc.png" alt="c"/>, and <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/> are constants. The choice of these
 constants will have a profound effect on the quality and performance of the
 generator, so they should not be chosen arbitrarily. As Donald Knuth said in his
@@ -110,8 +215,8 @@ us to skip ahead in <img class="math" src="../_images/math/c0db20de736ea9b9091c5
 algorithm to do so is described in a paper by <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl_rn_arb-strides_1994.pdf">Brown</a>. This algorithm relies on
 the following relationship:</p>
 <div class="math" id="equation-lcg-skipahead">
-<p><span class="eqno">(2)</span><img src="../_images/math/29e04a6d8160c6dd91ec828d9133bcdeff0f1fdc.png" alt="\xi_{i+k} = g^k \xi_i + c \frac{g^k - 1}{g - 1} \mod M"/></p>
-</div><p>Note that equation <a href="#equation-lcg-skipahead">(2)</a> has the same form as equation <a href="#equation-lcg">(1)</a>
+<p><span class="eqno">(10)</span><img src="../_images/math/29e04a6d8160c6dd91ec828d9133bcdeff0f1fdc.png" alt="\xi_{i+k} = g^k \xi_i + c \frac{g^k - 1}{g - 1} \mod M"/></p>
+</div><p>Note that equation <a href="#equation-lcg-skipahead">(10)</a> has the same form as equation <a href="#equation-lcg">(9)</a>
 so the idea is to determine the new multiplicative and additive constants in
 <img class="math" src="../_images/math/c0db20de736ea9b9091c56adbd1e4111cc026472.png" alt="O(\log N)"/> operations.</p>
 </div>

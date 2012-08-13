@@ -476,6 +476,10 @@ contains
     ! batch
     if (trim(no_reduce_) == 'on') reduce_tallies = .false.
 
+    ! Check if the user has specified to use confidence intervals for
+    ! uncertainties rather than standard deviations
+    if (trim(confidence_intervals_) == 'on') confidence_intervals = .true.
+
   end subroutine read_settings_xml
 
 !===============================================================================

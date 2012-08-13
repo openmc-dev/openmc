@@ -1798,6 +1798,8 @@ contains
     integer :: score_index                ! scoring bin index
     integer :: i_nuclide                  ! index in nuclides array
     integer :: i_listing                  ! index in xs_listings array
+    real(8) :: t_value                    ! t-values for confidence intervals
+    real(8) :: alpha                      ! significance level for CI
     logical :: file_exists                ! does tallies.out file already exists? 
     logical :: has_filter(N_FILTER_TYPES) ! does tally have this filter?
     logical :: no_filters                 ! does tally have no filters at all?
@@ -1858,8 +1860,18 @@ contains
     open(FILE=filename, UNIT=UNIT_TALLY, STATUS='replace', &
          ACTION='write', IOSTAT=io_error)
 
+    ! Calculate t-value for confidence intervals
+    if (confidence_intervals) then
+       alpha = ONE - CONFIDENCE_LEVEL
+       t_value = t_percentile(ONE - alpha/TWO, n_realizations)
+    end if
+
     do i = 1, n_tallies
        t => tallies(i)
+
+       ! Multiply uncertainty by t-value
+       if (confidence_intervals) &
+            t % scores(:,:) % sum_sq = t_value * t % scores(:,:) % sum_sq
 
        ! Write header block
        if (t % label == "") then

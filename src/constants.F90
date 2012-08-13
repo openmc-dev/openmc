@@ -23,6 +23,9 @@ module constants
   ! Monoatomic ideal-gas scattering treatment threshold
   real(8), parameter :: FREE_GAS_THRESHOLD = 400.0
 
+  ! Significance level for confidence intervals
+  real(8), parameter :: CONFIDENCE_LEVEL = 0.95_8
+
   ! Used for surface current tallies
   real(8), parameter :: TINY_BIT = 1e-8_8
 

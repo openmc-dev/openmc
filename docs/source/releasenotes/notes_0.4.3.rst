@@ -21,6 +21,7 @@ the problem at hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
+- Option to report confidence intervals for tally results.
 - Rotation and translation for filled cells.
 - Ability to store state points and use them to restart runs.
 - Fixed source calculations (no subcritical multiplication however).

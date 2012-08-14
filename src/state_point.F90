@@ -56,12 +56,18 @@ contains
     write(UNIT_STATE) global_tallies(:) % sum
     write(UNIT_STATE) global_tallies(:) % sum_sq
 
-    ! Write out tallies sum and sum_sq
     if (tallies_on) then
+       ! Write number of tallies
        write(UNIT_STATE) n_tallies
+
+       ! Write size of each tally
        do i = 1, n_tallies
           write(UNIT_STATE) size(tallies(i) % scores, 1)
           write(UNIT_STATE) size(tallies(i) % scores, 2)
+       end do
+
+       ! Write tally sum and sum_sq
+       do i = 1, n_tallies
           do k = 1, size(tallies(i) % scores, 2)
              do j = 1, size(tallies(i) % scores, 1)
                 write(UNIT_STATE) tallies(i) % scores(j,k) % sum
@@ -149,18 +155,20 @@ contains
              call fatal_error()
           end if
 
+          ! Read dimensions of tally filters and scores and make sure they match
           do i = 1, n_tallies
-             ! Make sure dimensions match for tally filters and scores
              read(UNIT_STATE) temp(1:2)
              if (temp(1) /= size(tallies(i) % scores, 1) .or. &
                   temp(2) /= size(tallies(i) % scores, 2)) then
                 message = "Tally dimensions do not match in state point."
                 call fatal_error()
              end if
+          end do
 
+          ! Read sum and sum squared
+          do i = 1, n_tallies
              do k = 1, size(tallies(i) % scores, 2)
                 do j = 1, size(tallies(i) % scores, 1)
-                   ! Read sum and sum squared
                    read(UNIT_STATE) tallies(i) % scores(j,k) % sum
                    read(UNIT_STATE) tallies(i) % scores(j,k) % sum_sq
                 end do

@@ -16,7 +16,7 @@ contains
 
   subroutine create_state_point()
 
-    integer :: i ! loop index
+    integer :: i, j, k ! loop indices
 
     ! Set filename for binary state point
     path_state_point = 'restart.' // trim(to_str(current_batch)) // '.binary'
@@ -62,8 +62,12 @@ contains
        do i = 1, n_tallies
           write(UNIT_STATE) size(tallies(i) % scores, 1)
           write(UNIT_STATE) size(tallies(i) % scores, 2)
-          write(UNIT_STATE) tallies(i) % scores(:,:) % sum
-          write(UNIT_STATE) tallies(i) % scores(:,:) % sum_sq
+          do k = 1, size(tallies(i) % scores, 2)
+             do j = 1, size(tallies(i) % scores, 1)
+                write(UNIT_STATE) tallies(i) % scores(j,k) % sum
+                write(UNIT_STATE) tallies(i) % scores(j,k) % sum_sq
+             end do
+          end do
        end do
     end if
 
@@ -78,7 +82,7 @@ contains
 
   subroutine load_state_point()
 
-    integer :: i       ! loop index
+    integer :: i, j, k ! loop indices
     integer :: mode    ! specified run mode
     integer :: temp(3) ! temporary variable
 
@@ -154,9 +158,13 @@ contains
                 call fatal_error()
              end if
 
-             ! Read sum and sum squared
-             read(UNIT_STATE) tallies(i) % scores(:,:) % sum
-             read(UNIT_STATE) tallies(i) % scores(:,:) % sum_sq
+             do k = 1, size(tallies(i) % scores, 2)
+                do j = 1, size(tallies(i) % scores, 1)
+                   ! Read sum and sum squared
+                   read(UNIT_STATE) tallies(i) % scores(j,k) % sum
+                   read(UNIT_STATE) tallies(i) % scores(j,k) % sum_sq
+                end do
+             end do
           end do
        end if
     end if

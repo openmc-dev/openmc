@@ -55,6 +55,17 @@ Settings Specification -- settings.xml
 All simulation parameters and miscellaneous options are specified in the
 settings.xml file.
 
+``<confidence_intervals>`` Element
+----------------------------------
+
+The ``<confidence_intervals>`` element has no attributes and has an accepted
+value of "on" or "off". If set to "on", uncertainties on tally results will be
+reported as the half-width of the 95% two-sided confidence interval. If set to
+"off", uncertainties on tally results will be reported as the sample standard
+deviation.
+
+  *Default*: off
+
 ``<criticality>`` Element
 -------------------------
 
@@ -344,8 +355,21 @@ displayed. This element takes the following attributes:
 
     *Default*: 5
 
+``<write_state_point>`` Element
+-------------------------------
+
+The ``<write_state_point>`` element is used to indicate batches at which the
+user wishes to have a binary state point file written to disk. The state point
+file can be used to restart a run or to get tally results at an intermediate
+stage. This element has no attributes and should consist of a list of integers
+corresponding to batches at which a binary state point file should be written to
+disk.
+
+  *Default*: None
+
+
 ``<write_source>`` Element
-------------------------------
+--------------------------
 
 The ``<write_source>`` element has no attributes and has an accepted value of
 "on" or "off". If set to "on", a binary source file will be written to disk at

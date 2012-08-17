@@ -556,7 +556,7 @@ contains
           c % material = 0
 
        case default
-          c % material = str_to_int(word)
+          c % material = int(str_to_int(word), 4)
 
           ! Check for error
           if (c % material == ERROR_INT) then

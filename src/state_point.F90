@@ -4,6 +4,7 @@ module state_point
   use global
   use output, only: write_message, print_batch_keff
   use string, only: to_str
+  use tally_header, only: TallyObject
 
   implicit none
 
@@ -11,12 +12,13 @@ contains
 
 !===============================================================================
 ! CREATE_STATE_POINT creates a state point binary file that can be used for
-! restarting a run
+! restarting a run or for getting intermediate tally results
 !===============================================================================
 
   subroutine create_state_point()
 
     integer :: i, j, k ! loop indices
+    type(TallyObject), pointer :: t => null()
 
     ! Set filename for binary state point
     path_state_point = 'restart.' // trim(to_str(current_batch)) // '.binary'
@@ -56,22 +58,80 @@ contains
     write(UNIT_STATE) global_tallies(:) % sum
     write(UNIT_STATE) global_tallies(:) % sum_sq
 
-    if (tallies_on) then
-       ! Write number of tallies
-       write(UNIT_STATE) n_tallies
+    ! Write number of meshes
+    write(UNIT_STATE) n_meshes
 
-       ! Write size of each tally
-       do i = 1, n_tallies
-          write(UNIT_STATE) size(tallies(i) % scores, 1)
-          write(UNIT_STATE) size(tallies(i) % scores, 2)
+    ! Write information for meshes
+    do i = 1, n_meshes
+       write(UNIT_STATE) meshes(i) % type
+       write(UNIT_STATE) meshes(i) % n_dimension
+       write(UNIT_STATE) meshes(i) % dimension
+       write(UNIT_STATE) meshes(i) % lower_left
+       write(UNIT_STATE) meshes(i) % upper_right
+       write(UNIT_STATE) meshes(i) % width
+    end do
+
+    ! Write number of tallies
+    write(UNIT_STATE) n_tallies
+
+    ! Write size of each tally
+    do i = 1, n_tallies
+       ! Get pointer to tally
+       t => tallies(i)
+
+       write(UNIT_STATE) size(t % scores, 1)
+       write(UNIT_STATE) size(t % scores, 2)
+
+       ! Write number of filters
+       write(UNIT_STATE) t % n_filters
+       do j = 1, t % n_filters
+          write(UNIT_STATE) t % filters(j)
+          write(UNIT_STATE) t % n_filter_bins(t % filters(j))
+
+          select case (t % filters(j))
+          case(FILTER_UNIVERSE)
+             write(UNIT_STATE) t % universe_bins(:) % scalar
+          case(FILTER_MATERIAL)
+             write(UNIT_STATE) t % material_bins(:) % scalar
+          case(FILTER_CELL)
+             write(UNIT_STATE) t % cell_bins(:) % scalar
+          case(FILTER_CELLBORN)
+             write(UNIT_STATE) t % cellborn_bins(:) % scalar
+          case(FILTER_SURFACE)
+             write(UNIT_STATE) t % surface_bins(:) % scalar
+          case(FILTER_MESH)
+             write(UNIT_STATE) t % mesh
+          case(FILTER_ENERGYIN)
+             write(UNIT_STATE) t % energy_in
+          case(FILTER_ENERGYOUT)
+             write(UNIT_STATE) t % energy_out
+          end select
        end do
 
+       ! Write number of nuclide bins
+       write(UNIT_STATE) t % n_nuclide_bins
+
+       ! Write nuclide bins
+       do j = 1, t % n_nuclide_bins
+          if (t % nuclide_bins(j) % scalar > 0) then
+             write(UNIT_STATE) nuclides(t % nuclide_bins(j) % scalar) % zaid
+          else
+             write(UNIT_STATE) t % nuclide_bins(j) % scalar
+          end if
+       end do
+
+       ! Write number of score bins
+       write(UNIT_STATE) t % n_score_bins
+       write(UNIT_STATE) t % score_bins(:) % scalar
+    end do
+
+    if (tallies_on) then
        ! Write tally sum and sum_sq
        do i = 1, n_tallies
-          do k = 1, size(tallies(i) % scores, 2)
-             do j = 1, size(tallies(i) % scores, 1)
-                write(UNIT_STATE) tallies(i) % scores(j,k) % sum
-                write(UNIT_STATE) tallies(i) % scores(j,k) % sum_sq
+          do k = 1, size(t % scores, 2)
+             do j = 1, size(t % scores, 1)
+                write(UNIT_STATE) t % scores(j,k) % sum
+                write(UNIT_STATE) t % scores(j,k) % sum_sq
              end do
           end do
        end do
@@ -83,7 +143,8 @@ contains
   end subroutine create_state_point
 
 !===============================================================================
-! LOAD_STATE_POINT
+! LOAD_STATE_POINT loads data from a state point file to either continue a run
+! or to print intermediate tally results
 !===============================================================================
 
   subroutine load_state_point()
@@ -91,6 +152,8 @@ contains
     integer :: i, j, k ! loop indices
     integer :: mode    ! specified run mode
     integer :: temp(3) ! temporary variable
+    integer, allocatable :: int_array(:)
+    real(8), allocatable :: real_array(:)
 
     ! Write message
     message = "Loading state point " // trim(path_state_point) // "..."
@@ -146,34 +209,99 @@ contains
        read(UNIT_STATE) global_tallies(:) % sum
        read(UNIT_STATE) global_tallies(:) % sum_sq
 
-       ! Read tally data 
-       if (restart_batch > n_inactive) then
-          ! Read number of tallies and make sure it matches
-          read(UNIT_STATE) temp(1)
-          if (temp(1) /= n_tallies) then
-             message = "Number of tallies does not match in state point."
+       ! Read number of meshes
+       read(UNIT_STATE) temp(1)
+       if (temp(1) /= n_meshes) then
+          message = "Number of meshes does not match in state point."
+          call fatal_error()
+       end if
+
+       MESH_LOOP: do i = 1, n_meshes
+          ! Read type of mesh and dimension
+          read(UNIT_STATE) temp(1:2)
+
+          ! Allocate temporary arrays
+          allocate(int_array(temp(2)))
+          allocate(real_array(temp(2)))
+
+          ! Read dimension, lower_left, upper_right, width
+          read(UNIT_STATE) int_array
+          read(UNIT_STATE) real_array
+          read(UNIT_STATE) real_array
+          read(UNIT_STATE) real_array
+
+          ! Deallocate temporary arrays
+          deallocate(int_array)
+          deallocate(real_array)
+       end do MESH_LOOP
+
+       ! Read number of tallies and make sure it matches
+       read(UNIT_STATE) temp(1)
+       if (temp(1) /= n_tallies) then
+          message = "Number of tallies does not match in state point."
+          call fatal_error()
+       end if
+
+       TALLY_METADATA: do i = 1, n_tallies
+          ! Read dimensions of tally filters and scores and make sure they
+          ! match
+          read(UNIT_STATE) temp(1:2)
+          if (temp(1) /= size(tallies(i) % scores, 1) .or. &
+               temp(2) /= size(tallies(i) % scores, 2)) then
+             message = "Tally dimensions do not match in state point."
              call fatal_error()
           end if
 
-          ! Read dimensions of tally filters and scores and make sure they match
-          do i = 1, n_tallies
-             read(UNIT_STATE) temp(1:2)
-             if (temp(1) /= size(tallies(i) % scores, 1) .or. &
-                  temp(2) /= size(tallies(i) % scores, 2)) then
-                message = "Tally dimensions do not match in state point."
-                call fatal_error()
-             end if
-          end do
+          ! Read number of filters
+          read(UNIT_STATE) temp(1)
+
+          FILTER_LOOP: do j = 1, temp(1)
+             ! Read filter type and number of bins
+             read(UNIT_STATE) temp(2:3)
+
+             ! Read filter bins
+             select case (temp(2))
+             case (FILTER_MESH)
+                allocate(int_array(1))
+                read(UNIT_STATE) int_array
+                deallocate(int_array)
+             case (FILTER_ENERGYIN, FILTER_ENERGYOUT)
+                allocate(real_array(temp(3) + 1))
+                read(UNIT_STATE) real_array
+                deallocate(real_array)
+             case default
+                allocate(int_array(temp(3)))
+                read(UNIT_STATE) int_array
+             end select
+          end do FILTER_LOOP
+
+          ! Read number of nuclides
+          read(UNIT_STATE) temp(1)
+
+          ! Read nuclide bins
+          allocate(int_array(temp(1)))
+          read(UNIT_STATE) int_array
+          deallocate(int_array)
+
+          ! Read number of scores
+          read(UNIT_STATE) temp(1)
+
+          ! Read nuclide bins
+          allocate(int_array(temp(1)))
+          read(UNIT_STATE) int_array
+          deallocate(int_array)
+       end do TALLY_METADATA
 
           ! Read sum and sum squared
-          do i = 1, n_tallies
+       if (restart_batch > n_inactive) then
+          TALLY_SCORES: do i = 1, n_tallies
              do k = 1, size(tallies(i) % scores, 2)
                 do j = 1, size(tallies(i) % scores, 1)
                    read(UNIT_STATE) tallies(i) % scores(j,k) % sum
                    read(UNIT_STATE) tallies(i) % scores(j,k) % sum_sq
                 end do
              end do
-          end do
+          end do TALLY_SCORES
        end if
     end if
 
@@ -183,7 +311,8 @@ contains
   end subroutine load_state_point
 
 !===============================================================================
-! REPLAY_BATCH_HISTORY
+! REPLAY_BATCH_HISTORY displays batch keff and entropy for each batch stored in
+! a state point file
 !===============================================================================
 
   subroutine replay_batch_history

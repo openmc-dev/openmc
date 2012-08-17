@@ -7,7 +7,7 @@ module ace
                                   dict_has_key, dict_delete, dict_keys
   use datatypes_header,     only: DictionaryCI, ListKeyValueCI
   use endf,                 only: reaction_name
-  use error,                only: fatal_error
+  use error,                only: fatal_error, warning
   use fission,              only: nu_total
   use global
   use material_header,      only: Material
@@ -1088,6 +1088,13 @@ contains
           end do
        end do
     end do
+
+    ! Check for negative values
+    if (any(nuc % urr_data % prob < ZERO)) then
+       message = "Negative value(s) found on probability table for nuclide " &
+            // nuc % name
+       call warning()
+    end if
 
   end subroutine read_unr_res
 

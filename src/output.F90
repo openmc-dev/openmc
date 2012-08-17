@@ -841,7 +841,7 @@ contains
     integer :: size_angle        ! memory used for an angle distribution (bytes)
     integer :: size_energy       ! memory used for a  energy distributions (bytes)
     integer :: size_urr          ! memory used for probability tables (bytes)
-    character(4) :: law          ! secondary energy distribution law
+    character(11) :: law         ! secondary energy distribution law
     type(Reaction), pointer :: rxn => null()
     type(UrrData),  pointer :: urr => null()
 
@@ -891,7 +891,7 @@ contains
 
        write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
             reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
-            law, rxn % threshold, size_angle, size_energy
+            law(1:4), rxn % threshold, size_angle, size_energy
 
        ! Accumulate data size
        size_xs = size_xs + (nuc % n_grid - rxn%threshold + 1) * 8

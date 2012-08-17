@@ -1870,8 +1870,13 @@ contains
        t => tallies(i)
 
        ! Multiply uncertainty by t-value
-       if (confidence_intervals) &
-            t % scores(:,:) % sum_sq = t_value * t % scores(:,:) % sum_sq
+       if (confidence_intervals) then
+          do k = 1, size(t % scores, 2)
+             do j = 1, size(t % scores, 1)
+                t % scores(j,k) % sum_sq = t_value * t % scores(j,k) % sum_sq
+             end do
+          end do
+       end if
 
        ! Write header block
        if (t % label == "") then

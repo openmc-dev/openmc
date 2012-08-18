@@ -25,13 +25,6 @@ contains
 
     if (master) call header("CRITICALITY TRANSPORT SIMULATION", level=1)
 
-    ! Start timer
-    if (tallies_on) then
-       call timer_start(time_active)
-    else
-       call timer_start(time_inactive)
-    end if
-
     ! Allocate particle
     allocate(p)
 
@@ -42,13 +35,13 @@ contains
     ! LOOP OVER BATCHES
     BATCH_LOOP: do current_batch = 1, n_batches
 
+       call initialize_batch()
+
        ! Handle restart runs
        if (restart_run .and. current_batch <= restart_batch) then
           call replay_batch_history()
           cycle BATCH_LOOP
        end if
-
-       call initialize_batch()
 
        ! =======================================================================
        ! LOOP OVER GENERATIONS
@@ -105,6 +98,16 @@ contains
 
        ! Reset total starting particle weight used for normalizing tallies
        total_weight = ZERO
+
+       if (current_batch == n_inactive + 1) then
+          ! This will start the active timer at the first non-inactive batch
+          ! (including batch 1 if there are no inactive batches).
+          call timer_start(time_active)
+       elseif (current_batch == 1) then
+          ! If there are inactive batches, start the inactive timer on the first
+          ! batch.
+          call timer_start(time_inactive)
+       end if
 
   end subroutine initialize_batch
 

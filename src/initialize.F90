@@ -159,9 +159,9 @@ contains
   subroutine setup_mpi()
 
 #ifdef MPI
-    integer        :: bank_blocks(5) ! Count for each datatype
-    integer        :: bank_types(5)  ! Datatypes
-    integer(MPI_ADDRESS_KIND) :: bank_disp(5)   ! Displacements
+    integer        :: bank_blocks(4) ! Count for each datatype
+    integer        :: bank_types(4)  ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: bank_disp(4)   ! Displacements
     type(Bank)     :: b
 
     mpi_enabled = .true.
@@ -195,19 +195,18 @@ contains
     end if
 
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(b % id,  bank_disp(1), mpi_err)
-    call MPI_GET_ADDRESS(b % wgt, bank_disp(2), mpi_err)
-    call MPI_GET_ADDRESS(b % xyz, bank_disp(3), mpi_err)
-    call MPI_GET_ADDRESS(b % uvw, bank_disp(4), mpi_err)
-    call MPI_GET_ADDRESS(b % E,   bank_disp(5), mpi_err)
+    call MPI_GET_ADDRESS(b % wgt, bank_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(b % xyz, bank_disp(2), mpi_err)
+    call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
+    call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
 
     ! Adjust displacements 
     bank_disp = bank_disp - bank_disp(1)
     
     ! Define MPI_BANK for fission sites
-    bank_blocks = (/ 1, 1, 3, 3, 1 /)
-    bank_types = (/ MPI_INTEGER8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(5, bank_blocks, bank_disp, & 
+    bank_blocks = (/ 1, 3, 3, 1 /)
+    bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
+    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 

@@ -21,6 +21,8 @@ the problem at hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
+- Option to specify <upper_right> for tally meshes.
+
 ---------
 Bug Fixes
 ---------

@@ -913,7 +913,6 @@ contains
     if (nu == 0 .or. n_bank == 3*work) return
     do i = int(n_bank,4) + 1, int(min(n_bank + nu, 3*work),4)
        ! Bank source neutrons by copying particle data
-       fission_bank(i) % id  = p % id
        fission_bank(i) % xyz = p % coord0 % xyz
 
        ! Set weight of fission bank site

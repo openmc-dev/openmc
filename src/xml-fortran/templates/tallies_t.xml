@@ -8,6 +8,7 @@
     <component name="type" type="word" length="12" />
     <component name="dimension" type="integer-array" />
     <component name="lower_left" type="double-array" />
+    <component name="upper_right" type="double-array" />
     <component name="width" type="double-array" />
   </typedef>
 

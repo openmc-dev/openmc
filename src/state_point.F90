@@ -272,6 +272,7 @@ contains
              case default
                 allocate(int_array(temp(3)))
                 read(UNIT_STATE) int_array
+                deallocate(int_array)
              end select
           end do FILTER_LOOP
 

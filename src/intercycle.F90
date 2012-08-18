@@ -4,6 +4,7 @@ module intercycle
 
   use error,           only: fatal_error, warning
   use global
+  use math,            only: t_percentile
   use mesh,            only: count_bank_sites
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message, print_batch_keff
@@ -361,6 +362,8 @@ contains
   subroutine calculate_keff()
 
     real(8) :: temp(2) ! used to reduce sum and sum_sq
+    real(8) :: alpha   ! significance level for CI
+    real(8) :: t_value ! t-value for confidence intervals
 
     message = "Calculate batch keff..."
     call write_message(8)
@@ -401,8 +404,16 @@ contains
           keff = global_tallies(K_ANALOG) % sum / n_realizations
 
           if (n_realizations > 1) then
+             if (confidence_intervals) then
+                ! Calculate t-value for confidence intervals
+                alpha = ONE - CONFIDENCE_LEVEL
+                t_value = t_percentile(ONE - alpha/TWO, n_realizations)
+             else
+                t_value = ONE
+             end if
+
              ! Standard deviation of the sample mean of k
-             keff_std = sqrt((global_tallies(K_ANALOG) % sum_sq / &
+             keff_std = t_value * sqrt((global_tallies(K_ANALOG) % sum_sq / &
                   n_realizations - keff * keff) / (n_realizations - 1))
           end if
        else
@@ -427,8 +438,16 @@ contains
           keff = temp(1) / n_realizations
           
           if (n_realizations > 1) then
+             if (confidence_intervals) then
+                ! Calculate t-value for confidence intervals
+                alpha = ONE - CONFIDENCE_LEVEL
+                t_value = t_percentile(ONE - alpha/TWO, n_realizations)
+             else
+                t_value = ONE
+             end if
+
              ! Standard deviation of the sample mean of k
-             keff_std = sqrt((temp(2)/n_realizations - keff*keff) / &
+             keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) / &
                   (n_realizations - 1))
           end if
        end if

@@ -2,6 +2,7 @@ module state_point
 
   use error,        only: warning, fatal_error
   use global
+  use math,         only: t_percentile
   use output,       only: write_message, print_batch_keff
   use string,       only: to_str
   use tally_header, only: TallyObject
@@ -318,7 +319,9 @@ contains
 
   subroutine replay_batch_history
 
-    real(8), save :: temp(2) = ZERO
+    real(8), save :: temp(2) = ZERO ! temporary values for keff
+    real(8)       :: alpha          ! significance level for CI
+    real(8)       :: t_value        ! t-value for confidence intervals
 
     ! Write message at beginning
     if (current_batch == 1) then
@@ -337,8 +340,18 @@ contains
        temp(1) = temp(1) + k_batch(current_batch)
        temp(2) = temp(2) + k_batch(current_batch)*k_batch(current_batch)
 
+       ! calculate mean keff
        keff = temp(1) / n_realizations
-       keff_std = sqrt((temp(2)/n_realizations - keff*keff) &
+
+       if (confidence_intervals) then
+          ! Calculate t-value for confidence intervals
+          alpha = ONE - CONFIDENCE_LEVEL
+          t_value = t_percentile(ONE - alpha/TWO, n_realizations)
+       else
+          t_value = ONE
+       end if
+
+       keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) &
             / (n_realizations - 1))
     else
        keff = k_batch(current_batch)

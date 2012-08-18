@@ -134,6 +134,7 @@ input_xml.o: global.o
 input_xml.o: mesh_header.o
 input_xml.o: output.o
 input_xml.o: plot_header.o
+input_xml.o: random_lcg.o
 input_xml.o: string.o
 input_xml.o: tally_header.o
 input_xml.o: xml-fortran/templates/cross_sections_t.o
@@ -164,6 +165,7 @@ interpolation.o: string.o
 main.o: constants.o
 main.o: criticality.o
 main.o: finalize.o
+main.o: fixed_source.o
 main.o: global.o
 main.o: initialize.o
 main.o: plot.o
@@ -174,6 +176,7 @@ mesh.o: mesh_header.o
 mesh.o: particle_header.o
 mesh.o: search.o
 
+output.o: ace_header.o
 output.o: constants.o
 output.o: datatypes.o
 output.o: endf.o
@@ -238,6 +241,7 @@ state_point.o: error.o
 state_point.o: global.o
 state_point.o: output.o
 state_point.o: string.o
+state_point.o: tally_header.o
 
 string.o: constants.o
 string.o: error.o
@@ -251,5 +255,6 @@ tally.o: mesh_header.o
 tally.o: output.o
 tally.o: search.o
 tally.o: string.o
+tally.o: tally_header.o
 
 timing.o: constants.o

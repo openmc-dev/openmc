@@ -1212,6 +1212,13 @@ contains
        allocate(m % width(n))
        allocate(m % upper_right(n))
 
+       ! Check that dimensions are all greater than zero
+       if (any(mesh_(i) % dimension <= 0)) then
+          message = "All entries on the <dimension> element for a tally mesh &
+               &must be positive."
+          call fatal_error()
+       end if
+
        ! Read dimensions in each direction
        m % dimension = mesh_(i) % dimension
 
@@ -1223,16 +1230,59 @@ contains
        end if
        m % lower_left = mesh_(i) % lower_left
 
-       ! Read mesh widths
-       if (size(mesh_(i) % width) /= size(mesh_(i) % lower_left)) then
-          message = "Number of entries on <width> must be the same as the &
-               &number of entries on <lower_left>."
+       ! Make sure either upper-right or width was specified
+       if (associated(mesh_(i) % upper_right) .and. &
+            associated(mesh_(i) % width)) then
+          message = "Cannot specify both <upper_right> and <width> on a &
+               &tally mesh."
           call fatal_error()
        end if
-       m % width = mesh_(i) % width
 
-       ! Set upper right coordinate
-       m % upper_right = m % lower_left + m % dimension * m % width
+       ! Make sure either upper-right or width was specified
+       if (.not. associated(mesh_(i) % upper_right) .and. &
+            .not. associated(mesh_(i) % width)) then
+          message = "Must specify either <upper_right> and <width> on a &
+               &tally mesh."
+          call fatal_error()
+       end if
+
+       if (associated(mesh_(i) % width)) then
+          ! Check to ensure width has same dimensions
+          if (size(mesh_(i) % width) /= size(mesh_(i) % lower_left)) then
+             message = "Number of entries on <width> must be the same as the &
+                  &number of entries on <lower_left>."
+             call fatal_error()
+          end if
+
+          ! Check for negative widths
+          if (any(mesh_(i) % width < ZERO)) then
+             message = "Cannot have a negative <width> on a tally mesh."
+             call fatal_error()
+          end if
+
+          ! Set width and upper right coordinate
+          m % width = mesh_(i) % width
+          m % upper_right = m % lower_left + m % dimension * m % width
+
+       elseif (associated(mesh_(i) % upper_right)) then
+          ! Check to ensure width has same dimensions
+          if (size(mesh_(i) % upper_right) /= size(mesh_(i) % lower_left)) then
+             message = "Number of entries on <upper_right> must be the same as &
+                  &the number of entries on <lower_left>."
+             call fatal_error()
+          end if
+
+          ! Check that upper-right is above lower-left
+          if (any(mesh_(i) % upper_right < mesh_(i) % lower_left)) then
+             message = "The <upper_right> coordinates must be greater than the &
+                  &<lower_left> coordinates on a tally mesh."
+             call fatal_error()
+          end if
+
+          ! Set width and upper right coordinate
+          m % upper_right = mesh_(i) % upper_right
+          m % width = (m % upper_right - m % lower_left) / m % dimension
+       end if
 
        ! Set volume fraction
        m % volume_frac = ONE/real(product(m % dimension),8)

@@ -1215,8 +1215,14 @@ contains
     write(ou,100) "Total time for finalization", time_finalize % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 
-    ! display calculate rate and final keff
-    total_particles = n_particles * n_batches * gen_per_batch
+    if (restart_run) then
+       total_particles = n_particles * (n_batches - &
+            restart_batch) * gen_per_batch
+    else
+       total_particles = n_particles * n_batches * gen_per_batch
+    end if
+
+    ! display calculate rate
     speed = real(total_particles) / (time_inactive % elapsed + &
          time_active % elapsed)
     string = to_str(speed)

@@ -15,7 +15,6 @@ class SourceFile(object):
 
         for i in range(self.n_sites):
             # Read position, angle, and energy
-            (uid,) = struct.unpack('q', self.f.read(8))
             (weight,) = struct.unpack('d', self.f.read(8))
             xyz = struct.unpack('3d', self.f.read(24))
             uvw = struct.unpack('3d', self.f.read(24))

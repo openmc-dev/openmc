@@ -45,14 +45,8 @@ contains
           ! Get pointer to source bank site
           src => source_bank(i)
 
-          ! Set ID of source bank site
-          id = bank_first + i - 1
-          src % id = id
-
-          ! Set weight to one
-          src % wgt = ONE
-
           ! initialize random number seed
+          id = bank_first + i - 1
           call set_particle_seed(id)
 
           ! sample external source distribution

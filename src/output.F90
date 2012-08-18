@@ -8,6 +8,7 @@ module output
   use endf,            only: reaction_name
   use geometry_header, only: Cell, Universe, Surface, BASE_UNIVERSE
   use global
+  use math,            only: t_percentile
   use mesh_header,     only: StructuredMesh
   use particle_header, only: LocalCoord
   use plot_header
@@ -1194,6 +1195,8 @@ contains
 
     integer(8)    :: total_particles ! total # of particles simulated
     real(8)       :: speed           ! # of neutrons/second
+    real(8)       :: alpha           ! significance level for CI
+    real(8)       :: t_value         ! t-value for confidence intervals
     character(15) :: string
 
     ! display header block
@@ -1231,6 +1234,15 @@ contains
     ! display header block for results
     call header("Results")
 
+    if (confidence_intervals) then
+       ! Calculate t-value for confidence intervals
+       alpha = ONE - CONFIDENCE_LEVEL
+       t_value = t_percentile(ONE - alpha/TWO, n_realizations)
+
+       ! Adjust sum_sq
+       global_tallies(:) % sum_sq = t_value * global_tallies(:) % sum_sq
+    end if
+    
     ! write global tallies
     write(ou,102) "k-effective (Analog)", global_tallies(K_ANALOG) % sum, &
          global_tallies(K_ANALOG) % sum_sq

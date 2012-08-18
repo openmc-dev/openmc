@@ -24,6 +24,7 @@ interpolation.o \
 input_xml.o \
 main.o \
 material_header.o \
+math.o \
 mesh_header.o \
 mesh.o \
 output.o \

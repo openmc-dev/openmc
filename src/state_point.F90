@@ -1,9 +1,9 @@
 module state_point
 
-  use error,  only: warning, fatal_error
+  use error,        only: warning, fatal_error
   use global
-  use output, only: write_message, print_batch_keff
-  use string, only: to_str
+  use output,       only: write_message, print_batch_keff
+  use string,       only: to_str
   use tally_header, only: TallyObject
 
   implicit none

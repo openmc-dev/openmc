@@ -950,8 +950,8 @@ contains
     type(SAB_Table), pointer :: sab
     integer,        optional :: unit
 
-    integer :: size  ! memory used by S(a,b) table
-    integer :: unit_ ! unit to write to
+    integer :: size_sab ! memory used by S(a,b) table
+    integer :: unit_    ! unit to write to
 
     ! set default unit for writing information
     if (present(unit)) then
@@ -987,10 +987,10 @@ contains
     end if
 
     ! Determine memory used by S(a,b) table and write out
-    size = 8 * (sab % n_inelastic_e_in * (2 + sab % n_inelastic_e_out * &
+    size_sab = 8 * (sab % n_inelastic_e_in * (2 + sab % n_inelastic_e_out * &
          (1 + sab % n_inelastic_mu)) + sab % n_elastic_e_in * &
          (2 + sab % n_elastic_mu))
-    write(unit_,*) '  Memory Used = ' // trim(to_str(size)) // ' bytes'
+    write(unit_,*) '  Memory Used = ' // trim(to_str(size_sab)) // ' bytes'
 
     ! Blank line at end
     write(unit_,*)

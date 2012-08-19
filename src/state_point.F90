@@ -343,22 +343,24 @@ contains
        ! calculate mean keff
        keff = temp(1) / n_realizations
 
-       if (confidence_intervals) then
-          ! Calculate t-value for confidence intervals
-          alpha = ONE - CONFIDENCE_LEVEL
-          t_value = t_percentile(ONE - alpha/TWO, n_realizations)
-       else
-          t_value = ONE
-       end if
+       if (n_realizations > 1) then
+          if (confidence_intervals) then
+             ! Calculate t-value for confidence intervals
+             alpha = ONE - CONFIDENCE_LEVEL
+             t_value = t_percentile(ONE - alpha/TWO, n_realizations)
+          else
+             t_value = ONE
+          end if
 
-       keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) &
-            / (n_realizations - 1))
+          keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) &
+               / (n_realizations - 1))
+       end if
     else
        keff = k_batch(current_batch)
     end if
 
     ! print out batch keff
-    call print_batch_keff()
+    if (master) call print_batch_keff()
 
     ! Write message at end
     if (current_batch == restart_batch) then

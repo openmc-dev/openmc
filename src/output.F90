@@ -635,7 +635,7 @@ contains
     if (t % n_filter_bins(FILTER_CELL) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_CELL)
-          id = t % cell_bins(i) % scalar
+          id = t % cell_bins(i)
           c => cells(id)
           string = trim(string) // ' ' // trim(to_str(c % id))
        end do
@@ -646,7 +646,7 @@ contains
     if (t % n_filter_bins(FILTER_SURFACE) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_SURFACE)
-          id = t % surface_bins(i) % scalar
+          id = t % surface_bins(i)
           s => surfaces(id)
           string = trim(string) // ' ' // trim(to_str(s % id))
        end do
@@ -657,7 +657,7 @@ contains
     if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_UNIVERSE)
-          id = t % universe_bins(i) % scalar
+          id = t % universe_bins(i)
           u => universes(id)
           string = trim(string) // ' ' // trim(to_str(u % id))
        end do
@@ -668,7 +668,7 @@ contains
     if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_MATERIAL)
-          id = t % material_bins(i) % scalar
+          id = t % material_bins(i)
           m => materials(id)
           string = trim(string) // ' ' // trim(to_str(m % id))
        end do
@@ -691,7 +691,7 @@ contains
     if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_CELLBORN)
-          id = t % cellborn_bins(i) % scalar
+          id = t % cellborn_bins(i)
           c => cells(id)
           string = trim(string) // ' ' // trim(to_str(c % id))
        end do
@@ -721,11 +721,11 @@ contains
     ! Write nuclides bins
     write(unit_,fmt='(1X,A)',advance='no') '    Nuclide Bins:'
     do i = 1, t % n_nuclide_bins
-       if (t % nuclide_bins(i) % scalar == -1) then
+       if (t % nuclide_bins(i) == -1) then
           write(unit_,fmt='(A)',advance='no') ' total'
        else
           write(unit_,fmt='(A)',advance='no') ' ' // trim(adjustl(&
-               nuclides(t % nuclide_bins(i) % scalar) % name))
+               nuclides(t % nuclide_bins(i)) % name))
        end if
        if (mod(i,4) == 0 .and. i /= t % n_nuclide_bins) &
             write(unit_,'(/18X)',advance='no')
@@ -736,7 +736,7 @@ contains
     ! Write score bins
     string = ""
     do i = 1, t % n_score_bins
-       select case (t % score_bins(i) % scalar)
+       select case (t % score_bins(i))
        case (SCORE_FLUX)
           string = trim(string) // ' flux'
        case (SCORE_TOTAL)

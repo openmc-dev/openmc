@@ -1344,7 +1344,7 @@ contains
           call split_string(tally_(i) % filters % cell, words, n_words)
           allocate(t % cell_bins(n_words))
           do j = 1, n_words
-             t % cell_bins(j) % scalar = int(str_to_int(words(j)),4)
+             t % cell_bins(j) = int(str_to_int(words(j)),4)
           end do
           t % n_filter_bins(FILTER_CELL) = n_words
 
@@ -1357,7 +1357,7 @@ contains
           call split_string(tally_(i) % filters % surface, words, n_words)
           allocate(t % surface_bins(n_words))
           do j = 1, n_words
-             t % surface_bins(j) % scalar = int(str_to_int(words(j)),4)
+             t % surface_bins(j) = int(str_to_int(words(j)),4)
           end do
           t % n_filter_bins(FILTER_SURFACE) = n_words
 
@@ -1370,7 +1370,7 @@ contains
           call split_string(tally_(i) % filters % universe, words, n_words)
           allocate(t % universe_bins(n_words))
           do j = 1, n_words
-             t % universe_bins(j) % scalar = int(str_to_int(words(j)),4)
+             t % universe_bins(j) = int(str_to_int(words(j)),4)
           end do
           t % n_filter_bins(FILTER_UNIVERSE) = n_words
 
@@ -1383,7 +1383,7 @@ contains
           call split_string(tally_(i) % filters % material, words, n_words)
           allocate(t % material_bins(n_words))
           do j = 1, n_words
-             t % material_bins(j) % scalar = int(str_to_int(words(j)),4)
+             t % material_bins(j) = int(str_to_int(words(j)),4)
           end do
           t % n_filter_bins(FILTER_MATERIAL) = n_words
 
@@ -1416,7 +1416,7 @@ contains
           call split_string(tally_(i) % filters % cellborn, words, n_words)
           allocate(t % cellborn_bins(n_words))
           do j = 1, n_words
-             t % cellborn_bins(j) % scalar = int(str_to_int(words(j)),4)
+             t % cellborn_bins(j) = int(str_to_int(words(j)),4)
           end do
           t % n_filter_bins(FILTER_CELLBORN) = n_words
 
@@ -1465,9 +1465,9 @@ contains
              allocate(t % nuclide_bins(n_nuclides_total + 1))
 
              ! Set bins to 1, 2, 3, ..., n_nuclides_total, -1
-             t % nuclide_bins(1:n_nuclides_total) % scalar = &
+             t % nuclide_bins(1:n_nuclides_total) = &
                   (/ (j, j=1, n_nuclides_total) /)
-             t % nuclide_bins(n_nuclides_total + 1) % scalar = -1
+             t % nuclide_bins(n_nuclides_total + 1) = -1
 
              ! Set number of nuclide bins
              t % n_nuclide_bins = n_nuclides_total + 1
@@ -1480,7 +1480,7 @@ contains
              do j = 1, n_words
                 ! Check if total material was specified
                 if (words(j) == 'total') then
-                   t % nuclide_bins(j) % scalar = -1
+                   t % nuclide_bins(j) = -1
                    cycle
                 end if
 
@@ -1500,7 +1500,7 @@ contains
                 end if
                 
                 ! Set bin to index in nuclides array
-                t % nuclide_bins(j) % scalar = dict_get_key(nuclide_dict, word)
+                t % nuclide_bins(j) = dict_get_key(nuclide_dict, word)
              end do
 
              ! Set number of nuclide bins
@@ -1511,7 +1511,7 @@ contains
           ! No <nuclides> were specified -- create only one bin will be added
           ! for the total material.
           allocate(t % nuclide_bins(1))
-          t % nuclide_bins(1) % scalar = -1
+          t % nuclide_bins(1) = -1
           t % n_nuclide_bins = 1
        end if
 
@@ -1528,93 +1528,93 @@ contains
              case ('flux')
                 ! Prohibit user from tallying flux for an individual nuclide
                 if (.not. (t % n_nuclide_bins == 1 .and. &
-                     t % nuclide_bins(1) % scalar == -1)) then
+                     t % nuclide_bins(1) == -1)) then
                    message = "Cannot tally flux for an individual nuclide."
                    call fatal_error()
                 end if
 
-                t % score_bins(j) % scalar = SCORE_FLUX
+                t % score_bins(j) = SCORE_FLUX
                 if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally flux with an outgoing energy filter."
                    call fatal_error()
                 end if
              case ('total')
-                t % score_bins(j) % scalar = SCORE_TOTAL
+                t % score_bins(j) = SCORE_TOTAL
                 if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally total reaction rate with an &
                         &outgoing energy filter."
                    call fatal_error()
                 end if
              case ('scatter')
-                t % score_bins(j) % scalar = SCORE_SCATTER
+                t % score_bins(j) = SCORE_SCATTER
              case ('nu-scatter')
-                t % score_bins(j) % scalar = SCORE_NU_SCATTER
+                t % score_bins(j) = SCORE_NU_SCATTER
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('scatter-1')
-                t % score_bins(j) % scalar = SCORE_SCATTER_1
+                t % score_bins(j) = SCORE_SCATTER_1
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('scatter-2')
-                t % score_bins(j) % scalar = SCORE_SCATTER_2
+                t % score_bins(j) = SCORE_SCATTER_2
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('scatter-3')
-                t % score_bins(j) % scalar = SCORE_SCATTER_3
+                t % score_bins(j) = SCORE_SCATTER_3
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case('transport')
-                t % score_bins(j) % scalar = SCORE_TRANSPORT
+                t % score_bins(j) = SCORE_TRANSPORT
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('diffusion')
-                t % score_bins(j) % scalar = SCORE_DIFFUSION
+                t % score_bins(j) = SCORE_DIFFUSION
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('n1n')
-                t % score_bins(j) % scalar = SCORE_N_1N
+                t % score_bins(j) = SCORE_N_1N
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('n2n')
-                t % score_bins(j) % scalar = SCORE_N_2N
+                t % score_bins(j) = SCORE_N_2N
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('n3n')
-                t % score_bins(j) % scalar = SCORE_N_3N
+                t % score_bins(j) = SCORE_N_3N
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('n4n')
-                t % score_bins(j) % scalar = SCORE_N_4N
+                t % score_bins(j) = SCORE_N_4N
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('absorption')
-                t % score_bins(j) % scalar = SCORE_ABSORPTION
+                t % score_bins(j) = SCORE_ABSORPTION
                 if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally absorption rate with an outgoing &
                         &energy filter."
                    call fatal_error()
                 end if
              case ('fission')
-                t % score_bins(j) % scalar = SCORE_FISSION
+                t % score_bins(j) = SCORE_FISSION
                 if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally fission rate with an outgoing &
                         &energy filter."
                    call fatal_error()
                 end if
              case ('nu-fission')
-                t % score_bins(j) % scalar = SCORE_NU_FISSION
+                t % score_bins(j) = SCORE_NU_FISSION
              case ('current')
-                t % score_bins(j) % scalar = SCORE_CURRENT
+                t % score_bins(j) = SCORE_CURRENT
                 t % type = TALLY_SURFACE_CURRENT
 
                 ! Check to make sure that current is the only desired response

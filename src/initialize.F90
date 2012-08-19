@@ -526,9 +526,9 @@ contains
 
        if (t % n_filter_bins(FILTER_CELL) > 0) then
           do j = 1, t % n_filter_bins(FILTER_CELL)
-             id = t % cell_bins(j) % scalar
+             id = t % cell_bins(j)
              if (dict_has_key(cell_dict, id)) then
-                t % cell_bins(j) % scalar = dict_get_key(cell_dict, id)
+                t % cell_bins(j) = dict_get_key(cell_dict, id)
              else
                 message = "Could not find cell " // trim(to_str(id)) // &
                      " specified on tally " // trim(to_str(t % id))
@@ -542,9 +542,9 @@ contains
 
        if (t % n_filter_bins(FILTER_SURFACE) > 0) then
           do j = 1, t % n_filter_bins(FILTER_SURFACE)
-             id = t % surface_bins(j) % scalar
+             id = t % surface_bins(j)
              if (dict_has_key(surface_dict, id)) then
-                t % surface_bins(j) % scalar = dict_get_key(surface_dict, id)
+                t % surface_bins(j) = dict_get_key(surface_dict, id)
              else
                 message = "Could not find surface " // trim(to_str(id)) // &
                      " specified on tally " // trim(to_str(t % id))
@@ -558,9 +558,9 @@ contains
 
        if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
           do j = 1, t % n_filter_bins(FILTER_UNIVERSE)
-             id = t % universe_bins(j) % scalar
+             id = t % universe_bins(j)
              if (dict_has_key(universe_dict, id)) then
-                t % universe_bins(j) % scalar = dict_get_key(universe_dict, id)
+                t % universe_bins(j) = dict_get_key(universe_dict, id)
              else
                 message = "Could not find universe " // trim(to_str(id)) // &
                      " specified on tally " // trim(to_str(t % id))
@@ -574,9 +574,9 @@ contains
 
        if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
           do j = 1, t % n_filter_bins(FILTER_MATERIAL)
-             id = t % material_bins(j) % scalar
+             id = t % material_bins(j)
              if (dict_has_key(material_dict, id)) then
-                t % material_bins(j) % scalar = dict_get_key(material_dict, id)
+                t % material_bins(j) = dict_get_key(material_dict, id)
              else
                 message = "Could not find material " // trim(to_str(id)) // &
                      " specified on tally " // trim(to_str(t % id))
@@ -590,9 +590,9 @@ contains
 
        if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
           do j = 1, t % n_filter_bins(FILTER_CELLBORN)
-             id = t % cellborn_bins(j) % scalar
+             id = t % cellborn_bins(j)
              if (dict_has_key(cell_dict, id)) then
-                t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, id)
+                t % cellborn_bins(j) = dict_get_key(cell_dict, id)
              else
                 message = "Could not find material " // trim(to_str(id)) // &
                      " specified on tally " // trim(to_str(t % id))

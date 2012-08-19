@@ -502,35 +502,35 @@ contains
        if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
           dims(1) = t % n_filter_bins(FILTER_UNIVERSE)
           call h5ltmake_dataset_int_f(temp_group, "universe_bins", 1, &
-               dims, t % universe_bins(:) % scalar, hdf5_err)
+               dims, t % universe_bins, hdf5_err)
        end if
 
        ! Write material_bins if present
        if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
           dims(1) = t % n_filter_bins(FILTER_MATERIAL)
           call h5ltmake_dataset_int_f(temp_group, "material_bins", 1, &
-               dims, t % material_bins(:) % scalar, hdf5_err)
+               dims, t % material_bins, hdf5_err)
        end if
 
        ! Write cell_bins if present
        if (t % n_filter_bins(FILTER_CELL) > 0) then
           dims(1) = t % n_filter_bins(FILTER_CELL)
           call h5ltmake_dataset_int_f(temp_group, "cell_bins", 1, &
-               dims, t % cell_bins(:) % scalar, hdf5_err)
+               dims, t % cell_bins, hdf5_err)
        end if
 
        ! Write cellborn_bins if present
        if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
           dims(1) = t % n_filter_bins(FILTER_CELLBORN)
           call h5ltmake_dataset_int_f(temp_group, "cellborn_bins", 1, &
-               dims, t % cellborn_bins(:) % scalar, hdf5_err)
+               dims, t % cellborn_bins, hdf5_err)
        end if
 
        ! Write surface_bins if present
        if (t % n_filter_bins(FILTER_SURFACE) > 0) then
           dims(1) = t % n_filter_bins(FILTER_SURFACE)
           call h5ltmake_dataset_int_f(temp_group, "surface_bins", 1, &
-               dims, t % surface_bins(:) % scalar, hdf5_err)
+               dims, t % surface_bins, hdf5_err)
        end if
 
        ! Write incoming energy filter
@@ -586,7 +586,7 @@ contains
        num_elements = 1
        do j = 1, t % n_score_bins
           ! Determine string for this scoring bin
-          select case (t % score_bins(j) % scalar)
+          select case (t % score_bins(j))
           case (SCORE_FLUX)
              string = 'flux'
           case (SCORE_TOTAL)

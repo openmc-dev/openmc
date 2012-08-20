@@ -407,7 +407,7 @@ contains
              if (confidence_intervals) then
                 ! Calculate t-value for confidence intervals
                 alpha = ONE - CONFIDENCE_LEVEL
-                t_value = t_percentile(ONE - alpha/TWO, n_realizations)
+                t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
              else
                 t_value = ONE
              end if
@@ -441,7 +441,7 @@ contains
              if (confidence_intervals) then
                 ! Calculate t-value for confidence intervals
                 alpha = ONE - CONFIDENCE_LEVEL
-                t_value = t_percentile(ONE - alpha/TWO, n_realizations)
+                t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
              else
                 t_value = ONE
              end if

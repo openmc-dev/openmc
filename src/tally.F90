@@ -1864,7 +1864,7 @@ contains
     ! Calculate t-value for confidence intervals
     if (confidence_intervals) then
        alpha = ONE - CONFIDENCE_LEVEL
-       t_value = t_percentile(ONE - alpha/TWO, n_realizations)
+       t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
     end if
 
     do i = 1, n_tallies

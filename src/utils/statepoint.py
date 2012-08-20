@@ -19,16 +19,16 @@ class BinaryFile(object):
         return list(struct.unpack('={0}{1}'.format(n,typeCode),
                                   self._f.read(n*size)))
     
-    def get_int(self, n=1):
+    def _get_int(self, n=1):
         return self._get_data(n, 'i', 4)
 
-    def get_long(self, n=1):
+    def _get_long(self, n=1):
         return self._get_data(n, 'q', 8)
 
-    def get_float(self, n=1):
+    def _get_float(self, n=1):
         return self._get_data(n, 'f', 4)
 
-    def get_double(self, n=1):
+    def _get_double(self, n=1):
         return self._get_data(n, 'd', 8)
 
 class Mesh(object):
@@ -66,32 +66,32 @@ class StatePoint(BinaryFile):
 
     def _read_metadata(self):
         # Read statepoint revision
-        self.revision = self.get_int()[0]
+        self.revision = self._get_int()[0]
 
         # Read OpenMC version
-        self.version = self.get_int(3)
+        self.version = self._get_int(3)
 
         # Read random number seed
-        self.seed = self.get_long()[0]
+        self.seed = self._get_long()[0]
 
         # Read run information
-        self.run_mode = self.get_int()[0]
-        self.n_particles = self.get_long()[0]
-        self.n_batches, self.n_inactive, self.gen_per_batch = self.get_int(3)
+        self.run_mode = self._get_int()[0]
+        self.n_particles = self._get_long()[0]
+        self.n_batches, self.n_inactive, self.gen_per_batch = self._get_int(3)
 
         # Read current batch
-        self.current_batch = self.get_int()[0]
+        self.current_batch = self._get_int()[0]
 
         # Read batch keff and entropy
-        keff = self.get_double(self.current_batch)
-        entropy = self.get_double(self.current_batch)
+        keff = self._get_double(self.current_batch)
+        entropy = self._get_double(self.current_batch)
 
         # Read global tallies
-        self.n_global_tallies = self.get_int()[0]
-        self.global_tallies = self.get_double(2*self.n_global_tallies)
+        self.n_global_tallies = self._get_int()[0]
+        self.global_tallies = self._get_double(2*self.n_global_tallies)
 
         # Read number of meshes
-        n_meshes = self.get_int()[0]
+        n_meshes = self._get_int()[0]
 
         # Read meshes
         for i in range(n_meshes):
@@ -99,19 +99,19 @@ class StatePoint(BinaryFile):
             self.meshes.append(m)
 
             # Read type of mesh and number of dimensions
-            m.type = self.get_int()[0]
-            n = self.get_int()[0]
+            m.type = self._get_int()[0]
+            n = self._get_int()[0]
 
             # Read mesh size, lower-left coordinates, upper-right coordinates,
             # and width of each mesh cell
-            m.dimension = self.get_int(n)
-            m.lower_left = self.get_double(n)
-            m.upper_right = self.get_double(n)
-            m.width = self.get_double(n)
+            m.dimension = self._get_int(n)
+            m.lower_left = self._get_double(n)
+            m.upper_right = self._get_double(n)
+            m.width = self._get_double(n)
 
 
         # Read number of tallies
-        n_tallies = self.get_int()[0]
+        n_tallies = self._get_int()[0]
 
         for i in range(n_tallies):
             # Create Tally object and add to list of tallies
@@ -119,11 +119,11 @@ class StatePoint(BinaryFile):
             self.tallies.append(t)
 
             # Read sizes of tallies
-            t.n_score_bins = self.get_int()[0]
-            t.n_filter_bins = self.get_int()[0]
+            t.n_score_bins = self._get_int()[0]
+            t.n_filter_bins = self._get_int()[0]
 
             # Read number of filters
-            n_filters = self.get_int()[0]
+            n_filters = self._get_int()[0]
 
             for j in range(n_filters):
                 # Create Filter object and add to list of filters
@@ -131,22 +131,22 @@ class StatePoint(BinaryFile):
                 t.filters.append(f)
 
                 # Get type of filter
-                f.type = filter_types[self.get_int()[0]]
+                f.type = filter_types[self._get_int()[0]]
 
                 # Determine how many bins are in this filter
-                f.length = self.get_int()[0]
+                f.length = self._get_int()[0]
                 assert f.length > 0
                 if f.type == 'energyin' or f.type == 'energyout':
-                    f.bins = self.get_double(f.length + 1)
+                    f.bins = self._get_double(f.length + 1)
                 elif f.type == 'mesh':
-                    f.bins = self.get_int()
+                    f.bins = self._get_int()
                 else:
-                    f.bins = self.get_int(f.length)
+                    f.bins = self._get_int(f.length)
             
             # Read nuclide bins
-            n_nuclides = self.get_int()[0]
-            t.nuclides = self.get_int(n_nuclides)
+            n_nuclides = self._get_int()[0]
+            t.nuclides = self._get_int(n_nuclides)
 
             # Read score bins
-            n_scores = self.get_int()[0]
-            t.scores = [score_types[j] for j in self.get_int(n_scores)]
+            n_scores = self._get_int()[0]
+            t.scores = [score_types[j] for j in self._get_int(n_scores)]

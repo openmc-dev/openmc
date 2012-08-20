@@ -21,7 +21,7 @@ sp = StatePoint(filename)
 
 # Calculate t-value for 95% two-sided CI
 n = sp.current_batch - sp.n_inactive
-t_value = scipy.stats.t.ppf(0.975, n)
+t_value = scipy.stats.t.ppf(0.975, n - 1)
 
 # Loop over all tallies
 for i, t in enumerate(sp.tallies):

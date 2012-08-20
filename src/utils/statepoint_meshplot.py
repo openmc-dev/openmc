@@ -22,7 +22,7 @@ sp = StatePoint(filename)
 
 # Calculate t-value for 95% two-sided CI
 n = sp.current_batch - sp.n_inactive
-t_value = scipy.stats.t.ppf(0.975, n)
+t_value = scipy.stats.t.ppf(0.975, n - 1)
 
 # Loop over all tallies
 print("Reading data...")
@@ -60,7 +60,7 @@ for t in sp.tallies:
 
     # Make figure
     print("Making colorplot...")
-    plt.imshow(error, interpolation="nearest")
+    plt.imshow(mean, interpolation="nearest")
     plt.colorbar()
     plt.xlim((0,nx))
     plt.ylim((0,ny))

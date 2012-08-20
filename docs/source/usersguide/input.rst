@@ -536,9 +536,9 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
   :rotation:
     If the cell is filled with a universe, this element specifies the angles in
     degrees about the x, y, and z axes that the filled universe should be
-    rotated. Should be given as three real numbers.For example, if you wanted to
-    rotate the filled universe by 90 degrees about the z-axis, the cell element
-    would look something like:
+    rotated. Should be given as three real numbers. For example, if you wanted
+    to rotate the filled universe by 90 degrees about the z-axis, the cell
+    element would look something like:
 
     .. code-block:: xml
 
@@ -692,6 +692,21 @@ The ``<tally>`` element accepts the following sub-elements:
   :filters:
     A list of filters to specify what region of phase space should contribute to
     the tally. See below for full details on what filters are available.
+
+  :nuclides:
+
+    If specified, the scores listed will be for particular nuclides, not the
+    summation of reactions from all nuclides. The format for nuclides should be
+    [Atomic symbol]-[Mass number], e.g. "U-235". The reaction rate for all
+    nuclides can be obtained with "total". For example, to obtain the reaction
+    rates for U-235, Pu-239, and all nuclides in a material, this element should
+    be:
+
+    .. code-block:: xml
+
+        <nuclides>U-235 Pu-239 total</nuclides>
+
+    *Default*: total
 
   :scores:
     The desired responses to be accumulated. See below for full details on what

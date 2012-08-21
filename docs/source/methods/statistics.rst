@@ -118,7 +118,7 @@ in equation :eq:`unbiased-variance` is especially suitable for computation since
 we do not need to store the values at every realization of the random variable
 as the simulation proceeds. Instead, we can simply keep a running sum and sum of
 squares of the values at each realization of the random variable and use that to
-calulate the variance.
+calculate the variance.
 
 Variance of the Mean
 --------------------
@@ -173,6 +173,110 @@ of this is that the longer you run a simulation, the better you know your
 results. Therefore, by running a simulation long enough, it is possible to
 reduce the stochastic uncertainty to arbitrarily low levels.
 
+Confidence Intervals
+--------------------
+
+While the sample variance and standard deviation gives us some idea about the
+variability of the estimate of the mean of whatever quantities we've tallied, it
+does not help us interpret how confidence we should be in the results. To
+quantity the reliability of our estimates, we can use `confidence intervals`_
+based on the calculated sample variance.
+
+A :math:`1-\alpha` confidence interval for a population parameter is defined as
+such: if we repeat the same experiment many times and calculate the confidence
+interval for each experiment, then :math:`1 - \alpha` percent of the calculated
+intervals would encompass the true population parameter. Let :math:`x_1, x_2,
+\dots, x_N` be samples from a set of independent, identically-distributed random
+variables each with population mean :math:`\mu` and variance
+:math:`\sigma^2`. The t-statistic is defined as
+
+.. math::
+    :label: t-statistic
+
+    t = \frac{\bar{x} - \mu}{s/\sqrt{N}}
+
+where :math:`\bar{x}` is the sample mean from equation :eq:`sample-mean` and
+:math:`s` is the standard deviation based on equation
+:eq:`unbiased-variance`. If the random variables :math:`X_i` are
+normally-distributed, then the t-statistic has a `Student's t-distribution`_
+with :math:`N-1` degrees of freedom. This implies that
+
+.. math::
+    :label: t-probability
+
+    Pr \left ( -t_{1 - \alpha/2, N - 1} \le \frac{\bar{x} - \mu}{s/\sqrt{N}} \le
+    t_{1 - \alpha/2, N - 1} \right ) = 1 - \alpha
+
+where :math:`t_{1-\alpha/2, N-1}` is the :math:`1 - \alpha/2` percentile of a
+t-distribution with :math:`N-1` degrees of freedom. Thus, the :math:`1 - \alpha`
+two sided confidence interval for the sample mean is
+
+.. math::
+    :label: two-sided-ci
+
+    \bar{x} \pm t_{1 - \alpha/2, N-1} \frac{s}{\sqrt{N}}.
+
+One should be cautioned that equation :eq:`two-sided-ci` **only applies if the
+underlying random variables are normally-distributed!** In general, this may not
+be true for a tally random variable -- the central limit theorem guarantees only
+that the sample mean is normally distributed, not the underlying random
+variable. If batching is used, then the underlying random variable, which would
+then be the averages from each batch, will be normally distributed as long as
+the conditions of the central limit theorem are met.
+
+Let us now outline the method used to calculate the percentile of the Student's
+t-distribution. For one or two degrees of freedom, the percentile can be written
+analytically. For one degree of freedom, the t-distribution becomes a standard
+`Cauchy distribution`_ whose cumulative distribution function is
+
+.. math::
+    :label: cauchy-cdf
+
+    c(x) = \frac{1}{\pi} \arctan x + \frac{1}{2}. 
+
+Thus, inverting the cumulative distribution function, we find the :math:`x`
+percentile of the standard Cauchy distribution to be
+
+.. math::
+    :label: percentile-1
+
+    t_{x,1} = \tan \left ( \pi \left ( x - \frac{1}{2} \right ) \right ).
+
+For two degrees of freedom, the cumulative distribution function is the
+second-degree polynomial
+
+.. math::
+    :label: t-2-polynomial
+
+    c(x) = \frac{1}{2} + \frac{x}{2\sqrt{x^2 + 2}}
+
+Solving for :math:`x`, we find the :math:`x` percentile to be
+
+.. math::
+    :label: percentile-2
+
+    t_{x,2} = \frac{2\sqrt{2} (x - 1/2)}{\sqrt{1 - 4 (x - 1/2)^2}}
+
+For degrees of freedom greater than two, it is not possible to obtain an
+analytical formula for the inverse of the cumulative distribution function. We
+must resort to either numerically solving for the inverse or to an
+approximation. Approximations for percentiles of the t-distribution have been
+found with high levels of accuracy. OpenMC uses the approximation from
+[George]_:
+
+.. math::
+    :label: percentile-n
+
+    t_{x,n} = \sqrt{\frac{n}{n-2}} \left ( z_x + \frac{1}{4} \frac{z_x^3 -
+    3z_x}{n-2} + \frac{1}{96} \frac{5z_x^5 - 56z_x^3 + 75z_x}{(n-2)^2} +
+    \frac{1}{384} \frac{3z_x^7 - 81z_x^5 + 417z_x^3 - 315z_x}{(n-2)^3} \right )
+
+where :math:`z_x` is the :math:`x` percentile of the standard normal
+distribution. In order to determine an arbitrary percentile of the standard
+normal distribution, we use an `unpublished rational approximation`_. After
+using the rational approximation, one iteration of Newton's method is applied to
+improve the estimate of the percentile.
+
 ------------------------
 Random Number Generation
 ------------------------
@@ -226,6 +330,14 @@ Note that equation :eq:`lcg-skipahead` has the same form as equation :eq:`lcg`
 so the idea is to determine the new multiplicative and additive constants in
 :math:`O(\log N)` operations.
 
+----------
+References
+----------
+
+.. [George] E. E. Olusegun George and Meenakshi Sivaram, "A modification of the
+   Fisher-Cornish approximation for the student t percentiles," Communication
+   in Statistics - Simulation and Computation, 16 (4), pp. 1123-1132 (1987).
+
 .. _linear congruential generator: http://en.wikipedia.org/wiki/Linear_congruential_generator
 
 .. _Brown: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl_rn_arb-strides_1994.pdf
@@ -247,3 +359,11 @@ so the idea is to determine the new multiplicative and additive constants in
 .. _normal distribution: http://en.wikipedia.org/wiki/Normal_distribution
 
 .. _converges in distribution: http://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_distribution
+
+.. _confidence intervals: http://en.wikipedia.org/wiki/Confidence_interval
+
+.. _Student's t-distribution: http://en.wikipedia.org/wiki/Student%27s_t-distribution
+
+.. _Cauchy distribution: http://en.wikipedia.org/wiki/Cauchy_distribution
+
+.. _unpublished rational approximation: http://home.online.no/~pjacklam/notes/invnorm/

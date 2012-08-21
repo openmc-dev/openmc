@@ -26,3 +26,7 @@ New Features
 ---------
 Bug Fixes
 ---------
+
+- 792eb3_: Fixed degrees of freedom for confidence intervals.
+
+.. _792eb3: https://github.com/mit-crpg/openmc/commit/792eb3

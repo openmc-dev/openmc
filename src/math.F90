@@ -31,6 +31,9 @@ contains
     real(8), parameter :: d(4) = (/ &
          7.784695709041462e-3_8, 3.224671290700398e-1_8, &
          2.445134137142996_8,    3.754408661907416_8 /)
+
+    ! The rational approximation used here is from an unpublished work at
+    ! http://home.online.no/~pjacklam/notes/invnorm/
     
     if (p < p_low) then
        ! Rational approximation for lower region.

@@ -55,6 +55,17 @@ Settings Specification -- settings.xml
 All simulation parameters and miscellaneous options are specified in the
 settings.xml file.
 
+``<confidence_intervals>`` Element
+----------------------------------
+
+The ``<confidence_intervals>`` element has no attributes and has an accepted
+value of "on" or "off". If set to "on", uncertainties on tally results will be
+reported as the half-width of the 95% two-sided confidence interval. If set to
+"off", uncertainties on tally results will be reported as the sample standard
+deviation.
+
+  *Default*: off
+
 ``<criticality>`` Element
 -------------------------
 
@@ -344,8 +355,21 @@ displayed. This element takes the following attributes:
 
     *Default*: 5
 
+``<write_state_point>`` Element
+-------------------------------
+
+The ``<write_state_point>`` element is used to indicate batches at which the
+user wishes to have a binary state point file written to disk. The state point
+file can be used to restart a run or to get tally results at an intermediate
+stage. This element has no attributes and should consist of a list of integers
+corresponding to batches at which a binary state point file should be written to
+disk.
+
+  *Default*: None
+
+
 ``<write_source>`` Element
-------------------------------
+--------------------------
 
 The ``<write_source>`` element has no attributes and has an accepted value of
 "on" or "off". If set to "on", a binary source file will be written to disk at
@@ -512,9 +536,9 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
   :rotation:
     If the cell is filled with a universe, this element specifies the angles in
     degrees about the x, y, and z axes that the filled universe should be
-    rotated. Should be given as three real numbers.For example, if you wanted to
-    rotate the filled universe by 90 degrees about the z-axis, the cell element
-    would look something like:
+    rotated. Should be given as three real numbers. For example, if you wanted
+    to rotate the filled universe by 90 degrees about the z-axis, the cell
+    element would look something like:
 
     .. code-block:: xml
 
@@ -668,6 +692,21 @@ The ``<tally>`` element accepts the following sub-elements:
   :filters:
     A list of filters to specify what region of phase space should contribute to
     the tally. See below for full details on what filters are available.
+
+  :nuclides:
+
+    If specified, the scores listed will be for particular nuclides, not the
+    summation of reactions from all nuclides. The format for nuclides should be
+    [Atomic symbol]-[Mass number], e.g. "U-235". The reaction rate for all
+    nuclides can be obtained with "total". For example, to obtain the reaction
+    rates for U-235, Pu-239, and all nuclides in a material, this element should
+    be:
+
+    .. code-block:: xml
+
+        <nuclides>U-235 Pu-239 total</nuclides>
+
+    *Default*: total
 
   :scores:
     The desired responses to be accumulated. See below for full details on what

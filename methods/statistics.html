@@ -178,6 +178,75 @@ of this is that the longer you run a simulation, the better you know your
 results. Therefore, by running a simulation long enough, it is possible to
 reduce the stochastic uncertainty to arbitrarily low levels.</p>
 </div>
+<div class="section" id="confidence-intervals">
+<h3>3.3.4. Confidence Intervals<a class="headerlink" href="#confidence-intervals" title="Permalink to this headline">¶</a></h3>
+<p>While the sample variance and standard deviation gives us some idea about the
+variability of the estimate of the mean of whatever quantities we&#8217;ve tallied, it
+does not help us interpret how confidence we should be in the results. To
+quantity the reliability of our estimates, we can use <a class="reference external" href="http://en.wikipedia.org/wiki/Confidence_interval">confidence intervals</a>
+based on the calculated sample variance.</p>
+<p>A <img class="math" src="../_images/math/feea5c83d5de074b138327d3617c30402fdd9768.png" alt="1-\alpha"/> confidence interval for a population parameter is defined as
+such: if we repeat the same experiment many times and calculate the confidence
+interval for each experiment, then <img class="math" src="../_images/math/e63009dbf6176a47dc83a6c06dd5ce224d6e57d4.png" alt="1 - \alpha"/> percent of the calculated
+intervals would encompass the true population parameter. Let <img class="math" src="../_images/math/d0c7c0908f2b24307dd8c0d64e8082efd5872155.png" alt="x_1, x_2,
+\dots, x_N"/> be samples from a set of independent, identically-distributed random
+variables each with population mean <img class="math" src="../_images/math/2d8c833ed800824727cd7bd2fb9de1a12ad7e674.png" alt="\mu"/> and variance
+<img class="math" src="../_images/math/741fb9098efcb98055f467f87630a5d0ca599b6b.png" alt="\sigma^2"/>. The t-statistic is defined as</p>
+<div class="math" id="equation-t-statistic">
+<p><span class="eqno">(9)</span><img src="../_images/math/7a8fa6d18fdddd436cd3c52612a3372897f7c5c0.png" alt="t = \frac{\bar{x} - \mu}{s/\sqrt{N}}"/></p>
+</div><p>where <img class="math" src="../_images/math/f06e84fe84a6c63a9c2c392af11652f6e0d72cf4.png" alt="\bar{x}"/> is the sample mean from equation <a href="#equation-sample-mean">(2)</a> and
+<img class="math" src="../_images/math/f37bba504894945c07a32f5496d74299a37aa51c.png" alt="s"/> is the standard deviation based on equation
+<a href="#equation-unbiased-variance">(5)</a>. If the random variables <img class="math" src="../_images/math/5f8e5cbb6204882df1cf17cfe4b308d485af8056.png" alt="X_i"/> are
+normally-distributed, then the t-statistic has a <a class="reference external" href="http://en.wikipedia.org/wiki/Student%27s_t-distribution">Student&#8217;s t-distribution</a>
+with <img class="math" src="../_images/math/a256c70ad4c46ec1127c5be68f8bb3075e9ced31.png" alt="N-1"/> degrees of freedom. This implies that</p>
+<div class="math" id="equation-t-probability">
+<p><span class="eqno">(10)</span><img src="../_images/math/4a210f77a1c79011bdc5ac4f2cac91a4c5a08959.png" alt="Pr \left ( -t_{1 - \alpha/2, N - 1} \le \frac{\bar{x} - \mu}{s/\sqrt{N}} \le
+t_{1 - \alpha/2, N - 1} \right ) = 1 - \alpha"/></p>
+</div><p>where <img class="math" src="../_images/math/1bc7ce223ddb22edcd126ed8d841b796f2f337d9.png" alt="t_{1-\alpha/2, N-1}"/> is the <img class="math" src="../_images/math/f3f0133f5afb7e759a00024c929a5f273f316403.png" alt="1 - \alpha/2"/> percentile of a
+t-distribution with <img class="math" src="../_images/math/a256c70ad4c46ec1127c5be68f8bb3075e9ced31.png" alt="N-1"/> degrees of freedom. Thus, the <img class="math" src="../_images/math/e63009dbf6176a47dc83a6c06dd5ce224d6e57d4.png" alt="1 - \alpha"/>
+two sided confidence interval for the sample mean is</p>
+<div class="math" id="equation-two-sided-ci">
+<p><span class="eqno">(11)</span><img src="../_images/math/80bc7504239295d322d8606b71adc1190e09a896.png" alt="\bar{x} \pm t_{1 - \alpha/2, N-1} \frac{s}{\sqrt{N}}."/></p>
+</div><p>One should be cautioned that equation <a href="#equation-two-sided-ci">(11)</a> <strong>only applies if the
+underlying random variables are normally-distributed!</strong> In general, this may not
+be true for a tally random variable &#8211; the central limit theorem guarantees only
+that the sample mean is normally distributed, not the underlying random
+variable. If batching is used, then the underlying random variable, which would
+then be the averages from each batch, will be normally distributed as long as
+the conditions of the central limit theorem are met.</p>
+<p>Let us now outline the method used to calculate the percentile of the Student&#8217;s
+t-distribution. For one or two degrees of freedom, the percentile can be written
+analytically. For one degree of freedom, the t-distribution becomes a standard
+<a class="reference external" href="http://en.wikipedia.org/wiki/Cauchy_distribution">Cauchy distribution</a> whose cumulative distribution function is</p>
+<div class="math" id="equation-cauchy-cdf">
+<p><span class="eqno">(12)</span><img src="../_images/math/436e8db97463066d1a7386a95b10ac520bbe8b3a.png" alt="c(x) = \frac{1}{\pi} \arctan x + \frac{1}{2}."/></p>
+</div><p>Thus, inverting the cumulative distribution function, we find the <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/>
+percentile of the standard Cauchy distribution to be</p>
+<div class="math" id="equation-percentile-1">
+<p><span class="eqno">(13)</span><img src="../_images/math/fa2f03813f247d34e237d7d4f70aad833a23ac36.png" alt="t_{x,1} = \tan \left ( \pi \left ( x - \frac{1}{2} \right ) \right )."/></p>
+</div><p>For two degrees of freedom, the cumulative distribution function is the
+second-degree polynomial</p>
+<div class="math" id="equation-t-2-polynomial">
+<p><span class="eqno">(14)</span><img src="../_images/math/6951671d483dd1a00fdbf1c2a63f822d8a5dfb0f.png" alt="c(x) = \frac{1}{2} + \frac{x}{2\sqrt{x^2 + 2}}"/></p>
+</div><p>Solving for <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/>, we find the <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> percentile to be</p>
+<div class="math" id="equation-percentile-2">
+<p><span class="eqno">(15)</span><img src="../_images/math/9bc6d41e157898a5956cd9c4ccf338dea7050d12.png" alt="t_{x,2} = \frac{2\sqrt{2} (x - 1/2)}{\sqrt{1 - 4 (x - 1/2)^2}}"/></p>
+</div><p>For degrees of freedom greater than two, it is not possible to obtain an
+analytical formula for the inverse of the cumulative distribution function. We
+must resort to either numerically solving for the inverse or to an
+approximation. Approximations for percentiles of the t-distribution have been
+found with high levels of accuracy. OpenMC uses the approximation from
+<a class="reference internal" href="#george">[George]</a>:</p>
+<div class="math" id="equation-percentile-n">
+<p><span class="eqno">(16)</span><img src="../_images/math/5ba93ef9c5f2963c0b31e884c59317c780965345.png" alt="t_{x,n} = \sqrt{\frac{n}{n-2}} \left ( z_x + \frac{1}{4} \frac{z_x^3 -
+3z_x}{n-2} + \frac{1}{96} \frac{5z_x^5 - 56z_x^3 + 75z_x}{(n-2)^2} +
+\frac{1}{384} \frac{3z_x^7 - 81z_x^5 + 417z_x^3 - 315z_x}{(n-2)^3} \right )"/></p>
+</div><p>where <img class="math" src="../_images/math/13ec3386d628b5ca8d96ff83af9b240831084348.png" alt="z_x"/> is the <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> percentile of the standard normal
+distribution. In order to determine an arbitrary percentile of the standard
+normal distribution, we use an <a class="reference external" href="http://home.online.no/~pjacklam/notes/invnorm/">unpublished rational approximation</a>. After
+using the rational approximation, one iteration of Newton&#8217;s method is applied to
+improve the estimate of the percentile.</p>
+</div>
 </div>
 <div class="section" id="random-number-generation">
 <h2>3.4. Random Number Generation<a class="headerlink" href="#random-number-generation" title="Permalink to this headline">¶</a></h2>
@@ -195,7 +264,7 @@ simplest and commonly used algorithms is called a <a class="reference external" 
 generator</a>. We start with some random number seed <img class="math" src="../_images/math/da04290a79211712a58bf7241c9fb64251e000c3.png" alt="\xi_0"/> and a sequence
 of random numbers is generated using the following recurrence relation:</p>
 <div class="math" id="equation-lcg">
-<p><span class="eqno">(9)</span><img src="../_images/math/838ea831f2458960d581811d15ea37bae3f20014.png" alt="\xi_{i+1} = g \xi_i + c \mod M"/></p>
+<p><span class="eqno">(17)</span><img src="../_images/math/838ea831f2458960d581811d15ea37bae3f20014.png" alt="\xi_{i+1} = g \xi_i + c \mod M"/></p>
 </div><p>where <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>, <img class="math" src="../_images/math/3372c1cb6d68cf97c2d231acc0b47b95a9ed04cc.png" alt="c"/>, and <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/> are constants. The choice of these
 constants will have a profound effect on the quality and performance of the
 generator, so they should not be chosen arbitrarily. As Donald Knuth said in his
@@ -215,10 +284,21 @@ us to skip ahead in <img class="math" src="../_images/math/c0db20de736ea9b9091c5
 algorithm to do so is described in a paper by <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl_rn_arb-strides_1994.pdf">Brown</a>. This algorithm relies on
 the following relationship:</p>
 <div class="math" id="equation-lcg-skipahead">
-<p><span class="eqno">(10)</span><img src="../_images/math/29e04a6d8160c6dd91ec828d9133bcdeff0f1fdc.png" alt="\xi_{i+k} = g^k \xi_i + c \frac{g^k - 1}{g - 1} \mod M"/></p>
-</div><p>Note that equation <a href="#equation-lcg-skipahead">(10)</a> has the same form as equation <a href="#equation-lcg">(9)</a>
+<p><span class="eqno">(18)</span><img src="../_images/math/29e04a6d8160c6dd91ec828d9133bcdeff0f1fdc.png" alt="\xi_{i+k} = g^k \xi_i + c \frac{g^k - 1}{g - 1} \mod M"/></p>
+</div><p>Note that equation <a href="#equation-lcg-skipahead">(18)</a> has the same form as equation <a href="#equation-lcg">(17)</a>
 so the idea is to determine the new multiplicative and additive constants in
 <img class="math" src="../_images/math/c0db20de736ea9b9091c56adbd1e4111cc026472.png" alt="O(\log N)"/> operations.</p>
+</div>
+<div class="section" id="references">
+<h2>3.5. References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<table class="docutils citation" frame="void" id="george" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[George]</a></td><td>E. E. Olusegun George and Meenakshi Sivaram, &#8220;A modification of the
+Fisher-Cornish approximation for the student t percentiles,&#8221; Communication
+in Statistics - Simulation and Computation, 16 (4), pp. 1123-1132 (1987).</td></tr>
+</tbody>
+</table>
 </div>
 </div>
 

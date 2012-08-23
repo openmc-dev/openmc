@@ -258,6 +258,7 @@ module global
   ! Various output options
   logical :: output_summary = .false.
   logical :: output_xs      = .false.
+  logical :: output_tallies = .true.
 
 contains
 

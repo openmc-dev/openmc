@@ -2,6 +2,8 @@
 
 import struct
 
+import numpy as np
+
 filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
                 5: 'surface', 6: 'mesh', 7: 'energyin', 8: 'energyout'}
 
@@ -57,6 +59,9 @@ class StatePoint(BinaryFile):
     def __init__(self, filename):
         super(StatePoint, self).__init__(filename)
 
+        # Set flag for wehther metadata was read
+        self._metadata = False 
+
         # Initialize arrays for meshes and tallies
         self.meshes = []
         self.tallies = []
@@ -83,8 +88,8 @@ class StatePoint(BinaryFile):
         self.current_batch = self._get_int()[0]
 
         # Read batch keff and entropy
-        keff = self._get_double(self.current_batch)
-        entropy = self._get_double(self.current_batch)
+        self.k_batch = self._get_double(self.current_batch)
+        self.entropy = self._get_double(self.current_batch)
 
         # Read global tallies
         self.n_global_tallies = self._get_int()[0]
@@ -108,7 +113,6 @@ class StatePoint(BinaryFile):
             m.lower_left = self._get_double(n)
             m.upper_right = self._get_double(n)
             m.width = self._get_double(n)
-
 
         # Read number of tallies
         n_tallies = self._get_int()[0]
@@ -150,3 +154,16 @@ class StatePoint(BinaryFile):
             # Read score bins
             n_scores = self._get_int()[0]
             t.scores = [score_types[j] for j in self._get_int(n_scores)]
+
+        # Set flag indicating metadata has already been read
+        self._metadata = True
+
+    def read_values(self):
+        # Check whether metadata has been read
+        if not self._metadata:
+            self._read_metadata()
+
+        for t in self.tallies:
+            n = t.n_score_bins * t.n_filter_bins
+            t.values = np.array(self._get_double(2*n))
+            t.values.shape = (t.n_filter_bins, t.n_score_bins, 2)

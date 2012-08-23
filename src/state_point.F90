@@ -7,6 +7,10 @@ module state_point
   use string,       only: to_str
   use tally_header, only: TallyObject
 
+#ifdef MPI
+  use mpi
+#endif
+
   implicit none
 
 contains
@@ -18,8 +22,19 @@ contains
 
   subroutine create_state_point()
 
-    integer :: i, j, k ! loop indices
+    integer :: i ! loo pindex
+    integer :: n ! temporary array length
     type(TallyObject), pointer :: t => null()
+
+#ifdef MPI
+    integer :: fh                      ! file handle
+    integer :: temp
+    integer :: size_offset_kind        ! size of MPI_OFFSET_KIND (bytes)
+    integer :: size_bank               ! size of MPI_BANK type
+    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
+#else
+    integer :: j, k ! loop indices
+#endif
 
     ! Set filename for binary state point
     path_state_point = 'statepoint.' // trim(to_str(current_batch)) // '.binary'
@@ -28,6 +43,74 @@ contains
     message = "Creating state point " // trim(path_state_point) // "..."
     call write_message()
 
+#ifdef MPI
+    ! ==========================================================================
+    ! PARALLEL I/O USING MPI-2 ROUTINES
+
+    ! Open binary source file for reading
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, path_state_point, MPI_MODE_CREATE + &
+         MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
+
+    if (master) then
+       ! =======================================================================
+       ! RUN INFORMATION AND TALLY METADATA
+
+       call state_point_header(fh)
+
+       ! =======================================================================
+       ! TALLY RESULTS
+
+       if (tallies_on) then
+          ! Indicate that tallies are on
+          temp = 1
+          call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+
+          ! Write all tally scores
+          TALLY_SCORES: do i = 1, n_tallies
+             t => tallies(i)
+             
+             n = size(t % scores, 1) * size(t % scores, 2)
+             call MPI_FILE_WRITE(fh, t % scores, n, MPI_TALLYSCORE, &
+                  MPI_STATUS_IGNORE, mpi_err)
+          end do TALLY_SCORES
+       else
+          ! Indicate that tallies are off
+          temp = 0
+          call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+       end if
+    end if
+
+    ! =======================================================================
+    ! SOURCE BANK
+
+    if (run_mode == MODE_CRITICALITY) then
+       ! Get current offset for master
+       if (master) call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
+
+       ! Determine offset on master process and broadcast to all processors
+       call MPI_SIZEOF(offset, size_offset_kind, mpi_err)
+       select case (size_offset_kind)
+       case (4)
+          call MPI_BCAST(offset, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
+       case (8)
+          call MPI_BCAST(offset, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, mpi_err)
+       end select
+
+       ! Set proper offset for source data on this processor
+       call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
+       offset = offset + size_bank*maxwork*rank
+
+       ! Write all source sites
+       call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
+            MPI_STATUS_IGNORE, mpi_err)
+    end if
+       
+    ! Close binary source file
+    call MPI_FILE_CLOSE(fh, mpi_err)
+
+#else
     ! Open binary state point file for writing
     open(UNIT=UNIT_STATE, FILE=path_state_point, STATUS='replace', &
          ACCESS='stream')
@@ -158,8 +241,172 @@ contains
 
     ! Close binary state point file
     close(UNIT_STATE)
+#endif
 
   end subroutine create_state_point
+
+#ifdef MPI
+!===============================================================================
+! STATE_POINT_HEADER
+!===============================================================================
+
+  subroutine state_point_header(fh)
+
+    integer, intent(inout) :: fh ! file handle
+
+    integer :: i  ! loop index
+    integer :: j  ! loop index
+    integer :: n  ! temporary array length
+    type(TallyObject), pointer :: t => null()
+
+    ! Write revision number for state point file
+    call MPI_FILE_WRITE(fh, REVISION_STATEPOINT, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+    
+    ! Write OpenMC version
+    call MPI_FILE_WRITE(fh, VERSION_MAJOR, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+    call MPI_FILE_WRITE(fh, VERSION_MINOR, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+    call MPI_FILE_WRITE(fh, VERSION_RELEASE, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Write out random number seed
+    call MPI_FILE_WRITE(fh, seed, 1, MPI_INTEGER8, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Write run information
+    call MPI_FILE_WRITE(fh, run_mode, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+    call MPI_FILE_WRITE(fh, n_particles, 1, MPI_INTEGER8, &
+         MPI_STATUS_IGNORE, mpi_err)
+    call MPI_FILE_WRITE(fh, n_batches, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Write out current batch number
+    call MPI_FILE_WRITE(fh, current_batch, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Write out information for criticality run
+    if (run_mode == MODE_CRITICALITY) then
+       call MPI_FILE_WRITE(fh, n_inactive, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_WRITE(fh, gen_per_batch, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_WRITE(fh, k_batch, current_batch, MPI_REAL8, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_WRITE(fh, entropy, current_batch, MPI_REAL8, &
+            MPI_STATUS_IGNORE, mpi_err)
+    end if
+
+    ! Write out global tallies sum and sum_sq
+    call MPI_FILE_WRITE(fh, N_GLOBAL_TALLIES, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+    call MPI_FILE_WRITE(fh, global_tallies, N_GLOBAL_TALLIES, &
+         MPI_TALLYSCORE, MPI_STATUS_IGNORE, mpi_err)
+
+    ! Write number of meshes
+    call MPI_FILE_WRITE(fh, n_meshes, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Write information for meshes
+    MESH_LOOP: do i = 1, n_meshes
+       call MPI_FILE_WRITE(fh, meshes(i) % type, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_WRITE(fh, meshes(i) % n_dimension, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+
+       n = meshes(i) % n_dimension
+       call MPI_FILE_WRITE(fh, meshes(i) % dimension, n, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_WRITE(fh, meshes(i) % lower_left, n, MPI_REAL8, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_WRITE(fh, meshes(i) % upper_right, n, MPI_REAL8, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_WRITE(fh, meshes(i) % width, n, MPI_REAL8, &
+            MPI_STATUS_IGNORE, mpi_err)
+    end do MESH_LOOP
+
+    ! Write number of tallies
+    call MPI_FILE_WRITE(fh, n_tallies, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    TALLY_METADATA: do i = 1, n_tallies
+       ! Get pointer to tally
+       t => tallies(i)
+
+       ! Write size of each tally
+       n = t % n_score_bins * t % n_nuclide_bins
+       call MPI_FILE_WRITE(fh, n, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_WRITE(fh, t % n_total_bins, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+
+       ! Write number of filters
+       call MPI_FILE_WRITE(fh, t % n_filters, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+
+       FILTER_LOOP: do j = 1, t % n_filters
+          ! Write type of filter
+          call MPI_FILE_WRITE(fh, t % filters(j), 1, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+
+          ! Write number of bins for this filter
+          n = t % n_filter_bins(t % filters(j))
+          call MPI_FILE_WRITE(fh, t % n_filter_bins(t % filters(j)), &
+               1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+
+          select case (t % filters(j))
+          case(FILTER_UNIVERSE)
+             call MPI_FILE_WRITE(fh, t % universe_bins, n, &
+                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+          case(FILTER_MATERIAL)
+             call MPI_FILE_WRITE(fh, t % material_bins, n, &
+                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+          case(FILTER_CELL)
+             call MPI_FILE_WRITE(fh, t % cell_bins, n, &
+                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+          case(FILTER_CELLBORN)
+             call MPI_FILE_WRITE(fh, t % cellborn_bins, n, &
+                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+          case(FILTER_SURFACE)
+             call MPI_FILE_WRITE(fh, t % surface_bins, n, &
+                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+          case(FILTER_MESH)
+             call MPI_FILE_WRITE(fh, t % mesh, 1, &
+                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+          case(FILTER_ENERGYIN)
+             call MPI_FILE_WRITE(fh, t % energy_in, n+1, &
+                  MPI_REAL8, MPI_STATUS_IGNORE, mpi_err)
+          case(FILTER_ENERGYOUT)
+             call MPI_FILE_WRITE(fh, t % energy_out, n+1, &
+                  MPI_REAL8, MPI_STATUS_IGNORE, mpi_err)
+          end select
+       end do FILTER_LOOP
+
+       ! Write number of nuclide bins
+       call MPI_FILE_WRITE(fh, t % n_nuclide_bins, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+
+       ! Write nuclide bins
+       NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
+          if (t % nuclide_bins(j) > 0) then
+             call MPI_FILE_WRITE(fh, nuclides(t % nuclide_bins(j)) % zaid, &
+                  1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+          else
+             call MPI_FILE_WRITE(fh, t % nuclide_bins(j), 1, &
+                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+          end if
+       end do NUCLIDE_LOOP
+
+       ! Write number of score bins
+       call MPI_FILE_WRITE(fh, t % n_score_bins, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_WRITE(fh, t % score_bins, t % n_score_bins, &
+            MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+    end do TALLY_METADATA
+
+  end subroutine state_point_header
+#endif
 
 !===============================================================================
 ! LOAD_STATE_POINT loads data from a state point file to either continue a run

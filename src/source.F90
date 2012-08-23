@@ -264,7 +264,7 @@ contains
     end if
 
     ! Set proper offset for source data on this processor
-    offset = 8*(1 + rank*maxwork*9)
+    offset = 8*(1 + rank*maxwork*8)
 
     ! Write all source sites
     call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
@@ -328,7 +328,7 @@ contains
        call fatal_error()
     else
        ! Set proper offset for source data on this processor
-       offset = 8*(1 + rank*maxwork*9)
+       offset = 8*(1 + rank*maxwork*8)
 
        ! Read all source sites
        call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &

@@ -27,15 +27,18 @@ assert sp1.seed == sp2.seed
 assert sp1.run_mode == sp2.run_mode
 assert sp1.n_particles == sp2.n_particles
 assert sp1.n_batches == sp2.n_batches
-assert sp1.n_inactive == sp2.n_inactive
-assert sp1.gen_per_batch == sp2.gen_per_batch
-assert sp1.current_batch == sp2.current_batch
 
-# Compare keff results
-assert_allclose(sp1.k_batch, sp2.k_batch)
+if sp1.run_mode == 2:
+    # Compare criticality information
+    assert sp1.n_inactive == sp2.n_inactive
+    assert sp1.gen_per_batch == sp2.gen_per_batch
+    assert sp1.current_batch == sp2.current_batch
 
-# Compare entropy results
-assert_allclose(sp1.entropy, sp2.entropy)
+    # Compare keff results
+    assert_allclose(sp1.k_batch, sp2.k_batch)
+
+    # Compare entropy results
+    assert_allclose(sp1.entropy, sp2.entropy)
 
 # Compare global tallies
 assert_allclose(sp1.global_tallies, sp2.global_tallies)
@@ -69,3 +72,15 @@ for t1, t2 in zip(sp1.tallies, sp2.tallies):
 
     # Compare tally results
     assert_allclose(t1.values, t2.values)
+
+# If criticality, compare source sites
+if sp1.run_mode == 2:
+    sp1.read_source()
+    sp2.read_source()
+
+    assert len(sp1.source) == len(sp2.source)
+    for s1, s2 in zip(sp1.source, sp2.source):
+        assert s1.weight == s2.weight
+        assert s1.xyz == s2.xyz
+        assert s1.uvw == s2.uvw
+        assert s1.E == s2.E

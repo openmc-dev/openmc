@@ -42,16 +42,16 @@ contains
     write(UNIT_STATE) seed
 
     ! Write run information
-    write(UNIT_STATE) run_mode, n_particles, n_batches, &
-         n_inactive, gen_per_batch
+    write(UNIT_STATE) run_mode, n_particles, n_batches
 
     ! Write out current batch number
     write(UNIT_STATE) current_batch
 
-    ! Write out keff and entropy for each batch
+    ! Write out information for criticality run
     if (run_mode == MODE_CRITICALITY) then
+       write(UNIT_STATE) n_inactive, gen_per_batch
        write(UNIT_STATE) k_batch(1:current_batch)
-       if (entropy_on) write(UNIT_STATE) entropy(1:current_batch)
+       write(UNIT_STATE) entropy(1:current_batch)
     end if
 
     ! Write out global tallies sum and sum_sq
@@ -134,6 +134,9 @@ contains
     end do TALLY_METADATA
 
     if (tallies_on) then
+       ! Indicate that tallies are on
+       write(UNIT_STATE) 1
+
        ! Write tally sum and sum_sq
        TALLY_SCORES: do i = 1, n_tallies
           do k = 1, size(t % scores, 2)
@@ -143,6 +146,14 @@ contains
              end do
           end do
        end do TALLY_SCORES
+    else
+       ! Indicate that tallies are off
+       write(UNIT_STATE) 0
+    end if
+
+    ! Write out source bank 
+    if (run_mode == MODE_CRITICALITY) then
+       write(UNIT_STATE) source_bank
     end if
 
     ! Close binary state point file
@@ -193,16 +204,16 @@ contains
     read(UNIT_STATE) seed
 
     ! Read and overwrite run information
-    read(UNIT_STATE) mode, n_particles, n_batches, &
-         n_inactive, gen_per_batch
+    read(UNIT_STATE) mode, n_particles, n_batches
 
     ! Read batch number to restart at
     read(UNIT_STATE) restart_batch
 
-    ! Read keff and entropy for each batch
+    ! Read information specific to criticality run
     if (mode == MODE_CRITICALITY) then
+       read(UNIT_STATE) n_inactive, gen_per_batch
        read(UNIT_STATE) k_batch(1:restart_batch)
-       if (entropy_on) read(UNIT_STATE) entropy(1:restart_batch)
+       read(UNIT_STATE) entropy(1:restart_batch)
     end if
 
     if (master) then
@@ -303,8 +314,9 @@ contains
           deallocate(int_array)
        end do TALLY_METADATA
 
-          ! Read sum and sum squared
-       if (restart_batch > n_inactive) then
+       ! Read sum and sum squared
+       read(UNIT_STATE) temp(1)
+       if (temp(1) == 1) then
           TALLY_SCORES: do i = 1, n_tallies
              do k = 1, size(tallies(i) % scores, 2)
                 do j = 1, size(tallies(i) % scores, 1)
@@ -314,6 +326,11 @@ contains
              end do
           end do TALLY_SCORES
        end if
+    end if
+
+    ! Read source bank for criticality run
+    if (mode == MODE_CRITICALITY) then
+       read(UNIT_STATE) source_bank
     end if
 
     ! Close binary state point file

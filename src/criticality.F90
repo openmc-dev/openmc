@@ -153,10 +153,6 @@ contains
        if (current_batch == statepoint_batch(i)) then
           ! Create state point file
           if (master) call create_state_point()
-
-          ! Create binary source file
-          call write_source_binary('source.' // &
-               trim(to_str(current_batch)) // '.binary')
           exit
        end if
     end do

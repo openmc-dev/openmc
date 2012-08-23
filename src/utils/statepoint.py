@@ -55,16 +55,31 @@ class Tally(object):
     def __init__(self):
         self.filters = []
 
+
+class SourceSite(object):
+    def __init__(self):
+        self.weight = None
+        self.xyz = None
+        self.uvw = None
+        self.E = None
+
+    def __repr__(self):
+        return "<SourceSite: xyz={0} at E={1}>".format(self.xyz, self.E)
+
+
 class StatePoint(BinaryFile):
     def __init__(self, filename):
         super(StatePoint, self).__init__(filename)
 
-        # Set flag for wehther metadata was read
-        self._metadata = False 
+        # Set flags for what data  was read
+        self._metadata = False
+        self._values = False
+        self._source = False
 
         # Initialize arrays for meshes and tallies
         self.meshes = []
         self.tallies = []
+        self.source = []
 
         # Read all metadata
         self._read_metadata()
@@ -82,14 +97,16 @@ class StatePoint(BinaryFile):
         # Read run information
         self.run_mode = self._get_int()[0]
         self.n_particles = self._get_long()[0]
-        self.n_batches, self.n_inactive, self.gen_per_batch = self._get_int(3)
+        self.n_batches = self._get_int()[0]
 
         # Read current batch
         self.current_batch = self._get_int()[0]
 
-        # Read batch keff and entropy
-        self.k_batch = self._get_double(self.current_batch)
-        self.entropy = self._get_double(self.current_batch)
+        # Read criticality information
+        if self.run_mode == 2:
+            self.n_inactive, self.gen_per_batch = self._get_int(2)
+            self.k_batch = self._get_double(self.current_batch)
+            self.entropy = self._get_double(self.current_batch)
 
         # Read global tallies
         n_global_tallies = self._get_int()[0]
@@ -164,7 +181,25 @@ class StatePoint(BinaryFile):
         if not self._metadata:
             self._read_metadata()
 
-        for t in self.tallies:
-            n = t.n_score_bins * t.n_filter_bins
-            t.values = np.array(self._get_double(2*n))
-            t.values.shape = (t.n_filter_bins, t.n_score_bins, 2)
+        read_tallies = self._get_int()[0]
+
+        if read_tallies:
+            for t in self.tallies:
+                n = t.n_score_bins * t.n_filter_bins
+                t.values = np.array(self._get_double(2*n))
+                t.values.shape = (t.n_filter_bins, t.n_score_bins, 2)
+
+    def read_source(self):
+        # Check whether tally values have been read
+        if not self._values:
+            self.read_values()
+
+        for i in range(self.n_particles):
+            s = SourceSite()
+            self.source.append(s)
+
+            # Read position, angle, and energy
+            s.weight = self._get_double()[0]
+            s.xyz = self._get_double(3)
+            s.uvw = self._get_double(3)
+            s.E = self._get_double()[0]

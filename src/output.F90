@@ -63,24 +63,26 @@ contains
          trim(date_), trim(time_)
 
     ! Write information to summary file
-    call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
-    write(UNIT=UNIT_SUMMARY, FMT=*) &
-         "Copyright:     2011-2012 Massachusetts Institute of Technology"
-    write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
-         "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
+    if (output_summary) then
+       call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
+       write(UNIT=UNIT_SUMMARY, FMT=*) &
+            "Copyright:     2011-2012 Massachusetts Institute of Technology"
+       write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
+            "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1
-    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Git SHA1:",6X,A)') GIT_SHA1
+       write(UNIT=UNIT_SUMMARY, FMT='(1X,"Git SHA1:",6X,A)') GIT_SHA1
 #endif
-    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A,1X,A)') &
-         trim(date_), trim(time_)
+       write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A,1X,A)') &
+            trim(date_), trim(time_)
 
-    ! Write information on number of processors
+       ! Write information on number of processors
 #ifdef MPI
-    write(UNIT=OUTPUT_UNIT, FMT='(1X,A)') '     MPI Processes: ' // &
-         trim(to_str(n_procs))
-    write(UNIT=UNIT_SUMMARY, FMT='(1X,"MPI Processes:",1X,A)') &
-         trim(to_str(n_procs))
+       write(UNIT=OUTPUT_UNIT, FMT='(1X,A)') '     MPI Processes: ' // &
+            trim(to_str(n_procs))
+       write(UNIT=UNIT_SUMMARY, FMT='(1X,"MPI Processes:",1X,A)') &
+            trim(to_str(n_procs))
 #endif
+    end if
 
   end subroutine title
 

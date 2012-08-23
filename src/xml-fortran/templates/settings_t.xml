@@ -49,6 +49,7 @@
   <variable name="entropy_" tag="entropy" type="mesh_xml" dimension="1" />
   <variable name="fixed_source_" tag="fixed_source" type="run_parameters_xml" />
   <variable name="no_reduce_" tag="no_reduce" type="word" length="3" />
+  <variable name="output_" tag="output" type="word" length="250" />
   <variable name="ptables_" tag="ptables" type="word" length="3" />
   <variable name="seed_" tag="seed" type="integer" />
   <variable name="source_" tag="source" type="source_xml" />

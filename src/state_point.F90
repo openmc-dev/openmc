@@ -56,39 +56,46 @@ contains
 
     ! Write out global tallies sum and sum_sq
     write(UNIT_STATE) N_GLOBAL_TALLIES
-    write(UNIT_STATE) global_tallies(:) % sum
-    write(UNIT_STATE) global_tallies(:) % sum_sq
+    GLOBAL_TALLIES_LOOP: do i = 1, N_GLOBAL_TALLIES
+       write(UNIT_STATE) global_tallies(i) % sum
+       write(UNIT_STATE) global_tallies(i) % sum_sq
+    end do GLOBAL_TALLIES_LOOP
 
     ! Write number of meshes
     write(UNIT_STATE) n_meshes
 
     ! Write information for meshes
-    do i = 1, n_meshes
+    MESH_LOOP: do i = 1, n_meshes
        write(UNIT_STATE) meshes(i) % type
        write(UNIT_STATE) meshes(i) % n_dimension
        write(UNIT_STATE) meshes(i) % dimension
        write(UNIT_STATE) meshes(i) % lower_left
        write(UNIT_STATE) meshes(i) % upper_right
        write(UNIT_STATE) meshes(i) % width
-    end do
+    end do MESH_LOOP
 
     ! Write number of tallies
     write(UNIT_STATE) n_tallies
 
-    ! Write size of each tally
-    do i = 1, n_tallies
+    TALLY_METADATA: do i = 1, n_tallies
        ! Get pointer to tally
        t => tallies(i)
 
+       ! Write size of each tally
        write(UNIT_STATE) size(t % scores, 1)
        write(UNIT_STATE) size(t % scores, 2)
 
        ! Write number of filters
        write(UNIT_STATE) t % n_filters
-       do j = 1, t % n_filters
+
+       FILTER_LOOP: do j = 1, t % n_filters
+          ! Write type of filter
           write(UNIT_STATE) t % filters(j)
+
+          ! Write number of bins for this filter
           write(UNIT_STATE) t % n_filter_bins(t % filters(j))
 
+          ! Write filter bins
           select case (t % filters(j))
           case(FILTER_UNIVERSE)
              write(UNIT_STATE) t % universe_bins
@@ -107,35 +114,35 @@ contains
           case(FILTER_ENERGYOUT)
              write(UNIT_STATE) t % energy_out
           end select
-       end do
+       end do FILTER_LOOP
 
        ! Write number of nuclide bins
        write(UNIT_STATE) t % n_nuclide_bins
 
        ! Write nuclide bins
-       do j = 1, t % n_nuclide_bins
+       NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
           if (t % nuclide_bins(j) > 0) then
              write(UNIT_STATE) nuclides(t % nuclide_bins(j)) % zaid
           else
              write(UNIT_STATE) t % nuclide_bins(j)
           end if
-       end do
+       end do NUCLIDE_LOOP
 
        ! Write number of score bins
        write(UNIT_STATE) t % n_score_bins
        write(UNIT_STATE) t % score_bins
-    end do
+    end do TALLY_METADATA
 
     if (tallies_on) then
        ! Write tally sum and sum_sq
-       do i = 1, n_tallies
+       TALLY_SCORES: do i = 1, n_tallies
           do k = 1, size(t % scores, 2)
              do j = 1, size(t % scores, 1)
                 write(UNIT_STATE) t % scores(j,k) % sum
                 write(UNIT_STATE) t % scores(j,k) % sum_sq
              end do
           end do
-       end do
+       end do TALLY_SCORES
     end if
 
     ! Close binary state point file
@@ -207,8 +214,10 @@ contains
        end if
 
        ! Read global tally data
-       read(UNIT_STATE) global_tallies(:) % sum
-       read(UNIT_STATE) global_tallies(:) % sum_sq
+       do i = 1, N_GLOBAL_TALLIES
+          read(UNIT_STATE) global_tallies(i) % sum
+          read(UNIT_STATE) global_tallies(i) % sum_sq
+       end do
 
        ! Read number of meshes
        read(UNIT_STATE) temp(1)

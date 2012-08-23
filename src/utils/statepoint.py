@@ -92,8 +92,9 @@ class StatePoint(BinaryFile):
         self.entropy = self._get_double(self.current_batch)
 
         # Read global tallies
-        self.n_global_tallies = self._get_int()[0]
-        self.global_tallies = self._get_double(2*self.n_global_tallies)
+        n_global_tallies = self._get_int()[0]
+        self.global_tallies = np.array(self._get_double(2*n_global_tallies))
+        self.global_tallies.shape = (n_global_tallies, 2)
 
         # Read number of meshes
         n_meshes = self._get_int()[0]

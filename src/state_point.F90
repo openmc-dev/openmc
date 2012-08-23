@@ -28,7 +28,7 @@ contains
 
 #ifdef MPI
     integer :: fh                      ! file handle
-    integer :: temp
+    integer :: temp                    ! temporary variable
     integer :: size_offset_kind        ! size of MPI_OFFSET_KIND (bytes)
     integer :: size_bank               ! size of MPI_BANK type
     integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
@@ -82,7 +82,7 @@ contains
        end if
     end if
 
-    ! =======================================================================
+    ! ==========================================================================
     ! SOURCE BANK
 
     if (run_mode == MODE_CRITICALITY) then
@@ -247,7 +247,8 @@ contains
 
 #ifdef MPI
 !===============================================================================
-! WRITE_STATE_POINT_HEADER
+! WRITE_STATE_POINT_HEADER uses MPI-IO routines to write basic run information
+! and tally metadata
 !===============================================================================
 
   subroutine write_state_point_header(fh)
@@ -415,16 +416,223 @@ contains
 
   subroutine load_state_point()
 
-    integer :: i, j, k ! loop indices
+    integer :: i, j    ! loop indices
     integer :: mode    ! specified run mode
     integer :: temp(3) ! temporary variable
     integer, allocatable :: int_array(:)
     real(8), allocatable :: real_array(:)
 
+#ifdef MPI
+    integer :: fh                      ! file handle
+    integer :: n                       ! temporary array size
+    integer :: size_offset_kind        ! size of MPI_OFFSET_KIND (bytes)
+    integer :: size_bank               ! size of MPI_BANK type
+    integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
+#else
+    integer :: k ! loop index
+#endif
+
     ! Write message
     message = "Loading state point " // trim(path_state_point) // "..."
     call write_message(1)
 
+#ifdef MPI
+    ! Open binary state point file for reading
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, path_state_point, MPI_MODE_RDONLY, &
+         MPI_INFO_NULL, fh, mpi_err)
+
+    ! ==========================================================================
+    ! RUN INFORMATION AND TALLY METADATA
+
+    ! Raad revision number for state point file and make sure it matches with
+    ! current version
+    call MPI_FILE_READ_ALL(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+    if (temp(1) /= REVISION_STATEPOINT) then
+       message = "State point binary version does not match current version " &
+            // "in OpenMC."
+       call fatal_error()
+    end if
+    
+    ! Read OpenMC version
+    call MPI_FILE_READ_ALL(fh, temp, 3, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+    if (temp(1) /= VERSION_MAJOR .or. temp(2) /= VERSION_MINOR &
+         .or. temp(3) /= VERSION_RELEASE) then
+       message = "State point file was created with a different version " // &
+            "of OpenMC."
+       call warning()
+    end if
+
+    ! Read and overwrite random number seed
+    call MPI_FILE_READ_ALL(fh, seed, 1, MPI_INTEGER8, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Read and overwrite run information
+    call MPI_FILE_READ_ALL(fh, mode, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+    call MPI_FILE_READ_ALL(fh, n_particles, 1, MPI_INTEGER8, &
+         MPI_STATUS_IGNORE, mpi_err)
+    call MPI_FILE_READ_ALL(fh, n_batches, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Read batch number to restart at
+    call MPI_FILE_READ_ALL(fh, restart_batch, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Read information specific to criticality run
+    if (mode == MODE_CRITICALITY) then
+       call MPI_FILE_READ_ALL(fh, n_inactive, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_READ_ALL(fh, gen_per_batch, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_READ_ALL(fh, k_batch, restart_batch, MPI_REAL8, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_READ_ALL(fh, entropy, restart_batch, MPI_REAL8, &
+            MPI_STATUS_IGNORE, mpi_err)
+    end if
+
+    if (master) then
+       ! Read number of global tallies and make sure it matches
+       call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+       if (temp(1) /= N_GLOBAL_TALLIES) then
+          message = "Number of global tallies does not match in state point."
+          call fatal_error()
+       end if
+
+       ! Read global tally data
+       call MPI_FILE_READ(fh, global_tallies, N_GLOBAL_TALLIES, &
+            MPI_TALLYSCORE, MPI_STATUS_IGNORE, mpi_err)
+
+       ! Read number of meshes
+       call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+       if (temp(1) /= n_meshes) then
+          message = "Number of meshes does not match in state point."
+          call fatal_error()
+       end if
+
+       MESH_LOOP: do i = 1, n_meshes
+          ! Read type of mesh and dimension
+          call MPI_FILE_READ(fh, temp, 2, MPI_INTEGER, MPI_STATUS_IGNORE, &
+               mpi_err)
+
+          ! Skip mesh data
+          call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
+          offset = offset + temp(2)*(4 + 3*8)
+          call MPI_FILE_SEEK(fh, offset, MPI_SEEK_SET, mpi_err)
+       end do MESH_LOOP
+
+       ! Read number of tallies and make sure it matches
+       call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+       if (temp(1) /= n_tallies) then
+          message = "Number of tallies does not match in state point."
+          call fatal_error()
+       end if
+
+       TALLY_METADATA: do i = 1, n_tallies
+          ! Read dimensions of tally filters and scores and make sure they
+          ! match
+          call MPI_FILE_READ(fh, temp, 2, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+          if (temp(1) /= size(tallies(i) % scores, 1) .or. &
+               temp(2) /= size(tallies(i) % scores, 2)) then
+             message = "Tally dimensions do not match in state point."
+             call fatal_error()
+          end if
+
+          ! Read number of filters
+          call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+
+          FILTER_LOOP: do j = 1, temp(1)
+             ! Read filter type and number of bins
+             call MPI_FILE_READ(fh, temp(2), 2, MPI_INTEGER, &
+                  MPI_STATUS_IGNORE, mpi_err)
+
+             ! Read filter bins
+             select case (temp(2))
+             case (FILTER_MESH)
+                allocate(int_array(1))
+                call MPI_FILE_READ(fh, int_array, 1, MPI_INTEGER, &
+                     MPI_STATUS_IGNORE, mpi_err)
+                deallocate(int_array)
+             case (FILTER_ENERGYIN, FILTER_ENERGYOUT)
+                allocate(real_array(temp(3) + 1))
+                call MPI_FILE_READ(fh, real_array, temp(3) + 1, MPI_REAL8, &
+                     MPI_STATUS_IGNORE, mpi_err)
+                deallocate(real_array)
+             case default
+                allocate(int_array(temp(3)))
+                call MPI_FILE_READ(fh, int_array, temp(3), MPI_INTEGER, &
+                     MPI_STATUS_IGNORE, mpi_err)
+                deallocate(int_array)
+             end select
+          end do FILTER_LOOP
+
+          ! Read number of nuclides
+          call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+
+          ! Read nuclide bins
+          allocate(int_array(temp(1)))
+          call MPI_FILE_READ(fh, int_array, temp(1), MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+          deallocate(int_array)
+
+          ! Read number of scores
+          call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+
+          ! Read nuclide bins
+          allocate(int_array(temp(1)))
+          call MPI_FILE_READ(fh, int_array, temp(1), MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+          deallocate(int_array)
+       end do TALLY_METADATA
+
+       ! Check if tally results are present
+       call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+
+       ! =======================================================================
+       ! TALLY RESULTS
+
+       ! Read sum and sum squared
+       if (temp(1) == 1) then
+          TALLY_SCORES: do i = 1, n_tallies
+             n = size(tallies(i) % scores, 1) * size(tallies(i) % scores, 2)
+             call MPI_FILE_READ(fh, tallies(i) % scores, n, MPI_TALLYSCORE, &
+                  MPI_STATUS_IGNORE, mpi_err)
+          end do TALLY_SCORES
+       end if
+    end if
+
+    ! ==========================================================================
+    ! SOURCE BANK
+
+    if (run_mode == MODE_CRITICALITY) then
+       ! Get current offset for master
+       if (master) call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
+
+       ! Determine offset on master process and broadcast to all processors
+       call MPI_SIZEOF(offset, size_offset_kind, mpi_err)
+       select case (size_offset_kind)
+       case (4)
+          call MPI_BCAST(offset, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
+       case (8)
+          call MPI_BCAST(offset, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, mpi_err)
+       end select
+
+       ! Set proper offset for source data on this processor
+       call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
+       offset = offset + size_bank*maxwork*rank
+
+       ! Write all source sites
+       call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
+            MPI_STATUS_IGNORE, mpi_err)
+    end if
+
+    ! Close binary state point file
+    call MPI_FILE_CLOSE(fh, mpi_err)
+
+#else
     ! Open binary state point file for writing
     open(UNIT=UNIT_STATE, FILE=path_state_point, STATUS='old', &
          ACCESS='stream')
@@ -582,6 +790,7 @@ contains
 
     ! Close binary state point file
     close(UNIT_STATE)
+#endif
 
   end subroutine load_state_point
 

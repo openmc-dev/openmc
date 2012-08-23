@@ -4,6 +4,7 @@ module state_point
   use global
   use math,         only: t_percentile
   use output,       only: write_message, print_batch_keff
+  use source,       only: write_source_binary
   use string,       only: to_str
   use tally_header, only: TallyObject
 
@@ -86,25 +87,36 @@ contains
     ! SOURCE BANK
 
     if (run_mode == MODE_CRITICALITY) then
-       ! Get current offset for master
-       if (master) call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
+       if (source_separate) then
+          ! If the user has specified that the source sites should be written in
+          ! a separate file, we make a call to the appropriate subroutine to
+          ! write it separately
 
-       ! Determine offset on master process and broadcast to all processors
-       call MPI_SIZEOF(offset, size_offset_kind, mpi_err)
-       select case (size_offset_kind)
-       case (4)
-          call MPI_BCAST(offset, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
-       case (8)
-          call MPI_BCAST(offset, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, mpi_err)
-       end select
+          path_source = "source." // trim(to_str(current_batch)) // ".binary"
+          call write_source_binary()
+       else
+          ! Otherwise, write the source sites in the state point file
 
-       ! Set proper offset for source data on this processor
-       call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
-       offset = offset + size_bank*maxwork*rank
+          ! Get current offset for master
+          if (master) call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
 
-       ! Write all source sites
-       call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
-            MPI_STATUS_IGNORE, mpi_err)
+          ! Determine offset on master process and broadcast to all processors
+          call MPI_SIZEOF(offset, size_offset_kind, mpi_err)
+          select case (size_offset_kind)
+          case (4)
+             call MPI_BCAST(offset, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
+          case (8)
+             call MPI_BCAST(offset, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, mpi_err)
+          end select
+
+          ! Set proper offset for source data on this processor
+          call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
+          offset = offset + size_bank*maxwork*rank
+
+          ! Write all source sites
+          call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
+               MPI_STATUS_IGNORE, mpi_err)
+       end if
     end if
        
     ! Close binary source file
@@ -236,7 +248,18 @@ contains
 
     ! Write out source bank 
     if (run_mode == MODE_CRITICALITY) then
-       write(UNIT_STATE) source_bank
+       if (source_separate) then
+          ! If the user has specified that the source sites should be written in
+          ! a separate file, we make a call to the appropriate subroutine to
+          ! write it separately
+
+          path_source = "source." // trim(to_str(current_batch)) // ".binary"
+          call write_source_binary()
+       else
+          ! Otherwise, write the source sites in the state point file
+
+          write(UNIT_STATE) source_bank
+       end if
     end if
 
     ! Close binary state point file

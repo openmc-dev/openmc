@@ -173,7 +173,7 @@ module global
   real(8), allocatable :: source_frac(:,:,:,:)
 
   ! Write source at end of simulation
-  logical :: write_source = .false.
+  logical :: source_separate = .false.
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES

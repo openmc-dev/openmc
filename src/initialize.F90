@@ -124,7 +124,7 @@ contains
        ! run, not at initialization
        if (run_mode == MODE_CRITICALITY) then
           call allocate_banks()
-          call initialize_source()
+          if (.not. restart_run) call initialize_source()
        end if
 
        ! If this is a restart run, load the state point data and binary source
@@ -270,9 +270,6 @@ contains
              path_state_point = argv(i)
              restart_run = .true.
 
-             ! Set path for binary source file
-             path_source = 'source.' // path_state_point(9 : &
-                  len_trim(path_state_point))
           case ('-t', '-tallies', '--tallies')
              run_mode = MODE_TALLIES
 

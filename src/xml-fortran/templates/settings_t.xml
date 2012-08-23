@@ -35,6 +35,12 @@
     <component name="upper_right" type="double-array" />
   </typedef>
 
+  <typedef name="statepoint_xml">
+    <component name="batches" type="integer-array" />
+    <component name="interval" type="integer" default="0" />
+    <component name="source_separate" type="word" length="3" default="''" />
+  </typedef>
+
   <variable name="confidence_intervals_" tag="confidence_intervals" type="word" length="3" />
   <variable name="criticality_" tag="criticality" type="run_parameters_xml" />
   <variable name="cross_sections_" tag="cross_sections" type="word" length="255" />
@@ -46,11 +52,10 @@
   <variable name="ptables_" tag="ptables" type="word" length="3" />
   <variable name="seed_" tag="seed" type="integer" />
   <variable name="source_" tag="source" type="source_xml" />
-  <variable name="source_separate_" tag="source_separate" type="word" length="3" />
   <variable name="survival_" tag="survival_biasing" type="word" length="3" />
   <variable name="verbosity_" tag="verbosity" type="integer" />
   <variable name="trace_" tag="trace" type="integer-array" />
   <variable name="uniform_fs_" tag="uniform_fs" type="mesh_xml" dimension="1" />
-  <variable name="write_state_point_" tag="write_state_point" type="integer-array" />
+  <variable name="state_point_" tag="state_point" type="statepoint_xml" dimension="1" />
 
 </template>

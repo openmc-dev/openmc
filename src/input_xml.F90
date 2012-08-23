@@ -44,6 +44,7 @@ contains
 
     use xml_data_settings_t
 
+    integer :: i ! loop index
     integer :: n
     integer :: coeffs_reqd
     logical :: file_exists
@@ -68,7 +69,6 @@ contains
     verbosity_ = 0
     energy_grid_ = "union"
     seed_ = 0_8
-    source_separate_ = ""
     no_reduce_ = ""
     source_ % file = ''
     source_ % space % type = ''
@@ -459,17 +459,38 @@ contains
             ufs_mesh % dimension(2), ufs_mesh % dimension(3)))
     end if
 
-    ! Check if the user has specified to write binary source file
-    if (trim(source_separate_) == 'on') source_separate = .true.
-
     ! Check if the user has specified to write state points
-    if (associated(write_state_point_)) then
+    if (size(state_point_) > 0) then
        ! Determine number of batches at which to store state points
-       n_state_points = size(write_state_point_)
+       n_state_points = size(state_point_(1) % batches)
 
-       ! Allocate and store batches
+       if (n_state_points > 0) then
+          ! User gave specific batches to write state points
+          allocate(statepoint_batch(n_state_points))
+          statepoint_batch = state_point_(1) % batches
+
+       elseif (state_point_(1) % interval /= 0) then
+          ! User gave an interval for writing state points
+          n_state_points = n_batches / state_point_(1) % interval
+          allocate(statepoint_batch(n_state_points))
+          statepoint_batch = (/ (state_point_(1) % interval * i, i = 1, &
+               n_state_points) /)
+       else
+          ! If neither were specified, write state point at last batch
+          n_state_points = 1
+          allocate(statepoint_batch(n_state_points))
+          statepoint_batch(1) = n_batches
+       end if
+
+       ! Check if the user has specified to write binary source file
+       if (trim(state_point_(1) % source_separate) == 'on') &
+            source_separate = .true.
+    else
+       ! If no <state_point> tag was present, by default write state point at
+       ! last batch only
+       n_state_points = 1
        allocate(statepoint_batch(n_state_points))
-       statepoint_batch = write_state_point_
+       statepoint_batch(1) = n_batches
     end if
 
     ! Check if the user has specified to not reduce tallies at the end of every

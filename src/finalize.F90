@@ -24,15 +24,18 @@ contains
     call timer_start(time_finalize)
 
     if (run_mode /= MODE_PLOTTING) then
-       ! Calculate statistics for tallies and write to tallies.out
-       call tally_statistics()
-       if (master) call write_tallies()
+       if (output_tallies) then
+          ! Calculate statistics for tallies and write to tallies.out
+          call tally_statistics()
+          if (master) call write_tallies()
+       end if
     end if
 
     ! stop timers and show timing statistics
     call timer_stop(time_finalize)
     call timer_stop(time_total)
-    if (master .and. (run_mode /= MODE_PLOTTING)) call print_runtime()
+    if (master .and. (run_mode /= MODE_PLOTTING .and. &
+         run_mode /= MODE_TALLIES)) call print_runtime()
 
 #ifdef HDF5
     ! Write time statistics to HDF5 output 

@@ -24,11 +24,11 @@ contains
   subroutine write_state_point()
 
     integer :: i ! loop index
-    integer :: n ! temporary array length
     type(TallyObject), pointer :: t => null()
 
 #ifdef MPI
     integer :: fh                      ! file handle
+    integer :: n                       ! temporary array length
     integer :: temp                    ! temporary variable
     integer :: size_offset_kind        ! size of MPI_OFFSET_KIND (bytes)
     integer :: size_bank               ! size of MPI_BANK type
@@ -807,7 +807,7 @@ contains
     end if
 
     ! Read source bank for criticality run
-    if (mode == MODE_CRITICALITY) then
+    if (mode == MODE_CRITICALITY .and. run_mode /= MODE_TALLIES) then
        read(UNIT_STATE) source_bank
     end if
 

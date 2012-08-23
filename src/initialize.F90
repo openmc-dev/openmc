@@ -310,9 +310,6 @@ contains
              path_state_point = argv(i)
              restart_run = .true.
 
-             ! Set path for binary source file
-             path_source = 'source.' // path_state_point(9 : &
-                  len_trim(path_state_point))
           case ('-?', '-help', '--help')
              call print_usage()
              stop

@@ -515,6 +515,8 @@ contains
              output_summary = .true.
           case ('cross_sections')
              output_xs = .true.
+          case ('tallies')
+             output_tallies = .true.
           end select
        end do
     end if

@@ -6,7 +6,7 @@ module criticality
                          count_source_for_ufs
   use output,      only: write_message, header, print_columns
   use physics,     only: transport
-  use source,      only: get_source_particle, write_source_binary
+  use source,      only: get_source_particle
   use state_point, only: write_state_point, replay_batch_history
   use string,      only: to_str
   use tally,       only: synchronize_tallies

@@ -2,7 +2,6 @@ module finalize
 
   use global
   use output,         only: print_runtime
-  use source,         only: write_source_binary
   use tally,          only: write_tallies, tally_statistics
   use timing,         only: timer_start, timer_stop
 

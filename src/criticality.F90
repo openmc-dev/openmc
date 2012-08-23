@@ -7,7 +7,7 @@ module criticality
   use output,      only: write_message, header, print_columns
   use physics,     only: transport
   use source,      only: get_source_particle, write_source_binary
-  use state_point, only: create_state_point, replay_batch_history
+  use state_point, only: write_state_point, replay_batch_history
   use string,      only: to_str
   use tally,       only: synchronize_tallies
   use timing,      only: timer_start, timer_stop
@@ -152,7 +152,7 @@ contains
     do i = 1, n_state_points
        if (current_batch == statepoint_batch(i)) then
           ! Create state point file
-          call create_state_point()
+          call write_state_point()
           exit
        end if
     end do

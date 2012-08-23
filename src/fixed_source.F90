@@ -7,7 +7,7 @@ module fixed_source
   use random_lcg,  only: set_particle_seed
   use source,      only: initialize_particle, sample_external_source, &
                          copy_source_attributes
-  use state_point, only: create_state_point
+  use state_point, only: write_state_point
   use string,      only: to_str
   use tally,       only: synchronize_tallies
   use timing,      only: timer_start, timer_stop
@@ -115,7 +115,7 @@ contains
     if (master) then
        do i = 1, n_state_points
           if (current_batch == statepoint_batch(i)) then
-             call create_state_point()
+             call write_state_point()
              exit
           end if
        end do

@@ -181,13 +181,18 @@ class StatePoint(BinaryFile):
         if not self._metadata:
             self._read_metadata()
 
-        read_tallies = self._get_int()[0]
+        # Flag indicating if tallies are present
+        tallies_present = self._get_int()[0]
 
-        if read_tallies:
+        # Read tally results
+        if tallies_present:
             for t in self.tallies:
                 n = t.n_score_bins * t.n_filter_bins
                 t.values = np.array(self._get_double(2*n))
                 t.values.shape = (t.n_filter_bins, t.n_score_bins, 2)
+
+        # Indicate that tally values have been read
+        self._values = True
 
     def read_source(self):
         # Check whether tally values have been read

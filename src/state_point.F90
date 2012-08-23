@@ -16,13 +16,13 @@ module state_point
 contains
 
 !===============================================================================
-! CREATE_STATE_POINT creates a state point binary file that can be used for
+! WRITE_STATE_POINT creates a state point binary file that can be used for
 ! restarting a run or for getting intermediate tally results
 !===============================================================================
 
-  subroutine create_state_point()
+  subroutine write_state_point()
 
-    integer :: i ! loo pindex
+    integer :: i ! loop index
     integer :: n ! temporary array length
     type(TallyObject), pointer :: t => null()
 
@@ -41,7 +41,7 @@ contains
 
     ! Write message
     message = "Creating state point " // trim(path_state_point) // "..."
-    call write_message()
+    call write_message(1)
 
 #ifdef MPI
     ! ==========================================================================
@@ -55,7 +55,7 @@ contains
        ! =======================================================================
        ! RUN INFORMATION AND TALLY METADATA
 
-       call state_point_header(fh)
+       call write_state_point_header(fh)
 
        ! =======================================================================
        ! TALLY RESULTS
@@ -243,14 +243,14 @@ contains
     close(UNIT_STATE)
 #endif
 
-  end subroutine create_state_point
+  end subroutine write_state_point
 
 #ifdef MPI
 !===============================================================================
-! STATE_POINT_HEADER
+! WRITE_STATE_POINT_HEADER
 !===============================================================================
 
-  subroutine state_point_header(fh)
+  subroutine write_state_point_header(fh)
 
     integer, intent(inout) :: fh ! file handle
 
@@ -405,7 +405,7 @@ contains
             MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
     end do TALLY_METADATA
 
-  end subroutine state_point_header
+  end subroutine write_state_point_header
 #endif
 
 !===============================================================================

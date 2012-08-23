@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from sys import argv
-from struct import unpack
 from math import sqrt
 
 import scipy.stats
@@ -19,6 +18,10 @@ score = int(argv[3]) if len(argv) > 3 else 1
 # Create StatePoint object
 sp = StatePoint(filename)
 
+# Check if tallies are present
+if not sp._get_int()[0]:
+    print("No tally data in state point!")
+
 # Calculate t-value for 95% two-sided CI
 n = sp.current_batch - sp.n_inactive
 t_value = scipy.stats.t.ppf(0.975, n - 1)
@@ -35,7 +38,7 @@ for i, t in enumerate(sp.tallies):
     # Loop over filter/score bins
     for j in range(n_bins):
         # Read sum and sum-squared
-        s, s2 = unpack('=2d', sp._f.read(16))
+        s, s2 = sp._get_double(2)
         s /= n
         if s != 0.0:
             relative_error = t_value*sqrt((s2/n - s*s)/(n-1))/s

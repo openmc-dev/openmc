@@ -68,7 +68,7 @@ contains
     verbosity_ = 0
     energy_grid_ = "union"
     seed_ = 0_8
-    write_source_ = ""
+    source_separate_ = ""
     no_reduce_ = ""
     source_ % file = ''
     source_ % space % type = ''
@@ -460,7 +460,7 @@ contains
     end if
 
     ! Check if the user has specified to write binary source file
-    if (trim(write_source_) == 'on') write_source = .true.
+    if (trim(source_separate_) == 'on') source_separate = .true.
 
     ! Check if the user has specified to write state points
     if (associated(write_state_point_)) then

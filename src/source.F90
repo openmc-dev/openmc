@@ -233,23 +233,12 @@ contains
 ! can be used as a starting source in a new simulation
 !===============================================================================
 
-  subroutine write_source_binary(path)
-
-    character(*), optional :: path
+  subroutine write_source_binary()
 
 #ifdef MPI
     integer                  :: fh     ! file handle
     integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
-#endif
 
-    ! Determine path to binary source file to write
-    if (present(path)) then
-       path_source = path
-    else
-       path_source = 'source.binary'
-    end if
-
-#ifdef MPI
     ! ==========================================================================
     ! PARALLEL I/O USING MPI-2 ROUTINES
 

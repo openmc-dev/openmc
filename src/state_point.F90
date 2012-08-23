@@ -22,7 +22,7 @@ contains
     type(TallyObject), pointer :: t => null()
 
     ! Set filename for binary state point
-    path_state_point = 'restart.' // trim(to_str(current_batch)) // '.binary'
+    path_state_point = 'statepoint.' // trim(to_str(current_batch)) // '.binary'
 
     ! Write message
     message = "Creating state point " // trim(path_state_point) // "..."

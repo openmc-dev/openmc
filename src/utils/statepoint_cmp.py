@@ -38,7 +38,6 @@ assert_allclose(sp1.k_batch, sp2.k_batch)
 assert_allclose(sp1.entropy, sp2.entropy)
 
 # Compare global tallies
-assert sp1.n_global_tallies == sp2.n_global_tallies
 assert_allclose(sp1.global_tallies, sp2.global_tallies)
 
 # Compare meshes

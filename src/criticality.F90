@@ -152,7 +152,7 @@ contains
     do i = 1, n_state_points
        if (current_batch == statepoint_batch(i)) then
           ! Create state point file
-          if (master) call create_state_point()
+          call create_state_point()
           exit
        end if
     end do

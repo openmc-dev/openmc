@@ -159,10 +159,18 @@ contains
   subroutine setup_mpi()
 
 #ifdef MPI
-    integer        :: bank_blocks(4) ! Count for each datatype
-    integer        :: bank_types(4)  ! Datatypes
-    integer(MPI_ADDRESS_KIND) :: bank_disp(4)   ! Displacements
-    type(Bank)     :: b
+    integer                   :: bank_blocks(4)  ! Count for each datatype
+    integer                   :: bank_types(4)   ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: bank_disp(4)    ! Displacements
+    integer                   :: temp_type       ! temporary derived type
+    integer                   :: score_blocks(1) ! Count for each datatype
+    integer                   :: score_types(1)  ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: score_disp(1)   ! Displacements
+    integer(MPI_ADDRESS_KIND) :: score_base_disp ! Base displacement
+    integer(MPI_ADDRESS_KIND) :: lower_bound     ! Lower bound for TallyScore
+    integer(MPI_ADDRESS_KIND) :: extent          ! Extent for TallyScore
+    type(Bank)       :: b
+    type(TallyScore) :: ts
 
     mpi_enabled = .true.
 
@@ -209,6 +217,28 @@ contains
     call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
+
+    ! Determine displacements for MPI_BANK type
+    call MPI_GET_ADDRESS(ts % n_events, score_base_disp, mpi_err)
+    call MPI_GET_ADDRESS(ts % sum, score_disp(1), mpi_err)
+
+    ! Adjust displacements
+    score_disp = score_disp - score_base_disp
+
+    ! Define temporary type for tallyscore
+    score_blocks = (/ 2 /)
+    score_types = (/ MPI_REAL8 /)
+    call MPI_TYPE_CREATE_STRUCT(1, score_blocks, score_disp, score_types, &
+         temp_type, mpi_err)
+
+    ! Adjust lower-bound and extent of type for tally score
+    lower_bound = 0
+    extent      = score_disp(1) + 16
+    call MPI_TYPE_CREATE_RESIZED(temp_type, lower_bound, extent, &
+         MPI_TALLYSCORE, mpi_err)
+
+    ! Commit derived type for tally scores
+    call MPI_TYPE_COMMIT(MPI_TALLYSCORE, mpi_err)
 
 #else
     ! if no MPI, set processor to master

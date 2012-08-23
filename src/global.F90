@@ -178,12 +178,13 @@ module global
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
 
-  integer :: n_procs     ! number of processes
-  integer :: rank        ! rank of process
-  logical :: master      ! master process?
-  logical :: mpi_enabled ! is MPI in use and initialized?
-  integer :: mpi_err     ! MPI error code
-  integer :: MPI_BANK    ! MPI datatype for fission bank
+  integer :: n_procs        ! number of processes
+  integer :: rank           ! rank of process
+  logical :: master         ! master process?
+  logical :: mpi_enabled    ! is MPI in use and initialized?
+  integer :: mpi_err        ! MPI error code
+  integer :: MPI_BANK       ! MPI datatype for fission bank
+  integer :: MPI_TALLYSCORE ! MPI datatype for TallyScore
 
   ! No reduction at end of batch
   logical :: reduce_tallies = .true.

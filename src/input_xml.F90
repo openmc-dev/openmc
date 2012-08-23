@@ -52,6 +52,9 @@ contains
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
 
+    integer :: n_words       ! number of words read
+    character(MAX_WORD_LEN) :: words(MAX_WORDS)
+
     ! Display output message
     message = "Reading settings XML file..."
     call write_message(5)
@@ -70,6 +73,7 @@ contains
     energy_grid_ = "union"
     seed_ = 0_8
     no_reduce_ = ""
+    output_ = ""
     source_ % file = ''
     source_ % space % type = ''
     source_ % angle % type = ''
@@ -500,6 +504,20 @@ contains
     ! Check if the user has specified to use confidence intervals for
     ! uncertainties rather than standard deviations
     if (trim(confidence_intervals_) == 'on') confidence_intervals = .true.
+
+    ! Check for output options
+    if (len_trim(output_) > 0) then
+       call split_string(output_, words, n_words)
+       do i = 1, n_words
+          call lower_case(words(i))
+          select case (words(i))
+          case ('summary')
+             output_summary = .true.
+          case ('cross_sections')
+             output_xs = .true.
+          end select
+       end do
+    end if
 
   end subroutine read_settings_xml
 

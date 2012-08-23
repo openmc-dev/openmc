@@ -255,6 +255,10 @@ module global
   integer :: n_state_points = 0
   integer, allocatable :: statepoint_batch(:)
 
+  ! Various output options
+  logical :: output_summary = .false.
+  logical :: output_xs      = .false.
+
 contains
 
 !===============================================================================

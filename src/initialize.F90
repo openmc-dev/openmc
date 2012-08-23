@@ -58,10 +58,6 @@ contains
     call read_command_line()
 
     if (master) then
-       ! Create output files
-       call create_summary_file()
-       call create_xs_summary_file()
-
 #ifdef HDF5
        ! Open HDF5 output file for writing and write header information
        call hdf5_create_output()
@@ -78,6 +74,12 @@ contains
 
     ! Read XML input files
     call read_input_xml()
+
+    ! Create output files
+    if (master) then
+       if (output_summary) call create_summary_file()
+       if (output_xs) call create_xs_summary_file()
+    end if
 
     ! Initialize random number generator
     call initialize_prng()
@@ -135,10 +137,10 @@ contains
     ! stop timer for initialization
     if (master) then
        if (run_mode == MODE_PLOTTING) then
-          call print_geometry()
+          if (output_summary) call print_geometry()
           call print_plot()
        else
-          call print_summary()
+          if (output_summary) call print_summary()
 #ifdef HDF5
           call hdf5_write_summary()
 #endif

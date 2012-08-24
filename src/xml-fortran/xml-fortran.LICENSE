@@ -3,8 +3,8 @@ Note: The official xml-fortran repository on sourceforge
 is assumed that this refers to the 3-clause BSD license ("modified" or "new")
 that is shown below.
 
-The license for xml-fortran covers all source code in the xml-fortran/ directory
-excluding all files in the templates/ subdirectory.
+The license for xml-fortran covers all source code in the xml-fortran/
+directory.
 
 ================================================================================
 

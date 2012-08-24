@@ -7,7 +7,7 @@ objects = $(templates:.xml=.o)
 
 # Add include for subdirectory
 
-override F90FLAGS += -I..
+override F90FLAGS += -I../xml-fortran
 
 # Ignore unused variables
 
@@ -32,7 +32,7 @@ clean:
 .PRECIOUS: %.f90
 
 %.f90: %.xml
-	../xmlreader $(basename $@)
+	../xml-fortran/xmlreader $(basename $@)
 
 %.o: %.f90
 	$(F90) $(F90FLAGS) -c $(basename $@).f90

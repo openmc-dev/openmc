@@ -20,7 +20,7 @@ sp = StatePoint(filename)
 
 # Check if tallies are present
 if not sp._get_int()[0]:
-    print("No tally data in state point!")
+    raise Exception("No tally data in state point!")
 
 # Calculate t-value for 95% two-sided CI
 n = sp.current_batch - sp.n_inactive

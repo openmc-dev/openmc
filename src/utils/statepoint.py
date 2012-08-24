@@ -35,6 +35,10 @@ class BinaryFile(object):
     def _get_double(self, n=1):
         return self._get_data(n, 'd', 8)
 
+    def _get_string(self, length, n=1):
+        data = self._get_data(length*n, 's', 1)[0]
+        return [data[i*length:(i+1)*length] for i in range(n)]
+
 class Mesh(object):
     def __init__(self):
         pass
@@ -92,6 +96,9 @@ class StatePoint(BinaryFile):
 
         # Read OpenMC version
         self.version = self._get_int(3)
+
+        # Read date and time
+        self.date_and_time = self._get_string(19)[0]
 
         # Read random number seed
         self.seed = self._get_long()[0]

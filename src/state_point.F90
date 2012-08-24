@@ -35,6 +35,9 @@ contains
     integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
 #else
     integer :: j, k ! loop indices
+    character(8)  :: date_
+    character(10) :: time_
+    character(19) :: current_time
 #endif
 
     ! Set filename for binary state point
@@ -132,6 +135,12 @@ contains
     
     ! Write OpenMC version
     write(UNIT_STATE) VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
+
+    ! Write current date and time
+    call date_and_time(DATE=date_, TIME=time_)
+    current_time = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8) // &
+         " " // time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
+    write(UNIT_STATE) current_time
 
     ! Write out random number seed
     write(UNIT_STATE) seed
@@ -281,6 +290,9 @@ contains
     integer :: i  ! loop index
     integer :: j  ! loop index
     integer :: n  ! temporary array length
+    character(8)  :: date_
+    character(10) :: time_
+    character(19) :: current_time
     type(TallyObject), pointer :: t => null()
 
     ! Write revision number for state point file
@@ -293,6 +305,13 @@ contains
     call MPI_FILE_WRITE(fh, VERSION_MINOR, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
     call MPI_FILE_WRITE(fh, VERSION_RELEASE, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Write current date and time
+    call date_and_time(DATE=date_, TIME=time_)
+    current_time = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8) // &
+         " " // time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
+    call MPI_FILE_WRITE(fh, current_time, 19, MPI_CHARACTER, &
          MPI_STATUS_IGNORE, mpi_err)
 
     ! Write out random number seed
@@ -444,6 +463,7 @@ contains
     integer :: temp(3) ! temporary variable
     integer, allocatable :: int_array(:)
     real(8), allocatable :: real_array(:)
+    character(19) :: current_time
 
 #ifdef MPI
     integer :: fh                      ! file handle
@@ -484,6 +504,10 @@ contains
             "of OpenMC."
        call warning()
     end if
+
+    ! Read date and time
+    call MPI_FILE_READ_ALL(fh, current_time, 19, MPI_CHARACTER, &
+         MPI_STATUS_IGNORE, mpi_err)
 
     ! Read and overwrite random number seed
     call MPI_FILE_READ_ALL(fh, seed, 1, MPI_INTEGER8, &
@@ -677,6 +701,9 @@ contains
             "of OpenMC."
        call warning()
     end if
+
+    ! Read date and time
+    read(UNIT_STATE) current_time
 
     ! Read and overwrite random number seed
     read(UNIT_STATE) seed

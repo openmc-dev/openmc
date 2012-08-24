@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 import struct
+from math import sqrt
 
 import numpy as np
+import scipy.stats
 
 filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
                 5: 'surface', 6: 'mesh', 7: 'energyin', 8: 'energyout'}
@@ -208,3 +210,46 @@ class StatePoint(BinaryFile):
             s.xyz = self._get_double(3)
             s.uvw = self._get_double(3)
             s.E = self._get_double()[0]
+
+    def generate_ci(self, confidence=0.95):
+        """Calculates confidence intervals for each tally bin."""
+
+        # Determine number of realizations
+        if self.run_mode == 2:
+            n = self.current_batch - self.n_inactive
+        else:
+            n = self.current_batch
+
+        # Determine significance level and percentile for two-sided CI
+        alpha = 1 - confidence
+        percentile = 1 - alpha/2
+
+        # Calculate t-value
+        t_value = scipy.stats.t.ppf(percentile, n - 1)
+        self.generate_stdev(t_value)
+
+    def generate_stdev(self, t_value=1.0):
+        """
+        Calculates the sample mean and standard deviation of the mean for each
+        tally bin.
+        """
+        
+        # Determine number of realizations
+        if self.run_mode == 2:
+            n = self.current_batch - self.n_inactive
+        else:
+            n = self.current_batch
+
+        for t in self.tallies:
+            for i in range(t.values.shape[0]):
+                for j in range(t.values.shape[1]):
+                    # Get sum and sum of squares
+                    s, s2 = t.values[i,j]
+                    
+                    # Calculate sample mean and replace value
+                    s /= n
+                    t.values[i,j,0] = s
+
+                    # Calculate standard deviation
+                    if s != 0.0:
+                        t.values[i,j,1] = t_value*sqrt((s2/n - s*s)/(n-1))

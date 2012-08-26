@@ -14,7 +14,7 @@ module initialize
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, write_summary, print_version,     &
-                              print_usage, create_xs_summary_file, print_plot
+                              print_usage, write_xs_summary, print_plot
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use state_point,      only: load_state_point
@@ -73,11 +73,6 @@ contains
     ! Read XML input files
     call read_input_xml()
 
-    ! Create output files
-    if (master) then
-       if (output_xs) call create_xs_summary_file()
-    end if
-
     ! Initialize random number generator -- this has to be done after the input
     ! files have been read in case the user specified a seed for the random
     ! number generator
@@ -134,18 +129,20 @@ contains
        if (restart_run) call load_state_point()
     end if
 
-    ! stop timer for initialization
     if (master) then
        if (run_mode == MODE_PLOTTING) then
+          ! Display plotting information
           call print_plot()
        else
-          if (output_summary) then
+          ! Write summary information
 #ifdef HDF5
-             call hdf5_write_summary()
+          if (output_summary) call hdf5_write_summary()
 #else
-             call write_summary()
+          if (output_summary) call write_summary()
 #endif
-          end if
+
+          ! Write cross section information
+          if (output_xs) call write_xs_summary()
        end if
     end if
 

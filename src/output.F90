@@ -1093,6 +1093,50 @@ contains
   end subroutine write_summary
 
 !===============================================================================
+! WRITE_XS_SUMMARY writes information about each nuclide and S(a,b) table to a
+! file called cross_sections.out. This file shows the list of reactions as well
+! as information about their secondary angle/energy distributions, how much
+! memory is consumed, thresholds, etc.
+!===============================================================================
+
+  subroutine write_xs_summary()
+
+    integer                  :: i    ! loop index
+    character(MAX_FILE_LEN)  :: path ! path of summary file
+    type(Nuclide),   pointer :: nuc => null()
+    type(SAB_Table), pointer :: sab => null()
+
+    ! Create filename for log file
+    path = "cross_sections.out"
+
+    ! Open log file for writing
+    open(UNIT=UNIT_XS, FILE=path, STATUS='replace', ACTION='write')
+
+    ! Write header
+    call header("CROSS SECTION TABLES", unit=UNIT_XS)
+
+    NUCLIDE_LOOP: do i = 1, n_nuclides_total
+       ! Get pointer to nuclide
+       nuc => nuclides(i)
+
+       ! Print information about nuclide
+       call print_nuclide(nuc, unit=UNIT_XS)
+    end do NUCLIDE_LOOP
+
+    SAB_TABLES_LOOP: do i = 1, n_sab_tables
+       ! Get pointer to S(a,b) table
+       sab => sab_tables(i)
+
+       ! Print information about S(a,b) table
+       call print_sab_table(sab, unit=UNIT_XS)
+    end do SAB_TABLES_LOOP
+
+    ! Close cross section summary file
+    close(UNIT_XS)
+
+  end subroutine write_xs_summary
+
+!===============================================================================
 ! PRINT_COLUMNS displays a header listing what physical values will displayed
 ! below them
 !===============================================================================
@@ -1280,30 +1324,5 @@ contains
 102 format (1X,A,T30,"= ",F8.5," +/- ",F8.5)
  
   end subroutine print_runtime
-
-!===============================================================================
-! CREATE_XS_SUMMARY_FILE creates an output file to write information about the
-! cross section tables used in the simulation.
-!===============================================================================
-
-  subroutine create_xs_summary_file()
-
-    logical :: file_exists  ! does log file already exist?
-    character(MAX_FILE_LEN) :: path ! path of summary file
-
-    ! Create filename for log file
-    path = "cross_sections.out"
-
-    ! Check if log file already exists
-    inquire(FILE=path, EXIST=file_exists)
-    if (file_exists) then
-       ! Possibly copy old log file
-    end if
-
-    ! Open log file for writing
-    open(UNIT=UNIT_XS, FILE=path, STATUS='replace', &
-         ACTION='write')
-
-  end subroutine create_xs_summary_file
 
 end module output

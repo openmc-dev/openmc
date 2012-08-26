@@ -13,14 +13,12 @@ module initialize
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
-  use output,           only: title, header, print_summary, print_geometry,    &
-                              print_plot, create_summary_file, print_usage,    &
-                              create_xs_summary_file, print_version
+  use output,           only: title, header, write_summary, print_version,     &
+                              print_usage, create_xs_summary_file, print_plot
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use state_point,      only: load_state_point
-  use string,           only: to_str, str_to_int, starts_with, ends_with,      &
-                              lower_case
+  use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally,            only: create_tally_map
   use tally_header,     only: TallyObject
   use timing,           only: timer_start, timer_stop
@@ -77,11 +75,13 @@ contains
 
     ! Create output files
     if (master) then
-       if (output_summary) call create_summary_file()
        if (output_xs) call create_xs_summary_file()
     end if
 
-    ! Initialize random number generator
+    ! Initialize random number generator -- this has to be done after the input
+    ! files have been read in case the user specified a seed for the random
+    ! number generator
+
     call initialize_prng()
 
     ! Read plots.xml if it exists -- this has to be done separate from the other
@@ -137,13 +137,15 @@ contains
     ! stop timer for initialization
     if (master) then
        if (run_mode == MODE_PLOTTING) then
-          if (output_summary) call print_geometry()
           call print_plot()
        else
-          if (output_summary) call print_summary()
+          if (output_summary) then
 #ifdef HDF5
-          call hdf5_write_summary()
+             call hdf5_write_summary()
+#else
+             call write_summary()
 #endif
+          end if
        end if
     end if
 

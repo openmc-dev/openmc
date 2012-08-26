@@ -56,27 +56,11 @@ contains
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",5X,A)') &
          time_stamp()
 
-    ! Write information to summary file
-    if (output_summary) then
-       call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
-       write(UNIT=UNIT_SUMMARY, FMT=*) &
-            "Copyright:     2011-2012 Massachusetts Institute of Technology"
-       write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
-            "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
-#ifdef GIT_SHA1
-       write(UNIT=UNIT_SUMMARY, FMT='(1X,"Git SHA1:",6X,A)') GIT_SHA1
-#endif
-       write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A)') &
-            time_stamp()
-
-       ! Write information on number of processors
 #ifdef MPI
-       write(UNIT=OUTPUT_UNIT, FMT='(1X,A)') '     MPI Processes: ' // &
-            trim(to_str(n_procs))
-       write(UNIT=UNIT_SUMMARY, FMT='(1X,"MPI Processes:",1X,A)') &
-            trim(to_str(n_procs))
+    ! Write number of processors
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"MPI Processes:",1X,A)') &
+         trim(to_str(n_procs))
 #endif
-    end if
 
   end subroutine title
 
@@ -1011,16 +995,39 @@ contains
   end subroutine print_sab_table
 
 !===============================================================================
-! PRINT_SUMMARY displays summary information about the problem about to be run
+! WRITE_SUMMARY displays summary information about the problem about to be run
 ! after reading all input files
 !===============================================================================
 
-  subroutine print_summary()
+  subroutine write_summary()
 
-    integer :: i ! loop index
-    character(15) :: string
+    integer                 :: i      ! loop index
+    character(MAX_FILE_LEN) :: path   ! path of summary file
     type(Material),    pointer :: m => null()
     type(TallyObject), pointer :: t => null()
+
+    ! Create filename for log file
+    path = "summary.out"
+
+    ! Open log file for writing
+    open(UNIT=UNIT_SUMMARY, FILE=path, STATUS='replace', ACTION='write')
+
+    call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
+    write(UNIT=UNIT_SUMMARY, FMT=*) &
+         "Copyright:     2011-2012 Massachusetts Institute of Technology"
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
+         "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
+#ifdef GIT_SHA1
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Git SHA1:",6X,A)') GIT_SHA1
+#endif
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A)') &
+         time_stamp()
+
+    ! Write information on number of processors
+#ifdef MPI
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"MPI Processes:",1X,A)') &
+         trim(to_str(n_procs))
+#endif
 
     ! Display problem summary
     call header("PROBLEM SUMMARY", unit=UNIT_SUMMARY)
@@ -1073,16 +1080,17 @@ contains
     else
        write(UNIT_SUMMARY,100) "Survival Biasing:", "off"
     end if
-    string = to_str(weight_cutoff)
-    write(UNIT_SUMMARY,100) "Weight Cutoff:", trim(string)
-    string = to_str(weight_survive)
-    write(UNIT_SUMMARY,100) "Survival weight:", trim(string)
+    write(UNIT_SUMMARY,100) "Weight Cutoff:", trim(to_str(weight_cutoff))
+    write(UNIT_SUMMARY,100) "Survival weight:", trim(to_str(weight_survive))
+
+    ! Close summary file
+    close(UNIT_SUMMARY)
 
     ! Format descriptor for columns
 100 format (1X,A,T35,A)
 101 format (1X,A,T35,I11)
 
-  end subroutine print_summary
+  end subroutine write_summary
 
 !===============================================================================
 ! PRINT_COLUMNS displays a header listing what physical values will displayed
@@ -1272,31 +1280,6 @@ contains
 102 format (1X,A,T30,"= ",F8.5," +/- ",F8.5)
  
   end subroutine print_runtime
-
-!===============================================================================
-! CREATE_SUMMARY_FILE opens the summary.out file for logging information about
-! the simulation
-!===============================================================================
-
-  subroutine create_summary_file()
-
-    logical :: file_exists  ! does log file already exist?
-    character(MAX_FILE_LEN) :: path ! path of summary file
-
-    ! Create filename for log file
-    path = "summary.out"
-
-    ! Check if log file already exists
-    inquire(FILE=path, EXIST=file_exists)
-    if (file_exists) then
-       ! Possibly copy old log file
-    end if
-
-    ! Open log file for writing
-    open(UNIT=UNIT_SUMMARY, FILE=path, STATUS='replace', &
-         ACTION='write')
-
-  end subroutine create_summary_file
 
 !===============================================================================
 ! CREATE_XS_SUMMARY_FILE creates an output file to write information about the

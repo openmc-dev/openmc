@@ -10,7 +10,7 @@ module tally
   use output,        only: header
   use search,        only: binary_search
   use string,        only: to_str
-  use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement
+  use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement, TallyNode
 
 #ifdef MPI
   use mpi
@@ -234,7 +234,6 @@ contains
 
   subroutine score_analog_tally()
 
-    integer :: i                    ! loop index for analog tallies
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
     integer :: bins(N_FILTER_TYPES) ! scoring bin combination
@@ -270,7 +269,10 @@ contains
        ! DETERMINE SCORING BIN COMBINATION
 
        call get_scoring_bins(analog_tallies(curr_ptr % idx), bins, found_bin)
-       if (.not. found_bin) cycle
+       if (.not. found_bin) then
+         curr_ptr => curr_ptr % next
+         cycle
+       end if
 
        ! =======================================================================
        ! CALCULATE SCORES AND ACCUMULATE TALLY
@@ -523,6 +525,7 @@ contains
 
        if (assume_separate) exit TALLY_LOOP
 
+       ! select next active tally
        curr_ptr => curr_ptr % next
 
     end do TALLY_LOOP
@@ -596,7 +599,6 @@ contains
 
     real(8), intent(in) :: distance
 
-    integer :: i                    ! loop index for tracklength tallies
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
     integer :: bins(N_FILTER_TYPES) ! scoring bin combination
@@ -610,30 +612,38 @@ contains
     logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer :: t => null()
     type(Material), pointer :: mat => null()
+    type(TallyNode), pointer :: curr_ptr => null()
 
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
 
+    ! set current pointer to active tracklength tallies
+    curr_ptr => active_tracklength_tallies
+
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
 
-    TALLY_LOOP: do i = 1, n_tracklength_tallies
-
-       t => tallies(tracklength_tallies(i))
+    TALLY_LOOP: do while (associated(curr_ptr))
+       t => tallies(tracklength_tallies(curr_ptr % idx))
 
        ! Check if this tally has a mesh filter -- if so, we treat it separately
        ! since multiple bins can be scored to with a single track
        
        if (t % n_filter_bins(FILTER_MESH) > 0) then
-          call score_tl_on_mesh(tracklength_tallies(i), distance)
+          call score_tl_on_mesh(tracklength_tallies(curr_ptr % idx), distance)
+          curr_ptr => curr_ptr % next ! select next tally
           cycle
        end if
 
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(tracklength_tallies(i), bins, found_bin)
-       if (.not. found_bin) cycle
+       call get_scoring_bins(tracklength_tallies(curr_ptr % idx), bins, &
+                             found_bin)
+       if (.not. found_bin) then
+         curr_ptr => curr_ptr % next
+         cycle
+       end if
 
        ! =======================================================================
        ! CALCULATE SCORES AND ACCUMULATE TALLY
@@ -646,8 +656,8 @@ contains
        filter_index = sum((bins - 1) * t % stride) + 1
 
        if (t % all_nuclides) then
-          call score_all_nuclides(tracklength_tallies(i), flux, filter_index)
-
+          call score_all_nuclides(tracklength_tallies(curr_ptr % idx), flux, &
+                                  filter_index)
        else
 
           NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
@@ -742,10 +752,15 @@ contains
 
        if (assume_separate) exit TALLY_LOOP
 
+       ! select next active tally
+       curr_ptr => curr_ptr % next
+
     end do TALLY_LOOP
 
     ! Reset tally map positioning
     position = 0
+
+    nullify(curr_ptr)
 
   end subroutine score_tracklength_tally
 

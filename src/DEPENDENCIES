@@ -25,6 +25,7 @@ cross_section.o: search.o
 criticality.o: constants.o
 criticality.o: finalize.o
 criticality.o: global.o
+criticality.o: hdf5_interface.o
 criticality.o: intercycle.o
 criticality.o: output.o
 criticality.o: physics.o
@@ -64,6 +65,7 @@ fission.o: search.o
 
 fixed_source.o: constants.o
 fixed_source.o: global.o
+fixed_source.o: hdf5_interface.o
 fixed_source.o: output.o
 fixed_source.o: physics.o
 fixed_source.o: random_lcg.o
@@ -102,7 +104,9 @@ hdf5_interface.o: endf.o
 hdf5_interface.o: geometry_header.o
 hdf5_interface.o: global.o
 hdf5_interface.o: material_header.o
+hdf5_interface.o: output.o
 hdf5_interface.o: string.o
+hdf5_interface.o: tally_header.o
 
 initialize.o: ace.o
 initialize.o: bank_header.o

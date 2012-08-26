@@ -12,6 +12,10 @@ module criticality
   use tally,       only: synchronize_tallies
   use timing,      only: timer_start, timer_stop
 
+#ifdef HDF5
+  use hdf5_interface, only: hdf5_write_state_point
+#endif
+
 contains
 
 !===============================================================================
@@ -152,7 +156,11 @@ contains
     do i = 1, n_state_points
        if (current_batch == statepoint_batch(i)) then
           ! Create state point file
+#ifdef HDF5
+          call hdf5_write_state_point()
+#else
           call write_state_point()
+#endif
           exit
        end if
     end do

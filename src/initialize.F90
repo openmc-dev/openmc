@@ -31,7 +31,7 @@ module initialize
 
 #ifdef HDF5
   use hdf5_interface,   only: hdf5_create_output, hdf5_write_header,            &
-                              hdf5_write_summary
+                              hdf5_write_summary, hdf5_initialize
 #endif
 
   implicit none
@@ -61,6 +61,7 @@ contains
 #ifdef HDF5
        ! Open HDF5 output file for writing and write header information
        call hdf5_create_output()
+       call hdf5_initialize()
        call hdf5_write_header()
 #endif
 

@@ -109,7 +109,7 @@ module global
   !   3) track-length estimate of k-eff
   !   4) leakage fraction
 
-  type(TallyScore) :: global_tallies(N_GLOBAL_TALLIES)
+  type(TallyScore), target :: global_tallies(N_GLOBAL_TALLIES)
 
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
@@ -216,8 +216,10 @@ module global
   ! HDF5 VARIABLES
 
 #ifdef HDF5
-  integer(HID_T) :: hdf5_output_file ! identifier for output file
-  integer        :: hdf5_err         ! error flag 
+  integer(HID_T) :: hdf5_output_file  ! identifier for output file
+  integer(HID_T) :: hdf5_tallyscore_t ! Compound type for TallyScore
+  integer(HID_T) :: hdf5_integer8_t   ! type for integer(8)
+  integer        :: hdf5_err          ! error flag 
 #endif
 
   ! ============================================================================

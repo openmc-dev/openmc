@@ -250,22 +250,26 @@ contains
     real(8) :: macro_scatt          ! material macro scatt xs
     logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer :: t => null()
+    type(TallyNode), pointer :: curr_ptr => null()
 
     ! Copy particle's pre- and post-collision weight and angle
     last_wgt = p % last_wgt
     wgt = p % wgt
     mu = p % mu
 
+    ! set current pointer to active analog tallies
+    curr_ptr => active_analog_tallies
+
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
 
-    TALLY_LOOP: do i = 1, n_analog_tallies
-       t => tallies(analog_tallies(i))
+    TALLY_LOOP: do while (associated(curr_ptr))
+       t => tallies(analog_tallies(curr_ptr % idx))
 
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(analog_tallies(i), bins, found_bin)
+       call get_scoring_bins(analog_tallies(curr_ptr % idx), bins, found_bin)
        if (.not. found_bin) cycle
 
        ! =======================================================================
@@ -519,10 +523,14 @@ contains
 
        if (assume_separate) exit TALLY_LOOP
 
+       curr_ptr => curr_ptr % next
+
     end do TALLY_LOOP
 
     ! Reset tally map positioning
     position = 0
+
+    nullify(curr_ptr)
 
   end subroutine score_analog_tally
 
@@ -610,6 +618,7 @@ contains
     ! determine different filter bins for the same tally in order to score to it
 
     TALLY_LOOP: do i = 1, n_tracklength_tallies
+
        t => tallies(tracklength_tallies(i))
 
        ! Check if this tally has a mesh filter -- if so, we treat it separately
@@ -2358,7 +2367,7 @@ contains
       allocate(curr_ptr)
 
       ! set the tally index
-      curr_ptr % idx = analog_tallies(i)
+      curr_ptr % idx = i
       curr_ptr % next => active_analog_tallies
       active_analog_tallies => curr_ptr
 
@@ -2393,7 +2402,7 @@ contains
       allocate(curr_ptr)
 
       ! set the tally index
-      curr_ptr % idx = tracklength_tallies(i)
+      curr_ptr % idx = i
       curr_ptr % next => active_tracklength_tallies
       active_tracklength_tallies => curr_ptr
 
@@ -2427,7 +2436,7 @@ contains
       allocate(curr_ptr)
 
       ! set the tally index
-      curr_ptr % idx = current_tallies(i)
+      curr_ptr % idx = i
       curr_ptr % next => active_current_tallies
       active_current_tallies => curr_ptr
 
@@ -2438,7 +2447,7 @@ contains
     curr_ptr => active_analog_tallies
     do while(associated(curr_ptr))
 
-      print *, "ANALOG:", curr_ptr % idx
+      print *, "ANALOG:", analog_tallies(curr_ptr % idx)
       curr_ptr => curr_ptr % next
 
     end do
@@ -2447,7 +2456,7 @@ contains
     curr_ptr => active_tracklength_tallies
     do while(associated(curr_ptr))
 
-      print *, "TRACKLENGTH:", curr_ptr % idx
+      print *, "TRACKLENGTH:", tracklength_tallies(curr_ptr % idx)
       curr_ptr => curr_ptr % next
 
     end do
@@ -2456,7 +2465,7 @@ contains
     curr_ptr => active_current_tallies
     do while(associated(curr_ptr))
 
-      print *, "CURRENT:", curr_ptr % idx
+      print *, "CURRENT:", current_tallies(curr_ptr % idx)
       curr_ptr => curr_ptr % next
 
     end do

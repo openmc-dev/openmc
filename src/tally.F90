@@ -1289,7 +1289,6 @@ contains
 
   subroutine score_surface_current()
 
-    integer :: i                    ! loop indices
     integer :: j                    ! loop indices
     integer :: k                    ! loop indices
     integer :: ijk0(3)              ! indices of starting coordinates
@@ -1311,16 +1310,20 @@ contains
     logical :: z_same               ! same starting/ending z index (k)
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
+    type(TallyNode), pointer :: curr_ptr => null()
 
     bins = 1
 
-    do i = 1, n_current_tallies
+    ! set current pointer to active current tallies
+    curr_ptr => active_current_tallies
+
+    TALLY_LOOP: do while (associated(curr_ptr))
        ! Copy starting and ending location of particle
        xyz0 = p % last_xyz
        xyz1 = p % coord0 % xyz
 
        ! Get pointer to tally
-       t => tallies(current_tallies(i))
+       t => tallies(current_tallies(curr_ptr % idx))
 
        ! Determine indices for starting and ending location
        m => meshes(t % mesh)
@@ -1330,12 +1333,18 @@ contains
        ! Check to if start or end is in mesh -- if not, check if track still
        ! intersects with mesh
        if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-          if (.not. mesh_intersects(m, xyz0, xyz1)) cycle
+          if (.not. mesh_intersects(m, xyz0, xyz1)) then
+            curr_ptr => curr_ptr % next ! select next tally
+            cycle
+           end if
        end if
 
        ! Calculate number of surface crossings
        n_cross = sum(abs(ijk1 - ijk0))
-       if (n_cross == 0) cycle
+       if (n_cross == 0) then
+         curr_ptr => curr_ptr % next ! select next tally
+         cycle
+       end if
 
        ! Copy particle's direction
        uvw = p % coord0 % uvw
@@ -1345,7 +1354,10 @@ contains
        if (n > 0) then
           ! check if energy of the particle is within energy bins
           if (p % E < t % energy_in(1) .or. &
-               p % E > t % energy_in(n + 1)) cycle
+               p % E > t % energy_in(n + 1)) then
+            curr_ptr => curr_ptr % next ! select next tally
+            cycle
+          end if
 
           ! search to find incoming energy bin
           bins(SURF_FILTER_ENERGYIN) = binary_search(t % energy_in, n + 1, p % E)
@@ -1383,6 +1395,7 @@ contains
                 end if
              end do
           end if
+          curr_ptr => curr_ptr % next ! select next tally
           cycle
        elseif (x_same .and. z_same) then
           ! Only y crossings
@@ -1407,6 +1420,7 @@ contains
                 end if
              end do
           end if
+          curr_ptr => curr_ptr % next ! select next tally
           cycle
        elseif (y_same .and. z_same) then
           ! Only x crossings
@@ -1431,6 +1445,7 @@ contains
                 end if
              end do
           end if
+          curr_ptr => curr_ptr % next ! select next tally
           cycle
        end if
 
@@ -1550,7 +1565,12 @@ contains
           xyz0 = xyz0 + distance * uvw
        end do
 
-    end do
+     ! select next active tally
+     curr_ptr => curr_ptr % next
+
+    end do TALLY_LOOP
+
+    nullify(curr_ptr)
 
   end subroutine score_surface_current
 

@@ -30,8 +30,7 @@ module initialize
 #endif
 
 #ifdef HDF5
-  use hdf5_interface,   only: hdf5_create_output, hdf5_write_header,            &
-                              hdf5_write_summary, hdf5_initialize
+  use hdf5_interface,   only: hdf5_initialize, hdf5_write_summary
 #endif
 
   implicit none
@@ -57,14 +56,12 @@ contains
     ! Read command line arguments
     call read_command_line()
 
-    if (master) then
 #ifdef HDF5
-       ! Open HDF5 output file for writing and write header information
-       call hdf5_create_output()
-       call hdf5_initialize()
-       call hdf5_write_header()
+    ! Initialize HDF5 interface
+    call hdf5_initialize()
 #endif
 
+    if (master) then
        ! Display title and initialization header
        call title()
        call header("INITIALIZATION", level=1)

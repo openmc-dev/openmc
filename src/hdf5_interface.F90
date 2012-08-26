@@ -23,48 +23,56 @@ module hdf5_interface
 contains
 
 !===============================================================================
-! HDF5_CREATE_OUTPUT
+! HDF5_INITIALIZE
 !===============================================================================
 
-  subroutine hdf5_create_output()
+  subroutine hdf5_initialize()
 
-    character(9), parameter :: filename = "output.h5" ! File name
+    type(TallyScore), target :: tmp(2)
 
     ! Initialize FORTRAN interface.
     call h5open_f(hdf5_err)
 
-    ! Create a new file using default properties.
-    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, hdf5_output_file, hdf5_err)
+    ! Create the compound datatype for memory.
+    call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(2))), hdf5_tallyscore_t, hdf5_err)
+    call h5tinsert_f(hdf5_tallyscore_t, "sum", h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(1)%sum)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_tallyscore_t, "sum_sq", h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(1)%sum_sq)), H5T_NATIVE_DOUBLE, hdf5_err)
 
-  end subroutine hdf5_create_output
+    ! Determine type for integer(8)
+    hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)
+
+  end subroutine hdf5_initialize
 
 !===============================================================================
-! HDF5_WRITE_HEADER
+! HDF5_FINALIZE
 !===============================================================================
 
-  subroutine hdf5_write_header()
+  subroutine hdf5_finalize()
 
-    ! Write version information
-    call hdf5_make_integer(hdf5_output_file, "version_major", VERSION_MAJOR)
-    call hdf5_make_integer(hdf5_output_file, "version_minor", VERSION_MINOR)
-    call hdf5_make_integer(hdf5_output_file, "version_release", VERSION_RELEASE)
+    ! Release compound datatypes
+    call h5tclose_f(hdf5_tallyscore_t, hdf5_err)
 
-    ! Write current date and time
-    call h5ltmake_dataset_string_f(hdf5_output_file, "date_and_time", &
-         time_stamp(), hdf5_err)
+    ! Close FORTRAN interface.
+    call h5close_f(hdf5_err)
 
-    ! Write MPI information
-    call hdf5_make_integer(hdf5_output_file, "n_procs", n_procs)
-    call h5ltset_attribute_string_f(hdf5_output_file, "n_procs", &
-         "description", "Number of MPI processes", hdf5_err)
-
-  end subroutine hdf5_write_header
+  end subroutine hdf5_finalize
 
 !===============================================================================
 ! HDF5_WRITE_SUMMARY
 !===============================================================================
 
   subroutine hdf5_write_summary()
+
+    character(MAX_FILE_LEN) :: filename = "summary.h5"
+
+    ! Create a new file using default properties.
+    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, hdf5_output_file, hdf5_err)
+
+    ! Write header information
+    call hdf5_write_header()
 
     ! Write criticality information
     if (run_mode == MODE_CRITICALITY) then
@@ -98,18 +106,32 @@ contains
        call hdf5_write_tallies()
     end if
 
+    ! Terminate access to the file.
+    call h5fclose_f(hdf5_output_file, hdf5_err)
+
   end subroutine hdf5_write_summary
 
 !===============================================================================
-! HDF5_WRITE_RESULTS
+! HDF5_WRITE_HEADER
 !===============================================================================
 
-  subroutine hdf5_write_results()
+  subroutine hdf5_write_header()
 
-    call hdf5_write_timing()
-    call hdf5_write_global_tallies()
+    ! Write version information
+    call hdf5_make_integer(hdf5_output_file, "version_major", VERSION_MAJOR)
+    call hdf5_make_integer(hdf5_output_file, "version_minor", VERSION_MINOR)
+    call hdf5_make_integer(hdf5_output_file, "version_release", VERSION_RELEASE)
 
-  end subroutine hdf5_write_results
+    ! Write current date and time
+    call h5ltmake_dataset_string_f(hdf5_output_file, "date_and_time", &
+         time_stamp(), hdf5_err)
+
+    ! Write MPI information
+    call hdf5_make_integer(hdf5_output_file, "n_procs", n_procs)
+    call h5ltset_attribute_string_f(hdf5_output_file, "n_procs", &
+         "description", "Number of MPI processes", hdf5_err)
+
+  end subroutine hdf5_write_header
 
 !===============================================================================
 ! HDF5_WRITE_GEOMETRY
@@ -423,30 +445,6 @@ contains
     call h5gclose_f(materials_group, hdf5_err)
 
   end subroutine hdf5_write_materials
-
-!===============================================================================
-! HDF5_WRITE_GLOBAL_TALLIES
-!===============================================================================
-
-  subroutine hdf5_write_global_tallies()
-
-    integer          :: rank = 1
-    integer(HSIZE_T) :: dims(1) = (/ 2 /)
-
-    call h5ltmake_dataset_double_f(hdf5_output_file, "k_analog", &
-         rank, dims, (/ global_tallies(K_ANALOG) % sum, &
-         global_tallies(K_ANALOG) % sum_sq /), hdf5_err)
-    call h5ltmake_dataset_double_f(hdf5_output_file, "k_collision", &
-         rank, dims, (/ global_tallies(K_COLLISION) % sum, &
-         global_tallies(K_COLLISION) % sum_sq /), hdf5_err)
-    call h5ltmake_dataset_double_f(hdf5_output_file, "k_tracklength", &
-         rank, dims, (/ global_tallies(K_TRACKLENGTH) % sum, &
-         global_tallies(K_TRACKLENGTH) % sum_sq /), hdf5_err)
-    call h5ltmake_dataset_double_f(hdf5_output_file, "leakage", &
-         rank, dims, (/ global_tallies(LEAKAGE) % sum, &
-         global_tallies(LEAKAGE) % sum_sq /), hdf5_err)
-
-  end subroutine hdf5_write_global_tallies
 
 !===============================================================================
 ! HDF5_WRITE_TALLIES
@@ -819,41 +817,6 @@ contains
   end subroutine hdf5_write_timing
 
 !===============================================================================
-! HDF5_CLOSE_OUTPUT
-!===============================================================================
-
-  subroutine hdf5_close_output()
-
-    ! Terminate access to the file.
-    call h5fclose_f(hdf5_output_file, hdf5_err)
-
-    ! Close FORTRAN interface.
-    call h5close_f(hdf5_err)
-
-  end subroutine hdf5_close_output
-
-!===============================================================================
-! HDF5_INITIALIZE
-!===============================================================================
-
-  subroutine hdf5_initialize()
-
-    type(TallyScore), target :: tmp(2)
-
-    ! Create the compound datatype for memory.
-    call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmp(1)), &
-         c_loc(tmp(2))), hdf5_tallyscore_t, hdf5_err)
-    call h5tinsert_f(hdf5_tallyscore_t, "sum", h5offsetof(c_loc(tmp(1)), &
-         c_loc(tmp(1)%sum)), H5T_NATIVE_DOUBLE, hdf5_err)
-    call h5tinsert_f(hdf5_tallyscore_t, "sum_sq", h5offsetof(c_loc(tmp(1)), &
-         c_loc(tmp(1)%sum_sq)), H5T_NATIVE_DOUBLE, hdf5_err)
-
-    ! Determine type for integer(8)
-    hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)
-
-  end subroutine hdf5_initialize
-
-!===============================================================================
 ! HDF5_WRITE_STATE_POINT
 !===============================================================================
 
@@ -1125,7 +1088,6 @@ contains
     call h5fclose_f(hdf5_state_point, hdf5_err)
 
   end subroutine hdf5_write_state_point
-    
 
 !===============================================================================
 ! HDF5_MAKE_INTEGER

@@ -1,20 +1,19 @@
 module ace
 
-  use ace_header,           only: Nuclide, Reaction, SAB_Table, XsListing, &
-                                  DistEnergy
+  use ace_header,       only: Nuclide, Reaction, SAB_Table, XsListing, &
+                              DistEnergy
   use constants
-  use datatypes,            only: dict_create, dict_add_key, dict_get_key, &
-                                  dict_has_key, dict_delete, dict_keys
-  use datatypes_header,     only: DictionaryCI, ListKeyValueCI
-  use endf,                 only: reaction_name
-  use error,                only: fatal_error, warning
-  use fission,              only: nu_total
+  use datatypes,        only: dict_create, dict_add_key, dict_get_key, &
+                              dict_has_key, dict_delete, dict_keys
+  use datatypes_header, only: DictionaryCI, ListKeyValueCI
+  use endf,             only: reaction_name
+  use error,            only: fatal_error, warning
+  use fission,          only: nu_total
   use global
-  use material_header,      only: Material
-  use output,               only: write_message, print_nuclide, header, &
-                                  print_sab_table
-  use string,               only: split_string, str_to_int, str_to_real, &
-                                  lower_case, to_str
+  use material_header,  only: Material
+  use output,           only: write_message
+  use string,           only: split_string, str_to_int, str_to_real, &
+                              lower_case, to_str
 
   implicit none
 
@@ -56,9 +55,6 @@ contains
     ! ==========================================================================
     ! READ ALL ACE CROSS SECTION TABLES
 
-    ! display header in summary.out
-    if (master .and. output_xs) call header("CROSS SECTION TABLES", unit=UNIT_XS)
-
     call dict_create(already_read)
 
     ! Loop over all files
@@ -82,9 +78,7 @@ contains
              ! array
              call read_ace_table(i_nuclide, i_listing)
 
-             ! Print out information on table to cross_sections.out file
-             if (master .and. output_xs) call print_nuclide(nuc, unit=UNIT_XS)
-
+             ! Add name and alias to dictionary
              call dict_add_key(already_read, name, 0)
              call dict_add_key(already_read, alias, 0)
           end if
@@ -101,10 +95,7 @@ contains
              ! array
              call read_ace_table(i_sab, i_listing)
 
-             ! Print out information on table to cross_sections.out file
-             sab => sab_tables(i_sab)
-             if (master .and. output_xs) call print_sab_table(sab, unit=UNIT_XS)
-
+             ! Add name to dictionary
              call dict_add_key(already_read, name, 0)
           end if
        end if

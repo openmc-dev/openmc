@@ -12,6 +12,10 @@ module fixed_source
   use tally,       only: synchronize_tallies
   use timing,      only: timer_start, timer_stop
 
+#ifdef HDF5
+  use hdf5_interface, only: hdf5_write_state_point
+#endif
+
   type(Bank), pointer :: source_site => null()
 
 contains
@@ -115,7 +119,11 @@ contains
     if (master) then
        do i = 1, n_state_points
           if (current_batch == statepoint_batch(i)) then
+#ifdef HDF5
+             call hdf5_write_state_point()
+#else
              call write_state_point()
+#endif
              exit
           end if
        end do

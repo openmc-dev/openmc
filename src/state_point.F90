@@ -241,8 +241,11 @@ contains
        ! Indicate that tallies are on
        write(UNIT_STATE) 1
 
-       ! Write tally sum and sum_sq
        TALLY_SCORES: do i = 1, n_tallies
+          ! Get pointer to tally
+          t => tallies(i)
+
+          ! Write tally sum and sum_sq for each bin
           do k = 1, size(t % scores, 2)
              do j = 1, size(t % scores, 1)
                 write(UNIT_STATE) t % scores(j,k) % sum

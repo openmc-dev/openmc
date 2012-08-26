@@ -142,6 +142,13 @@ module global
   integer :: n_user_tracklength_tallies = 0 ! # of user tracklength tallies
   integer :: n_user_current_tallies     = 0 ! # of user current tallies
 
+  !=============================================================================
+  ! ACTIVE TALLY-RELATED VARIABLES
+
+  type(TallyNode), pointer :: active_analog_tallies => null()
+  type(TallyNode), pointer :: active_tracklength_tallies => null()
+  type(TallyNode), pointer :: active_current_tallies => null()
+
   ! ============================================================================
   ! CRITICALITY SIMULATION VARIABLES
 

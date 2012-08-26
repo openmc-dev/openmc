@@ -51,15 +51,15 @@ contains
     call timer_start(time_initialize)
 
     ! Setup MPI
-    call setup_mpi()
-
-    ! Read command line arguments
-    call read_command_line()
+    call initialize_mpi()
 
 #ifdef HDF5
     ! Initialize HDF5 interface
     call hdf5_initialize()
 #endif
+
+    ! Read command line arguments
+    call read_command_line()
 
     if (master) then
        ! Display title and initialization header
@@ -151,12 +151,12 @@ contains
   end subroutine initialize_run
 
 !===============================================================================
-! SETUP_MPI initilizes the Message Passing Interface (MPI) and determines the
-! number of processors the problem is being run with as well as the rank of each
-! processor.
+! INITIALIZE_MPI starts up the Message Passing Interface (MPI) and determines
+! the number of processors the problem is being run with as well as the rank of
+! each processor.
 !===============================================================================
 
-  subroutine setup_mpi()
+  subroutine initialize_mpi()
 
 #ifdef MPI
     integer                   :: bank_blocks(4)  ! Count for each datatype
@@ -248,7 +248,7 @@ contains
     master = .true.
 #endif
 
-  end subroutine setup_mpi
+  end subroutine initialize_mpi
 
 !===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line

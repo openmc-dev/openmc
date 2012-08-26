@@ -2329,37 +2329,140 @@ contains
 
     integer                  :: i         ! loop counter
     type(TallyNode), pointer :: curr_ptr  ! pointer to current list node
+    type(TallyNode), pointer :: next_ptr  ! pointer to next list node
 
+    !============================================================
+    ! ANALOG TALLIES
 
-    ! check to see if tallies have already been allocated
+    ! check to see if analog tallies have already been allocated
     if (associated(active_analog_tallies)) then
-      print *,"it is allocated"
+
       ! traverse to the end of the linked list
-    else
+      curr_ptr => active_analog_tallies
+      next_ptr => curr_ptr % next
+      do while(associated(next_ptr))
 
-      ! append all analog tallies (need to go in opposite order)
-      do i = n_user_analog_tallies,1,-1
-
-        ! allocate node 
-        allocate(curr_ptr)
-
-        ! set the tally index
-        curr_ptr % idx = analog_tallies(i)
-        curr_ptr % next => active_analog_tallies
-        active_analog_tallies => curr_ptr
+        curr_ptr => curr_ptr % next
+        next_ptr => curr_ptr % next
 
       end do
- 
+
+    else
+      curr_ptr => null()
     end if
+
+    ! append all analog tallies
+    do i = n_user_analog_tallies,1,-1
+
+      ! allocate node
+      allocate(curr_ptr)
+
+      ! set the tally index
+      curr_ptr % idx = analog_tallies(i)
+      curr_ptr % next => active_analog_tallies
+      active_analog_tallies => curr_ptr
+
+    end do
+
+    !============================================================
+    ! TRACKLENGTH TALLIES
+
+    ! check to see if tracklength tallies have already been allocated
+    if (associated(active_tracklength_tallies)) then
+
+      ! traverse to the end of the linked list
+      curr_ptr => active_tracklength_tallies
+      next_ptr => curr_ptr % next
+      do while(associated(next_ptr))
+
+        curr_ptr => curr_ptr % next
+        next_ptr => curr_ptr % next
+
+      end do
+
+    else
+      curr_ptr => null()
+    end if
+
+
+    ! append all tracklength tallies
+    curr_ptr => null()
+    do i = n_user_tracklength_tallies,1,-1
+
+      ! allocate node
+      allocate(curr_ptr)
+
+      ! set the tally index
+      curr_ptr % idx = tracklength_tallies(i)
+      curr_ptr % next => active_tracklength_tallies
+      active_tracklength_tallies => curr_ptr
+
+    end do
+
+   !============================================================
+   ! CURRENT TALLIES
+
+    ! check to see if current tallies have already been allocated
+    if (associated(active_current_tallies)) then
+
+      ! traverse to the end of the linked list
+      curr_ptr => active_current_tallies
+      next_ptr => curr_ptr % next
+      do while(associated(next_ptr))
+
+        curr_ptr => curr_ptr % next
+        next_ptr => curr_ptr % next
+
+      end do
+
+    else
+      curr_ptr => null()
+    end if
+
+    ! append all current tallies
+    curr_ptr => null()
+    do i = n_user_current_tallies,1,-1
+
+      ! allocate node
+      allocate(curr_ptr)
+
+      ! set the tally index
+      curr_ptr % idx = current_tallies(i)
+      curr_ptr % next => active_current_tallies
+      active_current_tallies => curr_ptr
+
+    end do
+
 
     ! traverse linked list (for debugging right now)
     curr_ptr => active_analog_tallies
     do while(associated(curr_ptr))
 
-      print *, curr_ptr % idx
+      print *, "ANALOG:", curr_ptr % idx
       curr_ptr => curr_ptr % next
 
     end do
+
+    ! traverse linked list (for debugging right now)
+    curr_ptr => active_tracklength_tallies
+    do while(associated(curr_ptr))
+
+      print *, "TRACKLENGTH:", curr_ptr % idx
+      curr_ptr => curr_ptr % next
+
+    end do
+
+    ! traverse linked list (for debugging right now)
+    curr_ptr => active_current_tallies
+    do while(associated(curr_ptr))
+
+      print *, "CURRENT:", curr_ptr % idx
+      curr_ptr => curr_ptr % next
+
+    end do
+
+    ! nullify the temporary pointer
+    if (associated(curr_ptr)) nullify(curr_ptr)
 
   end subroutine setup_active_tallies
 

@@ -114,8 +114,8 @@ module global
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
 
-  integer :: n_meshes                  ! # of structured meshes
-  integer :: n_tallies                 ! # of tallies
+  integer :: n_meshes              = 0 ! # of structured meshes
+  integer :: n_tallies             = 0 ! # of tallies
   integer :: n_analog_tallies      = 0 ! # of analog tallies
   integer :: n_tracklength_tallies = 0 ! # of track-length tallies
   integer :: n_current_tallies     = 0 ! # of surface current tallies
@@ -132,6 +132,15 @@ module global
 
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
+
+  ! ============================================================================
+  ! USER TALLY-RELATED VARIABLES
+
+  integer :: n_user_meshes              = 0 ! # of structured user meshes
+  integer :: n_user_tallies             = 0 ! # of user tallies
+  integer :: n_user_analog_tallies      = 0 ! # of user analog tallies
+  integer :: n_user_tracklength_tallies = 0 ! # of user tracklength tallies
+  integer :: n_user_current_tallies     = 0 ! # of user current tallies
 
   ! ============================================================================
   ! CRITICALITY SIMULATION VARIABLES

@@ -11,7 +11,7 @@ module global
   use particle_header,  only: Particle
   use plot_header,      only: Plot
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap, TallyScore
+  use tally_header,     only: TallyObject, TallyMap, TallyScore, TallyNode
   use timing,           only: Timer
 
 #ifdef MPI

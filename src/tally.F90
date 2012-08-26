@@ -2321,4 +2321,46 @@ contains
 
   end subroutine reset_score
 
+!===============================================================================
+! SETUP_ACTIVE_USERTALLIES
+!===============================================================================
+
+  subroutine setup_active_tallies()
+
+    integer                  :: i         ! loop counter
+    type(TallyNode), pointer :: curr_ptr  ! pointer to current list node
+
+
+    ! check to see if tallies have already been allocated
+    if (associated(active_analog_tallies)) then
+      print *,"it is allocated"
+      ! traverse to the end of the linked list
+    else
+
+      ! append all analog tallies (need to go in opposite order)
+      do i = n_user_analog_tallies,1,-1
+
+        ! allocate node 
+        allocate(curr_ptr)
+
+        ! set the tally index
+        curr_ptr % idx = analog_tallies(i)
+        curr_ptr % next => active_analog_tallies
+        active_analog_tallies => curr_ptr
+
+      end do
+ 
+    end if
+
+    ! traverse linked list (for debugging right now)
+    curr_ptr => active_analog_tallies
+    do while(associated(curr_ptr))
+
+      print *, curr_ptr % idx
+      curr_ptr => curr_ptr % next
+
+    end do
+
+  end subroutine setup_active_tallies
+
 end module tally

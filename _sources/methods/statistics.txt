@@ -118,7 +118,7 @@ in equation :eq:`unbiased-variance` is especially suitable for computation since
 we do not need to store the values at every realization of the random variable
 as the simulation proceeds. Instead, we can simply keep a running sum and sum of
 squares of the values at each realization of the random variable and use that to
-calulate the variance.
+calculate the variance.
 
 Variance of the Mean
 --------------------

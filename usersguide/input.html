@@ -245,8 +245,27 @@ tally data, this option can significantly improve the parallel efficiency.</p>
 <blockquote>
 <div><em>Default</em>: off</div></blockquote>
 </div>
+<div class="section" id="output-element">
+<h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> Element<a class="headerlink" href="#output-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> element determines what output files should be written to disk
+during the run. This element has no attributes or sub-elements and should be set
+to a list of strings separated by spaces. Valid options are &#8220;summary&#8221;,
+&#8220;cross-sections&#8221;, and &#8220;tallies&#8221;. For example, if you want the summary and cross
+sections summary file to be written, this element should be given as:</p>
+<blockquote>
+<div><div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;output&gt;</span>summary cross_sections<span class="nt">&lt;/output&gt;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The tally results will be written to a binary/HDF5 state point file by
+default.</p>
+</div>
+<p><em>Default</em>: &#8220;tallies&#8221;</p>
+</div></blockquote>
+</div>
 <div class="section" id="ptables-element">
-<h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> element determines whether probability tables should be used
 in the unresolved resonance range if available. This element has no attributes
 or sub-elements and can be set to either &#8220;off&#8221; or &#8220;on&#8221;.</p>
@@ -254,14 +273,14 @@ or sub-elements and can be set to either &#8220;off&#8221; or &#8220;on&#8221;.<
 <div><em>Default</em>: on</div></blockquote>
 </div>
 <div class="section" id="seed-element">
-<h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">seed</span></tt> element is used to set the seed used for the linear congruential
 pseudo-random number generator.</p>
 <blockquote>
 <div><em>Default</em>: 1</div></blockquote>
 </div>
 <div class="section" id="source-element">
-<h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.12. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">source</span></tt> element gives information on an external source distribution to
 be used either as the source for a fixed source calculation or the initial
 source guess for criticality calculations. It takes the following
@@ -362,8 +381,41 @@ c E e^{-E/a} dE"/>.</p>
 </table>
 </div></blockquote>
 </div>
+<div class="section" id="state-point-element">
+<h3>3.2.13. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element<a class="headerlink" href="#state-point-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> element indicates at what batches a state point file
+should be written. A state point file can be used to restart a run or to get
+tally results at any batch. This element has the following
+attributes/sub-elements:</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">batches:</th><td class="field-body"><p class="first">A list of integers separated by spaces indicating at what batches a state
+point file should be written.</p>
+<p><em>Default</em>: Last batch only</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">interval:</th><td class="field-body"><p class="first">A single integer <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> indicating that a state point should be written
+every <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> batches. This option can be given in lieu of listing
+batches explicitly.</p>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">source_separate:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first">If this element is set to &#8220;on&#8221;, a separate binary source file will be
+written. Otherwise, the source sites will be written in the state point
+directly.</p>
+<p class="last"><em>Default</em>: &#8220;off&#8221;</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</div>
 <div class="section" id="survival-biasing-element">
-<h3>3.2.12. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.14. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> element has no attributes and has an accepted value
 of &#8220;on&#8221; or &#8220;off&#8221;. If set to &#8220;on&#8221;, this option will enable the use of survival
 biasing, otherwise known as implicit capture or absorption.</p>
@@ -371,7 +423,7 @@ biasing, otherwise known as implicit capture or absorption.</p>
 <div><em>Default</em>: off</div></blockquote>
 </div>
 <div class="section" id="trace-element">
-<span id="trace"></span><h3>3.2.13. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
+<span id="trace"></span><h3>3.2.15. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> element can be used to print out detailed information about a
 single particle during a simulation. This element should be followed by three
 integers: the batch number, generation number, and particle number.</p>
@@ -379,7 +431,7 @@ integers: the batch number, generation number, and particle number.</p>
 <div><em>Default</em>: None</div></blockquote>
 </div>
 <div class="section" id="uniform-fs-element">
-<h3>3.2.14. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.16. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> element describes a mesh that is used for re-weighting
 source sites at every generation based on the uniform fission site methodology
 described in Kelly et al., &#8220;MC21 Analysis of the Nuclear Energy Agency Monte
@@ -408,7 +460,7 @@ problem. It has the following attributes/sub-elements:</p>
 </div></blockquote>
 </div>
 <div class="section" id="verbosity-element">
-<h3>3.2.15. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.17. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> element tells the code how much information to display to
 the standard output. A higher verbosity corresponds to more information being
 displayed. This element takes the following attributes:</p>
@@ -424,25 +476,6 @@ displayed. This element takes the following attributes:</p>
 </tbody>
 </table>
 </div></blockquote>
-</div>
-<div class="section" id="write-state-point-element">
-<h3>3.2.16. <tt class="docutils literal"><span class="pre">&lt;write_state_point&gt;</span></tt> Element<a class="headerlink" href="#write-state-point-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;write_state_point&gt;</span></tt> element is used to indicate batches at which the
-user wishes to have a binary state point file written to disk. The state point
-file can be used to restart a run or to get tally results at an intermediate
-stage. This element has no attributes and should consist of a list of integers
-corresponding to batches at which a binary state point file should be written to
-disk.</p>
-<blockquote>
-<div><em>Default</em>: None</div></blockquote>
-</div>
-<div class="section" id="write-source-element">
-<h3>3.2.17. <tt class="docutils literal"><span class="pre">&lt;write_source&gt;</span></tt> Element<a class="headerlink" href="#write-source-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;write_source&gt;</span></tt> element has no attributes and has an accepted value of
-&#8220;on&#8221; or &#8220;off&#8221;. If set to &#8220;on&#8221;, a binary source file will be written to disk at
-the end of the run that can be used as a starting source for another run.</p>
-<blockquote>
-<div><em>Default</em>: off</div></blockquote>
 </div>
 </div>
 <div class="section" id="geometry-specification-geometry-xml">

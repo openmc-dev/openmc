@@ -6,7 +6,7 @@ module hdf5_interface
   use geometry_header, only: Cell, Surface, Universe, Lattice
   use global
   use material_header, only: Material
-  use output,          only: write_message
+  use output,          only: write_message, time_stamp
   use string,          only: to_str
   use tally_header,    only: TallyObject
 
@@ -44,21 +44,14 @@ contains
 
   subroutine hdf5_write_header()
 
-    character(8)  :: date_
-    character(10) :: time_
-    character(19) :: current_time
-     
     ! Write version information
     call hdf5_make_integer(hdf5_output_file, "version_major", VERSION_MAJOR)
     call hdf5_make_integer(hdf5_output_file, "version_minor", VERSION_MINOR)
     call hdf5_make_integer(hdf5_output_file, "version_release", VERSION_RELEASE)
 
     ! Write current date and time
-    call date_and_time(DATE=date_, TIME=time_)
-    current_time = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8) // &
-         " " // time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
     call h5ltmake_dataset_string_f(hdf5_output_file, "date_and_time", &
-         current_time, hdf5_err)
+         time_stamp(), hdf5_err)
 
     ! Write MPI information
     call hdf5_make_integer(hdf5_output_file, "n_procs", n_procs)
@@ -876,10 +869,7 @@ contains
     integer(HID_T)       :: dspace           ! identifier for dataspace
     integer(HID_T)       :: dset             ! identifier for dataset
     integer, allocatable :: temp_array(:)    ! nuclide bin array
-    character(8)  :: date_
-    character(10) :: time_
-    character(19) :: current_time
-    type(c_ptr) :: f_ptr            ! Pointer for h5dwrite
+    type(c_ptr)          :: f_ptr            ! Pointer for h5dwrite
     type(TallyObject), pointer :: t => null()
 
     path_state_point = 'statepoint.' // trim(to_str(current_batch)) // '.h5'
@@ -906,11 +896,8 @@ contains
     call hdf5_make_integer(hdf5_state_point, "version_release", VERSION_RELEASE)
 
     ! Write current date and time
-    call date_and_time(DATE=date_, TIME=time_)
-    current_time = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8) // &
-         " " // time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
     call h5ltmake_dataset_string_f(hdf5_state_point, "date_and_time", &
-         current_time, hdf5_err)
+         time_stamp(), hdf5_err)
 
     ! Write out random number seed
     call hdf5_make_long(hdf5_state_point, "seed", seed)

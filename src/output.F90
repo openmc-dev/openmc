@@ -30,9 +30,6 @@ contains
 
   subroutine title()
 
-    character(10) :: date_
-    character(10) :: time_
-
     write(UNIT=OUTPUT_UNIT, FMT='(/11(A/))') &
          '       .d88888b.                             888b     d888  .d8888b.', &
          '      d88P" "Y88b                            8888b   d8888 d88P  Y88b', &
@@ -56,11 +53,8 @@ contains
 #endif
 
     ! Write the date and time
-    call date_and_time(DATE=date_, TIME=time_)
-    date_ = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8)
-    time_ = time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",5X,A,1X,A)') &
-         trim(date_), trim(time_)
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",5X,A)') &
+         time_stamp()
 
     ! Write information to summary file
     if (output_summary) then
@@ -72,8 +66,8 @@ contains
 #ifdef GIT_SHA1
        write(UNIT=UNIT_SUMMARY, FMT='(1X,"Git SHA1:",6X,A)') GIT_SHA1
 #endif
-       write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A,1X,A)') &
-            trim(date_), trim(time_)
+       write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A)') &
+            time_stamp()
 
        ! Write information on number of processors
 #ifdef MPI
@@ -85,6 +79,22 @@ contains
     end if
 
   end subroutine title
+
+!===============================================================================
+! TIME_STAMP returns the current date and time in a formatted string
+!===============================================================================
+
+  function time_stamp() result(current_time)
+
+    character(19) :: current_time ! ccyy-mm-dd hh:mm:ss
+    character(8)  :: date_        ! ccyymmdd
+    character(10) :: time_        ! hhmmss.sss
+
+    call date_and_time(DATE=date_, TIME=time_)
+    current_time = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8) // &
+         " " // time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
+
+  end function time_stamp
 
 !===============================================================================
 ! HEADER displays a header block according to a specified level. If no level is

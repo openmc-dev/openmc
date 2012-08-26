@@ -3,7 +3,7 @@ module state_point
   use error,        only: warning, fatal_error
   use global
   use math,         only: t_percentile
-  use output,       only: write_message, print_batch_keff
+  use output,       only: write_message, print_batch_keff, time_stamp
   use source,       only: write_source_binary
   use string,       only: to_str
   use tally_header, only: TallyObject
@@ -23,9 +23,7 @@ contains
 
   subroutine write_state_point()
 
-    integer :: i ! loop index
-    type(TallyObject), pointer :: t => null()
-
+    integer :: i                       ! loop index
 #ifdef MPI
     integer :: fh                      ! file handle
     integer :: n                       ! temporary array length
@@ -34,11 +32,9 @@ contains
     integer :: size_bank               ! size of MPI_BANK type
     integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
 #else
-    integer :: j, k ! loop indices
-    character(8)  :: date_
-    character(10) :: time_
-    character(19) :: current_time
+    integer :: j, k                    ! loop indices
 #endif
+    type(TallyObject), pointer :: t => null()
 
     ! Set filename for binary state point
     path_state_point = 'statepoint.' // trim(to_str(current_batch)) // '.binary'
@@ -137,10 +133,7 @@ contains
     write(UNIT_STATE) VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 
     ! Write current date and time
-    call date_and_time(DATE=date_, TIME=time_)
-    current_time = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8) // &
-         " " // time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
-    write(UNIT_STATE) current_time
+    write(UNIT_STATE) time_stamp()
 
     ! Write out random number seed
     write(UNIT_STATE) seed
@@ -290,12 +283,9 @@ contains
 
     integer, intent(inout) :: fh ! file handle
 
-    integer :: i  ! loop index
-    integer :: j  ! loop index
-    integer :: n  ! temporary array length
-    character(8)  :: date_
-    character(10) :: time_
-    character(19) :: current_time
+    integer       :: i            ! loop index
+    integer       :: j            ! loop index
+    integer       :: n            ! temporary array length
     type(TallyObject), pointer :: t => null()
 
     ! Write revision number for state point file
@@ -311,10 +301,7 @@ contains
          MPI_STATUS_IGNORE, mpi_err)
 
     ! Write current date and time
-    call date_and_time(DATE=date_, TIME=time_)
-    current_time = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8) // &
-         " " // time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
-    call MPI_FILE_WRITE(fh, current_time, 19, MPI_CHARACTER, &
+    call MPI_FILE_WRITE(fh, time_stamp(), 19, MPI_CHARACTER, &
          MPI_STATUS_IGNORE, mpi_err)
 
     ! Write out random number seed
@@ -466,7 +453,7 @@ contains
     integer :: temp(3) ! temporary variable
     integer, allocatable :: int_array(:)
     real(8), allocatable :: real_array(:)
-    character(19) :: current_time
+    character(19)        :: current_time  ! current date and time
 
 #ifdef MPI
     integer :: fh                      ! file handle

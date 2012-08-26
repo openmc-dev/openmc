@@ -50,8 +50,10 @@ contains
     call timer_start(time_total)
     call timer_start(time_initialize)
 
+#ifdef MPI
     ! Setup MPI
     call initialize_mpi()
+#endif
 
 #ifdef HDF5
     ! Initialize HDF5 interface
@@ -150,6 +152,7 @@ contains
 
   end subroutine initialize_run
 
+#ifdef MPI
 !===============================================================================
 ! INITIALIZE_MPI starts up the Message Passing Interface (MPI) and determines
 ! the number of processors the problem is being run with as well as the rank of
@@ -158,7 +161,6 @@ contains
 
   subroutine initialize_mpi()
 
-#ifdef MPI
     integer                   :: bank_blocks(4)  ! Count for each datatype
     integer                   :: bank_types(4)   ! Datatypes
     integer(MPI_ADDRESS_KIND) :: bank_disp(4)    ! Displacements
@@ -172,28 +174,15 @@ contains
     type(Bank)       :: b
     type(TallyScore) :: ts
 
+    ! Indicate that MPI is turned on
     mpi_enabled = .true.
 
     ! Initialize MPI
     call MPI_INIT(mpi_err)
-    if (mpi_err /= MPI_SUCCESS) then
-       message = "Failed to initialize MPI."
-       call fatal_error()
-    end if
 
-    ! Determine number of processors
+    ! Determine number of processors and rank of each processor
     call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, mpi_err)
-    if (mpi_err /= MPI_SUCCESS) then
-       message = "Could not determine number of processors."
-       call fatal_error()
-    end if
-
-    ! Determine rank of each processor
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, mpi_err)
-    if (mpi_err /= MPI_SUCCESS) then
-       message = "Could not determine MPI rank."
-       call fatal_error()
-    end if
 
     ! Determine master
     if (rank == 0) then
@@ -201,6 +190,9 @@ contains
     else
        master = .false.
     end if
+
+    ! ==========================================================================
+    ! CREATE MPI_BANK TYPE
 
     ! Determine displacements for MPI_BANK type
     call MPI_GET_ADDRESS(b % wgt, bank_disp(1), mpi_err)
@@ -217,6 +209,9 @@ contains
     call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
+
+    ! ==========================================================================
+    ! CREATE MPI_TALLYSCORE TYPE
 
     ! Determine displacements for MPI_BANK type
     call MPI_GET_ADDRESS(ts % n_events, score_base_disp, mpi_err)
@@ -240,15 +235,8 @@ contains
     ! Commit derived type for tally scores
     call MPI_TYPE_COMMIT(MPI_TALLYSCORE, mpi_err)
 
-#else
-    ! if no MPI, set processor to master
-    mpi_enabled = .false.
-    rank = 0
-    n_procs = 1
-    master = .true.
-#endif
-
   end subroutine initialize_mpi
+#endif
 
 !===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line

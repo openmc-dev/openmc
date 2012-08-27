@@ -13,14 +13,12 @@ module initialize
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
-  use output,           only: title, header, print_summary, print_geometry,    &
-                              print_plot, create_summary_file, print_usage,    &
-                              create_xs_summary_file, print_version
+  use output,           only: title, header, write_summary, print_version,     &
+                              print_usage, write_xs_summary, print_plot
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use state_point,      only: load_state_point
-  use string,           only: to_str, str_to_int, starts_with, ends_with,      &
-                              lower_case
+  use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally,            only: create_tally_map
   use tally_header,     only: TallyObject
   use timing,           only: timer_start, timer_stop
@@ -30,8 +28,7 @@ module initialize
 #endif
 
 #ifdef HDF5
-  use hdf5_interface,   only: hdf5_create_output, hdf5_write_header,            &
-                              hdf5_write_summary
+  use hdf5_interface,   only: hdf5_initialize, hdf5_write_summary
 #endif
 
   implicit none
@@ -51,19 +48,20 @@ contains
     call timer_start(time_total)
     call timer_start(time_initialize)
 
+#ifdef MPI
     ! Setup MPI
-    call setup_mpi()
+    call initialize_mpi()
+#endif
+
+#ifdef HDF5
+    ! Initialize HDF5 interface
+    call hdf5_initialize()
+#endif
 
     ! Read command line arguments
     call read_command_line()
 
     if (master) then
-#ifdef HDF5
-       ! Open HDF5 output file for writing and write header information
-       call hdf5_create_output()
-       call hdf5_write_header()
-#endif
-
        ! Display title and initialization header
        call title()
        call header("INITIALIZATION", level=1)
@@ -75,13 +73,10 @@ contains
     ! Read XML input files
     call read_input_xml()
 
-    ! Create output files
-    if (master) then
-       if (output_summary) call create_summary_file()
-       if (output_xs) call create_xs_summary_file()
-    end if
+    ! Initialize random number generator -- this has to be done after the input
+    ! files have been read in case the user specified a seed for the random
+    ! number generator
 
-    ! Initialize random number generator
     call initialize_prng()
 
     ! Read plots.xml if it exists -- this has to be done separate from the other
@@ -134,16 +129,20 @@ contains
        if (restart_run) call load_state_point()
     end if
 
-    ! stop timer for initialization
     if (master) then
        if (run_mode == MODE_PLOTTING) then
-          if (output_summary) call print_geometry()
+          ! Display plotting information
           call print_plot()
        else
-          if (output_summary) call print_summary()
+          ! Write summary information
 #ifdef HDF5
-          call hdf5_write_summary()
+          if (output_summary) call hdf5_write_summary()
+#else
+          if (output_summary) call write_summary()
 #endif
+
+          ! Write cross section information
+          if (output_xs) call write_xs_summary()
        end if
     end if
 
@@ -152,15 +151,15 @@ contains
 
   end subroutine initialize_run
 
-!===============================================================================
-! SETUP_MPI initilizes the Message Passing Interface (MPI) and determines the
-! number of processors the problem is being run with as well as the rank of each
-! processor.
-!===============================================================================
-
-  subroutine setup_mpi()
-
 #ifdef MPI
+!===============================================================================
+! INITIALIZE_MPI starts up the Message Passing Interface (MPI) and determines
+! the number of processors the problem is being run with as well as the rank of
+! each processor.
+!===============================================================================
+
+  subroutine initialize_mpi()
+
     integer                   :: bank_blocks(4)  ! Count for each datatype
     integer                   :: bank_types(4)   ! Datatypes
     integer(MPI_ADDRESS_KIND) :: bank_disp(4)    ! Displacements
@@ -174,28 +173,15 @@ contains
     type(Bank)       :: b
     type(TallyScore) :: ts
 
+    ! Indicate that MPI is turned on
     mpi_enabled = .true.
 
     ! Initialize MPI
     call MPI_INIT(mpi_err)
-    if (mpi_err /= MPI_SUCCESS) then
-       message = "Failed to initialize MPI."
-       call fatal_error()
-    end if
 
-    ! Determine number of processors
+    ! Determine number of processors and rank of each processor
     call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, mpi_err)
-    if (mpi_err /= MPI_SUCCESS) then
-       message = "Could not determine number of processors."
-       call fatal_error()
-    end if
-
-    ! Determine rank of each processor
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, mpi_err)
-    if (mpi_err /= MPI_SUCCESS) then
-       message = "Could not determine MPI rank."
-       call fatal_error()
-    end if
 
     ! Determine master
     if (rank == 0) then
@@ -203,6 +189,9 @@ contains
     else
        master = .false.
     end if
+
+    ! ==========================================================================
+    ! CREATE MPI_BANK TYPE
 
     ! Determine displacements for MPI_BANK type
     call MPI_GET_ADDRESS(b % wgt, bank_disp(1), mpi_err)
@@ -219,6 +208,9 @@ contains
     call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
+
+    ! ==========================================================================
+    ! CREATE MPI_TALLYSCORE TYPE
 
     ! Determine displacements for MPI_BANK type
     call MPI_GET_ADDRESS(ts % n_events, score_base_disp, mpi_err)
@@ -242,15 +234,8 @@ contains
     ! Commit derived type for tally scores
     call MPI_TYPE_COMMIT(MPI_TALLYSCORE, mpi_err)
 
-#else
-    ! if no MPI, set processor to master
-    mpi_enabled = .false.
-    rank = 0
-    n_procs = 1
-    master = .true.
+  end subroutine initialize_mpi
 #endif
-
-  end subroutine setup_mpi
 
 !===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line

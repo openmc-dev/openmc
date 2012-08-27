@@ -109,7 +109,7 @@ module global
   !   3) track-length estimate of k-eff
   !   4) leakage fraction
 
-  type(TallyScore) :: global_tallies(N_GLOBAL_TALLIES)
+  type(TallyScore), target :: global_tallies(N_GLOBAL_TALLIES)
 
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
@@ -194,13 +194,17 @@ module global
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
 
-  integer :: n_procs        ! number of processes
-  integer :: rank           ! rank of process
-  logical :: master         ! master process?
-  logical :: mpi_enabled    ! is MPI in use and initialized?
-  integer :: mpi_err        ! MPI error code
-  integer :: MPI_BANK       ! MPI datatype for fission bank
-  integer :: MPI_TALLYSCORE ! MPI datatype for TallyScore
+  ! The defaults set here for the number of processors, rank, and master and
+  ! mpi_enabled flag are for when MPI is not being used at all, i.e. a serial
+  ! run. In this case, these variables are still used at times.
+
+  integer :: n_procs     = 1       ! number of processes
+  integer :: rank        = 0       ! rank of process
+  logical :: master      = .true.  ! master process?
+  logical :: mpi_enabled = .false. ! is MPI in use and initialized?
+  integer :: mpi_err               ! MPI error code
+  integer :: MPI_BANK              ! MPI datatype for fission bank
+  integer :: MPI_TALLYSCORE        ! MPI datatype for TallyScore
 
   ! No reduction at end of batch
   logical :: reduce_tallies = .true.
@@ -232,8 +236,10 @@ module global
   ! HDF5 VARIABLES
 
 #ifdef HDF5
-  integer(HID_T) :: hdf5_output_file ! identifier for output file
-  integer        :: hdf5_err         ! error flag 
+  integer(HID_T) :: hdf5_output_file  ! identifier for output file
+  integer(HID_T) :: hdf5_tallyscore_t ! Compound type for TallyScore
+  integer(HID_T) :: hdf5_integer8_t   ! type for integer(8)
+  integer        :: hdf5_err          ! error flag 
 #endif
 
   ! ============================================================================

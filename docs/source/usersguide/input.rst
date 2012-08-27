@@ -191,6 +191,23 @@ tally data, this option can significantly improve the parallel efficiency.
 
   *Default*: off
 
+``<output>`` Element
+--------------------
+
+The ``<output>`` element determines what output files should be written to disk
+during the run. This element has no attributes or sub-elements and should be set
+to a list of strings separated by spaces. Valid options are "summary",
+"cross-sections", and "tallies". For example, if you want the summary and cross
+sections summary file to be written, this element should be given as:
+
+  .. code-block:: xml
+
+      <output>summary cross_sections</output>
+
+  .. note:: The tally results will be written to a binary/HDF5 state point file by
+            default.
+
+  *Default*: "tallies"
 
 ``<ptables>`` Element
 ---------------------
@@ -298,6 +315,34 @@ attributes/sub-elements:
 
       *Default*: 0.988 2.249
 
+``<state_point>`` Element
+-------------------------
+
+The ``<state_point>`` element indicates at what batches a state point file
+should be written. A state point file can be used to restart a run or to get
+tally results at any batch. This element has the following
+attributes/sub-elements:
+
+  :batches:
+    A list of integers separated by spaces indicating at what batches a state
+    point file should be written.
+
+    *Default*: Last batch only
+
+  :interval:
+    A single integer :math:`n` indicating that a state point should be written
+    every :math:`n` batches. This option can be given in lieu of listing
+    batches explicitly.
+
+    *Default*: None
+
+  :source_separate:
+    If this element is set to "on", a separate binary source file will be
+    written. Otherwise, the source sites will be written in the state point
+    directly.
+
+    *Default*: "off"
+
 ``<survival_biasing>`` Element
 ------------------------------
 
@@ -354,28 +399,6 @@ displayed. This element takes the following attributes:
     The specified verbosity between 1 and 10.
 
     *Default*: 5
-
-``<write_state_point>`` Element
--------------------------------
-
-The ``<write_state_point>`` element is used to indicate batches at which the
-user wishes to have a binary state point file written to disk. The state point
-file can be used to restart a run or to get tally results at an intermediate
-stage. This element has no attributes and should consist of a list of integers
-corresponding to batches at which a binary state point file should be written to
-disk.
-
-  *Default*: None
-
-
-``<write_source>`` Element
---------------------------
-
-The ``<write_source>`` element has no attributes and has an accepted value of
-"on" or "off". If set to "on", a binary source file will be written to disk at
-the end of the run that can be used as a starting source for another run.
-
-  *Default*: off
 
 --------------------------------------
 Geometry Specification -- geometry.xml

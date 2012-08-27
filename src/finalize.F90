@@ -5,8 +5,12 @@ module finalize
   use tally,          only: write_tallies, tally_statistics
   use timing,         only: timer_start, timer_stop
 
+#ifdef MPI
+  use mpi
+#endif
+
 #ifdef HDF5
-  use hdf5_interface, only: hdf5_write_results, hdf5_close_output
+  use hdf5_interface, only: hdf5_finalize
 #endif
 
   implicit none
@@ -15,7 +19,7 @@ contains
 
 !===============================================================================
 ! FINALIZE_RUN does all post-simulation tasks such as calculating tally
-! statistics, writing out tallies, and writing hdf5 output.
+! statistics and writing out tallies
 !===============================================================================
 
   subroutine finalize_run()
@@ -37,16 +41,13 @@ contains
     if (master .and. (run_mode /= MODE_PLOTTING .and. &
          run_mode /= MODE_TALLIES)) call print_runtime()
 
-#ifdef HDF5
-    ! Write time statistics to HDF5 output 
-    if (master) then
-       call hdf5_write_results()
-       call hdf5_close_output()
-    end if
-#endif
-
     ! deallocate arrays
     call free_memory()
+
+#ifdef HDF5
+    ! Close HDF5 interface and release memory
+    call hdf5_finalize()
+#endif
     
 #ifdef MPI
     ! If MPI is in use and enabled, terminate it

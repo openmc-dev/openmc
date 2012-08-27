@@ -30,9 +30,6 @@ contains
 
   subroutine title()
 
-    character(10) :: date_
-    character(10) :: time_
-
     write(UNIT=OUTPUT_UNIT, FMT='(/11(A/))') &
          '       .d88888b.                             888b     d888  .d8888b.', &
          '      d88P" "Y88b                            8888b   d8888 d88P  Y88b', &
@@ -56,35 +53,32 @@ contains
 #endif
 
     ! Write the date and time
-    call date_and_time(DATE=date_, TIME=time_)
-    date_ = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8)
-    time_ = time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",5X,A,1X,A)') &
-         trim(date_), trim(time_)
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",5X,A)') &
+         time_stamp()
 
-    ! Write information to summary file
-    if (output_summary) then
-       call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
-       write(UNIT=UNIT_SUMMARY, FMT=*) &
-            "Copyright:     2011-2012 Massachusetts Institute of Technology"
-       write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
-            "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
-#ifdef GIT_SHA1
-       write(UNIT=UNIT_SUMMARY, FMT='(1X,"Git SHA1:",6X,A)') GIT_SHA1
-#endif
-       write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A,1X,A)') &
-            trim(date_), trim(time_)
-
-       ! Write information on number of processors
 #ifdef MPI
-       write(UNIT=OUTPUT_UNIT, FMT='(1X,A)') '     MPI Processes: ' // &
-            trim(to_str(n_procs))
-       write(UNIT=UNIT_SUMMARY, FMT='(1X,"MPI Processes:",1X,A)') &
-            trim(to_str(n_procs))
+    ! Write number of processors
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"MPI Processes:",1X,A)') &
+         trim(to_str(n_procs))
 #endif
-    end if
 
   end subroutine title
+
+!===============================================================================
+! TIME_STAMP returns the current date and time in a formatted string
+!===============================================================================
+
+  function time_stamp() result(current_time)
+
+    character(19) :: current_time ! ccyy-mm-dd hh:mm:ss
+    character(8)  :: date_        ! ccyymmdd
+    character(10) :: time_        ! hhmmss.sss
+
+    call date_and_time(DATE=date_, TIME=time_)
+    current_time = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8) // &
+         " " // time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
+
+  end function time_stamp
 
 !===============================================================================
 ! HEADER displays a header block according to a specified level. If no level is
@@ -1001,16 +995,39 @@ contains
   end subroutine print_sab_table
 
 !===============================================================================
-! PRINT_SUMMARY displays summary information about the problem about to be run
+! WRITE_SUMMARY displays summary information about the problem about to be run
 ! after reading all input files
 !===============================================================================
 
-  subroutine print_summary()
+  subroutine write_summary()
 
-    integer :: i ! loop index
-    character(15) :: string
+    integer                 :: i      ! loop index
+    character(MAX_FILE_LEN) :: path   ! path of summary file
     type(Material),    pointer :: m => null()
     type(TallyObject), pointer :: t => null()
+
+    ! Create filename for log file
+    path = "summary.out"
+
+    ! Open log file for writing
+    open(UNIT=UNIT_SUMMARY, FILE=path, STATUS='replace', ACTION='write')
+
+    call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
+    write(UNIT=UNIT_SUMMARY, FMT=*) &
+         "Copyright:     2011-2012 Massachusetts Institute of Technology"
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
+         "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
+#ifdef GIT_SHA1
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Git SHA1:",6X,A)') GIT_SHA1
+#endif
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A)') &
+         time_stamp()
+
+    ! Write information on number of processors
+#ifdef MPI
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"MPI Processes:",1X,A)') &
+         trim(to_str(n_procs))
+#endif
 
     ! Display problem summary
     call header("PROBLEM SUMMARY", unit=UNIT_SUMMARY)
@@ -1063,16 +1080,61 @@ contains
     else
        write(UNIT_SUMMARY,100) "Survival Biasing:", "off"
     end if
-    string = to_str(weight_cutoff)
-    write(UNIT_SUMMARY,100) "Weight Cutoff:", trim(string)
-    string = to_str(weight_survive)
-    write(UNIT_SUMMARY,100) "Survival weight:", trim(string)
+    write(UNIT_SUMMARY,100) "Weight Cutoff:", trim(to_str(weight_cutoff))
+    write(UNIT_SUMMARY,100) "Survival weight:", trim(to_str(weight_survive))
+
+    ! Close summary file
+    close(UNIT_SUMMARY)
 
     ! Format descriptor for columns
 100 format (1X,A,T35,A)
 101 format (1X,A,T35,I11)
 
-  end subroutine print_summary
+  end subroutine write_summary
+
+!===============================================================================
+! WRITE_XS_SUMMARY writes information about each nuclide and S(a,b) table to a
+! file called cross_sections.out. This file shows the list of reactions as well
+! as information about their secondary angle/energy distributions, how much
+! memory is consumed, thresholds, etc.
+!===============================================================================
+
+  subroutine write_xs_summary()
+
+    integer                  :: i    ! loop index
+    character(MAX_FILE_LEN)  :: path ! path of summary file
+    type(Nuclide),   pointer :: nuc => null()
+    type(SAB_Table), pointer :: sab => null()
+
+    ! Create filename for log file
+    path = "cross_sections.out"
+
+    ! Open log file for writing
+    open(UNIT=UNIT_XS, FILE=path, STATUS='replace', ACTION='write')
+
+    ! Write header
+    call header("CROSS SECTION TABLES", unit=UNIT_XS)
+
+    NUCLIDE_LOOP: do i = 1, n_nuclides_total
+       ! Get pointer to nuclide
+       nuc => nuclides(i)
+
+       ! Print information about nuclide
+       call print_nuclide(nuc, unit=UNIT_XS)
+    end do NUCLIDE_LOOP
+
+    SAB_TABLES_LOOP: do i = 1, n_sab_tables
+       ! Get pointer to S(a,b) table
+       sab => sab_tables(i)
+
+       ! Print information about S(a,b) table
+       call print_sab_table(sab, unit=UNIT_XS)
+    end do SAB_TABLES_LOOP
+
+    ! Close cross section summary file
+    close(UNIT_XS)
+
+  end subroutine write_xs_summary
 
 !===============================================================================
 ! PRINT_COLUMNS displays a header listing what physical values will displayed
@@ -1262,55 +1324,5 @@ contains
 102 format (1X,A,T30,"= ",F8.5," +/- ",F8.5)
  
   end subroutine print_runtime
-
-!===============================================================================
-! CREATE_SUMMARY_FILE opens the summary.out file for logging information about
-! the simulation
-!===============================================================================
-
-  subroutine create_summary_file()
-
-    logical :: file_exists  ! does log file already exist?
-    character(MAX_FILE_LEN) :: path ! path of summary file
-
-    ! Create filename for log file
-    path = "summary.out"
-
-    ! Check if log file already exists
-    inquire(FILE=path, EXIST=file_exists)
-    if (file_exists) then
-       ! Possibly copy old log file
-    end if
-
-    ! Open log file for writing
-    open(UNIT=UNIT_SUMMARY, FILE=path, STATUS='replace', &
-         ACTION='write')
-
-  end subroutine create_summary_file
-
-!===============================================================================
-! CREATE_XS_SUMMARY_FILE creates an output file to write information about the
-! cross section tables used in the simulation.
-!===============================================================================
-
-  subroutine create_xs_summary_file()
-
-    logical :: file_exists  ! does log file already exist?
-    character(MAX_FILE_LEN) :: path ! path of summary file
-
-    ! Create filename for log file
-    path = "cross_sections.out"
-
-    ! Check if log file already exists
-    inquire(FILE=path, EXIST=file_exists)
-    if (file_exists) then
-       ! Possibly copy old log file
-    end if
-
-    ! Open log file for writing
-    open(UNIT=UNIT_XS, FILE=path, STATUS='replace', &
-         ACTION='write')
-
-  end subroutine create_xs_summary_file
 
 end module output

@@ -1498,10 +1498,8 @@ contains
        ! =======================================================================
        ! READ DATA FOR NUCLIDES
 
-       if (len_trim(tally_(i) % nuclides) > 0) then
-          call split_string(tally_(i) % nuclides, words, n_words)
-
-          if (words(1) == 'all') then
+       if (associated(tally_(i) % nuclides)) then
+          if (tally_(i) % nuclides(1) == 'all') then
              ! Handle special case <nuclides>all</nuclides>
              allocate(t % nuclide_bins(n_nuclides_total + 1))
 
@@ -1517,19 +1515,20 @@ contains
              t % all_nuclides = .true.
           else
              ! Any other case, e.g. <nuclides>U-235 Pu-239</nuclides>
+             n_words = size(tally_(i) % nuclides)
              allocate(t % nuclide_bins(n_words))
              do j = 1, n_words
                 ! Check if total material was specified
-                if (words(j) == 'total') then
+                if (tally_(i) % nuclides(j) == 'total') then
                    t % nuclide_bins(j) = -1
                    cycle
                 end if
 
                 ! Check if xs specifier was given
-                if (ends_with(words(j), 'c')) then
-                   word = words(j)
+                if (ends_with(tally_(i) % nuclides(j), 'c')) then
+                   word = tally_(i) % nuclides(j)
                 else
-                   word = trim(words(j)) // "." // default_xs
+                   word = trim(tally_(i) % nuclides(j)) // "." // default_xs
                 end if
 
                 ! Check to make sure nuclide specified is in problem

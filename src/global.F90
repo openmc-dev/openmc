@@ -290,6 +290,8 @@ contains
 
   subroutine free_memory()
 
+    type(TallyNode), pointer :: curr_ptr
+
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)
@@ -319,6 +321,26 @@ contains
     if (allocated(fission_bank)) deallocate(fission_bank)
     if (allocated(source_bank)) deallocate(source_bank)
     if (allocated(entropy_p)) deallocate(entropy_p)
+
+    ! Deallocate tally node lists
+    curr_ptr => active_analog_tallies
+    do while(associated(curr_ptr))
+      active_analog_tallies => curr_ptr % next
+      deallocate(curr_ptr)
+      curr_ptr => active_analog_tallies
+    end do
+    curr_ptr => active_tracklength_tallies
+    do while(associated(curr_ptr))
+      active_tracklength_tallies => curr_ptr % next
+      deallocate(curr_ptr)
+      curr_ptr => active_tracklength_tallies
+    end do
+    curr_ptr => active_current_tallies
+    do while(associated(curr_ptr))
+      active_current_tallies => curr_ptr % next
+      deallocate(curr_ptr)
+      curr_ptr => active_current_tallies
+    end do
 
   end subroutine free_memory
 

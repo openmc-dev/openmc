@@ -2477,34 +2477,6 @@ contains
 
     end do
 
-
-    ! traverse linked list (for debugging right now)
-    curr_ptr => active_analog_tallies
-    do while(associated(curr_ptr))
-
-      print *, "ANALOG:", analog_tallies(curr_ptr % idx)
-      curr_ptr => curr_ptr % next
-
-    end do
-
-    ! traverse linked list (for debugging right now)
-    curr_ptr => active_tracklength_tallies
-    do while(associated(curr_ptr))
-
-      print *, "TRACKLENGTH:", tracklength_tallies(curr_ptr % idx)
-      curr_ptr => curr_ptr % next
-
-    end do
-
-    ! traverse linked list (for debugging right now)
-    curr_ptr => active_current_tallies
-    do while(associated(curr_ptr))
-
-      print *, "CURRENT:", current_tallies(curr_ptr % idx)
-      curr_ptr => curr_ptr % next
-
-    end do
-
     ! nullify the temporary pointer
     if (associated(curr_ptr)) nullify(curr_ptr)
 

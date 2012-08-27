@@ -99,11 +99,12 @@ contains
           coord => coord % next
        end do
 
-       if (tallies_on) then
-          ! Score track-length tallies
-          if (n_tracklength_tallies > 0) &
-               call score_tracklength_tally(distance)
+       ! Score track-length tallies
+       if (associated(active_tracklength_tallies)) &
+            call score_tracklength_tally(distance)
 
+       ! Score global tracklength tallies
+       if (tallies_on) then
           ! Score track-length estimate of k-eff
           call add_to_score(global_tallies(K_TRACKLENGTH), &
                p % wgt * distance * material_xs % nu_fission)
@@ -195,7 +196,7 @@ contains
     ! since the direction of the particle will change and we need to use the
     ! pre-collision direction to figure out what mesh surfaces were crossed
 
-    if (tallies_on .and. n_current_tallies > 0) &
+    if (associated(active_current_tallies)) &
          call score_surface_current()
 
     ! Sample nuclide/reaction for the material the particle is in
@@ -229,7 +230,7 @@ contains
     ! information on the outgoing energy for any tallies with an outgoing energy
     ! filter
 
-    if (tallies_on .and. n_analog_tallies > 0) &
+    if (associated(active_analog_tallies)) &
          call score_analog_tally()
 
     ! Reset banked weight during collision

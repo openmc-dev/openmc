@@ -4,6 +4,7 @@ module global
                               MaterialMacroXS
   use bank_header,      only: Bank
   use constants
+  use datatypes,        only: list_delete
   use datatypes_header, only: DictionaryII, DictionaryCI, ListInt
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
@@ -290,8 +291,6 @@ contains
 
   subroutine free_memory()
 
-    type(ListInt), pointer :: curr_ptr
-
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)
@@ -323,24 +322,9 @@ contains
     if (allocated(entropy_p)) deallocate(entropy_p)
 
     ! Deallocate tally node lists
-    curr_ptr => active_analog_tallies
-    do while(associated(curr_ptr))
-      active_analog_tallies => curr_ptr % next
-      deallocate(curr_ptr)
-      curr_ptr => active_analog_tallies
-    end do
-    curr_ptr => active_tracklength_tallies
-    do while(associated(curr_ptr))
-      active_tracklength_tallies => curr_ptr % next
-      deallocate(curr_ptr)
-      curr_ptr => active_tracklength_tallies
-    end do
-    curr_ptr => active_current_tallies
-    do while(associated(curr_ptr))
-      active_current_tallies => curr_ptr % next
-      deallocate(curr_ptr)
-      curr_ptr => active_current_tallies
-    end do
+    call list_delete(active_analog_tallies)
+    call list_delete(active_tracklength_tallies)
+    call list_delete(active_current_tallies)
 
   end subroutine free_memory
 

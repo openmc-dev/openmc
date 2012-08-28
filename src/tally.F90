@@ -1,6 +1,7 @@
 module tally
 
   use constants
+  use datatypes_header, only: ListInt
   use error,         only: fatal_error
   use global
   use math,          only: t_percentile
@@ -10,7 +11,7 @@ module tally
   use output,        only: header
   use search,        only: binary_search
   use string,        only: to_str
-  use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement, TallyNode
+  use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement
 
 #ifdef MPI
   use mpi
@@ -249,7 +250,7 @@ contains
     real(8) :: macro_scatt          ! material macro scatt xs
     logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer :: t => null()
-    type(TallyNode), pointer :: curr_ptr => null()
+    type(ListInt), pointer :: curr_ptr => null()
 
     ! Copy particle's pre- and post-collision weight and angle
     last_wgt = p % last_wgt
@@ -263,12 +264,12 @@ contains
     ! determine different filter bins for the same tally in order to score to it
 
     TALLY_LOOP: do while (associated(curr_ptr))
-       t => tallies(analog_tallies(curr_ptr % idx))
+       t => tallies(analog_tallies(curr_ptr % data))
 
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(analog_tallies(curr_ptr % idx), bins, found_bin)
+       call get_scoring_bins(analog_tallies(curr_ptr % data), bins, found_bin)
        if (.not. found_bin) then
          curr_ptr => curr_ptr % next
          cycle
@@ -612,7 +613,7 @@ contains
     logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer :: t => null()
     type(Material), pointer :: mat => null()
-    type(TallyNode), pointer :: curr_ptr => null()
+    type(ListInt), pointer :: curr_ptr => null()
 
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
@@ -624,13 +625,13 @@ contains
     ! determine different filter bins for the same tally in order to score to it
 
     TALLY_LOOP: do while (associated(curr_ptr))
-       t => tallies(tracklength_tallies(curr_ptr % idx))
+       t => tallies(tracklength_tallies(curr_ptr % data))
 
        ! Check if this tally has a mesh filter -- if so, we treat it separately
        ! since multiple bins can be scored to with a single track
        
        if (t % n_filter_bins(FILTER_MESH) > 0) then
-          call score_tl_on_mesh(tracklength_tallies(curr_ptr % idx), distance)
+          call score_tl_on_mesh(tracklength_tallies(curr_ptr % data), distance)
           curr_ptr => curr_ptr % next ! select next tally
           cycle
        end if
@@ -638,7 +639,7 @@ contains
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(tracklength_tallies(curr_ptr % idx), bins, &
+       call get_scoring_bins(tracklength_tallies(curr_ptr % data), bins, &
                              found_bin)
        if (.not. found_bin) then
          curr_ptr => curr_ptr % next
@@ -656,7 +657,7 @@ contains
        filter_index = sum((bins - 1) * t % stride) + 1
 
        if (t % all_nuclides) then
-          call score_all_nuclides(tracklength_tallies(curr_ptr % idx), flux, &
+          call score_all_nuclides(tracklength_tallies(curr_ptr % data), flux, &
                                   filter_index)
        else
 
@@ -1310,7 +1311,7 @@ contains
     logical :: z_same               ! same starting/ending z index (k)
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
-    type(TallyNode), pointer :: curr_ptr => null()
+    type(ListInt), pointer :: curr_ptr => null()
 
     bins = 1
 
@@ -1323,7 +1324,7 @@ contains
        xyz1 = p % coord0 % xyz
 
        ! Get pointer to tally
-       t => tallies(current_tallies(curr_ptr % idx))
+       t => tallies(current_tallies(curr_ptr % data))
 
        ! Determine indices for starting and ending location
        m => meshes(t % mesh)
@@ -2372,8 +2373,8 @@ contains
   subroutine setup_active_tallies()
 
     integer                  :: i         ! loop counter
-    type(TallyNode), pointer :: curr_ptr  ! pointer to current list node
-    type(TallyNode), pointer :: next_ptr  ! pointer to next list node
+    type(ListInt), pointer :: curr_ptr  ! pointer to current list node
+    type(ListInt), pointer :: next_ptr  ! pointer to next list node
 
     !============================================================
     ! ANALOG TALLIES
@@ -2402,7 +2403,7 @@ contains
       allocate(curr_ptr)
 
       ! set the tally index
-      curr_ptr % idx = i
+      curr_ptr % data = i
       curr_ptr % next => active_analog_tallies
       active_analog_tallies => curr_ptr
 
@@ -2437,7 +2438,7 @@ contains
       allocate(curr_ptr)
 
       ! set the tally index
-      curr_ptr % idx = i
+      curr_ptr % data = i
       curr_ptr % next => active_tracklength_tallies
       active_tracklength_tallies => curr_ptr
 
@@ -2471,7 +2472,7 @@ contains
       allocate(curr_ptr)
 
       ! set the tally index
-      curr_ptr % idx = i
+      curr_ptr % data = i
       curr_ptr % next => active_current_tallies
       active_current_tallies => curr_ptr
 

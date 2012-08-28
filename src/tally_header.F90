@@ -103,18 +103,4 @@ module tally_header
 
   end type TallyObject
 
-!===============================================================================
-! TALLYNODE type is a linked list for active tally indexing
-!===============================================================================
-
-  type TallyNode
-
-    ! index in tally arrays
-    integer :: idx
-
-    ! next tally
-    type(TallyNode), pointer :: next
-
-  end type TallyNode
-
 end module tally_header

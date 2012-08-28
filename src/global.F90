@@ -4,14 +4,14 @@ module global
                               MaterialMacroXS
   use bank_header,      only: Bank
   use constants
-  use datatypes_header, only: DictionaryII, DictionaryCI
+  use datatypes_header, only: DictionaryII, DictionaryCI, ListInt
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
   use particle_header,  only: Particle
   use plot_header,      only: Plot
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap, TallyScore, TallyNode
+  use tally_header,     only: TallyObject, TallyMap, TallyScore
   use timing,           only: Timer
 
 #ifdef MPI
@@ -145,9 +145,9 @@ module global
   !=============================================================================
   ! ACTIVE TALLY-RELATED VARIABLES
 
-  type(TallyNode), pointer :: active_analog_tallies => null()
-  type(TallyNode), pointer :: active_tracklength_tallies => null()
-  type(TallyNode), pointer :: active_current_tallies => null()
+  type(ListInt), pointer :: active_analog_tallies => null()
+  type(ListInt), pointer :: active_tracklength_tallies => null()
+  type(ListInt), pointer :: active_current_tallies => null()
 
   ! ============================================================================
   ! CRITICALITY SIMULATION VARIABLES
@@ -290,7 +290,7 @@ contains
 
   subroutine free_memory()
 
-    type(TallyNode), pointer :: curr_ptr
+    type(ListInt), pointer :: curr_ptr
 
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)

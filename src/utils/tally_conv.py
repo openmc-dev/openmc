@@ -8,6 +8,18 @@ import matplotlib.pyplot as plt
 
 from statepoint import StatePoint
 
+# USER OPTIONS
+
+# Set filetype (the file extension desired, without the period.)
+# Options are backend dependent, but most backends support png, pdf, ps, eps 
+# and svg
+fileType = "png"
+
+# Set if cross-sections of reaction rates are desired
+printxs = True
+
+# END USER OPTIONS
+
 # Find all statepoints in this directory.
 files = glob('./statepoint.*.binary')
 # Arrange the file list in increasing batch order
@@ -112,13 +124,26 @@ for i_batch in range(len(mean)):
     for i_tally in range(len(mean[i_batch])):
         for i_score in range(len(mean[i_batch][i_tally])):
             for i_filter in range(len(mean[i_batch][i_tally][i_score])):
+#                scoreStr = scoreType[i_batch][i_tally][i_score]                
+#                if (printxs and ((scoreStr != 'flux') or \
+#                    (scoreStr != 'current'))):
+#                    meanPlot[i_tally][i_score][i_filter][i_batch] = \
+#                        mean[i_batch][i_tally][i_score][i_filter]
+#                    uncertPlot[i_tally][i_score][i_filter][i_batch] = \
+#                        uncert[i_batch][i_tally][i_score][i_filter]
+#                else:                                                
+#                    meanPlot[i_tally][i_score][i_filter][i_batch] = \
+#                        mean[i_batch][i_tally][i_score][i_filter]
+#                    uncertPlot[i_tally][i_score][i_filter][i_batch] = \
+#                        uncert[i_batch][i_tally][i_score][i_filter]
                 meanPlot[i_tally][i_score][i_filter][i_batch] = \
                     mean[i_batch][i_tally][i_score][i_filter]
                 uncertPlot[i_tally][i_score][i_filter][i_batch] = \
-                    uncert[i_batch][i_tally][i_score][i_filter]
+                    uncert[i_batch][i_tally][i_score][i_filter]   
                 absUncertPlot[i_tally][i_score][i_filter][i_batch] = \
                     uncert[i_batch][i_tally][i_score][i_filter] * \
                     mean[i_batch][i_tally][i_score][i_filter]
+                    
 
 # Set plotting constants
 xLabel = "Active Batches"
@@ -128,22 +153,31 @@ xLabel = xLabel.title() # not necessary for now, but is left in to handle if
 # Begin plotting
 for i_tally in range(len(meanPlot)):
     # Set tally string (placeholder until I put tally labels in statePoint)
-    tallyStr = "Tally " + str(i_tally)
+    tallyStr = "Tally " + str(i_tally + 1)
     
     for i_score in range(len(meanPlot[i_tally])):
         # Set score string
         scoreStr = scoreType[i_batch][i_tally][i_score]
+        if (printxs and ((scoreStr != 'flux') or (scoreStr != 'current'))):
+            scoreStr = scoreStr + " xs"
                 
         for i_filter in range(len(meanPlot[i_tally][i_score])):
             # Set filter string
-            filterStr = "" #Not in place until I get that from statePoint above
+            filterStr = "filter " + str(i_filter + 1)
+            filterStr = filterStr.title()
             
             # set Title 
-            title = tallyStr + " for " + filterStr
+            title = "convergence of " + scoreStr + " in " + tallyStr + " for " + filterStr
             title = title.title()
             # set yLabel
             yLabel = scoreStr
             yLabel = yLabel.title()
+
+            # Set saving filename
+            fileName = "tally_" + str(i_tally + 1) + "_" + scoreStr + \
+                "_filter_" + str(i_filter+1) + "." + fileType
+            REfileName = "tally_" + str(i_tally + 1) + "_" + scoreStr + \
+                "RE_filter_" + str(i_filter+1) + "." + fileType
             
             # Plot mean with absolute error bars
             plt.errorbar(active_batches, \
@@ -152,12 +186,14 @@ for i_tally in range(len(meanPlot)):
             plt.xlabel(xLabel)
             plt.ylabel(yLabel)
             plt.title(title)
+            plt.savefig(fileName)
             plt.show()
             
             # Plot relative uncertainty
             plt.plot(active_batches, \
                 uncertPlot[i_tally][i_score][i_filter][:])
             plt.xlabel(xLabel)
-            plt.ylabel(yLabel)
-            plt.title("Error of " + title)
-            plt.show()
+            plt.ylabel("Relative Error of " + yLabel)
+            plt.title("Relative Error of " + title)
+            plt.savefig(REfileName)
+            plt.show()            

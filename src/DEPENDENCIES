@@ -267,4 +267,6 @@ tally.o: search.o
 tally.o: string.o
 tally.o: tally_header.o
 
+tally_header.o: constants.o
+
 timing.o: constants.o

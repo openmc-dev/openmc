@@ -1,5 +1,7 @@
 module tally_header
 
+  use constants, only: NONE, N_FILTER_TYPES
+
   implicit none
 
 !===============================================================================
@@ -41,6 +43,17 @@ module tally_header
   end type TallyScore
 
 !===============================================================================
+! TALLYFILTER
+!===============================================================================
+
+  type TallyFilter
+     integer :: type = NONE
+     integer :: n_bins = 0
+     integer, allocatable :: int_bins(:)
+     real(8), allocatable :: real_bins(:)
+  end type TallyFilter
+
+!===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
 ! tally in is given by the TallyBins and the scores are stored in a TallyScore
 ! array.
@@ -57,48 +70,40 @@ module tally_header
 
      ! Information about what filters should be used
 
-     integer              :: n_filters
-     integer, allocatable :: filters(:)
+     integer                        :: n_filters    ! Number of filters
+     type(TallyFilter), allocatable :: filters(:)   ! Filter data (type/bins)
 
-     ! Filter bin specifications
+     ! The following attributes greatly simplify logic in many places. The
+     ! stride attribute is used for determining the index in the scores array
+     ! for a matching_bin combination. Since multiple dimensions are mapped onto
+     ! one dimension in the scores array, the stride attribute gives the stride
+     ! for a given filter type within the scores array
 
-     integer, allocatable :: universe_bins(:)
-     integer, allocatable :: material_bins(:)
-     integer, allocatable :: cell_bins(:)
-     integer, allocatable :: cellborn_bins(:)
-     integer, allocatable :: surface_bins(:)
-     integer              :: mesh = 0
-     real(8), allocatable :: energy_in(:)
-     real(8), allocatable :: energy_out(:)
-
-     ! Total number of filter bins
-     integer :: n_total_bins = 0
-
-     ! The following attributes do not necessarily need to be stored but they
-     ! greatly simplify logic in many places. n_bins gives the number of bins
-     ! for each filter type, e.g. n_filter_bins(FILTER_CELL) would be the size
-     ! of cell_bins. The stride attribute is used for determining the index in
-     ! the scores array for a bin combination. Since multiple dimensions are
-     ! mapped onto one dimension in the scores array, the stride attribute gives
-     ! the stride for a given filter type within the scores array
-
-     integer, allocatable :: n_filter_bins(:)
+     integer, allocatable :: matching_bins(:)
      integer, allocatable :: stride(:)
 
+     ! This array provides a way to lookup what index in the filters array a
+     ! certain filter is. For example, if find_filter(FILTER_CELL) > 0, then the
+     ! value is the index in filters(:).
+     
+     integer :: find_filter(N_FILTER_TYPES) = 0
+
      ! Individual nuclides to tally
+     integer              :: n_nuclide_bins = 0
      integer, allocatable :: nuclide_bins(:)
-     integer :: n_nuclide_bins = 0
-     logical :: all_nuclides = .false.
+     logical              :: all_nuclides = .false.
 
      ! Values to score, e.g. flux, absorption, etc.
+     integer              :: n_score_bins = 0
      integer, allocatable :: score_bins(:)
-     integer :: n_score_bins = 0
      
      ! Scores for each bin -- the first dimenion of the array is for scores
      ! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the
      ! second dimension of the array is for the combination of filters
      ! (e.g. specific cell, specific energy group, etc.)
 
+     integer :: total_filter_bins
+     integer :: total_score_bins
      type(TallyScore), allocatable :: scores(:,:)
 
   end type TallyObject

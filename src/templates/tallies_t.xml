@@ -13,21 +13,16 @@
   </typedef>
 
   <typedef name="filter_xml">
-    <component name="cell" type="word-array" length="20" />
-    <component name="surface" type="word-array" length="20" />
-    <component name="universe" type="word-array" length="20" />
-    <component name="material" type="word-array" length="20" />
-    <component name="mesh" type="integer" default="0" />
-    <component name="cellborn" type="word-array" length="20" />
-    <component name="energy" type="double-array" />
-    <component name="energyout" type="double-array" />
+    <component name="type" type="word" length="20" default = "''" />
+    <component name="bins" type="word-array" length="20" />
+    <component name="groups" type="word" length="20" default = "''" />
   </typedef>
 
   <typedef name="tally_xml">
     <component name="id" type="integer" />
     <component name="label" type="word" length="52" default="''" />
     <component name="estimator" type="word" length="12" default="''" />
-    <component name="filters" type="filter_xml" />
+    <component name="filter" type="filter_xml" dimension="1" />
     <component name="scores" type="word-array" length="20" />
     <component name="nuclides" type="word-array" length="12" />
   </typedef>

@@ -10,7 +10,7 @@ module input_xml
   use plot_header
   use random_lcg,      only: prn
   use string,          only: lower_case, to_str, str_to_int, str_to_real, &
-                             split_string, starts_with, ends_with
+                             starts_with, ends_with
   use tally_header,    only: TallyObject
 
   implicit none
@@ -51,9 +51,6 @@ contains
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
-
-    integer :: n_words       ! number of words read
-    character(MAX_WORD_LEN) :: words(MAX_WORDS)
 
     ! Display output message
     message = "Reading settings XML file..."
@@ -1159,6 +1156,7 @@ contains
 
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
+    integer :: k             ! another loop index
     integer :: i_analog      ! index in analog_tallies array
     integer :: i_tracklength ! index in tracklength_tallies array
     integer :: i_current     ! index in current_tallies array
@@ -1167,11 +1165,9 @@ contains
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filters     ! number of filters
-    integer :: filters(N_FILTER_TYPES) ! temporary list of filters
     logical :: file_exists   ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    character(MAX_WORD_LEN) :: words(MAX_WORDS)
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 
@@ -1225,9 +1221,8 @@ contains
        m % id = mesh_(i) % id
 
        ! Read mesh type
-       word = mesh_(i) % type
-       call lower_case(word)
-       select case (trim(word))
+       call lower_case(mesh_(i) % type)
+       select case (mesh_(i) % type)
        case ('rect', 'rectangle', 'rectangular')
           m % type = LATTICE_RECT
        case ('hex', 'hexagon', 'hexagonal')
@@ -1333,20 +1328,9 @@ contains
     ! ==========================================================================
     ! READ TALLY DATA
 
-    do i = 1, n_tallies
+    READ_TALLIES: do i = 1, n_tallies
+       ! Get pointer to tally
        t => tallies(i)
-
-       ! Allocate arrays for number of bins and stride in scores array
-       allocate(t % n_filter_bins(N_FILTER_TYPES))
-       allocate(t % stride(N_FILTER_TYPES))
-
-       ! Initialize number of bins and stride
-       t % n_filter_bins = 0
-       t % stride = 0
-
-       ! Initialize filters
-       n_filters = 0
-       filters = 0
 
        ! Set tally type to volume by default
        t % type = TALLY_VOLUME
@@ -1362,141 +1346,180 @@ contains
        ! Copy material id
        t % id = tally_(i) % id
        
-       ! Copy tally labe
+       ! Copy tally label
        t % label = tally_(i) % label
 
        ! =======================================================================
        ! READ DATA FOR FILTERS
 
-       ! Check to make sure that both cells and surfaces were not specified
-       if (associated(tally_(i) % filters % cell) .and. &
-            associated(tally_(i) % filters % surface)) then
-          message = "Cannot specify both cell and surface filters for tally " &
-               // trim(to_str(t % id))
-          call fatal_error()
-       end if
+       if (associated(tally_(i) % filter)) then
+          ! Determine number of filters
+          n_filters = size(tally_(i) % filter)
 
-       ! TODO: Parse logical expressions instead of just each word
+          ! Allocate filters, stride, matching_bins array
+          t % n_filters = n_filters
+          allocate(t % filters(n_filters))
 
-       ! Read cell filter bins
-       if (associated(tally_(i) % filters % cell)) then
-          n_words = size(tally_(i) % filters % cell)
-          allocate(t % cell_bins(n_words))
-          do j = 1, n_words
-             t % cell_bins(j) = int(str_to_int(&
-                  tally_(i) % filters % cell(j)),4)
-          end do
-          t % n_filter_bins(FILTER_CELL) = n_words
+          READ_FILTERS: do j = 1, n_filters
+             ! Convert filter type to lower case
+             call lower_case(tally_(i) % filter(j) % type)
 
-          n_filters = n_filters + 1
-          filters(n_filters) = FILTER_CELL
-       end if
+             ! Determine number of bins
+             n_words = size(tally_(i) % filter(j) % bins)
 
-       ! Read surface filter bins
-       if (associated(tally_(i) % filters % surface)) then
-          n_words = size(tally_(i) % filters % surface)
-          allocate(t % surface_bins(n_words))
-          do j = 1, n_words
-             t % surface_bins(j) = int(str_to_int(&
-                  tally_(i) % filters % surface(j)),4)
-          end do
-          t % n_filter_bins(FILTER_SURFACE) = n_words
+             ! Determine type of filter
+             select case (tally_(i) % filter(j) % type)
+             case ('cell')
+                ! Set type of filter
+                t % filters(j) % type = FILTER_CELL
 
-          n_filters = n_filters + 1
-          filters(n_filters) = FILTER_SURFACE
-       end if
+                ! Set number of bins
+                t % filters(j) % n_bins = n_words
 
-       ! Read universe filter bins
-       if (associated(tally_(i) % filters % universe)) then
-          n_words = size(tally_(i) % filters % universe)
-          allocate(t % universe_bins(n_words))
-          do j = 1, n_words
-             t % universe_bins(j) = int(str_to_int(&
-                  tally_(i) % filters % universe(j)),4)
-          end do
-          t % n_filter_bins(FILTER_UNIVERSE) = n_words
+                ! Allocate and store bins
+                allocate(t % filters(j) % int_bins(n_words))
+                do k = 1, n_words
+                   t % filters(j) % int_bins(k) = int(str_to_int(&
+                        tally_(i) % filter(j) % bins(k)),4)
+                end do
 
-          n_filters = n_filters + 1
-          filters(n_filters) = FILTER_UNIVERSE
-       end if
+             case ('cellborn')
+                ! Set type of filter
+                t % filters(j) % type = FILTER_CELLBORN
 
-       ! Read material filter bins
-       if (associated(tally_(i) % filters % material)) then
-          n_words = size(tally_(i) % filters % material)
-          allocate(t % material_bins(n_words))
-          do j = 1, n_words
-             t % material_bins(j) = int(str_to_int(&
-                  tally_(i) % filters % material(j)),4)
-          end do
-          t % n_filter_bins(FILTER_MATERIAL) = n_words
+                ! Set number of bins
+                t % filters(j) % n_bins = n_words
 
-          n_filters = n_filters + 1
-          filters(n_filters) = FILTER_MATERIAL
-       end if
+                ! Allocate and store bins
+                allocate(t % filters(j) % int_bins(n_words))
+                do k = 1, n_words
+                   t % filters(j) % int_bins(k) = int(str_to_int(&
+                        tally_(i) % filter(j) % bins(k)),4)
+                end do
 
-       ! Read mesh filter bins
-       t % mesh = tally_(i) % filters % mesh
-       if (t % mesh > 0) then
-          ! Determine index in mesh array for this bin
-          id = t % mesh
-          if (dict_has_key(mesh_dict, id)) then
-             i_mesh = dict_get_key(mesh_dict, id)
-             m => meshes(i_mesh)
-          else
-             message = "Could not find mesh " // trim(to_str(id)) // &
-                  " specified on tally " // trim(to_str(t % id))
+             case ('material')
+                ! Set type of filter
+                t % filters(j) % type = FILTER_MATERIAL
+
+                ! Set number of bins
+                t % filters(j) % n_bins = n_words
+
+                ! Allocate and store bins
+                allocate(t % filters(j) % int_bins(n_words))
+                do k = 1, n_words
+                   t % filters(j) % int_bins(k) = int(str_to_int(&
+                        tally_(i) % filter(j) % bins(k)),4)
+                end do
+
+             case ('universe')
+                ! Set type of filter
+                t % filters(j) % type = FILTER_UNIVERSE
+
+                ! Set number of bins
+                t % filters(j) % n_bins = n_words
+
+                ! Allocate and store bins
+                allocate(t % filters(j) % int_bins(n_words))
+                do k = 1, n_words
+                   t % filters(j) % int_bins(k) = int(str_to_int(&
+                        tally_(i) % filter(j) % bins(k)),4)
+                end do
+
+             case ('surface')
+                ! Set type of filter
+                t % filters(j) % type = FILTER_SURFACE
+
+                ! Set number of bins
+                t % filters(j) % n_bins = n_words
+
+                ! Allocate and store bins
+                allocate(t % filters(j) % int_bins(n_words))
+                do k = 1, n_words
+                   t % filters(j) % int_bins(k) = int(str_to_int(&
+                        tally_(i) % filter(j) % bins(k)),4)
+                end do
+
+             case ('mesh')
+                ! Set type of filter
+                t % filters(j) % type = FILTER_MESH
+
+                ! Check to make sure multiple meshes weren't given
+                if (n_words /= 1) then
+                   message = "Can only have one mesh filter specified."
+                   call fatal_error()
+                end if
+
+                ! Determine id of mesh
+                id = int(str_to_int(tally_(i) % filter(j) % bins(1)),4)
+
+                ! Get pointer to mesh
+                if (dict_has_key(mesh_dict, id)) then
+                   i_mesh = dict_get_key(mesh_dict, id)
+                   m => meshes(i_mesh)
+                else
+                   message = "Could not find mesh " // trim(to_str(id)) // &
+                        " specified on tally " // trim(to_str(t % id))
+                   call fatal_error()
+                end if
+
+                ! Determine number of bins -- this is assuming that the tally is
+                ! a volume tally and not a surface current tally. If it is a
+                ! surface current tally, the number of bins will get reset later
+                t % filters(j) % n_bins = product(m % dimension)
+
+                ! Allocate and store index of mesh
+                allocate(t % filters(j) % int_bins(1))
+                t % filters(j) % int_bins(1) = i_mesh
+
+             case ('energy')
+                ! Set type of filter
+                t % filters(j) % type = FILTER_ENERGYIN
+
+                ! Set number of bins
+                t % filters(j) % n_bins = n_words - 1
+
+                ! Allocate and store bins
+                allocate(t % filters(j) % real_bins(n_words))
+                do k = 1, n_words
+                   t % filters(j) % real_bins(k) = str_to_real(&
+                        tally_(i) % filter(j) % bins(k))
+                end do
+
+             case ('energyout')
+                ! Set type of filter
+                t % filters(j) % type = FILTER_ENERGYOUT
+
+                ! Set number of bins
+                t % filters(j) % n_bins = n_words - 1
+
+                ! Allocate and store bins
+                allocate(t % filters(j) % real_bins(n_words))
+                do k = 1, n_words
+                   t % filters(j) % real_bins(k) = str_to_real(&
+                        tally_(i) % filter(j) % bins(k))
+                end do
+
+             end select
+
+             ! Set find_filter, e.g. if filter(3) has type FILTER_CELL, then
+             ! find_filter(FILTER_CELL) would be set to 3.
+
+             t % find_filter(t % filters(j) % type) = j
+
+          end do READ_FILTERS
+
+          ! Check that both cell and surface weren't specified
+          if (t % find_filter(FILTER_CELL) > 0 .and. &
+               t % find_filter(FILTER_SURFACE) > 0) then
+             message = "Cannot specify both cell and surface filters for tally " &
+                  // trim(to_str(t % id))
              call fatal_error()
           end if
 
-          t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) + product(m % dimension)
-
-          n_filters = n_filters + 1
-          filters(n_filters) = FILTER_MESH
+       else
+          ! No filters were specified
+          t % n_filters = 0
        end if
-
-       ! Read birth region filter bins
-       if (associated(tally_(i) % filters % cellborn)) then
-          n_words = size(tally_(i) % filters % cellborn)
-          allocate(t % cellborn_bins(n_words))
-          do j = 1, n_words
-             t % cellborn_bins(j) = int(str_to_int(&
-                  tally_(i) % filters % cellborn(j)),4)
-          end do
-          t % n_filter_bins(FILTER_CELLBORN) = n_words
-
-          n_filters = n_filters + 1
-          filters(n_filters) = FILTER_CELLBORN
-       end if
-
-       ! Read incoming energy filter bins
-       if (associated(tally_(i) % filters % energy)) then
-          n = size(tally_(i) % filters % energy)
-          allocate(t % energy_in(n))
-          t % energy_in = tally_(i) % filters % energy
-          t % n_filter_bins(FILTER_ENERGYIN) = n - 1
-
-          n_filters = n_filters + 1
-          filters(n_filters) = FILTER_ENERGYIN
-       end if
-
-       ! Read outgoing energy filter bins
-       if (associated(tally_(i) % filters % energyout)) then
-          n = size(tally_(i) % filters % energyout)
-          allocate(t % energy_out(n))
-          t % energy_out = tally_(i) % filters % energyout
-          t % n_filter_bins(FILTER_ENERGYOUT) = n - 1
-
-          ! Set tally estimator to analog
-          t % estimator = ESTIMATOR_ANALOG
-
-          n_filters = n_filters + 1
-          filters(n_filters) = FILTER_ENERGYOUT
-       end if
-
-       ! Allocate and set filters
-       t % n_filters = n_filters
-       allocate(t % filters(n_filters))
-       t % filters = filters(1:n_filters)
 
        ! =======================================================================
        ! READ DATA FOR NUCLIDES
@@ -1565,9 +1588,8 @@ contains
           n_words = size(tally_(i) % scores)
           allocate(t % score_bins(n_words))
           do j = 1, n_words
-             word = tally_(i) % scores(j)
-             call lower_case(word)
-             select case (trim(word))
+             call lower_case(tally_(i) % scores(j))
+             select case (tally_(i) % scores(j))
              case ('flux')
                 ! Prohibit user from tallying flux for an individual nuclide
                 if (.not. (t % n_nuclide_bins == 1 .and. &
@@ -1577,13 +1599,13 @@ contains
                 end if
 
                 t % score_bins(j) = SCORE_FLUX
-                if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
+                if (t % find_filter(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally flux with an outgoing energy filter."
                    call fatal_error()
                 end if
              case ('total')
                 t % score_bins(j) = SCORE_TOTAL
-                if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
+                if (t % find_filter(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally total reaction rate with an &
                         &outgoing energy filter."
                    call fatal_error()
@@ -1642,14 +1664,14 @@ contains
                 t % estimator = ESTIMATOR_ANALOG
              case ('absorption')
                 t % score_bins(j) = SCORE_ABSORPTION
-                if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
+                if (t % find_filter(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally absorption rate with an outgoing &
                         &energy filter."
                    call fatal_error()
                 end if
              case ('fission')
                 t % score_bins(j) = SCORE_FISSION
-                if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
+                if (t % find_filter(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally fission rate with an outgoing &
                         &energy filter."
                    call fatal_error()
@@ -1670,25 +1692,19 @@ contains
                 end if
 
                 ! Since the number of bins for the mesh filter was already set
-                ! assuming it was a flux tally, we need to adjust the number of
-                ! bins
-                t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) &
-                     - product(m % dimension)
+                ! assuming it was a volume tally, we need to adjust the number
+                ! of bins
+
+                ! Get index of mesh filter
+                k = t % find_filter(FILTER_MESH)
 
                 ! Get pointer to mesh
-                id = t % mesh
-                i_mesh = dict_get_key(mesh_dict, id)
+                i_mesh = t % filters(k) % int_bins(1)
                 m => meshes(i_mesh)
 
                 ! We need to increase the dimension by one since we also need
                 ! currents coming into and out of the boundary mesh cells.
-                if (size(m % dimension) == 2) then
-                   t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) &
-                        + product(m % dimension + 1) * 4
-                elseif (size(m % dimension) == 3) then
-                   t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) &
-                        + product(m % dimension + 1) * 6
-                end if
+                t % filters(k) % n_bins = product(m % dimension + 1)
 
              case default
                 message = "Unknown scoring function: " // &
@@ -1702,6 +1718,9 @@ contains
                // "."
           call fatal_error()
        end if
+
+       ! =======================================================================
+       ! SET TALLY ESTIMATOR
 
        ! Check if user specified estimator
        if (len_trim(tally_(i) % estimator) > 0) then
@@ -1728,6 +1747,47 @@ contains
           end select
        end if
 
+       ! =======================================================================
+       ! SET UP MEMORY STRIDE ARRAY 
+
+       if (t % type == TALLY_SURFACE_CURRENT) then
+          ! Allocate memory for stride and matching bins
+          allocate(t % stride(n_filters + 1))
+          allocate(t % matching_bins(n_filters + 1))
+
+          ! Set stride for surface/direction
+          t % stride(n_filters + 1) = 1
+
+          ! Get pointer to mesh
+          i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
+          m => meshes(i_mesh)
+
+          ! Determine how many partial currents need to be stored
+          n = 2 * m % n_dimension
+
+       else
+          allocate(t % stride(n_filters))
+          allocate(t % matching_bins(n_filters))
+
+          n = 1
+       end if
+
+       ! The filters are traversed in opposite order so that the last filter has
+       ! the shortest stride in memory and the first filter has the largest
+       ! stride
+
+       STRIDE: do j = t % n_filters, 1, -1
+          t % stride(j) = n
+          n = n * t % filters(j) % n_bins
+       end do STRIDE
+
+       ! Set total number of filter and scoring bins
+       t % total_filter_bins = n
+       t % total_score_bins = t % n_score_bins * t % n_nuclide_bins
+       
+       ! Allocate scores array
+       allocate(t % scores(t % total_score_bins, t % total_filter_bins))
+
        ! Count number of tallies by type
        if (t % type == TALLY_VOLUME) then
           if (t % estimator == ESTIMATOR_ANALOG) then
@@ -1738,7 +1798,12 @@ contains
        elseif (t % type == TALLY_SURFACE_CURRENT) then
           n_current_tallies = n_current_tallies + 1
        end if
-    end do
+
+
+    end do READ_TALLIES
+
+    ! ==========================================================================
+    ! LISTS FOR ANALOG, TRACKLENGTH, CURRENT TALLIES
 
     ! Allocate list of pointers for tallies by type
     allocate(analog_tallies(n_analog_tallies))
@@ -2036,7 +2101,6 @@ contains
        n_listings = size(ace_tables_)
        allocate(xs_listings(n_listings))
     end if
-    
 
     do i = 1, n_listings
        listing => xs_listings(i)

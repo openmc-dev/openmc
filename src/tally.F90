@@ -18,7 +18,8 @@ module tally
 
   implicit none
 
-  integer, allocatable :: position(:)
+  ! Tally map positioning array
+  integer :: position(N_FILTER_TYPES - 3) = 0
 
 contains
 
@@ -31,14 +32,12 @@ contains
 
   subroutine create_tally_map()
 
-    integer :: i           ! loop index for tallies
-    integer :: j           ! loop index for filter arrays
-    integer :: i_item      ! filter bin entries
-    integer :: n           ! number of bins
-    integer :: filter_bins ! running total of number of filter bins
-    integer :: score_bins  ! number of scoring bins
+    integer :: i    ! loop index for tallies
+    integer :: j    ! loop index for filters
+    integer :: k    ! loop index for bins
+    integer :: bin  ! filter bin entries
+    integer :: type ! type of tally filter
     type(TallyObject),    pointer :: t => null()
-    type(StructuredMesh), pointer :: m => null()
 
     ! allocate tally map array -- note that we don't need a tally map for the
     ! energy_in and energy_out filters
@@ -51,142 +50,31 @@ contains
     allocate(tally_maps(FILTER_CELLBORN) % items(n_cells))
     allocate(tally_maps(FILTER_SURFACE)  % items(n_surfaces))
 
-    ! Allocate and initialize tally map positioning for finding bins
-    allocate(position(N_FILTER_TYPES - 3))
-    position = 0
-
-    do i = 1, n_tallies
+    TALLY_LOOP: do i = 1, n_tallies
+       ! Get pointer to tally
        t => tallies(i)
 
-       ! initialize number of filter bins
-       filter_bins = 1
+       ! No need to set up tally maps for surface current tallies
+       if (t % type == TALLY_SURFACE_CURRENT) cycle
 
-       ! handle surface current tallies separately
-       if (t % type == TALLY_SURFACE_CURRENT) then
-          m => meshes(t % mesh)
+       FILTER_LOOP: do j = 1, t % n_filters
+          ! Determine type of filter
+          type = t % filters(j) % type
 
-          t % stride(SURF_FILTER_SURFACE) = filter_bins
-          ! Set stride for surface/direction
-          if (m % n_dimension == 2) then
-             filter_bins = filter_bins * 4
-          elseif (m % n_dimension == 3) then
-             filter_bins = filter_bins * 6
+          if (type == FILTER_CELL .or. type == FILTER_SURFACE .or. &
+               type == FILTER_MATERIAL .or. type == FILTER_UNIVERSE .or. &
+               type == FILTER_CELLBORN) then
+
+             ! Add map elements
+             BIN_LOOP: do k = 1, t % filters(j) % n_bins
+                bin = t % filters(j) % int_bins(k)
+                call add_map_element(tally_maps(type) % items(bin), i, k)
+             end do BIN_LOOP
           end if
 
-          ! Add filter for incoming energy
-          n = t % n_filter_bins(FILTER_ENERGYIN)
-          t % stride(SURF_FILTER_ENERGYIN) = filter_bins
-          if (n > 0) then
-             filter_bins = filter_bins * n
-          end if
-          
-          ! account for z direction
-          t % stride(SURF_FILTER_MESH_Z) = filter_bins
-          filter_bins = filter_bins * (m % dimension(3) + 1)
+       end do FILTER_LOOP
 
-          ! account for y direction
-          t % stride(SURF_FILTER_MESH_Y) = filter_bins
-          filter_bins = filter_bins * (m % dimension(2) + 1)
-
-          ! account for z direction
-          t % stride(SURF_FILTER_MESH_X) = filter_bins
-          filter_bins = filter_bins * (m % dimension(1) + 1)
-
-          ! Finally add scoring bins for the tallies and allocate the main
-          ! scores array for tally
-          score_bins = t % n_score_bins
-          t % n_total_bins = filter_bins
-          allocate(t % scores(score_bins, filter_bins))
-
-          ! All the remaining logic is for non-surface-current tallies so we can
-          ! safely skip it
-          cycle
-       end if
-
-       ! determine if there are subdivisions for incoming or outgoing energy to
-       ! adjust the number of filter bins appropriately
-       n = t % n_filter_bins(FILTER_ENERGYOUT)
-       t % stride(FILTER_ENERGYOUT) = filter_bins
-       if (n > 0) then
-          filter_bins = filter_bins * n
-       end if
-
-       n = t % n_filter_bins(FILTER_ENERGYIN)
-       t % stride(FILTER_ENERGYIN) = filter_bins
-       if (n > 0) then
-          filter_bins = filter_bins * n
-       end if
-
-       ! Add map elements for mesh bins
-       n = t % n_filter_bins(FILTER_MESH)
-       t % stride(FILTER_MESH) = filter_bins
-       if (n > 0) then
-          filter_bins = filter_bins * n
-       end if
-
-       ! Add map elements for surface bins
-       n = t % n_filter_bins(FILTER_SURFACE)
-       t % stride(FILTER_SURFACE) = filter_bins
-       if (n > 0) then
-          do j = 1, n
-             i_item = t % surface_bins(j)
-             call add_map_element(tally_maps(FILTER_SURFACE) % items(i_item), i, j)
-          end do
-          filter_bins = filter_bins * n
-       end if
-
-       ! Add map elements for cellborn bins
-       n = t % n_filter_bins(FILTER_CELLBORN)
-       t % stride(FILTER_CELLBORN) = filter_bins
-       if (n > 0) then
-          do j = 1, n
-             i_item = t % cellborn_bins(j)
-             call add_map_element(tally_maps(FILTER_CELLBORN) % items(i_item), i, j)
-          end do
-          filter_bins = filter_bins * n
-       end if
-
-       ! Add map elements for cell bins
-       n = t % n_filter_bins(FILTER_CELL)
-       t % stride(FILTER_CELL) = filter_bins
-       if (n > 0) then
-          do j = 1, n
-             i_item = t % cell_bins(j)
-             call add_map_element(tally_maps(FILTER_CELL) % items(i_item), i, j)
-          end do
-          filter_bins = filter_bins * n
-       end if
-
-       ! Add map elements for material bins
-       n = t % n_filter_bins(FILTER_MATERIAL)
-       t % stride(FILTER_MATERIAL) = filter_bins
-       if (n > 0) then
-          do j = 1, n
-             i_item = t % material_bins(j)
-             call add_map_element(tally_maps(FILTER_MATERIAL) % items(i_item), i, j)
-          end do
-          filter_bins = filter_bins * n
-       end if
-
-       ! Add map elements for universe bins
-       n = t % n_filter_bins(FILTER_UNIVERSE)
-       t % stride(FILTER_UNIVERSE) = filter_bins
-       if (n > 0) then
-          do j = 1, n
-             i_item = t % universe_bins(j)
-             call add_map_element(tally_maps(FILTER_UNIVERSE) % items(i_item), i, j)
-          end do
-          filter_bins = filter_bins * n
-       end if
-
-       ! Finally add scoring bins for the tally
-       score_bins = t % n_score_bins * t % n_nuclide_bins
-
-       ! Allocate scores for tally
-       t % n_total_bins = filter_bins
-       allocate(t % scores(score_bins, filter_bins))
-
-    end do
+    end do TALLY_LOOP
 
   end subroutine create_tally_map
 
@@ -237,7 +125,6 @@ contains
     integer :: i                    ! loop index for analog tallies
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
-    integer :: bins(N_FILTER_TYPES) ! scoring bin combination
     integer :: filter_index         ! single index for single bin
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: i_nuclide            ! index in nuclides array
@@ -265,7 +152,7 @@ contains
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(analog_tallies(i), bins, found_bin)
+       call get_scoring_bins(analog_tallies(i), found_bin)
        if (.not. found_bin) cycle
 
        ! =======================================================================
@@ -276,7 +163,7 @@ contains
        ! be accumulating the tally values
 
        ! Determine scoring index for this filter combination
-       filter_index = sum((bins - 1) * t % stride) + 1
+       filter_index = sum((t % matching_bins - 1) * t % stride) + 1
 
        ! Check for nuclide bins
        k = 0
@@ -339,7 +226,7 @@ contains
 
              case (SCORE_SCATTER)
                 ! Skip any event where the particle didn't scatter
-                if (p % event /= EVENT_SCATTER) cycle
+                if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! Since only scattering events make it here, again we can use
                 ! the weight entering the collision as the estimator for the
@@ -349,7 +236,7 @@ contains
 
              case (SCORE_NU_SCATTER) 
                 ! Skip any event where the particle didn't scatter
-                if (p % event /= EVENT_SCATTER) cycle
+                if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! For scattering production, we need to use the post-collision
                 ! weight as the estimate for the number of neutrons exiting a
@@ -359,7 +246,7 @@ contains
 
              case (SCORE_SCATTER_1)
                 ! Skip any event where the particle didn't scatter
-                if (p % event /= EVENT_SCATTER) cycle
+                if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! The first scattering moment can be determined by using the
                 ! rate of scattering reactions multiplied by the cosine of the
@@ -369,7 +256,7 @@ contains
 
              case (SCORE_SCATTER_2)
                 ! Skip any event where the particle didn't scatter
-                if (p % event /= EVENT_SCATTER) cycle
+                if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! The second scattering moment can be determined in a similar
                 ! manner to the first scattering moment
@@ -378,7 +265,7 @@ contains
 
              case (SCORE_SCATTER_3)
                 ! Skip any event where the particle didn't scatter
-                if (p % event /= EVENT_SCATTER) cycle
+                if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! The first scattering moment can be determined by using the
                 ! rate of scattering reactions multiplied by the cosine of the
@@ -388,7 +275,7 @@ contains
 
              case (SCORE_TRANSPORT)
                 ! Skip any event where the particle didn't scatter
-                if (p % event /= EVENT_SCATTER) cycle
+                if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! get material macros
                 macro_total = material_xs % total
@@ -402,7 +289,7 @@ contains
 
              case (SCORE_DIFFUSION)
                 ! Skip any event where the particle didn't scatter
-                if (p % event /= EVENT_SCATTER) cycle
+                if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! Temporarily store the scattering cross section
                 score = material_xs % total - material_xs % absorption
@@ -417,47 +304,47 @@ contains
 
              case (SCORE_N_1N)
                 ! Skip any event where the particle didn't scatter
-                if (p % event /= EVENT_SCATTER) cycle
+                if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! Skip any events where weight of particle changed
-                if (wgt /= last_wgt) cycle
+                if (wgt /= last_wgt) cycle SCORE_LOOP
 
                 ! All events that reach this point are (n,1n) reactions
                 score = last_wgt
 
              case (SCORE_N_2N)
                 ! Skip any event where the particle didn't scatter
-                if (p % event /= EVENT_SCATTER) cycle
+                if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! Skip any scattering events where the weight didn't double
-                if (nint(wgt/last_wgt) /= 2) cycle
+                if (nint(wgt/last_wgt) /= 2) cycle SCORE_LOOP
 
                 ! All events that reach this point are (n,2n) reactions
                 score = last_wgt
 
              case (SCORE_N_3N)
                 ! Skip any event where the particle didn't scatter
-                if (p % event /= EVENT_SCATTER) cycle
+                if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! Skip any scattering events where the weight didn't double
-                if (nint(wgt/last_wgt) /= 3) cycle
+                if (nint(wgt/last_wgt) /= 3) cycle SCORE_LOOP
 
                 ! All events that reach this point are (n,3n) reactions
                 score = last_wgt
 
              case (SCORE_N_4N)
                 ! Skip any event where the particle didn't scatter
-                if (p % event /= EVENT_SCATTER) cycle
+                if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! Skip any scattering events where the weight didn't double
-                if (nint(wgt/last_wgt) /= 4) cycle
+                if (nint(wgt/last_wgt) /= 4) cycle SCORE_LOOP
 
                 ! All events that reach this point are (n,3n) reactions
                 score = last_wgt
 
              case (SCORE_ABSORPTION)
                 ! Skip any event where the particle wasn't absorbed
-                if (p % event == EVENT_SCATTER) cycle
+                if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
 
                 ! All fission and absorption events will contribute here, so we
                 ! can just use the particle's weight entering the collision
@@ -466,7 +353,7 @@ contains
 
              case (SCORE_FISSION)
                 ! Skip any non-fission events
-                if (p % event /= EVENT_FISSION) cycle
+                if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
 
                 ! All fission events will contribute, so again we can use
                 ! particle's weight entering the collision as the estimate for
@@ -476,9 +363,9 @@ contains
 
              case (SCORE_NU_FISSION)
                 ! Skip any non-fission events
-                if (p % event /= EVENT_FISSION) cycle
+                if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
 
-                if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
+                if (t % find_filter(FILTER_ENERGYOUT) > 0) then
                    ! Normally, we only need to make contributions to one scoring
                    ! bin. However, in the case of fission, since multiple
                    ! fission neutrons were emitted with different energies,
@@ -486,8 +373,8 @@ contains
                    ! following logic treats this special case and scores to
                    ! multiple bins
 
-                   call score_fission_eout(t, bins, score_index)
-                   cycle
+                   call score_fission_eout(t, score_index)
+                   cycle SCORE_LOOP
 
                 else
                    ! If there is no outgoing energy filter, than we only need to
@@ -533,20 +420,21 @@ contains
 ! neutrons produced with different energies.
 !===============================================================================
 
-  subroutine score_fission_eout(t, bins, j)
+  subroutine score_fission_eout(t, i_score)
 
     type(TallyObject), pointer :: t
-    integer, intent(inout)     :: bins(N_FILTER_TYPES)
-    integer, intent(in)        :: j ! index for score
+    integer, intent(in)        :: i_score ! index for score
 
+    integer :: i             ! index of outgoing energy filter
     integer :: k             ! loop index for bank sites
     integer :: bin_energyout ! original outgoing energy bin
-    integer :: filter_index  ! index for scoring bin combination
+    integer :: i_filter      ! index for matching filter bin combination
     real(8) :: score         ! actualy score
     real(8) :: E_out         ! energy of fission bank site
 
     ! save original outgoing energy bin and score index
-    bin_energyout = bins(FILTER_ENERGYOUT)
+    i = t % find_filter(FILTER_ENERGYOUT)
+    bin_energyout = t % matching_bins(i)
 
     ! Since the creation of fission sites is weighted such that it is
     ! expected to create n_particles sites, we need to multiply the
@@ -562,18 +450,18 @@ contains
        E_out = fission_bank(n_bank - p % n_bank + k) % E
 
        ! change outgoing energy bin
-       bins(FILTER_ENERGYOUT) = binary_search(t % energy_out, &
-            size(t % energy_out), E_out)
+       t % matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+            size(t % filters(i) % real_bins), E_out)
 
        ! determine scoring index
-       filter_index = sum((bins - 1) * t % stride) + 1
+       i_filter = sum((t % matching_bins - 1) * t % stride) + 1
 
        ! Add score to tally
-       call add_to_score(t % scores(j, filter_index), score)
+       call add_to_score(t % scores(i_score, i_filter), score)
     end do
 
     ! reset outgoing energy bin and score index
-    bins(FILTER_ENERGYOUT) = bin_energyout
+    t % matching_bins(i) = bin_energyout
 
   end subroutine score_fission_eout
 
@@ -591,7 +479,6 @@ contains
     integer :: i                    ! loop index for tracklength tallies
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
-    integer :: bins(N_FILTER_TYPES) ! scoring bin combination
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array
     integer :: score_bin            ! scoring type, e.g. SCORE_FLUX
@@ -615,7 +502,7 @@ contains
        ! Check if this tally has a mesh filter -- if so, we treat it separately
        ! since multiple bins can be scored to with a single track
        
-       if (t % n_filter_bins(FILTER_MESH) > 0) then
+       if (t % find_filter(FILTER_MESH) > 0) then
           call score_tl_on_mesh(tracklength_tallies(i), distance)
           cycle
        end if
@@ -623,7 +510,7 @@ contains
        ! =======================================================================
        ! DETERMINE SCORING BIN COMBINATION
 
-       call get_scoring_bins(tracklength_tallies(i), bins, found_bin)
+       call get_scoring_bins(tracklength_tallies(i), found_bin)
        if (.not. found_bin) cycle
 
        ! =======================================================================
@@ -634,7 +521,7 @@ contains
        ! be accumulating the tally values
 
        ! Determine scoring index for this filter combination
-       filter_index = sum((bins - 1) * t % stride) + 1
+       filter_index = sum((t % matching_bins - 1) * t % stride) + 1
 
        if (t % all_nuclides) then
           call score_all_nuclides(tracklength_tallies(i), flux, filter_index)
@@ -869,11 +756,11 @@ contains
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: ijk_cross(3)         ! indices of mesh cell crossed
     integer :: n_cross              ! number of surface crossings
-    integer :: bins(N_FILTER_TYPES) ! scoring bin combination
     integer :: filter_index         ! single index for single bin
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: i_nuclide            ! index in nuclides array
     integer :: score_index          ! scoring bin index
+    integer :: i_filter_mesh        ! index of mesh filter in filters array
     real(8) :: atom_density         ! density of individual nuclide in atom/b-cm
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: score                ! actual score (e.g., flux*xs)
@@ -890,8 +777,8 @@ contains
     type(StructuredMesh), pointer :: m => null()
     type(Material),       pointer :: mat => null()
 
-    bins = 1
     t => tallies(i_tally)
+    t % matching_bins = 1
 
     ! ==========================================================================
     ! CHECK IF THIS TRACK INTERSECTS THE MESH
@@ -900,8 +787,11 @@ contains
     xyz0 = p % coord0 % xyz - (d_track - TINY_BIT) * p % coord0 % uvw
     xyz1 = p % coord0 % xyz  - TINY_BIT * p % coord0 % uvw
 
+    ! Get index for mesh filter
+    i_filter_mesh = t % find_filter(FILTER_MESH)
+
     ! Determine indices for starting and ending location
-    m => meshes(t % mesh)
+    m => meshes(t % filters(i_filter_mesh) % int_bins(1))
     call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
     call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
 
@@ -920,49 +810,52 @@ contains
 
     FILTER_LOOP: do i = 1, t % n_filters
 
-       select case (t % filters(i))
+       select case (t % filters(i) % type)
        case (FILTER_UNIVERSE)
           ! determine next universe bin
           ! TODO: Account for multiple universes when performing this filter
-          bins(FILTER_UNIVERSE) = get_next_bin(FILTER_UNIVERSE, &
+          t % matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
                p % coord % universe, i_tally)
-          if (bins(FILTER_UNIVERSE) == NO_BIN_FOUND) return
 
        case (FILTER_MATERIAL)
-          bins(FILTER_MATERIAL) = get_next_bin(FILTER_MATERIAL, &
+          t % matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
                p % material, i_tally)
-          if (bins(FILTER_MATERIAL) == NO_BIN_FOUND) return
 
        case (FILTER_CELL)
           ! determine next cell bin
           ! TODO: Account for cells in multiple levels when performing this filter
-          bins(FILTER_CELL) = get_next_bin(FILTER_CELL, &
+          t % matching_bins(i) = get_next_bin(FILTER_CELL, &
                p % coord % cell, i_tally)
-          if (bins(FILTER_CELL) == NO_BIN_FOUND) return
 
        case (FILTER_CELLBORN)
           ! determine next cellborn bin
-          bins(FILTER_CELLBORN) = get_next_bin(FILTER_CELLBORN, &
+          t % matching_bins(i) = get_next_bin(FILTER_CELLBORN, &
                p % cell_born, i_tally)
-          if (bins(FILTER_CELLBORN) == NO_BIN_FOUND) return
 
        case (FILTER_SURFACE)
           ! determine next surface bin
-          bins(FILTER_SURFACE) = get_next_bin(FILTER_SURFACE, &
+          t % matching_bins(i) = get_next_bin(FILTER_SURFACE, &
                p % surface, i_tally)
-          if (bins(FILTER_SURFACE) == NO_BIN_FOUND) return
 
        case (FILTER_ENERGYIN)
           ! determine incoming energy bin
-          k = t % n_filter_bins(FILTER_ENERGYIN)
-          ! check if energy of the particle is within energy bins
-          if (p % E < t % energy_in(1) .or. &
-               p % E > t % energy_in(k + 1)) return
+          k = t % filters(i) % n_bins
 
-          ! search to find incoming energy bin
-          bins(FILTER_ENERGYIN) = binary_search(t % energy_in, k + 1, p % E)
+          ! check if energy of the particle is within energy bins
+          if (p % E < t % filters(i) % real_bins(1) .or. &
+               p % E > t % filters(i) % real_bins(k + 1)) then
+             t % matching_bins(i) = NO_BIN_FOUND
+          else
+             ! search to find incoming energy bin
+             t % matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+                  k + 1, p % E)
+          end if
 
        end select
+       
+       ! Check if no matching bin was found
+       if (t % matching_bins(i) == NO_BIN_FOUND) return
+
     end do FILTER_LOOP
 
     ! ==========================================================================
@@ -1031,10 +924,10 @@ contains
           flux = p % wgt * distance
 
           ! Determine mesh bin
-          bins(FILTER_MESH) = mesh_indices_to_bin(m, ijk_cross)
+          t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, ijk_cross)
 
           ! Determining scoring index
-          filter_index = sum((bins - 1) * t % stride) + 1
+          filter_index = sum((t % matching_bins - 1) * t % stride) + 1
 
           if (t % all_nuclides) then
              ! Score reaction rates for each nuclide in material
@@ -1142,87 +1035,60 @@ contains
 ! for a tally based on the particle's current attributes.
 !===============================================================================
 
-  subroutine get_scoring_bins(i_tally, bins, found_bin)
+  subroutine get_scoring_bins(i_tally, found_bin)
 
     integer, intent(in)     :: i_tally
-    integer, intent(out)    :: bins(N_FILTER_TYPES)
     logical, intent(out)    :: found_bin
 
-    integer :: i        ! loop index for filters
-    integer :: n        ! number of bins for single filter
-    integer :: mesh_bin ! index for mesh bin
-    real(8) :: E        ! particle energy
+    integer :: i ! loop index for filters
+    integer :: n ! number of bins for single filter
+    real(8) :: E ! particle energy
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 
     found_bin = .true.
     t => tallies(i_tally)
-    bins = 1
+    t % matching_bins = 1
 
     FILTER_LOOP: do i = 1, t % n_filters
 
-       select case (t % filters(i))
+       select case (t % filters(i) % type)
        case (FILTER_MESH)
           ! determine mesh bin
-          m => meshes(t % mesh)
+          m => meshes(t % filters(i) % int_bins(1))
 
           ! Determine if we're in the mesh first
-          call get_mesh_bin(m, p % coord0 % xyz, mesh_bin)
-          if (mesh_bin == NO_BIN_FOUND) then
-             found_bin = .false.
-             return
-          end if
-          bins(FILTER_MESH) = mesh_bin
+          call get_mesh_bin(m, p % coord0 % xyz, t % matching_bins(i))
 
        case (FILTER_UNIVERSE)
           ! determine next universe bin
           ! TODO: Account for multiple universes when performing this filter
-          bins(FILTER_UNIVERSE) = get_next_bin(FILTER_UNIVERSE, &
+          t % matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
                p % coord % universe, i_tally)
-          if (bins(FILTER_UNIVERSE) == NO_BIN_FOUND) then
-             found_bin = .false.
-             return
-          end if
 
        case (FILTER_MATERIAL)
-          bins(FILTER_MATERIAL) = get_next_bin(FILTER_MATERIAL, &
+          t % matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
                p % material, i_tally)
-          if (bins(FILTER_MATERIAL) == NO_BIN_FOUND) then
-             found_bin = .false.
-             return
-          end if
 
        case (FILTER_CELL)
           ! determine next cell bin
           ! TODO: Account for cells in multiple levels when performing this filter
-          bins(FILTER_CELL) = get_next_bin(FILTER_CELL, &
+          t % matching_bins(i) = get_next_bin(FILTER_CELL, &
                p % coord % cell, i_tally)
-          if (bins(FILTER_CELL) == NO_BIN_FOUND) then
-             found_bin = .false.
-             return
-          end if
 
        case (FILTER_CELLBORN)
           ! determine next cellborn bin
-          bins(FILTER_CELLBORN) = get_next_bin(FILTER_CELLBORN, &
+          t % matching_bins(i) = get_next_bin(FILTER_CELLBORN, &
                p % cell_born, i_tally)
-          if (bins(FILTER_CELLBORN) == NO_BIN_FOUND) then
-             found_bin = .false.
-             return
-          end if
 
        case (FILTER_SURFACE)
           ! determine next surface bin
-          bins(FILTER_SURFACE) = get_next_bin(FILTER_SURFACE, &
+          t % matching_bins(i) = get_next_bin(FILTER_SURFACE, &
                p % surface, i_tally)
-          if (bins(FILTER_SURFACE) == NO_BIN_FOUND) then
-             found_bin = .false.
-             return
-          end if
 
        case (FILTER_ENERGYIN)
           ! determine incoming energy bin
-          n = t % n_filter_bins(FILTER_ENERGYIN)
+          n = t % filters(i) % n_bins
 
           ! make sure the correct energy is used
           if (t % estimator == ESTIMATOR_TRACKLENGTH) then
@@ -1232,27 +1098,36 @@ contains
           end if
 
           ! check if energy of the particle is within energy bins
-          if (E < t % energy_in(1) .or. E > t % energy_in(n + 1)) then
-             found_bin = .false.
-             return
+          if (E < t % filters(i) % real_bins(1) .or. &
+               E > t % filters(i) % real_bins(n + 1)) then
+             t % matching_bins(i) = NO_BIN_FOUND
+          else
+             ! search to find incoming energy bin
+             t % matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+                  n + 1, E)
           end if
-
-          ! search to find incoming energy bin
-          bins(FILTER_ENERGYIN) = binary_search(t % energy_in, n + 1, E)
 
        case (FILTER_ENERGYOUT)
           ! determine outgoing energy bin
-          n = t % n_filter_bins(FILTER_ENERGYOUT)
+          n = t % filters(i) % n_bins
+
           ! check if energy of the particle is within energy bins
-          if (p % E < t % energy_out(1) .or. p % E > t % energy_out(n + 1)) then
-             found_bin = .false.
-             return
+          if (E < t % filters(i) % real_bins(1) .or. &
+               E > t % filters(i) % real_bins(n + 1)) then
+             t % matching_bins(i) = NO_BIN_FOUND
+          else
+             ! search to find incoming energy bin
+             t % matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+                  n + 1, p % E)
           end if
 
-          ! search to find incoming energy bin
-          bins(FILTER_ENERGYOUT) = binary_search(t % energy_out, n + 1, p % E)
-
        end select
+
+       ! If the current filter didn't match, exit this subroutine
+       if (t % matching_bins(i) == NO_BIN_FOUND) then
+          found_bin = .false.
+          return
+       end if
 
     end do FILTER_LOOP
 
@@ -1272,8 +1147,8 @@ contains
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: n_cross              ! number of surface crossings
     integer :: n                    ! number of incoming energy bins
-    integer :: bins(N_FILTER_TYPES) ! scoring bin combination
     integer :: filter_index         ! index of scoring bin
+    integer :: i_filter_mesh        ! index of mesh filter in filters array
     real(8) :: uvw(3)               ! cosine of angle of particle
     real(8) :: xyz0(3)              ! starting/intermediate coordinates
     real(8) :: xyz1(3)              ! ending coordinates of particle
@@ -1288,8 +1163,6 @@ contains
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 
-    bins = 1
-
     do i = 1, n_current_tallies
        ! Copy starting and ending location of particle
        xyz0 = p % last_xyz
@@ -1298,8 +1171,11 @@ contains
        ! Get pointer to tally
        t => tallies(current_tallies(i))
 
+       ! Get index for filter mesh
+       i_filter_mesh = t % find_filter(FILTER_MESH)
+
        ! Determine indices for starting and ending location
-       m => meshes(t % mesh)
+       m => meshes(t % filters(i_filter_mesh) % int_bins(1))
        call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
        call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
 
@@ -1317,16 +1193,16 @@ contains
        uvw = p % coord0 % uvw
 
        ! determine incoming energy bin
-       n = t % n_filter_bins(FILTER_ENERGYIN)
-       if (n > 0) then
+       j = t % find_filter(FILTER_ENERGYIN)
+       if (j > 0) then
+          n = t % filters(j) % n_bins
           ! check if energy of the particle is within energy bins
-          if (p % E < t % energy_in(1) .or. &
-               p % E > t % energy_in(n + 1)) cycle
+          if (p % E < t % filters(j) % real_bins(1) .or. &
+               p % E > t % filters(j) % real_bins(n + 1)) cycle
 
           ! search to find incoming energy bin
-          bins(SURF_FILTER_ENERGYIN) = binary_search(t % energy_in, n + 1, p % E)
-       else
-          bins(SURF_FILTER_ENERGYIN) = 1
+          t % matching_bins(j) = binary_search(t % filters(j) % real_bins, &
+               n + 1, p % E)
        end if
 
        ! =======================================================================
@@ -1342,9 +1218,10 @@ contains
              do j = ijk0(3), ijk1(3) - 1
                 ijk0(3) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = OUT_TOP
-                   bins(1:3) = ijk0 + 1
-                   filter_index = sum((bins - 1) * t % stride) + 1
+                   t % matching_bins(t % n_filters + 1) = OUT_TOP
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
+                   filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
              end do
@@ -1352,9 +1229,10 @@ contains
              do j = ijk0(3) - 1, ijk1(3), -1
                 ijk0(3) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = IN_TOP
-                   bins(1:3) = ijk0 + 1
-                   filter_index = sum((bins - 1) * t % stride) + 1
+                   t % matching_bins(t % n_filters + 1) = IN_TOP
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
+                   filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
              end do
@@ -1366,9 +1244,10 @@ contains
              do j = ijk0(2), ijk1(2) - 1
                 ijk0(2) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = OUT_FRONT
-                   bins(1:3) = ijk0 + 1
-                   filter_index = sum((bins - 1) * t % stride) + 1
+                   t % matching_bins(t % n_filters + 1) = OUT_FRONT
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
+                   filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
              end do
@@ -1376,9 +1255,10 @@ contains
              do j = ijk0(2) - 1, ijk1(2), -1
                 ijk0(2) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = IN_FRONT
-                   bins(1:3) = ijk0 + 1
-                   filter_index = sum((bins - 1) * t % stride) + 1
+                   t % matching_bins(t % n_filters + 1) = IN_FRONT
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
+                   filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
              end do
@@ -1390,9 +1270,10 @@ contains
              do j = ijk0(1), ijk1(1) - 1
                 ijk0(1) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = OUT_RIGHT
-                   bins(1:3) = ijk0 + 1
-                   filter_index = sum((bins - 1) * t % stride) + 1
+                   t % matching_bins(t % n_filters + 1) = OUT_RIGHT
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
+                   filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
              end do
@@ -1400,9 +1281,10 @@ contains
              do j = ijk0(1) - 1, ijk1(1), -1
                 ijk0(1) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = IN_RIGHT
-                   bins(1:3) = ijk0 + 1
-                   filter_index = sum((bins - 1) * t % stride) + 1
+                   t % matching_bins(t % n_filters + 1) = IN_RIGHT
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
+                   filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
              end do
@@ -1424,7 +1306,7 @@ contains
 
        do k = 1, n_cross
           ! Reset scoring bin index
-          bins(SURF_FILTER_SURFACE) = 0
+          t % matching_bins(t % n_filters + 1) = 0
 
           ! Calculate distance to each bounding surface. We need to treat
           ! special case where the cosine of the angle is zero since this would
@@ -1451,8 +1333,9 @@ contains
                 ! Crossing into right mesh cell -- this is treated as outgoing
                 ! current from (i,j,k)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = OUT_RIGHT
-                   bins(1:3) = ijk0 + 1
+                   t % matching_bins(t % n_filters + 1) = OUT_RIGHT
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
                 end if
                 ijk0(1) = ijk0(1) + 1
                 xyz_cross(1) = xyz_cross(1) + m % width(1)
@@ -1462,8 +1345,9 @@ contains
                 ijk0(1) = ijk0(1) - 1
                 xyz_cross(1) = xyz_cross(1) - m % width(1)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = IN_RIGHT
-                   bins(1:3) = ijk0 + 1
+                   t % matching_bins(t % n_filters + 1) = IN_RIGHT
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
                 end if
              end if
           elseif (distance == d(2)) then
@@ -1471,8 +1355,9 @@ contains
                 ! Crossing into front mesh cell -- this is treated as outgoing
                 ! current in (i,j,k)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = OUT_FRONT
-                   bins(1:3) = ijk0 + 1
+                   t % matching_bins(t % n_filters + 1) = OUT_FRONT
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
                 end if
                 ijk0(2) = ijk0(2) + 1
                 xyz_cross(2) = xyz_cross(2) + m % width(2)
@@ -1482,8 +1367,9 @@ contains
                 ijk0(2) = ijk0(2) - 1
                 xyz_cross(2) = xyz_cross(2) - m % width(2)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = IN_FRONT
-                   bins(1:3) = ijk0 + 1
+                   t % matching_bins(t % n_filters + 1) = IN_FRONT
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
                 end if
              end if
           else if (distance == d(3)) then
@@ -1491,8 +1377,9 @@ contains
                 ! Crossing into top mesh cell -- this is treated as outgoing
                 ! current in (i,j,k)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = OUT_TOP
-                   bins(1:3) = ijk0 + 1
+                   t % matching_bins(t % n_filters + 1) = OUT_TOP
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
                 end if
                 ijk0(3) = ijk0(3) + 1
                 xyz_cross(3) = xyz_cross(3) + m % width(3)
@@ -1502,18 +1389,20 @@ contains
                 ijk0(3) = ijk0(3) - 1
                 xyz_cross(3) = xyz_cross(3) - m % width(3)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   bins(SURF_FILTER_SURFACE) = IN_TOP
-                   bins(1:3) = ijk0 + 1
+                   t % matching_bins(t % n_filters + 1) = IN_TOP
+                   t % matching_bins(i_filter_mesh) = &
+                        mesh_indices_to_bin(m, ijk0 + 1)
                 end if
              end if
           end if
 
           ! Determine scoring index
-          if (bins(SURF_FILTER_SURFACE) > 0) then
-             filter_index = sum((bins - 1) * t % stride) + 1
+          if (t % matching_bins(t % n_filters + 1) > 0) then
+             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
 
              ! Check for errors
-             if (filter_index <= 0 .or. filter_index > t % n_total_bins) then
+             if (filter_index <= 0 .or. filter_index > &
+                  t % total_filter_bins) then
                 message = "Score index outside range."
                 call fatal_error()
              end if
@@ -1647,8 +1536,8 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
-       m = t % n_score_bins * t % n_nuclide_bins
-       n = t % n_total_bins
+       m = t % total_score_bins
+       n = t % total_filter_bins
        n_bins = m*n
 
        allocate(tally_temp(m,n))
@@ -1729,8 +1618,8 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
-       m = t % n_score_bins * t % n_nuclide_bins
-       n = t % n_total_bins
+       m = t % total_score_bins
+       n = t % total_filter_bins
        n_bins = m*n*2
 
        allocate(tally_temp(2,m,n))
@@ -1787,30 +1676,22 @@ contains
 
   subroutine write_tallies()
 
-    integer :: i                          ! index in tallies array
-    integer :: j                          ! level in tally hierarchy
-    integer :: k                          ! loop index for scoring bins
-    integer :: n                          ! loop index for nuclides
-    integer :: bins(N_FILTER_TYPES) = 0   ! bins corresponding to each filter
-    integer :: indent                     ! number of spaces to preceed output
-    integer :: io_error                   ! error in opening/writing file
-    integer :: last_filter                ! lowest level filter type
-    integer :: filter_index               ! index in scores array for filters
-    integer :: score_index                ! scoring bin index
-    integer :: i_nuclide                  ! index in nuclides array
-    integer :: i_listing                  ! index in xs_listings array
-    real(8) :: t_value                    ! t-values for confidence intervals
-    real(8) :: alpha                      ! significance level for CI
-    logical :: file_exists                ! does tallies.out file already exists? 
-    logical :: has_filter(N_FILTER_TYPES) ! does tally have this filter?
-    logical :: no_filters                 ! does tally have no filters at all?
+    integer :: i            ! index in tallies array
+    integer :: j            ! level in tally hierarchy
+    integer :: k            ! loop index for scoring bins
+    integer :: n            ! loop index for nuclides
+    integer :: type         ! type of tally filter        
+    integer :: indent       ! number of spaces to preceed output
+    integer :: filter_index ! index in scores array for filters
+    integer :: score_index  ! scoring bin index
+    integer :: i_nuclide    ! index in nuclides array
+    integer :: i_listing    ! index in xs_listings array
+    real(8) :: t_value      ! t-values for confidence intervals
+    real(8) :: alpha        ! significance level for CI
     character(MAX_FILE_LEN) :: filename                    ! name of output file
     character(15)           :: filter_name(N_FILTER_TYPES) ! names of tally filters
     character(27)           :: score_name(N_SCORE_TYPES)   ! names of scoring function
     type(TallyObject), pointer :: t
-
-    ! Initialize status of no filters
-    no_filters = .false.
 
     ! Skip if there are no tallies
     if (n_tallies == 0) return
@@ -1851,15 +1732,8 @@ contains
        filename = trim(path_input) // "tallies.out"
     end if
 
-    ! Check if tally file already exists
-    inquire(FILE=filename, EXIST=file_exists)
-    if (file_exists) then
-       ! Possibly make backup of old tally file
-    end if
-
     ! Open tally file for writing
-    open(FILE=filename, UNIT=UNIT_TALLY, STATUS='replace', &
-         ACTION='write', IOSTAT=io_error)
+    open(FILE=filename, UNIT=UNIT_TALLY, STATUS='replace', ACTION='write')
 
     ! Calculate t-value for confidence intervals
     if (confidence_intervals) then
@@ -1867,7 +1741,7 @@ contains
        t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
     end if
 
-    do i = 1, n_tallies
+    TALLY_LOOP: do i = 1, n_tallies
        t => tallies(i)
 
        ! Multiply uncertainty by t-value
@@ -1894,19 +1768,6 @@ contains
           cycle
        end if
 
-       ! First determine which filters this tally has
-       do j = 1, N_FILTER_TYPES
-          if (t % n_filter_bins(j) > 0) then
-             has_filter(j) = .true.
-             last_filter = j
-          else
-             has_filter(j) = .false.
-          end if
-       end do
-
-       ! Check if this tally has no filters
-       if (all(has_filter .eqv. .false.)) no_filters = .true.
-
        ! WARNING: Admittedly, the logic for moving for printing scores is
        ! extremely confusing and took quite a bit of time to get correct. The
        ! logic is structured this way since it is not practical to have a do
@@ -1914,64 +1775,62 @@ contains
        ! to be used for a given tally.
 
        ! Initialize bins, filter level, and indentation
-       bins = 0
+       t % matching_bins = 0
        j = 1
        indent = 0
 
        print_bin: do
           find_bin: do
              ! Increment bin combination
-             bins(j) = bins(j) + 1
+             t % matching_bins(j) = t % matching_bins(j) + 1
 
              ! =================================================================
              ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
 
-             if ((has_filter(j) .and. bins(j) > t % n_filter_bins(j)) .or. &
-                  ((.not. has_filter(j)) .and. bins(j) > 1)) then
-                if (j == 1) then
-                   ! This means we are done with all bin combinations
-                   exit print_bin
-                else
-                   bins(j) = 0
-                   j = j - 1
-                   if (has_filter(j)) indent = indent - 2
-                end if
+             if (t % matching_bins(j) > t % filters(j) % n_bins) then
+                ! If this is the first filter, then exit
+                if (j == 1) exit print_bin
+
+                t % matching_bins(j) = 0
+                j = j - 1
+                indent = indent - 2
 
              ! =================================================================
              ! VALID BIN -- WRITE FILTER INFORMATION OR EXIT TO WRITE SCORES
 
              else
-                if (no_filters) exit find_bin
-                if (j == last_filter) then
-                   exit find_bin
-                else
-                   if (has_filter(j)) then
-                      ! Print current filter information
-                      write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-                           trim(filter_name(j)), trim(get_label(t, j, bins(j)))
-                      indent = indent + 2
-                   end if
-                   j = j + 1
-                end if
+                ! Check for no filters
+                if (t % n_filters == 0) exit find_bin
+
+                ! Check if this is last filter
+                if (j == t % n_filters) exit find_bin
+
+                ! Print current filter information
+                type = t % filters(j) % type
+                write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
+                     trim(filter_name(type)), trim(get_label(t, j))
+                indent = indent + 2
+                j = j + 1
              end if
 
           end do find_bin
 
           ! Print filter information
-          if (.not. no_filters) then
+          if (t % n_filters > 0) then
+             type = t % filters(j) % type
              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-                  trim(filter_name(j)), trim(get_label(t, j, bins(j)))
+                  trim(filter_name(type)), trim(get_label(t, j))
           end if
 
           ! Determine scoring index for this bin combination -- note that unlike
           ! in the score_tally subroutine, we have to use max(bins,1) since all
           ! bins below the lowest filter level will be zeros
 
-          filter_index = sum((max(bins,1) - 1) * t % stride) + 1
+          filter_index = sum((max(t % matching_bins,1) - 1) * t % stride) + 1
 
           ! Write scores for this filter bin combination
           score_index = 0
-          if (.not. no_filters) indent = indent + 2
+          if (t % n_filters > 0) indent = indent + 2
           do n = 1, t % n_nuclide_bins
              ! Write label for nuclide
              i_nuclide = t % nuclide_bins(n)
@@ -1999,7 +1858,7 @@ contains
 
        end do print_bin
 
-    end do
+    end do TALLY_LOOP
 
     close(UNIT=UNIT_TALLY)
 
@@ -2017,8 +1876,9 @@ contains
     integer :: i                    ! mesh index for x
     integer :: j                    ! mesh index for y
     integer :: k                    ! mesh index for z
-    integer :: l                    ! mesh index for energy
-    integer :: bins(N_FILTER_TYPES) ! bin combination
+    integer :: l                    ! index for energy
+    integer :: i_filter_mesh
+    integer :: i_filter_ein
     integer :: n                    ! number of incoming energy bins
     integer :: len1                 ! length of string 
     integer :: len2                 ! length of string 
@@ -2028,15 +1888,17 @@ contains
     type(StructuredMesh), pointer :: m => null()
 
     ! Get pointer to mesh
-    m => meshes(t % mesh)
+    i_filter_mesh = t % find_filter(FILTER_MESH)
+    m => meshes(t % filters(i_filter_mesh) % int_bins(1))
 
     ! initialize bins array
-    bins = 1
+    t % matching_bins = 1
 
     ! determine how many energy in bins there are
-    n = t % n_filter_bins(FILTER_ENERGYIN)
-    if (n > 0) then
+    i_filter_ein = t % find_filter(FILTER_ENERGYIN)
+    if (i_filter_ein > 0) then
        print_ebin = .true.
+       n = t % filters(i_filter_ein) % n_bins
     else
        print_ebin = .false.
        n = 1
@@ -2054,106 +1916,112 @@ contains
              write(UNIT=UNIT_TALLY, FMT='(1X,A)') trim(string)
 
              do l = 1, n
-                ! Write incoming energy bin
                 if (print_ebin) then
+                   ! Set incoming energy bin
+                   t % matching_bins(i_filter_ein) = l
+
+                   ! Write incoming energy bin
                    write(UNIT=UNIT_TALLY, FMT='(3X,A,1X,A)') &
-                        "Incoming Energy", trim(get_label(t, FILTER_ENERGYIN, l))
+                        "Incoming Energy", trim(get_label(t, i_filter_ein))
                 end if
 
-                ! Set incoming energy bin
-                bins(SURF_FILTER_ENERGYIN) = l
-
                 ! Left Surface
-                bins(1:3) = (/ i-1, j, k /) + 1
-                bins(SURF_FILTER_SURFACE) = IN_RIGHT
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, (/ i-1, j, k /) + 1)
+                t % matching_bins(t % n_filters + 1) = IN_RIGHT
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Left", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                bins(SURF_FILTER_SURFACE) = OUT_RIGHT
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(t % n_filters + 1) = OUT_RIGHT
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Left", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
                 ! Right Surface
-                bins(1:3) = (/ i, j, k /) + 1
-                bins(SURF_FILTER_SURFACE) = IN_RIGHT
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, (/ i, j, k /) + 1)
+                t % matching_bins(t % n_filters + 1) = IN_RIGHT
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Right", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                bins(SURF_FILTER_SURFACE) = OUT_RIGHT
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(t % n_filters + 1) = OUT_RIGHT
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Right", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
                 ! Back Surface
-                bins(1:3) = (/ i, j-1, k /) + 1
-                bins(SURF_FILTER_SURFACE) = IN_FRONT
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, (/ i, j-1, k /) + 1)
+                t % matching_bins(t % n_filters + 1) = IN_FRONT
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Back", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                bins(SURF_FILTER_SURFACE) = OUT_FRONT
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(t % n_filters + 1) = OUT_FRONT
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Back", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
                 ! Front Surface
-                bins(1:3) = (/ i, j, k /) + 1
-                bins(SURF_FILTER_SURFACE) = IN_FRONT
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, (/ i, j, k /) + 1)
+                t % matching_bins(t % n_filters + 1) = IN_FRONT
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Front", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                bins(SURF_FILTER_SURFACE) = OUT_FRONT
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(t % n_filters + 1) = OUT_FRONT
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Front", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
                 ! Bottom Surface
-                bins(1:3) = (/ i, j, k-1 /) + 1
-                bins(SURF_FILTER_SURFACE) = IN_TOP
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1)
+                t % matching_bins(t % n_filters + 1) = IN_TOP
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Bottom", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                bins(SURF_FILTER_SURFACE) = OUT_TOP
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(t % n_filters + 1) = OUT_TOP
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Bottom", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
                 ! Top Surface
-                bins(1:3) = (/ i, j, k /) + 1
-                bins(SURF_FILTER_SURFACE) = IN_TOP
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(i_filter_mesh) = &
+                     mesh_indices_to_bin(m, (/ i, j, k /) + 1)
+                t % matching_bins(t % n_filters + 1) = IN_TOP
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Top", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                bins(SURF_FILTER_SURFACE) = OUT_TOP
-                filter_index = sum((bins - 1) * t % stride) + 1
+                t % matching_bins(t % n_filters + 1) = OUT_TOP
+                filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Top", &
                      to_str(t % scores(1,filter_index) % sum), &
@@ -2171,37 +2039,36 @@ contains
 ! and corresponding bin
 !===============================================================================
 
-  function get_label(t, filter_type, bin) result(label)
+  function get_label(t, i_filter) result(label)
 
-    type(TallyObject), pointer :: t           ! tally object
-    integer, intent(in)        :: filter_type ! type of filter
-    integer, intent(in)        :: bin         ! bin in filter array
-    character(30)              :: label       ! user-specified identifier
+    type(TallyObject), pointer :: t        ! tally object
+    integer, intent(in)        :: i_filter ! index in filters array
+    character(30)              :: label    ! user-specified identifier
 
-    integer              :: i      ! index in cells/surfaces/etc array
+    integer :: i      ! index in cells/surfaces/etc array
+    integer :: bin
     integer, allocatable :: ijk(:) ! indices in mesh
     real(8)              :: E0     ! lower bound for energy bin
     real(8)              :: E1     ! upper bound for energy bin
-    type(StructuredMesh), pointer :: m
+    type(StructuredMesh), pointer :: m => null()
 
-    select case(filter_type)
+    bin = t % matching_bins(i_filter)
+
+    select case(t % filters(i_filter) % type)
     case (FILTER_UNIVERSE)
-       i = t % universe_bins(bin)
+       i = t % filters(i_filter) % int_bins(bin)
        label = to_str(universes(i) % id)
     case (FILTER_MATERIAL)
-       i = t % material_bins(bin)
+       i = t % filters(i_filter) % int_bins(bin)
        label = to_str(materials(i) % id)
-    case (FILTER_CELL)
-       i = t % cell_bins(bin)
-       label = to_str(cells(i) % id)
-    case (FILTER_CELLBORN)
-       i = t % cellborn_bins(bin)
+    case (FILTER_CELL, FILTER_CELLBORN)
+       i = t % filters(i_filter) % int_bins(bin)
        label = to_str(cells(i) % id)
     case (FILTER_SURFACE)
-       i = t % surface_bins(bin)
+       i = t % filters(i_filter) % int_bins(bin)
        label = to_str(surfaces(i) % id)
     case (FILTER_MESH)
-       m => meshes(t % mesh)
+       m => meshes(t % filters(i_filter) % int_bins(1))
        allocate(ijk(m % n_dimension))
        call bin_to_mesh_indices(m, bin, ijk)
        if (m % n_dimension == 2) then
@@ -2211,13 +2078,9 @@ contains
           label = "Index (" // trim(to_str(ijk(1))) // ", " // &
                trim(to_str(ijk(2))) // ", " // trim(to_str(ijk(3))) // ")"
        end if
-    case (FILTER_ENERGYIN)
-       E0 = t % energy_in(bin)
-       E1 = t % energy_in(bin + 1)
-       label = "[" // trim(to_str(E0)) // ", " // trim(to_str(E1)) // ")"
-    case (FILTER_ENERGYOUT)
-       E0 = t % energy_out(bin)
-       E1 = t % energy_out(bin + 1)
+    case (FILTER_ENERGYIN, FILTER_ENERGYOUT)
+       E0 = t % filters(i_filter) % real_bins(bin)
+       E1 = t % filters(i_filter) % real_bins(bin + 1)
        label = "[" // trim(to_str(E0)) // ", " // trim(to_str(E1)) // ")"
     end select
 

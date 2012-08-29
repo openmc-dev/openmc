@@ -12,8 +12,7 @@ module ace
   use global
   use material_header,  only: Material
   use output,           only: write_message
-  use string,           only: split_string, str_to_int, str_to_real, &
-                              lower_case, to_str
+  use string,           only: str_to_int, str_to_real, lower_case, to_str
 
   implicit none
 

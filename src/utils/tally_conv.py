@@ -12,11 +12,14 @@ from statepoint import StatePoint
 
 # Set filetype (the file extension desired, without the period.)
 # Options are backend dependent, but most backends support png, pdf, ps, eps 
-# and svg
+# and svg.  Write "none" if no figures are desired.
 fileType = "png"
 
 # Set if cross-sections of reaction rates are desired
-printxs = True
+printxsFlag = True
+
+# Set if it is desired to show the images
+showImg = False
 
 # END USER OPTIONS
 
@@ -93,6 +96,8 @@ for i_batch in xrange(len(files)):
 meanPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
 uncertPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
 absUncertPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
+fluxLoc = [None for x in range(len(mean[0]))] # Set to the number of tallies
+printxs = [False for x in range(len(mean[0]))] # Set to the number of tallies
 
 # Get and set the correct sizes for the rest of the dimensions
 for i_tally in range(len(meanPlot)):
@@ -100,6 +105,9 @@ for i_tally in range(len(meanPlot)):
     meanPlot[i_tally] = [None for x in range(len(mean[0][i_tally]))]
     uncertPlot[i_tally] = [None for x in range(len(mean[0][i_tally]))]
     absUncertPlot[i_tally] = [None for x in range(len(mean[0][i_tally]))]
+    
+    # Initialize flux location so it will be -1 if not found
+    fluxLoc[i_tally] = -1
     
     for i_score in range(len(meanPlot[i_tally])):
         # Set 3rd (filter) dimension
@@ -119,31 +127,50 @@ for i_tally in range(len(meanPlot)):
             absUncertPlot[i_tally][i_score][i_filter] = \
                 [None for x in range(len(mean))]
         
-# Now rearrange the data as suitable
+        # Set flux location if found
+        if scoreType[0][i_tally][i_score] == 'flux':
+            fluxLoc[i_tally] = i_score
+
+# Set printxs array according to the printXSflag input
+if printxsFlag:
+    for i_tally in range(len(fluxLoc)):
+        if fluxLoc[i_tally] != -1:
+            printxs[i_tally] = True
+        
+# Now rearrange the data as suitable, and perform xs conversion if necessary
 for i_batch in range(len(mean)):
     for i_tally in range(len(mean[i_batch])):
         for i_score in range(len(mean[i_batch][i_tally])):
             for i_filter in range(len(mean[i_batch][i_tally][i_score])):
-#                scoreStr = scoreType[i_batch][i_tally][i_score]                
-#                if (printxs and ((scoreStr != 'flux') or \
-#                    (scoreStr != 'current'))):
-#                    meanPlot[i_tally][i_score][i_filter][i_batch] = \
-#                        mean[i_batch][i_tally][i_score][i_filter]
-#                    uncertPlot[i_tally][i_score][i_filter][i_batch] = \
-#                        uncert[i_batch][i_tally][i_score][i_filter]
-#                else:                                                
-#                    meanPlot[i_tally][i_score][i_filter][i_batch] = \
-#                        mean[i_batch][i_tally][i_score][i_filter]
-#                    uncertPlot[i_tally][i_score][i_filter][i_batch] = \
-#                        uncert[i_batch][i_tally][i_score][i_filter]
-                meanPlot[i_tally][i_score][i_filter][i_batch] = \
-                    mean[i_batch][i_tally][i_score][i_filter]
-                uncertPlot[i_tally][i_score][i_filter][i_batch] = \
-                    uncert[i_batch][i_tally][i_score][i_filter]   
-                absUncertPlot[i_tally][i_score][i_filter][i_batch] = \
-                    uncert[i_batch][i_tally][i_score][i_filter] * \
-                    mean[i_batch][i_tally][i_score][i_filter]
-                    
+                if printxs[i_tally]:
+                    # Needs editing
+                    meanPlot[i_tally][i_score][i_filter][i_batch] = \
+                        mean[i_batch][i_tally][i_score][i_filter]
+                    uncertPlot[i_tally][i_score][i_filter][i_batch] = \
+                        uncert[i_batch][i_tally][i_score][i_filter]   
+                    absUncertPlot[i_tally][i_score][i_filter][i_batch] = \
+                        uncert[i_batch][i_tally][i_score][i_filter] * \
+                        mean[i_batch][i_tally][i_score][i_filter]
+                else:
+                    meanPlot[i_tally][i_score][i_filter][i_batch] = \
+                        mean[i_batch][i_tally][i_score][i_filter]
+                    uncertPlot[i_tally][i_score][i_filter][i_batch] = \
+                        uncert[i_batch][i_tally][i_score][i_filter]   
+                    absUncertPlot[i_tally][i_score][i_filter][i_batch] = \
+                        uncert[i_batch][i_tally][i_score][i_filter] * \
+                        mean[i_batch][i_tally][i_score][i_filter]
+else:
+    for i_batch in range(len(mean)):
+        for i_tally in range(len(mean[i_batch])):
+            for i_score in range(len(mean[i_batch][i_tally])):
+                for i_filter in range(len(mean[i_batch][i_tally][i_score])):
+                    meanPlot[i_tally][i_score][i_filter][i_batch] = \
+                        mean[i_batch][i_tally][i_score][i_filter]
+                    uncertPlot[i_tally][i_score][i_filter][i_batch] = \
+                        uncert[i_batch][i_tally][i_score][i_filter]   
+                    absUncertPlot[i_tally][i_score][i_filter][i_batch] = \
+                        uncert[i_batch][i_tally][i_score][i_filter] * \
+                        mean[i_batch][i_tally][i_score][i_filter]                
 
 # Set plotting constants
 xLabel = "Active Batches"
@@ -158,8 +185,8 @@ for i_tally in range(len(meanPlot)):
     for i_score in range(len(meanPlot[i_tally])):
         # Set score string
         scoreStr = scoreType[i_batch][i_tally][i_score]
-        if (printxs and ((scoreStr != 'flux') or (scoreStr != 'current'))):
-            scoreStr = scoreStr + " xs"
+        if (printxs[i_tally] and ((scoreStr != 'flux') or (scoreStr != 'current'))):
+            scoreStr = scoreStr + "-xs"
                 
         for i_filter in range(len(meanPlot[i_tally][i_score])):
             # Set filter string
@@ -186,8 +213,11 @@ for i_tally in range(len(meanPlot)):
             plt.xlabel(xLabel)
             plt.ylabel(yLabel)
             plt.title(title)
-            plt.savefig(fileName)
-            plt.show()
+            if (fileType != 'none'):
+                plt.savefig(fileName)
+            if showImg:            
+                plt.show()
+            plt.clf()
             
             # Plot relative uncertainty
             plt.plot(active_batches, \
@@ -195,5 +225,8 @@ for i_tally in range(len(meanPlot)):
             plt.xlabel(xLabel)
             plt.ylabel("Relative Error of " + yLabel)
             plt.title("Relative Error of " + title)
-            plt.savefig(REfileName)
-            plt.show()            
+            if (fileType != 'none'):
+                plt.savefig(REfileName)
+            if showImg:            
+                plt.show()
+            plt.clf()

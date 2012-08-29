@@ -52,9 +52,6 @@ contains
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
 
-    integer :: n_words       ! number of words read
-    character(MAX_WORD_LEN) :: words(MAX_WORDS)
-
     ! Display output message
     message = "Reading settings XML file..."
     call write_message(5)
@@ -1171,7 +1168,6 @@ contains
     logical :: file_exists   ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    character(MAX_WORD_LEN) :: words(MAX_WORDS)
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 

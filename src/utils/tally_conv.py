@@ -164,7 +164,7 @@ for i_batch in range(len(mean)):
                     uncertPlot[i_tally][i_score][i_filter][i_batch] = \
                         uncert[i_batch][i_tally][i_score][i_filter]  
                 
-                # Both hav the same absolute uncertainty calculation
+                # Both have the same absolute uncertainty calculation
                 absUncertPlot[i_tally][i_score][i_filter][i_batch] = \
                     uncert[i_batch][i_tally][i_score][i_filter] * \
                     mean[i_batch][i_tally][i_score][i_filter]    

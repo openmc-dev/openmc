@@ -1858,7 +1858,6 @@ contains
     integer :: i_listing                  ! index in xs_listings array
     real(8) :: t_value                    ! t-values for confidence intervals
     real(8) :: alpha                      ! significance level for CI
-    logical :: file_exists                ! does tallies.out file already exists? 
     logical :: has_filter(N_FILTER_TYPES) ! does tally have this filter?
     logical :: no_filters                 ! does tally have no filters at all?
     character(MAX_FILE_LEN) :: filename                    ! name of output file
@@ -1902,16 +1901,9 @@ contains
 
     ! Create filename for tally output
     if (run_mode == MODE_TALLIES) then
-       filename = trim(path_input) // "tallies." // &
-            trim(to_str(restart_batch)) // ".out"
+       filename = "tallies." // trim(to_str(restart_batch)) // ".out"
     else
-       filename = trim(path_input) // "tallies.out"
-    end if
-
-    ! Check if tally file already exists
-    inquire(FILE=filename, EXIST=file_exists)
-    if (file_exists) then
-       ! Possibly make backup of old tally file
+       filename = "tallies.out"
     end if
 
     ! Open tally file for writing

@@ -52,9 +52,6 @@ contains
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
 
-    integer :: n_words       ! number of words read
-    character(MAX_WORD_LEN) :: words(MAX_WORDS)
-
     ! Display output message
     message = "Reading settings XML file..."
     call write_message(5)
@@ -73,7 +70,6 @@ contains
     energy_grid_ = "union"
     seed_ = 0_8
     no_reduce_ = ""
-    output_ = ""
     source_ % file = ''
     source_ % space % type = ''
     source_ % angle % type = ''
@@ -506,11 +502,10 @@ contains
     if (trim(confidence_intervals_) == 'on') confidence_intervals = .true.
 
     ! Check for output options
-    if (len_trim(output_) > 0) then
-       call split_string(output_, words, n_words)
-       do i = 1, n_words
-          call lower_case(words(i))
-          select case (words(i))
+    if (associated(output_)) then
+       do i = 1, size(output_)
+          call lower_case(output_(i))
+          select case (output_(i))
           case ('summary')
              output_summary = .true.
           case ('cross_sections')
@@ -1173,7 +1168,6 @@ contains
     logical :: file_exists   ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    character(MAX_WORD_LEN) :: words(MAX_WORDS)
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 
@@ -1380,8 +1374,8 @@ contains
        ! READ DATA FOR FILTERS
 
        ! Check to make sure that both cells and surfaces were not specified
-       if (len_trim(tally_(i) % filters % cell) > 0 .and. &
-            len_trim(tally_(i) % filters % surface) > 0) then
+       if (associated(tally_(i) % filters % cell) .and. &
+            associated(tally_(i) % filters % surface)) then
           message = "Cannot specify both cell and surface filters for tally " &
                // trim(to_str(t % id))
           call fatal_error()
@@ -1390,11 +1384,12 @@ contains
        ! TODO: Parse logical expressions instead of just each word
 
        ! Read cell filter bins
-       if (len_trim(tally_(i) % filters % cell) > 0) then
-          call split_string(tally_(i) % filters % cell, words, n_words)
+       if (associated(tally_(i) % filters % cell)) then
+          n_words = size(tally_(i) % filters % cell)
           allocate(t % cell_bins(n_words))
           do j = 1, n_words
-             t % cell_bins(j) = int(str_to_int(words(j)),4)
+             t % cell_bins(j) = int(str_to_int(&
+                  tally_(i) % filters % cell(j)),4)
           end do
           t % n_filter_bins(FILTER_CELL) = n_words
 
@@ -1403,11 +1398,12 @@ contains
        end if
 
        ! Read surface filter bins
-       if (len_trim(tally_(i) % filters % surface) > 0) then
-          call split_string(tally_(i) % filters % surface, words, n_words)
+       if (associated(tally_(i) % filters % surface)) then
+          n_words = size(tally_(i) % filters % surface)
           allocate(t % surface_bins(n_words))
           do j = 1, n_words
-             t % surface_bins(j) = int(str_to_int(words(j)),4)
+             t % surface_bins(j) = int(str_to_int(&
+                  tally_(i) % filters % surface(j)),4)
           end do
           t % n_filter_bins(FILTER_SURFACE) = n_words
 
@@ -1416,11 +1412,12 @@ contains
        end if
 
        ! Read universe filter bins
-       if (len_trim(tally_(i) % filters % universe) > 0) then
-          call split_string(tally_(i) % filters % universe, words, n_words)
+       if (associated(tally_(i) % filters % universe)) then
+          n_words = size(tally_(i) % filters % universe)
           allocate(t % universe_bins(n_words))
           do j = 1, n_words
-             t % universe_bins(j) = int(str_to_int(words(j)),4)
+             t % universe_bins(j) = int(str_to_int(&
+                  tally_(i) % filters % universe(j)),4)
           end do
           t % n_filter_bins(FILTER_UNIVERSE) = n_words
 
@@ -1429,11 +1426,12 @@ contains
        end if
 
        ! Read material filter bins
-       if (len_trim(tally_(i) % filters % material) > 0) then
-          call split_string(tally_(i) % filters % material, words, n_words)
+       if (associated(tally_(i) % filters % material)) then
+          n_words = size(tally_(i) % filters % material)
           allocate(t % material_bins(n_words))
           do j = 1, n_words
-             t % material_bins(j) = int(str_to_int(words(j)),4)
+             t % material_bins(j) = int(str_to_int(&
+                  tally_(i) % filters % material(j)),4)
           end do
           t % n_filter_bins(FILTER_MATERIAL) = n_words
 
@@ -1462,11 +1460,12 @@ contains
        end if
 
        ! Read birth region filter bins
-       if (len_trim(tally_(i) % filters % cellborn) > 0) then
-          call split_string(tally_(i) % filters % cellborn, words, n_words)
+       if (associated(tally_(i) % filters % cellborn)) then
+          n_words = size(tally_(i) % filters % cellborn)
           allocate(t % cellborn_bins(n_words))
           do j = 1, n_words
-             t % cellborn_bins(j) = int(str_to_int(words(j)),4)
+             t % cellborn_bins(j) = int(str_to_int(&
+                  tally_(i) % filters % cellborn(j)),4)
           end do
           t % n_filter_bins(FILTER_CELLBORN) = n_words
 
@@ -1507,10 +1506,8 @@ contains
        ! =======================================================================
        ! READ DATA FOR NUCLIDES
 
-       if (len_trim(tally_(i) % nuclides) > 0) then
-          call split_string(tally_(i) % nuclides, words, n_words)
-
-          if (words(1) == 'all') then
+       if (associated(tally_(i) % nuclides)) then
+          if (tally_(i) % nuclides(1) == 'all') then
              ! Handle special case <nuclides>all</nuclides>
              allocate(t % nuclide_bins(n_nuclides_total + 1))
 
@@ -1526,19 +1523,20 @@ contains
              t % all_nuclides = .true.
           else
              ! Any other case, e.g. <nuclides>U-235 Pu-239</nuclides>
+             n_words = size(tally_(i) % nuclides)
              allocate(t % nuclide_bins(n_words))
              do j = 1, n_words
                 ! Check if total material was specified
-                if (words(j) == 'total') then
+                if (tally_(i) % nuclides(j) == 'total') then
                    t % nuclide_bins(j) = -1
                    cycle
                 end if
 
                 ! Check if xs specifier was given
-                if (ends_with(words(j), 'c')) then
-                   word = words(j)
+                if (ends_with(tally_(i) % nuclides(j), 'c')) then
+                   word = tally_(i) % nuclides(j)
                 else
-                   word = trim(words(j)) // "." // default_xs
+                   word = trim(tally_(i) % nuclides(j)) // "." // default_xs
                 end if
 
                 ! Check to make sure nuclide specified is in problem
@@ -1568,11 +1566,11 @@ contains
        ! =======================================================================
        ! READ DATA FOR SCORES
 
-       if (len_trim(tally_(i) % scores) > 0) then
-          call split_string(tally_(i) % scores, words, n_words)
+       if (associated(tally_(i) % scores)) then
+          n_words = size(tally_(i) % scores)
           allocate(t % score_bins(n_words))
           do j = 1, n_words
-             word = words(j)
+             word = tally_(i) % scores(j)
              call lower_case(word)
              select case (trim(word))
              case ('flux')
@@ -1698,7 +1696,8 @@ contains
                 end if
 
              case default
-                message = "Unknown scoring function: " // trim(words(j))
+                message = "Unknown scoring function: " // &
+                     trim(tally_(i) % scores(j))
                 call fatal_error()
              end select
           end do

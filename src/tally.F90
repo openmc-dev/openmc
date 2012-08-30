@@ -1637,7 +1637,7 @@ contains
 
   subroutine synchronize_tallies()
 
-    integer :: i   ! index in tallies array
+    type(ListInt), pointer :: curr_ptr => null()
 
 #ifdef MPI
     if (reduce_tallies) call reduce_tally_values()
@@ -1652,8 +1652,10 @@ contains
 
     if (master .or. (.not. reduce_tallies)) then
        ! Accumulate scores for each tally
-       do i = 1, n_tallies
-          call accumulate_score(tallies(i) % scores)
+       curr_ptr => active_tallies
+       do while(associated(curr_ptr))
+          call accumulate_score(tallies(curr_ptr % data) % scores)
+          curr_ptr => curr_ptr % next
        end do
 
        if (run_mode == MODE_CRITICALITY) then
@@ -1671,6 +1673,8 @@ contains
          call reduce_tally_sums()
 #endif
 
+    if (associated(curr_ptr)) nullify(curr_ptr)
+
   end subroutine synchronize_tallies
 
 !===============================================================================
@@ -1680,7 +1684,6 @@ contains
 #ifdef MPI
   subroutine reduce_tally_values()
 
-    integer :: i      ! loop index for tallies
     integer :: n      ! number of filter bins
     integer :: m      ! number of score bins
     integer :: n_bins ! total number of bins
@@ -1688,9 +1691,11 @@ contains
     real(8) :: global_temp(N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
     type(TallyObject), pointer :: t => null()
+    type(ListInt), pointer :: curr_ptr => null()
 
-    do i = 1, n_tallies
-       t => tallies(i)
+    curr_ptr => active_tallies
+    do while(associated(curr_ptr))
+       t => tallies(curr_ptr % data)
 
        m = t % n_score_bins * t % n_nuclide_bins
        n = t % n_total_bins
@@ -1718,6 +1723,7 @@ contains
        end if
 
        deallocate(tally_temp)
+       curr_ptr => curr_ptr % next
     end do
 
     ! Copy global tallies into array to be reduced
@@ -1749,6 +1755,8 @@ contains
             0, MPI_COMM_WORLD, mpi_err)
     end if
 
+    if (associated(curr_ptr)) nullify(curr_ptr)
+
   end subroutine reduce_tally_values
 #endif
 
@@ -1762,7 +1770,6 @@ contains
 #ifdef MPI
   subroutine reduce_tally_sums()
 
-    integer :: i      ! loop index for tallies
     integer :: n      ! number of filter bins
     integer :: m      ! number of score bins
     integer :: n_bins ! total number of bins
@@ -1770,9 +1777,11 @@ contains
     real(8) :: global_temp(2,N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
     type(TallyObject), pointer :: t => null()
+    type(ListInt), pointer :: curr_ptr => null()
 
-    do i = 1, n_tallies
-       t => tallies(i)
+    curr_ptr => active_tallies
+    do while(associated(curr_ptr))
+       t => tallies(curr_ptr % data)
 
        m = t % n_score_bins * t % n_nuclide_bins
        n = t % n_total_bins
@@ -1799,6 +1808,7 @@ contains
        end if
 
        deallocate(tally_temp)
+       curr_ptr => curr_ptr % next
 
     end do
 
@@ -1821,6 +1831,8 @@ contains
        call MPI_REDUCE(global_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
             0, MPI_COMM_WORLD, mpi_err)
     end if
+
+    if (associated(curr_ptr)) nullify(curr_ptr)
 
   end subroutine reduce_tally_sums
 #endif
@@ -2375,11 +2387,26 @@ contains
     integer                  :: i         ! loop counter
     type(ListInt), pointer :: curr_ptr  ! pointer to current list node
     type(ListInt), pointer :: next_ptr  ! pointer to next list node
+    type(ListInt), pointer :: tall_ptr  ! pointer to active tallies only
+
+    !============================================================
+    ! TALLIES
+
+    ! traverse to end of tally list
+    tall_ptr => active_tallies
+    next_ptr => tall_ptr % next
+    do while(associated(active_tallies))
+
+      tall_ptr => tall_ptr % next
+      next_ptr => tall_ptr % next
+
+    end do
 
     !============================================================
     ! ANALOG TALLIES
 
     ! check to see if analog tallies have already been allocated
+    curr_ptr => null()
     if (associated(active_analog_tallies)) then
 
       ! traverse to the end of the linked list
@@ -2392,8 +2419,6 @@ contains
 
       end do
 
-    else
-      curr_ptr => null()
     end if
 
     ! append all analog tallies
@@ -2407,12 +2432,19 @@ contains
       curr_ptr % next => active_analog_tallies
       active_analog_tallies => curr_ptr
 
+      ! set indices in active tallies
+      allocate(tall_ptr)
+      tall_ptr % data = analog_tallies(i)
+      tall_ptr % next => active_tallies
+      active_tallies => tall_ptr
+
     end do
 
     !============================================================
     ! TRACKLENGTH TALLIES
 
     ! check to see if tracklength tallies have already been allocated
+    curr_ptr => null()
     if (associated(active_tracklength_tallies)) then
 
       ! traverse to the end of the linked list
@@ -2425,13 +2457,10 @@ contains
 
       end do
 
-    else
-      curr_ptr => null()
     end if
 
 
     ! append all tracklength tallies
-    curr_ptr => null()
     do i = n_user_tracklength_tallies,1,-1
 
       ! allocate node
@@ -2442,12 +2471,19 @@ contains
       curr_ptr % next => active_tracklength_tallies
       active_tracklength_tallies => curr_ptr
 
+      ! set indices in active tallies
+      allocate(tall_ptr)
+      tall_ptr % data = tracklength_tallies(i)
+      tall_ptr % next => active_tallies
+      active_tallies => tall_ptr
+
     end do
 
    !============================================================
    ! CURRENT TALLIES
 
     ! check to see if current tallies have already been allocated
+    curr_ptr => null()
     if (associated(active_current_tallies)) then
 
       ! traverse to the end of the linked list
@@ -2460,12 +2496,9 @@ contains
 
       end do
 
-    else
-      curr_ptr => null()
     end if
 
     ! append all current tallies
-    curr_ptr => null()
     do i = n_user_current_tallies,1,-1
 
       ! allocate node
@@ -2475,6 +2508,12 @@ contains
       curr_ptr % data = i
       curr_ptr % next => active_current_tallies
       active_current_tallies => curr_ptr
+
+      ! set indices in active tallies
+      allocate(tall_ptr)
+      tall_ptr % data = current_tallies(i)
+      tall_ptr % next => active_tallies
+      active_tallies => tall_ptr
 
     end do
 

@@ -149,6 +149,7 @@ module global
   type(ListInt), pointer :: active_analog_tallies => null()
   type(ListInt), pointer :: active_tracklength_tallies => null()
   type(ListInt), pointer :: active_current_tallies => null()
+  type(ListInt), pointer :: active_tallies => null()
 
   ! ============================================================================
   ! CRITICALITY SIMULATION VARIABLES
@@ -325,6 +326,7 @@ contains
     call list_delete(active_analog_tallies)
     call list_delete(active_tracklength_tallies)
     call list_delete(active_current_tallies)
+    call list_delete(active_tallies)
 
   end subroutine free_memory
 

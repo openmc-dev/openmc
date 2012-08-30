@@ -1726,10 +1726,9 @@ contains
 
     ! Create filename for tally output
     if (run_mode == MODE_TALLIES) then
-       filename = trim(path_input) // "tallies." // &
-            trim(to_str(restart_batch)) // ".out"
+       filename = "tallies." // trim(to_str(restart_batch)) // ".out"
     else
-       filename = trim(path_input) // "tallies.out"
+       filename = "tallies.out"
     end if
 
     ! Open tally file for writing

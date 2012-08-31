@@ -33,7 +33,6 @@ showImg = True
 #    # It does not exist.
 #    tallyData = None
 
-
 # Find all statepoints in this directory.
 files = glob('./statepoint.*.binary')
 # Arrange the file list in increasing batch order
@@ -93,13 +92,14 @@ for i_batch in xrange(len(files)):
                     relative_error = 0.0
                 uncert[i_batch][i_tally][i_score][i_filter] = relative_error
 
+print mean
 
 # Reorder the data lists in to a list order more conducive for plotting:
 # The indexing should be: [tally][score][filter][batch]
 meanPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
 uncertPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
 absUncertPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
-#filterLabel = [None for x in range(len(mean[0]))] # Set to the number of tallies
+filterLabel = [None for x in range(len(mean[0]))] # Set to the number of tallies
 fluxLoc = [None for x in range(len(mean[0]))] # Set to the number of tallies
 printxs = [False for x in range(len(mean[0]))] # Set to the number of tallies
 
@@ -109,7 +109,7 @@ for i_tally in range(len(meanPlot)):
     meanPlot[i_tally] = [None for x in range(len(mean[0][i_tally]))]
     uncertPlot[i_tally] = [None for x in range(len(mean[0][i_tally]))]
     absUncertPlot[i_tally] = [None for x in range(len(mean[0][i_tally]))]
-#    filterLabel[i_tally] = [None for x in range(len(mean[0][i_tally]))]
+    filterLabel[i_tally] = [None for x in range(len(mean[0][i_tally]))]
     
     # Initialize flux location so it will be -1 if not found
     fluxLoc[i_tally] = -1
@@ -122,8 +122,8 @@ for i_tally in range(len(meanPlot)):
             [None for x in range(len(mean[0][i_tally][i_score]))]
         absUncertPlot[i_tally][i_score] = \
             [None for x in range(len(mean[0][i_tally][i_score]))]
-#        filterLabel[i_tally][i_score] = \
-#            [None for x in range(len(mean[0][i_tally][i_score]))]
+        filterLabel[i_tally][i_score] = \
+            [None for x in range(len(mean[0][i_tally][i_score]))]
         
         for i_filter in range(len(meanPlot[i_tally][i_score])):
             # Set 4th (batch) dimension
@@ -133,12 +133,16 @@ for i_tally in range(len(meanPlot)):
                 [None for x in range(len(mean))]
             absUncertPlot[i_tally][i_score][i_filter] = \
                 [None for x in range(len(mean))]
+                
+            # Get filterLabel (this should be moved to its own function)
+            
+            
         
         # Set flux location if found
         if scoreType[0][i_tally][i_score] == 'flux':
             fluxLoc[i_tally] = i_score
 
-
+print fluxLoc
 
 # Set printxs array according to the printXSflag input
 if printxsFlag:
@@ -157,6 +161,8 @@ for i_batch in range(len(mean)):
                     
                     # Perform rate to xs conversion
                     # mean is mean/fluxmean
+                    print i_tally, i_score, i_filter, i_batch
+                    print mean[i_batch][i_tally][i_score][i_filter], mean[i_batch][i_tally][fluxLoc[i_tally]][i_filter]
                     meanPlot[i_tally][i_score][i_filter][i_batch] = \
                         mean[i_batch][i_tally][i_score][i_filter] / \
                         mean[i_batch][i_tally][fluxLoc[i_tally]][i_filter]
@@ -236,3 +242,4 @@ for i_tally in range(len(meanPlot)):
             if showImg:            
                 plt.show()
             plt.clf()
+            

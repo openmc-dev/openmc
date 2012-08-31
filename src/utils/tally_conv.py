@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 
 from statepoint import StatePoint
 
+#from read_inputXML import talliesXML
+
 # USER OPTIONS
 
 # Set filetype (the file extension desired, without the period.)
@@ -23,6 +25,15 @@ showImg = True
 
 # END USER OPTIONS
 
+## Find if tallies.xml exists.
+#if glob('./tallies.xml') != None:
+#    # It exists
+#    tallyData = talliesXML('tallies.xml')
+#else: 
+#    # It does not exist.
+#    tallyData = None
+
+
 # Find all statepoints in this directory.
 files = glob('./statepoint.*.binary')
 # Arrange the file list in increasing batch order
@@ -32,7 +43,6 @@ files.sort()
 mean = [None for x in range(len(files))]
 uncert = [None for x in range(len(files))]
 scoreType = [None for x in range(len(files))]
-filterType = [None for x in range(len(files))]
 active_batches = [None for x in range(len(files))]
 
 for i_batch in xrange(len(files)):
@@ -50,8 +60,7 @@ for i_batch in xrange(len(files)):
     # Increase the dimensionality of our main variables
     mean[i_batch] = [None for x in range(len(sp.tallies))]
     uncert[i_batch] = [None for x in range(len(sp.tallies))]
-    scoreType[i_batch] = [None for x in range(len(sp.tallies))]    
-    filterType[i_batch] = [None for x in range(len(sp.tallies))]    
+    scoreType[i_batch] = [None for x in range(len(sp.tallies))]     
     
     # Calculate t-value for 95% two-sided CI
     n = sp.current_batch - sp.n_inactive
@@ -66,7 +75,6 @@ for i_batch in xrange(len(files)):
         mean[i_batch][i_tally] = [None for x in range(t.n_score_bins)]
         uncert[i_batch][i_tally] = [None for x in range(t.n_score_bins)]
         scoreType[i_batch][i_tally] = [None for x in range(t.n_score_bins)]
-        filterType[i_batch][i_tally] = [None for x in range(t.n_score_bins)]
         
         for i_score in range(t.n_score_bins):
             # Resize the 3rd dimension            
@@ -74,9 +82,7 @@ for i_batch in xrange(len(files)):
                 [None for x in range(t.n_filter_bins)]
             uncert[i_batch][i_tally][i_score] = \
                 [None for x in range(t.n_filter_bins)]
-            scoreType[i_batch][i_tally][i_score] = t.scores[i_score]  
-            filterType[i_batch][i_tally][i_score] = \
-                [None for x in range(t.n_filter_bins)]
+            scoreType[i_batch][i_tally][i_score] = t.scores[i_score] 
             for i_filter in range(t.n_filter_bins):
                 s, s2 = sp._get_double(2)
                 s /= n
@@ -86,9 +92,6 @@ for i_batch in xrange(len(files)):
                 else:
                     relative_error = 0.0
                 uncert[i_batch][i_tally][i_score][i_filter] = relative_error
-            #scoreType[i_batch][i_tally][i_score][i_filter] = t.scores[i_score]            
-            # Not quite right:
-            filterType[i_batch][i_tally][i_score][i_filter] = t.filters[i_filter]
 
 
 # Reorder the data lists in to a list order more conducive for plotting:
@@ -96,6 +99,7 @@ for i_batch in xrange(len(files)):
 meanPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
 uncertPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
 absUncertPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
+#filterLabel = [None for x in range(len(mean[0]))] # Set to the number of tallies
 fluxLoc = [None for x in range(len(mean[0]))] # Set to the number of tallies
 printxs = [False for x in range(len(mean[0]))] # Set to the number of tallies
 
@@ -105,6 +109,7 @@ for i_tally in range(len(meanPlot)):
     meanPlot[i_tally] = [None for x in range(len(mean[0][i_tally]))]
     uncertPlot[i_tally] = [None for x in range(len(mean[0][i_tally]))]
     absUncertPlot[i_tally] = [None for x in range(len(mean[0][i_tally]))]
+#    filterLabel[i_tally] = [None for x in range(len(mean[0][i_tally]))]
     
     # Initialize flux location so it will be -1 if not found
     fluxLoc[i_tally] = -1
@@ -117,6 +122,8 @@ for i_tally in range(len(meanPlot)):
             [None for x in range(len(mean[0][i_tally][i_score]))]
         absUncertPlot[i_tally][i_score] = \
             [None for x in range(len(mean[0][i_tally][i_score]))]
+#        filterLabel[i_tally][i_score] = \
+#            [None for x in range(len(mean[0][i_tally][i_score]))]
         
         for i_filter in range(len(meanPlot[i_tally][i_score])):
             # Set 4th (batch) dimension
@@ -130,6 +137,8 @@ for i_tally in range(len(meanPlot)):
         # Set flux location if found
         if scoreType[0][i_tally][i_score] == 'flux':
             fluxLoc[i_tally] = i_score
+
+
 
 # Set printxs array according to the printXSflag input
 if printxsFlag:

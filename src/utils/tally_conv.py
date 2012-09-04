@@ -37,7 +37,7 @@ printxs = True
 showImg = False
 
 # Save to CSV for use in more advanced plotting programs like GNUPlot, MathGL
-savetoCSV = True
+savetoCSV = False
 
 ##################################### END USER OPTIONS
 
@@ -51,8 +51,17 @@ savetoCSV = True
 
 # Find all statepoints in this directory.
 files = glob('./statepoint.*.binary')
+fileNums = []
+begin = 13
 # Arrange the file list in increasing batch order
-files.sort()
+for i in range(len(files)):
+    end = files[i].find(".binary")
+    fileNums.append(int(files[i][begin:end]))
+fileNums.sort()
+# Re-make filenames
+files = []
+for i in range(len(fileNums)):
+    files.append("./statepoint." + str(fileNums[i]) + ".binary")
 
 # Initialize arrays as needed
 mean = [None for x in range(len(files))]
@@ -60,7 +69,7 @@ uncert = [None for x in range(len(files))]
 scoreType = [None for x in range(len(files))]
 active_batches = [None for x in range(len(files))]
 
-for i_batch in xrange(len(files)):
+for i_batch in range(len(files)):
     
     # Get filename    
     batch_filename = files[i_batch]

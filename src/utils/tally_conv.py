@@ -1,11 +1,19 @@
 #!/usr/bin/env python
 
-# TODO: 
-# - Add savetoCSV functionality, or whatever text output would be best for mathgl, gnuplot or veusz
-# - Add smart labels for filters??
-# - Add dots to the data points to make them stand out more
-# - Smooth lines?
-# - Convert my single plt to an array of plots, or perhaps to using the Figure?
+# This program takes OpenMC statepoint binary files and creates a variety of
+# outputs from them which should provide the user with an idea of the
+# convergence behavior of all the tallies and filters defined by the user in
+# tallies.xml.  The program can directly plot the value and errors of each
+# tally, filter, score combination; it can save these plots to a file; and 
+# it can also save the data used in these plots to a CSV file for importing in
+# to other plotting packages such as Excel, gnuplot, MathGL, or Veusz.
+
+# To use the program, run this program from the working directory of the openMC
+# problem to analyze.  
+
+# The USER OPTIONS block below provides four options for the user to set:
+# fileType, printxs, showImg, and savetoCSV.  See the options block for more 
+# information.
 
 from math import sqrt, pow
 from glob import glob
@@ -15,25 +23,23 @@ import matplotlib.pyplot as plt
 
 from statepoint import StatePoint
 
-#from read_inputXML import talliesXML
-
-# USER OPTIONS
+##################################### USER OPTIONS
 
 # Set filetype (the file extension desired, without the period.)
 # Options are backend dependent, but most backends support png, pdf, ps, eps 
-# and svg.  Write "none" if no figures are desired.
+# and svg.  Write "none" if no saved files are desired.
 fileType = "none"
 
-# Set if cross-sections of reaction rates are desired
-printxsFlag = True
+# Set if cross-sections or reaction rates are desired printxs = True means X/S
+printxs = True
 
-# Set if it is desired to show the images
-showImg = True
+# Set if the figures should be displayed to screen or not (True means show)
+showImg = False
 
-# Save to CSV?
+# Save to CSV for use in more advanced plotting programs like GNUPlot, MathGL
 savetoCSV = True
 
-# END USER OPTIONS
+##################################### END USER OPTIONS
 
 ## Find if tallies.xml exists.
 #if glob('./tallies.xml') != None:
@@ -72,7 +78,10 @@ for i_batch in xrange(len(files)):
     scoreType[i_batch] = [None for x in range(len(sp.tallies))]     
     
     # Calculate t-value for 95% two-sided CI
-    n = sp.current_batch - sp.n_inactive
+    # The current_batch is set to the number of batches instead of subtracting
+    # the ianctive batches so that this works
+    # for fixed source and criticality calculations    
+    n = sp.current_batch
     t_value = scipy.stats.t.ppf(0.975, n - 1)
     
     # Store the batch count    
@@ -95,7 +104,8 @@ for i_batch in xrange(len(files)):
                 [None for x in range(t.n_score_bins)]
             
             for i_score in range(t.n_score_bins):
-                scoreType[i_batch][i_tally][i_filter][i_score] = t.scores[i_score]                 
+                scoreType[i_batch][i_tally][i_filter][i_score] = \
+                    t.scores[i_score]                 
                 s, s2 = sp._get_double(2)
                 s /= n
                 mean[i_batch][i_tally][i_filter][i_score] = s
@@ -109,8 +119,8 @@ for i_batch in xrange(len(files)):
 # The indexing should be: [tally][filter][score][batch]
 meanPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
 uncertPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
-absUncertPlot = [None for x in range(len(mean[0]))] # Set to the number of tallies
-filterLabel = [None for x in range(len(mean[0]))] # Set to the number of tallies
+absUncertPlot = [None for x in range(len(mean[0]))] # Set to number of tallies
+filterLabel = [None for x in range(len(mean[0]))] #Set to the number of tallies
 fluxLoc = [None for x in range(len(mean[0]))] # Set to the number of tallies
 printxs = [False for x in range(len(mean[0]))] # Set to the number of tallies
 
@@ -154,8 +164,8 @@ for i_tally in range(len(meanPlot)):
         if scoreType[0][i_tally][0][i_score] == 'flux': 
             fluxLoc[i_tally] = i_score
 
-# Set printxs array according to the printXSflag input
-if printxsFlag:
+# Set printxs array according to the printxs input
+if printxs:
     for i_tally in range(len(fluxLoc)):
         if fluxLoc[i_tally] != -1:
             printxs[i_tally] = True
@@ -177,8 +187,8 @@ for i_batch in range(len(mean)):
                     
                     # Update the relative uncertainty via error propagation
                     uncertPlot[i_tally][i_filter][i_score][i_batch] = \
-                        sqrt(pow(uncert[i_batch][i_tally][i_filter][i_score],2.0) \
-                        + pow(uncert[i_batch][i_tally][i_filter][fluxLoc[i_tally]],2.0))
+                        sqrt(pow(uncert[i_batch][i_tally][i_filter][i_score],2) \
+                        + pow(uncert[i_batch][i_tally][i_filter][fluxLoc[i_tally]],2))
                 else: 
                     
                     # Do not perform rate to xs conversion
@@ -212,11 +222,13 @@ for i_tally in range(len(meanPlot)):
             # Set score string
             scoreStr = scoreType[i_batch][i_tally][i_filter][i_score]
             scoreStr = scoreStr.title()
-            if (printxs[i_tally] and ((scoreStr != 'Flux') and (scoreStr != 'Current'))):
+            if (printxs[i_tally] and ((scoreStr != 'Flux') and \
+                (scoreStr != 'Current'))):
                 scoreStr = scoreStr + "-XS"
             
             # set Title 
-            title = "Convergence of " + scoreStr + " in " + tallyStr + " for " + filterStr
+            title = "Convergence of " + scoreStr + " in " + tallyStr + " for "\
+                + filterStr
             
             # set yLabel
             yLabel = scoreStr
@@ -231,7 +243,7 @@ for i_tally in range(len(meanPlot)):
             # Plot mean with absolute error bars
             plt.errorbar(active_batches, \
                 meanPlot[i_tally][i_filter][i_score][:], \
-                absUncertPlot[i_tally][i_filter][i_score][:])
+                absUncertPlot[i_tally][i_filter][i_score][:],fmt='o-',aa=True)
             plt.xlabel(xLabel)
             plt.ylabel(yLabel)
             plt.title(title)
@@ -243,7 +255,7 @@ for i_tally in range(len(meanPlot)):
             
             # Plot relative uncertainty
             plt.plot(active_batches, \
-                uncertPlot[i_tally][i_filter][i_score][:])
+                uncertPlot[i_tally][i_filter][i_score][:],'o-',aa=True)
             plt.xlabel(xLabel)
             plt.ylabel("Relative Error of " + yLabel)
             plt.title("Relative Error of " + title)
@@ -253,3 +265,66 @@ for i_tally in range(len(meanPlot)):
                 plt.show()
             plt.clf()
             
+if savetoCSV:
+    # This block loops through each tally, and for each tally:
+        # Creates a new file
+        # Writes the scores and filters for that tally in csv format.
+        # The columns will be: batches,then for each filter: all the scores
+        # The rows, of course, are the data points per batch.
+    
+    for i_tally in range(len(meanPlot)):
+        # Set tally string (placeholder until I put tally labels in statePoint)
+        tallyStr = "Tally " + str(i_tally + 1)
+        CSV_filename = "./tally" + str(i_tally+1)+".csv"
+        # Open the file
+        f = open(CSV_filename, 'w')  
+        
+        # Write the header line        
+        
+        lineText = "Batches" 
+        
+        for i_filter in range(len(meanPlot[i_tally])):
+        
+            # Set filter string
+            filterStr = "Filter " + str(i_filter + 1)
+                    
+            for i_score in range(len(meanPlot[i_tally][i_filter])):
+                
+                # Set the title
+                scoreStr = scoreType[i_batch][i_tally][i_filter][i_score]
+                scoreStr = scoreStr.title()
+                if (printxs[i_tally] and ((scoreStr != 'Flux') and \
+                    (scoreStr != 'Current'))):
+                    scoreStr = scoreStr + "-XS"
+                
+                # set header 
+                headerText = scoreStr + " for " + filterStr
+                
+                lineText = lineText + "," + headerText + \
+                    ",Abs Unc of " + headerText + \
+                    ",Rel Unc of " + headerText
+                    
+        f.write(lineText + "\n")   
+
+        # Write the data lines, each row is a different batch                     
+        
+        for i_batch in range(len(meanPlot[i_tally][0][0])):
+        
+            lineText = repr(active_batches[i_batch])        
+        
+            for i_filter in range(len(meanPlot[i_tally])):
+                        
+                for i_score in range(len(meanPlot[i_tally][i_filter])):
+                    
+                    fieldText = \
+                        repr(meanPlot[i_tally][i_filter][i_score][i_batch]) + \
+                        "," + \
+                        repr(absUncertPlot[i_tally][i_filter][i_score][i_batch]) +\
+                        "," + \
+                        repr(uncertPlot[i_tally][i_filter][i_score][i_batch])
+                
+                    lineText = lineText + "," + fieldText
+            
+            f.write(lineText + "\n")
+    
+   

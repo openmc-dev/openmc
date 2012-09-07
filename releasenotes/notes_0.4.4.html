@@ -69,13 +69,22 @@ the problem at hand (mostly on the number of nuclides in the problem).</p>
 <div class="section" id="new-features">
 <h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li>Suppress creation of summary.out and cross_sections.out by default with option
+to turn them on with &lt;output&gt; tag in settings.xml file.</li>
+<li>Ability to create HDF5 state points.</li>
+<li>Binary source file is now part of state point file by default.</li>
+<li>Enhanced state point usage and added state point Python scripts.</li>
+<li>Turning confidence intervals on affects k-effective.</li>
 <li>Option to specify &lt;upper_right&gt; for tally meshes.</li>
 </ul>
 </div>
 <div class="section" id="bug-fixes">
 <h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/7ee416">7ee416</a>: Fixed bug with multi-line input using type=&#8217;word&#8217;.</li>
 <li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/792eb3">792eb3</a>: Fixed degrees of freedom for confidence intervals.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/7fd617">7fd617</a>: Fixed bug with restart runs in parallel.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/dc4a8f">dc4a8f</a>: Fixed bug with fixed source restart runs.</li>
 </ul>
 </div>
 </div>

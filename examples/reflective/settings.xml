@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0"?>
 <settings>
 
   <!-- Parameters for criticality calculation -->
@@ -10,8 +10,9 @@
 
   <!-- Starting source -->
   <source>
-    <type>box</type>
-    <coeffs>-1 -1 -1  1  1  1</coeffs>
+    <space type="box">
+      <parameters>-1 -1 -1  1  1  1</parameters>
+    </space>
   </source>
 
 </settings>

@@ -938,6 +938,13 @@ sub-elements:
       Specifies the custom color for the cell or material.  Should be 3 integers separated
       by spaces.
 
+    As an example, if your plot is colored by material and you want material 23
+    to be blue, the corresponding ``col_spec`` element would look like:
+
+    .. code-block:: xml
+
+        <col_spec id="23" rgb="0 0 255" />
+
     *Default*: None
 
   :mask:

@@ -80,7 +80,7 @@ if sp1.run_mode == 2:
 
     assert len(sp1.source) == len(sp2.source)
     for s1, s2 in zip(sp1.source, sp2.source):
-        assert s1.weight == s2.weight
-        assert s1.xyz == s2.xyz
-        assert s1.uvw == s2.uvw
-        assert s1.E == s2.E
+        assert_allclose(s1.weight, s2.weight)
+        assert_allclose(s1.xyz, s2.xyz)
+        assert_allclose(s1.uvw, s2.uvw)
+        assert_allclose(s1.E, s2.E)

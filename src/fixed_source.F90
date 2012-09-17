@@ -117,18 +117,16 @@ contains
     call timer_stop(time_ic_tallies)
 
     ! Write out state point if it's been specified for this batch
-    if (master) then
-       do i = 1, n_state_points
-          if (current_batch == statepoint_batch(i)) then
+    do i = 1, n_state_points
+       if (current_batch == statepoint_batch(i)) then
 #ifdef HDF5
-             call hdf5_write_state_point()
+          call hdf5_write_state_point()
 #else
-             call write_state_point()
+          call write_state_point()
 #endif
-             exit
-          end if
-       end do
-    end if
+          exit
+       end if
+    end do
 
   end subroutine finalize_batch
 

@@ -4,7 +4,8 @@ module global
                               MaterialMacroXS
   use bank_header,      only: Bank
   use constants
-  use datatypes_header, only: DictionaryII, DictionaryCI
+  use datatypes,        only: list_delete
+  use datatypes_header, only: DictionaryII, DictionaryCI, ListInt
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
@@ -114,8 +115,8 @@ module global
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
 
-  integer :: n_meshes                  ! # of structured meshes
-  integer :: n_tallies                 ! # of tallies
+  integer :: n_meshes              = 0 ! # of structured meshes
+  integer :: n_tallies             = 0 ! # of tallies
   integer :: n_analog_tallies      = 0 ! # of analog tallies
   integer :: n_tracklength_tallies = 0 ! # of track-length tallies
   integer :: n_current_tallies     = 0 ! # of surface current tallies
@@ -132,6 +133,23 @@ module global
 
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
+
+  ! ============================================================================
+  ! USER TALLY-RELATED VARIABLES
+
+  integer :: n_user_meshes              = 0 ! # of structured user meshes
+  integer :: n_user_tallies             = 0 ! # of user tallies
+  integer :: n_user_analog_tallies      = 0 ! # of user analog tallies
+  integer :: n_user_tracklength_tallies = 0 ! # of user tracklength tallies
+  integer :: n_user_current_tallies     = 0 ! # of user current tallies
+
+  !=============================================================================
+  ! ACTIVE TALLY-RELATED VARIABLES
+
+  type(ListInt), pointer :: active_analog_tallies => null()
+  type(ListInt), pointer :: active_tracklength_tallies => null()
+  type(ListInt), pointer :: active_current_tallies => null()
+  type(ListInt), pointer :: active_tallies => null()
 
   ! ============================================================================
   ! CRITICALITY SIMULATION VARIABLES
@@ -303,6 +321,12 @@ contains
     if (allocated(fission_bank)) deallocate(fission_bank)
     if (allocated(source_bank)) deallocate(source_bank)
     if (allocated(entropy_p)) deallocate(entropy_p)
+
+    ! Deallocate tally node lists
+    call list_delete(active_analog_tallies)
+    call list_delete(active_tracklength_tallies)
+    call list_delete(active_current_tallies)
+    call list_delete(active_tallies)
 
   end subroutine free_memory
 

@@ -260,15 +260,15 @@ contains
        ! forward slightly so that if the mesh boundary is on the surface, it is
        ! still processed
 
+       if (associated(active_current_tallies)) then
+          ! TODO: Find a better solution to score surface currents than
+          ! physically moving the particle forward slightly
+
+          p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
+          call score_surface_current()
+       end if
+
        if (tallies_on) then
-          if (n_current_tallies > 0) then
-             ! TODO: Find a better solution to score surface currents than
-             ! physically moving the particle forward slightly
-
-             p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
-             call score_surface_current()
-          end if
-
           ! Score to global leakage tally
           call add_to_score(global_tallies(LEAKAGE), p % wgt)
        end if
@@ -295,7 +295,7 @@ contains
        ! particle to change -- artificially move the particle slightly back in
        ! case the surface crossing in coincident with a mesh boundary
        
-       if (tallies_on .and. n_current_tallies > 0) then
+       if (associated(active_current_tallies)) then
           p % coord0 % xyz = p % coord0 % xyz - TINY_BIT * p % coord0 % uvw
           call score_surface_current()
           p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw

@@ -3,7 +3,7 @@
 
   <default_xs>70c</default_xs>
 
-<!-- Definition of materials -->
+  <!-- Definition of materials -->
   <material id="1">
     <density value="4.5" units="g/cc" />
     <nuclide name="U-235" ao="1.0" />

@@ -2378,7 +2378,6 @@ contains
 
     integer                  :: i         ! loop counter
     type(ListInt), pointer :: curr_ptr  ! pointer to current list node
-    type(ListInt), pointer :: next_ptr  ! pointer to next list node
     type(ListInt), pointer :: tall_ptr  ! pointer to active tallies only
 
     !============================================================
@@ -2386,12 +2385,8 @@ contains
 
     ! traverse to end of tally list
     tall_ptr => active_tallies
-    next_ptr => tall_ptr % next
-    do while(associated(active_tallies))
-
+    do while(associated(tall_ptr))
       tall_ptr => tall_ptr % next
-      next_ptr => tall_ptr % next
-
     end do
 
     !============================================================
@@ -2403,12 +2398,8 @@ contains
 
       ! traverse to the end of the linked list
       curr_ptr => active_analog_tallies
-      next_ptr => curr_ptr % next
-      do while(associated(next_ptr))
-
+      do while(associated(curr_ptr))
         curr_ptr => curr_ptr % next
-        next_ptr => curr_ptr % next
-
       end do
 
     end if
@@ -2441,12 +2432,8 @@ contains
 
       ! traverse to the end of the linked list
       curr_ptr => active_tracklength_tallies
-      next_ptr => curr_ptr % next
-      do while(associated(next_ptr))
-
+      do while(associated(curr_ptr))
         curr_ptr => curr_ptr % next
-        next_ptr => curr_ptr % next
-
       end do
 
     end if
@@ -2480,12 +2467,8 @@ contains
 
       ! traverse to the end of the linked list
       curr_ptr => active_current_tallies
-      next_ptr => curr_ptr % next
-      do while(associated(next_ptr))
-
+      do while(associated(curr_ptr))
         curr_ptr => curr_ptr % next
-        next_ptr => curr_ptr % next
-
       end do
 
     end if

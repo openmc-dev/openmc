@@ -217,10 +217,14 @@ contains
        ! Read XSS array
        read(UNIT=in, FMT='(4E20.0)') XSS
 
+       ! Close ACE file
+       close(UNIT=in)
+
     elseif (filetype == BINARY) then
        ! =======================================================================
        ! READ ACE TABLE IN BINARY FORMAT
 
+       ! Open ACE file
        open(UNIT=in, FILE=filename, STATUS='old', ACTION='read', &
             ACCESS='direct', RECL=record_length)
 
@@ -238,6 +242,9 @@ contains
           j2 = min(length, j1 + entries - 1)
           read(UNIT=IN, REC=location + i) (XSS(j), j=j1,j2)
        end do
+
+       ! Close ACE file
+       close(UNIT=in)
     end if
 
     ! ==========================================================================
@@ -286,8 +293,6 @@ contains
     deallocate(XSS)
     if(associated(nuc)) nullify(nuc)
     if(associated(sab)) nullify(sab)
-
-    close(UNIT=in)
 
   end subroutine read_ace_table
 

@@ -156,12 +156,14 @@ contains
     type(ListInt), pointer :: current
     type(ListInt), pointer :: next
 
-    current => list
-    do while (associated(current%next))
-       next => current%next
-       deallocate(current)
-       current => next
-    enddo
+    if (associated(list)) then
+       current => list
+       do while (associated(current%next))
+          next => current%next
+          deallocate(current)
+          current => next
+       end do
+    end if
 
   end subroutine list_int_delete
 
@@ -175,12 +177,14 @@ contains
     type(ListReal), pointer :: current
     type(ListReal), pointer :: next
 
-    current => list
-    do while (associated(current%next))
-       next => current%next
-       deallocate(current)
-       current => next
-    enddo
+    if (associated(list)) then
+       current => list
+       do while (associated(current%next))
+          next => current%next
+          deallocate(current)
+          current => next
+       end do
+    end if
 
   end subroutine list_real_delete
 
@@ -194,12 +198,14 @@ contains
     type(ListKeyValueCI), pointer  :: current
     type(ListKeyValueCI), pointer  :: next
 
-    current => list
-    do while (associated(current%next))
-       next => current%next
-       deallocate(current)
-       current => next
-    enddo
+    if (associated(list)) then
+       current => list
+       do while (associated(current%next))
+          next => current%next
+          deallocate(current)
+          current => next
+       end do
+    end if
 
   end subroutine list_kvci_delete
 
@@ -213,12 +219,14 @@ contains
     type(ListKeyValueII), pointer  :: current
     type(ListKeyValueII), pointer  :: next
 
-    current => list
-    do while (associated(current%next))
-       next => current%next
-       deallocate(current)
-       current => next
-    enddo
+    if (associated(list)) then
+       current => list
+       do while (associated(current%next))
+          next => current%next
+          deallocate(current)
+          current => next
+       end do
+    end if
 
   end subroutine list_kvii_delete
 

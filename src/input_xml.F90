@@ -1176,7 +1176,6 @@ contains
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
        ! Since a tallies.xml file is optional, no error is issued here
-       n_tallies = 0
        return
     end if
     
@@ -1190,23 +1189,33 @@ contains
     ! ==========================================================================
     ! DETERMINE SIZE OF ARRAYS AND ALLOCATE
 
-    ! Check for meshes and allocate
+    ! Check for user meshes
     if (.not. associated(mesh_)) then
-       n_meshes = 0
+       n_user_meshes = 0
     else
-       n_meshes = size(mesh_)
-       allocate(meshes(n_meshes))
+       n_user_meshes = size(mesh_)
     end if
 
-    ! Allocate tallies array
+    ! Add in other meshes here besides user-defined meshes
+    n_meshes = n_user_meshes
+
+    ! Allocate mesh array
+    if (n_meshes > 0) allocate(meshes(n_meshes))
+
+    ! Check for user tallies
     if (.not. associated(tally_)) then
-       n_tallies = 0
+       n_user_tallies = 0
        message = "No tallies present in tallies.xml file!"
        call warning()
     else
-       n_tallies = size(tally_)
-       allocate(tallies(n_tallies))
+       n_user_tallies = size(tally_)
     end if
+
+    ! Add in other tallies here besides user-defined tallies
+    n_tallies = n_user_tallies
+
+    ! Allocate tally array
+    if (n_tallies > 0) allocate(tallies(n_tallies))
 
     ! Check for <assume_separate> setting
     if (separate_ == 'yes') assume_separate = .true.
@@ -1214,7 +1223,7 @@ contains
     ! ==========================================================================
     ! READ MESH DATA
 
-    do i = 1, n_meshes
+    do i = 1, n_user_meshes
        m => meshes(i)
 
        ! copy mesh id
@@ -1328,7 +1337,7 @@ contains
     ! ==========================================================================
     ! READ TALLY DATA
 
-    READ_TALLIES: do i = 1, n_tallies
+    READ_TALLIES: do i = 1, n_user_tallies
        ! Get pointer to tally
        t => tallies(i)
 
@@ -1791,12 +1800,12 @@ contains
        ! Count number of tallies by type
        if (t % type == TALLY_VOLUME) then
           if (t % estimator == ESTIMATOR_ANALOG) then
-             n_analog_tallies = n_analog_tallies + 1
+             n_user_analog_tallies = n_user_analog_tallies + 1
           elseif (t % estimator == ESTIMATOR_TRACKLENGTH) then
-             n_tracklength_tallies = n_tracklength_tallies + 1
+             n_user_tracklength_tallies = n_user_tracklength_tallies + 1
           end if
        elseif (t % type == TALLY_SURFACE_CURRENT) then
-          n_current_tallies = n_current_tallies + 1
+          n_user_current_tallies = n_user_current_tallies + 1
        end if
 
 
@@ -1804,6 +1813,11 @@ contains
 
     ! ==========================================================================
     ! LISTS FOR ANALOG, TRACKLENGTH, CURRENT TALLIES
+
+    ! Add in other tallies besides user-defined tallies
+    n_analog_tallies = n_user_analog_tallies
+    n_tracklength_tallies = n_user_tracklength_tallies
+    n_current_tallies = n_user_current_tallies
 
     ! Allocate list of pointers for tallies by type
     allocate(analog_tallies(n_analog_tallies))
@@ -1815,7 +1829,7 @@ contains
     i_tracklength = 0
     i_current = 0
 
-    do i = 1, n_tallies
+    do i = 1, n_user_tallies
        t => tallies(i)
 
        ! Increment the appropriate index and set pointer

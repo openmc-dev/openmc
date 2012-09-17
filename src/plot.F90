@@ -115,9 +115,16 @@ contains
            if (pl % color_by == PLOT_COLOR_MATS) then
               ! Assign color based on material
               c => cells(p % coord % cell)
-              r = pl % colors(c % material) % rgb(1)
-              g = pl % colors(c % material) % rgb(2)
-              b = pl % colors(c % material) % rgb(3)
+              if (c % material == MATERIAL_VOID) then
+                 ! By default, color void cells white
+                 r = 255
+                 g = 255
+                 b = 255
+              else
+                 r = pl % colors(c % material) % rgb(1)
+                 g = pl % colors(c % material) % rgb(2)
+                 b = pl % colors(c % material) % rgb(3)
+              end if
            else if (pl % color_by == PLOT_COLOR_CELLS) then
               ! Assign color based on cell
               r = pl % colors(p % coord % cell) % rgb(1)

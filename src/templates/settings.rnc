@@ -74,8 +74,8 @@ element settings {
 
   element state_point {
     (
-      (element batches { list { xsd:int } } |
-        attribute batches { list { xsd:int } }) |
+      (element batches { list { xsd:int+ } } |
+        attribute batches { list { xsd:int+ } }) |
       (element interval { xsd:int} | attribute interval { xsd:int })
     ) &
     (element source_separate { ( "off" | "on" ) } | 
@@ -84,7 +84,7 @@ element settings {
 
   element survival_biasing { ( "off" | "on" ) }? &
 
-  element trace { list { xsd:int } }? &
+  element trace { list { xsd:int+ } }? &
 
   element verbosity { xsd:int }? &
 

@@ -22,17 +22,17 @@ element tallies {
     (element estimator { ( "analog" | "tracklength" ) } |
       attribute estimator { ( "analog" | "tracklength" ) })? &
     element filters {
-      (element cell { list { xsd:string { maxLength = "20" } } } |
-        attribute cell { list { xsd:string { maxLength = "20" } } })? &
-      (element surface { list { xsd:string { maxLength = "20" } } } |
-        attribute surface { list { xsd:string { maxLength = "20" } } })? &
-      (element universe { list { xsd:string { maxLength = "20" } } } |
-        attribute universe { list { xsd:string { maxLength = "20" } } })? &
-      (element material { list { xsd:string { maxLength = "20" } } } |
-        attribute material { list { xsd:string { maxLength = "20" } } })? &
+      (element cell { list { xsd:string { maxLength = "20" }+ } } |
+        attribute cell { list { xsd:string { maxLength = "20" }+ } })? &
+      (element surface { list { xsd:string { maxLength = "20" }+ } } |
+        attribute surface { list { xsd:string { maxLength = "20" }+ } })? &
+      (element universe { list { xsd:string { maxLength = "20" }+ } } |
+        attribute universe { list { xsd:string { maxLength = "20" }+ } })? &
+      (element material { list { xsd:string { maxLength = "20" }+ } } |
+        attribute material { list { xsd:string { maxLength = "20" }+ } })? &
       (element mesh { xsd:int } | attribute mesh { xsd:int })? &
-      (element cellborn { list { xsd:string { maxLength = "20" } } } |
-        attribute cellborn { list { xsd:string { maxLength = "20" } } })? &
+      (element cellborn { list { xsd:string { maxLength = "20" }+ } } |
+        attribute cellborn { list { xsd:string { maxLength = "20" }+ } })? &
       (element energy { list { xsd:double+ } } |
         attribute energy { list { xsd:double+ } })? &
       (element energyout { list { xsd:double+ } } |

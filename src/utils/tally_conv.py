@@ -31,13 +31,13 @@ from statepoint import StatePoint
 fileType = "none"
 
 # Set if cross-sections or reaction rates are desired printxs = True means X/S
-printxs = True
+printxs = False
 
 # Set if the figures should be displayed to screen or not (True means show)
 showImg = False
 
 # Save to CSV for use in more advanced plotting programs like GNUPlot, MathGL
-savetoCSV = False
+savetoCSV = True
 
 ##################################### END USER OPTIONS
 
@@ -87,10 +87,7 @@ for i_batch in range(len(files)):
     scoreType[i_batch] = [None for x in range(len(sp.tallies))]     
     
     # Calculate t-value for 95% two-sided CI
-    # The current_batch is set to the number of batches instead of subtracting
-    # the ianctive batches so that this works
-    # for fixed source and criticality calculations    
-    n = sp.current_batch
+    n = sp.current_batch - sp.n_inactive
     t_value = scipy.stats.t.ppf(0.975, n - 1)
     
     # Store the batch count    
@@ -105,24 +102,28 @@ for i_batch in range(len(files)):
         
         for i_filter in range(t.n_filter_bins):
             # Resize the 3rd dimension            
-            mean[i_batch][i_tally][i_filter] = \
-                [None for x in range(t.n_score_bins)]
-            uncert[i_batch][i_tally][i_filter] = \
-                [None for x in range(t.n_score_bins)]
-            scoreType[i_batch][i_tally][i_filter] = \
-                [None for x in range(t.n_score_bins)]
-            
-            for i_score in range(t.n_score_bins):
-                scoreType[i_batch][i_tally][i_filter][i_score] = \
-                    t.scores[i_score]                 
-                s, s2 = sp._get_double(2)
-                s /= n
-                mean[i_batch][i_tally][i_filter][i_score] = s
-                if s != 0.0:
-                    relative_error = t_value*sqrt((s2/n - s*s)/(n-1))/s
-                else:
-                    relative_error = 0.0
-                uncert[i_batch][i_tally][i_filter][i_score] = relative_error
+            mean[i_batch][i_tally][i_filter] = [None for x in range(t.n_nuclides)]
+            uncert[i_batch][i_tally][i_filter] = [None for x in range(t.n_nuclides)]
+            scoreType[i_batch][i_tally][i_filter] = [None for x in range(t.n_nuclides)]
+            print(t.n_filter_bins,t.n_nuclides)            
+            for i_nuclide in range(t.n_nuclides):
+                mean[i_batch][i_tally][i_filter][i_nuclide] = \
+                    [None for x in range(t.n_scores)]
+                uncert[i_batch][i_tally][i_filter][i_nuclide] = \
+                    [None for x in range(t.n_scores)]
+                scoreType[i_batch][i_tally][i_filter][i_nuclide] = \
+                    [None for x in range(t.n_scores)]
+                for i_score in range(t.n_scores):
+                    scoreType[i_batch][i_tally][i_filter][i_nuclide][i_score] = \
+                        t.scores[i_score]                 
+                    s, s2 = sp._get_double(2)
+                    s /= n
+                    mean[i_batch][i_tally][i_filter][i_nuclide][i_score] = s
+                    if s != 0.0:
+                        relative_error = t_value*sqrt((s2/n - s*s)/(n-1))/s
+                    else:
+                        relative_error = 0.0
+                    uncert[i_batch][i_tally][i_filter][i_nuclide][i_score] = relative_error
 
 # Reorder the data lists in to a list order more conducive for plotting:
 # The indexing should be: [tally][filter][score][batch]
@@ -154,23 +155,32 @@ for i_tally in range(len(meanPlot)):
             [None for x in range(len(mean[0][i_tally][i_filter]))]
         filterLabel[i_tally][i_filter] = \
             [None for x in range(len(mean[0][i_tally][i_filter]))]
+            
+        for i_nuclide in range(len(meanPlot[i_tally][i_filter])):
+            # Set 4th (nuclide)) dimension
+            meanPlot[i_tally][i_filter][i_nuclide] = \
+                [None for x in range(len(mean[0][i_tally][i_filter][i_nuclide]))]
+            uncertPlot[i_tally][i_filter][i_nuclide] = \
+                [None for x in range(len(mean[0][i_tally][i_filter][i_nuclide]))]
+            absUncertPlot[i_tally][i_filter][i_nuclide] = \
+                [None for x in range(len(mean[0][i_tally][i_filter][i_nuclide]))]
         
-        for i_score in range(len(meanPlot[i_tally][i_filter])):
-            # Set 4th (batch) dimension
-            meanPlot[i_tally][i_filter][i_score] = \
-                [None for x in range(len(mean))]
-            uncertPlot[i_tally][i_filter][i_score] = \
-                [None for x in range(len(mean))]
-            absUncertPlot[i_tally][i_filter][i_score] = \
-                [None for x in range(len(mean))]
-                
-            # Get filterLabel (this should be moved to its own function)
-            #??? How to do?
+            for i_score in range(len(meanPlot[i_tally][i_filter][i_nuclide])):
+                # Set 5th (batch) dimension
+                meanPlot[i_tally][i_filter][i_nuclide][i_score] = \
+                    [None for x in range(len(mean))]
+                uncertPlot[i_tally][i_filter][i_nuclide][i_score] = \
+                    [None for x in range(len(mean))]
+                absUncertPlot[i_tally][i_filter][i_nuclide][i_score] = \
+                    [None for x in range(len(mean))]
+                    
+                # Get filterLabel (this should be moved to its own function)
+                #??? How to do?
             
         # Set flux location if found
         # all batches and all tallies will have the same score ordering, hence
-        # the 0's in the 1st and 3rd dimensions.
-        if scoreType[0][i_tally][0][i_score] == 'flux': 
+        # the 0's in the 1st, 3rd, and 4th dimensions.
+        if scoreType[0][i_tally][0][0][i_score] == 'flux': 
             fluxLoc[i_tally] = i_score
 
 # Set printxs array according to the printxs input
@@ -183,33 +193,34 @@ if printxs:
 for i_batch in range(len(mean)):
     for i_tally in range(len(mean[i_batch])):
         for i_filter in range(len(mean[i_batch][i_tally])):
-            for i_score in range(len(mean[i_batch][i_tally][i_filter])):
-                if (printxs[i_tally] and \
-                    ((scoreType[0][i_tally][i_filter][i_score] != 'flux') and \
-                    (scoreType[0][i_tally][i_filter][i_score] != 'current'))):
-                    
-                    # Perform rate to xs conversion
-                    # mean is mean/fluxmean
-                    meanPlot[i_tally][i_filter][i_score][i_batch] = \
-                        mean[i_batch][i_tally][i_filter][i_score] / \
-                        mean[i_batch][i_tally][i_filter][fluxLoc[i_tally]]
-                    
-                    # Update the relative uncertainty via error propagation
-                    uncertPlot[i_tally][i_filter][i_score][i_batch] = \
-                        sqrt(pow(uncert[i_batch][i_tally][i_filter][i_score],2) \
-                        + pow(uncert[i_batch][i_tally][i_filter][fluxLoc[i_tally]],2))
-                else: 
-                    
-                    # Do not perform rate to xs conversion
-                    meanPlot[i_tally][i_filter][i_score][i_batch] = \
-                        mean[i_batch][i_tally][i_filter][i_score]
-                    uncertPlot[i_tally][i_filter][i_score][i_batch] = \
-                        uncert[i_batch][i_tally][i_filter][i_score]
-                
-                # Both have the same absolute uncertainty calculation
-                absUncertPlot[i_tally][i_filter][i_score][i_batch] = \
-                    uncert[i_batch][i_tally][i_filter][i_score] * \
-                    mean[i_batch][i_tally][i_filter][i_score]    
+            for i_nuclide in range(len(mean[i_batch][i_tally][i_filter])):
+                for i_score in range(len(mean[i_batch][i_tally][i_filter][i_nuclide])):
+                    if (printxs[i_tally] and \
+                        ((scoreType[0][i_tally][i_filter][i_nuclide][i_score] != 'flux') and \
+                        (scoreType[0][i_tally][i_filter][i_nuclide][i_score] != 'current'))):
+                        
+                        # Perform rate to xs conversion
+                        # mean is mean/fluxmean
+                        meanPlot[i_tally][i_filter][i_nuclide][i_score][i_batch] = \
+                            mean[i_batch][i_tally][i_filter][i_nuclide][i_score] / \
+                            mean[i_batch][i_tally][i_filter][i_nuclide][fluxLoc[i_tally]]
+                        
+                        # Update the relative uncertainty via error propagation
+                        uncertPlot[i_tally][i_filter][i_nuclide][i_score][i_batch] = \
+                            sqrt(pow(uncert[i_batch][i_tally][i_filter][i_nuclide][i_score],2) \
+                            + pow(uncert[i_batch][i_tally][i_filter][i_nuclide][fluxLoc[i_tally]],2))
+                    else: 
+                        
+                        # Do not perform rate to xs conversion
+                        meanPlot[i_tally][i_filter][i_nuclide][i_score][i_batch] = \
+                            mean[i_batch][i_tally][i_filter][i_nuclide][i_score]
+                        uncertPlot[i_tally][i_filter][i_nuclide][i_score][i_batch] = \
+                            uncert[i_batch][i_tally][i_filter][i_nuclide][i_score]
+
+                    # Both have the same absolute uncertainty calculation
+                    absUncertPlot[i_tally][i_filter][i_nuclide][i_score][i_batch] = \
+                        uncert[i_batch][i_tally][i_filter][i_nuclide][i_score] * \
+                        mean[i_batch][i_tally][i_filter][i_nuclide][i_score]    
 
 # Set plotting constants
 xLabel = "Batches"
@@ -225,54 +236,60 @@ for i_tally in range(len(meanPlot)):
 
         # Set filter string
         filterStr = "Filter " + str(i_filter + 1)
+        
+        for i_nuclide in range(len(meanPlot[i_tally][i_filter])):
+            
+            nuclideStr = "Nuclide " + str(i_nuclide + 1)
+        
+            for i_score in range(len(meanPlot[i_tally][i_filter][i_nuclide])):
+    
+                # Set score string
+                scoreStr = scoreType[i_batch][i_tally][i_filter][i_nuclide][i_score]
+                scoreStr = scoreStr.title()
+                if (printxs[i_tally] and ((scoreStr != 'Flux') and \
+                    (scoreStr != 'Current'))):
+                    scoreStr = scoreStr + "-XS"
                 
-        for i_score in range(len(meanPlot[i_tally][i_filter])):
-
-            # Set score string
-            scoreStr = scoreType[i_batch][i_tally][i_filter][i_score]
-            scoreStr = scoreStr.title()
-            if (printxs[i_tally] and ((scoreStr != 'Flux') and \
-                (scoreStr != 'Current'))):
-                scoreStr = scoreStr + "-XS"
-            
-            # set Title 
-            title = "Convergence of " + scoreStr + " in " + tallyStr + " for "\
-                + filterStr
-            
-            # set yLabel
-            yLabel = scoreStr
-            yLabel = yLabel.title()
-
-            # Set saving filename
-            fileName = "tally_" + str(i_tally + 1) + "_" + scoreStr + \
-                "_filter_" + str(i_filter+1) + "." + fileType
-            REfileName = "tally_" + str(i_tally + 1) + "_" + scoreStr + \
-                "RE_filter_" + str(i_filter+1) + "." + fileType
-            
-            # Plot mean with absolute error bars
-            plt.errorbar(active_batches, \
-                meanPlot[i_tally][i_filter][i_score][:], \
-                absUncertPlot[i_tally][i_filter][i_score][:],fmt='o-',aa=True)
-            plt.xlabel(xLabel)
-            plt.ylabel(yLabel)
-            plt.title(title)
-            if (fileType != 'none'):
-                plt.savefig(fileName)
-            if showImg:            
-                plt.show()
-            plt.clf()
-            
-            # Plot relative uncertainty
-            plt.plot(active_batches, \
-                uncertPlot[i_tally][i_filter][i_score][:],'o-',aa=True)
-            plt.xlabel(xLabel)
-            plt.ylabel("Relative Error of " + yLabel)
-            plt.title("Relative Error of " + title)
-            if (fileType != 'none'):
-                plt.savefig(REfileName)
-            if showImg:            
-                plt.show()
-            plt.clf()
+                # set Title 
+                title = "Convergence of " + scoreStr + " in " + tallyStr + " for "\
+                    + filterStr + " and " + nuclideStr
+                
+                # set yLabel
+                yLabel = scoreStr
+                yLabel = yLabel.title()
+    
+                # Set saving filename
+                fileName = "tally_" + str(i_tally + 1) + "_" + scoreStr + \
+                    "_filter_" + str(i_filter+1) + "_nuclide_" + str(i_nuclide+1) \
+                    + "." + fileType
+                REfileName = "tally_" + str(i_tally + 1) + "_" + scoreStr + \
+                    "RE_filter_" + str(i_filter+1) + "_nuclide_" + str(i_nuclide+1) \
+                    + "." + fileType
+                
+                # Plot mean with absolute error bars
+                plt.errorbar(active_batches, \
+                    meanPlot[i_tally][i_filter][i_nuclide][i_score][:], \
+                    absUncertPlot[i_tally][i_filter][i_nuclide][i_score][:],fmt='o-',aa=True)
+                plt.xlabel(xLabel)
+                plt.ylabel(yLabel)
+                plt.title(title)
+                if (fileType != 'none'):
+                    plt.savefig(fileName)
+                if showImg:            
+                    plt.show()
+                plt.clf()
+                
+                # Plot relative uncertainty
+                plt.plot(active_batches, \
+                    uncertPlot[i_tally][i_filter][i_nuclide][i_score][:],'o-',aa=True)
+                plt.xlabel(xLabel)
+                plt.ylabel("Relative Error of " + yLabel)
+                plt.title("Relative Error of " + title)
+                if (fileType != 'none'):
+                    plt.savefig(REfileName)
+                if showImg:            
+                    plt.show()
+                plt.clf()
             
 if savetoCSV:
     # This block loops through each tally, and for each tally:
@@ -296,43 +313,49 @@ if savetoCSV:
         
             # Set filter string
             filterStr = "Filter " + str(i_filter + 1)
+            
+            for i_nuclide in range(len(meanPlot[i_tally][i_filter])):
+            
+                nuclideStr = "Nuclide " + str(i_nuclide + 1)
                     
-            for i_score in range(len(meanPlot[i_tally][i_filter])):
-                
-                # Set the title
-                scoreStr = scoreType[i_batch][i_tally][i_filter][i_score]
-                scoreStr = scoreStr.title()
-                if (printxs[i_tally] and ((scoreStr != 'Flux') and \
-                    (scoreStr != 'Current'))):
-                    scoreStr = scoreStr + "-XS"
-                
-                # set header 
-                headerText = scoreStr + " for " + filterStr
-                
-                lineText = lineText + "," + headerText + \
-                    ",Abs Unc of " + headerText + \
-                    ",Rel Unc of " + headerText
+                for i_score in range(len(meanPlot[i_tally][i_filter][i_nuclide])):
+                    
+                    # Set the title
+                    scoreStr = scoreType[i_batch][i_tally][i_filter][i_nuclide][i_score]
+                    scoreStr = scoreStr.title()
+                    if (printxs[i_tally] and ((scoreStr != 'Flux') and \
+                        (scoreStr != 'Current'))):
+                        scoreStr = scoreStr + "-XS"
+                    
+                    # set header 
+                    headerText = scoreStr + " for " + filterStr + " for " + nuclideStr
+                    
+                    lineText = lineText + "," + headerText + \
+                        ",Abs Unc of " + headerText + \
+                        ",Rel Unc of " + headerText
                     
         f.write(lineText + "\n")   
 
         # Write the data lines, each row is a different batch                     
         
-        for i_batch in range(len(meanPlot[i_tally][0][0])):
+        for i_batch in range(len(meanPlot[i_tally][0][0][0])):
         
             lineText = repr(active_batches[i_batch])        
         
             for i_filter in range(len(meanPlot[i_tally])):
                         
-                for i_score in range(len(meanPlot[i_tally][i_filter])):
+                for i_nuclide in range(len(meanPlot[i_tally][i_filter])):
+                        
+                    for i_score in range(len(meanPlot[i_tally][i_filter][i_nuclide])):
+                        
+                        fieldText = \
+                            repr(meanPlot[i_tally][i_filter][i_nuclide][i_score][i_batch]) + \
+                            "," + \
+                            repr(absUncertPlot[i_tally][i_filter][i_nuclide][i_score][i_batch]) +\
+                            "," + \
+                            repr(uncertPlot[i_tally][i_filter][i_nuclide][i_score][i_batch])
                     
-                    fieldText = \
-                        repr(meanPlot[i_tally][i_filter][i_score][i_batch]) + \
-                        "," + \
-                        repr(absUncertPlot[i_tally][i_filter][i_score][i_batch]) +\
-                        "," + \
-                        repr(uncertPlot[i_tally][i_filter][i_score][i_batch])
-                
-                    lineText = lineText + "," + fieldText
+                        lineText = lineText + "," + fieldText
             
             f.write(lineText + "\n")
     

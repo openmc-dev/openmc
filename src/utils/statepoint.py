@@ -176,11 +176,12 @@ class StatePoint(BinaryFile):
             
             # Read nuclide bins
             n_nuclides = self._get_int()[0]
+            t.n_nuclides = n_nuclides
             t.nuclides = self._get_int(n_nuclides)
 
             # Read score bins
-            n_scores = self._get_int()[0]
-            t.scores = [score_types[j] for j in self._get_int(n_scores)]
+            t.n_scores = self._get_int()[0]
+            t.scores = [score_types[j] for j in self._get_int(t.n_scores)]
 
         # Set flag indicating metadata has already been read
         self._metadata = True

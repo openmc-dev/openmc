@@ -12,7 +12,7 @@ module constants
 
   ! Revision numbers for binary files
   integer, parameter :: REVISION_SOURCE     = 1
-  integer, parameter :: REVISION_STATEPOINT = 3
+  integer, parameter :: REVISION_STATEPOINT = 4
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS 

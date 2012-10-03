@@ -7,6 +7,7 @@ module state_point
   use source,       only: write_source_binary
   use string,       only: to_str
   use tally_header, only: TallyObject
+  use tally,        only: setup_active_tallies
 
 #ifdef MPI
   use mpi
@@ -66,10 +67,20 @@ contains
        call write_tally_scores_nr(fh)
 
     elseif (master) then
+       ! Write global tallies
+       call MPI_FILE_WRITE(fh, N_GLOBAL_TALLIES, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_WRITE(fh, global_tallies, N_GLOBAL_TALLIES, &
+            MPI_TALLYSCORE, MPI_STATUS_IGNORE, mpi_err)
+
        if (tallies_on) then
           ! Indicate that tallies are on
           temp = 1
           call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+
+          ! Write number of realizations
+          call MPI_FILE_WRITE(fh, n_realizations, 1, MPI_INTEGER, &
                MPI_STATUS_IGNORE, mpi_err)
 
           ! Write all tally scores
@@ -157,13 +168,6 @@ contains
        write(UNIT_STATE) entropy(1:current_batch)
     end if
 
-    ! Write out global tallies sum and sum_sq
-    write(UNIT_STATE) N_GLOBAL_TALLIES
-    GLOBAL_TALLIES_LOOP: do i = 1, N_GLOBAL_TALLIES
-       write(UNIT_STATE) global_tallies(i) % sum
-       write(UNIT_STATE) global_tallies(i) % sum_sq
-    end do GLOBAL_TALLIES_LOOP
-
     ! Write number of meshes
     write(UNIT_STATE) n_meshes
 
@@ -236,9 +240,19 @@ contains
        write(UNIT_STATE) t % score_bins
     end do TALLY_METADATA
 
+    ! Write out global tallies sum and sum_sq
+    write(UNIT_STATE) N_GLOBAL_TALLIES
+    GLOBAL_TALLIES_LOOP: do i = 1, N_GLOBAL_TALLIES
+       write(UNIT_STATE) global_tallies(i) % sum
+       write(UNIT_STATE) global_tallies(i) % sum_sq
+    end do GLOBAL_TALLIES_LOOP
+
     if (tallies_on) then
        ! Indicate that tallies are on
        write(UNIT_STATE) 1
+
+       ! Number of realizations
+       write(UNIT_STATE) n_realizations
 
        TALLY_SCORES: do i = 1, n_tallies
           ! Get pointer to tally
@@ -337,12 +351,6 @@ contains
        call MPI_FILE_WRITE(fh, entropy, current_batch, MPI_REAL8, &
             MPI_STATUS_IGNORE, mpi_err)
     end if
-
-    ! Write out global tallies sum and sum_sq
-    call MPI_FILE_WRITE(fh, N_GLOBAL_TALLIES, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
-    call MPI_FILE_WRITE(fh, global_tallies, N_GLOBAL_TALLIES, &
-         MPI_TALLYSCORE, MPI_STATUS_IGNORE, mpi_err)
 
     ! Write number of meshes
     call MPI_FILE_WRITE(fh, n_meshes, 1, MPI_INTEGER, &
@@ -455,20 +463,61 @@ contains
   subroutine write_tally_scores_nr(fh)
 
     integer, intent(in) :: fh ! file handle
+
     integer :: i      ! loop index
     integer :: n      ! number of filter bins
     integer :: m      ! number of score bins
     integer :: temp   ! temporary variable
     integer :: n_bins ! total number of bins
     real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of scores
+    real(8) :: global_temp(2,N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
     type(TallyObject), pointer :: t => null()
+
+    ! ==========================================================================
+    ! COLLECT AND WRITE GLOBAL TALLIES
+
+    ! Write number of global tallies
+    if (master) then
+       call MPI_FILE_WRITE(fh, N_GLOBAL_TALLIES, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+    end if
+
+    ! Copy global tallies into temporary array for reducing
+    n_bins = 2 * N_GLOBAL_TALLIES
+    global_temp(1,:) = global_tallies(:) % sum
+    global_temp(2,:) = global_tallies(:) % sum_sq
+
+    if (master) then
+       ! The MPI_IN_PLACE specifier allows the master to copy values into a
+       ! receive buffer without having a temporary variable
+       call MPI_REDUCE(MPI_IN_PLACE, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
+            0, MPI_COMM_WORLD, mpi_err)
+       
+       ! Write out global tallies sum and sum_sq
+       call MPI_FILE_WRITE(fh, global_temp, n_bins, MPI_REAL8, &
+            MPI_STATUS_IGNORE, mpi_err)
+
+       ! Transfer values to value on master
+       if (current_batch == n_batches) then
+          global_tallies(:) % sum    = global_temp(1,:)
+          global_tallies(:) % sum_sq = global_temp(2,:)
+       end if
+    else
+       ! Receive buffer not significant at other processors
+       call MPI_REDUCE(global_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
+            0, MPI_COMM_WORLD, mpi_err)
+    end if
 
     if (tallies_on) then
        ! Indicate that tallies are on
        if (master) then
           temp = 1
           call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+
+          ! Write number of realizations
+          call MPI_FILE_WRITE(fh, n_realizations, 1, MPI_INTEGER, &
                MPI_STATUS_IGNORE, mpi_err)
        end if
 
@@ -611,17 +660,6 @@ contains
     end if
 
     if (master) then
-       ! Read number of global tallies and make sure it matches
-       call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-       if (temp(1) /= N_GLOBAL_TALLIES) then
-          message = "Number of global tallies does not match in state point."
-          call fatal_error()
-       end if
-
-       ! Read global tally data
-       call MPI_FILE_READ(fh, global_tallies, N_GLOBAL_TALLIES, &
-            MPI_TALLYSCORE, MPI_STATUS_IGNORE, mpi_err)
-
        ! Read number of meshes
        call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
        if (temp(1) /= n_meshes) then
@@ -708,6 +746,17 @@ contains
           deallocate(int_array)
        end do TALLY_METADATA
 
+       ! Read number of global tallies and make sure it matches
+       call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+       if (temp(1) /= N_GLOBAL_TALLIES) then
+          message = "Number of global tallies does not match in state point."
+          call fatal_error()
+       end if
+
+       ! Read global tally data
+       call MPI_FILE_READ(fh, global_tallies, N_GLOBAL_TALLIES, &
+            MPI_TALLYSCORE, MPI_STATUS_IGNORE, mpi_err)
+
        ! Check if tally results are present
        call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
 
@@ -716,6 +765,10 @@ contains
 
        ! Read sum and sum squared
        if (temp(1) == 1) then
+          ! Read number of realizations
+          call MPI_FILE_READ(fh, n_realizations, 1, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+
           TALLY_SCORES: do i = 1, n_tallies
              n = size(tallies(i) % scores, 1) * size(tallies(i) % scores, 2)
              call MPI_FILE_READ(fh, tallies(i) % scores, n, MPI_TALLYSCORE, &
@@ -795,19 +848,6 @@ contains
     end if
 
     if (master) then
-       ! Read number of global tallies and make sure it matches
-       read(UNIT_STATE) temp(1)
-       if (temp(1) /= N_GLOBAL_TALLIES) then
-          message = "Number of global tallies does not match in state point."
-          call fatal_error()
-       end if
-
-       ! Read global tally data
-       do i = 1, N_GLOBAL_TALLIES
-          read(UNIT_STATE) global_tallies(i) % sum
-          read(UNIT_STATE) global_tallies(i) % sum_sq
-       end do
-
        ! Read number of meshes
        read(UNIT_STATE) temp(1)
        if (temp(1) /= n_meshes) then
@@ -892,9 +932,25 @@ contains
           deallocate(int_array)
        end do TALLY_METADATA
 
+       ! Read number of global tallies and make sure it matches
+       read(UNIT_STATE) temp(1)
+       if (temp(1) /= N_GLOBAL_TALLIES) then
+          message = "Number of global tallies does not match in state point."
+          call fatal_error()
+       end if
+
+       ! Read global tally data
+       do i = 1, N_GLOBAL_TALLIES
+          read(UNIT_STATE) global_tallies(i) % sum
+          read(UNIT_STATE) global_tallies(i) % sum_sq
+       end do
+
        ! Read sum and sum squared
        read(UNIT_STATE) temp(1)
        if (temp(1) == 1) then
+          ! Read number of realizations
+          read(UNIT_STATE) n_realizations
+
           TALLY_SCORES: do i = 1, n_tallies
              do k = 1, size(tallies(i) % scores, 2)
                 do j = 1, size(tallies(i) % scores, 1)
@@ -924,6 +980,7 @@ contains
 
   subroutine replay_batch_history
 
+    integer       :: n = 0          ! number of realizations
     real(8), save :: temp(2) = ZERO ! temporary values for keff
     real(8)       :: alpha          ! significance level for CI
     real(8)       :: t_value        ! t-value for confidence intervals
@@ -936,29 +993,31 @@ contains
 
     ! For criticality calculations, turn on tallies if we've reached active
     ! batches
-    if (current_batch == n_inactive) tallies_on = .true.
+    if (current_batch == n_inactive) then
+       tallies_on = .true.
+       call setup_active_tallies()
+    end if
 
     ! Add to number of realizations
     if (current_batch > n_inactive) then
-       n_realizations = n_realizations + 1
+       n = n + 1
 
        temp(1) = temp(1) + k_batch(current_batch)
        temp(2) = temp(2) + k_batch(current_batch)*k_batch(current_batch)
 
        ! calculate mean keff
-       keff = temp(1) / n_realizations
+       keff = temp(1) / n
 
-       if (n_realizations > 1) then
+       if (n > 1) then
           if (confidence_intervals) then
              ! Calculate t-value for confidence intervals
              alpha = ONE - CONFIDENCE_LEVEL
-             t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+             t_value = t_percentile(ONE - alpha/TWO, n - 1)
           else
              t_value = ONE
           end if
 
-          keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) &
-               / (n_realizations - 1))
+          keff_std = t_value * sqrt((temp(2)/n - keff*keff)/(n - 1))
        end if
     else
        keff = k_batch(current_batch)

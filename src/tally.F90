@@ -1669,8 +1669,8 @@ contains
     end if
 
 #ifdef MPI
-    if ((.not. reduce_tallies) .and. current_batch == n_batches) &
-         call reduce_tally_sums()
+!    if ((.not. reduce_tallies) .and. current_batch == n_batches) &
+!         call reduce_tally_sums()
 #endif
 
     if (associated(curr_ptr)) nullify(curr_ptr)

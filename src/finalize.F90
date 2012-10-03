@@ -1,5 +1,6 @@
 module finalize
 
+  use cmfd_output,    only: finalize_cmfd
   use global
   use output,         only: print_runtime
   use source,         only: write_source_binary
@@ -32,6 +33,9 @@ contains
        ! Write out binary source
        if (write_source) call write_source_binary()
     end if
+
+    ! finalize cmfd
+    if (cmfd_run) call finalize_cmfd()
 
     ! stop timers and show timing statistics
     call timer_stop(time_finalize)

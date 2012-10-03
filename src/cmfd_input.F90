@@ -2,9 +2,45 @@ module cmfd_input
 
   implicit none
   private
-  public :: read_cmfd_xml,read_cmfd_hdf5
+  public :: configure_cmfd 
 
 contains
+
+!===============================================================================
+! CONFIGURE_CMFD
+!===============================================================================
+
+  subroutine configure_cmfd()
+
+    use cmfd_message_passing,   only: petsc_init_mpi
+    use global,  only: cmfd, cmfd_write_hdf5, master
+
+#ifdef HDF5
+    use hdf5
+#endif
+
+    character(len=100) :: filename = 'cmfd.h5'
+
+#ifdef HDF5
+    integer(Fortran_Integer) :: hdf5_err
+#endif
+
+    ! read in cmfd input file
+    call read_cmfd_xml()
+
+    ! write out summary to standard out
+!   call write_cmfd_input_summary(cmfd_tally_size)
+
+    ! initialize petsc on mpi
+    call petsc_init_mpi()
+
+    ! Create a new file using default properties.
+# ifdef HDF5
+    if (cmfd_write_hdf5 .and. master)                              &
+        call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F,cmfd%file_id, hdf5_err)
+# endif
+
+  end subroutine configure_cmfd
 
 !===============================================================================
 ! READ_INPUT reads the CMFD input file and organizes it into a data structure
@@ -83,19 +119,51 @@ contains
     if (cmfd_coremap .and. master) write(*,*)"Core Map Overlay Activated"
 
     ! check for normalization constant
-    if (norm_ > 0.0_8) then
-      cmfd % norm = norm_
-    end if
+    cmfd % norm = norm_
 
     ! set feedback logical
-    neut_feedback = feedback_
+    cmfd_feedback = feedback_
 
     ! set balance logical
-    cmfd_balance = balance_
+    ! cmfd_balance = balance_
 
     ! set downscatter logical
-    cmfd_downscatter = downscatter_
+    ! cmfd_downscatter = downscatter_
 
+    ! set 2 group fix
+    cmfd_run_2grp = run_2grp_
+
+    ! set the solver type
+    cmfd_solver_type = solver_
+
+    ! set monitoring 
+    cmfd_snes_monitor = snes_monitor_
+    cmfd_ksp_monitor = ksp_monitor_
+    cmfd_power_monitor = power_monitor_
+
+    ! output logicals
+    cmfd_write_balance = write_balance_
+    cmfd_write_matrices = write_matrices_
+    cmfd_write_hdf5 = write_hdf5_
+
+    ! run an adjoint calc
+    cmfd_run_adjoint = run_adjoint_
+
+    ! batch to begin cmfd
+    cmfd_begin = begin_
+
+    ! tally during inactive batches
+    cmfd_tally_on = inactive_
+
+    ! inactive batch flush window
+!   cmfd_inact_flush = inactive_flush_
+
+    ! last flush before active batches
+    cmfd_act_flush = active_flush_
+
+    ! tolerance on keff
+    cmfd_keff_tol = keff_tol_
+    
     ! create tally objects
     call create_cmfd_tally()
 

@@ -84,20 +84,32 @@ ifeq ($(COMPILER),intel)
   endif
 endif
 
+#===============================================================================
+# PETSc compiler options
+#===============================================================================
+
 # use petsc compiler
 ifeq ($(COMPILER),petsc)
-  F90 = ${FLINKER}
-  F90FLAGS := -cpp -warn -assume byterecl -traceback -I${PETSC_DIR}/include -I${SLEPC_DIR}/include \
-              -DMPI -DPETSC
-  include ${SLEPC_DIR}/conf/slepc_common
-  LDFLAGS = ${SLEPC_LIB}
 
+# Set up PETSc environment
+# export PETSC_DIR := /home/bherman/petsc/release-ifort
+  include ${PETSC_DIR}/conf/petscvariables
+
+# Default Compiler
+  F90 := /opt/mpich2/1.5b2-intel/bin/mpif90
+  F90FLAGS := -cpp -warn -assume byterecl -traceback -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include\
+              -DMPI -DPETSC
+
+# PETSc libraries
+  LDFLAGS = ${PETSC_LIB}
+
+#  Debugging 
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -ftrapuv -fp-stack-check -check all -fpe0 
+    F90FLAGS += -g -ftrapuv -fp-stack-check -check all -fpe0
     LDFLAGS  += -g
   endif
 
-   # Profiling
+#  Profiling
    ifeq ($(PROFILE),yes)
      F90FLAGS += -pg
      LDFLAGS  += -pg

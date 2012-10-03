@@ -2,12 +2,11 @@ module intercycle
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use cmfd_execute,    only: execute_cmfd
   use error,           only: fatal_error, warning
   use global
   use mesh,            only: count_bank_sites
   use mesh_header,     only: StructuredMesh
-  use output,          only: write_message, print_batch_keff
+  use output,          only: write_message
   use random_lcg,      only: prn, set_particle_seed, prn_skip
   use search,          only: binary_search
   use string,          only: to_str
@@ -437,9 +436,6 @@ contains
           end if
        end if
 
-       ! perform CMFD calculation if on
-       if (cmfd_on) call execute_cmfd()
-
     else
        ! =======================================================================
        ! INACTIVE BATCHES
@@ -450,9 +446,6 @@ contains
        ! Reset tally values
        global_tallies(:) % value = ZERO
     end if
-
-    ! Display output
-    if (master) call print_batch_keff()
 
 #ifdef MPI
     ! Broadcast new keff value to all processors

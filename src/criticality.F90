@@ -1,15 +1,17 @@
 module criticality
 
-  use constants,  only: ZERO
+  use cmfd_execute, only: cmfd_init_batch, execute_cmfd
+  use constants,    only: ZERO
   use global
-  use intercycle, only: shannon_entropy, calculate_keff, synchronize_bank, &
+  use intercycle,   only: shannon_entropy, calculate_keff, synchronize_bank, &
                         count_source_for_ufs
-  use output,     only: write_message, header, print_columns
-  use physics,    only: transport
-  use source,     only: get_source_particle
-  use string,     only: to_str
-  use tally,      only: synchronize_tallies
-  use timing,     only: timer_start, timer_stop
+  use output,       only: write_message, header, print_columns,              &
+                          print_batch_keff
+  use physics,      only: transport
+  use source,       only: get_source_particle
+  use string,       only: to_str
+  use tally,        only: synchronize_tallies
+  use timing,       only: timer_start, timer_stop
 
 contains
 
@@ -95,6 +97,9 @@ contains
        ! Reset total starting particle weight used for normalizing tallies
        total_weight = ZERO
 
+       ! check CMFD initialize batch
+       if (cmfd_run) call cmfd_init_batch()
+
   end subroutine initialize_batch
 
 !===============================================================================
@@ -131,6 +136,12 @@ contains
 
     ! Collect results and statistics
     call calculate_keff()
+
+    ! Perform CMFD calculation if on
+    if (cmfd_on) call execute_cmfd()
+
+    ! Display output
+    if (master) call print_batch_keff()
 
     ! Turn tallies on once inactive cycles are complete
     if (current_batch == n_inactive) then

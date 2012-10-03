@@ -42,7 +42,7 @@ module ace_header
      integer :: MT                      ! ENDF MT value
      real(8) :: Q_value                 ! Reaction Q value
      integer :: multiplicity            ! Number of secondary particles released
-     integer :: IE                      ! Starting energy grid index
+     integer :: threshold               ! Energy grid index of threshold
      logical :: scatter_in_cm           ! scattering system in center-of-mass?
      real(8), allocatable :: sigma(:)   ! Cross section values
      logical :: has_angle_dist          ! Angle distribution present?
@@ -73,10 +73,11 @@ module ace_header
 !===============================================================================
 
   type Nuclide
-     character(10) :: name ! name of nuclide, e.g. 92235.03c
-     integer       :: zaid ! Z and A identifier, e.g. 92235
-     real(8)       :: awr  ! weight of nucleus in neutron masses
-     real(8)       :: kT   ! temperature in MeV (k*T)
+     character(10) :: name    ! name of nuclide, e.g. 92235.03c
+     integer       :: zaid    ! Z and A identifier, e.g. 92235
+     integer       :: listing ! index in xs_listings
+     real(8)       :: awr     ! weight of nucleus in neutron masses
+     real(8)       :: kT      ! temperature in MeV (k*T)
 
      ! Energy grid information
      integer :: n_grid                     ! # of nuclide grid points

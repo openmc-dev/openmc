@@ -41,16 +41,6 @@ module tally_header
   end type TallyScore
 
 !===============================================================================
-! TALLYFILTER represents a single bin filter for a tally to score in. This could
-! be, for example, a single cell OR a collection of cells.
-!===============================================================================
-
-  type TallyFilter
-     integer              :: scalar = 0
-     integer, allocatable :: array(:)
-  end type TallyFilter
-
-!===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
 ! tally in is given by the TallyBins and the scores are stored in a TallyScore
 ! array.
@@ -59,10 +49,11 @@ module tally_header
   type TallyObject
      ! Basic data
 
-     integer :: id        ! user-defined identifier
-     integer :: type      ! volume, surface current
-     integer :: estimator ! collision, track-length
-     real(8) :: volume    ! volume of region
+     integer :: id               ! user-defined identifier
+     character(len=52) :: label  ! user-defined label
+     integer :: type             ! volume, surface current
+     integer :: estimator        ! collision, track-length
+     real(8) :: volume           ! volume of region
 
      ! Information about what filters should be used
 
@@ -71,14 +62,14 @@ module tally_header
 
      ! Filter bin specifications
 
-     type(TallyFilter), pointer :: universe_bins(:) => null()
-     type(TallyFilter), pointer :: material_bins(:) => null()
-     type(TallyFilter), pointer :: cell_bins(:)     => null()
-     type(TallyFilter), pointer :: cellborn_bins(:) => null()
-     type(TallyFilter), pointer :: surface_bins(:)  => null()
-     integer                    :: mesh             = 0
-     real(8), allocatable       :: energy_in(:)
-     real(8), allocatable       :: energy_out(:)
+     integer, allocatable :: universe_bins(:)
+     integer, allocatable :: material_bins(:)
+     integer, allocatable :: cell_bins(:)
+     integer, allocatable :: cellborn_bins(:)
+     integer, allocatable :: surface_bins(:)
+     integer              :: mesh = 0
+     real(8), allocatable :: energy_in(:)
+     real(8), allocatable :: energy_out(:)
 
      ! Total number of filter bins
      integer :: n_total_bins = 0
@@ -94,9 +85,13 @@ module tally_header
      integer, allocatable :: n_filter_bins(:)
      integer, allocatable :: stride(:)
 
-     ! Macroscopic properties to score
+     ! Individual nuclides to tally
+     integer, allocatable :: nuclide_bins(:)
+     integer :: n_nuclide_bins = 0
+     logical :: all_nuclides = .false.
 
-     type(TallyFilter), pointer :: score_bins(:) => null()
+     ! Values to score, e.g. flux, absorption, etc.
+     integer, allocatable :: score_bins(:)
      integer :: n_score_bins = 0
      
      ! Scores for each bin -- the first dimenion of the array is for scores

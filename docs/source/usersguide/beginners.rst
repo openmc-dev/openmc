@@ -108,7 +108,7 @@ familiar with. Whether you plan on working in Linux, Mac OS X, or Windows, you
 should be comfortable working in a command line environment. There are many
 resources online for learning command line environments. If you are using Linux
 or Mac OS X (also Unix-derived), `this tutorial
-<http://www.ee.surrey.ac.uk/Teaching/Unix/>`_ will help you get acquianted with
+<http://www.ee.surrey.ac.uk/Teaching/Unix/>`_ will help you get acquainted with
 commonly-used commands.
 
 OpenMC uses a version control software called `git`_ to keep track of changes to

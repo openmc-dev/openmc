@@ -32,7 +32,7 @@ cmfd_input.o: hdf5_interface.o
 cmfd_input.o: mesh_header.o
 cmfd_input.o: string.o
 cmfd_input.o: tally_header.o
-cmfd_input.o: xml-fortran/templates/cmfd_t.o
+cmfd_input.o: templates/cmfd_t.o
 
 cmfd_jacobian_operator.o: global.o
 cmfd_jacobian_operator.o: cmfd_loss_operator.o
@@ -69,11 +69,14 @@ cross_section.o: random_lcg.o
 cross_section.o: search.o
 
 criticality.o: constants.o
+criticality.o: finalize.o
 criticality.o: global.o
+criticality.o: hdf5_interface.o
 criticality.o: intercycle.o
 criticality.o: output.o
 criticality.o: physics.o
 criticality.o: source.o
+criticality.o: state_point.o
 criticality.o: string.o
 criticality.o: tally.o
 criticality.o: timing.o
@@ -96,7 +99,6 @@ energy_grid.o: output.o
 finalize.o: global.o
 finalize.o: hdf5_interface.o
 finalize.o: output.o
-finalize.o: source.o
 finalize.o: tally.o
 finalize.o: timing.o
 
@@ -106,6 +108,18 @@ fission.o: error.o
 fission.o: global.o
 fission.o: interpolation.o
 fission.o: search.o
+
+fixed_source.o: constants.o
+fixed_source.o: global.o
+fixed_source.o: hdf5_interface.o
+fixed_source.o: output.o
+fixed_source.o: physics.o
+fixed_source.o: random_lcg.o
+fixed_source.o: source.o
+fixed_source.o: state_point.o
+fixed_source.o: string.o
+fixed_source.o: tally.o
+fixed_source.o: timing.o
 
 geometry.o: constants.o
 geometry.o: datatypes.o
@@ -137,7 +151,9 @@ hdf5_interface.o: endf.o
 hdf5_interface.o: geometry_header.o
 hdf5_interface.o: global.o
 hdf5_interface.o: material_header.o
+hdf5_interface.o: output.o
 hdf5_interface.o: string.o
+hdf5_interface.o: tally_header.o
 
 initialize.o: ace.o
 initialize.o: bank_header.o
@@ -154,6 +170,7 @@ initialize.o: input_xml.o
 initialize.o: output.o
 initialize.o: random_lcg.o
 initialize.o: source.o
+initialize.o: state_point.o
 initialize.o: string.o
 initialize.o: tally.o
 initialize.o: tally_header.o
@@ -168,16 +185,18 @@ input_xml.o: global.o
 input_xml.o: mesh_header.o
 input_xml.o: output.o
 input_xml.o: plot_header.o
+input_xml.o: random_lcg.o
 input_xml.o: string.o
 input_xml.o: tally_header.o
-input_xml.o: xml-fortran/templates/cross_sections_t.o
-input_xml.o: xml-fortran/templates/geometry_t.o
-input_xml.o: xml-fortran/templates/materials_t.o
-input_xml.o: xml-fortran/templates/settings_t.o
-input_xml.o: xml-fortran/templates/tallies_t.o
+input_xml.o: templates/cross_sections_t.o
+input_xml.o: templates/geometry_t.o
+input_xml.o: templates/materials_t.o
+input_xml.o: templates/settings_t.o
+input_xml.o: templates/tallies_t.o
 
 intercycle.o: error.o
 intercycle.o: global.o
+intercycle.o: math.o
 intercycle.o: mesh.o
 intercycle.o: mesh_header.o
 intercycle.o: output.o
@@ -202,9 +221,12 @@ main.o: cmfd_execute.o
 main.o: constants.o
 main.o: criticality.o
 main.o: finalize.o
+main.o: fixed_source.o
 main.o: global.o
 main.o: initialize.o
 main.o: plot.o
+
+math.o: constants.o
 
 mesh.o: constants.o
 mesh.o: global.o
@@ -212,11 +234,13 @@ mesh.o: mesh_header.o
 mesh.o: particle_header.o
 mesh.o: search.o
 
+output.o: ace_header.o
 output.o: constants.o
 output.o: datatypes.o
 output.o: endf.o
 output.o: geometry_header.o
 output.o: global.o
+output.o: math.o
 output.o: mesh_header.o
 output.o: particle_header.o
 output.o: plot_header.o
@@ -275,6 +299,14 @@ source.o: physics.o
 source.o: random_lcg.o
 source.o: string.o
 
+state_point.o: error.o
+state_point.o: global.o
+state_point.o: math.o
+state_point.o: output.o
+state_point.o: source.o
+state_point.o: string.o
+state_point.o: tally_header.o
+
 string.o: constants.o
 string.o: error.o
 string.o: global.o
@@ -282,10 +314,12 @@ string.o: global.o
 tally.o: constants.o
 tally.o: error.o
 tally.o: global.o
+tally.o: math.o
 tally.o: mesh.o
 tally.o: mesh_header.o
 tally.o: output.o
 tally.o: search.o
 tally.o: string.o
+tally.o: tally_header.o
 
 timing.o: constants.o

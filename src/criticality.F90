@@ -4,14 +4,19 @@ module criticality
   use constants,    only: ZERO
   use global
   use intercycle,   only: shannon_entropy, calculate_keff, synchronize_bank, &
-                        count_source_for_ufs
+                         count_source_for_ufs
   use output,       only: write_message, header, print_columns,              &
                           print_batch_keff
   use physics,      only: transport
   use source,       only: get_source_particle
+  use state_point,  only: write_state_point, replay_batch_history
   use string,       only: to_str
-  use tally,        only: synchronize_tallies
+  use tally,        only: synchronize_tallies, setup_active_tallies
   use timing,       only: timer_start, timer_stop
+
+#ifdef HDF5
+  use hdf5_interface, only: hdf5_write_state_point
+#endif
 
 contains
 
@@ -24,10 +29,7 @@ contains
 
     integer(8) :: i  ! index over histories in single cycle
 
-    if (master) call header("BEGIN SIMULATION", level=1)
-
-    tallies_on = .false.
-    call timer_start(time_inactive)
+    if (master) call header("CRITICALITY TRANSPORT SIMULATION", level=1)
 
     ! Allocate particle
     allocate(p)
@@ -40,6 +42,12 @@ contains
     BATCH_LOOP: do current_batch = 1, n_batches
 
        call initialize_batch()
+
+       ! Handle restart runs
+       if (restart_run .and. current_batch <= restart_batch) then
+          call replay_batch_history()
+          cycle BATCH_LOOP
+       end if
 
        ! =======================================================================
        ! LOOP OVER GENERATIONS
@@ -100,6 +108,16 @@ contains
        ! check CMFD initialize batch
        if (cmfd_run) call cmfd_init_batch()
 
+       if (current_batch == n_inactive + 1) then
+          ! This will start the active timer at the first non-inactive batch
+          ! (including batch 1 if there are no inactive batches).
+          call timer_start(time_active)
+       elseif (current_batch == 1) then
+          ! If there are inactive batches, start the inactive timer on the first
+          ! batch.
+          call timer_start(time_inactive)
+       end if
+
   end subroutine initialize_batch
 
 !===============================================================================
@@ -124,6 +142,8 @@ contains
 
   subroutine finalize_batch()
 
+    integer :: i ! loop index for state point batches
+
     ! Collect tallies
     if (tallies_on) then
        call timer_start(time_ic_tallies)
@@ -143,11 +163,25 @@ contains
     ! Display output
     if (master) call print_batch_keff()
 
+    ! Write out state point if it's been specified for this batch
+    do i = 1, n_state_points
+       if (current_batch == statepoint_batch(i)) then
+          ! Create state point file
+#ifdef HDF5
+          call hdf5_write_state_point()
+#else
+          call write_state_point()
+#endif
+          exit
+       end if
+    end do
+
     ! Turn tallies on once inactive cycles are complete
     if (current_batch == n_inactive) then
        tallies_on = .true.
        call timer_stop(time_inactive)
        call timer_start(time_active)
+       call setup_active_tallies()
     end if
 
   end subroutine finalize_batch

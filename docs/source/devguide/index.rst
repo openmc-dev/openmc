@@ -14,3 +14,4 @@ as debugging.
 
     structures
     xml-fortran
+    statepoint

@@ -22,6 +22,9 @@ module particle_header
      real(8) :: xyz(3)
      real(8) :: uvw(3)
 
+     ! Is this level rotated?
+     logical :: rotated = .false.
+
      ! Pointer to next (more local) set of coordinates
      type(LocalCoord), pointer :: next => null()
   end type LocalCoord
@@ -60,7 +63,7 @@ module particle_header
      real(8)    :: wgt_bank      ! weight of fission sites banked
 
      ! Energy grid data
-     integer    :: IE            ! index on energy grid
+     integer    :: index_grid    ! index on unionized energy grid
      real(8)    :: interp        ! interpolation factor for energy grid
 
      ! Indices for various arrays

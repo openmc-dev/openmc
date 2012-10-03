@@ -17,11 +17,6 @@ contains
 
 #ifdef HDF5
     use hdf5
-#endif
-
-    character(len=100) :: filename = 'cmfd.h5'
-
-#ifdef HDF5
     integer(Fortran_Integer) :: hdf5_err
 #endif
 
@@ -86,13 +81,10 @@ contains
     cmfd % indices(1:3) = mesh_ % dimension(1:3) ! sets spatial dimensions
 
     ! get number of energy groups
-    if (len_trim(mesh_ % energy) > 0) then
-      call split_string(mesh_ % energy, words, n_words)
-      ng = n_words - 1
-      if(.not.allocated(cmfd%egrid)) allocate(cmfd%egrid(n_words))
-      do j = 1,n_words
-        cmfd%egrid(j) = str_to_real(words(j))
-      end do
+    if (associated(mesh_ % energy)) then
+      ng = size(mesh_ % energy) 
+      if(.not.allocated(cmfd%egrid)) allocate(cmfd%egrid(ng))
+      cmfd%egrid = mesh_ % energy 
       cmfd % indices(4) = ng  ! sets energy group dimension
     else
       if(.not.allocated(cmfd%egrid)) allocate(cmfd%egrid(2))
@@ -195,10 +187,9 @@ contains
     integer :: i           ! loop counter
     integer :: j           ! loop counter
     integer :: id          ! user-specified identifier
-    integer :: index       ! index in mesh array
+    integer :: i_mesh      ! index in mesh array
     integer :: n           ! size of arrays in mesh specification
-    integer :: ng=1        ! number of energy groups (default 1)
-    integer :: n_words     ! number of words read
+    integer :: ng          ! number of energy groups (default 1)
     integer :: n_filters   ! number of filters
     integer :: filters(N_FILTER_TYPES) ! temp list of filters
     character(MAX_LINE_LEN) :: filename
@@ -299,21 +290,18 @@ contains
       t % id = i
 
       ! set mesh filter mesh id
-      t % mesh = n_user_meshes + 1 
+      t % mesh = n_user_meshes + 1
       t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) +        &
      &                                 product(m % dimension)
       n_filters = n_filters + 1
       filters(n_filters) = FILTER_MESH
 
       ! read and set incoming energy mesh filter
-      if (len_trim(mesh_ % energy) > 0) then
-        call split_string(mesh_ % energy,words,n_words)
-        ng = n_words
-        allocate(t % energy_in(n_words))
-        do j = 1,n_words
-          t % energy_in(j) = str_to_real(words(j))
-        end do
-        t % n_filter_bins(FILTER_ENERGYIN) = n_words - 1
+      if (associated(mesh_ % energy)) then
+        ng = size(mesh_ % energy)
+        allocate(t % energy_in(ng))
+        t % energy_in = mesh_ % energy 
+        t % n_filter_bins(FILTER_ENERGYIN) = ng - 1
         n_filters = n_filters + 1
         filters(n_filters) = FILTER_ENERGYIN
       end if
@@ -331,15 +319,15 @@ contains
         allocate(t % filters(n_filters))
         t % filters = filters(1:n_filters)
 
-        ! allocate macro reactions
+        ! allocate scoring bins 
         allocate(t % score_bins(4))
         t % n_score_bins = 4
 
         ! set macro_bins
-        t % score_bins(1) % scalar = SCORE_FLUX
-        t % score_bins(2) % scalar = SCORE_TOTAL
-        t % score_bins(3) % scalar = SCORE_SCATTER_1
-        t % score_bins(4) % scalar = SCORE_DIFFUSION
+        t % score_bins(1) = SCORE_FLUX
+        t % score_bins(2) = SCORE_TOTAL
+        t % score_bins(3) = SCORE_SCATTER_1
+        t % score_bins(4) = SCORE_DIFFUSION
 
         ! Increment the appropriate index and set pointer
         analog_tallies(n_user_analog_tallies + 1) = i
@@ -353,13 +341,11 @@ contains
         t % type = TALLY_VOLUME
 
         ! read and set outgoing energy mesh filter
-        if (len_trim(mesh_ % energy) > 0) then
-          call split_string(mesh_ % energy, words, n_words)
-          allocate(t % energy_out(n_words))
-          do j = 1, n_words
-            t % energy_out(j) = str_to_real(words(j))
-          end do
-          t % n_filter_bins(FILTER_ENERGYOUT) = n_words - 1
+        if (associated(mesh_ % energy)) then
+          ng = size(mesh_ % energy)
+          allocate(t % energy_out(ng))
+          t % energy_out = mesh_ % energy 
+          t % n_filter_bins(FILTER_ENERGYOUT) = ng - 1
           n_filters = n_filters + 1
           filters(n_filters) = FILTER_ENERGYOUT
         end if
@@ -374,8 +360,8 @@ contains
         t % n_score_bins = 2
 
         ! set macro_bins
-        t % score_bins(1) % scalar = SCORE_NU_SCATTER
-        t % score_bins(2) % scalar = SCORE_NU_FISSION
+        t % score_bins(1) = SCORE_NU_SCATTER
+        t % score_bins(2) = SCORE_NU_FISSION
 
         ! Increment the appropriate index and set pointer
         analog_tallies(n_user_analog_tallies + 2) = i
@@ -395,7 +381,7 @@ contains
         t % n_score_bins = 1
 
         ! set macro bins
-        t % score_bins(1) % scalar = SCORE_CURRENT
+        t % score_bins(1) = SCORE_CURRENT
         t % type = TALLY_SURFACE_CURRENT
 
         ! since the number of bins for the mesh filter was already set
@@ -406,8 +392,8 @@ contains
 
         ! get pointer to mesh
         id = t % mesh
-        index = dict_get_key(mesh_dict, id)
-        m => meshes(index)
+        i_mesh = dict_get_key(mesh_dict, id)
+        m => meshes(i_mesh)
 
         ! we need to increase the dimension by one since we also need
         ! currents coming into and out of the boundary mesh cells.

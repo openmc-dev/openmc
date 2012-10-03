@@ -292,6 +292,10 @@ subroutine xml_open( info, fname, mustread )
       k = 1
       do while ( k >= 1 )
          read( info%lun, '(a)', iostat = ierr ) info%line
+
+         ! If we encounter a blank line, skip it and read the next line
+         if (len_trim(info%line) == 0) cycle
+
          call xml_remove_tabs_(info%line)
          if ( ierr == 0 ) then
             info%line = adjustl(  info%line )

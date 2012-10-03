@@ -29,6 +29,7 @@ contains
   subroutine read_input_xml()
 
     call read_settings_xml()
+    call read_cross_sections_xml()
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
@@ -45,6 +46,7 @@ contains
 
     use xml_data_settings_t
 
+    integer :: i ! loop index
     integer :: n
     integer :: coeffs_reqd
     logical :: file_exists
@@ -69,9 +71,11 @@ contains
     verbosity_ = 0
     energy_grid_ = "union"
     seed_ = 0_8
-    write_source_ = ""
     no_reduce_ = ""
-    source_ % type = ""
+    source_ % file = ''
+    source_ % space % type = ''
+    source_ % angle % type = ''
+    source_ % energy % type = ''
 
     ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
@@ -95,35 +99,69 @@ contains
        path_cross_sections = trim(cross_sections_)
     end if
 
+    ! Make sure that either criticality or fixed source was specified
+    if (criticality_ % batches == 0 .and. fixed_source_ % batches == 0) then
+       message = "Number of batches on <criticality> or <fixed_source> " &
+            // "tag was zero."
+       call fatal_error()
+    end if
+
     ! Criticality information
-    if (criticality % batches > 0) then
-       if (run_mode /= MODE_PLOTTING) run_mode = MODE_CRITICALITY
+    if (criticality_ % batches > 0) then
+       ! Set run mode
+       if (run_mode == NONE) run_mode = MODE_CRITICALITY
 
        ! Check number of particles
-       if (len_trim(criticality % particles) == 0) then
+       if (len_trim(criticality_ % particles) == 0) then
           message = "Need to specify number of particles per cycles."
           call fatal_error()
        end if
 
        ! If the number of particles was specified as a command-line argument, we
        ! don't set it here
-       if (n_particles == 0) n_particles = str_to_int(criticality % particles)
+       if (n_particles == 0) n_particles = str_to_int(criticality_ % particles)
 
-       ! Copy cycle information
-       n_batches     = criticality % batches
-       n_inactive    = criticality % inactive
+       ! Copy batch and generation information
+       n_batches     = criticality_ % batches
+       n_inactive    = criticality_ % inactive
        n_active      = n_batches - n_inactive
-       gen_per_batch = criticality % generations_per_batch
+       gen_per_batch = criticality_ % generations_per_batch
 
-       ! Check number of active batches
-       if (n_active <= 0) then
-          message = "Number of active batches must be greater than 0."
+       ! Allocate array for batch keff and entropy
+       allocate(k_batch(n_batches))
+       allocate(entropy(n_batches))
+    end if
+
+    ! Fixed source calculation information
+    if (fixed_source_ % batches > 0) then
+       ! Set run mode
+       if (run_mode == NONE) run_mode = MODE_FIXEDSOURCE
+
+       ! Check number of particles
+       if (len_trim(fixed_source_ % particles) == 0) then
+          message = "Need to specify number of particles per cycles."
           call fatal_error()
        end if
-    else
-       message = "Need to specify number of batches with <batches> tag."
+
+       ! If the number of particles was specified as a command-line argument, we
+       ! don't set it here
+       if (n_particles == 0) n_particles = str_to_int(fixed_source_ % particles)
+
+       ! Copy batch information
+       n_batches     = fixed_source_ % batches
+       n_active      = fixed_source_ % batches
+       n_inactive    = 0
+       gen_per_batch = 1
+    end if
+
+    ! Check number of active batches
+    if (n_active <= 0) then
+       message = "Number of active batches must be greater than 0."
        call fatal_error()
     end if
+
+    ! Turn on tallies if no inactive batches
+    if (n_inactive == 0) tallies_on = .true.
 
     ! Copy random number seed if specified
     if (seed_ > 0) seed = seed_
@@ -145,38 +183,158 @@ contains
     ! Verbosity
     if (verbosity_ > 0) verbosity = verbosity_
 
-    if (len(source_ % type) > 0) then
-       ! Determine external source type
-       type = source_ % type
-       call lower_case(type)
-       select case (type)
-       case ('box')
-          external_source % type = SRC_BOX
-          coeffs_reqd = 6
-       case ('point')
-          external_source % type = SRC_POINT
-          coeffs_reqd = 3
-       case ('file')
-          external_source % type = SRC_FILE
-          external_source % path = trim(source_ % path)
-       case default
-          message = "Invalid source type: " // trim(source_ % type)
-          call fatal_error()
-       end select
+    ! ==========================================================================
+    ! EXTERNAL SOURCE
 
-       ! Coefficients for external surface
-       if (type /= 'file') then
-          n = size(source_ % coeffs)
+    if (source_ % file /= '') then
+       ! Copy path of source file
+       path_source = source_ % file
+       
+       ! Check if source file exists
+       inquire(FILE=path_source, EXIST=file_exists)
+       if (.not. file_exists) then
+          message = "Binary source file '" // trim(path_source) // &
+               "' does not exist!"
+          call fatal_error()
+       end if
+
+    else
+       ! Spatial distribution for external source
+       if (source_ % space % type /= '') then
+          ! Read type of spatial distribution
+          type = source_ % space % type
+          call lower_case(type)
+          select case (type)
+          case ('box')
+             external_source % type_space = SRC_SPACE_BOX
+             coeffs_reqd = 6
+          case ('point')
+             external_source % type_space = SRC_SPACE_POINT
+             coeffs_reqd = 3
+          case default
+             message = "Invalid spatial distribution for external source: " &
+                  // trim(source_ % space % type)
+             call fatal_error()
+          end select
+
+          ! Determine number of parameters specified
+          if (associated(source_ % space % parameters)) then
+             n = size(source_ % space % parameters)
+          else
+             n = 0
+          end if
+
+          ! Read parameters for spatial distribution
           if (n < coeffs_reqd) then
-             message = "Not enough coefficients specified for external source."
+             message = "Not enough parameters specified for spatial " &
+                  // "distribution of external source."
              call fatal_error()
           elseif (n > coeffs_reqd) then
-             message = "Too many coefficients specified for external source."
+             message = "Too many parameters specified for spatial " &
+                  // "distribution of external source."
              call fatal_error()
-          else
-             allocate(external_source % values(n))
-             external_source % values = source_ % coeffs
+          elseif (n > 0) then
+             allocate(external_source % params_space(n))
+             external_source % params_space = source_ % space % parameters
           end if
+       else
+          message = "No spatial distribution specified for external source!"
+          call fatal_error()
+       end if
+
+       ! Determine external source angular distribution
+       if (source_ % angle % type /= '') then
+          ! Read type of angular distribution
+          type = source_ % angle % type
+          call lower_case(type)
+          select case (type)
+          case ('isotropic')
+             external_source % type_angle = SRC_ANGLE_ISOTROPIC
+             coeffs_reqd = 0
+          case ('monodirectional')
+             external_source % type_angle = SRC_ANGLE_MONO
+             coeffs_reqd = 3
+          case ('tabular')
+             external_source % type_angle = SRC_ANGLE_TABULAR
+          case default
+             message = "Invalid angular distribution for external source: " &
+                  // trim(source_ % angle % type)
+             call fatal_error()
+          end select
+
+          ! Determine number of parameters specified
+          if (associated(source_ % angle % parameters)) then
+             n = size(source_ % angle % parameters)
+          else
+             n = 0
+          end if
+
+          ! Read parameters for angle distribution
+          if (n < coeffs_reqd) then
+             message = "Not enough parameters specified for angle " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > coeffs_reqd) then
+             message = "Too many parameters specified for angle " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > 0) then
+             allocate(external_source % params_angle(n))
+             external_source % params_angle = source_ % angle % parameters
+          end if
+       else
+          ! Set default angular distribution isotropic
+          external_source % type_angle  = SRC_ANGLE_ISOTROPIC
+       end if
+
+       ! Determine external source energy distribution
+       if (source_ % energy % type /= '') then
+          ! Read type of energy distribution
+          type = source_ % energy % type
+          call lower_case(type)
+          select case (type)
+          case ('monoenergetic')
+             external_source % type_energy = SRC_ENERGY_MONO
+             coeffs_reqd = 1
+          case ('maxwell')
+             external_source % type_energy = SRC_ENERGY_MAXWELL
+             coeffs_reqd = 1
+          case ('watt')
+             external_source % type_energy = SRC_ENERGY_WATT
+             coeffs_reqd = 2
+          case ('tabular')
+             external_source % type_energy = SRC_ENERGY_TABULAR
+          case default
+             message = "Invalid energy distribution for external source: " &
+                  // trim(source_ % energy % type)
+             call fatal_error()
+          end select
+
+          ! Determine number of parameters specified
+          if (associated(source_ % energy % parameters)) then
+             n = size(source_ % energy % parameters)
+          else
+             n = 0
+          end if
+
+          ! Read parameters for energy distribution
+          if (n < coeffs_reqd) then
+             message = "Not enough parameters specified for energy " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > coeffs_reqd) then
+             message = "Too many parameters specified for energy " &
+                  // "distribution of external source."
+             call fatal_error()
+          elseif (n > 0) then
+             allocate(external_source % params_energy(n))
+             external_source % params_energy = source_ % energy % parameters
+          end if
+       else
+          ! Set default energy distribution to Watt fission spectrum
+          external_source % type_energy = SRC_ENERGY_WATT
+          allocate(external_source % params_energy(2))
+          external_source % params_energy = (/ 0.988_8, 2.249_8 /)
        end if
     end if
 
@@ -303,18 +461,61 @@ contains
             ufs_mesh % dimension(2), ufs_mesh % dimension(3)))
     end if
 
-    ! Check if the user has specified to write binary source file
-    if (trim(write_source_) == 'on') write_source = .true.
+    ! Check if the user has specified to write state points
+    if (size(state_point_) > 0) then
+       ! Determine number of batches at which to store state points
+       n_state_points = size(state_point_(1) % batches)
+
+       if (n_state_points > 0) then
+          ! User gave specific batches to write state points
+          allocate(statepoint_batch(n_state_points))
+          statepoint_batch = state_point_(1) % batches
+
+       elseif (state_point_(1) % interval /= 0) then
+          ! User gave an interval for writing state points
+          n_state_points = n_batches / state_point_(1) % interval
+          allocate(statepoint_batch(n_state_points))
+          statepoint_batch = (/ (state_point_(1) % interval * i, i = 1, &
+               n_state_points) /)
+       else
+          ! If neither were specified, write state point at last batch
+          n_state_points = 1
+          allocate(statepoint_batch(n_state_points))
+          statepoint_batch(1) = n_batches
+       end if
+
+       ! Check if the user has specified to write binary source file
+       if (trim(state_point_(1) % source_separate) == 'on') &
+            source_separate = .true.
+    else
+       ! If no <state_point> tag was present, by default write state point at
+       ! last batch only
+       n_state_points = 1
+       allocate(statepoint_batch(n_state_points))
+       statepoint_batch(1) = n_batches
+    end if
 
     ! Check if the user has specified to not reduce tallies at the end of every
     ! batch
     if (trim(no_reduce_) == 'on') reduce_tallies = .false.
 
-    ! Determine number of realizations
-    if (reduce_tallies) then
-       n_realizations = n_active
-    else
-       n_realizations = n_active * n_procs
+    ! Check if the user has specified to use confidence intervals for
+    ! uncertainties rather than standard deviations
+    if (trim(confidence_intervals_) == 'on') confidence_intervals = .true.
+
+    ! Check for output options
+    if (associated(output_)) then
+       do i = 1, size(output_)
+          call lower_case(output_(i))
+          select case (output_(i))
+          case ('summary')
+             output_summary = .true.
+          case ('cross_sections')
+             output_xs = .true.
+          case ('tallies')
+             output_tallies = .true.
+          end select
+       end do
     end if
        
     ! check for cmfd run
@@ -337,6 +538,7 @@ contains
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
+    real(8) :: phi, theta, psi
     logical :: file_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
@@ -362,8 +564,16 @@ contains
     ! Parse geometry.xml file
     call read_xml_file_geometry_t(filename)
 
-    ! Allocate cells array
+    ! Get number of <cell> tags
     n_cells = size(cell_)
+
+    ! Check for no cells
+    if (n_cells == 0) then
+       message = "No cells found in geometry.xml!"
+       call fatal_error()
+    end if
+
+    ! Allocate cells array
     allocate(cells(n_cells))
 
     n_universes = 0
@@ -373,11 +583,31 @@ contains
        ! Copy data into cells
        c % id       = cell_(i) % id
        c % universe = cell_(i) % universe
-       c % material = cell_(i) % material
        c % fill     = cell_(i) % fill
 
+       ! Read material
+       word = cell_(i) % material
+       call lower_case(word)
+       select case(word)
+       case ('void')
+          c % material = MATERIAL_VOID
+
+       case ('')
+          ! This case is called if no material was specified
+          c % material = 0
+
+       case default
+          c % material = int(str_to_int(word), 4)
+
+          ! Check for error
+          if (c % material == ERROR_INT) then
+             message = "Invalid material specified on cell " // to_str(c % id)
+             call fatal_error()
+          end if
+       end select
+
        ! Check to make sure that either material or fill was specified
-       if (c % material == 0 .and. c % fill == 0) then
+       if (c % material == NONE .and. c % fill == NONE) then
           message = "Neither material nor fill was specified for cell " // & 
                trim(to_str(c % id))
           call fatal_error()
@@ -385,7 +615,7 @@ contains
 
        ! Check to make sure that both material and fill haven't been
        ! specified simultaneously
-       if (c % material /= 0 .and. c % fill /= 0) then
+       if (c % material /= NONE .and. c % fill /= NONE) then
           message = "Cannot specify material and fill simultaneously"
           call fatal_error()
        end if
@@ -402,6 +632,64 @@ contains
        c % n_surfaces = n
        allocate(c % surfaces(n))
        c % surfaces = cell_(i) % surfaces
+
+       ! Rotation matrix
+       if (associated(cell_(i) % rotation)) then
+          ! Rotations can only be applied to cells that are being filled with
+          ! another universe
+          if (c % fill == NONE) then
+             message = "Cannot apply a rotation to cell " // trim(to_str(&
+                  c % id)) // " because it is not filled with another universe"
+             call fatal_error()
+          end if
+
+          ! Read number of rotation parameters
+          n = size(cell_(i) % rotation)
+          if (n /= 3) then
+             message = "Incorrect number of rotation parameters on cell " // &
+                  to_str(c % id)
+             call fatal_error()
+          end if
+
+          ! Copy rotation angles in x,y,z directions
+          phi   = -cell_(i) % rotation(1) * PI/180.0
+          theta = -cell_(i) % rotation(2) * PI/180.0
+          psi   = -cell_(i) % rotation(3) * PI/180.0
+          
+          ! Calculate rotation matrix based on angles given
+          allocate(c % rotation(3,3))
+          c % rotation = reshape((/ &
+               cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta), &
+               -cos(phi)*sin(psi) + sin(phi)*sin(theta)*cos(psi), &
+               cos(phi)*cos(psi) + sin(phi)*sin(theta)*sin(psi), &
+               sin(phi)*cos(theta), &
+               sin(phi)*sin(psi) + cos(phi)*sin(theta)*cos(psi), &
+               -sin(phi)*cos(psi) + cos(phi)*sin(theta)*sin(psi), &
+               cos(phi)*cos(theta) /), (/ 3,3 /))
+       end if
+
+       ! Translation vector
+       if (associated(cell_(i) % translation)) then
+          ! Translations can only be applied to cells that are being filled with
+          ! another universe
+          if (c % fill == NONE) then
+             message = "Cannot apply a translation to cell " // trim(to_str(&
+                  c % id)) // " because it is not filled with another universe"
+             call fatal_error()
+          end if
+
+          ! Read number of translation parameters
+          n = size(cell_(i) % translation)
+          if (n /= 3) then
+             message = "Incorrect number of translation parameters on cell " &
+                  // to_str(c % id)
+             call fatal_error()
+          end if
+
+          ! Copy translation vector
+          allocate(c % translation(3))
+          c % translation = cell_(i) % translation
+       end if
 
        ! Add cell to dictionary
        call dict_add_key(cell_dict, c % id, i)
@@ -424,8 +712,16 @@ contains
     ! ==========================================================================
     ! READ SURFACES FROM GEOMETRY.XML
 
-    ! Allocate cells array
+    ! Get number of <surface> tags
     n_surfaces = size(surface_)
+
+    ! Check for no surfaces
+    if (n_surfaces == 0) then
+       message = "No surfaces found in geometry.xml!"
+       call fatal_error()
+    end if
+
+    ! Allocate cells array
     allocate(surfaces(n_surfaces))
 
     do i = 1, n_surfaces
@@ -602,17 +898,20 @@ contains
 
     use xml_data_materials_t
 
-    integer :: i           ! loop index for materials
-    integer :: j           ! loop index for nuclides
-    integer :: n           ! number of nuclides
-    real(8) :: val         ! value entered for density
-    logical :: file_exists ! does materials.xml exist?
-    logical :: sum_density ! density is taken to be sum of nuclide densities
-    character(3)            :: default_xs ! default xs identifier (e.g. 70c)
-    character(12)           :: name       ! name of nuclide
-    character(MAX_WORD_LEN) :: units      ! units on density
-    character(MAX_LINE_LEN) :: filename   ! absolute path to materials.xml
-    type(Material),    pointer :: m => null()
+    integer :: i             ! loop index for materials
+    integer :: j             ! loop index for nuclides
+    integer :: n             ! number of nuclides
+    integer :: index_list    ! index in xs_listings array
+    integer :: index_nuclide ! index in nuclides
+    integer :: index_sab     ! index in sab_tables
+    real(8) :: val           ! value entered for density
+    logical :: file_exists   ! does materials.xml exist?
+    logical :: sum_density   ! density is taken to be sum of nuclide densities
+    character(12) :: name       ! name of isotope, e.g. 92235.03c
+    character(12) :: alias      ! alias of nuclide, e.g. U-235.03c
+    character(MAX_WORD_LEN) :: units    ! units on density
+    character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
+    type(Material),    pointer :: mat => null()
     type(nuclide_xml), pointer :: nuc => null()
     type(sab_xml),     pointer :: sab => null()
 
@@ -630,7 +929,7 @@ contains
 
     ! Initialize default cross section variable
     default_xs_ = ""
-
+    
     ! Parse materials.xml file
     call read_xml_file_materials_t(filename)
 
@@ -641,11 +940,18 @@ contains
     n_materials = size(material_)
     allocate(materials(n_materials))
 
+    ! Initialize count for number of nuclides/S(a,b) tables
+    index_nuclide = 0
+    index_sab = 0
+
     do i = 1, n_materials
-       m => materials(i)
+       mat => materials(i)
 
        ! Copy material id
-       m % id = material_(i) % id
+       mat % id = material_(i) % id
+
+       ! =======================================================================
+       ! READ AND PARSE <density> TAG
 
        ! Copy value and units
        val   = material_(i) % density % value
@@ -663,7 +969,7 @@ contains
           sum_density = .false.
           if (val <= ZERO) then
              message = "Need to specify a positive density on material " // &
-                  trim(to_str(m % id)) // "."
+                  trim(to_str(mat % id)) // "."
              call fatal_error()
           end if
 
@@ -671,44 +977,45 @@ contains
           call lower_case(units)
           select case(trim(units))
           case ('g/cc', 'g/cm3')
-             m % density = -val
+             mat % density = -val
           case ('kg/m3')
-             m % density = -0.001 * val
+             mat % density = -0.001 * val
           case ('atom/b-cm')
-             m % density = val
+             mat % density = val
           case ('atom/cm3', 'atom/cc')
-             m % density = 1.0e-24 * val
+             mat % density = 1.0e-24 * val
           case default
              message = "Unkwown units '" // trim(material_(i) % density % units) &
-                  // "' specified on material " // trim(to_str(m % id))
+                  // "' specified on material " // trim(to_str(mat % id))
              call fatal_error()
           end select
        end if
        
+       ! =======================================================================
+       ! READ AND PARSE <nuclide> TAGS
+
        ! Check to ensure material has at least one nuclide
        if (.not. associated(material_(i) % nuclides)) then
           message = "No nuclides specified on material " // &
-               trim(to_str(m % id))
+               trim(to_str(mat % id))
           call fatal_error()
        end if
 
        ! allocate arrays in Material object
        n = size(material_(i) % nuclides)
-       m % n_nuclides = n
-       allocate(m % names(n))
-       allocate(m % nuclide(n))
-       allocate(m % xs_listing(n))
-       allocate(m % atom_density(n))
-       allocate(m % atom_percent(n))
+       mat % n_nuclides = n
+       allocate(mat % names(n))
+       allocate(mat % nuclide(n))
+       allocate(mat % atom_density(n))
 
-       do j = 1, n
+       do j = 1, mat % n_nuclides
           ! Combine nuclide identifier and cross section and copy into names
           nuc => material_(i) % nuclides(j)
 
           ! Check for empty name on nuclide
           if (len_trim(nuc % name) == 0) then
              message = "No name specified on nuclide in material " // &
-                  trim(to_str(m % id))
+                  trim(to_str(mat % id))
              call fatal_error()
           end if
 
@@ -716,7 +1023,7 @@ contains
           if (len_trim(nuc % xs) == 0) then
              if (default_xs == '') then
                 message = "No cross section specified for nuclide in material " &
-                     // trim(to_str(m % id))
+                     // trim(to_str(mat % id))
                 call fatal_error()
              else
                 nuc % xs = default_xs
@@ -725,7 +1032,39 @@ contains
 
           ! copy full name
           name = trim(nuc % name) // "." // trim(nuc % xs)
-          m % names(j) = name
+          mat % names(j) = name
+
+          ! Check that this nuclide is listed in the cross_sections.xml file
+          if (.not. dict_has_key(xs_listing_dict, name)) then
+             message = "Could not find nuclide " // trim(name) // &
+                  " in cross_sections.xml file!"
+             call fatal_error()
+          end if
+
+          ! Check to make sure cross-section is continuous energy neutron table
+          n = len_trim(name)
+          if (name(n:n) /= 'c') then
+             message = "Cross-section table " // trim(name) // & 
+                  " is not a continuous-energy neutron table."
+             call fatal_error()
+          end if
+
+          ! Find xs_listing and set the name/alias according to the listing
+          index_list = dict_get_key(xs_listing_dict, name)
+          name       = xs_listings(index_list) % name
+          alias      = xs_listings(index_list) % alias
+
+          ! If this nuclide hasn't been encountered yet, we need to add its name
+          ! and alias to the nuclide_dict
+          if (.not. dict_has_key(nuclide_dict, name)) then
+             index_nuclide    = index_nuclide + 1
+             mat % nuclide(j) = index_nuclide
+
+             call dict_add_key(nuclide_dict, name,  index_nuclide)
+             call dict_add_key(nuclide_dict, alias, index_nuclide)
+          else
+             mat % nuclide(j) = dict_get_key(nuclide_dict, name)
+          end if
 
           ! Check if no atom/weight percents were specified or if both atom and
           ! weight percents were specified
@@ -741,30 +1080,73 @@ contains
 
           ! Copy atom/weight percents
           if (nuc % ao /= ZERO) then
-             m % atom_percent(j) = nuc % ao
+             mat % atom_density(j) = nuc % ao
           else
-             m % atom_percent(j) = -nuc % wo
-          end if
-
-          ! Read S(a,b) table information
-          if (size(material_(i) % sab) == 1) then
-             sab => material_(i) % sab(1)
-             name = trim(sab % name) // "." // trim(sab % xs)
-             m % sab_name = name
-             m % has_sab_table = .true.
-          elseif (size(material_(i) % sab) > 1) then
-             message = "Cannot have multiple S(a,b) tables on a single material."
-             call fatal_error()
+             mat % atom_density(j) = -nuc % wo
           end if
        end do
 
+       ! Check to make sure either all atom percents or all weight percents are
+       ! given
+       if (.not. (all(mat % atom_density > ZERO) .or. & 
+            all(mat % atom_density < ZERO))) then
+          message = "Cannot mix atom and weight percents in material " // &
+               to_str(mat % id)
+          call fatal_error()
+       end if
+
        ! Determine density if it is a sum value
-       if (sum_density) m % density = sum(m % atom_percent)
+       if (sum_density) mat % density = sum(mat % atom_density)
+
+       ! =======================================================================
+       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
+
+       if (size(material_(i) % sab) == 1) then
+          ! Get pointer to S(a,b) table
+          sab => material_(i) % sab(1)
+
+          ! Determine name of S(a,b) table
+          name = trim(sab % name) // "." // trim(sab % xs)
+          mat % sab_name = name
+
+          ! Check that this nuclide is listed in the cross_sections.xml file
+          if (.not. dict_has_key(xs_listing_dict, name)) then
+             message = "Could not find S(a,b) table " // trim(name) // &
+                  " in cross_sections.xml file!"
+             call fatal_error()
+          end if
+          mat % has_sab_table = .true.
+
+          ! Find index in xs_listing and set the name and alias according to the
+          ! listing
+          index_list = dict_get_key(xs_listing_dict, name)
+          name       = xs_listings(index_list) % name
+          alias      = xs_listings(index_list) % alias
+
+          ! If this S(a,b) table hasn't been encountered yet, we need to add its
+          ! name and alias to the sab_dict
+          if (.not. dict_has_key(sab_dict, name)) then
+             index_sab       = index_sab + 1
+             mat % sab_table = index_sab
+
+             call dict_add_key(sab_dict, name,  index_sab)
+             call dict_add_key(sab_dict, alias, index_sab)
+          else
+             mat % sab_table = dict_get_key(sab_dict, name)
+          end if
+
+       elseif (size(material_(i) % sab) > 1) then
+          message = "Cannot have multiple S(a,b) tables on a single material."
+          call fatal_error()
+       end if
 
        ! Add material to dictionary
-       call dict_add_key(material_dict, m % id, i)
-
+       call dict_add_key(material_dict, mat % id, i)
     end do
+
+    ! Set total number of nuclides and S(a,b) tables
+    n_nuclides_total = index_nuclide
+    n_sab_tables     = index_sab
 
   end subroutine read_materials_xml
 
@@ -791,7 +1173,6 @@ contains
     logical :: file_exists   ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    character(MAX_WORD_LEN) :: words(MAX_WORDS)
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
 
@@ -800,7 +1181,6 @@ contains
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
        ! Since a tallies.xml file is optional, no error is issued here
-       n_tallies = 0
        return
     end if
     
@@ -814,9 +1194,9 @@ contains
     ! ==========================================================================
     ! DETERMINE SIZE OF ARRAYS AND ALLOCATE
 
-    ! Check for meshes and allocate
+    ! Check for user meshes
     if (.not. associated(mesh_)) then
-       n_meshes = 0
+       n_user_meshes = 0
     else
        n_user_meshes = size(mesh_)
        if (cmfd_run) then
@@ -826,10 +1206,13 @@ contains
        end if
        allocate(meshes(n_meshes))
     end if
+n_meshes = n_user_meshes
+    ! Allocate mesh array
+    if (n_meshes > 0) allocate(meshes(n_meshes))
 
-    ! Allocate tallies array
+    ! Check for user tallies
     if (.not. associated(tally_)) then
-       n_tallies = 0
+       n_user_tallies = 0
        message = "No tallies present in tallies.xml file!"
        call warning()
     else
@@ -841,6 +1224,9 @@ contains
        end if
        allocate(tallies(n_tallies))
     end if
+n_tallies = n_user_tallies
+    ! Allocate tally array
+    if (n_tallies > 0) allocate(tallies(n_tallies))
 
     ! Check for <assume_separate> setting
     if (separate_ == 'yes') assume_separate = .true.
@@ -881,6 +1267,13 @@ contains
        allocate(m % width(n))
        allocate(m % upper_right(n))
 
+       ! Check that dimensions are all greater than zero
+       if (any(mesh_(i) % dimension <= 0)) then
+          message = "All entries on the <dimension> element for a tally mesh &
+               &must be positive."
+          call fatal_error()
+       end if
+
        ! Read dimensions in each direction
        m % dimension = mesh_(i) % dimension
 
@@ -892,16 +1285,59 @@ contains
        end if
        m % lower_left = mesh_(i) % lower_left
 
-       ! Read mesh widths
-       if (size(mesh_(i) % width) /= size(mesh_(i) % lower_left)) then
-          message = "Number of entries on <width> must be the same as the &
-               &number of entries on <lower_left>."
+       ! Make sure either upper-right or width was specified
+       if (associated(mesh_(i) % upper_right) .and. &
+            associated(mesh_(i) % width)) then
+          message = "Cannot specify both <upper_right> and <width> on a &
+               &tally mesh."
           call fatal_error()
        end if
-       m % width = mesh_(i) % width
 
-       ! Set upper right coordinate
-       m % upper_right = m % lower_left + m % dimension * m % width
+       ! Make sure either upper-right or width was specified
+       if (.not. associated(mesh_(i) % upper_right) .and. &
+            .not. associated(mesh_(i) % width)) then
+          message = "Must specify either <upper_right> and <width> on a &
+               &tally mesh."
+          call fatal_error()
+       end if
+
+       if (associated(mesh_(i) % width)) then
+          ! Check to ensure width has same dimensions
+          if (size(mesh_(i) % width) /= size(mesh_(i) % lower_left)) then
+             message = "Number of entries on <width> must be the same as the &
+                  &number of entries on <lower_left>."
+             call fatal_error()
+          end if
+
+          ! Check for negative widths
+          if (any(mesh_(i) % width < ZERO)) then
+             message = "Cannot have a negative <width> on a tally mesh."
+             call fatal_error()
+          end if
+
+          ! Set width and upper right coordinate
+          m % width = mesh_(i) % width
+          m % upper_right = m % lower_left + m % dimension * m % width
+
+       elseif (associated(mesh_(i) % upper_right)) then
+          ! Check to ensure width has same dimensions
+          if (size(mesh_(i) % upper_right) /= size(mesh_(i) % lower_left)) then
+             message = "Number of entries on <upper_right> must be the same as &
+                  &the number of entries on <lower_left>."
+             call fatal_error()
+          end if
+
+          ! Check that upper-right is above lower-left
+          if (any(mesh_(i) % upper_right < mesh_(i) % lower_left)) then
+             message = "The <upper_right> coordinates must be greater than the &
+                  &<lower_left> coordinates on a tally mesh."
+             call fatal_error()
+          end if
+
+          ! Set width and upper right coordinate
+          m % upper_right = mesh_(i) % upper_right
+          m % width = (m % upper_right - m % lower_left) / m % dimension
+       end if
 
        ! Set volume fraction
        m % volume_frac = ONE/real(product(m % dimension),8)
@@ -943,15 +1379,18 @@ contains
          t % estimator = ESTIMATOR_TRACKLENGTH
        end if
 
-       ! set tally reset property
-       t % reset = tally_(i) % reset
-
        ! Copy material id
        t % id = tally_(i) % id
+       
+       ! Copy tally labe
+       t % label = tally_(i) % label
+
+       ! =======================================================================
+       ! READ DATA FOR FILTERS
 
        ! Check to make sure that both cells and surfaces were not specified
-       if (len_trim(tally_(i) % filters % cell) > 0 .and. &
-            len_trim(tally_(i) % filters % surface) > 0) then
+       if (associated(tally_(i) % filters % cell) .and. &
+            associated(tally_(i) % filters % surface)) then
           message = "Cannot specify both cell and surface filters for tally " &
                // trim(to_str(t % id))
           call fatal_error()
@@ -960,11 +1399,12 @@ contains
        ! TODO: Parse logical expressions instead of just each word
 
        ! Read cell filter bins
-       if (len_trim(tally_(i) % filters % cell) > 0) then
-          call split_string(tally_(i) % filters % cell, words, n_words)
+       if (associated(tally_(i) % filters % cell)) then
+          n_words = size(tally_(i) % filters % cell)
           allocate(t % cell_bins(n_words))
           do j = 1, n_words
-             t % cell_bins(j) % scalar = int(str_to_int(words(j)),4)
+             t % cell_bins(j) = int(str_to_int(&
+                  tally_(i) % filters % cell(j)),4)
           end do
           t % n_filter_bins(FILTER_CELL) = n_words
 
@@ -973,11 +1413,12 @@ contains
        end if
 
        ! Read surface filter bins
-       if (len_trim(tally_(i) % filters % surface) > 0) then
-          call split_string(tally_(i) % filters % surface, words, n_words)
+       if (associated(tally_(i) % filters % surface)) then
+          n_words = size(tally_(i) % filters % surface)
           allocate(t % surface_bins(n_words))
           do j = 1, n_words
-             t % surface_bins(j) % scalar = int(str_to_int(words(j)),4)
+             t % surface_bins(j) = int(str_to_int(&
+                  tally_(i) % filters % surface(j)),4)
           end do
           t % n_filter_bins(FILTER_SURFACE) = n_words
 
@@ -986,11 +1427,12 @@ contains
        end if
 
        ! Read universe filter bins
-       if (len_trim(tally_(i) % filters % universe) > 0) then
-          call split_string(tally_(i) % filters % universe, words, n_words)
+       if (associated(tally_(i) % filters % universe)) then
+          n_words = size(tally_(i) % filters % universe)
           allocate(t % universe_bins(n_words))
           do j = 1, n_words
-             t % universe_bins(j) % scalar = int(str_to_int(words(j)),4)
+             t % universe_bins(j) = int(str_to_int(&
+                  tally_(i) % filters % universe(j)),4)
           end do
           t % n_filter_bins(FILTER_UNIVERSE) = n_words
 
@@ -999,11 +1441,12 @@ contains
        end if
 
        ! Read material filter bins
-       if (len_trim(tally_(i) % filters % material) > 0) then
-          call split_string(tally_(i) % filters % material, words, n_words)
+       if (associated(tally_(i) % filters % material)) then
+          n_words = size(tally_(i) % filters % material)
           allocate(t % material_bins(n_words))
           do j = 1, n_words
-             t % material_bins(j) % scalar = int(str_to_int(words(j)),4)
+             t % material_bins(j) = int(str_to_int(&
+                  tally_(i) % filters % material(j)),4)
           end do
           t % n_filter_bins(FILTER_MATERIAL) = n_words
 
@@ -1032,11 +1475,12 @@ contains
        end if
 
        ! Read birth region filter bins
-       if (len_trim(tally_(i) % filters % cellborn) > 0) then
-          call split_string(tally_(i) % filters % cellborn, words, n_words)
+       if (associated(tally_(i) % filters % cellborn)) then
+          n_words = size(tally_(i) % filters % cellborn)
           allocate(t % cellborn_bins(n_words))
           do j = 1, n_words
-             t % cellborn_bins(j) % scalar = int(str_to_int(words(j)),4)
+             t % cellborn_bins(j) = int(str_to_int(&
+                  tally_(i) % filters % cellborn(j)),4)
           end do
           t % n_filter_bins(FILTER_CELLBORN) = n_words
 
@@ -1074,97 +1518,166 @@ contains
        allocate(t % filters(n_filters))
        t % filters = filters(1:n_filters)
 
-       ! Read macro reactions
-       if (len_trim(tally_(i) % scores) > 0) then
-          call split_string(tally_(i) % scores, words, n_words)
+       ! =======================================================================
+       ! READ DATA FOR NUCLIDES
+
+       if (associated(tally_(i) % nuclides)) then
+          if (tally_(i) % nuclides(1) == 'all') then
+             ! Handle special case <nuclides>all</nuclides>
+             allocate(t % nuclide_bins(n_nuclides_total + 1))
+
+             ! Set bins to 1, 2, 3, ..., n_nuclides_total, -1
+             t % nuclide_bins(1:n_nuclides_total) = &
+                  (/ (j, j=1, n_nuclides_total) /)
+             t % nuclide_bins(n_nuclides_total + 1) = -1
+
+             ! Set number of nuclide bins
+             t % n_nuclide_bins = n_nuclides_total + 1
+
+             ! Set flag so we can treat this case specially
+             t % all_nuclides = .true.
+          else
+             ! Any other case, e.g. <nuclides>U-235 Pu-239</nuclides>
+             n_words = size(tally_(i) % nuclides)
+             allocate(t % nuclide_bins(n_words))
+             do j = 1, n_words
+                ! Check if total material was specified
+                if (tally_(i) % nuclides(j) == 'total') then
+                   t % nuclide_bins(j) = -1
+                   cycle
+                end if
+
+                ! Check if xs specifier was given
+                if (ends_with(tally_(i) % nuclides(j), 'c')) then
+                   word = tally_(i) % nuclides(j)
+                else
+                   word = trim(tally_(i) % nuclides(j)) // "." // default_xs
+                end if
+
+                ! Check to make sure nuclide specified is in problem
+                if (.not. dict_has_key(nuclide_dict, word)) then
+                   message = "Could not find nuclide " // trim(word) // &
+                        " from tally " // trim(to_str(t % id)) // &
+                        " in cross_sections.xml file."
+                   call fatal_error()
+                end if
+                
+                ! Set bin to index in nuclides array
+                t % nuclide_bins(j) = dict_get_key(nuclide_dict, word)
+             end do
+
+             ! Set number of nuclide bins
+             t % n_nuclide_bins = n_words
+          end if
+
+       else
+          ! No <nuclides> were specified -- create only one bin will be added
+          ! for the total material.
+          allocate(t % nuclide_bins(1))
+          t % nuclide_bins(1) = -1
+          t % n_nuclide_bins = 1
+       end if
+
+       ! =======================================================================
+       ! READ DATA FOR SCORES
+
+       if (associated(tally_(i) % scores)) then
+          n_words = size(tally_(i) % scores)
           allocate(t % score_bins(n_words))
           do j = 1, n_words
-             word = words(j)
+             word = tally_(i) % scores(j)
              call lower_case(word)
              select case (trim(word))
              case ('flux')
-                t % score_bins(j) % scalar = SCORE_FLUX
+                ! Prohibit user from tallying flux for an individual nuclide
+                if (.not. (t % n_nuclide_bins == 1 .and. &
+                     t % nuclide_bins(1) == -1)) then
+                   message = "Cannot tally flux for an individual nuclide."
+                   call fatal_error()
+                end if
+
+                t % score_bins(j) = SCORE_FLUX
                 if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally flux with an outgoing energy filter."
                    call fatal_error()
                 end if
              case ('total')
-                t % score_bins(j) % scalar = SCORE_TOTAL
+                t % score_bins(j) = SCORE_TOTAL
                 if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally total reaction rate with an &
                         &outgoing energy filter."
                    call fatal_error()
                 end if
              case ('scatter')
-                t % score_bins(j) % scalar = SCORE_SCATTER
+                t % score_bins(j) = SCORE_SCATTER
              case ('nu-scatter')
-                t % score_bins(j) % scalar = SCORE_NU_SCATTER
+                t % score_bins(j) = SCORE_NU_SCATTER
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('scatter-1')
-                t % score_bins(j) % scalar = SCORE_SCATTER_1
+                t % score_bins(j) = SCORE_SCATTER_1
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('scatter-2')
-                t % score_bins(j) % scalar = SCORE_SCATTER_2
+                t % score_bins(j) = SCORE_SCATTER_2
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('scatter-3')
-                t % score_bins(j) % scalar = SCORE_SCATTER_3
+                t % score_bins(j) = SCORE_SCATTER_3
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case('transport')
-                t % score_bins(j) % scalar = SCORE_TRANSPORT
+                t % score_bins(j) = SCORE_TRANSPORT
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('diffusion')
-                t % score_bins(j) % scalar = SCORE_DIFFUSION
+                t % score_bins(j) = SCORE_DIFFUSION
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('n1n')
-                t % score_bins(j) % scalar = SCORE_N_1N
+                t % score_bins(j) = SCORE_N_1N
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('n2n')
-                t % score_bins(j) % scalar = SCORE_N_2N
+                t % score_bins(j) = SCORE_N_2N
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('n3n')
-                t % score_bins(j) % scalar = SCORE_N_3N
+                t % score_bins(j) = SCORE_N_3N
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('n4n')
-                t % score_bins(j) % scalar = SCORE_N_4N
+                t % score_bins(j) = SCORE_N_4N
 
                 ! Set tally estimator to analog
                 t % estimator = ESTIMATOR_ANALOG
              case ('absorption')
-                t % score_bins(j) % scalar = SCORE_ABSORPTION
+                t % score_bins(j) = SCORE_ABSORPTION
                 if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally absorption rate with an outgoing &
                         &energy filter."
                    call fatal_error()
                 end if
              case ('fission')
-                t % score_bins(j) % scalar = SCORE_FISSION
+                t % score_bins(j) = SCORE_FISSION
                 if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
                    message = "Cannot tally fission rate with an outgoing &
                         &energy filter."
                    call fatal_error()
                 end if
              case ('nu-fission')
-                t % score_bins(j) % scalar = SCORE_NU_FISSION
+                t % score_bins(j) = SCORE_NU_FISSION
              case ('current')
-                t % score_bins(j) % scalar = SCORE_CURRENT
+                t % score_bins(j) = SCORE_CURRENT
                 t % type = TALLY_SURFACE_CURRENT
 
                 ! Check to make sure that current is the only desired response
@@ -1198,11 +1711,41 @@ contains
                 end if
 
              case default
-                message = "Unknown scoring function: " // trim(words(j))
+                message = "Unknown scoring function: " // &
+                     trim(tally_(i) % scores(j))
                 call fatal_error()
              end select
           end do
           t % n_score_bins = n_words
+       else
+          message = "No <scores> specified on tally " // trim(to_str(t % id)) &
+               // "."
+          call fatal_error()
+       end if
+
+       ! Check if user specified estimator
+       if (len_trim(tally_(i) % estimator) > 0) then
+          select case(tally_(i) % estimator)
+          case ('analog')
+             t % estimator = ESTIMATOR_ANALOG
+
+          case ('tracklength', 'track-length', 'pathlength', 'path-length')
+             ! If the estimator was set to an analog estimator, this means the
+             ! tally needs post-collision information
+             if (t % estimator == ESTIMATOR_ANALOG) then
+                message = "Cannot use track-length estimator for tally " &
+                     // to_str(t % id)
+                call fatal_error()
+             end if
+
+             ! Set estimator to track-length estimator
+             t % estimator = ESTIMATOR_TRACKLENGTH
+
+          case default
+             message = "Invalid estimator '" // trim(tally_(i) % estimator) &
+                  // "' on tally " // to_str(t % id)
+             call fatal_error()
+          end select
        end if
 
        ! Count number of tallies by type

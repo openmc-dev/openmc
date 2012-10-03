@@ -6,9 +6,10 @@ Theory and Methodology
 
 .. toctree::
     :numbered:
-    :maxdepth: 2
+    :maxdepth: 3
 
     introduction
+    criticality
     statistics
     geometry
     physics

@@ -38,6 +38,7 @@ clean:
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	sed -i -e 's/div.body/div.content/' $(BUILDDIR)/html/_static/basic.css
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 

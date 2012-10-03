@@ -1,0 +1,99 @@
+element settings {
+  element confidence_intervals { ( "on" | "off" ) }? &
+
+  (
+    element criticality {
+      (element batches { xsd:int } | attribute batches { xsd:int }) &
+      (element inactive { xsd:int } | attribute inactive { xsd:int }) &
+      (element particles { xsd:int } | attribute particles { xsd:int }) &
+      (element generations_per_batch { xsd:int } | attribute generations_per_batch { xsd:int })?
+    } |
+    element fixed_source {
+      (element batches { xsd:int } | attribute batches { xsd:int }) &
+      (element particles { xsd:int } | attribute particles { xsd:int })
+    }
+  ) &
+
+  element cross_sections { xsd:string { maxLength = "255" } }? &
+
+  element cutoff {
+    (element weight { xsd:double } | attribute weight { xsd:double })? &
+    (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })?
+  }? &
+
+  element energy_grid { xsd:string { maxLength = "7" } }? &
+
+  element entropy {
+    (element dimension { list { xsd:int+ } } | 
+      attribute dimension { list { xsd:int+ } })? &
+    (element lower_left { list { xsd:double+ } } | 
+      attribute lower_left { list { xsd:double+ } }) &
+    (element upper_right { list { xsd:double+ } } | 
+      attribute upper_right { list { xsd:double+ } })
+  }? &
+
+  element no_reduce { ( "off" | "on" ) }? &
+
+  element output { list { 
+    ( "summary" | "cross_sections" | "tallies" )+ } }? &
+
+  element ptables { ( "off" | "on" ) }? &
+
+  element seed { xsd:integer }? &
+
+  element source {
+    element file { xsd:string { maxLength = "255" } }? &
+    element space {
+      (element type { xsd:string { maxLength = "10" } } |
+        attribute type { xsd:string { maxLength = "10" } }) &
+      (element length { xsd:int } | attribute length { xsd:int })? &
+      (element interpolation { xsd:string { maxLength = "10" } } |
+        attribute interplation { xsd:string { maxLength = "10" } })? &
+      (element parameters { list { xsd:double+ } } |
+        attribute parameters { list { xsd:double+ } })?
+    }? &
+    element angle {
+      (element type { xsd:string { maxLength = "10" } } |
+        attribute type { xsd:string { maxLength = "10" } }) &
+      (element length { xsd:int } | attribute length { xsd:int })? &
+      (element interpolation { xsd:string { maxLength = "10" } } |
+        attribute interplation { xsd:string { maxLength = "10" } })? &
+      (element parameters { list { xsd:double+ } } |
+        attribute parameters { list { xsd:double+ } })?
+    }? &
+    element energy {
+      (element type { xsd:string { maxLength = "10" } } |
+        attribute type { xsd:string { maxLength = "10" } }) &
+      (element length { xsd:int } | attribute length { xsd:int })? &
+      (element interpolation { xsd:string { maxLength = "10" } } |
+        attribute interplation { xsd:string { maxLength = "10" } })? &
+      (element parameters { list { xsd:double+ } } |
+        attribute parameters { list { xsd:double+ } })?
+    }?
+  }? &
+
+  element state_point {
+    (
+      (element batches { list { xsd:int+ } } |
+        attribute batches { list { xsd:int+ } }) |
+      (element interval { xsd:int} | attribute interval { xsd:int })
+    ) &
+    (element source_separate { ( "off" | "on" ) } | 
+      attribute source_separate { ( "off" | "on" ) })?
+  }? &
+
+  element survival_biasing { ( "off" | "on" ) }? &
+
+  element trace { list { xsd:int+ } }? &
+
+  element verbosity { xsd:int }? &
+
+  element uniform_fs{
+    (element dimension { list { xsd:int+ } } | 
+      attribute dimension { list { xsd:int+ } }) &
+    (element lower_left { list { xsd:double+ } } | 
+      attribute lower_left { list { xsd:double+ } }) &
+    (element upper_right { list { xsd:double+ } } | 
+      attribute upper_right { list { xsd:double+ } })
+  }?
+}

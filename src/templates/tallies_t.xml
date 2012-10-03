@@ -8,28 +8,28 @@
     <component name="type" type="word" length="12" />
     <component name="dimension" type="integer-array" />
     <component name="lower_left" type="double-array" />
+    <component name="upper_right" type="double-array" />
     <component name="width" type="double-array" />
   </typedef>
 
   <typedef name="filter_xml">
-    <component name="cell" type="word" length="250" default="''" />
-    <component name="surface" type="word" length="250" default="''" />
-    <component name="universe" type="word" length="250" default="''" />
-    <component name="material" type="word" length="250" default="''" />
+    <component name="cell" type="word-array" length="20" />
+    <component name="surface" type="word-array" length="20" />
+    <component name="universe" type="word-array" length="20" />
+    <component name="material" type="word-array" length="20" />
     <component name="mesh" type="integer" default="0" />
-    <component name="cellborn" type="word" length="250" default="''" />
+    <component name="cellborn" type="word-array" length="20" />
     <component name="energy" type="double-array" />
     <component name="energyout" type="double-array" />
   </typedef>
 
   <typedef name="tally_xml">
     <component name="id" type="integer" />
-    <component name="estimator" type="word" length="250" default="''" />
+    <component name="label" type="word" length="52" default="''" />
+    <component name="estimator" type="word" length="12" default="''" />
     <component name="filters" type="filter_xml" />
-    <component name="scores" type="word" length="250" default="''" />
-    <component name="reactions" type="word" length="250" default="''" />
-    <component name="nuclides" type="word" length="250" default="''" />
-    <component name="reset" type="logical" default=".false." />
+    <component name="scores" type="word-array" length="20" />
+    <component name="nuclides" type="word-array" length="12" />
   </typedef>
 
   <variable name="mesh_" tag="mesh" type="mesh_xml" dimension="1" />

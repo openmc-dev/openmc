@@ -4,6 +4,7 @@ module intercycle
 
   use error,           only: fatal_error, warning
   use global
+  use math,            only: t_percentile
   use mesh,            only: count_bank_sites
   use mesh_header,     only: StructuredMesh
   use output,          only: write_message
@@ -338,13 +339,13 @@ contains
        ! Normalize to total weight of bank sites
        entropy_p = entropy_p / sum(entropy_p)
 
-       entropy = 0
+       entropy(current_batch) = ZERO
        do i = 1, m % dimension(1)
           do j = 1, m % dimension(2)
              do k = 1, m % dimension(3)
                 if (entropy_p(1,i,j,k) > ZERO) then
-                   entropy = entropy - entropy_p(1,i,j,k) * &
-                        log(entropy_p(1,i,j,k))/log(2.0)
+                   entropy(current_batch) = entropy(current_batch) - &
+                        entropy_p(1,i,j,k) * log(entropy_p(1,i,j,k))/log(TWO)
                 end if
              end do
           end do
@@ -360,8 +361,9 @@ contains
 
   subroutine calculate_keff()
 
-    integer :: n       ! active batch number
     real(8) :: temp(2) ! used to reduce sum and sum_sq
+    real(8) :: alpha   ! significance level for CI
+    real(8) :: t_value ! t-value for confidence intervals
 
     message = "Calculate batch keff..."
     call write_message(8)
@@ -369,22 +371,25 @@ contains
     ! =========================================================================
     ! SINGLE-BATCH ESTIMATE OF K-EFFECTIVE
 
-    if (.not. tallies_on) k_batch = global_tallies(K_ANALOG) % value
+    if (.not. tallies_on) k_batch(current_batch) = global_tallies(K_ANALOG) % value
 
 #ifdef MPI
-    ! Reduce value of k_batch if running in parallel
-    if (master) then
-       call MPI_REDUCE(MPI_IN_PLACE, k_batch, 1, MPI_REAL8, MPI_SUM, 0, &
-            MPI_COMM_WORLD, mpi_err)
-    else
-       ! Receive buffer not significant at other processors
-       call MPI_REDUCE(k_batch, temp, 1, MPI_REAL8, MPI_SUM, 0, &
-            MPI_COMM_WORLD, mpi_err)
+    if ((.not. tallies_on) .or. (.not. reduce_tallies)) then
+       ! Reduce value of k_batch if running in parallel
+       if (master) then
+          call MPI_REDUCE(MPI_IN_PLACE, k_batch(current_batch), 1, MPI_REAL8, &
+               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+       else
+          ! Receive buffer not significant at other processors
+          call MPI_REDUCE(k_batch(current_batch), temp, 1, MPI_REAL8, &
+               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+       end if
     end if
 #endif
 
     ! Normalize single batch estimate of k
-    k_batch = k_batch/(n_particles * gen_per_batch)
+    k_batch(current_batch) = k_batch(current_batch) / &
+         (n_particles * gen_per_batch)
 
     if (tallies_on) then
        ! =======================================================================
@@ -395,24 +400,26 @@ contains
           ! need to perform any more reductions and just take the values from
           ! global_tallies directly
 
-          ! Define number of realizations
-          n = current_batch - n_inactive
-
           ! Sample mean of keff
-          keff = global_tallies(K_ANALOG) % sum / n
+          keff = global_tallies(K_ANALOG) % sum / n_realizations
 
-          if (n > 1) then
+          if (n_realizations > 1) then
+             if (confidence_intervals) then
+                ! Calculate t-value for confidence intervals
+                alpha = ONE - CONFIDENCE_LEVEL
+                t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+             else
+                t_value = ONE
+             end if
+
              ! Standard deviation of the sample mean of k
-             keff_std = sqrt((global_tallies(K_ANALOG) % sum_sq/n - &
-                  keff*keff)/(n - 1))
+             keff_std = t_value * sqrt((global_tallies(K_ANALOG) % sum_sq / &
+                  n_realizations - keff * keff) / (n_realizations - 1))
           end if
        else
           ! In this case, no reduce was ever done on global_tallies. Thus, we
           ! need to reduce the values in sum and sum^2 to get the sample mean
           ! and its standard deviation
-
-          ! Define number of realizations
-          n = (current_batch - n_inactive) * n_procs
 
 #ifdef MPI
           if (current_batch /= n_batches) then
@@ -428,11 +435,20 @@ contains
 #endif
 
           ! Sample mean of k
-          keff = temp(1) / n
+          keff = temp(1) / n_realizations
           
-          if (n > 1) then
+          if (n_realizations > 1) then
+             if (confidence_intervals) then
+                ! Calculate t-value for confidence intervals
+                alpha = ONE - CONFIDENCE_LEVEL
+                t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+             else
+                t_value = ONE
+             end if
+
              ! Standard deviation of the sample mean of k
-             keff_std = sqrt((temp(2)/n - keff*keff)/(n - 1))
+             keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) / &
+                  (n_realizations - 1))
           end if
        end if
 
@@ -441,7 +457,7 @@ contains
        ! INACTIVE BATCHES
 
        ! Set keff
-       keff = k_batch
+       keff = k_batch(current_batch)
 
        ! Reset tally values
        global_tallies(:) % value = ZERO

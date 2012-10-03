@@ -64,6 +64,10 @@ module geometry_header
           & surfaces(:)    ! List of surfaces bounding cell -- note that
                            ! parentheses, union, etc operators will be listed
                            ! here too
+
+     ! Rotation matrix and translation vector
+     real(8), allocatable :: rotation(:,:)
+     real(8), allocatable :: translation(:)
   end type Cell
 
   ! array index of universe 0

@@ -1,6 +1,6 @@
 program = openmc
 
-templates = $(wildcard xml-fortran/templates/*.o)
+templates = $(wildcard templates/*.o)
 xml_fort = xml-fortran/xmlparse.o \
            xml-fortran/read_xml_primitives.o \
            xml-fortran/write_xml_primitives.o
@@ -15,7 +15,6 @@ include OBJECTS
 # User Options
 #===============================================================================
 
-F90X = /home/bherman/petsc/release-ifort/bin/mpif90 
 COMPILER = petsc
 DEBUG    = no
 PROFILE  = no
@@ -80,7 +79,7 @@ ifeq ($(COMPILER),intel)
 
   # Optimization
   ifeq ($(OPTIMIZE),yes)
-    F90FLAGS += -O3 -ipo
+    F90FLAGS += -O3
   endif
 endif
 
@@ -192,7 +191,7 @@ endif
 # Use MPI for parallelism
 
 ifeq ($(USE_MPI),yes)
-  MPI_ROOT = /opt/mpich2/1.4.1-$(COMPILER)
+  MPI_ROOT = /opt/mpich2/1.5b2-$(COMPILER)
   F90 = $(MPI_ROOT)/bin/mpif90
   F90FLAGS += -DMPI
 endif
@@ -231,14 +230,14 @@ endif
 
 all: xml-fortran $(program)
 xml-fortran:
-	cd xml-fortran; make MACHINE=$(MACHINE) F90=$(F90X) F90FLAGS="$(F90XFLAGS)"
-	cd xml-fortran/templates; make F90=$(F90X) F90FLAGS="$(F90XFLAGS)"
+	cd xml-fortran; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
+	cd templates; make F90=$(F90) F90FLAGS="$(F90FLAGS)"
 $(program): $(objects)
 	$(F90) $(objects) $(templates) $(xml_fort) -o $@ $(LDFLAGS)
 distclean: clean
 	cd xml-fortran; make clean
 	cd xml-fortran/templates; make clean
-clean::
+clean:
 	@rm -f *.o *.mod $(program)
 neat:
 	@rm -f *.o *.mod
@@ -251,7 +250,7 @@ neat:
 .PHONY: all xml-fortran clean neat distclean 
 
 %.o: %.F90
-	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Ixml-fortran/templates -c $<
+	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Itemplates -c $<
 
 #===============================================================================
 # Dependencies

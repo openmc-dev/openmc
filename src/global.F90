@@ -5,7 +5,8 @@ module global
   use bank_header,      only: Bank
   use cmfd_header
   use constants
-  use datatypes_header, only: DictionaryII, DictionaryCI
+  use datatypes,        only: list_delete
+  use datatypes_header, only: DictionaryII, DictionaryCI, ListInt
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
@@ -90,6 +91,9 @@ module global
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.
 
+  ! Default xs identifier (e.g. 70c)
+  character(3):: default_xs
+
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
@@ -107,34 +111,46 @@ module global
   !   3) track-length estimate of k-eff
   !   4) leakage fraction
 
-  type(TallyScore) :: global_tallies(N_GLOBAL_TALLIES)
+  type(TallyScore), target :: global_tallies(N_GLOBAL_TALLIES)
 
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
 
-  ! user-defined tally information
-  integer :: n_user_meshes              = 0 ! # of structured meshes
-  integer :: n_user_tallies             = 0 ! # of user-defined tallies
-  integer :: n_user_analog_tallies      = 0 ! # of analog tallies
-  integer :: n_user_tracklength_tallies = 0 ! # of track-length tallies
-  integer :: n_user_current_tallies     = 0 ! # of surface current tallies
-
-  ! total tally information (includes CMFD possibly)
   integer :: n_meshes              = 0 ! # of structured meshes
-  integer :: n_tallies             = 0 ! # of total tallies
+  integer :: n_tallies             = 0 ! # of tallies
   integer :: n_analog_tallies      = 0 ! # of analog tallies
   integer :: n_tracklength_tallies = 0 ! # of track-length tallies
   integer :: n_current_tallies     = 0 ! # of surface current tallies
 
   ! Normalization for statistics
-  integer :: n_realizations ! # of independent realizations
-  real(8) :: total_weight   ! total starting particle weight in realization
+  integer :: n_realizations = 0 ! # of independent realizations
+  real(8) :: total_weight       ! total starting particle weight in realization
 
   ! Flag for turning tallies on
-  logical :: tallies_on
+  logical :: tallies_on = .false.
 
   ! Assume all tallies are spatially distinct
   logical :: assume_separate = .false.
+
+  ! Use confidence intervals for results instead of standard deviations
+  logical :: confidence_intervals = .false.
+
+  ! ============================================================================
+  ! USER TALLY-RELATED VARIABLES
+
+  integer :: n_user_meshes              = 0 ! # of structured user meshes
+  integer :: n_user_tallies             = 0 ! # of user tallies
+  integer :: n_user_analog_tallies      = 0 ! # of user analog tallies
+  integer :: n_user_tracklength_tallies = 0 ! # of user tracklength tallies
+  integer :: n_user_current_tallies     = 0 ! # of user current tallies
+
+  !=============================================================================
+  ! ACTIVE TALLY-RELATED VARIABLES
+
+  type(ListInt), pointer :: active_analog_tallies => null()
+  type(ListInt), pointer :: active_tracklength_tallies => null()
+  type(ListInt), pointer :: active_current_tallies => null()
+  type(ListInt), pointer :: active_tallies => null()
 
   ! ============================================================================
   ! CRITICALITY SIMULATION VARIABLES
@@ -160,13 +176,13 @@ module global
   integer(8) :: maxwork      ! maximum number of particles per processor
 
   ! Temporary k-effective values
-  real(8) :: k_batch    ! single batch estimate of k
+  real(8), allocatable :: k_batch(:) ! batch estimates of k
   real(8) :: keff = ONE ! average k over active cycles
   real(8) :: keff_std   ! standard deviation of average k
 
   ! Shannon entropy
   logical :: entropy_on = .false.
-  real(8) :: entropy                         ! value of shannon entropy
+  real(8), allocatable :: entropy(:)         ! shannon entropy at each batch
   real(8), allocatable :: entropy_p(:,:,:,:) ! % of source sites in each cell
   type(StructuredMesh), pointer :: entropy_mesh
 
@@ -176,17 +192,22 @@ module global
   real(8), allocatable :: source_frac(:,:,:,:)
 
   ! Write source at end of simulation
-  logical :: write_source = .false.
+  logical :: source_separate = .false.
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
 
-  integer :: n_procs     ! number of processes
-  integer :: rank        ! rank of process
-  logical :: master      ! master process?
-  logical :: mpi_enabled ! is MPI in use and initialized?
-  integer :: mpi_err     ! MPI error code
-  integer :: MPI_BANK    ! MPI datatype for fission bank
+  ! The defaults set here for the number of processors, rank, and master and
+  ! mpi_enabled flag are for when MPI is not being used at all, i.e. a serial
+  ! run. In this case, these variables are still used at times.
+
+  integer :: n_procs     = 1       ! number of processes
+  integer :: rank        = 0       ! rank of process
+  logical :: master      = .true.  ! master process?
+  logical :: mpi_enabled = .false. ! is MPI in use and initialized?
+  integer :: mpi_err               ! MPI error code
+  integer :: MPI_BANK              ! MPI datatype for fission bank
+  integer :: MPI_TALLYSCORE        ! MPI datatype for TallyScore
 
   ! No reduction at end of batch
   logical :: reduce_tallies = .true.
@@ -218,18 +239,26 @@ module global
   ! HDF5 VARIABLES
 
 #ifdef HDF5
-  integer(HID_T) :: hdf5_output_file ! identifier for output file
-  integer        :: hdf5_err         ! error flag 
+  integer(HID_T) :: hdf5_output_file  ! identifier for output file
+  integer(HID_T) :: hdf5_tallyscore_t ! Compound type for TallyScore
+  integer(HID_T) :: hdf5_integer8_t   ! type for integer(8)
+  integer        :: hdf5_err          ! error flag 
 #endif
 
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
   ! Mode to run in (fixed source, criticality, plotting, etc)
-  integer :: run_mode = MODE_CRITICALITY
+  integer :: run_mode = NONE
+
+  ! Restart run
+  logical :: restart_run = .false.
+  integer :: restart_batch
 
   character(MAX_FILE_LEN) :: path_input          ! Path to input file
   character(MAX_FILE_LEN) :: path_cross_sections ! Path to cross_sections.xml
+  character(MAX_FILE_LEN) :: path_source = ''    ! Path to binary source
+  character(MAX_FILE_LEN) :: path_state_point    ! Path to binary state point
 
   ! Message used in message/warning/fatal_error
   character(MAX_LINE_LEN) :: message
@@ -332,6 +361,15 @@ module global
   ! tolerance on keff to run cmfd
   real :: cmfd_keff_tol = 0.005
 
+  ! Information about state points to be written
+  integer :: n_state_points = 0
+  integer, allocatable :: statepoint_batch(:)
+
+  ! Various output options
+  logical :: output_summary = .false.
+  logical :: output_xs      = .false.
+  logical :: output_tallies = .true.
+
 contains
 
 !===============================================================================
@@ -372,6 +410,12 @@ contains
 
     ! Deallocate cmfd
     call deallocate_cmfd(cmfd)
+
+    ! Deallocate tally node lists
+    call list_delete(active_analog_tallies)
+    call list_delete(active_tracklength_tallies)
+    call list_delete(active_current_tallies)
+    call list_delete(active_tallies)
 
   end subroutine free_memory
 

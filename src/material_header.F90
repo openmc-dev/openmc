@@ -10,11 +10,9 @@ module material_header
      integer              :: id              ! unique identifier
      integer              :: n_nuclides      ! number of nuclides
      character(12), allocatable :: names(:)  ! isotope names
-     integer, allocatable :: xs_listing(:)   ! index in xs_listings list
      integer, allocatable :: nuclide(:)      ! index in nuclides array
      real(8)              :: density         ! total atom density in atom/b-cm
      real(8), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
-     real(8), allocatable :: atom_percent(:) ! atom/weight percent (negative for weight)
 
      ! S(a,b) data references
      logical       :: has_sab_table = .false.

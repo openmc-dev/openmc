@@ -8,6 +8,7 @@ module output
   use endf,            only: reaction_name
   use geometry_header, only: Cell, Universe, Surface, BASE_UNIVERSE
   use global
+  use math,            only: t_percentile
   use mesh_header,     only: StructuredMesh
   use particle_header, only: LocalCoord
   use plot_header
@@ -28,9 +29,6 @@ contains
 !===============================================================================
 
   subroutine title()
-
-    character(10) :: date_
-    character(10) :: time_
 
     write(UNIT=OUTPUT_UNIT, FMT='(/11(A/))') &
          '       .d88888b.                             888b     d888  .d8888b.', &
@@ -55,33 +53,32 @@ contains
 #endif
 
     ! Write the date and time
-    call date_and_time(DATE=date_, TIME=time_)
-    date_ = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8)
-    time_ = time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",5X,A,1X,A)') &
-         trim(date_), trim(time_)
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",5X,A)') &
+         time_stamp()
 
-    ! Write information to summary file
-    call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
-    write(UNIT=UNIT_SUMMARY, FMT=*) &
-         "Copyright:     2011-2012 Massachusetts Institute of Technology"
-    write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
-         "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
-#ifdef GIT_SHA1
-    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Git SHA1:",6X,A)') GIT_SHA1
-#endif
-    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A,1X,A)') &
-         trim(date_), trim(time_)
-
-    ! Write information on number of processors
 #ifdef MPI
-    write(UNIT=OUTPUT_UNIT, FMT='(1X,A)') '     MPI Processes: ' // &
-         trim(to_str(n_procs))
-    write(UNIT=UNIT_SUMMARY, FMT='(1X,"MPI Processes:",1X,A)') &
+    ! Write number of processors
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"MPI Processes:",1X,A)') &
          trim(to_str(n_procs))
 #endif
 
   end subroutine title
+
+!===============================================================================
+! TIME_STAMP returns the current date and time in a formatted string
+!===============================================================================
+
+  function time_stamp() result(current_time)
+
+    character(19) :: current_time ! ccyy-mm-dd hh:mm:ss
+    character(8)  :: date_        ! ccyymmdd
+    character(10) :: time_        ! hhmmss.sss
+
+    call date_and_time(DATE=date_, TIME=time_)
+    current_time = date_(1:4) // "-" // date_(5:6) // "-" // date_(7:8) // &
+         " " // time_(1:2) // ":" // time_(3:4) // ":" // time_(5:6)
+
+  end function time_stamp
 
 !===============================================================================
 ! HEADER displays a header block according to a specified level. If no level is
@@ -167,6 +164,8 @@ contains
        write(OUTPUT_UNIT,*)
        write(OUTPUT_UNIT,*) 'Options:'
        write(OUTPUT_UNIT,*) '  -p, --plot      Run in plotting mode'
+       write(OUTPUT_UNIT,*) '  -r, --restart   Restart a previous run'
+       write(OUTPUT_UNIT,*) '  -t, --tallies   Write tally results from state point'
        write(OUTPUT_UNIT,*) '  -v, --version   Show version information'
        write(OUTPUT_UNIT,*) '  -?, --help      Show this message'
     end if
@@ -268,7 +267,7 @@ contains
     ! Display weight, energy, grid index, and interpolation factor
     write(ou,*) '  Weight = ' // to_str(p % wgt)
     write(ou,*) '  Energy = ' // to_str(p % E)
-    write(ou,*) '  IE = ' // to_str(p % IE)
+    write(ou,*) '  Energy grid index = ' // to_str(p % index_grid)
     write(ou,*) '  Interpolation factor = ' // to_str(p % interp)
     write(ou,*)
 
@@ -286,7 +285,7 @@ contains
     write(ou,*) '    MT = ' // to_str(rxn % MT)
     write(ou,*) '    Q-value = ' // to_str(rxn % Q_value)
     write(ou,*) '    Multiplicity = ' // to_str(rxn % multiplicity)
-    write(ou,*) '    Starting index = ' // to_str(rxn % IE)
+    write(ou,*) '    Threshold = ' // to_str(rxn % threshold)
     if (rxn % has_energy_dist) then
        write(ou,*) '    Energy: Law ' // to_str(rxn % edist % law)
     end if
@@ -344,6 +343,8 @@ contains
     ! Write information on material
     if (c % material == 0) then
        write(unit_,*) '    Material = NONE'
+    elseif (c % material == MATERIAL_VOID) then
+       write(unit_,*) '    Material = Void'
     else
        m => materials(c % material)
        write(unit_,*) '    Material = ' // to_str(m % id)
@@ -610,11 +611,27 @@ contains
     ! Write user-specified id of tally
     write(unit_,*) 'Tally ' // to_str(t % id)
 
+    ! Write the type of tally
+    select case(t % type)
+    case (TALLY_VOLUME)
+       write(unit_,*) '    Type: Volume'
+    case (TALLY_SURFACE_CURRENT)
+       write(unit_,*) '    Type: Surface Current'
+    end select
+
+    ! Write the estimator used
+    select case(t % estimator)
+    case(ESTIMATOR_ANALOG)
+       write(unit_,*) '    Estimator: Analog'
+    case(ESTIMATOR_TRACKLENGTH)
+       write(unit_,*) '    Estimator: Track-length'
+    end select
+
     ! Write any cells bins if present
     if (t % n_filter_bins(FILTER_CELL) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_CELL)
-          id = t % cell_bins(i) % scalar
+          id = t % cell_bins(i)
           c => cells(id)
           string = trim(string) // ' ' // trim(to_str(c % id))
        end do
@@ -625,7 +642,7 @@ contains
     if (t % n_filter_bins(FILTER_SURFACE) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_SURFACE)
-          id = t % surface_bins(i) % scalar
+          id = t % surface_bins(i)
           s => surfaces(id)
           string = trim(string) // ' ' // trim(to_str(s % id))
        end do
@@ -636,18 +653,18 @@ contains
     if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_UNIVERSE)
-          id = t % universe_bins(i) % scalar
+          id = t % universe_bins(i)
           u => universes(id)
           string = trim(string) // ' ' // trim(to_str(u % id))
        end do
-       write(unit_, *) '    Material Bins:' // trim(string)
+       write(unit_, *) '    Universe Bins:' // trim(string)
     end if
 
     ! Write any material bins if present
     if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_MATERIAL)
-          id = t % material_bins(i) % scalar
+          id = t % material_bins(i)
           m => materials(id)
           string = trim(string) // ' ' // trim(to_str(m % id))
        end do
@@ -670,7 +687,7 @@ contains
     if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
        string = ""
        do i = 1, t % n_filter_bins(FILTER_CELLBORN)
-          id = t % cellborn_bins(i) % scalar
+          id = t % cellborn_bins(i)
           c => cells(id)
           string = trim(string) // ' ' // trim(to_str(c % id))
        end do
@@ -697,27 +714,62 @@ contains
        write(unit_,*) '    Outgoing Energy Bins:' // trim(string)
     end if
 
-    ! Write any score bins if present
-    if (t % n_score_bins > 0) then
-       string = ""
-       do i = 1, t % n_score_bins
-          select case (t % score_bins(i) % scalar)
-          case (SCORE_FLUX)
-             string = trim(string) // ' flux'
-          case (SCORE_TOTAL)
-             string = trim(string) // ' total'
-          case (SCORE_SCATTER)
-             string = trim(string) // ' scatter'
-          case (SCORE_ABSORPTION)
-             string = trim(string) // ' absorption'
-          case (SCORE_FISSION)
-             string = trim(string) // ' fission'
-          case (SCORE_NU_FISSION)
-             string = trim(string) // ' nu-fission'
-          end select
-       end do
-       write(unit_,*) '    Scores:' // trim(string)
-    end if
+    ! Write nuclides bins
+    write(unit_,fmt='(1X,A)',advance='no') '    Nuclide Bins:'
+    do i = 1, t % n_nuclide_bins
+       if (t % nuclide_bins(i) == -1) then
+          write(unit_,fmt='(A)',advance='no') ' total'
+       else
+          write(unit_,fmt='(A)',advance='no') ' ' // trim(adjustl(&
+               nuclides(t % nuclide_bins(i)) % name))
+       end if
+       if (mod(i,4) == 0 .and. i /= t % n_nuclide_bins) &
+            write(unit_,'(/18X)',advance='no')
+    end do
+    write(unit_,*)
+
+
+    ! Write score bins
+    string = ""
+    do i = 1, t % n_score_bins
+       select case (t % score_bins(i))
+       case (SCORE_FLUX)
+          string = trim(string) // ' flux'
+       case (SCORE_TOTAL)
+          string = trim(string) // ' total'
+       case (SCORE_SCATTER)
+          string = trim(string) // ' scatter'
+       case (SCORE_NU_SCATTER)
+          string = trim(string) // ' nu-scatter'
+       case (SCORE_SCATTER_1)
+          string = trim(string) // ' scatter-1'
+       case (SCORE_SCATTER_2)
+          string = trim(string) // ' scatter-2'
+       case (SCORE_SCATTER_3)
+          string = trim(string) // ' scatter-3'
+       case (SCORE_TRANSPORT)
+          string = trim(string) // ' transport'
+       case (SCORE_DIFFUSION)
+          string = trim(string) // ' diffusion'
+       case (SCORE_N_1N)
+          string = trim(string) // ' n1n'
+       case (SCORE_N_2N)
+          string = trim(string) // ' n2n'
+       case (SCORE_N_3N)
+          string = trim(string) // ' n3n'
+       case (SCORE_N_4N)
+          string = trim(string) // ' n4n'
+       case (SCORE_ABSORPTION)
+          string = trim(string) // ' absorption'
+       case (SCORE_FISSION)
+          string = trim(string) // ' fission'
+       case (SCORE_NU_FISSION)
+          string = trim(string) // ' nu-fission'
+       case (SCORE_CURRENT)
+          string = trim(string) // ' current'
+       end select
+    end do
+    write(unit_,*) '    Scores:' // trim(string)
     write(unit_,*)
 
   end subroutine print_tally
@@ -777,12 +829,16 @@ contains
     type(Nuclide), pointer :: nuc
     integer,      optional :: unit
 
-    integer :: i           ! loop index over nuclides
-    integer :: unit_       ! unit to write to
-    integer :: size_total  ! memory used by nuclide (bytes)
-    integer :: size_xs     ! memory used for cross-sections (bytes)
-    integer :: size_angle  ! memory used for angle distributions (bytes)
-    integer :: size_energy ! memory used for energy distributions (bytes)
+    integer :: i                 ! loop index over nuclides
+    integer :: unit_             ! unit to write to
+    integer :: size_total        ! memory used by nuclide (bytes)
+    integer :: size_angle_total  ! total memory used for angle dist. (bytes)
+    integer :: size_energy_total ! total memory used for energy dist. (bytes)
+    integer :: size_xs           ! memory used for cross-sections (bytes)
+    integer :: size_angle        ! memory used for an angle distribution (bytes)
+    integer :: size_energy       ! memory used for a  energy distributions (bytes)
+    integer :: size_urr          ! memory used for probability tables (bytes)
+    character(11) :: law         ! secondary energy distribution law
     type(Reaction), pointer :: rxn => null()
     type(UrrData),  pointer :: urr => null()
 
@@ -793,9 +849,11 @@ contains
        unit_ = OUTPUT_UNIT
     end if
 
-    ! Determine size of cross-sections
-    size_xs = (5 + nuc % n_reaction) * nuc % n_grid * 8
-    size_total = size_xs
+    ! Initialize totals
+    size_angle_total = 0
+    size_energy_total = 0
+    size_urr = 0
+    size_xs = 0
 
     ! Basic nuclide information
     write(unit_,*) 'Nuclide ' // trim(nuc % name)
@@ -806,12 +864,10 @@ contains
     write(unit_,*) '  Fissionable = ', nuc % fissionable
     write(unit_,*) '  # of fission reactions = ' // trim(to_str(nuc % n_fission))
     write(unit_,*) '  # of reactions = ' // trim(to_str(nuc % n_reaction))
-    write(unit_,*) '  Size of cross sections = ' // trim(to_str(&
-         size_xs)) // ' bytes'
 
-    write(unit_,*) '  Reaction    Q-value   Mult    IE    size(angle) size(energy)'
+    ! Information on each reaction
+    write(unit_,*) '  Reaction     Q-value  COM  Law    IE    size(angle) size(energy)'
     do i = 1, nuc % n_reaction
-       ! Information on each reaction
        rxn => nuc % reactions(i)
 
        ! Determine size of angle distribution
@@ -821,22 +877,31 @@ contains
           size_angle = 0
        end if
 
-       ! Determine size of energy distribution
+       ! Determine size of energy distribution and law
        if (rxn % has_energy_dist) then
           size_energy = size(rxn % edist % data) * 8
+          law = to_str(rxn % edist % law)
        else
           size_energy = 0
+          law = 'None'
        end if
 
-       write(unit_,'(3X,A11,1X,F8.3,2X,I4,2X,I6,1X,I11,1X,I11)') &
-            reaction_name(rxn % MT), rxn % Q_value, rxn % multiplicity, &
-            rxn % IE, size_angle, size_energy
+       write(unit_,'(3X,A11,1X,F8.3,3X,L1,3X,A4,1X,I6,1X,I11,1X,I11)') &
+            reaction_name(rxn % MT), rxn % Q_value, rxn % scatter_in_cm, &
+            law(1:4), rxn % threshold, size_angle, size_energy
 
        ! Accumulate data size
-       size_total = size_total + size_angle + size_energy
+       size_xs = size_xs + (nuc % n_grid - rxn%threshold + 1) * 8
+       size_angle_total = size_angle_total + size_angle
+       size_energy_total = size_energy_total + size_energy
     end do
 
+    ! Add memory required for summary reactions (total, absorption, fission,
+    ! nu-fission)
+    size_xs = 8 * nuc % n_grid * 4
+
     ! Write information about URR probability tables
+    size_urr = 0
     if (nuc % urr_present) then
        urr => nuc % urr_data
        write(unit_,*) '  Unresolved resonance probability table:'
@@ -848,11 +913,24 @@ contains
        write(unit_,*) '    Multiply by smooth? ', urr % multiply_smooth
        write(unit_,*) '    Min energy = ', trim(to_str(urr % energy(1)))
        write(unit_,*) '    Max energy = ', trim(to_str(urr % energy(urr % n_energy)))
+
+       ! Calculate memory used by probability tables and add to total
+       size_urr = urr % n_energy * (urr % n_prob * 6 + 1) * 8
     end if
 
-    ! Write total memory used
-    write(unit_,*) '  Total memory used = ' // trim(to_str(size_total)) &
-         // ' bytes'
+    ! Calculate total memory
+    size_total = size_xs + size_angle_total + size_energy_total + size_urr
+
+    ! Write memory used
+    write(unit_,*) '  Memory Requirements'
+    write(unit_,*) '    Cross sections = ' // trim(to_str(size_xs)) // ' bytes'
+    write(unit_,*) '    Secondary angle distributions = ' // &
+         trim(to_str(size_angle_total)) // ' bytes'
+    write(unit_,*) '    Secondary energy distributions = ' // &
+         trim(to_str(size_energy_total)) // ' bytes'
+    write(unit_,*) '    Probability Tables = ' // &
+         trim(to_str(size_urr)) // ' bytes'
+    write(unit_,*) '    Total = ' // trim(to_str(size_total)) // ' bytes'
 
     ! Blank line at end of nuclide
     write(unit_,*)
@@ -860,16 +938,96 @@ contains
   end subroutine print_nuclide
 
 !===============================================================================
-! PRINT_SUMMARY displays summary information about the problem about to be run
+! PRINT_SAB_TABLE displays information about a S(a,b) table containing data
+! describing thermal scattering from bound materials such as hydrogen in water.
+!===============================================================================
+
+  subroutine print_sab_table(sab, unit)
+
+    type(SAB_Table), pointer :: sab
+    integer,        optional :: unit
+
+    integer :: size_sab ! memory used by S(a,b) table
+    integer :: unit_    ! unit to write to
+
+    ! set default unit for writing information
+    if (present(unit)) then
+       unit_ = unit
+    else
+       unit_ = OUTPUT_UNIT
+    end if
+
+    ! Basic S(a,b) table information
+    write(unit_,*) 'S(a,b) Table ' // trim(sab % name)
+    write(unit_,*) '  zaid = ' // trim(to_str(sab % zaid))
+    write(unit_,*) '  awr = ' // trim(to_str(sab % awr))
+    write(unit_,*) '  kT = ' // trim(to_str(sab % kT))
+
+    ! Inelastic data
+    write(unit_,*) '  # of Incoming Energies (Inelastic) = ' // &
+         trim(to_str(sab % n_inelastic_e_in))
+    write(unit_,*) '  # of Outgoing Energies (Inelastic) = ' // &
+         trim(to_str(sab % n_inelastic_e_out))
+    write(unit_,*) '  # of Outgoing Angles (Inelastic) = ' // &
+         trim(to_str(sab % n_inelastic_mu))
+    write(unit_,*) '  Threshold for Inelastic = ' // &
+         trim(to_str(sab % threshold_inelastic))
+
+    ! Elastic data
+    if (sab % n_elastic_e_in > 0) then
+       write(unit_,*) '  # of Incoming Energies (Elastic) = ' // &
+            trim(to_str(sab % n_elastic_e_in))
+       write(unit_,*) '  # of Outgoing Angles (Elastic) = ' // &
+            trim(to_str(sab % n_elastic_mu))
+       write(unit_,*) '  Threshold for Elastic = ' // &
+            trim(to_str(sab % threshold_elastic))
+    end if
+
+    ! Determine memory used by S(a,b) table and write out
+    size_sab = 8 * (sab % n_inelastic_e_in * (2 + sab % n_inelastic_e_out * &
+         (1 + sab % n_inelastic_mu)) + sab % n_elastic_e_in * &
+         (2 + sab % n_elastic_mu))
+    write(unit_,*) '  Memory Used = ' // trim(to_str(size_sab)) // ' bytes'
+
+    ! Blank line at end
+    write(unit_,*)
+
+  end subroutine print_sab_table
+
+!===============================================================================
+! WRITE_SUMMARY displays summary information about the problem about to be run
 ! after reading all input files
 !===============================================================================
 
-  subroutine print_summary()
+  subroutine write_summary()
 
-    integer :: i ! loop index
-    character(15) :: string
+    integer                 :: i      ! loop index
+    character(MAX_FILE_LEN) :: path   ! path of summary file
     type(Material),    pointer :: m => null()
     type(TallyObject), pointer :: t => null()
+
+    ! Create filename for log file
+    path = "summary.out"
+
+    ! Open log file for writing
+    open(UNIT=UNIT_SUMMARY, FILE=path, STATUS='replace', ACTION='write')
+
+    call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
+    write(UNIT=UNIT_SUMMARY, FMT=*) &
+         "Copyright:     2011-2012 Massachusetts Institute of Technology"
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
+         "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
+#ifdef GIT_SHA1
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Git SHA1:",6X,A)') GIT_SHA1
+#endif
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"Date/Time:",5X,A)') &
+         time_stamp()
+
+    ! Write information on number of processors
+#ifdef MPI
+    write(UNIT=UNIT_SUMMARY, FMT='(1X,"MPI Processes:",1X,A)') &
+         trim(to_str(n_procs))
+#endif
 
     ! Display problem summary
     call header("PROBLEM SUMMARY", unit=UNIT_SUMMARY)
@@ -922,16 +1080,61 @@ contains
     else
        write(UNIT_SUMMARY,100) "Survival Biasing:", "off"
     end if
-    string = to_str(weight_cutoff)
-    write(UNIT_SUMMARY,100) "Weight Cutoff:", trim(string)
-    string = to_str(weight_survive)
-    write(UNIT_SUMMARY,100) "Survival weight:", trim(string)
+    write(UNIT_SUMMARY,100) "Weight Cutoff:", trim(to_str(weight_cutoff))
+    write(UNIT_SUMMARY,100) "Survival weight:", trim(to_str(weight_survive))
+
+    ! Close summary file
+    close(UNIT_SUMMARY)
 
     ! Format descriptor for columns
 100 format (1X,A,T35,A)
 101 format (1X,A,T35,I11)
 
-  end subroutine print_summary
+  end subroutine write_summary
+
+!===============================================================================
+! WRITE_XS_SUMMARY writes information about each nuclide and S(a,b) table to a
+! file called cross_sections.out. This file shows the list of reactions as well
+! as information about their secondary angle/energy distributions, how much
+! memory is consumed, thresholds, etc.
+!===============================================================================
+
+  subroutine write_xs_summary()
+
+    integer                  :: i    ! loop index
+    character(MAX_FILE_LEN)  :: path ! path of summary file
+    type(Nuclide),   pointer :: nuc => null()
+    type(SAB_Table), pointer :: sab => null()
+
+    ! Create filename for log file
+    path = "cross_sections.out"
+
+    ! Open log file for writing
+    open(UNIT=UNIT_XS, FILE=path, STATUS='replace', ACTION='write')
+
+    ! Write header
+    call header("CROSS SECTION TABLES", unit=UNIT_XS)
+
+    NUCLIDE_LOOP: do i = 1, n_nuclides_total
+       ! Get pointer to nuclide
+       nuc => nuclides(i)
+
+       ! Print information about nuclide
+       call print_nuclide(nuc, unit=UNIT_XS)
+    end do NUCLIDE_LOOP
+
+    SAB_TABLES_LOOP: do i = 1, n_sab_tables
+       ! Get pointer to S(a,b) table
+       sab => sab_tables(i)
+
+       ! Print information about S(a,b) table
+       call print_sab_table(sab, unit=UNIT_XS)
+    end do SAB_TABLES_LOOP
+
+    ! Close cross section summary file
+    close(UNIT_XS)
+
+  end subroutine write_xs_summary
 
 !===============================================================================
 ! PRINT_COLUMNS displays a header listing what physical values will displayed
@@ -980,9 +1183,11 @@ contains
        ! INACTIVE BATCHES
 
        if (entropy_on) then
-          write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, k_batch, entropy
+          write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, &
+               k_batch(current_batch), entropy(current_batch)
        else
-          write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, k_batch
+          write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, &
+               k_batch(current_batch)
        end if
 
     elseif (current_batch >= n_inactive + 1) then
@@ -1070,6 +1275,8 @@ contains
 
     integer(8)    :: total_particles ! total # of particles simulated
     real(8)       :: speed           ! # of neutrons/second
+    real(8)       :: alpha           ! significance level for CI
+    real(8)       :: t_value         ! t-value for confidence intervals
     character(15) :: string
 
     ! display header block
@@ -1092,8 +1299,14 @@ contains
     write(ou,100) "Total time for finalization", time_finalize % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 
-    ! display calculate rate and final keff
-    total_particles = n_particles * n_batches * gen_per_batch
+    if (restart_run) then
+       total_particles = n_particles * (n_batches - &
+            restart_batch) * gen_per_batch
+    else
+       total_particles = n_particles * n_batches * gen_per_batch
+    end if
+
+    ! display calculate rate
     speed = real(total_particles) / (time_inactive % elapsed + &
          time_active % elapsed)
     string = to_str(speed)
@@ -1102,6 +1315,15 @@ contains
     ! display header block for results
     call header("Results")
 
+    if (confidence_intervals) then
+       ! Calculate t-value for confidence intervals
+       alpha = ONE - CONFIDENCE_LEVEL
+       t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+
+       ! Adjust sum_sq
+       global_tallies(:) % sum_sq = t_value * global_tallies(:) % sum_sq
+    end if
+    
     ! write global tallies
     write(ou,102) "k-effective (Analog)", global_tallies(K_ANALOG) % sum, &
          global_tallies(K_ANALOG) % sum_sq
@@ -1119,55 +1341,5 @@ contains
 102 format (1X,A,T30,"= ",F8.5," +/- ",F8.5)
  
   end subroutine print_runtime
-
-!===============================================================================
-! CREATE_SUMMARY_FILE opens the summary.out file for logging information about
-! the simulation
-!===============================================================================
-
-  subroutine create_summary_file()
-
-    logical :: file_exists  ! does log file already exist?
-    character(MAX_FILE_LEN) :: path ! path of summary file
-
-    ! Create filename for log file
-    path = trim(path_input)//"summary.out"
-
-    ! Check if log file already exists
-    inquire(FILE=path, EXIST=file_exists)
-    if (file_exists) then
-       ! Possibly copy old log file
-    end if
-
-    ! Open log file for writing
-    open(UNIT=UNIT_SUMMARY, FILE=path, STATUS='replace', &
-         ACTION='write')
-
-  end subroutine create_summary_file
-
-!===============================================================================
-! CREATE_XS_SUMMARY_FILE creates an output file to write information about the
-! cross section tables used in the simulation.
-!===============================================================================
-
-  subroutine create_xs_summary_file()
-
-    logical :: file_exists  ! does log file already exist?
-    character(MAX_FILE_LEN) :: path ! path of summary file
-
-    ! Create filename for log file
-    path = "cross_sections.out"
-
-    ! Check if log file already exists
-    inquire(FILE=path, EXIST=file_exists)
-    if (file_exists) then
-       ! Possibly copy old log file
-    end if
-
-    ! Open log file for writing
-    open(UNIT=UNIT_XS, FILE=path, STATUS='replace', &
-         ACTION='write')
-
-  end subroutine create_xs_summary_file
 
 end module output

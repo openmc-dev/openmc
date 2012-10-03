@@ -13,13 +13,12 @@ module initialize
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
-  use output,           only: title, header, print_summary, print_geometry,    &
-                              print_plot, create_summary_file, print_usage,    &
-                              create_xs_summary_file, print_version
+  use output,           only: title, header, write_summary, print_version,     &
+                              print_usage, write_xs_summary, print_plot
   use random_lcg,       only: initialize_prng
-  use source,           only: allocate_banks, initialize_source
-  use string,           only: to_str, str_to_int, starts_with, ends_with,      &
-                              lower_case
+  use source,           only: initialize_source
+  use state_point,      only: load_state_point
+  use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally,            only: create_tally_map
   use tally_header,     only: TallyObject
   use timing,           only: timer_start, timer_stop
@@ -29,8 +28,7 @@ module initialize
 #endif
 
 #ifdef HDF5
-  use hdf5_interface,   only: hdf5_create_output, hdf5_write_header,            &
-                              hdf5_write_summary
+  use hdf5_interface,   only: hdf5_initialize, hdf5_write_summary
 #endif
 
   implicit none
@@ -50,23 +48,20 @@ contains
     call timer_start(time_total)
     call timer_start(time_initialize)
 
+#ifdef MPI
     ! Setup MPI
-    call setup_mpi()
+    call initialize_mpi()
+#endif
+
+#ifdef HDF5
+    ! Initialize HDF5 interface
+    call hdf5_initialize()
+#endif
 
     ! Read command line arguments
     call read_command_line()
 
     if (master) then
-       ! Create output files
-       call create_summary_file()
-       call create_xs_summary_file()
-
-#ifdef HDF5
-       ! Open HDF5 output file for writing and write header information
-       call hdf5_create_output()
-       call hdf5_write_header()
-#endif
-
        ! Display title and initialization header
        call title()
        call header("INITIALIZATION", level=1)
@@ -78,7 +73,10 @@ contains
     ! Read XML input files
     call read_input_xml()
 
-    ! Initialize random number generator
+    ! Initialize random number generator -- this has to be done after the input
+    ! files have been read in case the user specified a seed for the random
+    ! number generator
+
     call initialize_prng()
 
     ! Read plots.xml if it exists -- this has to be done separate from the other
@@ -96,10 +94,6 @@ contains
     call neighbor_lists()
 
     if (run_mode /= MODE_PLOTTING) then
-       ! Read cross section summary file to determine what files contain
-       ! cross-sections
-       call read_cross_sections_xml()
-
        ! With the AWRs from the xs_listings, change all material specifications
        ! so that they contain atom percents summing to 1
        call normalize_ao()
@@ -119,21 +113,36 @@ contains
        ! Create tally map
        call create_tally_map()
 
-       ! allocate banks and create source particles
-       call allocate_banks()
-       call initialize_source()
+       ! Determine how much work each processor should do
+       call calculate_work()
+
+       ! Allocate banks and create source particles -- for a fixed source
+       ! calculation, the external source distribution is sampled during the
+       ! run, not at initialization
+       if (run_mode == MODE_CRITICALITY) then
+          call allocate_banks()
+          if (.not. restart_run) call initialize_source()
+       end if
+
+       ! If this is a restart run, load the state point data and binary source
+       ! file
+       if (restart_run) call load_state_point()
     end if
 
-    ! stop timer for initialization
     if (master) then
        if (run_mode == MODE_PLOTTING) then
-          call print_geometry()
+          ! Display plotting information
           call print_plot()
        else
-          call print_summary()
+          ! Write summary information
 #ifdef HDF5
-          call hdf5_write_summary()
+          if (output_summary) call hdf5_write_summary()
+#else
+          if (output_summary) call write_summary()
 #endif
+
+          ! Write cross section information
+          if (output_xs) call write_xs_summary()
        end if
     end if
 
@@ -142,42 +151,37 @@ contains
 
   end subroutine initialize_run
 
-!===============================================================================
-! SETUP_MPI initilizes the Message Passing Interface (MPI) and determines the
-! number of processors the problem is being run with as well as the rank of each
-! processor.
-!===============================================================================
-
-  subroutine setup_mpi()
-
 #ifdef MPI
-    integer        :: bank_blocks(5) ! Count for each datatype
-    integer        :: bank_types(5)  ! Datatypes
-    integer(MPI_ADDRESS_KIND) :: bank_disp(5)   ! Displacements
-    type(Bank)     :: b
+!===============================================================================
+! INITIALIZE_MPI starts up the Message Passing Interface (MPI) and determines
+! the number of processors the problem is being run with as well as the rank of
+! each processor.
+!===============================================================================
 
+  subroutine initialize_mpi()
+
+    integer                   :: bank_blocks(4)  ! Count for each datatype
+    integer                   :: bank_types(4)   ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: bank_disp(4)    ! Displacements
+    integer                   :: temp_type       ! temporary derived type
+    integer                   :: score_blocks(1) ! Count for each datatype
+    integer                   :: score_types(1)  ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: score_disp(1)   ! Displacements
+    integer(MPI_ADDRESS_KIND) :: score_base_disp ! Base displacement
+    integer(MPI_ADDRESS_KIND) :: lower_bound     ! Lower bound for TallyScore
+    integer(MPI_ADDRESS_KIND) :: extent          ! Extent for TallyScore
+    type(Bank)       :: b
+    type(TallyScore) :: ts
+
+    ! Indicate that MPI is turned on
     mpi_enabled = .true.
 
     ! Initialize MPI
     call MPI_INIT(mpi_err)
-    if (mpi_err /= MPI_SUCCESS) then
-       message = "Failed to initialize MPI."
-       call fatal_error()
-    end if
 
-    ! Determine number of processors
+    ! Determine number of processors and rank of each processor
     call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, mpi_err)
-    if (mpi_err /= MPI_SUCCESS) then
-       message = "Could not determine number of processors."
-       call fatal_error()
-    end if
-
-    ! Determine rank of each processor
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, mpi_err)
-    if (mpi_err /= MPI_SUCCESS) then
-       message = "Could not determine MPI rank."
-       call fatal_error()
-    end if
 
     ! Determine master
     if (rank == 0) then
@@ -186,32 +190,52 @@ contains
        master = .false.
     end if
 
+    ! ==========================================================================
+    ! CREATE MPI_BANK TYPE
+
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(b % id,  bank_disp(1), mpi_err)
-    call MPI_GET_ADDRESS(b % wgt, bank_disp(2), mpi_err)
-    call MPI_GET_ADDRESS(b % xyz, bank_disp(3), mpi_err)
-    call MPI_GET_ADDRESS(b % uvw, bank_disp(4), mpi_err)
-    call MPI_GET_ADDRESS(b % E,   bank_disp(5), mpi_err)
+    call MPI_GET_ADDRESS(b % wgt, bank_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(b % xyz, bank_disp(2), mpi_err)
+    call MPI_GET_ADDRESS(b % uvw, bank_disp(3), mpi_err)
+    call MPI_GET_ADDRESS(b % E,   bank_disp(4), mpi_err)
 
     ! Adjust displacements 
     bank_disp = bank_disp - bank_disp(1)
     
     ! Define MPI_BANK for fission sites
-    bank_blocks = (/ 1, 1, 3, 3, 1 /)
-    bank_types = (/ MPI_INTEGER8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(5, bank_blocks, bank_disp, & 
+    bank_blocks = (/ 1, 3, 3, 1 /)
+    bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8 /)
+    call MPI_TYPE_CREATE_STRUCT(4, bank_blocks, bank_disp, & 
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
-#else
-    ! if no MPI, set processor to master
-    mpi_enabled = .false.
-    rank = 0
-    n_procs = 1
-    master = .true.
-#endif
+    ! ==========================================================================
+    ! CREATE MPI_TALLYSCORE TYPE
 
-  end subroutine setup_mpi
+    ! Determine displacements for MPI_BANK type
+    call MPI_GET_ADDRESS(ts % n_events, score_base_disp, mpi_err)
+    call MPI_GET_ADDRESS(ts % sum, score_disp(1), mpi_err)
+
+    ! Adjust displacements
+    score_disp = score_disp - score_base_disp
+
+    ! Define temporary type for tallyscore
+    score_blocks = (/ 2 /)
+    score_types = (/ MPI_REAL8 /)
+    call MPI_TYPE_CREATE_STRUCT(1, score_blocks, score_disp, score_types, &
+         temp_type, mpi_err)
+
+    ! Adjust lower-bound and extent of type for tally score
+    lower_bound = 0
+    extent      = score_disp(1) + 16
+    call MPI_TYPE_CREATE_RESIZED(temp_type, lower_bound, extent, &
+         MPI_TALLYSCORE, mpi_err)
+
+    ! Commit derived type for tally scores
+    call MPI_TYPE_COMMIT(MPI_TALLYSCORE, mpi_err)
+
+  end subroutine initialize_mpi
+#endif
 
 !===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line
@@ -247,8 +271,8 @@ contains
           case ('-p', '-plot', '--plot')
              run_mode = MODE_PLOTTING
           case ('-n', '-n_particles', '--n_particles')
-             i = i + 1
              ! Read number of particles per cycle
+             i = i + 1
              n_particles = str_to_int(argv(i))
 
              ! Check that number specified was valid
@@ -257,6 +281,20 @@ contains
                      " command-line flag."
                 call fatal_error()
              end if
+          case ('-r', '-restart', '--restart')
+             ! Read path for state point
+             i = i + 1
+             path_state_point = argv(i)
+             restart_run = .true.
+
+          case ('-t', '-tallies', '--tallies')
+             run_mode = MODE_TALLIES
+
+             ! Read path for state point
+             i = i + 1
+             path_state_point = argv(i)
+             restart_run = .true.
+
           case ('-?', '-help', '--help')
              call print_usage()
              stop
@@ -446,7 +484,9 @@ contains
        ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
 
        id = c % material
-       if (id /= 0) then
+       if (id == MATERIAL_VOID) then
+          c % type = CELL_NORMAL
+       elseif (id /= 0) then
           if (dict_has_key(material_dict, id)) then
              c % type = CELL_NORMAL
              c % material = dict_get_key(material_dict, id)
@@ -498,9 +538,9 @@ contains
 
        if (t % n_filter_bins(FILTER_CELL) > 0) then
           do j = 1, t % n_filter_bins(FILTER_CELL)
-             id = t % cell_bins(j) % scalar
+             id = t % cell_bins(j)
              if (dict_has_key(cell_dict, id)) then
-                t % cell_bins(j) % scalar = dict_get_key(cell_dict, id)
+                t % cell_bins(j) = dict_get_key(cell_dict, id)
              else
                 message = "Could not find cell " // trim(to_str(id)) // &
                      " specified on tally " // trim(to_str(t % id))
@@ -514,9 +554,9 @@ contains
 
        if (t % n_filter_bins(FILTER_SURFACE) > 0) then
           do j = 1, t % n_filter_bins(FILTER_SURFACE)
-             id = t % surface_bins(j) % scalar
+             id = t % surface_bins(j)
              if (dict_has_key(surface_dict, id)) then
-                t % surface_bins(j) % scalar = dict_get_key(surface_dict, id)
+                t % surface_bins(j) = dict_get_key(surface_dict, id)
              else
                 message = "Could not find surface " // trim(to_str(id)) // &
                      " specified on tally " // trim(to_str(t % id))
@@ -530,9 +570,9 @@ contains
 
        if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
           do j = 1, t % n_filter_bins(FILTER_UNIVERSE)
-             id = t % universe_bins(j) % scalar
+             id = t % universe_bins(j)
              if (dict_has_key(universe_dict, id)) then
-                t % universe_bins(j) % scalar = dict_get_key(universe_dict, id)
+                t % universe_bins(j) = dict_get_key(universe_dict, id)
              else
                 message = "Could not find universe " // trim(to_str(id)) // &
                      " specified on tally " // trim(to_str(t % id))
@@ -546,9 +586,9 @@ contains
 
        if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
           do j = 1, t % n_filter_bins(FILTER_MATERIAL)
-             id = t % material_bins(j) % scalar
+             id = t % material_bins(j)
              if (dict_has_key(material_dict, id)) then
-                t % material_bins(j) % scalar = dict_get_key(material_dict, id)
+                t % material_bins(j) = dict_get_key(material_dict, id)
              else
                 message = "Could not find material " // trim(to_str(id)) // &
                      " specified on tally " // trim(to_str(t % id))
@@ -562,9 +602,9 @@ contains
 
        if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
           do j = 1, t % n_filter_bins(FILTER_CELLBORN)
-             id = t % cellborn_bins(j) % scalar
+             id = t % cellborn_bins(j)
              if (dict_has_key(cell_dict, id)) then
-                t % cellborn_bins(j) % scalar = dict_get_key(cell_dict, id)
+                t % cellborn_bins(j) = dict_get_key(cell_dict, id)
              else
                 message = "Could not find material " // trim(to_str(id)) // &
                      " specified on tally " // trim(to_str(t % id))
@@ -599,13 +639,11 @@ contains
     integer        :: index_list      ! index in xs_listings array
     integer        :: i               ! index in materials array
     integer        :: j               ! index over nuclides in material
-    integer        :: n               ! length of string
-    real(8)        :: sum_percent     ! 
+    real(8)        :: sum_percent     ! summation
     real(8)        :: awr             ! atomic weight ratio
     real(8)        :: x               ! atom percent
     logical        :: percent_in_atom ! nuclides specified in atom percent?
     logical        :: density_in_atom ! density specified in atom/b-cm?
-    character(12)  :: key             ! name of nuclide, e.g. 92235.03c
     type(Material), pointer :: mat => null()
     
     ! first find the index in the xs_listings array for each nuclide in each
@@ -613,65 +651,37 @@ contains
     do i = 1, n_materials
        mat => materials(i)
 
-       ! Check to make sure either all atom percents or all weight percents are
-       ! given
-       if (.not. (all(mat%atom_percent > ZERO) .or. & 
-            all(mat%atom_percent < ZERO))) then
-          message = "Cannot mix atom and weight percents in material " // &
-               to_str(mat % id)
-          call fatal_error()
-       end if
-
-       percent_in_atom = (mat%atom_percent(1) > ZERO)
-       density_in_atom = (mat%density > ZERO)
+       percent_in_atom = (mat % atom_density(1) > ZERO)
+       density_in_atom = (mat % density > ZERO)
 
        sum_percent = ZERO
        do j = 1, mat % n_nuclides
-          ! Set indices for nuclides
-          key = mat % names(j)
-
-          ! Check to make sure cross-section is continuous energy neutron table
-          n = len_trim(key)
-          if (key(n:n) /= 'c') then
-             message = "Cross-section table " // trim(key) // & 
-                  " is not a continuous-energy neutron table."
-             call fatal_error()
-          end if
-
-          if (dict_has_key(xs_listing_dict, key)) then
-             index_list = dict_get_key(xs_listing_dict, key)
-             mat % xs_listing(j) = index_list
-          else
-             message = "Cannot find cross-section " // trim(key) // &
-                  " in specified cross_sections.xml file."
-             call fatal_error()
-          end if
-
           ! determine atomic weight ratio
+          index_list = dict_get_key(xs_listing_dict, mat % names(j))
           awr = xs_listings(index_list) % awr
 
           ! if given weight percent, convert all values so that they are divided
           ! by awr. thus, when a sum is done over the values, it's actually
           ! sum(w/awr)
           if (.not. percent_in_atom) then
-             mat % atom_percent(j) = -mat % atom_percent(j) / awr
+             mat % atom_density(j) = -mat % atom_density(j) / awr
           end if
        end do
 
        ! determine normalized atom percents. if given atom percents, this is
        ! straightforward. if given weight percents, the value is w/awr and is
        ! divided by sum(w/awr)
-       sum_percent = sum(mat%atom_percent)
-       mat % atom_percent = mat % atom_percent / sum_percent
+       sum_percent = sum(mat % atom_density)
+       mat % atom_density = mat % atom_density / sum_percent
 
        ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
        ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
        if (.not. density_in_atom) then
           sum_percent = ZERO
           do j = 1, mat % n_nuclides
-             index_list = mat % xs_listing(j)
+             index_list = dict_get_key(xs_listing_dict, mat % names(j))
              awr = xs_listings(index_list) % awr
-             x = mat % atom_percent(j)
+             x = mat % atom_density(j)
              sum_percent = sum_percent + x*awr
           end do
           sum_percent = ONE / sum_percent
@@ -679,12 +689,56 @@ contains
                / MASS_NEUTRON * sum_percent
        end if
 
-       ! Calculate nuclide atom densities and deallocate atom_percent array
-       ! since it is no longer needed past this point
-       mat % atom_density = mat % density * mat % atom_percent
-       deallocate(mat % atom_percent)
+       ! Calculate nuclide atom densities
+       mat % atom_density = mat % density * mat % atom_density
     end do
 
   end subroutine normalize_ao
+
+!===============================================================================
+! CALCULATE_WORK
+!===============================================================================
+
+  subroutine calculate_work()
+
+    ! Determine maximum amount of particles to simulate on each processor
+    maxwork = ceiling(real(n_particles)/n_procs,8)
+
+    ! ID's of first and last source particles
+    bank_first = rank*maxwork + 1
+    bank_last  = min((rank+1)*maxwork, n_particles)
+
+    ! number of particles for this processor
+    work = bank_last - bank_first + 1
+
+  end subroutine calculate_work
+
+!===============================================================================
+! ALLOCATE_BANKS allocates memory for the fission and source banks
+!===============================================================================
+
+  subroutine allocate_banks()
+
+    integer    :: alloc_err  ! allocation error code
+
+    ! Allocate source bank
+    allocate(source_bank(maxwork), STAT=alloc_err)
+
+    ! Check for allocation errors 
+    if (alloc_err /= 0) then
+       message = "Failed to allocate source bank."
+       call fatal_error()
+    end if
+
+    ! Allocate fission bank
+    allocate(fission_bank(3*maxwork), STAT=alloc_err)
+
+    ! Check for allocation errors 
+    if (alloc_err /= 0) then
+       message = "Failed to allocate fission bank."
+       call fatal_error()
+    end if
+
+  end subroutine allocate_banks
 
 end module initialize

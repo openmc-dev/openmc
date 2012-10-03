@@ -9,7 +9,7 @@
     <component name="width"      type="double-array"                            />
     <component name="albedo"     type="double-array"                            />
     <component name="map"        type="integer-array"                           />
-    <component name="energy"     type="word"          length="250" default="''" />
+    <component name="energy"     type="double-array"                            />
   </typedef>
 
   <variable name="mesh_"           tag="mesh"           type="mesh_xml"                                     />

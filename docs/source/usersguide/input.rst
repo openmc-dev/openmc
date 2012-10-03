@@ -44,7 +44,7 @@ which should be plotted. OpenMC expects that these files are called:
 
 * ``geometry.xml``
 * ``materials.xml``
-* ``setings.xml``
+* ``settings.xml``
 * ``tallies.xml``
 * ``plots.xml``
 
@@ -54,6 +54,17 @@ Settings Specification -- settings.xml
 
 All simulation parameters and miscellaneous options are specified in the
 settings.xml file.
+
+``<confidence_intervals>`` Element
+----------------------------------
+
+The ``<confidence_intervals>`` element has no attributes and has an accepted
+value of "on" or "off". If set to "on", uncertainties on tally results will be
+reported as the half-width of the 95% two-sided confidence interval. If set to
+"off", uncertainties on tally results will be reported as the sample standard
+deviation.
+
+  *Default*: off
 
 ``<criticality>`` Element
 -------------------------
@@ -131,7 +142,7 @@ treatment is slightly different than that employed in Serpent.
 ``<entropy>`` Element
 ---------------------
 
-The ``<entropy>`` element describes a mesh that is used for calculting Shannon
+The ``<entropy>`` element describes a mesh that is used for calculating Shannon
 entropy. This mesh should cover all possible fissionable materials in the
 problem. It has the following attributes/sub-elements:
 
@@ -142,12 +153,29 @@ problem. It has the following attributes/sub-elements:
      automatically determined by the code.
 
   :lower_left:
-    The Cartersian coordinates of the lower-left corner of the mesh.
+    The Cartesian coordinates of the lower-left corner of the mesh.
 
     *Default*: None
 
   :upper_right:
-    The Cartersian coordinates of the upper-right corner of the mesh.
+    The Cartesian coordinates of the upper-right corner of the mesh.
+
+    *Default*: None
+
+``<fixed_source>`` Element
+--------------------------
+
+The ``<fixed_source>`` element indicates that a fixed source calculation should be
+performed. It has the following attributes/sub-elements:
+
+  :batches: 
+    The total number of batches. For fixed source calculations, each batch
+    represents a realization of random variables for tallies.
+
+    *Default*: None
+
+  :particles:
+    The number of particles to simulate per batch.
 
     *Default*: None
 
@@ -163,6 +191,23 @@ tally data, this option can significantly improve the parallel efficiency.
 
   *Default*: off
 
+``<output>`` Element
+--------------------
+
+The ``<output>`` element determines what output files should be written to disk
+during the run. This element has no attributes or sub-elements and should be set
+to a list of strings separated by spaces. Valid options are "summary",
+"cross-sections", and "tallies". For example, if you want the summary and cross
+sections summary file to be written, this element should be given as:
+
+  .. code-block:: xml
+
+      <output>summary cross_sections</output>
+
+  .. note:: The tally results will be written to a binary/HDF5 state point file by
+            default.
+
+  *Default*: "tallies"
 
 ``<ptables>`` Element
 ---------------------
@@ -184,26 +229,119 @@ pseudo-random number generator.
 ``<source>`` Element
 --------------------
 
-The ``source`` element gives information on an initial source guess for
-criticality calculations. It takes the following attributes:
+The ``source`` element gives information on an external source distribution to
+be used either as the source for a fixed source calculation or the initial
+source guess for criticality calculations. It takes the following
+attributes/sub-elements:
 
-  :type:
-    The type of source distribution. Setting this to "box" indicates that the
-    starting source should be sampled uniformly in a parallelepiped. Setting
-    this to "point" indicates that the starting source should be sampled from an
-    isotropic point source. Setting this to "file" indicates that the starting
-    source should be sampled from a ``source.binary`` file.
+  :file:
+    If this attribute is given, it indicates that the source is to be read from
+    a binary source file whose path is given by the value of this element
 
-  :coeffs:
-    For a "box" source distribution, ``coeffs`` should be given as six real
-    numbers, the first three of which specify the lower-left corner of a
-    parallelepiped and the last three of which specify the upper-right
-    corner. Source sites are sampled uniformly through that parallelepiped.
+    *Default*: None
 
-    For a "point" source distribution, ``coeffs`` should be given as three real
-    numbers which specify the (x,y,z) location of an isotropic point source
+  :space:
+    An element specifying the spatial distribution of source sites. This element
+    has the following attributes:
 
-    For a "file" source distribution, ``coeffs`` should not be specified.
+    :type: 
+      The type of spatial distribution. Valid options are "box" and "point". A
+      "box" spatial distribution has coordinates sampled uniformly in a
+      parallelepiped. A "point" spatial distribution has coordinates specified
+      by a triplet.
+
+      *Default*: None
+
+    :parameters:
+      For a "box" spatial distribution, ``parameters`` should be given as six
+      real numbers, the first three of which specify the lower-left corner of a
+      parallelepiped and the last three of which specify the upper-right
+      corner. Source sites are sampled uniformly through that parallelepiped.
+
+      For a "point" spatial distribution, ``parameters`` should be given as
+      three real numbers which specify the (x,y,z) location of an isotropic
+      point source
+
+      *Default*: None
+
+  :angle:
+    An element specifying the angular distribution of source sites. This element
+    has the following attributes:
+
+    :type: 
+      The type of angular distribution. Valid options are "isotropic" and
+      "monodirectional". The angle of the particle emitted from a source site is
+      isotropic if the "isotropic" option is given. The angle of the particle
+      emitted from a source site is the direction specified in the <parameters>
+      attribute if "monodirectional" option is given.
+
+      *Default*: isotropic
+
+    :parameters:
+      For an "isotropic" angular distribution, ``parameters`` should not be
+      specified
+
+      For a "monodirectional" angular distribution, ``parameters`` should be
+      given as three real numbers which specify the angular cosines with respect
+      to each axis.
+
+      *Default*: None
+
+  :energy:
+    An element specifying the energy distribution of source sites. This element
+    has the following attributes:
+
+    :type: 
+
+      The type of energy distribution. Valid options are "monoenergetic",
+      "watt", and "maxwell". The "monoenergetic" option produces source sites at
+      a single energy. The "watt" option produces source sites whose energy is
+      sampled from a Watt fission spectrum. The "maxwell" option produce source
+      sites whose energy is sampled from a Maxwell fission spectrum
+
+      *Default*: watt
+
+    :parameters:
+      For a "monoenergetic" energy distribution, ``parameters`` should not be
+      given as the energy in MeV of the source sites.
+
+      For a "watt" energy distribution, ``parameters`` should be given as two
+      real numbers :math:`a` and :math:`b` that parameterize the distribution
+      :math:`p(E) dE = c e^{-E/a} \sinh \sqrt{b \, E} dE`.
+
+      For a "maxwell" energy distribution, ``parameters`` should be given as one
+      real number :math:`a` that parameterizes the distribution :math:`p(E) dE =
+      c E e^{-E/a} dE`.
+
+      *Default*: 0.988 2.249
+
+``<state_point>`` Element
+-------------------------
+
+The ``<state_point>`` element indicates at what batches a state point file
+should be written. A state point file can be used to restart a run or to get
+tally results at any batch. This element has the following
+attributes/sub-elements:
+
+  :batches:
+    A list of integers separated by spaces indicating at what batches a state
+    point file should be written.
+
+    *Default*: Last batch only
+
+  :interval:
+    A single integer :math:`n` indicating that a state point should be written
+    every :math:`n` batches. This option can be given in lieu of listing
+    batches explicitly.
+
+    *Default*: None
+
+  :source_separate:
+    If this element is set to "on", a separate binary source file will be
+    written. Otherwise, the source sites will be written in the state point
+    directly.
+
+    *Default*: "off"
 
 ``<survival_biasing>`` Element
 ------------------------------
@@ -241,12 +379,12 @@ problem. It has the following attributes/sub-elements:
     *Default*: None
 
   :lower_left:
-    The Cartersian coordinates of the lower-left corner of the mesh.
+    The Cartesian coordinates of the lower-left corner of the mesh.
 
     *Default*: None
 
   :upper_right:
-    The Cartersian coordinates of the upper-right corner of the mesh.
+    The Cartesian coordinates of the upper-right corner of the mesh.
 
     *Default*: None
 
@@ -261,15 +399,6 @@ displayed. This element takes the following attributes:
     The specified verbosity between 1 and 10.
 
     *Default*: 5
-
-``<write_source>`` Element
-------------------------------
-
-The ``<write_source>`` element has no attributes and has an accepted value of
-"on" or "off". If set to "on", a binary source file will be written to diskat
-the end of the run that can be used as a starting source for another run.
-
-  *Default*: off
 
 --------------------------------------
 Geometry Specification -- geometry.xml
@@ -316,7 +445,7 @@ could be written as:
 
 .. code-block:: xml
 
-    <?xml version="1.0">
+    <?xml version="1.0"?>
     <geometry>
       <!-- This is a comment -->
 
@@ -372,17 +501,17 @@ The following quadratic surfaces can be modeled:
     specified are ":math:`A \: B \: C \: D`".
 
   :x-cylinder:
-    An infinite cylinder whose length is paralle to the x-axis. This is a
+    An infinite cylinder whose length is parallel to the x-axis. This is a
     quadratic surface of the form :math:`(y - y_0)^2 + (z - z_0)^2 = R^2`. The
     coefficients specified are ":math:`y_0 \: z_0 \: R`".
 
   :y-cylinder:
-    An infinite cylinder whose length is paralle to the y-axis. This is a
+    An infinite cylinder whose length is parallel to the y-axis. This is a
     quadratic surface of the form :math:`(x - x_0)^2 + (z - z_0)^2 = R^2`. The
     coefficients specified are ":math:`x_0 \: z_0 \: R`".
 
   :z-cylinder:
-    An infinite cylinder whose length is paralle to the z-axis. This is a
+    An infinite cylinder whose length is parallel to the z-axis. This is a
     quadratic surface of the form :math:`(x - x_0)^2 + (y - y_0)^2 = R^2`. The
     coefficients specified are ":math:`x_0 \: y_0 \: R`".
 
@@ -413,7 +542,8 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
     *Default*: None
 
   :material:
-    The ``id`` of the material that this cell contains.
+    The ``id`` of the material that this cell contains. If the cell should
+    contain no material, this can also be set to "void".
 
     .. note:: If a material is specified, no fill should be given.
 
@@ -426,6 +556,30 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+  :rotation:
+    If the cell is filled with a universe, this element specifies the angles in
+    degrees about the x, y, and z axes that the filled universe should be
+    rotated. Should be given as three real numbers. For example, if you wanted
+    to rotate the filled universe by 90 degrees about the z-axis, the cell
+    element would look something like:
+
+    .. code-block:: xml
+
+        <cell fill="..." rotation="0 0 90" />
+
+    *Default*: None
+
+  :translation:
+    If the cell is filled with a universe, this element specifies a vector that
+    is used to translate (shift) the universe. Should be given as three real
+    numbers.
+
+    .. note:: Any translation operation is applied after a rotation, if also
+              specified.
+
+    *Default*: None
+
+
 ``<lattice>`` Element
 ---------------------
 
@@ -437,8 +591,9 @@ universe. A ``<lattice>`` accepts the following attributes or sub-elements:
   :id:
     A unique integer that can be used to identify the surface.
 
-  :type: A string indicating the arrangement of lattice cells. Currently, the
-    only accepted option is "rectangular".
+  :type:
+    A string indicating the arrangement of lattice cells. Currently, the only
+    accepted option is "rectangular".
 
     *Default*: rectangular
 
@@ -480,7 +635,6 @@ Each ``material`` element can have the following attributes or sub-elements:
     A unique integer that can be used to identify the material.
 
   :density:
-
     An element with attributes/sub-elements called ``value`` and ``units``. The
     ``value`` attribute is the numeric value of the density while the ``units``
     can be "g/cm3", "kg/m3", "atom/b-cm", "atom/cm3", or "sum". The "sum" unit
@@ -496,10 +650,12 @@ Each ``material`` element can have the following attributes or sub-elements:
     desired nuclide while the ``xs`` attribute is the cross-section
     identifier. Finally, the ``ao`` and ``wo`` attributes specify the atom or
     weight percent of that nuclide within the material, respectively. One
-    example would be as follows::
+    example would be as follows:
 
-      <nuclide name="H-1" xs="70c" ao="2.0" />
-      <nuclide name="O-16" xs="70c" ao="1.0" />
+    .. code-block:: xml
+
+        <nuclide name="H-1" xs="70c" ao="2.0" />
+        <nuclide name="O-16" xs="70c" ao="1.0" />
 
     .. note:: If one nuclide is specified in atom percent, all others must also
               be given in atom percent. The same applies for weight percentages.
@@ -551,9 +707,29 @@ The two valid elements in the tallies.xml file are ``<tally>`` and ``<mesh>``.
 
 The ``<tally>`` element accepts the following sub-elements:
 
+  :label:
+    This is an optional sub-element specifying the name of this tally to be used
+    for output purposes. This string is limited to 52 characters for formatting 
+    purposes.
+
   :filters:
     A list of filters to specify what region of phase space should contribute to
     the tally. See below for full details on what filters are available.
+
+  :nuclides:
+
+    If specified, the scores listed will be for particular nuclides, not the
+    summation of reactions from all nuclides. The format for nuclides should be
+    [Atomic symbol]-[Mass number], e.g. "U-235". The reaction rate for all
+    nuclides can be obtained with "total". For example, to obtain the reaction
+    rates for U-235, Pu-239, and all nuclides in a material, this element should
+    be:
+
+    .. code-block:: xml
+
+        <nuclides>U-235 Pu-239 total</nuclides>
+
+    *Default*: total
 
   :scores:
     The desired responses to be accumulated. See below for full details on what
@@ -759,15 +935,22 @@ sub-elements:
       Specifies the cell or material unique id for the color specification.
 
     :rgb:
-      Specifies the custom color for the cell or material.  Should be 3 intergers separated
+      Specifies the custom color for the cell or material.  Should be 3 integers separated
       by spaces.
+
+    As an example, if your plot is colored by material and you want material 23
+    to be blue, the corresponding ``col_spec`` element would look like:
+
+    .. code-block:: xml
+
+        <col_spec id="23" rgb="0 0 255" />
 
     *Default*: None
 
   :mask:
     The special ``mask`` sub-element allows for the selective plotting of *only*
     user-specified cells or materials.  Only one ``mask`` element is allowed per ``plot``
-    element, and it must contain as atributes or sub-elements a background masking color and
+    element, and it must contain as attributes or sub-elements a background masking color and
     a list of cells or materials to plot:
 
     :components:

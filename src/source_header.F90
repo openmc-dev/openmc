@@ -8,9 +8,12 @@ module source_header
 !===============================================================================
 
   type ExtSource
-     integer :: type                    ! type of source, e.g. 'box' or 'point'
-     real(8), allocatable :: values(:)  ! values for particular source type
-     character(len=255) :: path         ! path to source.binary
+     integer :: type_space              ! spacial distributione, e.g. 'box' or 'point'
+     integer :: type_angle              ! angle distribution, e.g. 'isotropic'
+     integer :: type_energy             ! energy distribution, e.g. 'Watt'
+     real(8), allocatable :: params_space(:) ! parameters for spatial distribution
+     real(8), allocatable :: params_angle(:) ! parameters for angle distribution
+     real(8), allocatable :: params_energy(:) ! parameters for energy distribution
   end type ExtSource
 
 end module source_header

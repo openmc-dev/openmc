@@ -7,7 +7,7 @@ module source
   use global
   use output,          only: write_message
   use particle_header, only: deallocate_coord
-  use physics,         only: watt_spectrum
+  use physics,         only: maxwell_spectrum, watt_spectrum
   use random_lcg,      only: prn, set_particle_seed
   use string,          only: to_str
 
@@ -20,63 +20,20 @@ module source
 contains
 
 !===============================================================================
-! ALLOCATE_BANKS allocates memory for the fission and source banks
-!===============================================================================
-
-  subroutine allocate_banks()
-
-    integer    :: alloc_err  ! allocation error code
-
-    ! Determine maximum amount of particles to simulate on each processor
-    maxwork = ceiling(real(n_particles)/n_procs,8)
-
-    ! ID's of first and last source particles
-    bank_first = rank*maxwork + 1
-    bank_last  = min((rank+1)*maxwork, n_particles)
-
-    ! number of particles for this processor
-    work = bank_last - bank_first + 1
-
-    ! Allocate source bank
-    allocate(source_bank(maxwork), STAT=alloc_err)
-
-    ! Check for allocation errors 
-    if (alloc_err /= 0) then
-       message = "Failed to allocate source bank."
-       call fatal_error()
-    end if
-
-    ! Allocate fission bank
-    allocate(fission_bank(3*maxwork), STAT=alloc_err)
-
-    ! Check for allocation errors 
-    if (alloc_err /= 0) then
-       message = "Failed to allocate fission bank."
-       call fatal_error()
-    end if
-
-  end subroutine allocate_banks
-
-!===============================================================================
 ! INITIALIZE_SOURCE initializes particles in the source bank
 !===============================================================================
 
   subroutine initialize_source()
 
     integer(8) :: i          ! loop index over bank sites
-    integer    :: j          ! dummy loop index
     integer(8) :: id         ! particle id
-    real(8)    :: r(3)       ! sampled coordinates
-    real(8)    :: phi        ! azimuthal angle
-    real(8)    :: mu         ! cosine of polar angle
-    real(8)    :: E          ! outgoing energy
-    real(8)    :: p_min(3)   ! minimum coordinates of source
-    real(8)    :: p_max(3)   ! maximum coordinates of source
+
+    type(Bank), pointer :: src => null() ! source bank site
 
     message = "Initializing source particles..."
     call write_message(6)
 
-    if (external_source % type == SRC_FILE) then
+    if (path_source /= '') then
        ! Read the source from a binary file instead of sampling from some
        ! assumed source distribution
 
@@ -85,46 +42,107 @@ contains
     else
        ! Generation source sites from specified distribution in user input
        do i = 1, work
-          id = bank_first + i - 1
-          source_bank(i) % id = id
-
-          ! Set weight to one
-          source_bank(i) % wgt = ONE
+          ! Get pointer to source bank site
+          src => source_bank(i)
 
           ! initialize random number seed
+          id = bank_first + i - 1
           call set_particle_seed(id)
 
-          ! sample position from external source
-          select case (external_source % type)
-          case (SRC_BOX)
-             p_min = external_source % values(1:3)
-             p_max = external_source % values(4:6)
-             r = (/ (prn(), j = 1,3) /)
-             source_bank(i) % xyz = p_min + r*(p_max - p_min)
-          case (SRC_POINT)
-             source_bank(i) % xyz = external_source % values
-          end select
-
-          ! sample angle
-          phi = TWO*PI*prn()
-          mu = TWO*prn() - ONE
-          source_bank(i) % uvw(1) = mu
-          source_bank(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-          source_bank(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
-          
-          ! sample energy from Watt fission energy spectrum for U-235
-          do
-             E = watt_spectrum(0.988_8, 2.249_8)
-             ! resample if energy is >= 20 MeV
-             if (E < 20) exit
-          end do
-
-          ! set particle energy
-          source_bank(i) % E = E
+          ! sample external source distribution
+          call sample_external_source(src)
        end do
     end if
  
   end subroutine initialize_source
+
+!===============================================================================
+! SAMPLE_EXTERNAL_SOURCE
+!===============================================================================
+
+  subroutine sample_external_source(site)
+
+    type(Bank), pointer :: site ! source site
+
+    integer :: i          ! dummy loop index
+    real(8) :: r(3)       ! sampled coordinates
+    real(8) :: phi        ! azimuthal angle
+    real(8) :: mu         ! cosine of polar angle
+    real(8) :: p_min(3)   ! minimum coordinates of source
+    real(8) :: p_max(3)   ! maximum coordinates of source
+    real(8) :: a          ! Arbitrary parameter 'a'
+    real(8) :: b          ! Arbitrary parameter 'b'
+
+    ! Set weight to one by default
+    site % wgt = ONE
+
+    ! Sample position
+    select case (external_source % type_space)
+    case (SRC_SPACE_BOX)
+       ! Coordinates sampled uniformly over a box
+       p_min = external_source % params_space(1:3)
+       p_max = external_source % params_space(4:6)
+       r = (/ (prn(), i = 1,3) /)
+       site % xyz = p_min + r*(p_max - p_min)
+
+    case (SRC_SPACE_POINT)
+       ! Point source
+       site % xyz = external_source % params_space
+
+    end select
+    
+    ! Sample angle
+    select case (external_source % type_angle)
+    case (SRC_ANGLE_ISOTROPIC)
+       ! Sample isotropic distribution
+       phi = TWO*PI*prn()
+       mu = TWO*prn() - ONE
+       site % uvw(1) = mu
+       site % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+       site % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+
+    case (SRC_ANGLE_MONO)
+       ! Monodirectional source
+       site % uvw = external_source % params_angle
+
+    case default
+       message = "No angle distribution specified for external source!"
+       call fatal_error()
+    end select
+          
+    ! Sample energy distribution
+    select case (external_source % type_energy)
+    case (SRC_ENERGY_MONO)
+       ! Monoenergtic source
+       site % E = external_source % params_energy(1)
+
+    case (SRC_ENERGY_MAXWELL)
+       a = external_source % params_energy(1)
+       do
+          ! Sample Maxwellian fission spectrum
+          site % E = maxwell_spectrum(a)
+
+          ! resample if energy is >= 20 MeV
+          if (site % E < 20) exit
+       end do
+
+    case (SRC_ENERGY_WATT)
+       a = external_source % params_energy(1)
+       b = external_source % params_energy(2)
+       do
+          ! Sample Watt fission spectrum
+          site % E = watt_spectrum(a, b)
+
+          ! resample if energy is >= 20 MeV
+          if (site % E < 20) exit
+       end do
+
+    case default
+       message = "No energy distribution specified for external source!"
+       call fatal_error()
+    end select
+
+  end subroutine sample_external_source
 
 !===============================================================================
 ! GET_SOURCE_PARTICLE returns the next source particle 
@@ -140,17 +158,9 @@ contains
     ! set defaults
     call initialize_particle()
 
-    ! point to next source particle
+    ! Copy attributes from source to particle
     src => source_bank(index_source)
-
-    ! copy attributes from source bank site
-    p % wgt         = src % wgt
-    p % last_wgt    = src % wgt
-    p % coord % xyz = src % xyz
-    p % coord % uvw = src % uvw
-    p % last_xyz    = src % xyz
-    p % E           = src % E
-    p % last_E      = src % E
+    call copy_source_attributes(src)
 
     ! set identifier for particle
     p % id = bank_first + index_source - 1
@@ -165,10 +175,26 @@ contains
     if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
          p % id == trace_particle) trace = .true.
 
-    ! Add paricle's starting weight to count for normalizing tallies later
-    total_weight = total_weight + src % wgt
-
   end subroutine get_source_particle
+
+!===============================================================================
+! COPY_SOURCE_ATTRIBUTES
+!===============================================================================
+
+  subroutine copy_source_attributes(src)
+
+    type(Bank), pointer :: src
+
+    ! copy attributes from source bank site
+    p % wgt         = src % wgt
+    p % last_wgt    = src % wgt
+    p % coord % xyz = src % xyz
+    p % coord % uvw = src % uvw
+    p % last_xyz    = src % xyz
+    p % E           = src % E
+    p % last_E      = src % E
+
+  end subroutine copy_source_attributes
 
 !===============================================================================
 ! INITIALIZE_PARTICLE sets default attributes for a particle from the source
@@ -208,7 +234,7 @@ contains
 !===============================================================================
 
   subroutine write_source_binary()
-    
+
 #ifdef MPI
     integer                  :: fh     ! file handle
     integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
@@ -217,7 +243,7 @@ contains
     ! PARALLEL I/O USING MPI-2 ROUTINES
 
     ! Open binary source file for reading
-    call MPI_FILE_OPEN(MPI_COMM_WORLD, 'source.binary', MPI_MODE_CREATE +      &
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, path_source, MPI_MODE_CREATE + &
          MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
 
     if (master) then
@@ -227,7 +253,7 @@ contains
     end if
 
     ! Set proper offset for source data on this processor
-    offset = 8*(1 + rank*maxwork*9)
+    offset = 8*(1 + rank*maxwork*8)
 
     ! Write all source sites
     call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
@@ -241,7 +267,7 @@ contains
     ! SERIAL I/O USING FORTRAN INTRINSIC ROUTINES
 
     ! Open binary source file for writing
-    open(UNIT=UNIT_SOURCE, FILE='source.binary', STATUS='replace', &
+    open(UNIT=UNIT_SOURCE, FILE=path_source, STATUS='replace', &
          ACCESS='stream')
 
     ! Write the number of particles
@@ -277,8 +303,8 @@ contains
     ! PARALLEL I/O USING MPI-2 ROUTINES
 
     ! Open binary source file for reading
-    call MPI_FILE_OPEN(MPI_COMM_WORLD, trim(external_source % path)//          &
-         'source.binary', MPI_MODE_RDONLY, MPI_INFO_NULL, fh, mpi_err)
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, path_source, MPI_MODE_RDONLY, &
+         MPI_INFO_NULL, fh, mpi_err)
 
     ! Read number of source sites in file
     offset = 0
@@ -291,7 +317,7 @@ contains
        call fatal_error()
     else
        ! Set proper offset for source data on this processor
-       offset = 8*(1 + rank*maxwork*9)
+       offset = 8*(1 + rank*maxwork*8)
 
        ! Read all source sites
        call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
@@ -306,8 +332,8 @@ contains
     ! SERIAL I/O USING FORTRAN INTRINSIC ROUTINES
 
     ! Open binary source file for reading
-    open(UNIT=UNIT_SOURCE, FILE=trim(external_source % path)//'source.binary', &
-         STATUS='old', ACCESS='stream')
+    open(UNIT=UNIT_SOURCE, FILE=path_source, STATUS='old', &
+         ACCESS='stream')
 
     ! Read number of source sites in file
     read(UNIT=UNIT_SOURCE) n_sites

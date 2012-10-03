@@ -1,19 +1,19 @@
 module ace
 
-  use ace_header,           only: Nuclide, Reaction, SAB_Table, XsListing, &
-                                  DistEnergy
+  use ace_header,       only: Nuclide, Reaction, SAB_Table, XsListing, &
+                              DistEnergy
   use constants
-  use datatypes,            only: dict_create, dict_add_key, dict_get_key, &
-                                  dict_has_key, dict_delete, dict_keys
-  use datatypes_header,     only: DictionaryCI, ListKeyValueCI
-  use endf,                 only: reaction_name
-  use error,                only: fatal_error
-  use fission,              only: nu_total
+  use datatypes,        only: dict_create, dict_add_key, dict_get_key, &
+                              dict_has_key, dict_delete, dict_keys
+  use datatypes_header, only: DictionaryCI, ListKeyValueCI
+  use endf,             only: reaction_name
+  use error,            only: fatal_error, warning
+  use fission,          only: nu_total
   use global
-  use material_header,      only: Material
-  use output,               only: write_message, print_nuclide, header
-  use string,               only: split_string, str_to_int, str_to_real, &
-                                  lower_case, to_str
+  use material_header,  only: Material
+  use output,           only: write_message
+  use string,           only: split_string, str_to_int, str_to_real, &
+                              lower_case, to_str
 
   implicit none
 
@@ -35,97 +35,17 @@ contains
 
   subroutine read_xs()
 
-    integer        :: i              ! index in materials array
-    integer        :: j              ! index over nuclides in material
-    integer        :: index_list     ! index in xs_listings array
-    integer        :: index_nuclides ! index in nuclides
-    integer        :: index_sab      ! index in sab_tables
-    character(12)  :: name           ! name of isotope, e.g. 92235.03c
-    character(12)  :: alias          ! alias of nuclide, e.g. U-235.03c
+    integer        :: i         ! index in materials array
+    integer        :: j         ! index over nuclides in material
+    integer        :: i_listing ! index in xs_listings array
+    integer        :: i_nuclide ! index in nuclides
+    integer        :: i_sab     ! index in sab_tables
+    character(12)  :: name      ! name of isotope, e.g. 92235.03c
+    character(12)  :: alias     ! alias of nuclide, e.g. U-235.03c
     type(Material),  pointer :: mat => null()
     type(Nuclide),   pointer :: nuc => null()
     type(SAB_Table), pointer :: sab => null()
     type(DictionaryCI), pointer :: already_read => null()
-
-    ! ==========================================================================
-    ! COUNT NUMBER OF TABLES AND CREATE DICTIONARIES
-
-    ! First we need to determine how many continuous-energy tables and how many
-    ! S(a,b) thermal scattering tables there are -- this loop doesn't actually
-    ! read the data, it simply counts the number of nuclides and S(a,b) tables
-    index_nuclides = 0
-    index_sab = 0
-    do i = 1, n_materials
-       ! Get pointer to material
-       mat => materials(i)
-
-       ! First go through all the nuclide and check if they exist on other
-       ! materials -- if not, then increment the count for the number of
-       ! nuclides and add to dictionary
-       do j = 1, mat % n_nuclides
-          name = mat % names(j)
-
-          ! First check that this nuclide is listed in the cross_sections.xml
-          ! file
-          if (.not. dict_has_key(xs_listing_dict, name)) then
-             message = "Could not find nuclide " // trim(name) // &
-                  " in cross_sections.xml file!"
-             call fatal_error()
-          end if
-
-          ! Find index in xs_listing and set the name and alias according to the
-          ! listing
-          index_list = dict_get_key(xs_listing_dict, name)
-          name       = xs_listings(index_list) % name
-          alias      = xs_listings(index_list) % alias
-
-          ! If this nuclide hasn't been encountered yet, we need to add its name
-          ! and alias to the nuclide_dict
-          if (.not. dict_has_key(nuclide_dict, name)) then
-             index_nuclides   = index_nuclides + 1
-             mat % nuclide(j) = index_nuclides
-
-             call dict_add_key(nuclide_dict, name,  index_nuclides)
-             call dict_add_key(nuclide_dict, alias, index_nuclides)
-          else
-             mat % nuclide(j) = dict_get_key(nuclide_dict, name)
-          end if
-       end do
-
-       ! Check if S(a,b) exists on other materials
-       if (mat % has_sab_table) then
-          name = mat % sab_name
-
-          ! First check that this nuclide is listed in the cross_sections.xml
-          ! file
-          if (.not. dict_has_key(xs_listing_dict, name)) then
-             message = "Could not find S(a,b) table " // trim(name) // &
-                  " in cross_sections.xml file!"
-             call fatal_error()
-          end if
-
-          ! Find index in xs_listing and set the name and alias according to the
-          ! listing
-          index_list = dict_get_key(xs_listing_dict, name)
-          name       = xs_listings(index_list) % name
-          alias      = xs_listings(index_list) % alias
-
-          ! If this S(a,b) table hasn't been encountered yet, we need to add its
-          ! name and alias to the sab_dict
-          if (.not. dict_has_key(sab_dict, name)) then
-             index_sab       = index_sab + 1
-             mat % sab_table = index_sab
-
-             call dict_add_key(sab_dict, name,  index_sab)
-             call dict_add_key(sab_dict, alias, index_sab)
-          else
-             mat % sab_table = dict_get_key(sab_dict, name)
-          end if
-       end if
-    end do
-
-    n_nuclides_total = index_nuclides
-    n_sab_tables     = index_sab
 
     ! allocate arrays for ACE table storage and cross section cache
     allocate(nuclides(n_nuclides_total))
@@ -134,9 +54,6 @@ contains
 
     ! ==========================================================================
     ! READ ALL ACE CROSS SECTION TABLES
-
-    ! display header in summary.out
-    if (master) call header("CROSS SECTION TABLES", unit=UNIT_XS)
 
     call dict_create(already_read)
 
@@ -148,19 +65,20 @@ contains
           name = mat % names(j)
 
           if (.not. dict_has_key(already_read, name)) then
-             index_list = dict_get_key(xs_listing_dict, name)
-             index_nuclides = dict_get_key(nuclide_dict, name)
-             name  = xs_listings(index_list) % name
-             alias = xs_listings(index_list) % alias
+             i_listing = dict_get_key(xs_listing_dict, name)
+             i_nuclide = dict_get_key(nuclide_dict, name)
+             name  = xs_listings(i_listing) % name
+             alias = xs_listings(i_listing) % alias
+
+             ! Keep track of what listing is associated with this nuclide
+             nuc => nuclides(i_nuclide)
+             nuc % listing = i_listing
 
              ! Read the ACE table into the appropriate entry on the nuclides
              ! array
-             call read_ace_table(index_nuclides, index_list)
+             call read_ace_table(i_nuclide, i_listing)
 
-             ! Print out information on table to cross_sections.out file
-             nuc => nuclides(index_nuclides)
-             if (master) call print_nuclide(nuc, unit=UNIT_XS)
-
+             ! Add name and alias to dictionary
              call dict_add_key(already_read, name, 0)
              call dict_add_key(already_read, alias, 0)
           end if
@@ -170,13 +88,14 @@ contains
           name = mat % sab_name
 
           if (.not. dict_has_key(already_read, name)) then
-             index_list = dict_get_key(xs_listing_dict, name)
-             index_sab  = dict_get_key(sab_dict, name)
+             i_listing = dict_get_key(xs_listing_dict, name)
+             i_sab  = dict_get_key(sab_dict, name)
 
              ! Read the ACE table into the appropriate entry on the sab_tables
              ! array
-             call read_ace_table(index_sab, index_list)
+             call read_ace_table(i_sab, i_listing)
 
+             ! Add name to dictionary
              call dict_add_key(already_read, name, 0)
           end if
        end if
@@ -220,10 +139,10 @@ contains
 ! appropriate subroutines to parse the actual data.
 !===============================================================================
 
-  subroutine read_ace_table(index_table, index_list)
+  subroutine read_ace_table(i_table, i_listing)
 
-    integer, intent(in) :: index_table ! index in nuclides/sab_tables
-    integer, intent(in) :: index_list  ! index in xs_listings
+    integer, intent(in) :: i_table   ! index in nuclides/sab_tables
+    integer, intent(in) :: i_listing ! index in xs_listings
 
     integer       :: i             ! loop index for XSS records
     integer       :: j, j1, j2     ! indices in XSS
@@ -249,7 +168,7 @@ contains
     type(XsListing), pointer :: listing => null()
 
     ! determine path, record length, and location of table
-    listing => xs_listings(index_list)
+    listing => xs_listings(i_listing)
     filename      = listing % path
     record_length = listing % recl
     location      = listing % location
@@ -298,10 +217,14 @@ contains
        ! Read XSS array
        read(UNIT=in, FMT='(4E20.0)') XSS
 
+       ! Close ACE file
+       close(UNIT=in)
+
     elseif (filetype == BINARY) then
        ! =======================================================================
        ! READ ACE TABLE IN BINARY FORMAT
 
+       ! Open ACE file
        open(UNIT=in, FILE=filename, STATUS='old', ACTION='read', &
             ACCESS='direct', RECL=record_length)
 
@@ -319,6 +242,9 @@ contains
           j2 = min(length, j1 + entries - 1)
           read(UNIT=IN, REC=location + i) (XSS(j), j=j1,j2)
        end do
+
+       ! Close ACE file
+       close(UNIT=in)
     end if
 
     ! ==========================================================================
@@ -326,7 +252,7 @@ contains
 
     select case(listing % type)
     case (ACE_NEUTRON)
-       nuc => nuclides(index_table)
+       nuc => nuclides(i_table)
        nuc % name = name
        nuc % awr  = awr
        nuc % kT   = kT
@@ -340,6 +266,14 @@ contains
        call read_energy_dist(nuc)
        call read_unr_res(nuc)
 
+       ! Currently subcritical fixed source calculations are not allowed. Thus,
+       ! if any fissionable material is found in a fixed source calculation,
+       ! abort the run.
+       if (run_mode == MODE_FIXEDSOURCE .and. nuc % fissionable) then
+          message = "Cannot have fissionable material in a fixed source run."
+          call fatal_error()
+       end if
+
        ! for fissionable nuclides, precalculate microscopic nu-fission cross
        ! sections so that we don't need to call the nu_total function during
        ! cross section lookups
@@ -347,7 +281,7 @@ contains
        if (nuc % fissionable) call generate_nu_fission(nuc)
 
     case (ACE_THERMAL)
-       sab => sab_tables(index_table)
+       sab => sab_tables(i_table)
        sab % name = name
        sab % awr  = awr
        sab % kT   = kT
@@ -359,8 +293,6 @@ contains
     deallocate(XSS)
     if(associated(nuc)) nullify(nuc)
     if(associated(sab)) nullify(sab)
-
-    close(UNIT=in)
 
   end subroutine read_ace_table
 
@@ -386,7 +318,6 @@ contains
     allocate(nuc % fission(NE))
     allocate(nuc % nu_fission(NE))
     allocate(nuc % absorption(NE))
-    allocate(nuc % heating(NE))
 
     ! initialize cross sections
     nuc % total      = ZERO
@@ -394,7 +325,6 @@ contains
     nuc % fission    = ZERO
     nuc % nu_fission = ZERO
     nuc % absorption = ZERO
-    nuc % heating    = ZERO
 
     ! Read data from XSS -- only the energy grid, elastic scattering and heating
     ! cross section values are actually read from here. The total and absorption
@@ -408,7 +338,6 @@ contains
 
     ! Continue reading elastic scattering and heating
     nuc % elastic = get_real(NE)
-    nuc % heating = get_real(NE)
     
   end subroutine read_esz
 
@@ -637,17 +566,17 @@ contains
     nuc % n_reaction = NMT + 1
     allocate(nuc % reactions(NMT+1))
 
-    ! Store elastic scattering cross-section on reaction one
+    ! Store elastic scattering cross-section on reaction one -- note that the
+    ! sigma array is not allocated or stored for elastic scattering since it is
+    ! already stored in nuc % elastic
     rxn => nuc % reactions(1)
     rxn % MT            = 2
     rxn % Q_value       = ZERO
     rxn % multiplicity  = 1
-    rxn % IE            = 1
+    rxn % threshold     = 1
     rxn % scatter_in_cm = .true.
     rxn % has_angle_dist = .false.
     rxn % has_energy_dist = .false.
-    allocate(rxn % sigma(nuc % n_grid))
-    rxn % sigma = nuc % elastic
     
     ! Add contribution of elastic scattering to total cross section
     nuc % total = nuc % total + nuc % elastic
@@ -675,7 +604,7 @@ contains
        ! read starting energy index
        LOCA = int(XSS(LXS + i - 1))
        IE   = int(XSS(JXS7 + LOCA - 1))
-       rxn % IE = IE
+       rxn % threshold = IE
 
        ! read number of energies cross section values
        NE = int(XSS(JXS7 + LOCA))
@@ -712,6 +641,10 @@ contains
 
           ! Also need to add fission cross sections to absorption
           nuc % absorption(IE:IE+NE-1) = nuc % absorption(IE:IE+NE-1) + rxn % sigma
+
+          ! If total fission reaction is present, there's no need to store the
+          ! reaction cross-section since it was copied to nuc % fission
+          if (rxn % MT == N_FISSION) deallocate(rxn % sigma)
 
           ! Keep track of this reaction for easy searching later
           i_fission = i_fission + 1
@@ -1151,6 +1084,13 @@ contains
           end do
        end do
     end do
+
+    ! Check for negative values
+    if (any(nuc % urr_data % prob < ZERO)) then
+       message = "Negative value(s) found on probability table for nuclide " &
+            // nuc % name
+       call warning()
+    end if
 
   end subroutine read_unr_res
 

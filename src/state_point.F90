@@ -51,15 +51,21 @@ contains
     call MPI_FILE_OPEN(MPI_COMM_WORLD, path_state_point, MPI_MODE_CREATE + &
          MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
 
-    if (master) then
-       ! =======================================================================
-       ! RUN INFORMATION AND TALLY METADATA
+    ! ==========================================================================
+    ! RUN INFORMATION AND TALLY METADATA
 
-       call write_state_point_header(fh)
+    if (master) call write_state_point_header(fh)
 
-       ! =======================================================================
-       ! TALLY RESULTS
+    ! ==========================================================================
+    ! TALLY RESULTS
 
+    if (.not. reduce_tallies) then
+       ! If using the no-tally-reduction method, we need to collect tally
+       ! results before writing them to the state point file.
+
+       call write_tally_scores_nr(fh)
+
+    elseif (master) then
        if (tallies_on) then
           ! Indicate that tallies are on
           temp = 1
@@ -439,6 +445,83 @@ contains
     end do TALLY_METADATA
 
   end subroutine write_state_point_header
+#endif
+
+#ifdef MPI
+!===============================================================================
+! WRITE_TALLY_SCORES_NR
+!===============================================================================
+
+  subroutine write_tally_scores_nr(fh)
+
+    integer, intent(in) :: fh ! file handle
+    integer :: i      ! loop index
+    integer :: n      ! number of filter bins
+    integer :: m      ! number of score bins
+    integer :: temp   ! temporary variable
+    integer :: n_bins ! total number of bins
+    real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of scores
+    real(8) :: dummy  ! temporary receive buffer for non-root reduces
+    type(TallyObject), pointer :: t => null()
+
+    if (tallies_on) then
+       ! Indicate that tallies are on
+       if (master) then
+          temp = 1
+          call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+       end if
+
+       ! Write all tally scores
+       TALLY_SCORES: do i = 1, n_tallies
+          t => tallies(i)
+
+          ! Determine size of tally scores array
+          m = size(t % scores, 1)
+          n = size(t % scores, 2)
+          n_bins = m*n*2
+
+          ! Allocate array for storing sums and sums of squares, but
+          ! contiguously in memory for each
+          allocate(tally_temp(2,m,n))
+          tally_temp(1,:,:) = t % scores(:,:) % sum
+          tally_temp(2,:,:) = t % scores(:,:) % sum_sq
+
+          if (master) then
+             ! The MPI_IN_PLACE specifier allows the master to copy values into
+             ! a receive buffer without having a temporary variable
+             call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
+                  MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+
+             ! Write reduced tally results to file
+             call MPI_FILE_WRITE(fh, tally_temp, n_bins, MPI_REAL8, &
+                  MPI_STATUS_IGNORE, mpi_err)
+
+             ! At the end of the simulation, store the results back in the
+             ! regular TallyScores array
+             if (current_batch == n_batches) then
+                t % scores(:,:) % sum = tally_temp(1,:,:)
+                t % scores(:,:) % sum_sq = tally_temp(2,:,:)
+             end if
+          else
+             ! Receive buffer not significant at other processors
+             call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
+                  0, MPI_COMM_WORLD, mpi_err)
+          end if
+
+          ! Deallocate temporary copy of tally results
+          deallocate(tally_temp)
+       end do TALLY_SCORES
+    else
+       if (master) then
+       ! Indicate that tallies are off
+          temp = 0
+          call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
+               MPI_STATUS_IGNORE, mpi_err)
+       end if
+    end if
+
+  end subroutine write_tally_scores_nr
 #endif
 
 !===============================================================================

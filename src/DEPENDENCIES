@@ -13,15 +13,14 @@ ace.o: string.o
 ace_header.o: constants.o
 ace_header.o: endf_header.o
 
-cmfd_data.o: cmfd_output.o
 cmfd_data.o: global.o
 cmfd_data.o: mesh.o
 cmfd_data.o: mesh_header.o
 
 cmfd_execute.o: cmfd_data.o
 cmfd_execute.o: cmfd_output.o
+cmfd_execute.o: cmfd_message_passing.o
 cmfd_execute.o: cmfd_power_solver.o
-cmfd_execute.o: cmfd_slepc_solver.o
 cmfd_execute.o: cmfd_snes_solver.o
 cmfd_execute.o: tally.o
 cmfd_execute.o: timing.o
@@ -41,23 +40,24 @@ cmfd_jacobian_operator.o: cmfd_prod_operator.o
 
 cmfd_loss_operator.o: global.o
 
+cmfd_message_passing.o: cmfd_header.o
+cmfd_message_passing.o: global.o
+cmfd_message_passing.o: timing.o
+
+cmfd_output.o: cmfd_data.o
 cmfd_output.o: global.o
 cmfd_output.o: mesh_header.o
 cmfd_output.o: string.o
-cmfd_output.o: vtk_writer.o
+cmfd_output.o: timing.o
 
 cmfd_power_solver.o: cmfd_loss_operator.o
 cmfd_power_solver.o: cmfd_prod_operator.o
 
 cmfd_prod_operator.o: global.o
 
-cmfd_slepc_solver.o: cmfd_loss_operator.o
-cmfd_slepc_solver.o: cmfd_prod_operator.o
-
 cmfd_snes_solver.o: cmfd_jacobian_operator.o
 cmfd_snes_solver.o: cmfd_loss_operator.o
 cmfd_snes_solver.o: cmfd_prod_operator.o
-cmfd_snes_solver.o: cmfd_slepc_solver.o
 
 cross_section.o: ace_header.o
 cross_section.o: constants.o

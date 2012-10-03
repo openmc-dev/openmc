@@ -8,10 +8,10 @@ cmfd_header.o \
 cmfd_input.o \
 cmfd_jacobian_operator.o \
 cmfd_loss_operator.o \
+cmfd_message_passing.o \
 cmfd_output.o \
 cmfd_power_solver.o \
 cmfd_prod_operator.o \
-cmfd_slepc_solver.o \
 cmfd_snes_solver.o \
 cross_section.o \
 criticality.o \
@@ -49,5 +49,4 @@ source_header.o \
 string.o \
 tally.o \
 tally_header.o \
-timing.o \
-vtk_writer.o
+timing.o

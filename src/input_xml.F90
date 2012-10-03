@@ -1,6 +1,6 @@
 module input_xml
 
-  use cmfd_input,      only: read_cmfd_xml 
+  use cmfd_input,      only: configure_cmfd 
   use constants
   use datatypes,       only: dict_add_key, dict_has_key, dict_get_key
   use error,           only: fatal_error, warning
@@ -32,7 +32,7 @@ contains
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
-    if (cmfd_on) call read_cmfd_xml()
+    if (cmfd_run) call configure_cmfd()
 
   end subroutine read_input_xml
 
@@ -318,7 +318,7 @@ contains
     end if
        
     ! check for cmfd run
-    if (run_cmfd_) cmfd_on = .true.
+    if (run_cmfd_) cmfd_run = .true.
 
   end subroutine read_settings_xml
 
@@ -819,7 +819,7 @@ contains
        n_meshes = 0
     else
        n_user_meshes = size(mesh_)
-       if (cmfd_on) then
+       if (cmfd_run) then
          n_meshes = n_user_meshes + n_cmfd_meshes
        else
          n_meshes = n_user_meshes
@@ -834,7 +834,7 @@ contains
        call warning()
     else
        n_user_tallies = size(tally_)
-       if (cmfd_on) then
+       if (cmfd_run) then
          n_tallies = n_user_tallies + n_cmfd_tallies
        else
          n_tallies = n_user_tallies
@@ -1218,7 +1218,7 @@ contains
     end do
 
     ! Determine number of types of tallies
-    if (cmfd_on) then
+    if (cmfd_run) then
       n_analog_tallies = n_user_analog_tallies + n_cmfd_analog_tallies
       n_tracklength_tallies = n_user_tracklength_tallies + n_cmfd_tracklength_tallies
       n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies

@@ -1,18 +1,16 @@
 module cmfd_loss_operator
 
-#ifdef PETSC
-
   implicit none
   private
   public :: init_M_operator,build_loss_matrix,destroy_M_operator
 
-#include "finclude/petsc.h90"
+# include <finclude/petsc.h90>
 
-    integer  :: nx   ! maximum number of x cells
-    integer  :: ny   ! maximum number of y cells
-    integer  :: nz   ! maximum number of z cells
-    integer  :: ng   ! maximum number of groups
-    integer  :: ierr ! petsc error code
+  integer  :: nx   ! maximum number of x cells
+  integer  :: ny   ! maximum number of y cells
+  integer  :: nz   ! maximum number of z cells
+  integer  :: ng   ! maximum number of groups
+  integer  :: ierr ! petsc error code
 
   type, public :: loss_operator
 
@@ -24,6 +22,8 @@ module cmfd_loss_operator
     integer, allocatable :: o_nnz(:) ! vector of off-diagonal preallocation
 
   end type loss_operator
+
+  logical :: adjoint_calc = .FALSE. ! adjoint calculation
 
 contains
 
@@ -56,7 +56,7 @@ contains
 
   subroutine get_M_indices(this)
 
-    use global, only: cmfd,cmfd_coremap
+    use global,  only: cmfd, cmfd_coremap
 
     type(loss_operator) :: this
 
@@ -84,7 +84,7 @@ contains
 
   subroutine preallocate_loss_matrix(this)
 
-    use global, only: cmfd,cmfd_coremap
+    use global,  only: cmfd, cmfd_coremap
 
     type(loss_operator) :: this
 
@@ -108,6 +108,10 @@ contains
     integer :: row_end       ! index of local final row
     integer :: neig_mat_idx  ! matrix index of neighbor cell
     integer :: scatt_mat_idx ! matrix index for h-->g scattering terms
+
+    ! initialize size and rank
+    sizen = 0
+    rank = 0
 
     ! get rank and max rank of procs
     call MPI_COMM_RANK(PETSC_COMM_WORLD,rank,ierr)
@@ -242,11 +246,12 @@ contains
 ! BUILD_LOSS_MATRIX creates the matrix representing loss of neutrons
 !===============================================================================
 
-  subroutine build_loss_matrix(this)
+  subroutine build_loss_matrix(this,adjoint)
 
-    use global, only: cmfd,cmfd_coremap,mpi_err
+    use global, only: cmfd, cmfd_coremap, cmfd_write_matrices
 
     type(loss_operator) :: this
+    logical, optional :: adjoint    ! set up the adjoint
 
     integer :: nxyz(3,2)            ! single vector containing bound. locations
     integer :: i                    ! iteration counter for x
@@ -276,16 +281,23 @@ contains
     real(8) :: jnet                 ! net leakage from jo
     real(8) :: val                  ! temporary variable before saving to 
 
+    ! check for adjoint
+    if (present(adjoint)) adjoint_calc = adjoint 
+
     ! create single vector of these indices for boundary calculation
     nxyz(1,:) = (/1,nx/)
     nxyz(2,:) = (/1,ny/)
     nxyz(3,:) = (/1,nz/)
 
+    ! initialize row start and finish
+    row_start = 0
+    row_finish = 0
+
     ! get row bounds for this processor
     call MatGetOwnershipRange(this%M,row_start,row_finish,ierr)
 
     ! begin iteration loops
-    ROWS: do irow = row_start,row_finish-1 
+    ROWS: do irow = row_start,row_finish-1
 
       ! get indices for that row
       call matrix_to_indices(irow,g,i,j,k)
@@ -397,7 +409,12 @@ contains
         ! record value in matrix (negate it)
         val = -scattxshg
 
-        call MatSetValue(this%M,irow,scatt_mat_idx-1,val, INSERT_VALUES,ierr)
+        ! check for adjoint and bank value
+        if (adjoint_calc) then
+          call MatSetValue(this%M,scatt_mat_idx-1,irow,val, INSERT_VALUES,ierr)
+        else
+          call MatSetValue(this%M,irow,scatt_mat_idx-1,val, INSERT_VALUES,ierr)
+        end if
 
       end do SCATTR
 
@@ -408,17 +425,17 @@ contains
     call MatAssemblyEnd(this%M,MAT_FINAL_ASSEMBLY,ierr)
 
     ! print out operator to file
-    call print_M_operator(this)
+    if (cmfd_write_matrices) call print_M_operator(this)
 
   end subroutine build_loss_matrix
 
 !===============================================================================
-! INDICES_TO_MATRIX takes (x,y,z,g) indices and computes location in matrix 
+! INDICES_TO_MATRIX takes (x,y,z,g) indices and computes location in matrix
 !===============================================================================
 
   subroutine indices_to_matrix(g,i,j,k,matidx)
 
-    use global, only: cmfd,cmfd_coremap
+    use global,  only: cmfd, cmfd_coremap
 
     integer :: matidx         ! the index location in matrix
     integer :: i               ! current x index
@@ -442,12 +459,12 @@ contains
   end subroutine indices_to_matrix
 
 !===============================================================================
-! MATRIX_TO_INDICES 
+! MATRIX_TO_INDICES
 !===============================================================================
 
   subroutine matrix_to_indices(irow,g,i,j,k)
 
-    use global, only: cmfd,cmfd_coremap
+    use global,  only: cmfd, cmfd_coremap
 
     integer :: i                    ! iteration counter for x
     integer :: j                    ! iteration counter for y
@@ -467,30 +484,33 @@ contains
     else
 
       ! compute indices
-      g = mod(irow,ng) + 1 
+      g = mod(irow,ng) + 1
       i = mod(irow,ng*nx)/ng + 1
       j = mod(irow,ng*nx*ny)/(ng*nx)+ 1
-      k = mod(irow,ng*nx*ny*nz)/(ng*nx*ny) + 1 
+      k = mod(irow,ng*nx*ny*nz)/(ng*nx*ny) + 1
 
     end if
 
   end subroutine matrix_to_indices
 
 !===============================================================================
-! PRINT_M_OPERATOR 
+! PRINT_M_OPERATOR
 !===============================================================================
 
   subroutine print_M_operator(this)
-
-    use global, only: path_input
 
     type(loss_operator) :: this
 
     PetscViewer :: viewer
 
     ! write out matrix in binary file (debugging)
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,trim(path_input)//'lossmat.bin' &
-   &     ,FILE_MODE_WRITE,viewer,ierr)
+    if (adjoint_calc) then
+      call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'adj_lossmat.bin'            &
+     &     ,FILE_MODE_WRITE,viewer,ierr)
+    else
+      call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'lossmat.bin'                &
+     &     ,FILE_MODE_WRITE,viewer,ierr)
+    end if
     call MatView(this%M,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 
@@ -512,7 +532,5 @@ contains
     if (allocated(this%o_nnz)) deallocate(this%o_nnz)
 
   end subroutine destroy_M_operator
-
-#endif
 
 end module cmfd_loss_operator

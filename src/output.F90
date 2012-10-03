@@ -941,7 +941,7 @@ contains
   subroutine print_columns()
 
     if (entropy_on) then
-      if (cmfd_on) then
+      if (cmfd_run) then
         message = " Cycle   k(batch)   Entropy         Average k         CMFD k    CMFD Ent."
         call write_message(1)
         message = " =====   ========   =======    ===================  ==========  ========="
@@ -953,7 +953,7 @@ contains
         call write_message(1)
       end if
     else
-      if (cmfd_on) then
+      if (cmfd_run) then
         message = " Cycle   k(batch)          Average k         CMFD k"
         call write_message(1)
         message = " =====   ========     ===================  =========="
@@ -990,7 +990,7 @@ contains
        ! ACTIVE BATCHES
 
        if (entropy_on) then
-         if (cmfd_on) then
+         if (cmfd_run) then
            write(UNIT=OUTPUT_UNIT, FMT=104) current_batch, k_batch, &
                  entropy, keff, keff_std, cmfd%keff, cmfd%entropy
          else
@@ -998,7 +998,7 @@ contains
                  entropy, keff, keff_std
          end if
        else
-         if (cmfd_on) then
+         if (cmfd_run) then
            write(UNIT=OUTPUT_UNIT, FMT=105) current_batch, k_batch, &
                  keff, keff_std, cmfd%keff
          else
@@ -1082,7 +1082,7 @@ contains
     write(ou,100) "Total time in simulation", time_inactive % elapsed + &
          time_active % elapsed
     write(ou,100) "  Time in transport only", time_transport % elapsed
-    if(cmfd_on) write(ou,100) "Total CMFD time", time_cmfd % elapsed
+    if(cmfd_run) write(ou,100) "Total CMFD time", time_cmfd % elapsed
     write(ou,100) "  Time in inactive batches", time_inactive % elapsed
     write(ou,100) "  Time in active batches", time_active % elapsed
     write(ou,100) "  Time between generations", time_intercycle % elapsed

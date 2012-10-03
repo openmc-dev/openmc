@@ -1,17 +1,16 @@
 module cmfd_prod_operator
 
-#ifdef PETSC
   implicit none
   private
   public :: init_F_operator,build_prod_matrix,destroy_F_operator
 
-#include <finclude/petsc.h90>
+# include <finclude/petsc.h90>
 
-    integer  :: nx   ! maximum number of x cells
-    integer  :: ny   ! maximum number of y cells
-    integer  :: nz   ! maximum number of z cells
-    integer  :: ng   ! maximum number of groups
-    integer  :: ierr ! petsc error code
+  integer  :: nx   ! maximum number of x cells
+  integer  :: ny   ! maximum number of y cells
+  integer  :: nz   ! maximum number of z cells
+  integer  :: ng   ! maximum number of groups
+  integer  :: ierr ! petsc error code
 
   type, public :: prod_operator
 
@@ -23,6 +22,8 @@ module cmfd_prod_operator
     integer, allocatable :: o_nnz(:) ! vector of off-diagonal preallocation
 
   end type prod_operator
+
+  logical :: adjoint_calc = .FALSE. ! adjoint calculation 
 
 contains
 
@@ -55,7 +56,7 @@ contains
 
   subroutine get_F_indices(this)
 
-    use global, only: cmfd,cmfd_coremap
+    use global,  only: cmfd, cmfd_coremap
 
     type(prod_operator) :: this
 
@@ -83,7 +84,7 @@ contains
 
   subroutine preallocate_prod_matrix(this)
 
-    use global, only: cmfd,cmfd_coremap
+    use global,  only: cmfd, cmfd_coremap
 
     type(prod_operator) :: this
 
@@ -99,6 +100,10 @@ contains
     integer :: row_start     ! index of local starting row
     integer :: row_end       ! index of local final row
     integer :: hmat_idx      ! index in matrix for energy group h
+
+    ! initialize size and rank
+    rank = 0
+    sizen = 0
 
     ! get rank and max rank of procs
     call MPI_COMM_RANK(PETSC_COMM_WORLD,rank,ierr)
@@ -169,11 +174,12 @@ contains
 ! BUILD_PROD_MATRIX creates the matrix representing loss of neutrons
 !===============================================================================
 
-  subroutine build_prod_matrix(this)
+  subroutine build_prod_matrix(this,adjoint)
 
-    use global, only: cmfd,cmfd_coremap,mpi_err
+    use global,  only: cmfd, cmfd_coremap, cmfd_write_matrices
 
     type(prod_operator) :: this
+    logical, optional :: adjoint
 
     integer :: i                  ! iteration counter for x
     integer :: j                  ! iteration counter for y
@@ -187,6 +193,13 @@ contains
     integer :: irow                 ! iteration counter over row
     real(8) :: nfissxs            ! nufission cross section h-->g
     real(8) :: val                ! temporary variable for nfissxs
+
+    ! check for adjoint
+    if (present(adjoint)) adjoint_calc = adjoint
+
+    ! initialize row start and finish
+    row_start = 0
+    row_finish = 0
 
     ! get row bounds for this processor
     call MatGetOwnershipRange(this%F,row_start,row_finish,ierr)
@@ -218,7 +231,13 @@ contains
 
         ! reocrd value in matrix
         val = nfissxs
-        call MatSetValue(this%F,irow,hmat_idx-1,val,INSERT_VALUES,ierr)
+
+        ! check for adjoint and bank val
+        if (adjoint_calc) then
+          call MatSetValue(this%F,hmat_idx-1,irow,val,INSERT_VALUES,ierr)
+        else
+          call MatSetValue(this%F,irow,hmat_idx-1,val,INSERT_VALUES,ierr)
+        end if
 
       end do NFISS
 
@@ -229,17 +248,17 @@ contains
     call MatAssemblyEnd(this%F,MAT_FINAL_ASSEMBLY,ierr)
 
     ! print out operator to file
-    call print_F_operator(this)
+    if (cmfd_write_matrices) call print_F_operator(this)
 
   end subroutine build_prod_matrix
 
 !===============================================================================
-! INDICES_TO_MATRIX takes (x,y,z,g) indices and computes location in matrix 
+! INDICES_TO_MATRIX takes (x,y,z,g) indices and computes location in matrix
 !===============================================================================
 
   subroutine indices_to_matrix(g,i,j,k,matidx)
-  
-    use global, only: cmfd,cmfd_coremap
+
+    use global,  only: cmfd, cmfd_coremap
 
     integer :: matidx         ! the index location in matrix
     integer :: i               ! current x index
@@ -263,12 +282,12 @@ contains
   end subroutine indices_to_matrix
 
 !===============================================================================
-! MATRIX_TO_INDICES 
+! MATRIX_TO_INDICES
 !===============================================================================
 
   subroutine matrix_to_indices(irow,g,i,j,k)
 
-    use global, only: cmfd,cmfd_coremap
+    use global,  only: cmfd, cmfd_coremap
 
     integer :: i                    ! iteration counter for x
     integer :: j                    ! iteration counter for y
@@ -288,7 +307,7 @@ contains
     else
 
       ! compute indices
-      g = mod(irow,ng) + 1 
+      g = mod(irow,ng) + 1
       i = mod(irow,ng*nx)/ng + 1
       j = mod(irow,ng*nx*ny)/(ng*nx)+ 1
       k = mod(irow,ng*nx*ny*nz)/(ng*nx*ny) + 1
@@ -298,20 +317,23 @@ contains
   end subroutine matrix_to_indices
 
 !===============================================================================
-! PRINT_F_OPERATOR 
+! PRINT_F_OPERATOR
 !===============================================================================
 
   subroutine print_F_operator(this)
 
-    use global, only: path_input
+    type(prod_operator) :: this
 
     PetscViewer :: viewer
 
-    type(prod_operator) :: this
-
     ! write out matrix in binary file (debugging)
-    call PetscViewerBinaryOpen(PETSC_COMM_WORLD,trim(path_input)//'prodmat.bin'&
-   &     ,FILE_MODE_WRITE,viewer,ierr)
+    if (adjoint_calc) then
+      call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'adj_prodmat.bin'            &   
+     &     ,FILE_MODE_WRITE,viewer,ierr)
+     else
+      call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'prodmat.bin'                &
+     &     ,FILE_MODE_WRITE,viewer,ierr)
+    end if
     call MatView(this%F,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 
@@ -334,6 +356,4 @@ contains
 
   end subroutine destroy_F_operator
 
-#endif
-   
 end module cmfd_prod_operator

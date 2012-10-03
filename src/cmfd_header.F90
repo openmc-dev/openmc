@@ -1,18 +1,25 @@
-module cmfd_header
+module cmfd_header 
 
-  implicit none
-  private
-  public :: allocate_cmfd, deallocate_cmfd
+#ifdef HDF5
+  use hdf5
+#endif
 
-!===============================================================================
-! cmfd is used to store diffusion parameters and other information for CMFD
-! analysis.  
-!===============================================================================
+implicit none
+private
+public :: allocate_cmfd, deallocate_cmfd
 
-  type, public ::  cmfd_obj
+  type, public :: cmfd_type
 
-    ! array indices([1-x,2-y,3-z,4-g],upper bound)
-    integer              :: indices(4)
+    ! indices for problem
+    integer :: indices(4)
+
+    ! albedo boundary condition
+    real(8) :: albedo(6)
+
+    ! core overlay map
+    integer, allocatable :: coremap(:,:,:)
+    integer, allocatable :: indexmap(:,:)
+    integer :: mat_dim = 9999
 
     ! energy grid
     real(8), allocatable :: egrid(:)
@@ -27,70 +34,69 @@ module cmfd_header
     real(8), allocatable :: diffcof(:,:,:,:)
     real(8), allocatable :: diffusion(:,:,:,:)
 
-    ! current 
+    ! current
     real(8), allocatable :: current(:,:,:,:,:)
 
     ! flux
     real(8), allocatable :: flux(:,:,:,:)
 
-    ! coupling coefficients
+    ! coupling coefficients and equivalence parameters
     real(8), allocatable :: dtilde(:,:,:,:,:)
     real(8), allocatable :: dhat(:,:,:,:,:)
-
-    ! core albedo boundary conditions
-    real(8)              :: albedo(6)
 
     ! dimensions of mesh cells ([hu,hv,hw],xloc,yloc,zloc)
     real(8), allocatable :: hxyz(:,:,:,:)
 
-    ! source probability distribution
-    real(8), allocatable :: source(:,:,:,:)
+    ! source distributions
+    real(8), allocatable :: cmfd_src(:,:,:,:)
+    real(8), allocatable :: openmc_src(:,:,:,:)
 
     ! source sites in each mesh box
     real(8), allocatable :: sourcecounts(:,:,:,:)
 
-    ! weight adjustment factors
+    ! weight adjustment factors 
     real(8), allocatable :: weightfactors(:,:,:,:)
-
-    ! core map for no reflector accel
-    integer, allocatable :: coremap(:,:,:)
-    integer, allocatable :: indexmap(:,:)
-    integer :: mat_dim
 
     ! eigenvector/eigenvalue from cmfd run
     real(8), allocatable :: phi(:)
     real(8) :: keff = 0.0_8
 
+    ! eigenvector/eigenvalue from adjoint run
+    real(8), allocatable :: adj_phi(:)
+    real(8) :: adj_keff = 0.0_8
+
     ! residual for neutron balance
     real(8), allocatable :: resnb(:,:,:,:)
-
-    ! entropy calculation
-    real(8) :: entropy = 0.0_8
-
-    ! openmc source
-    real(8), allocatable  :: openmc_src(:,:,:,:)
 
     ! openmc source normalization factor
     real(8) :: norm = 1.0_8
 
-  end type cmfd_obj
+    ! Shannon entropy from cmfd fission source
+    real(8) :: entropy 
+
+    ! output file id
+# ifdef HDF5
+    integer(HID_T) :: file_id
+# endif
+
+  end type cmfd_type
 
 contains
 
-!===============================================================================
-! ALLOCATE_CMFD allocates all of the space for the cmfd object based on tallies
-!===============================================================================
+!==============================================================================
+! ALLOCATE_CMFD
+!==============================================================================
 
   subroutine allocate_cmfd(this)
 
-    type(cmfd_obj) :: this
+    type(cmfd_type) :: this 
 
     integer :: nx  ! number of mesh cells in x direction
     integer :: ny  ! number of mesh cells in y direction
     integer :: nz  ! number of mesh cells in z direction
     integer :: ng  ! number of energy groups
 
-    ! extract spatial and energy indices from object
+   ! extract spatial and energy indices from object
     nx = this % indices(1)
     ny = this % indices(2)
     nz = this % indices(3)
@@ -105,21 +111,40 @@ contains
     if (.not. allocated(this % diffcof))    allocate(this % diffcof(ng,nx,ny,nz))
     if (.not. allocated(this % diffusion))  allocate(this%diffusion(ng,nx,ny,nz))
 
-    ! allocate dtilde and dhat
+    ! allocate dtilde and dhat 
     if (.not. allocated(this % dtilde))     allocate(this % dtilde(6,ng,nx,ny,nz))
     if (.not. allocated(this % dhat))       allocate(this % dhat(6,ng,nx,ny,nz))
 
     ! allocate dimensions for each box (here for general case)
     if (.not. allocated(this % hxyz))       allocate(this % hxyz(3,nx,ny,nz))
 
-    ! allocate this fission source
-    if (.not. allocated(this % source))     allocate(this % source(ng,nx,ny,nz))
-
     ! allocate surface currents
     if (.not. allocated(this % current))    allocate(this % current(12,ng,nx,ny,nz))
 
-    ! allocate openmc source distribution
+    ! allocate source distributions
+    if (.not. allocated(this % cmfd_src)) allocate(this % cmfd_src(ng,nx,ny,nz))
     if (.not. allocated(this % openmc_src)) allocate(this % openmc_src(ng,nx,ny,nz))
+
+    ! allocate source weight modification vars
+    if (.not. allocated(this % sourcecounts)) allocate(this % sourcecounts(ng,nx,ny,nz))
+    if (.not. allocated(this % weightfactors)) allocate(this % weightfactors(ng,nx,ny,nz))
+
+    ! set everthing to 0 except weight multiply factors if feedback isnt on
+    this % flux          = 0.0_8
+    this % totalxs       = 0.0_8
+    this % p1scattxs     = 0.0_8
+    this % scattxs       = 0.0_8
+    this % nfissxs       = 0.0_8
+    this % diffcof       = 0.0_8
+    this % diffusion     = 0.0_8
+    this % dtilde        = 0.0_8
+    this % dhat          = 0.0_8
+    this % hxyz          = 0.0_8
+    this % current       = 0.0_8
+    this % cmfd_src      = 0.0_8
+    this % openmc_src    = 0.0_8
+    this % sourcecounts  = 0.0_8
+    this % weightfactors = 1.0_8
 
   end subroutine allocate_cmfd
 
@@ -129,9 +154,8 @@ contains
 
   subroutine deallocate_cmfd(this)
 
-    type(cmfd_obj) :: this
+    type(cmfd_type) :: this
 
-    ! deallocate cmfd
     if (allocated(this % egrid))         deallocate(this % egrid)
     if (allocated(this % totalxs))       deallocate(this % totalxs)
     if (allocated(this % p1scattxs))     deallocate(this % p1scattxs)
@@ -147,9 +171,9 @@ contains
     if (allocated(this % coremap))       deallocate(this % coremap)
     if (allocated(this % indexmap))      deallocate(this % indexmap)
     if (allocated(this % phi))           deallocate(this % phi)
-    if (allocated(this % source))        deallocate(this % source)
     if (allocated(this % sourcecounts))  deallocate(this % sourcecounts)
     if (allocated(this % weightfactors)) deallocate(this % weightfactors)
+    if (allocated(this % cmfd_src))      deallocate(this % cmfd_src)
     if (allocated(this % openmc_src))    deallocate(this % openmc_src)
 
   end subroutine deallocate_cmfd

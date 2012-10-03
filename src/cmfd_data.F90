@@ -1,53 +1,47 @@
 module cmfd_data
 
-  implicit none
-  private
-  public :: set_up_cmfd
+! This module processes the MC21 cmfd tally object to generate parameters for
+! CMFD calculation
+
+implicit none
+private
+public :: set_up_cmfd, neutron_balance
+
+logical :: dhat_reset = .FALSE.
 
 contains
 
-!===============================================================================
+!==============================================================================
 ! SET_UP_CMFD
-!===============================================================================
+!==============================================================================
 
-  subroutine set_up_cmfd()
+  subroutine set_up_cmfd() 
 
-    use global,       only: cmfd,cmfd_coremap,current_batch,n_inactive,        &
-   &                        cmfd_balance,cmfd_downscatter
-    use cmfd_header,  only: allocate_cmfd
-    use cmfd_output,  only: neutron_balance
+    use global,              only: cmfd, cmfd_coremap, cmfd_run_2grp
+    use cmfd_header,         only: allocate_cmfd
 
-    ! initialize data
-    call allocate_cmfd(cmfd)
+    ! initialize cmfd object
+    if (.not.allocated(cmfd%flux)) call allocate_cmfd(cmfd)
 
-    ! check for core map
-    if ((cmfd_coremap) .and. (current_batch == n_inactive+1)) then
-      call set_coremap()
-    end if
+    ! check for core map and set it up
+    if ((cmfd_coremap) .and. (cmfd%mat_dim == 9999)) call set_coremap()
 
     ! calculate all cross sections based on reaction rates from last batch
-    call compute_xs()
+    if (.not. cmfd_run_2grp) call compute_xs()
 
-    ! overwrite xs
-!   call fix_1_grp()
-!   call fix_2_grp()
+    ! check neutron balance
+!   call neutron_balance(670)
 
-    ! fix balance of neutrons
-    if (cmfd_balance) call fix_neutron_balance()
+    ! fix 2 grp cross sections
+    if (cmfd_run_2grp) call fix_2_grp()
 
-    ! compute effective downscatter
-    if (cmfd_downscatter) call compute_effective_downscatter()
-
-    ! compute neutron balance 
-    call neutron_balance()
-
-    ! compute dtilde terms
+    ! calculate dtilde
     call compute_dtilde()
 
-    ! compute dhat terms
+    ! calucate dhat
     call compute_dhat()
 
-  end subroutine set_up_cmfd
+  end subroutine set_up_cmfd 
 
 !===============================================================================
 ! COMPUTE_XS takes tallies and computes macroscopic cross sections
@@ -55,23 +49,29 @@ contains
 
   subroutine compute_xs()
 
-    use global
-    use mesh,          only: mesh_indices_to_bin
-    use mesh_header,   only: StructuredMesh
-    use tally_header,  only: TallyObject, TallyScore
- 
-    integer :: nx                ! number of mesh cells in x direction
-    integer :: ny                ! number of mesh cells in y direction
-    integer :: nz                ! number of mesh cells in z direction
-    integer :: ng                ! number of energy groups
-    integer :: i                 ! iteration counter for x
-    integer :: j                 ! iteration counter for y
-    integer :: k                 ! iteration counter for z
-    integer :: g                 ! iteration counter for g
-    integer :: h                 ! iteration counter for outgoing groups
-    integer :: ital              ! tally object index
-    integer :: ijk(3)            ! indices for mesh cell
-    integer :: score_index       ! index to pull from tally object
+    use constants,         only: FILTER_MESH, FILTER_ENERGYIN, FILTER_ENERGYOUT&
+                                 , SURF_FILTER_ENERGYIN, SURF_FILTER_SURFACE,  &
+                                 IN_RIGHT, OUT_RIGHT, IN_FRONT, OUT_FRONT,     &
+                                 IN_TOP, OUT_TOP, N_FILTER_TYPES
+    use global,            only: cmfd, message, n_user_tallies, n_tallies,     &
+                                 tallies, meshes
+    use error,             only: fatal_error
+    use mesh,              only: mesh_indices_to_bin
+    use mesh_header,       only: StructuredMesh
+    use tally_header,      only: TallyObject, TallyScore 
+
+    integer :: nx                   ! number of mesh cells in x direction
+    integer :: ny                   ! number of mesh cells in y direction
+    integer :: nz                   ! number of mesh cells in z direction
+    integer :: ng                   ! number of energy groups
+    integer :: i                    ! iteration counter for x
+    integer :: j                    ! iteration counter for y
+    integer :: k                    ! iteration counter for z
+    integer :: g                    ! iteration counter for g
+    integer :: h                    ! iteration counter for outgoing groups
+    integer :: ital                 ! tally object index
+    integer :: ijk(3)               ! indices for mesh cell
+    integer :: score_index          ! index to pull from tally object
     integer :: bins(N_FILTER_TYPES) ! bins for filters
 
     real(8) :: flux   ! temp variable for flux
@@ -90,7 +90,7 @@ contains
     cmfd % openmc_src = 0.0_8
 
     ! associate tallies and mesh
-    t => tallies(n_user_tallies + 1)
+    t => tallies(n_user_tallies + 1) 
     m => meshes(t % mesh)
 
     ! set mesh widths
@@ -98,17 +98,17 @@ contains
     cmfd % hxyz(2,:,:,:) = m % width(2) ! set y width
     cmfd % hxyz(3,:,:,:) = m % width(3) ! set z width
 
-    ! begin loop around tallies
-    TAL: do ital = n_user_tallies + 1,n_tallies 
+   ! begin loop around tallies
+   TAL: do ital = n_user_tallies + 1, n_tallies
 
-      ! associate tallies and mesh
-      t => tallies(ital)
-      m => meshes(t % mesh)
+     ! associate tallies and mesh
+     t => tallies(ital)
+     m => meshes(t % mesh)
 
-      ! begin loop around space
-      ZLOOP: do k = 1,nz
+     ! begin loop around space
+     ZLOOP: do k = 1,nz
 
-        YLOOP: do j = 1,ny
+       YLOOP: do j = 1,ny
 
           XLOOP: do i = 1,nx
  
@@ -145,14 +145,15 @@ contains
                 cmfd % flux(h,i,j,k) = flux
 
                 ! detect zero flux
-                if ((flux - 0.0D0) < 1.0D-10) then
-                  write(*,*) 'Fatal: detected zero flux without coremap'
-                  stop
+                if ((flux - 0.0D0) < 1.0E-10_8) then
+                  print *,h,i,j,k,flux
+                  message = 'Detected zero flux without coremap overlay'
+                  call fatal_error()
                 end if
 
                 ! get total rr and convert to total xs
                 cmfd % totalxs(h,i,j,k) = t % scores(2,score_index) % sum / flux
-
+                write(200,*) cmfd % totalxs(h,i,j,k)
                 ! get p1 scatter rr and convert to p1 scatter xs
                 cmfd % p1scattxs(h,i,j,k) = t % scores(3,score_index) % sum / flux
 
@@ -161,9 +162,9 @@ contains
 
                 ! calculate diffusion coefficient
 !               cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*cmfd%totalxs(h,i,j,k))
-!               cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k) -&
-!              &                                cmfd % p1scattxs(h,i,j,k)))
-                cmfd % diffcof(h,i,j,k) = cmfd % diffusion(h,i,j,k)
+                cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k) -&
+               &                                cmfd % p1scattxs(h,i,j,k)))
+!               cmfd % diffcof(h,i,j,k) = cmfd % diffusion(h,i,j,k)
 
               else if (ital == n_user_tallies + 2) then
 
@@ -198,7 +199,7 @@ contains
 
                   ! bank source
                   cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) +    &
-                 &                             t % scores(2,score_index) % sum 
+                 &                             t % scores(2,score_index) % sum
 
                 end do INGROUP
 
@@ -214,16 +215,16 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(1,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_RIGHT
-                score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
+                score_index = sum((bins - 1) * t % stride) + 1 ! incoming
                 cmfd % current(2,h,i,j,k) = t % scores(1,score_index) % sum
 
                 ! right surface
                 bins(1:3) = (/ i, j, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_RIGHT
-                score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
+                score_index = sum((bins - 1) * t % stride) + 1 ! incoming
                 cmfd % current(3,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_RIGHT
-                score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
+                score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(4,h,i,j,k) = t % scores(1,score_index) % sum
 
                 ! back surface
@@ -232,16 +233,16 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(5,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_FRONT
-                score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
+                score_index = sum((bins - 1) * t % stride) + 1 ! incoming
                 cmfd % current(6,h,i,j,k) = t % scores(1,score_index) % sum
 
                 ! front surface
                 bins(1:3) = (/ i, j, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_FRONT
-                score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
+                score_index = sum((bins - 1) * t % stride) + 1 ! incoming
                 cmfd % current(7,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_FRONT
-                score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
+                score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(8,h,i,j,k) = t % scores(1,score_index) % sum
 
                 ! bottom surface
@@ -250,16 +251,16 @@ contains
                 score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(9,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_TOP
-                score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
+                score_index = sum((bins - 1) * t % stride) + 1 ! incoming
                 cmfd % current(10,h,i,j,k) = t % scores(1,score_index) % sum
 
                 ! top surface
                 bins(1:3) = (/ i, j, k /) + 1
                 bins(SURF_FILTER_SURFACE) = IN_TOP
-                score_index = sum((bins - 1) * t % stride) + 1 ! incoming 
+                score_index = sum((bins - 1) * t % stride) + 1 ! incoming
                 cmfd % current(11,h,i,j,k) = t % scores(1,score_index) % sum
                 bins(SURF_FILTER_SURFACE) = OUT_TOP
-                score_index = sum((bins - 1) * t % stride) + 1 ! outgoing 
+                score_index = sum((bins - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(12,h,i,j,k) = t % scores(1,score_index) % sum
 
               end if TALLY
@@ -277,7 +278,182 @@ contains
     ! normalize openmc source distribution
     cmfd % openmc_src = cmfd % openmc_src/sum(cmfd % openmc_src)*cmfd%norm
 
+    ! nullify all pointers
+    if (associated(t)) nullify(t)
+    if (associated(m)) nullify(m)
+
   end subroutine compute_xs
+
+!===============================================================================
+! SET_COREMAP is a routine that sets the core mapping information
+!===============================================================================
+
+  subroutine set_coremap()
+
+    use global, only: cmfd
+
+    integer :: kount=1           ! counter for unique fuel assemblies
+    integer :: nx                ! number of mesh cells in x direction
+    integer :: ny                ! number of mesh cells in y direction
+    integer :: nz                ! number of mesh cells in z direction
+    integer :: i                 ! iteration counter for x
+    integer :: j                 ! iteration counter for y
+    integer :: k                 ! iteration counter for z
+
+    ! extract spatial indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+
+    ! count how many fuel assemblies exist
+    cmfd % mat_dim = sum(cmfd % coremap - 1)
+
+    ! allocate indexmap
+    if (.not. allocated(cmfd % indexmap)) allocate                             &
+   &                                      (cmfd % indexmap(cmfd % mat_dim,3))
+
+    ! begin loops over spatial indices
+    ZLOOP: do k = 1,nz
+
+      YLOOP: do j = 1,ny
+
+        XLOOP: do i = 1,nx
+
+          ! check for reflector
+          if (cmfd % coremap(i,j,k) == 1) then
+
+            ! reset value to 99999
+            cmfd % coremap(i,j,k) = 99999
+
+          else
+
+            ! must be a fuel --> give unique id number
+            cmfd % coremap(i,j,k) = kount
+            cmfd % indexmap(kount,1) = i
+            cmfd % indexmap(kount,2) = j
+            cmfd % indexmap(kount,3) = k
+            kount = kount + 1
+
+          end if
+
+        end do XLOOP
+
+      end do YLOOP
+
+    end do ZLOOP
+
+  end subroutine set_coremap
+
+!===============================================================================
+! NEUTRON_BALANCE writes a file that contains n. bal. info for all cmfd mesh
+!===============================================================================
+
+  subroutine neutron_balance(uid)
+
+    use constants,    only: ONE
+    use global,       only: cmfd, keff
+
+    integer :: nx                ! number of mesh cells in x direction
+    integer :: ny                ! number of mesh cells in y direction
+    integer :: nz                ! number of mesh cells in z direction
+    integer :: ng                ! number of energy groups
+    integer :: i            ! iteration counter for x
+    integer :: j            ! iteration counter for y
+    integer :: k            ! iteration counter for z
+    integer :: g            ! iteration counter for g
+    integer :: h            ! iteration counter for outgoing groups
+    integer :: l            ! iteration counter for leakage
+    integer :: uid
+    real(8) :: leakage      ! leakage term in neutron balance
+    real(8) :: interactions ! total number of interactions in balance
+    real(8) :: scattering   ! scattering term in neutron balance
+    real(8) :: fission      ! fission term in neutron balance
+    real(8) :: res          ! residual of neutron balance
+
+    ! check if keff is close to 0 (happens on first active batch)
+    if (keff - 0.0_8 < 1e-8_8) return
+
+    ! extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! allocate res dataspace
+    if (.not. allocated(cmfd%resnb)) allocate(cmfd%resnb(ng,nx,ny,nz))
+
+    ! begin loop around space and energy groups
+    ZLOOP: do k = 1,nz
+
+      YLOOP: do j = 1,ny
+
+        XLOOP: do i = 1,nx
+
+          GROUPG: do g = 1,ng
+
+            ! check for active mesh
+            if (allocated(cmfd%coremap)) then
+              if (cmfd%coremap(i,j,k) == 99999) then
+                cmfd%resnb(g,i,j,k) = 99999.0
+                cycle
+              end if
+            end if
+
+            ! get leakage
+            leakage = 0.0_8
+            LEAK: do l = 1,3
+
+              leakage = leakage + ((cmfd % current(4*l,g,i,j,k) - &
+             & cmfd % current(4*l-1,g,i,j,k))) - &
+             & ((cmfd % current(4*l-2,g,i,j,k) - &
+             & cmfd % current(4*l-3,g,i,j,k)))
+
+            end do LEAK
+
+            ! interactions
+            interactions = cmfd % totalxs(g,i,j,k) * cmfd % flux(g,i,j,k)
+
+            ! get scattering and fission
+            scattering = 0.0_8
+            fission = 0.0_8
+            GROUPH: do h = 1,ng
+
+              scattering = scattering + cmfd % scattxs(h,g,i,j,k) * &
+             & cmfd % flux(h,i,j,k)
+
+              fission = fission + cmfd % nfissxs(h,g,i,j,k) * &
+             & cmfd % flux(h,i,j,k)
+
+            end do GROUPH
+
+            ! compute residual
+            res = leakage + interactions - scattering - (ONE/keff)*fission
+
+            ! normalize by flux
+            res = res/cmfd%flux(g,i,j,k)
+
+            ! bank res in cmfd object
+            cmfd%resnb(g,i,j,k) = res
+
+            ! write out info to file
+            write(uid,*) 'Location',i,j,k,' Group:',g,'Balance:',res
+            write(uid,*) 'Leakage:',leakage
+            write(uid,*) 'Interactions:',interactions
+            write(uid,*) 'Scattering:',scattering
+            write(uid,*) 'Fission:',fission
+            write(uid,*) 'k-eff:',keff
+            write(uid,*) 'k-eff balanced:',fission/(leakage+interactions-scattering)
+            write(uid,*) 'Balance:',keff - fission/(leakage+interactions-scattering)
+
+          end do GROUPG
+
+        end do XLOOP
+
+      end do YLOOP
+
+    end do ZLOOP
+
+  end subroutine neutron_balance
 
 !===============================================================================
 ! COMPUTE_DTILDE computes the diffusion coupling coefficient
@@ -285,9 +461,8 @@ contains
 
   subroutine compute_dtilde()
 
-    use global, only: cmfd,cmfd_coremap
+    use global, only: cmfd, cmfd_coremap
 
-    ! local variables
     integer :: nx                 ! maximum number of cells in x direction
     integer :: ny                 ! maximum number of cells in y direction
     integer :: nz                 ! maximum number of cells in z direction
@@ -354,7 +529,7 @@ contains
               ! define xyz and +/- indices
               xyz_idx = int(ceiling(real(l)/real(2)))  ! x=1, y=2, z=3
               dir_idx = 2 - mod(l,2) ! -=1, +=2
-              shift_idx = -2*mod(l,2) +1          ! shift neig by -1 or +1
+              shift_idx = -2*mod(l,2) + 1          ! shift neig by -1 or +1
 
               ! check if at a boundary
               if (bound(l) == nxyz(xyz_idx,dir_idx)) then
@@ -362,6 +537,9 @@ contains
                 ! compute dtilde
                 dtilde = (2*cell_dc*(1-albedo(l)))/(4*cell_dc*(1+albedo(l)) +  &
                &         (1-albedo(l))*cell_hxyz(xyz_idx))
+
+                ! check for zero flux
+                if (albedo(l) - 999.0_8 < 1.e-8_8) dtilde = 2*cell_dc/cell_hxyz(xyz_idx)
 
               else  ! not a boundary
 
@@ -385,7 +563,7 @@ contains
                     ! compute dtilde
                     dtilde = (2*cell_dc*(1-ref_albedo))/(4*cell_dc*(1+         &
                  &         ref_albedo)+(1-ref_albedo)*cell_hxyz(xyz_idx))
-      !             dtilde = 0.0_8
+
                   else ! not next to a reflector or no core map
 
                     ! compute dtilde
@@ -416,7 +594,7 @@ contains
       end do YLOOP
 
     end do ZLOOP
-
+write(205,*) cmfd%dtilde
   end subroutine compute_dtilde
 
 !===============================================================================
@@ -425,9 +603,8 @@ contains
 
   subroutine compute_dhat()
 
-    use global, only:cmfd,cmfd_coremap,dhat_reset 
+    use global,  only: cmfd, cmfd_coremap
 
-    ! local variables
     integer :: nx                 ! maximum number of cells in x direction
     integer :: ny                 ! maximum number of cells in y direction
     integer :: nz                 ! maximum number of cells in z direction
@@ -544,13 +721,13 @@ contains
               end if
 
               ! check for zero net current
-              if ((abs(current(2*l)-current(2*l-1)) < 1e-8_8).and.xyz_idx/=3) then
-                print *,'Zero net current interface',g,i,j,k
-                print *,current(2*l),current(2*l-1),net_current
-                dhat = 0.0_8
-              end if
+!             if ((abs(current(2*l)-current(2*l-1)) < 1e-8_8).and.xyz_idx/=3) then
+!               print *,'Zero net current interface',g,i,j,k
+!               print *,current(2*l),current(2*l-1),net_current
+!               dhat = 0.0_8
+!             end if
 
-              ! record dtilde in cmfd object
+              ! record dhat in cmfd object
               cmfd%dhat(l,g,i,j,k) = dhat
 
               ! check for dhat reset
@@ -565,68 +742,8 @@ contains
       end do YLOOP
 
     end do ZLOOP
-
+write(206,*) cmfd%dhat
   end subroutine compute_dhat
-
-!===============================================================================
-! SET_COREMAP is a routine that sets the core mapping information
-!===============================================================================
-
-  subroutine set_coremap()
-
-    use global, only: cmfd
-
-    integer :: kount=1           ! counter for unique fuel assemblies
-    integer :: nx                ! number of mesh cells in x direction
-    integer :: ny                ! number of mesh cells in y direction
-    integer :: nz                ! number of mesh cells in z direction
-    integer :: i                 ! iteration counter for x
-    integer :: j                 ! iteration counter for y
-    integer :: k                 ! iteration counter for z
-
-    ! extract spatial indices from object
-    nx = cmfd % indices(1)
-    ny = cmfd % indices(2)
-    nz = cmfd % indices(3)
-
-    ! count how many fuel assemblies exist
-    cmfd % mat_dim = sum(cmfd % coremap - 1)
-
-    ! allocate indexmap
-    if (.not. allocated(cmfd % indexmap)) allocate                             &
-   &                                      (cmfd % indexmap(cmfd % mat_dim,3))
-
-    ! begin loops over spatial indices
-    ZLOOP: do k = 1,nz
-
-      YLOOP: do j = 1,ny
-
-        XLOOP: do i = 1,nx
-
-          ! check for reflector
-          if (cmfd % coremap(i,j,k) == 1) then
-
-            ! reset value to 99999
-            cmfd % coremap(i,j,k) = 99999
-
-          else
-
-            ! must be a fuel --> give unique id number
-            cmfd % coremap(i,j,k) = kount
-            cmfd % indexmap(kount,1) = i
-            cmfd % indexmap(kount,2) = j
-            cmfd % indexmap(kount,3) = k 
-            kount = kount + 1
-
-          end if
-
-        end do XLOOP
-
-      end do YLOOP
-
-    end do ZLOOP
-
-  end subroutine set_coremap
 
 !===============================================================================
 ! GET_REFLECTOR_ALBEDO is a function that calculates the albedo to the reflector
@@ -634,17 +751,15 @@ contains
 
   function get_reflector_albedo(l,g,i,j,k)
 
-    use global, only: cmfd
+    use global, only: cmfd, cmfd_hold_weights
 
-    ! function variable
     real(8) :: get_reflector_albedo ! reflector albedo
-
-    ! local variable
     integer :: i                    ! iteration counter for x
     integer :: j                    ! iteration counter for y
     integer :: k                    ! iteration counter for z
     integer :: g                    ! iteration counter for groups
     integer :: l                    ! iteration counter for leakages
+
     integer :: shift_idx            ! parameter to shift index by +1 or -1
     real(8) :: current(12)          ! partial currents for all faces of mesh cell            
     real(8) :: albedo               ! the albedo
@@ -656,7 +771,13 @@ contains
     shift_idx = -2*mod(l,2) + 1          ! shift neig by -1 or +1
 
     ! calculate albedo
-    albedo = (current(2*l-1)/current(2*l))**(shift_idx)
+    if ((shift_idx ==  1 .and. (current(2*l  )-0.0_8) < 1.0e-10_8) .or.           &
+        (shift_idx == -1 .and. (current(2*l-1)-0.0_8) < 1.0e-10_8)) then
+      albedo = 999.0_8
+      cmfd_hold_weights = 1
+    else
+      albedo = (current(2*l-1)/current(2*l))**(shift_idx)
+    end if
 
     ! assign to function variable
     get_reflector_albedo = albedo
@@ -664,57 +785,35 @@ contains
   end function get_reflector_albedo
 
 !===============================================================================
-! FIX_1_GRP modifies xs for benchmark with stand alone (homogeneous)
-!===============================================================================
-
-  subroutine fix_1_grp()
-
-    use global, only: cmfd,dhat_reset
-
-    ! overwrite cross sections
-    cmfd % totalxs = 1.0_8
-    cmfd % scattxs = 0.5_8
-    cmfd % nfissxs = 0.48_8
-    cmfd % diffcof = 0.3_8
-    cmfd % hxyz(1,:,:,:) = 2.0_8
-    cmfd % hxyz(2,:,:,:) = 0.1_8
-    cmfd % hxyz(3,:,:,:) = 0.1_8
-
-    ! set dhat reset to true
-    dhat_reset = .true.
-
-  end subroutine fix_1_grp
-
-!===============================================================================
 ! FIX_2_GRP modifies xs for benchmark with stand alone (homogeneous)
 !===============================================================================
 
   subroutine fix_2_grp()
 
-    use global, only: cmfd,dhat_reset
+    use global,  only: cmfd
 
     ! overwrite cross sections
-    cmfd % totalxs(1,:,:,:) = 0.6451_8
-    cmfd % totalxs(2,:,:,:) = 1.4050_8
-    cmfd % scattxs(1,1,:,:,:) = 0.6134_8
-    cmfd % scattxs(1,2,:,:,:) = 0.0219_8
+    cmfd % totalxs(1,:,:,:) = 0.02597_8
+    cmfd % totalxs(2,:,:,:) = 0.06669_8
+    cmfd % scattxs(1,1,:,:,:) = 0.0_8
+    cmfd % scattxs(1,2,:,:,:) = 0.01742_8
     cmfd % scattxs(2,1,:,:,:) = 0.0_8
-    cmfd % scattxs(2,2,:,:,:) = 1.2929_8
-    cmfd % nfissxs(1,1,:,:,:) = 0.0064_8
+    cmfd % scattxs(2,2,:,:,:) = 0.0_8
+    cmfd % nfissxs(1,1,:,:,:) = 0.00536_8
     cmfd % nfissxs(1,2,:,:,:) = 0.0_8
-    cmfd % nfissxs(2,1,:,:,:) = 0.1923_8
+    cmfd % nfissxs(2,1,:,:,:) = 0.10433_8
     cmfd % nfissxs(2,2,:,:,:) = 0.0_8
-    cmfd % diffcof(1,:,:,:) = 1.3050_8
-    cmfd % diffcof(2,:,:,:) = 0.5112_8
-    cmfd % hxyz(1,:,:,:) = 2.0_8
-    cmfd % hxyz(2,:,:,:) = 0.1_8
-    cmfd % hxyz(3,:,:,:) = 0.1_8
+    cmfd % diffcof(1,:,:,:) = 1.4176_8
+    cmfd % diffcof(2,:,:,:) = 0.37336_8
+    cmfd % hxyz(1,:,:,:) = 0.5_8
+    cmfd % hxyz(2,:,:,:) = 0.5_8
+    cmfd % hxyz(3,:,:,:) = 0.5_8
 
     ! set dhat reset to true
     dhat_reset = .true.
 
   end subroutine fix_2_grp
-
+# ifdef HIDE
 !===============================================================================
 ! FIX_NEUTRON_BALANCE
 !===============================================================================
@@ -1007,5 +1106,6 @@ contains
 !    cmfd % openmc_accum_src(i,j,k) = t % scores(1,score_index) % sum
 !
 !  end subroutine extract_accum_fsrc
+# endif
 
 end module cmfd_data

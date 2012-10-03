@@ -1982,26 +1982,4 @@ contains
 
   end subroutine reset_score
 
-!==============================================================================
-! TALLY_RESET resets all of the user-defined tallies
-!==============================================================================
-
-  subroutine tally_reset()
-
-    integer :: i ! index in tallies array
-    type(TallyObject), pointer :: t => null()
-
-    ! reset sum and sum_sq
-    do i = 1, n_tallies
-      t => tallies(i)
-
-      if (t % reset) then
-        t % scores % sum = 0.0_8
-        t % scores % sum_sq = 0.0_8
-      end if
-
-    end do 
-
-  end subroutine tally_reset
-
 end module tally

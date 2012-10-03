@@ -117,11 +117,6 @@ class StatePoint(BinaryFile):
             self.k_batch = self._get_double(self.current_batch)
             self.entropy = self._get_double(self.current_batch)
 
-        # Read global tallies
-        n_global_tallies = self._get_int()[0]
-        self.global_tallies = np.array(self._get_double(2*n_global_tallies))
-        self.global_tallies.shape = (n_global_tallies, 2)
-
         # Read number of meshes
         n_meshes = self._get_int()[0]
 
@@ -191,11 +186,18 @@ class StatePoint(BinaryFile):
         if not self._metadata:
             self._read_metadata()
 
+        # Read global tallies
+        n_global_tallies = self._get_int()[0]
+        self.global_tallies = np.array(self._get_double(2*n_global_tallies))
+        self.global_tallies.shape = (n_global_tallies, 2)
+
         # Flag indicating if tallies are present
         tallies_present = self._get_int()[0]
 
         # Read tally results
         if tallies_present:
+            self.n_realizations = self._get_int()[0]
+
             for t in self.tallies:
                 n = t.n_score_bins * t.n_filter_bins
                 t.values = np.array(self._get_double(2*n))
@@ -223,10 +225,7 @@ class StatePoint(BinaryFile):
         """Calculates confidence intervals for each tally bin."""
 
         # Determine number of realizations
-        if self.run_mode == 2:
-            n = self.current_batch - self.n_inactive
-        else:
-            n = self.current_batch
+        n = self.n_realizations
 
         # Determine significance level and percentile for two-sided CI
         alpha = 1 - confidence
@@ -243,11 +242,22 @@ class StatePoint(BinaryFile):
         """
         
         # Determine number of realizations
-        if self.run_mode == 2:
-            n = self.current_batch - self.n_inactive
-        else:
-            n = self.current_batch
+        n = self.n_realizations
 
+        # Global tallies
+        for i in range(len(self.global_tallies)):
+            # Get sum and sum of squares
+            s, s2 = self.global_tallies[i]
+                    
+            # Calculate sample mean and replace value
+            s /= n
+            self.global_tallies[i,0] = s
+
+            # Calculate standard deviation
+            if s != 0.0:
+                self.global_tallies[i,1] = t_value*sqrt((s2/n - s*s)/(n-1))
+
+        # Regular tallies
         for t in self.tallies:
             for i in range(t.values.shape[0]):
                 for j in range(t.values.shape[1]):

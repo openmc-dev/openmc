@@ -886,20 +886,6 @@ contains
             dims, entropy, hdf5_err)
     end if
 
-    ! Write out global tallies sum and sum_sq
-    call hdf5_make_integer(hdf5_state_point, "n_global_tallies", &
-         N_GLOBAL_TALLIES)
-
-    ! Write global tallies
-    dims(1) = N_GLOBAL_TALLIES
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
-    call h5dcreate_f(hdf5_state_point, "global_tallies", hdf5_tallyscore_t, &
-         dspace, dset, hdf5_err)
-    f_ptr = c_loc(global_tallies(1))
-    CALL h5dwrite_f(dset, hdf5_tallyscore_t, f_ptr, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-
     ! Create group for tallies
     call h5gcreate_f(hdf5_state_point, "tallies", tallies_group, hdf5_err)
 
@@ -1050,9 +1036,26 @@ contains
        call h5gclose_f(temp_group, hdf5_err)
     end do TALLY_METADATA
 
+    ! Write out global tallies sum and sum_sq
+    call hdf5_make_integer(hdf5_state_point, "n_global_tallies", &
+         N_GLOBAL_TALLIES)
+
+    ! Write global tallies
+    dims(1) = N_GLOBAL_TALLIES
+    call h5screate_simple_f(1, dims, dspace, hdf5_err)
+    call h5dcreate_f(hdf5_state_point, "global_tallies", hdf5_tallyscore_t, &
+         dspace, dset, hdf5_err)
+    f_ptr = c_loc(global_tallies(1))
+    CALL h5dwrite_f(dset, hdf5_tallyscore_t, f_ptr, hdf5_err)
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+
     if (tallies_on) then
        ! Indicate that tallies are on
        call hdf5_make_integer(tallies_group, "tallies_present", 1)
+
+       ! Write number of realizations
+       call hdf5_make_integer(tallies_group, "n_realizations", n_realizations)
 
        ! Write tally sum and sum_sq
        TALLY_SCORES: do i = 1, n_tallies

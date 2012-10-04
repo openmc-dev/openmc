@@ -202,7 +202,7 @@ contains
        end do
 
        ! Read first line of header
-       read(UNIT=in, FMT='(A10,2E12.0,1X,A10)') name, awr, kT, date_
+       read(UNIT=in, FMT='(A10,2G12.0,1X,A10)') name, awr, kT, date_
 
        ! Read more header and NXS and JXS
        read(UNIT=in, FMT=100) comment, mat, & 
@@ -215,7 +215,7 @@ contains
        allocate(XSS(length))
 
        ! Read XSS array
-       read(UNIT=in, FMT='(4E20.0)') XSS
+       read(UNIT=in, FMT='(4G20.0)') XSS
 
        ! Close ACE file
        close(UNIT=in)

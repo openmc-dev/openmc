@@ -24,7 +24,6 @@ program main
   case (MODE_TALLIES)
      ! For tallies-only mode, we just skip straight to finalize_run to write out
      ! the tally results
-     n_realizations = restart_batch - n_inactive
   end select
      
   ! finalize run

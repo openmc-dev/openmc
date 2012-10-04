@@ -306,6 +306,7 @@ state_point.o: output.o
 state_point.o: source.o
 state_point.o: string.o
 state_point.o: tally_header.o
+state_point.o: tally.o
 
 string.o: constants.o
 string.o: error.o

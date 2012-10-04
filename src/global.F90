@@ -336,7 +336,7 @@ module global
   integer :: cmfd_begin = 1
 
   ! when and how long to flush cmfd tallies during inactive batches
-  integer :: cmfd_inact_flush(2) = (/10,1/)
+  integer :: cmfd_inact_flush(2) = (/9999,1/)
 
   ! batch to last flush before active batches
   integer :: cmfd_act_flush = 0

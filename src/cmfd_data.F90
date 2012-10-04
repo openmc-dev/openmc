@@ -30,7 +30,7 @@ contains
     if (.not. cmfd_run_2grp) call compute_xs()
 
     ! check neutron balance
-!   call neutron_balance(670)
+    call neutron_balance(670)
 
     ! fix 2 grp cross sections
     if (cmfd_run_2grp) call fix_2_grp()
@@ -153,7 +153,7 @@ contains
 
                 ! get total rr and convert to total xs
                 cmfd % totalxs(h,i,j,k) = t % scores(2,score_index) % sum / flux
-                write(200,*) cmfd % totalxs(h,i,j,k)
+
                 ! get p1 scatter rr and convert to p1 scatter xs
                 cmfd % p1scattxs(h,i,j,k) = t % scores(3,score_index) % sum / flux
 

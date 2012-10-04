@@ -1188,8 +1188,13 @@ contains
       entropy(current_batch)
 
     ! write out accumulated k-effective if after first active batch
-    if (current_batch > n_inactive + 1) write(UNIT=OUTPUT_UNIT, &
-      FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') keff, keff_std
+    if (current_batch > n_inactive + 1) then 
+      write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
+        keff, keff_std
+    else
+      write(UNIT=OUTPUT_UNIT, FMT='(23X)', ADVANCE='NO')
+    end if
+      
 
     ! write out cmfd keff if it is active
     if (cmfd_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
@@ -1200,7 +1205,7 @@ contains
       FMT='(3X, F8.5)', ADVANCE='NO') cmfd % entropy
 
     ! next line
-    write(UNIT=OUTPUT_UNIT,FMT=*)
+    write(UNIT=OUTPUT_UNIT, FMT=*)
 
   end subroutine print_batch_keff
 

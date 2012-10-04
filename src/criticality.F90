@@ -11,7 +11,7 @@ module criticality
   use source,       only: get_source_particle
   use state_point,  only: write_state_point, replay_batch_history
   use string,       only: to_str
-  use tally,        only: synchronize_tallies, setup_active_tallies
+  use tally,        only: synchronize_tallies, setup_active_usertallies
   use timing,       only: timer_start, timer_stop
 
 #ifdef HDF5
@@ -181,7 +181,7 @@ contains
        tallies_on = .true.
        call timer_stop(time_inactive)
        call timer_start(time_active)
-       call setup_active_tallies()
+       call setup_active_usertallies()
     end if
 
   end subroutine finalize_batch

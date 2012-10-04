@@ -1,5 +1,7 @@
 module cmfd_output
 
+# ifdef PETSC
+
 ! This modules cleans up cmfd objects and echos the results
 
   implicit none
@@ -163,5 +165,7 @@ contains
 # endif
 
   end subroutine write_hdf5_output
+
+# endif
 
 end module cmfd_output

@@ -7,7 +7,9 @@ module cmfd_execute
   private
   public :: execute_cmfd, cmfd_init_batch
 
+# ifdef PETSC
 #   include <finclude/petsc.h90>
+# endif
 
 contains
 
@@ -16,6 +18,8 @@ contains
 !==============================================================================
 
   subroutine execute_cmfd()
+
+# ifdef PETSC
 
     use cmfd_data,              only: set_up_cmfd
     use cmfd_message_passing,   only: petsc_init_mpi, cmfd_bcast
@@ -124,6 +128,8 @@ contains
     ! wait here for all procs
     call MPI_Barrier(MPI_COMM_WORLD,mpi_err)
 
+# endif
+
   end subroutine execute_cmfd
 
 !==============================================================================
@@ -165,6 +171,8 @@ contains
     end if
 
   end subroutine cmfd_init_batch
+
+# ifdef PETSC
 
 !==============================================================================
 ! PROCESS_CMFD_OPTIONS 
@@ -432,6 +440,8 @@ contains
     end if
 
   end function get_matrix_idx
+
+# endif
 
 !===============================================================================
 ! CMFD_TALLY_RESET

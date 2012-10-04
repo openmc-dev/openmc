@@ -12,7 +12,9 @@ contains
 
   subroutine configure_cmfd()
 
+# ifdef PETSC
     use cmfd_message_passing,   only: petsc_init_mpi
+# endif
     use global,  only: cmfd, cmfd_write_hdf5, master
 
 #ifdef HDF5
@@ -27,7 +29,9 @@ contains
 !   call write_cmfd_input_summary(cmfd_tally_size)
 
     ! initialize petsc on mpi
+# ifdef PETSC
     call petsc_init_mpi()
+# endif
 
     ! Create a new file using default properties.
 # ifdef HDF5

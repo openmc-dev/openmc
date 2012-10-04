@@ -1,5 +1,7 @@
 module cmfd_loss_operator
 
+# ifdef PETSC
+
   implicit none
   private
   public :: init_M_operator,build_loss_matrix,destroy_M_operator
@@ -532,5 +534,7 @@ contains
     if (allocated(this%o_nnz)) deallocate(this%o_nnz)
 
   end subroutine destroy_M_operator
+
+# endif
 
 end module cmfd_loss_operator

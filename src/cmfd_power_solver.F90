@@ -1,5 +1,7 @@
 module cmfd_power_solver
 
+# ifdef PETSC
+
 ! This module contains routines to execute the power iteration solver
 
   use cmfd_loss_operator, only: loss_operator,init_M_operator,                 &
@@ -427,5 +429,7 @@ contains
     call VecDestroy(S_o,ierr)
 
   end subroutine finalize
+
+# endif
 
 end module cmfd_power_solver

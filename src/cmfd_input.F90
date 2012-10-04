@@ -176,12 +176,13 @@ contains
 
   subroutine create_cmfd_tally()
 
-    use datatypes,     only: dict_add_key, dict_get_key
-    use error,         only: fatal_error, warning
+    use datatypes,      only: dict_add_key, dict_get_key
+    use error,          only: fatal_error, warning
     use global
-    use mesh_header,   only: StructuredMesh
+    use mesh_header,    only: StructuredMesh
     use string
-    use tally_header,  only: TallyObject, TallyScore
+    use tally,          only: setup_active_cmfdtallies
+    use tally_header,   only: TallyObject, TallyScore
     use xml_data_cmfd_t
 
     integer :: i           ! loop counter
@@ -209,9 +210,9 @@ contains
     n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies
 
     ! Allocate list of pointers for tallies by type
-    if (.not. allocated(analog_tallies))      allocate(analog_tallies(n_analog_tallies))
-    if (.not. allocated(tracklength_tallies)) allocate(tracklength_tallies(n_tracklength_tallies))
-    if (.not. allocated(current_tallies))     allocate(current_tallies(n_current_tallies))
+    if (.not. allocated(analog_tallies) .and. n_analog_tallies > 0) allocate(analog_tallies(n_analog_tallies))
+    if (.not. allocated(tracklength_tallies) .and. n_tracklength_tallies > 0) allocate(tracklength_tallies(n_tracklength_tallies))
+    if (.not. allocated(current_tallies) .and. n_current_tallies > 0)     allocate(current_tallies(n_current_tallies))
 
     ! allocate mesh
     if (.not. allocated(meshes)) allocate(meshes(n_meshes))
@@ -285,6 +286,11 @@ contains
       ! initialize number of bins and stride
       t % n_filter_bins = 0
       t % stride = 0
+
+      ! set number of nucilde bins
+      allocate(t % nuclide_bins(1))
+      t % nuclide_bins(1) = -1
+      t % n_nuclide_bins = 1
 
       ! record tally id which is equivalent to loop number
       t % id = i
@@ -411,6 +417,9 @@ contains
       end if
 
     end do
+
+    call setup_active_cmfdtallies()
+    tallies_on = .true.
 
   end subroutine create_cmfd_tally
 

@@ -57,6 +57,7 @@ contains
     position = 0
 
     do i = 1, n_tallies
+
        t => tallies(i)
 
        ! initialize number of filter bins
@@ -264,6 +265,7 @@ contains
     ! determine different filter bins for the same tally in order to score to it
 
     TALLY_LOOP: do while (associated(curr_ptr))
+
        t => tallies(analog_tallies(curr_ptr % data))
 
        ! =======================================================================
@@ -2374,9 +2376,9 @@ contains
 ! SETUP_ACTIVE_USERTALLIES
 !===============================================================================
 
-  subroutine setup_active_tallies()
+  subroutine setup_active_usertallies()
 
-    integer                  :: i         ! loop counter
+    integer                  :: i       ! loop counter
     type(ListInt), pointer :: curr_ptr  ! pointer to current list node
     type(ListInt), pointer :: tall_ptr  ! pointer to active tallies only
 
@@ -2495,6 +2497,100 @@ contains
     ! nullify the temporary pointer
     if (associated(curr_ptr)) nullify(curr_ptr)
 
-  end subroutine setup_active_tallies
+  end subroutine setup_active_usertallies
+
+!===============================================================================
+! SETUP_ACTIVE_CMFDTALLIES
+!===============================================================================
+
+  subroutine setup_active_cmfdtallies()
+
+    integer                :: i         ! loop counter
+    type(ListInt), pointer :: curr_ptr  ! pointer to current list node
+    type(ListInt), pointer :: tall_ptr  ! pointer to active tallies only
+
+    ! check to see if actives tallies has been allocated
+    tall_ptr => active_tallies
+    if (associated(active_tallies)) then
+      message = 'Active tallies should not exist before CMFD tallies!'
+      call fatal_error()
+    end if
+
+    ! check to see if analog tallies have already been allocated
+    curr_ptr => null()
+    if (associated(active_analog_tallies)) then
+      message = 'Active analog tallies should not exist before CMFD tallies!'
+      call fatal_error()
+    end if
+
+    do i = n_cmfd_analog_tallies + n_user_analog_tallies, n_user_analog_tallies + 1, -1
+
+      ! allocate node
+      allocate(curr_ptr)
+
+      ! set the tally index
+      curr_ptr % data = i
+      curr_ptr % next => active_analog_tallies
+      active_analog_tallies => curr_ptr
+
+      ! set indices in active tallies
+      allocate(tall_ptr)
+      tall_ptr % data = analog_tallies(i)
+      tall_ptr % next => active_tallies
+      active_tallies => tall_ptr
+
+    end do
+
+    ! check to see if tracklength tallies have already been allocated
+    curr_ptr => null()
+    if (associated(active_tracklength_tallies)) then
+      message = 'Active tracklength tallies should not exist before CMFD tallies!'
+      call fatal_error()
+    end if
+
+    do i = n_cmfd_tracklength_tallies + n_user_tracklength_tallies, n_user_tracklength_tallies + 1, -1
+
+      ! allocate node
+      allocate(curr_ptr)
+
+      ! set the tally index
+      curr_ptr % data = i
+      curr_ptr % next => active_tracklength_tallies
+      active_tracklength_tallies => curr_ptr
+
+      ! set indices in active tallies
+      allocate(tall_ptr)
+      tall_ptr % data = tracklength_tallies(i)
+      tall_ptr % next => active_tallies
+      active_tallies => tall_ptr
+
+    end do
+
+    ! check to see if current tallies have already been allocated
+    curr_ptr => null()
+    if (associated(active_current_tallies)) then
+      message = 'Active current tallies should not exist before CMFD tallies!'
+      call fatal_error()
+    end if
+
+    do i = n_cmfd_current_tallies + n_user_current_tallies, n_user_current_tallies + 1, -1
+
+      ! allocate node
+      allocate(curr_ptr)
+
+      ! set the tally index
+      curr_ptr % data = i
+      curr_ptr % next => active_current_tallies
+      active_current_tallies => curr_ptr
+
+      ! set indices in active tallies
+      allocate(tall_ptr)
+      tall_ptr % data = current_tallies(i)
+      tall_ptr % next => active_tallies
+      active_tallies => tall_ptr
+
+    end do
+
+  end subroutine setup_active_cmfdtallies
 
 end module tally

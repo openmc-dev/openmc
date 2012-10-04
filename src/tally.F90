@@ -1645,13 +1645,7 @@ contains
     if (reduce_tallies) call reduce_tally_values()
 #endif
 
-    ! Increase number of realizations
-    if (reduce_tallies) then
-       n_realizations = n_realizations + 1
-    else
-       n_realizations = n_realizations + n_procs
-    end if
-
+    ! Accumulate on master only unless run is not reduced then do it on all
     if (master .or. (.not. reduce_tallies)) then
        ! Accumulate scores for each tally
        curr_ptr => active_tallies
@@ -1914,12 +1908,6 @@ contains
     open(FILE=filename, UNIT=UNIT_TALLY, STATUS='replace', &
          ACTION='write', IOSTAT=io_error)
 
-    ! Calculate t-value for confidence intervals
-    if (confidence_intervals) then
-       alpha = ONE - CONFIDENCE_LEVEL
-       t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
-    end if
-
     do i = 1, n_tallies
        t => tallies(i)
 
@@ -1927,6 +1915,12 @@ contains
        if (confidence_intervals) then
           do k = 1, size(t % scores, 2)
              do j = 1, size(t % scores, 1)
+                ! Calculate t-value for confidence intervals
+                if (confidence_intervals) then
+                   alpha = ONE - CONFIDENCE_LEVEL
+                   t_value = t_percentile(ONE - alpha/TWO, t % scores(j,k) % &
+                             n_realizations - 1)
+                end if
                 t % scores(j,k) % sum_sq = t_value * t % scores(j,k) % sum_sq
              end do
           end do
@@ -2334,6 +2328,9 @@ contains
     score % sum    = score % sum    + val
     score % sum_sq = score % sum_sq + val*val
 
+    ! Increase the realization counter
+    score % n_realizations = score % n_realizations + 1
+
     ! Reset the single batch estimate
     score % value = ZERO
 
@@ -2352,9 +2349,9 @@ contains
     ! have used Bessel's correction so that the estimator of the variance of the
     ! sample mean is unbiased.
 
-    score % sum    = score % sum/n_realizations
-    score % sum_sq = sqrt((score % sum_sq/n_realizations - score % sum * &
-         score % sum) / (n_realizations - 1))
+    score % sum    = score % sum/score % n_realizations
+    score % sum_sq = sqrt((score % sum_sq/score % n_realizations - score % sum * &
+         score % sum) / (score % n_realizations - 1))
 
   end subroutine statistics_score
 

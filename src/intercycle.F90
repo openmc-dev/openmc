@@ -361,6 +361,7 @@ contains
 
   subroutine calculate_keff()
 
+    integer :: n_realizations ! number of realizations of global tally
     real(8) :: temp(2) ! used to reduce sum and sum_sq
     real(8) :: alpha   ! significance level for CI
     real(8) :: t_value ! t-value for confidence intervals
@@ -394,6 +395,9 @@ contains
     if (global_tallies_on) then
        ! =======================================================================
        ! ACTIVE BATCHES
+
+       ! Extract number of realizations
+       n_realizations = global_tallies(K_ANALOG) % n_realizations 
 
        if (reduce_tallies) then
           ! In this case, global_tallies has already been reduced, so we don't

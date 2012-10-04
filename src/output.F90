@@ -1145,26 +1145,26 @@ contains
 
     if (entropy_on) then
       if (cmfd_run) then
-        message = " Cycle   k(batch)   Entropy         Average k         CMFD k    CMFD Ent."
+        message = " Batch   k(batch)   Entropy         Average k          CMFD k    CMFD Ent"
         call write_message(1)
-        message = " =====   ========   =======    ===================  ==========  ========="
+        message = " =====   ========   ========   ====================   ========   ========"
         call write_message(1)
       else
-        message = " Cycle   k(batch)   Entropy         Average k"
+        message = " Batch   k(batch)   Entropy         Average k"
         call write_message(1)
-        message = " =====   ========   =======    ==================="
+        message = " =====   ========   ========   ===================="
         call write_message(1)
       end if
     else
       if (cmfd_run) then
-        message = " Cycle   k(batch)          Average k         CMFD k"
+        message = " Batch   k(batch)        Average k          CMFD k"
         call write_message(1)
-        message = " =====   ========     ===================  =========="
+        message = " =====   ========   ====================   ========"
         call write_message(1)
       else
-        message = " Cycle   k(batch)          Average k"
+        message = " Batch   k(batch)        Average k"
         call write_message(1)
-        message = " =====   ========     ==================="
+        message = " =====   ========   ===================="
         call write_message(1)
       end if
     end if
@@ -1178,48 +1178,29 @@ contains
 
   subroutine print_batch_keff()
 
-    if (current_batch <= n_inactive) then
-       ! ======================================================================
-       ! INACTIVE BATCHES
+    ! write out information batch and option independent output
+    write(UNIT=OUTPUT_UNIT, FMT='(2X,I5)', ADVANCE='NO') current_batch
+    write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') &
+      k_batch(current_batch)
 
-       if (entropy_on) then
-          write(UNIT=OUTPUT_UNIT, FMT=102) current_batch, &
-               k_batch(current_batch), entropy(current_batch)
-       else
-          write(UNIT=OUTPUT_UNIT, FMT=100) current_batch, &
-               k_batch(current_batch)
-       end if
+    ! write out entropy info
+    if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+      entropy(current_batch)
 
-    elseif (current_batch >= n_inactive + 1) then
-       ! ======================================================================
-       ! ACTIVE BATCHES
+    ! write out accumulated k-effective if after first active batch
+    if (current_batch > n_inactive + 1) write(UNIT=OUTPUT_UNIT, &
+      FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') keff, keff_std
 
-       if (entropy_on) then
-         if (cmfd_run) then
-           write(UNIT=OUTPUT_UNIT, FMT=104) current_batch, k_batch, &
-                 entropy, keff, keff_std, cmfd%keff, cmfd%entropy
-         else
-           write(UNIT=OUTPUT_UNIT, FMT=103) current_batch, k_batch, &
-                 entropy, keff, keff_std
-         end if
-       else
-         if (cmfd_run) then
-           write(UNIT=OUTPUT_UNIT, FMT=105) current_batch, k_batch, &
-                 keff, keff_std, cmfd%keff
-         else
-           write(UNIT=OUTPUT_UNIT, FMT=101) current_batch, k_batch, &
-                 keff, keff_std
-         end if
-       end if
+    ! write out cmfd keff if it is active
+    if (cmfd_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+      cmfd % keff 
 
-    end if
+    ! write out cmfd entopy
+    if (cmfd_on .and. entropy_on) write(UNIT=OUTPUT_UNIT, &
+      FMT='(3X, F8.5)', ADVANCE='NO') cmfd % entropy
 
-100 format (2X,I5,2X,F8.5)
-101 format (2X,I5,2X,F8.5,5X,F8.5," +/-",F8.5)
-102 format (2X,I5,2X,F8.5,3X,F8.5)
-103 format (2X,I5,2X,F8.5,3X,F8.5,3X,F8.5," +/-",F8.5)
-104 format (2X,I5,2X,F8.5,3X,F8.5,3X,F8.5," +/-",F8.5,2X,F8.5,4X,F8.5)
-105 format (2X,I5,2X,F8.5,5X,F8.5," +/-",F8.5,2X,F8.5)
+    ! next line
+    write(UNIT=OUTPUT_UNIT,FMT=*)
 
   end subroutine print_batch_keff
 

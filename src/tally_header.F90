@@ -35,6 +35,7 @@ module tally_header
 
   type TallyScore
      integer :: n_events = 0
+     integer :: n_realizations = 0
      real(8) :: value    = 0.
      real(8) :: sum      = 0.
      real(8) :: sum_sq   = 0.

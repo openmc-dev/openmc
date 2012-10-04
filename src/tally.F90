@@ -1663,11 +1663,11 @@ contains
        if (run_mode == MODE_CRITICALITY) then
           ! Before accumulating scores for global_tallies, we need to get the
           ! current batch estimate of k_analog for displaying to output
-          k_batch(current_batch) = global_tallies(K_ANALOG) % value
+          if(global_tallies_on) k_batch(current_batch) = global_tallies(K_ANALOG) % value
        end if
 
        ! Accumulate scores for global tallies
-       call accumulate_score(global_tallies)
+       if (global_tallies_on) call accumulate_score(global_tallies)
     end if
 
 #ifdef MPI
@@ -1729,6 +1729,7 @@ contains
     end do
 
     ! Copy global tallies into array to be reduced
+    if (global_tallies_on) then
     global_temp = global_tallies(:) % value
 
     if (master) then
@@ -1744,6 +1745,7 @@ contains
        
        ! Reset value on other processors
        global_tallies(:) % value = ZERO
+    end if
     end if
 
     ! We also need to determine the total starting weight of particles from the

@@ -1,5 +1,7 @@
 module cmfd_jacobian_operator
 
+# ifdef PETSC
+
     use cmfd_loss_operator,     only: loss_operator,init_M_operator,           &
                                       build_loss_matrix,destroy_M_operator
     use cmfd_prod_operator,     only: prod_operator,init_F_operator,           &
@@ -344,5 +346,7 @@ contains
     if (allocated(this%o_nnz)) deallocate(this%o_nnz)
 
   end subroutine destroy_J_operator
+
+# endif
 
 end module cmfd_jacobian_operator

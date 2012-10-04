@@ -1,5 +1,7 @@
 module cmfd_prod_operator
 
+# ifdef PETSC
+
   implicit none
   private
   public :: init_F_operator,build_prod_matrix,destroy_F_operator
@@ -355,5 +357,7 @@ contains
     if (allocated(this%o_nnz)) deallocate(this%o_nnz)
 
   end subroutine destroy_F_operator
+
+# endif 
 
 end module cmfd_prod_operator

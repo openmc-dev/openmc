@@ -1,6 +1,6 @@
 module input_xml
 
-  use cmfd_input,      only: configure_cmfd 
+  use cmfd_input,      only: configure_cmfd
   use constants
   use datatypes,       only: dict_add_key, dict_has_key, dict_get_key
   use error,           only: fatal_error, warning

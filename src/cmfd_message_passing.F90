@@ -1,5 +1,6 @@
 module cmfd_message_passing
 
+# ifdef PETSC
 
 ! This module contains MPI routines related to the CMFD calculation
 
@@ -92,5 +93,7 @@ contains
     end if
 
   end subroutine cmfd_bcast
+
+# endif
 
 end module cmfd_message_passing

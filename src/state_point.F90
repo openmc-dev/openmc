@@ -7,7 +7,7 @@ module state_point
   use source,       only: write_source_binary
   use string,       only: to_str
   use tally_header, only: TallyObject
-  use tally,        only: setup_active_tallies
+  use tally,        only: setup_active_usertallies
 
 #ifdef MPI
   use mpi
@@ -995,7 +995,7 @@ contains
     ! batches
     if (current_batch == n_inactive) then
        tallies_on = .true.
-       call setup_active_tallies()
+       call setup_active_usertallies()
     end if
 
     ! Add to number of realizations

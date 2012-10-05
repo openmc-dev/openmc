@@ -243,10 +243,10 @@ contains
 
   subroutine read_command_line()
 
-    integer :: i ! loop index
-    integer :: argc ! number of command line arguments
+    integer :: i         ! loop index
+    integer :: argc      ! number of command line arguments
     integer :: last_flag ! index of last flag
-    character(MAX_FILE_LEN) :: pwd ! present working directory
+    character(MAX_FILE_LEN) :: pwd      ! present working directory
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
     
     ! Get working directory
@@ -267,7 +267,7 @@ contains
     do while (i <= argc)
        ! Check for flags
        if (starts_with(argv(i), "-")) then
-         select case (argv(i))
+          select case (argv(i))
           case ('-p', '-plot', '--plot')
              run_mode = MODE_PLOTTING
           case ('-n', '-n_particles', '--n_particles')
@@ -301,8 +301,7 @@ contains
           case ('-v', '-version', '--version')
              call print_version()
              stop
-          case ('-eps_tol', '-ksp_gmres_restart','-eps_monitor','-eps_type',   &
-         &      '-snes_monitor','-ksp_monitor')
+          case ('-eps_tol', '-ksp_gmres_restart')
              ! Handle options that would be based to PETSC
              i = i + 1
           case default
@@ -319,24 +318,24 @@ contains
 
     ! Determine directory where XML input files are
     if (argc > 0 .and. last_flag < argc) then
-      path_input = argv(last_flag + 1)
+       path_input = argv(last_flag + 1)
        ! Need to add working directory if the given path is a relative path
        if (.not. starts_with(path_input, "/")) then
-         path_input = trim(pwd) // "/" // trim(path_input)
+          path_input = trim(pwd) // "/" // trim(path_input)
        end if
-     else
-      path_input = pwd
+    else
+       path_input = pwd
     end if
 
     ! Add slash at end of directory if it isn't there
     if (.not. ends_with(path_input, "/")) then
-      path_input = trim(path_input) // "/"
+       path_input = trim(path_input) // "/"
     end if
 
     ! Free memory from argv
     deallocate(argv)
 
-    ! TODO: Check that directory exists 
+    ! TODO: Check that directory exists
 
   end subroutine read_command_line
 

@@ -237,7 +237,7 @@ $(program): $(objects)
 	$(F90) $(objects) $(templates) $(xml_fort) -o $@ $(LDFLAGS)
 distclean: clean
 	cd xml-fortran; make clean
-	cd templates; make clean 
+	cd templates; make clean
 clean:
 	@rm -f *.o *.mod $(program)
 neat:

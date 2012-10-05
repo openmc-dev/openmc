@@ -15,23 +15,13 @@ contains
 # ifdef PETSC
     use cmfd_message_passing,   only: petsc_init_mpi
 # endif
-    use global,  only: cmfd
 
     ! read in cmfd input file
     call read_cmfd_xml()
 
-    ! write out summary to standard out
-!   call write_cmfd_input_summary(cmfd_tally_size)
-
     ! initialize petsc on mpi
 # ifdef PETSC
     call petsc_init_mpi()
-# endif
-
-    ! Create a new file using default properties.
-# ifdef HDF5
-!   if (cmfd_write_hdf5 .and. master)                              &
-!       call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F,cmfd%file_id, hdf5_err)
 # endif
 
   end subroutine configure_cmfd

@@ -1206,7 +1206,7 @@ contains
        end if
        allocate(meshes(n_meshes))
     end if
-n_meshes = n_user_meshes
+
     ! Allocate mesh array
     if (n_meshes > 0) allocate(meshes(n_meshes))
 
@@ -1224,7 +1224,7 @@ n_meshes = n_user_meshes
        end if
        allocate(tallies(n_tallies))
     end if
-n_tallies = n_user_tallies
+
     ! Allocate tally array
     if (n_tallies > 0) allocate(tallies(n_tallies))
 

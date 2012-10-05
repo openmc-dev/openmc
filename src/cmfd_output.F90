@@ -21,14 +21,6 @@ contains
                                      master, mpi_err
     use cmfd_header,           only: deallocate_cmfd
 
-# ifdef HDF5
-    use hdf5
-# endif
-
-# ifdef HDF5
-    integer(Fortran_Integer) :: hdf5_err
-# endif
-
     ! finalize petsc
     call PetscFinalize(mpi_err)
 
@@ -37,11 +29,6 @@ contains
 
     ! deallocate cmfd object
     call deallocate_cmfd(cmfd)
-
-    ! close the cmfd output file
-# ifdef HDF5
-    if (cmfd_write_hdf5 .and. master) call h5fclose_f(cmfd%file_id, hdf5_err)
-# endif
 
   end subroutine finalize_cmfd 
 

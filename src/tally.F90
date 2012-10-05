@@ -1662,6 +1662,9 @@ contains
 
        ! Accumulate scores for global tallies
        if (global_tallies_on) call accumulate_score(global_tallies)
+    else
+      if (global_tallies_on) &
+      global_tallies(:) % n_realizations=global_tallies(:) % n_realizations + 1
     end if
 
     if (associated(curr_ptr)) nullify(curr_ptr)
@@ -2283,6 +2286,7 @@ contains
     type(TallyScore), intent(inout) :: score
 
     score % n_events = 0
+    score % n_realizations = 0
     score % value    = ZERO
     score % sum      = ZERO
     score % sum_sq   = ZERO

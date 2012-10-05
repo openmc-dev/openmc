@@ -187,12 +187,14 @@ contains
      filename = trim(path_input) // "cmfd.xml"
      call read_xml_file_cmfd_t(filename)
 
-    ! set global variables
-    n_meshes = n_user_meshes + n_cmfd_meshes
-    n_tallies = n_user_tallies + n_cmfd_tallies
-    n_analog_tallies = n_user_analog_tallies + n_cmfd_analog_tallies
-    n_tracklength_tallies = n_user_tracklength_tallies + n_cmfd_tracklength_tallies
-    n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies
+    ! set global variables if they are 0 (this can happen if there is no tally file)
+    if (n_meshes == 0 .or. n_tallies == 0) then
+      n_meshes = n_user_meshes + n_cmfd_meshes
+      n_tallies = n_user_tallies + n_cmfd_tallies
+      n_analog_tallies = n_user_analog_tallies + n_cmfd_analog_tallies
+      n_tracklength_tallies = n_user_tracklength_tallies + n_cmfd_tracklength_tallies
+      n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies
+    end if
 
     ! Allocate list of pointers for tallies by type
     if (.not. allocated(analog_tallies) .and. n_analog_tallies > 0) allocate(analog_tallies(n_analog_tallies))

@@ -7,7 +7,6 @@
     <component name="batches" type="integer" default="0" />
     <component name="inactive" type="integer" />
     <component name="particles" type="word" length="25" default="''" />
-    <component name="seed" type="integer" />
     <component name="generations_per_batch" type="integer" default="1" />
   </typedef>
 

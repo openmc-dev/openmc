@@ -41,7 +41,6 @@ contains
     integer :: ng
     logical :: file_exists ! does cmfd.xml exist?
     character(MAX_LINE_LEN) :: filename
-    character(MAX_WORD_LEN) :: words(MAX_WORDS)
 
     ! read cmfd infput file
     filename = trim(path_input) // "cmfd.xml"

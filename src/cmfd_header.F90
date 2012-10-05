@@ -74,11 +74,6 @@ public :: allocate_cmfd, deallocate_cmfd
     ! Shannon entropy from cmfd fission source
     real(8) :: entropy 
 
-    ! output file id
-# ifdef HDF5
-    integer(HID_T) :: file_id
-# endif
-
   end type cmfd_type
 
 contains

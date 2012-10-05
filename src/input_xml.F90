@@ -1373,11 +1373,7 @@ contains
        ! post-collision parameters (e.g. tally with an energyout filter) the
        ! analog esimator must be used.
 
-       if (trim(tally_(i) % estimator) == "analog") then
-         t % estimator = ESTIMATOR_ANALOG
-       else
-         t % estimator = ESTIMATOR_TRACKLENGTH
-       end if
+       t % estimator = ESTIMATOR_TRACKLENGTH
 
        ! Copy material id
        t % id = tally_(i) % id

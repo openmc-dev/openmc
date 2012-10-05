@@ -33,7 +33,7 @@ contains
     if (run_mode /= MODE_PLOTTING) then
        if (output_tallies) then
           ! Calculate statistics for tallies and write to tallies.out
-          call tally_statistics()
+          if (master) call tally_statistics()
           if (master) call write_tallies()
        end if
     end if

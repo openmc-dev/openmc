@@ -337,10 +337,14 @@ contains
     ng = cmfd%indices(4)
 
     ! allocate arrays in cmfd object (can take out later extend to multigroup)
-    if (.not.allocated(cmfd%sourcecounts))                                     &
-   &         allocate(cmfd%sourcecounts(ng,nx,ny,nz))
-    if (.not.allocated(cmfd%weightfactors))                                    &
-   &         allocate(cmfd%weightfactors(ng,nx,ny,nz))
+    if (.not.allocated(cmfd%sourcecounts)) then 
+      allocate(cmfd%sourcecounts(ng,nx,ny,nz))
+      cmfd % sourcecounts = 0
+    end if
+    if (.not.allocated(cmfd%weightfactors)) then 
+      allocate(cmfd%weightfactors(ng,nx,ny,nz))
+      cmfd % weightfactors = 1.0_8
+    end if
 
     ! allocate energy grid and reverse cmfd energy grid
     if (.not. allocated(egrid)) allocate(egrid(ng+1))

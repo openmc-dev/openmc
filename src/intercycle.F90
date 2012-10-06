@@ -426,13 +426,8 @@ contains
           ! and its standard deviation
 
 #ifdef MPI
-          if (current_batch /= n_batches) then
-             call MPI_REDUCE(global_tallies(K_ANALOG) % sum, temp, 2, &
-                  MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-          else
-             temp(1) = global_tallies(K_ANALOG) % sum
-             temp(2) = global_tallies(K_ANALOG) % sum_sq
-          end if
+          call MPI_REDUCE(global_tallies(K_ANALOG) % sum, temp, 2, &
+               MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 #else
           temp(1) = global_tallies(K_ANALOG) % sum
           temp(2) = global_tallies(K_ANALOG) % sum_sq

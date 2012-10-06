@@ -29,7 +29,7 @@
   <variable name="run_adjoint_"    tag="run_adjoint"    type="logical"       default=".false."              />
   <variable name="write_hdf5_"     tag="write_hdf5"     type="logical"       default=".false."              />
   <variable name="begin_"          tag="begin"          type="integer"       default="1"                    />
-  <variable name="inactive_"       tag="inactive"       type="integer"       default=".true."               />
+  <variable name="inactive_"       tag="inactive"       type="logical"       default=".true."               />
   <variable name="active_flush_"   tag="active_flush"   type="integer"       default="0"                    />
   <variable name="keff_tol_"       tag="keff_tol"       type="double"        default="0.005"                />
 

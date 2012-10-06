@@ -774,7 +774,7 @@ write(206,*) cmfd%dhat
     if ((shift_idx ==  1 .and. (current(2*l  )-0.0_8) < 1.0e-10_8) .or.           &
         (shift_idx == -1 .and. (current(2*l-1)-0.0_8) < 1.0e-10_8)) then
       albedo = 999.0_8
-      cmfd_hold_weights = 1
+      cmfd_hold_weights = .true. 
     else
       albedo = (current(2*l-1)/current(2*l))**(shift_idx)
     end if

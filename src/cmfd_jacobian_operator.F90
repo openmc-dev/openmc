@@ -52,7 +52,7 @@ contains
     call preallocate_jacobian_matrix(this,ctx)
 
     ! set up M operator
-    call MatCreateMPIAIJ(PETSC_COMM_WORLD,this%localn,this%localn,PETSC_DECIDE,&
+    call MatCreateAIJ(PETSC_COMM_WORLD,this%localn,this%localn,PETSC_DECIDE,&
    & PETSC_DECIDE,PETSC_NULL_INTEGER,this%d_nnz,PETSC_NULL_INTEGER,this%o_nnz, &
    & this%J,ierr)
     call MatSetOption(this%J,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)

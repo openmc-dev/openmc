@@ -16,7 +16,7 @@ include OBJECTS
 #===============================================================================
 
 COMPILER = gnu
-PETSC    = no 
+PETSC    = no
 DEBUG    = no
 PROFILE  = no
 OPTIMIZE = no
@@ -91,28 +91,28 @@ endif
 # use petsc compiler
 ifeq ($(PETSC),yes)
 
-# Set up PETSc environment
-  include ${PETSC_DIR}/conf/petscvariables
+  # Set up PETSc environment
+  include $(PETSC_DIR)/conf/petscvariables
 
-# Default Compiler
+  # Default Compiler
   F90 := /opt/mpich2/1.5b2-intel/bin/mpif90
-  F90FLAGS := -cpp -warn -assume byterecl -traceback -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include\
-              -DMPI -DPETSC
+  F90FLAGS := -cpp -warn -assume byterecl -traceback -I$(PETSC_DIR)/include \
+              -I$(PETSC_DIR)/$(PETSC_ARCH)/include -DMPI -DPETSC
 
-# PETSc libraries
-  LDFLAGS = ${PETSC_LIB}
+  # PETSc libraries
+  LDFLAGS = $(PETSC_LIB)
 
-#  Debugging 
+  # Debugging 
   ifeq ($(DEBUG),yes)
     F90FLAGS += -g -ftrapuv -fp-stack-check -check all -fpe0
     LDFLAGS  += -g
   endif
 
-#  Profiling
-   ifeq ($(PROFILE),yes)
-     F90FLAGS += -pg
-     LDFLAGS  += -pg
-   endif
+  # Profiling
+  ifeq ($(PROFILE),yes)
+    F90FLAGS += -pg
+    LDFLAGS  += -pg
+  endif
 
 endif
 

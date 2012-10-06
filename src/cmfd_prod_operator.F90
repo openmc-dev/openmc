@@ -44,7 +44,7 @@ contains
     call preallocate_prod_matrix(this)
 
     ! set up M operator
-    call MatCreateMPIAIJ(PETSC_COMM_WORLD,this%localn,this%localn,PETSC_DECIDE,&
+    call MatCreateAIJ(PETSC_COMM_WORLD,this%localn,this%localn,PETSC_DECIDE,&
    & PETSC_DECIDE,PETSC_NULL_INTEGER,this%d_nnz,PETSC_NULL_INTEGER,this%o_nnz, &
    & this%F,ierr)
     call MatSetOption(this%F,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)

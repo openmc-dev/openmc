@@ -200,10 +200,10 @@ endif
 
 ifeq ($(USE_HDF5),yes)
   HDF5_ROOT = /opt/hdf5/1.8.9-$(COMPILER)
-  F90FLAGS += -DHDF5 -I${HDF5_ROOT}/include
-  LDFLAGS += -L${HDF5_ROOT}/lib ${HDF5_ROOT}/lib/libhdf5hl_fortran.a \
-             ${HDF5_ROOT}/lib/libhdf5_hl.a ${HDF5_ROOT}/lib/libhdf5_fortran.a \
-             ${HDF5_ROOT}/lib/libhdf5.a -lz -lrt -lm -Wl,-rpath -Wl,${HDF5_ROOT}/lib
+  F90FLAGS += -DHDF5 -I$(HDF5_ROOT)/include
+  LDFLAGS += -L$(HDF5_ROOT)/lib $(HDF5_ROOT)/lib/libhdf5hl_fortran.a \
+             $(HDF5_ROOT)/lib/libhdf5_hl.a $(HDF5_ROOT)/lib/libhdf5_fortran.a \
+             $(HDF5_ROOT)/lib/libhdf5.a -lz -lrt -lm -Wl,-rpath -Wl,$(HDF5_ROOT)/lib
 endif
 
 

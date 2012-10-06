@@ -117,14 +117,14 @@ contains
     ! set group name
     grpname = 'batch'//trim(to_str(current_batch))
     ! create a new group for this active batch
-    call h5gcreate_f(cmfd%file_id,grpname,group_id,hdf5_err)
+!   call h5gcreate_f(cmfd%file_id,grpname,group_id,hdf5_err)
 
     ! write out openmc source
     path = trim(grpname)//'/openmc_src'
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
-    call h5dcreate_f(cmfd%file_id,trim(path),dataType,dataspace_id,   &
-                     dataset_id,hdf5_err)
+!   call h5dcreate_f(cmfd%file_id,trim(path),dataType,dataspace_id,   &
+!                    dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,dataType,cmfd%openmc_src,dim4,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
 
@@ -132,8 +132,8 @@ contains
     path = trim(grpname)//'/cmfd_src'
     dim4 = (/ng,nx,ny,nz/)
     call h5screate_simple_f(4,dim4,dataspace_id,hdf5_err)
-    call h5dcreate_f(cmfd%file_id,trim(path),dataType,dataspace_id,   &
-                     dataset_id,hdf5_err)
+!   call h5dcreate_f(cmfd%file_id,trim(path),dataType,dataspace_id,   &
+!                    dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,dataType,cmfd%cmfd_src,dim4,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
 
@@ -141,8 +141,8 @@ contains
     path = trim(grpname)//'/cmfd_keff'
     dim1 = (/1/)
     call h5screate_simple_f(1,dim1,dataspace_id,hdf5_err)
-    call h5dcreate_f(cmfd%file_id,trim(path),dataType,dataspace_id,   &
-                     dataset_id,hdf5_err)
+!   call h5dcreate_f(cmfd%file_id,trim(path),dataType,dataspace_id,   &
+!                    dataset_id,hdf5_err)
     call h5dwrite_f(dataset_id,dataType,cmfd%keff,dim1,hdf5_err)
     call h5dclose_f(dataset_id,hdf5_err)
 

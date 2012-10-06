@@ -164,7 +164,7 @@ contains
     call SNESSetFromOptions(snes,ierr)
 
     ! turn off line searching
-    call SNESLineSearchSet(snes,SNESLineSearchNo,PETSC_NULL,ierr)
+!   call SNESLineSearchSet(snes,SNESLineSearchNo,PETSC_NULL,ierr)
 
   end subroutine init_solver
 

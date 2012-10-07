@@ -594,7 +594,7 @@ contains
       end do YLOOP
 
     end do ZLOOP
-write(205,*) cmfd%dtilde
+
   end subroutine compute_dtilde
 
 !===============================================================================
@@ -742,7 +742,7 @@ write(205,*) cmfd%dtilde
       end do YLOOP
 
     end do ZLOOP
-write(206,*) cmfd%dhat
+
   end subroutine compute_dhat
 
 !===============================================================================

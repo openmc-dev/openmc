@@ -56,7 +56,7 @@
   <variable name="state_point_" tag="state_point" type="statepoint_xml" dimension="1" />
   <variable name="survival_" tag="survival_biasing" type="word" length="3" />
   <variable name="trace_" tag="trace" type="integer-array" />
-  <variable name="verbosity_" tag="verbosity" type="integer" />
   <variable name="uniform_fs_" tag="uniform_fs" type="mesh_xml" dimension="1" />
+  <variable name="verbosity_" tag="verbosity" type="integer" />
 
 </template>

@@ -68,7 +68,7 @@ contains
 
     ! get number of energy groups
     if (associated(mesh_ % energy)) then
-      ng = size(mesh_ % energy) 
+      ng = size(mesh_ % energy) - 1 
       if(.not.allocated(cmfd%egrid)) allocate(cmfd%egrid(ng))
       cmfd%egrid = mesh_ % energy 
       cmfd % indices(4) = ng  ! sets energy group dimension

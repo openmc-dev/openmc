@@ -4,10 +4,6 @@
 Release Notes for OpenMC 0.4.4
 ==============================
 
-.. note::
-   These release notes are for an upcoming release of OpenMC and are still
-   subject to change.
-
 -------------------
 System Requirements
 -------------------
@@ -21,6 +17,9 @@ the problem at hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
+- Ability to write state points when using <no_reduce>.
+- Real-time XML validation in GNU Emacs with RELAX NG schemata.
+- Writing state points every n batches with <state_point interval="..." />
 - Suppress creation of summary.out and cross_sections.out by default with option
   to turn them on with <output> tag in settings.xml file.
 - Ability to create HDF5 state points.
@@ -33,11 +32,13 @@ New Features
 Bug Fixes
 ---------
 
+- 4654ee_: Fixed plotting with void cells.
 - 7ee416_: Fixed bug with multi-line input using type='word'.
 - 792eb3_: Fixed degrees of freedom for confidence intervals.
 - 7fd617_: Fixed bug with restart runs in parallel.
 - dc4a8f_: Fixed bug with fixed source restart runs.
 
+.. _4654ee: https://github.com/mit-crpg/openmc/commit/4654ee
 .. _7ee416: https://github.com/mit-crpg/openmc/commit/7ee416
 .. _792eb3: https://github.com/mit-crpg/openmc/commit/792eb3
 .. _7fd617: https://github.com/mit-crpg/openmc/commit/7fd617

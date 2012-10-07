@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.4.3',
+        VERSION:     '0.4.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -182,6 +182,22 @@ openmc
 </div>
 <p>Note that in the latter case, any output files will be placed in the present
 working directory which may be different from <tt class="docutils literal"><span class="pre">/home/username/somemodel</span></tt>.</p>
+</div>
+<div class="section" id="configuring-input-validation-with-gnu-emacs-nxml-mode">
+<h2>2.8. Configuring Input Validation with GNU Emacs nXML mode<a class="headerlink" href="#configuring-input-validation-with-gnu-emacs-nxml-mode" title="Permalink to this headline">¶</a></h2>
+<p>The <a class="reference external" href="http://www.gnu.org/software/emacs/">GNU Emacs</a> text editor has a built-in mode that extends functionality for
+editing XML files. One of the features in nXML mode is the ability to perform
+real-time <a class="reference external" href="http://en.wikipedia.org/wiki/XML_validation">validation</a> of XML files against a <a class="reference external" href="http://relaxng.org/">RELAX NG</a> schema. The OpenMC
+source contains RELAX NG schemas for each type of user input file. In order for
+nXML mode to know about these schemas, you need to tell emacs where to find a
+&#8220;locating files&#8221; description. Adding the following lines to your <tt class="docutils literal"><span class="pre">~/.emacs</span></tt>
+file will enable real-time validation of XML input files:</p>
+<div class="highlight-common-lisp"><div class="highlight"><pre><span class="p">(</span><span class="nb">require</span> <span class="ss">&#39;rng-loc</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">add-to-list</span> <span class="ss">&#39;rng-schema-locating-files</span> <span class="s">&quot;~/openmc/schemas.xml&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Make sure to replace the last string on the second line with the path to the
+schemas.xml file in your own OpenMC source directory.</p>
 </div>
 </div>
 

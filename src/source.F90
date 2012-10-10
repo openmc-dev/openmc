@@ -289,13 +289,13 @@ contains
 
   subroutine read_source_binary()
 
+    integer    :: i        ! loop over repeating sites
     integer(8) :: n_sites  ! number of sites in binary file
+    integer    :: n_repeat ! number of times to repeat a site
 #ifdef MPI
     integer    :: fh       ! file handle
     integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
-#else
-    integer    :: i        ! loop over repeating sites
-    integer    :: n_repeat ! number of times to repeat a site
+    integer    :: n_read   ! number of sites to read on a single process
 #endif
 
 #ifdef MPI
@@ -312,9 +312,35 @@ contains
          MPI_STATUS_IGNORE, mpi_err)
 
     if (n_particles > n_sites) then
-       message = "No support yet for source files of smaller size than &
-            &specified number of particles per generation."
-       call fatal_error()
+       ! Determine number of sites to read and offset
+       if (rank <= mod(n_sites,n_procs) - 1) then
+          n_read = n_sites/n_procs + 1
+          offset = 8*(1 + rank*n_read*8)
+       else
+          n_read = n_sites/n_procs
+          offset = 8*(1 + (rank*n_read + mod(n_sites,n_procs))*8)
+       end if
+
+       ! Read source sites
+       call MPI_FILE_READ_AT(fh, offset, source_bank(1), n_read, MPI_BANK, &
+            MPI_STATUS_IGNORE, mpi_err)
+
+       ! Let's say we have 30 sites and we need to fill in 200. This do loop
+       ! will fill in sites 31 - 180.
+
+       n_repeat = int(work / n_read)
+       do i = 1, n_repeat - 1
+          source_bank(i*n_read + 1:(i+1)*n_read) = &
+               source_bank((i-1)*n_read + 1:i*n_read)
+       end do
+
+       ! This final statement would fill sites 181 - 200 in the above example.
+
+       if (mod(work, n_repeat*n_read) > 0) then
+          source_bank(n_repeat*n_read + 1:work) = &
+               source_bank(1:work - n_repeat * n_read)
+       end if
+       
     else
        ! Set proper offset for source data on this processor
        offset = 8*(1 + rank*maxwork*8)

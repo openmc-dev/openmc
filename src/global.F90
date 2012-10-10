@@ -128,7 +128,7 @@ module global
 
   ! Flag for turning tallies on
   logical :: tallies_on = .false.
-  logical :: global_tallies_on = .false.
+  logical :: active_batches = .false.
 
   ! Assume all tallies are spatially distinct
   logical :: assume_separate = .false.

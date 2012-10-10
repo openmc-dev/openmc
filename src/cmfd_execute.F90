@@ -467,6 +467,7 @@ contains
     do i = n_user_tallies + 1, n_tallies
 
       ! reset that tally
+      tallies(i) % n_realizations = 0
       call reset_score(tallies(i) % scores)
 
     end do

@@ -1645,12 +1645,21 @@ contains
     if (reduce_tallies) call reduce_tally_values()
 #endif
 
+    ! Increase number of realizations (only used for global tallies)
+    if (active_batches) then
+       if (reduce_tallies) then
+          n_realizations = n_realizations + 1
+       else
+          n_realizations = n_realizations + n_procs
+       end if
+    end if
+
     ! Accumulate on master only unless run is not reduced then do it on all
     if (master .or. (.not. reduce_tallies)) then
        ! Accumulate scores for each tally
        curr_ptr => active_tallies
        do while(associated(curr_ptr))
-          call accumulate_score(tallies(curr_ptr % data) % scores)
+          call accumulate_tally(tallies(curr_ptr % data))
           curr_ptr => curr_ptr % next
        end do
 
@@ -1662,9 +1671,6 @@ contains
 
        ! Accumulate scores for global tallies
        if (active_batches) call accumulate_score(global_tallies)
-    else
-      if (active_batches) &
-      global_tallies(:) % n_realizations = global_tallies(:) % n_realizations + 1
     end if
 
     if (associated(curr_ptr)) nullify(curr_ptr)
@@ -1839,8 +1845,7 @@ contains
                 ! Calculate t-value for confidence intervals
                 if (confidence_intervals) then
                    alpha = ONE - CONFIDENCE_LEVEL
-                   t_value = t_percentile(ONE - alpha/TWO, t % scores(j,k) % &
-                             n_realizations - 1)
+                   t_value = t_percentile(ONE - alpha/TWO, t % n_realizations - 1)
                 end if
                 t % scores(j,k) % sum_sq = t_value * t % scores(j,k) % sum_sq
              end do
@@ -2192,6 +2197,26 @@ contains
   end function get_label
 
 !===============================================================================
+! ACCUMULATE_TALLY
+!===============================================================================
+
+  subroutine accumulate_tally(t)
+
+    type(TallyObject), intent(inout) :: t
+
+    ! Increment number of realizations
+    if (reduce_tallies) then
+       t % n_realizations = t % n_realizations + 1
+    else
+       t % n_realizations = t % n_realizations + n_procs
+    end if
+
+    ! Accumulate each TallyScore
+    call accumulate_score(t % scores)
+
+  end subroutine accumulate_tally
+
+!===============================================================================
 ! TALLY_STATISTICS computes the mean and standard deviation of the mean of each
 ! tally and stores them in the val and val_sq attributes of the TallyScores
 ! respectively
@@ -2206,11 +2231,11 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
-       call statistics_score(t % scores)
+       call statistics_score(t % scores, t % n_realizations)
     end do
 
     ! Calculate statistics for global tallies
-    call statistics_score(global_tallies)
+    call statistics_score(global_tallies, n_realizations)
 
   end subroutine tally_statistics
 
@@ -2249,9 +2274,6 @@ contains
     score % sum    = score % sum    + val
     score % sum_sq = score % sum_sq + val*val
 
-    ! Increase the realization counter
-    score % n_realizations = score % n_realizations + 1
-
     ! Reset the single batch estimate
     score % value = ZERO
 
@@ -2262,17 +2284,18 @@ contains
 ! mean for a TallyScore.
 !===============================================================================
 
-  elemental subroutine statistics_score(score)
+  elemental subroutine statistics_score(score, n)
 
     type(TallyScore), intent(inout) :: score
+    integer,          intent(in)    :: n
 
     ! Calculate sample mean and standard deviation of the mean -- note that we
     ! have used Bessel's correction so that the estimator of the variance of the
     ! sample mean is unbiased.
 
-    score % sum    = score % sum/score % n_realizations
-    score % sum_sq = sqrt((score % sum_sq/score % n_realizations - score % sum * &
-         score % sum) / (score % n_realizations - 1))
+    score % sum    = score % sum/n
+    score % sum_sq = sqrt((score % sum_sq/n - score % sum * &
+         score % sum) / (n - 1))
 
   end subroutine statistics_score
 
@@ -2286,7 +2309,6 @@ contains
     type(TallyScore), intent(inout) :: score
 
     score % n_events = 0
-    score % n_realizations = 0
     score % value    = ZERO
     score % sum      = ZERO
     score % sum_sq   = ZERO

@@ -39,6 +39,8 @@ element settings {
 
   element ptables { ( "off" | "on" ) }? &
 
+  element run_cmfd { ( ".false." | ".true." ) }? &
+
   element seed { xsd:integer }? &
 
   element source {

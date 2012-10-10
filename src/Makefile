@@ -16,12 +16,20 @@ include OBJECTS
 #===============================================================================
 
 COMPILER = gnu
-PETSC    = no 
 DEBUG    = no
 PROFILE  = no
 OPTIMIZE = no
-USE_MPI  = no
-USE_HDF5 = no
+MPI      = no
+HDF5     = no
+PETSC    = no
+
+#===============================================================================
+# External Library Paths
+#===============================================================================
+
+MPI_DIR   = /opt/mpich2/1.5rc3-$(COMPILER)
+HDF5_DIR  = /opt/hdf5/1.8.9-$(COMPILER)
+PETSC_DIR = /opt/petsc/3.3-$(COMPILER)
 
 #===============================================================================
 # Add git SHA-1 hash
@@ -82,38 +90,6 @@ ifeq ($(COMPILER),intel)
   ifeq ($(OPTIMIZE),yes)
     F90FLAGS += -O3
   endif
-endif
-
-#===============================================================================
-# PETSc compiler options
-#===============================================================================
-
-# use petsc compiler
-ifeq ($(PETSC),yes)
-
-# Set up PETSc environment
-  include ${PETSC_DIR}/conf/petscvariables
-
-# Default Compiler
-  F90 := /opt/mpich2/1.5b2-intel/bin/mpif90
-  F90FLAGS := -cpp -warn -assume byterecl -traceback -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include\
-              -DMPI -DPETSC
-
-# PETSc libraries
-  LDFLAGS = ${PETSC_LIB}
-
-#  Debugging 
-  ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -ftrapuv -fp-stack-check -check all -fpe0
-    LDFLAGS  += -g
-  endif
-
-#  Profiling
-   ifeq ($(PROFILE),yes)
-     F90FLAGS += -pg
-     LDFLAGS  += -pg
-   endif
-
 endif
 
 #===============================================================================
@@ -185,40 +161,51 @@ ifeq ($(COMPILER),cray)
 endif
 
 #===============================================================================
-# Miscellaneous compiler options
+# Setup External Libraries
 #===============================================================================
 
-# Use MPI for parallelism
+# MPI for distributed-memory parallelism
 
-ifeq ($(USE_MPI),yes)
-  MPI_ROOT = /opt/mpich2/1.5b2-$(COMPILER)
-  F90 = $(MPI_ROOT)/bin/mpif90
+ifeq ($(MPI),yes)
+  F90 = $(MPI_DIR)/bin/mpif90
   F90FLAGS += -DMPI
 endif
 
-# Use HDF5 for output
+# HDF5 for I/O
 
-ifeq ($(USE_HDF5),yes)
-  HDF5_ROOT = /opt/hdf5/1.8.9-$(COMPILER)
-  F90FLAGS += -DHDF5 -I${HDF5_ROOT}/include
-  LDFLAGS += -L${HDF5_ROOT}/lib ${HDF5_ROOT}/lib/libhdf5hl_fortran.a \
-             ${HDF5_ROOT}/lib/libhdf5_hl.a ${HDF5_ROOT}/lib/libhdf5_fortran.a \
-             ${HDF5_ROOT}/lib/libhdf5.a -lz -lrt -lm -Wl,-rpath -Wl,${HDF5_ROOT}/lib
+ifeq ($(HDF5),yes)
+  F90FLAGS += -DHDF5 -I$(HDF5_DIR)/include
+  LDFLAGS += -L$(HDF5_DIR)/lib $(HDF5_DIR)/lib/libhdf5hl_fortran.a \
+             $(HDF5_DIR)/lib/libhdf5_hl.a $(HDF5_DIR)/lib/libhdf5_fortran.a \
+             $(HDF5_DIR)/lib/libhdf5.a -lz -lrt -lm -Wl,-rpath -Wl,$(HDF5_DIR)/lib
 endif
 
+# PETSC for CMFD functionality
+
+ifeq ($(PETSC),yes)
+  # Check to make sure MPI is set
+  ifneq ($(MPI),yes)
+    $(error MPI must be enabled to compile with PETSC!)
+  endif
+
+  # Set up PETSc environment
+  include $(PETSC_DIR)/conf/petscvariables
+  F90FLAGS += -I$(PETSC_DIR)/include -DPETSC
+  LDFLAGS += $(PETSC_LIB)
+endif
 
 #===============================================================================
-# Options for IBM Blue Gene/P ANL supercomputer
+# Machine-specific setup
 #===============================================================================
+
+# IBM Blue Gene/P ANL supercomputer
 
 ifeq ($(MACHINE),bluegene)
   F90 = /bgsys/drivers/ppcfloor/comm/xl/bin/mpixlf2003
   F90FLAGS = -WF,-DNO_F2008,-DMPI -O3
 endif
 
-#===============================================================================
-# Options for Cray XK6 ORNL Titan supercomputer
-#===============================================================================
+# Cray XK6 ORNL Titan supercomputer
 
 ifeq ($(MACHINE),crayxk6)
   F90 = ftn

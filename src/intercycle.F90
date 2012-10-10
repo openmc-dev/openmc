@@ -372,10 +372,10 @@ contains
     ! =========================================================================
     ! SINGLE-BATCH ESTIMATE OF K-EFFECTIVE
 
-    if (.not. global_tallies_on) k_batch(current_batch) = global_tallies(K_ANALOG) % value
+    if (.not. active_batches) k_batch(current_batch) = global_tallies(K_ANALOG) % value
 
 #ifdef MPI
-    if ((.not. global_tallies_on) .or. (.not. reduce_tallies)) then
+    if ((.not. active_batches) .or. (.not. reduce_tallies)) then
        ! Reduce value of k_batch if running in parallel
        if (master) then
           call MPI_REDUCE(MPI_IN_PLACE, k_batch(current_batch), 1, MPI_REAL8, &
@@ -392,7 +392,7 @@ contains
     k_batch(current_batch) = k_batch(current_batch) / &
          (n_particles * gen_per_batch)
 
-    if (global_tallies_on) then
+    if (active_batches) then
        ! =======================================================================
        ! ACTIVE BATCHES
 

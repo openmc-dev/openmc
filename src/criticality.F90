@@ -179,7 +179,7 @@ contains
     ! Turn tallies on once inactive cycles are complete
     if (current_batch == n_inactive) then
        tallies_on = .true.
-       global_tallies_on = .true.
+       active_batches = .true.
        call timer_stop(time_inactive)
        call timer_start(time_active)
        call setup_active_usertallies()

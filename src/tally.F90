@@ -1657,14 +1657,14 @@ contains
        if (run_mode == MODE_CRITICALITY) then
           ! Before accumulating scores for global_tallies, we need to get the
           ! current batch estimate of k_analog for displaying to output
-          if(global_tallies_on) k_batch(current_batch) = global_tallies(K_ANALOG) % value
+          if (active_batches) k_batch(current_batch) = global_tallies(K_ANALOG) % value
        end if
 
        ! Accumulate scores for global tallies
-       if (global_tallies_on) call accumulate_score(global_tallies)
+       if (active_batches) call accumulate_score(global_tallies)
     else
-      if (global_tallies_on) &
-      global_tallies(:) % n_realizations=global_tallies(:) % n_realizations + 1
+      if (active_batches) &
+      global_tallies(:) % n_realizations = global_tallies(:) % n_realizations + 1
     end if
 
     if (associated(curr_ptr)) nullify(curr_ptr)
@@ -1721,23 +1721,23 @@ contains
     end do
 
     ! Copy global tallies into array to be reduced
-    if (global_tallies_on) then
-    global_temp = global_tallies(:) % value
+    if (active_batches) then
+       global_temp = global_tallies(:) % value
 
-    if (master) then
-       call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
-            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+       if (master) then
+          call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
+               MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
-       ! Transfer values back to global_tallies on master
-       global_tallies(:) % value = global_temp
-    else
-       ! Receive buffer not significant at other processors
-       call MPI_REDUCE(global_temp, dummy, N_GLOBAL_TALLIES, &
-            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-       
-       ! Reset value on other processors
-       global_tallies(:) % value = ZERO
-    end if
+          ! Transfer values back to global_tallies on master
+          global_tallies(:) % value = global_temp
+       else
+          ! Receive buffer not significant at other processors
+          call MPI_REDUCE(global_temp, dummy, N_GLOBAL_TALLIES, &
+               MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+
+          ! Reset value on other processors
+          global_tallies(:) % value = ZERO
+       end if
     end if
 
     ! We also need to determine the total starting weight of particles from the

@@ -18,6 +18,7 @@
 from math import sqrt, pow
 from glob import glob
 
+import numpy as np
 import scipy.stats
 import matplotlib.pyplot as plt
 
@@ -77,8 +78,16 @@ for i_batch in range(len(files)):
     # Create StatePoint object
     sp = StatePoint(batch_filename)
     
+    # Read global tallies
+    n_global_tallies = sp._get_int()[0]
+    sp.global_tallies = np.array(sp._get_double(2*n_global_tallies))
+    sp.global_tallies.shape = (n_global_tallies, 2)
+
+    # Flag indicating if tallies are present
+    tallies_present = sp._get_int()[0]
+
     # Check if tallies are present
-    if not sp._get_int()[0]:
+    if not tallies_present:
         raise Exception("No tally data in state point!")
     
     # Increase the dimensionality of our main variables
@@ -87,7 +96,7 @@ for i_batch in range(len(files)):
     scoreType[i_batch] = [None for x in range(len(sp.tallies))]     
     
     # Calculate t-value for 95% two-sided CI
-    n = sp.current_batch - sp.n_inactive
+    n = sp._get_int()[0]
     t_value = scipy.stats.t.ppf(0.975, n - 1)
     
     # Store the batch count    

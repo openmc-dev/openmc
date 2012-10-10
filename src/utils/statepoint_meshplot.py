@@ -19,12 +19,20 @@ score = int(argv[3]) if len(argv) > 3 else 1
 # Create StatePoint object
 sp = StatePoint(filename)
 
+# Read global tallies
+n_global_tallies = sp._get_int()[0]
+sp.global_tallies = np.array(sp._get_double(2*n_global_tallies))
+sp.global_tallies.shape = (n_global_tallies, 2)
+
+# Flag indicating if tallies are present
+tallies_present = sp._get_int()[0]
+
 # Check if tallies are present
-if not sp._get_int()[0]:
+if not tallies_present:
     raise Exception("No tally data in state point!")
 
 # Calculate t-value for 95% two-sided CI
-n = sp.current_batch - sp.n_inactive
+n = sp._get_int()[0]
 t_value = scipy.stats.t.ppf(0.975, n - 1)
 
 # Loop over all tallies

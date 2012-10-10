@@ -51,6 +51,7 @@
   <variable name="no_reduce_" tag="no_reduce" type="word" length="3" />
   <variable name="output_" tag="output" type="word-array" length="20" />
   <variable name="ptables_" tag="ptables" type="word" length="3" />
+  <variable name="run_cmfd_" tag="run_cmfd" type="logical" default=".false." />
   <variable name="seed_" tag="seed" type="integer" />
   <variable name="source_" tag="source" type="source_xml" />
   <variable name="state_point_" tag="state_point" type="statepoint_xml" dimension="1" />
@@ -58,6 +59,5 @@
   <variable name="trace_" tag="trace" type="integer-array" />
   <variable name="verbosity_" tag="verbosity" type="integer" />
   <variable name="uniform_fs_" tag="uniform_fs" type="mesh_xml" dimension="1" />
-  <variable name="run_cmfd_" tag="run_cmfd" type="logical" default=".false." />
 
 </template>

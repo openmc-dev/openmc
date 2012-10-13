@@ -2316,7 +2316,7 @@ contains
   end subroutine reset_score
 
 !===============================================================================
-! SETUP_ACTIVE_TALLIES
+! SETUP_ACTIVE_USERTALLIES
 !===============================================================================
 
   subroutine setup_active_usertallies()

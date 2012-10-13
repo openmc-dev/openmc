@@ -5,5 +5,6 @@
   <documentElement localName="settings" uri="src/templates/settings.rnc"/>
   <documentElement localName="tallies" uri="src/templates/tallies.rnc"/>
   <documentElement localName="plots" uri="src/templates/plots.rnc"/>
+  <documentElement localName="cmfd" uri="src/templates/cmfd.rnc"/>
   <documentElement localName="cross_sections" uri="src/templates/cross_sections.rnc"/>
 </locatingRules>

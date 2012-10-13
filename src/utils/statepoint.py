@@ -144,6 +144,9 @@ class StatePoint(BinaryFile):
             t = Tally()
             self.tallies.append(t)
 
+            # Read number of realizations
+            t.n_realizations = self._get_int()[0]
+
             # Read sizes of tallies
             t.n_score_bins = self._get_int()[0]
             t.n_filter_bins = self._get_int()[0]
@@ -186,6 +189,9 @@ class StatePoint(BinaryFile):
         if not self._metadata:
             self._read_metadata()
 
+        # Number of realizations for global tallies
+        self.n_realizations = self._get_int()[0]
+
         # Read global tallies
         n_global_tallies = self._get_int()[0]
         self.global_tallies = np.array(self._get_double(2*n_global_tallies))
@@ -196,7 +202,6 @@ class StatePoint(BinaryFile):
 
         # Read tally results
         if tallies_present:
-            self.n_realizations = self._get_int()[0]
 
             for t in self.tallies:
                 n = t.n_score_bins * t.n_filter_bins

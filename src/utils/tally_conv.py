@@ -77,6 +77,9 @@ for i_batch in range(len(files)):
     
     # Create StatePoint object
     sp = StatePoint(batch_filename)
+
+    # Read number of realizations for global tallies
+    sp.n_realizations = sp._get_int()[0]
     
     # Read global tallies
     n_global_tallies = sp._get_int()[0]
@@ -95,15 +98,15 @@ for i_batch in range(len(files)):
     uncert[i_batch] = [None for x in range(len(sp.tallies))]
     scoreType[i_batch] = [None for x in range(len(sp.tallies))]     
     
-    # Calculate t-value for 95% two-sided CI
-    n = sp._get_int()[0]
-    t_value = scipy.stats.t.ppf(0.975, n - 1)
-    
-    # Store the batch count    
-    active_batches[i_batch] = n
-    
     # Loop over all tallies
     for i_tally, t in enumerate(sp.tallies):
+        # Calculate t-value for 95% two-sided CI
+        n = t.n_realizations
+        t_value = scipy.stats.t.ppf(0.975, n - 1)
+    
+        # Store the batch count    
+        active_batches[i_batch] = n
+    
         # Resize the 2nd dimension      
         mean[i_batch][i_tally] = [None for x in range(t.n_filter_bins)]
         uncert[i_batch][i_tally] = [None for x in range(t.n_filter_bins)]

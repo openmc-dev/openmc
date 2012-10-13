@@ -67,6 +67,10 @@ contains
        call write_tally_scores_nr(fh)
 
     elseif (master) then
+       ! Write number of realizations
+       call MPI_FILE_WRITE(fh, n_realizations, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+
        ! Write global tallies
        call MPI_FILE_WRITE(fh, N_GLOBAL_TALLIES, 1, MPI_INTEGER, &
             MPI_STATUS_IGNORE, mpi_err)
@@ -77,10 +81,6 @@ contains
           ! Indicate that tallies are on
           temp = 1
           call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
-               MPI_STATUS_IGNORE, mpi_err)
-
-          ! Write number of realizations
-          call MPI_FILE_WRITE(fh, n_realizations, 1, MPI_INTEGER, &
                MPI_STATUS_IGNORE, mpi_err)
 
           ! Write all tally scores
@@ -188,6 +188,9 @@ contains
        ! Get pointer to tally
        t => tallies(i)
 
+       ! Number of realizations
+       write(UNIT_STATE) t % n_realizations
+
        ! Write size of each tally
        write(UNIT_STATE) size(t % scores, 1)
        write(UNIT_STATE) size(t % scores, 2)
@@ -240,6 +243,9 @@ contains
        write(UNIT_STATE) t % score_bins
     end do TALLY_METADATA
 
+    ! Number of realizations for global tallies
+    write(UNIT_STATE) n_realizations
+
     ! Write out global tallies sum and sum_sq
     write(UNIT_STATE) N_GLOBAL_TALLIES
     GLOBAL_TALLIES_LOOP: do i = 1, N_GLOBAL_TALLIES
@@ -250,9 +256,6 @@ contains
     if (tallies_on) then
        ! Indicate that tallies are on
        write(UNIT_STATE) 1
-
-       ! Number of realizations
-       write(UNIT_STATE) n_realizations
 
        TALLY_SCORES: do i = 1, n_tallies
           ! Get pointer to tally
@@ -382,6 +385,10 @@ contains
        ! Get pointer to tally
        t => tallies(i)
 
+       ! Write number of realizations
+       call MPI_FILE_WRITE(fh, t % n_realizations, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+
        ! Write size of each tally
        n = t % n_score_bins * t % n_nuclide_bins
        call MPI_FILE_WRITE(fh, n, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
@@ -477,8 +484,12 @@ contains
     ! ==========================================================================
     ! COLLECT AND WRITE GLOBAL TALLIES
 
-    ! Write number of global tallies
     if (master) then
+       ! Write number of realizations
+       call MPI_FILE_WRITE(fh, n_realizations, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+
+       ! Write number of global tallies
        call MPI_FILE_WRITE(fh, N_GLOBAL_TALLIES, 1, MPI_INTEGER, &
             MPI_STATUS_IGNORE, mpi_err)
     end if
@@ -514,10 +525,6 @@ contains
        if (master) then
           temp = 1
           call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
-               MPI_STATUS_IGNORE, mpi_err)
-
-          ! Write number of realizations
-          call MPI_FILE_WRITE(fh, n_realizations, 1, MPI_INTEGER, &
                MPI_STATUS_IGNORE, mpi_err)
        end if
 
@@ -686,6 +693,10 @@ contains
        end if
 
        TALLY_METADATA: do i = 1, n_tallies
+          ! Read number of realizations for global tallies
+          call MPI_FILE_READ(fh, tallies(i) % n_realizations, 1, &
+               MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+
           ! Read dimensions of tally filters and scores and make sure they
           ! match
           call MPI_FILE_READ(fh, temp, 2, MPI_INTEGER, &
@@ -746,6 +757,10 @@ contains
           deallocate(int_array)
        end do TALLY_METADATA
 
+       ! Read number of realizations for global tallies
+       call MPI_FILE_READ(fh, n_realizations, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+
        ! Read number of global tallies and make sure it matches
        call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
        if (temp(1) /= N_GLOBAL_TALLIES) then
@@ -765,10 +780,6 @@ contains
 
        ! Read sum and sum squared
        if (temp(1) == 1) then
-          ! Read number of realizations
-          call MPI_FILE_READ(fh, n_realizations, 1, MPI_INTEGER, &
-               MPI_STATUS_IGNORE, mpi_err)
-
           TALLY_SCORES: do i = 1, n_tallies
              n = size(tallies(i) % scores, 1) * size(tallies(i) % scores, 2)
              call MPI_FILE_READ(fh, tallies(i) % scores, n, MPI_TALLYSCORE, &
@@ -882,6 +893,9 @@ contains
        end if
 
        TALLY_METADATA: do i = 1, n_tallies
+          ! Read number of realizations
+          read(UNIT_STATE) tallies(i) % n_realizations
+
           ! Read dimensions of tally filters and scores and make sure they
           ! match
           read(UNIT_STATE) temp(1:2)
@@ -932,6 +946,9 @@ contains
           deallocate(int_array)
        end do TALLY_METADATA
 
+       ! Read number of realizations for global tallies
+       read(UNIT_STATE) n_realizations
+
        ! Read number of global tallies and make sure it matches
        read(UNIT_STATE) temp(1)
        if (temp(1) /= N_GLOBAL_TALLIES) then
@@ -948,9 +965,6 @@ contains
        ! Read sum and sum squared
        read(UNIT_STATE) temp(1)
        if (temp(1) == 1) then
-          ! Read number of realizations
-          read(UNIT_STATE) n_realizations
-
           TALLY_SCORES: do i = 1, n_tallies
              do k = 1, size(tallies(i) % scores, 2)
                 do j = 1, size(tallies(i) % scores, 1)

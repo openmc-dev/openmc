@@ -79,7 +79,7 @@ ifeq ($(COMPILER),intel)
 
   # Optimization
   ifeq ($(OPTIMIZE),yes)
-    F90FLAGS += -O3 -ipo
+    F90FLAGS += -O3
   endif
 endif
 
@@ -158,7 +158,7 @@ endif
 # Use MPI for parallelism
 
 ifeq ($(USE_MPI),yes)
-  MPI_ROOT = /opt/mpich2/1.5b2-$(COMPILER)
+  MPI_ROOT = /opt/mpich2/1.5-$(COMPILER)
   F90 = $(MPI_ROOT)/bin/mpif90
   F90FLAGS += -DMPI
 endif
@@ -167,10 +167,10 @@ endif
 
 ifeq ($(USE_HDF5),yes)
   HDF5_ROOT = /opt/hdf5/1.8.9-$(COMPILER)
-  F90FLAGS += -DHDF5 -I${HDF5_ROOT}/include
-  LDFLAGS += -L${HDF5_ROOT}/lib ${HDF5_ROOT}/lib/libhdf5hl_fortran.a \
-             ${HDF5_ROOT}/lib/libhdf5_hl.a ${HDF5_ROOT}/lib/libhdf5_fortran.a \
-             ${HDF5_ROOT}/lib/libhdf5.a -lz -lrt -lm -Wl,-rpath -Wl,${HDF5_ROOT}/lib
+  F90FLAGS += -DHDF5 -I$(HDF5_ROOT)/include
+  LDFLAGS += -L$(HDF5_ROOT)/lib $(HDF5_ROOT)/lib/libhdf5hl_fortran.a \
+             $(HDF5_ROOT)/lib/libhdf5_hl.a $(HDF5_ROOT)/lib/libhdf5_fortran.a \
+             $(HDF5_ROOT)/lib/libhdf5.a -lz -lrt -lm -Wl,-rpath -Wl,$(HDF5_ROOT)/lib
 endif
 
 

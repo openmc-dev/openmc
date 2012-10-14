@@ -13,5 +13,6 @@ as debugging.
     :maxdepth: 2
 
     structures
+    styleguide
     xml-fortran
     statepoint

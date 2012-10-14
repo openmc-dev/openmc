@@ -454,6 +454,8 @@ could be written as:
 
     </geometry>
 
+.. _surface_element:
+
 ``<surface>`` Element
 ---------------------
 

@@ -1,4 +1,4 @@
-.. _workflow:
+.. _devguide_workflow:
 
 ====================
 Development Workflow
@@ -21,7 +21,7 @@ not be merged back, those changes should be on another branch.
 3. Issue a pull request from GitHub and select the branch you want merged.
 
 4. The OpenMC integration manager will review your pull request and make sure it
-conforms to the :ref:`styleguide`, compiles correctly, runs in parallel
+conforms to the :ref:`devguide_styleguide`, compiles correctly, runs in parallel
 correctly, does not break other features in the code, etc. Any issues with the
 pull request can be discussed directly on the pull request page itself.
 

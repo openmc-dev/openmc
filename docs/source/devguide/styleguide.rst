@@ -1,4 +1,4 @@
-.. _styleguide:
+.. _devguide_styleguide:
 
 ======================
 Style Guide for OpenMC

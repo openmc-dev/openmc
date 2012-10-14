@@ -158,7 +158,7 @@ endif
 # Use MPI for parallelism
 
 ifeq ($(USE_MPI),yes)
-  MPI_ROOT = /opt/mpich2/1.5rc3-$(COMPILER)
+  MPI_ROOT = /opt/mpich2/1.5-$(COMPILER)
   F90 = $(MPI_ROOT)/bin/mpif90
   F90FLAGS += -DMPI
 endif

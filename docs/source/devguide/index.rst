@@ -14,5 +14,6 @@ as debugging.
 
     structures
     styleguide
+    workflow
     xml-fortran
     statepoint

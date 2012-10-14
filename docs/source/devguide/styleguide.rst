@@ -27,7 +27,7 @@ enhance code readability or otherwise.
 Always include comments to describe what your code is doing. Do not be afraid of
 using copious amounts of comments.
 
-Use <, >, <=, and >= rather than .lt., .gt., .le., and .ge..
+Use <, >, <=, >=, ==, and /= rather than .lt., .gt., .le., .ge., .eq., and .ne.
 
 Try to keep code within 80 columns when possible.
 

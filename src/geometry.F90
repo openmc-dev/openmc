@@ -1035,6 +1035,36 @@ contains
        z = z - z0
        func = x*x + y*y + z*z - r*r
 
+     case (SURF_CONE_X)
+       x0 = surf % coeffs(1)
+       y0 = surf % coeffs(2)
+       z0 = surf % coeffs(3)
+       r = surf % coeffs(4)
+       x = x - x0
+       y = y - y0
+       z = z - z0
+       func = y*y + z*z - r*x*x
+
+     case (SURF_CONE_Y)
+       x0 = surf % coeffs(1)
+       y0 = surf % coeffs(2)
+       z0 = surf % coeffs(3)
+       r = surf % coeffs(4)
+       x = x - x0
+       y = y - y0
+       z = z - z0
+       func = x*x + z*z - r*y*y
+
+     case (SURF_CONE_Z)
+       x0 = surf % coeffs(1)
+       y0 = surf % coeffs(2)
+       z0 = surf % coeffs(3)
+       r = surf % coeffs(4)
+       x = x - x0
+       y = y - y0
+       z = z - z0
+       func = x*x + y*y - r*z*z
+
     case (SURF_BOX_X)
        y0 = surf % coeffs(1)
        z0 = surf % coeffs(2)

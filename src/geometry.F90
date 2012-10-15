@@ -853,6 +853,147 @@ contains
 
              end if
 
+          case (SURF_CONE_X)
+             x0 = surf % coeffs(1)
+             y0 = surf % coeffs(2)
+             z0 = surf % coeffs(3)
+             r = surf % coeffs(4)
+
+             x = x - x0
+             y = y - y0
+             z = z - z0
+             a = v*v + w*w - r*u*u
+             k = y*v + z*w + r*x*u
+             c = y*y + z*z - r*x*x
+             quad = k*k - c
+
+             if (quad < ZERO .or. a == ZERO) then
+                ! no intersection with cone
+
+                d = INFINITY 
+
+             elseif (on_surface) then
+                ! particle is on the cone, thus one distance is
+                ! positive/negative and the other is zero. The sign of k
+                ! determines if we are facing in or out
+
+                if (k >= ZERO) then
+                  d = INFINITY
+                else
+                  d = (-k + sqrt(quad))/a
+                end if
+
+             elseif (c < ZERO) then
+                ! particle is inside the cone, thus one distance must be
+                ! negative and one must be positive. The positive distance will
+                ! be the one with negative sign on sqrt(quad)
+
+                d = (-k + sqrt(quad))/a
+
+             else
+                ! particle is outside the cone, thus both distances are either
+                ! positive or negative. If positive, the smaller distance is the
+                ! one with positive sign on sqrt(quad)
+
+                d = (-k - sqrt(quad))/a
+                if (d <= ZERO) d = INFINITY
+
+             end if
+
+          case (SURF_CONE_Y)
+             x0 = surf % coeffs(1)
+             y0 = surf % coeffs(2)
+             z0 = surf % coeffs(3)
+             r = surf % coeffs(4)
+
+             x = x - x0
+             y = y - y0
+             z = z - z0
+             a = u*u + w*w - r*v*v
+             k = x*u + z*w + r*y*v
+             c = x*x + z*z - r*y*y
+             quad = k*k - c
+
+             if (quad < ZERO .or. a == ZERO) then
+                ! no intersection with cone
+
+                d = INFINITY 
+
+             elseif (on_surface) then
+                ! particle is on the cone, thus one distance is
+                ! positive/negative and the other is zero. The sign of k
+                ! determines if we are facing in or out
+
+                if (k >= ZERO) then
+                  d = INFINITY
+                else
+                  d = (-k + sqrt(quad))/a
+                end if
+
+             elseif (c < ZERO) then
+                ! particle is inside the cone, thus one distance must be
+                ! negative and one must be positive. The positive distance will
+                ! be the one with negative sign on sqrt(quad)
+
+                d = (-k + sqrt(quad))/a
+
+             else
+                ! particle is outside the cone, thus both distances are either
+                ! positive or negative. If positive, the smaller distance is the
+                ! one with positive sign on sqrt(quad)
+
+                d = (-k - sqrt(quad))/a
+                if (d <= ZERO) d = INFINITY
+
+             end if
+
+          case (SURF_CONE_Z)
+             x0 = surf % coeffs(1)
+             y0 = surf % coeffs(2)
+             z0 = surf % coeffs(3)
+             r = surf % coeffs(4)
+
+             x = x - x0
+             y = y - y0
+             z = z - z0
+             a = u*u + v*v - r*w*w
+             k = x*u + y*v + r*z*w
+             c = x*x + y*y - r*z*z
+             quad = k*k - c
+
+             if (quad < ZERO .or. a == ZERO) then
+                ! no intersection with cone
+
+                d = INFINITY 
+
+             elseif (on_surface) then
+                ! particle is on the cone, thus one distance is
+                ! positive/negative and the other is zero. The sign of k
+                ! determines if we are facing in or out
+
+                if (k >= ZERO) then
+                  d = INFINITY
+                else
+                  d = (-k + sqrt(quad))/a
+                end if
+
+             elseif (c < ZERO) then
+                ! particle is inside the cone, thus one distance must be
+                ! negative and one must be positive. The positive distance will
+                ! be the one with negative sign on sqrt(quad)
+
+                d = (-k + sqrt(quad))/a
+
+             else
+                ! particle is outside the cone, thus both distances are either
+                ! positive or negative. If positive, the smaller distance is the
+                ! one with positive sign on sqrt(quad)
+
+                d = (-k - sqrt(quad))/a
+                if (d <= ZERO) d = INFINITY
+
+             end if
+
           case (SURF_GQ)
              message = "Surface distance not yet implement for general quadratic."
              call fatal_error()

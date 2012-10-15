@@ -376,6 +376,48 @@ contains
           v = v - 2*dot_prod*y/(R*R)
           w = w - 2*dot_prod*z/(R*R)
 
+       case (SURF_CONE_X)
+          ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
+          ! normal
+          x = p % coord0 % xyz(1) - surf % coeffs(1)
+          y = p % coord0 % xyz(2) - surf % coeffs(2)
+          z = p % coord0 % xyz(3) - surf % coeffs(3)
+          R = surf % coeffs(4)
+          dot_prod = (v*y + w*z - R*u*x)/((R + ONE)*R*x*x)
+
+          ! Reflect direction according to normal
+          u = u + 2*dot_prod*R*x
+          v = v - 2*dot_prod*y
+          w = w - 2*dot_prod*z
+
+       case (SURF_CONE_Y)
+          ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
+          ! normal
+          x = p % coord0 % xyz(1) - surf % coeffs(1)
+          y = p % coord0 % xyz(2) - surf % coeffs(2)
+          z = p % coord0 % xyz(3) - surf % coeffs(3)
+          R = surf % coeffs(4)
+          dot_prod = (u*x + w*z - R*v*y)/((R + ONE)*R*y*y)
+
+          ! Reflect direction according to normal
+          u = u - 2*dot_prod*x
+          v = v + 2*dot_prod*R*y
+          w = w - 2*dot_prod*z
+
+       case (SURF_CONE_Z)
+          ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
+          ! normal
+          x = p % coord0 % xyz(1) - surf % coeffs(1)
+          y = p % coord0 % xyz(2) - surf % coeffs(2)
+          z = p % coord0 % xyz(3) - surf % coeffs(3)
+          R = surf % coeffs(4)
+          dot_prod = (u*x + v*y - R*w*z)/((R + ONE)*R*z*z)
+
+          ! Reflect direction according to normal
+          u = u - 2*dot_prod*x
+          v = v - 2*dot_prod*y
+          w = w + 2*dot_prod*R*z
+
        case default
           message = "Reflection not supported for surface " // &
                trim(to_str(surf % id))

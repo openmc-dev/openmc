@@ -486,6 +486,12 @@ contains
        string = "Z Cylinder"
     case (SURF_SPHERE)
        string = "Sphere"
+    case (SURF_CONE_X)
+       string = "X Cone"
+    case (SURF_CONE_Y)
+       string = "Y Cone"
+    case (SURF_CONE_Z)
+       string = "Z Cone"
     case (SURF_BOX_X)
     case (SURF_BOX_Y)
     case (SURF_BOX_Z)

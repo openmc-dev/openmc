@@ -1,5 +1,23 @@
 module state_point
 
+!===============================================================================
+! STATE_POINT -- This module handles writing and reading binary state point
+! files. State points are contain complete tally results, source sites, and
+! various other data. They can be used to restart a run or to reconstruct
+! confidence intervals for tallies (this requires post-processing via Python
+! scripts).
+!
+! Modifications to this module should be made with care. There are essentially
+! three different ways to write or read state points: 1) normal Fortran file
+! I/O, 2) MPI-IO, and 3) HDF5. The HDF5 functionality is contained in the
+! hdf5_interface module. If you plan to change the state point, you will need to
+! change all methods. You should also increment REVISION_STATEPOINT in the
+! constants module.
+!
+! State points can be written at any batch during a simulation, or at specified
+! intervals, using the <state_point ... /> tag.
+!===============================================================================
+
   use error,        only: warning, fatal_error
   use global
   use math,         only: t_percentile

@@ -454,6 +454,8 @@ could be written as:
 
     </geometry>
 
+.. _surface_element:
+
 ``<surface>`` Element
 ---------------------
 
@@ -518,6 +520,21 @@ The following quadratic surfaces can be modeled:
   :sphere:
     A sphere of the form :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
     R^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0 \: R`".
+
+  :x-cone:
+    A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
+    R^2 (x - x_0)^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0
+    \: R^2`".
+
+  :y-cone:
+    A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
+    R^2 (y - y_0)^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0
+    \: R^2`".
+
+  :z-cone:
+    A cone parallel to the x-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
+    R^2 (z - z_0)^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0
+    \: R^2`".
 
 ``<cell>`` Element
 ------------------

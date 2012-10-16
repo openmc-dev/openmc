@@ -4,7 +4,7 @@ module cmfd_loss_operator
 
   implicit none
   private
-  public :: init_M_operator,build_loss_matrix,destroy_M_operator
+  public :: init_M_operator, build_loss_matrix, destroy_M_operator
 
 # include <finclude/petsc.h90>
 
@@ -15,17 +15,15 @@ module cmfd_loss_operator
   integer  :: ierr ! petsc error code
 
   type, public :: loss_operator
-
     Mat      :: M      ! petsc matrix for neutronic loss operator
     integer  :: n      ! dimensions of matrix
     integer  :: nnz    ! max number of nonzeros
     integer  :: localn ! local size on proc
     integer, allocatable :: d_nnz(:) ! vector of diagonal preallocation
     integer, allocatable :: o_nnz(:) ! vector of off-diagonal preallocation
-
   end type loss_operator
 
-  logical :: adjoint_calc = .FALSE. ! adjoint calculation
+  logical :: adjoint_calc = .false. ! adjoint calculation
 
 contains
 
@@ -44,11 +42,11 @@ contains
     call preallocate_loss_matrix(this)
 
     ! set up M operator
-    call MatCreateAIJ(PETSC_COMM_WORLD,this%localn,this%localn,PETSC_DECIDE,&
-   & PETSC_DECIDE,PETSC_NULL_INTEGER,this%d_nnz,PETSC_NULL_INTEGER,this%o_nnz, &
-   & this%M,ierr)
-    call MatSetOption(this%M,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE,ierr)
-    call MatSetOption(this%M,MAT_IGNORE_ZERO_ENTRIES,PETSC_TRUE,ierr)
+    call MatCreateAIJ(PETSC_COMM_WORLD, this%localn, this%localn, PETSC_DECIDE,&
+         PETSC_DECIDE, PETSC_NULL_INTEGER, this%d_nnz, PETSC_NULL_INTEGER, &
+         this%o_nnz, this%M,ierr)
+    call MatSetOption(this%M, MAT_NEW_NONZERO_LOCATIONS, PETSC_TRUE, ierr)
+    call MatSetOption(this%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
 
   end subroutine init_M_operator
 
@@ -116,8 +114,8 @@ contains
     rank = 0
 
     ! get rank and max rank of procs
-    call MPI_COMM_RANK(PETSC_COMM_WORLD,rank,ierr)
-    call MPI_COMM_SIZE(PETSC_COMM_WORLD,sizen,ierr)
+    call MPI_COMM_RANK(PETSC_COMM_WORLD, rank, ierr)
+    call MPI_COMM_SIZE(PETSC_COMM_WORLD, sizen, ierr)
 
     ! get local problem size
     n = this%n
@@ -133,7 +131,8 @@ contains
     if (rank < mod(n,sizen)) then
       row_start = rank*(n/sizen+1)
     else
-      row_start = min(mod(n,sizen)*(n/sizen+1)+(rank - mod(n,sizen))*(n/sizen),n) 
+      row_start = min(mod(n,sizen)*(n/sizen+1) + &
+           (rank - mod(n,sizen))*(n/sizen),n) 
     end if
 
     ! determine local final row
@@ -158,7 +157,7 @@ contains
       this%o_nnz(irow) = 0
 
       ! get location indices
-      call matrix_to_indices(irow,g,i,j,k)
+      call matrix_to_indices(irow, g, i, j, k)
 
       ! create boundary vector
       bound = (/i,i,j,j,k,k/)
@@ -182,16 +181,16 @@ contains
           if (cmfd_coremap) then
 
             ! check for neighbor that is non-acceleartred
-            if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) /=         &
-           &    99999) then
+            if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) /= &
+                 99999) then
 
               ! get neighbor matrix index
-              call indices_to_matrix(g,neig_idx(1),neig_idx(2),neig_idx(3),    &
-             &                       neig_mat_idx)
+              call indices_to_matrix(g,neig_idx(1), neig_idx(2), & 
+                   neig_idx(3), neig_mat_idx)
 
               ! record nonzero
-              if (((neig_mat_idx-1) >= row_start) .and.                        &
-             &   ((neig_mat_idx-1) <= row_end)) then
+              if (((neig_mat_idx-1) >= row_start) .and. &
+                   ((neig_mat_idx-1) <= row_end)) then
                 this%d_nnz(irow) = this%d_nnz(irow) + 1
               else
                 this%o_nnz(irow) = this%o_nnz(irow) + 1
@@ -202,12 +201,12 @@ contains
           else
 
             ! get neighbor matrix index
-            call indices_to_matrix(g,neig_idx(1),neig_idx(2),neig_idx(3),    &
-           &                       neig_mat_idx)
+            call indices_to_matrix(g, neig_idx(1), neig_idx(2), neig_idx(3), &
+                 neig_mat_idx)
 
             ! record nonzero
-            if (((neig_mat_idx-1) >= row_start) .and.                        &
-           &   ((neig_mat_idx-1) <= row_end)) then
+            if (((neig_mat_idx-1) >= row_start) .and. &
+                 ((neig_mat_idx-1) <= row_end)) then
               this%d_nnz(irow) = this%d_nnz(irow) + 1
             else
               this%o_nnz(irow) = this%o_nnz(irow) + 1
@@ -220,19 +219,17 @@ contains
       end do LEAK
 
       ! begin loop over off diagonal in-scattering
-      SCATTR: do h = 1,ng
+      SCATTR: do h = 1, ng
 
         ! cycle though if h=g
-        if (h == g) then
-          cycle
-        end if
+        if (h == g) cycle
 
         ! get neighbor matrix index
-        call indices_to_matrix(h,i,j,k,scatt_mat_idx)
+        call indices_to_matrix(h, i, j, k, scatt_mat_idx)
 
         ! record nonzero
-        if (((scatt_mat_idx-1) >= row_start) .and.                        &
-       &   ((scatt_mat_idx-1) <= row_end)) then
+        if (((scatt_mat_idx-1) >= row_start) .and. &
+             ((scatt_mat_idx-1) <= row_end)) then
           this%d_nnz(irow) = this%d_nnz(irow) + 1
         else
           this%o_nnz(irow) = this%o_nnz(irow) + 1
@@ -248,7 +245,7 @@ contains
 ! BUILD_LOSS_MATRIX creates the matrix representing loss of neutrons
 !===============================================================================
 
-  subroutine build_loss_matrix(this,adjoint)
+  subroutine build_loss_matrix(this, adjoint)
 
     use global, only: cmfd, cmfd_coremap, cmfd_write_matrices
 
@@ -296,13 +293,13 @@ contains
     row_finish = 0
 
     ! get row bounds for this processor
-    call MatGetOwnershipRange(this%M,row_start,row_finish,ierr)
+    call MatGetOwnershipRange(this%M, row_start, row_finish, ierr)
 
     ! begin iteration loops
-    ROWS: do irow = row_start,row_finish-1
+    ROWS: do irow = row_start, row_finish-1
 
       ! get indices for that row
-      call matrix_to_indices(irow,g,i,j,k)
+      call matrix_to_indices(irow, g, i, j, k)
 
       ! retrieve cell data
       totxs = cmfd%totalxs(g,i,j,k)
@@ -340,22 +337,22 @@ contains
           if (cmfd_coremap) then
 
             ! check that neighbor is not reflector
-            if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) /=         &
-           &    99999) then
+            if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) /= &
+                 99999) then
 
               ! compute leakage coefficient for neighbor
               jn = -dtilde(l) + shift_idx*dhat(l)
 
               ! get neighbor matrix index
-              call indices_to_matrix(g,neig_idx(1),neig_idx(2),neig_idx(3),    &
-             &                       neig_mat_idx)
+              call indices_to_matrix(g, neig_idx(1), neig_idx(2), neig_idx(3), &
+                   neig_mat_idx)
 
               ! compute value and record to bank
               val = jn/hxyz(xyz_idx)
 
               ! record value in matrix
-              call MatSetValue(this%M,irow,neig_mat_idx-1,val,                 &
-             &                 INSERT_VALUES,ierr)
+              call MatSetValue(this%M, irow, neig_mat_idx-1, val, &
+                   INSERT_VALUES, ierr)
 
             end if
 
@@ -365,15 +362,15 @@ contains
             jn = -dtilde(l) + shift_idx*dhat(l)
 
             ! get neighbor matrix index
-            call indices_to_matrix(g,neig_idx(1),neig_idx(2),neig_idx(3),      &
-           &                       neig_mat_idx)
+            call indices_to_matrix(g, neig_idx(1), neig_idx(2), neig_idx(3), &
+                 neig_mat_idx)
 
             ! compute value and record to bank
             val = jn/hxyz(xyz_idx)
 
             ! record value in matrix
-            call MatSetValue(this%M,irow,neig_mat_idx-1,val,                   &
-            &                 INSERT_VALUES,ierr)
+            call MatSetValue(this%M, irow, neig_mat_idx-1, val, &
+                 INSERT_VALUES, ierr)
 
           end if
 
@@ -385,37 +382,37 @@ contains
       end do LEAK
 
       ! calate net leakage coefficient for target
-      jnet = (jo(2) - jo(1))/hxyz(1) + (jo(4) - jo(3))/hxyz(2) +               &
-     &       (jo(6) - jo(5))/hxyz(3)
+      jnet = (jo(2) - jo(1))/hxyz(1) + (jo(4) - jo(3))/hxyz(2) + &
+           (jo(6) - jo(5))/hxyz(3)
 
       ! calculate loss of neutrons
       val = jnet + totxs - scattxsgg
 
       ! record diagonal term
-      call MatSetValue(this%M,irow,irow,val,INSERT_VALUES,ierr)
+      call MatSetValue(this%M, irow, irow, val, INSERT_VALUES, ierr)
 
       ! begin loop over off diagonal in-scattering
-      SCATTR: do h = 1,ng
+      SCATTR: do h = 1, ng
 
         ! cycle though if h=g
-        if (h == g) then
-          cycle
-        end if
+        if (h == g) cycle
 
         ! get neighbor matrix index
-        call indices_to_matrix(h,i,j,k,scatt_mat_idx)
+        call indices_to_matrix(h, i, j, k, scatt_mat_idx)
 
         ! get scattering macro xs
-        scattxshg = cmfd%scattxs(h,g,i,j,k)
+        scattxshg = cmfd%scattxs(h, g, i, j, k)
 
         ! record value in matrix (negate it)
         val = -scattxshg
 
         ! check for adjoint and bank value
         if (adjoint_calc) then
-          call MatSetValue(this%M,scatt_mat_idx-1,irow,val, INSERT_VALUES,ierr)
+          call MatSetValue(this%M, scatt_mat_idx-1, irow, val, &
+               INSERT_VALUES, ierr)
         else
-          call MatSetValue(this%M,irow,scatt_mat_idx-1,val, INSERT_VALUES,ierr)
+          call MatSetValue(this%M, irow, scatt_mat_idx-1, val, &
+               INSERT_VALUES, ierr)
         end if
 
       end do SCATTR
@@ -423,8 +420,8 @@ contains
     end do ROWS 
 
     ! assemble matrix
-    call MatAssemblyBegin(this%M,MAT_FLUSH_ASSEMBLY,ierr)
-    call MatAssemblyEnd(this%M,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyBegin(this%M, MAT_FLUSH_ASSEMBLY, ierr)
+    call MatAssemblyEnd(this%M, MAT_FINAL_ASSEMBLY, ierr)
 
     ! print out operator to file
     if (cmfd_write_matrices) call print_M_operator(this)
@@ -435,15 +432,15 @@ contains
 ! INDICES_TO_MATRIX takes (x,y,z,g) indices and computes location in matrix
 !===============================================================================
 
-  subroutine indices_to_matrix(g,i,j,k,matidx)
+  subroutine indices_to_matrix(g, i, j, k, matidx)
 
     use global,  only: cmfd, cmfd_coremap
 
-    integer :: matidx         ! the index location in matrix
-    integer :: i               ! current x index
-    integer :: j               ! current y index
-    integer :: k               ! current z index
-    integer :: g               ! current group index
+    integer :: matidx ! the index location in matrix
+    integer :: i      ! current x index
+    integer :: j      ! current y index
+    integer :: k      ! current z index
+    integer :: g      ! current group index
 
     ! check if coremap is used
     if (cmfd_coremap) then
@@ -464,21 +461,21 @@ contains
 ! MATRIX_TO_INDICES
 !===============================================================================
 
-  subroutine matrix_to_indices(irow,g,i,j,k)
+  subroutine matrix_to_indices(irow, g, i, j, k)
 
     use global,  only: cmfd, cmfd_coremap
 
-    integer :: i                    ! iteration counter for x
-    integer :: j                    ! iteration counter for y
-    integer :: k                    ! iteration counter for z
-    integer :: g                    ! iteration counter for groups
-    integer :: irow                 ! iteration counter over row (0 reference)
+    integer :: i     ! iteration counter for x
+    integer :: j     ! iteration counter for y
+    integer :: k     ! iteration counter for z
+    integer :: g     ! iteration counter for groups
+    integer :: irow  ! iteration counter over row (0 reference)
 
     ! check for core map
     if (cmfd_coremap) then
 
       ! get indices from indexmap
-      g = mod(irow,ng) + 1
+      g = mod(irow, ng) + 1
       i = cmfd % indexmap(irow/ng+1,1)
       j = cmfd % indexmap(irow/ng+1,2)
       k = cmfd % indexmap(irow/ng+1,3)
@@ -486,10 +483,10 @@ contains
     else
 
       ! compute indices
-      g = mod(irow,ng) + 1
-      i = mod(irow,ng*nx)/ng + 1
-      j = mod(irow,ng*nx*ny)/(ng*nx)+ 1
-      k = mod(irow,ng*nx*ny*nz)/(ng*nx*ny) + 1
+      g = mod(irow, ng) + 1
+      i = mod(irow, ng*nx)/ng + 1
+      j = mod(irow, ng*nx*ny)/(ng*nx)+ 1
+      k = mod(irow, ng*nx*ny*nz)/(ng*nx*ny) + 1
 
     end if
 
@@ -507,14 +504,14 @@ contains
 
     ! write out matrix in binary file (debugging)
     if (adjoint_calc) then
-      call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'adj_lossmat.bin'            &
-     &     ,FILE_MODE_WRITE,viewer,ierr)
+      call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'adj_lossmat.bin', &
+           FILE_MODE_WRITE, viewer, ierr)
     else
-      call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'lossmat.bin'                &
-     &     ,FILE_MODE_WRITE,viewer,ierr)
+      call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'lossmat.bin', &
+           FILE_MODE_WRITE, viewer, ierr)
     end if
-    call MatView(this%M,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    call MatView(this%M, viewer, ierr)
+    call PetscViewerDestroy(viewer, ierr)
 
   end subroutine print_M_operator
 
@@ -527,7 +524,7 @@ contains
     type(loss_operator) :: this
 
     ! deallocate matrix
-    call MatDestroy(this%M,ierr)
+    call MatDestroy(this%M, ierr)
 
     ! deallocate other parameters
     if (allocated(this%d_nnz)) deallocate(this%d_nnz)

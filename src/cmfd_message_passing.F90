@@ -69,27 +69,27 @@ contains
     if (.not. allocated(cmfd%flux)) call allocate_cmfd(cmfd)
 
     ! sync up procs
-    call MPI_Barrier(PETSC_COMM_WORLD,mpi_err)
+    call MPI_Barrier(PETSC_COMM_WORLD, mpi_err)
 
     ! broadcast all data
-    call MPI_BCAST(cmfd%flux,ng*nx*ny*nz,MPI_REAL8,0,PETSC_COMM_WORLD,mpi_err)
-    call MPI_BCAST(cmfd%totalxs,ng*nx*ny*nz,MPI_REAL8,0,PETSC_COMM_WORLD,mpi_err)
-    call MPI_BCAST(cmfd%p1scattxs,ng*nx*ny*nz,MPI_REAL8,0,PETSC_COMM_WORLD,mpi_err)
-    call MPI_BCAST(cmfd%scattxs,ng*ng*nx*ny*nz,MPI_REAL8,0,PETSC_COMM_WORLD,mpi_err)
-    call MPI_BCAST(cmfd%nfissxs,ng*ng*nx*ny*nz,MPI_REAL8,0,PETSC_COMM_WORLD,mpi_err)
-    call MPI_BCAST(cmfd%diffcof,ng*nx*ny*nz,MPI_REAL8,0,PETSC_COMM_WORLD,mpi_err)
-    call MPI_BCAST(cmfd%dtilde,6*ng*nx*ny*nz,MPI_REAL8,0,PETSC_COMM_WORLD,mpi_err)
-    call MPI_BCAST(cmfd%dhat,6*ng*nx*ny*nz,MPI_REAL8,0,PETSC_COMM_WORLD,mpi_err)
-    call MPI_BCAST(cmfd%hxyz,3*nx*ny*nz,MPI_REAL8,0,PETSC_COMM_WORLD,mpi_err)
-    call MPI_BCAST(cmfd%current,12*ng*nx*ny*nz,MPI_REAL8,0,PETSC_COMM_WORLD,mpi_err)
+    call MPI_BCAST(cmfd%flux, ng*nx*ny*nz, MPI_REAL8, 0, PETSC_COMM_WORLD, mpi_err)
+    call MPI_BCAST(cmfd%totalxs, ng*nx*ny*nz, MPI_REAL8, 0, PETSC_COMM_WORLD, mpi_err)
+    call MPI_BCAST(cmfd%p1scattxs, ng*nx*ny*nz, MPI_REAL8, 0, PETSC_COMM_WORLD, mpi_err)
+    call MPI_BCAST(cmfd%scattxs, ng*ng*nx*ny*nz, MPI_REAL8, 0, PETSC_COMM_WORLD, mpi_err)
+    call MPI_BCAST(cmfd%nfissxs, ng*ng*nx*ny*nz, MPI_REAL8, 0, PETSC_COMM_WORLD, mpi_err)
+    call MPI_BCAST(cmfd%diffcof, ng*nx*ny*nz, MPI_REAL8, 0, PETSC_COMM_WORLD, mpi_err)
+    call MPI_BCAST(cmfd%dtilde, 6*ng*nx*ny*nz, MPI_REAL8, 0, PETSC_COMM_WORLD, mpi_err)
+    call MPI_BCAST(cmfd%dhat, 6*ng*nx*ny*nz, MPI_REAL8, 0, PETSC_COMM_WORLD, mpi_err)
+    call MPI_BCAST(cmfd%hxyz, 3*nx*ny*nz, MPI_REAL8, 0, PETSC_COMM_WORLD, mpi_err)
+    call MPI_BCAST(cmfd%current, 12*ng*nx*ny*nz, MPI_REAL8, 0, PETSC_COMM_WORLD, mpi_err)
 
     ! broadcast coremap info
     if (cmfd_coremap) then
-      call MPI_BCAST(cmfd%coremap,nx*ny*nz,MPI_INTEGER8,0,PETSC_COMM_WORLD,mpi_err)
-      call MPI_BCAST(cmfd%mat_dim,1,MPI_INTEGER8,0,PETSC_COMM_WORLD,mpi_err)
-      if (.not. allocated(cmfd % indexmap)) allocate                           &
-     &           (cmfd % indexmap(cmfd % mat_dim,3))
-      call MPI_BCAST(cmfd%indexmap,cmfd%mat_dim*3,MPI_INTEGER8,0,PETSC_COMM_WORLD,mpi_err)
+      call MPI_BCAST(cmfd%coremap, nx*ny*nz, MPI_INTEGER8, 0, PETSC_COMM_WORLD, mpi_err)
+      call MPI_BCAST(cmfd%mat_dim, 1, MPI_INTEGER8, 0, PETSC_COMM_WORLD, mpi_err)
+      if (.not. allocated(cmfd % indexmap)) &
+           allocate(cmfd % indexmap(cmfd % mat_dim,3))
+      call MPI_BCAST(cmfd%indexmap, cmfd%mat_dim*3, MPI_INTEGER8, 0, PETSC_COMM_WORLD, mpi_err)
     end if
 
   end subroutine cmfd_bcast

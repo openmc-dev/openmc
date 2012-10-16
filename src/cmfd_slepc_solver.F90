@@ -1,10 +1,10 @@
 module cmfd_slepc_solver
 
 #ifdef PETSC
-  use cmfd_loss_operator, only: loss_operator,init_M_operator,                 &
- &                        build_loss_matrix,destroy_M_operator
-  use cmfd_prod_operator, only: prod_operator,init_F_operator,                 &
- &                        build_prod_matrix,destroy_F_operator
+  use cmfd_loss_operator, only: loss_operator, init_M_operator, &
+                                build_loss_matrix, destroy_M_operator
+  use cmfd_prod_operator, only: prod_operator, init_F_operator, &
+                                build_prod_matrix, destroy_F_operator
 
   implicit none
 
@@ -52,13 +52,13 @@ call timer_start(time_cmfd)
 !all timer_reset(time_cmfd)
 !all timer_start(time_cmfd)
     ! set operators to EPS object
-    call EPSSetOperators(eps,prod%F,loss%M,ierr)
+    call EPSSetOperators(eps, prod%F, loss%M, ierr)
 
     ! set EPS options
-    call EPSSetFromOptions(eps,ierr)
+    call EPSSetFromOptions(eps, ierr)
 
     ! solve the system
-    call EPSSolve(eps,ierr)
+    call EPSSolve(eps, ierr)
 !all timer_stop(time_cmfd)
 !f(master) print *,'Solve Time:',time_cmfd%elapsed
 !all timer_reset(time_cmfd)
@@ -89,7 +89,7 @@ call timer_start(time_cmfd)
     n = loss%n
 
     ! set up eigenvector
-    call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n,phi,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD, PETSC_DECIDE, n, phi, ierr)
 
   end subroutine init_data
 
@@ -99,31 +99,31 @@ call timer_start(time_cmfd)
 
   subroutine init_solver()
 
-    character(LEN=20) :: epstype,sttype,ksptype,pctype
+    character(LEN=20) :: epstype, sttype, ksptype, pctype
 
     ! create EPS Object
-    call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
-    call EPSSetProblemType(eps,EPS_GNHEP,ierr)
-    call EPSSetType(eps,EPSPOWER,ierr)
-    call EPSSetWhichEigenpairs(eps,EPS_LARGEST_MAGNITUDE,ierr)
+    call EPSCreate(PETSC_COMM_WORLD, eps, ierr)
+    call EPSSetProblemType(eps, EPS_GNHEP, ierr)
+    call EPSSetType(eps, EPSPOWER, ierr)
+    call EPSSetWhichEigenpairs(eps, EPS_LARGEST_MAGNITUDE, ierr)
  
     ! get ST, KSP and PC objects
-    call EPSGetST(eps,st,ierr)
-    call STGetKSP(st,ksp,ierr)
-    call KSPGetPC(ksp,pc,ierr)
+    call EPSGetST(eps, st, ierr)
+    call STGetKSP(st, ksp, ierr)
+    call KSPGetPC(ksp, pc, ierr)
 
     ! set GMRES default
-    call KSPSetType(ksp,KSPGMRES,ierr)
+    call KSPSetType(ksp, KSPGMRES, ierr)
 
     ! set precursor type
-    call PCSetType(pc,PCHYPRE,ierr)
-    call PCSetFromOptions(pc,ierr)
+    call PCSetType(pc, PCHYPRE, ierr)
+    call PCSetFromOptions(pc, ierr)
 
     ! get all types and print
-    call EPSGetType(eps,epstype,ierr)
-    call STGetType(st,sttype,ierr)
-    call KSPGetType(ksp,ksptype,ierr)
-    call PCGetType(pc,pctype,ierr)
+    call EPSGetType(eps, epstype, ierr)
+    call STGetType(st, sttype, ierr)
+    call KSPGetType(ksp, ksptype, ierr)
+    call PCGetType(pc, pctype, ierr)
 
     ! display information to user
 !   write(*,'(/,A)') 'SLEPC SOLVER OPTIONS:'
@@ -141,7 +141,7 @@ call timer_start(time_cmfd)
 
   subroutine extract_results()
 
-    use global, only: cmfd,path_input,master
+    use global, only: cmfd, path_input, master
 
     integer              :: n         ! problem size
     integer              :: i_eig = 0 ! eigenvalue to extract
@@ -162,22 +162,23 @@ call timer_start(time_cmfd)
     cmfd%phi = 0.0_8
 
     ! extract run information
-    call EPSGetEigenpair(eps,i_eig,keff,PETSC_NULL,phi,PETSC_NULL_OBJECT,ierr)
+    call EPSGetEigenpair(eps, i_eig, keff, PETSC_NULL, phi, PETSC_NULL_OBJECT, ierr)
 
     ! get ownership range
-    call VecGetOwnershipRange(phi,row_start,row_end,ierr)
+    call VecGetOwnershipRange(phi, row_start, row_end, ierr)
 
     ! convert petsc phi_object to cmfd_obj
-    call VecGetArrayF90(phi,phi_v,ierr)
+    call VecGetArrayF90(phi, phi_v, ierr)
     cmfd%phi(row_start+1:row_end) = phi_v
-    call VecRestoreArrayF90(phi,phi_v,ierr)
+    call VecRestoreArrayF90(phi, phi_v, ierr)
 
     ! save eigenvalue
     cmfd%keff = keff
 
     ! reduce result to master
     mybuf = 0.0_8
-    call MPI_ALLREDUCE(cmfd%phi,mybuf,n,MPI_REAL8,MPI_SUM,PETSC_COMM_WORLD,ierr)
+    call MPI_ALLREDUCE(cmfd%phi, mybuf, n, MPI_REAL8, MPI_SUM, &
+         PETSC_COMM_WORLD, ierr)
 
     ! move buffer to object and deallocate
     cmfd%phi = mybuf
@@ -200,10 +201,10 @@ call timer_start(time_cmfd)
     ! finalize data objects
     call destroy_M_operator(loss)
     call destroy_F_operator(prod)
-    call VecDestroy(phi,ierr)
+    call VecDestroy(phi, ierr)
 
     ! finalize solver objects
-    call EPSDestroy(eps,ierr)
+    call EPSDestroy(eps, ierr)
 
   end subroutine finalize
 

@@ -1,7 +1,9 @@
 module cmfd_execute 
 
-! This module is the highest level cmfd module that controls the cross section
-! generation, diffusion calculation, and MC21 source re-weighting
+!==============================================================================
+! CMFD_EXECUTE -- This module is the highest level cmfd module that controls the
+! cross section generation, diffusion calculation, and MC21 source re-weighting
+!==============================================================================
 
   implicit none
   private
@@ -39,7 +41,7 @@ contains
     logical :: leave_cmfd
 
     ! set leave cmfd to false
-    leave_cmfd = .FALSE.
+    leave_cmfd = .false.
 
     ! stop cmfd timer
     if (master) then
@@ -64,8 +66,8 @@ contains
     if (cmfd_hold_weights) then
       message = 'Not Modifying Weights - Albedo estimate not good, increase batch size.'
       call warning() 
-      if (cmfd_feedback) call cmfd_reweight(.FALSE.)
-      leave_cmfd = .TRUE. 
+      if (cmfd_feedback) call cmfd_reweight(.false.)
+      leave_cmfd = .true. 
     end if
     call MPI_BCAST(leave_cmfd,1,MPI_LOGICAL,0,MPI_COMM_WORLD,mpi_err)
     if (leave_cmfd) return
@@ -89,9 +91,9 @@ contains
         ! check for adjoint run
         if (cmfd_run_adjoint) then
           if (trim(cmfd_solver_type) == 'power') then
-            call cmfd_power_execute(adjoint = .TRUE.)
+            call cmfd_power_execute(adjoint = .true.)
           elseif (trim(cmfd_solver_type) == 'jfnk') then
-            call cmfd_snes_execute(adjoint = .TRUE.)
+            call cmfd_snes_execute(adjoint = .true.)
           end if
         end if
 
@@ -104,8 +106,8 @@ contains
       if (current_batch >= cmfd_inact_flush(1) .or. current_batch >= cmfd_act_flush - 1 ) then
         message = 'Not Modifying Weights - keff %diff > 0.005, up batch size'
         call warning() 
-        if (cmfd_feedback) call cmfd_reweight(.FALSE.)
-        leave_cmfd = .TRUE.
+        if (cmfd_feedback) call cmfd_reweight(.false.)
+        leave_cmfd = .true.
       end if
     end if
     call MPI_BCAST(leave_cmfd,1,MPI_LOGICAL,0,MPI_COMM_WORLD,mpi_err)
@@ -115,7 +117,7 @@ contains
     call calc_fission_source()
 
     ! calculate weight factors
-    if (cmfd_feedback) call cmfd_reweight(.TRUE.)
+    if (cmfd_feedback) call cmfd_reweight(.true.)
 
     ! write output
     if (cmfd_write_hdf5 .and. master) call write_hdf5_output()

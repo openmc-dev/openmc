@@ -83,14 +83,14 @@ contains
 
     ! get acceleration map
     if (associated(mesh_ % map)) then
-      allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2),            &
-     &         cmfd % indices(3)))
+      allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2), &
+           cmfd % indices(3)))
       if (size(mesh_ % map) /= product(cmfd % indices(1:3))) then
         write(*,*) 'FATAL==>CMFD coremap not to correct dimensions'
         stop
       end if
       cmfd % coremap = reshape(mesh_ % map,(cmfd % indices(1:3)))
-      cmfd_coremap = .TRUE.
+      cmfd_coremap = .true.
    end if
 
     ! check for core map activation by printing note
@@ -186,19 +186,24 @@ contains
      filename = trim(path_input) // "cmfd.xml"
      call read_xml_file_cmfd_t(filename)
 
-    ! set global variables if they are 0 (this can happen if there is no tally file)
+    ! set global variables if they are 0 (this can happen if there is no tally
+    ! file)
     if (n_meshes == 0 .or. n_tallies == 0) then
       n_meshes = n_user_meshes + n_cmfd_meshes
       n_tallies = n_user_tallies + n_cmfd_tallies
       n_analog_tallies = n_user_analog_tallies + n_cmfd_analog_tallies
-      n_tracklength_tallies = n_user_tracklength_tallies + n_cmfd_tracklength_tallies
+      n_tracklength_tallies = n_user_tracklength_tallies + &
+           n_cmfd_tracklength_tallies
       n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies
     end if
 
     ! Allocate list of pointers for tallies by type
-    if (.not. allocated(analog_tallies) .and. n_analog_tallies > 0) allocate(analog_tallies(n_analog_tallies))
-    if (.not. allocated(tracklength_tallies) .and. n_tracklength_tallies > 0) allocate(tracklength_tallies(n_tracklength_tallies))
-    if (.not. allocated(current_tallies) .and. n_current_tallies > 0)     allocate(current_tallies(n_current_tallies))
+    if (.not. allocated(analog_tallies) .and. n_analog_tallies > 0) &
+         allocate(analog_tallies(n_analog_tallies))
+    if (.not. allocated(tracklength_tallies) .and. n_tracklength_tallies > 0) &
+         allocate(tracklength_tallies(n_tracklength_tallies))
+    if (.not. allocated(current_tallies) .and. n_current_tallies > 0) &
+         allocate(current_tallies(n_current_tallies))
 
     ! allocate mesh
     if (.not. allocated(meshes)) allocate(meshes(n_meshes))
@@ -283,8 +288,8 @@ contains
 
       ! set mesh filter mesh id
       t % mesh = n_user_meshes + 1
-      t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) +        &
-     &                                 product(m % dimension)
+      t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) + &
+           product(m % dimension)
       n_filters = n_filters + 1
       filters(n_filters) = FILTER_MESH
 
@@ -298,7 +303,7 @@ contains
         filters(n_filters) = FILTER_ENERGYIN
       end if
 
-      if (i == n_user_tallies+1) then
+      if (i == n_user_tallies + 1) then
 
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
@@ -379,8 +384,8 @@ contains
         ! since the number of bins for the mesh filter was already set
         ! assuming it was a flux tally, we need to adjust the number of
         ! bins
-        t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH)        &
-       &                                 - product(m % dimension)
+        t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) &
+             - product(m % dimension)
 
         ! get pointer to mesh
         id = t % mesh
@@ -390,11 +395,11 @@ contains
         ! we need to increase the dimension by one since we also need
         ! currents coming into and out of the boundary mesh cells.
         if (size(m % dimension) == 2) then  ! these lines need changing
-          t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) +    &
-         &                                 product(m % dimension + 1) * 4
+          t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) + &
+               product(m % dimension + 1) * 4
         elseif (size(m % dimension) == 3) then
-          t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) +    &
-         &                                 product(m % dimension + 1) * 6
+          t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) + &
+               product(m % dimension + 1) * 6
         end if
 
         ! Increment the appropriate index and set pointer

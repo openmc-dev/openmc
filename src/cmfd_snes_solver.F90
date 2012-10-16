@@ -3,12 +3,12 @@ module cmfd_snes_solver
 # ifdef PETSC
 
   use cmfd_loss_operator,     only: loss_operator,init_M_operator,           &
- &                                  build_loss_matrix,destroy_M_operator
+                                    build_loss_matrix,destroy_M_operator
   use cmfd_prod_operator,     only: prod_operator,init_F_operator,           &
- &                                  build_prod_matrix,destroy_F_operator
+                                    build_prod_matrix,destroy_F_operator
   use cmfd_jacobian_operator, only: jacobian_operator,init_J_operator,       &
- &                                  build_jacobian_matrix,destroy_J_operator,&
- &                                  operators
+                                    build_jacobian_matrix,destroy_J_operator,&
+                                    operators
   use cmfd_power_solver,      only: cmfd_power_execute
 
   implicit none
@@ -28,7 +28,7 @@ module cmfd_snes_solver
   SNES        :: snes                   ! nonlinear solver context
   integer     :: ierr                   ! error flag
 
-  logical     :: adjoint_calc = .FALSE. ! adjoint calculation
+  logical     :: adjoint_calc = .false. ! adjoint calculation
 
 contains
 
@@ -44,7 +44,7 @@ contains
     if (present(adjoint)) adjoint_calc = adjoint
 
     ! seed with power iteration
-    call cmfd_power_execute(k_tol=1.E-3_8,s_tol=1.E-3_8,adjoint=adjoint_calc)
+    call cmfd_power_execute(k_tol=1.E-3_8, s_tol=1.E-3_8, adjoint=adjoint_calc)
 
     ! initialize data
     call init_data()
@@ -56,7 +56,7 @@ contains
     call precondition_matrix()
 
     ! solve the system
-    call SNESSolve(snes,PETSC_NULL,xvec,ierr)
+    call SNESSolve(snes, PETSC_NULL, xvec, ierr)
 
     ! extracts results to cmfd object
     call extract_results()
@@ -83,40 +83,42 @@ contains
     ! set up operator matrices
     call init_M_operator(ctx%loss)
     call init_F_operator(ctx%prod)
-    call init_J_operator(jac_prec,ctx)
+    call init_J_operator(jac_prec, ctx)
 
     ! get problem size
     n = jac_prec%n
 
     ! create PETSc vectors
-    call VecCreateMPI(PETSC_COMM_WORLD,jac_prec%localn,PETSC_DECIDE,resvec,ierr)
-    call VecCreateMPI(PETSC_COMM_WORLD,jac_prec%localn,PETSC_DECIDE,xvec,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD, jac_prec%localn, PETSC_DECIDE, &
+         resvec, ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD, jac_prec%localn, PETSC_DECIDE, &
+         xvec, ierr)
 
     ! get the local dimensions for each process
-    call VecGetOwnershipRange(xvec,row_start,row_end,ierr)
+    call VecGetOwnershipRange(xvec, row_start, row_end, ierr)
 
     if (rank == n_procs_cmfd - 1) row_end = n
 
     ! set flux in guess
     if (adjoint_calc) then
-      call VecSetValues(xvec,row_end-row_start,(/(k,k=row_start,row_end-1)/),  &
-     &                  cmfd%adj_phi(row_start+1:row_end),INSERT_VALUES,ierr)
+      call VecSetValues(xvec, row_end-row_start, (/(k,k=row_start,row_end-1)/), &
+           cmfd%adj_phi(row_start+1:row_end), INSERT_VALUES, ierr)
     else
-      call VecSetValues(xvec,row_end-row_start,(/(k,k=row_start,row_end-1)/),  &
-     &                  cmfd%phi(row_start+1:row_end),INSERT_VALUES,ierr)
+      call VecSetValues(xvec, row_end-row_start, (/(k,k=row_start,row_end-1)/), &
+           cmfd%phi(row_start+1:row_end), INSERT_VALUES, ierr)
     end if
-    call VecAssemblyBegin(xvec,ierr)
-    call VecAssemblyEnd(xvec,ierr)
+    call VecAssemblyBegin(xvec, ierr)
+    call VecAssemblyEnd(xvec, ierr)
 
     ! set keff in guess
     if (rank == n_procs_cmfd - 1) then
-      call VecGetArrayF90(xvec,xptr,ierr)
+      call VecGetArrayF90(xvec, xptr, ierr)
       if (adjoint_calc) then
         xptr(size(xptr)) = 1.0_8/cmfd%adj_keff
       else
         xptr(size(xptr)) = 1.0_8/cmfd%keff
       end if
-      call VecRestoreArrayF90(xvec,xptr,ierr)
+      call VecRestoreArrayF90(xvec, xptr, ierr)
     end if
 
     ! nullify pointers
@@ -132,39 +134,40 @@ contains
 
     use global,  only: cmfd_snes_monitor, n_procs_cmfd
 
-    character(LEN=20) :: snestype,ksptype,pctype
+    character(LEN=20) :: snestype, ksptype, pctype
 
     ! turn on mf_operator option
-    call PetscOptionsSetValue("-snes_mf_operator","TRUE",ierr)
+    call PetscOptionsSetValue("-snes_mf_operator", "TRUE", ierr)
 
     ! create SNES context
-    call SNESCreate(PETSC_COMM_WORLD,snes,ierr)
+    call SNESCreate(PETSC_COMM_WORLD, snes, ierr)
 
     ! set the residual function
-    call SNESSetFunction(snes,resvec,compute_nonlinear_residual,PETSC_NULL,ierr)
+    call SNESSetFunction(snes, resvec, compute_nonlinear_residual, &
+         PETSC_NULL, ierr)
 
     ! set GMRES solver
-    call SNESGetKSP(snes,ksp,ierr)
-    call KSPSetType(ksp,KSPGMRES,ierr)
+    call SNESGetKSP(snes, ksp, ierr)
+    call KSPSetType(ksp, KSPGMRES, ierr)
 
     ! create matrix free jacobian
-    call MatCreateSNESMF(snes,jac,ierr)
+    call MatCreateSNESMF(snes, jac, ierr)
 
     ! set matrix free finite difference
-    call SNESSetJacobian(snes,jac,jac_prec,build_jacobian_matrix,ctx,ierr)
+    call SNESSetJacobian(snes, jac, jac_prec, build_jacobian_matrix, ctx, ierr)
 
     ! set lags
-    call SNESSetLagJacobian(snes,-2,ierr)
-    call SNESSetLagPreconditioner(snes,-1,ierr)
+    call SNESSetLagJacobian(snes, -2, ierr)
+    call SNESSetLagPreconditioner(snes, -1, ierr)
 
     ! set convergence
-!   call SNESSetTolerances(snes,1.0e-8_8,1.0e-8_8,1.0e-8_8,50,10000,ierr)
+!   call SNESSetTolerances(snes, 1.0e-8_8, 1.0e-8_8, 1.0e-8_8, 50, 10000, ierr)
 
     ! set SNES options
-    call SNESSetFromOptions(snes,ierr)
+    call SNESSetFromOptions(snes, ierr)
 
     ! turn off line searching
-!   call SNESLineSearchSet(snes,SNESLineSearchNo,PETSC_NULL,ierr)
+!   call SNESLineSearchSet(snes, SNESLineSearchNo, PETSC_NULL, ierr)
 
   end subroutine init_solver
 
@@ -174,35 +177,35 @@ contains
 
   subroutine precondition_matrix()
 
-    use global,                 only: cmfd_snes_monitor, cmfd_solver_type,     &
+    use global,                 only: cmfd_snes_monitor, cmfd_solver_type, &
                                       n_procs_cmfd, cmfd_ilu_levels, master
     use string,                 only: to_str
 
-    character(LEN=20) :: snestype,ksptype,pctype
+    character(LEN=20) :: snestype, ksptype, pctype
 
     ! set up preconditioner
-    call KSPGetPC(ksp,pc,ierr)
+    call KSPGetPC(ksp, pc, ierr)
     if (n_procs_cmfd == 1) then
-      call PCSetType(pc,PCILU,ierr)
-      call PCFactorSetLevels(pc,cmfd_ilu_levels,ierr)
+      call PCSetType(pc, PCILU, ierr)
+      call PCFactorSetLevels(pc, cmfd_ilu_levels, ierr)
     else
-      call PetscOptionsSetValue("-pc_type","bjacobi",ierr)
-      call PetscOptionsSetValue("-sub_pc_type","ilu",ierr)
-      call PetscOptionsSetValue("-sub_pc_factor_levels",trim(to_str(        &
-                                cmfd_ilu_levels)),ierr)
+      call PetscOptionsSetValue("-pc_type", "bjacobi", ierr)
+      call PetscOptionsSetValue("-sub_pc_type", "ilu", ierr)
+      call PetscOptionsSetValue("-sub_pc_factor_levels", &
+           trim(to_str(cmfd_ilu_levels)), ierr)
     end if
 
     ! get options
-    call PCSetFromOptions(pc,ierr)
-    call KSPSetFromOptions(ksp,ierr)
+    call PCSetFromOptions(pc, ierr)
+    call KSPSetFromOptions(ksp, ierr)
 
     ! finalize ksp setup
-!   call KSPSetUp(ksp,ierr)
+!   call KSPSetUp(ksp, ierr)
 
     ! get all types and print
-    call SNESGetType(snes,snestype,ierr)
-    call KSPGetType(ksp,ksptype,ierr)
-    call PCGetType(pc,pctype,ierr)
+    call SNESGetType(snes, snestype, ierr)
+    call KSPGetType(ksp, ksptype, ierr)
+    call PCGetType(pc, pctype, ierr)
 
     ! display solver info to user
     if (cmfd_snes_monitor .and. master) then
@@ -211,10 +214,10 @@ contains
       write(*,*) '################ JFNK Nonlinear Solver  ################'
       write(*,*) '########################################################'
       write(*,*)
-      write(*,*) 'NONLINEAR SOLVER: ',snestype
-      write(*,*) 'LINEAR SOLVER:    ',ksptype
-      write(*,*) 'PRECONDITIONER:   ',pctype
-      write(*,*) 'ILU levels: ',cmfd_ilu_levels
+      write(*,*) 'NONLINEAR SOLVER: ', snestype
+      write(*,*) 'LINEAR SOLVER:    ', ksptype
+      write(*,*) 'PRECONDITIONER:   ', pctype
+      write(*,*) 'ILU levels: ', cmfd_ilu_levels
       write(*,*)
       write(*,*) '---------------------------------------------'
       write(*,*)
@@ -226,9 +229,9 @@ contains
 ! COMPUTE_NONLINEAR_RESIDUAL
 !===============================================================================
 
-  subroutine compute_nonlinear_residual(snes,x,res,ierr)
+  subroutine compute_nonlinear_residual(snes, x, res, ierr)
 
-    use global,       only: n_procs_cmfd, cmfd_write_matrices,       &
+    use global,       only: n_procs_cmfd, cmfd_write_matrices, &
                             cmfd_adjoint_type, rank
 
     SNES        :: snes          ! nonlinear solver context
@@ -247,65 +250,68 @@ contains
     real(8), pointer :: rptr(:)  ! pointer to residual vector
     PetscViewer :: viewer
 
-    logical :: physical_adjoint = .FALSE.
+    logical :: physical_adjoint = .false.
 
     ! check for physical adjoint
-    if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'physical')              &
-        physical_adjoint = .TRUE.
+    if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'physical') &
+         physical_adjoint = .true.
 
     ! create operators
     call build_loss_matrix(ctx%loss, adjoint = physical_adjoint)
     call build_prod_matrix(ctx%prod, adjoint = physical_adjoint)
 
     ! check for adjoint
-    if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math')                  &
-        call compute_adjoint()
+    if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math') &
+         call compute_adjoint()
 
     ! get problem size
     n = ctx%loss%n 
 
     ! get pointers to vectors
-    call VecGetArrayF90(x,xptr,ierr)
-    call VecGetArrayF90(res,rptr,ierr)
+    call VecGetArrayF90(x, xptr, ierr)
+    call VecGetArrayF90(res, rptr, ierr)
 
     ! create petsc vector for flux
-    call VecCreateMPI(PETSC_COMM_WORLD,ctx%loss%localn,PETSC_DECIDE,phi,ierr)
-    call VecCreateMPI(PETSC_COMM_WORLD,ctx%loss%localn,PETSC_DECIDE,rphi,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD, ctx%loss%localn, &
+         PETSC_DECIDE, phi, ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD, ctx%loss%localn, &
+         PETSC_DECIDE, rphi, ierr)
 
     ! extract flux and place in petsc vector 
-    call VecPlaceArray(phi,xptr,ierr)
-    call VecPlaceArray(rphi,rptr,ierr)
+    call VecPlaceArray(phi, xptr, ierr)
+    call VecPlaceArray(rphi, rptr, ierr)
 
     ! extract eigenvalue and broadcast (going to want to make this more general in future)
     if (rank == n_procs_cmfd - 1) lambda = xptr(size(xptr)) 
-    call MPI_BCAST(lambda,1,MPI_REAL8,n_procs_cmfd-1,PETSC_COMM_WORLD,ierr)
+    call MPI_BCAST(lambda, 1, MPI_REAL8, n_procs_cmfd-1, PETSC_COMM_WORLD, ierr)
 
     ! create new petsc vectors to perform math
-    call VecCreateMPI(PETSC_COMM_WORLD,ctx%loss%localn,PETSC_DECIDE,phiM,ierr)
+    call VecCreateMPI(PETSC_COMM_WORLD, ctx%loss%localn, PETSC_DECIDE, &
+         phiM, ierr)
 
     ! calculate flux part of residual vector
-    call MatMult(ctx%loss%M,phi,phiM,ierr)
-    call MatMult(ctx%prod%F,phi,rphi,ierr)
-    call VecAYPX(rphi,-1.0_8*lambda,phiM,ierr)
+    call MatMult(ctx%loss%M, phi, phiM, ierr)
+    call MatMult(ctx%prod%F, phi, rphi, ierr)
+    call VecAYPX(rphi, -1.0_8*lambda, phiM, ierr)
 
     ! set eigenvalue part of residual vector
-    call VecDot(phi,phi,reslamb,ierr)
+    call VecDot(phi, phi, reslamb, ierr)
 
     ! map to ptr
     if (rank == n_procs_cmfd - 1) rptr(size(rptr)) = 0.5_8 - 0.5_8*reslamb
 
     ! reset arrays that are not used
-    call VecResetArray(phi,ierr)
-    call VecResetArray(rphi,ierr)
+    call VecResetArray(phi, ierr)
+    call VecResetArray(rphi, ierr)
 
     ! restore arrays for residual and solution
-    call VecRestoreArrayF90(x,xptr,ierr)
-    call VecRestoreArrayF90(res,rptr,ierr)
+    call VecRestoreArrayF90(x, xptr, ierr)
+    call VecRestoreArrayF90(res, rptr, ierr)
 
     ! destroy all temp vectors
-    call VecDestroy(phi,ierr)
-    call VecDestroy(phiM,ierr)
-    call VecDestroy(rphi,ierr)
+    call VecDestroy(phi, ierr)
+    call VecDestroy(phiM, ierr)
+    call VecDestroy(rphi, ierr)
 
     ! nullify all pointers
     if (associated(xptr)) nullify(xptr)
@@ -314,24 +320,24 @@ contains
     ! write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
       if (adjoint_calc) then
-        call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'adj_res.bin' &
-       &     ,FILE_MODE_WRITE,viewer,ierr)
+        call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'adj_res.bin', &
+             FILE_MODE_WRITE, viewer, ierr)
       else
-        call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'res.bin' &
-       &     ,FILE_MODE_WRITE,viewer,ierr)
+        call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'res.bin', &
+             FILE_MODE_WRITE, viewer, ierr)
       end if
-      call VecView(res,viewer,ierr)
-      call PetscViewerDestroy(viewer,ierr)
+      call VecView(res, viewer, ierr)
+      call PetscViewerDestroy(viewer, ierr)
 
       if (adjoint_calc) then
-        call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'adj_x.bin' &
-       &     ,FILE_MODE_WRITE,viewer,ierr)
+        call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'adj_x.bin', &
+             FILE_MODE_WRITE, viewer, ierr)
       else
-        call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'x.bin' &
-       &     ,FILE_MODE_WRITE,viewer,ierr)
+        call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'x.bin', &
+             FILE_MODE_WRITE, viewer, ierr)
       end if
-       call VecView(x,viewer,ierr)
-       call PetscViewerDestroy(viewer,ierr)
+       call VecView(x, viewer, ierr)
+       call PetscViewerDestroy(viewer, ierr)
 
     end if
 
@@ -348,20 +354,20 @@ contains
     PetscViewer :: viewer
 
     ! transpose matrices
-    call MatTranspose(ctx%loss%M,MAT_REUSE_MATRIX,ctx%loss%M,ierr)
-    call MatTranspose(ctx%prod%F,MAT_REUSE_MATRIX,ctx%prod%F,ierr)
+    call MatTranspose(ctx%loss%M, MAT_REUSE_MATRIX, ctx%loss%M, ierr)
+    call MatTranspose(ctx%prod%F, MAT_REUSE_MATRIX, ctx%prod%F, ierr)
 
     ! write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
-      call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'adj_lossmat.bin'            &
-     &     ,FILE_MODE_WRITE,viewer,ierr)
-      call MatView(ctx%loss%M,viewer,ierr)
-      call PetscViewerDestroy(viewer,ierr)
+      call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'adj_lossmat.bin', &
+           FILE_MODE_WRITE, viewer, ierr)
+      call MatView(ctx%loss%M, viewer, ierr)
+      call PetscViewerDestroy(viewer, ierr)
 
-      call PetscViewerBinaryOpen(PETSC_COMM_WORLD,'adj_prodmat.bin'            &
-     &     ,FILE_MODE_WRITE,viewer,ierr)
-      call MatView(ctx%prod%F,viewer,ierr)
-      call PetscViewerDestroy(viewer,ierr)
+      call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'adj_prodmat.bin', &
+           FILE_MODE_WRITE, viewer, ierr)
+      call MatView(ctx%prod%F, viewer, ierr)
+      call PetscViewerDestroy(viewer, ierr)
     end if
 
   end subroutine compute_adjoint
@@ -393,13 +399,13 @@ contains
     if (.not. allocated(mybuf)) allocate(mybuf(n))
 
     ! get ownership range
-    call VecGetOwnershipRange(xvec,row_start,row_end,ierr)
+    call VecGetOwnershipRange(xvec, row_start, row_end, ierr)
 
     ! resize the last proc
     if (rank == n_procs_cmfd - 1) row_end = row_end - 1
 
     ! convert petsc phi_object to cmfd_obj
-    call VecGetArrayF90(xvec,xptr,ierr)
+    call VecGetArrayF90(xvec, xptr, ierr)
     if (adjoint_calc) then
       cmfd%adj_phi(row_start+1:row_end) = xptr(1:row_end - row_start)
     else
@@ -409,9 +415,11 @@ contains
     ! reduce result to all 
     mybuf = 0.0_8
     if (adjoint_calc) then
-      call MPI_ALLREDUCE(cmfd%adj_phi,mybuf,n,MPI_REAL8,MPI_SUM,PETSC_COMM_WORLD,ierr)
+      call MPI_ALLREDUCE(cmfd%adj_phi, mybuf, n, MPI_REAL8, MPI_SUM, &
+           PETSC_COMM_WORLD, ierr)
     else
-      call MPI_ALLREDUCE(cmfd%phi,mybuf,n,MPI_REAL8,MPI_SUM,PETSC_COMM_WORLD,ierr)
+      call MPI_ALLREDUCE(cmfd%phi, mybuf, n, MPI_REAL8, MPI_SUM, &
+           PETSC_COMM_WORLD, ierr)
     end if
 
     ! move buffer to object and deallocate
@@ -422,12 +430,14 @@ contains
     if(rank == n_procs_cmfd - 1) keff = 1.0_8 / xptr(size(xptr))
     if (adjoint_calc) then
       cmfd%adj_keff = keff
-      call MPI_BCAST(cmfd%adj_keff,1,MPI_REAL8,n_procs_cmfd-1,PETSC_COMM_WORLD,ierr)
+      call MPI_BCAST(cmfd%adj_keff, 1, MPI_REAL8, n_procs_cmfd-1, &
+           PETSC_COMM_WORLD, ierr)
     else
       cmfd%keff = keff
-      call MPI_BCAST(cmfd%keff,1,MPI_REAL8,n_procs_cmfd-1,PETSC_COMM_WORLD,ierr)
+      call MPI_BCAST(cmfd%keff, 1, MPI_REAL8, n_procs_cmfd-1, &
+           PETSC_COMM_WORLD, ierr)
     end if
-    call VecRestoreArrayF90(xvec,xptr,ierr)
+    call VecRestoreArrayF90(xvec, xptr, ierr)
 
     ! nullify pointers and deallocate local variables
     if (associated(xptr)) nullify(xptr)
@@ -445,12 +455,12 @@ contains
     call destroy_M_operator(ctx%loss)
     call destroy_F_operator(ctx%prod)
     call destroy_J_operator(jac_prec)
-    call VecDestroy(xvec,ierr)
-    call VecDestroy(resvec,ierr)
-    call MatDestroy(jac,ierr)
+    call VecDestroy(xvec, ierr)
+    call VecDestroy(resvec, ierr)
+    call MatDestroy(jac, ierr)
 
     ! finalize solver objects
-    call SNESDestroy(snes,ierr)
+    call SNESDestroy(snes, ierr)
 
   end subroutine finalize
 

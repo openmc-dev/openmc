@@ -284,32 +284,32 @@ module global
   type(cmfd_type) :: cmfd
 
   ! Is CMFD active
-  logical :: cmfd_run = .FALSE.
+  logical :: cmfd_run = .false.
  
   ! Timing objects
   type(Timer) :: time_cmfd   ! timer for whole cmfd calculation
   type(Timer) :: time_solver ! timer for solver 
 
   ! Flag for CMFD only
-  logical :: cmfd_only = .FALSE.
+  logical :: cmfd_only = .false.
 
   ! Flag for coremap accelerator
-  logical :: cmfd_coremap = .FALSE.
+  logical :: cmfd_coremap = .false.
 
   ! number of processors for cmfd
   integer :: n_procs_cmfd
 
   ! reset dhats to zero
-  logical :: dhat_reset = .FALSE.
+  logical :: dhat_reset = .false.
 
   ! activate neutronic feedback
-  logical :: cmfd_feedback = .FALSE.
+  logical :: cmfd_feedback = .false.
 
   ! activate auto-balance of tallies (2grp only)
-! logical :: cmfd_balance = .FALSE.
+! logical :: cmfd_balance = .false.
 
   ! calculate effective downscatter
-! logical :: cmfd_downscatter = .FALSE.
+! logical :: cmfd_downscatter = .false.
 
   ! user-defined tally information
   integer :: n_cmfd_meshes              = 1 ! # of structured meshes
@@ -319,10 +319,10 @@ module global
   integer :: n_cmfd_current_tallies     = 1 ! # of surface current tallies
 
   ! overwrite with 2grp xs
-  logical :: cmfd_run_2grp = .FALSE.
+  logical :: cmfd_run_2grp = .false.
 
   ! hold cmfd weight adjustment factors
-  logical :: cmfd_hold_weights = .FALSE.
+  logical :: cmfd_hold_weights = .false.
 
   ! eigenvalue solver type
   character(len=10) :: cmfd_solver_type = 'power'
@@ -343,21 +343,21 @@ module global
   integer :: cmfd_act_flush = 0
 
   ! convergence monitoring
-  logical :: cmfd_snes_monitor  = .FALSE.
-  logical :: cmfd_ksp_monitor   = .FALSE.
-  logical :: cmfd_power_monitor = .FALSE.
+  logical :: cmfd_snes_monitor  = .false.
+  logical :: cmfd_ksp_monitor   = .false.
+  logical :: cmfd_power_monitor = .false.
 
   ! cmfd output
-  logical :: cmfd_write_balance  = .FALSE.
-  logical :: cmfd_write_matrices = .FALSE.
-  logical :: cmfd_write_hdf5     = .FALSE.
+  logical :: cmfd_write_balance  = .false.
+  logical :: cmfd_write_matrices = .false.
+  logical :: cmfd_write_hdf5     = .false.
 
   ! run an adjoint calculation (last batch only)
-  logical :: cmfd_run_adjoint = .FALSE.
+  logical :: cmfd_run_adjoint = .false.
 
   ! cmfd run logicals
-  logical :: cmfd_on             = .FALSE.
-  logical :: cmfd_tally_on       = .TRUE. 
+  logical :: cmfd_on             = .false.
+  logical :: cmfd_tally_on       = .true. 
 
   ! tolerance on keff to run cmfd
   real :: cmfd_keff_tol = 0.005

@@ -1,13 +1,16 @@
 module cmfd_data
 
-! This module processes the MC21 cmfd tally object to generate parameters for
-! CMFD calculation
+!==============================================================================
+! CMFD_DATA -- This module processes the MC21 cmfd tally object to generate
+! parameters for CMFD calculation.
+!==============================================================================
 
-implicit none
-private
-public :: set_up_cmfd, neutron_balance
 
-logical :: dhat_reset = .FALSE.
+  implicit none
+  private
+  public :: set_up_cmfd, neutron_balance
+
+  logical :: dhat_reset = .false.
 
 contains
 
@@ -162,8 +165,8 @@ contains
 
                 ! calculate diffusion coefficient
 !               cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*cmfd%totalxs(h,i,j,k))
-                cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k) -&
-               &                                cmfd % p1scattxs(h,i,j,k)))
+                cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
+                     cmfd % p1scattxs(h,i,j,k)))
 !               cmfd % diffcof(h,i,j,k) = cmfd % diffusion(h,i,j,k)
 
               else if (ital == n_user_tallies + 2) then
@@ -191,15 +194,15 @@ contains
 
                   ! get scattering
                   cmfd % scattxs(h,g,i,j,k) = t % scores(1,score_index) % sum /&
-                 &                            cmfd % flux(h,i,j,k)
+                       cmfd % flux(h,i,j,k)
 
                   ! get nu-fission
                   cmfd % nfissxs(h,g,i,j,k) = t % scores(2,score_index) % sum /&
-                 &                            cmfd % flux(h,i,j,k)
+                       cmfd % flux(h,i,j,k)
 
                   ! bank source
-                  cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) +    &
-                 &                             t % scores(2,score_index) % sum
+                  cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) + &
+                       t % scores(2,score_index) % sum
 
                 end do INGROUP
 
@@ -309,8 +312,8 @@ contains
     cmfd % mat_dim = sum(cmfd % coremap - 1)
 
     ! allocate indexmap
-    if (.not. allocated(cmfd % indexmap)) allocate                             &
-   &                                      (cmfd % indexmap(cmfd % mat_dim,3))
+    if (.not. allocated(cmfd % indexmap)) &
+         allocate(cmfd % indexmap(cmfd % mat_dim,3))
 
     ! begin loops over spatial indices
     ZLOOP: do k = 1,nz
@@ -401,12 +404,12 @@ contains
 
             ! get leakage
             leakage = 0.0_8
-            LEAK: do l = 1,3
+            LEAK: do l = 1, 3
 
               leakage = leakage + ((cmfd % current(4*l,g,i,j,k) - &
-             & cmfd % current(4*l-1,g,i,j,k))) - &
-             & ((cmfd % current(4*l-2,g,i,j,k) - &
-             & cmfd % current(4*l-3,g,i,j,k)))
+                   cmfd % current(4*l-1,g,i,j,k))) - &
+                   ((cmfd % current(4*l-2,g,i,j,k) - &
+                   cmfd % current(4*l-3,g,i,j,k)))
 
             end do LEAK
 
@@ -416,7 +419,7 @@ contains
             ! get scattering and fission
             scattering = 0.0_8
             fission = 0.0_8
-            GROUPH: do h = 1,ng
+            GROUPH: do h = 1, ng
 
               scattering = scattering + cmfd % scattxs(h,g,i,j,k) * &
              & cmfd % flux(h,i,j,k)
@@ -501,19 +504,17 @@ contains
     albedo = cmfd%albedo
 
     ! geting loop over group and spatial indices
-    ZLOOP:  do k = 1,nz
+    ZLOOP:  do k = 1, nz
 
-      YLOOP: do j = 1,ny
+      YLOOP: do j = 1, ny
 
-        XLOOP: do i = 1,nx
+        XLOOP: do i = 1, nx
 
-          GROUP: do g = 1,ng
+          GROUP: do g = 1, ng
 
             ! check for active mesh cell
             if (allocated(cmfd%coremap)) then
-              if (cmfd%coremap(i,j,k) == 99999) then
-                cycle
-              end if
+              if (cmfd%coremap(i,j,k) == 99999) cycle
             end if
 
             ! get cell data
@@ -524,7 +525,7 @@ contains
             bound = (/i,i,j,j,k,k/)
 
             ! begin loop around sides of cell for leakage
-            LEAK: do l = 1,6
+            LEAK: do l = 1, 6
 
               ! define xyz and +/- indices
               xyz_idx = int(ceiling(real(l)/real(2)))  ! x=1, y=2, z=3
@@ -671,16 +672,15 @@ contains
               shift_idx = -2*mod(l,2) +1          ! shift neig by -1 or +1
 
               ! calculate net current on l face (divided by surf area)
-              net_current = (current(2*l) - current(2*l-1)) /                  &
-             &               product(cmfd%hxyz(:,i,j,k)) *                     &
-             &               cmfd%hxyz(xyz_idx,i,j,k)
+              net_current = (current(2*l) - current(2*l-1)) / &
+                   product(cmfd%hxyz(:,i,j,k)) * cmfd%hxyz(xyz_idx,i,j,k)
 
               ! check if at a boundary
               if (bound(l) == nxyz(xyz_idx,dir_idx)) then
 
                 ! compute dhat
-                dhat = (net_current - shift_idx*cell_dtilde(l)*cell_flux) /    &
-               &        cell_flux
+                dhat = (net_current - shift_idx*cell_dtilde(l)*cell_flux) / &
+                     cell_flux
 
               else  ! not a boundary
 
@@ -695,26 +695,26 @@ contains
                 ! check for fuel-reflector interface
                 if (cmfd_coremap) then
 
-                  if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) ==   &
-                 &    99999 .and. cmfd % coremap(i,j,k) /= 99999) then
+                  if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) == &
+                       99999 .and. cmfd % coremap(i,j,k) /= 99999) then
 
                     ! compute dhat
                     dhat = (net_current - shift_idx*cell_dtilde(l)*cell_flux) /&
-                   &        cell_flux
+                         cell_flux
 
                   else ! not a fuel-reflector interface
 
                     ! compute dhat 
-                    dhat = (net_current + shift_idx*cell_dtilde(l)*            &
-                   &       (neig_flux - cell_flux))/(neig_flux + cell_flux)
+                    dhat = (net_current + shift_idx*cell_dtilde(l)* &
+                         (neig_flux - cell_flux))/(neig_flux + cell_flux)
 
                   end if
 
                 else ! not for fuel-reflector case
 
                   ! compute dhat 
-                  dhat = (net_current + shift_idx*cell_dtilde(l)*              &
-                 &       (neig_flux - cell_flux))/(neig_flux + cell_flux)
+                  dhat = (net_current + shift_idx*cell_dtilde(l)* &
+                       (neig_flux - cell_flux))/(neig_flux + cell_flux)
 
                 end if
 
@@ -749,7 +749,7 @@ contains
 ! GET_REFLECTOR_ALBEDO is a function that calculates the albedo to the reflector
 !===============================================================================
 
-  function get_reflector_albedo(l,g,i,j,k)
+  function get_reflector_albedo(l, g, i, j, k)
 
     use global, only: cmfd, cmfd_hold_weights
 
@@ -820,8 +820,8 @@ contains
 
   subroutine fix_neutron_balance()
 
-    use constants, only: ONE,ZERO
-    use global, only: cmfd,cmfd_balance,keff 
+    use constants, only: ONE, ZERO
+    use global, only: cmfd, cmfd_balance, keff
 
     integer :: nx                ! number of mesh cells in x direction
     integer :: ny                ! number of mesh cells in y direction
@@ -862,11 +862,11 @@ contains
     if (ng /= 2) return
 
     ! begin loop around space and energy groups
-    ZLOOP: do k = 1,nz
+    ZLOOP: do k = 1, nz
 
-      YLOOP: do j = 1,ny
+      YLOOP: do j = 1, ny
 
-        XLOOP: do i = 1,nx
+        XLOOP: do i = 1, nx
 
           ! check for active mesh
           if (allocated(cmfd%coremap)) then
@@ -876,17 +876,17 @@ contains
           ! compute leakage in groups 1 and 2
           leak1 = ZERO 
           leak2 = ZERO
-          LEAK: do l = 1,3
+          LEAK: do l = 1, 3
 
             leak1 = leak1 + ((cmfd % current(4*l,1,i,j,k) - &
-             & cmfd % current(4*l-1,1,i,j,k))) - &
-             & ((cmfd % current(4*l-2,1,i,j,k) - &
-             & cmfd % current(4*l-3,1,i,j,k)))
+                 cmfd % current(4*l-1,1,i,j,k))) - &
+                 ((cmfd % current(4*l-2,1,i,j,k) - &
+                 cmfd % current(4*l-3,1,i,j,k)))
 
             leak2 = leak2 + ((cmfd % current(4*l,2,i,j,k) - &
-             & cmfd % current(4*l-1,2,i,j,k))) - &
-             & ((cmfd % current(4*l-2,2,i,j,k) - &
-             & cmfd % current(4*l-3,2,i,j,k)))
+                 cmfd % current(4*l-1,2,i,j,k))) - &
+                 ((cmfd % current(4*l-2,2,i,j,k) - &
+                 cmfd % current(4*l-3,2,i,j,k)))
 
 
           end do LEAK
@@ -915,9 +915,9 @@ contains
           siga2 = sigt2 - sigs22 - sigs21
 
           ! compute effective downscatter xs
-          sigs12_eff = ( ONE/keff*nsigf11*flux1 - leak1 - siga1*flux1          &
-         &               - ONE/keff*nsigf21/siga2*leak2 ) / ( flux1*(ONE       &
-         &               - ONE/keff*nsigf21/siga2) )
+          sigs12_eff = (ONE/keff*nsigf11*flux1 - leak1 - siga1*flux1 &
+               - ONE/keff*nsigf21/siga2*leak2 ) / ( flux1*(ONE &
+               - ONE/keff*nsigf21/siga2))
 
           ! redefine flux 2
           flux2 = (sigs12_eff*flux1 - leak2)/siga2
@@ -972,7 +972,7 @@ contains
   subroutine compute_effective_downscatter()
 
     use constants, only: ZERO
-    use global, only: cmfd,cmfd_downscatter,keff
+    use global, only: cmfd, cmfd_downscatter, keff
 
     integer :: nx                ! number of mesh cells in x direction
     integer :: ny                ! number of mesh cells in y direction
@@ -1006,11 +1006,11 @@ contains
     if (ng /= 2) return
 
     ! begin loop around space and energy groups
-    ZLOOP: do k = 1,nz
+    ZLOOP: do k = 1, nz
 
-      YLOOP: do j = 1,ny
+      YLOOP: do j = 1, ny
 
-        XLOOP: do i = 1,nx
+        XLOOP: do i = 1, nx
 
           ! check for active mesh
           if (allocated(cmfd%coremap)) then

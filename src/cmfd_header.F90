@@ -4,9 +4,9 @@ module cmfd_header
   use hdf5
 #endif
 
-implicit none
-private
-public :: allocate_cmfd, deallocate_cmfd
+  implicit none
+  private
+  public :: allocate_cmfd, deallocate_cmfd
 
   type, public :: cmfd_type
 

@@ -766,6 +766,15 @@ contains
        case ('sphere')
           s % type = SURF_SPHERE
           coeffs_reqd  = 4
+       case ('x-cone')
+          s % type = SURF_CONE_X
+          coeffs_reqd  = 4
+       case ('y-cone')
+          s % type = SURF_CONE_Y
+          coeffs_reqd  = 4
+       case ('z-cone')
+          s % type = SURF_CONE_Z
+          coeffs_reqd  = 4
        case ('box-x')
           s % type = SURF_BOX_X
           coeffs_reqd  = 4

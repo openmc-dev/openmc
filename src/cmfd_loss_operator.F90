@@ -84,7 +84,8 @@ contains
 
   subroutine preallocate_loss_matrix(this)
 
-    use global,  only: cmfd, cmfd_coremap
+    use constants,  only: CMFD_NOACCEL
+    use global,     only: cmfd, cmfd_coremap
 
     type(loss_operator) :: this
 
@@ -182,7 +183,7 @@ contains
 
             ! check for neighbor that is non-acceleartred
             if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) /= &
-                 99999) then
+                 CMFD_NOACCEL) then
 
               ! get neighbor matrix index
               call indices_to_matrix(g,neig_idx(1), neig_idx(2), & 
@@ -247,7 +248,8 @@ contains
 
   subroutine build_loss_matrix(this, adjoint)
 
-    use global, only: cmfd, cmfd_coremap, cmfd_write_matrices
+    use constants,  only: CMFD_NOACCEL
+    use global,     only: cmfd, cmfd_coremap, cmfd_write_matrices
 
     type(loss_operator) :: this
     logical, optional :: adjoint    ! set up the adjoint
@@ -338,7 +340,7 @@ contains
 
             ! check that neighbor is not reflector
             if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) /= &
-                 99999) then
+                 CMFD_NOACCEL) then
 
               ! compute leakage coefficient for neighbor
               jn = -dtilde(l) + shift_idx*dhat(l)

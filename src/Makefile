@@ -15,13 +15,13 @@ include OBJECTS
 # User Options
 #===============================================================================
 
-COMPILER = gnu
+COMPILER = intel
 DEBUG    = no
 PROFILE  = no
-OPTIMIZE = no
-MPI      = no
-HDF5     = no
-PETSC    = no
+OPTIMIZE = yes
+MPI      = yes
+HDF5     = yes
+PETSC    = yes
 
 #===============================================================================
 # External Library Paths

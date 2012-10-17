@@ -179,7 +179,8 @@ contains
 
   subroutine build_prod_matrix(this, adjoint)
 
-    use global,  only: cmfd, cmfd_coremap, cmfd_write_matrices
+    use constants,  only: CMFD_NOACCEL
+    use global,     only: cmfd, cmfd_coremap, cmfd_write_matrices
 
     type(prod_operator) :: this
     logical, optional :: adjoint
@@ -217,7 +218,7 @@ contains
       if (cmfd_coremap) then
 
         ! check if at a reflector
-        if (cmfd % coremap(i,j,k) == 99999) then
+        if (cmfd % coremap(i,j,k) == CMFD_NOACCEL) then
           cycle
         end if
 

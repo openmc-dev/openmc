@@ -1,8 +1,6 @@
 module cmfd_header 
 
-#ifdef HDF5
-  use hdf5
-#endif
+  use constants,  only: CMFD_NOACCEL
 
   implicit none
   private
@@ -19,7 +17,7 @@ module cmfd_header
     ! core overlay map
     integer, allocatable :: coremap(:,:,:)
     integer, allocatable :: indexmap(:,:)
-    integer :: mat_dim = 9999
+    integer :: mat_dim = CMFD_NOACCEL 
 
     ! energy grid
     real(8), allocatable :: egrid(:)

@@ -365,4 +365,10 @@ module constants
   integer, parameter :: UNIT_STATE   = 16 ! unit # for writing state point
   integer, parameter :: CMFD_BALANCE = 17 ! unit # for writing cmfd balance file
 
+  !=============================================================================
+  ! CMFD CONSTANTS
+
+  ! for non-accelerated regions on coarse mesh overlay
+  integer, parameter :: CMFD_NOACCEL = 99999
+
 end module constants

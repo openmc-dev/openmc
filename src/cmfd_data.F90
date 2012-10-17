@@ -20,20 +20,21 @@ contains
 
   subroutine set_up_cmfd() 
 
-    use global,              only: cmfd, cmfd_coremap, cmfd_run_2grp
     use cmfd_header,         only: allocate_cmfd
+    use constants,           only: CMFD_NOACCEL
+    use global,              only: cmfd, cmfd_coremap, cmfd_run_2grp
 
     ! initialize cmfd object
     if (.not.allocated(cmfd%flux)) call allocate_cmfd(cmfd)
 
     ! check for core map and set it up
-    if ((cmfd_coremap) .and. (cmfd%mat_dim == 9999)) call set_coremap()
+    if ((cmfd_coremap) .and. (cmfd%mat_dim == CMFD_NOACCEL)) call set_coremap()
 
     ! calculate all cross sections based on reaction rates from last batch
     if (.not. cmfd_run_2grp) call compute_xs()
 
     ! check neutron balance
-    call neutron_balance(670)
+!   call neutron_balance(670)
 
     ! fix 2 grp cross sections
     if (cmfd_run_2grp) call fix_2_grp()
@@ -55,7 +56,7 @@ contains
     use constants,         only: FILTER_MESH, FILTER_ENERGYIN, FILTER_ENERGYOUT&
                                  , SURF_FILTER_ENERGYIN, SURF_FILTER_SURFACE,  &
                                  IN_RIGHT, OUT_RIGHT, IN_FRONT, OUT_FRONT,     &
-                                 IN_TOP, OUT_TOP, N_FILTER_TYPES
+                                 IN_TOP, OUT_TOP, N_FILTER_TYPES, CMFD_NOACCEL
     use global,            only: cmfd, message, n_user_tallies, n_tallies,     &
                                  tallies, meshes
     use error,             only: fatal_error
@@ -117,7 +118,7 @@ contains
  
             ! check for active mesh cell
             if (allocated(cmfd%coremap)) then
-              if (cmfd%coremap(i,j,k) == 99999) then
+              if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) then
                 cycle
               end if
             end if
@@ -293,7 +294,8 @@ contains
 
   subroutine set_coremap()
 
-    use global, only: cmfd
+    use constants,  only: CMFD_NOACCEL
+    use global,     only: cmfd
 
     integer :: kount=1           ! counter for unique fuel assemblies
     integer :: nx                ! number of mesh cells in x direction
@@ -326,7 +328,7 @@ contains
           if (cmfd % coremap(i,j,k) == 1) then
 
             ! reset value to 99999
-            cmfd % coremap(i,j,k) = 99999
+            cmfd % coremap(i,j,k) = CMFD_NOACCEL 
 
           else
 
@@ -353,7 +355,7 @@ contains
 
   subroutine neutron_balance(uid)
 
-    use constants,    only: ONE
+    use constants,    only: ONE, CMFD_NOACCEL
     use global,       only: cmfd, keff
 
     integer :: nx                ! number of mesh cells in x direction
@@ -396,7 +398,7 @@ contains
 
             ! check for active mesh
             if (allocated(cmfd%coremap)) then
-              if (cmfd%coremap(i,j,k) == 99999) then
+              if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) then
                 cmfd%resnb(g,i,j,k) = 99999.0
                 cycle
               end if
@@ -439,14 +441,15 @@ contains
             cmfd%resnb(g,i,j,k) = res
 
             ! write out info to file
-            write(uid,*) 'Location',i,j,k,' Group:',g,'Balance:',res
-            write(uid,*) 'Leakage:',leakage
-            write(uid,*) 'Interactions:',interactions
-            write(uid,*) 'Scattering:',scattering
-            write(uid,*) 'Fission:',fission
-            write(uid,*) 'k-eff:',keff
-            write(uid,*) 'k-eff balanced:',fission/(leakage+interactions-scattering)
-            write(uid,*) 'Balance:',keff - fission/(leakage+interactions-scattering)
+            write(uid,'(A,1X,I0,1X,I0,1X,I0,1X,A,1X,I0,1X,A,1PE11.4)') &
+                          'Location',i,j,k,' Group:',g,'Balance:',res
+            write(uid,100) 'Leakage:',leakage
+            write(uid,100) 'Interactions:',interactions
+            write(uid,100) 'Scattering:',scattering
+            write(uid,100) 'Fission:',fission
+            write(uid,100) 'k-eff:',keff
+            write(uid,100) 'k-eff balanced:',fission/(leakage+interactions-scattering)
+            write(uid,100) 'Balance:',keff - fission/(leakage+interactions-scattering)
 
           end do GROUPG
 
@@ -456,6 +459,8 @@ contains
 
     end do ZLOOP
 
+ 100 FORMAT(A,1X,1PE11.4)
+
   end subroutine neutron_balance
 
 !===============================================================================
@@ -464,7 +469,8 @@ contains
 
   subroutine compute_dtilde()
 
-    use global, only: cmfd, cmfd_coremap
+    use constants,  only: CMFD_NOACCEL
+    use global,     only: cmfd, cmfd_coremap
 
     integer :: nx                 ! maximum number of cells in x direction
     integer :: ny                 ! maximum number of cells in y direction
@@ -514,7 +520,7 @@ contains
 
             ! check for active mesh cell
             if (allocated(cmfd%coremap)) then
-              if (cmfd%coremap(i,j,k) == 99999) cycle
+              if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) cycle
             end if
 
             ! get cell data
@@ -604,7 +610,8 @@ contains
 
   subroutine compute_dhat()
 
-    use global,  only: cmfd, cmfd_coremap
+    use constants,  only: CMFD_NOACCEL
+    use global,     only: cmfd, cmfd_coremap
 
     integer :: nx                 ! maximum number of cells in x direction
     integer :: ny                 ! maximum number of cells in y direction
@@ -650,7 +657,7 @@ contains
 
             ! check for active mesh cell
             if (allocated(cmfd%coremap)) then
-              if (cmfd%coremap(i,j,k) == 99999) then
+              if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) then
                 cycle
               end if
             end if
@@ -696,7 +703,7 @@ contains
                 if (cmfd_coremap) then
 
                   if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) == &
-                       99999 .and. cmfd % coremap(i,j,k) /= 99999) then
+                       CMFD_NOACCEL .and. cmfd % coremap(i,j,k) /= CMFD_NOACCEL) then
 
                     ! compute dhat
                     dhat = (net_current - shift_idx*cell_dtilde(l)*cell_flux) /&
@@ -813,15 +820,15 @@ contains
     dhat_reset = .true.
 
   end subroutine fix_2_grp
-# ifdef HIDE
+
 !===============================================================================
 ! FIX_NEUTRON_BALANCE
 !===============================================================================
 
   subroutine fix_neutron_balance()
 
-    use constants, only: ONE, ZERO
-    use global, only: cmfd, cmfd_balance, keff
+    use constants, only: ONE, ZERO, CMFD_NOACCEL
+    use global,    only: cmfd, cmfd_balance, keff
 
     integer :: nx                ! number of mesh cells in x direction
     integer :: ny                ! number of mesh cells in y direction
@@ -870,7 +877,7 @@ contains
 
           ! check for active mesh
           if (allocated(cmfd%coremap)) then
-            if (cmfd%coremap(i,j,k) == 99999) cycle 
+            if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) cycle 
           end if
 
           ! compute leakage in groups 1 and 2
@@ -937,26 +944,6 @@ contains
           ! zero out upscatter cross section
           cmfd % scattxs(2,1,i,j,k) = ZERO 
 
-!         print *,'Leakage g=1:',leak1
-!         print *,'Leakage g=2:',leak2
-!         print *,'Flux g=1:',flux1
-!         print *,'Flux g=2:',flux2
-!         print *,'Total g=1:',sigt1
-!         print *,'Total g=2:',sigt2
-!         print *,'Scattering 1-->1:',sigs11
-!         print *,'Scattering 2-->1:',sigs21
-!         print *,'Scattering 1-->2:',sigs12
-!         print *,'Scattering 2-->2:',sigs22
-!         print *,'Fission 1-->1:',nsigf11
-!         print *,'Fission 2-->1:',nsigf21
-!         print *,'Fission 1-->2:',nsigf12
-!         print *,'Fission 2-->2:',nsigf22
-!         print *,'keff:',keff
-!         print *,'Effective Downscatter:',sigs12_eff
-!
-!         print *,'Group 1 balance:',leak1+sigt1*flux1-sigs11*flux1-ONE/keff*(nsigf11*flux1+nsigf21*flux2)
-!         print *,'Group 2 balance:',leak2+sigt2*flux2-sigs12_eff*flux1-sigs22*flux2
-! stop
         end do XLOOP
 
       end do YLOOP
@@ -971,8 +958,8 @@ contains
 
   subroutine compute_effective_downscatter()
 
-    use constants, only: ZERO
-    use global, only: cmfd, cmfd_downscatter, keff
+    use constants, only: ZERO, CMFD_NOACCEL
+    use global,    only: cmfd, cmfd_downscatter, keff
 
     integer :: nx                ! number of mesh cells in x direction
     integer :: ny                ! number of mesh cells in y direction
@@ -1014,7 +1001,7 @@ contains
 
           ! check for active mesh
           if (allocated(cmfd%coremap)) then
-            if (cmfd%coremap(i,j,k) == 99999) cycle
+            if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) cycle
           end if
 
           ! extract cross sections and flux from object
@@ -1055,57 +1042,5 @@ contains
     end do ZLOOP
 
   end subroutine compute_effective_downscatter 
-
-!==============================================================================
-! EXTRACT_ACCUM_FSRC
-!==============================================================================
-!
-!  subroutine extract_accum_fsrc(i,j,k)
-!
-!    use global
-!    use mesh,          only: mesh_indices_to_bin
-!    use mesh_header,   only: StructuredMesh
-!    use tally_header,  only: TallyObject, TallyScore
-!
-!    integer :: nx                ! number of mesh cells in x direction
-!    integer :: ny                ! number of mesh cells in y direction
-!    integer :: nz                ! number of mesh cells in z direction
-!    integer :: ng                ! number of energy groups
-!    integer :: i                 ! iteration counter for x
-!    integer :: j                 ! iteration counter for y
-!    integer :: k                 ! iteration counter for z
-!    integer :: g                 ! iteration counter for g
-!    integer :: h                 ! iteration counter for outgoing groups
-!    integer :: ital              ! tally object index
-!    integer :: ijk(3)            ! indices for mesh cell
-!    integer :: score_index       ! index to pull from tally object
-!    integer :: bins(N_FILTER_TYPES) ! bins for filters
-!
-!    real(8) :: flux   ! temp variable for flux
-!
-!    type(TallyObject), pointer :: t    ! pointer for tally object
-!    type(StructuredMesh), pointer :: m ! pointer for mesh object
-!
-!    ! associate tallies and mesh
-!    t => tallies(1)
-!    m => meshes(t % mesh)
-!
-!    ! reset all bins to 1
-!    bins = 1
-!
-!    ! set ijk as mesh indices
-!    ijk = (/ i, j, k /)
-!
-!    ! get bin number for mesh indices
-!    bins(FILTER_MESH) = mesh_indices_to_bin(m,ijk)
-!
-!    ! calculate score index from bins
-!    score_index = sum((bins - 1) * t%stride) + 1
-!
-!    ! bank source
-!    cmfd % openmc_accum_src(i,j,k) = t % scores(1,score_index) % sum
-!
-!  end subroutine extract_accum_fsrc
-# endif
 
 end module cmfd_data

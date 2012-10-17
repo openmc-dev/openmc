@@ -198,7 +198,8 @@ contains
 
   subroutine calc_fission_source()
 
-    use global,       only: cmfd, cmfd_coremap, master, mpi_err, entropy_on
+    use constants,  only: CMFD_NOACCEL
+    use global,     only: cmfd, cmfd_coremap, master, mpi_err, entropy_on
 
     integer :: nx ! maximum number of cells in x direction
     integer :: ny ! maximum number of cells in y direction
@@ -241,7 +242,7 @@ contains
 
               ! check for core map
               if (cmfd_coremap) then
-                if (cmfd%coremap(i,j,k) == 99999) then
+                if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) then
                   cycle
                 end if
               end if

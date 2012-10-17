@@ -371,4 +371,10 @@ module constants
   ! for non-accelerated regions on coarse mesh overlay
   integer, parameter :: CMFD_NOACCEL = 99999
 
+  ! constant to represent a zero flux "albedo"
+  real(8), parameter :: ZERO_FLUX = 999.0_8
+
+  ! constant to represent albedo rejection
+  real(8), parameter :: ALBEDO_REJECT = 999.0_8
+
 end module constants

@@ -828,8 +828,9 @@ contains
 
   subroutine fix_neutron_balance()
 
-    use constants, only: ONE, ZERO, CMFD_NOACCEL
-    use global,    only: cmfd, cmfd_balance, keff
+    use constants,  only: ONE, ZERO, CMFD_NOACCEL
+    use global,     only: cmfd, cmfd_balance, keff
+    use, intrinsic :: ISO_FORTRAN_ENV
 
     integer :: nx                ! number of mesh cells in x direction
     integer :: ny                ! number of mesh cells in y direction
@@ -915,7 +916,8 @@ contains
 
           ! check for no fission into group 2
           if (.not.(nsigf12 < 1e-6_8 .and. nsigf22 < 1e-6_8)) then
-            write(*,*) 'Fission in G=2',nsigf12,nsigf22
+            write(OUTPUT_UNIT,'(A,1PE11.4,1X,1PE11.4)') 'Fission in G=2', &
+                  nsigf12,nsigf22
           end if
 
           ! compute absorption xs

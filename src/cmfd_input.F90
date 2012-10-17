@@ -36,6 +36,7 @@ contains
     use global
     use output,  only: write_message
     use xml_data_cmfd_t
+    use, intrinsic :: ISO_FORTRAN_ENV
 
     integer :: ng
     logical :: file_exists ! does cmfd.xml exist?
@@ -85,15 +86,18 @@ contains
       allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2), &
            cmfd % indices(3)))
       if (size(mesh_ % map) /= product(cmfd % indices(1:3))) then
-        write(*,*) 'FATAL==>CMFD coremap not to correct dimensions'
-        stop
+        message = 'FATAL==>CMFD coremap not to correct dimensions'
+        call fatal_error() 
       end if
       cmfd % coremap = reshape(mesh_ % map,(cmfd % indices(1:3)))
       cmfd_coremap = .true.
    end if
 
     ! check for core map activation by printing note
-    if (cmfd_coremap .and. master) write(*,*)"Core Map Overlay Activated"
+    if (cmfd_coremap .and. master) then
+      message = "Core Map Overlay Activated"
+      call write_message()
+    end if
 
     ! check for normalization constant
     cmfd % norm = norm_
@@ -146,7 +150,8 @@ contains
 
     ! set number of CMFD processors and report to user
     n_procs_cmfd = n_cmfd_procs_ 
-    if (master) write(*,*) "CMFD Running on",n_procs_cmfd," processors."
+    if (master) write(OUTPUT_UNIT,'(A,1X,I0,1X,A)') "CMFD Running on", &
+       n_procs_cmfd," processors."
 
   end subroutine read_cmfd_xml
 

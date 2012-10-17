@@ -180,6 +180,7 @@ contains
     use global,                 only: cmfd_snes_monitor, cmfd_solver_type, &
                                       n_procs_cmfd, cmfd_ilu_levels, master
     use string,                 only: to_str
+    use, intrinsic :: ISO_FORTRAN_ENV
 
     character(LEN=20) :: snestype, ksptype, pctype
 
@@ -209,19 +210,22 @@ contains
 
     ! display solver info to user
     if (cmfd_snes_monitor .and. master) then
-      write(*,*)
-      write(*,*) '########################################################'
-      write(*,*) '################ JFNK Nonlinear Solver  ################'
-      write(*,*) '########################################################'
-      write(*,*)
-      write(*,*) 'NONLINEAR SOLVER: ', snestype
-      write(*,*) 'LINEAR SOLVER:    ', ksptype
-      write(*,*) 'PRECONDITIONER:   ', pctype
-      write(*,*) 'ILU levels: ', cmfd_ilu_levels
-      write(*,*)
-      write(*,*) '---------------------------------------------'
-      write(*,*)
+      write(OUTPUT_UNIT,'(A)') ''
+      write(OUTPUT_UNIT,'(A)') '########################################################'
+      write(OUTPUT_UNIT,'(A)') '################ JFNK Nonlinear Solver  ################'
+      write(OUTPUT_UNIT,'(A)') '########################################################'
+      write(OUTPUT_UNIT,'(A)') ''
+      write(OUTPUT_UNIT,101) 'NONLINEAR SOLVER: ', snestype
+      write(OUTPUT_UNIT,101) 'LINEAR SOLVER:    ', ksptype
+      write(OUTPUT_UNIT,101) 'PRECONDITIONER:   ', pctype
+      write(OUTPUT_UNIT,100) 'ILU levels: ', cmfd_ilu_levels
+      write(OUTPUT_UNIT,'(A)') ''
+      write(OUTPUT_UNIT,'(A)') '---------------------------------------------'
+      write(OUTPUT_UNIT,'(A)') ''
     end if
+
+ 100 FORMAT(A,1X,I0)
+ 101 FORMAT(A,1X,A)
  
   end subroutine precondition_matrix
 

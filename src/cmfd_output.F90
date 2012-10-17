@@ -6,7 +6,7 @@ module cmfd_output
 
   implicit none
   private
-  public :: finalize_cmfd, cmfd_output_summary, write_hdf5_output 
+  public :: finalize_cmfd, write_hdf5_output 
 
 contains
 
@@ -51,32 +51,6 @@ contains
     close(CMFD_BALANCE)
 
   end subroutine write_neutron_balance
-
-!===============================================================================
-! CMFD_OUTPUT_SUMMARY 
-!===============================================================================
-
-  subroutine cmfd_output_summary()
-
-    use global,       only: cmfd, time_cmfd, cmfd_run_adjoint
-    use output,       only: header 
-    use timing,       only: timer_get_value 
-
-    real(8) :: elapsed
-
-    ! get elapsed time
-    elapsed = timer_get_value(time_cmfd)
-
-    ! print out heading
-!    call header('CMFD Execution Summary',1)
-
-    ! write out information
-!    call printStdOutCard(OFF=0, DSC='Total time elapsed', RV=elapsed, PS=' s')
-!    call printStdOutCard(OFF=0, DSC='Final k-effective', RV=cmfd%keff)
-!    if (cmfd_run_adjoint)                                                      &
-!      call printStdOutCard(OFF=0, DSC='Adjoint eigenvalue', RV=cmfd%adj_keff)
-
-    end subroutine cmfd_output_summary
 
 !===============================================================================
 ! WRITE_HDF5_OUTPUT 

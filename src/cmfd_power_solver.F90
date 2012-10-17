@@ -161,6 +161,7 @@ contains
     use global, only: cmfd_power_monitor, cmfd_solver_type, &
                       n_procs_cmfd, cmfd_ilu_levels, master
     use string, only: to_str
+    use, intrinsic :: ISO_FORTRAN_ENV
 
     character(len=20) :: ksptype,pctype
  
@@ -189,21 +190,25 @@ contains
 
     ! print heading information
     if (cmfd_power_monitor .and. master) then
-      write(*,*)
-      write(*,*) '########################################################'
-      write(*,*) '################ Power Iteration Solver ################'
-      write(*,*) '########################################################'
-      write(*,*)
-      write(*,*) 'Eigenvalue Tolerance:', ktol
-      write(*,*) 'Source Tolerance:    ', stol
-      write(*,*)
-      write(*,*) 'Linear Solver Type:  ', ksptype
-      write(*,*) 'Preconditioner Type: ', pctype
-      write(*,*) 'ILU Fill Levels:', cmfd_ilu_levels
-      write(*,*)
-      write(*,*) '---------------------------------------------'
-      write(*,*)
+      write(OUTPUT_UNIT,'(A)') ''
+      write(OUTPUT_UNIT,'(A)') '########################################################'
+      write(OUTPUT_UNIT,'(A)') '################ Power Iteration Solver ################'
+      write(OUTPUT_UNIT,'(A)') '########################################################'
+      write(OUTPUT_UNIT,'(A)')
+      write(OUTPUT_UNIT,100)   'Eigenvalue Tolerance:', ktol
+      write(OUTPUT_UNIT,100)   'Source Tolerance:    ', stol
+      write(OUTPUT_UNIT,'(A)') ''
+      write(OUTPUT_UNIT,102)   'Linear Solver Type:  ', ksptype
+      write(OUTPUT_UNIT,102)   'Preconditioner Type: ', pctype
+      write(OUTPUT_UNIT,101)   'ILU Fill Levels:', cmfd_ilu_levels
+      write(OUTPUT_UNIT,'(A)') ''
+      write(OUTPUT_UNIT,'(A)') '---------------------------------------------'
+      write(OUTPUT_UNIT,'(A)') ''
     end if
+
+ 100 FORMAT(A,1X,1PE11.4)
+ 101 FORMAT(A,1X,I0)
+ 102 FORMAT(A,1X,A)
 
   end subroutine precondition_matrix
 
@@ -295,6 +300,7 @@ contains
   subroutine convergence(iter)
 
     use global,  only: cmfd_power_monitor, master
+    use, intrinsic :: ISO_FORTRAN_ENV
 
     integer     :: iter           ! iteration number
 
@@ -321,7 +327,7 @@ contains
 
     ! print out to user
     if (cmfd_power_monitor .and. master) then
-      write(*,FMT='(I0,":",T10,"k-eff: ",F0.8,T30,"k-error: ",1PE12.5,T55, &
+      write(OUTPUT_UNIT,FMT='(I0,":",T10,"k-eff: ",F0.8,T30,"k-error: ",1PE12.5,T55, &
            "src-error: ",1PE12.5)') iter, k_n, kerr, serr
     end if
 

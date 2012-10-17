@@ -32,10 +32,9 @@ contains
 
   subroutine read_cmfd_xml()
     
-    use error
+    use error,   only: fatal_error
     use global
-    use output
-    use string
+    use output,  only: write_message
     use xml_data_cmfd_t
 
     integer :: ng

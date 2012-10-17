@@ -215,50 +215,103 @@ contains
     ! set mesh type to rectangular
     m % type = LATTICE_RECT
 
-    ! determine number of dimensions for mesh
+    ! Determine number of dimensions for mesh
     n = size(mesh_ % dimension)
     if (n /= 2 .and. n /= 3) then
-      message = "Mesh must be two or three dimensions."
-      call fatal_error()
+       message = "Mesh must be two or three dimensions."
+       call fatal_error()
     end if
     m % n_dimension = n
 
-    ! allocate attribute arrays
+    ! Allocate attribute arrays
     allocate(m % dimension(n))
     allocate(m % lower_left(n))
     allocate(m % width(n))
     allocate(m % upper_right(n))
 
-    ! read dimensions in each direction
+    ! Check that dimensions are all greater than zero
+    if (any(mesh_ % dimension <= 0)) then
+       message = "All entries on the <dimension> element for a tally mesh &
+            &must be positive."
+       call fatal_error()
+    end if
+
+    ! Read dimensions in each direction
     m % dimension = mesh_ % dimension
 
-    ! read mesh lower left location
+    ! Read mesh lower-left corner location
     if (m % n_dimension /= size(mesh_ % lower_left)) then
-      message = "Number of entries on <lower_left> must be the same as " // &
-                "the number of entries on <dimension>."
-      call fatal_error()
+       message = "Number of entries on <lower_left> must be the same as &
+            &the number of entries on <dimension>."
+       call fatal_error()
     end if
     m % lower_left = mesh_ % lower_left
 
-    ! read mesh widths
-    if (size(mesh_ % width) /= size(mesh_ % lower_left)) then
-       message = "Number of entries on <width> must be the same as " // &
-                 "the number of entries on <lower_left>."
+    ! Make sure either upper-right or width was specified
+    if (associated(mesh_ % upper_right) .and. &
+         associated(mesh_ % width)) then
+       message = "Cannot specify both <upper_right> and <width> on a &
+             &tally mesh."
        call fatal_error()
     end if
-    m % width = mesh_ % width
 
-    ! set upper right coordinate
-    m % upper_right = m % lower_left + m % dimension * m % width
+    ! Make sure either upper-right or width was specified
+    if (.not. associated(mesh_ % upper_right) .and. &
+         .not. associated(mesh_ % width)) then
+       message = "Must specify either <upper_right> and <width> on a &
+            &tally mesh."
+       call fatal_error()
+    end if
 
-    ! add mesh to dictionary
+    if (associated(mesh_ % width)) then
+       ! Check to ensure width has same dimensions
+       if (size(mesh_ % width) /= size(mesh_ % lower_left)) then
+          message = "Number of entries on <width> must be the same as the &
+               &number of entries on <lower_left>."
+          call fatal_error()
+       end if
+
+       ! Check for negative widths
+       if (any(mesh_ % width < ZERO)) then
+          message = "Cannot have a negative <width> on a tally mesh."
+          call fatal_error()
+       end if
+
+       ! Set width and upper right coordinate
+       m % width = mesh_ % width
+       m % upper_right = m % lower_left + m % dimension * m % width
+
+    elseif (associated(mesh_ % upper_right)) then
+       ! Check to ensure width has same dimensions
+       if (size(mesh_ % upper_right) /= size(mesh_ % lower_left)) then
+          message = "Number of entries on <upper_right> must be the same as &
+               &the number of entries on <lower_left>."
+          call fatal_error()
+       end if
+
+       ! Check that upper-right is above lower-left
+       if (any(mesh_ % upper_right < mesh_ % lower_left)) then
+          message = "The <upper_right> coordinates must be greater than the &
+               &<lower_left> coordinates on a tally mesh."
+          call fatal_error()
+       end if
+
+       ! Set width and upper right coordinate
+       m % upper_right = mesh_ % upper_right
+       m % width = (m % upper_right - m % lower_left) / m % dimension
+    end if
+
+    ! Set volume fraction
+    m % volume_frac = ONE/real(product(m % dimension),8)
+
+    ! Add mesh to dictionary
     call dict_add_key(mesh_dict, m % id, n_user_meshes + 1)
 
     ! allocate tallies
     if (.not. allocated(tallies)) allocate(tallies(n_tallies))
 
     ! begin loop around tallies
-    do i = n_user_tallies+1,n_tallies
+    do i = n_user_tallies+1, n_tallies
 
       ! set n filters to 0
       n_filters = 0

@@ -86,7 +86,8 @@ contains
 
   subroutine preallocate_prod_matrix(this)
 
-    use global,  only: cmfd, cmfd_coremap
+    use constants,  only: CMFD_NOACCEL
+    use global,     only: cmfd, cmfd_coremap
 
     type(prod_operator) :: this
 
@@ -147,6 +148,16 @@ contains
 
       ! get location indices
       call matrix_to_indices(irow, g, i, j, k)
+
+      ! check if not including reflector
+      if (cmfd_coremap) then
+
+        ! check if at a reflector
+        if (cmfd % coremap(i,j,k) == CMFD_NOACCEL) then
+          cycle
+        end if
+
+      end if
 
       ! begin loop over off diagonal in-scattering
       NFISS: do h = 1, ng

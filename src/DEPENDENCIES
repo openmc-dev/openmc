@@ -13,6 +13,7 @@ ace.o: string.o
 ace_header.o: constants.o
 ace_header.o: endf_header.o
 
+cmfd_data.o: constants.o
 cmfd_data.o: global.o
 cmfd_data.o: mesh.o
 cmfd_data.o: mesh_header.o
@@ -24,6 +25,8 @@ cmfd_execute.o: cmfd_power_solver.o
 cmfd_execute.o: cmfd_snes_solver.o
 cmfd_execute.o: tally.o
 cmfd_execute.o: timing.o
+
+cmfd_header.o: constants.o
 
 cmfd_input.o: datatypes.o
 cmfd_input.o: error.o
@@ -38,6 +41,7 @@ cmfd_jacobian_operator.o: global.o
 cmfd_jacobian_operator.o: cmfd_loss_operator.o
 cmfd_jacobian_operator.o: cmfd_prod_operator.o
 
+cmfd_loss_operator.o: constants.o
 cmfd_loss_operator.o: global.o
 
 cmfd_message_passing.o: cmfd_header.o
@@ -53,6 +57,7 @@ cmfd_output.o: timing.o
 cmfd_power_solver.o: cmfd_loss_operator.o
 cmfd_power_solver.o: cmfd_prod_operator.o
 
+cmfd_prod_operator.o: constants.o
 cmfd_prod_operator.o: global.o
 
 cmfd_snes_solver.o: cmfd_jacobian_operator.o

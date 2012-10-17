@@ -342,6 +342,9 @@ module global
   ! batch to last flush before active batches
   integer :: cmfd_act_flush = 0
 
+  ! compute effective downscatter cross section
+  logical :: cmfd_downscatter = .false.
+
   ! convergence monitoring
   logical :: cmfd_snes_monitor  = .false.
   logical :: cmfd_ksp_monitor   = .false.

@@ -469,7 +469,7 @@ contains
 
   subroutine compute_dtilde()
 
-    use constants,  only: CMFD_NOACCEL
+    use constants,  only: CMFD_NOACCEL, ZERO_FLUX, TINY_BIT
     use global,     only: cmfd, cmfd_coremap
 
     integer :: nx                 ! maximum number of cells in x direction
@@ -546,7 +546,7 @@ contains
                &         (1-albedo(l))*cell_hxyz(xyz_idx))
 
                 ! check for zero flux
-                if (albedo(l) - 999.0_8 < 1.e-8_8) dtilde = 2*cell_dc/cell_hxyz(xyz_idx)
+                if (albedo(l) - ZERO_FLUX < TINY_BIT) dtilde = 2*cell_dc/cell_hxyz(xyz_idx)
 
               else  ! not a boundary
 
@@ -562,7 +562,7 @@ contains
                 if (cmfd_coremap) then
 
                   if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) ==   &
-                 &    99999 .and. cmfd % coremap(i,j,k) /= 99999) then
+                 &    CMFD_NOACCEL .and. cmfd % coremap(i,j,k) /= CMFD_NOACCEL) then
 
                     ! get albedo
                     ref_albedo = get_reflector_albedo(l,g,i,j,k)
@@ -758,7 +758,8 @@ contains
 
   function get_reflector_albedo(l, g, i, j, k)
 
-    use global, only: cmfd, cmfd_hold_weights
+    use constants,  only: ALBEDO_REJECT
+    use global,     only: cmfd, cmfd_hold_weights
 
     real(8) :: get_reflector_albedo ! reflector albedo
     integer :: i                    ! iteration counter for x
@@ -780,7 +781,7 @@ contains
     ! calculate albedo
     if ((shift_idx ==  1 .and. (current(2*l  )-0.0_8) < 1.0e-10_8) .or.           &
         (shift_idx == -1 .and. (current(2*l-1)-0.0_8) < 1.0e-10_8)) then
-      albedo = 999.0_8
+      albedo = ALBEDO_REJECT 
       cmfd_hold_weights = .true. 
     else
       albedo = (current(2*l-1)/current(2*l))**(shift_idx)

@@ -355,7 +355,7 @@ contains
 
   subroutine neutron_balance(uid)
 
-    use constants,    only: ONE, CMFD_NOACCEL
+    use constants,    only: ONE, CMFD_NOACCEL, CMFD_NORES
     use global,       only: cmfd, keff
 
     integer :: nx                ! number of mesh cells in x direction
@@ -399,7 +399,7 @@ contains
             ! check for active mesh
             if (allocated(cmfd%coremap)) then
               if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) then
-                cmfd%resnb(g,i,j,k) = 99999.0
+                cmfd%resnb(g,i,j,k) = CMFD_NORES
                 cycle
               end if
             end if
@@ -829,7 +829,7 @@ contains
   subroutine fix_neutron_balance()
 
     use constants,  only: ONE, ZERO, CMFD_NOACCEL
-    use global,     only: cmfd, cmfd_balance, keff
+    use global,     only: cmfd, keff
     use, intrinsic :: ISO_FORTRAN_ENV
 
     integer :: nx                ! number of mesh cells in x direction
@@ -857,9 +857,6 @@ contains
     real(8) :: siga1             ! group 1 abs xs
     real(8) :: siga2             ! group 2 abs xs
     real(8) :: sigs12_eff        ! effective downscatter xs
-
-    ! check for balance
-    if (.not. cmfd_balance) return
 
     ! extract spatial and energy indices from object
     nx = cmfd % indices(1)

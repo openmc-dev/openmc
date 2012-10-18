@@ -248,7 +248,7 @@ contains
 
   subroutine build_loss_matrix(this, adjoint)
 
-    use constants,  only: CMFD_NOACCEL
+    use constants,  only: CMFD_NOACCEL, ZERO
     use global,     only: cmfd, cmfd_coremap, cmfd_write_matrices
 
     type(loss_operator) :: this
@@ -313,7 +313,7 @@ contains
       if (allocated(cmfd%dhat)) then
         dhat = cmfd%dhat(:,g,i,j,k)
       else
-        dhat = 0.0_8
+        dhat = ZERO
       end if
 
       ! create boundary vector 

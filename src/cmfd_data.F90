@@ -53,16 +53,16 @@ contains
 
   subroutine compute_xs()
 
-    use constants,         only: FILTER_MESH, FILTER_ENERGYIN, FILTER_ENERGYOUT&
-                                 , SURF_FILTER_ENERGYIN, SURF_FILTER_SURFACE,  &
-                                 IN_RIGHT, OUT_RIGHT, IN_FRONT, OUT_FRONT,     &
-                                 IN_TOP, OUT_TOP, N_FILTER_TYPES, CMFD_NOACCEL
-    use global,            only: cmfd, message, n_user_tallies, n_tallies,     &
-                                 tallies, meshes
-    use error,             only: fatal_error
-    use mesh,              only: mesh_indices_to_bin
-    use mesh_header,       only: StructuredMesh
-    use tally_header,      only: TallyObject, TallyScore 
+    use constants,    only: FILTER_MESH, FILTER_ENERGYIN, FILTER_ENERGYOUT,     &
+                            SURF_FILTER_ENERGYIN, SURF_FILTER_SURFACE, IN_RIGHT,&
+                            OUT_RIGHT, IN_FRONT, OUT_FRONT, IN_TOP, OUT_TOP,    &
+                            N_FILTER_TYPES, CMFD_NOACCEL, ZERO, ONE
+    use error,        only: fatal_error
+    use global,       only: cmfd, message, n_user_tallies, n_tallies, tallies,  &
+                            meshes
+    use mesh,         only: mesh_indices_to_bin
+    use mesh_header,  only: StructuredMesh
+    use tally_header, only: TallyObject, TallyScore 
 
     integer :: nx                   ! number of mesh cells in x direction
     integer :: ny                   ! number of mesh cells in y direction
@@ -90,8 +90,8 @@ contains
     ng = cmfd % indices(4)
 
     ! set flux object and source distribution to all zeros
-    cmfd % flux = 0.0_8
-    cmfd % openmc_src = 0.0_8
+    cmfd % flux = ZERO
+    cmfd % openmc_src = ZERO
 
     ! associate tallies and mesh
     t => tallies(n_user_tallies + 1) 
@@ -165,8 +165,8 @@ contains
                 cmfd % diffusion(h,i,j,k) = t % scores(4,score_index) % sum / flux
 
                 ! calculate diffusion coefficient
-!               cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*cmfd%totalxs(h,i,j,k))
-                cmfd % diffcof(h,i,j,k) = 1.0_8/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
+!               cmfd % diffcof(h,i,j,k) = ONE/(3.0_8*cmfd%totalxs(h,i,j,k))
+                cmfd % diffcof(h,i,j,k) = ONE/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
                      cmfd % p1scattxs(h,i,j,k)))
 !               cmfd % diffcof(h,i,j,k) = cmfd % diffusion(h,i,j,k)
 
@@ -355,7 +355,7 @@ contains
 
   subroutine neutron_balance(uid)
 
-    use constants,    only: ONE, CMFD_NOACCEL
+    use constants,    only: ONE, ZERO, CMFD_NOACCEL
     use global,       only: cmfd, keff
 
     integer :: nx           ! number of mesh cells in x direction
@@ -376,7 +376,7 @@ contains
     real(8) :: res          ! residual of neutron balance
 
     ! check if keff is close to 0 (happens on first active batch)
-    if (keff - 0.0_8 < 1e-8_8) return
+    if (keff < 1e-8_8) return
 
     ! extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -405,7 +405,7 @@ contains
             end if
 
             ! get leakage
-            leakage = 0.0_8
+            leakage = ZERO
             LEAK: do l = 1, 3
 
               leakage = leakage + ((cmfd % current(4*l,g,i,j,k) - &
@@ -419,8 +419,8 @@ contains
             interactions = cmfd % totalxs(g,i,j,k) * cmfd % flux(g,i,j,k)
 
             ! get scattering and fission
-            scattering = 0.0_8
-            fission = 0.0_8
+            scattering = ZERO
+            fission = ZERO
             GROUPH: do h = 1, ng
 
               scattering = scattering + cmfd % scattxs(h,g,i,j,k) * &
@@ -611,7 +611,7 @@ contains
 
   subroutine compute_dhat()
 
-    use constants,  only: CMFD_NOACCEL
+    use constants,  only: CMFD_NOACCEL, ZERO
     use global,     only: cmfd, cmfd_coremap
 
     integer :: nx                 ! maximum number of cells in x direction
@@ -732,14 +732,14 @@ contains
 !             if ((abs(current(2*l)-current(2*l-1)) < 1e-8_8).and.xyz_idx/=3) then
 !               print *,'Zero net current interface',g,i,j,k
 !               print *,current(2*l),current(2*l-1),net_current
-!               dhat = 0.0_8
+!               dhat = ZERO
 !             end if
 
               ! record dhat in cmfd object
               cmfd%dhat(l,g,i,j,k) = dhat
 
               ! check for dhat reset
-              if (dhat_reset) cmfd%dhat(l,g,i,j,k) = 0.0_8
+              if (dhat_reset) cmfd%dhat(l,g,i,j,k) = ZERO
 
             end do LEAK
 
@@ -780,8 +780,8 @@ contains
     shift_idx = -2*mod(l,2) + 1          ! shift neig by -1 or +1
 
     ! calculate albedo
-    if ((shift_idx ==  1 .and. (current(2*l  )-0.0_8) < 1.0e-10_8) .or. &
-        (shift_idx == -1 .and. (current(2*l-1)-0.0_8) < 1.0e-10_8)) then
+    if ((shift_idx ==  1 .and. current(2*l  ) < 1.0e-10_8) .or. &
+        (shift_idx == -1 .and. current(2*l-1) < 1.0e-10_8)) then
       albedo = ALBEDO_REJECT 
       cmfd_hold_weights = .true. 
     else

@@ -201,7 +201,7 @@ contains
 
   subroutine calc_fission_source()
 
-    use constants,  only: CMFD_NOACCEL
+    use constants,  only: CMFD_NOACCEL, ZERO, TWO
     use global,     only: cmfd, cmfd_coremap, master, mpi_err, entropy_on
 
     integer :: nx ! maximum number of cells in x direction
@@ -229,7 +229,7 @@ contains
     if (.not. allocated(cmfd%cmfd_src)) allocate(cmfd%cmfd_src(ng,nx,ny,nz))
 
     ! reset cmfd source to 0
-    cmfd%cmfd_src = 0.0_8
+    cmfd%cmfd_src = ZERO
 
     ! only perform for master
     if (master) then
@@ -281,15 +281,15 @@ contains
         if (.not.allocated(source)) allocate(source(ng,nx,ny,nz))
 
         ! initialize the source
-        source = 0.0_8
+        source = ZERO
 
         ! compute log
-        where (cmfd%cmfd_src > 0.0_8)
-          source = cmfd%cmfd_src*log(cmfd%cmfd_src)/log(2.0_8)
+        where (cmfd%cmfd_src > ZERO)
+          source = cmfd%cmfd_src*log(cmfd%cmfd_src)/log(TWO)
         end where
 
         ! sum that source
-        cmfd%entropy = -1.0_8*sum(source)
+        cmfd%entropy = -sum(source)
 
         ! deallocate tmp array
         if (allocated(source)) deallocate(source)
@@ -312,6 +312,7 @@ contains
 
   subroutine cmfd_reweight(new_weights)
 
+    use constants,   only: ZERO, ONE
     use error,       only: warning, fatal_error
     use global,      only: n_particles, meshes, source_bank, work,             &
                            n_user_meshes, message, cmfd, master, mpi_err
@@ -350,7 +351,7 @@ contains
     end if
     if (.not.allocated(cmfd%weightfactors)) then 
       allocate(cmfd%weightfactors(ng,nx,ny,nz))
-      cmfd % weightfactors = 1.0_8
+      cmfd % weightfactors = ONE
     end if
 
     ! allocate energy grid and reverse cmfd energy grid
@@ -361,7 +362,7 @@ contains
     if (new_weights) then
 
       ! zero out weights
-      cmfd%weightfactors = 0.0_8
+      cmfd%weightfactors = ZERO
 
       ! count bank sites in mesh
       call count_bank_sites(m, source_bank, cmfd%sourcecounts, egrid, &
@@ -369,7 +370,7 @@ contains
 
       ! have master compute weight factors
       if (master) then
-        where(cmfd%cmfd_src > 0.0_8 .and. cmfd%sourcecounts > 0.0_8)
+        where(cmfd%cmfd_src > ZERO .and. cmfd%sourcecounts > ZERO)
           cmfd%weightfactors = cmfd%cmfd_src/sum(cmfd%cmfd_src)* &
                                sum(cmfd%sourcecounts) / cmfd%sourcecounts
         end where
@@ -427,7 +428,7 @@ contains
 
   function get_matrix_idx(g, i, j, k, ng, nx, ny) result (matidx)
 
-    use global, only: cmfd,cmfd_coremap
+    use global, only: cmfd, cmfd_coremap
 
     integer :: matidx ! the index location in matrix
     integer :: i      ! current x index

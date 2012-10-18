@@ -312,7 +312,6 @@ contains
     real(8)     :: norm_n         ! L2 norm of new source
     real(8)     :: norm_o         ! L2 norm of old source
     integer     :: ierr           ! petsc error code
-    integer     :: n              ! vector size
 
     ! reset convergence flag
     iconv = .false.

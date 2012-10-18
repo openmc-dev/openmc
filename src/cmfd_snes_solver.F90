@@ -135,8 +135,6 @@ contains
 
     use global,  only: cmfd_snes_monitor, n_procs_cmfd
 
-    character(LEN=20) :: snestype, ksptype, pctype
-
     ! turn on mf_operator option
     call PetscOptionsSetValue("-snes_mf_operator", "TRUE", ierr)
 

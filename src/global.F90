@@ -363,7 +363,7 @@ module global
   logical :: cmfd_tally_on       = .true. 
 
   ! tolerance on keff to run cmfd
-  real :: cmfd_keff_tol = 0.005
+  real(8) :: cmfd_keff_tol = 0.005_8
 
   ! Information about state points to be written
   integer :: n_state_points = 0

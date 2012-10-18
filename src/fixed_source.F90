@@ -9,7 +9,7 @@ module fixed_source
                          copy_source_attributes
   use state_point, only: write_state_point
   use string,      only: to_str
-  use tally,       only: synchronize_tallies, setup_active_tallies
+  use tally,       only: synchronize_tallies, setup_active_usertallies
   use timing,      only: timer_start, timer_stop
 
 #ifdef HDF5
@@ -32,7 +32,7 @@ contains
 
     ! Turn timer and tallies on
     tallies_on = .true.
-    call setup_active_tallies()
+    call setup_active_usertallies()
     call timer_start(time_active)
 
     ! ==========================================================================

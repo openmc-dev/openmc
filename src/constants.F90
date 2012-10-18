@@ -363,5 +363,21 @@ module constants
   integer, parameter :: UNIT_XS      = 14 ! unit # for writing xs summary file
   integer, parameter :: UNIT_SOURCE  = 15 ! unit # for writing source file
   integer, parameter :: UNIT_STATE   = 16 ! unit # for writing state point
+  integer, parameter :: CMFD_BALANCE = 17 ! unit # for writing cmfd balance file
+
+  !=============================================================================
+  ! CMFD CONSTANTS
+
+  ! for non-accelerated regions on coarse mesh overlay
+  integer, parameter :: CMFD_NOACCEL = 99999
+
+  ! constant to represent a zero flux "albedo"
+  real(8), parameter :: ZERO_FLUX = 999.0_8
+
+  ! constant to represent albedo rejection
+  real(8), parameter :: ALBEDO_REJECT = 999.0_8
+
+  ! constant for writing out no residual
+  real(8), parameter :: CMFD_NORES = 99999.0_8
 
 end module constants

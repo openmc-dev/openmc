@@ -1,5 +1,8 @@
 module finalize
 
+# ifdef PETSC
+  use cmfd_output,    only: finalize_cmfd
+# endif
   use global
   use output,         only: print_runtime
   use tally,          only: write_tallies, tally_statistics
@@ -30,10 +33,15 @@ contains
     if (run_mode /= MODE_PLOTTING) then
        if (output_tallies) then
           ! Calculate statistics for tallies and write to tallies.out
-          call tally_statistics()
+          if (master) call tally_statistics()
           if (master) call write_tallies()
        end if
     end if
+
+# ifdef PETSC
+    ! finalize cmfd
+    if (cmfd_run) call finalize_cmfd()
+# endif
 
     ! stop timers and show timing statistics
     call timer_stop(time_finalize)

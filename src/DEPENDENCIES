@@ -13,6 +13,78 @@ ace.o: string.o
 ace_header.o: constants.o
 ace_header.o: endf_header.o
 
+cmfd_data.o: cmfd_header.o
+cmfd_data.o: constants.o
+cmfd_data.o: error.o
+cmfd_data.o: global.o
+cmfd_data.o: mesh.o
+cmfd_data.o: mesh_header.o
+cmfd_data.o: tally_header.o
+
+cmfd_execute.o: constants.o
+cmfd_execute.o: cmfd_data.o
+cmfd_execute.o: cmfd_output.o
+cmfd_execute.o: cmfd_message_passing.o
+cmfd_execute.o: cmfd_power_solver.o
+cmfd_execute.o: cmfd_snes_solver.o
+cmfd_execute.o: error.o
+cmfd_execute.o: global.o
+cmfd_execute.o: mesh_header.o
+cmfd_execute.o: mesh.o
+cmfd_execute.o: search.o
+cmfd_execute.o: tally.o
+cmfd_execute.o: timing.o
+
+cmfd_header.o: constants.o
+
+cmfd_input.o: datatypes.o
+cmfd_input.o: error.o
+cmfd_input.o: global.o
+cmfd_input.o: hdf5_interface.o
+cmfd_input.o: mesh_header.o
+cmfd_input.o: string.o
+cmfd_input.o: tally_header.o
+cmfd_input.o: templates/cmfd_t.o
+
+cmfd_jacobian_operator.o: constants.o
+cmfd_jacobian_operator.o: global.o
+cmfd_jacobian_operator.o: cmfd_loss_operator.o
+cmfd_jacobian_operator.o: cmfd_prod_operator.o
+
+cmfd_loss_operator.o: constants.o
+cmfd_loss_operator.o: global.o
+
+cmfd_message_passing.o: cmfd_header.o
+cmfd_message_passing.o: global.o
+cmfd_message_passing.o: timing.o
+
+cmfd_output.o: cmfd_data.o
+cmfd_output.o: global.o
+cmfd_output.o: mesh_header.o
+cmfd_output.o: string.o
+cmfd_output.o: timing.o
+
+cmfd_power_solver.o: constants.o
+cmfd_power_solver.o: cmfd_loss_operator.o
+cmfd_power_solver.o: cmfd_prod_operator.o
+cmfd_power_solver.o: global.o
+cmfd_power_solver.o: string.o
+
+cmfd_prod_operator.o: constants.o
+cmfd_prod_operator.o: global.o
+
+cmfd_slepc_solver.o: constants.o
+cmfd_slepc_solver.o: cmfd_loss_operator.o
+cmfd_slepc_solver.o: cmfd_prod_operator.o
+cmfd_slepc_solver.o: global.o
+cmfd_slepc_solver.o: timing.o
+
+cmfd_snes_solver.o: cmfd_jacobian_operator.o
+cmfd_snes_solver.o: cmfd_loss_operator.o
+cmfd_snes_solver.o: cmfd_prod_operator.o
+cmfd_snes_solver.o: constants.o
+cmfd_snes_solver.o: global.o
+
 cross_section.o: ace_header.o
 cross_section.o: constants.o
 cross_section.o: error.o
@@ -87,6 +159,7 @@ geometry.o: tally.o
 
 global.o: ace_header.o
 global.o: bank_header.o
+global.o: cmfd_header.o
 global.o: constants.o
 global.o: datatypes_header.o
 global.o: geometry_header.o
@@ -129,6 +202,7 @@ initialize.o: tally.o
 initialize.o: tally_header.o
 initialize.o: timing.o
 
+input_xml.o: cmfd_input.o
 input_xml.o: constants.o
 input_xml.o: datatypes.o
 input_xml.o: error.o
@@ -166,6 +240,10 @@ interpolation.o: global.o
 interpolation.o: search.o
 interpolation.o: string.o
 
+logging.o: constants.o
+logging.o: global.o
+
+main.o: cmfd_execute.o
 main.o: constants.o
 main.o: criticality.o
 main.o: finalize.o
@@ -230,6 +308,9 @@ plot.o: ppmlib.o
 plot.o: source.o
 plot.o: string.o
 
+random_lcg.o: global.o
+
+search.o: constants.o
 search.o: error.o
 search.o: global.o
 

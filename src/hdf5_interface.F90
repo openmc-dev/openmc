@@ -935,6 +935,10 @@ contains
        call h5gcreate_f(tallies_group, "tally " // to_str(t % id), &
             temp_group, hdf5_err)
 
+       ! Write number of realizations
+       call hdf5_make_integer(temp_group, "n_realizations", &
+            t % n_realizations)
+
        ! Write size of each tally
        call hdf5_make_integer(temp_group, "n_filter_bins", size(t % scores, 1))
        call hdf5_make_integer(temp_group, "n_total_score_bins", &
@@ -1042,6 +1046,9 @@ contains
        call h5gclose_f(temp_group, hdf5_err)
     end do TALLY_METADATA
 
+    ! Write number of realizations for global tallies
+    call hdf5_make_integer(hdf5_state_point, "n_realizations", n_realizations)
+
     ! Write out global tallies sum and sum_sq
     call hdf5_make_integer(hdf5_state_point, "n_global_tallies", &
          N_GLOBAL_TALLIES)
@@ -1059,9 +1066,6 @@ contains
     if (tallies_on) then
        ! Indicate that tallies are on
        call hdf5_make_integer(tallies_group, "tallies_present", 1)
-
-       ! Write number of realizations
-       call hdf5_make_integer(tallies_group, "n_realizations", n_realizations)
 
        ! Write tally sum and sum_sq
        TALLY_SCORES: do i = 1, n_tallies

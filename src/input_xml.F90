@@ -1,5 +1,6 @@
 module input_xml
 
+  use cmfd_input,      only: configure_cmfd
   use constants
   use datatypes,       only: dict_add_key, dict_has_key, dict_get_key
   use error,           only: fatal_error, warning
@@ -32,6 +33,7 @@ contains
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
+    if (cmfd_run) call configure_cmfd()
 
   end subroutine read_input_xml
 
@@ -514,6 +516,17 @@ contains
              output_tallies = .true.
           end select
        end do
+    end if
+
+    ! check for cmfd run
+    if (run_cmfd_) then
+      cmfd_run = .true.
+#     ifndef PETSC
+        if (master) then
+          message = 'CMFD is not available, compile OpenMC with PETSc'
+          call fatal_error()
+        end if
+#     endif
     end if
 
   end subroutine read_settings_xml
@@ -1203,10 +1216,12 @@ contains
        n_user_meshes = 0
     else
        n_user_meshes = size(mesh_)
+       if (cmfd_run) then
+         n_meshes = n_user_meshes + n_cmfd_meshes
+       else
+         n_meshes = n_user_meshes
+       end if
     end if
-
-    ! Add in other meshes here besides user-defined meshes
-    n_meshes = n_user_meshes
 
     ! Allocate mesh array
     if (n_meshes > 0) allocate(meshes(n_meshes))
@@ -1218,10 +1233,12 @@ contains
        call warning()
     else
        n_user_tallies = size(tally_)
+       if (cmfd_run) then
+         n_tallies = n_user_tallies + n_cmfd_tallies
+       else
+         n_tallies = n_user_tallies
+       end if
     end if
-
-    ! Add in other tallies here besides user-defined tallies
-    n_tallies = n_user_tallies
 
     ! Allocate tally array
     if (n_tallies > 0) allocate(tallies(n_tallies))
@@ -1754,10 +1771,16 @@ contains
        end if
     end do
 
-    ! Add in other tallies besides user-defined tallies
-    n_analog_tallies = n_user_analog_tallies
-    n_tracklength_tallies = n_user_tracklength_tallies
-    n_current_tallies = n_user_current_tallies
+    ! Determine number of types of tallies
+    if (cmfd_run) then
+      n_analog_tallies = n_user_analog_tallies + n_cmfd_analog_tallies
+      n_tracklength_tallies = n_user_tracklength_tallies + n_cmfd_tracklength_tallies
+      n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies
+    else
+      n_analog_tallies = n_user_analog_tallies
+      n_tracklength_tallies = n_user_tracklength_tallies
+      n_current_tallies = n_user_current_tallies
+    end if
 
     ! Allocate list of pointers for tallies by type
     allocate(analog_tallies(n_analog_tallies))

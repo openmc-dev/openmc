@@ -32,10 +32,15 @@ To compile with support for HDF5_ output (highly recommended), you will need to
 have HDF5 installed on your computer. The installed version will need to have
 been compiled with the same compiler you intend to compile OpenMC with.
 
+To enable CMFD acceleration, you will need to have PETSc_ installed on your
+computer. The installed version will need to have been compiled with the same
+compiler you intend to compile OpenMC with.
+
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
 .. _OpenMPI: http://www.open-mpi.org
 .. _MPICH2: http://www.mcs.anl.gov/mpi/mpich/
 .. _HDF5: http://www.hdfgroup.org/HDF5/
+.. _PETSc: http://www.mcs.anl.gov/petsc/
 
 --------------------
 Obtaining the Source

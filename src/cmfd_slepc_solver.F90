@@ -31,8 +31,8 @@ contains
 
   subroutine cmfd_slepc_execute()
 
-    use timing
     use global, only:time_cmfd,master
+    use timing
 
 call timer_start(time_cmfd)
     ! initialize data
@@ -141,7 +141,8 @@ call timer_start(time_cmfd)
 
   subroutine extract_results()
 
-    use global, only: cmfd, path_input, master
+    use constants, only: ZERO
+    use global,    only: cmfd, path_input, master
 
     integer              :: n         ! problem size
     integer              :: i_eig = 0 ! eigenvalue to extract
@@ -159,7 +160,7 @@ call timer_start(time_cmfd)
     if (.not. allocated(mybuf)) allocate(mybuf(n))
 
     ! zero out cmfd object
-    cmfd%phi = 0.0_8
+    cmfd%phi = ZERO
 
     ! extract run information
     call EPSGetEigenpair(eps, i_eig, keff, PETSC_NULL, phi, PETSC_NULL_OBJECT, ierr)
@@ -176,7 +177,7 @@ call timer_start(time_cmfd)
     cmfd%keff = keff
 
     ! reduce result to master
-    mybuf = 0.0_8
+    mybuf = ZERO
     call MPI_ALLREDUCE(cmfd%phi, mybuf, n, MPI_REAL8, MPI_SUM, &
          PETSC_COMM_WORLD, ierr)
 

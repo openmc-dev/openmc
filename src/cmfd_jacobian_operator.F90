@@ -169,6 +169,7 @@ contains
 
   subroutine build_jacobian_matrix(snes,x,jac,jac_prec,flag,ctx,ierr)
 
+    use constants,    only: ZERO, ONE
     use global,       only: n_procs_cmfd, cmfd_write_matrices, rank
 
     SNES            :: snes      ! the snes context
@@ -213,7 +214,7 @@ contains
     if (.not. allocated(vals)) allocate(vals(&
          maxval(ctx%loss%d_nnz + ctx%loss%o_nnz)))
     cols = 0
-    vals = 0.0_8
+    vals = ZERO
 
     ! get pointers to residual vector 
     call VecGetArrayF90(x, xptr, ierr)
@@ -227,7 +228,7 @@ contains
     call MPI_BCAST(lambda, 1, MPI_REAL8, n_procs_cmfd-1, PETSC_COMM_WORLD, ierr)
 
     ! compute math (M-lambda*F) M is overwritten here
-    call MatAXPY(ctx%loss%M, -1.0_8*lambda, ctx%prod%F, &
+    call MatAXPY(ctx%loss%M, -lambda, ctx%prod%F, &
          DIFFERENT_NONZERO_PATTERN, ierr)
 
     ! create tmp petsc vector for source
@@ -236,7 +237,7 @@ contains
 
     ! perform math (-F*phi --> source)
     call MatMult(ctx%prod%F, phi, source, ierr)
-    call VecScale(source, -1.0_8, ierr)
+    call VecScale(source, -ONE, ierr)
 
     ! get pointer to source
     call VecGetArrayF90(source, sptr, ierr)
@@ -283,10 +284,10 @@ contains
 
     ! set values in last row of matrix
     if (rank == n_procs_cmfd - 1) then
-      phi_tmp = -1.0_8*phi_tmp ! negate the transpose
+      phi_tmp = -phi_tmp ! negate the transpose
       call MatSetValues(jac_prec, 1, n, n, (/(k,k=0,n-1)/), phi_tmp, &
            INSERT_VALUES, ierr)
-      call MatSetValue(jac_prec, n, n, 1.0_8, INSERT_VALUES, ierr)
+      call MatSetValue(jac_prec, n, n, ONE, INSERT_VALUES, ierr)
     end if
 
     ! assemble matrix

@@ -72,7 +72,8 @@ contains
 
   subroutine init_data()
 
-    use global,       only: cmfd, n_procs_cmfd, rank
+    use constants, only: ONE
+    use global,    only: cmfd, n_procs_cmfd, rank
 
     integer              :: k         ! implied do counter
     integer              :: n         ! problem size
@@ -114,9 +115,9 @@ contains
     if (rank == n_procs_cmfd - 1) then
       call VecGetArrayF90(xvec, xptr, ierr)
       if (adjoint_calc) then
-        xptr(size(xptr)) = 1.0_8/cmfd%adj_keff
+        xptr(size(xptr)) = ONE/cmfd%adj_keff
       else
-        xptr(size(xptr)) = 1.0_8/cmfd%keff
+        xptr(size(xptr)) = ONE/cmfd%keff
       end if
       call VecRestoreArrayF90(xvec, xptr, ierr)
     end if
@@ -296,7 +297,7 @@ contains
     ! calculate flux part of residual vector
     call MatMult(ctx%loss%M, phi, phiM, ierr)
     call MatMult(ctx%prod%F, phi, rphi, ierr)
-    call VecAYPX(rphi, -1.0_8*lambda, phiM, ierr)
+    call VecAYPX(rphi, -lambda, phiM, ierr)
 
     ! set eigenvalue part of residual vector
     call VecDot(phi, phi, reslamb, ierr)
@@ -382,7 +383,8 @@ contains
 
   subroutine extract_results()
 
-    use global,       only: cmfd, n_procs_cmfd, rank
+    use constants, only: ZERO, ONE
+    use global,    only: cmfd, n_procs_cmfd, rank
 
     integer              :: n         ! problem size
     integer              :: row_start ! local row start
@@ -417,7 +419,7 @@ contains
     end if
 
     ! reduce result to all 
-    mybuf = 0.0_8
+    mybuf = ZERO
     if (adjoint_calc) then
       call MPI_ALLREDUCE(cmfd%adj_phi, mybuf, n, MPI_REAL8, MPI_SUM, &
            PETSC_COMM_WORLD, ierr)
@@ -431,7 +433,7 @@ contains
     if(allocated(mybuf)) deallocate(mybuf)
 
     ! save eigenvalue
-    if(rank == n_procs_cmfd - 1) keff = 1.0_8 / xptr(size(xptr))
+    if(rank == n_procs_cmfd - 1) keff = ONE / xptr(size(xptr))
     if (adjoint_calc) then
       cmfd%adj_keff = keff
       call MPI_BCAST(cmfd%adj_keff, 1, MPI_REAL8, n_procs_cmfd-1, &

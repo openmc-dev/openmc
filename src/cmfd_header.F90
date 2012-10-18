@@ -1,6 +1,6 @@
 module cmfd_header 
 
-  use constants,  only: CMFD_NOACCEL
+  use constants,  only: CMFD_NOACCEL, ZERO, ONE
 
   implicit none
   private
@@ -57,17 +57,17 @@ module cmfd_header
 
     ! eigenvector/eigenvalue from cmfd run
     real(8), allocatable :: phi(:)
-    real(8) :: keff = 0.0_8
+    real(8) :: keff = ZERO
 
     ! eigenvector/eigenvalue from adjoint run
     real(8), allocatable :: adj_phi(:)
-    real(8) :: adj_keff = 0.0_8
+    real(8) :: adj_keff = ZERO
 
     ! residual for neutron balance
     real(8), allocatable :: resnb(:,:,:,:)
 
     ! openmc source normalization factor
-    real(8) :: norm = 1.0_8
+    real(8) :: norm = ONE
 
     ! Shannon entropy from cmfd fission source
     real(8) :: entropy 
@@ -123,21 +123,21 @@ contains
     if (.not. allocated(this % weightfactors)) allocate(this % weightfactors(ng,nx,ny,nz))
 
     ! set everthing to 0 except weight multiply factors if feedback isnt on
-    this % flux          = 0.0_8
-    this % totalxs       = 0.0_8
-    this % p1scattxs     = 0.0_8
-    this % scattxs       = 0.0_8
-    this % nfissxs       = 0.0_8
-    this % diffcof       = 0.0_8
-    this % diffusion     = 0.0_8
-    this % dtilde        = 0.0_8
-    this % dhat          = 0.0_8
-    this % hxyz          = 0.0_8
-    this % current       = 0.0_8
-    this % cmfd_src      = 0.0_8
-    this % openmc_src    = 0.0_8
-    this % sourcecounts  = 0.0_8
-    this % weightfactors = 1.0_8
+    this % flux          = ZERO
+    this % totalxs       = ZERO
+    this % p1scattxs     = ZERO
+    this % scattxs       = ZERO
+    this % nfissxs       = ZERO
+    this % diffcof       = ZERO
+    this % diffusion     = ZERO
+    this % dtilde        = ZERO
+    this % dhat          = ZERO
+    this % hxyz          = ZERO
+    this % current       = ZERO
+    this % cmfd_src      = ZERO
+    this % openmc_src    = ZERO
+    this % sourcecounts  = ZERO
+    this % weightfactors = ONE
 
   end subroutine allocate_cmfd
 

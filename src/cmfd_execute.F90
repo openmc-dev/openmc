@@ -69,7 +69,7 @@ contains
       if (cmfd_feedback) call cmfd_reweight(.false.)
       leave_cmfd = .true. 
     end if
-    call MPI_BCAST(leave_cmfd,1,MPI_LOGICAL,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(leave_cmfd, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, mpi_err)
     if (leave_cmfd) return
 
     ! filter processors (lowest PETSc group)
@@ -103,14 +103,15 @@ contains
 
     ! check to hold weights
     if ((abs(cmfd%keff-keff)/keff > cmfd_keff_tol)) then
-      if (current_batch >= cmfd_inact_flush(1) .or. current_batch >= cmfd_act_flush - 1 ) then
+      if (current_batch >= cmfd_inact_flush(1) .or. &
+           current_batch >= cmfd_act_flush - 1 ) then
         message = 'Not Modifying Weights - keff %diff > 0.005, up batch size'
         call warning() 
         if (cmfd_feedback) call cmfd_reweight(.false.)
         leave_cmfd = .true.
       end if
     end if
-    call MPI_BCAST(leave_cmfd,1,MPI_LOGICAL,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(leave_cmfd, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, mpi_err)
     if (leave_cmfd) return
 
     ! calculate fission source
@@ -128,7 +129,7 @@ contains
     end if
 
     ! wait here for all procs
-    call MPI_Barrier(MPI_COMM_WORLD,mpi_err)
+    call MPI_Barrier(MPI_COMM_WORLD, mpi_err)
 
 # endif
 
@@ -185,10 +186,12 @@ contains
     use global,       only: cmfd_snes_monitor, cmfd_ksp_monitor, mpi_err
 
     ! check for snes monitor
-    if (cmfd_snes_monitor) call PetscOptionsSetValue("-snes_monitor","stdout",mpi_err)
+    if (cmfd_snes_monitor) call PetscOptionsSetValue("-snes_monitor", &
+         "stdout", mpi_err)
 
     ! check for ksp monitor
-    if (cmfd_ksp_monitor) call PetscOptionsSetValue("-ksp_monitor","stdout",mpi_err)
+    if (cmfd_ksp_monitor) call PetscOptionsSetValue("-ksp_monitor", &
+         "stdout", mpi_err)
 
     end subroutine process_cmfd_options
 
@@ -198,7 +201,7 @@ contains
 
   subroutine calc_fission_source()
 
-    use constants,  only: CMFD_NOACCEL
+    use constants,  only: CMFD_NOACCEL, ZERO, TWO
     use global,     only: cmfd, cmfd_coremap, master, mpi_err, entropy_on
 
     integer :: nx ! maximum number of cells in x direction
@@ -226,19 +229,19 @@ contains
     if (.not. allocated(cmfd%cmfd_src)) allocate(cmfd%cmfd_src(ng,nx,ny,nz))
 
     ! reset cmfd source to 0
-    cmfd%cmfd_src = 0.0_8
+    cmfd%cmfd_src = ZERO
 
     ! only perform for master
     if (master) then
 
       ! loop around indices to map to cmfd object
-      ZLOOP: do k = 1,nz
+      ZLOOP: do k = 1, nz
 
-        YLOOP: do j = 1,ny
+        YLOOP: do j = 1, ny
 
-          XLOOP: do i = 1,nx
+          XLOOP: do i = 1, nx
 
-            GROUP: do g = 1,ng
+            GROUP: do g = 1, ng
 
               ! check for core map
               if (cmfd_coremap) then
@@ -257,7 +260,8 @@ contains
               idx = get_matrix_idx(1,i,j,k,ng,nx,ny)
 
               ! compute fission source
-              cmfd%cmfd_src(g,i,j,k) = sum(cmfd%nfissxs(:,g,i,j,k)*cmfd%phi(idx:idx+(ng-1)))*vol
+              cmfd%cmfd_src(g,i,j,k) = sum(cmfd%nfissxs(:,g,i,j,k) * &
+                   cmfd%phi(idx:idx+(ng-1)))*vol
 
             end do GROUP
 
@@ -277,15 +281,15 @@ contains
         if (.not.allocated(source)) allocate(source(ng,nx,ny,nz))
 
         ! initialize the source
-        source = 0.0_8
+        source = ZERO
 
         ! compute log
-        where (cmfd%cmfd_src > 0.0_8)
-          source = cmfd%cmfd_src*log(cmfd%cmfd_src)/log(2.0_8)
+        where (cmfd%cmfd_src > ZERO)
+          source = cmfd%cmfd_src*log(cmfd%cmfd_src)/log(TWO)
         end where
 
         ! sum that source
-        cmfd%entropy = -1.0_8*sum(source)
+        cmfd%entropy = -sum(source)
 
         ! deallocate tmp array
         if (allocated(source)) deallocate(source)
@@ -298,7 +302,7 @@ contains
     end if
 
     ! broadcast full source to all procs
-    call MPI_BCAST(cmfd%cmfd_src,n,MPI_REAL8,0,MPI_COMM_WORLD,mpi_err)
+    call MPI_BCAST(cmfd%cmfd_src, n, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
 
   end subroutine calc_fission_source
 
@@ -308,6 +312,7 @@ contains
 
   subroutine cmfd_reweight(new_weights)
 
+    use constants,   only: ZERO, ONE
     use error,       only: warning, fatal_error
     use global,      only: n_particles, meshes, source_bank, work,             &
                            n_user_meshes, message, cmfd, master, mpi_err
@@ -346,7 +351,7 @@ contains
     end if
     if (.not.allocated(cmfd%weightfactors)) then 
       allocate(cmfd%weightfactors(ng,nx,ny,nz))
-      cmfd % weightfactors = 1.0_8
+      cmfd % weightfactors = ONE
     end if
 
     ! allocate energy grid and reverse cmfd energy grid
@@ -357,22 +362,23 @@ contains
     if (new_weights) then
 
       ! zero out weights
-      cmfd%weightfactors = 0.0_8
+      cmfd%weightfactors = ZERO
 
       ! count bank sites in mesh
-      call count_bank_sites(m,source_bank,cmfd%sourcecounts,egrid,sites_outside=outside)
+      call count_bank_sites(m, source_bank, cmfd%sourcecounts, egrid, &
+           sites_outside=outside)
 
       ! have master compute weight factors
       if (master) then
-        where(cmfd%cmfd_src > 0.0_8 .and. cmfd%sourcecounts > 0.0_8)
-          cmfd%weightfactors = cmfd%cmfd_src/sum(cmfd%cmfd_src)*               &
+        where(cmfd%cmfd_src > ZERO .and. cmfd%sourcecounts > ZERO)
+          cmfd%weightfactors = cmfd%cmfd_src/sum(cmfd%cmfd_src)* &
                                sum(cmfd%sourcecounts) / cmfd%sourcecounts
         end where
       end if
 
       ! broadcast weight factors to all procs
-      call MPI_BCAST(cmfd%weightfactors,ng*nx*ny*nz,MPI_REAL8,0,MPI_COMM_WORLD,  &
-     &               mpi_err)
+      call MPI_BCAST(cmfd%weightfactors, ng*nx*ny*nz, MPI_REAL8, 0, &
+           MPI_COMM_WORLD, mpi_err)
 
    end if
 
@@ -380,7 +386,7 @@ contains
     do i = 1, size(source_bank) ! int(work,4)
 
       ! determine spatial bin
-      call get_mesh_indices(m,source_bank(i)%xyz,ijk,in_mesh)
+      call get_mesh_indices(m, source_bank(i)%xyz, ijk, in_mesh)
 
       ! determine energy bin
       n_groups = size(cmfd%egrid) - 1
@@ -406,8 +412,8 @@ contains
       end if
 
       ! reweight particle
-      source_bank(i)%wgt = source_bank(i)%wgt *                                &
-     &                   cmfd%weightfactors(e_bin,ijk(1),ijk(2),ijk(3))
+      source_bank(i)%wgt = source_bank(i)%wgt * &
+           cmfd%weightfactors(e_bin,ijk(1),ijk(2),ijk(3))
 
     end do
 
@@ -420,18 +426,18 @@ contains
 ! GET_MATRIX_IDX takes (x,y,z,g) indices and computes location in matrix
 !===============================================================================
 
-  function get_matrix_idx(g,i,j,k,ng,nx,ny) result (matidx)
+  function get_matrix_idx(g, i, j, k, ng, nx, ny) result (matidx)
 
-    use global, only: cmfd,cmfd_coremap
+    use global, only: cmfd, cmfd_coremap
 
-    integer :: matidx          ! the index location in matrix
-    integer :: i               ! current x index
-    integer :: j               ! current y index
-    integer :: k               ! current z index
-    integer :: g               ! current group index
-    integer :: nx ! maximum number of cells in x direction
-    integer :: ny ! maximum number of cells in y direction
-    integer :: ng ! maximum number of energy groups
+    integer :: matidx ! the index location in matrix
+    integer :: i      ! current x index
+    integer :: j      ! current y index
+    integer :: k      ! current z index
+    integer :: g      ! current group index
+    integer :: nx     ! maximum number of cells in x direction
+    integer :: ny     ! maximum number of cells in y direction
+    integer :: ng     ! maximum number of energy groups
 
     ! check if coremap is used
     if (cmfd_coremap) then

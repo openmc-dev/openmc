@@ -103,6 +103,8 @@ contains
 
   subroutine init_data()
 
+    use constants, only: ONE
+
     integer :: n      ! problem size
     real(8) :: guess  ! initial guess
 
@@ -122,7 +124,7 @@ contains
     call VecCreateMPI(PETSC_COMM_WORLD, n, PETSC_DECIDE, S_o, ierr)
 
     ! set initial guess
-    guess = 1.0_8 
+    guess = ONE
     call VecSet(phi_n, guess, ierr)
     call VecSet(phi_o, guess, ierr)
     k_n = guess
@@ -248,9 +250,10 @@ contains
 
   subroutine execute_power_iter()
 
+    use constants, only: ONE
+
     real(8)     :: num       ! numerator for eigenvalue update
     real(8)     :: den       ! denominator for eigenvalue update
-    real(8)     :: one=1.0_8 ! one
     integer     :: i         ! iteration counter
 
     ! reset convergence flag
@@ -263,7 +266,7 @@ contains
       call MatMult(prod%F, phi_o, S_o, ierr)
 
       ! normalize source vector
-      call VecScale(S_o, one/k_o, ierr)
+      call VecScale(S_o, ONE/k_o, ierr)
 
       ! compute new flux vector
       call KSPSolve(krylov, S_o, phi_n, ierr)
@@ -339,6 +342,7 @@ contains
 
   subroutine extract_results()
 
+    use constants,        only: ZERO
     use global,           only: cmfd, n_procs_cmfd, cmfd_write_matrices
 
     integer              :: n         ! problem size
@@ -379,7 +383,7 @@ contains
     end if
 
     ! reduce result to all 
-    mybuf = 0.0_8
+    mybuf = ZERO
     if (adjoint_calc) then
       call MPI_ALLREDUCE(cmfd%adj_phi, mybuf, n, MPI_REAL8, MPI_SUM, &
            PETSC_COMM_WORLD, ierr)

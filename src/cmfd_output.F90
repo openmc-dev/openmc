@@ -16,10 +16,9 @@ contains
 
   subroutine finalize_cmfd() 
 
-    use global,                only: cmfd,                                     &
-                                     cmfd_write_balance, cmfd_write_hdf5,      &
-                                     master, mpi_err
-    use cmfd_header,           only: deallocate_cmfd
+    use global,      only: cmfd, cmfd_write_balance, cmfd_write_hdf5, &
+                           master, mpi_err
+    use cmfd_header, only: deallocate_cmfd
 
     ! finalize petsc
     call PetscFinalize(mpi_err)

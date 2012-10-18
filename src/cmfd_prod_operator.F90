@@ -203,9 +203,9 @@ contains
     integer :: h                  ! energy group when doing scattering
     integer :: hmat_idx           ! index in matrix for energy group h
     integer :: ierr               ! Petsc error code
-    integer :: row_start            ! the first local row on the processor
-    integer :: row_finish           ! the last local row on the processor
-    integer :: irow                 ! iteration counter over row
+    integer :: row_start          ! the first local row on the processor
+    integer :: row_finish         ! the last local row on the processor
+    integer :: irow               ! iteration counter over row
     real(8) :: nfissxs            ! nufission cross section h-->g
     real(8) :: val                ! temporary variable for nfissxs
 
@@ -276,10 +276,10 @@ contains
     use global,  only: cmfd, cmfd_coremap
 
     integer :: matidx         ! the index location in matrix
-    integer :: i               ! current x index
-    integer :: j               ! current y index
-    integer :: k               ! current z index
-    integer :: g               ! current group index
+    integer :: i              ! current x index
+    integer :: j              ! current y index
+    integer :: k              ! current z index
+    integer :: g              ! current group index
     
     ! check if coremap is used
     if (cmfd_coremap) then

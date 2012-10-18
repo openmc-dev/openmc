@@ -93,7 +93,7 @@ material, known as &#8220;cells&#8221;.</p>
 </div><p>can be modeled in OpenMC. For example, the equation for a sphere centered at
 <img class="math" src="../_images/math/044ccf810d8b9fed4efe9df70dc0e70667c10381.png" alt="(\bar{x},\bar{y},\bar{z})"/> and of radius <img class="math" src="../_images/math/eff43e84f8a3bcf7b6965f0a3248bc4d3a9d0cd4.png" alt="R"/> can be written as</p>
 <div class="section" id="universes">
-<h3>4.1.1. Universes<a class="headerlink" href="#universes" title="Permalink to this headline">¶</a></h3>
+<span id="id1"></span><h3>4.1.1. Universes<a class="headerlink" href="#universes" title="Permalink to this headline">¶</a></h3>
 <p>OpenMC supports universe-based geometry similar to the likes of <a class="reference external" href="http://mcnp.lanl.gov">MCNP</a> and
 <a class="reference external" href="http://montecarlo.vtt.fi">Serpent</a>. This capability enables user to model any identical repeated
 structures once and then fill them in various spots in the geometry. A
@@ -391,8 +391,8 @@ w' = w - \frac{2 ( \mathbf{\Omega} \cdot \nabla f )}{|| \nabla f ||^2}
 \frac{\partial f}{\partial z}"/></p>
 </div><p>We can now use this form to develop rules for how to transform a particle&#8217;s
 direction for different types of surfaces.</p>
-<div class="section" id="id1">
-<h3>4.7.1. Plane Perpendicular to an Axis<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id2">
+<h3>4.7.1. Plane Perpendicular to an Axis<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
 <p>For a plane that is perpendicular to an axis, the rule for reflection is almost
 so simple that no derivation is needed at all. Nevertheless, we will proceed
 with the derivation to confirm that the rules of geometry agree with our
@@ -406,8 +406,8 @@ the first tell us that</p>
 </div><p>We see that reflection for a plane perpendicular to an axis only entails
 negating the directional cosine for that axis.</p>
 </div>
-<div class="section" id="id2">
-<h3>4.7.2. Generic Plane<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id3">
+<h3>4.7.2. Generic Plane<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
 <p>A generic plane has the form <img class="math" src="../_images/math/320357accceeb2f8fc933f629b9af3ab513e9468.png" alt="f(x,y,z) = Ax + By + Cz - D = 0"/>. Thus, the
 gradient to the surface is simply <img class="math" src="../_images/math/6e5e48810a5cf01884bc6dd93293920d02fa3a4e.png" alt="\nabla f = (A,B,C)"/> whose norm squared
 is <img class="math" src="../_images/math/b8314fe89d6a6080868132447c26fdf3a41466f2.png" alt="A^2 + B^2 + C^2"/>. This implies that</p>
@@ -420,8 +420,8 @@ x-component of the reflected direction will be</p>
 <div class="math" id="equation-reflection-plane">
 <p><span class="eqno">(21)</span><img src="../_images/math/823b09cef32bbcf3b6d605a8574ae69bddc480e6.png" alt="u' = u - \frac{2A(Au + Bv + Cw)}{A^2 + B^2 + C^2}"/></p>
 </div></div>
-<div class="section" id="id3">
-<h3>4.7.3. Cylinder Parallel to an Axis<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id4">
+<h3>4.7.3. Cylinder Parallel to an Axis<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
 <p>A cylinder parallel to, for example, the x-axis has the form <img class="math" src="../_images/math/b815ff99327142275d747ade16d9c36e05d84274.png" alt="f(x,y,z) =
 (y - y_0)^2 + (z - z_0)^2 - R^2 = 0"/>. Thus, the gradient to the surface is</p>
 <div class="math" id="equation-reflection-cylinder-grad">
@@ -445,8 +445,8 @@ and z-components of the reflected direction will be</p>
 
 w' = w - \frac{2 ( \bar{y}v + \bar{z}w ) \bar{z}}{R^2}"/></p>
 </div></div>
-<div class="section" id="id4">
-<h3>4.7.4. Sphere<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id5">
+<h3>4.7.4. Sphere<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
 <p>The surface equation for a sphere has the form <img class="math" src="../_images/math/565a202d4c73fb023d968d521bf6059d65f51b74.png" alt="f(x,y,z) = (x - x_0)^2 +
 (y - y_0)^2 + (z - z_0)^2 - R^2 = 0"/>. Thus, the gradient to the surface is</p>
 <div class="math" id="equation-reflection-sphere-grad">

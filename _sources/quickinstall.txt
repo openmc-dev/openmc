@@ -18,11 +18,13 @@ and libraries may be needed. These include:
 - A Fortran compiler such as gfortran_
 - git_ version control software for obtaining source code (*optional*)
 - An MPI implementation for parallel runs (*optional*)
-- HDF5_ Library for improved output format (*optional*)
+- HDF5_ Library for portable binary output format (*optional*)
+- PETSc_ for CMFD acceleration (*optional*)
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
 .. _git: http://git-scm.com
 .. _HDF5: http://www.hdfgroup.org/HDF5/
+.. _PETSc: http://www.mcs.anl.gov/petsc/
 
 --------------------
 Obtaining the Source

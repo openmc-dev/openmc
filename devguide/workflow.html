@@ -1,0 +1,122 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>3. Development Workflow &mdash; OpenMC Documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.4.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="../index.html" />
+    <link rel="up" title="Developer’s Guide" href="index.html" />
+    <link rel="next" title="4. xml-fortran Input Parsing" href="xml-fortran.html" />
+    <link rel="prev" title="2. Style Guide for OpenMC" href="styleguide.html" /> 
+  </head>
+  <body>
+      <div class="header">
+        <a href="../index.html">
+          <img class="logo" src="../_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="styleguide.html">2. Style Guide for OpenMC</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="xml-fortran.html">4. xml-fortran Input Parsing</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="development-workflow">
+<span id="devguide-workflow"></span><h1>3. Development Workflow<a class="headerlink" href="#development-workflow" title="Permalink to this headline">¶</a></h1>
+<p>Anyone wishing to make contributions to OpenMC should be fully acquianted and
+comfortable working with <a class="reference external" href="http://git-scm.com/">git</a> and <a class="reference external" href="https://github.com/">GitHub</a>. The primary means of modifying and
+making contributions to OpenMC is through GitHub <a class="reference external" href="https://help.github.com/articles/using-pull-requests">pull requests</a>. This is
+what&#8217;s known as a fork and pull development model. The steps for this are as
+follows:</p>
+<p>1. Fork the main openmc repository from <a class="reference external" href="https://github.com/mit-crpg/openmc">mit-crpg/openmc</a>. This will create a
+repository with the same name under your personal account. As such, you can
+commit to it as you please without disrupting other developers.</p>
+<p>2. Create a branch that you want merged back to <a class="reference external" href="https://github.com/mit-crpg/openmc">mit-crpg/openmc</a> and make
+commits that you intend to go back. If you have made other changes that should
+not be merged back, those changes should be on another branch.</p>
+<ol class="arabic simple" start="3">
+<li>Issue a pull request from GitHub and select the branch you want merged.</li>
+</ol>
+<p>4. The OpenMC integration manager will review your pull request and make sure it
+conforms to the <a class="reference internal" href="styleguide.html#devguide-styleguide"><em>Style Guide for OpenMC</em></a>, compiles correctly, runs in parallel
+correctly, does not break other features in the code, etc. Any issues with the
+pull request can be discussed directly on the pull request page itself.</p>
+<p>5. After the pull request has been thoroughly vetted, it is merged back into
+<a class="reference external" href="https://github.com/mit-crpg/openmc">mit-crpg/openmc</a>.</p>
+<p>While the process above depends on the fork of the OpenMC repository being
+publicly available on GitHub, you may also wish to do development on a private
+repository for research or commercial purposes. The proper way to do this is to
+create a complete copy of the OpenMC repository (not a fork from GitHub). The
+private repository can then either be stored just locally or in conjunction with
+a private repository on Github (this requires a <a class="reference external" href="https://github.com/plans">paid plan</a>). If you want to
+merge some changes you&#8217;ve made in your private repository back to
+<a class="reference external" href="https://github.com/mit-crpg/openmc">mit-crpg/openmc</a> repository, simply follow the steps above with an extra step
+of pulling a branch from your private repository into your public fork.</p>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="styleguide.html">2. Style Guide for OpenMC</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="xml-fortran.html">4. xml-fortran Input Parsing</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+
+    <div class="footer">
+        &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

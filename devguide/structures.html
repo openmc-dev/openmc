@@ -29,7 +29,7 @@
     <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="Developer’s Guide" href="index.html" />
-    <link rel="next" title="2. xml-fortran Input Parsing" href="xml-fortran.html" />
+    <link rel="next" title="2. Style Guide for OpenMC" href="styleguide.html" />
     <link rel="prev" title="Developer’s Guide" href="index.html" /> 
   </head>
   <body>
@@ -45,7 +45,7 @@
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="xml-fortran.html">2. xml-fortran Input Parsing</a>&#160;&#160;»
+        <a href="styleguide.html">2. Style Guide for OpenMC</a>&#160;&#160;»
         </p>
 
       </div>
@@ -54,6 +54,69 @@
         
   <div class="section" id="data-structures">
 <span id="devguide-structures"></span><h1>1. Data Structures<a class="headerlink" href="#data-structures" title="Permalink to this headline">¶</a></h1>
+<p>The purpose of this section is to give you an overview of the major data
+structures in OpenMC and how they are logically related. A majority of variables
+in OpenMC are <a class="reference external" href="http://nf.nci.org.au/training/FortranAdvanced/slides/slides.025.html">derived types</a> (similar to a struct in C). These derived types
+are defined in the various header modules, e.g. src/geometry_header.F90. Most
+important variables are found in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>. Have a look through that
+module to get a feel for what variables you&#8217;ll often come across when looking at
+OpenMC code.</p>
+<div class="section" id="particle">
+<h2>1.1. Particle<a class="headerlink" href="#particle" title="Permalink to this headline">¶</a></h2>
+<p>Perhaps the variable that you will see most often is simply called <tt class="docutils literal"><span class="pre">p</span></tt> and is
+of type(Particle). This variable stores information about a particle&#8217;s physical
+characteristics (coordinates, direction, energy), what cell and material it&#8217;s
+currently in, how many collisions it has undergone, etc. In practice, only one
+particle is followed at a time so there is no array of type(Particle). The
+Particle type is defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/particle_header.F90">particle_header module</a>.</p>
+<p>You will notice that the direction and angle of the particle is stored in a
+linked list of type(LocalCoord). In geometries with multiple <a class="reference internal" href="../methods/geometry.html#universes"><em>Universes</em></a>,
+the coordinates in each universe are stored in this linked list. If universes or
+lattices are not used in a geometry, only one LocalCoord is present in the
+linked list.</p>
+<p>The LocalCoord type has a component called cell which gives the index in the
+<tt class="docutils literal"><span class="pre">cells</span></tt> array in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>. The <tt class="docutils literal"><span class="pre">cells</span></tt> array is of type(Cell)
+and stored information about each region defined by the user.</p>
+</div>
+<div class="section" id="cell">
+<h2>1.2. Cell<a class="headerlink" href="#cell" title="Permalink to this headline">¶</a></h2>
+<p>The Cell type is defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/geometry_header.F90">geometry_header module</a> along with other
+geometry-related derived types. Each cell in the problem is described in terms
+of its bounding surfaces, which are listed on the <tt class="docutils literal"><span class="pre">surfaces</span></tt> component. The
+absolute value of each item in the <tt class="docutils literal"><span class="pre">surfaces</span></tt> component contains the index of
+the corresponding surface in the <tt class="docutils literal"><span class="pre">surfaces</span></tt> array defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global
+module</a>. The sign on each item in the <tt class="docutils literal"><span class="pre">surfaces</span></tt> component indicates whether
+the cell exists on the positive or negative side of the surface (see
+<a class="reference internal" href="../methods/geometry.html#methods-geometry"><em>Geometry</em></a>).</p>
+<p>Each cell can either be filled with another universe/lattice or with a
+material. If it is filled with a material, the <tt class="docutils literal"><span class="pre">material</span></tt> component gives the
+index of the material in the <tt class="docutils literal"><span class="pre">materials</span></tt> array defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global
+module</a>.</p>
+</div>
+<div class="section" id="surface">
+<h2>1.3. Surface<a class="headerlink" href="#surface" title="Permalink to this headline">¶</a></h2>
+<p>The Surface type is defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/geometry_header.F90">geometry_header module</a>. A surface is
+defined by a type (sphere, cylinder, etc.) and a list of coefficients for that
+surface type. The simplest example would be a plane perpendicular to the xy, yz,
+or xz plane which needs only one parameter. The <tt class="docutils literal"><span class="pre">type</span></tt> component indicates the
+type through integer parameters such as SURF_SPHERE or SURF_CYL_Y (these are
+defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/constants.F90">constants module</a>). The <tt class="docutils literal"><span class="pre">coeffs</span></tt> component gives the
+necessary coefficients to parameterize the surface type (see
+<a class="reference internal" href="../usersguide/input.html#surface-element"><em>&lt;surface&gt; Element</em></a>).</p>
+</div>
+<div class="section" id="material">
+<h2>1.4. Material<a class="headerlink" href="#material" title="Permalink to this headline">¶</a></h2>
+<p>The Material type is defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/material_header.F90">material_header module</a>. Each material
+contains a number of nuclides at a given atom density. Each item in the
+<tt class="docutils literal"><span class="pre">nuclide</span></tt> component corresponds to the index in the global <tt class="docutils literal"><span class="pre">nuclides</span></tt> array
+(as usual, found in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>). The <tt class="docutils literal"><span class="pre">atom_density</span></tt> component is the
+same length as the <tt class="docutils literal"><span class="pre">nuclides</span></tt> component and lists the corresponding atom
+density in atom/barn-cm for each nuclide in the <tt class="docutils literal"><span class="pre">nuclides</span></tt> component.</p>
+<p>If the material contains nuclides for which binding effects are important in
+low-energy scattering, a <img class="math" src="../_images/math/610a7fba4c1d89de40e26ba8f6c2915102b17eae.png" alt="S(\alpha,\beta)"/> can be associated with that
+material through the <tt class="docutils literal"><span class="pre">sab_table</span></tt> component. Again, this component contains the
+index in the <tt class="docutils literal"><span class="pre">sab_tables</span></tt> array from the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>.</p>
+</div>
 </div>
 
 
@@ -65,7 +128,7 @@
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="xml-fortran.html">2. xml-fortran Input Parsing</a>&#160;&#160;»
+        <a href="styleguide.html">2. Style Guide for OpenMC</a>&#160;&#160;»
         </p>
 
       </div>

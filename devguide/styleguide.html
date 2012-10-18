@@ -1,0 +1,195 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>2. Style Guide for OpenMC &mdash; OpenMC Documentation</title>
+    
+    <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.4.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="OpenMC Documentation" href="../index.html" />
+    <link rel="up" title="Developer’s Guide" href="index.html" />
+    <link rel="next" title="3. Development Workflow" href="workflow.html" />
+    <link rel="prev" title="1. Data Structures" href="structures.html" /> 
+  </head>
+  <body>
+      <div class="header">
+        <a href="../index.html">
+          <img class="logo" src="../_static/openmc.png" alt="Logo"/>
+        </a>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="structures.html">1. Data Structures</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="workflow.html">3. Development Workflow</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="style-guide-for-openmc">
+<span id="devguide-styleguide"></span><h1>2. Style Guide for OpenMC<a class="headerlink" href="#style-guide-for-openmc" title="Permalink to this headline">¶</a></h1>
+<p>In order to keep the OpenMC code base consistent in style, this guide specifies
+a number of rules which should be adhered to when modified existing code or
+adding new code in OpenMC.</p>
+<div class="section" id="general-rules">
+<h2>2.1. General Rules<a class="headerlink" href="#general-rules" title="Permalink to this headline">¶</a></h2>
+<p>Conform to the Fortran 2008 standard.</p>
+<p>Make sure code can be compiled with most common compilers, especially gfortran
+and the Intel Fortran compiler. This supercedes the previous rule &#8212; if a
+Fortran 2003/2008 feature is not implemented in a common compiler, do not use
+it.</p>
+<p>Do not use special extensions that can be only be used from certain compilers.</p>
+<p>In general, write your code in lower-case. Having code in all caps does not
+enhance code readability or otherwise.</p>
+<p>Always include comments to describe what your code is doing. Do not be afraid of
+using copious amounts of comments.</p>
+<p>Use &lt;, &gt;, &lt;=, &gt;=, ==, and /= rather than .lt., .gt., .le., .ge., .eq., and .ne.</p>
+<p>Try to keep code within 80 columns when possible.</p>
+<p>Don&#8217;t use <tt class="docutils literal"><span class="pre">print</span> <span class="pre">*</span></tt> or <tt class="docutils literal"><span class="pre">write(*,*)</span></tt>. If writing to a file, use a specific
+unit. Writing to standard output or standard error should be handled by the
+<tt class="docutils literal"><span class="pre">write_message</span></tt> subroutine or functionality in the error module.</p>
+</div>
+<div class="section" id="subroutines-and-functions">
+<h2>2.2. Subroutines and Functions<a class="headerlink" href="#subroutines-and-functions" title="Permalink to this headline">¶</a></h2>
+<p>Above each subroutine/function, include a comment block giving a brief
+description of what the subroutine or function does.</p>
+<p>Arguments to subroutines/functions should be explicitly specified as intent(in),
+intent(out), or intent(inout).</p>
+<p>Include a comment describing what each argument to a subroutine/function is.</p>
+</div>
+<div class="section" id="variables">
+<h2>2.3. Variables<a class="headerlink" href="#variables" title="Permalink to this headline">¶</a></h2>
+<p>Never, under any circumstances, should implicit variables be used! Always
+include <tt class="docutils literal"><span class="pre">implicit</span> <span class="pre">none</span></tt> and define all your variables.</p>
+<p>Variable names should be all lower-case and descriptive, i.e. not a random
+assortment of letters that doesn&#8217;t give any information to someone seeing it for
+the first time. Variables consisting of multiple words should be separated by
+underscores, not hyphens or in camel case.</p>
+<p>Constant (parameter) variables should be in ALL CAPITAL LETTERS and defined in
+in the constants.F90 module.</p>
+<p>32-bit reals (real(4)) should never be used. Always use 64-bit reals (real(8)).</p>
+<p>For arbitrary length character variables, use the pre-defined lengths
+MAX_LINE_LEN, MAX_WORD_LEN, and MAX_FILE_LEN if possible.</p>
+<p>Do not use old-style character/array length (e.g. character*80, real*8).</p>
+<p>Integer values being used to indicate a certain state should be defined as named
+constants (see the constants.F90 module for many examples).</p>
+<p>Yes:</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="k">if</span> <span class="p">(</span><span class="nv">boundary_condition</span> <span class="o">==</span> <span class="nv">BC_VACUUM</span><span class="p">)</span> <span class="k">then</span>
+</pre></div>
+</div>
+<p>No:</p>
+<div class="highlight-fortran"><div class="highlight"><pre><span class="k">if</span> <span class="p">(</span><span class="nv">boundary_condition</span> <span class="o">==</span> <span class="o">-</span><span class="mi">10</span><span class="p">)</span> <span class="k">then</span>
+</pre></div>
+</div>
+<p>Avoid creating arrays with a pre-defined maximum length. Use dynamic memory
+allocation instead. Use allocatable variables instead of pointer variables when
+possible.</p>
+<div class="section" id="shared-module-variables">
+<h3>2.3.1. Shared/Module Variables<a class="headerlink" href="#shared-module-variables" title="Permalink to this headline">¶</a></h3>
+<p>Always put shared variables in modules. Access module variables through a
+<tt class="docutils literal"><span class="pre">use</span></tt> statement. Always use the <tt class="docutils literal"><span class="pre">only</span></tt> specifier on the <tt class="docutils literal"><span class="pre">use</span></tt> statement
+except for variables from the global, constants, and various header modules.</p>
+<p>Never use <tt class="docutils literal"><span class="pre">equivalence</span></tt> statements, <tt class="docutils literal"><span class="pre">common</span></tt> blocks, or <tt class="docutils literal"><span class="pre">data</span></tt> statements.</p>
+</div>
+</div>
+<div class="section" id="derived-types-and-classes">
+<h2>2.4. Derived Types and Classes<a class="headerlink" href="#derived-types-and-classes" title="Permalink to this headline">¶</a></h2>
+<p>Derived types and classes should have CamelCase names with words not separated
+by underscores or hyphens.</p>
+</div>
+<div class="section" id="indentation">
+<h2>2.5. Indentation<a class="headerlink" href="#indentation" title="Permalink to this headline">¶</a></h2>
+<p>Never use tab characters. Indentation should always be applied using
+spaces. Emacs users should include the following line in their .emacs file:</p>
+<div class="highlight-common-lisp"><div class="highlight"><pre><span class="p">(</span><span class="nv">setq-default</span> <span class="nv">indent-tabs-mode</span> <span class="no">nil</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>vim users should include the following line in their .vimrc file:</p>
+<div class="highlight-python"><pre>set expandtab</pre>
+</div>
+<p>Use 2 spaces per indentation level. This applies to all constructs such as
+program, subroutine, function, if, associate, etc. Emacs users should set the
+variables f90-if-indent, f90-do-indent, f90-continuation-indent,
+f90-type-indent, f90-associate-indent, and f90-program indent to 2.</p>
+<p>Continuation lines should be indented by an extra 5 spaces. This is the default
+value of f90-continuation-indent in Emacs.</p>
+</div>
+<div class="section" id="whitespace-in-expressions">
+<h2>2.6. Whitespace in Expressions<a class="headerlink" href="#whitespace-in-expressions" title="Permalink to this headline">¶</a></h2>
+<p>Avoid extraneous whitespace in the following situations:</p>
+<ul>
+<li><p class="first">In subroutine/function calls:</p>
+<div class="highlight-python"><pre>Yes: call somesub(x, y(2), z)
+No:  call somesub( x, y( 2 ), z )</pre>
+</div>
+</li>
+<li><p class="first">In logical expressions, use one space around operators but nowhere else:</p>
+<div class="highlight-python"><pre>Yes: if (variable == 2) then
+No:  if ( variable==2 ) then</pre>
+</div>
+</li>
+</ul>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="structures.html">1. Data Structures</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="workflow.html">3. Development Workflow</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+
+    <div class="footer">
+        &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-30411614-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

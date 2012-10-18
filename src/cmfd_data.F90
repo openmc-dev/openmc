@@ -173,7 +173,7 @@ contains
               else if (ital == n_user_tallies + 2) then
 
                 ! begin loop to get energy out tallies
-                INGROUP: do g = 1,ng
+                INGROUP: do g = 1, ng
 
                   ! reset all bins to 1
                   bins = 1
@@ -318,11 +318,11 @@ contains
          allocate(cmfd % indexmap(cmfd % mat_dim,3))
 
     ! begin loops over spatial indices
-    ZLOOP: do k = 1,nz
+    ZLOOP: do k = 1, nz
 
-      YLOOP: do j = 1,ny
+      YLOOP: do j = 1, ny
 
-        XLOOP: do i = 1,nx
+        XLOOP: do i = 1, nx
 
           ! check for reflector
           if (cmfd % coremap(i,j,k) == 1) then
@@ -358,10 +358,10 @@ contains
     use constants,    only: ONE, CMFD_NOACCEL
     use global,       only: cmfd, keff
 
-    integer :: nx                ! number of mesh cells in x direction
-    integer :: ny                ! number of mesh cells in y direction
-    integer :: nz                ! number of mesh cells in z direction
-    integer :: ng                ! number of energy groups
+    integer :: nx           ! number of mesh cells in x direction
+    integer :: ny           ! number of mesh cells in y direction
+    integer :: nz           ! number of mesh cells in z direction
+    integer :: ng           ! number of energy groups
     integer :: i            ! iteration counter for x
     integer :: j            ! iteration counter for y
     integer :: k            ! iteration counter for z
@@ -388,13 +388,13 @@ contains
     if (.not. allocated(cmfd%resnb)) allocate(cmfd%resnb(ng,nx,ny,nz))
 
     ! begin loop around space and energy groups
-    ZLOOP: do k = 1,nz
+    ZLOOP: do k = 1, nz
 
-      YLOOP: do j = 1,ny
+      YLOOP: do j = 1, ny
 
-        XLOOP: do i = 1,nx
+        XLOOP: do i = 1, nx
 
-          GROUPG: do g = 1,ng
+          GROUPG: do g = 1, ng
 
             ! check for active mesh
             if (allocated(cmfd%coremap)) then
@@ -424,10 +424,10 @@ contains
             GROUPH: do h = 1, ng
 
               scattering = scattering + cmfd % scattxs(h,g,i,j,k) * &
-             & cmfd % flux(h,i,j,k)
+                   cmfd % flux(h,i,j,k)
 
               fission = fission + cmfd % nfissxs(h,g,i,j,k) * &
-             & cmfd % flux(h,i,j,k)
+                   cmfd % flux(h,i,j,k)
 
             end do GROUPH
 
@@ -510,7 +510,7 @@ contains
     albedo = cmfd%albedo
 
     ! geting loop over group and spatial indices
-    ZLOOP:  do k = 1, nz
+    ZLOOP: do k = 1, nz
 
       YLOOP: do j = 1, ny
 
@@ -542,11 +542,12 @@ contains
               if (bound(l) == nxyz(xyz_idx,dir_idx)) then
 
                 ! compute dtilde
-                dtilde = (2*cell_dc*(1-albedo(l)))/(4*cell_dc*(1+albedo(l)) +  &
-               &         (1-albedo(l))*cell_hxyz(xyz_idx))
+                dtilde = (2*cell_dc*(1-albedo(l)))/(4*cell_dc*(1+albedo(l)) + &
+                     (1-albedo(l))*cell_hxyz(xyz_idx))
 
                 ! check for zero flux
-                if (albedo(l) - ZERO_FLUX < TINY_BIT) dtilde = 2*cell_dc/cell_hxyz(xyz_idx)
+                if (albedo(l) - ZERO_FLUX < TINY_BIT) dtilde = 2*cell_dc / &
+                     cell_hxyz(xyz_idx)
 
               else  ! not a boundary
 
@@ -561,29 +562,29 @@ contains
                 ! check for fuel-reflector interface
                 if (cmfd_coremap) then
 
-                  if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) ==   &
-                 &    CMFD_NOACCEL .and. cmfd % coremap(i,j,k) /= CMFD_NOACCEL) then
+                  if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) == &
+                       CMFD_NOACCEL .and. cmfd % coremap(i,j,k) /= CMFD_NOACCEL) then
 
                     ! get albedo
                     ref_albedo = get_reflector_albedo(l,g,i,j,k)
 
                     ! compute dtilde
-                    dtilde = (2*cell_dc*(1-ref_albedo))/(4*cell_dc*(1+         &
-                 &         ref_albedo)+(1-ref_albedo)*cell_hxyz(xyz_idx))
+                    dtilde = (2*cell_dc*(1-ref_albedo))/(4*cell_dc*(1+ &
+                         ref_albedo)+(1-ref_albedo)*cell_hxyz(xyz_idx))
 
                   else ! not next to a reflector or no core map
 
                     ! compute dtilde
                     dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc + &
-                   &         cell_hxyz(xyz_idx)*neig_dc)
+                         cell_hxyz(xyz_idx)*neig_dc)
 
                   end if
 
                 else ! no core map
 
                   ! compute dtilde
-                  dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc +   &
-                 &         cell_hxyz(xyz_idx)*neig_dc)
+                  dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc + &
+                       cell_hxyz(xyz_idx)*neig_dc)
 
                end if
 
@@ -779,7 +780,7 @@ contains
     shift_idx = -2*mod(l,2) + 1          ! shift neig by -1 or +1
 
     ! calculate albedo
-    if ((shift_idx ==  1 .and. (current(2*l  )-0.0_8) < 1.0e-10_8) .or.           &
+    if ((shift_idx ==  1 .and. (current(2*l  )-0.0_8) < 1.0e-10_8) .or. &
         (shift_idx == -1 .and. (current(2*l-1)-0.0_8) < 1.0e-10_8)) then
       albedo = ALBEDO_REJECT 
       cmfd_hold_weights = .true. 

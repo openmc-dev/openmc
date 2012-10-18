@@ -104,7 +104,6 @@ contains
     type(operators)         :: ctx
 
     integer :: n             ! the extent of the matrix
-    integer :: irow          ! row counter
     integer :: row_start     ! index of local starting row
     integer :: row_end       ! index of local final row
 
@@ -190,7 +189,6 @@ contains
     integer              :: row_end  ! ending local row on process
     integer, allocatable :: dims(:)  ! vec of starting and ending rows
     integer, allocatable :: dims1(:) ! vec of sizes on each proc
-    integer, allocatable :: nnzv(:)  ! vector of number of nonzeros for jac
     integer, allocatable :: cols(:)  ! vector of column numbers
     real(8)              :: lambda   ! eigenvalue
     real(8), pointer     :: xptr(:)  ! pointer to solution vector

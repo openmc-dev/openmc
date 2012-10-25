@@ -182,6 +182,10 @@ contains
                 p % coord => p % coord0
                 call deallocate_coord(p % coord % next)
 
+                ! Reset surface and advance particle a tiny bit
+                p % surface = NONE
+                p % coord % xyz = xyz
+
              else
 
                 ! Create new level of coordinates

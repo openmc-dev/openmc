@@ -546,7 +546,7 @@ contains
                      (1-albedo(l))*cell_hxyz(xyz_idx))
 
                 ! check for zero flux
-                if (albedo(l) - ZERO_FLUX < TINY_BIT) dtilde = 2*cell_dc / &
+                if (abs(albedo(l) - ZERO_FLUX) < TINY_BIT) dtilde = 2*cell_dc / &
                      cell_hxyz(xyz_idx)
 
               else  ! not a boundary

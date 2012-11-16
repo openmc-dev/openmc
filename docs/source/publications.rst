@@ -5,18 +5,18 @@ Publications
 ============
 
 - Paul K. Romano and Benoit Forget, "Reducing Parallel Communication in Monte
-  Carlo Simulations via Batch Statistics," *Trans. Am. Nucl. Soc.*, Accepted
-  (2012).
+  Carlo Simulations via Batch Statistics," *Trans. Am. Nucl. Soc.*, **107**,
+  xxx--xxx (2012).
 
 - Paul K. Romano and Benoit Forget, "The OpenMC Monte Carlo Particle Transport
-  Code," *Annals of Nuclear Energy*, Accepted (2012).
+  Code," *Ann. Nucl. Energy*, **51**, 274--281
+  (2012). `<http://dx.doi.org/10.1016/j.anucene.2012.06.040>`_
 
 - Andrew R. Siegel, Kord Smith, Paul K. Romano, Benoit Forget, and Kyle Felker,
   "The effect of load imbalances on the performance of Monte Carlo codes in LWR
-  analysis", *Journal of Computational Physics*,
+  analysis", *J. Comput. Phys.*,
   `<http://dx.doi.org/10.1016/j.jcp.2012.06.012>`_ (2012).
 
 - Paul K. Romano and Benoit Forget, "Parallel Fission Bank Algorithms in Monte
-  Carlo Criticality Calculations," *Nuclear Science and Engineering*, **170**,
-  pp. 125--135 (2012). [`PDF
-  <http://web.mit.edu/romano7/www/nse_v170_n2_pp125-135.pdf>`_]
+  Carlo Criticality Calculations," *Nucl. Sci. Eng.*, **170**, 125--135
+  (2012). `<http://hdl.handle.net/1721.1/73569>`_

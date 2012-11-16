@@ -3,7 +3,7 @@ module material_header
   implicit none
 
 !===============================================================================
-! MATERIAL describes a material by its constituent isotopes
+! MATERIAL describes a material by its constituent nuclides
 !===============================================================================
 
   type Material

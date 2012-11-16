@@ -12,7 +12,7 @@ module constants
 
   ! Revision numbers for binary files
   integer, parameter :: REVISION_SOURCE     = 1
-  integer, parameter :: REVISION_STATEPOINT = 4
+  integer, parameter :: REVISION_STATEPOINT = 5
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS 
@@ -107,11 +107,14 @@ module constants
        SURF_CYL_Y  =  6, & ! Cylinder along y-axis
        SURF_CYL_Z  =  7, & ! Cylinder along z-axis
        SURF_SPHERE =  8, & ! Sphere
-       SURF_BOX_X  =  9, & ! Box extending infinitely in x-direction
-       SURF_BOX_Y  = 10, & ! Box extending infinitely in y-direction
-       SURF_BOX_Z  = 11, & ! Box extending infinitely in z-direction
-       SURF_BOX    = 12, & ! Rectangular prism
-       SURF_GQ     = 13    ! General quadratic surface
+       SURF_CONE_X =  9, & ! Cone parallel to x-axis
+       SURF_CONE_Y = 10, & ! Cone parallel to y-axis
+       SURF_CONE_Z = 11, & ! Cone parallel to z-axis
+       SURF_BOX_X  = 12, & ! Box extending infinitely in x-direction
+       SURF_BOX_Y  = 13, & ! Box extending infinitely in y-direction
+       SURF_BOX_Z  = 14, & ! Box extending infinitely in z-direction
+       SURF_BOX    = 15, & ! Rectangular prism
+       SURF_GQ     = 16    ! General quadratic surface
 
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS
@@ -360,5 +363,21 @@ module constants
   integer, parameter :: UNIT_XS      = 14 ! unit # for writing xs summary file
   integer, parameter :: UNIT_SOURCE  = 15 ! unit # for writing source file
   integer, parameter :: UNIT_STATE   = 16 ! unit # for writing state point
+  integer, parameter :: CMFD_BALANCE = 17 ! unit # for writing cmfd balance file
+
+  !=============================================================================
+  ! CMFD CONSTANTS
+
+  ! for non-accelerated regions on coarse mesh overlay
+  integer, parameter :: CMFD_NOACCEL = 99999
+
+  ! constant to represent a zero flux "albedo"
+  real(8), parameter :: ZERO_FLUX = 999.0_8
+
+  ! constant to represent albedo rejection
+  real(8), parameter :: ALBEDO_REJECT = 999.0_8
+
+  ! constant for writing out no residual
+  real(8), parameter :: CMFD_NORES = 99999.0_8
 
 end module constants

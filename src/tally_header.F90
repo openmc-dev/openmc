@@ -37,6 +37,7 @@ module tally_header
 
   type TallyScore
      integer :: n_events = 0
+     integer :: n_realizations = 0
      real(8) :: value    = 0.
      real(8) :: sum      = 0.
      real(8) :: sum_sq   = 0.
@@ -105,6 +106,12 @@ module tally_header
      integer :: total_filter_bins
      integer :: total_score_bins
      type(TallyScore), allocatable :: scores(:,:)
+
+     ! reset property - allows a tally to be reset after every batch
+     logical :: reset = .false.
+
+     ! Number of realizations of tally random variables
+     integer :: n_realizations = 0
 
   end type TallyObject
 

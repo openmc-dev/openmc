@@ -1,16 +1,18 @@
 module criticality
 
-  use constants,   only: ZERO
+  use cmfd_execute, only: cmfd_init_batch, execute_cmfd
+  use constants,    only: ZERO
   use global
-  use intercycle,  only: shannon_entropy, calculate_keff, synchronize_bank, &
+  use intercycle,   only: shannon_entropy, calculate_keff, synchronize_bank, &
                          count_source_for_ufs
-  use output,      only: write_message, header, print_columns
-  use physics,     only: transport
-  use source,      only: get_source_particle
-  use state_point, only: write_state_point, replay_batch_history
-  use string,      only: to_str
-  use tally,       only: synchronize_tallies, setup_active_tallies
-  use timing,      only: timer_start, timer_stop
+  use output,       only: write_message, header, print_columns,              &
+                          print_batch_keff
+  use physics,      only: transport
+  use source,       only: get_source_particle
+  use state_point,  only: write_state_point, replay_batch_history
+  use string,       only: to_str
+  use tally,        only: synchronize_tallies, setup_active_usertallies
+  use timing,       only: timer_start, timer_stop
 
 #ifdef HDF5
   use hdf5_interface, only: hdf5_write_state_point
@@ -103,6 +105,9 @@ contains
        ! Reset total starting particle weight used for normalizing tallies
        total_weight = ZERO
 
+       ! check CMFD initialize batch
+       if (cmfd_run) call cmfd_init_batch()
+
        if (current_batch == n_inactive + 1) then
           ! This will start the active timer at the first non-inactive batch
           ! (including batch 1 if there are no inactive batches).
@@ -152,6 +157,12 @@ contains
     ! Collect results and statistics
     call calculate_keff()
 
+    ! Perform CMFD calculation if on
+    if (cmfd_on) call execute_cmfd()
+
+    ! Display output
+    if (master) call print_batch_keff()
+
     ! Write out state point if it's been specified for this batch
     do i = 1, n_state_points
        if (current_batch == statepoint_batch(i)) then
@@ -168,9 +179,10 @@ contains
     ! Turn tallies on once inactive cycles are complete
     if (current_batch == n_inactive) then
        tallies_on = .true.
+       active_batches = .true.
        call timer_stop(time_inactive)
        call timer_start(time_active)
-       call setup_active_tallies()
+       call setup_active_usertallies()
     end if
 
   end subroutine finalize_batch

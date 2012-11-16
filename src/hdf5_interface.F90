@@ -247,6 +247,12 @@ contains
           call h5ltmake_dataset_string_f(temp_group, "type", "Z Cylinder", hdf5_err)
        case (SURF_SPHERE)
           call h5ltmake_dataset_string_f(temp_group, "type", "Sphere", hdf5_err)
+       case (SURF_CONE_X)
+          call h5ltmake_dataset_string_f(temp_group, "type", "X Cone", hdf5_err)
+       case (SURF_CONE_Y)
+          call h5ltmake_dataset_string_f(temp_group, "type", "Y Cone", hdf5_err)
+       case (SURF_CONE_Z)
+          call h5ltmake_dataset_string_f(temp_group, "type", "Z Cone", hdf5_err)
        case (SURF_BOX_X)
        case (SURF_BOX_Y)
        case (SURF_BOX_Z)
@@ -894,6 +900,10 @@ contains
        call h5gcreate_f(tallies_group, "tally " // to_str(t % id), &
             temp_group, hdf5_err)
 
+       ! Write number of realizations
+       call hdf5_make_integer(temp_group, "n_realizations", &
+            t % n_realizations)
+
        ! Write size of each tally
        call hdf5_make_integer(temp_group, "total_score_bins", &
             t % total_score_bins)
@@ -990,6 +1000,9 @@ contains
        call h5gclose_f(temp_group, hdf5_err)
     end do TALLY_METADATA
 
+    ! Write number of realizations for global tallies
+    call hdf5_make_integer(hdf5_state_point, "n_realizations", n_realizations)
+
     ! Write out global tallies sum and sum_sq
     call hdf5_make_integer(hdf5_state_point, "n_global_tallies", &
          N_GLOBAL_TALLIES)
@@ -1007,9 +1020,6 @@ contains
     if (tallies_on) then
        ! Indicate that tallies are on
        call hdf5_make_integer(tallies_group, "tallies_present", 1)
-
-       ! Write number of realizations
-       call hdf5_make_integer(tallies_group, "n_realizations", n_realizations)
 
        ! Write tally sum and sum_sq
        TALLY_SCORES: do i = 1, n_tallies

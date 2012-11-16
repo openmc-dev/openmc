@@ -1,4 +1,4 @@
-.. _styleguide:
+.. _devguide_styleguide:
 
 ======================
 Style Guide for OpenMC
@@ -27,7 +27,7 @@ enhance code readability or otherwise.
 Always include comments to describe what your code is doing. Do not be afraid of
 using copious amounts of comments.
 
-Use <, >, <=, and >= rather than .lt., .gt., .le., and .ge..
+Use <, >, <=, >=, ==, and /= rather than .lt., .gt., .le., .ge., .eq., and .ne.
 
 Try to keep code within 80 columns when possible.
 
@@ -67,6 +67,8 @@ in the constants.F90 module.
 For arbitrary length character variables, use the pre-defined lengths
 MAX_LINE_LEN, MAX_WORD_LEN, and MAX_FILE_LEN if possible.
 
+Do not use old-style character/array length (e.g. character*80, real*8).
+
 Integer values being used to indicate a certain state should be defined as named
 constants (see the constants.F90 module for many examples).
 
@@ -82,8 +84,8 @@ No:
 
     if (boundary_condition == -10) then
 
-Never create arrays with a pre-defined maximum length. Always use dynamic memory
-allocation. Use allocatable variables instead of pointer variables when
+Avoid creating arrays with a pre-defined maximum length. Use dynamic memory
+allocation instead. Use allocatable variables instead of pointer variables when
 possible.
 
 Shared/Module Variables

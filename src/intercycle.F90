@@ -7,7 +7,7 @@ module intercycle
   use math,            only: t_percentile
   use mesh,            only: count_bank_sites
   use mesh_header,     only: StructuredMesh
-  use output,          only: write_message, print_batch_keff
+  use output,          only: write_message
   use random_lcg,      only: prn, set_particle_seed, prn_skip
   use search,          only: binary_search
   use string,          only: to_str
@@ -371,10 +371,10 @@ contains
     ! =========================================================================
     ! SINGLE-BATCH ESTIMATE OF K-EFFECTIVE
 
-    if (.not. tallies_on) k_batch(current_batch) = global_tallies(K_ANALOG) % value
+    if (.not. active_batches) k_batch(current_batch) = global_tallies(K_ANALOG) % value
 
 #ifdef MPI
-    if ((.not. tallies_on) .or. (.not. reduce_tallies)) then
+    if ((.not. active_batches) .or. (.not. reduce_tallies)) then
        ! Reduce value of k_batch if running in parallel
        if (master) then
           call MPI_REDUCE(MPI_IN_PLACE, k_batch(current_batch), 1, MPI_REAL8, &
@@ -391,7 +391,7 @@ contains
     k_batch(current_batch) = k_batch(current_batch) / &
          (n_particles * gen_per_batch)
 
-    if (tallies_on) then
+    if (active_batches) then
        ! =======================================================================
        ! ACTIVE BATCHES
 
@@ -457,9 +457,6 @@ contains
        ! Reset tally values
        global_tallies(:) % value = ZERO
     end if
-
-    ! Display output
-    if (master) call print_batch_keff()
 
 #ifdef MPI
     ! Broadcast new keff value to all processors

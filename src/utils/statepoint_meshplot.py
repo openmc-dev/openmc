@@ -42,10 +42,9 @@ for t in sp.tallies:
     t_value = scipy.stats.t.ppf(0.975, n - 1)
 
     n_bins = t.n_score_bins * t.n_filter_bins
-    i_mesh = [f.type for f in t.filters].index('mesh')
 
     # Get Mesh object
-    m = sp.meshes[t.filters[i_mesh].bins[0] - 1]
+    m = sp.meshes[t.filters['mesh'].bins[0] - 1]
     nx, ny, nz = m.dimension
     ns = t.n_score_bins * t.n_filter_bins / (nx*ny*nz)
 

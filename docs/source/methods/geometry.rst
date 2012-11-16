@@ -64,6 +64,8 @@ In OpenMC, any second-order surface of the form
 can be modeled in OpenMC. For example, the equation for a sphere centered at
 :math:`(\bar{x},\bar{y},\bar{z})` and of radius :math:`R` can be written as
 
+.. _universes:
+
 Universes
 ---------
 

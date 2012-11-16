@@ -19,6 +19,9 @@ score = int(argv[3]) if len(argv) > 3 else 1
 # Create StatePoint object
 sp = StatePoint(filename)
 
+# Read number of realizations for global tallies
+sp.n_realizations = sp._get_int()[0]
+
 # Read global tallies
 n_global_tallies = sp._get_int()[0]
 sp.global_tallies = np.array(sp._get_double(2*n_global_tallies))
@@ -31,18 +34,17 @@ tallies_present = sp._get_int()[0]
 if not tallies_present:
     raise Exception("No tally data in state point!")
 
-# Calculate t-value for 95% two-sided CI
-n = sp._get_int()[0]
-t_value = scipy.stats.t.ppf(0.975, n - 1)
-
 # Loop over all tallies
 print("Reading data...")
 for t in sp.tallies:
+    # Calculate t-value for 95% two-sided CI
+    n = t.n_realizations
+    t_value = scipy.stats.t.ppf(0.975, n - 1)
+
     n_bins = t.n_score_bins * t.n_filter_bins
-    i_mesh = [f.type for f in t.filters].index('mesh')
 
     # Get Mesh object
-    m = sp.meshes[t.filters[i_mesh].bins[0] - 1]
+    m = sp.meshes[t.filters['mesh'].bins[0] - 1]
     nx, ny, nz = m.dimension
     ns = t.n_score_bins * t.n_filter_bins / (nx*ny*nz)
 

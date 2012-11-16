@@ -151,6 +151,7 @@ contains
     ! determine different filter bins for the same tally in order to score to it
 
     TALLY_LOOP: do while (associated(curr_ptr))
+
        t => tallies(analog_tallies(curr_ptr % data))
 
        ! =======================================================================
@@ -1531,29 +1532,32 @@ contains
     if (reduce_tallies) call reduce_tally_values()
 #endif
 
-    ! Increase number of realizations
-    if (reduce_tallies) then
-       n_realizations = n_realizations + 1
-    else
-       n_realizations = n_realizations + n_procs
+    ! Increase number of realizations (only used for global tallies)
+    if (active_batches) then
+       if (reduce_tallies) then
+          n_realizations = n_realizations + 1
+       else
+          n_realizations = n_realizations + n_procs
+       end if
     end if
 
+    ! Accumulate on master only unless run is not reduced then do it on all
     if (master .or. (.not. reduce_tallies)) then
        ! Accumulate scores for each tally
        curr_ptr => active_tallies
        do while(associated(curr_ptr))
-          call accumulate_score(tallies(curr_ptr % data) % scores)
+          call accumulate_tally(tallies(curr_ptr % data))
           curr_ptr => curr_ptr % next
        end do
 
        if (run_mode == MODE_CRITICALITY) then
           ! Before accumulating scores for global_tallies, we need to get the
           ! current batch estimate of k_analog for displaying to output
-          k_batch(current_batch) = global_tallies(K_ANALOG) % value
+          if (active_batches) k_batch(current_batch) = global_tallies(K_ANALOG) % value
        end if
 
        ! Accumulate scores for global tallies
-       call accumulate_score(global_tallies)
+       if (active_batches) call accumulate_score(global_tallies)
     end if
 
     if (associated(curr_ptr)) nullify(curr_ptr)
@@ -1610,21 +1614,23 @@ contains
     end do
 
     ! Copy global tallies into array to be reduced
-    global_temp = global_tallies(:) % value
+    if (active_batches) then
+       global_temp = global_tallies(:) % value
 
-    if (master) then
-       call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
-            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+       if (master) then
+          call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
+               MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
-       ! Transfer values back to global_tallies on master
-       global_tallies(:) % value = global_temp
-    else
-       ! Receive buffer not significant at other processors
-       call MPI_REDUCE(global_temp, dummy, N_GLOBAL_TALLIES, &
-            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-       
-       ! Reset value on other processors
-       global_tallies(:) % value = ZERO
+          ! Transfer values back to global_tallies on master
+          global_tallies(:) % value = global_temp
+       else
+          ! Receive buffer not significant at other processors
+          call MPI_REDUCE(global_temp, dummy, N_GLOBAL_TALLIES, &
+               MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+
+          ! Reset value on other processors
+          global_tallies(:) % value = ZERO
+       end if
     end if
 
     ! We also need to determine the total starting weight of particles from the
@@ -1721,6 +1727,11 @@ contains
        if (confidence_intervals) then
           do k = 1, size(t % scores, 2)
              do j = 1, size(t % scores, 1)
+                ! Calculate t-value for confidence intervals
+                if (confidence_intervals) then
+                   alpha = ONE - CONFIDENCE_LEVEL
+                   t_value = t_percentile(ONE - alpha/TWO, t % n_realizations - 1)
+                end if
                 t % scores(j,k) % sum_sq = t_value * t % scores(j,k) % sum_sq
              end do
           end do
@@ -2060,6 +2071,26 @@ contains
   end function get_label
 
 !===============================================================================
+! ACCUMULATE_TALLY
+!===============================================================================
+
+  subroutine accumulate_tally(t)
+
+    type(TallyObject), intent(inout) :: t
+
+    ! Increment number of realizations
+    if (reduce_tallies) then
+       t % n_realizations = t % n_realizations + 1
+    else
+       t % n_realizations = t % n_realizations + n_procs
+    end if
+
+    ! Accumulate each TallyScore
+    call accumulate_score(t % scores)
+
+  end subroutine accumulate_tally
+
+!===============================================================================
 ! TALLY_STATISTICS computes the mean and standard deviation of the mean of each
 ! tally and stores them in the val and val_sq attributes of the TallyScores
 ! respectively
@@ -2074,11 +2105,11 @@ contains
     do i = 1, n_tallies
        t => tallies(i)
 
-       call statistics_score(t % scores)
+       call statistics_score(t % scores, t % n_realizations)
     end do
 
     ! Calculate statistics for global tallies
-    call statistics_score(global_tallies)
+    call statistics_score(global_tallies, n_realizations)
 
   end subroutine tally_statistics
 
@@ -2127,17 +2158,18 @@ contains
 ! mean for a TallyScore.
 !===============================================================================
 
-  elemental subroutine statistics_score(score)
+  elemental subroutine statistics_score(score, n)
 
     type(TallyScore), intent(inout) :: score
+    integer,          intent(in)    :: n
 
     ! Calculate sample mean and standard deviation of the mean -- note that we
     ! have used Bessel's correction so that the estimator of the variance of the
     ! sample mean is unbiased.
 
-    score % sum    = score % sum/n_realizations
-    score % sum_sq = sqrt((score % sum_sq/n_realizations - score % sum * &
-         score % sum) / (n_realizations - 1))
+    score % sum    = score % sum/n
+    score % sum_sq = sqrt((score % sum_sq/n - score % sum * &
+         score % sum) / (n - 1))
 
   end subroutine statistics_score
 
@@ -2158,12 +2190,12 @@ contains
   end subroutine reset_score
 
 !===============================================================================
-! SETUP_ACTIVE_TALLIES
+! SETUP_ACTIVE_USERTALLIES
 !===============================================================================
 
-  subroutine setup_active_tallies()
+  subroutine setup_active_usertallies()
 
-    integer                  :: i         ! loop counter
+    integer                  :: i       ! loop counter
     type(ListInt), pointer :: curr_ptr  ! pointer to current list node
     type(ListInt), pointer :: tall_ptr  ! pointer to active tallies only
 
@@ -2282,6 +2314,100 @@ contains
     ! nullify the temporary pointer
     if (associated(curr_ptr)) nullify(curr_ptr)
 
-  end subroutine setup_active_tallies
+  end subroutine setup_active_usertallies
+
+!===============================================================================
+! SETUP_ACTIVE_CMFDTALLIES
+!===============================================================================
+
+  subroutine setup_active_cmfdtallies()
+
+    integer                :: i         ! loop counter
+    type(ListInt), pointer :: curr_ptr  ! pointer to current list node
+    type(ListInt), pointer :: tall_ptr  ! pointer to active tallies only
+
+    ! check to see if actives tallies has been allocated
+    tall_ptr => active_tallies
+    if (associated(active_tallies)) then
+      message = 'Active tallies should not exist before CMFD tallies!'
+      call fatal_error()
+    end if
+
+    ! check to see if analog tallies have already been allocated
+    curr_ptr => null()
+    if (associated(active_analog_tallies)) then
+      message = 'Active analog tallies should not exist before CMFD tallies!'
+      call fatal_error()
+    end if
+
+    do i = n_cmfd_analog_tallies + n_user_analog_tallies, n_user_analog_tallies + 1, -1
+
+      ! allocate node
+      allocate(curr_ptr)
+
+      ! set the tally index
+      curr_ptr % data = i
+      curr_ptr % next => active_analog_tallies
+      active_analog_tallies => curr_ptr
+
+      ! set indices in active tallies
+      allocate(tall_ptr)
+      tall_ptr % data = analog_tallies(i)
+      tall_ptr % next => active_tallies
+      active_tallies => tall_ptr
+
+    end do
+
+    ! check to see if tracklength tallies have already been allocated
+    curr_ptr => null()
+    if (associated(active_tracklength_tallies)) then
+      message = 'Active tracklength tallies should not exist before CMFD tallies!'
+      call fatal_error()
+    end if
+
+    do i = n_cmfd_tracklength_tallies + n_user_tracklength_tallies, n_user_tracklength_tallies + 1, -1
+
+      ! allocate node
+      allocate(curr_ptr)
+
+      ! set the tally index
+      curr_ptr % data = i
+      curr_ptr % next => active_tracklength_tallies
+      active_tracklength_tallies => curr_ptr
+
+      ! set indices in active tallies
+      allocate(tall_ptr)
+      tall_ptr % data = tracklength_tallies(i)
+      tall_ptr % next => active_tallies
+      active_tallies => tall_ptr
+
+    end do
+
+    ! check to see if current tallies have already been allocated
+    curr_ptr => null()
+    if (associated(active_current_tallies)) then
+      message = 'Active current tallies should not exist before CMFD tallies!'
+      call fatal_error()
+    end if
+
+    do i = n_cmfd_current_tallies + n_user_current_tallies, n_user_current_tallies + 1, -1
+
+      ! allocate node
+      allocate(curr_ptr)
+
+      ! set the tally index
+      curr_ptr % data = i
+      curr_ptr % next => active_current_tallies
+      active_current_tallies => curr_ptr
+
+      ! set indices in active tallies
+      allocate(tall_ptr)
+      tall_ptr % data = current_tallies(i)
+      tall_ptr % next => active_tallies
+      active_tallies => tall_ptr
+
+    end do
+
+  end subroutine setup_active_cmfdtallies
 
 end module tally

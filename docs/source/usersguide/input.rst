@@ -37,16 +37,19 @@ Overview of Files
 -----------------
 
 To assemble a complete model for OpenMC, one needs to create separate XML files
-for the geometry, materials, and settings. Additionally, there are two optional
+for the geometry, materials, and settings. Additionally, there are three optional
 input files. The first is a tallies XML file that specifies physical quantities
 to be tallied. The second is a plots XML file that specifies regions of geometry
-which should be plotted. OpenMC expects that these files are called:
+which should be plotted. The third is a CMFD XML file that specifies coarse mesh
+acceleration geometry and execution parameters. OpenMC expects that these 
+files are called:
 
 * ``geometry.xml``
 * ``materials.xml``
 * ``settings.xml``
 * ``tallies.xml``
 * ``plots.xml``
+* ``cmfd.xml``
 
 --------------------------------------
 Settings Specification -- settings.xml
@@ -454,6 +457,8 @@ could be written as:
 
     </geometry>
 
+.. _surface_element:
+
 ``<surface>`` Element
 ---------------------
 
@@ -518,6 +523,21 @@ The following quadratic surfaces can be modeled:
   :sphere:
     A sphere of the form :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
     R^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0 \: R`".
+
+  :x-cone:
+    A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
+    R^2 (x - x_0)^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0
+    \: R^2`".
+
+  :y-cone:
+    A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
+    R^2 (y - y_0)^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0
+    \: R^2`".
+
+  :z-cone:
+    A cone parallel to the x-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
+    R^2 (z - z_0)^2`. The coefficients specified are ":math:`x_0 \: y_0 \: z_0
+    \: R^2`".
 
 ``<cell>`` Element
 ------------------
@@ -962,3 +982,184 @@ sub-elements:
       materials to plot.  This overrides any ``col_spec`` color specifications.
 
     *Default*: None
+
+--------------------------------------------
+CMFD Specification -- cmfd.xml
+--------------------------------------------
+    
+Coarse mesh finite difference acceleration method has been implemented in OpenMC.
+Currently, it allows users to accelerate fission source convergence during 
+inactive neutron batches. To run CMFD, the ``<run_cmfd>`` element in 
+``settings.xml`` should be set to ``.true.``.
+
+``<active_flush>`` Element
+--------------------------
+
+The ``<active_flush>`` element controls the batch where CMFD tallies should be
+reset. CMFD tallies should be reset before active batches so they are accumulated 
+without bias.
+
+  *Default*: 0 
+
+``<begin>`` Element
+-------------------
+
+The ``<begin>`` element controls what batch CMFD calculations should begin.
+
+  *Default*: 1
+
+``<feedback>`` Element
+----------------------
+
+The ``<feedback>`` element controls whether or not the CMFD diffusion result is 
+used to adjust the weight of fission source neutrons on the next OpenMC batch. 
+It can be turned on with ".true." and off with ".false.". 
+
+  *Default*: .false.
+
+``<inactive>`` Element
+----------------------
+
+The ``<inactive>`` element controls if cmfd tallies should be accumulated 
+during inactive batches. For some applications, CMFD tallies may not be 
+needed until the start of active batches. This option can be turned on 
+with ".true." and off with ".false."
+
+  *Default*: .true.
+
+``<keff_tol>`` Element
+----------------------
+
+The ``<keff_tol>`` element specifies acceptance criteria of a CMFD eigenvalue.
+If the CMFD eigenvalue and OpenMC batch eigenvalue are within this tolerance, 
+CMFD is allowed to modify source neutron weights. 
+
+  *Default*: 0.005
+
+``<ksp_monitor>`` Element
+-------------------------
+
+The ``<ksp_monitor>`` element is used to view the convergence of linear GMRES 
+iterations in PETSc. This option can be turned on with ".true." and turned off 
+with ".false.".
+
+
+  *Default*: .false. 
+
+``<mesh>`` Element
+------------------
+
+If a structured mesh is desired as a filter for a tally, it must be specified in
+a separate element with the tag name ``<mesh>``. This element has the following
+attributes/sub-elements:
+
+  :type:
+    The type of structured mesh. Only "rectangular" is currently supported.
+
+  :lower_left:
+    The lower-left corner of the structured mesh. If only two coordinate are
+    given, it is assumed that the mesh is an x-y mesh.
+
+  :upper_right:
+    The upper-right corner of the structrued mesh. If only two coordinate are 
+    given, it is assumed that the mesh is an x-y mesh.
+
+  :dimension:
+    The number of mesh cells in each direction.
+
+  :width:
+    The width of mesh cells in each direction.
+
+  :energy:
+    Energy bins [in MeV], listed in ascending order (e.g. 0.0 0.625e-7 20.0)
+    for CMFD tallies and acceleration. If no energy bins are listed, OpenMC 
+    automatically assumes a one energy group calculation over the entire 
+    energy range.
+
+  :albedo:
+    Surface ratio of incoming to outgoing partial currents on global boundary
+    conditions. They are listed in the following order: -x +x -y +y -z +z.
+
+    *Default*: 1.0 1.0 1.0 1.0 1.0 1.0
+
+  :map:
+    An optional acceleration map can be specified to overlay on the coarse 
+    mesh spatial grid. If this option is used a ``1`` is used for a 
+    non-accelerated region and a ``2`` is used for an accelerated region.
+    For a simple 4x4 coarse mesh with a 2x2 fuel lattice surrounded by 
+    reflector, the map is:
+
+      ``1 1 1 1``
+
+      ``1 2 2 1``
+
+      ``1 2 2 1``
+
+      ``1 1 1 1``
+
+    Therefore a 2x2 system of equations is solved rather than a 4x4. This 
+    is extremely important to use in reflectors as neutrons will not 
+    contribute to any tallies far away from fission source neutron regions.
+    A ``2`` must be used to identify any fission source region.
+
+    .. note:: Only two of the following three sub-elements are needed: 
+              ``lower_left``, ``upper_right`` and ``width``. Any combination 
+              of two of these will yield the third.
+
+``<norm>`` Element
+------------------
+
+The ``<norm>`` element is used to normalize the CMFD fission source distribution 
+to a particular value. For example, if a fission source is calculated for a 
+17 x 17 lattice of pins, the fission source may be normalized to the number of 
+fission source regions, in this case 289. This is useful when visualizing this 
+distribution as the average peaking factor will be unity. This parameter will 
+not impact the calculation. 
+
+  *Default*: 1.0
+
+``<n_procs_cmfd>`` Element
+--------------------------
+
+The ``<n_procs_cmfd>`` element is used to set the number of processors used 
+for CMFD calculation. It should be less than or equal to the number of 
+processors used during OpenMC. 
+
+  *Default*: 1
+
+``<power_monitor>`` Element
+---------------------------
+
+The ``<power_monitor>`` element is used to view the convergence of power iteration. 
+This option can be turned on with ".true." and turned off with ".false.".
+
+
+  *Default*: .false.
+
+``<write_balance>`` Element
+---------------------------
+
+The ``<write_balance>`` element is used to view the balance of OpenMC tally
+residuals for every coarse mesh region and energy group. This option can be 
+turned on with ".true." and off with ".false.". 
+
+
+  *Default*: .false.
+
+``<write_hdf5>`` Element
+------------------------
+
+The ``<write_hdf5>`` element can be turned on with ".true." to get an 
+HDF5 output file of CMFD results. 
+
+  *Default*: .false.
+
+``<write_matrices>`` Element
+----------------------------
+
+The ``<write_matrices>`` element is used to view the PETSc sparse matrices
+created when solving CMFD equations. These binary output files can be imported
+into MATLAB using PETSc-MATLAB utilities. This option can be
+turned on with ".true." and off with ".false.".
+
+  *Default*: .false.

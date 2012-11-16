@@ -2,6 +2,7 @@
 
 import struct
 from math import sqrt
+from collections import OrderedDict
 
 import numpy as np
 import scipy.stats
@@ -59,7 +60,7 @@ class Filter(object):
 
 class Tally(object):
     def __init__(self):
-        self.filters = []
+        self.filters = OrderedDict()
 
 
 class SourceSite(object):
@@ -144,6 +145,9 @@ class StatePoint(BinaryFile):
             t = Tally()
             self.tallies.append(t)
 
+            # Read number of realizations
+            t.n_realizations = self._get_int()[0]
+
             # Read sizes of tallies
             t.n_score_bins = self._get_int()[0]
             t.n_filter_bins = self._get_int()[0]
@@ -152,12 +156,14 @@ class StatePoint(BinaryFile):
             n_filters = self._get_int()[0]
 
             for j in range(n_filters):
-                # Create Filter object and add to list of filters
+                # Create Filter object
                 f = Filter()
-                t.filters.append(f)
 
                 # Get type of filter
                 f.type = filter_types[self._get_int()[0]]
+
+                # Add to filter dictionary
+                t.filters[f.type] = f
 
                 # Determine how many bins are in this filter
                 f.length = self._get_int()[0]
@@ -178,6 +184,22 @@ class StatePoint(BinaryFile):
             t.n_scores = self._get_int()[0]
             t.scores = [score_types[j] for j in self._get_int(t.n_scores)]
 
+            # Set up stride
+            stride = 1
+
+            # This stride order is hard coded in openmc/src/tally.F90 -- in
+            # version 0.5, the order will not be fixed. It will depend on the
+            # order in the tallies.xml file
+            for ft in ['energyout', 'energyin', 'mesh', 'surface',
+                       'cellborn', 'cell', 'material', 'universe']:
+
+                # If this filter type has been specified, increment stride by
+                # number of bins for this filter
+                if ft in t.filters.keys():
+                    this_filter = t.filters[ft]
+                    this_filter.stride = stride
+                    stride *= this_filter.length
+
         # Set flag indicating metadata has already been read
         self._metadata = True
 
@@ -185,6 +207,9 @@ class StatePoint(BinaryFile):
         # Check whether metadata has been read
         if not self._metadata:
             self._read_metadata()
+
+        # Number of realizations for global tallies
+        self.n_realizations = self._get_int()[0]
 
         # Read global tallies
         n_global_tallies = self._get_int()[0]
@@ -196,7 +221,6 @@ class StatePoint(BinaryFile):
 
         # Read tally results
         if tallies_present:
-            self.n_realizations = self._get_int()[0]
 
             for t in self.tallies:
                 n = t.n_score_bins * t.n_filter_bins
@@ -271,3 +295,56 @@ class StatePoint(BinaryFile):
                     # Calculate standard deviation
                     if s != 0.0:
                         t.values[i,j,1] = t_value*sqrt((s2/n - s*s)/(n-1))
+
+    def get_value(self, tally_index, spec_list, score_index):
+        """Returns a tally score given a list of filters to satisfy.
+
+        Parameters
+        ----------
+        tally_index : int
+            Index for tally in StatePoint.tallies list
+
+        spec_list : list
+            A list of tuples where the first value in each tuple is the filter
+            type, e.g. 'cell', and the second value is the desired index. If the
+            first value in the tuple is 'mesh', the second value should be a
+            tuple with three integers specifying the mesh indices.
+
+            Example: [('cell', 1), ('mesh', (14,17,20)), ('energyin', 2)]
+
+        score_index : int
+            Index corresponding to score for tally, i.e. the second index in
+            Tally.values[:,:,:].
+
+        """
+
+        # Get Tally object given the index
+        t = self.tallies[tally_index]
+
+        # Initialize index for filter in Tally.values[:,:,:]
+        filter_index = 0
+
+        # Loop over specified filters in spec_list
+        for f_type, f_index in spec_list:
+
+            # Treat mesh filter separately
+            if f_type == 'mesh':
+                # Get index in StatePoint.meshes
+                mesh_index = t.filters['mesh'].bins[0] - 1
+
+                # Get dimensions of corresponding mesh
+                nx, ny, nz = self.meshes[mesh_index].dimension
+
+                # Convert (x,y,z) to a single bin -- this is similar to
+                # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
+                value = ((f_index[0] - 1)*ny*nz +
+                         (f_index[1] - 1)*nz +
+                         (f_index[2] - 1))
+                filter_index += value*t.filters[f_type].stride
+            else:
+                filter_index += f_index*t.filters[f_type].stride
+        
+        # Return the desired result from Tally.values. This could be the sum and
+        # sum of squares, or it could be mean and stdev if self.generate_stdev()
+        # has been called already.
+        return t.values[filter_index, score_index]

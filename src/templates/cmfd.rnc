@@ -1,0 +1,58 @@
+element cmfd {
+  element mesh {
+    (element dimension { list { xsd:int+ } } |
+      attribute dimension { list { xsd:int+ } }) &
+    (element lower_left { list { xsd:double+ } } |
+      attribute lower_left { list { xsd:double+ } }) &
+    (
+      (element upper_right { list { xsd:double+ } } |
+        attribute upper_right { list { xsd:double+ } }) |
+      (element width { list { xsd:double+ } } |
+        attribute width { list { xsd:double+ } })
+    ) &
+    (element albedo { list { xsd:double+ } } |
+      attribute albedo { list { xsd:double+ } }) &
+    (element map { list { xsd:int+ } } |
+      attribute map { list { xsd:int+ } })? &
+    (element energy { list { xsd:double+ } } |
+      attribute energy { list { xsd:double+ } })?
+  } &
+  
+  element norm { xsd:double }? &
+
+  element feedback { ".true." | ".false." }? &
+
+  element n_cmfd_procs { xsd:int }? &
+
+  element reset { ".true." | ".false." }? &
+
+  element balance { ".true." | ".false." }? &
+
+  element downscatter { ".true." | ".false." }? &
+
+  element run_2grp { ".true." | ".false." }? &
+
+  element solver { xsd:string }? &
+
+  element snes_monitor { ".true." | ".false." }? &
+
+  element ksp_monitor { ".true." | ".false." }? &
+
+  element power_monitor { ".true." | ".false." }? &
+
+  element write_balance { ".true." | ".false." }? &
+
+  element write_matrices { ".true." | ".false." }? &
+
+  element run_adjoint { ".true." | ".false." }? &
+
+  element write_hdf5 { ".true." | ".false." }? &
+
+  element begin { xsd:int }? &
+
+  element inactive { ".true." | ".false." }? &
+
+  element active_flush { xsd:int }? &
+
+  element keff_tol { xsd:double }?
+}

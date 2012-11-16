@@ -3,6 +3,7 @@ module global
   use ace_header,       only: Nuclide, SAB_Table, xsListing, NuclideMicroXS, &
                               MaterialMacroXS
   use bank_header,      only: Bank
+  use cmfd_header
   use constants
   use datatypes,        only: list_delete
   use datatypes_header, only: DictionaryII, DictionaryCI, ListInt
@@ -127,6 +128,7 @@ module global
 
   ! Flag for turning tallies on
   logical :: tallies_on = .false.
+  logical :: active_batches = .false.
 
   ! Assume all tallies are spatially distinct
   logical :: assume_separate = .false.
@@ -275,6 +277,94 @@ module global
   integer    :: trace_gen
   integer(8) :: trace_particle
 
+  ! ============================================================================
+  ! CMFD VARIABLES 
+
+  ! Main object
+  type(cmfd_type) :: cmfd
+
+  ! Is CMFD active
+  logical :: cmfd_run = .false.
+ 
+  ! Timing objects
+  type(Timer) :: time_cmfd   ! timer for whole cmfd calculation
+  type(Timer) :: time_solver ! timer for solver 
+
+  ! Flag for CMFD only
+  logical :: cmfd_only = .false.
+
+  ! Flag for coremap accelerator
+  logical :: cmfd_coremap = .false.
+
+  ! number of processors for cmfd
+  integer :: n_procs_cmfd
+
+  ! reset dhats to zero
+  logical :: dhat_reset = .false.
+
+  ! activate neutronic feedback
+  logical :: cmfd_feedback = .false.
+
+  ! activate auto-balance of tallies (2grp only)
+! logical :: cmfd_balance = .false.
+
+  ! calculate effective downscatter
+! logical :: cmfd_downscatter = .false.
+
+  ! user-defined tally information
+  integer :: n_cmfd_meshes              = 1 ! # of structured meshes
+  integer :: n_cmfd_tallies             = 3 ! # of user-defined tallies
+  integer :: n_cmfd_analog_tallies      = 2 ! # of analog tallies
+  integer :: n_cmfd_tracklength_tallies = 0 ! # of track-length tallies
+  integer :: n_cmfd_current_tallies     = 1 ! # of surface current tallies
+
+  ! overwrite with 2grp xs
+  logical :: cmfd_run_2grp = .false.
+
+  ! hold cmfd weight adjustment factors
+  logical :: cmfd_hold_weights = .false.
+
+  ! eigenvalue solver type
+  character(len=10) :: cmfd_solver_type = 'power'
+
+  ! adjoint method type
+  character(len=10) :: cmfd_adjoint_type = 'physical'
+
+  ! number of incomplete ilu factorization levels
+  integer :: cmfd_ilu_levels = 1
+
+  ! batch to begin cmfd
+  integer :: cmfd_begin = 1
+
+  ! when and how long to flush cmfd tallies during inactive batches
+  integer :: cmfd_inact_flush(2) = (/9999,1/)
+
+  ! batch to last flush before active batches
+  integer :: cmfd_act_flush = 0
+
+  ! compute effective downscatter cross section
+  logical :: cmfd_downscatter = .false.
+
+  ! convergence monitoring
+  logical :: cmfd_snes_monitor  = .false.
+  logical :: cmfd_ksp_monitor   = .false.
+  logical :: cmfd_power_monitor = .false.
+
+  ! cmfd output
+  logical :: cmfd_write_balance  = .false.
+  logical :: cmfd_write_matrices = .false.
+  logical :: cmfd_write_hdf5     = .false.
+
+  ! run an adjoint calculation (last batch only)
+  logical :: cmfd_run_adjoint = .false.
+
+  ! cmfd run logicals
+  logical :: cmfd_on             = .false.
+  logical :: cmfd_tally_on       = .true. 
+
+  ! tolerance on keff to run cmfd
+  real(8) :: cmfd_keff_tol = 0.005_8
+
   ! Information about state points to be written
   integer :: n_state_points = 0
   integer, allocatable :: statepoint_batch(:)
@@ -321,6 +411,9 @@ contains
     if (allocated(fission_bank)) deallocate(fission_bank)
     if (allocated(source_bank)) deallocate(source_bank)
     if (allocated(entropy_p)) deallocate(entropy_p)
+
+    ! Deallocate cmfd
+    call deallocate_cmfd(cmfd)
 
     ! Deallocate tally node lists
     call list_delete(active_analog_tallies)

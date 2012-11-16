@@ -61,7 +61,7 @@ for t1, t2 in zip(sp1.tallies, sp2.tallies):
 
     # Compare filters
     assert len(t1.filters) == len(t2.filters)
-    for f1, f2 in zip(t1.filters, t2.filters):
+    for f1, f2 in zip(t1.filters.values(), t2.filters.values()):
         assert f1.type == f2.type
         assert f1.length == f2.length
         assert f1.bins == f2.bins

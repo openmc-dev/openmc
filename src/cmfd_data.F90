@@ -77,6 +77,7 @@ contains
     integer :: ijk(3)               ! indices for mesh cell
     integer :: score_index          ! index to pull from tally object
     integer :: bins(N_FILTER_TYPES) ! bins for filters
+    integer :: i_mesh               ! index for mesh filter
 
     real(8) :: flux   ! temp variable for flux
 
@@ -94,8 +95,9 @@ contains
     cmfd % openmc_src = ZERO
 
     ! associate tallies and mesh
-    t => tallies(n_user_tallies + 1) 
-    m => meshes(t % mesh)
+    t => tallies(n_user_tallies + 1)
+    i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
+    m => meshes(i_mesh)
 
     ! set mesh widths
     cmfd % hxyz(1,:,:,:) = m % width(1) ! set x width
@@ -107,7 +109,8 @@ contains
 
      ! associate tallies and mesh
      t => tallies(ital)
-     m => meshes(t % mesh)
+     i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
+     m => meshes(i_mesh)
 
      ! begin loop around space
      ZLOOP: do k = 1,nz

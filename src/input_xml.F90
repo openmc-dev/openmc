@@ -1391,7 +1391,7 @@ contains
           ! Determine number of filters
           n_filters = size(tally_(i) % filter)
 
-          ! Allocate filters, stride, matching_bins array
+          ! Allocate filters array
           t % n_filters = n_filters
           allocate(t % filters(n_filters))
 
@@ -1783,7 +1783,7 @@ contains
        end if
 
        ! =======================================================================
-       ! SET UP MEMORY STRIDE ARRAY 
+       ! SET UP MEMORY STRIDE ARRAY
 
        if (t % type == TALLY_SURFACE_CURRENT) then
           ! Allocate memory for stride and matching bins

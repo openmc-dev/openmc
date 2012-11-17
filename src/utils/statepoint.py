@@ -186,19 +186,9 @@ class StatePoint(BinaryFile):
 
             # Set up stride
             stride = 1
-
-            # This stride order is hard coded in openmc/src/tally.F90 -- in
-            # version 0.5, the order will not be fixed. It will depend on the
-            # order in the tallies.xml file
-            for ft in ['energyout', 'energyin', 'mesh', 'surface',
-                       'cellborn', 'cell', 'material', 'universe']:
-
-                # If this filter type has been specified, increment stride by
-                # number of bins for this filter
-                if ft in t.filters.keys():
-                    this_filter = t.filters[ft]
-                    this_filter.stride = stride
-                    stride *= this_filter.length
+            for f in t.filters.values()[::-1]:
+                f.stride = stride
+                stride *= f.length
 
         # Set flag indicating metadata has already been read
         self._metadata = True

@@ -12,7 +12,7 @@ module input_xml
   use random_lcg,      only: prn
   use string,          only: lower_case, to_str, str_to_int, str_to_real, &
                              starts_with, ends_with
-  use tally_header,    only: TallyObject
+  use tally_header,    only: TallyObject, TallyFilter
 
   implicit none
 
@@ -1192,6 +1192,7 @@ contains
     character(MAX_WORD_LEN) :: word
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
+    type(TallyFilter), allocatable :: filters(:) ! temporary filters
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
@@ -1741,6 +1742,29 @@ contains
                 ! currents coming into and out of the boundary mesh cells.
                 t % filters(k) % n_bins = product(m % dimension + 1)
 
+                ! Copy filters to temporary array
+                allocate(filters(t % n_filters + 1))
+                filters(1:t % n_filters) = t % filters
+
+                ! Move allocation back -- filters becomes deallocated during
+                ! this call
+                call move_alloc(FROM=filters, TO=t%filters)
+
+                ! Add surface filter
+                t % n_filters = t % n_filters + 1
+                t % filters(t % n_filters) % type = FILTER_SURFACE
+                t % filters(t % n_filters) % n_bins = 2 * m % n_dimension
+                allocate(t % filters(t % n_filters) % int_bins(&
+                     2 * m % n_dimension))
+                if (m % n_dimension == 2) then
+                  t % filters(t % n_filters) % int_bins = (/ IN_RIGHT, &
+                       OUT_RIGHT, IN_FRONT, OUT_FRONT /)
+                elseif (m % n_dimension == 3) then
+                  t % filters(t % n_filters) % int_bins = (/ IN_RIGHT, &
+                       OUT_RIGHT, IN_FRONT, OUT_FRONT, IN_TOP, OUT_TOP /)
+                end if
+                t % find_filter(FILTER_SURFACE) = t % n_filters
+                
              case default
                 message = "Unknown scoring function: " // &
                      trim(tally_(i) % scores(j))
@@ -1785,32 +1809,15 @@ contains
        ! =======================================================================
        ! SET UP MEMORY STRIDE ARRAY
 
-       if (t % type == TALLY_SURFACE_CURRENT) then
-          ! Allocate memory for stride and matching bins
-          allocate(t % stride(n_filters + 1))
-          allocate(t % matching_bins(n_filters + 1))
-
-          ! Set stride for surface/direction
-          t % stride(n_filters + 1) = 1
-
-          ! Get pointer to mesh
-          i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
-          m => meshes(i_mesh)
-
-          ! Determine how many partial currents need to be stored
-          n = 2 * m % n_dimension
-
-       else
-          allocate(t % stride(n_filters))
-          allocate(t % matching_bins(n_filters))
-
-          n = 1
-       end if
+       ! Allocate stride and matching_bins arrays
+       allocate(t % stride(t % n_filters))
+       allocate(t % matching_bins(t % n_filters))
 
        ! The filters are traversed in opposite order so that the last filter has
        ! the shortest stride in memory and the first filter has the largest
        ! stride
 
+       n = 1
        STRIDE: do j = t % n_filters, 1, -1
           t % stride(j) = n
           n = n * t % filters(j) % n_bins

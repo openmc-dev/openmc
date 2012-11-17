@@ -1173,6 +1173,7 @@ contains
     integer :: n                    ! number of incoming energy bins
     integer :: filter_index         ! index of scoring bin
     integer :: i_filter_mesh        ! index of mesh filter in filters array
+    integer :: i_filter_surf        ! index of surface filter in filters
     real(8) :: uvw(3)               ! cosine of angle of particle
     real(8) :: xyz0(3)              ! starting/intermediate coordinates
     real(8) :: xyz1(3)              ! ending coordinates of particle
@@ -1199,9 +1200,10 @@ contains
        ! Get pointer to tally
        t => tallies(current_tallies(curr_ptr % data))
 
-       ! Get index for filter mesh
+       ! Get index for mesh and surface filters
        i_filter_mesh = t % find_filter(FILTER_MESH)
-
+       i_filter_surf = t % find_filter(FILTER_SURFACE)
+       
        ! Determine indices for starting and ending location
        m => meshes(t % filters(i_filter_mesh) % int_bins(1))
        call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
@@ -1255,9 +1257,9 @@ contains
              do j = ijk0(3), ijk1(3) - 1
                 ijk0(3) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = OUT_TOP
+                   t % matching_bins(i_filter_surf) = OUT_TOP
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                    filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
@@ -1266,9 +1268,9 @@ contains
              do j = ijk0(3) - 1, ijk1(3), -1
                 ijk0(3) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = IN_TOP
+                   t % matching_bins(i_filter_surf) = IN_TOP
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                    filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
@@ -1282,9 +1284,9 @@ contains
              do j = ijk0(2), ijk1(2) - 1
                 ijk0(2) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = OUT_FRONT
+                   t % matching_bins(i_filter_surf) = OUT_FRONT
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                    filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
@@ -1293,9 +1295,9 @@ contains
              do j = ijk0(2) - 1, ijk1(2), -1
                 ijk0(2) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = IN_FRONT
+                   t % matching_bins(i_filter_surf) = IN_FRONT
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                    filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
@@ -1309,9 +1311,9 @@ contains
              do j = ijk0(1), ijk1(1) - 1
                 ijk0(1) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = OUT_RIGHT
+                   t % matching_bins(i_filter_surf) = OUT_RIGHT
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                    filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
@@ -1320,9 +1322,9 @@ contains
              do j = ijk0(1) - 1, ijk1(1), -1
                 ijk0(1) = j
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = IN_RIGHT
+                   t % matching_bins(i_filter_surf) = IN_RIGHT
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                    filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                    call add_to_score(t % scores(1, filter_index), p % wgt)
                 end if
@@ -1346,7 +1348,7 @@ contains
 
        do k = 1, n_cross
           ! Reset scoring bin index
-          t % matching_bins(t % n_filters + 1) = 0
+          t % matching_bins(i_filter_surf) = 0
 
           ! Calculate distance to each bounding surface. We need to treat
           ! special case where the cosine of the angle is zero since this would
@@ -1373,9 +1375,9 @@ contains
                 ! Crossing into right mesh cell -- this is treated as outgoing
                 ! current from (i,j,k)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = OUT_RIGHT
+                   t % matching_bins(i_filter_surf) = OUT_RIGHT
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                 end if
                 ijk0(1) = ijk0(1) + 1
                 xyz_cross(1) = xyz_cross(1) + m % width(1)
@@ -1385,9 +1387,9 @@ contains
                 ijk0(1) = ijk0(1) - 1
                 xyz_cross(1) = xyz_cross(1) - m % width(1)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = IN_RIGHT
+                   t % matching_bins(i_filter_surf) = IN_RIGHT
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                 end if
              end if
           elseif (distance == d(2)) then
@@ -1395,9 +1397,9 @@ contains
                 ! Crossing into front mesh cell -- this is treated as outgoing
                 ! current in (i,j,k)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = OUT_FRONT
+                   t % matching_bins(i_filter_surf) = OUT_FRONT
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                 end if
                 ijk0(2) = ijk0(2) + 1
                 xyz_cross(2) = xyz_cross(2) + m % width(2)
@@ -1407,9 +1409,9 @@ contains
                 ijk0(2) = ijk0(2) - 1
                 xyz_cross(2) = xyz_cross(2) - m % width(2)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = IN_FRONT
+                   t % matching_bins(i_filter_surf) = IN_FRONT
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                 end if
              end if
           else if (distance == d(3)) then
@@ -1417,9 +1419,9 @@ contains
                 ! Crossing into top mesh cell -- this is treated as outgoing
                 ! current in (i,j,k)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = OUT_TOP
+                   t % matching_bins(i_filter_surf) = OUT_TOP
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                 end if
                 ijk0(3) = ijk0(3) + 1
                 xyz_cross(3) = xyz_cross(3) + m % width(3)
@@ -1429,15 +1431,15 @@ contains
                 ijk0(3) = ijk0(3) - 1
                 xyz_cross(3) = xyz_cross(3) - m % width(3)
                 if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-                   t % matching_bins(t % n_filters + 1) = IN_TOP
+                   t % matching_bins(i_filter_surf) = IN_TOP
                    t % matching_bins(i_filter_mesh) = &
-                        mesh_indices_to_bin(m, ijk0 + 1)
+                        mesh_indices_to_bin(m, ijk0 + 1, .true.)
                 end if
              end if
           end if
 
           ! Determine scoring index
-          if (t % matching_bins(t % n_filters + 1) > 0) then
+          if (t % matching_bins(i_filter_surf) > 0) then
              filter_index = sum((t % matching_bins - 1) * t % stride) + 1
 
              ! Check for errors
@@ -1861,8 +1863,9 @@ contains
     integer :: j                    ! mesh index for y
     integer :: k                    ! mesh index for z
     integer :: l                    ! index for energy
-    integer :: i_filter_mesh
-    integer :: i_filter_ein
+    integer :: i_filter_mesh        ! index for mesh filter
+    integer :: i_filter_ein         ! index for incoming energy filter
+    integer :: i_filter_surf        ! index for surface filter
     integer :: n                    ! number of incoming energy bins
     integer :: len1                 ! length of string 
     integer :: len2                 ! length of string 
@@ -1873,6 +1876,7 @@ contains
 
     ! Get pointer to mesh
     i_filter_mesh = t % find_filter(FILTER_MESH)
+    i_filter_surf = t % find_filter(FILTER_SURFACE)
     m => meshes(t % filters(i_filter_mesh) % int_bins(1))
 
     ! initialize bins array
@@ -1911,15 +1915,15 @@ contains
 
                 ! Left Surface
                 t % matching_bins(i_filter_mesh) = &
-                     mesh_indices_to_bin(m, (/ i-1, j, k /) + 1)
-                t % matching_bins(t % n_filters + 1) = IN_RIGHT
+                     mesh_indices_to_bin(m, (/ i-1, j, k /) + 1, .true.)
+                t % matching_bins(i_filter_surf) = IN_RIGHT
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Left", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                t % matching_bins(t % n_filters + 1) = OUT_RIGHT
+                t % matching_bins(i_filter_surf) = OUT_RIGHT
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Left", &
@@ -1928,15 +1932,15 @@ contains
 
                 ! Right Surface
                 t % matching_bins(i_filter_mesh) = &
-                     mesh_indices_to_bin(m, (/ i, j, k /) + 1)
-                t % matching_bins(t % n_filters + 1) = IN_RIGHT
+                     mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
+                t % matching_bins(i_filter_surf) = IN_RIGHT
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Right", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                t % matching_bins(t % n_filters + 1) = OUT_RIGHT
+                t % matching_bins(i_filter_surf) = OUT_RIGHT
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Right", &
@@ -1945,15 +1949,15 @@ contains
 
                 ! Back Surface
                 t % matching_bins(i_filter_mesh) = &
-                     mesh_indices_to_bin(m, (/ i, j-1, k /) + 1)
-                t % matching_bins(t % n_filters + 1) = IN_FRONT
+                     mesh_indices_to_bin(m, (/ i, j-1, k /) + 1, .true.)
+                t % matching_bins(i_filter_surf) = IN_FRONT
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Back", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                t % matching_bins(t % n_filters + 1) = OUT_FRONT
+                t % matching_bins(i_filter_surf) = OUT_FRONT
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Back", &
@@ -1962,15 +1966,15 @@ contains
 
                 ! Front Surface
                 t % matching_bins(i_filter_mesh) = &
-                     mesh_indices_to_bin(m, (/ i, j, k /) + 1)
-                t % matching_bins(t % n_filters + 1) = IN_FRONT
+                     mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
+                t % matching_bins(i_filter_surf) = IN_FRONT
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Front", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                t % matching_bins(t % n_filters + 1) = OUT_FRONT
+                t % matching_bins(i_filter_surf) = OUT_FRONT
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Front", &
@@ -1979,15 +1983,15 @@ contains
 
                 ! Bottom Surface
                 t % matching_bins(i_filter_mesh) = &
-                     mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1)
-                t % matching_bins(t % n_filters + 1) = IN_TOP
+                     mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1, .true.)
+                t % matching_bins(i_filter_surf) = IN_TOP
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Bottom", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                t % matching_bins(t % n_filters + 1) = OUT_TOP
+                t % matching_bins(i_filter_surf) = OUT_TOP
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Bottom", &
@@ -1996,15 +2000,15 @@ contains
 
                 ! Top Surface
                 t % matching_bins(i_filter_mesh) = &
-                     mesh_indices_to_bin(m, (/ i, j, k /) + 1)
-                t % matching_bins(t % n_filters + 1) = IN_TOP
+                     mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
+                t % matching_bins(i_filter_surf) = IN_TOP
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Incoming Current from Top", &
                      to_str(t % scores(1,filter_index) % sum), &
                      trim(to_str(t % scores(1,filter_index) % sum_sq))
 
-                t % matching_bins(t % n_filters + 1) = OUT_TOP
+                t % matching_bins(i_filter_surf) = OUT_TOP
                 filter_index = sum((t % matching_bins - 1) * t % stride) + 1
                 write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                      "Outgoing Current to Top", &

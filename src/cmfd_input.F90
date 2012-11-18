@@ -351,6 +351,9 @@ contains
 
       if (i == n_user_tallies + 1) then
 
+        ! set label
+        t % label = "CMFD flux, total, scatter-1, diffusion"
+
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
 
@@ -376,6 +379,9 @@ contains
         analog_tallies(n_user_analog_tallies + 1) = i
 
       else if (i == n_user_tallies + 2) then
+
+        ! set label
+        t % label = "CMFD neutron production"
 
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
@@ -415,6 +421,9 @@ contains
         analog_tallies(n_user_analog_tallies + 2) = i
 
       else if (i == n_user_tallies + 3) then
+
+        ! set label
+        t % label = "CMFD surface currents"
 
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG

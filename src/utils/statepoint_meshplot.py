@@ -47,11 +47,16 @@ for t in sp.tallies:
     if 'mesh' not in t.filters:
         continue
 
-    # Get Mesh object
+    # Get Mesh object and determine size
     m = sp.meshes[t.filters['mesh'].bins[0] - 1]
-    nx, ny, nz = m.dimension
-    ns = t.total_score_bins * t.total_filter_bins / (nx*ny*nz)
+    if len(m.dimension) == 2:
+        nx, ny = m.dimension
+        nz = 1
+    else:
+        nx, ny, nz = m.dimension
 
+    # Calculate number of score bins
+    ns = t.total_score_bins * t.total_filter_bins / (nx*ny*nz)
     assert n_bins == nx*ny*nz*ns
 
     # Create lists for tallies

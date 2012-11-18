@@ -41,12 +41,16 @@ for t in sp.tallies:
     n = t.n_realizations
     t_value = scipy.stats.t.ppf(0.975, n - 1)
 
-    n_bins = t.n_score_bins * t.n_filter_bins
+    n_bins = t.total_score_bins * t.total_filter_bins
+
+    # Check for mesh
+    if 'mesh' not in t.filters:
+        continue
 
     # Get Mesh object
     m = sp.meshes[t.filters['mesh'].bins[0] - 1]
     nx, ny, nz = m.dimension
-    ns = t.n_score_bins * t.n_filter_bins / (nx*ny*nz)
+    ns = t.total_score_bins * t.total_filter_bins / (nx*ny*nz)
 
     assert n_bins == nx*ny*nz*ns
 

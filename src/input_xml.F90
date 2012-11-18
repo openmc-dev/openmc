@@ -1806,30 +1806,6 @@ contains
           end select
        end if
 
-       ! =======================================================================
-       ! SET UP MEMORY STRIDE ARRAY
-
-       ! Allocate stride and matching_bins arrays
-       allocate(t % stride(t % n_filters))
-       allocate(t % matching_bins(t % n_filters))
-
-       ! The filters are traversed in opposite order so that the last filter has
-       ! the shortest stride in memory and the first filter has the largest
-       ! stride
-
-       n = 1
-       STRIDE: do j = t % n_filters, 1, -1
-          t % stride(j) = n
-          n = n * t % filters(j) % n_bins
-       end do STRIDE
-
-       ! Set total number of filter and scoring bins
-       t % total_filter_bins = n
-       t % total_score_bins = t % n_score_bins * t % n_nuclide_bins
-       
-       ! Allocate scores array
-       allocate(t % scores(t % total_score_bins, t % total_filter_bins))
-
        ! Count number of tallies by type
        if (t % type == TALLY_VOLUME) then
           if (t % estimator == ESTIMATOR_ANALOG) then

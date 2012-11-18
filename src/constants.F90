@@ -337,9 +337,9 @@ module constants
 
   ! Energy grid methods
   integer, parameter :: &
-       GRID_NUCLIDE  = 1, & ! non-unionized energy grid (MCNP)
+       GRID_NUCLIDE  = 1, & ! non-unionized energy grid
        GRID_UNION    = 2, & ! union grid with pointers
-       GRID_LETHARGY = 3    ! lethargy mapping (MC21)
+       GRID_LETHARGY = 3    ! lethargy mapping
 
   ! Running modes
   integer, parameter ::        &

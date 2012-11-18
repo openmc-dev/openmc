@@ -1,7 +1,7 @@
 module cmfd_data
 
 !==============================================================================
-! CMFD_DATA -- This module processes the MC21 cmfd tally object to generate
+! CMFD_DATA -- This module processes the cmfd tally object to generate
 ! parameters for CMFD calculation.
 !==============================================================================
 

@@ -1123,8 +1123,7 @@ contains
 !===============================================================================
 ! READ_THERMAL_DATA reads elastic and inelastic cross sections and corresponding
 ! secondary energy/angle distributions derived from experimental S(a,b)
-! data. Namely, in MCNP language, this routine reads the ITIE, ITCE, ITXE, and
-! ITCA blocks.
+! data. Namely, this routine reads the ITIE, ITCE, ITXE, and ITCA blocks.
 !===============================================================================
 
   subroutine read_thermal_data(table)

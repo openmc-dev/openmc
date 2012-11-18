@@ -1525,8 +1525,7 @@ contains
           end if
 
        elseif (INTT == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about the
-          ! formula given in the MCNP manual
+          ! Linear-linear interpolation
           E_l_k1 = edist % data(lc+k+1)
           p_l_k1 = edist % data(lc+NP+k+1)
 
@@ -1763,8 +1762,7 @@ contains
           KM_A = edist % data(lc + 4*NP + k)
 
        elseif (INTT == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about the
-          ! formula given in the MCNP manual
+          ! Linear-linear interpolation
           E_l_k1 = edist % data(lc+k+1)
           p_l_k1 = edist % data(lc+NP+k+1)
 
@@ -1909,8 +1907,7 @@ contains
           end if
 
        elseif (INTT == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about the
-          ! formula given in the MCNP manual
+          ! Linear-linear interpolation
           E_l_k1 = edist % data(lc+k+1)
           p_l_k1 = edist % data(lc+NP+k+1)
 
@@ -1975,8 +1972,7 @@ contains
           end if
 
        elseif (JJ == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about the
-          ! formula given in the MCNP manual
+          ! Linear-linear interpolation
           p_k1  = edist % data(lc + NP + k+1)
           mu_k1 = edist % data(lc + k+1)
 

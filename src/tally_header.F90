@@ -15,7 +15,8 @@ module tally_header
   end type TallyMapElement
 
 !===============================================================================
-! TALLYMAPITEM
+! TALLYMAPITEM contains a list of tally/bin combinations for each mappable
+! filter bin specified.
 !===============================================================================
 
   type TallyMapItem
@@ -24,7 +25,9 @@ module tally_header
 
 !===============================================================================
 ! TALLYMAP contains a list of pairs of indices to tallies and the corresponding
-! bin for a given filter.
+! bin for a given filter. There is one TallyMap for each mappable filter
+! type. The items array is as long as the corresponding array for that filter,
+! e.g. for tally_maps(FILTER_CELL), items is n_cells long.
 !===============================================================================
 
   type TallyMap
@@ -44,14 +47,16 @@ module tally_header
   end type TallyScore
 
 !===============================================================================
-! TALLYFILTER
+! TALLYFILTER describes a filter that limits what events score to a tally. For
+! example, a cell filter indicates that only particles in a specified cell
+! should score to the tally. 
 !===============================================================================
 
   type TallyFilter
      integer :: type = NONE
      integer :: n_bins = 0
      integer, allocatable :: int_bins(:)
-     real(8), allocatable :: real_bins(:)
+     real(8), allocatable :: real_bins(:) ! Only used for energy filters
   end type TallyFilter
 
 !===============================================================================
@@ -74,11 +79,10 @@ module tally_header
      integer                        :: n_filters    ! Number of filters
      type(TallyFilter), allocatable :: filters(:)   ! Filter data (type/bins)
 
-     ! The following attributes greatly simplify logic in many places. The
-     ! stride attribute is used for determining the index in the scores array
-     ! for a matching_bin combination. Since multiple dimensions are mapped onto
-     ! one dimension in the scores array, the stride attribute gives the stride
-     ! for a given filter type within the scores array
+     ! The stride attribute is used for determining the index in the scores
+     ! array for a matching_bin combination. Since multiple dimensions are
+     ! mapped onto one dimension in the scores array, the stride attribute gives
+     ! the stride for a given filter type within the scores array
 
      integer, allocatable :: matching_bins(:)
      integer, allocatable :: stride(:)

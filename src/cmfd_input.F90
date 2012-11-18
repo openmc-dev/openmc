@@ -176,12 +176,10 @@ contains
     use xml_data_cmfd_t
 
     integer :: i           ! loop counter
-    integer :: id          ! user-specified identifier
-    integer :: i_mesh      ! index in mesh array
-    integer :: i_filter_mesh ! index for mesh filter
     integer :: n           ! size of arrays in mesh specification
     integer :: ng          ! number of energy groups (default 1)
     integer :: n_filters   ! number of filters
+    integer :: i_filter_mesh ! index for mesh filter
     character(MAX_LINE_LEN) :: filename
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
@@ -318,25 +316,14 @@ contains
     ! begin loop around tallies
     do i = n_user_tallies+1, n_tallies
 
-      ! set n filters to 0
-      n_filters = 0
-
       ! point t to tally variable
       t => tallies(i)
 
       ! set reset property
       if (reset_) t % reset = .true.
 
-      ! set number of nucilde bins
-      allocate(t % nuclide_bins(1))
-      t % nuclide_bins(1) = -1
-      t % n_nuclide_bins = 1
-
-      ! record tally id which is equivalent to loop number
-      t % id = i
-
       ! set up mesh filter
-      n_filters = n_filters + 1
+      n_filters = 1
       filters(n_filters) % type = FILTER_MESH
       filters(n_filters) % n_bins = product(m % dimension)
       allocate(filters(n_filters) % int_bins(1))
@@ -353,6 +340,14 @@ contains
         filters(n_filters) % real_bins = mesh_ % energy
         t % find_filter(FILTER_ENERGYIN) = n_filters
       end if
+
+      ! set number of nucilde bins
+      allocate(t % nuclide_bins(1))
+      t % nuclide_bins(1) = -1
+      t % n_nuclide_bins = 1
+
+      ! record tally id which is equivalent to loop number
+      t % id = i
 
       if (i == n_user_tallies + 1) then
 
@@ -404,6 +399,10 @@ contains
         allocate(t % filters(n_filters))
         t % filters = filters(1:n_filters)
 
+        ! deallocate filters bins array
+        if (associated(mesh_ % energy)) &
+             deallocate(filters(n_filters) % real_bins)
+
         ! allocate macro reactions
         allocate(t % score_bins(2))
         t % n_score_bins = 2
@@ -420,12 +419,27 @@ contains
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
 
-        ! TODO: Add extra filter for surface
+        ! Add extra filter for surface
+        n_filters = n_filters + 1
+        filters(n_filters) % type = FILTER_SURFACE
+        filters(n_filters) % n_bins = 2 * m % n_dimension
+        allocate(filters(n_filters) % int_bins(2 * m % n_dimension))
+        if (m % n_dimension == 2) then
+          filters(n_filters) % int_bins = (/ IN_RIGHT, OUT_RIGHT, IN_FRONT, &
+               OUT_FRONT /)
+        elseif (m % n_dimension == 3) then
+          filters(n_filters) % int_bins = (/ IN_RIGHT, OUT_RIGHT, IN_FRONT, &
+               OUT_FRONT, IN_TOP, OUT_TOP /)
+        end if
+        t % find_filter(FILTER_SURFACE) = n_filters
 
         ! allocate and set filters
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
         t % filters = filters(1:n_filters)
+
+        ! deallocate filters bins array
+        deallocate(filters(n_filters) % int_bins)
 
         ! allocate macro reactions
         allocate(t % score_bins(1))
@@ -444,6 +458,10 @@ contains
         current_tallies(n_user_current_tallies + 1) = i 
 
       end if
+
+      ! deallocate filter bins
+      deallocate(filters(1) % int_bins)
+      if (associated(mesh_ % energy)) deallocate(filters(2) % real_bins)
 
     end do
 

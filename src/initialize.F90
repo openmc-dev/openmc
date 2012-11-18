@@ -19,8 +19,8 @@ module initialize
   use source,           only: initialize_source
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
-  use tally,            only: create_tally_map
   use tally_header,     only: TallyObject
+  use tally_initialize, only: configure_tallies
   use timing,           only: timer_start, timer_stop
 
 #ifdef MPI
@@ -110,8 +110,8 @@ contains
           call timer_stop(time_unionize)
        end if
 
-       ! Create tally map
-       call create_tally_map()
+       ! Allocate and setup tally stride, matching_bins, and tally maps
+       call configure_tallies()
 
        ! Determine how much work each processor should do
        call calculate_work()

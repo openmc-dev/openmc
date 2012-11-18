@@ -63,11 +63,11 @@ module tally_header
   type TallyObject
      ! Basic data
 
-     integer :: id               ! user-defined identifier
-     character(len=52) :: label  ! user-defined label
-     integer :: type             ! volume, surface current
-     integer :: estimator        ! collision, track-length
-     real(8) :: volume           ! volume of region
+     integer :: id                   ! user-defined identifier
+     character(len=52) :: label = "" ! user-defined label
+     integer :: type                 ! volume, surface current
+     integer :: estimator            ! collision, track-length
+     real(8) :: volume               ! volume of region
 
      ! Information about what filters should be used
 

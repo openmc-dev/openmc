@@ -45,7 +45,7 @@ for i, t in enumerate(sp.tallies):
     uncertainties = []
     nonzero = []
 
-    n_bins = t.n_score_bins * t.n_filter_bins
+    n_bins = t.total_score_bins * t.total_filter_bins
 
     # Loop over filter/score bins
     for j in range(n_bins):

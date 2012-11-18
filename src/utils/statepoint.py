@@ -149,8 +149,8 @@ class StatePoint(BinaryFile):
             t.n_realizations = self._get_int()[0]
 
             # Read sizes of tallies
-            t.n_score_bins = self._get_int()[0]
-            t.n_filter_bins = self._get_int()[0]
+            t.total_score_bins = self._get_int()[0]
+            t.total_filter_bins = self._get_int()[0]
 
             # Read number of filters
             n_filters = self._get_int()[0]
@@ -213,9 +213,9 @@ class StatePoint(BinaryFile):
         if tallies_present:
 
             for t in self.tallies:
-                n = t.n_score_bins * t.n_filter_bins
+                n = t.total_score_bins * t.total_filter_bins
                 t.values = np.array(self._get_double(2*n))
-                t.values.shape = (t.n_filter_bins, t.n_score_bins, 2)
+                t.values.shape = (t.total_filter_bins, t.total_score_bins, 2)
 
         # Indicate that tally values have been read
         self._values = True

@@ -56,8 +56,8 @@ for m1, m2 in zip(sp1.meshes, sp2.meshes):
 assert len(sp1.tallies) == len(sp2.tallies)
 for t1, t2 in zip(sp1.tallies, sp2.tallies):
     # Compare size of tallies
-    assert t1.n_score_bins == t2.n_score_bins
-    assert t1.n_filter_bins == t2.n_filter_bins
+    assert t1.total_score_bins == t2.total_score_bins
+    assert t1.total_filter_bins == t2.total_filter_bins
 
     # Compare filters
     assert len(t1.filters) == len(t2.filters)

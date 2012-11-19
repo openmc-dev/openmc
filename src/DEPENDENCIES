@@ -198,8 +198,8 @@ initialize.o: random_lcg.o
 initialize.o: source.o
 initialize.o: state_point.o
 initialize.o: string.o
-initialize.o: tally.o
 initialize.o: tally_header.o
+initialize.o: tally_initialize.o
 initialize.o: timing.o
 
 input_xml.o: cmfd_input.o
@@ -348,5 +348,11 @@ tally.o: output.o
 tally.o: search.o
 tally.o: string.o
 tally.o: tally_header.o
+
+tally_header.o: constants.o
+
+tally_initialize.o: constants.o
+tally_initialize.o: global.o
+tally_initialize.o: tally_header.o
 
 timing.o: constants.o

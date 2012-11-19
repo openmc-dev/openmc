@@ -12,8 +12,7 @@ module ace
   use global
   use material_header,  only: Material
   use output,           only: write_message
-  use string,           only: split_string, str_to_int, str_to_real, &
-                              lower_case, to_str
+  use string,           only: str_to_int, str_to_real, lower_case, to_str
 
   implicit none
 
@@ -1124,8 +1123,7 @@ contains
 !===============================================================================
 ! READ_THERMAL_DATA reads elastic and inelastic cross sections and corresponding
 ! secondary energy/angle distributions derived from experimental S(a,b)
-! data. Namely, in MCNP language, this routine reads the ITIE, ITCE, ITXE, and
-! ITCA blocks.
+! data. Namely, this routine reads the ITIE, ITCE, ITXE, and ITCA blocks.
 !===============================================================================
 
   subroutine read_thermal_data(table)

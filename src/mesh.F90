@@ -96,22 +96,31 @@ contains
 ! use in a TallyObject scores array
 !===============================================================================
 
-  function mesh_indices_to_bin(m, ijk) result(bin)
+  function mesh_indices_to_bin(m, ijk, surface_current) result(bin)
 
     type(StructuredMesh), pointer :: m
     integer, intent(in)           :: ijk(:)
+    logical, optional             :: surface_current
     integer                       :: bin
 
     integer :: n_y ! number of mesh cells in y direction
     integer :: n_z ! number of mesh cells in z direction
 
-    n_y = m % dimension(2)
+    if (present(surface_current)) then
+      n_y = m % dimension(2) + 1
+    else
+      n_y = m % dimension(2)
+    end if
 
     if (m % n_dimension == 2) then
-       bin = (ijk(1) - 1)*n_y + ijk(2)
+      bin = (ijk(1) - 1)*n_y + ijk(2)
     elseif (m % n_dimension == 3) then
-       n_z = m % dimension(3)
-       bin = (ijk(1) - 1)*n_y*n_z + (ijk(2) - 1)*n_z + ijk(3)
+      if (present(surface_current)) then
+        n_z = m % dimension(3) + 1
+      else
+        n_z = m % dimension(3)
+      end if
+      bin = (ijk(1) - 1)*n_y*n_z + (ijk(2) - 1)*n_z + ijk(3)
     end if
 
   end function mesh_indices_to_bin

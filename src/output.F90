@@ -598,6 +598,7 @@ contains
     integer,          optional :: unit
 
     integer :: i     ! index for filter or score bins
+    integer :: j     ! index in filters array
     integer :: id    ! user-specified id
     integer :: unit_ ! unit to write to
     character(MAX_LINE_LEN) :: string
@@ -634,10 +635,11 @@ contains
     end select
 
     ! Write any cells bins if present
-    if (t % n_filter_bins(FILTER_CELL) > 0) then
+    j = t % find_filter(FILTER_CELL)
+    if (j > 0) then
        string = ""
-       do i = 1, t % n_filter_bins(FILTER_CELL)
-          id = t % cell_bins(i)
+       do i = 1, t % filters(j) % n_bins
+          id = t % filters(j) % int_bins(i)
           c => cells(id)
           string = trim(string) // ' ' // trim(to_str(c % id))
        end do
@@ -645,10 +647,11 @@ contains
     end if
 
     ! Write any surface bins if present
-    if (t % n_filter_bins(FILTER_SURFACE) > 0) then
+    j = t % find_filter(FILTER_SURFACE)
+    if (j > 0) then
        string = ""
-       do i = 1, t % n_filter_bins(FILTER_SURFACE)
-          id = t % surface_bins(i)
+       do i = 1, t % filters(j) % n_bins
+          id = t % filters(j) % int_bins(i)
           s => surfaces(id)
           string = trim(string) // ' ' // trim(to_str(s % id))
        end do
@@ -656,10 +659,11 @@ contains
     end if
 
     ! Write any universe bins if present
-    if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
+    j = t % find_filter(FILTER_UNIVERSE)
+    if (j > 0) then
        string = ""
-       do i = 1, t % n_filter_bins(FILTER_UNIVERSE)
-          id = t % universe_bins(i)
+       do i = 1, t % filters(j) % n_bins
+          id = t % filters(j) % int_bins(i)
           u => universes(id)
           string = trim(string) // ' ' // trim(to_str(u % id))
        end do
@@ -667,10 +671,11 @@ contains
     end if
 
     ! Write any material bins if present
-    if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
+    j = t % find_filter(FILTER_MATERIAL)
+    if (j > 0) then
        string = ""
-       do i = 1, t % n_filter_bins(FILTER_MATERIAL)
-          id = t % material_bins(i)
+       do i = 1, t % filters(j) % n_bins
+          id = t % filters(j) % int_bins(i)
           m => materials(id)
           string = trim(string) // ' ' // trim(to_str(m % id))
        end do
@@ -678,9 +683,10 @@ contains
     end if
 
     ! Write any mesh bins if present
-    if (t % n_filter_bins(FILTER_MESH) > 0) then
+    j = t % find_filter(FILTER_MESH)
+    if (j > 0) then
        string = ""
-       id = t % mesh
+       id = t % filters(j) % int_bins(1)
        sm => meshes(id)
        string = trim(string) // ' ' // trim(to_str(sm % dimension(1)))
        do i = 2, sm % n_dimension
@@ -690,10 +696,11 @@ contains
     end if
 
     ! Write any birth region bins if present
-    if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
+    j = t % find_filter(FILTER_CELLBORN)
+    if (j > 0) then
        string = ""
-       do i = 1, t % n_filter_bins(FILTER_CELLBORN)
-          id = t % cellborn_bins(i)
+       do i = 1, t % filters(j) % n_bins
+          id = t % filters(j) % int_bins(i)
           c => cells(id)
           string = trim(string) // ' ' // trim(to_str(c % id))
        end do
@@ -701,21 +708,23 @@ contains
     end if
 
     ! Write any incoming energy bins if present
-    if (t % n_filter_bins(FILTER_ENERGYIN) > 0) then
+    j = t % find_filter(FILTER_ENERGYIN)
+    if (j > 0) then
        string = ""
-       do i = 1, t % n_filter_bins(FILTER_ENERGYIN) + 1
+       do i = 1, t % filters(j) % n_bins + 1
           string = trim(string) // ' ' // trim(to_str(&
-               t % energy_in(i)))
+               t % filters(j) % real_bins(i)))
        end do
        write(unit_,*) '    Incoming Energy Bins:' // trim(string)
     end if
 
     ! Write any outgoing energy bins if present
-    if (t % n_filter_bins(FILTER_ENERGYOUT) > 0) then
+    j = t % find_filter(FILTER_ENERGYOUT)
+    if (j > 0) then
        string = ""
-       do i = 1, t % n_filter_bins(FILTER_ENERGYOUT) + 1
+       do i = 1, t % filters(j) % n_bins + 1
           string = trim(string) // ' ' // trim(to_str(&
-               t % energy_out(i)))
+               t % filters(j) % real_bins(i)))
        end do
        write(unit_,*) '    Outgoing Energy Bins:' // trim(string)
     end if

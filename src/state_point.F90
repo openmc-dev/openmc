@@ -209,39 +209,27 @@ contains
        ! Number of realizations
        write(UNIT_STATE) t % n_realizations
 
-       ! Write size of each tally
-       write(UNIT_STATE) size(t % scores, 1)
-       write(UNIT_STATE) size(t % scores, 2)
+       ! Write size of each dimension of tally scores array
+       write(UNIT_STATE) t % total_score_bins
+       write(UNIT_STATE) t % total_filter_bins
 
        ! Write number of filters
        write(UNIT_STATE) t % n_filters
 
        FILTER_LOOP: do j = 1, t % n_filters
           ! Write type of filter
-          write(UNIT_STATE) t % filters(j)
+          write(UNIT_STATE) t % filters(j) % type
 
           ! Write number of bins for this filter
-          write(UNIT_STATE) t % n_filter_bins(t % filters(j))
+          write(UNIT_STATE) t % filters(j) % n_bins
 
           ! Write filter bins
-          select case (t % filters(j))
-          case(FILTER_UNIVERSE)
-             write(UNIT_STATE) t % universe_bins
-          case(FILTER_MATERIAL)
-             write(UNIT_STATE) t % material_bins
-          case(FILTER_CELL)
-             write(UNIT_STATE) t % cell_bins
-          case(FILTER_CELLBORN)
-             write(UNIT_STATE) t % cellborn_bins
-          case(FILTER_SURFACE)
-             write(UNIT_STATE) t % surface_bins
-          case(FILTER_MESH)
-             write(UNIT_STATE) t % mesh
-          case(FILTER_ENERGYIN)
-             write(UNIT_STATE) t % energy_in
-          case(FILTER_ENERGYOUT)
-             write(UNIT_STATE) t % energy_out
-          end select
+          if (t % filters(j) % type == FILTER_ENERGYIN .or. &
+               t % filters(j) % type == FILTER_ENERGYOUT) then
+             write(UNIT_STATE) t % filters(j) % real_bins
+          else
+             write(UNIT_STATE) t % filters(j) % int_bins
+          end if
        end do FILTER_LOOP
 
        ! Write number of nuclide bins
@@ -408,9 +396,9 @@ contains
             MPI_STATUS_IGNORE, mpi_err)
 
        ! Write size of each tally
-       n = t % n_score_bins * t % n_nuclide_bins
-       call MPI_FILE_WRITE(fh, n, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-       call MPI_FILE_WRITE(fh, t % n_total_bins, 1, MPI_INTEGER, &
+       call MPI_FILE_WRITE(fh, t % total_score_bins, 1, MPI_INTEGER, &
+            MPI_STATUS_IGNORE, mpi_err)
+       call MPI_FILE_WRITE(fh, t % total_filter_bins, 1, MPI_INTEGER, &
             MPI_STATUS_IGNORE, mpi_err)
 
        ! Write number of filters
@@ -419,40 +407,24 @@ contains
 
        FILTER_LOOP: do j = 1, t % n_filters
           ! Write type of filter
-          call MPI_FILE_WRITE(fh, t % filters(j), 1, MPI_INTEGER, &
+          call MPI_FILE_WRITE(fh, t % filters(j) % type, 1, MPI_INTEGER, &
                MPI_STATUS_IGNORE, mpi_err)
 
           ! Write number of bins for this filter
-          n = t % n_filter_bins(t % filters(j))
-          call MPI_FILE_WRITE(fh, t % n_filter_bins(t % filters(j)), &
+          call MPI_FILE_WRITE(fh, t % filters(j) % n_bins, &
                1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
 
-          select case (t % filters(j))
-          case(FILTER_UNIVERSE)
-             call MPI_FILE_WRITE(fh, t % universe_bins, n, &
-                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-          case(FILTER_MATERIAL)
-             call MPI_FILE_WRITE(fh, t % material_bins, n, &
-                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-          case(FILTER_CELL)
-             call MPI_FILE_WRITE(fh, t % cell_bins, n, &
-                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-          case(FILTER_CELLBORN)
-             call MPI_FILE_WRITE(fh, t % cellborn_bins, n, &
-                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-          case(FILTER_SURFACE)
-             call MPI_FILE_WRITE(fh, t % surface_bins, n, &
-                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-          case(FILTER_MESH)
-             call MPI_FILE_WRITE(fh, t % mesh, 1, &
-                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-          case(FILTER_ENERGYIN)
-             call MPI_FILE_WRITE(fh, t % energy_in, n+1, &
+          ! Write bins
+          if (t % filters(j) % type == FILTER_ENERGYIN .or. &
+               t % filters(j) % type == FILTER_ENERGYOUT) then
+             n = size(t % filters(j) % real_bins)
+             call MPI_FILE_WRITE(fh, t % filters(j) % real_bins, n, &
                   MPI_REAL8, MPI_STATUS_IGNORE, mpi_err)
-          case(FILTER_ENERGYOUT)
-             call MPI_FILE_WRITE(fh, t % energy_out, n+1, &
-                  MPI_REAL8, MPI_STATUS_IGNORE, mpi_err)
-          end select
+          else
+             n = size(t % filters(j) % int_bins)
+             call MPI_FILE_WRITE(fh, t % filters(j) % int_bins, n, &
+                  MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+          end if
        end do FILTER_LOOP
 
        ! Write number of nuclide bins

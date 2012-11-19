@@ -19,8 +19,8 @@ module initialize
   use source,           only: initialize_source
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
-  use tally,            only: create_tally_map
   use tally_header,     only: TallyObject
+  use tally_initialize, only: configure_tallies
   use timing,           only: timer_start, timer_stop
 
 #ifdef MPI
@@ -110,8 +110,8 @@ contains
           call timer_stop(time_unionize)
        end if
 
-       ! Create tally map
-       call create_tally_map()
+       ! Allocate and setup tally stride, matching_bins, and tally maps
+       call configure_tallies()
 
        ! Determine how much work each processor should do
        call calculate_work()
@@ -529,103 +529,83 @@ contains
        end do
     end do
 
-    do i = 1, n_tallies
+    TALLY_LOOP: do i = 1, n_tallies
        t => tallies(i)
 
        ! =======================================================================
-       ! ADJUST CELL INDICES FOR EACH TALLY
+       ! ADJUST INDICES FOR EACH TALLY FILTER
 
-       if (t % n_filter_bins(FILTER_CELL) > 0) then
-          do j = 1, t % n_filter_bins(FILTER_CELL)
-             id = t % cell_bins(j)
-             if (dict_has_key(cell_dict, id)) then
-                t % cell_bins(j) = dict_get_key(cell_dict, id)
+       FILTER_LOOP: do j = 1, t % n_filters
+
+          select case (t % filters(j) % type)
+          case (FILTER_CELL, FILTER_CELLBORN)
+
+             do k = 1, t % filters(j) % n_bins
+                id = t % filters(j) % int_bins(k)
+                if (dict_has_key(cell_dict, id)) then
+                   t % filters(j) % int_bins(k) = dict_get_key(cell_dict, id)
+                else
+                   message = "Could not find cell " // trim(to_str(id)) // &
+                        " specified on tally " // trim(to_str(t % id))
+                   call fatal_error()
+                end if
+             end do
+
+          case (FILTER_SURFACE)
+
+             do k = 1, t % filters(j) % n_bins
+                id = t % filters(j) % int_bins(k)
+                if (dict_has_key(surface_dict, id)) then
+                   t % filters(j) % int_bins(k) = dict_get_key(surface_dict, id)
+                else
+                   message = "Could not find surface " // trim(to_str(id)) // &
+                        " specified on tally " // trim(to_str(t % id))
+                   call fatal_error()
+                end if
+             end do
+             
+          case (FILTER_UNIVERSE)
+
+             do k = 1, t % filters(j) % n_bins
+                id = t % filters(j) % int_bins(k)
+                if (dict_has_key(universe_dict, id)) then
+                   t % filters(j) % int_bins(k) = dict_get_key(universe_dict, id)
+                else
+                   message = "Could not find universe " // trim(to_str(id)) // &
+                        " specified on tally " // trim(to_str(t % id))
+                   call fatal_error()
+                end if
+             end do
+
+          case (FILTER_MATERIAL)
+
+             do k = 1, t % filters(j) % n_bins
+                id = t % filters(j) % int_bins(k)
+                if (dict_has_key(material_dict, id)) then
+                   t % filters(j) % int_bins(k) = dict_get_key(material_dict, id)
+                else
+                   message = "Could not find material " // trim(to_str(id)) // &
+                        " specified on tally " // trim(to_str(t % id))
+                   call fatal_error()
+                end if
+             end do
+
+          case (FILTER_MESH)
+
+             id = t % filters(j) % int_bins(1)
+             if (dict_has_key(mesh_dict, id)) then
+                t % filters(j) % int_bins(1) = dict_get_key(mesh_dict, id)
              else
-                message = "Could not find cell " // trim(to_str(id)) // &
+                message = "Could not find mesh " // trim(to_str(id)) // &
                      " specified on tally " // trim(to_str(t % id))
                 call fatal_error()
              end if
-          end do
-       end if
 
-       ! =======================================================================
-       ! ADJUST SURFACE INDICES FOR EACH TALLY
+          end select
 
-       if (t % n_filter_bins(FILTER_SURFACE) > 0) then
-          do j = 1, t % n_filter_bins(FILTER_SURFACE)
-             id = t % surface_bins(j)
-             if (dict_has_key(surface_dict, id)) then
-                t % surface_bins(j) = dict_get_key(surface_dict, id)
-             else
-                message = "Could not find surface " // trim(to_str(id)) // &
-                     " specified on tally " // trim(to_str(t % id))
-                call fatal_error()
-             end if
-          end do
-       end if
-
-       ! =======================================================================
-       ! ADJUST UNIVERSE INDICES FOR EACH TALLY
-
-       if (t % n_filter_bins(FILTER_UNIVERSE) > 0) then
-          do j = 1, t % n_filter_bins(FILTER_UNIVERSE)
-             id = t % universe_bins(j)
-             if (dict_has_key(universe_dict, id)) then
-                t % universe_bins(j) = dict_get_key(universe_dict, id)
-             else
-                message = "Could not find universe " // trim(to_str(id)) // &
-                     " specified on tally " // trim(to_str(t % id))
-                call fatal_error()
-             end if
-          end do
-       end if
-
-       ! =======================================================================
-       ! ADJUST MATERIAL INDICES FOR EACH TALLY
-
-       if (t % n_filter_bins(FILTER_MATERIAL) > 0) then
-          do j = 1, t % n_filter_bins(FILTER_MATERIAL)
-             id = t % material_bins(j)
-             if (dict_has_key(material_dict, id)) then
-                t % material_bins(j) = dict_get_key(material_dict, id)
-             else
-                message = "Could not find material " // trim(to_str(id)) // &
-                     " specified on tally " // trim(to_str(t % id))
-                call fatal_error()
-             end if
-          end do
-       end if
-
-       ! =======================================================================
-       ! ADJUST CELLBORN INDICES FOR EACH TALLY
-
-       if (t % n_filter_bins(FILTER_CELLBORN) > 0) then
-          do j = 1, t % n_filter_bins(FILTER_CELLBORN)
-             id = t % cellborn_bins(j)
-             if (dict_has_key(cell_dict, id)) then
-                t % cellborn_bins(j) = dict_get_key(cell_dict, id)
-             else
-                message = "Could not find material " // trim(to_str(id)) // &
-                     " specified on tally " // trim(to_str(t % id))
-                call fatal_error()
-             end if
-          end do
-       end if
-
-       ! =======================================================================
-       ! ADJUST MESH INDICES FOR EACH TALLY
-
-       if (t % n_filter_bins(FILTER_MESH) > 0) then
-          id = t % mesh
-          if (dict_has_key(mesh_dict, id)) then
-             t % mesh = dict_get_key(mesh_dict, id)
-          else
-             message = "Could not find mesh " // trim(to_str(id)) // &
-                  " specified on tally " // trim(to_str(t % id))
-             call fatal_error()
-          end if
-       end if
-    end do
+       end do FILTER_LOOP
+       
+    end do TALLY_LOOP
 
   end subroutine adjust_indices
 

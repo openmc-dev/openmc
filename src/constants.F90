@@ -286,14 +286,6 @@ module constants
        FILTER_ENERGYIN  = 7, &
        FILTER_ENERGYOUT = 8
 
-  ! Filter types for surface current tallies
-  integer, parameter :: &
-       SURF_FILTER_MESH_X   = 1, &
-       SURF_FILTER_MESH_Y   = 2, &
-       SURF_FILTER_MESH_Z   = 3, &
-       SURF_FILTER_ENERGYIN = 4, &
-       SURF_FILTER_SURFACE  = 5
-
   ! Tally surface current directions
   integer, parameter :: &
        IN_RIGHT  = 1,   &
@@ -345,9 +337,9 @@ module constants
 
   ! Energy grid methods
   integer, parameter :: &
-       GRID_NUCLIDE  = 1, & ! non-unionized energy grid (MCNP)
+       GRID_NUCLIDE  = 1, & ! non-unionized energy grid
        GRID_UNION    = 2, & ! union grid with pointers
-       GRID_LETHARGY = 3    ! lethargy mapping (MC21)
+       GRID_LETHARGY = 3    ! lethargy mapping
 
   ! Running modes
   integer, parameter ::        &

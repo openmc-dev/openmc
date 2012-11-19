@@ -149,8 +149,8 @@ class StatePoint(BinaryFile):
             t.n_realizations = self._get_int()[0]
 
             # Read sizes of tallies
-            t.n_score_bins = self._get_int()[0]
-            t.n_filter_bins = self._get_int()[0]
+            t.total_score_bins = self._get_int()[0]
+            t.total_filter_bins = self._get_int()[0]
 
             # Read number of filters
             n_filters = self._get_int()[0]
@@ -186,19 +186,9 @@ class StatePoint(BinaryFile):
 
             # Set up stride
             stride = 1
-
-            # This stride order is hard coded in openmc/src/tally.F90 -- in
-            # version 0.5, the order will not be fixed. It will depend on the
-            # order in the tallies.xml file
-            for ft in ['energyout', 'energyin', 'mesh', 'surface',
-                       'cellborn', 'cell', 'material', 'universe']:
-
-                # If this filter type has been specified, increment stride by
-                # number of bins for this filter
-                if ft in t.filters.keys():
-                    this_filter = t.filters[ft]
-                    this_filter.stride = stride
-                    stride *= this_filter.length
+            for f in t.filters.values()[::-1]:
+                f.stride = stride
+                stride *= f.length
 
         # Set flag indicating metadata has already been read
         self._metadata = True
@@ -223,9 +213,9 @@ class StatePoint(BinaryFile):
         if tallies_present:
 
             for t in self.tallies:
-                n = t.n_score_bins * t.n_filter_bins
+                n = t.total_score_bins * t.total_filter_bins
                 t.values = np.array(self._get_double(2*n))
-                t.values.shape = (t.n_filter_bins, t.n_score_bins, 2)
+                t.values.shape = (t.total_filter_bins, t.total_score_bins, 2)
 
         # Indicate that tally values have been read
         self._values = True

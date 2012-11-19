@@ -462,7 +462,9 @@ contains
     integer(HSIZE_T)  :: dims(1)
     integer(HID_T)    :: tallies_group
     integer(HID_T)    :: temp_group
-    type(TallyObject),    pointer :: t => null()
+    integer(HID_T)    :: filter_group     ! group for i-th filter
+    integer, allocatable :: temp_array(:) ! nuclide bin array
+    type(TallyObject), pointer :: t => null()
      
     ! Create group for tallies
     call h5gcreate_f(hdf5_output_file, "tallies", tallies_group, hdf5_err)

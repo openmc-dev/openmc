@@ -9,10 +9,7 @@
   </mesh>
 
   <tally id="1">
-    <filters>
-      <mesh>1</mesh>
-    </filters>
-
+    <filter type="mesh" bins="1" />
     <scores>total</scores>
   </tally>
 

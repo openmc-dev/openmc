@@ -4,8 +4,8 @@ module finalize
   use cmfd_output,    only: finalize_cmfd
 # endif
   use global
-  use output,         only: print_runtime
-  use tally,          only: write_tallies, tally_statistics
+  use output,         only: print_runtime, write_tallies
+  use tally,          only: tally_statistics
   use timing,         only: timer_start, timer_stop
 
 #ifdef MPI

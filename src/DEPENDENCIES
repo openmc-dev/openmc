@@ -268,6 +268,7 @@ output.o: geometry_header.o
 output.o: global.o
 output.o: math.o
 output.o: mesh_header.o
+output.o: mesh.o
 output.o: particle_header.o
 output.o: plot_header.o
 output.o: string.o

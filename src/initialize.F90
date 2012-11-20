@@ -213,7 +213,7 @@ contains
     ! CREATE MPI_TALLYSCORE TYPE
 
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(ts % n_events, score_base_disp, mpi_err)
+    call MPI_GET_ADDRESS(ts % value, score_base_disp, mpi_err)
     call MPI_GET_ADDRESS(ts % sum, score_disp(1), mpi_err)
 
     ! Adjust displacements

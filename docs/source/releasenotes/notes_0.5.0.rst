@@ -17,6 +17,7 @@ the problem at hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
+- Added 'events' score that returns number of events that scored to a tally.
 - Restructured tally filter implementation and user input.
 - Source convergence acceleration via CMFD (implemented with PETSC).
 - Ability to read source files in parallel when number of particles is greater

@@ -304,6 +304,10 @@ contains
 
                 end if
 
+             case (SCORE_EVENTS)
+                ! Simply count number of scoring events
+                score = ONE
+
              case default
                 message = "Invalid score type on tally " // to_str(t % id) // "."
                 call fatal_error()
@@ -505,6 +509,8 @@ contains
                    case (SCORE_NU_FISSION)
                       score = micro_xs(i_nuclide) % nu_fission * &
                            atom_density * flux
+                   case (SCORE_EVENTS)
+                      score = ONE
                    case default
                       message = "Invalid score type on tally " // to_str(t % id) // "."
                       call fatal_error()
@@ -525,6 +531,8 @@ contains
                       score = material_xs % fission * flux
                    case (SCORE_NU_FISSION)
                       score = material_xs % nu_fission * flux
+                   case (SCORE_EVENTS)
+                      score = ONE
                    case default
                       message = "Invalid score type on tally " // to_str(t % id) // "."
                       call fatal_error()
@@ -617,6 +625,8 @@ contains
              score = micro_xs(i_nuclide) % fission * atom_density * flux
           case (SCORE_NU_FISSION)
              score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
+          case (SCORE_EVENTS)
+             score = ONE
           case default
              message = "Invalid score type on tally " // to_str(t % id) // "."
              call fatal_error()
@@ -655,6 +665,8 @@ contains
           score = material_xs % fission * flux
        case (SCORE_NU_FISSION)
           score = material_xs % nu_fission * flux
+       case (SCORE_EVENTS)
+          score = ONE
        case default
           message = "Invalid score type on tally " // to_str(t % id) // "."
           call fatal_error()
@@ -917,6 +929,8 @@ contains
                       case (SCORE_NU_FISSION)
                          score = micro_xs(i_nuclide) % nu_fission * &
                               atom_density * flux
+                      case (SCORE_EVENTS)
+                         score = ONE
                       case default
                          message = "Invalid score type on tally " // &
                               to_str(t % id) // "."
@@ -938,6 +952,8 @@ contains
                          score = material_xs % fission * flux
                       case (SCORE_NU_FISSION)
                          score = material_xs % nu_fission * flux
+                      case (SCORE_EVENTS)
+                         score = ONE
                       case default
                          message = "Invalid score type on tally " // &
                               to_str(t % id) // "."
@@ -1614,6 +1630,7 @@ contains
     score_name(abs(SCORE_ABSORPTION)) = "Absorption Rate"
     score_name(abs(SCORE_FISSION))    = "Fission Rate"
     score_name(abs(SCORE_NU_FISSION)) = "Nu-Fission Rate"
+    score_name(abs(SCORE_EVENTS))     = "Events"
 
     ! Create filename for tally output
     if (run_mode == MODE_TALLIES) then
@@ -2037,7 +2054,6 @@ contains
     type(TallyScore), intent(inout) :: score
     real(8),          intent(in)    :: val
     
-    score % n_events = score % n_events + 1
     score % value    = score % value    + val
     
   end subroutine add_to_score
@@ -2095,7 +2111,6 @@ contains
 
     type(TallyScore), intent(inout) :: score
 
-    score % n_events = 0
     score % value    = ZERO
     score % sum      = ZERO
     score % sum_sq   = ZERO

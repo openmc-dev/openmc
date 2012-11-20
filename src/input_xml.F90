@@ -464,7 +464,11 @@ contains
     ! Check if the user has specified to write state points
     if (size(state_point_) > 0) then
        ! Determine number of batches at which to store state points
-       n_state_points = size(state_point_(1) % batches)
+       if (associated(state_point_(1) % batches)) then
+         n_state_points = size(state_point_(1) % batches)
+       else
+         n_state_points = 0
+       end if
 
        if (n_state_points > 0) then
           ! User gave specific batches to write state points

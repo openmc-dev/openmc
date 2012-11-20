@@ -1319,7 +1319,7 @@ contains
     if (confidence_intervals) then
        ! Calculate t-value for confidence intervals
        alpha = ONE - CONFIDENCE_LEVEL
-       t_value = t_percentile(ONE - alpha/TWO, global_tallies(K_ANALOG) % n_realizations - 1)
+       t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
 
        ! Adjust sum_sq
        global_tallies(:) % sum_sq = t_value * global_tallies(:) % sum_sq

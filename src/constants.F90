@@ -251,7 +251,7 @@ module constants
        EVENT_FISSION =  3 
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 17
+  integer, parameter :: N_SCORE_TYPES = 18
   integer, parameter :: &
        SCORE_FLUX       = -1,  & ! flux
        SCORE_TOTAL      = -2,  & ! total reaction rate
@@ -269,7 +269,8 @@ module constants
        SCORE_ABSORPTION = -14, & ! absorption rate
        SCORE_FISSION    = -15, & ! fission rate
        SCORE_NU_FISSION = -16, & ! neutron production rate
-       SCORE_CURRENT    = -17    ! partial current
+       SCORE_CURRENT    = -17, & ! partial current
+       SCORE_EVENTS     = -18    ! number of events
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1

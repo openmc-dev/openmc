@@ -1764,6 +1764,9 @@ contains
                        OUT_RIGHT, IN_FRONT, OUT_FRONT, IN_TOP, OUT_TOP /)
                 end if
                 t % find_filter(FILTER_SURFACE) = t % n_filters
+
+             case ('events')
+                t % score_bins(j) = SCORE_EVENTS
                 
              case default
                 message = "Unknown scoring function: " // &

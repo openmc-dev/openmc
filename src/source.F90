@@ -313,12 +313,12 @@ contains
 
     if (n_particles > n_sites) then
        ! Determine number of sites to read and offset
-       if (rank <= mod(n_sites,n_procs) - 1) then
-          n_read = n_sites/n_procs + 1
+       if (rank <= mod(n_sites,int(n_procs,8)) - 1) then
+          n_read = int(n_sites/n_procs) + 1
           offset = 8*(1 + rank*n_read*8)
        else
-          n_read = n_sites/n_procs
-          offset = 8*(1 + (rank*n_read + mod(n_sites,n_procs))*8)
+          n_read = int(n_sites/n_procs)
+          offset = 8*(1 + (rank*n_read + mod(n_sites,int(n_procs,8)))*8)
        end if
 
        ! Read source sites
@@ -336,7 +336,7 @@ contains
 
        ! This final statement would fill sites 181 - 200 in the above example.
 
-       if (mod(work, n_repeat*n_read) > 0) then
+       if (mod(work, int(n_repeat*n_read,8)) > 0) then
           source_bank(n_repeat*n_read + 1:work) = &
                source_bank(1:work - n_repeat * n_read)
        end if

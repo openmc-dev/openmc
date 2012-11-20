@@ -1461,6 +1461,9 @@ contains
 
        print_bin: do
           find_bin: do
+             ! Check for no filters
+             if (t % n_filters == 0) exit find_bin
+
              ! Increment bin combination
              t % matching_bins(j) = t % matching_bins(j) + 1
 
@@ -1479,9 +1482,6 @@ contains
              ! VALID BIN -- WRITE FILTER INFORMATION OR EXIT TO WRITE SCORES
 
              else
-                ! Check for no filters
-                if (t % n_filters == 0) exit find_bin
-
                 ! Check if this is last filter
                 if (j == t % n_filters) exit find_bin
 
@@ -1506,7 +1506,11 @@ contains
           ! in the score_tally subroutine, we have to use max(bins,1) since all
           ! bins below the lowest filter level will be zeros
 
-          filter_index = sum((max(t % matching_bins,1) - 1) * t % stride) + 1
+          if (t % n_filters > 0) then
+            filter_index = sum((max(t % matching_bins,1) - 1) * t % stride) + 1
+          else
+            filter_index = 1
+          end if
 
           ! Write scores for this filter bin combination
           score_index = 0
@@ -1535,6 +1539,8 @@ contains
 
           end do
           indent = indent - 2
+
+          if (t % n_filters == 0) exit print_bin
 
        end do print_bin
 

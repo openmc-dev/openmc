@@ -388,8 +388,10 @@ contains
 #endif
 
     ! Normalize single batch estimate of k
-    k_batch(current_batch) = k_batch(current_batch) / &
-         (n_particles * gen_per_batch)
+    if (master) then
+      k_batch(current_batch) = k_batch(current_batch) / &
+           (n_particles * gen_per_batch)
+    end if
 
     if (active_batches) then
        ! =======================================================================

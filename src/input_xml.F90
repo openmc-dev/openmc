@@ -1392,6 +1392,16 @@ contains
        ! =======================================================================
        ! READ DATA FOR FILTERS
 
+       ! In older versions, tally filters were specified with a <filters>
+       ! element followed by sub-elements <cell>, <mesh>, etc. This checks for
+       ! the old format and if it is present, raises an error
+
+       if (size(tally_(i) % filters) > 0) then
+         message = "Tally filters should be specified with multiple <filter> &
+              &elements. Did you forget to change your <filters> element?"
+         call fatal_error()
+       end if
+
        if (associated(tally_(i) % filter)) then
           ! Determine number of filters
           n_filters = size(tally_(i) % filter)

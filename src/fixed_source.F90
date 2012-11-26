@@ -112,9 +112,9 @@ contains
     integer :: i ! loop index for state point batches
 
     ! Collect and accumulate tallies
-    call timer_start(time_ic_tallies)
+    call timer_start(time_tallies)
     call synchronize_tallies()
-    call timer_stop(time_ic_tallies)
+    call timer_stop(time_tallies)
 
     ! Write out state point if it's been specified for this batch
     do i = 1, n_state_points

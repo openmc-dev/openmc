@@ -80,7 +80,7 @@ contains
       ! call for making a dataset of type long
       call hdf5_make_double(hdf5_output_file, "n_particles", real(n_particles,8))
 
-      ! Use H5LT interface to write n_cycles, n_inactive, and n_active
+      ! Use H5LT interface to write n_batches, n_inactive, and n_active
       call hdf5_make_integer(hdf5_output_file, "n_batches", n_batches)
       call hdf5_make_integer(hdf5_output_file, "n_inactive", n_inactive)
       call hdf5_make_integer(hdf5_output_file, "n_active", n_active)
@@ -88,13 +88,13 @@ contains
 
       ! Add description of each variable
       call h5ltset_attribute_string_f(hdf5_output_file, "n_particles", &
-           "description", "Number of particles per cycle", hdf5_err)
+           "description", "Number of particles per generation", hdf5_err)
       call h5ltset_attribute_string_f(hdf5_output_file, "n_batches", &
            "description", "Total number of batches", hdf5_err)
       call h5ltset_attribute_string_f(hdf5_output_file, "n_inactive", &
-           "description", "Number of inactive cycles", hdf5_err)
+           "description", "Number of inactive batches", hdf5_err)
       call h5ltset_attribute_string_f(hdf5_output_file, "n_active", &
-           "description", "Number of active cycles", hdf5_err)
+           "description", "Number of active batches", hdf5_err)
       call h5ltset_attribute_string_f(hdf5_output_file, "gen_per_batch", &
            "description", "Number of generations per batch", hdf5_err)
     end if
@@ -743,10 +743,10 @@ contains
     call hdf5_make_double(timing_group, "time_read_xs", time_read_xs % elapsed)
     call hdf5_make_double(timing_group, "time_unionize", time_unionize % elapsed)
     call hdf5_make_double(timing_group, "time_transport", time_transport % elapsed)
-    call hdf5_make_double(timing_group, "time_intercycle", time_intercycle % elapsed)
-    call hdf5_make_double(timing_group, "time_tallies", time_ic_tallies % elapsed)
-    call hdf5_make_double(timing_group, "time_sample", time_ic_sample % elapsed)
-    call hdf5_make_double(timing_group, "time_sendrecv", time_ic_sendrecv % elapsed)
+    call hdf5_make_double(timing_group, "time_bank", time_bank % elapsed)
+    call hdf5_make_double(timing_group, "time_bank_sample", time_bank_sample % elapsed)
+    call hdf5_make_double(timing_group, "time_bank_sendrecv", time_bank_sendrecv % elapsed)
+    call hdf5_make_double(timing_group, "time_tallies", time_tallies % elapsed)
     call hdf5_make_double(timing_group, "time_inactive", time_inactive % elapsed)
     call hdf5_make_double(timing_group, "time_active", time_active % elapsed)
     call hdf5_make_double(timing_group, "time_finalize", time_finalize % elapsed)
@@ -761,14 +761,14 @@ contains
          "description", "Time unionizing energy grid (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_transport", &
          "description", "Time in transport only (s)", hdf5_err)
-    call h5ltset_attribute_string_f(timing_group, "time_intercycle", &
-         "description", "Total time between generations (s)", hdf5_err)
+    call h5ltset_attribute_string_f(timing_group, "time_bank", &
+         "description", "Total time synchronizing fission bank (s)", hdf5_err)
+    call h5ltset_attribute_string_f(timing_group, "time_bank_sample", &
+         "description", "Time between generations sampling source sites (s)", hdf5_err)
+    call h5ltset_attribute_string_f(timing_group, "time_bank_sendrecv", &
+         "description", "Time between generations SEND/RECVing source sites (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_tallies", &
-         "description", "Time between cycles accumulating tallies (s)", hdf5_err)
-    call h5ltset_attribute_string_f(timing_group, "time_sample", &
-         "description", "Time between cycles sampling source sites (s)", hdf5_err)
-    call h5ltset_attribute_string_f(timing_group, "time_sendrecv", &
-         "description", "Time between cycles SEND/RECVing source sites (s)", hdf5_err)
+         "description", "Time between batches accumulating tallies (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_inactive", &
          "description", "Total time in inactive batches (s)", hdf5_err)
     call h5ltset_attribute_string_f(timing_group, "time_active", &

@@ -30,12 +30,12 @@ contains
 
 !===============================================================================
 ! RUN_CRITICALITY encompasses all the main logic where iterations are performed
-! over the cycles and histories.
+! over the batches, generations, and histories.
 !===============================================================================
 
   subroutine run_criticality()
 
-    integer(8) :: i  ! index over histories in single cycle
+    integer(8) :: i  ! index over individual particles
 
     if (master) call header("CRITICALITY TRANSPORT SIMULATION", level=1)
 
@@ -82,9 +82,9 @@ contains
         call timer_stop(time_transport)
 
         ! Distribute fission bank across processors evenly
-        call timer_start(time_intercycle)
+        call timer_start(time_bank)
         call synchronize_bank()
-        call timer_stop(time_intercycle)
+        call timer_stop(time_bank)
 
       end do GENERATION_LOOP
 
@@ -154,9 +154,9 @@ contains
 
     ! Collect tallies
     if (tallies_on) then
-      call timer_start(time_ic_tallies)
+      call timer_start(time_tallies)
       call synchronize_tallies()
-      call timer_stop(time_ic_tallies)
+      call timer_stop(time_tallies)
     end if
 
     ! Calculate shannon entropy
@@ -184,7 +184,7 @@ contains
       end if
     end do
 
-    ! Turn tallies on once inactive cycles are complete
+    ! Turn tallies on once inactive batches are complete
     if (current_batch == n_inactive) then
       tallies_on = .true.
       active_batches = .true.
@@ -276,7 +276,7 @@ contains
     end if
     p_sample = real(sites_needed,8)/real(total,8)
 
-    call timer_start(time_ic_sample)
+    call timer_start(time_bank_sample)
 
     ! ==========================================================================
     ! SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
@@ -351,8 +351,8 @@ contains
       finish = bank_last
     end if
 
-    call timer_stop(time_ic_sample)
-    call timer_start(time_ic_sendrecv)
+    call timer_stop(time_bank_sample)
+    call timer_start(time_bank_sendrecv)
 
 #ifdef MPI
     ! ==========================================================================
@@ -448,7 +448,7 @@ contains
     source_bank = temp_sites(1:n_particles)
 #endif
 
-    call timer_stop(time_ic_sendrecv)
+    call timer_stop(time_bank_sendrecv)
 
     ! Deallocate space for the temporary source bank on the last generation
     if (current_batch == n_batches .and. current_gen == gen_per_batch) &
@@ -657,7 +657,7 @@ contains
 #endif
 
     if (current_batch == 1 .and. current_gen == 1) then
-      ! On the first cycle, just assume that the source is already evenly
+      ! On the first generation, just assume that the source is already evenly
       ! distributed so that effectively the production of fission sites is not
       ! biased
 

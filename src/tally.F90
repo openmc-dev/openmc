@@ -1622,7 +1622,7 @@ contains
 !===============================================================================
 ! ADD_TO_SCORE accumulates a scoring contribution to a specific tally bin and
 ! specific response function. Note that we don't need to add the square of the
-! contribution since that is done at the cycle level, not the history level
+! contribution since that is done at the batch level, not the history level
 !===============================================================================
 
   subroutine add_to_score(score, val)
@@ -1645,9 +1645,9 @@ contains
 
     real(8) :: val
 
-    ! Add the sum and square of the sum of contributions from each cycle
-    ! within a cycle to the variables sum and sum_sq. This will later allow us
-    ! to calculate a variance on the tallies
+    ! Add the sum and square of the sum of contributions from a tally score to
+    ! the variables sum and sum_sq. This will later allow us to calculate a
+    ! variance on the tallies.
 
     val = score % value/total_weight
     score % sum    = score % sum    + val

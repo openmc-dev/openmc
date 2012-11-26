@@ -1270,7 +1270,7 @@ contains
 
 !===============================================================================
 ! PRINT_RUNTIME displays the total time elapsed for the entire run, for
-! initialization, for computation, and for intercycle synchronization.
+! initialization, for computation, and for intergeneration synchronization.
 !===============================================================================
 
   subroutine print_runtime()
@@ -1294,10 +1294,10 @@ contains
     if(cmfd_run) write(ou,100) "Total CMFD time", time_cmfd % elapsed
     write(ou,100) "  Time in inactive batches", time_inactive % elapsed
     write(ou,100) "  Time in active batches", time_active % elapsed
-    write(ou,100) "  Time between generations", time_intercycle % elapsed
-    write(ou,100) "    Accumulating tallies", time_ic_tallies % elapsed
-    write(ou,100) "    Sampling source sites", time_ic_sample % elapsed
-    write(ou,100) "    SEND/RECV source sites", time_ic_sendrecv % elapsed
+    write(ou,100) "  Time synchronizing fission bank", time_bank % elapsed
+    write(ou,100) "    Sampling source sites", time_bank_sample % elapsed
+    write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv % elapsed
+    write(ou,100) "  Time accumulating tallies", time_tallies % elapsed
     write(ou,100) "Total time for finalization", time_finalize % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 
@@ -1338,8 +1338,8 @@ contains
     write(ou,*)
 
     ! format for write statements
-100 format (1X,A,T35,"= ",ES11.4," seconds")
-101 format (1X,A,T35,"=  ",A," neutrons/second")
+100 format (1X,A,T36,"= ",ES11.4," seconds")
+101 format (1X,A,T36,"=  ",A," neutrons/second")
 102 format (1X,A,T30,"= ",F8.5," +/- ",F8.5)
 
   end subroutine print_runtime

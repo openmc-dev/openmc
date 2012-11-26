@@ -27,29 +27,29 @@ module datatypes
 !===============================================================================
 
   interface list_create
-     module procedure list_real_create, list_int_create
-     module procedure list_kvci_create, list_kvii_create
-  end interface
+    module procedure list_real_create, list_int_create
+    module procedure list_kvci_create, list_kvii_create
+  end interface list_create
   interface list_insert
-     module procedure list_int_insert, list_real_insert
-     module procedure list_kvci_insert, list_kvii_insert
-  end interface
+    module procedure list_int_insert, list_real_insert
+    module procedure list_kvci_insert, list_kvii_insert
+  end interface list_insert
   interface list_delete
-     module procedure list_int_delete, list_real_delete
-     module procedure list_kvci_delete, list_kvii_delete
-  end interface
+    module procedure list_int_delete, list_real_delete
+    module procedure list_kvci_delete, list_kvii_delete
+  end interface list_delete
   interface list_size
-     module procedure list_int_size, list_real_size
-     module procedure list_kvci_size, list_kvii_size
-  end interface
+    module procedure list_int_size, list_real_size
+    module procedure list_kvci_size, list_kvii_size
+  end interface list_size
   interface list_insert_head
-     module procedure list_int_insert_head, list_real_insert_head
-     module procedure list_kvci_insert_head, list_kvii_insert_head
-  end interface
+    module procedure list_int_insert_head, list_real_insert_head
+    module procedure list_kvci_insert_head, list_kvii_insert_head
+  end interface list_insert_head
   interface list_delete_element
-     module procedure list_int_del_element, list_real_del_element
-     module procedure list_kvci_del_element, list_kvii_del_element
-  end interface
+    module procedure list_int_del_element, list_real_del_element
+    module procedure list_kvci_del_element, list_kvii_del_element
+  end interface list_delete_element
 
 !===============================================================================
 ! DICTIONARY Interfaces -- these allow one to use a single subroutine or
@@ -57,32 +57,32 @@ module datatypes
 !===============================================================================
 
   interface dict_create
-     module procedure dict_ci_create, dict_ii_create
-  end interface
+    module procedure dict_ci_create, dict_ii_create
+  end interface dict_create
   interface dict_delete
-     module procedure dict_ci_delete, dict_ii_delete
-  end interface
+    module procedure dict_ci_delete, dict_ii_delete
+  end interface dict_delete
   interface dict_add_key
-     module procedure dict_ci_add_key, dict_ii_add_key
-  end interface
+    module procedure dict_ci_add_key, dict_ii_add_key
+  end interface dict_add_key
   interface dict_delete_key
-     module procedure dict_ci_delete_key, dict_ii_delete_key
-  end interface
+    module procedure dict_ci_delete_key, dict_ii_delete_key
+  end interface dict_delete_key
   interface dict_get_key
-     module procedure dict_ci_get_key, dict_ii_get_key
-  end interface
+    module procedure dict_ci_get_key, dict_ii_get_key
+  end interface dict_get_key
   interface dict_has_key
-     module procedure dict_ci_has_key, dict_ii_has_key
-  end interface
+    module procedure dict_ci_has_key, dict_ii_has_key
+  end interface dict_has_key
   interface dict_get_elem
-     module procedure dict_ci_get_elem, dict_ii_get_elem
-  end interface
+    module procedure dict_ci_get_elem, dict_ii_get_elem
+  end interface dict_get_elem
   interface dict_hashkey
-     module procedure dict_ci_hashkey, dict_ii_hashkey
-  end interface
+    module procedure dict_ci_hashkey, dict_ii_hashkey
+  end interface dict_hashkey
   interface dict_keys
-     module procedure dict_ci_keys, dict_ii_keys
-  end interface
+    module procedure dict_ci_keys, dict_ii_keys
+  end interface dict_keys
 
 contains
 
@@ -157,12 +157,12 @@ contains
     type(ListInt), pointer :: next
 
     if (associated(list)) then
-       current => list
-       do while (associated(current%next))
-          next => current%next
-          deallocate(current)
-          current => next
-       end do
+      current => list
+      do while (associated(current%next))
+        next => current%next
+        deallocate(current)
+        current => next
+      end do
     end if
 
   end subroutine list_int_delete
@@ -178,12 +178,12 @@ contains
     type(ListReal), pointer :: next
 
     if (associated(list)) then
-       current => list
-       do while (associated(current%next))
-          next => current%next
-          deallocate(current)
-          current => next
-       end do
+      current => list
+      do while (associated(current%next))
+        next => current%next
+        deallocate(current)
+        current => next
+      end do
     end if
 
   end subroutine list_real_delete
@@ -199,12 +199,12 @@ contains
     type(ListKeyValueCI), pointer  :: next
 
     if (associated(list)) then
-       current => list
-       do while (associated(current%next))
-          next => current%next
-          deallocate(current)
-          current => next
-       end do
+      current => list
+      do while (associated(current%next))
+        next => current%next
+        deallocate(current)
+        current => next
+      end do
     end if
 
   end subroutine list_kvci_delete
@@ -220,12 +220,12 @@ contains
     type(ListKeyValueII), pointer  :: next
 
     if (associated(list)) then
-       current => list
-       do while (associated(current%next))
-          next => current%next
-          deallocate(current)
-          current => next
-       end do
+      current => list
+      do while (associated(current%next))
+        next => current%next
+        deallocate(current)
+        current => next
+      end do
     end if
 
   end subroutine list_kvii_delete
@@ -241,15 +241,15 @@ contains
     integer                 :: n
 
     if (associated(list)) then
-       n = 1
-       current => list
-       do while (associated(current%next))
-          current => current%next
-          n = n + 1
-       enddo
+      n = 1
+      current => list
+      do while (associated(current%next))
+        current => current%next
+        n = n + 1
+      end do
     else
-       n = 0
-    endif
+      n = 0
+    end if
 
   end function list_int_size
 
@@ -264,15 +264,15 @@ contains
     integer                  :: n
 
     if (associated(list)) then
-       n = 1
-       current => list
-       do while (associated(current%next))
-          current => current%next
-          n = n + 1
-       enddo
+      n = 1
+      current => list
+      do while (associated(current%next))
+        current => current%next
+        n = n + 1
+      end do
     else
-       n = 0
-    endif
+      n = 0
+    end if
 
   end function list_real_size
 
@@ -288,15 +288,15 @@ contains
     integer                        :: n
 
     if (associated(list)) then
-       n = 1
-       current => list
-       do while (associated(current%next))
-          current => current%next
-          n = n + 1
-       enddo
+      n = 1
+      current => list
+      do while (associated(current%next))
+        current => current%next
+        n = n + 1
+      end do
     else
-       n = 0
-    endif
+      n = 0
+    end if
 
   end function list_kvci_size
 
@@ -311,15 +311,15 @@ contains
     integer                        :: n
 
     if (associated(list)) then
-       n = 1
-       current => list
-       do while (associated(current%next))
-          current => current%next
-          n = n + 1
-       enddo
+      n = 1
+      current => list
+      do while (associated(current%next))
+        current => current%next
+        n = n + 1
+      end do
     else
-       n = 0
-    endif
+      n = 0
+    end if
 
   end function list_kvii_size
 
@@ -517,23 +517,23 @@ contains
 
     type(ListInt), pointer  :: current
     type(ListInt), pointer  :: prev
-
+    
     if (associated(list,elem)) then
-       list => elem%next
-       deallocate(elem)
+      list => elem%next
+      deallocate(elem)
     else
-       current => list
-       prev    => list
-       do while (associated(current))
-          if (associated(current,elem)) then
-             prev%next => current%next
-             deallocate(current) ! Is also "elem"
-             exit
-          endif
-          prev    => current
-          current => current%next
-       enddo
-    endif
+      current => list
+      prev    => list
+      do while (associated(current))
+        if (associated(current,elem)) then
+          prev%next => current%next
+          deallocate(current) ! Is also "elem"
+          exit
+        end if
+        prev    => current
+        current => current%next
+      end do
+    end if
 
   end subroutine list_int_del_element
 
@@ -553,21 +553,21 @@ contains
     type(ListReal), pointer  :: prev
 
     if (associated(list,elem)) then
-       list => elem%next
-       deallocate(elem)
+      list => elem%next
+      deallocate(elem)
     else
-       current => list
-       prev    => list
-       do while (associated(current))
-          if (associated(current,elem)) then
-             prev%next => current%next
-             deallocate(current) ! Is also "elem"
-             exit
-          endif
-          prev    => current
-          current => current%next
-       enddo
-    endif
+      current => list
+      prev    => list
+      do while (associated(current))
+        if (associated(current,elem)) then
+          prev%next => current%next
+          deallocate(current) ! Is also "elem"
+          exit
+        end if
+        prev    => current
+        current => current%next
+      end do
+    end if
 
   end subroutine list_real_del_element
 
@@ -587,21 +587,21 @@ contains
     type(ListKeyValueCI), pointer  :: prev
 
     if (associated(list,elem)) then
-       list => elem%next
-       deallocate(elem)
+      list => elem%next
+      deallocate(elem)
     else
-       current => list
-       prev    => list
-       do while (associated(current))
-          if (associated(current,elem)) then
-             prev%next => current%next
-             deallocate(current) ! Is also "elem"
-             exit
-          endif
-          prev    => current
-          current => current%next
-       enddo
-    endif
+      current => list
+      prev    => list
+      do while (associated(current))
+        if (associated(current,elem)) then
+          prev%next => current%next
+          deallocate(current) ! Is also "elem"
+          exit
+        end if
+        prev    => current
+        current => current%next
+      end do
+    end if
 
   end subroutine list_kvci_del_element
 
@@ -621,21 +621,21 @@ contains
     type(ListKeyValueII), pointer  :: prev
 
     if (associated(list,elem)) then
-       list => elem%next
-       deallocate(elem)
+      list => elem%next
+      deallocate(elem)
     else
-       current => list
-       prev    => list
-       do while (associated(current))
-          if (associated(current,elem)) then
-             prev%next => current%next
-             deallocate(current) ! Is also "elem"
-             exit
-          endif
-          prev    => current
-          current => current%next
-       enddo
-    endif
+      current => list
+      prev    => list
+      do while (associated(current))
+        if (associated(current,elem)) then
+          prev%next => current%next
+          deallocate(current) ! Is also "elem"
+          exit
+        end if
+        prev    => current
+        current => current%next
+      end do
+    end if
 
   end subroutine list_kvii_del_element
 
@@ -653,8 +653,8 @@ contains
     allocate(dict%table(HASH_SIZE))
 
     do i = 1,HASH_SIZE
-       dict%table(i)%list => null()
-    enddo
+      dict%table(i)%list => null()
+    end do
 
   end subroutine dict_ci_create
 
@@ -672,8 +672,8 @@ contains
     allocate(dict%table(HASH_SIZE))
 
     do i = 1,HASH_SIZE
-       dict%table(i)%list => null()
-    enddo
+      dict%table(i)%list => null()
+    end do
 
   end subroutine dict_ii_create
 
@@ -688,10 +688,10 @@ contains
     integer :: i
 
     do i = 1,size(dict%table)
-       if (associated(dict%table(i)%list)) then
-          call list_delete(dict%table(i)%list)
-       endif
-    enddo
+      if (associated(dict%table(i)%list)) then
+        call list_delete(dict%table(i)%list)
+      end if
+    end do
     deallocate(dict%table)
     deallocate(dict)
 
@@ -708,10 +708,10 @@ contains
     integer :: i
 
     do i = 1,size(dict%table)
-       if (associated(dict%table(i)%list)) then
-          call list_delete(dict%table(i)%list)
-       endif
-    enddo
+      if (associated(dict%table(i)%list)) then
+        call list_delete(dict%table(i)%list)
+      end if
+    end do
     deallocate(dict%table)
     deallocate(dict)
 
@@ -741,17 +741,17 @@ contains
     elem => dict_get_elem(dict, key)
 
     if (associated(elem)) then
-       elem%data%value = value
+      elem%data%value = value
     else
-       data%key   = key
-       data%value = value
-       hash       = dict_hashkey(trim(key))
-       if (associated(dict%table(hash)%list)) then
-          call list_insert(dict%table(hash)%list, data)
-       else
-          call list_create(dict%table(hash)%list, data)
-       endif
-    endif
+      data%key   = key
+      data%value = value
+      hash       = dict_hashkey(trim(key))
+      if (associated(dict%table(hash)%list)) then
+        call list_insert(dict%table(hash)%list, data)
+      else
+        call list_create(dict%table(hash)%list, data)
+      end if
+    end if
 
   end subroutine dict_ci_add_key
 
@@ -779,17 +779,17 @@ contains
     elem => dict_get_elem(dict, key)
 
     if (associated(elem)) then
-       elem%data%value = value
+      elem%data%value = value
     else
-       data%key   = key
-       data%value = value
-       hash       = dict_hashkey(key)
-       if (associated(dict%table(hash)%list)) then
-          call list_insert(dict%table(hash)%list, data)
-       else
-          call list_create(dict%table(hash)%list, data)
-       endif
-    endif
+      data%key   = key
+      data%value = value
+      hash       = dict_hashkey(key)
+      if (associated(dict%table(hash)%list)) then
+        call list_insert(dict%table(hash)%list, data)
+      else
+        call list_create(dict%table(hash)%list, data)
+      end if
+    end if
 
   end subroutine dict_ii_add_key
 
@@ -801,7 +801,7 @@ contains
 !===============================================================================
 
   subroutine dict_ci_delete_key(dict, key)
-
+    
     type(DictionaryCI), pointer    :: dict
     character(*),       intent(in) :: key
 
@@ -811,9 +811,9 @@ contains
     elem => dict_get_elem(dict, key)
 
     if (associated(elem)) then
-       hash = dict_hashkey(trim(key))
-       call list_delete_element(dict%table(hash)%list, elem)
-    endif
+      hash = dict_hashkey(trim(key))
+      call list_delete_element(dict%table(hash)%list, elem)
+    end if
 
   end subroutine dict_ci_delete_key
 
@@ -835,9 +835,9 @@ contains
     elem => dict_get_elem(dict, key)
 
     if (associated(elem)) then
-       hash = dict_hashkey(key)
-       call list_delete_element(dict%table(hash)%list, elem)
-    endif
+      hash = dict_hashkey(key)
+      call list_delete_element(dict%table(hash)%list, elem)
+    end if
 
   end subroutine dict_ii_delete_key
 
@@ -859,10 +859,10 @@ contains
     elem => dict_get_elem(dict, key)
 
     if (associated(elem)) then
-       value = elem%data%value
+      value = elem%data%value
     else
-       value = DICT_NULL
-    endif
+      value = DICT_NULL
+    end if
 
   end function dict_ci_get_key
 
@@ -884,10 +884,10 @@ contains
     elem => dict_get_elem(dict, key)
 
     if (associated(elem)) then
-       value = elem%data%value
+      value = elem%data%value
     else
-       value = DICT_NULL
-    endif
+      value = DICT_NULL
+    end if
 
   end function dict_ii_get_key
 
@@ -951,12 +951,12 @@ contains
     hash = dict_hashkey(trim(key))
     elem => dict%table(hash)%list
     do while (associated(elem))
-       if (elem%data%key .eq. key) then
-          exit
-       else
-          elem => elem%next
-       endif
-    enddo
+      if (elem%data%key .eq. key) then
+        exit
+      else
+        elem => elem%next
+      end if
+    end do
 
   end function dict_ci_get_elem
 
@@ -974,16 +974,16 @@ contains
 
     type(ListKeyValueII), pointer  :: elem
     integer                        :: hash
-
+    
     hash = dict_hashkey(key)
     elem => dict%table(hash)%list
     do while (associated(elem))
-       if (elem%data%key .eq. key) then
-          exit
-       else
-          elem => elem%next
-       endif
-    enddo
+      if (elem%data%key .eq. key) then
+        exit
+      else
+        elem => elem%next
+      end if
+    end do
 
   end function dict_ii_get_elem
 
@@ -997,14 +997,14 @@ contains
 
     character(*), intent(in) :: key
     integer                  :: val
-
+    
     integer :: i
 
     val = 0
 
     do i = 1, len(key)
-       val = HASH_MULTIPLIER * val + ichar(key(i:i))
-    enddo
+      val = HASH_MULTIPLIER * val + ichar(key(i:i))
+    end do
 
     ! Added the absolute val on val-1 since the sum in the do loop is
     ! susceptible to integer overflow
@@ -1022,7 +1022,7 @@ contains
 
     integer, intent(in) :: key
     integer             :: val
-
+    
     val = 0
 
     ! Added the absolute val on val-1 since the sum in the do loop is
@@ -1047,18 +1047,18 @@ contains
     head => null()
 
     do i = 1, size(dict%table)
-       elem => dict%table(i)%list
-       do while (associated(elem))
-          if (.not. associated(head)) then
-             allocate(head)
-             current => head
-          else
-             allocate(current%next)
-             current => current%next
-          end if
-          current%data = elem%data
-          elem => elem%next
-       end do
+      elem => dict%table(i)%list
+      do while (associated(elem))
+        if (.not. associated(head)) then
+          allocate(head)
+          current => head
+        else
+          allocate(current%next)
+          current => current%next
+        end if
+        current%data = elem%data
+        elem => elem%next
+      end do
     end do
 
   end function dict_ci_keys
@@ -1075,22 +1075,22 @@ contains
     type(ListKeyValueII), pointer :: elem => null()
 
     integer :: i
-
+    
     head => null()
 
     do i = 1, size(dict%table)
-       elem => dict%table(i)%list
-       do while (associated(elem))
-          if (.not. associated(head)) then
-             allocate(head)
-             current => head
-          else
-             allocate(current%next)
-             current => current%next
-          end if
-          current%data = elem%data
-          elem => elem%next
-       end do
+      elem => dict%table(i)%list
+      do while (associated(elem))
+        if (.not. associated(head)) then
+          allocate(head)
+          current => head
+        else
+          allocate(current%next)
+          current => current%next
+        end if
+        current%data = elem%data
+        elem => elem%next
+      end do
     end do
 
   end function dict_ii_keys

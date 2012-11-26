@@ -80,8 +80,8 @@ contains
     ! runs enough particles to avoid this in the first place.
 
     if (n_bank == 0) then
-       message = "No fission sites banked on processor " // to_str(rank)
-       call fatal_error()
+      message = "No fission sites banked on processor " // to_str(rank)
+      call fatal_error()
     end if
 
     ! Make sure all processors start at the same point for random sampling. Then
@@ -96,9 +96,9 @@ contains
     ! and the probability for selecting a site.
 
     if (total < n_particles) then
-       sites_needed = mod(n_particles,total)
+      sites_needed = mod(n_particles,total)
     else
-       sites_needed = n_particles
+      sites_needed = n_particles
     end if
     p_sample = real(sites_needed,8)/real(total,8)
 
@@ -113,22 +113,22 @@ contains
 
     do i = 1, int(n_bank,4)
 
-       ! If there are less than n_particles particles banked, automatically add
-       ! int(n_particles/total) sites to temp_sites. For example, if you need
-       ! 1000 and 300 were banked, this would add 3 source sites per banked site
-       ! and the remaining 100 would be randomly sampled.
-       if (total < n_particles) then
-          do j = 1, int(n_particles/total)
-             index_temp = index_temp + 1
-             temp_sites(index_temp) = fission_bank(i)
-          end do
-       end if
-
-       ! Randomly sample sites needed
-       if (prn() < p_sample) then
+      ! If there are less than n_particles particles banked, automatically add
+      ! int(n_particles/total) sites to temp_sites. For example, if you need
+      ! 1000 and 300 were banked, this would add 3 source sites per banked site
+      ! and the remaining 100 would be randomly sampled.
+      if (total < n_particles) then
+        do j = 1, int(n_particles/total)
           index_temp = index_temp + 1
           temp_sites(index_temp) = fission_bank(i)
-       end if
+        end do
+      end if
+
+      ! Randomly sample sites needed
+      if (prn() < p_sample) then
+        index_temp = index_temp + 1
+        temp_sites(index_temp) = fission_bank(i)
+      end if
     end do
 
     ! At this point, the sampling of source sites is done and now we need to
@@ -152,34 +152,34 @@ contains
     start  = 0_8
     finish = index_temp
 #endif
-    
+
     ! Now that the sampling is complete, we need to ensure that we have exactly
     ! n_particles source sites. The way this is done in a reproducible manner is
     ! to adjust only the source sites on the last processor.
 
     if (rank == n_procs - 1) then
-       if (finish > n_particles) then
-          ! If we have extra sites sampled, we will simply discard the extra
-          ! ones on the last processor
-          index_temp = n_particles - start
+      if (finish > n_particles) then
+        ! If we have extra sites sampled, we will simply discard the extra
+        ! ones on the last processor
+        index_temp = n_particles - start
 
-       elseif (finish < n_particles) then
-          ! If we have too few sites, repeat sites from the very end of the
-          ! fission bank
-          sites_needed = n_particles - finish
-          do i = 1, int(sites_needed,4)
-             index_temp = index_temp + 1
-             temp_sites(index_temp) = fission_bank(n_bank - sites_needed + i)
-          end do
-       end if
+      elseif (finish < n_particles) then
+        ! If we have too few sites, repeat sites from the very end of the
+        ! fission bank
+        sites_needed = n_particles - finish
+        do i = 1, int(sites_needed,4)
+          index_temp = index_temp + 1
+          temp_sites(index_temp) = fission_bank(n_bank - sites_needed + i)
+        end do
+      end if
 
-       ! the last processor should not be sending sites to right
-       finish = bank_last
+      ! the last processor should not be sending sites to right
+      finish = bank_last
     end if
 
     call timer_stop(time_ic_sample)
     call timer_start(time_ic_sendrecv)
-    
+
 #ifdef MPI
     ! ==========================================================================
     ! SEND BANK SITES TO NEIGHBORS
@@ -192,26 +192,26 @@ contains
     neighbor = start / maxwork
 
     SEND_SITES: do while (start < finish)
-       ! Determine the number of sites to send
-       n = min((neighbor + 1)*maxwork, finish) - start
+      ! Determine the number of sites to send
+      n = min((neighbor + 1)*maxwork, finish) - start
 
-       ! Initiate an asynchronous send of source sites to the neighboring
-       ! process
-       if (neighbor /= rank) then
-          n_request = n_request + 1
-          call MPI_ISEND(temp_sites(index_local), n, MPI_BANK, neighbor, &
-               rank, MPI_COMM_WORLD, request(n_request), mpi_err)
-       end if
+      ! Initiate an asynchronous send of source sites to the neighboring
+      ! process
+      if (neighbor /= rank) then
+        n_request = n_request + 1
+        call MPI_ISEND(temp_sites(index_local), n, MPI_BANK, neighbor, &
+             rank, MPI_COMM_WORLD, request(n_request), mpi_err)
+      end if
 
-       ! Increment all indices
-       start       = start       + n
-       index_local = index_local + n
-       neighbor    = neighbor    + 1
+      ! Increment all indices
+      start       = start       + n
+      index_local = index_local + n
+      neighbor    = neighbor    + 1
 
-       ! Check for sites out of bounds -- this only happens in the rare
-       ! circumstance that a processor close to the end has so many sites that
-       ! it would exceed the bank on the last processor
-       if (neighbor > n_procs - 1) exit
+      ! Check for sites out of bounds -- this only happens in the rare
+      ! circumstance that a processor close to the end has so many sites that
+      ! it would exceed the bank on the last processor
+      if (neighbor > n_procs - 1) exit
     end do SEND_SITES
 
     ! ==========================================================================
@@ -224,41 +224,41 @@ contains
     ! the beginning of this processor's source bank.
 
     if (start >= bank_position(n_procs)) then
-       neighbor = n_procs - 1
+      neighbor = n_procs - 1
     else
-       neighbor = binary_search(bank_position, n_procs, start) - 1
+      neighbor = binary_search(bank_position, n_procs, start) - 1
     end if
 
     RECV_SITES: do while (start < bank_last)
-       ! Determine how many sites need to be received
-       if (neighbor == n_procs - 1) then
-          n = min(n_particles, (rank+1)*maxwork) - start
-       else
-          n = min(bank_position(neighbor+2), min(n_particles, &
-               (rank+1)*maxwork)) - start
-       end if
+      ! Determine how many sites need to be received
+      if (neighbor == n_procs - 1) then
+        n = min(n_particles, (rank+1)*maxwork) - start
+      else
+        n = min(bank_position(neighbor+2), min(n_particles, &
+             (rank+1)*maxwork)) - start
+      end if
 
-       if (neighbor /= rank) then
-          ! If the source sites are not on this processor, initiate an
-          ! asynchronous receive for the source sites
+      if (neighbor /= rank) then
+        ! If the source sites are not on this processor, initiate an
+        ! asynchronous receive for the source sites
 
-          n_request = n_request + 1
-          call MPI_IRECV(source_bank(index_local), n, MPI_BANK, &
-               neighbor, neighbor, MPI_COMM_WORLD, request(n_request), mpi_err)
+        n_request = n_request + 1
+        call MPI_IRECV(source_bank(index_local), n, MPI_BANK, &
+             neighbor, neighbor, MPI_COMM_WORLD, request(n_request), mpi_err)
 
-       else
-          ! If the source sites are on this procesor, we can simply copy them
-          ! from the temp_sites bank
+      else
+        ! If the source sites are on this procesor, we can simply copy them
+        ! from the temp_sites bank
 
-          index_temp = start - bank_position(rank+1) + 1
-          source_bank(index_local:index_local+n-1) = &
-               temp_sites(index_temp:index_temp+n-1)
-       end if
+        index_temp = start - bank_position(rank+1) + 1
+        source_bank(index_local:index_local+n-1) = &
+             temp_sites(index_temp:index_temp+n-1)
+      end if
 
-       ! Increment all indices
-       start       = start       + n
-       index_local = index_local + n
-       neighbor    = neighbor    + 1
+      ! Increment all indices
+      start       = start       + n
+      index_local = index_local + n
+      neighbor    = neighbor    + 1
     end do RECV_SITES
 
     ! Since we initiated a series of asynchronous ISENDs and IRECVs, now we have
@@ -303,25 +303,25 @@ contains
     ! box
 
     if (.not. allocated(entropy_p)) then
-       if (.not. allocated(m % dimension)) then
-          ! If the user did not specify how many mesh cells are to be used in
-          ! each direction, we automatically determine an appropriate number of
-          ! cells
-          n = ceiling((n_particles/20)**(1.0/3.0))
+      if (.not. allocated(m % dimension)) then
+        ! If the user did not specify how many mesh cells are to be used in
+        ! each direction, we automatically determine an appropriate number of
+        ! cells
+        n = ceiling((n_particles/20)**(1.0/3.0))
 
-          ! copy dimensions
-          m % n_dimension = 3
-          allocate(m % dimension(3))
-          m % dimension = n
-       end if
+        ! copy dimensions
+        m % n_dimension = 3
+        allocate(m % dimension(3))
+        m % dimension = n
+      end if
 
-       ! allocate and determine width
-       allocate(m % width(3))
-       m % width = (m % upper_right - m % lower_left) / m % dimension
+      ! allocate and determine width
+      allocate(m % width(3))
+      m % width = (m % upper_right - m % lower_left) / m % dimension
 
-       ! allocate p
-       allocate(entropy_p(1, m % dimension(1), m % dimension(2), &
-            m % dimension(3)))
+      ! allocate p
+      allocate(entropy_p(1, m % dimension(1), m % dimension(2), &
+           m % dimension(3)))
     end if
 
     ! count number of fission sites over mesh
@@ -330,26 +330,26 @@ contains
 
     ! display warning message if there were sites outside entropy box
     if (sites_outside) then
-       message = "Fission source site(s) outside of entropy box."
-       call warning()
+      message = "Fission source site(s) outside of entropy box."
+      call warning()
     end if
 
     ! sum values to obtain shannon entropy
     if (master) then
-       ! Normalize to total weight of bank sites
-       entropy_p = entropy_p / sum(entropy_p)
+      ! Normalize to total weight of bank sites
+      entropy_p = entropy_p / sum(entropy_p)
 
-       entropy(current_batch) = ZERO
-       do i = 1, m % dimension(1)
-          do j = 1, m % dimension(2)
-             do k = 1, m % dimension(3)
-                if (entropy_p(1,i,j,k) > ZERO) then
-                   entropy(current_batch) = entropy(current_batch) - &
-                        entropy_p(1,i,j,k) * log(entropy_p(1,i,j,k))/log(TWO)
-                end if
-             end do
+      entropy(current_batch) = ZERO
+      do i = 1, m % dimension(1)
+        do j = 1, m % dimension(2)
+          do k = 1, m % dimension(3)
+            if (entropy_p(1,i,j,k) > ZERO) then
+              entropy(current_batch) = entropy(current_batch) - &
+                   entropy_p(1,i,j,k) * log(entropy_p(1,i,j,k))/log(TWO)
+            end if
           end do
-       end do
+        end do
+      end do
     end if
 
   end subroutine shannon_entropy
@@ -375,15 +375,15 @@ contains
 
 #ifdef MPI
     if ((.not. active_batches) .or. (.not. reduce_tallies)) then
-       ! Reduce value of k_batch if running in parallel
-       if (master) then
-          call MPI_REDUCE(MPI_IN_PLACE, k_batch(current_batch), 1, MPI_REAL8, &
-               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-       else
-          ! Receive buffer not significant at other processors
-          call MPI_REDUCE(k_batch(current_batch), temp, 1, MPI_REAL8, &
-               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-       end if
+      ! Reduce value of k_batch if running in parallel
+      if (master) then
+        call MPI_REDUCE(MPI_IN_PLACE, k_batch(current_batch), 1, MPI_REAL8, &
+             MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+      else
+        ! Receive buffer not significant at other processors
+        call MPI_REDUCE(k_batch(current_batch), temp, 1, MPI_REAL8, &
+             MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+      end if
     end if
 #endif
 
@@ -394,70 +394,70 @@ contains
     end if
 
     if (active_batches) then
-       ! =======================================================================
-       ! ACTIVE BATCHES
+      ! =======================================================================
+      ! ACTIVE BATCHES
 
-       if (reduce_tallies) then
-          ! In this case, global_tallies has already been reduced, so we don't
-          ! need to perform any more reductions and just take the values from
-          ! global_tallies directly
+      if (reduce_tallies) then
+        ! In this case, global_tallies has already been reduced, so we don't
+        ! need to perform any more reductions and just take the values from
+        ! global_tallies directly
 
-          ! Sample mean of keff
-          keff = global_tallies(K_ANALOG) % sum / n_realizations
+        ! Sample mean of keff
+        keff = global_tallies(K_ANALOG) % sum / n_realizations
 
-          if (n_realizations > 1) then
-             if (confidence_intervals) then
-                ! Calculate t-value for confidence intervals
-                alpha = ONE - CONFIDENCE_LEVEL
-                t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
-             else
-                t_value = ONE
-             end if
-
-             ! Standard deviation of the sample mean of k
-             keff_std = t_value * sqrt((global_tallies(K_ANALOG) % sum_sq / &
-                  n_realizations - keff * keff) / (n_realizations - 1))
+        if (n_realizations > 1) then
+          if (confidence_intervals) then
+            ! Calculate t-value for confidence intervals
+            alpha = ONE - CONFIDENCE_LEVEL
+            t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+          else
+            t_value = ONE
           end if
-       else
-          ! In this case, no reduce was ever done on global_tallies. Thus, we
-          ! need to reduce the values in sum and sum^2 to get the sample mean
-          ! and its standard deviation
+
+          ! Standard deviation of the sample mean of k
+          keff_std = t_value * sqrt((global_tallies(K_ANALOG) % sum_sq / &
+               n_realizations - keff * keff) / (n_realizations - 1))
+        end if
+      else
+        ! In this case, no reduce was ever done on global_tallies. Thus, we
+        ! need to reduce the values in sum and sum^2 to get the sample mean
+        ! and its standard deviation
 
 #ifdef MPI
-          call MPI_REDUCE(global_tallies(K_ANALOG) % sum, temp, 2, &
-               MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+        call MPI_REDUCE(global_tallies(K_ANALOG) % sum, temp, 2, &
+             MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 #else
-          temp(1) = global_tallies(K_ANALOG) % sum
-          temp(2) = global_tallies(K_ANALOG) % sum_sq
+        temp(1) = global_tallies(K_ANALOG) % sum
+        temp(2) = global_tallies(K_ANALOG) % sum_sq
 #endif
 
-          ! Sample mean of k
-          keff = temp(1) / n_realizations
-          
-          if (n_realizations > 1) then
-             if (confidence_intervals) then
-                ! Calculate t-value for confidence intervals
-                alpha = ONE - CONFIDENCE_LEVEL
-                t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
-             else
-                t_value = ONE
-             end if
+        ! Sample mean of k
+        keff = temp(1) / n_realizations
 
-             ! Standard deviation of the sample mean of k
-             keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) / &
-                  (n_realizations - 1))
+        if (n_realizations > 1) then
+          if (confidence_intervals) then
+            ! Calculate t-value for confidence intervals
+            alpha = ONE - CONFIDENCE_LEVEL
+            t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+          else
+            t_value = ONE
           end if
-       end if
+
+          ! Standard deviation of the sample mean of k
+          keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) / &
+               (n_realizations - 1))
+        end if
+      end if
 
     else
-       ! =======================================================================
-       ! INACTIVE BATCHES
+      ! =======================================================================
+      ! INACTIVE BATCHES
 
-       ! Set keff
-       keff = k_batch(current_batch)
+      ! Set keff
+      keff = k_batch(current_batch)
 
-       ! Reset tally values
-       global_tallies(:) % value = ZERO
+      ! Reset tally values
+      global_tallies(:) % value = ZERO
     end if
 
 #ifdef MPI
@@ -483,37 +483,37 @@ contains
 #endif
 
     if (current_batch == 1 .and. current_gen == 1) then
-       ! On the first cycle, just assume that the source is already evenly
-       ! distributed so that effectively the production of fission sites is not
-       ! biased
+      ! On the first cycle, just assume that the source is already evenly
+      ! distributed so that effectively the production of fission sites is not
+      ! biased
 
-       source_frac = ufs_mesh % volume_frac
+      source_frac = ufs_mesh % volume_frac
 
     else
-       ! count number of source sites in each ufs mesh cell
-       call count_bank_sites(ufs_mesh, source_bank, source_frac, &
-            sites_outside=sites_outside)
+      ! count number of source sites in each ufs mesh cell
+      call count_bank_sites(ufs_mesh, source_bank, source_frac, &
+           sites_outside=sites_outside)
 
-       ! Check for sites outside of the mesh
-       if (master .and. sites_outside) then
-          message = "Source sites outside of the UFS mesh!"
-          call fatal_error()
-       end if
+      ! Check for sites outside of the mesh
+      if (master .and. sites_outside) then
+        message = "Source sites outside of the UFS mesh!"
+        call fatal_error()
+      end if
 
 #ifdef MPI
-       ! Send source fraction to all processors
-       n = product(ufs_mesh % dimension)
-       call MPI_BCAST(source_frac, n, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
+      ! Send source fraction to all processors
+      n = product(ufs_mesh % dimension)
+      call MPI_BCAST(source_frac, n, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
 #endif
 
-       ! Normalize to total weight to get fraction of source in each cell
-       total = sum(source_frac)
-       source_frac = source_frac / total
+      ! Normalize to total weight to get fraction of source in each cell
+      total = sum(source_frac)
+      source_frac = source_frac / total
 
-       ! Since the total starting weight is not equal to n_particles, we need to
-       ! renormalize the weight of the source sites
+      ! Since the total starting weight is not equal to n_particles, we need to
+      ! renormalize the weight of the source sites
 
-       source_bank % wgt = source_bank % wgt * n_particles / total
+      source_bank % wgt = source_bank % wgt * n_particles / total
     end if
 
   end subroutine count_source_for_ufs

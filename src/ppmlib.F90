@@ -40,7 +40,7 @@ contains
     type(Image), intent(inout) :: img
     integer,     intent(in)    :: w   ! width of image
     integer,     intent(in)    :: h   ! height of image
- 
+
     ! allocate red, green, and blue array
     allocate(img % red(w, h))
     allocate(img % green(w, h))
@@ -59,7 +59,7 @@ contains
   subroutine deallocate_image(img)
 
     type(Image) :: img
- 
+
     if (associated(img % red))   deallocate(img % red)
     if (associated(img % green)) deallocate(img % green)
     if (associated(img % blue))  deallocate(img % blue)
@@ -76,7 +76,7 @@ contains
     type(Image), intent(in) :: img
     integer,     intent(in) :: x, y
     logical                 :: inside
- 
+
     inside = .false.
 
     if ((x < img % width) .and. (y < img % height) .and. &
@@ -107,7 +107,7 @@ contains
   end function valid_image
 
 !===============================================================================
-! SET_PIXEL sets the
+! SET_PIXEL sets the colors for a given pixel
 !===============================================================================
 
   subroutine set_pixel(img, x, y, r, g, b)
@@ -117,9 +117,9 @@ contains
     integer,     intent(in)    :: r, g, b ! red, green, and blue
 
     if (inside_image(img, x, y) .and. valid_image(img)) then
-       img % red(x+1,y+1)    = mod(abs(r), 256)
-       img % green(x+1, y+1) = mod(abs(g), 256)
-       img % blue(x+1, y+1)  = mod(abs(b), 256)
+      img % red(x+1,y+1)    = mod(abs(r), 256)
+      img % green(x+1, y+1) = mod(abs(g), 256)
+      img % blue(x+1, y+1)  = mod(abs(b), 256)
     end if
 
   end subroutine set_pixel

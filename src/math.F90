@@ -12,7 +12,7 @@ contains
 !===============================================================================
 
   function normal_percentile(p) result(z)
-  
+
     real(8), intent(in) :: p ! probability level
     real(8)             :: z ! corresponding z-value
 
@@ -34,28 +34,28 @@ contains
 
     ! The rational approximation used here is from an unpublished work at
     ! http://home.online.no/~pjacklam/notes/invnorm/
-    
-    if (p < p_low) then
-       ! Rational approximation for lower region.
 
-       q = sqrt(-TWO*log(p))
-       z = (((((c(1)*q + c(2))*q + c(3))*q + c(4))*q + c(5))*q + c(6)) / &
-            ((((d(1)*q + d(2))*q + d(3))*q + d(4))*q + 1.)
+    if (p < p_low) then
+      ! Rational approximation for lower region.
+
+      q = sqrt(-TWO*log(p))
+      z = (((((c(1)*q + c(2))*q + c(3))*q + c(4))*q + c(5))*q + c(6)) / &
+           ((((d(1)*q + d(2))*q + d(3))*q + d(4))*q + 1.)
 
     elseif (p <= 1. - p_low) then
-       ! Rational approximation for central region
+      ! Rational approximation for central region
 
-       q = p - 0.5
-       r = q*q
-       z = (((((a(1)*r + a(2))*r + a(3))*r + a(4))*r + a(5))*r + a(6))*q / &
-            (((((b(1)*r + b(2))*r + b(3))*r + b(4))*r + b(5))*r + 1.)
+      q = p - 0.5
+      r = q*q
+      z = (((((a(1)*r + a(2))*r + a(3))*r + a(4))*r + a(5))*r + a(6))*q / &
+           (((((b(1)*r + b(2))*r + b(3))*r + b(4))*r + b(5))*r + 1.)
 
     else
-       ! Rational approximation for upper region
+      ! Rational approximation for upper region
 
-       q = sqrt(-2*log(1. - p))
-       z = -(((((c(1)*q + c(2))*q + c(3))*q + c(4))*q + c(5))*q + c(6)) / &
-       ((((d(1)*q + d(2))*q + d(3))*q + d(4))*q + 1.)
+      q = sqrt(-2*log(1. - p))
+      z = -(((((c(1)*q + c(2))*q + c(3))*q + c(4))*q + c(5))*q + c(6)) / &
+           ((((d(1)*q + d(2))*q + d(3))*q + d(4))*q + 1.)
     endif
 
     ! Refinement based on Newton's method
@@ -82,31 +82,31 @@ contains
     real(8)            :: z2 ! z * z
 
     if (df == 1) then
-       ! For one degree of freedom, the t-distribution becomes a Cauchy
-       ! distribution whose cdf we can invert directly
-       
-       t = tan(PI*(p - 0.5))
+      ! For one degree of freedom, the t-distribution becomes a Cauchy
+      ! distribution whose cdf we can invert directly
+
+      t = tan(PI*(p - 0.5))
 
     elseif (df == 2) then
-       ! For two degrees of freedom, the cdf is given by 1/2 + x/(2*sqrt(x^2 +
-       ! 2)). This can be directly inverted to yield the solution below
+      ! For two degrees of freedom, the cdf is given by 1/2 + x/(2*sqrt(x^2 +
+      ! 2)). This can be directly inverted to yield the solution below
 
-       t = TWO*sqrt(TWO)*(p - 0.5)/sqrt(ONE - 4.*(p - 0.5)**2)
+      t = TWO*sqrt(TWO)*(p - 0.5)/sqrt(ONE - 4.*(p - 0.5)**2)
 
     else
 
-       ! This approximation is from E. Olusegun George and Meenakshi Sivaram, "A
-       ! modification of the Fisher-Cornish approximation for the student t
-       ! percentiles," Communication in Statistics - Simulation and Computation,
-       ! 16 (4), pp. 1123-1132 (1987).
+      ! This approximation is from E. Olusegun George and Meenakshi Sivaram, "A
+      ! modification of the Fisher-Cornish approximation for the student t
+      ! percentiles," Communication in Statistics - Simulation and Computation,
+      ! 16 (4), pp. 1123-1132 (1987).
 
-       n = real(df,8)
-       k = 1./(n - 2.)
-       z = normal_percentile(p)
-       z2 = z * z
-       t = sqrt(n*k) * (z + (z2 - 3.)*z*k/4. + ((5.*z2 - 56.)*z2 + &
-            75.)*z*k*k/96. + (((z2 - 27.)*3.*z2 + 417.)*z2 - 315.) &
-            *z*k*k*k/384.)
+      n = real(df,8)
+      k = 1./(n - 2.)
+      z = normal_percentile(p)
+      z2 = z * z
+      t = sqrt(n*k) * (z + (z2 - 3.)*z*k/4. + ((5.*z2 - 56.)*z2 + &
+           75.)*z*k*k/96. + (((z2 - 27.)*3.*z2 + 417.)*z2 - 315.) &
+           *z*k*k*k/384.)
 
     end if
 

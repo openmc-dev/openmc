@@ -41,46 +41,46 @@ contains
     ! LOOP OVER BATCHES
     BATCH_LOOP: do current_batch = 1, n_batches
 
-       call initialize_batch()
+      call initialize_batch()
 
-       ! Handle restart runs
-       if (restart_run .and. current_batch <= restart_batch) then
-          call replay_batch_history()
-          cycle BATCH_LOOP
-       end if
+      ! Handle restart runs
+      if (restart_run .and. current_batch <= restart_batch) then
+        call replay_batch_history()
+        cycle BATCH_LOOP
+      end if
 
-       ! =======================================================================
-       ! LOOP OVER GENERATIONS
-       GENERATION_LOOP: do current_gen = 1, gen_per_batch
+      ! =======================================================================
+      ! LOOP OVER GENERATIONS
+      GENERATION_LOOP: do current_gen = 1, gen_per_batch
 
-          call initialize_generation()
+        call initialize_generation()
 
-          ! Start timer for transport
-          call timer_start(time_transport)
+        ! Start timer for transport
+        call timer_start(time_transport)
 
-          ! ====================================================================
-          ! LOOP OVER PARTICLES
-          PARTICLE_LOOP: do i = 1, work
+        ! ====================================================================
+        ! LOOP OVER PARTICLES
+        PARTICLE_LOOP: do i = 1, work
 
-             ! grab source particle from bank
-             call get_source_particle(i)
+          ! grab source particle from bank
+          call get_source_particle(i)
 
-             ! transport particle
-             call transport()
+          ! transport particle
+          call transport()
 
-          end do PARTICLE_LOOP
+        end do PARTICLE_LOOP
 
-          ! Accumulate time for transport
-          call timer_stop(time_transport)
+        ! Accumulate time for transport
+        call timer_stop(time_transport)
 
-          ! Distribute fission bank across processors evenly
-          call timer_start(time_intercycle)
-          call synchronize_bank()
-          call timer_stop(time_intercycle)
-          
-       end do GENERATION_LOOP
+        ! Distribute fission bank across processors evenly
+        call timer_start(time_intercycle)
+        call synchronize_bank()
+        call timer_stop(time_intercycle)
 
-       call finalize_batch()
+      end do GENERATION_LOOP
+
+      call finalize_batch()
 
     end do BATCH_LOOP
 
@@ -99,24 +99,24 @@ contains
 
   subroutine initialize_batch()
 
-       message = "Simulating batch " // trim(to_str(current_batch)) // "..."
-       call write_message(8)
+    message = "Simulating batch " // trim(to_str(current_batch)) // "..."
+    call write_message(8)
 
-       ! Reset total starting particle weight used for normalizing tallies
-       total_weight = ZERO
+    ! Reset total starting particle weight used for normalizing tallies
+    total_weight = ZERO
 
-       ! check CMFD initialize batch
-       if (cmfd_run) call cmfd_init_batch()
+    ! check CMFD initialize batch
+    if (cmfd_run) call cmfd_init_batch()
 
-       if (current_batch == n_inactive + 1) then
-          ! This will start the active timer at the first non-inactive batch
-          ! (including batch 1 if there are no inactive batches).
-          call timer_start(time_active)
-       elseif (current_batch == 1) then
-          ! If there are inactive batches, start the inactive timer on the first
-          ! batch.
-          call timer_start(time_inactive)
-       end if
+    if (current_batch == n_inactive + 1) then
+      ! This will start the active timer at the first non-inactive batch
+      ! (including batch 1 if there are no inactive batches).
+      call timer_start(time_active)
+    elseif (current_batch == 1) then
+      ! If there are inactive batches, start the inactive timer on the first
+      ! batch.
+      call timer_start(time_inactive)
+    end if
 
   end subroutine initialize_batch
 
@@ -146,9 +146,9 @@ contains
 
     ! Collect tallies
     if (tallies_on) then
-       call timer_start(time_ic_tallies)
-       call synchronize_tallies()
-       call timer_stop(time_ic_tallies)
+      call timer_start(time_ic_tallies)
+      call synchronize_tallies()
+      call timer_stop(time_ic_tallies)
     end if
 
     ! Calculate shannon entropy
@@ -165,24 +165,24 @@ contains
 
     ! Write out state point if it's been specified for this batch
     do i = 1, n_state_points
-       if (current_batch == statepoint_batch(i)) then
-          ! Create state point file
+      if (current_batch == statepoint_batch(i)) then
+        ! Create state point file
 #ifdef HDF5
-          call hdf5_write_state_point()
+        call hdf5_write_state_point()
 #else
-          call write_state_point()
+        call write_state_point()
 #endif
-          exit
-       end if
+        exit
+      end if
     end do
 
     ! Turn tallies on once inactive cycles are complete
     if (current_batch == n_inactive) then
-       tallies_on = .true.
-       active_batches = .true.
-       call timer_stop(time_inactive)
-       call timer_start(time_active)
-       call setup_active_usertallies()
+      tallies_on = .true.
+      active_batches = .true.
+      call timer_stop(time_inactive)
+      call timer_start(time_active)
+      call setup_active_usertallies()
     end if
 
   end subroutine finalize_batch

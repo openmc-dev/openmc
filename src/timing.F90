@@ -11,9 +11,9 @@ module timing
 !===============================================================================
 
   type Timer
-     logical :: running      = .false. ! is timer running?
-     integer :: start_counts = 0       ! counts when started
-     real(8) :: elapsed      = ZERO    ! total time elapsed in seconds
+    logical :: running      = .false. ! is timer running?
+    integer :: start_counts = 0       ! counts when started
+    real(8) :: elapsed      = ZERO    ! total time elapsed in seconds
 !!$   contains
 !!$     procedure :: start     => timer_start
 !!$     procedure :: get_value => timer_get_value
@@ -51,11 +51,11 @@ contains
     real    :: elapsed_time ! elapsed time since last start
 
     if (self % running) then
-       call system_clock(end_counts, count_rate)
-       elapsed_time = real(end_counts - self % start_counts)/real(count_rate)
-       elapsed = self % elapsed + elapsed_time
+      call system_clock(end_counts, count_rate)
+      elapsed_time = real(end_counts - self % start_counts)/real(count_rate)
+      elapsed = self % elapsed + elapsed_time
     else
-       elapsed = self % elapsed
+      elapsed = self % elapsed
     end if
 
   end function timer_get_value
@@ -82,7 +82,7 @@ contains
 !===============================================================================
 
   subroutine timer_reset(self)
-
+    
     type(Timer), intent(inout) :: self
 
     self % running      = .false.

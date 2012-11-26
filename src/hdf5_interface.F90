@@ -76,34 +76,34 @@ contains
 
     ! Write criticality information
     if (run_mode == MODE_CRITICALITY) then
-       ! Need to write integer(8)'s using double instead since there is no H5LT
-       ! call for making a dataset of type long
-       call hdf5_make_double(hdf5_output_file, "n_particles", real(n_particles,8))
+      ! Need to write integer(8)'s using double instead since there is no H5LT
+      ! call for making a dataset of type long
+      call hdf5_make_double(hdf5_output_file, "n_particles", real(n_particles,8))
 
-       ! Use H5LT interface to write n_cycles, n_inactive, and n_active
-       call hdf5_make_integer(hdf5_output_file, "n_batches", n_batches)
-       call hdf5_make_integer(hdf5_output_file, "n_inactive", n_inactive)
-       call hdf5_make_integer(hdf5_output_file, "n_active", n_active)
-       call hdf5_make_integer(hdf5_output_file, "gen_per_batch", gen_per_batch)
+      ! Use H5LT interface to write n_cycles, n_inactive, and n_active
+      call hdf5_make_integer(hdf5_output_file, "n_batches", n_batches)
+      call hdf5_make_integer(hdf5_output_file, "n_inactive", n_inactive)
+      call hdf5_make_integer(hdf5_output_file, "n_active", n_active)
+      call hdf5_make_integer(hdf5_output_file, "gen_per_batch", gen_per_batch)
 
-       ! Add description of each variable
-       call h5ltset_attribute_string_f(hdf5_output_file, "n_particles", &
-            "description", "Number of particles per cycle", hdf5_err)
-       call h5ltset_attribute_string_f(hdf5_output_file, "n_batches", &
-            "description", "Total number of batches", hdf5_err)
-       call h5ltset_attribute_string_f(hdf5_output_file, "n_inactive", &
-            "description", "Number of inactive cycles", hdf5_err)
-       call h5ltset_attribute_string_f(hdf5_output_file, "n_active", &
-            "description", "Number of active cycles", hdf5_err)
-       call h5ltset_attribute_string_f(hdf5_output_file, "gen_per_batch", &
-            "description", "Number of generations per batch", hdf5_err)
+      ! Add description of each variable
+      call h5ltset_attribute_string_f(hdf5_output_file, "n_particles", &
+           "description", "Number of particles per cycle", hdf5_err)
+      call h5ltset_attribute_string_f(hdf5_output_file, "n_batches", &
+           "description", "Total number of batches", hdf5_err)
+      call h5ltset_attribute_string_f(hdf5_output_file, "n_inactive", &
+           "description", "Number of inactive cycles", hdf5_err)
+      call h5ltset_attribute_string_f(hdf5_output_file, "n_active", &
+           "description", "Number of active cycles", hdf5_err)
+      call h5ltset_attribute_string_f(hdf5_output_file, "gen_per_batch", &
+           "description", "Number of generations per batch", hdf5_err)
     end if
 
     call hdf5_write_geometry()
     call hdf5_write_materials()
     call hdf5_write_nuclides()
     if (n_tallies > 0) then
-       call hdf5_write_tallies()
+      call hdf5_write_tallies()
     end if
 
     ! Terminate access to the file.
@@ -153,7 +153,7 @@ contains
     type(Surface),  pointer :: s => null()
     type(Universe), pointer :: u => null()
     type(Lattice),  pointer :: l => null()
-     
+
     ! Create group for geometry
     call h5gcreate_f(hdf5_output_file, "/geometry", geometry_group, hdf5_err)
 
@@ -170,48 +170,48 @@ contains
 
     ! Write information on each cell
     do i = 1, n_cells
-       c => cells(i)
+      c => cells(i)
 
-       ! Create group for i-th cell
-       call h5gcreate_f(cell_group, "cell " // trim(to_str(c % id)), &
-            temp_group, hdf5_err)
+      ! Create group for i-th cell
+      call h5gcreate_f(cell_group, "cell " // trim(to_str(c % id)), &
+           temp_group, hdf5_err)
 
-       ! Write universe for this cell
-       call hdf5_make_integer(temp_group, "universe", &
-            universes(c % universe) % id)
-       
-       ! Write information on what fills this cell
-       select case (c % type)
-       case (CELL_NORMAL)
-          call h5ltmake_dataset_string_f(temp_group, "fill_type", "normal", &
-               hdf5_err)
-          if (c % material == MATERIAL_VOID) then
-             call hdf5_make_integer(temp_group, "material", -1)
-          else
-             call hdf5_make_integer(temp_group, "material", &
-                  materials(c % material) % id)
-          end if
-       case (CELL_FILL)
-          call h5ltmake_dataset_string_f(temp_group, "fill_type", "universe", &
-               hdf5_err) 
+      ! Write universe for this cell
+      call hdf5_make_integer(temp_group, "universe", &
+           universes(c % universe) % id)
+
+      ! Write information on what fills this cell
+      select case (c % type)
+      case (CELL_NORMAL)
+        call h5ltmake_dataset_string_f(temp_group, "fill_type", "normal", &
+             hdf5_err)
+        if (c % material == MATERIAL_VOID) then
+          call hdf5_make_integer(temp_group, "material", -1)
+        else
           call hdf5_make_integer(temp_group, "material", &
-               universes(c % fill) % id)
-       case (CELL_LATTICE)
-          call h5ltmake_dataset_string_f(temp_group, "fill_type", "lattice", &
-               hdf5_err) 
-          call hdf5_make_integer(temp_group, "lattice", &
-               lattices(c % fill) % id)
-       end select
+               materials(c % material) % id)
+        end if
+      case (CELL_FILL)
+        call h5ltmake_dataset_string_f(temp_group, "fill_type", "universe", &
+             hdf5_err) 
+        call hdf5_make_integer(temp_group, "material", &
+             universes(c % fill) % id)
+      case (CELL_LATTICE)
+        call h5ltmake_dataset_string_f(temp_group, "fill_type", "lattice", &
+             hdf5_err) 
+        call hdf5_make_integer(temp_group, "lattice", &
+             lattices(c % fill) % id)
+      end select
 
-       ! Write list of bounding surfaces
-       if (c % n_surfaces > 0) then
-          dims(1) = c % n_surfaces
-          call h5ltmake_dataset_int_f(temp_group, "surfaces", 1, &
-               dims, c % surfaces, hdf5_err)
-       end if
+      ! Write list of bounding surfaces
+      if (c % n_surfaces > 0) then
+        dims(1) = c % n_surfaces
+        call h5ltmake_dataset_int_f(temp_group, "surfaces", 1, &
+             dims, c % surfaces, hdf5_err)
+      end if
 
-       ! Close group for i-th cell
-       call h5gclose_f(temp_group, hdf5_err)
+      ! Close group for i-th cell
+      call h5gclose_f(temp_group, hdf5_err)
     end do
 
     call h5gclose_f(cell_group, hdf5_err)
@@ -223,81 +223,81 @@ contains
 
     ! Write information on each surface
     do i = 1, n_surfaces
-       s => surfaces(i)
+      s => surfaces(i)
 
-       ! Create group for i-th surface
-       call h5gcreate_f(surface_group, "surface " // trim(to_str(s % id)), &
-            temp_group, hdf5_err)
+      ! Create group for i-th surface
+      call h5gcreate_f(surface_group, "surface " // trim(to_str(s % id)), &
+           temp_group, hdf5_err)
 
-       ! Write surface type
-       select case (s % type)
-       case (SURF_PX)
-          call h5ltmake_dataset_string_f(temp_group, "type", "X Plane", hdf5_err)
-       case (SURF_PY)
-          call h5ltmake_dataset_string_f(temp_group, "type", "Y Plane", hdf5_err)
-       case (SURF_PZ)
-          call h5ltmake_dataset_string_f(temp_group, "type", "Z Plane", hdf5_err)
-       case (SURF_PLANE)
-          call h5ltmake_dataset_string_f(temp_group, "type", "Plane", hdf5_err)
-       case (SURF_CYL_X)
-          call h5ltmake_dataset_string_f(temp_group, "type", "X Cylinder", hdf5_err)
-       case (SURF_CYL_Y)
-          call h5ltmake_dataset_string_f(temp_group, "type", "Y Cylinder", hdf5_err)
-       case (SURF_CYL_Z)
-          call h5ltmake_dataset_string_f(temp_group, "type", "Z Cylinder", hdf5_err)
-       case (SURF_SPHERE)
-          call h5ltmake_dataset_string_f(temp_group, "type", "Sphere", hdf5_err)
-       case (SURF_CONE_X)
-          call h5ltmake_dataset_string_f(temp_group, "type", "X Cone", hdf5_err)
-       case (SURF_CONE_Y)
-          call h5ltmake_dataset_string_f(temp_group, "type", "Y Cone", hdf5_err)
-       case (SURF_CONE_Z)
-          call h5ltmake_dataset_string_f(temp_group, "type", "Z Cone", hdf5_err)
-       case (SURF_BOX_X)
-       case (SURF_BOX_Y)
-       case (SURF_BOX_Z)
-       case (SURF_BOX)
-       case (SURF_GQ)
-          call h5ltmake_dataset_string_f(temp_group, "type", "General Quadratic", hdf5_err)
-       end select
+      ! Write surface type
+      select case (s % type)
+      case (SURF_PX)
+        call h5ltmake_dataset_string_f(temp_group, "type", "X Plane", hdf5_err)
+      case (SURF_PY)
+        call h5ltmake_dataset_string_f(temp_group, "type", "Y Plane", hdf5_err)
+      case (SURF_PZ)
+        call h5ltmake_dataset_string_f(temp_group, "type", "Z Plane", hdf5_err)
+      case (SURF_PLANE)
+        call h5ltmake_dataset_string_f(temp_group, "type", "Plane", hdf5_err)
+      case (SURF_CYL_X)
+        call h5ltmake_dataset_string_f(temp_group, "type", "X Cylinder", hdf5_err)
+      case (SURF_CYL_Y)
+        call h5ltmake_dataset_string_f(temp_group, "type", "Y Cylinder", hdf5_err)
+      case (SURF_CYL_Z)
+        call h5ltmake_dataset_string_f(temp_group, "type", "Z Cylinder", hdf5_err)
+      case (SURF_SPHERE)
+        call h5ltmake_dataset_string_f(temp_group, "type", "Sphere", hdf5_err)
+      case (SURF_CONE_X)
+        call h5ltmake_dataset_string_f(temp_group, "type", "X Cone", hdf5_err)
+      case (SURF_CONE_Y)
+        call h5ltmake_dataset_string_f(temp_group, "type", "Y Cone", hdf5_err)
+      case (SURF_CONE_Z)
+        call h5ltmake_dataset_string_f(temp_group, "type", "Z Cone", hdf5_err)
+      case (SURF_BOX_X)
+      case (SURF_BOX_Y)
+      case (SURF_BOX_Z)
+      case (SURF_BOX)
+      case (SURF_GQ)
+        call h5ltmake_dataset_string_f(temp_group, "type", "General Quadratic", hdf5_err)
+      end select
 
-       ! Write coefficients for surface
-       dims(1) = size(s % coeffs)
-       call h5ltmake_dataset_double_f(temp_group, "coefficients", 1, dims, &
-            s % coeffs, hdf5_err)
+      ! Write coefficients for surface
+      dims(1) = size(s % coeffs)
+      call h5ltmake_dataset_double_f(temp_group, "coefficients", 1, dims, &
+           s % coeffs, hdf5_err)
 
-       ! Write positive neighbors
-       if (allocated(s % neighbor_pos)) then
-          dims(1) = size(s % neighbor_pos)
-          call h5ltmake_dataset_int_f(temp_group, "neighbors_positive", 1, dims, &
-               s % neighbor_pos, hdf5_err)
-       end if
+      ! Write positive neighbors
+      if (allocated(s % neighbor_pos)) then
+        dims(1) = size(s % neighbor_pos)
+        call h5ltmake_dataset_int_f(temp_group, "neighbors_positive", 1, dims, &
+             s % neighbor_pos, hdf5_err)
+      end if
 
-       ! Write negative neighbors
-       if (allocated(s % neighbor_neg)) then
-          dims(1) = size(s % neighbor_neg)
-          call h5ltmake_dataset_int_f(temp_group, "neighbors_negative", 1, dims, &
-               s % neighbor_neg, hdf5_err)
-       end if
+      ! Write negative neighbors
+      if (allocated(s % neighbor_neg)) then
+        dims(1) = size(s % neighbor_neg)
+        call h5ltmake_dataset_int_f(temp_group, "neighbors_negative", 1, dims, &
+             s % neighbor_neg, hdf5_err)
+      end if
 
-       ! Write boundary condition
-       select case (s % bc)
-       case (BC_TRANSMIT)
-          call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
-               "transmission", hdf5_err)
-       case (BC_VACUUM)
-          call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
-               "vacuum", hdf5_err)
-       case (BC_REFLECT)
-          call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
-               "reflective", hdf5_err)
-       case (BC_PERIODIC)
-          call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
-               "periodic", hdf5_err)
-       end select
+      ! Write boundary condition
+      select case (s % bc)
+      case (BC_TRANSMIT)
+        call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
+             "transmission", hdf5_err)
+      case (BC_VACUUM)
+        call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
+             "vacuum", hdf5_err)
+      case (BC_REFLECT)
+        call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
+             "reflective", hdf5_err)
+      case (BC_PERIODIC)
+        call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
+             "periodic", hdf5_err)
+      end select
 
-       ! Close group for i-th surface
-       call h5gclose_f(temp_group, hdf5_err)
+      ! Close group for i-th surface
+      call h5gclose_f(temp_group, hdf5_err)
     end do
 
     call h5gclose_f(surface_group, hdf5_err)
@@ -309,21 +309,21 @@ contains
 
     ! Write information on each universe
     do i = 1, n_universes
-       u => universes(i)
+      u => universes(i)
 
-       ! Create group for i-th universe
-       call h5gcreate_f(universe_group, "universe " // trim(to_str(u % id)), &
-            temp_group, hdf5_err)
+      ! Create group for i-th universe
+      call h5gcreate_f(universe_group, "universe " // trim(to_str(u % id)), &
+           temp_group, hdf5_err)
 
-       ! Write list of cells in this universe
-       if (u % n_cells > 0) then
-          dims(1) = u % n_cells
-          call h5ltmake_dataset_int_f(temp_group, "cells", 1, dims, &
-               u % cells, hdf5_err)
-       end if
+      ! Write list of cells in this universe
+      if (u % n_cells > 0) then
+        dims(1) = u % n_cells
+        call h5ltmake_dataset_int_f(temp_group, "cells", 1, dims, &
+             u % cells, hdf5_err)
+      end if
 
-       ! Close group for i-th universe
-       call h5gclose_f(temp_group, hdf5_err)
+      ! Close group for i-th universe
+      call h5gclose_f(temp_group, hdf5_err)
     end do
 
     call h5gclose_f(universe_group, hdf5_err)
@@ -335,43 +335,43 @@ contains
 
     ! Write information on each lattice
     do i = 1, n_lattices
-       l => lattices(i)
+      l => lattices(i)
 
-       ! Create group for i-th lattice
-       call h5gcreate_f(lattice_group, "lattice " // trim(to_str(l % id)), &
-            temp_group, hdf5_err)
+      ! Create group for i-th lattice
+      call h5gcreate_f(lattice_group, "lattice " // trim(to_str(l % id)), &
+           temp_group, hdf5_err)
 
-       ! Write lattice type
-       select case(l % type)
-       case (LATTICE_RECT)
-          call h5ltmake_dataset_string_f(temp_group, "type", "rectangular", hdf5_err)
-       case (LATTICE_HEX)
-          call h5ltmake_dataset_string_f(temp_group, "type", "hexagonal", hdf5_err)
-       end select
+      ! Write lattice type
+      select case(l % type)
+      case (LATTICE_RECT)
+        call h5ltmake_dataset_string_f(temp_group, "type", "rectangular", hdf5_err)
+      case (LATTICE_HEX)
+        call h5ltmake_dataset_string_f(temp_group, "type", "hexagonal", hdf5_err)
+      end select
 
-       ! Write lattice dimensions, lower left corner, and width of element
-       dims(1) = 2
-       call h5ltmake_dataset_int_f(temp_group, "n_elements", 1, dims, &
-            (/ l % n_x, l % n_y /), hdf5_err)
-       call h5ltmake_dataset_double_f(temp_group, "lower_left", 1, dims, &
-            (/ l % x0, l % y0 /), hdf5_err)
-       call h5ltmake_dataset_double_f(temp_group, "element_width", 1, dims, &
-            (/ l % width_x, l % width_y /), hdf5_err)
+      ! Write lattice dimensions, lower left corner, and width of element
+      dims(1) = 2
+      call h5ltmake_dataset_int_f(temp_group, "n_elements", 1, dims, &
+           (/ l % n_x, l % n_y /), hdf5_err)
+      call h5ltmake_dataset_double_f(temp_group, "lower_left", 1, dims, &
+           (/ l % x0, l % y0 /), hdf5_err)
+      call h5ltmake_dataset_double_f(temp_group, "element_width", 1, dims, &
+           (/ l % width_x, l % width_y /), hdf5_err)
 
-       ! Write lattice elements
-       allocate(lattice_universes(l % n_x, l % n_y))
-       do j = 1, l % n_x
-          do k = 1, l % n_y
-             lattice_universes(j,k) = universes(l % element(j,k)) % id
-          end do
-       end do
-       dims2 = (/ l % n_x, l % n_y /)
-       call h5ltmake_dataset_int_f(temp_group, "elements", 2, dims2, &
-            lattice_universes, hdf5_err)
-       deallocate(lattice_universes)
+      ! Write lattice elements
+      allocate(lattice_universes(l % n_x, l % n_y))
+      do j = 1, l % n_x
+        do k = 1, l % n_y
+          lattice_universes(j,k) = universes(l % element(j,k)) % id
+        end do
+      end do
+      dims2 = (/ l % n_x, l % n_y /)
+      call h5ltmake_dataset_int_f(temp_group, "elements", 2, dims2, &
+           lattice_universes, hdf5_err)
+      deallocate(lattice_universes)
 
-       ! Close group for i-th lattice
-       call h5gclose_f(temp_group, hdf5_err)
+      ! Close group for i-th lattice
+      call h5gclose_f(temp_group, hdf5_err)
     end do
 
     call h5gclose_f(lattice_group, hdf5_err)
@@ -396,7 +396,7 @@ contains
     integer(HID_T)   :: dspace_id
     integer(HID_T)   :: dset_id
     type(Material), pointer :: m => null()
-     
+
     ! Create group for materials
     call h5gcreate_f(hdf5_output_file, "/materials", materials_group, hdf5_err)
 
@@ -405,46 +405,46 @@ contains
 
     ! Write information on each material
     do i = 1, n_materials
-       m => materials(i)
+      m => materials(i)
 
-       ! Create group for i-th universe
-       call h5gcreate_f(materials_group, "material " // trim(to_str(m % id)), &
-            temp_group, hdf5_err)
+      ! Create group for i-th universe
+      call h5gcreate_f(materials_group, "material " // trim(to_str(m % id)), &
+           temp_group, hdf5_err)
 
-       ! Write atom density with units
-       call hdf5_make_double(temp_group, "atom_density", m % density)
-       call h5ltset_attribute_string_f(temp_group, "atom_density", &
-            "units", "atom/barn-cm", hdf5_err)
+      ! Write atom density with units
+      call hdf5_make_double(temp_group, "atom_density", m % density)
+      call h5ltset_attribute_string_f(temp_group, "atom_density", &
+           "units", "atom/barn-cm", hdf5_err)
 
-       ! Create string type of length 12
-       call h5tcopy_f(H5T_C_S1, string_type, hdf5_err)
-       call h5tset_size_f(string_type, size_string, hdf5_err)
+      ! Create string type of length 12
+      call h5tcopy_f(H5T_C_S1, string_type, hdf5_err)
+      call h5tset_size_f(string_type, size_string, hdf5_err)
 
-       ! Create dataspace and dataset for writing nuclides
-       dims(1) = m % n_nuclides
-       call h5screate_simple_f(1, dims, dspace_id, hdf5_err)
-       call h5dcreate_f(temp_group, "nuclides", string_type, dspace_id, &
-            dset_id, hdf5_err)
+      ! Create dataspace and dataset for writing nuclides
+      dims(1) = m % n_nuclides
+      call h5screate_simple_f(1, dims, dspace_id, hdf5_err)
+      call h5dcreate_f(temp_group, "nuclides", string_type, dspace_id, &
+           dset_id, hdf5_err)
 
-       ! Write list of nuclides
-       call h5dwrite_f(dset_id, string_type, m % names, dims, hdf5_err)
+      ! Write list of nuclides
+      call h5dwrite_f(dset_id, string_type, m % names, dims, hdf5_err)
 
-       ! Close dataspace and dataset for nuclides
-       call h5dclose_f(dset_id, hdf5_err)
-       call h5sclose_f(dspace_id, hdf5_err)
+      ! Close dataspace and dataset for nuclides
+      call h5dclose_f(dset_id, hdf5_err)
+      call h5sclose_f(dspace_id, hdf5_err)
 
-       ! Write atom densities
-       call h5ltmake_dataset_double_f(temp_group, "nuclide_densities", 1, &
-            dims, m % atom_density, hdf5_err)
+      ! Write atom densities
+      call h5ltmake_dataset_double_f(temp_group, "nuclide_densities", 1, &
+           dims, m % atom_density, hdf5_err)
 
-       ! Write S(a,b) information if present
-       if (m % has_sab_table) then
-          call h5ltmake_dataset_string_f(temp_group, "sab_table", &
-               m % sab_name, hdf5_err)
-       end if
+      ! Write S(a,b) information if present
+      if (m % has_sab_table) then
+        call h5ltmake_dataset_string_f(temp_group, "sab_table", &
+             m % sab_name, hdf5_err)
+      end if
 
-       ! Close group for i-th material
-       call h5gclose_f(temp_group, hdf5_err)
+      ! Close group for i-th material
+      call h5gclose_f(temp_group, hdf5_err)
     end do
 
     ! Close materials group
@@ -465,7 +465,7 @@ contains
     integer(HID_T)    :: filter_group     ! group for i-th filter
     integer, allocatable :: temp_array(:) ! nuclide bin array
     type(TallyObject), pointer :: t => null()
-     
+
     ! Create group for tallies
     call h5gcreate_f(hdf5_output_file, "tallies", tallies_group, hdf5_err)
 
@@ -474,135 +474,135 @@ contains
 
     ! Write information for meshes
     MESH_LOOP: do i = 1, n_meshes
-       ! Create temporary group for each mesh
-       call h5gcreate_f(tallies_group, "mesh " // to_str(meshes(i) % id), &
-            temp_group, hdf5_err)
+      ! Create temporary group for each mesh
+      call h5gcreate_f(tallies_group, "mesh " // to_str(meshes(i) % id), &
+           temp_group, hdf5_err)
 
-       ! Write type and number of dimensions
-       call hdf5_make_integer(temp_group, "type", meshes(i) % type)
-       call hdf5_make_integer(temp_group, "n_dimension", &
-            meshes(i) % n_dimension)
+      ! Write type and number of dimensions
+      call hdf5_make_integer(temp_group, "type", meshes(i) % type)
+      call hdf5_make_integer(temp_group, "n_dimension", &
+           meshes(i) % n_dimension)
 
-       ! Write mesh information
-       dims(1) = meshes(i) % n_dimension
-       call h5ltmake_dataset_int_f(temp_group, "dimension", 1, &
-            dims, meshes(i) % dimension, hdf5_err)
-       call h5ltmake_dataset_double_f(temp_group, "lower_left", 1, &
-            dims, meshes(i) % lower_left, hdf5_err)
-       call h5ltmake_dataset_double_f(temp_group, "upper_right", 1, &
-            dims, meshes(i) % upper_right, hdf5_err)
-       call h5ltmake_dataset_double_f(temp_group, "width", 1, &
-            dims, meshes(i) % width, hdf5_err)
+      ! Write mesh information
+      dims(1) = meshes(i) % n_dimension
+      call h5ltmake_dataset_int_f(temp_group, "dimension", 1, &
+           dims, meshes(i) % dimension, hdf5_err)
+      call h5ltmake_dataset_double_f(temp_group, "lower_left", 1, &
+           dims, meshes(i) % lower_left, hdf5_err)
+      call h5ltmake_dataset_double_f(temp_group, "upper_right", 1, &
+           dims, meshes(i) % upper_right, hdf5_err)
+      call h5ltmake_dataset_double_f(temp_group, "width", 1, &
+           dims, meshes(i) % width, hdf5_err)
 
-       ! Close temporary group for mesh
-       call h5gclose_f(temp_group, hdf5_err)
+      ! Close temporary group for mesh
+      call h5gclose_f(temp_group, hdf5_err)
     end do MESH_LOOP
 
     ! Write number of tallies
     call hdf5_make_integer(tallies_group, "n_tallies", n_tallies)
 
     TALLY_METADATA: do i = 1, n_tallies
-       ! Get pointer to tally
-       t => tallies(i)
+      ! Get pointer to tally
+      t => tallies(i)
 
-       ! Create group for this tally
-       call h5gcreate_f(tallies_group, "tally " // to_str(t % id), &
-            temp_group, hdf5_err)
+      ! Create group for this tally
+      call h5gcreate_f(tallies_group, "tally " // to_str(t % id), &
+           temp_group, hdf5_err)
 
-       ! Write size of each tally
-       call hdf5_make_integer(temp_group, "total_score_bins", &
-            t % total_score_bins)
-       call hdf5_make_integer(temp_group, "total_filter_bins", &
-            t % total_filter_bins)
+      ! Write size of each tally
+      call hdf5_make_integer(temp_group, "total_score_bins", &
+           t % total_score_bins)
+      call hdf5_make_integer(temp_group, "total_filter_bins", &
+           t % total_filter_bins)
 
-       ! Write number of filters
-       call hdf5_make_integer(temp_group, "n_filters", t % n_filters)
+      ! Write number of filters
+      call hdf5_make_integer(temp_group, "n_filters", t % n_filters)
 
-       FILTER_LOOP: do j = 1, t % n_filters
-          ! Create filter group
-          call h5gcreate_f(temp_group, "filter " // to_str(j), filter_group, &
-               hdf5_err)
+      FILTER_LOOP: do j = 1, t % n_filters
+        ! Create filter group
+        call h5gcreate_f(temp_group, "filter " // to_str(j), filter_group, &
+             hdf5_err)
 
-          ! Write type of filter
-          call hdf5_make_integer(filter_group, "type", t % filters(j) % type)
+        ! Write type of filter
+        call hdf5_make_integer(filter_group, "type", t % filters(j) % type)
 
-          ! Write number of bins for this filter
-          call hdf5_make_integer(filter_group, "n_bins", t % filters(j) % n_bins)
+        ! Write number of bins for this filter
+        call hdf5_make_integer(filter_group, "n_bins", t % filters(j) % n_bins)
 
-          ! Write filter bins
-          if (t % filters(j) % type == FILTER_ENERGYIN .or. &
-               t % filters(j) % type == FILTER_ENERGYOUT) then
-             dims(1) = size(t % filters(j) % real_bins)
-             call h5ltmake_dataset_double_f(filter_group, "bins", 1, &
-                  dims, t % filters(j) % real_bins, hdf5_err)
-          else
-             dims(1) = size(t % filters(j) % int_bins)
-             call h5ltmake_dataset_int_f(filter_group, "bins", 1, &
-                  dims, t % filters(j) % int_bins, hdf5_err)
-          end if
+        ! Write filter bins
+        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
+             t % filters(j) % type == FILTER_ENERGYOUT) then
+          dims(1) = size(t % filters(j) % real_bins)
+          call h5ltmake_dataset_double_f(filter_group, "bins", 1, &
+               dims, t % filters(j) % real_bins, hdf5_err)
+        else
+          dims(1) = size(t % filters(j) % int_bins)
+          call h5ltmake_dataset_int_f(filter_group, "bins", 1, &
+               dims, t % filters(j) % int_bins, hdf5_err)
+        end if
 
-          ! Write name of type
-          select case (t % filters(j) % type)
-          case(FILTER_UNIVERSE)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "universe", hdf5_err)
-          case(FILTER_MATERIAL)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "material", hdf5_err)
-          case(FILTER_CELL)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "cell", hdf5_err)
-          case(FILTER_CELLBORN)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "cellborn", hdf5_err)
-          case(FILTER_SURFACE)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "surface", hdf5_err)
-          case(FILTER_MESH)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "mesh", hdf5_err)
-          case(FILTER_ENERGYIN)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "energy", hdf5_err)
-          case(FILTER_ENERGYOUT)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "energyout", hdf5_err)
-          end select
+        ! Write name of type
+        select case (t % filters(j) % type)
+        case(FILTER_UNIVERSE)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "universe", hdf5_err)
+        case(FILTER_MATERIAL)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "material", hdf5_err)
+        case(FILTER_CELL)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "cell", hdf5_err)
+        case(FILTER_CELLBORN)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "cellborn", hdf5_err)
+        case(FILTER_SURFACE)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "surface", hdf5_err)
+        case(FILTER_MESH)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "mesh", hdf5_err)
+        case(FILTER_ENERGYIN)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "energy", hdf5_err)
+        case(FILTER_ENERGYOUT)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "energyout", hdf5_err)
+        end select
 
-          ! Close group for this filter
-          call h5gclose_f(filter_group, hdf5_err)
-       end do FILTER_LOOP
+        ! Close group for this filter
+        call h5gclose_f(filter_group, hdf5_err)
+      end do FILTER_LOOP
 
-       ! Write number of nuclide bins
-       call hdf5_make_integer(temp_group, "n_nuclide_bins", &
-            t % n_nuclide_bins)
+      ! Write number of nuclide bins
+      call hdf5_make_integer(temp_group, "n_nuclide_bins", &
+           t % n_nuclide_bins)
 
 
-       ! Create temporary array for nuclide bins
-       allocate(temp_array(t % n_nuclide_bins))
-       NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
-          if (t % nuclide_bins(j) > 0) then
-             temp_array(j) = nuclides(t % nuclide_bins(j)) % zaid
-          else
-             temp_array(j) = t % nuclide_bins(j)
-          end if
-       end do NUCLIDE_LOOP
+      ! Create temporary array for nuclide bins
+      allocate(temp_array(t % n_nuclide_bins))
+      NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
+        if (t % nuclide_bins(j) > 0) then
+          temp_array(j) = nuclides(t % nuclide_bins(j)) % zaid
+        else
+          temp_array(j) = t % nuclide_bins(j)
+        end if
+      end do NUCLIDE_LOOP
 
-       ! Write and deallocate nuclide bins
-       dims(1) = t % n_nuclide_bins
-       call h5ltmake_dataset_int_f(temp_group, "nuclide_bins", 1, &
-            dims, temp_array, hdf5_err)
-       deallocate(temp_array)
+      ! Write and deallocate nuclide bins
+      dims(1) = t % n_nuclide_bins
+      call h5ltmake_dataset_int_f(temp_group, "nuclide_bins", 1, &
+           dims, temp_array, hdf5_err)
+      deallocate(temp_array)
 
-       ! Write number of score bins
-       call hdf5_make_integer(temp_group, "n_score_bins", &
-            t % n_score_bins)
-       dims(1) = t % n_score_bins
-       call h5ltmake_dataset_int_f(temp_group, "score_bins", 1, &
-            dims, t % score_bins, hdf5_err)
+      ! Write number of score bins
+      call hdf5_make_integer(temp_group, "n_score_bins", &
+           t % n_score_bins)
+      dims(1) = t % n_score_bins
+      call h5ltmake_dataset_int_f(temp_group, "score_bins", 1, &
+           dims, t % score_bins, hdf5_err)
 
-       ! Close tally group
-       call h5gclose_f(temp_group, hdf5_err)
+      ! Close tally group
+      call h5gclose_f(temp_group, hdf5_err)
     end do TALLY_METADATA
 
     ! Close tallies group
@@ -628,7 +628,7 @@ contains
     type(Nuclide),  pointer :: nuc => null()
     type(Reaction), pointer :: rxn => null()
     type(UrrData),  pointer :: urr => null()
-     
+
     ! Create group for nuclides
     call h5gcreate_f(hdf5_output_file, "/nuclides", group, hdf5_err)
 
@@ -637,87 +637,87 @@ contains
 
     ! Write information on each nuclide
     do i = 1, n_nuclides_total
-       nuc => nuclides(i)
+      nuc => nuclides(i)
 
-       ! Determine size of cross-sections
-       size_xs = (5 + nuc % n_reaction) * nuc % n_grid * 8
-       size_total = size_xs
+      ! Determine size of cross-sections
+      size_xs = (5 + nuc % n_reaction) * nuc % n_grid * 8
+      size_total = size_xs
 
-       ! Create group for i-th nuclide
-       call h5gcreate_f(group, trim(nuc % name), nuclide_group, hdf5_err)
+      ! Create group for i-th nuclide
+      call h5gcreate_f(group, trim(nuc % name), nuclide_group, hdf5_err)
 
-       ! Write some basic attributes
-       call hdf5_make_integer(nuclide_group, "zaid", nuc % zaid)
-       call hdf5_make_double(nuclide_group, "awr", nuc % awr)
-       call hdf5_make_double(nuclide_group, "kT", nuc % kT)
-       call hdf5_make_integer(nuclide_group, "n_grid", nuc % n_grid)
-       call hdf5_make_integer(nuclide_group, "n_reactions", nuc % n_reaction)
-       call hdf5_make_integer(nuclide_group, "n_fission", nuc % n_fission)
-       call hdf5_make_integer(nuclide_group, "size_xs", size_xs)
+      ! Write some basic attributes
+      call hdf5_make_integer(nuclide_group, "zaid", nuc % zaid)
+      call hdf5_make_double(nuclide_group, "awr", nuc % awr)
+      call hdf5_make_double(nuclide_group, "kT", nuc % kT)
+      call hdf5_make_integer(nuclide_group, "n_grid", nuc % n_grid)
+      call hdf5_make_integer(nuclide_group, "n_reactions", nuc % n_reaction)
+      call hdf5_make_integer(nuclide_group, "n_fission", nuc % n_fission)
+      call hdf5_make_integer(nuclide_group, "size_xs", size_xs)
 
-       ! =======================================================================
-       ! WRITE INFORMATION ON EACH REACTION
+      ! =======================================================================
+      ! WRITE INFORMATION ON EACH REACTION
 
-       ! Create overall group 
-       call h5gcreate_f(nuclide_group, "reactions", reactions_group, hdf5_err)
+      ! Create overall group 
+      call h5gcreate_f(nuclide_group, "reactions", reactions_group, hdf5_err)
 
-       do j = 1, nuc % n_reaction
-          ! Information on each reaction
-          rxn => nuc % reactions(j)
+      do j = 1, nuc % n_reaction
+        ! Information on each reaction
+        rxn => nuc % reactions(j)
 
-          ! Determine size of angle distribution
-          if (rxn % has_angle_dist) then
-             size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
-          else
-             size_angle = 0
-          end if
+        ! Determine size of angle distribution
+        if (rxn % has_angle_dist) then
+          size_angle = rxn % adist % n_energy * 16 + size(rxn % adist % data) * 8
+        else
+          size_angle = 0
+        end if
 
-          ! Determine size of energy distribution
-          if (rxn % has_energy_dist) then
-             size_energy = size(rxn % edist % data) * 8
-          else
-             size_energy = 0
-          end if
+        ! Determine size of energy distribution
+        if (rxn % has_energy_dist) then
+          size_energy = size(rxn % edist % data) * 8
+        else
+          size_energy = 0
+        end if
 
-          ! Create reaction group 
-          call h5gcreate_f(reactions_group, reaction_name(rxn % MT), &
-               rxn_group, hdf5_err)
+        ! Create reaction group 
+        call h5gcreate_f(reactions_group, reaction_name(rxn % MT), &
+             rxn_group, hdf5_err)
 
-          ! Write information on reaction
-          call hdf5_make_double(rxn_group, "Q_value", rxn % Q_value)
-          call hdf5_make_integer(rxn_group, "multiplicity", rxn % multiplicity)
-          call hdf5_make_integer(rxn_group, "threshold", rxn % threshold)
-          call hdf5_make_integer(rxn_group, "size_angle", size_angle)
-          call hdf5_make_integer(rxn_group, "size_energy", size_energy)
+        ! Write information on reaction
+        call hdf5_make_double(rxn_group, "Q_value", rxn % Q_value)
+        call hdf5_make_integer(rxn_group, "multiplicity", rxn % multiplicity)
+        call hdf5_make_integer(rxn_group, "threshold", rxn % threshold)
+        call hdf5_make_integer(rxn_group, "size_angle", size_angle)
+        call hdf5_make_integer(rxn_group, "size_energy", size_energy)
 
-          call h5gclose_f(rxn_group, hdf5_err)
+        call h5gclose_f(rxn_group, hdf5_err)
 
-          ! Accumulate data size
-          size_total = size_total + size_angle + size_energy
-       end do
+        ! Accumulate data size
+        size_total = size_total + size_angle + size_energy
+      end do
 
-       ! Close overall group for reactions
-       call h5gclose_f(reactions_group, hdf5_err)
+      ! Close overall group for reactions
+      call h5gclose_f(reactions_group, hdf5_err)
 
-       ! =======================================================================
-       ! WRITE INFORMATION ON URR PROBABILITY TABLES
+      ! =======================================================================
+      ! WRITE INFORMATION ON URR PROBABILITY TABLES
 
-       if (nuc % urr_present) then
-          urr => nuc % urr_data
-          call hdf5_make_integer(nuclide_group, "urr_n_energy", urr % n_energy)
-          call hdf5_make_integer(nuclide_group, "urr_n_prob", urr % n_prob)
-          call hdf5_make_integer(nuclide_group, "urr_interp", urr % interp)
-          call hdf5_make_integer(nuclide_group, "urr_inelastic", urr % inelastic_flag)
-          call hdf5_make_integer(nuclide_group, "urr_absorption", urr % absorption_flag)
-          call hdf5_make_double(nuclide_group, "urr_min_E", urr % energy(1))
-          call hdf5_make_double(nuclide_group, "urr_max_E", urr % energy(urr % n_energy))
-       end if
+      if (nuc % urr_present) then
+        urr => nuc % urr_data
+        call hdf5_make_integer(nuclide_group, "urr_n_energy", urr % n_energy)
+        call hdf5_make_integer(nuclide_group, "urr_n_prob", urr % n_prob)
+        call hdf5_make_integer(nuclide_group, "urr_interp", urr % interp)
+        call hdf5_make_integer(nuclide_group, "urr_inelastic", urr % inelastic_flag)
+        call hdf5_make_integer(nuclide_group, "urr_absorption", urr % absorption_flag)
+        call hdf5_make_double(nuclide_group, "urr_min_E", urr % energy(1))
+        call hdf5_make_double(nuclide_group, "urr_max_E", urr % energy(urr % n_energy))
+      end if
 
-       ! Write total memory used
-       call hdf5_make_integer(nuclide_group, "size_total", size_total)
+      ! Write total memory used
+      call hdf5_make_integer(nuclide_group, "size_total", size_total)
 
-       ! Close group for i-th nuclide
-       call h5gclose_f(nuclide_group, hdf5_err)
+      ! Close group for i-th nuclide
+      call h5gclose_f(nuclide_group, hdf5_err)
     end do
 
     ! Close group for nuclides
@@ -825,7 +825,7 @@ contains
     ! Write revision number for state point file
     call hdf5_make_integer(hdf5_state_point, "revision_statepoint", &
          REVISION_STATEPOINT)
-    
+
     ! Write OpenMC version
     call hdf5_make_integer(hdf5_state_point, "version_major", VERSION_MAJOR)
     call hdf5_make_integer(hdf5_state_point, "version_minor", VERSION_MINOR)
@@ -848,15 +848,15 @@ contains
 
     ! Write out information for criticality run
     if (run_mode == MODE_CRITICALITY) then
-       call hdf5_make_integer(hdf5_state_point, "n_inactive", n_inactive)
-       call hdf5_make_integer(hdf5_state_point, "gen_per_batch", gen_per_batch)
+      call hdf5_make_integer(hdf5_state_point, "n_inactive", n_inactive)
+      call hdf5_make_integer(hdf5_state_point, "gen_per_batch", gen_per_batch)
 
-       ! Write out keff and entropy
-       dims(1) = current_batch
-       call h5ltmake_dataset_double_f(hdf5_state_point, "k_batch", 1, &
-            dims, k_batch, hdf5_err)
-       call h5ltmake_dataset_double_f(hdf5_state_point, "entropy", 1, &
-            dims, entropy, hdf5_err)
+      ! Write out keff and entropy
+      dims(1) = current_batch
+      call h5ltmake_dataset_double_f(hdf5_state_point, "k_batch", 1, &
+           dims, k_batch, hdf5_err)
+      call h5ltmake_dataset_double_f(hdf5_state_point, "entropy", 1, &
+           dims, entropy, hdf5_err)
     end if
 
     ! Create group for tallies
@@ -867,139 +867,139 @@ contains
 
     ! Write information for meshes
     MESH_LOOP: do i = 1, n_meshes
-       ! Create temporary group for each mesh
-       call h5gcreate_f(tallies_group, "mesh " // to_str(meshes(i) % id), &
-            temp_group, hdf5_err)
+      ! Create temporary group for each mesh
+      call h5gcreate_f(tallies_group, "mesh " // to_str(meshes(i) % id), &
+           temp_group, hdf5_err)
 
-       ! Write type and number of dimensions
-       call hdf5_make_integer(temp_group, "type", meshes(i) % type)
-       call hdf5_make_integer(temp_group, "n_dimension", &
-            meshes(i) % n_dimension)
+      ! Write type and number of dimensions
+      call hdf5_make_integer(temp_group, "type", meshes(i) % type)
+      call hdf5_make_integer(temp_group, "n_dimension", &
+           meshes(i) % n_dimension)
 
-       ! Write mesh information
-       dims(1) = meshes(i) % n_dimension
-       call h5ltmake_dataset_int_f(temp_group, "dimension", 1, &
-            dims, meshes(i) % dimension, hdf5_err)
-       call h5ltmake_dataset_double_f(temp_group, "lower_left", 1, &
-            dims, meshes(i) % lower_left, hdf5_err)
-       call h5ltmake_dataset_double_f(temp_group, "upper_right", 1, &
-            dims, meshes(i) % upper_right, hdf5_err)
-       call h5ltmake_dataset_double_f(temp_group, "width", 1, &
-            dims, meshes(i) % width, hdf5_err)
+      ! Write mesh information
+      dims(1) = meshes(i) % n_dimension
+      call h5ltmake_dataset_int_f(temp_group, "dimension", 1, &
+           dims, meshes(i) % dimension, hdf5_err)
+      call h5ltmake_dataset_double_f(temp_group, "lower_left", 1, &
+           dims, meshes(i) % lower_left, hdf5_err)
+      call h5ltmake_dataset_double_f(temp_group, "upper_right", 1, &
+           dims, meshes(i) % upper_right, hdf5_err)
+      call h5ltmake_dataset_double_f(temp_group, "width", 1, &
+           dims, meshes(i) % width, hdf5_err)
 
-       ! Close temporary group for mesh
-       call h5gclose_f(temp_group, hdf5_err)
+      ! Close temporary group for mesh
+      call h5gclose_f(temp_group, hdf5_err)
     end do MESH_LOOP
 
     ! Write number of tallies
     call hdf5_make_integer(tallies_group, "n_tallies", n_tallies)
 
     TALLY_METADATA: do i = 1, n_tallies
-       ! Get pointer to tally
-       t => tallies(i)
+      ! Get pointer to tally
+      t => tallies(i)
 
-       ! Create group for this tally
-       call h5gcreate_f(tallies_group, "tally " // to_str(t % id), &
-            temp_group, hdf5_err)
+      ! Create group for this tally
+      call h5gcreate_f(tallies_group, "tally " // to_str(t % id), &
+           temp_group, hdf5_err)
 
-       ! Write number of realizations
-       call hdf5_make_integer(temp_group, "n_realizations", &
-            t % n_realizations)
+      ! Write number of realizations
+      call hdf5_make_integer(temp_group, "n_realizations", &
+           t % n_realizations)
 
-       ! Write size of each tally
-       call hdf5_make_integer(temp_group, "total_score_bins", &
-            t % total_score_bins)
-       call hdf5_make_integer(temp_group, "total_filter_bins", &
-            t % total_filter_bins)
+      ! Write size of each tally
+      call hdf5_make_integer(temp_group, "total_score_bins", &
+           t % total_score_bins)
+      call hdf5_make_integer(temp_group, "total_filter_bins", &
+           t % total_filter_bins)
 
-       ! Write number of filters
-       call hdf5_make_integer(temp_group, "n_filters", t % n_filters)
+      ! Write number of filters
+      call hdf5_make_integer(temp_group, "n_filters", t % n_filters)
 
-       FILTER_LOOP: do j = 1, t % n_filters
-          ! Create filter group
-          call h5gcreate_f(temp_group, "filter " // to_str(j), filter_group, &
-               hdf5_err)
+      FILTER_LOOP: do j = 1, t % n_filters
+        ! Create filter group
+        call h5gcreate_f(temp_group, "filter " // to_str(j), filter_group, &
+             hdf5_err)
 
-          ! Write type of filter
-          call hdf5_make_integer(filter_group, "type", t % filters(j) % type)
+        ! Write type of filter
+        call hdf5_make_integer(filter_group, "type", t % filters(j) % type)
 
-          ! Write number of bins for this filter
-          call hdf5_make_integer(filter_group, "n_bins", t % filters(j) % n_bins)
+        ! Write number of bins for this filter
+        call hdf5_make_integer(filter_group, "n_bins", t % filters(j) % n_bins)
 
-          ! Write filter bins
-          if (t % filters(j) % type == FILTER_ENERGYIN .or. &
-               t % filters(j) % type == FILTER_ENERGYOUT) then
-             dims(1) = size(t % filters(j) % real_bins)
-             call h5ltmake_dataset_double_f(filter_group, "bins", 1, &
-                  dims, t % filters(j) % real_bins, hdf5_err)
-          else
-             dims(1) = size(t % filters(j) % int_bins)
-             call h5ltmake_dataset_int_f(filter_group, "bins", 1, &
-                  dims, t % filters(j) % int_bins, hdf5_err)
-          end if
+        ! Write filter bins
+        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
+             t % filters(j) % type == FILTER_ENERGYOUT) then
+          dims(1) = size(t % filters(j) % real_bins)
+          call h5ltmake_dataset_double_f(filter_group, "bins", 1, &
+               dims, t % filters(j) % real_bins, hdf5_err)
+        else
+          dims(1) = size(t % filters(j) % int_bins)
+          call h5ltmake_dataset_int_f(filter_group, "bins", 1, &
+               dims, t % filters(j) % int_bins, hdf5_err)
+        end if
 
-          ! Write name of type
-          select case (t % filters(j) % type)
-          case(FILTER_UNIVERSE)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "universe", hdf5_err)
-          case(FILTER_MATERIAL)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "material", hdf5_err)
-          case(FILTER_CELL)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "cell", hdf5_err)
-          case(FILTER_CELLBORN)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "cellborn", hdf5_err)
-          case(FILTER_SURFACE)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "surface", hdf5_err)
-          case(FILTER_MESH)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "mesh", hdf5_err)
-          case(FILTER_ENERGYIN)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "energy", hdf5_err)
-          case(FILTER_ENERGYOUT)
-             call h5ltmake_dataset_string_f(filter_group, "type_name", &
-                  "energyout", hdf5_err)
-          end select
+        ! Write name of type
+        select case (t % filters(j) % type)
+        case(FILTER_UNIVERSE)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "universe", hdf5_err)
+        case(FILTER_MATERIAL)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "material", hdf5_err)
+        case(FILTER_CELL)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "cell", hdf5_err)
+        case(FILTER_CELLBORN)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "cellborn", hdf5_err)
+        case(FILTER_SURFACE)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "surface", hdf5_err)
+        case(FILTER_MESH)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "mesh", hdf5_err)
+        case(FILTER_ENERGYIN)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "energy", hdf5_err)
+        case(FILTER_ENERGYOUT)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "energyout", hdf5_err)
+        end select
 
-          ! Close group for this filter
-          call h5gclose_f(filter_group, hdf5_err)
-       end do FILTER_LOOP
+        ! Close group for this filter
+        call h5gclose_f(filter_group, hdf5_err)
+      end do FILTER_LOOP
 
-       ! Write number of nuclide bins
-       call hdf5_make_integer(temp_group, "n_nuclide_bins", &
-            t % n_nuclide_bins)
+      ! Write number of nuclide bins
+      call hdf5_make_integer(temp_group, "n_nuclide_bins", &
+           t % n_nuclide_bins)
 
 
-       ! Create temporary array for nuclide bins
-       allocate(temp_array(t % n_nuclide_bins))
-       NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
-          if (t % nuclide_bins(j) > 0) then
-             temp_array(j) = nuclides(t % nuclide_bins(j)) % zaid
-          else
-             temp_array(j) = t % nuclide_bins(j)
-          end if
-       end do NUCLIDE_LOOP
+      ! Create temporary array for nuclide bins
+      allocate(temp_array(t % n_nuclide_bins))
+      NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
+        if (t % nuclide_bins(j) > 0) then
+          temp_array(j) = nuclides(t % nuclide_bins(j)) % zaid
+        else
+          temp_array(j) = t % nuclide_bins(j)
+        end if
+      end do NUCLIDE_LOOP
 
-       ! Write and deallocate nuclide bins
-       dims(1) = t % n_nuclide_bins
-       call h5ltmake_dataset_int_f(temp_group, "nuclide_bins", 1, &
-            dims, temp_array, hdf5_err)
-       deallocate(temp_array)
+      ! Write and deallocate nuclide bins
+      dims(1) = t % n_nuclide_bins
+      call h5ltmake_dataset_int_f(temp_group, "nuclide_bins", 1, &
+           dims, temp_array, hdf5_err)
+      deallocate(temp_array)
 
-       ! Write number of score bins
-       call hdf5_make_integer(temp_group, "n_score_bins", &
-            t % n_score_bins)
-       dims(1) = t % n_score_bins
-       call h5ltmake_dataset_int_f(temp_group, "score_bins", 1, &
-            dims, t % score_bins, hdf5_err)
+      ! Write number of score bins
+      call hdf5_make_integer(temp_group, "n_score_bins", &
+           t % n_score_bins)
+      dims(1) = t % n_score_bins
+      call h5ltmake_dataset_int_f(temp_group, "score_bins", 1, &
+           dims, t % score_bins, hdf5_err)
 
-       ! Close tally group
-       call h5gclose_f(temp_group, hdf5_err)
+      ! Close tally group
+      call h5gclose_f(temp_group, hdf5_err)
     end do TALLY_METADATA
 
     ! Write number of realizations for global tallies
@@ -1020,34 +1020,34 @@ contains
     call h5sclose_f(dspace, hdf5_err)
 
     if (tallies_on) then
-       ! Indicate that tallies are on
-       call hdf5_make_integer(tallies_group, "tallies_present", 1)
+      ! Indicate that tallies are on
+      call hdf5_make_integer(tallies_group, "tallies_present", 1)
 
-       ! Write tally sum and sum_sq
-       TALLY_SCORES: do i = 1, n_tallies
-          ! Get pointer to tally
-          t => tallies(i)
+      ! Write tally sum and sum_sq
+      TALLY_SCORES: do i = 1, n_tallies
+        ! Get pointer to tally
+        t => tallies(i)
 
-          ! Open group for the i-th tally
-          call h5gopen_f(tallies_group, "tally " // to_str(t % id), &
-               temp_group, hdf5_err)
+        ! Open group for the i-th tally
+        call h5gopen_f(tallies_group, "tally " // to_str(t % id), &
+             temp_group, hdf5_err)
 
-          ! Write sum and sum_sq for each bin
-          dims2 = shape(t % scores)
-          call h5screate_simple_f(2, dims2, dspace, hdf5_err)
-          call h5dcreate_f(temp_group, "values", hdf5_tallyscore_t, &
-               dspace, dset, hdf5_err)
-          f_ptr = c_loc(t % scores(1, 1))
-          CALL h5dwrite_f(dset, hdf5_tallyscore_t, f_ptr, hdf5_err)
-          call h5dclose_f(dset, hdf5_err)
-          call h5sclose_f(dspace, hdf5_err)
+        ! Write sum and sum_sq for each bin
+        dims2 = shape(t % scores)
+        call h5screate_simple_f(2, dims2, dspace, hdf5_err)
+        call h5dcreate_f(temp_group, "values", hdf5_tallyscore_t, &
+             dspace, dset, hdf5_err)
+        f_ptr = c_loc(t % scores(1, 1))
+        CALL h5dwrite_f(dset, hdf5_tallyscore_t, f_ptr, hdf5_err)
+        call h5dclose_f(dset, hdf5_err)
+        call h5sclose_f(dspace, hdf5_err)
 
-          ! Close group for the i-th tally
-          call h5gclose_f(temp_group, hdf5_err)
-       end do TALLY_SCORES
+        ! Close group for the i-th tally
+        call h5gclose_f(temp_group, hdf5_err)
+      end do TALLY_SCORES
     else
-       ! Indicate that tallies are off
-       call hdf5_make_integer(tallies_group, "tallies_present", 0)
+      ! Indicate that tallies are off
+      call hdf5_make_integer(tallies_group, "tallies_present", 0)
     end if
 
     ! Close tallies group

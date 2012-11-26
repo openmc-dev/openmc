@@ -16,133 +16,133 @@ contains
 
     select case (MT)
     case (TOTAL_XS)
-       string = '(n,total)'
+      string = '(n,total)'
     case (ELASTIC)
-       string = '(elastic)'
+      string = '(elastic)'
     case (N_LEVEL)
-       string = '(n,level)'
+      string = '(n,level)'
     case (N_2ND)
-       string = '(n,2nd)'
+      string = '(n,2nd)'
     case (N_2N)
-       string = '(n,2n)'
+      string = '(n,2n)'
     case (N_3N)
-       string = '(n,3n)'
+      string = '(n,3n)'
     case (N_FISSION)
-       string = '(n,fission)'
+      string = '(n,fission)'
     case (N_F)
-       string = '(n,f)'
+      string = '(n,f)'
     case (N_NF)
-       string = '(n,nf)'
+      string = '(n,nf)'
     case (N_2NF)
-       string = '(n,2nf)'
+      string = '(n,2nf)'
     case (N_NA)
-       string = '(n,na)'
+      string = '(n,na)'
     case (N_N3A)
-       string = '(n,n3a)'
+      string = '(n,n3a)'
     case (N_2NA)
-       string = '(n,2na)'
+      string = '(n,2na)'
     case (N_3NA)
-       string = '(n,3na)'
+      string = '(n,3na)'
     case (N_NP)
-       string = '(n,np)'
+      string = '(n,np)'
     case (N_N2A)
-       string = '(n,n2a)'
+      string = '(n,n2a)'
     case (N_2N2A)
-       string = '(n,2n2a)'
+      string = '(n,2n2a)'
     case (N_ND)
-       string = '(n,nd)'
+      string = '(n,nd)'
     case (N_NT)
-       string = '(n,nt)'
+      string = '(n,nt)'
     case (N_N3HE)
-       string = '(n,nHe-3)'
+      string = '(n,nHe-3)'
     case (N_ND2A)
-       string = '(n,nd2a)'
+      string = '(n,nd2a)'
     case (N_NT2A)
-       string = '(n,nt2a)'
+      string = '(n,nt2a)'
     case (N_4N)
-       string = '(n,4n)'
+      string = '(n,4n)'
     case (N_3NF)
-       string = '(n,3nf)'
+      string = '(n,3nf)'
     case (N_2NP)
-       string = '(n,2np)'
+      string = '(n,2np)'
     case (N_3NP)
-       string = '(n,3np)'
+      string = '(n,3np)'
     case (N_N2P)
-       string = '(n,n2p)'
+      string = '(n,n2p)'
     case (N_NPA)
-       string = '(n,npa)'
+      string = '(n,npa)'
     case (N_N1 : N_N40)
-       string = '(n,n' // trim(to_str(MT-50)) // ')'
+      string = '(n,n' // trim(to_str(MT-50)) // ')'
     case (N_NC)
-       string = '(n,nc)'
+      string = '(n,nc)'
     case (N_GAMMA)
-       string = '(n,gamma)'
+      string = '(n,gamma)'
     case (N_P)
-       string = '(n,p)'
+      string = '(n,p)'
     case (N_D)
-       string = '(n,d)'
+      string = '(n,d)'
     case (N_T)
-       string = '(n,t)'
+      string = '(n,t)'
     case (N_3HE)
-       string = '(n,3He)'
+      string = '(n,3He)'
     case (N_A)
-       string = '(n,a)'
+      string = '(n,a)'
     case (N_2A)
-       string = '(n,2a)'
+      string = '(n,2a)'
     case (N_3A)
-       string = '(n,3a)'
+      string = '(n,3a)'
     case (N_2P)
-       string = '(n,2p)'
+      string = '(n,2p)'
     case (N_PA)
-       string = '(n,pa)'
+      string = '(n,pa)'
     case (N_T2A)
-       string = '(n,t2a)'
+      string = '(n,t2a)'
     case (N_D2A)
-       string = '(n,d2a)'
+      string = '(n,d2a)'
     case (N_PD)
-       string = '(n,pd)'
+      string = '(n,pd)'
     case (N_PT)
-       string = '(n,pt)'
+      string = '(n,pt)'
     case (N_DA)
-       string = '(n,da)'
+      string = '(n,da)'
     case (201)
-       string = '(n,Xn)'
+      string = '(n,Xn)'
     case (202)
-       string = '(n,Xgamma)'
+      string = '(n,Xgamma)'
     case (203)
-       string = '(n,Xp)'
+      string = '(n,Xp)'
     case (204)
-       string = '(n,Xd)'
+      string = '(n,Xd)'
     case (205)
-       string = '(n,Xt)'
+      string = '(n,Xt)'
     case (206)
-       string = '(n,X3He)'
+      string = '(n,X3He)'
     case (207)
-       string = '(n,Xa)'
+      string = '(n,Xa)'
     case (444)
-       string = '(damage)'
+      string = '(damage)'
     case (600 : 648)
-       string = '(n,p' // trim(to_str(MT-600)) // ')'
+      string = '(n,p' // trim(to_str(MT-600)) // ')'
     case (649)
-       string = '(n,pc)'
+      string = '(n,pc)'
     case (650 : 698)
-       string = '(n,d' // trim(to_str(MT-650)) // ')'
+      string = '(n,d' // trim(to_str(MT-650)) // ')'
     case (699)
-       string = '(n,dc)'
+      string = '(n,dc)'
     case (700 : 748)
-       string = '(n,t' // trim(to_str(MT-700)) // ')'
+      string = '(n,t' // trim(to_str(MT-700)) // ')'
     case (749)
-       string = '(n,tc)'
+      string = '(n,tc)'
     case (750 : 798)
-       string = '(n,3He' // trim(to_str(MT-750)) // ')'
+      string = '(n,3He' // trim(to_str(MT-750)) // ')'
     case (799)
-       string = '(n,3Hec)'
+      string = '(n,3Hec)'
     case (800 : 848)
-       string = '(n,a' // trim(to_str(MT-800)) // ')'
+      string = '(n,a' // trim(to_str(MT-800)) // ')'
     case (849)
-       string = '(n,tc)'
+      string = '(n,tc)'
     case default
-       string = 'MT=' // trim(to_str(MT))
+      string = 'MT=' // trim(to_str(MT))
     end select
 
   end function reaction_name
@@ -159,9 +159,9 @@ contains
 
     if (MT == N_FISSION .or. MT == N_F .or. MT == N_NF .or. MT == N_2NF & 
          .or. MT == N_3NF) then
-       fission_event = .true.
+      fission_event = .true.
     else
-       fission_event = .false.
+      fission_event = .false.
     end if
 
   end function is_fission
@@ -176,14 +176,14 @@ contains
     logical             :: scatter_event
 
     if (MT < 100) then
-       if (MT == N_FISSION .or. MT == N_F .or. MT == N_NF .or. MT == N_2NF & 
-            .or. MT == N_3NF) then
-          scatter_event = .false.
-       else
-          scatter_event = .true.
-       end if
+      if (MT == N_FISSION .or. MT == N_F .or. MT == N_NF .or. MT == N_2NF & 
+           .or. MT == N_3NF) then
+        scatter_event = .false.
+      else
+        scatter_event = .true.
+      end if
     else
-       scatter_event = .false.
+      scatter_event = .false.
     end if
 
   end function is_scatter

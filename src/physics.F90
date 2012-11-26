@@ -594,7 +594,7 @@ contains
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
     real(8) :: prob         ! probability for sampling Bragg edge
     real(8) :: u, v, w      ! directional cosines
-    type(SAB_Table), pointer :: sab => null()
+    type(SAlphaBeta), pointer :: sab => null()
 
     ! Get pointer to S(a,b) table
     sab => sab_tables(i_sab)

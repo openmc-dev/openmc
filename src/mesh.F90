@@ -33,26 +33,26 @@ contains
 
     ! Check for cases where particle is outside of mesh
     if (xyz(1) < m % lower_left(1)) then
-       bin = NO_BIN_FOUND
-       return
+      bin = NO_BIN_FOUND
+      return
     elseif (xyz(1) > m % upper_right(1)) then
-       bin = NO_BIN_FOUND
-       return
+      bin = NO_BIN_FOUND
+      return
     elseif (xyz(2) < m % lower_left(2)) then
-       bin = NO_BIN_FOUND
-       return
+      bin = NO_BIN_FOUND
+      return
     elseif (xyz(2) > m % upper_right(2)) then
-       bin = NO_BIN_FOUND
-       return
+      bin = NO_BIN_FOUND
+      return
     end if
     if (n > 2) then
-       if (xyz(3) < m % lower_left(3)) then
-          bin = NO_BIN_FOUND
-          return
-       elseif (xyz(3) > m % upper_right(3)) then
-          bin = NO_BIN_FOUND
-          return
-       end if
+      if (xyz(3) < m % lower_left(3)) then
+        bin = NO_BIN_FOUND
+        return
+      elseif (xyz(3) > m % upper_right(3)) then
+        bin = NO_BIN_FOUND
+        return
+      end if
     end if
 
     ! Determine indices
@@ -60,9 +60,9 @@ contains
 
     ! Convert indices to bin
     if (in_mesh) then
-       bin = mesh_indices_to_bin(m, ijk)
+      bin = mesh_indices_to_bin(m, ijk)
     else
-       bin = NO_BIN_FOUND
+      bin = NO_BIN_FOUND
     end if
 
   end subroutine get_mesh_bin
@@ -83,10 +83,10 @@ contains
 
     ! Determine if particle is in mesh
     if (any(ijk(:m % n_dimension) < 1) .or. &
-        any(ijk(:m % n_dimension) > m % dimension)) then
-       in_mesh = .false.
+         any(ijk(:m % n_dimension) > m % dimension)) then
+      in_mesh = .false.
     else
-       in_mesh = .true.
+      in_mesh = .true.
     end if
 
   end subroutine get_mesh_indices
@@ -142,13 +142,13 @@ contains
     n_y = m % dimension(2)
 
     if (m % n_dimension == 2) then
-       ijk(1) = (bin - 1)/n_y + 1
-       ijk(2) = mod(bin - 1, n_y) + 1
+      ijk(1) = (bin - 1)/n_y + 1
+      ijk(2) = mod(bin - 1, n_y) + 1
     else if (m % n_dimension == 3) then
-       n_z = m % dimension(3)
-       ijk(1) = (bin - 1)/(n_y*n_z) + 1
-       ijk(2) = mod(bin - 1, n_y*n_z)/n_z + 1
-       ijk(3) = mod(bin - 1, n_z) + 1
+      n_z = m % dimension(3)
+      ijk(1) = (bin - 1)/(n_y*n_z) + 1
+      ijk(2) = mod(bin - 1, n_y*n_z)/n_z + 1
+      ijk(3) = mod(bin - 1, n_z) + 1
     end if
 
   end subroutine bin_to_mesh_indices
@@ -166,7 +166,7 @@ contains
     type(StructuredMesh), pointer :: m             ! mesh to count sites
     type(Bank), intent(in)        :: bank_array(:) ! fission or source bank
     real(8),    intent(out)       :: cnt(:,:,:,:)  ! weight of sites in each
-                                                   ! cell and energy group
+    ! cell and energy group
     real(8),    optional          :: energies(:)   ! energy grid to search
     integer(8), optional          :: size_bank     ! # of bank sites (on each proc)
     logical,    optional          :: sites_outside ! were there sites outside mesh?
@@ -189,45 +189,45 @@ contains
 
     ! Set size of bank
     if (present(size_bank)) then
-       n_sites = int(size_bank,4)
+      n_sites = int(size_bank,4)
     else
-       n_sites = size(bank_array)
+      n_sites = size(bank_array)
     end if
 
     ! Determine number of energies in group structure
     if (present(energies)) then
-       n_groups = size(energies) - 1
+      n_groups = size(energies) - 1
     else
-       n_groups = 1
+      n_groups = 1
     end if
 
     ! loop over fission sites and count how many are in each mesh box
     FISSION_SITES: do i = 1, n_sites
-       ! determine scoring bin for entropy mesh
-       call get_mesh_indices(m, bank_array(i) % xyz, ijk, in_mesh)
+      ! determine scoring bin for entropy mesh
+      call get_mesh_indices(m, bank_array(i) % xyz, ijk, in_mesh)
 
-       ! if outside mesh, skip particle
-       if (.not. in_mesh) then
-          outside = .true.
-          cycle
-       end if
+      ! if outside mesh, skip particle
+      if (.not. in_mesh) then
+        outside = .true.
+        cycle
+      end if
 
-       ! determine energy bin
-       if (present(energies)) then
-          if (bank_array(i) % E < energies(1)) then
-             e_bin = 1
-          elseif (bank_array(i) % E > energies(n_groups+1)) then
-             e_bin = n_groups
-          else
-             e_bin = binary_search(energies, n_groups + 1, bank_array(i) % E)
-          end if
-       else
+      ! determine energy bin
+      if (present(energies)) then
+        if (bank_array(i) % E < energies(1)) then
           e_bin = 1
-       end if
+        elseif (bank_array(i) % E > energies(n_groups+1)) then
+          e_bin = n_groups
+        else
+          e_bin = binary_search(energies, n_groups + 1, bank_array(i) % E)
+        end if
+      else
+        e_bin = 1
+      end if
 
-       ! add to appropriate mesh box
-       cnt(e_bin,ijk(1),ijk(2),ijk(3)) = cnt(e_bin,ijk(1),ijk(2),ijk(3)) + &
-            bank_array(i) % wgt
+      ! add to appropriate mesh box
+      cnt(e_bin,ijk(1),ijk(2),ijk(3)) = cnt(e_bin,ijk(1),ijk(2),ijk(3)) + &
+           bank_array(i) % wgt
     end do FISSION_SITES
 
 #ifdef MPI
@@ -236,18 +236,18 @@ contains
 
     ! collect values from all processors
     if (master) then
-       call MPI_REDUCE(MPI_IN_PLACE, cnt, n, MPI_REAL8, MPI_SUM, 0, &
-            MPI_COMM_WORLD, mpi_err)
+      call MPI_REDUCE(MPI_IN_PLACE, cnt, n, MPI_REAL8, MPI_SUM, 0, &
+           MPI_COMM_WORLD, mpi_err)
     else
-       ! Receive buffer not significant at other processors
-       call MPI_REDUCE(cnt, dummy, n, MPI_REAL8, MPI_SUM, 0, &
-            MPI_COMM_WORLD, mpi_err)
+      ! Receive buffer not significant at other processors
+      call MPI_REDUCE(cnt, dummy, n, MPI_REAL8, MPI_SUM, 0, &
+           MPI_COMM_WORLD, mpi_err)
     end if
 
     ! Check if there were sites outside the mesh for any processor
     if (present(sites_outside)) then
-       call MPI_REDUCE(outside, sites_outside, 1, MPI_LOGICAL, MPI_LOR, 0, &
-            MPI_COMM_WORLD, mpi_err)
+      call MPI_REDUCE(outside, sites_outside, 1, MPI_LOGICAL, MPI_LOR, 0, &
+           MPI_COMM_WORLD, mpi_err)
     end if
 
 #else
@@ -303,53 +303,53 @@ contains
     yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0)
     zi = z0 + (xm0 - x0) * (z1 - z0) / (x1 - x0)
     if (yi >= ym0 .and. yi < ym1 .and. zi >= zm0 .and. zi < zm1) then
-       intersects = .true.
-       return
+      intersects = .true.
+      return
     end if
-    
+
     ! Check if line intersects left surface -- calculate the intersection point
     ! (x,z)
     xi = x0 + (ym0 - y0) * (x1 - x0) / (y1 - y0)
     zi = z0 + (ym0 - y0) * (z1 - z0) / (y1 - y0)
     if (xi >= xm0 .and. xi < xm1 .and. zi >= zm0 .and. zi < zm1) then
-       intersects = .true.
-       return
+      intersects = .true.
+      return
     end if
-    
+
     ! Check if line intersects front surface -- calculate the intersection point
     ! (x,y)
     xi = x0 + (zm0 - z0) * (x1 - x0) / (z1 - z0)
     yi = y0 + (zm0 - z0) * (y1 - y0) / (z1 - z0)
     if (xi >= xm0 .and. xi < xm1 .and. yi >= ym0 .and. yi < ym1) then
-       intersects = .true.
-       return
+      intersects = .true.
+      return
     end if
-    
+
     ! Check if line intersects top surface -- calculate the intersection
     ! point (y,z)
     yi = y0 + (xm1 - x0) * (y1 - y0) / (x1 - x0)
     zi = z0 + (xm1 - x0) * (z1 - z0) / (x1 - x0)
     if (yi >= ym0 .and. yi < ym1 .and. zi >= zm0 .and. zi < zm1) then
-       intersects = .true.
-       return
+      intersects = .true.
+      return
     end if
-    
+
     ! Check if line intersects right surface -- calculate the intersection point
     ! (x,z)
     xi = x0 + (ym1 - y0) * (x1 - x0) / (y1 - y0)
     zi = z0 + (ym1 - y0) * (z1 - z0) / (y1 - y0)
     if (xi >= xm0 .and. xi < xm1 .and. zi >= zm0 .and. zi < zm1) then
-       intersects = .true.
-       return
+      intersects = .true.
+      return
     end if
-    
+
     ! Check if line intersects back surface -- calculate the intersection point
     ! (x,y)
     xi = x0 + (zm1 - z0) * (x1 - x0) / (z1 - z0)
     yi = y0 + (zm1 - z0) * (y1 - y0) / (z1 - z0)
     if (xi >= xm0 .and. xi < xm1 .and. yi >= ym0 .and. yi < ym1) then
-       intersects = .true.
-       return
+      intersects = .true.
+      return
     end if
 
   end function mesh_intersects

@@ -30,8 +30,8 @@ contains
 
     ! Add grid points for each nuclide in the problem
     do i = 1, n_nuclides_total
-       nuc => nuclides(i)
-       call add_grid_points(list, nuc % energy)
+      nuc => nuclides(i)
+      call add_grid_points(list, nuc % energy)
     end do
 
     ! create allocated array from linked list
@@ -39,8 +39,8 @@ contains
     allocate(e_grid(n_grid))
     current => list
     do i = 1, n_grid
-       e_grid(i) = current % data
-       current => current % next
+      e_grid(i) = current % data
+      current => current % next
     end do
 
     ! delete linked list and dictionary
@@ -75,66 +75,66 @@ contains
     ! if the original list is empty, we need to allocate the first element and
     ! store first energy point
     if (.not. associated(list)) then
-       allocate(list)
-       current => list
-       do i = 1, n
-          current % data = energy(i)
-          if (i == n) then
-             current % next => null()
-             return
-          end if
-          allocate(current % next)
-          current => current % next
-       end do
+      allocate(list)
+      current => list
+      do i = 1, n
+        current % data = energy(i)
+        if (i == n) then
+          current % next => null()
+          return
+        end if
+        allocate(current % next)
+        current => current % next
+      end do
     end if
 
     current => list
     head => list
 
     do while (i <= n)
-       E = energy(i)
+      E = energy(i)
 
-       ! If we've reached the end of the grid energy list, add the remaining
-       ! energy points to the end
-       if (.not. associated(current)) then
-          ! finish remaining energies
-          do while (i <= n)
-             allocate(previous % next)
-             current => previous % next
-             current % data = energy(i)
-             previous => current
-             i = i + 1
-          end do
-          current%next => null()
-          exit
-       end if
-       
-       if (E < current % data) then
-          ! create new element and insert it in energy grid list
-          allocate(tmp)
-          tmp % data = E
-          tmp % next => current
-          if (associated(previous)) then
-             previous % next => tmp
-             previous => tmp
-          else
-             previous => tmp
-             head => previous
-          end if
-          nullify(tmp)
-
-          ! advance index
-          i = i + 1
-
-       elseif (E == current % data) then
-          ! found the exact same energy, no need to store duplicates so just
-          ! skip and move to next index
-          i = i + 1
-       else
+      ! If we've reached the end of the grid energy list, add the remaining
+      ! energy points to the end
+      if (.not. associated(current)) then
+        ! finish remaining energies
+        do while (i <= n)
+          allocate(previous % next)
+          current => previous % next
+          current % data = energy(i)
           previous => current
-          current => current % next
-       end if
-       
+          i = i + 1
+        end do
+        current%next => null()
+        exit
+      end if
+
+      if (E < current % data) then
+        ! create new element and insert it in energy grid list
+        allocate(tmp)
+        tmp % data = E
+        tmp % next => current
+        if (associated(previous)) then
+          previous % next => tmp
+          previous => tmp
+        else
+          previous => tmp
+          head => previous
+        end if
+        nullify(tmp)
+
+        ! advance index
+        i = i + 1
+
+      elseif (E == current % data) then
+        ! found the exact same energy, no need to store duplicates so just
+        ! skip and move to next index
+        i = i + 1
+      else
+        previous => current
+        current => current % next
+      end if
+
     end do
 
     ! It's possible that an element was inserted at the front of the list, so we
@@ -158,20 +158,20 @@ contains
     type(Nuclide), pointer :: nuc => null()
 
     do i = 1, n_nuclides_total
-       nuc => nuclides(i)
-       allocate(nuc % grid_index(n_grid))
+      nuc => nuclides(i)
+      allocate(nuc % grid_index(n_grid))
 
-       index_e = 1
-       energy = nuc % energy(index_e)
+      index_e = 1
+      energy = nuc % energy(index_e)
 
-       do j = 1, n_grid
-          union_energy = e_grid(j)
-          if (union_energy >= energy .and. index_e < nuc % n_grid) then
-             index_e = index_e + 1
-             energy = nuc % energy(index_e)
-          end if
-          nuc % grid_index(j) = index_e - 1
-       end do
+      do j = 1, n_grid
+        union_energy = e_grid(j)
+        if (union_energy >= energy .and. index_e < nuc % n_grid) then
+          index_e = index_e + 1
+          energy = nuc % energy(index_e)
+        end if
+        nuc % grid_index(j) = index_e - 1
+      end do
     end do
 
   end subroutine grid_pointers

@@ -34,26 +34,26 @@ contains
     call write_message(6)
 
     if (path_source /= '') then
-       ! Read the source from a binary file instead of sampling from some
-       ! assumed source distribution
+      ! Read the source from a binary file instead of sampling from some
+      ! assumed source distribution
 
-       call read_source_binary()
+      call read_source_binary()
 
     else
-       ! Generation source sites from specified distribution in user input
-       do i = 1, work
-          ! Get pointer to source bank site
-          src => source_bank(i)
+      ! Generation source sites from specified distribution in user input
+      do i = 1, work
+        ! Get pointer to source bank site
+        src => source_bank(i)
 
-          ! initialize random number seed
-          id = bank_first + i - 1
-          call set_particle_seed(id)
+        ! initialize random number seed
+        id = bank_first + i - 1
+        call set_particle_seed(id)
 
-          ! sample external source distribution
-          call sample_external_source(src)
-       end do
+        ! sample external source distribution
+        call sample_external_source(src)
+      end do
     end if
- 
+
   end subroutine initialize_source
 
 !===============================================================================
@@ -79,67 +79,67 @@ contains
     ! Sample position
     select case (external_source % type_space)
     case (SRC_SPACE_BOX)
-       ! Coordinates sampled uniformly over a box
-       p_min = external_source % params_space(1:3)
-       p_max = external_source % params_space(4:6)
-       r = (/ (prn(), i = 1,3) /)
-       site % xyz = p_min + r*(p_max - p_min)
+      ! Coordinates sampled uniformly over a box
+      p_min = external_source % params_space(1:3)
+      p_max = external_source % params_space(4:6)
+      r = (/ (prn(), i = 1,3) /)
+      site % xyz = p_min + r*(p_max - p_min)
 
     case (SRC_SPACE_POINT)
-       ! Point source
-       site % xyz = external_source % params_space
+      ! Point source
+      site % xyz = external_source % params_space
 
     end select
-    
+
     ! Sample angle
     select case (external_source % type_angle)
     case (SRC_ANGLE_ISOTROPIC)
-       ! Sample isotropic distribution
-       phi = TWO*PI*prn()
-       mu = TWO*prn() - ONE
-       site % uvw(1) = mu
-       site % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-       site % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+      ! Sample isotropic distribution
+      phi = TWO*PI*prn()
+      mu = TWO*prn() - ONE
+      site % uvw(1) = mu
+      site % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+      site % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
     case (SRC_ANGLE_MONO)
-       ! Monodirectional source
-       site % uvw = external_source % params_angle
+      ! Monodirectional source
+      site % uvw = external_source % params_angle
 
     case default
-       message = "No angle distribution specified for external source!"
-       call fatal_error()
+      message = "No angle distribution specified for external source!"
+      call fatal_error()
     end select
-          
+
     ! Sample energy distribution
     select case (external_source % type_energy)
     case (SRC_ENERGY_MONO)
-       ! Monoenergtic source
-       site % E = external_source % params_energy(1)
+      ! Monoenergtic source
+      site % E = external_source % params_energy(1)
 
     case (SRC_ENERGY_MAXWELL)
-       a = external_source % params_energy(1)
-       do
-          ! Sample Maxwellian fission spectrum
-          site % E = maxwell_spectrum(a)
+      a = external_source % params_energy(1)
+      do
+        ! Sample Maxwellian fission spectrum
+        site % E = maxwell_spectrum(a)
 
-          ! resample if energy is >= 20 MeV
-          if (site % E < 20) exit
-       end do
+        ! resample if energy is >= 20 MeV
+        if (site % E < 20) exit
+      end do
 
     case (SRC_ENERGY_WATT)
-       a = external_source % params_energy(1)
-       b = external_source % params_energy(2)
-       do
-          ! Sample Watt fission spectrum
-          site % E = watt_spectrum(a, b)
+      a = external_source % params_energy(1)
+      b = external_source % params_energy(2)
+      do
+        ! Sample Watt fission spectrum
+        site % E = watt_spectrum(a, b)
 
-          ! resample if energy is >= 20 MeV
-          if (site % E < 20) exit
-       end do
+        ! resample if energy is >= 20 MeV
+        if (site % E < 20) exit
+      end do
 
     case default
-       message = "No energy distribution specified for external source!"
-       call fatal_error()
+      message = "No energy distribution specified for external source!"
+      call fatal_error()
     end select
 
   end subroutine sample_external_source
@@ -169,7 +169,7 @@ contains
     particle_seed = ((current_batch - 1)*gen_per_batch + & 
          current_gen - 1)*n_particles + p % id
     call set_particle_seed(particle_seed)
-          
+
     ! set particle trace
     trace = .false.
     if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
@@ -220,7 +220,7 @@ contains
 
     ! remove any original coordinates
     call deallocate_coord(p % coord0)
-    
+
     ! Set up base level coordinates
     allocate(p % coord0)
     p % coord0 % universe = BASE_UNIVERSE
@@ -247,9 +247,9 @@ contains
          MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
 
     if (master) then
-       offset = 0
-       call MPI_FILE_WRITE_AT(fh, offset, n_particles, 1, MPI_INTEGER8, &
-            MPI_STATUS_IGNORE, mpi_err)
+      offset = 0
+      call MPI_FILE_WRITE_AT(fh, offset, n_particles, 1, MPI_INTEGER8, &
+           MPI_STATUS_IGNORE, mpi_err)
     end if
 
     ! Set proper offset for source data on this processor
@@ -282,10 +282,10 @@ contains
 
   end subroutine write_source_binary
 
-!===============================================================================
-! READ_SOURCE_BINARY reads a source distribution from a source.binary file and
-! initializes the source bank
-!===============================================================================
+  !===============================================================================
+  ! READ_SOURCE_BINARY reads a source distribution from a source.binary file and
+  ! initializes the source bank
+  !===============================================================================
 
   subroutine read_source_binary()
 
@@ -312,45 +312,45 @@ contains
          MPI_STATUS_IGNORE, mpi_err)
 
     if (n_particles > n_sites) then
-       ! Determine number of sites to read and offset
-       if (rank <= mod(n_sites,int(n_procs,8)) - 1) then
-          n_read = int(n_sites/n_procs) + 1
-          offset = 8*(1 + rank*n_read*8)
-       else
-          n_read = int(n_sites/n_procs)
-          offset = 8*(1 + (rank*n_read + mod(n_sites,int(n_procs,8)))*8)
-       end if
+      ! Determine number of sites to read and offset
+      if (rank <= mod(n_sites,int(n_procs,8)) - 1) then
+        n_read = int(n_sites/n_procs) + 1
+        offset = 8*(1 + rank*n_read*8)
+      else
+        n_read = int(n_sites/n_procs)
+        offset = 8*(1 + (rank*n_read + mod(n_sites,int(n_procs,8)))*8)
+      end if
 
-       ! Read source sites
-       call MPI_FILE_READ_AT(fh, offset, source_bank(1), n_read, MPI_BANK, &
-            MPI_STATUS_IGNORE, mpi_err)
+      ! Read source sites
+      call MPI_FILE_READ_AT(fh, offset, source_bank(1), n_read, MPI_BANK, &
+           MPI_STATUS_IGNORE, mpi_err)
 
-       ! Let's say we have 30 sites and we need to fill in 200. This do loop
-       ! will fill in sites 31 - 180.
+      ! Let's say we have 30 sites and we need to fill in 200. This do loop
+      ! will fill in sites 31 - 180.
 
-       n_repeat = int(work / n_read)
-       do i = 1, n_repeat - 1
-          source_bank(i*n_read + 1:(i+1)*n_read) = &
-               source_bank((i-1)*n_read + 1:i*n_read)
-       end do
+      n_repeat = int(work / n_read)
+      do i = 1, n_repeat - 1
+        source_bank(i*n_read + 1:(i+1)*n_read) = &
+             source_bank((i-1)*n_read + 1:i*n_read)
+      end do
 
-       ! This final statement would fill sites 181 - 200 in the above example.
+      ! This final statement would fill sites 181 - 200 in the above example.
 
-       if (mod(work, int(n_repeat*n_read,8)) > 0) then
-          source_bank(n_repeat*n_read + 1:work) = &
-               source_bank(1:work - n_repeat * n_read)
-       end if
-       
+      if (mod(work, int(n_repeat*n_read,8)) > 0) then
+        source_bank(n_repeat*n_read + 1:work) = &
+             source_bank(1:work - n_repeat * n_read)
+      end if
+
     else
-       ! Set proper offset for source data on this processor
-       offset = 8*(1 + rank*maxwork*8)
+      ! Set proper offset for source data on this processor
+      offset = 8*(1 + rank*maxwork*8)
 
-       ! Read all source sites
-       call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
-            MPI_STATUS_IGNORE, mpi_err)
+      ! Read all source sites
+      call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
+           MPI_STATUS_IGNORE, mpi_err)
 
-       ! Close binary source file
-       call MPI_FILE_CLOSE(fh, mpi_err)
+      ! Close binary source file
+      call MPI_FILE_CLOSE(fh, mpi_err)
     end if
 
 #else
@@ -365,31 +365,31 @@ contains
     read(UNIT=UNIT_SOURCE) n_sites
 
     if (n_particles > n_sites) then
-       ! The size of the source file is smaller than the number of particles we
-       ! need. Thus, read all sites and then duplicate sites as necessary.
+      ! The size of the source file is smaller than the number of particles we
+      ! need. Thus, read all sites and then duplicate sites as necessary.
 
-       read(UNIT=UNIT_SOURCE) source_bank(1:n_sites)
+      read(UNIT=UNIT_SOURCE) source_bank(1:n_sites)
 
-       ! Let's say we have 300 sites and we need to fill in 1000. This do loop
-       ! will fill in sites 301 - 900.
+      ! Let's say we have 300 sites and we need to fill in 1000. This do loop
+      ! will fill in sites 301 - 900.
 
-       n_repeat = int(n_particles / n_sites)
-       do i = 1, n_repeat - 1
-          source_bank(i*n_sites + 1:(i+1)*n_sites) = &
-               source_bank((i-1)*n_sites + 1:i*n_sites)
-       end do
+      n_repeat = int(n_particles / n_sites)
+      do i = 1, n_repeat - 1
+        source_bank(i*n_sites + 1:(i+1)*n_sites) = &
+             source_bank((i-1)*n_sites + 1:i*n_sites)
+      end do
 
-       ! This final statement would fill sites 901 - 1000 in the above example.
+      ! This final statement would fill sites 901 - 1000 in the above example.
 
-       source_bank(n_repeat*n_sites + 1:n_particles) = &
-            source_bank(1:n_particles - n_repeat * n_sites)
+      source_bank(n_repeat*n_sites + 1:n_particles) = &
+           source_bank(1:n_particles - n_repeat * n_sites)
 
     else
-       ! The size of the source file is bigger than or equal to the number of
-       ! particles we need for one generation. Thus, we can just read as many
-       ! sites as we need.
+      ! The size of the source file is bigger than or equal to the number of
+      ! particles we need for one generation. Thus, we can just read as many
+      ! sites as we need.
 
-       read(UNIT=UNIT_SOURCE) source_bank(1:n_particles)
+      read(UNIT=UNIT_SOURCE) source_bank(1:n_particles)
 
     end if
 

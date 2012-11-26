@@ -42,11 +42,11 @@ contains
       ! Allocate stride and matching_bins arrays
       allocate(t % stride(t % n_filters))
       allocate(t % matching_bins(t % n_filters))
-      
+
       ! The filters are traversed in opposite order so that the last filter has
       ! the shortest stride in memory and the first filter has the largest
       ! stride
-      
+
       n = 1
       STRIDE: do j = t % n_filters, 1, -1
         t % stride(j) = n
@@ -61,7 +61,7 @@ contains
       allocate(t % scores(t % total_score_bins, t % total_filter_bins))
 
     end do TALLY_LOOP
-      
+
   end subroutine setup_tally_arrays
 
 !===============================================================================
@@ -92,28 +92,28 @@ contains
     allocate(tally_maps(FILTER_SURFACE)  % items(n_surfaces))
 
     TALLY_LOOP: do i = 1, n_tallies
-       ! Get pointer to tally
-       t => tallies(i)
+      ! Get pointer to tally
+      t => tallies(i)
 
-       ! No need to set up tally maps for surface current tallies
-       if (t % type == TALLY_SURFACE_CURRENT) cycle
+      ! No need to set up tally maps for surface current tallies
+      if (t % type == TALLY_SURFACE_CURRENT) cycle
 
-       FILTER_LOOP: do j = 1, t % n_filters
-          ! Determine type of filter
-          type = t % filters(j) % type
+      FILTER_LOOP: do j = 1, t % n_filters
+        ! Determine type of filter
+        type = t % filters(j) % type
 
-          if (type == FILTER_CELL .or. type == FILTER_SURFACE .or. &
-               type == FILTER_MATERIAL .or. type == FILTER_UNIVERSE .or. &
-               type == FILTER_CELLBORN) then
+        if (type == FILTER_CELL .or. type == FILTER_SURFACE .or. &
+             type == FILTER_MATERIAL .or. type == FILTER_UNIVERSE .or. &
+             type == FILTER_CELLBORN) then
 
-             ! Add map elements
-             BIN_LOOP: do k = 1, t % filters(j) % n_bins
-                bin = t % filters(j) % int_bins(k)
-                call add_map_element(tally_maps(type) % items(bin), i, k)
-             end do BIN_LOOP
-          end if
+          ! Add map elements
+          BIN_LOOP: do k = 1, t % filters(j) % n_bins
+            bin = t % filters(j) % int_bins(k)
+            call add_map_element(tally_maps(type) % items(bin), i, k)
+          end do BIN_LOOP
+        end if
 
-       end do FILTER_LOOP
+      end do FILTER_LOOP
 
     end do TALLY_LOOP
 
@@ -134,23 +134,23 @@ contains
     type(TallyMapElement), allocatable :: temp(:)
 
     if (.not. allocated(item % elements)) then
-       allocate(item % elements(1))
-       item % elements(1) % index_tally = index_tally
-       item % elements(1) % index_bin   = index_bin
+      allocate(item % elements(1))
+      item % elements(1) % index_tally = index_tally
+      item % elements(1) % index_bin   = index_bin
     else
-       ! determine size of elements array
-       n = size(item % elements)
+      ! determine size of elements array
+      n = size(item % elements)
 
-       ! allocate temporary storage and copy elements
-       allocate(temp(n+1))
-       temp(1:n) = item % elements
+      ! allocate temporary storage and copy elements
+      allocate(temp(n+1))
+      temp(1:n) = item % elements
 
-       ! move allocation back to main array
-       call move_alloc(FROM=temp, TO=item%elements)
+      ! move allocation back to main array
+      call move_alloc(FROM=temp, TO=item%elements)
 
-       ! set new element
-       item % elements(n+1) % index_tally = index_tally
-       item % elements(n+1) % index_bin   = index_bin
+      ! set new element
+      item % elements(n+1) % index_tally = index_tally
+      item % elements(n+1) % index_bin   = index_bin
     end if
 
   end subroutine add_map_element

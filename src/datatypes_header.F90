@@ -20,8 +20,8 @@ module datatypes_header
   integer, parameter :: DICT_KEY_LENGTH = 255
 
   type KeyValueCI
-     character(len=DICT_KEY_LENGTH) :: key
-     integer                        :: value
+    character(len=DICT_KEY_LENGTH) :: key
+    integer                        :: value
   end type KeyValueCI
 
 !===============================================================================
@@ -31,8 +31,8 @@ module datatypes_header
 !===============================================================================
 
   type KeyValueII
-     integer :: key
-     integer :: value
+    integer :: key
+    integer :: value
   end type KeyValueII
 
 !===============================================================================
@@ -41,8 +41,8 @@ module datatypes_header
 !===============================================================================
 
   type ListKeyValueCI
-     type(ListKeyValueCI), pointer :: next => null()
-     type(KeyValueCI)              :: data
+    type(ListKeyValueCI), pointer :: next => null()
+    type(KeyValueCI)              :: data
   end type ListKeyValueCI
 
 !===============================================================================
@@ -51,8 +51,8 @@ module datatypes_header
 !===============================================================================
 
   type ListKeyValueII
-     type(ListKeyValueII), pointer :: next => null()
-     type(KeyValueII)              :: data
+    type(ListKeyValueII), pointer :: next => null()
+    type(KeyValueII)              :: data
   end type ListKeyValueII
 
 !===============================================================================
@@ -61,8 +61,8 @@ module datatypes_header
 !===============================================================================
 
   type ListReal
-     type(ListReal), pointer :: next => null()
-     real(8)                 :: data
+    type(ListReal), pointer :: next => null()
+    real(8)                 :: data
   end type ListReal
 
 !===============================================================================
@@ -70,8 +70,8 @@ module datatypes_header
 !===============================================================================
 
   type ListInt
-     type(ListInt), pointer :: next => null()
-     integer                :: data
+    type(ListInt), pointer :: next => null()
+    integer                :: data
   end type ListInt
 
 !===============================================================================
@@ -80,7 +80,7 @@ module datatypes_header
 !===============================================================================
 
   type HashListCI
-     type(ListKeyValueCI), pointer :: list => null()
+    type(ListKeyValueCI), pointer :: list => null()
   end type HashListCI
 
 !===============================================================================
@@ -89,7 +89,7 @@ module datatypes_header
 !===============================================================================
 
   type HashListII
-     type(ListKeyValueII), pointer :: list => null()
+    type(ListKeyValueII), pointer :: list => null()
   end type HashListII
 
 !===============================================================================
@@ -98,7 +98,7 @@ module datatypes_header
 !===============================================================================
 
   type DictionaryCI
-     type(HashListCI), pointer :: table(:) => null()
+    type(HashListCI), pointer :: table(:) => null()
   end type DictionaryCI
 
 !===============================================================================
@@ -107,7 +107,7 @@ module datatypes_header
 !===============================================================================
 
   type DictionaryII
-     type(HashListII), pointer :: table(:) => null()
+    type(HashListII), pointer :: table(:) => null()
   end type DictionaryII
 
 end module datatypes_header

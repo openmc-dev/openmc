@@ -16,16 +16,16 @@ program main
   ! start problem based on mode
   select case (run_mode)
   case (MODE_FIXEDSOURCE)
-     call run_fixedsource()
+    call run_fixedsource()
   case (MODE_CRITICALITY)
-     call run_criticality()
+    call run_criticality()
   case (MODE_PLOTTING)
-     call run_plot()
+    call run_plot()
   case (MODE_TALLIES)
-     ! For tallies-only mode, we just skip straight to finalize_run to write out
-     ! the tally results
+    ! For tallies-only mode, we just skip straight to finalize_run to write out
+    ! the tally results
   end select
-     
+
   ! finalize run
   call finalize_run()
 

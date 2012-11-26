@@ -6,7 +6,7 @@ module search
   integer, parameter :: MAX_ITERATION = 64
 
   interface binary_search
-     module procedure binary_search_real, binary_search_int4, binary_search_int8
+    module procedure binary_search_real, binary_search_int4, binary_search_int8
   end interface binary_search
 
 contains
@@ -32,37 +32,37 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-       message = "Value outside of array during binary search"
-       call fatal_error()
+      message = "Value outside of array during binary search"
+      call fatal_error()
     end if
-    
+
     n_iteration = 0
     do while (R - L > 1)
-       
-       ! Check boundaries
-       if (val > array(L) .and. val < array(L+1)) then
-          array_index = L
-          return
-       elseif (val > array(R-1) .and. val < array(R)) then
-          array_index = R - 1
-          return
-       end if
 
-       ! Find values at midpoint
-       array_index = L + (R - L)/2
-       testval = array(array_index)
-       if (val >= testval) then
-          L = array_index
-       elseif (val < testval) then
-          R = array_index
-       end if
+      ! Check boundaries
+      if (val > array(L) .and. val < array(L+1)) then
+        array_index = L
+        return
+      elseif (val > array(R-1) .and. val < array(R)) then
+        array_index = R - 1
+        return
+      end if
 
-       ! check for large number of iterations
-       n_iteration = n_iteration + 1
-       if (n_iteration == MAX_ITERATION) then
-          message = "Reached maximum number of iterations on binary search."
-          call fatal_error()
-       end if
+      ! Find values at midpoint
+      array_index = L + (R - L)/2
+      testval = array(array_index)
+      if (val >= testval) then
+        L = array_index
+      elseif (val < testval) then
+        R = array_index
+      end if
+
+      ! check for large number of iterations
+      n_iteration = n_iteration + 1
+      if (n_iteration == MAX_ITERATION) then
+        message = "Reached maximum number of iterations on binary search."
+        call fatal_error()
+      end if
     end do
 
     array_index = L
@@ -85,37 +85,37 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-       message = "Value outside of array during binary search"
-       call fatal_error()
+      message = "Value outside of array during binary search"
+      call fatal_error()
     end if
-    
+
     n_iteration = 0
     do while (R - L > 1)
-       
-       ! Check boundaries
-       if (val > array(L) .and. val < array(L+1)) then
-          array_index = L
-          return
-       elseif (val > array(R-1) .and. val < array(R)) then
-          array_index = R - 1
-          return
-       end if
 
-       ! Find values at midpoint
-       array_index = L + (R - L)/2
-       testval = array(array_index)
-       if (val >= testval) then
-          L = array_index
-       elseif (val < testval) then
-          R = array_index
-       end if
+      ! Check boundaries
+      if (val > array(L) .and. val < array(L+1)) then
+        array_index = L
+        return
+      elseif (val > array(R-1) .and. val < array(R)) then
+        array_index = R - 1
+        return
+      end if
 
-       ! check for large number of iterations
-       n_iteration = n_iteration + 1
-       if (n_iteration == MAX_ITERATION) then
-          message = "Reached maximum number of iterations on binary search."
-          call fatal_error()
-       end if
+      ! Find values at midpoint
+      array_index = L + (R - L)/2
+      testval = array(array_index)
+      if (val >= testval) then
+        L = array_index
+      elseif (val < testval) then
+        R = array_index
+      end if
+
+      ! check for large number of iterations
+      n_iteration = n_iteration + 1
+      if (n_iteration == MAX_ITERATION) then
+        message = "Reached maximum number of iterations on binary search."
+        call fatal_error()
+      end if
     end do
 
     array_index = L
@@ -138,37 +138,37 @@ contains
     R = n
 
     if (val < array(L) .or. val > array(R)) then
-       message = "Value outside of array during binary search"
-       call fatal_error()
+      message = "Value outside of array during binary search"
+      call fatal_error()
     end if
-    
+
     n_iteration = 0
     do while (R - L > 1)
-       
-       ! Check boundaries
-       if (val > array(L) .and. val < array(L+1)) then
-          array_index = L
-          return
-       elseif (val > array(R-1) .and. val < array(R)) then
-          array_index = R - 1
-          return
-       end if
 
-       ! Find values at midpoint
-       array_index = L + (R - L)/2
-       testval = array(array_index)
-       if (val >= testval) then
-          L = array_index
-       elseif (val < testval) then
-          R = array_index
-       end if
+      ! Check boundaries
+      if (val > array(L) .and. val < array(L+1)) then
+        array_index = L
+        return
+      elseif (val > array(R-1) .and. val < array(R)) then
+        array_index = R - 1
+        return
+      end if
 
-       ! check for large number of iterations
-       n_iteration = n_iteration + 1
-       if (n_iteration == MAX_ITERATION) then
-          message = "Reached maximum number of iterations on binary search."
-          call fatal_error()
-       end if
+      ! Find values at midpoint
+      array_index = L + (R - L)/2
+      testval = array(array_index)
+      if (val >= testval) then
+        L = array_index
+      elseif (val < testval) then
+        R = array_index
+      end if
+
+      ! check for large number of iterations
+      n_iteration = n_iteration + 1
+      if (n_iteration == MAX_ITERATION) then
+        message = "Reached maximum number of iterations on binary search."
+        call fatal_error()
+      end if
     end do
 
     array_index = L

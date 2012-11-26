@@ -10,7 +10,7 @@ module interpolation
   implicit none
 
   interface interpolate_tab1
-     module procedure interpolate_tab1_array, interpolate_tab1_object
+    module procedure interpolate_tab1_array, interpolate_tab1_object
   end interface interpolate_tab1
 
 contains
@@ -45,9 +45,9 @@ contains
 
     ! determine starting location
     if (present(loc_start)) then
-       loc_0 = loc_start - 1
+      loc_0 = loc_start - 1
     else
-       loc_0 = 0
+      loc_0 = 0
     end if
 
     ! determine number of interpolation regions
@@ -68,33 +68,33 @@ contains
     ! tabulated range, the first or last point is chosen, i.e. no interpolation
     ! is done outside the energy range
     if (x < data(loc_x + 1)) then
-       y = data(loc_y + 1)
-       return
+      y = data(loc_y + 1)
+      return
     elseif (x > data(loc_x + n_points)) then
-       y = data(loc_y + n_points)
-       return
+      y = data(loc_y + n_points)
+      return
     else
-       i = binary_search(data(loc_x + 1:loc_x + n_points), n_points, x)
+      i = binary_search(data(loc_x + 1:loc_x + n_points), n_points, x)
     end if
 
     ! determine interpolation scheme
     if (n_regions == 0) then
-       interp = LINEAR_LINEAR
+      interp = LINEAR_LINEAR
     elseif (n_regions == 1) then
-       interp = int(data(loc_interp + 1))
+      interp = int(data(loc_interp + 1))
     elseif (n_regions > 1) then
-       do j = 1, n_regions
-          if (i < data(loc_breakpoints + j)) then
-             interp = int(data(loc_interp + j))
-             exit
-          end if
-       end do
+      do j = 1, n_regions
+        if (i < data(loc_breakpoints + j)) then
+          interp = int(data(loc_interp + j))
+          exit
+        end if
+      end do
     end if
 
     ! handle special case of histogram interpolation
     if (interp == HISTOGRAM) then
-       y = data(loc_y + i)
-       return
+      y = data(loc_y + i)
+      return
     end if
 
     ! determine bounding values
@@ -106,22 +106,22 @@ contains
     ! determine interpolation factor and interpolated value
     select case (interp)
     case (LINEAR_LINEAR)
-       r = (x - x0)/(x1 - x0)
-       y = (1 - r)*y0 + r*y1
+      r = (x - x0)/(x1 - x0)
+      y = (1 - r)*y0 + r*y1
     case (LINEAR_LOG)
-       r = (log(x) - log(x0))/(log(x1) - log(x0))
-       y = (1 - r)*y0 + r*y1
+      r = (log(x) - log(x0))/(log(x1) - log(x0))
+      y = (1 - r)*y0 + r*y1
     case (LOG_LINEAR)
-       r = (x - x0)/(x1 - x0)
-       y = exp((1-r)*log(y0) + r*log(y1))
+      r = (x - x0)/(x1 - x0)
+      y = exp((1-r)*log(y0) + r*log(y1))
     case (LOG_LOG)
-       r = (log(x) - log(x0))/(log(x1) - log(x0))
-       y = exp((1-r)*log(y0) + r*log(y1))
+      r = (log(x) - log(x0))/(log(x1) - log(x0))
+      y = exp((1-r)*log(y0) + r*log(y1))
     case default
-       message = "Unsupported interpolation scheme: " // to_str(interp)
-       call fatal_error()
+      message = "Unsupported interpolation scheme: " // to_str(interp)
+      call fatal_error()
     end select
-    
+
   end function interpolate_tab1_array
 
 !===============================================================================
@@ -154,33 +154,33 @@ contains
     ! tabulated range, the first or last point is chosen, i.e. no interpolation
     ! is done outside the energy range
     if (x < obj % x(1)) then
-       y = obj % y(1)
-       return
+      y = obj % y(1)
+      return
     elseif (x > obj % x(n_pairs)) then
-       y = obj % y(n_pairs)
-       return
+      y = obj % y(n_pairs)
+      return
     else
-       i = binary_search(obj % x, n_pairs, x)
+      i = binary_search(obj % x, n_pairs, x)
     end if
 
     ! determine interpolation scheme
     if (n_regions == 0) then
-       interp = LINEAR_LINEAR
+      interp = LINEAR_LINEAR
     elseif (n_regions == 1) then
-       interp = obj % int(1)
+      interp = obj % int(1)
     elseif (n_regions > 1) then
-       do j = 1, n_regions
-          if (i < obj % nbt(j)) then
-             interp = obj % int(j)
-             exit
-          end if
-       end do
+      do j = 1, n_regions
+        if (i < obj % nbt(j)) then
+          interp = obj % int(j)
+          exit
+        end if
+      end do
     end if
 
     ! handle special case of histogram interpolation
     if (interp == HISTOGRAM) then
-       y = obj % y(i)
-       return
+      y = obj % y(i)
+      return
     end if
 
     ! determine bounding values
@@ -192,22 +192,22 @@ contains
     ! determine interpolation factor and interpolated value
     select case (interp)
     case (LINEAR_LINEAR)
-       r = (x - x0)/(x1 - x0)
-       y = (1 - r)*y0 + r*y1
+      r = (x - x0)/(x1 - x0)
+      y = (1 - r)*y0 + r*y1
     case (LINEAR_LOG)
-       r = (log(x) - log(x0))/(log(x1) - log(x0))
-       y = (1 - r)*y0 + r*y1
+      r = (log(x) - log(x0))/(log(x1) - log(x0))
+      y = (1 - r)*y0 + r*y1
     case (LOG_LINEAR)
-       r = (x - x0)/(x1 - x0)
-       y = exp((1-r)*log(y0) + r*log(y1))
+      r = (x - x0)/(x1 - x0)
+      y = exp((1-r)*log(y0) + r*log(y1))
     case (LOG_LOG)
-       r = (log(x) - log(x0))/(log(x1) - log(x0))
-       y = exp((1-r)*log(y0) + r*log(y1))
+      r = (log(x) - log(x0))/(log(x1) - log(x0))
+      y = exp((1-r)*log(y0) + r*log(y1))
     case default
-       message = "Unsupported interpolation scheme: " // to_str(interp)
-       call fatal_error()
+      message = "Unsupported interpolation scheme: " // to_str(interp)
+      call fatal_error()
     end select
-    
+
   end function interpolate_tab1_object
 
 end module interpolation

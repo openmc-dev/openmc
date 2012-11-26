@@ -960,8 +960,8 @@ contains
 
   subroutine print_sab_table(sab, unit)
 
-    type(SAB_Table), pointer :: sab
-    integer,        optional :: unit
+    type(SAlphaBeta), pointer :: sab
+    integer,         optional :: unit
 
     integer :: size_sab ! memory used by S(a,b) table
     integer :: unit_    ! unit to write to
@@ -1119,8 +1119,8 @@ contains
 
     integer                  :: i    ! loop index
     character(MAX_FILE_LEN)  :: path ! path of summary file
-    type(Nuclide),   pointer :: nuc => null()
-    type(SAB_Table), pointer :: sab => null()
+    type(Nuclide),    pointer :: nuc => null()
+    type(SAlphaBeta), pointer :: sab => null()
 
     ! Create filename for log file
     path = "cross_sections.out"

@@ -1,6 +1,6 @@
 module ace
 
-  use ace_header,       only: Nuclide, Reaction, SAB_Table, XsListing, &
+  use ace_header,       only: Nuclide, Reaction, SAlphaBeta, XsListing, &
                               DistEnergy
   use constants
   use datatypes,        only: dict_create, dict_add_key, dict_get_key, &
@@ -43,7 +43,7 @@ contains
     character(12)  :: alias     ! alias of nuclide, e.g. U-235.03c
     type(Material),  pointer :: mat => null()
     type(Nuclide),   pointer :: nuc => null()
-    type(SAB_Table), pointer :: sab => null()
+    type(SAlphaBeta), pointer :: sab => null()
     type(DictionaryCI), pointer :: already_read => null()
 
     ! allocate arrays for ACE table storage and cross section cache
@@ -163,7 +163,7 @@ contains
     character(70) :: comment       ! comment for ACE table
     character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
     type(Nuclide),   pointer :: nuc => null()
-    type(SAB_Table), pointer :: sab => null()
+    type(SAlphaBeta), pointer :: sab => null()
     type(XsListing), pointer :: listing => null()
 
     ! determine path, record length, and location of table
@@ -1128,7 +1128,7 @@ contains
 
   subroutine read_thermal_data(table)
 
-    type(SAB_Table), pointer :: table
+    type(SAlphaBeta), pointer :: table
 
     integer :: i      ! index for incoming energies
     integer :: j      ! index for outgoing energies

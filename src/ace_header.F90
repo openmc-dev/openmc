@@ -125,11 +125,11 @@ module ace_header
   end type Nuclide
 
 !===============================================================================
-! SAB_TABLE contains S(a,b) data for thermal neutron scattering, typically off
+! SALPHABETA contains S(a,b) data for thermal neutron scattering, typically off
 ! of light isotopes such as water, graphite, Be, etc
 !===============================================================================
      
-  type SAB_Table
+  type SAlphaBeta
     character(10) :: name ! name of table, e.g. lwtr.10t
     integer       :: zaid ! Z and A identifier, e.g. 6012 for Carbon-12
     real(8)       :: awr  ! weight of nucleus in neutron masses
@@ -156,7 +156,7 @@ module ace_header
     real(8), allocatable :: elastic_e_in(:)
     real(8), allocatable :: elastic_P(:)
     real(8), allocatable :: elastic_mu(:,:)
-  end type SAB_Table
+  end type SAlphaBeta
 
 !===============================================================================
 ! XSLISTING contains data read from a cross_sections.xml file

@@ -1,6 +1,6 @@
 module cross_section
 
-  use ace_header,      only: Nuclide, SAB_Table, Reaction, UrrData
+  use ace_header,      only: Nuclide, SAlphaBeta, Reaction, UrrData
   use constants
   use error,           only: fatal_error
   use fission,         only: nu_total
@@ -215,7 +215,7 @@ contains
     real(8) :: f         ! interp factor on S(a,b) energy grid
     real(8) :: inelastic ! S(a,b) inelastic cross section
     real(8) :: elastic   ! S(a,b) elastic cross section
-    type(SAB_Table), pointer :: sab => null()
+    type(SAlphaBeta), pointer :: sab => null()
 
     ! Set flag that S(a,b) treatment should be used for scattering
     micro_xs(i_nuclide) % use_sab = .true.

@@ -1,6 +1,6 @@
 module global
 
-  use ace_header,       only: Nuclide, SAB_Table, xsListing, NuclideMicroXS, &
+  use ace_header,       only: Nuclide, SAlphaBeta, xsListing, NuclideMicroXS, &
                               MaterialMacroXS
   use bank_header,      only: Bank
   use cmfd_header
@@ -66,9 +66,9 @@ module global
   ! CROSS SECTION RELATED VARIABLES
 
   ! Cross section arrays
-  type(Nuclide),   allocatable, target :: nuclides(:)    ! Nuclide cross-sections
-  type(SAB_Table), allocatable, target :: sab_tables(:)  ! S(a,b) tables
-  type(XsListing), allocatable, target :: xs_listings(:) ! cross_sections.xml listings 
+  type(Nuclide),    allocatable, target :: nuclides(:)    ! Nuclide cross-sections
+  type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
+  type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings 
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide

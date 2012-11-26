@@ -27,5 +27,5 @@ element materials {
     }*
   }+ &
 
-  element default_xs { xsd:string { maxLength = "3" } }
+  element default_xs { xsd:string { maxLength = "3" } }?
 }

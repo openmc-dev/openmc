@@ -14,7 +14,7 @@ score_types = {-1: 'flux', -2: 'total', -3: 'scatter', -4: 'nu-scatter',
                -5: 'scatter-1', -6: 'scatter-2', -7: 'scatter-3', 
                -8: 'transport', -9: 'diffusion', -10: 'n1n', -11: 'n2n',
                -12: 'n3n', -13: 'n4n', -14: 'absorption', -15: 'fission',
-                -16: 'nu-fission', -17: 'current'}
+                -16: 'nu-fission', -17: 'current', -18: 'events'}
 
 class BinaryFile(object):
     def __init__(self, filename):

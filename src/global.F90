@@ -178,7 +178,7 @@ module global
 
   ! Temporary k-effective values
   real(8), allocatable :: k_batch(:) ! batch estimates of k
-  real(8) :: keff = ONE ! average k over active cycles
+  real(8) :: keff = ONE ! average k over active batches
   real(8) :: keff_std   ! standard deviation of average k
 
   ! Shannon entropy
@@ -216,18 +216,18 @@ module global
   ! ============================================================================
   ! TIMING VARIABLES
 
-  type(Timer) :: time_total       ! timer for total run
-  type(Timer) :: time_initialize  ! timer for initialization
-  type(Timer) :: time_read_xs     ! timer for reading cross sections
-  type(Timer) :: time_unionize    ! timer for unionizing energy grid
-  type(Timer) :: time_intercycle  ! timer for intercycle synchronization
-  type(Timer) :: time_ic_tallies  ! timer for intercycle accumulate tallies
-  type(Timer) :: time_ic_sample   ! timer for intercycle sampling
-  type(Timer) :: time_ic_sendrecv ! timer for intercycle SEND/RECV
-  type(Timer) :: time_inactive    ! timer for inactive cycles
-  type(Timer) :: time_active      ! timer for active cycles
-  type(Timer) :: time_transport   ! timer for transport only
-  type(Timer) :: time_finalize    ! timer for finalization
+  type(Timer) :: time_total         ! timer for total run
+  type(Timer) :: time_initialize    ! timer for initialization
+  type(Timer) :: time_read_xs       ! timer for reading cross sections
+  type(Timer) :: time_unionize      ! timer for unionizing energy grid
+  type(Timer) :: time_bank          ! timer for fission bank synchronization
+  type(Timer) :: time_bank_sample   ! timer for fission bank sampling
+  type(Timer) :: time_bank_sendrecv ! timer for fission bank SEND/RECV
+  type(Timer) :: time_tallies       ! timer for accumulate tallies
+  type(Timer) :: time_inactive      ! timer for inactive batches
+  type(Timer) :: time_active        ! timer for active batches
+  type(Timer) :: time_transport     ! timer for transport only
+  type(Timer) :: time_finalize      ! timer for finalization
 
   ! ===========================================================================
   ! VARIANCE REDUCTION VARIABLES

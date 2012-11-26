@@ -75,7 +75,7 @@ contains
     end do
     write(ERROR_UNIT,*)
 
-    ! Write information on current cycle and particle
+    ! Write information on current batch, generation, and particle
     if (current_batch > 0) then
       write(ERROR_UNIT,'(1X,A,I12) ') 'Batch:     ', current_batch
       write(ERROR_UNIT,'(1X,A,I12) ') 'Generation:', current_gen

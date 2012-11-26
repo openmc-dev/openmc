@@ -182,17 +182,40 @@ contains
 
     integer, optional :: level ! verbosity level
 
-    integer :: n_lines ! number of lines needed
-    integer :: i       ! index for lines
+    integer :: i_start   ! starting position
+    integer :: i_end     ! ending position
+    integer :: line_wrap ! length of line
+    integer :: length    ! length of message
+
+    ! Set length of line
+    line_wrap = 80
 
     ! Only allow master to print to screen
     if (.not. master .and. present(level)) return
 
-    ! TODO: Take care of line wrapping so words don't get cut off
     if (.not. present(level) .or. level <= verbosity) then
-      n_lines = (len_trim(message)-1)/79 + 1
-      do i = 1, n_lines
-        write(ou, fmt='(1X,A)') trim(message(79*(i-1)+1:79*i))
+      ! Determine length of message
+      length = len_trim(message)
+
+      i_start = 0
+      do
+        if (length - i_start < line_wrap - 1) then
+          ! Remainder of message will fit on line
+          write(ou, fmt='(1X,A)') message(i_start+1:length)
+          exit
+
+        else
+          ! Determine last space in current line
+          i_end = i_start + index(message(i_start+1:i_start+line_wrap), &
+               ' ', BACK=.true.)
+
+          ! Write up to last space
+          write(ou, fmt='(1X,A)') message(i_start+1:i_end-1)
+
+          ! Advance starting position
+          i_start = i_end
+          if (i_start > length) exit
+        end if
       end do
     end if
 

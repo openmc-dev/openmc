@@ -30,7 +30,6 @@ geometry_header.o \
 global.o \
 hdf5_interface.o \
 initialize.o \
-intercycle.o \
 interpolation.o \
 input_xml.o \
 main.o \

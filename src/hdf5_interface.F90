@@ -78,13 +78,13 @@ contains
     if (run_mode == MODE_CRITICALITY) then
       ! Need to write integer(8)'s using double instead since there is no H5LT
       ! call for making a dataset of type long
-      call hdf5_make_double(hdf5_output_file, "n_particles", real(n_particles,8))
+      call hdf5_write_double(hdf5_output_file, "n_particles", real(n_particles,8))
 
       ! Use H5LT interface to write n_batches, n_inactive, and n_active
-      call hdf5_make_integer(hdf5_output_file, "n_batches", n_batches)
-      call hdf5_make_integer(hdf5_output_file, "n_inactive", n_inactive)
-      call hdf5_make_integer(hdf5_output_file, "n_active", n_active)
-      call hdf5_make_integer(hdf5_output_file, "gen_per_batch", gen_per_batch)
+      call hdf5_write_integer(hdf5_output_file, "n_batches", n_batches)
+      call hdf5_write_integer(hdf5_output_file, "n_inactive", n_inactive)
+      call hdf5_write_integer(hdf5_output_file, "n_active", n_active)
+      call hdf5_write_integer(hdf5_output_file, "gen_per_batch", gen_per_batch)
 
       ! Add description of each variable
       call h5ltset_attribute_string_f(hdf5_output_file, "n_particles", &
@@ -118,16 +118,16 @@ contains
   subroutine hdf5_write_header()
 
     ! Write version information
-    call hdf5_make_integer(hdf5_output_file, "version_major", VERSION_MAJOR)
-    call hdf5_make_integer(hdf5_output_file, "version_minor", VERSION_MINOR)
-    call hdf5_make_integer(hdf5_output_file, "version_release", VERSION_RELEASE)
+    call hdf5_write_integer(hdf5_output_file, "version_major", VERSION_MAJOR)
+    call hdf5_write_integer(hdf5_output_file, "version_minor", VERSION_MINOR)
+    call hdf5_write_integer(hdf5_output_file, "version_release", VERSION_RELEASE)
 
     ! Write current date and time
     call h5ltmake_dataset_string_f(hdf5_output_file, "date_and_time", &
          time_stamp(), hdf5_err)
 
     ! Write MPI information
-    call hdf5_make_integer(hdf5_output_file, "n_procs", n_procs)
+    call hdf5_write_integer(hdf5_output_file, "n_procs", n_procs)
     call h5ltset_attribute_string_f(hdf5_output_file, "n_procs", &
          "description", "Number of MPI processes", hdf5_err)
 
@@ -158,10 +158,10 @@ contains
     call h5gcreate_f(hdf5_output_file, "/geometry", geometry_group, hdf5_err)
 
     ! Use H5LT interface to write number of geometry objects
-    call hdf5_make_integer(geometry_group, "n_cells", n_cells)
-    call hdf5_make_integer(geometry_group, "n_surfaces", n_surfaces)
-    call hdf5_make_integer(geometry_group, "n_universes", n_universes)
-    call hdf5_make_integer(geometry_group, "n_lattices", n_lattices)
+    call hdf5_write_integer(geometry_group, "n_cells", n_cells)
+    call hdf5_write_integer(geometry_group, "n_surfaces", n_surfaces)
+    call hdf5_write_integer(geometry_group, "n_universes", n_universes)
+    call hdf5_write_integer(geometry_group, "n_lattices", n_lattices)
 
     ! ==========================================================================
     ! WRITE INFORMATION ON CELLS
@@ -177,7 +177,7 @@ contains
            temp_group, hdf5_err)
 
       ! Write universe for this cell
-      call hdf5_make_integer(temp_group, "universe", &
+      call hdf5_write_integer(temp_group, "universe", &
            universes(c % universe) % id)
 
       ! Write information on what fills this cell
@@ -186,20 +186,20 @@ contains
         call h5ltmake_dataset_string_f(temp_group, "fill_type", "normal", &
              hdf5_err)
         if (c % material == MATERIAL_VOID) then
-          call hdf5_make_integer(temp_group, "material", -1)
+          call hdf5_write_integer(temp_group, "material", -1)
         else
-          call hdf5_make_integer(temp_group, "material", &
+          call hdf5_write_integer(temp_group, "material", &
                materials(c % material) % id)
         end if
       case (CELL_FILL)
         call h5ltmake_dataset_string_f(temp_group, "fill_type", "universe", &
              hdf5_err) 
-        call hdf5_make_integer(temp_group, "material", &
+        call hdf5_write_integer(temp_group, "material", &
              universes(c % fill) % id)
       case (CELL_LATTICE)
         call h5ltmake_dataset_string_f(temp_group, "fill_type", "lattice", &
              hdf5_err) 
-        call hdf5_make_integer(temp_group, "lattice", &
+        call hdf5_write_integer(temp_group, "lattice", &
              lattices(c % fill) % id)
       end select
 
@@ -401,7 +401,7 @@ contains
     call h5gcreate_f(hdf5_output_file, "/materials", materials_group, hdf5_err)
 
     ! Use H5LT interface to write number of materials
-    call hdf5_make_integer(materials_group, "n_materials", n_materials)
+    call hdf5_write_integer(materials_group, "n_materials", n_materials)
 
     ! Write information on each material
     do i = 1, n_materials
@@ -412,7 +412,7 @@ contains
            temp_group, hdf5_err)
 
       ! Write atom density with units
-      call hdf5_make_double(temp_group, "atom_density", m % density)
+      call hdf5_write_double(temp_group, "atom_density", m % density)
       call h5ltset_attribute_string_f(temp_group, "atom_density", &
            "units", "atom/barn-cm", hdf5_err)
 
@@ -470,7 +470,7 @@ contains
     call h5gcreate_f(hdf5_output_file, "tallies", tallies_group, hdf5_err)
 
     ! Write total number of meshes
-    call hdf5_make_integer(tallies_group, "n_meshes", n_meshes)
+    call hdf5_write_integer(tallies_group, "n_meshes", n_meshes)
 
     ! Write information for meshes
     MESH_LOOP: do i = 1, n_meshes
@@ -479,8 +479,8 @@ contains
            temp_group, hdf5_err)
 
       ! Write type and number of dimensions
-      call hdf5_make_integer(temp_group, "type", meshes(i) % type)
-      call hdf5_make_integer(temp_group, "n_dimension", &
+      call hdf5_write_integer(temp_group, "type", meshes(i) % type)
+      call hdf5_write_integer(temp_group, "n_dimension", &
            meshes(i) % n_dimension)
 
       ! Write mesh information
@@ -499,7 +499,7 @@ contains
     end do MESH_LOOP
 
     ! Write number of tallies
-    call hdf5_make_integer(tallies_group, "n_tallies", n_tallies)
+    call hdf5_write_integer(tallies_group, "n_tallies", n_tallies)
 
     TALLY_METADATA: do i = 1, n_tallies
       ! Get pointer to tally
@@ -510,13 +510,13 @@ contains
            temp_group, hdf5_err)
 
       ! Write size of each tally
-      call hdf5_make_integer(temp_group, "total_score_bins", &
+      call hdf5_write_integer(temp_group, "total_score_bins", &
            t % total_score_bins)
-      call hdf5_make_integer(temp_group, "total_filter_bins", &
+      call hdf5_write_integer(temp_group, "total_filter_bins", &
            t % total_filter_bins)
 
       ! Write number of filters
-      call hdf5_make_integer(temp_group, "n_filters", t % n_filters)
+      call hdf5_write_integer(temp_group, "n_filters", t % n_filters)
 
       FILTER_LOOP: do j = 1, t % n_filters
         ! Create filter group
@@ -524,10 +524,10 @@ contains
              hdf5_err)
 
         ! Write type of filter
-        call hdf5_make_integer(filter_group, "type", t % filters(j) % type)
+        call hdf5_write_integer(filter_group, "type", t % filters(j) % type)
 
         ! Write number of bins for this filter
-        call hdf5_make_integer(filter_group, "n_bins", t % filters(j) % n_bins)
+        call hdf5_write_integer(filter_group, "n_bins", t % filters(j) % n_bins)
 
         ! Write filter bins
         if (t % filters(j) % type == FILTER_ENERGYIN .or. &
@@ -574,7 +574,7 @@ contains
       end do FILTER_LOOP
 
       ! Write number of nuclide bins
-      call hdf5_make_integer(temp_group, "n_nuclide_bins", &
+      call hdf5_write_integer(temp_group, "n_nuclide_bins", &
            t % n_nuclide_bins)
 
 
@@ -595,7 +595,7 @@ contains
       deallocate(temp_array)
 
       ! Write number of score bins
-      call hdf5_make_integer(temp_group, "n_score_bins", &
+      call hdf5_write_integer(temp_group, "n_score_bins", &
            t % n_score_bins)
       dims(1) = t % n_score_bins
       call h5ltmake_dataset_int_f(temp_group, "score_bins", 1, &
@@ -633,7 +633,7 @@ contains
     call h5gcreate_f(hdf5_output_file, "/nuclides", group, hdf5_err)
 
     ! Use H5LT interface to write number of nuclides
-    call hdf5_make_integer(group, "n_nuclides", n_nuclides_total)
+    call hdf5_write_integer(group, "n_nuclides", n_nuclides_total)
 
     ! Write information on each nuclide
     do i = 1, n_nuclides_total
@@ -647,13 +647,13 @@ contains
       call h5gcreate_f(group, trim(nuc % name), nuclide_group, hdf5_err)
 
       ! Write some basic attributes
-      call hdf5_make_integer(nuclide_group, "zaid", nuc % zaid)
-      call hdf5_make_double(nuclide_group, "awr", nuc % awr)
-      call hdf5_make_double(nuclide_group, "kT", nuc % kT)
-      call hdf5_make_integer(nuclide_group, "n_grid", nuc % n_grid)
-      call hdf5_make_integer(nuclide_group, "n_reactions", nuc % n_reaction)
-      call hdf5_make_integer(nuclide_group, "n_fission", nuc % n_fission)
-      call hdf5_make_integer(nuclide_group, "size_xs", size_xs)
+      call hdf5_write_integer(nuclide_group, "zaid", nuc % zaid)
+      call hdf5_write_double(nuclide_group, "awr", nuc % awr)
+      call hdf5_write_double(nuclide_group, "kT", nuc % kT)
+      call hdf5_write_integer(nuclide_group, "n_grid", nuc % n_grid)
+      call hdf5_write_integer(nuclide_group, "n_reactions", nuc % n_reaction)
+      call hdf5_write_integer(nuclide_group, "n_fission", nuc % n_fission)
+      call hdf5_write_integer(nuclide_group, "size_xs", size_xs)
 
       ! =======================================================================
       ! WRITE INFORMATION ON EACH REACTION
@@ -684,11 +684,11 @@ contains
              rxn_group, hdf5_err)
 
         ! Write information on reaction
-        call hdf5_make_double(rxn_group, "Q_value", rxn % Q_value)
-        call hdf5_make_integer(rxn_group, "multiplicity", rxn % multiplicity)
-        call hdf5_make_integer(rxn_group, "threshold", rxn % threshold)
-        call hdf5_make_integer(rxn_group, "size_angle", size_angle)
-        call hdf5_make_integer(rxn_group, "size_energy", size_energy)
+        call hdf5_write_double(rxn_group, "Q_value", rxn % Q_value)
+        call hdf5_write_integer(rxn_group, "multiplicity", rxn % multiplicity)
+        call hdf5_write_integer(rxn_group, "threshold", rxn % threshold)
+        call hdf5_write_integer(rxn_group, "size_angle", size_angle)
+        call hdf5_write_integer(rxn_group, "size_energy", size_energy)
 
         call h5gclose_f(rxn_group, hdf5_err)
 
@@ -704,17 +704,17 @@ contains
 
       if (nuc % urr_present) then
         urr => nuc % urr_data
-        call hdf5_make_integer(nuclide_group, "urr_n_energy", urr % n_energy)
-        call hdf5_make_integer(nuclide_group, "urr_n_prob", urr % n_prob)
-        call hdf5_make_integer(nuclide_group, "urr_interp", urr % interp)
-        call hdf5_make_integer(nuclide_group, "urr_inelastic", urr % inelastic_flag)
-        call hdf5_make_integer(nuclide_group, "urr_absorption", urr % absorption_flag)
-        call hdf5_make_double(nuclide_group, "urr_min_E", urr % energy(1))
-        call hdf5_make_double(nuclide_group, "urr_max_E", urr % energy(urr % n_energy))
+        call hdf5_write_integer(nuclide_group, "urr_n_energy", urr % n_energy)
+        call hdf5_write_integer(nuclide_group, "urr_n_prob", urr % n_prob)
+        call hdf5_write_integer(nuclide_group, "urr_interp", urr % interp)
+        call hdf5_write_integer(nuclide_group, "urr_inelastic", urr % inelastic_flag)
+        call hdf5_write_integer(nuclide_group, "urr_absorption", urr % absorption_flag)
+        call hdf5_write_double(nuclide_group, "urr_min_E", urr % energy(1))
+        call hdf5_write_double(nuclide_group, "urr_max_E", urr % energy(urr % n_energy))
       end if
 
       ! Write total memory used
-      call hdf5_make_integer(nuclide_group, "size_total", size_total)
+      call hdf5_write_integer(nuclide_group, "size_total", size_total)
 
       ! Close group for i-th nuclide
       call h5gclose_f(nuclide_group, hdf5_err)
@@ -739,18 +739,18 @@ contains
     call h5gcreate_f(hdf5_output_file, "/timing", timing_group, hdf5_err)
 
     ! Write timing data
-    call hdf5_make_double(timing_group, "time_initialize", time_initialize % elapsed)
-    call hdf5_make_double(timing_group, "time_read_xs", time_read_xs % elapsed)
-    call hdf5_make_double(timing_group, "time_unionize", time_unionize % elapsed)
-    call hdf5_make_double(timing_group, "time_transport", time_transport % elapsed)
-    call hdf5_make_double(timing_group, "time_bank", time_bank % elapsed)
-    call hdf5_make_double(timing_group, "time_bank_sample", time_bank_sample % elapsed)
-    call hdf5_make_double(timing_group, "time_bank_sendrecv", time_bank_sendrecv % elapsed)
-    call hdf5_make_double(timing_group, "time_tallies", time_tallies % elapsed)
-    call hdf5_make_double(timing_group, "time_inactive", time_inactive % elapsed)
-    call hdf5_make_double(timing_group, "time_active", time_active % elapsed)
-    call hdf5_make_double(timing_group, "time_finalize", time_finalize % elapsed)
-    call hdf5_make_double(timing_group, "time_total", time_total % elapsed)
+    call hdf5_write_double(timing_group, "time_initialize", time_initialize % elapsed)
+    call hdf5_write_double(timing_group, "time_read_xs", time_read_xs % elapsed)
+    call hdf5_write_double(timing_group, "time_unionize", time_unionize % elapsed)
+    call hdf5_write_double(timing_group, "time_transport", time_transport % elapsed)
+    call hdf5_write_double(timing_group, "time_bank", time_bank % elapsed)
+    call hdf5_write_double(timing_group, "time_bank_sample", time_bank_sample % elapsed)
+    call hdf5_write_double(timing_group, "time_bank_sendrecv", time_bank_sendrecv % elapsed)
+    call hdf5_write_double(timing_group, "time_tallies", time_tallies % elapsed)
+    call hdf5_write_double(timing_group, "time_inactive", time_inactive % elapsed)
+    call hdf5_write_double(timing_group, "time_active", time_active % elapsed)
+    call hdf5_write_double(timing_group, "time_finalize", time_finalize % elapsed)
+    call hdf5_write_double(timing_group, "time_total", time_total % elapsed)
 
     ! Add descriptions to timing data
     call h5ltset_attribute_string_f(timing_group, "time_initialize", &
@@ -782,7 +782,7 @@ contains
     total_particles = n_particles * n_batches * gen_per_batch
     speed = real(total_particles) / (time_inactive % elapsed + &
          time_active % elapsed)
-    call hdf5_make_double(timing_group, "neutrons_per_second", speed)
+    call hdf5_write_double(timing_group, "neutrons_per_second", speed)
 
     ! Close timing group
     call h5gclose_f(timing_group, hdf5_err)
@@ -823,33 +823,33 @@ contains
          hdf5_err)
 
     ! Write revision number for state point file
-    call hdf5_make_integer(hdf5_state_point, "revision_statepoint", &
+    call hdf5_write_integer(hdf5_state_point, "revision_statepoint", &
          REVISION_STATEPOINT)
 
     ! Write OpenMC version
-    call hdf5_make_integer(hdf5_state_point, "version_major", VERSION_MAJOR)
-    call hdf5_make_integer(hdf5_state_point, "version_minor", VERSION_MINOR)
-    call hdf5_make_integer(hdf5_state_point, "version_release", VERSION_RELEASE)
+    call hdf5_write_integer(hdf5_state_point, "version_major", VERSION_MAJOR)
+    call hdf5_write_integer(hdf5_state_point, "version_minor", VERSION_MINOR)
+    call hdf5_write_integer(hdf5_state_point, "version_release", VERSION_RELEASE)
 
     ! Write current date and time
     call h5ltmake_dataset_string_f(hdf5_state_point, "date_and_time", &
          time_stamp(), hdf5_err)
 
     ! Write out random number seed
-    call hdf5_make_long(hdf5_state_point, "seed", seed)
+    call hdf5_write_long(hdf5_state_point, "seed", seed)
 
     ! Write run information
-    call hdf5_make_integer(hdf5_state_point, "run_mode", run_mode)
-    call hdf5_make_long(hdf5_state_point, "n_particles", n_particles)
-    call hdf5_make_integer(hdf5_state_point, "n_batches", n_batches)
+    call hdf5_write_integer(hdf5_state_point, "run_mode", run_mode)
+    call hdf5_write_long(hdf5_state_point, "n_particles", n_particles)
+    call hdf5_write_integer(hdf5_state_point, "n_batches", n_batches)
 
     ! Write out current batch number
-    call hdf5_make_integer(hdf5_state_point, "current_batch", current_batch)
+    call hdf5_write_integer(hdf5_state_point, "current_batch", current_batch)
 
     ! Write out information for criticality run
     if (run_mode == MODE_CRITICALITY) then
-      call hdf5_make_integer(hdf5_state_point, "n_inactive", n_inactive)
-      call hdf5_make_integer(hdf5_state_point, "gen_per_batch", gen_per_batch)
+      call hdf5_write_integer(hdf5_state_point, "n_inactive", n_inactive)
+      call hdf5_write_integer(hdf5_state_point, "gen_per_batch", gen_per_batch)
 
       ! Write out keff and entropy
       dims(1) = current_batch
@@ -863,7 +863,7 @@ contains
     call h5gcreate_f(hdf5_state_point, "tallies", tallies_group, hdf5_err)
 
     ! Write total number of meshes
-    call hdf5_make_integer(tallies_group, "n_meshes", n_meshes)
+    call hdf5_write_integer(tallies_group, "n_meshes", n_meshes)
 
     ! Write information for meshes
     MESH_LOOP: do i = 1, n_meshes
@@ -872,8 +872,8 @@ contains
            temp_group, hdf5_err)
 
       ! Write type and number of dimensions
-      call hdf5_make_integer(temp_group, "type", meshes(i) % type)
-      call hdf5_make_integer(temp_group, "n_dimension", &
+      call hdf5_write_integer(temp_group, "type", meshes(i) % type)
+      call hdf5_write_integer(temp_group, "n_dimension", &
            meshes(i) % n_dimension)
 
       ! Write mesh information
@@ -892,7 +892,7 @@ contains
     end do MESH_LOOP
 
     ! Write number of tallies
-    call hdf5_make_integer(tallies_group, "n_tallies", n_tallies)
+    call hdf5_write_integer(tallies_group, "n_tallies", n_tallies)
 
     TALLY_METADATA: do i = 1, n_tallies
       ! Get pointer to tally
@@ -903,17 +903,17 @@ contains
            temp_group, hdf5_err)
 
       ! Write number of realizations
-      call hdf5_make_integer(temp_group, "n_realizations", &
+      call hdf5_write_integer(temp_group, "n_realizations", &
            t % n_realizations)
 
       ! Write size of each tally
-      call hdf5_make_integer(temp_group, "total_score_bins", &
+      call hdf5_write_integer(temp_group, "total_score_bins", &
            t % total_score_bins)
-      call hdf5_make_integer(temp_group, "total_filter_bins", &
+      call hdf5_write_integer(temp_group, "total_filter_bins", &
            t % total_filter_bins)
 
       ! Write number of filters
-      call hdf5_make_integer(temp_group, "n_filters", t % n_filters)
+      call hdf5_write_integer(temp_group, "n_filters", t % n_filters)
 
       FILTER_LOOP: do j = 1, t % n_filters
         ! Create filter group
@@ -921,10 +921,10 @@ contains
              hdf5_err)
 
         ! Write type of filter
-        call hdf5_make_integer(filter_group, "type", t % filters(j) % type)
+        call hdf5_write_integer(filter_group, "type", t % filters(j) % type)
 
         ! Write number of bins for this filter
-        call hdf5_make_integer(filter_group, "n_bins", t % filters(j) % n_bins)
+        call hdf5_write_integer(filter_group, "n_bins", t % filters(j) % n_bins)
 
         ! Write filter bins
         if (t % filters(j) % type == FILTER_ENERGYIN .or. &
@@ -971,7 +971,7 @@ contains
       end do FILTER_LOOP
 
       ! Write number of nuclide bins
-      call hdf5_make_integer(temp_group, "n_nuclide_bins", &
+      call hdf5_write_integer(temp_group, "n_nuclide_bins", &
            t % n_nuclide_bins)
 
 
@@ -992,7 +992,7 @@ contains
       deallocate(temp_array)
 
       ! Write number of score bins
-      call hdf5_make_integer(temp_group, "n_score_bins", &
+      call hdf5_write_integer(temp_group, "n_score_bins", &
            t % n_score_bins)
       dims(1) = t % n_score_bins
       call h5ltmake_dataset_int_f(temp_group, "score_bins", 1, &
@@ -1003,10 +1003,10 @@ contains
     end do TALLY_METADATA
 
     ! Write number of realizations for global tallies
-    call hdf5_make_integer(hdf5_state_point, "n_realizations", n_realizations)
+    call hdf5_write_integer(hdf5_state_point, "n_realizations", n_realizations)
 
     ! Write out global tallies sum and sum_sq
-    call hdf5_make_integer(hdf5_state_point, "n_global_tallies", &
+    call hdf5_write_integer(hdf5_state_point, "n_global_tallies", &
          N_GLOBAL_TALLIES)
 
     ! Write global tallies
@@ -1021,7 +1021,7 @@ contains
 
     if (tallies_on) then
       ! Indicate that tallies are on
-      call hdf5_make_integer(tallies_group, "tallies_present", 1)
+      call hdf5_write_integer(tallies_group, "tallies_present", 1)
 
       ! Write tally sum and sum_sq
       TALLY_SCORES: do i = 1, n_tallies
@@ -1047,7 +1047,7 @@ contains
       end do TALLY_SCORES
     else
       ! Indicate that tallies are off
-      call hdf5_make_integer(tallies_group, "tallies_present", 0)
+      call hdf5_write_integer(tallies_group, "tallies_present", 0)
     end if
 
     ! Close tallies group
@@ -1059,10 +1059,10 @@ contains
   end subroutine hdf5_write_state_point
 
 !===============================================================================
-! HDF5_MAKE_INTEGER
+! HDF5_WRITE_INTEGER
 !===============================================================================
 
-  subroutine hdf5_make_integer(group, name, buffer)
+  subroutine hdf5_write_integer(group, name, buffer)
 
     integer(HID_T), intent(in) :: group
     character(*),   intent(in) :: name
@@ -1074,13 +1074,13 @@ contains
     call h5ltmake_dataset_int_f(group, name, rank, dims, &
          (/ buffer /), hdf5_err)
 
-  end subroutine hdf5_make_integer
+  end subroutine hdf5_write_integer
 
 !===============================================================================
-! HDF5_MAKE_LONG
+! HDF5_WRITE_LONG
 !===============================================================================
 
-  subroutine hdf5_make_long(group, name, buffer)
+  subroutine hdf5_write_long(group, name, buffer)
 
     integer(HID_T), intent(in) :: group
     character(*),   intent(in) :: name
@@ -1104,13 +1104,13 @@ contains
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
 
-  end subroutine hdf5_make_long
+  end subroutine hdf5_write_long
 
 !===============================================================================
-! HDF5_MAKE_DOUBLE
+! HDF5_WRITE_DOUBLE
 !===============================================================================
 
-  subroutine hdf5_make_double(group, name, buffer)
+  subroutine hdf5_write_double(group, name, buffer)
 
     integer(HID_T), intent(in) :: group
     character(*),   intent(in) :: name
@@ -1122,7 +1122,7 @@ contains
     call h5ltmake_dataset_double_f(group, name, rank, dims, &
          (/ buffer /), hdf5_err)
 
-  end subroutine hdf5_make_double
+  end subroutine hdf5_write_double
 
 #endif
 

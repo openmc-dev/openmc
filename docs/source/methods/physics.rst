@@ -1272,6 +1272,8 @@ If is not accepted, then we repeat the process and resample a target speed and
 cosine until a combination is found that satisfies equation
 :eq:`freegas-accept-2`.
 
+.. _sab_tables:
+
 ------------
 |sab| Tables
 ------------
@@ -1419,7 +1421,9 @@ uniformly and then the final cosine is interpolated on the incoming energy grid:
     \mu = \mu_{i,j,k} + f (\mu_{i+1,j,k} - \mu_{i,j,k})
 
 where :math:`\mu_{i,j,k}` is the k-th outgoing cosine corresponding to the j-th
-outgoing energy and the i-th incoming energy. 
+outgoing energy and the i-th incoming energy.
+
+.. _probability_tables:
 
 ----------------------------------------------
 Unresolved Resonance Region Probability Tables

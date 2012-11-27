@@ -375,7 +375,7 @@ contains
     integer              :: i_univ                ! index in universes array
     integer              :: n_cells_in_univ       ! number of cells in a universe
     integer, allocatable :: index_cell_in_univ(:) ! the index in the univ%cells
-    ! array for each universe
+                                                  ! array for each universe
     type(ListKeyValueII), pointer :: key_list => null()
     type(Universe),       pointer :: univ => null()
     type(Cell),           pointer :: c => null()

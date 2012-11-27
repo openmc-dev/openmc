@@ -3,14 +3,20 @@ element settings {
 
   (
     element criticality {
-      (element batches { xsd:int } | attribute batches { xsd:int }) &
-      (element inactive { xsd:int } | attribute inactive { xsd:int }) &
-      (element particles { xsd:int } | attribute particles { xsd:int }) &
-      (element generations_per_batch { xsd:int } | attribute generations_per_batch { xsd:int })?
+      (element batches { xsd:positiveInteger } | 
+        attribute batches { xsd:positiveInteger }) &
+      (element inactive { xsd:nonNegativeInteger } | 
+        attribute inactive { xsd:nonNegativeInteger }) &
+      (element particles { xsd:positiveInteger } | 
+        attribute particles { xsd:positiveInteger }) &
+      (element generations_per_batch { xsd:positiveInteger } | 
+        attribute generations_per_batch { xsd:positiveInteger })?
     } |
     element fixed_source {
-      (element batches { xsd:int } | attribute batches { xsd:int }) &
-      (element particles { xsd:int } | attribute particles { xsd:int })
+      (element batches { xsd:positiveInteger } | 
+        attribute batches { xsd:positiveInteger }) &
+      (element particles { xsd:positiveInteger } | 
+        attribute particles { xsd:positiveInteger })
     }
   ) &
 
@@ -21,7 +27,7 @@ element settings {
     (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })?
   }? &
 
-  element energy_grid { xsd:string { maxLength = "7" } }? &
+  element energy_grid { ( "nuclide" | "union" | "lethargy" ) }? &
 
   element entropy {
     (element dimension { list { xsd:int+ } } | 
@@ -41,7 +47,7 @@ element settings {
 
   element run_cmfd { ( ".false." | ".true." ) }? &
 
-  element seed { xsd:integer }? &
+  element seed { xsd:positiveInteger }? &
 
   element source {
     element file { xsd:string { maxLength = "255" } }? &
@@ -76,9 +82,10 @@ element settings {
 
   element state_point {
     (
-      (element batches { list { xsd:int+ } } |
-        attribute batches { list { xsd:int+ } }) |
-      (element interval { xsd:int} | attribute interval { xsd:int })
+      (element batches { list { xsd:positiveInteger+ } } |
+        attribute batches { list { xsd:positiveInteger+ } }) |
+      (element interval { xsd:positiveInteger } | 
+        attribute interval { xsd:positiveInteger })
     ) &
     (element source_separate { ( "off" | "on" ) } | 
       attribute source_separate { ( "off" | "on" ) })?
@@ -86,13 +93,13 @@ element settings {
 
   element survival_biasing { ( "off" | "on" ) }? &
 
-  element trace { list { xsd:int+ } }? &
+  element trace { list { xsd:positiveInteger+ } }? &
 
-  element verbosity { xsd:int }? &
+  element verbosity { xsd:positiveInteger }? &
 
   element uniform_fs{
-    (element dimension { list { xsd:int+ } } | 
-      attribute dimension { list { xsd:int+ } }) &
+    (element dimension { list { xsd:positiveInteger+ } } | 
+      attribute dimension { list { xsd:positiveInteger+ } }) &
     (element lower_left { list { xsd:double+ } } | 
       attribute lower_left { list { xsd:double+ } }) &
     (element upper_right { list { xsd:double+ } } | 

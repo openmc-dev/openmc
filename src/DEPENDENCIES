@@ -94,13 +94,17 @@ cross_section.o: material_header.o
 cross_section.o: random_lcg.o
 cross_section.o: search.o
 
+criticality.o: cmfd_execute.o
 criticality.o: constants.o
-criticality.o: finalize.o
+criticality.o: error.o
 criticality.o: global.o
 criticality.o: hdf5_interface.o
-criticality.o: intercycle.o
+criticality.o: math.o
+criticality.o: mesh.o
+criticality.o: mesh_header.o
 criticality.o: output.o
 criticality.o: physics.o
+criticality.o: random_lcg.o
 criticality.o: source.o
 criticality.o: state_point.o
 criticality.o: string.o
@@ -198,8 +202,8 @@ initialize.o: random_lcg.o
 initialize.o: source.o
 initialize.o: state_point.o
 initialize.o: string.o
-initialize.o: tally.o
 initialize.o: tally_header.o
+initialize.o: tally_initialize.o
 initialize.o: timing.o
 
 input_xml.o: cmfd_input.o
@@ -219,19 +223,6 @@ input_xml.o: templates/geometry_t.o
 input_xml.o: templates/materials_t.o
 input_xml.o: templates/settings_t.o
 input_xml.o: templates/tallies_t.o
-
-intercycle.o: error.o
-intercycle.o: global.o
-intercycle.o: math.o
-intercycle.o: mesh.o
-intercycle.o: mesh_header.o
-intercycle.o: output.o
-intercycle.o: random_lcg.o
-intercycle.o: search.o
-intercycle.o: string.o
-intercycle.o: tally.o
-intercycle.o: tally_header.o
-intercycle.o: timing.o
 
 interpolation.o: constants.o
 interpolation.o: endf_header.o
@@ -268,6 +259,7 @@ output.o: geometry_header.o
 output.o: global.o
 output.o: math.o
 output.o: mesh_header.o
+output.o: mesh.o
 output.o: particle_header.o
 output.o: plot_header.o
 output.o: string.o
@@ -348,5 +340,11 @@ tally.o: output.o
 tally.o: search.o
 tally.o: string.o
 tally.o: tally_header.o
+
+tally_header.o: constants.o
+
+tally_initialize.o: constants.o
+tally_initialize.o: global.o
+tally_initialize.o: tally_header.o
 
 timing.o: constants.o

@@ -10,10 +10,6 @@ module error
 
   implicit none
 
-  ! Short names for output and error units
-  integer :: ou = OUTPUT_UNIT
-  integer :: eu = ERROR_UNIT
-
 contains
 
 !===============================================================================
@@ -23,21 +19,45 @@ contains
 
   subroutine warning()
 
-    integer :: n_lines ! number of lines
-    integer :: i       ! loop index for lines
+    integer :: i_start   ! starting position
+    integer :: i_end     ! ending position
+    integer :: line_wrap ! length of line
+    integer :: length    ! length of message
+    integer :: indent    ! length of indentation
 
     ! Only allow master to print to screen
     if (.not. master) return
 
-    write(OUTPUT_UNIT, fmt='(1X,A9)', advance='no') 'WARNING: '
+    ! Write warning at beginning
+    write(OUTPUT_UNIT, fmt='(1X,A)', advance='no') 'WARNING: '
 
-    n_lines = (len_trim(message)-1)/70 + 1
-    do i = 1, n_lines
-       if (i == 1) then
-          write(OUTPUT_UNIT, fmt='(A70)') message(70*(i-1)+1:70*i)
-       else
-          write(OUTPUT_UNIT, fmt='(10X,A70)') message(70*(i-1)+1:70*i)
-       end if
+    ! Set line wrapping and indentation
+    line_wrap = 80
+    indent = 10
+
+    ! Determine length of message
+    length = len_trim(message)
+
+    i_start = 0
+    do
+      if (length - i_start < line_wrap - indent + 1) then
+        ! Remainder of message will fit on line
+        write(OUTPUT_UNIT, fmt='(A)') message(i_start+1:length)
+        exit
+
+      else
+        ! Determine last space in current line
+        i_end = i_start + index(message(i_start+1:i_start+line_wrap-indent+1), &
+             ' ', BACK=.true.)
+
+        ! Write up to last space
+        write(OUTPUT_UNIT, fmt='(A/A)', advance='no') &
+             message(i_start+1:i_end-1), repeat(' ', indent)
+
+        ! Advance starting position
+        i_start = i_end
+        if (i_start > length) exit
+      end if
     end do
 
   end subroutine warning
@@ -52,37 +72,61 @@ contains
 
     integer, optional :: error_code ! error code
 
-    integer :: code    ! error code
-    integer :: n_lines ! number of lines
-    integer :: i       ! loop index over lines
+    integer :: code      ! error code
+    integer :: i_start   ! starting position
+    integer :: i_end     ! ending position
+    integer :: line_wrap ! length of line
+    integer :: length    ! length of message
+    integer :: indent    ! length of indentation
+
 
     ! set default error code
     if (present(error_code)) then
-       code = error_code
+      code = error_code
     else
-       code = -1
+      code = -1
     end if
 
-    write(ERROR_UNIT, fmt='(1X,A7)', advance='no') 'ERROR: '
+    ! Write error at beginning
+    write(ERROR_UNIT, fmt='(1X,A)', advance='no') 'ERROR: '
 
-    n_lines = (len_trim(message)-1)/72 + 1
-    do i = 1, n_lines
-       if (i == 1) then
-          write(ERROR_UNIT, fmt='(A72)') message(72*(i-1)+1:72*i)
-       else
-          write(ERROR_UNIT, fmt='(7X,A72)') message(72*(i-1)+1:72*i)
-       end if
+    ! Set line wrapping and indentation
+    line_wrap = 80
+    indent = 8
+
+    ! Determine length of message
+    length = len_trim(message)
+
+    i_start = 0
+    do
+      if (length - i_start < line_wrap - indent + 1) then
+        ! Remainder of message will fit on line
+        write(ERROR_UNIT, fmt='(A)') message(i_start+1:length)
+        exit
+
+      else
+        ! Determine last space in current line
+        i_end = i_start + index(message(i_start+1:i_start+line_wrap-indent+1), &
+             ' ', BACK=.true.)
+
+        ! Write up to last space
+        write(ERROR_UNIT, fmt='(A/A)', advance='no') &
+             message(i_start+1:i_end-1), repeat(' ', indent)
+
+        ! Advance starting position
+        i_start = i_end
+        if (i_start > length) exit
+      end if
     end do
-    write(ERROR_UNIT,*)
 
-    ! Write information on current cycle and particle
+    ! Write information on current batch, generation, and particle
     if (current_batch > 0) then
-       write(ERROR_UNIT,'(1X,A,I12) ') 'Batch:     ', current_batch
-       write(ERROR_UNIT,'(1X,A,I12) ') 'Generation:', current_gen
-       write(ERROR_UNIT,'(1X,A,I12)')  'Particle:  ', p % id
-       write(ERROR_UNIT,'(1X,A,3ES12.4)') 'Location:  ', p % coord0 % xyz
-       write(ERROR_UNIT,'(1X,A,3ES12.4)') 'Direction: ', p % coord0 % uvw
-       write(ERROR_UNIT,*)
+      write(ERROR_UNIT,'(1X,A,I12) ') 'Batch:     ', current_batch
+      write(ERROR_UNIT,'(1X,A,I12) ') 'Generation:', current_gen
+      write(ERROR_UNIT,'(1X,A,I12)')  'Particle:  ', p % id
+      write(ERROR_UNIT,'(1X,A,3ES12.4)') 'Location:  ', p % coord0 % xyz
+      write(ERROR_UNIT,'(1X,A,3ES12.4)') 'Direction: ', p % coord0 % uvw
+      write(ERROR_UNIT,*)
     end if
 
     ! Release memory from all allocatable arrays

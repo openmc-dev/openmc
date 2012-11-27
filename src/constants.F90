@@ -251,7 +251,7 @@ module constants
        EVENT_FISSION =  3 
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 17
+  integer, parameter :: N_SCORE_TYPES = 18
   integer, parameter :: &
        SCORE_FLUX       = -1,  & ! flux
        SCORE_TOTAL      = -2,  & ! total reaction rate
@@ -269,7 +269,8 @@ module constants
        SCORE_ABSORPTION = -14, & ! absorption rate
        SCORE_FISSION    = -15, & ! fission rate
        SCORE_NU_FISSION = -16, & ! neutron production rate
-       SCORE_CURRENT    = -17    ! partial current
+       SCORE_CURRENT    = -17, & ! partial current
+       SCORE_EVENTS     = -18    ! number of events
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1
@@ -285,14 +286,6 @@ module constants
        FILTER_MESH      = 6, &
        FILTER_ENERGYIN  = 7, &
        FILTER_ENERGYOUT = 8
-
-  ! Filter types for surface current tallies
-  integer, parameter :: &
-       SURF_FILTER_MESH_X   = 1, &
-       SURF_FILTER_MESH_Y   = 2, &
-       SURF_FILTER_MESH_Z   = 3, &
-       SURF_FILTER_ENERGYIN = 4, &
-       SURF_FILTER_SURFACE  = 5
 
   ! Tally surface current directions
   integer, parameter :: &
@@ -345,9 +338,9 @@ module constants
 
   ! Energy grid methods
   integer, parameter :: &
-       GRID_NUCLIDE  = 1, & ! non-unionized energy grid (MCNP)
+       GRID_NUCLIDE  = 1, & ! non-unionized energy grid
        GRID_UNION    = 2, & ! union grid with pointers
-       GRID_LETHARGY = 3    ! lethargy mapping (MC21)
+       GRID_LETHARGY = 3    ! lethargy mapping
 
   ! Running modes
   integer, parameter ::        &

@@ -30,7 +30,6 @@ geometry_header.o \
 global.o \
 hdf5_interface.o \
 initialize.o \
-intercycle.o \
 interpolation.o \
 input_xml.o \
 main.o \
@@ -52,4 +51,5 @@ state_point.o \
 string.o \
 tally.o \
 tally_header.o \
+tally_initialize.o \
 timing.o

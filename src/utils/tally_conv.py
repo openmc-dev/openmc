@@ -108,16 +108,16 @@ for i_batch in range(len(files)):
         active_batches[i_batch] = n
     
         # Resize the 2nd dimension      
-        mean[i_batch][i_tally] = [None for x in range(t.n_filter_bins)]
-        uncert[i_batch][i_tally] = [None for x in range(t.n_filter_bins)]
-        scoreType[i_batch][i_tally] = [None for x in range(t.n_filter_bins)]
+        mean[i_batch][i_tally] = [None for x in range(t.total_filter_bins)]
+        uncert[i_batch][i_tally] = [None for x in range(t.total_filter_bins)]
+        scoreType[i_batch][i_tally] = [None for x in range(t.total_filter_bins)]
         
-        for i_filter in range(t.n_filter_bins):
+        for i_filter in range(t.total_filter_bins):
             # Resize the 3rd dimension            
             mean[i_batch][i_tally][i_filter] = [None for x in range(t.n_nuclides)]
             uncert[i_batch][i_tally][i_filter] = [None for x in range(t.n_nuclides)]
             scoreType[i_batch][i_tally][i_filter] = [None for x in range(t.n_nuclides)]
-            print(t.n_filter_bins,t.n_nuclides)            
+            print(t.total_filter_bins,t.n_nuclides)            
             for i_nuclide in range(t.n_nuclides):
                 mean[i_batch][i_tally][i_filter][i_nuclide] = \
                     [None for x in range(t.n_scores)]

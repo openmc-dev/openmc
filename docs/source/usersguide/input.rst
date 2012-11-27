@@ -824,6 +824,9 @@ The following responses can be tallied.
   :nu-fission:
     Total production of neutrons due to fission
 
+  :events:
+    Number of scoring events
+
 ``<mesh>`` Element
 ------------------
 

@@ -27,21 +27,21 @@ contains
     real(8) :: c  ! polynomial coefficient
 
     if (nuc % nu_t_type == NU_NONE) then
-       message = "No neutron emission data for table: " // nuc % name
-       call fatal_error()
+      message = "No neutron emission data for table: " // nuc % name
+      call fatal_error()
     elseif (nuc % nu_t_type == NU_POLYNOMIAL) then
-       ! determine number of coefficients
-       NC = int(nuc % nu_t_data(1))
+      ! determine number of coefficients
+      NC = int(nuc % nu_t_data(1))
 
-       ! sum up polynomial in energy
-       nu = ZERO
-       do i = 0, NC - 1
-          c = nuc % nu_t_data(i+2)
-          nu = nu + c * E**i
-       end do
+      ! sum up polynomial in energy
+      nu = ZERO
+      do i = 0, NC - 1
+        c = nuc % nu_t_data(i+2)
+        nu = nu + c * E**i
+      end do
     elseif (nuc % nu_t_type == NU_TABULAR) then
-       ! use ENDF interpolation laws to determine nu
-       nu = interpolate_tab1(nuc % nu_t_data, E)
+      ! use ENDF interpolation laws to determine nu
+      nu = interpolate_tab1(nuc % nu_t_data, E)
     end if
 
   end function nu_total
@@ -62,24 +62,24 @@ contains
     real(8) :: c  ! polynomial coefficient
 
     if (nuc % nu_p_type == NU_NONE) then
-       ! since no prompt or delayed data is present, this means all neutron
-       ! emission is prompt -- WARNING: This currently returns zero. The calling
-       ! routine needs to know this situation is occurring since we don't want
-       ! to call nu_total unnecessarily if it's already been called
-       nu = ZERO
+      ! since no prompt or delayed data is present, this means all neutron
+      ! emission is prompt -- WARNING: This currently returns zero. The calling
+      ! routine needs to know this situation is occurring since we don't want
+      ! to call nu_total unnecessarily if it's already been called
+      nu = ZERO
     elseif (nuc % nu_p_type == NU_POLYNOMIAL) then
-       ! determine number of coefficients
-       NC = int(nuc % nu_p_data(1))
+      ! determine number of coefficients
+      NC = int(nuc % nu_p_data(1))
 
-       ! sum up polynomial in energy
-       nu = ZERO
-       do i = 0, NC - 1
-          c = nuc % nu_p_data(i+2)
-          nu = nu + c * E**i
-       end do
+      ! sum up polynomial in energy
+      nu = ZERO
+      do i = 0, NC - 1
+        c = nuc % nu_p_data(i+2)
+        nu = nu + c * E**i
+      end do
     elseif (nuc % nu_p_type == NU_TABULAR) then
-       ! use ENDF interpolation laws to determine nu
-       nu = interpolate_tab1(nuc % nu_p_data, E)
+      ! use ENDF interpolation laws to determine nu
+      nu = interpolate_tab1(nuc % nu_p_data, E)
     end if
 
   end function nu_prompt
@@ -96,10 +96,10 @@ contains
     real(8)                :: nu  ! number of delayed neutrons emitted per fission
 
     if (nuc % nu_d_type == NU_NONE) then
-       nu = ZERO
+      nu = ZERO
     elseif (nuc % nu_d_type == NU_TABULAR) then
-       ! use ENDF interpolation laws to determine nu
-       nu = interpolate_tab1(nuc % nu_d_data, E)
+      ! use ENDF interpolation laws to determine nu
+      nu = interpolate_tab1(nuc % nu_d_data, E)
     end if
 
   end function nu_delayed

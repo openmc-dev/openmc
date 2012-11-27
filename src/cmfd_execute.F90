@@ -66,6 +66,7 @@ contains
     if (cmfd_hold_weights) then
       message = 'Not Modifying Weights - Albedo estimate not good, increase batch size.'
       call warning() 
+      cmfd_hold_weights = .false.
       if (cmfd_feedback) call cmfd_reweight(.false.)
       leave_cmfd = .true. 
     end if
@@ -144,7 +145,7 @@ contains
     use global,            only: cmfd_begin, cmfd_on,                        &
                                  cmfd_tally_on, n_inactive,                  &
                                  cmfd_inact_flush, cmfd_act_flush, cmfd_run, &
-                                 current_batch
+                                 current_batch, cmfd_hold_weights
 
     ! check to activate CMFD diffusion and possible feedback
     ! this guarantees that when cmfd begins at least one batch of tallies are
@@ -152,6 +153,8 @@ contains
     if (cmfd_run .and. cmfd_begin == current_batch) then
       cmfd_on = .true.
       cmfd_tally_on = .true.
+      cmfd_hold_weights = .true.
+      call cmfd_tally_reset()
     end if
 
     ! check to flush cmfd tallies for active batches, no more inactive flush
@@ -167,8 +170,8 @@ contains
 !    if (cmfd_run .and. current_batch < n_inactive .and. mod(current_batch-1,cmfd_inact_flush(1))   &
 !       == 0 .and. cmfd_inact_flush(2) >= 0) then
     if (cmfd_run .and. mod(current_batch,cmfd_inact_flush(1))   &
-       == 0 .and. cmfd_inact_flush(2) > 0) then
-
+       == 0 .and. cmfd_inact_flush(2) > 0 .and. cmfd_begin < current_batch) then
+        cmfd_hold_weights = .true.
         call cmfd_tally_reset()
         cmfd_inact_flush(2) = cmfd_inact_flush(2) - 1
     end if

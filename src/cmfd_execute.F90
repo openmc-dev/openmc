@@ -2,7 +2,7 @@ module cmfd_execute
 
 !==============================================================================
 ! CMFD_EXECUTE -- This module is the highest level cmfd module that controls the
-! cross section generation, diffusion calculation, and MC21 source re-weighting
+! cross section generation, diffusion calculation, and source re-weighting
 !==============================================================================
 
   implicit none

@@ -114,7 +114,7 @@ contains
 
     nskip = n
     do while (nskip < 0_8)
-       nskip = nskip + prn_mod
+      nskip = nskip + prn_mod
     end do
 
     ! Make sure nskip is less than 2^M
@@ -132,16 +132,16 @@ contains
     g_new = 1
     c_new = 0
     BIT_LOOP: do while (nskip > 0_8)
-       ! Check if least significant bit is 1
-       if (btest(nskip,0)) then
-          g_new = iand(g_new*g, prn_mask)
-          c_new = iand(c_new*g + c, prn_mask)
-       endif
-       c = iand((g+1)*c, prn_mask)
-       g = iand(g*g, prn_mask)
+      ! Check if least significant bit is 1
+      if (btest(nskip,0)) then
+        g_new = iand(g_new*g, prn_mask)
+        c_new = iand(c_new*g + c, prn_mask)
+      endif
+      c = iand((g+1)*c, prn_mask)
+      g = iand(g*g, prn_mask)
 
-       ! Move bits right, dropping least significant bit
-       nskip = ishft(nskip, -1)
+      ! Move bits right, dropping least significant bit
+      nskip = ishft(nskip, -1)
     end do BIT_LOOP
 
     ! With G and C, we can now find the new seed

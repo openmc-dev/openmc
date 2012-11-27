@@ -37,28 +37,28 @@ contains
     i_end = 0
     n = 0
     do i = 1, len_trim(string)
-       chr = string(i:i)
+      chr = string(i:i)
 
-       ! Note that ACHAR(9) is a horizontal tab
-       if ((i_start == 0) .and. (chr /= ' ') .and. (chr /= achar(9))) then
-          i_start = i
-       end if
-       if (i_start > 0) then
-          if ((chr == ' ') .or. (chr == achar(9))) i_end = i - 1
-          if (i == len_trim(string))   i_end = i
-          if (i_end > 0) then
-             n = n + 1
-             if (i_end - i_start + 1 > len(words(n))) then
-                message = "The word '" // string(i_start:i_end) // &
-                     "' is longer than the space allocated for it."
-                call warning()
-             end if
-             words(n) = string(i_start:i_end)
-             ! reset indices
-             i_start = 0
-             i_end = 0
+      ! Note that ACHAR(9) is a horizontal tab
+      if ((i_start == 0) .and. (chr /= ' ') .and. (chr /= achar(9))) then
+        i_start = i
+      end if
+      if (i_start > 0) then
+        if ((chr == ' ') .or. (chr == achar(9))) i_end = i - 1
+        if (i == len_trim(string))   i_end = i
+        if (i_end > 0) then
+          n = n + 1
+          if (i_end - i_start + 1 > len(words(n))) then
+            message = "The word '" // string(i_start:i_end) // &
+                 "' is longer than the space allocated for it."
+            call warning()
           end if
-       end if
+          words(n) = string(i_start:i_end)
+          ! reset indices
+          i_start = 0
+          i_end = 0
+        end if
+      end if
     end do
 
   end subroutine split_string
@@ -89,36 +89,36 @@ contains
     i_end = 0
     n = 0
     do i = 1, len_trim(string)
-       chr = string(i:i)
+      chr = string(i:i)
 
-       ! Check for special characters
-       if (index('():#', chr) > 0) then
-          if (i_start > 0) then
-             i_end = i - 1
-             n = n + 1
-             words(n) = string(i_start:i_end)
-          end if
+      ! Check for special characters
+      if (index('():#', chr) > 0) then
+        if (i_start > 0) then
+          i_end = i - 1
           n = n + 1
-          words(n) = chr
+          words(n) = string(i_start:i_end)
+        end if
+        n = n + 1
+        words(n) = chr
+        i_start = 0
+        i_end = 0
+        cycle
+      end if
+
+      if ((i_start == 0) .and. (chr /= ' ')) then
+        i_start = i
+      end if
+      if (i_start > 0) then
+        if (chr == ' ')           i_end = i - 1
+        if (i == len_trim(string)) i_end = i
+        if (i_end > 0) then
+          n = n + 1
+          words(n) = string(i_start:i_end)
+          ! reset indices
           i_start = 0
           i_end = 0
-          cycle
-       end if
-
-       if ((i_start == 0) .and. (chr /= ' ')) then
-          i_start = i
-       end if
-       if (i_start > 0) then
-          if (chr == ' ')           i_end = i - 1
-          if (i == len_trim(string)) i_end = i
-          if (i_end > 0) then
-             n = n + 1
-             words(n) = string(i_start:i_end)
-             ! reset indices
-             i_start = 0
-             i_end = 0
-          end if
-       end if
+        end if
+      end if
     end do
   end subroutine split_string_wl
 
@@ -143,7 +143,7 @@ contains
     string = words(1)
     if (n_words == 1) return
     do i = 2, n_words
-       string = trim(string) // ' ' // words(i)
+      string = trim(string) // ' ' // words(i)
     end do
 
   end function concatenate
@@ -160,8 +160,8 @@ contains
     integer :: ic
 
     do i = 1, len(word)
-       ic = ichar(word(i:i))
-       if (ic >= 65 .and. ic < 90) word(i:i) = char(ic+32)
+      ic = ichar(word(i:i))
+      if (ic >= 65 .and. ic < 90) word(i:i) = char(ic+32)
     end do
 
   end subroutine lower_case
@@ -178,8 +178,8 @@ contains
     integer :: ic
 
     do i = 1, len(word)
-       ic = ichar(word(i:i))
-       if (ic >= 97 .and. ic < 122) word(i:i) = char(ic-32)
+      ic = ichar(word(i:i))
+      if (ic >= 97 .and. ic < 122) word(i:i) = char(ic-32)
     end do
 
   end subroutine upper_case
@@ -198,10 +198,10 @@ contains
 
     number = .true.
     do i = 1, len_trim(word)
-       ic = ichar(word(i:i))
-       if (ic < 48 .or. ic >= 58) number = .false.
+      ic = ichar(word(i:i))
+      if (ic < 48 .or. ic >= 58) number = .false.
     end do
-    
+
   end function is_number
 
 !===============================================================================
@@ -225,16 +225,16 @@ contains
     ! determine how many spaces are at beginning of string
     i_start = 0
     do i = 1, str_len
-       if (str(i:i) == ' ' .or. str(i:i) == achar(9)) cycle
-       i_start = i
-       exit
+      if (str(i:i) == ' ' .or. str(i:i) == achar(9)) cycle
+      i_start = i
+      exit
     end do
 
     ! Check if string starts with sequence using INDEX intrinsic
     if (index(str(1:str_len), seq(1:seq_len)) == i_start) then
-       starts_with = .true.
+      starts_with = .true.
     else
-       starts_with = .false.
+      starts_with = .false.
     end if
 
   end function starts_with
@@ -261,9 +261,9 @@ contains
 
     ! Check if string starts with sequence using INDEX intrinsic
     if (index(str(1:str_len), seq(1:seq_len), .true.) == i_start) then
-       ends_with = .true.
+      ends_with = .true.
     else
-       ends_with = .false.
+      ends_with = .false.
     end if
 
   end function ends_with
@@ -351,13 +351,13 @@ contains
     index_exponent = max(index(string, 'd'), index(string, 'D'), &
          index(string, 'e'), index(string, 'E'))
     if (index_decimal > 0) then
-       if (index_exponent > 0) then
-          d = index_exponent - index_decimal - 1
-       else
-          d = w - index_decimal
-       end if
+      if (index_exponent > 0) then
+        d = index_exponent - index_decimal - 1
+      else
+        d = w - index_decimal
+      end if
     else
-       d = 0
+      d = 0
     end if
 
     ! Create format specifier for reading string
@@ -391,31 +391,31 @@ contains
 
     ! set number of places after decimal
     if (present(sig_digits)) then
-       decimal = sig_digits
+      decimal = sig_digits
     else
-       decimal = 6
+      decimal = 6
     end if
 
     ! Create format specifier for writing character
     num2 = abs(num)
     if (num2 == 0.0_8) then
-       write(fmt, '("(F",I2,".",I2,")")') width, 1
+      write(fmt, '("(F",I2,".",I2,")")') width, 1
     elseif (num2 < 1.0e-1_8) then
-       write(fmt, '("(ES",I2,".",I2,")")') width, decimal - 1
+      write(fmt, '("(ES",I2,".",I2,")")') width, decimal - 1
     elseif (num2 >= 1.0e-1_8 .and. num2 < 1.0_8) then
-       write(fmt, '("(F",I2,".",I2,")")') width, decimal
+      write(fmt, '("(F",I2,".",I2,")")') width, decimal
     elseif (num2 >= 1.0_8 .and. num2 < 10.0_8) then
-       write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-1, 0)
+      write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-1, 0)
     elseif (num2 >= 10.0_8 .and. num2 < 100.0_8) then
-       write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-2, 0)
+      write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-2, 0)
     elseif (num2 >= 100.0_8 .and. num2 < 1000.0_8) then
-       write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-3, 0)
+      write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-3, 0)
     elseif (num2 >= 100.0_8 .and. num2 < 10000.0_8) then
-       write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-4, 0)
+      write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-4, 0)
     elseif (num2 >= 10000.0_8 .and. num2 < 100000.0_8) then
-       write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-5, 0)
+      write(fmt, '("(F",I2,".",I2,")")') width, max(decimal-5, 0)
     else
-       write(fmt, '("(ES",I2,".",I2,")")') width, decimal - 1
+      write(fmt, '("(ES",I2,".",I2,")")') width, decimal - 1
     end if
 
     ! Write string and left adjust

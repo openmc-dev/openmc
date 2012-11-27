@@ -173,19 +173,18 @@ contains
     use mesh_header,    only: StructuredMesh
     use string
     use tally,          only: setup_active_cmfdtallies
-    use tally_header,   only: TallyObject, TallyScore
+    use tally_header,   only: TallyObject, TallyScore, TallyFilter
     use xml_data_cmfd_t
 
     integer :: i           ! loop counter
-    integer :: id          ! user-specified identifier
-    integer :: i_mesh      ! index in mesh array
     integer :: n           ! size of arrays in mesh specification
     integer :: ng          ! number of energy groups (default 1)
     integer :: n_filters   ! number of filters
-    integer :: filters(N_FILTER_TYPES) ! temp list of filters
+    integer :: i_filter_mesh ! index for mesh filter
     character(MAX_LINE_LEN) :: filename
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
+    type(TallyFilter) :: filters(N_FILTER_TYPES) ! temporary filters
 
     ! parse cmfd.xml file
      filename = trim(path_input) // "cmfd.xml"
@@ -318,23 +317,30 @@ contains
     ! begin loop around tallies
     do i = n_user_tallies+1, n_tallies
 
-      ! set n filters to 0
-      n_filters = 0
-      filters = 0
-
       ! point t to tally variable
       t => tallies(i)
 
       ! set reset property
       if (reset_) t % reset = .true.
 
-      ! allocate arrays for number of bins and stride in scores array
-      allocate(t % n_filter_bins(N_FILTER_TYPES))
-      allocate(t % stride(N_FILTER_TYPES))
+      ! set up mesh filter
+      n_filters = 1
+      filters(n_filters) % type = FILTER_MESH
+      filters(n_filters) % n_bins = product(m % dimension)
+      allocate(filters(n_filters) % int_bins(1))
+      filters(n_filters) % int_bins(1) = n_user_meshes + 1
+      t % find_filter(FILTER_MESH) = n_filters
 
-      ! initialize number of bins and stride
-      t % n_filter_bins = 0
-      t % stride = 0
+      ! read and set incoming energy mesh filter
+      if (associated(mesh_ % energy)) then
+        n_filters = n_filters + 1
+        filters(n_filters) % type = FILTER_ENERGYIN
+        ng = size(mesh_ % energy)
+        filters(n_filters) % n_bins = ng - 1
+        allocate(filters(n_filters) % real_bins(ng))
+        filters(n_filters) % real_bins = mesh_ % energy
+        t % find_filter(FILTER_ENERGYIN) = n_filters
+      end if
 
       ! set number of nucilde bins
       allocate(t % nuclide_bins(1))
@@ -344,24 +350,10 @@ contains
       ! record tally id which is equivalent to loop number
       t % id = i
 
-      ! set mesh filter mesh id
-      t % mesh = n_user_meshes + 1
-      t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) + &
-           product(m % dimension)
-      n_filters = n_filters + 1
-      filters(n_filters) = FILTER_MESH
-
-      ! read and set incoming energy mesh filter
-      if (associated(mesh_ % energy)) then
-        ng = size(mesh_ % energy)
-        allocate(t % energy_in(ng))
-        t % energy_in = mesh_ % energy 
-        t % n_filter_bins(FILTER_ENERGYIN) = ng - 1
-        n_filters = n_filters + 1
-        filters(n_filters) = FILTER_ENERGYIN
-      end if
-
       if (i == n_user_tallies + 1) then
+
+        ! set label
+        t % label = "CMFD flux, total, scatter-1, diffusion"
 
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
@@ -389,6 +381,9 @@ contains
 
       else if (i == n_user_tallies + 2) then
 
+        ! set label
+        t % label = "CMFD neutron production"
+
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
 
@@ -397,18 +392,23 @@ contains
 
         ! read and set outgoing energy mesh filter
         if (associated(mesh_ % energy)) then
-          ng = size(mesh_ % energy)
-          allocate(t % energy_out(ng))
-          t % energy_out = mesh_ % energy 
-          t % n_filter_bins(FILTER_ENERGYOUT) = ng - 1
           n_filters = n_filters + 1
-          filters(n_filters) = FILTER_ENERGYOUT
+          filters(n_filters) % type = FILTER_ENERGYOUT
+          ng = size(mesh_ % energy)
+          filters(n_filters) % n_bins = ng - 1
+          allocate(filters(n_filters) % real_bins(ng))
+          filters(n_filters) % real_bins = mesh_ % energy
+          t % find_filter(FILTER_ENERGYOUT) = n_filters
         end if
 
         ! allocate and set filters
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
         t % filters = filters(1:n_filters)
+
+        ! deallocate filters bins array
+        if (associated(mesh_ % energy)) &
+             deallocate(filters(n_filters) % real_bins)
 
         ! allocate macro reactions
         allocate(t % score_bins(2))
@@ -423,13 +423,33 @@ contains
 
       else if (i == n_user_tallies + 3) then
 
+        ! set label
+        t % label = "CMFD surface currents"
+
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
+
+        ! Add extra filter for surface
+        n_filters = n_filters + 1
+        filters(n_filters) % type = FILTER_SURFACE
+        filters(n_filters) % n_bins = 2 * m % n_dimension
+        allocate(filters(n_filters) % int_bins(2 * m % n_dimension))
+        if (m % n_dimension == 2) then
+          filters(n_filters) % int_bins = (/ IN_RIGHT, OUT_RIGHT, IN_FRONT, &
+               OUT_FRONT /)
+        elseif (m % n_dimension == 3) then
+          filters(n_filters) % int_bins = (/ IN_RIGHT, OUT_RIGHT, IN_FRONT, &
+               OUT_FRONT, IN_TOP, OUT_TOP /)
+        end if
+        t % find_filter(FILTER_SURFACE) = n_filters
 
         ! allocate and set filters
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
         t % filters = filters(1:n_filters)
+
+        ! deallocate filters bins array
+        deallocate(filters(n_filters) % int_bins)
 
         ! allocate macro reactions
         allocate(t % score_bins(1))
@@ -439,31 +459,19 @@ contains
         t % score_bins(1) = SCORE_CURRENT
         t % type = TALLY_SURFACE_CURRENT
 
-        ! since the number of bins for the mesh filter was already set
-        ! assuming it was a flux tally, we need to adjust the number of
-        ! bins
-        t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) &
-             - product(m % dimension)
-
-        ! get pointer to mesh
-        id = t % mesh
-        i_mesh = dict_get_key(mesh_dict, id)
-        m => meshes(i_mesh)
-
         ! we need to increase the dimension by one since we also need
         ! currents coming into and out of the boundary mesh cells.
-        if (size(m % dimension) == 2) then  ! these lines need changing
-          t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) + &
-               product(m % dimension + 1) * 4
-        elseif (size(m % dimension) == 3) then
-          t % n_filter_bins(FILTER_MESH) = t % n_filter_bins(FILTER_MESH) + &
-               product(m % dimension + 1) * 6
-        end if
+        i_filter_mesh = t % find_filter(FILTER_MESH)
+        t % filters(i_filter_mesh) % n_bins = product(m % dimension + 1)
 
         ! Increment the appropriate index and set pointer
         current_tallies(n_user_current_tallies + 1) = i 
 
       end if
+
+      ! deallocate filter bins
+      deallocate(filters(1) % int_bins)
+      if (associated(mesh_ % energy)) deallocate(filters(2) % real_bins)
 
     end do
 

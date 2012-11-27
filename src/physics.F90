@@ -43,23 +43,23 @@ contains
 
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
-       message = "Simulating Particle " // trim(to_str(p % id))
-       call write_message()
+      message = "Simulating Particle " // trim(to_str(p % id))
+      call write_message()
     end if
 
     ! If the cell hasn't been determined based on the particle's location,
     ! initiate a search for the current cell
     if (p % coord % cell == NONE) then
-       call find_cell(found_cell)
+      call find_cell(found_cell)
 
-       ! Particle couldn't be located
-       if (.not. found_cell) then
-          message = "Could not locate particle " // trim(to_str(p % id))
-          call fatal_error()
-       end if
+      ! Particle couldn't be located
+      if (.not. found_cell) then
+        message = "Could not locate particle " // trim(to_str(p % id))
+        call fatal_error()
+      end if
 
-       ! set birth cell attribute
-       p % cell_born = p % coord % cell
+      ! set birth cell attribute
+      p % cell_born = p % coord % cell
     end if
 
     ! Initialize number of events to zero
@@ -73,106 +73,106 @@ contains
 
     do while (p % alive)
 
-       ! Calculate microscopic and macroscopic cross sections -- note: if the
-       ! material is the same as the last material and the energy of the
-       ! particle hasn't changed, we don't need to lookup cross sections again.
+      ! Calculate microscopic and macroscopic cross sections -- note: if the
+      ! material is the same as the last material and the energy of the
+      ! particle hasn't changed, we don't need to lookup cross sections again.
 
-       if (p % material /= p % last_material) call calculate_xs()
+      if (p % material /= p % last_material) call calculate_xs()
 
-       ! Find the distance to the nearest boundary
-       call distance_to_boundary(d_boundary, surface_crossed, lattice_crossed)
+      ! Find the distance to the nearest boundary
+      call distance_to_boundary(d_boundary, surface_crossed, lattice_crossed)
 
-       ! Sample a distance to collision
-       if (material_xs % total == ZERO) then
-          d_collision = INFINITY
-       else
-          d_collision = -log(prn()) / material_xs % total
-       end if
-       
-       ! Select smaller of the two distances
-       distance = min(d_boundary, d_collision)
+      ! Sample a distance to collision
+      if (material_xs % total == ZERO) then
+        d_collision = INFINITY
+      else
+        d_collision = -log(prn()) / material_xs % total
+      end if
 
-       ! Advance particle
-       coord => p % coord0
-       do while (associated(coord))
-          coord % xyz = coord % xyz + distance * coord % uvw
-          coord => coord % next
-       end do
+      ! Select smaller of the two distances
+      distance = min(d_boundary, d_collision)
 
-       ! Score track-length tallies
-       if (associated(active_tracklength_tallies)) &
-            call score_tracklength_tally(distance)
+      ! Advance particle
+      coord => p % coord0
+      do while (associated(coord))
+        coord % xyz = coord % xyz + distance * coord % uvw
+        coord => coord % next
+      end do
 
-       ! Score global tracklength tallies
-       if (tallies_on) then
-          ! Score track-length estimate of k-eff
-          call add_to_score(global_tallies(K_TRACKLENGTH), &
-               p % wgt * distance * material_xs % nu_fission)
-       end if
+      ! Score track-length tallies
+      if (associated(active_tracklength_tallies)) &
+           call score_tracklength_tally(distance)
 
-       if (d_collision > d_boundary) then
-          ! ====================================================================
-          ! PARTICLE CROSSES SURFACE
+      ! Score global tracklength tallies
+      if (tallies_on) then
+        ! Score track-length estimate of k-eff
+        call add_to_score(global_tallies(K_TRACKLENGTH), &
+             p % wgt * distance * material_xs % nu_fission)
+      end if
 
-          last_cell = p % coord % cell
-          p % coord % cell = NONE
-          if (lattice_crossed /= NONE) then
-             ! Particle crosses lattice boundary
-             p % surface = NONE
-             call cross_lattice(lattice_crossed)
-             p % event = EVENT_LATTICE
-          else
-             ! Particle crosses surface
-             p % surface = surface_crossed
-             call cross_surface(last_cell)
-             p % event = EVENT_SURFACE
-          end if
-       else
-          ! ====================================================================
-          ! PARTICLE HAS COLLISION
+      if (d_collision > d_boundary) then
+        ! ====================================================================
+        ! PARTICLE CROSSES SURFACE
 
-          ! Score collision estimate of keff
-          if (tallies_on) then
-             call add_to_score(global_tallies(K_COLLISION), &
-                  p % wgt * material_xs % nu_fission / material_xs % total)
-          end if
-
+        last_cell = p % coord % cell
+        p % coord % cell = NONE
+        if (lattice_crossed /= NONE) then
+          ! Particle crosses lattice boundary
           p % surface = NONE
-          call collision()
+          call cross_lattice(lattice_crossed)
+          p % event = EVENT_LATTICE
+        else
+          ! Particle crosses surface
+          p % surface = surface_crossed
+          call cross_surface(last_cell)
+          p % event = EVENT_SURFACE
+        end if
+      else
+        ! ====================================================================
+        ! PARTICLE HAS COLLISION
 
-          ! Save coordinates for tallying purposes
-          p % last_xyz = p % coord0 % xyz
+        ! Score collision estimate of keff
+        if (tallies_on) then
+          call add_to_score(global_tallies(K_COLLISION), &
+               p % wgt * material_xs % nu_fission / material_xs % total)
+        end if
 
-          ! Set last material to none since cross sections will need to be
-          ! re-evaluated
-          p % last_material = NONE
+        p % surface = NONE
+        call collision()
 
-          ! Set all uvws to base level -- right now, after a collision, only the
-          ! base level uvws are changed
-          coord => p % coord0
-          do while(associated(coord % next))
-             if (coord % next % rotated) then
-                ! If next level is rotated, apply rotation matrix
-                coord % next % uvw = matmul(cells(coord % cell) % &
-                     rotation, coord % uvw)
-             else
-                ! Otherwise, copy this level's direction
-                coord % next % uvw = coord % uvw
-             end if
+        ! Save coordinates for tallying purposes
+        p % last_xyz = p % coord0 % xyz
 
-             ! Advance coordinate level
-             coord => coord % next
-          end do
-       end if
+        ! Set last material to none since cross sections will need to be
+        ! re-evaluated
+        p % last_material = NONE
 
-       ! If particle has too many events, display warning and kill it
-       n_event = n_event + 1
-       if (n_event == MAX_EVENTS) then
-          message = "Particle " // trim(to_str(p%id)) // " underwent maximum &
-               &number of events."
-          call warning()
-          p % alive = .false.
-       end if
+        ! Set all uvws to base level -- right now, after a collision, only the
+        ! base level uvws are changed
+        coord => p % coord0
+        do while(associated(coord % next))
+          if (coord % next % rotated) then
+            ! If next level is rotated, apply rotation matrix
+            coord % next % uvw = matmul(cells(coord % cell) % &
+                 rotation, coord % uvw)
+          else
+            ! Otherwise, copy this level's direction
+            coord % next % uvw = coord % uvw
+          end if
+
+          ! Advance coordinate level
+          coord => coord % next
+        end do
+      end if
+
+      ! If particle has too many events, display warning and kill it
+      n_event = n_event + 1
+      if (n_event == MAX_EVENTS) then
+        message = "Particle " // trim(to_str(p%id)) // " underwent maximum &
+             &number of events."
+        call warning()
+        p % alive = .false.
+      end if
 
     end do
 
@@ -204,25 +204,25 @@ contains
 
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
-       select case (p % event)
-       case (EVENT_SCATTER)
-          message = "    Scattered off of"
-       case (EVENT_FISSION)
-          message = "    Fissioned in"
-       case (EVENT_ABSORB)
-          message = "    Absorbed in"
-       end select
-       message = trim(message) // " " // trim(nuclides(&
-            p % event_nuclide) % name) // ". Energy = " // &
-            trim(to_str(p % E * 1e6_8)) // " eV." 
-       call write_message()
+      select case (p % event)
+      case (EVENT_SCATTER)
+        message = "    Scattered off of"
+      case (EVENT_FISSION)
+        message = "    Fissioned in"
+      case (EVENT_ABSORB)
+        message = "    Absorbed in"
+      end select
+      message = trim(message) // " " // trim(nuclides(&
+           p % event_nuclide) % name) // ". Energy = " // &
+           trim(to_str(p % E * 1e6_8)) // " eV." 
+      call write_message()
     end if
 
     ! check for very low energy
     if (p % E < 1.0e-100_8) then
-       p % alive = .false.
-       message = "Killing neutron with extremely low energy"
-       call warning()
+      p % alive = .false.
+      message = "Killing neutron with extremely low energy"
+      call warning()
     end if
 
     ! Score collision estimator tallies for any macro tallies -- this is done
@@ -272,21 +272,21 @@ contains
 
     i = 0
     do while (prob < cutoff)
-       i = i + 1
+      i = i + 1
 
-       ! Check to make sure that a nuclide was sampled
-       if (i > mat % n_nuclides) then
-          message = "Did not sample any nuclide during collision."
-          call fatal_error()
-       end if
+      ! Check to make sure that a nuclide was sampled
+      if (i > mat % n_nuclides) then
+        message = "Did not sample any nuclide during collision."
+        call fatal_error()
+      end if
 
-       ! Find atom density and microscopic total cross section
-       i_nuclide    = mat % nuclide(i)
-       atom_density = mat % atom_density(i)
-       sigma        = atom_density * micro_xs(i_nuclide) % total
+      ! Find atom density and microscopic total cross section
+      i_nuclide    = mat % nuclide(i)
+      atom_density = mat % atom_density(i)
+      sigma        = atom_density * micro_xs(i_nuclide) % total
 
-       ! Increment probability to compare to cutoff
-       prob = prob + sigma
+      ! Increment probability to compare to cutoff
+      prob = prob + sigma
     end do
 
     ! Get pointer to table, nuclide grid index and interpolation factor
@@ -301,122 +301,122 @@ contains
     ! DISAPPEARANCE REACTIONS (ANALOG) OR IMPLICIT CAPTURE (SURVIVAL BIASING)
 
     if (survival_biasing) then
-       ! adjust weight of particle by probability of absorption
-       p % wgt = p % wgt * (ONE - micro_xs(i_nuclide) % absorption / &
-            micro_xs(i_nuclide) % total)
+      ! adjust weight of particle by probability of absorption
+      p % wgt = p % wgt * (ONE - micro_xs(i_nuclide) % absorption / &
+           micro_xs(i_nuclide) % total)
 
     else
-       ! set cutoff variable for analog cases
-       cutoff = prn() * micro_xs(i_nuclide) % total
-       prob = ZERO
+      ! set cutoff variable for analog cases
+      cutoff = prn() * micro_xs(i_nuclide) % total
+      prob = ZERO
 
-       ! Add disappearance cross-section to prob
-       prob = prob + micro_xs(i_nuclide) % absorption - &
-            micro_xs(i_nuclide) % fission
+      ! Add disappearance cross-section to prob
+      prob = prob + micro_xs(i_nuclide) % absorption - &
+           micro_xs(i_nuclide) % fission
 
-       ! See if disappearance reaction happens
-       if (prob > cutoff) then
-          p % alive = .false.
-          p % event = EVENT_ABSORB
-          return
-       end if
+      ! See if disappearance reaction happens
+      if (prob > cutoff) then
+        p % alive = .false.
+        p % event = EVENT_ABSORB
+        return
+      end if
     end if
 
     ! ==========================================================================
     ! FISSION EVENTS (ANALOG) OR BANK EXPECTED FISSION SITES (IMPLICIT)
 
     if (nuc % fissionable) then
-       ! If survival biasing is turned on, then no fission events actually occur
-       ! since absorption is treated implicitly. However, we still need to bank
-       ! sites so we sample a fission reaction (if there are multiple) and bank
-       ! the expected number of fission neutrons created.
+      ! If survival biasing is turned on, then no fission events actually occur
+      ! since absorption is treated implicitly. However, we still need to bank
+      ! sites so we sample a fission reaction (if there are multiple) and bank
+      ! the expected number of fission neutrons created.
 
-       if (survival_biasing) then
-          cutoff = prn() * micro_xs(i_nuclide) % fission
-          prob = ZERO
-       end if
-          
-       if (micro_xs(i_nuclide) % use_ptable) then
+      if (survival_biasing) then
+        cutoff = prn() * micro_xs(i_nuclide) % fission
+        prob = ZERO
+      end if
 
-          ! In the case that the particle is in the unresolved resonance region
-          ! and probability tables are being used, we should only check the
-          ! first fission reaction
+      if (micro_xs(i_nuclide) % use_ptable) then
 
-          prob = prob + micro_xs(i_nuclide) % fission
+        ! In the case that the particle is in the unresolved resonance region
+        ! and probability tables are being used, we should only check the
+        ! first fission reaction
 
-          if (prob > cutoff) then
-             rxn => nuc % reactions(nuc % index_fission(1))
-             call create_fission_sites(i_nuclide, rxn)
+        prob = prob + micro_xs(i_nuclide) % fission
 
-             ! With no survival biasing, the particle is absorbed and so its
-             ! life is over
-             if (.not. survival_biasing) then
-                p % alive = .false.
-                p % event = EVENT_FISSION
-                return
-             end if
+        if (prob > cutoff) then
+          rxn => nuc % reactions(nuc % index_fission(1))
+          call create_fission_sites(i_nuclide, rxn)
+
+          ! With no survival biasing, the particle is absorbed and so its
+          ! life is over
+          if (.not. survival_biasing) then
+            p % alive = .false.
+            p % event = EVENT_FISSION
+            return
           end if
-          
-       else
-          ! With no probability tables, we need to loop through each fission
-          ! reaction type -- note that this loop still works even if there is
-          ! only one fission reaction
+        end if
 
-          FISSION_REACTION_LOOP: do i = 1, nuc % n_fission
-             rxn => nuc % reactions(nuc % index_fission(i))
+      else
+        ! With no probability tables, we need to loop through each fission
+        ! reaction type -- note that this loop still works even if there is
+        ! only one fission reaction
 
-             ! if energy is below threshold for this reaction, skip it
-             if (i_grid < rxn % threshold) cycle
+        FISSION_REACTION_LOOP: do i = 1, nuc % n_fission
+          rxn => nuc % reactions(nuc % index_fission(i))
 
-             ! add to cumulative probability
-             if (nuc % has_partial_fission) then
-                prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) & 
-                     + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
-             else
-                prob = prob + micro_xs(i_nuclide) % fission
-             end if
+          ! if energy is below threshold for this reaction, skip it
+          if (i_grid < rxn % threshold) cycle
 
-             ! Create fission bank sites if fission occus
-             if (prob > cutoff) then
-                call create_fission_sites(i_nuclide, rxn)
+          ! add to cumulative probability
+          if (nuc % has_partial_fission) then
+            prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) & 
+                 + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+          else
+            prob = prob + micro_xs(i_nuclide) % fission
+          end if
 
-                if (survival_biasing) then
-                   ! Since a fission reaction has been sampled, we can exit this
-                   ! loop
-                   exit FISSION_REACTION_LOOP
-                else
-                   ! With no survival biasing, the particle is absorbed and so
-                   ! its life is over
-                   p % alive = .false.
-                   p % event = EVENT_FISSION
-                   return
-                end if
-             end if
-          end do FISSION_REACTION_LOOP
+          ! Create fission bank sites if fission occus
+          if (prob > cutoff) then
+            call create_fission_sites(i_nuclide, rxn)
 
-       end if
+            if (survival_biasing) then
+              ! Since a fission reaction has been sampled, we can exit this
+              ! loop
+              exit FISSION_REACTION_LOOP
+            else
+              ! With no survival biasing, the particle is absorbed and so
+              ! its life is over
+              p % alive = .false.
+              p % event = EVENT_FISSION
+              return
+            end if
+          end if
+        end do FISSION_REACTION_LOOP
+
+      end if
     end if
 
     ! ==========================================================================
     ! WEIGHT CUTOFF (SURVIVAL BIASING ONLY)
 
     if (survival_biasing) then
-       if (p % wgt < weight_cutoff) then
-          if (prn() < p % wgt / weight_survive) then
-             p % wgt = weight_survive
-          else
-             p % wgt = ZERO
-             p % alive = .false.
-          end if
-       end if
+      if (p % wgt < weight_cutoff) then
+        if (prn() < p % wgt / weight_survive) then
+          p % wgt = weight_survive
+        else
+          p % wgt = ZERO
+          p % alive = .false.
+        end if
+      end if
 
-       ! At this point, we also need to set the cutoff variable for cases with
-       ! survival biasing. The cutoff will be a random number times the
-       ! scattering cross section
+      ! At this point, we also need to set the cutoff variable for cases with
+      ! survival biasing. The cutoff will be a random number times the
+      ! scattering cross section
 
-       cutoff = prn() * (micro_xs(i_nuclide) % total - &
-            micro_xs(i_nuclide) % absorption)
-       prob = ZERO
+      cutoff = prn() * (micro_xs(i_nuclide) % total - &
+           micro_xs(i_nuclide) % absorption)
+      prob = ZERO
     end if
 
     ! ==========================================================================
@@ -424,61 +424,61 @@ contains
 
     prob = prob + micro_xs(i_nuclide) % elastic
     if (prob > cutoff) then
-       ! =======================================================================
-       ! ELASTIC SCATTERING
+      ! =======================================================================
+      ! ELASTIC SCATTERING
 
-       if (micro_xs(i_nuclide) % use_sab) then
-          ! S(a,b) scattering
-          call sab_scatter(i_nuclide, mat % sab_table)
+      if (micro_xs(i_nuclide) % use_sab) then
+        ! S(a,b) scattering
+        call sab_scatter(i_nuclide, mat % sab_table)
 
-       else
-          ! get pointer to elastic scattering reaction
-          rxn => nuc % reactions(1)
+      else
+        ! get pointer to elastic scattering reaction
+        rxn => nuc % reactions(1)
 
-          ! Perform collision physics for elastic scattering
-          call elastic_scatter(i_nuclide, rxn)
+        ! Perform collision physics for elastic scattering
+        call elastic_scatter(i_nuclide, rxn)
 
-       end if
+      end if
 
     else
-       ! =======================================================================
-       ! INELASTIC SCATTERING
+      ! =======================================================================
+      ! INELASTIC SCATTERING
 
-       ! note that indexing starts from 2 since nuc % reactions(1) is elastic
-       ! scattering
-       i = 1
-       do while (prob < cutoff)
-          i = i + 1
+      ! note that indexing starts from 2 since nuc % reactions(1) is elastic
+      ! scattering
+      i = 1
+      do while (prob < cutoff)
+        i = i + 1
 
-          ! Check to make sure inelastic scattering reaction sampled
-          if (i > nuc % n_reaction) then
-             message = "Did not sample any reaction for nuclide " // &
-                  trim(nuc % name) // " on material " // &
-                  trim(to_str(mat % id))
-             call fatal_error()
-          end if
+        ! Check to make sure inelastic scattering reaction sampled
+        if (i > nuc % n_reaction) then
+          message = "Did not sample any reaction for nuclide " // &
+               trim(nuc % name) // " on material " // &
+               trim(to_str(mat % id))
+          call fatal_error()
+        end if
 
-          rxn => nuc % reactions(i)
+        rxn => nuc % reactions(i)
 
-          ! Skip fission reactions
-          if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
-               .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
-             
-          ! some materials have gas production cross sections with MT > 200 that
-          ! are duplicates. Also MT=4 is total level inelastic scattering which
-          ! should be skipped
-          if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
-          
-          ! if energy is below threshold for this reaction, skip it
-          if (i_grid < rxn % threshold) cycle
+        ! Skip fission reactions
+        if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
+             .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
 
-          ! add to cumulative probability
-          prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) & 
-               + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
-       end do
+        ! some materials have gas production cross sections with MT > 200 that
+        ! are duplicates. Also MT=4 is total level inelastic scattering which
+        ! should be skipped
+        if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
 
-       ! Perform collision physics for inelastics scattering
-       call inelastic_scatter(nuc, rxn)
+        ! if energy is below threshold for this reaction, skip it
+        if (i_grid < rxn % threshold) cycle
+
+        ! add to cumulative probability
+        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) & 
+             + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+      end do
+
+      ! Perform collision physics for inelastics scattering
+      call inelastic_scatter(nuc, rxn)
 
     end if
 
@@ -521,9 +521,9 @@ contains
 
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
-       call sample_target_velocity(nuc, v_t)
+      call sample_target_velocity(nuc, v_t)
     else
-       v_t = ZERO
+      v_t = ZERO
     end if
 
     ! Velocity of center-of-mass
@@ -594,7 +594,7 @@ contains
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
     real(8) :: prob         ! probability for sampling Bragg edge
     real(8) :: u, v, w      ! directional cosines
-    type(SAB_Table), pointer :: sab => null()
+    type(SAlphaBeta), pointer :: sab => null()
 
     ! Get pointer to S(a,b) table
     sab => sab_tables(i_sab)
@@ -602,119 +602,119 @@ contains
     ! Determine whether inelastic or elastic scattering will occur
     if (prn() < micro_xs(i_nuclide) % elastic_sab / &
          micro_xs(i_nuclide) % elastic) then
-       ! elastic scattering
+      ! elastic scattering
 
-       ! Get index and interpolation factor for elastic grid
-       if (p%E < sab % elastic_e_in(1)) then
-          i = 1
-          f = ZERO
-       else
-          i = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
-          f = (p%E - sab%elastic_e_in(i)) / & 
-               (sab%elastic_e_in(i+1) - sab%elastic_e_in(i))
-       end if
+      ! Get index and interpolation factor for elastic grid
+      if (p%E < sab % elastic_e_in(1)) then
+        i = 1
+        f = ZERO
+      else
+        i = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
+        f = (p%E - sab%elastic_e_in(i)) / & 
+             (sab%elastic_e_in(i+1) - sab%elastic_e_in(i))
+      end if
 
-       ! Select treatment based on elastic mode
-       if (sab % elastic_mode == SAB_ELASTIC_DISCRETE) then
-          ! With this treatment, we interpolate between two discrete cosines
-          ! corresponding to neighboring incoming energies. This is used for
-          ! data derived in the incoherent approximation
+      ! Select treatment based on elastic mode
+      if (sab % elastic_mode == SAB_ELASTIC_DISCRETE) then
+        ! With this treatment, we interpolate between two discrete cosines
+        ! corresponding to neighboring incoming energies. This is used for
+        ! data derived in the incoherent approximation
 
-          ! Sample outgoing cosine bin
-          k = 1 + int(prn() * sab % n_elastic_mu)
+        ! Sample outgoing cosine bin
+        k = 1 + int(prn() * sab % n_elastic_mu)
 
-          ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
-          mu_ijk  = sab % elastic_mu(k,i)
-          mu_i1jk = sab % elastic_mu(k,i+1)
+        ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
+        mu_ijk  = sab % elastic_mu(k,i)
+        mu_i1jk = sab % elastic_mu(k,i+1)
 
-          ! Cosine of angle between incoming and outgoing neutron
-          mu = (1 - f)*mu_ijk + f*mu_i1jk
+        ! Cosine of angle between incoming and outgoing neutron
+        mu = (1 - f)*mu_ijk + f*mu_i1jk
 
-       elseif (sab % elastic_mode == SAB_ELASTIC_EXACT) then
-          ! This treatment is used for data derived in the coherent
-          ! approximation, i.e. for crystalline structures that have Bragg
-          ! edges.
-          
-          ! Sample a Bragg edge between 1 and i
-          prob = prn() * sab % elastic_P(i+1)
-          if (prob < sab % elastic_P(1)) then
-             k = 1
-          else
-             k = binary_search(sab % elastic_P(1:i+1), i+1, prob)
-          end if
+      elseif (sab % elastic_mode == SAB_ELASTIC_EXACT) then
+        ! This treatment is used for data derived in the coherent
+        ! approximation, i.e. for crystalline structures that have Bragg
+        ! edges.
 
-          ! Characteristic scattering cosine for this Bragg edge
-          mu = ONE - TWO*sab % elastic_e_in(k) / p % E
+        ! Sample a Bragg edge between 1 and i
+        prob = prn() * sab % elastic_P(i+1)
+        if (prob < sab % elastic_P(1)) then
+          k = 1
+        else
+          k = binary_search(sab % elastic_P(1:i+1), i+1, prob)
+        end if
 
-       end if
+        ! Characteristic scattering cosine for this Bragg edge
+        mu = ONE - TWO*sab % elastic_e_in(k) / p % E
 
-       ! Outgoing energy is same as incoming energy
-       E = p % E
+      end if
+
+      ! Outgoing energy is same as incoming energy
+      E = p % E
 
     else
-       ! Determine number of outgoing energy and angle bins
-       n_energy_out = sab % n_inelastic_e_out
-       
-       ! Get index and interpolation factor for inelastic grid
-       if (p%E < sab % inelastic_e_in(1)) then
-          i = 1
-          f = ZERO
-       else
-          i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
-          f = (p%E - sab%inelastic_e_in(i)) / & 
-               (sab%inelastic_e_in(i+1) - sab%inelastic_e_in(i))
-       end if
+      ! Determine number of outgoing energy and angle bins
+      n_energy_out = sab % n_inelastic_e_out
 
-       ! Now that we have an incoming energy bin, we need to determine the
-       ! outgoing energy bin. This will depend on the "secondary energy
-       ! mode". If the mode is 0, then the outgoing energy bin is chosen from a
-       ! set of equally-likely bins. However, if the mode is 1, then the first
-       ! two and last two bins are skewed to have lower probabilities than the
-       ! other bins (0.1 for the first and last bins and 0.4 for the second and
-       ! second to last bins, relative to a normal bin probability of 1)
+      ! Get index and interpolation factor for inelastic grid
+      if (p%E < sab % inelastic_e_in(1)) then
+        i = 1
+        f = ZERO
+      else
+        i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
+        f = (p%E - sab%inelastic_e_in(i)) / & 
+             (sab%inelastic_e_in(i+1) - sab%inelastic_e_in(i))
+      end if
 
-       if (sab % secondary_mode == SAB_SECONDARY_EQUAL) then
-          ! All bins equally likely
-          j = 1 + int(prn() * n_energy_out)
-       elseif (sab % secondary_mode == SAB_SECONDARY_SKEWED) then
-          r = prn() * (n_energy_out - 3)
-          if (r > ONE) then
-             ! equally likely N-4 middle bins
-             j = int(r) + 2
-          elseif (r > 0.6) then
-             ! second to last bin has relative probability of 0.4
-             j = n_energy_out - 1
-          elseif (r > 0.5) then
-             ! last bin has relative probability of 0.1
-             j = n_energy_out
-          elseif (r > 0.1) then
-             ! second bin has relative probability of 0.4
-             j = 2
-          else
-             ! first bin has relative probability of 0.1
-             j = 1
-          end if
-       else
-          message = "Invalid secondary energy mode on S(a,b) table " // &
-               trim(sab % name)
-       end if
+      ! Now that we have an incoming energy bin, we need to determine the
+      ! outgoing energy bin. This will depend on the "secondary energy
+      ! mode". If the mode is 0, then the outgoing energy bin is chosen from a
+      ! set of equally-likely bins. However, if the mode is 1, then the first
+      ! two and last two bins are skewed to have lower probabilities than the
+      ! other bins (0.1 for the first and last bins and 0.4 for the second and
+      ! second to last bins, relative to a normal bin probability of 1)
 
-       ! Determine outgoing energy corresponding to E_in(i) and E_in(i+1)
-       E_ij  = sab % inelastic_e_out(j,i)
-       E_i1j = sab % inelastic_e_out(j,i+1)
+      if (sab % secondary_mode == SAB_SECONDARY_EQUAL) then
+        ! All bins equally likely
+        j = 1 + int(prn() * n_energy_out)
+      elseif (sab % secondary_mode == SAB_SECONDARY_SKEWED) then
+        r = prn() * (n_energy_out - 3)
+        if (r > ONE) then
+          ! equally likely N-4 middle bins
+          j = int(r) + 2
+        elseif (r > 0.6) then
+          ! second to last bin has relative probability of 0.4
+          j = n_energy_out - 1
+        elseif (r > 0.5) then
+          ! last bin has relative probability of 0.1
+          j = n_energy_out
+        elseif (r > 0.1) then
+          ! second bin has relative probability of 0.4
+          j = 2
+        else
+          ! first bin has relative probability of 0.1
+          j = 1
+        end if
+      else
+        message = "Invalid secondary energy mode on S(a,b) table " // &
+             trim(sab % name)
+      end if
 
-       ! Outgoing energy
-       E = (1 - f)*E_ij + f*E_i1j
+      ! Determine outgoing energy corresponding to E_in(i) and E_in(i+1)
+      E_ij  = sab % inelastic_e_out(j,i)
+      E_i1j = sab % inelastic_e_out(j,i+1)
 
-       ! Sample outgoing cosine bin
-       k = 1 + int(prn() * sab % n_inelastic_mu)
+      ! Outgoing energy
+      E = (1 - f)*E_ij + f*E_i1j
 
-       ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
-       mu_ijk  = sab % inelastic_mu(k,j,i)
-       mu_i1jk = sab % inelastic_mu(k,j,i+1)
+      ! Sample outgoing cosine bin
+      k = 1 + int(prn() * sab % n_inelastic_mu)
 
-       ! Cosine of angle between incoming and outgoing neutron
-       mu = (1 - f)*mu_ijk + f*mu_i1jk
+      ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
+      mu_ijk  = sab % inelastic_mu(k,j,i)
+      mu_i1jk = sab % inelastic_mu(k,j,i+1)
+
+      ! Cosine of angle between incoming and outgoing neutron
+      mu = (1 - f)*mu_ijk + f*mu_i1jk
     end if
 
     ! copy directional cosines
@@ -762,8 +762,8 @@ contains
 
     ! Check if energy is above threshold
     if (p % E >= FREE_GAS_THRESHOLD * kT) then
-       v_target = ZERO
-       return
+      v_target = ZERO
+      return
     end if
 
     ! calculate beta
@@ -772,38 +772,38 @@ contains
     alpha = ONE/(ONE + sqrt(pi)*beta_vn/TWO)
 
     do
-       ! Sample two random numbers
-       r1 = prn()
-       r2 = prn()
+      ! Sample two random numbers
+      r1 = prn()
+      r2 = prn()
 
-       if (prn() < alpha) then
-          ! With probability alpha, we sample the distribution p(y) =
-          ! y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
-          ! Carlo sampler
+      if (prn() < alpha) then
+        ! With probability alpha, we sample the distribution p(y) =
+        ! y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
+        ! Carlo sampler
 
-          beta_vt_sq = -log(r1*r2)
+        beta_vt_sq = -log(r1*r2)
 
-       else
-          ! With probability 1-alpha, we sample the distribution p(y) = y^2 *
-          ! e^(-y^2). This can be done with sampling scheme C61 from the Monte
-          ! Carlo sampler
+      else
+        ! With probability 1-alpha, we sample the distribution p(y) = y^2 *
+        ! e^(-y^2). This can be done with sampling scheme C61 from the Monte
+        ! Carlo sampler
 
-          c = cos(PI/TWO * prn())
-          beta_vt_sq = -log(r1) - log(r2)*c*c
-       end if
+        c = cos(PI/TWO * prn())
+        beta_vt_sq = -log(r1) - log(r2)*c*c
+      end if
 
-       ! Determine beta * vt
-       beta_vt = sqrt(beta_vt_sq)
+      ! Determine beta * vt
+      beta_vt = sqrt(beta_vt_sq)
 
-       ! Sample cosine of angle between neutron and target velocity
-       mu = TWO*prn() - ONE
+      ! Sample cosine of angle between neutron and target velocity
+      mu = TWO*prn() - ONE
 
-       ! Determine rejection probability
-       accept_prob = sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
-            /(beta_vn + beta_vt)
+      ! Determine rejection probability
+      accept_prob = sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
+           /(beta_vn + beta_vt)
 
-       ! Perform rejection sampling on vt and mu
-       if (prn() < accept_prob) exit
+      ! Perform rejection sampling on vt and mu
+      if (prn() < accept_prob) exit
     end do
 
     ! determine direction of target velocity based on the neutron's velocity
@@ -878,33 +878,33 @@ contains
     ! the expected number of fission sites produced
 
     if (ufs) then
-       ! Determine indices on ufs mesh for current location
-       call get_mesh_indices(ufs_mesh, p % coord0 % xyz, ijk, in_mesh)
-       if (.not. in_mesh) then
-          message = "Source site outside UFS mesh!"
-          call fatal_error()
-       end if
+      ! Determine indices on ufs mesh for current location
+      call get_mesh_indices(ufs_mesh, p % coord0 % xyz, ijk, in_mesh)
+      if (.not. in_mesh) then
+        message = "Source site outside UFS mesh!"
+        call fatal_error()
+      end if
 
-       if (source_frac(1,ijk(1),ijk(2),ijk(3)) /= ZERO) then
-          weight = ufs_mesh % volume_frac / source_frac(1,ijk(1),ijk(2),ijk(3))
-       else
-          weight = ONE
-       end if
+      if (source_frac(1,ijk(1),ijk(2),ijk(3)) /= ZERO) then
+        weight = ufs_mesh % volume_frac / source_frac(1,ijk(1),ijk(2),ijk(3))
+      else
+        weight = ONE
+      end if
     else
-       weight = ONE
+      weight = ONE
     end if
 
     ! Sample number of neutrons produced
     if (survival_biasing) then 
-       nu_t = p % last_wgt * micro_xs(i_nuclide) % fission / (keff * &
-            micro_xs(i_nuclide) % total) * nu_t * weight
+      nu_t = p % last_wgt * micro_xs(i_nuclide) % fission / (keff * &
+           micro_xs(i_nuclide) % total) * nu_t * weight
     else 
-       nu_t = p % wgt / keff * nu_t * weight
+      nu_t = p % wgt / keff * nu_t * weight
     end if
     if (prn() > nu_t - int(nu_t)) then
-       nu = int(nu_t)
+      nu = int(nu_t)
     else
-       nu = int(nu_t) + 1
+      nu = int(nu_t) + 1
     end if
 
     ! Add to analog estimate of keff
@@ -913,110 +913,110 @@ contains
     ! Bank source neutrons
     if (nu == 0 .or. n_bank == 3*work) return
     do i = int(n_bank,4) + 1, int(min(n_bank + nu, 3*work),4)
-       ! Bank source neutrons by copying particle data
-       fission_bank(i) % xyz = p % coord0 % xyz
+      ! Bank source neutrons by copying particle data
+      fission_bank(i) % xyz = p % coord0 % xyz
 
-       ! Set weight of fission bank site
-       fission_bank(i) % wgt = ONE/weight
+      ! Set weight of fission bank site
+      fission_bank(i) % wgt = ONE/weight
 
-       ! Sample cosine of angle -- fission neutrons are always emitted
-       ! isotropically. Sometimes in ACE data, fission reactions actually have
-       ! an angular distribution listed, but for those that do, it's simply just
-       ! a uniform distribution in mu
-       mu = TWO * prn() - ONE
+      ! Sample cosine of angle -- fission neutrons are always emitted
+      ! isotropically. Sometimes in ACE data, fission reactions actually have
+      ! an angular distribution listed, but for those that do, it's simply just
+      ! a uniform distribution in mu
+      mu = TWO * prn() - ONE
 
-       ! sample between delayed and prompt neutrons
-       if (prn() < beta) then
-          ! ====================================================================
-          ! DELAYED NEUTRON SAMPLED
+      ! sample between delayed and prompt neutrons
+      if (prn() < beta) then
+        ! ====================================================================
+        ! DELAYED NEUTRON SAMPLED
 
-          ! sampled delayed precursor group
-          xi = prn()
-          lc = 1
-          prob = ZERO
-          do j = 1, nuc % n_precursor
-             ! determine number of interpolation regions and energies
-             NR = int(nuc % nu_d_precursor_data(lc + 1))
-             NE = int(nuc % nu_d_precursor_data(lc + 2 + 2*NR))
+        ! sampled delayed precursor group
+        xi = prn()
+        lc = 1
+        prob = ZERO
+        do j = 1, nuc % n_precursor
+          ! determine number of interpolation regions and energies
+          NR = int(nuc % nu_d_precursor_data(lc + 1))
+          NE = int(nuc % nu_d_precursor_data(lc + 2 + 2*NR))
 
-             ! determine delayed neutron precursor yield for group j
-             yield = interpolate_tab1(nuc % nu_d_precursor_data( &
-                  lc+1:lc+2+2*NR+2*NE), E)
+          ! determine delayed neutron precursor yield for group j
+          yield = interpolate_tab1(nuc % nu_d_precursor_data( &
+               lc+1:lc+2+2*NR+2*NE), E)
 
-             ! Check if this group is sampled
-             prob = prob + yield
-             if (xi < prob) exit
+          ! Check if this group is sampled
+          prob = prob + yield
+          if (xi < prob) exit
 
-             ! advance pointer
-             lc = lc + 2 + 2*NR + 2*NE + 1
-          end do
+          ! advance pointer
+          lc = lc + 2 + 2*NR + 2*NE + 1
+        end do
 
-          ! if the sum of the probabilities is slightly less than one and the
-          ! random number is greater, j will be greater than nuc %
-          ! n_precursor -- check for this condition
-          j = min(j, nuc % n_precursor)
+        ! if the sum of the probabilities is slightly less than one and the
+        ! random number is greater, j will be greater than nuc %
+        ! n_precursor -- check for this condition
+        j = min(j, nuc % n_precursor)
 
-          ! select energy distribution for group j
-          law = nuc % nu_d_edist(j) % law
-          edist => nuc % nu_d_edist(j)
+        ! select energy distribution for group j
+        law = nuc % nu_d_edist(j) % law
+        edist => nuc % nu_d_edist(j)
 
-          ! sample from energy distribution
-          n_sample = 0
-          do
-             if (law == 44 .or. law == 61) then
-                call sample_energy(edist, E, E_out, mu)
-             else
-                call sample_energy(edist, E, E_out)
-             end if
+        ! sample from energy distribution
+        n_sample = 0
+        do
+          if (law == 44 .or. law == 61) then
+            call sample_energy(edist, E, E_out, mu)
+          else
+            call sample_energy(edist, E, E_out)
+          end if
 
-             ! resample if energy is >= 20 MeV
-             if (E_out < 20) exit
+          ! resample if energy is >= 20 MeV
+          if (E_out < 20) exit
 
-             ! check for large number of resamples
-             n_sample = n_sample + 1
-             if (n_sample == MAX_SAMPLE) then
-                message = "Resampled energy distribution maximum number of " // &
-                     "times for nuclide " // nuc % name
-                call fatal_error()
-             end if
-          end do
+          ! check for large number of resamples
+          n_sample = n_sample + 1
+          if (n_sample == MAX_SAMPLE) then
+            message = "Resampled energy distribution maximum number of " // &
+                 "times for nuclide " // nuc % name
+            call fatal_error()
+          end if
+        end do
 
-       else
-          ! ====================================================================
-          ! PROMPT NEUTRON SAMPLED
+      else
+        ! ====================================================================
+        ! PROMPT NEUTRON SAMPLED
 
-          ! sample from prompt neutron energy distribution
-          law = rxn % edist % law
-          n_sample = 0
-          do
-             if (law == 44 .or. law == 61) then
-                call sample_energy(rxn%edist, E, E_out, prob)
-             else
-                call sample_energy(rxn%edist, E, E_out)
-             end if
+        ! sample from prompt neutron energy distribution
+        law = rxn % edist % law
+        n_sample = 0
+        do
+          if (law == 44 .or. law == 61) then
+            call sample_energy(rxn%edist, E, E_out, prob)
+          else
+            call sample_energy(rxn%edist, E, E_out)
+          end if
 
-             ! resample if energy is >= 20 MeV
-             if (E_out < 20) exit
+          ! resample if energy is >= 20 MeV
+          if (E_out < 20) exit
 
-             ! check for large number of resamples
-             n_sample = n_sample + 1
-             if (n_sample == MAX_SAMPLE) then
-                message = "Resampled energy distribution maximum number of " // &
-                     "times for nuclide " // nuc % name
-                call fatal_error()
-             end if
-          end do
+          ! check for large number of resamples
+          n_sample = n_sample + 1
+          if (n_sample == MAX_SAMPLE) then
+            message = "Resampled energy distribution maximum number of " // &
+                 "times for nuclide " // nuc % name
+            call fatal_error()
+          end if
+        end do
 
-       end if
+      end if
 
-       ! Sample azimuthal angle uniformly in [0,2*pi)
-       phi = TWO*PI*prn()
-       fission_bank(i) % uvw(1) = mu
-       fission_bank(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
-       fission_bank(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
+      ! Sample azimuthal angle uniformly in [0,2*pi)
+      phi = TWO*PI*prn()
+      fission_bank(i) % uvw(1) = mu
+      fission_bank(i) % uvw(2) = sqrt(ONE - mu*mu) * cos(phi)
+      fission_bank(i) % uvw(3) = sqrt(ONE - mu*mu) * sin(phi)
 
-       ! set energy of fission neutron
-       fission_bank(i) % E = E_out
+      ! set energy of fission neutron
+      fission_bank(i) % E = E_out
     end do
 
     ! increment number of bank sites
@@ -1046,7 +1046,7 @@ contains
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: u,v,w       ! direction cosines
     real(8) :: Q           ! Q-value of reaction
-    
+
     ! copy energy of neutron
     E_in = p % E
 
@@ -1062,24 +1062,24 @@ contains
 
     ! sample outgoing energy
     if (law == 44 .or. law == 61) then
-       call sample_energy(rxn%edist, E_in, E, mu)
+      call sample_energy(rxn%edist, E_in, E, mu)
     elseif (law == 66) then
-       call sample_energy(rxn%edist, E_in, E, A=A, Q=Q)
+      call sample_energy(rxn%edist, E_in, E, A=A, Q=Q)
     else
-       call sample_energy(rxn%edist, E_in, E)
+      call sample_energy(rxn%edist, E_in, E)
     end if
 
     ! if scattering system is in center-of-mass, transfer cosine of scattering
     ! angle and outgoing energy from CM to LAB
     if (rxn % scatter_in_cm) then
-       E_cm = E
+      E_cm = E
 
-       ! determine outgoing energy in lab
-       E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) & 
-            / ((A+ONE)*(A+ONE))
+      ! determine outgoing energy in lab
+      E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) & 
+           / ((A+ONE)*(A+ONE))
 
-       ! determine outgoing angle in lab
-       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
+      ! determine outgoing angle in lab
+      mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
     end if
 
     ! copy directional cosines
@@ -1133,8 +1133,8 @@ contains
     ! check if reaction has angular distribution -- if not, sample outgoing
     ! angle isotropically
     if (.not. rxn % has_angle_dist) then
-       mu = TWO * prn() - ONE
-       return
+      mu = TWO * prn() - ONE
+      return
     end if
 
     ! determine number of incoming energies
@@ -1143,15 +1143,15 @@ contains
     ! find energy bin and calculate interpolation factor -- if the energy is
     ! outside the range of the tabulated energies, choose the first or last bins
     if (E < rxn % adist % energy(1)) then
-       i = 1
-       r = ZERO
+      i = 1
+      r = ZERO
     elseif (E > rxn % adist % energy(n)) then
-       i = n - 1
-       r = ONE
+      i = n - 1
+      r = ONE
     else
-       i = binary_search(rxn % adist % energy, n, E)
-       r = (E - rxn % adist % energy(i)) / & 
-            (rxn % adist % energy(i+1) - rxn % adist % energy(i))
+      i = binary_search(rxn % adist % energy, n, E)
+      r = (E - rxn % adist % energy(i)) / & 
+           (rxn % adist % energy(i+1) - rxn % adist % energy(i))
     end if
 
     ! Sample between the ith and (i+1)th bin
@@ -1161,71 +1161,71 @@ contains
     lc  = rxn % adist % location(i)
     type = rxn % adist % type(i)
     if (type == ANGLE_ISOTROPIC) then
-       mu = TWO * prn() - ONE
+      mu = TWO * prn() - ONE
     elseif (type == ANGLE_32_EQUI) then
-       ! sample cosine bin
-       xi = prn()
-       k = 1 + int(32.0_8*xi)
+      ! sample cosine bin
+      xi = prn()
+      k = 1 + int(32.0_8*xi)
 
-       ! calculate cosine
-       mu0 = rxn % adist % data(lc + k)
-       mu1 = rxn % adist % data(lc + k+1)
-       mu = mu0 + (32.0_8 * xi - k) * (mu1 - mu0)
+      ! calculate cosine
+      mu0 = rxn % adist % data(lc + k)
+      mu1 = rxn % adist % data(lc + k+1)
+      mu = mu0 + (32.0_8 * xi - k) * (mu1 - mu0)
 
     elseif (type == ANGLE_TABULAR) then
-       interp = int(rxn % adist % data(lc + 1))
-       NP     = int(rxn % adist % data(lc + 2))
+      interp = int(rxn % adist % data(lc + 1))
+      NP     = int(rxn % adist % data(lc + 2))
 
-       ! determine outgoing cosine bin
-       xi = prn()
-       lc = lc + 2
-       c_k = rxn % adist % data(lc + 2*NP + 1)
-       do k = 1, NP - 1
-          c_k1 = rxn % adist % data(lc + 2*NP + k+1)
-          if (xi < c_k1) exit
-          c_k = c_k1
-       end do
+      ! determine outgoing cosine bin
+      xi = prn()
+      lc = lc + 2
+      c_k = rxn % adist % data(lc + 2*NP + 1)
+      do k = 1, NP - 1
+        c_k1 = rxn % adist % data(lc + 2*NP + k+1)
+        if (xi < c_k1) exit
+        c_k = c_k1
+      end do
 
-       ! check to make sure k is <= NP - 1
-       k = min(k, NP - 1)
+      ! check to make sure k is <= NP - 1
+      k = min(k, NP - 1)
 
-       p0  = rxn % adist % data(lc + NP + k)
-       mu0 = rxn % adist % data(lc + k)
-       if (interp == HISTOGRAM) then
-          ! Histogram interpolation
-          if (p0 > ZERO) then
-             mu = mu0 + (xi - c_k)/p0
-          else
-             mu = mu0
-          end if
+      p0  = rxn % adist % data(lc + NP + k)
+      mu0 = rxn % adist % data(lc + k)
+      if (interp == HISTOGRAM) then
+        ! Histogram interpolation
+        if (p0 > ZERO) then
+          mu = mu0 + (xi - c_k)/p0
+        else
+          mu = mu0
+        end if
 
-       elseif (interp == LINEAR_LINEAR) then
-          ! Linear-linear interpolation
-          p1  = rxn % adist % data(lc + NP + k+1)
-          mu1 = rxn % adist % data(lc + k+1)
+      elseif (interp == LINEAR_LINEAR) then
+        ! Linear-linear interpolation
+        p1  = rxn % adist % data(lc + NP + k+1)
+        mu1 = rxn % adist % data(lc + k+1)
 
-          frac = (p1 - p0)/(mu1 - mu0)
-          if (frac == ZERO) then
-             mu = mu0 + (xi - c_k)/p0
-          else
-             mu = mu0 + (sqrt(max(ZERO, p0*p0 + 2*frac*(xi - c_k))) - p0)/frac
-          end if
-       else
-          message = "Unknown interpolation type: " // trim(to_str(interp))
-          call fatal_error()
-       end if
+        frac = (p1 - p0)/(mu1 - mu0)
+        if (frac == ZERO) then
+          mu = mu0 + (xi - c_k)/p0
+        else
+          mu = mu0 + (sqrt(max(ZERO, p0*p0 + 2*frac*(xi - c_k))) - p0)/frac
+        end if
+      else
+        message = "Unknown interpolation type: " // trim(to_str(interp))
+        call fatal_error()
+      end if
 
-       ! Because of floating-point roundoff, it may be possible for mu to be
-       ! outside of the range [-1,1). In these cases, we just set mu to exactly
-       ! -1 or 1
+      ! Because of floating-point roundoff, it may be possible for mu to be
+      ! outside of the range [-1,1). In these cases, we just set mu to exactly
+      ! -1 or 1
 
-       if (abs(mu) > ONE) mu = sign(ONE,mu)
-         
+      if (abs(mu) > ONE) mu = sign(ONE,mu)
+
     else
-       message = "Unknown angular distribution type: " // trim(to_str(type))
-       call fatal_error()
+      message = "Unknown angular distribution type: " // trim(to_str(type))
+      call fatal_error()
     end if
-    
+
   end function sample_angle
 
 !===============================================================================
@@ -1267,14 +1267,14 @@ contains
     ! Need to treat special case where sqrt(1 - w**2) is close to zero by
     ! expanding about the v component rather than the w component
     if (b > 1e-10) then
-       u = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
-       v = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
-       w = mu*w0 - a*b*cosphi
+      u = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
+      v = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
+      w = mu*w0 - a*b*cosphi
     else
-       b = sqrt(ONE - v0*v0)
-       u = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b
-       v = mu*v0 - a*b*cosphi
-       w = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
+      b = sqrt(ONE - v0*v0)
+      u = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b
+      v = mu*v0 - a*b*cosphi
+      w = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
     end if
 
   end subroutine rotate_angle
@@ -1344,695 +1344,691 @@ contains
     ! SAMPLE ENERGY DISTRIBUTION IF THERE ARE MULTIPLE
 
     if (associated(edist % next)) then
-       if (edist % p_valid % n_regions > 0) then
-          p_valid = interpolate_tab1(edist % p_valid, E_in)
+      if (edist % p_valid % n_regions > 0) then
+        p_valid = interpolate_tab1(edist % p_valid, E_in)
 
-          if (prn() > p_valid) then
-             if (edist % law == 44 .or. edist % law == 61) then
-                call sample_energy(edist%next, E_in, E_out, mu_out)
-             elseif (edist % law == 66) then
-                call sample_energy(edist%next, E_in, E_out, A=A, Q=Q)
-             else
-                call sample_energy(edist%next, E_in, E_out)
-             end if
-             return
+        if (prn() > p_valid) then
+          if (edist % law == 44 .or. edist % law == 61) then
+            call sample_energy(edist%next, E_in, E_out, mu_out)
+          elseif (edist % law == 66) then
+            call sample_energy(edist%next, E_in, E_out, A=A, Q=Q)
+          else
+            call sample_energy(edist%next, E_in, E_out)
           end if
-       end if
+          return
+        end if
+      end if
     end if
 
     ! Determine which secondary energy distribution law to use
     select case (edist % law)
     case (1)
-       ! =======================================================================
-       ! TABULAR EQUIPROBABLE ENERGY BINS
+      ! =======================================================================
+      ! TABULAR EQUIPROBABLE ENERGY BINS
 
-       ! read number of interpolation regions, incoming energies, and outgoing
-       ! energies
-       NR  = int(edist % data(1))
-       NE  = int(edist % data(2 + 2*NR))
-       NET = int(edist % data(3 + 2*NR + NE))
-       if (NR > 0) then
-          message = "Multiple interpolation regions not supported while &
-               &attempting to sample equiprobable energy bins."
-          call fatal_error()
-       end if
+      ! read number of interpolation regions, incoming energies, and outgoing
+      ! energies
+      NR  = int(edist % data(1))
+      NE  = int(edist % data(2 + 2*NR))
+      NET = int(edist % data(3 + 2*NR + NE))
+      if (NR > 0) then
+        message = "Multiple interpolation regions not supported while &
+             &attempting to sample equiprobable energy bins."
+        call fatal_error()
+      end if
 
-       ! determine index on incoming energy grid and interpolation factor
-       lc = 2 + 2*NR
-       i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-       r = (E_in - edist%data(lc+i)) / &
-            (edist%data(lc+i+1) - edist%data(lc+i))
+      ! determine index on incoming energy grid and interpolation factor
+      lc = 2 + 2*NR
+      i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
+      r = (E_in - edist%data(lc+i)) / &
+           (edist%data(lc+i+1) - edist%data(lc+i))
 
-       ! Sample outgoing energy bin
-       r1 = prn()
-       k = 1 + int(NET * r1)
+      ! Sample outgoing energy bin
+      r1 = prn()
+      k = 1 + int(NET * r1)
 
-       ! Determine E_1 and E_K
-       lc    = 3 + 3*NR + NE + (i-1)*NET
-       E_i_1 = edist % data(lc + 1)
-       E_i_K = edist % data(lc + NET)
+      ! Determine E_1 and E_K
+      lc    = 3 + 3*NR + NE + (i-1)*NET
+      E_i_1 = edist % data(lc + 1)
+      E_i_K = edist % data(lc + NET)
 
-       lc     = 3 + 3*NR + NE + i*NET
-       E_i1_1 = edist % data(lc + 1)
-       E_i1_K = edist % data(lc + NET)
+      lc     = 3 + 3*NR + NE + i*NET
+      E_i1_1 = edist % data(lc + 1)
+      E_i1_K = edist % data(lc + NET)
 
-       E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
-       E_K = E_i_K + r*(E_i1_K - E_i_K)
+      E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
+      E_K = E_i_K + r*(E_i1_K - E_i_K)
 
-       ! Randomly select between the outgoing table for incoming energy E_i and
-       ! E_(i+1)
-       if (prn() < r) then
-          l = i + 1
-       else
-          l = i
-       end if
+      ! Randomly select between the outgoing table for incoming energy E_i and
+      ! E_(i+1)
+      if (prn() < r) then
+        l = i + 1
+      else
+        l = i
+      end if
 
-       ! Determine E_l_k and E_l_k+1
-       lc     = 3 + 2*NR + NE + (l-1)*NET
-       E_l_k  = edist % data(lc+k)
-       E_l_k1 = edist % data(lc+k+1)
+      ! Determine E_l_k and E_l_k+1
+      lc     = 3 + 2*NR + NE + (l-1)*NET
+      E_l_k  = edist % data(lc+k)
+      E_l_k1 = edist % data(lc+k+1)
 
-       ! Determine E' (denoted here as E_out)
-       r2 = prn()
-       E_out  = E_l_k + r2*(E_l_k1 - E_l_k)
+      ! Determine E' (denoted here as E_out)
+      r2 = prn()
+      E_out  = E_l_k + r2*(E_l_k1 - E_l_k)
 
-       ! Now interpolate between incident energy bins i and i + 1
-       if (l == i) then
-          E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
-       else
-          E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
-       end if
+      ! Now interpolate between incident energy bins i and i + 1
+      if (l == i) then
+        E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
+      else
+        E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+      end if
 
     case (3)
-       ! =======================================================================
-       ! INELASTIC LEVEL SCATTERING
+      ! =======================================================================
+      ! INELASTIC LEVEL SCATTERING
 
-       E_out = edist%data(2) * (E_in - edist%data(1))
+      E_out = edist%data(2) * (E_in - edist%data(1))
 
     case (4)
-       ! =======================================================================
-       ! CONTINUOUS TABULAR DISTRIBUTION
+      ! =======================================================================
+      ! CONTINUOUS TABULAR DISTRIBUTION
 
-       ! read number of interpolation regions and incoming energies 
-       NR  = int(edist % data(1))
-       NE  = int(edist % data(2 + 2*NR))
-       if (NR > 0) then
-          message = "Multiple interpolation regions not supported while &
-               &attempting to sample continuous tabular distribution."
-          call fatal_error()
-       end if
+      ! read number of interpolation regions and incoming energies 
+      NR  = int(edist % data(1))
+      NE  = int(edist % data(2 + 2*NR))
+      if (NR > 0) then
+        message = "Multiple interpolation regions not supported while &
+             &attempting to sample continuous tabular distribution."
+        call fatal_error()
+      end if
 
-       ! find energy bin and calculate interpolation factor -- if the energy is
-       ! outside the range of the tabulated energies, choose the first or last
-       ! bins
-       lc = 2 + 2*NR
-       if (E_in < edist % data(lc+1)) then
-          i = 1
-          r = ZERO
-       elseif (E_in > edist % data(lc+NE)) then
-          i = NE - 1
-          r = ONE
-       else
-          i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-          r = (E_in - edist%data(lc+i)) / & 
-               (edist%data(lc+i+1) - edist%data(lc+i))
-       end if
+      ! find energy bin and calculate interpolation factor -- if the energy is
+      ! outside the range of the tabulated energies, choose the first or last
+      ! bins
+      lc = 2 + 2*NR
+      if (E_in < edist % data(lc+1)) then
+        i = 1
+        r = ZERO
+      elseif (E_in > edist % data(lc+NE)) then
+        i = NE - 1
+        r = ONE
+      else
+        i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
+        r = (E_in - edist%data(lc+i)) / & 
+             (edist%data(lc+i+1) - edist%data(lc+i))
+      end if
 
-       ! Sample between the ith and (i+1)th bin
-       r2 = prn()
-       if (r > r2) then
-          l = i + 1
-       else
-          l = i
-       end if
+      ! Sample between the ith and (i+1)th bin
+      r2 = prn()
+      if (r > r2) then
+        l = i + 1
+      else
+        l = i
+      end if
 
-       ! interpolation for energy E1 and EK
-       lc    = int(edist%data(2 + 2*NR + NE + i))
-       NP    = int(edist%data(lc + 2))
-       E_i_1 = edist%data(lc + 2 + 1)
-       E_i_K = edist%data(lc + 2 + NP)
+      ! interpolation for energy E1 and EK
+      lc    = int(edist%data(2 + 2*NR + NE + i))
+      NP    = int(edist%data(lc + 2))
+      E_i_1 = edist%data(lc + 2 + 1)
+      E_i_K = edist%data(lc + 2 + NP)
 
-       lc     = int(edist%data(2 + 2*NR + NE + i + 1))
-       NP     = int(edist%data(lc + 2))
-       E_i1_1 = edist%data(lc + 2 + 1)
-       E_i1_K = edist%data(lc + 2 + NP)
+      lc     = int(edist%data(2 + 2*NR + NE + i + 1))
+      NP     = int(edist%data(lc + 2))
+      E_i1_1 = edist%data(lc + 2 + 1)
+      E_i1_K = edist%data(lc + 2 + NP)
 
-       E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
-       E_K = E_i_K + r*(E_i1_K - E_i_K)
+      E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
+      E_K = E_i_K + r*(E_i1_K - E_i_K)
 
-       ! determine location of outgoing energies, pdf, cdf for E(l)
-       lc = int(edist % data(2 + 2*NR + NE + l))
+      ! determine location of outgoing energies, pdf, cdf for E(l)
+      lc = int(edist % data(2 + 2*NR + NE + l))
 
-       ! determine type of interpolation and number of discrete lines
-       INTTp = int(edist % data(lc + 1))
-       NP    = int(edist % data(lc + 2))
-       if (INTTp > 10) then
-          INTT = mod(INTTp,10)
-          ND = (INTTp - INTT)/10
-       else
-          INTT = INTTp
-          ND = 0
-       end if
+      ! determine type of interpolation and number of discrete lines
+      INTTp = int(edist % data(lc + 1))
+      NP    = int(edist % data(lc + 2))
+      if (INTTp > 10) then
+        INTT = mod(INTTp,10)
+        ND = (INTTp - INTT)/10
+      else
+        INTT = INTTp
+        ND = 0
+      end if
 
-       if (ND > 0) then
-          ! discrete lines present
-          message = "Discrete lines in continuous tabular distributed not &
-               &yet supported"
-          call fatal_error()
-       end if
+      if (ND > 0) then
+        ! discrete lines present
+        message = "Discrete lines in continuous tabular distributed not &
+             &yet supported"
+        call fatal_error()
+      end if
 
-       ! determine outgoing energy bin
-       r1 = prn()
-       lc = lc + 2 ! start of EOUT
-       c_k = edist % data(lc + 2*NP + 1)
-       do k = 1, NP - 1
-          c_k1 = edist % data(lc + 2*NP + k+1)
-          if (r1 < c_k1) exit
-          c_k = c_k1
-       end do
+      ! determine outgoing energy bin
+      r1 = prn()
+      lc = lc + 2 ! start of EOUT
+      c_k = edist % data(lc + 2*NP + 1)
+      do k = 1, NP - 1
+        c_k1 = edist % data(lc + 2*NP + k+1)
+        if (r1 < c_k1) exit
+        c_k = c_k1
+      end do
 
-       ! check to make sure k is <= NP - 1
-       k = min(k, NP - 1)
+      ! check to make sure k is <= NP - 1
+      k = min(k, NP - 1)
 
-       E_l_k = edist % data(lc+k)
-       p_l_k = edist % data(lc+NP+k)
-       if (INTT == HISTOGRAM) then
-          ! Histogram interpolation
-          if (p_l_k > ZERO) then
-             E_out = E_l_k + (r1 - c_k)/p_l_k
-          else
-             E_out = E_l_k
-          end if
+      E_l_k = edist % data(lc+k)
+      p_l_k = edist % data(lc+NP+k)
+      if (INTT == HISTOGRAM) then
+        ! Histogram interpolation
+        if (p_l_k > ZERO) then
+          E_out = E_l_k + (r1 - c_k)/p_l_k
+        else
+          E_out = E_l_k
+        end if
 
-       elseif (INTT == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about the
-          ! formula given in the MCNP manual
-          E_l_k1 = edist % data(lc+k+1)
-          p_l_k1 = edist % data(lc+NP+k+1)
+      elseif (INTT == LINEAR_LINEAR) then
+        ! Linear-linear interpolation
+        E_l_k1 = edist % data(lc+k+1)
+        p_l_k1 = edist % data(lc+NP+k+1)
 
-          frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
-          if (frac == ZERO) then
-             E_out = E_l_k + (r1 - c_k)/p_l_k
-          else
-             E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
-                  2*frac*(r1 - c_k))) - p_l_k)/frac
-          end if
-       else
-          message = "Unknown interpolation type: " // trim(to_str(INTT))
-          call fatal_error()
-       end if
+        frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
+        if (frac == ZERO) then
+          E_out = E_l_k + (r1 - c_k)/p_l_k
+        else
+          E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
+               2*frac*(r1 - c_k))) - p_l_k)/frac
+        end if
+      else
+        message = "Unknown interpolation type: " // trim(to_str(INTT))
+        call fatal_error()
+      end if
 
-       ! Now interpolate between incident energy bins i and i + 1
-       if (l == i) then
-          E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
-       else
-          E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
-       end if
+      ! Now interpolate between incident energy bins i and i + 1
+      if (l == i) then
+        E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
+      else
+        E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+      end if
 
     case (5)
-       ! =======================================================================
-       ! GENERAL EVAPORATION SPECTRUM
+      ! =======================================================================
+      ! GENERAL EVAPORATION SPECTRUM
 
     case (7)
-       ! =======================================================================
-       ! MAXWELL FISSION SPECTRUM
+      ! =======================================================================
+      ! MAXWELL FISSION SPECTRUM
 
-       ! read number of interpolation regions and incoming energies 
-       NR = int(edist % data(1))
-       NE = int(edist % data(2 + 2*NR))
+      ! read number of interpolation regions and incoming energies 
+      NR = int(edist % data(1))
+      NE = int(edist % data(2 + 2*NR))
 
-       ! determine nuclear temperature from tabulated function
-       T = interpolate_tab1(edist % data, E_in)
+      ! determine nuclear temperature from tabulated function
+      T = interpolate_tab1(edist % data, E_in)
 
-       ! determine restriction energy
-       lc = 2 + 2*NR + 2*NE
-       U = edist % data(lc + 1)
-       
-       n_sample = 0
-       do
-          ! sample maxwell fission spectrum
-          E_out = maxwell_spectrum(T)
+      ! determine restriction energy
+      lc = 2 + 2*NR + 2*NE
+      U = edist % data(lc + 1)
 
-          ! accept energy based on restriction energy
-          if (E_out <= E_in - U) exit
+      n_sample = 0
+      do
+        ! sample maxwell fission spectrum
+        E_out = maxwell_spectrum(T)
 
-          ! check for large number of rejections
-          n_sample = n_sample + 1
-          if (n_sample == MAX_SAMPLE) then
-             message = "Too many rejections on Maxwell fission spectrum."
-             call fatal_error()
-          end if
-       end do
-       
+        ! accept energy based on restriction energy
+        if (E_out <= E_in - U) exit
+
+        ! check for large number of rejections
+        n_sample = n_sample + 1
+        if (n_sample == MAX_SAMPLE) then
+          message = "Too many rejections on Maxwell fission spectrum."
+          call fatal_error()
+        end if
+      end do
+
     case (9)
-       ! =======================================================================
-       ! EVAPORATION SPECTRUM
+      ! =======================================================================
+      ! EVAPORATION SPECTRUM
 
-       ! read number of interpolation regions and incoming energies 
-       NR = int(edist % data(1))
-       NE = int(edist % data(2 + 2*NR))
+      ! read number of interpolation regions and incoming energies 
+      NR = int(edist % data(1))
+      NE = int(edist % data(2 + 2*NR))
 
-       ! determine nuclear temperature from tabulated function
-       T = interpolate_tab1(edist % data, E_in)
+      ! determine nuclear temperature from tabulated function
+      T = interpolate_tab1(edist % data, E_in)
 
-       ! determine restriction energy
-       lc = 2 + 2*NR + 2*NE
-       U = edist % data(lc + 1)
+      ! determine restriction energy
+      lc = 2 + 2*NR + 2*NE
+      U = edist % data(lc + 1)
 
-       ! sample outgoing energy based on evaporation spectrum probability
-       ! density function
-       n_sample = 0
-       do
-          r1 = prn()
-          r2 = prn()
-          E_out = -T * log(r1*r2)
-          if (E_out <= E_in - U) exit
+      ! sample outgoing energy based on evaporation spectrum probability
+      ! density function
+      n_sample = 0
+      do
+        r1 = prn()
+        r2 = prn()
+        E_out = -T * log(r1*r2)
+        if (E_out <= E_in - U) exit
 
-          ! check for large number of rejections
-          n_sample = n_sample + 1
-          if (n_sample == MAX_SAMPLE) then
-             message = "Too many rejections on evaporation spectrum."
-             call fatal_error()
-          end if
-       end do
-       
+        ! check for large number of rejections
+        n_sample = n_sample + 1
+        if (n_sample == MAX_SAMPLE) then
+          message = "Too many rejections on evaporation spectrum."
+          call fatal_error()
+        end if
+      end do
+
     case (11)
-       ! =======================================================================
-       ! ENERGY-DEPENDENT WATT SPECTRUM
+      ! =======================================================================
+      ! ENERGY-DEPENDENT WATT SPECTRUM
 
-       ! read number of interpolation regions and incoming energies for
-       ! parameter 'a'
-       NR = int(edist % data(1))
-       NE = int(edist % data(2 + 2*NR))
+      ! read number of interpolation regions and incoming energies for
+      ! parameter 'a'
+      NR = int(edist % data(1))
+      NE = int(edist % data(2 + 2*NR))
 
-       ! determine Watt parameter 'a' from tabulated function
-       Watt_a = interpolate_tab1(edist % data, E_in)
+      ! determine Watt parameter 'a' from tabulated function
+      Watt_a = interpolate_tab1(edist % data, E_in)
 
-       ! determine Watt parameter 'b' from tabulated function
-       lc = 2 + 2*(NR + NE)
-       Watt_b = interpolate_tab1(edist % data, E_in, lc + 1)
+      ! determine Watt parameter 'b' from tabulated function
+      lc = 2 + 2*(NR + NE)
+      Watt_b = interpolate_tab1(edist % data, E_in, lc + 1)
 
-       ! read number of interpolation regions and incoming energies for
-       ! parameter 'a'
-       NR = int(edist % data(lc + 1))
-       NE = int(edist % data(lc + 2 + 2*NR))
+      ! read number of interpolation regions and incoming energies for
+      ! parameter 'a'
+      NR = int(edist % data(lc + 1))
+      NE = int(edist % data(lc + 2 + 2*NR))
 
-       ! determine restriction energy
-       lc = lc + 2 + 2*(NR + NE)
-       U = edist % data(lc + 1)
+      ! determine restriction energy
+      lc = lc + 2 + 2*(NR + NE)
+      U = edist % data(lc + 1)
 
-       n_sample = 0
-       do
-          ! Sample energy-dependent Watt fission spectrum
-          E_out = watt_spectrum(Watt_a, Watt_b)
+      n_sample = 0
+      do
+        ! Sample energy-dependent Watt fission spectrum
+        E_out = watt_spectrum(Watt_a, Watt_b)
 
-          ! accept energy based on restriction energy
-          if (E_out <= E_in - U) exit
+        ! accept energy based on restriction energy
+        if (E_out <= E_in - U) exit
 
-          ! check for large number of rejections
-          n_sample = n_sample + 1
-          if (n_sample == MAX_SAMPLE) then
-             message = "Too many rejections on Watt spectrum."
-             call fatal_error()
-          end if
-       end do
+        ! check for large number of rejections
+        n_sample = n_sample + 1
+        if (n_sample == MAX_SAMPLE) then
+          message = "Too many rejections on Watt spectrum."
+          call fatal_error()
+        end if
+      end do
 
     case (44)
-       ! =======================================================================
-       ! KALBACH-MANN CORRELATED SCATTERING
+      ! =======================================================================
+      ! KALBACH-MANN CORRELATED SCATTERING
 
-       if (.not. present(mu_out)) then
-          message = "Law 44 called without giving mu_out as argument."
-          call fatal_error()
-       end if
+      if (.not. present(mu_out)) then
+        message = "Law 44 called without giving mu_out as argument."
+        call fatal_error()
+      end if
 
-       ! read number of interpolation regions and incoming energies 
-       NR = int(edist % data(1))
-       NE = int(edist % data(2 + 2*NR))
-       if (NR > 0) then
-          message = "Multiple interpolation regions not supported while &
-               &attempting to sample Kalbach-Mann distribution."
-          call fatal_error()
-       end if
+      ! read number of interpolation regions and incoming energies 
+      NR = int(edist % data(1))
+      NE = int(edist % data(2 + 2*NR))
+      if (NR > 0) then
+        message = "Multiple interpolation regions not supported while &
+             &attempting to sample Kalbach-Mann distribution."
+        call fatal_error()
+      end if
 
-       ! find energy bin and calculate interpolation factor -- if the energy is
-       ! outside the range of the tabulated energies, choose the first or last
-       ! bins
-       lc = 2 + 2*NR
-       if (E_in < edist % data(lc+1)) then
-          i = 1
-          r = ZERO
-       elseif (E_in > edist % data(lc+NE)) then
-          i = NE - 1
-          r = ONE
-       else
-          i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-          r = (E_in - edist%data(lc+i)) / & 
-               (edist%data(lc+i+1) - edist%data(lc+i))
-       end if
+      ! find energy bin and calculate interpolation factor -- if the energy is
+      ! outside the range of the tabulated energies, choose the first or last
+      ! bins
+      lc = 2 + 2*NR
+      if (E_in < edist % data(lc+1)) then
+        i = 1
+        r = ZERO
+      elseif (E_in > edist % data(lc+NE)) then
+        i = NE - 1
+        r = ONE
+      else
+        i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
+        r = (E_in - edist%data(lc+i)) / & 
+             (edist%data(lc+i+1) - edist%data(lc+i))
+      end if
 
-       ! Sample between the ith and (i+1)th bin
-       r2 = prn()
-       if (r > r2) then
-          l = i + 1
-       else
-          l = i
-       end if
+      ! Sample between the ith and (i+1)th bin
+      r2 = prn()
+      if (r > r2) then
+        l = i + 1
+      else
+        l = i
+      end if
 
-       ! determine endpoints on grid i
-       lc    = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
-       NP    = int(edist%data(lc + 2))
-       E_i_1 = edist%data(lc + 2 + 1)
-       E_i_K = edist%data(lc + 2 + NP)
+      ! determine endpoints on grid i
+      lc    = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
+      NP    = int(edist%data(lc + 2))
+      E_i_1 = edist%data(lc + 2 + 1)
+      E_i_K = edist%data(lc + 2 + NP)
 
-       ! determine endpoints on grid i+1
-       lc     = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
-       NP     = int(edist%data(lc + 2))
-       E_i1_1 = edist%data(lc + 2 + 1)
-       E_i1_K = edist%data(lc + 2 + NP)
+      ! determine endpoints on grid i+1
+      lc     = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
+      NP     = int(edist%data(lc + 2))
+      E_i1_1 = edist%data(lc + 2 + 1)
+      E_i1_K = edist%data(lc + 2 + NP)
 
-       E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
-       E_K = E_i_K + r*(E_i1_K - E_i_K)
+      E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
+      E_K = E_i_K + r*(E_i1_K - E_i_K)
 
-       ! determine location of outgoing energies, pdf, cdf for E(l)
-       lc = int(edist % data(2 + 2*NR + NE + l))
+      ! determine location of outgoing energies, pdf, cdf for E(l)
+      lc = int(edist % data(2 + 2*NR + NE + l))
 
-       ! determine type of interpolation and number of discrete lines
-       INTTp = int(edist % data(lc + 1))
-       NP    = int(edist % data(lc + 2))
-       if (INTTp > 10) then
-          INTT = mod(INTTp,10)
-          ND = (INTTp - INTT)/10
-       else
-          INTT = INTTp
-          ND = 0
-       end if
+      ! determine type of interpolation and number of discrete lines
+      INTTp = int(edist % data(lc + 1))
+      NP    = int(edist % data(lc + 2))
+      if (INTTp > 10) then
+        INTT = mod(INTTp,10)
+        ND = (INTTp - INTT)/10
+      else
+        INTT = INTTp
+        ND = 0
+      end if
 
-       if (ND > 0) then
-          ! discrete lines present
-          message = "Discrete lines in continuous tabular distributed not &
-               &yet supported"
-          call fatal_error()
-       end if
+      if (ND > 0) then
+        ! discrete lines present
+        message = "Discrete lines in continuous tabular distributed not &
+             &yet supported"
+        call fatal_error()
+      end if
 
-       ! determine outgoing energy bin
-       r1 = prn()
-       lc = lc + 2 ! start of EOUT
-       c_k = edist % data(lc + 2*NP + 1)
-       do k = 1, NP - 1
-          c_k1 = edist % data(lc + 2*NP + k+1)
-          if (r1 < c_k1) exit
-          c_k = c_k1
-       end do
+      ! determine outgoing energy bin
+      r1 = prn()
+      lc = lc + 2 ! start of EOUT
+      c_k = edist % data(lc + 2*NP + 1)
+      do k = 1, NP - 1
+        c_k1 = edist % data(lc + 2*NP + k+1)
+        if (r1 < c_k1) exit
+        c_k = c_k1
+      end do
 
-       ! check to make sure k is <= NP - 1
-       k = min(k, NP - 1)
+      ! check to make sure k is <= NP - 1
+      k = min(k, NP - 1)
 
-       E_l_k = edist % data(lc+k)
-       p_l_k = edist % data(lc+NP+k)
-       if (INTT == HISTOGRAM) then
-          ! Histogram interpolation
-          if (p_l_k > ZERO) then
-             E_out = E_l_k + (r1 - c_k)/p_l_k
-          else
-             E_out = E_l_k
-          end if
+      E_l_k = edist % data(lc+k)
+      p_l_k = edist % data(lc+NP+k)
+      if (INTT == HISTOGRAM) then
+        ! Histogram interpolation
+        if (p_l_k > ZERO) then
+          E_out = E_l_k + (r1 - c_k)/p_l_k
+        else
+          E_out = E_l_k
+        end if
 
-          ! Determine Kalbach-Mann parameters
-          KM_R = edist % data(lc + 3*NP + k)
-          KM_A = edist % data(lc + 4*NP + k)
+        ! Determine Kalbach-Mann parameters
+        KM_R = edist % data(lc + 3*NP + k)
+        KM_A = edist % data(lc + 4*NP + k)
 
-       elseif (INTT == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about the
-          ! formula given in the MCNP manual
-          E_l_k1 = edist % data(lc+k+1)
-          p_l_k1 = edist % data(lc+NP+k+1)
+      elseif (INTT == LINEAR_LINEAR) then
+        ! Linear-linear interpolation
+        E_l_k1 = edist % data(lc+k+1)
+        p_l_k1 = edist % data(lc+NP+k+1)
 
-          ! Find E prime
-          frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
-          if (frac == ZERO) then
-             E_out = E_l_k + (r1 - c_k)/p_l_k
-          else
-             E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
-                  2*frac*(r1 - c_k))) - p_l_k)/frac
-          end if
+        ! Find E prime
+        frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
+        if (frac == ZERO) then
+          E_out = E_l_k + (r1 - c_k)/p_l_k
+        else
+          E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
+               2*frac*(r1 - c_k))) - p_l_k)/frac
+        end if
 
-          ! Determine Kalbach-Mann parameters
-          R_k  = edist % data(lc + 3*NP + k)
-          R_k1 = edist % data(lc + 3*NP + k+1)
-          A_k  = edist % data(lc + 4*NP + k)
-          A_k1 = edist % data(lc + 4*NP + k+1)
-          
-          KM_R = R_k + (R_k1 - R_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
-          KM_A = A_k + (A_k1 - A_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
-       else
-          message = "Unknown interpolation type: " // trim(to_str(INTT))
-          call fatal_error()
-       end if
+        ! Determine Kalbach-Mann parameters
+        R_k  = edist % data(lc + 3*NP + k)
+        R_k1 = edist % data(lc + 3*NP + k+1)
+        A_k  = edist % data(lc + 4*NP + k)
+        A_k1 = edist % data(lc + 4*NP + k+1)
 
-       ! Now interpolate between incident energy bins i and i + 1
-       if (l == i) then
-          E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
-       else
-          E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
-       end if
+        KM_R = R_k + (R_k1 - R_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
+        KM_A = A_k + (A_k1 - A_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
+      else
+        message = "Unknown interpolation type: " // trim(to_str(INTT))
+        call fatal_error()
+      end if
 
-       ! Sampled correlated angle from Kalbach-Mann parameters
-       r3 = prn()
-       r4 = prn()
-       if (r3 > KM_R) then
-          T = (TWO*r4 - ONE) * sinh(KM_A)
-          mu_out = log(T + sqrt(T*T + ONE))/KM_A
-       else
-          mu_out = log(r4*exp(KM_A) + (ONE - r4)*exp(-KM_A))/KM_A
-       end if
+      ! Now interpolate between incident energy bins i and i + 1
+      if (l == i) then
+        E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
+      else
+        E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+      end if
+
+      ! Sampled correlated angle from Kalbach-Mann parameters
+      r3 = prn()
+      r4 = prn()
+      if (r3 > KM_R) then
+        T = (TWO*r4 - ONE) * sinh(KM_A)
+        mu_out = log(T + sqrt(T*T + ONE))/KM_A
+      else
+        mu_out = log(r4*exp(KM_A) + (ONE - r4)*exp(-KM_A))/KM_A
+      end if
 
     case (61)
-       ! =======================================================================
-       ! CORRELATED ENERGY AND ANGLE DISTRIBUTION
+      ! =======================================================================
+      ! CORRELATED ENERGY AND ANGLE DISTRIBUTION
 
-       if (.not. present(mu_out)) then
-          message = "Law 44 called without giving mu_out as argument."
-          call fatal_error()
-       end if
+      if (.not. present(mu_out)) then
+        message = "Law 44 called without giving mu_out as argument."
+        call fatal_error()
+      end if
 
-       ! read number of interpolation regions and incoming energies 
-       NR = int(edist % data(1))
-       NE = int(edist % data(2 + 2*NR))
-       if (NR > 0) then
-          message = "Multiple interpolation regions not supported while &
-               &attempting to sample correlated energy-angle distribution."
-          call fatal_error()
-       end if
+      ! read number of interpolation regions and incoming energies 
+      NR = int(edist % data(1))
+      NE = int(edist % data(2 + 2*NR))
+      if (NR > 0) then
+        message = "Multiple interpolation regions not supported while &
+             &attempting to sample correlated energy-angle distribution."
+        call fatal_error()
+      end if
 
-       ! find energy bin and calculate interpolation factor -- if the energy is
-       ! outside the range of the tabulated energies, choose the first or last
-       ! bins
-       lc = 2 + 2*NR
-       if (E_in < edist % data(lc+1)) then
-          i = 1
-          r = ZERO
-       elseif (E_in > edist % data(lc+NE)) then
-          i = NE - 1
-          r = ONE
-       else
-          i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-          r = (E_in - edist%data(lc+i)) / & 
-               (edist%data(lc+i+1) - edist%data(lc+i))
-       end if
+      ! find energy bin and calculate interpolation factor -- if the energy is
+      ! outside the range of the tabulated energies, choose the first or last
+      ! bins
+      lc = 2 + 2*NR
+      if (E_in < edist % data(lc+1)) then
+        i = 1
+        r = ZERO
+      elseif (E_in > edist % data(lc+NE)) then
+        i = NE - 1
+        r = ONE
+      else
+        i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
+        r = (E_in - edist%data(lc+i)) / & 
+             (edist%data(lc+i+1) - edist%data(lc+i))
+      end if
 
-       ! Sample between the ith and (i+1)th bin
-       r2 = prn()
-       if (r > r2) then
-          l = i + 1
-       else
-          l = i
-       end if
+      ! Sample between the ith and (i+1)th bin
+      r2 = prn()
+      if (r > r2) then
+        l = i + 1
+      else
+        l = i
+      end if
 
-       ! determine endpoints on grid i
-       lc    = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
-       NP    = int(edist%data(lc + 2))
-       E_i_1 = edist%data(lc + 2 + 1)
-       E_i_K = edist%data(lc + 2 + NP)
+      ! determine endpoints on grid i
+      lc    = int(edist%data(2+2*NR+NE + i)) ! start of LDAT for i
+      NP    = int(edist%data(lc + 2))
+      E_i_1 = edist%data(lc + 2 + 1)
+      E_i_K = edist%data(lc + 2 + NP)
 
-       ! determine endpoints on grid i+1
-       lc     = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
-       NP     = int(edist%data(lc + 2))
-       E_i1_1 = edist%data(lc + 2 + 1)
-       E_i1_K = edist%data(lc + 2 + NP)
+      ! determine endpoints on grid i+1
+      lc     = int(edist%data(2+2*NR+NE + i+1)) ! start of LDAT for i+1
+      NP     = int(edist%data(lc + 2))
+      E_i1_1 = edist%data(lc + 2 + 1)
+      E_i1_K = edist%data(lc + 2 + NP)
 
-       E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
-       E_K = E_i_K + r*(E_i1_K - E_i_K)
+      E_1 = E_i_1 + r*(E_i1_1 - E_i_1)
+      E_K = E_i_K + r*(E_i1_K - E_i_K)
 
-       ! determine location of outgoing energies, pdf, cdf for E(l)
-       lc = int(edist % data(2 + 2*NR + NE + l))
+      ! determine location of outgoing energies, pdf, cdf for E(l)
+      lc = int(edist % data(2 + 2*NR + NE + l))
 
-       ! determine type of interpolation and number of discrete lines
-       INTTp = int(edist % data(lc + 1))
-       NP    = int(edist % data(lc + 2))
-       if (INTTp > 10) then
-          INTT = mod(INTTp,10)
-          ND = (INTTp - INTT)/10
-       else
-          INTT = INTTp
-          ND = 0
-       end if
+      ! determine type of interpolation and number of discrete lines
+      INTTp = int(edist % data(lc + 1))
+      NP    = int(edist % data(lc + 2))
+      if (INTTp > 10) then
+        INTT = mod(INTTp,10)
+        ND = (INTTp - INTT)/10
+      else
+        INTT = INTTp
+        ND = 0
+      end if
 
-       if (ND > 0) then
-          ! discrete lines present
-          message = "Discrete lines in continuous tabular distributed not &
-               &yet supported"
-          call fatal_error()
-       end if
+      if (ND > 0) then
+        ! discrete lines present
+        message = "Discrete lines in continuous tabular distributed not &
+             &yet supported"
+        call fatal_error()
+      end if
 
-       ! determine outgoing energy bin
-       r1 = prn()
-       lc = lc + 2 ! start of EOUT
-       c_k = edist % data(lc + 2*NP + 1)
-       do k = 1, NP - 1
-          c_k1 = edist % data(lc + 2*NP + k+1)
-          if (r1 < c_k1) exit
-          c_k = c_k1
-       end do
+      ! determine outgoing energy bin
+      r1 = prn()
+      lc = lc + 2 ! start of EOUT
+      c_k = edist % data(lc + 2*NP + 1)
+      do k = 1, NP - 1
+        c_k1 = edist % data(lc + 2*NP + k+1)
+        if (r1 < c_k1) exit
+        c_k = c_k1
+      end do
 
-       ! check to make sure k is <= NP - 1
-       k = min(k, NP - 1)
+      ! check to make sure k is <= NP - 1
+      k = min(k, NP - 1)
 
-       E_l_k = edist % data(lc+k)
-       p_l_k = edist % data(lc+NP+k)
-       if (INTT == HISTOGRAM) then
-          ! Histogram interpolation
-          if (p_l_k > ZERO) then
-             E_out = E_l_k + (r1 - c_k)/p_l_k
-          else
-             E_out = E_l_k
-          end if
+      E_l_k = edist % data(lc+k)
+      p_l_k = edist % data(lc+NP+k)
+      if (INTT == HISTOGRAM) then
+        ! Histogram interpolation
+        if (p_l_k > ZERO) then
+          E_out = E_l_k + (r1 - c_k)/p_l_k
+        else
+          E_out = E_l_k
+        end if
 
-       elseif (INTT == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about the
-          ! formula given in the MCNP manual
-          E_l_k1 = edist % data(lc+k+1)
-          p_l_k1 = edist % data(lc+NP+k+1)
+      elseif (INTT == LINEAR_LINEAR) then
+        ! Linear-linear interpolation
+        E_l_k1 = edist % data(lc+k+1)
+        p_l_k1 = edist % data(lc+NP+k+1)
 
-          ! Find E prime
-          frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
-          if (frac == ZERO) then
-             E_out = E_l_k + (r1 - c_k)/p_l_k
-          else
-             E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
-                  2*frac*(r1 - c_k))) - p_l_k)/frac
-          end if
-       else
-          message = "Unknown interpolation type: " // trim(to_str(INTT))
-          call fatal_error()
-       end if
+        ! Find E prime
+        frac = (p_l_k1 - p_l_k)/(E_l_k1 - E_l_k)
+        if (frac == ZERO) then
+          E_out = E_l_k + (r1 - c_k)/p_l_k
+        else
+          E_out = E_l_k + (sqrt(max(ZERO, p_l_k*p_l_k + &
+               2*frac*(r1 - c_k))) - p_l_k)/frac
+        end if
+      else
+        message = "Unknown interpolation type: " // trim(to_str(INTT))
+        call fatal_error()
+      end if
 
-       ! Now interpolate between incident energy bins i and i + 1
-       if (l == i) then
-          E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
-       else
-          E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
-       end if
+      ! Now interpolate between incident energy bins i and i + 1
+      if (l == i) then
+        E_out = E_1 + (E_out - E_i_1)*(E_K - E_1)/(E_i_K - E_i_1)
+      else
+        E_out = E_1 + (E_out - E_i1_1)*(E_K - E_1)/(E_i1_K - E_i1_1)
+      end if
 
-       ! Find correlated angular distribution for closest outgoing energy bin
-       if (r1 - c_k < c_k1 - r1) then
-          lc = int(edist % data(lc + 3*NP + k))
-       else
-          lc = int(edist % data(lc + 3*NP + k + 1))
-       end if
+      ! Find correlated angular distribution for closest outgoing energy bin
+      if (r1 - c_k < c_k1 - r1) then
+        lc = int(edist % data(lc + 3*NP + k))
+      else
+        lc = int(edist % data(lc + 3*NP + k + 1))
+      end if
 
-       ! Check if angular distribution is isotropic
-       if (lc == 0) then
-          mu_out = TWO * prn() - ONE
-          return
-       end if
+      ! Check if angular distribution is isotropic
+      if (lc == 0) then
+        mu_out = TWO * prn() - ONE
+        return
+      end if
 
-       ! interpolation type and number of points in angular distribution
-       JJ = int(edist % data(lc + 1))
-       NP = int(edist % data(lc + 2))
+      ! interpolation type and number of points in angular distribution
+      JJ = int(edist % data(lc + 1))
+      NP = int(edist % data(lc + 2))
 
-       ! determine outgoing cosine bin
-       r3 = prn()
-       lc = lc + 2
-       c_k = edist % data(lc + 2*NP + 1)
-       do k = 1, NP - 1
-          c_k1 = edist % data(lc + 2*NP + k+1)
-          if (r3 < c_k1) exit
-          c_k = c_k1
-       end do
+      ! determine outgoing cosine bin
+      r3 = prn()
+      lc = lc + 2
+      c_k = edist % data(lc + 2*NP + 1)
+      do k = 1, NP - 1
+        c_k1 = edist % data(lc + 2*NP + k+1)
+        if (r3 < c_k1) exit
+        c_k = c_k1
+      end do
 
-       ! check to make sure k is <= NP - 1
-       k = min(k, NP - 1)
+      ! check to make sure k is <= NP - 1
+      k = min(k, NP - 1)
 
-       p_k  = edist % data(lc + NP + k)
-       mu_k = edist % data(lc + k)
-       if (JJ == HISTOGRAM) then
-          ! Histogram interpolation
-          if (p_k > ZERO) then
-             mu_out = mu_k + (r3 - c_k)/p_k
-          else
-             mu_out = mu_k
-          end if
+      p_k  = edist % data(lc + NP + k)
+      mu_k = edist % data(lc + k)
+      if (JJ == HISTOGRAM) then
+        ! Histogram interpolation
+        if (p_k > ZERO) then
+          mu_out = mu_k + (r3 - c_k)/p_k
+        else
+          mu_out = mu_k
+        end if
 
-       elseif (JJ == LINEAR_LINEAR) then
-          ! Linear-linear interpolation -- not sure how you come about the
-          ! formula given in the MCNP manual
-          p_k1  = edist % data(lc + NP + k+1)
-          mu_k1 = edist % data(lc + k+1)
+      elseif (JJ == LINEAR_LINEAR) then
+        ! Linear-linear interpolation
+        p_k1  = edist % data(lc + NP + k+1)
+        mu_k1 = edist % data(lc + k+1)
 
-          frac = (p_k1 - p_k)/(mu_k1 - mu_k)
-          if (frac == ZERO) then
-             mu_out = mu_k + (r3 - c_k)/p_k
-          else
-             mu_out = mu_k + (sqrt(p_k*p_k + 2*frac*(r3 - c_k))-p_k)/frac
-          end if
-       else
-          message = "Unknown interpolation type: " // trim(to_str(JJ))
-          call fatal_error()
-       end if
+        frac = (p_k1 - p_k)/(mu_k1 - mu_k)
+        if (frac == ZERO) then
+          mu_out = mu_k + (r3 - c_k)/p_k
+        else
+          mu_out = mu_k + (sqrt(p_k*p_k + 2*frac*(r3 - c_k))-p_k)/frac
+        end if
+      else
+        message = "Unknown interpolation type: " // trim(to_str(JJ))
+        call fatal_error()
+      end if
 
     case (66)
-       ! =======================================================================
-       ! N-BODY PHASE SPACE DISTRIBUTION
+      ! =======================================================================
+      ! N-BODY PHASE SPACE DISTRIBUTION
 
-       ! read number of bodies in phase space and total mass ratio
-       n_bodies = int(edist % data(1))
-       Ap       = edist % data(2)
+      ! read number of bodies in phase space and total mass ratio
+      n_bodies = int(edist % data(1))
+      Ap       = edist % data(2)
 
-       ! determine E_max parameter
-       E_max = (Ap - ONE)/Ap * (A/(A+ONE)*E_in + Q)
+      ! determine E_max parameter
+      E_max = (Ap - ONE)/Ap * (A/(A+ONE)*E_in + Q)
 
-       ! x is essentially a Maxwellian distribution
-       x = maxwell_spectrum(ONE)
+      ! x is essentially a Maxwellian distribution
+      x = maxwell_spectrum(ONE)
 
-       select case (n_bodies)
-       case (3)
-          y = maxwell_spectrum(ONE)
-       case (4)
-          r1 = prn()
-          r2 = prn()
-          r3 = prn()
-          y = -log(r1*r2*r3)
-       case (5)
-          r1 = prn()
-          r2 = prn()
-          r3 = prn()
-          r4 = prn()
-          r5 = prn()
-          r6 = prn()
-          y = -log(r1*r2*r3*r4) - log(r5) * cos(PI/TWO*r6)**2
-       end select
+      select case (n_bodies)
+      case (3)
+        y = maxwell_spectrum(ONE)
+      case (4)
+        r1 = prn()
+        r2 = prn()
+        r3 = prn()
+        y = -log(r1*r2*r3)
+      case (5)
+        r1 = prn()
+        r2 = prn()
+        r3 = prn()
+        r4 = prn()
+        r5 = prn()
+        r6 = prn()
+        y = -log(r1*r2*r3*r4) - log(r5) * cos(PI/TWO*r6)**2
+      end select
 
-       ! now determine v and E_out
-       v = x/(x+y)
-       E_out = E_max * v
+      ! now determine v and E_out
+      v = x/(x+y)
+      E_out = E_max * v
 
     case (67)
-       ! =======================================================================
-       ! LABORATORY ENERGY-ANGLE LAW
+      ! =======================================================================
+      ! LABORATORY ENERGY-ANGLE LAW
 
     end select
-    
+
   end subroutine sample_energy
 
 !===============================================================================

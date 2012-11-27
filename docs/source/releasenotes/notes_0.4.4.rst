@@ -33,13 +33,13 @@ Bug Fixes
 ---------
 
 - 4654ee_: Fixed plotting with void cells.
-- 7ee416_: Fixed bug with multi-line input using type='word'.
+- 7ee461_: Fixed bug with multi-line input using type='word'.
 - 792eb3_: Fixed degrees of freedom for confidence intervals.
 - 7fd617_: Fixed bug with restart runs in parallel.
 - dc4a8f_: Fixed bug with fixed source restart runs.
 
 .. _4654ee: https://github.com/mit-crpg/openmc/commit/4654ee
-.. _7ee416: https://github.com/mit-crpg/openmc/commit/7ee416
+.. _7ee416: https://github.com/mit-crpg/openmc/commit/7ee461
 .. _792eb3: https://github.com/mit-crpg/openmc/commit/792eb3
 .. _7fd617: https://github.com/mit-crpg/openmc/commit/7fd617
 .. _dc4a8f: https://github.com/mit-crpg/openmc/commit/dc4a8f

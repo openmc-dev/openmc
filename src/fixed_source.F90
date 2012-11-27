@@ -39,44 +39,44 @@ contains
     ! LOOP OVER BATCHES
     BATCH_LOOP: do current_batch = 1, n_batches
 
-       ! In a restart run, skip any batches that have already been simulated
-       if (restart_run .and. current_batch <= restart_batch) then
-          if (current_batch > n_inactive) n_realizations = n_realizations + 1
-          cycle BATCH_LOOP
-       end if
+      ! In a restart run, skip any batches that have already been simulated
+      if (restart_run .and. current_batch <= restart_batch) then
+        if (current_batch > n_inactive) n_realizations = n_realizations + 1
+        cycle BATCH_LOOP
+      end if
 
-       call initialize_batch()
+      call initialize_batch()
 
-       ! Start timer for transport
-       call timer_start(time_transport)
+      ! Start timer for transport
+      call timer_start(time_transport)
 
-       ! =======================================================================
-       ! LOOP OVER PARTICLES
-       PARTICLE_LOOP: do i = 1, work
+      ! =======================================================================
+      ! LOOP OVER PARTICLES
+      PARTICLE_LOOP: do i = 1, work
 
-          ! Set unique particle ID
-          p % id = (current_batch - 1)*n_particles + bank_first + i - 1
+        ! Set unique particle ID
+        p % id = (current_batch - 1)*n_particles + bank_first + i - 1
 
-          ! set particle trace
-          trace = .false.
-          if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
-               bank_first + i - 1 == trace_particle) trace = .true.
+        ! set particle trace
+        trace = .false.
+        if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
+             bank_first + i - 1 == trace_particle) trace = .true.
 
-          ! set random number seed
-          call set_particle_seed(p % id)
-          
-          ! grab source particle from bank
-          call sample_source_particle()
+        ! set random number seed
+        call set_particle_seed(p % id)
 
-          ! transport particle
-          call transport()
+        ! grab source particle from bank
+        call sample_source_particle()
 
-       end do PARTICLE_LOOP
+        ! transport particle
+        call transport()
 
-       ! Accumulate time for transport
-       call timer_stop(time_transport)
+      end do PARTICLE_LOOP
 
-       call finalize_batch()
+      ! Accumulate time for transport
+      call timer_stop(time_transport)
+
+      call finalize_batch()
 
     end do BATCH_LOOP
 
@@ -95,11 +95,11 @@ contains
 
   subroutine initialize_batch()
 
-       message = "Simulating batch " // trim(to_str(current_batch)) // "..."
-       call write_message(1)
+    message = "Simulating batch " // trim(to_str(current_batch)) // "..."
+    call write_message(1)
 
-       ! Reset total starting particle weight used for normalizing tallies
-       total_weight = ZERO
+    ! Reset total starting particle weight used for normalizing tallies
+    total_weight = ZERO
 
   end subroutine initialize_batch
 
@@ -112,20 +112,20 @@ contains
     integer :: i ! loop index for state point batches
 
     ! Collect and accumulate tallies
-    call timer_start(time_ic_tallies)
+    call timer_start(time_tallies)
     call synchronize_tallies()
-    call timer_stop(time_ic_tallies)
+    call timer_stop(time_tallies)
 
     ! Write out state point if it's been specified for this batch
     do i = 1, n_state_points
-       if (current_batch == statepoint_batch(i)) then
+      if (current_batch == statepoint_batch(i)) then
 #ifdef HDF5
-          call hdf5_write_state_point()
+        call hdf5_write_state_point()
 #else
-          call write_state_point()
+        call write_state_point()
 #endif
-          exit
-       end if
+        exit
+      end if
     end do
 
   end subroutine finalize_batch

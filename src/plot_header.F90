@@ -17,16 +17,16 @@ module plot_header
 !===============================================================================
 
   type Plot
-     integer :: id                    ! Unique ID
-     character(MAX_LINE_LEN) :: path_plot ! path for plot file
-     integer :: type                  ! Type
-     integer :: color_by              ! quantity to color regions by
-     real(8) :: origin(3)             ! xyz center of plot location
-     real(8) :: width(3)              ! xyz widths of plot
-     integer :: basis                 ! direction of plot slice 
-     integer :: pixels(2)             ! pixel width/height of plot slice
-     type(ObjectColor) :: not_found   ! color for positions where no cell found
-     type(ObjectColor), allocatable :: colors(:) ! colors of cells/mats
+    integer :: id                    ! Unique ID
+    character(MAX_LINE_LEN) :: path_plot ! path for plot file
+    integer :: type                  ! Type
+    integer :: color_by              ! quantity to color regions by
+    real(8) :: origin(3)             ! xyz center of plot location
+    real(8) :: width(3)              ! xyz widths of plot
+    integer :: basis                 ! direction of plot slice 
+    integer :: pixels(2)             ! pixel width/height of plot slice
+    type(ObjectColor) :: not_found   ! color for positions where no cell found
+    type(ObjectColor), allocatable :: colors(:) ! colors of cells/mats
   end type Plot
 
   integer :: PLOT_TYPE_SLICE = 1

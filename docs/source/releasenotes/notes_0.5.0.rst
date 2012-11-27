@@ -32,10 +32,16 @@ New Features
 Bug Fixes
 ---------
 
+- b11696_: Reading long attribute lists in XML input.
+- 2bd46a_: Search for tallying nuclides when no default_xs specified.
+- 7a1f08_: Fix word wrapping when writing messages.
 - c0e3ec_: Prevent underflow when compiling with MPI=yes and DEBUG=yes.
 - 6f8d9d_: Set default tally labels.
 - 6a3a5e_: Fix problem with corner-crossing in lattices.
 
+.. _b11696: https://github.com/mit-crpg/openmc/commit/b11696
+.. _2bd46a: https://github.com/mit-crpg/openmc/commit/2bd46a
+.. _7a1f08: https://github.com/mit-crpg/openmc/commit/7a1f08
 .. _c0e3ec: https://github.com/mit-crpg/openmc/commit/c0e3ec
 .. _6f8d9d: https://github.com/mit-crpg/openmc/commit/6f8d9d
 .. _6a3a5e: https://github.com/mit-crpg/openmc/commit/6a3a5e

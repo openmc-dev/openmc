@@ -137,7 +137,8 @@ contains
     cmfd_tally_on = inactive_
 
     ! inactive batch flush window
-!   cmfd_inact_flush = inactive_flush_
+    cmfd_inact_flush(1) = inactive_flush_
+    cmfd_inact_flush(2) = num_flushes_
 
     ! last flush before active batches
     cmfd_act_flush = active_flush_

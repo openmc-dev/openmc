@@ -33,5 +33,7 @@
   <variable name="inactive_"       tag="inactive"       type="logical"       default=".true."               />
   <variable name="active_flush_"   tag="active_flush"   type="integer"       default="0"                    />
   <variable name="keff_tol_"       tag="keff_tol"       type="double"        default="0.005"                />
+  <variable name="inactive_flush_" tag="inactive_flush" type="integer"       default="9999"                 />
+  <variable name="num_flushes_"    tag="num_flushes"    type="integer"       default="1"                    />
 
 </template>

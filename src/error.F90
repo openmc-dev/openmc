@@ -10,10 +10,6 @@ module error
 
   implicit none
 
-  ! Short names for output and error units
-  integer :: ou = OUTPUT_UNIT
-  integer :: eu = ERROR_UNIT
-
 contains
 
 !===============================================================================

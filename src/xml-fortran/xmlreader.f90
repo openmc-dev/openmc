@@ -568,7 +568,7 @@ subroutine write_prolog
   &   '   character(len=80)                      :: tag'       , &
   &   '   character(len=80)                      :: starttag'  , &
   &   '   logical                                :: endtag'    , &
-  &   '   character(len=80), dimension(1:2,1:20) :: attribs'   , &
+  &   '   character(len=250), dimension(1:2,1:20) :: attribs'   , &
   &   '   integer                                :: noattribs' , &
   &   '   character(len=1000), dimension(1:1000)  :: data'      , &
   &   '   integer                                :: nodata'

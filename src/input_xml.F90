@@ -1,18 +1,20 @@
 module input_xml
 
-  use cmfd_input,      only: configure_cmfd
+  use cmfd_input,       only: configure_cmfd
   use constants
-  use datatypes,       only: dict_add_key, dict_has_key, dict_get_key
-  use error,           only: fatal_error, warning
-  use geometry_header, only: Cell, Surface, Lattice
+  use datatypes,        only: dict_add_key, dict_has_key, dict_get_key, &
+                              dict_keys
+  use datatypes_header, only: ListKeyValueCI
+  use error,            only: fatal_error, warning
+  use geometry_header,  only: Cell, Surface, Lattice
   use global
-  use mesh_header,     only: StructuredMesh
-  use output,          only: write_message
+  use mesh_header,      only: StructuredMesh
+  use output,           only: write_message
   use plot_header
-  use random_lcg,      only: prn
-  use string,          only: lower_case, to_str, str_to_int, str_to_real, &
-                             starts_with, ends_with
-  use tally_header,    only: TallyObject, TallyFilter
+  use random_lcg,       only: prn
+  use string,           only: lower_case, to_str, str_to_int, str_to_real, &
+                              starts_with, ends_with
+  use tally_header,     only: TallyObject, TallyFilter
 
   implicit none
 
@@ -1194,6 +1196,7 @@ contains
     logical :: file_exists   ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
+    type(ListKeyValueCI), pointer :: key_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(TallyFilter), allocatable :: filters(:) ! temporary filters
@@ -1604,14 +1607,38 @@ contains
             if (ends_with(tally_(i) % nuclides(j), 'c')) then
               word = tally_(i) % nuclides(j)
             else
-              word = trim(tally_(i) % nuclides(j)) // "." // default_xs
+              if (default_xs == '') then
+                ! No default cross section specified, search through nuclides
+                key_list => dict_keys(nuclide_dict)
+                do while (associated(key_list))
+                  if (starts_with(key_list % data % key, &
+                       tally_(i) % nuclides(j))) then
+                    word = key_list % data % key
+                    exit
+                  end if
+                  
+                  ! Advance to next
+                  key_list => key_list % next
+                end do
+
+                ! Check if no nuclide was found
+                if (.not. associated(key_list)) then
+                  message = "Could not find the nuclide " // trim(&
+                       tally_(i) % nuclides(j)) // " specified in tally " &
+                       // trim(to_str(t % id)) // " in any material."
+                  call fatal_error()
+                end if
+                deallocate(key_list)
+              else
+                ! Set nuclide to default xs
+                word = trim(tally_(i) % nuclides(j)) // "." // default_xs
+              end if
             end if
 
             ! Check to make sure nuclide specified is in problem
             if (.not. dict_has_key(nuclide_dict, word)) then
-              message = "Could not find nuclide " // trim(word) // &
-                   " from tally " // trim(to_str(t % id)) // &
-                   " in cross_sections.xml file."
+              message = "The nuclide " // trim(word) // " from tally " // &
+                   trim(to_str(t % id)) // " is not present in any material."
               call fatal_error()
             end if
 

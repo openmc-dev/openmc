@@ -156,9 +156,15 @@ contains
       gen_per_batch = 1
     end if
 
-    ! Check number of active batches
+    ! Check number of active batches, inactive batches, and particles
     if (n_active <= 0) then
-      message = "Number of active batches must be greater than 0."
+      message = "Number of active batches must be greater than zero."
+      call fatal_error()
+    elseif (n_inactive < 0) then
+      message = "Number of inactive batches must be non-negative."
+      call fatal_error()
+    elseif (n_particles <= 0) then
+      message = "Number of particles must be greater than zero."
       call fatal_error()
     end if
 

@@ -24,7 +24,8 @@ element geometry {
     (element id { xsd:int } | attribute id { xsd:int }) &
     (element type { ( "rectangular" | "hexagonal" ) } | 
      attribute type { ( "rectangular" | "hexagonal" ) })? &
-    (element dimension { list { xsd:int+ } } | attribute dimension { list { xsd:int+ } }) &
+    (element dimension { list { xsd:positiveInteger+ } } | 
+      attribute dimension { list { xsd:positiveInteger+ } }) &
     (element lower_left { list { xsd:double+ } } | attribute lower_left { list { xsd:double+ } }) &
     (element width { list { xsd:double+ } } | attribute width { list { xsd:double+ } }) &
     (element universes { list { xsd:int+ } } | attribute universes { list { xsd:int+ } })

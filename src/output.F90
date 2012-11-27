@@ -328,6 +328,7 @@ contains
 
     integer :: index_cell ! index in cells array
     integer :: i          ! loop index for surfaces
+    integer :: index_surf ! index in surfaces array
     integer :: unit_      ! unit to write to
     character(MAX_LINE_LEN) :: string
     type(Universe), pointer :: u => null()
@@ -387,7 +388,9 @@ contains
       case (OP_DIFFERENCE)
         string = trim(string) // ' !'
       case default
-        string = trim(string) // ' ' // to_str(c % surfaces(i))
+        index_surf = abs(c % surfaces(i))
+        string = trim(string) // ' ' // to_str(sign(&
+             surfaces(index_surf) % id, c % surfaces(i)))
       end select
     end do
     write(unit_,*) '    Surface Specification:' // trim(string)

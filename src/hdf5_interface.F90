@@ -3,6 +3,7 @@ module hdf5_interface
   use ace_header,      only: Reaction, UrrData
   use constants
   use endf,            only: reaction_name
+  use error,           only: fatal_error
   use geometry_header, only: Cell, Surface, Universe, Lattice
   use global
   use material_header, only: Material
@@ -817,7 +818,6 @@ contains
     ! Only master process should continue from here
     if (.not. master) return
 
-    ! Open binary state point file for writing
     ! Create a new state point file using default properties.
     call h5fcreate_f(path_state_point, H5F_ACC_TRUNC_F, hdf5_state_point, &
          hdf5_err)
@@ -1053,10 +1053,108 @@ contains
     ! Close tallies group
     call h5gclose_f(tallies_group, hdf5_err)
 
-    ! Close binary state point file
+    ! Close HDF5 state point file
     call h5fclose_f(hdf5_state_point, hdf5_err)
 
   end subroutine hdf5_write_state_point
+
+!===============================================================================
+! HDF5_LOAD_STATE_POINT
+!===============================================================================
+
+  subroutine hdf5_load_state_point()
+
+    integer          :: i                ! loop index
+    integer          :: mode             ! specified run mode
+    integer          :: temp             ! statepoint revision for comparison
+    integer(HID_T)   :: hdf5_state_point ! identifier for state point file
+    integer(HID_T)   :: tally_group      ! identifier for tally group
+    integer(HID_T)   :: dset             ! identifier for dataset
+    integer(HSIZE_T) :: dims(1)          ! dimensions of 1D arrays
+    type(c_ptr)      :: f_ptr            ! c pointer for h5dread
+
+    ! Write message
+    message = "Loading HDF5 state point " // trim(path_state_point) // "..."
+    call write_message(1)
+
+    ! Load state point file
+    call h5fopen_f(path_state_point, H5F_ACC_RDONLY_F, &
+         hdf5_state_point, hdf5_err)
+
+    ! Raad revision number for state point file and make sure it matches with
+    ! current version
+    call hdf5_read_integer(hdf5_state_point, "revision_statepoint", temp)
+    if (temp /= REVISION_STATEPOINT) then
+      message = "State point binary version does not match current version " &
+           // "in OpenMC."
+      call fatal_error()
+    end if
+
+    ! Read and overwrite random number seed
+    call hdf5_read_long(hdf5_state_point, "seed", seed)
+
+    ! Read and overwrite run information
+    call hdf5_read_integer(hdf5_state_point, "run_mode", mode)
+    call hdf5_read_long(hdf5_state_point, "n_particles", n_particles)
+    call hdf5_read_integer(hdf5_state_point, "n_batches", n_batches)
+
+    ! Read batch number to restart at
+    call hdf5_read_integer(hdf5_state_point, "current_batch", restart_batch)
+
+    ! Read information specific to criticality run
+    if (mode == MODE_CRITICALITY) then
+      call hdf5_read_integer(hdf5_state_point, "n_inactive", n_inactive)
+      call hdf5_read_integer(hdf5_state_point, "gen_per_batch", gen_per_batch)
+
+      dims(1) = restart_batch
+      call h5ltread_dataset_double_f(hdf5_state_point, "k_batch", &
+           k_batch(1:restart_batch), dims, hdf5_err)
+      call h5ltread_dataset_double_f(hdf5_state_point, "entropy", &
+           entropy(1:restart_batch), dims, hdf5_err)
+    end if
+
+    if (master) then
+      ! Read number of realizations for global tallies
+      call hdf5_read_integer(hdf5_state_point, "n_realizations", n_realizations)
+
+      ! Open global tallies dataset
+      call h5dopen_f(hdf5_state_point, "global_tallies", dset, hdf5_err)
+
+      ! Read global tallies
+      f_ptr = c_loc(global_tallies(1))
+      call h5dread_f(dset, hdf5_tallyscore_t, f_ptr, hdf5_err)
+
+      ! Close global tallies dataset
+      call h5dclose_f(dset, hdf5_err)
+
+      TALLIES_LOOP: do i = 1, n_tallies
+        ! Open tally group
+        call h5gopen_f(hdf5_state_point, "tallies/tally " // &
+             to_str(tallies(i) % id), tally_group, hdf5_err)
+
+        ! Read number of realizations
+        call hdf5_read_integer(tally_group, "n_realizations", &
+             tallies(i) % n_realizations)
+
+        ! Open dataset for tally values
+        call h5dopen_f(tally_group, "values", dset, hdf5_err)
+
+        ! Read sum and sum_sq for each tally bin
+        f_ptr = c_loc(tallies(i) % scores(1,1))
+        call h5dread_f(dset, hdf5_tallyscore_t, f_ptr, hdf5_err)
+
+        ! Close dataset for tally values
+        call h5dclose_f(dset, hdf5_err)
+
+        ! Close tally group
+        call h5gclose_f(tally_group, hdf5_err)
+      end do TALLIES_LOOP
+    end if
+
+    ! Close HDF5 state point file
+    call h5fclose_f(hdf5_state_point, hdf5_err)
+
+  end subroutine hdf5_load_state_point
 
 !===============================================================================
 ! HDF5_WRITE_INTEGER
@@ -1082,8 +1180,8 @@ contains
 
   subroutine hdf5_write_long(group, name, buffer)
 
-    integer(HID_T), intent(in) :: group
-    character(*),   intent(in) :: name
+    integer(HID_T),     intent(in) :: group
+    character(*),       intent(in) :: name
     integer(8), target, intent(in) :: buffer
 
     integer          :: rank = 1
@@ -1123,6 +1221,69 @@ contains
          (/ buffer /), hdf5_err)
 
   end subroutine hdf5_write_double
+
+!===============================================================================
+! HDF5_READ_INTEGER
+!===============================================================================
+
+  subroutine hdf5_read_integer(group, name, buffer)
+
+    integer(HID_T), intent(in)    :: group
+    character(*),   intent(in)    :: name
+    integer,        intent(inout) :: buffer
+
+    integer          :: buffer_copy(1)
+    integer(HSIZE_T) :: dims(1) = (/1/)
+
+    call h5ltread_dataset_int_f(group, name, buffer_copy, dims, hdf5_err)
+    buffer = buffer_copy(1)
+
+  end subroutine hdf5_read_integer
+
+!===============================================================================
+! HDF5_READ_LONG
+!===============================================================================
+
+  subroutine hdf5_read_long(group, name, buffer)
+
+    integer(HID_T), intent(in)  :: group
+    character(*),   intent(in)  :: name
+    integer(8),     intent(out) :: buffer
+
+    integer(HID_T) :: dset
+    type(c_ptr)    :: f_ptr
+
+    ! Open dataset
+    call h5dopen_f(group, name, dset, hdf5_err)
+
+    ! Get pointer to buffer
+    f_ptr = c_loc(buffer)
+
+    ! Read data from dataset
+    call h5dread_f(dset, hdf5_integer8_t, f_ptr, hdf5_err)
+
+    ! Close dataset
+    call h5dclose_f(dset, hdf5_err)
+
+  end subroutine hdf5_read_long
+
+!===============================================================================
+! HDF5_READ_DOUBLE
+!===============================================================================
+
+  subroutine hdf5_read_double(group, name, buffer)
+
+    integer(HID_T), intent(in)  :: group
+    character(*),   intent(in)  :: name
+    real(8),        intent(out) :: buffer
+
+    real(8)          :: buffer_copy(1)
+    integer(HSIZE_T) :: dims(1) = (/1/)
+
+    call h5ltread_dataset_double_f(group, name, buffer_copy, dims, hdf5_err)
+    buffer = buffer_copy(1)
+
+  end subroutine hdf5_read_double
 
 #endif
 

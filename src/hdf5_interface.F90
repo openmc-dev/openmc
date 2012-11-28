@@ -1246,9 +1246,9 @@ contains
 
   subroutine hdf5_read_long(group, name, buffer)
 
-    integer(HID_T), intent(in)  :: group
-    character(*),   intent(in)  :: name
-    integer(8),     intent(out) :: buffer
+    integer(HID_T),     intent(in)  :: group
+    character(*),       intent(in)  :: name
+    integer(8), target, intent(out) :: buffer
 
     integer(HID_T) :: dset
     type(c_ptr)    :: f_ptr

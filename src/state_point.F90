@@ -999,6 +999,7 @@ contains
     ! batches
     if (current_batch == n_inactive) then
       tallies_on = .true.
+      active_batches = .true.
       call setup_active_usertallies()
     end if
 

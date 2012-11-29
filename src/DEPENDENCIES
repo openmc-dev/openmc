@@ -176,6 +176,7 @@ global.o: tally_header.o
 global.o: timing.o
 
 hdf5_interface.o: ace_header.o
+hdf5_interface.o: bank_header.o
 hdf5_interface.o: constants.o
 hdf5_interface.o: endf.o
 hdf5_interface.o: error.o

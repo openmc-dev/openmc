@@ -1,6 +1,7 @@
 module hdf5_interface
 
   use ace_header,      only: Reaction, UrrData
+  use bank_header,     only: Bank
   use constants
   use endf,            only: reaction_name
   use error,           only: fatal_error
@@ -29,18 +30,36 @@ contains
 
   subroutine hdf5_initialize()
 
-    type(TallyScore), target :: tmp(2)
+    type(TallyScore), target :: tmp(2)          ! temporary TallyScore
+    type(Bank),       target :: tmpb(2)         ! temporary Bank
+    integer(HID_T)           :: coordinates_t   ! HDF5 type for 3 reals
+    integer(HSIZE_T)         :: dims(1) = (/3/) ! size of coordinates
 
     ! Initialize FORTRAN interface.
     call h5open_f(hdf5_err)
 
-    ! Create the compound datatype for memory.
+    ! Create the compound datatype for TallyScore
     call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmp(1)), &
          c_loc(tmp(2))), hdf5_tallyscore_t, hdf5_err)
     call h5tinsert_f(hdf5_tallyscore_t, "sum", h5offsetof(c_loc(tmp(1)), &
          c_loc(tmp(1)%sum)), H5T_NATIVE_DOUBLE, hdf5_err)
     call h5tinsert_f(hdf5_tallyscore_t, "sum_sq", h5offsetof(c_loc(tmp(1)), &
          c_loc(tmp(1)%sum_sq)), H5T_NATIVE_DOUBLE, hdf5_err)
+
+    ! Create compound type for xyz and uvw
+    call h5tarray_create_f(H5T_NATIVE_DOUBLE, 1, dims, coordinates_t, hdf5_err)
+
+    ! Create the compound datatype for Bank
+    call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(2))), hdf5_bank_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "wgt", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%wgt)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "xyz", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%xyz)), coordinates_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "uvw", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%uvw)), coordinates_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "E", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%E)), H5T_NATIVE_DOUBLE, hdf5_err)
 
     ! Determine type for integer(8)
     hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)
@@ -1053,6 +1072,16 @@ contains
     ! Close tallies group
     call h5gclose_f(tallies_group, hdf5_err)
 
+    ! Write source bank
+    dims(1) = work
+    call h5screate_simple_f(1, dims, dspace, hdf5_err)
+    call h5dcreate_f(hdf5_state_point, "source_bank", hdf5_bank_t, &
+         dspace, dset, hdf5_err)
+    f_ptr = c_loc(source_bank(1))
+    CALL h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err)
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+
     ! Close HDF5 state point file
     call h5fclose_f(hdf5_state_point, hdf5_err)
 
@@ -1113,10 +1142,10 @@ contains
            entropy(1:restart_batch), dims, hdf5_err)
     end if
 
-    if (master) then
-      ! Read number of realizations for global tallies
-      call hdf5_read_integer(hdf5_state_point, "n_realizations", n_realizations)
+    ! Read number of realizations for global tallies
+    call hdf5_read_integer(hdf5_state_point, "n_realizations", n_realizations)
 
+    if (master) then
       ! Open global tallies dataset
       call h5dopen_f(hdf5_state_point, "global_tallies", dset, hdf5_err)
 
@@ -1150,6 +1179,16 @@ contains
         call h5gclose_f(tally_group, hdf5_err)
       end do TALLIES_LOOP
     end if
+
+    ! Open dataset for source bank
+    call h5dopen_f(hdf5_state_point, "source_bank", dset, hdf5_err)
+
+    ! Read source bank
+    f_ptr = c_loc(source_bank(1))
+    call h5dread_f(dset, hdf5_bank_t, f_ptr, hdf5_err)
+
+    ! Close dataset for tally values
+    call h5dclose_f(dset, hdf5_err)
 
     ! Close HDF5 state point file
     call h5fclose_f(hdf5_state_point, hdf5_err)

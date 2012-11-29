@@ -242,6 +242,7 @@ module global
 #ifdef HDF5
   integer(HID_T) :: hdf5_output_file  ! identifier for output file
   integer(HID_T) :: hdf5_tallyscore_t ! Compound type for TallyScore
+  integer(HID_T) :: hdf5_bank_t       ! Compound type for Bank
   integer(HID_T) :: hdf5_integer8_t   ! type for integer(8)
   integer        :: hdf5_err          ! error flag 
 #endif

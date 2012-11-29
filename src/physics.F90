@@ -1317,8 +1317,8 @@ contains
     real(8) :: p_l_k, p_l_k1  ! adjacent p on outgoing grid l
     real(8) :: c_k, c_k1      ! cumulative probability
 
-    real(8) :: KM_A           ! Kalbach-Mann parameter R
-    real(8) :: KM_R           ! Kalbach-Mann parameter R
+    real(8) :: KMA            ! Kalbach-Mann parameter R
+    real(8) :: KMR            ! Kalbach-Mann parameter R
     real(8) :: A_k, A_k1      ! Kalbach-Mann A on outgoing grid l
     real(8) :: R_k, R_k1      ! Kalbach-Mann R on outgoing grid l
 
@@ -1758,8 +1758,8 @@ contains
         end if
 
         ! Determine Kalbach-Mann parameters
-        KM_R = edist % data(lc + 3*NP + k)
-        KM_A = edist % data(lc + 4*NP + k)
+        KMR = edist % data(lc + 3*NP + k)
+        KMA = edist % data(lc + 4*NP + k)
 
       elseif (INTT == LINEAR_LINEAR) then
         ! Linear-linear interpolation
@@ -1781,8 +1781,8 @@ contains
         A_k  = edist % data(lc + 4*NP + k)
         A_k1 = edist % data(lc + 4*NP + k+1)
 
-        KM_R = R_k + (R_k1 - R_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
-        KM_A = A_k + (A_k1 - A_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
+        KMR = R_k + (R_k1 - R_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
+        KMA = A_k + (A_k1 - A_k)*(E_out - E_l_k)/(E_l_k1 - E_l_k)
       else
         message = "Unknown interpolation type: " // trim(to_str(INTT))
         call fatal_error()
@@ -1798,11 +1798,11 @@ contains
       ! Sampled correlated angle from Kalbach-Mann parameters
       r3 = prn()
       r4 = prn()
-      if (r3 > KM_R) then
-        T = (TWO*r4 - ONE) * sinh(KM_A)
-        mu_out = log(T + sqrt(T*T + ONE))/KM_A
+      if (r3 > KMR) then
+        T = (TWO*r4 - ONE) * sinh(KMA)
+        mu_out = log(T + sqrt(T*T + ONE))/KMA
       else
-        mu_out = log(r4*exp(KM_A) + (ONE - r4)*exp(-KM_A))/KM_A
+        mu_out = log(r4*exp(KMA) + (ONE - r4)*exp(-KMA))/KMA
       end if
 
     case (61)

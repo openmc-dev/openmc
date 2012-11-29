@@ -39,7 +39,7 @@ Bug Fixes
 - dc4a8f_: Fixed bug with fixed source restart runs.
 
 .. _4654ee: https://github.com/mit-crpg/openmc/commit/4654ee
-.. _7ee416: https://github.com/mit-crpg/openmc/commit/7ee461
+.. _7ee461: https://github.com/mit-crpg/openmc/commit/7ee461
 .. _792eb3: https://github.com/mit-crpg/openmc/commit/792eb3
 .. _7fd617: https://github.com/mit-crpg/openmc/commit/7fd617
 .. _dc4a8f: https://github.com/mit-crpg/openmc/commit/dc4a8f

@@ -789,6 +789,10 @@ contains
         string = trim(string) // ' scatter-2'
       case (SCORE_SCATTER_3)
         string = trim(string) // ' scatter-3'
+      case (SCORE_SCATTER_4)
+        string = trim(string) // ' scatter-4'
+      case (SCORE_SCATTER_5)
+        string = trim(string) // ' scatter-5'
       case (SCORE_TRANSPORT)
         string = trim(string) // ' transport'
       case (SCORE_DIFFUSION)
@@ -1415,6 +1419,8 @@ contains
     score_name(abs(SCORE_SCATTER_1))  = "First Scattering Moment"
     score_name(abs(SCORE_SCATTER_2))  = "Second Scattering Moment"
     score_name(abs(SCORE_SCATTER_3))  = "Third Scattering Moment"
+    score_name(abs(SCORE_SCATTER_4))  = "Fourth Scattering Moment"
+    score_name(abs(SCORE_SCATTER_5))  = "Fifth Scattering Moment"
     score_name(abs(SCORE_TRANSPORT))  = "Transport Rate"
     score_name(abs(SCORE_DIFFUSION))  = "Diffusion Coefficient"
     score_name(abs(SCORE_N_1N))       = "(n,1n) Rate"

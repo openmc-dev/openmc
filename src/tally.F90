@@ -4,7 +4,7 @@ module tally
   use datatypes_header, only: ListInt
   use error,         only: fatal_error
   use global
-  use math,          only: t_percentile
+  use math,          only: t_percentile, calc_pn
   use mesh,          only: get_mesh_bin, bin_to_mesh_indices, get_mesh_indices, &
                            mesh_indices_to_bin, mesh_intersects
   use mesh_header,   only: StructuredMesh
@@ -178,7 +178,7 @@ contains
             ! The second scattering moment can be determined in a similar
             ! manner to the first scattering moment
 
-            score = last_wgt * 0.5*(3.0*mu*mu - ONE)
+            score = last_wgt * calc_pn(2, mu)
 
           case (SCORE_SCATTER_3)
             ! Skip any event where the particle didn't scatter
@@ -188,7 +188,7 @@ contains
             ! rate of scattering reactions multiplied by the cosine of the
             ! change in neutron's angle due to the collision
 
-            score = last_wgt * 0.5*(5.0*mu*mu*mu - 3.0*mu)
+            score = last_wgt * calc_pn(3, mu)
 
           case (SCORE_TRANSPORT)
             ! Skip any event where the particle didn't scatter

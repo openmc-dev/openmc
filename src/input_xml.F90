@@ -1700,6 +1700,8 @@ contains
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
+          case ('scatter-0') !does the same as 'scatter', for convenience
+            t % score_bins(j) = SCORE_SCATTER
           case ('scatter-1')
             t % score_bins(j) = SCORE_SCATTER_1
 
@@ -1712,6 +1714,16 @@ contains
             t % estimator = ESTIMATOR_ANALOG
           case ('scatter-3')
             t % score_bins(j) = SCORE_SCATTER_3
+
+            ! Set tally estimator to analog
+            t % estimator = ESTIMATOR_ANALOG
+          case ('scatter-4')
+            t % score_bins(j) = SCORE_SCATTER_4
+
+            ! Set tally estimator to analog
+            t % estimator = ESTIMATOR_ANALOG
+          case ('scatter-5')
+            t % score_bins(j) = SCORE_SCATTER_5
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG

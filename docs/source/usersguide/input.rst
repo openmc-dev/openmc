@@ -798,13 +798,19 @@ The following responses can be tallied.
     Total reaction rate
 
   :scatter:
-    Total scattering rate
+    Total scattering rate. Can also be identified with the ``scatter-0``
+    response type.
 
   :nu-scatter:
     Total production of neutrons due to scattering. This accounts for
     multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
     slightly higher than the scattering rate.
 
+  :scatter-0:
+    Zeroth scattering moment. Can also be identified with the ``scatter``
+    response type, but is provided for consistency with the higher order
+    scattering moments.
+  
   :scatter-1:
     First scattering moment
 
@@ -813,6 +819,12 @@ The following responses can be tallied.
 
   :scatter-3:
     Third scattering moment
+    
+  :scatter-4:
+    Fourth scattering moment
+
+  :scatter-5:
+    Fifth scattering moment
 
   :absorption:
     Total absorption rate. This accounts for all reactions which do not produce

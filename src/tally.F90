@@ -184,12 +184,28 @@ contains
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
-            ! The first scattering moment can be determined by using the
-            ! rate of scattering reactions multiplied by the cosine of the
-            ! change in neutron's angle due to the collision
+            ! The third scattering moment can be determined in a similar
+            ! manner to the first scattering moment
 
             score = last_wgt * calc_pn(3, mu)
 
+          case (SCORE_SCATTER_4)
+            ! Skip any event where the particle didn't scatter
+            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
+
+            ! The fourth scattering moment can be determined in a similar
+            ! manner to the first scattering moment
+
+            score = last_wgt * calc_pn(4, mu)
+
+          case (SCORE_SCATTER_5)
+            ! Skip any event where the particle didn't scatter
+            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
+
+            ! The fifth scattering moment can be determined in a similar
+            ! manner to the first scattering moment
+
+            score = last_wgt * calc_pn(5, mu)
           case (SCORE_TRANSPORT)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP

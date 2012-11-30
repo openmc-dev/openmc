@@ -112,4 +112,39 @@ contains
 
   end function t_percentile
 
+!===============================================================================
+! CALC_PN calculates the n-th order Legendre polynomial at the value of x.
+! Since this function is called repeatedly during the neutron transport process,
+! neither n or x is checked to see if they are in the applicable range. 
+! This is left to the client developer to use where applicable. x is to be in
+! the domain of [-1,1], and 0<=n<=5. If x is outside of the range, the return
+! value will be outside the expected range; if n is outside the stated range, 
+! the return value will be 1.0.
+!===============================================================================
+  
+  pure function calc_pn(n,x) result(pnx)
+    integer, intent(in) :: n   ! Legendre order requested
+    real(8), intent(in) :: x   ! Independent variable the Legendre is to be 
+                               ! evaluated at; x must be in the domain [-1,1]
+    real(8)             :: pnx ! The Legendre poly of order n evaluated at x
+    
+    select case(n)
+      case(1)
+        pnx = x
+      case(2)
+        pnx = 1.5_8 * x * x - 0.5_8
+      case(3)
+        pnx = 2.5_8 * x * x * x - 1.5_8 * x
+      case(4)
+        pnx = 4.375_8 * x * x * x * x - 3.75_8 * x * x + 0.375_8
+      case(5)
+        pnx = 7.875_8 * x * x * x * x * x - 8.75_8 * x * x * x + 1.875 * x
+      case default
+        pnx = ONE
+    end select
+    
+  
+  end function calc_pn
+
+
 end module math

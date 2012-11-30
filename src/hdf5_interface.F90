@@ -1072,6 +1072,8 @@ contains
     ! Close tallies group
     call h5gclose_f(tallies_group, hdf5_err)
 
+    ! TODO: Use parallel HDF5 to write source bank
+
     ! Write source bank
     dims(1) = work
     call h5screate_simple_f(1, dims, dspace, hdf5_err)
@@ -1179,6 +1181,8 @@ contains
         call h5gclose_f(tally_group, hdf5_err)
       end do TALLIES_LOOP
     end if
+
+    ! TODO: Use parallel HDF5 to read source bank in parallel
 
     ! Open dataset for source bank
     call h5dopen_f(hdf5_state_point, "source_bank", dset, hdf5_err)

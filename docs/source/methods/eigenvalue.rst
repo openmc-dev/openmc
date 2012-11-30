@@ -1,20 +1,20 @@
-.. _methods_criticality:
+.. _methods_eigenvalue:
 
-========================
-Criticality Calculations
-========================
+=======================
+Eigenvalue Calculations
+=======================
 
-A criticality calculation is a transport simulation wherein the source of
-neutrons includes a fissionable material. Some common criticality calculations
-include the simulation of nuclear reactors, spent fuel pools, nuclear weapons,
-and other fissile systems. The term criticality calculation is also synonymous
-with the term eigenvalue calculation. The reason for this is that the transport
-equation becomes an eigenvalue equation if a fissionable source is present since
-then the source of neutrons will depend on the flux of neutrons
-itself. Criticality simulations using Monte Carlo methods are becoming
-increasingly common with the advent of high-performance computing.
+An eigenvalue calculation, also referred to as a criticality calculation, is a
+transport simulation wherein the source of neutrons includes a fissionable
+material. Some common eigenvalue calculations include the simulation of nuclear
+reactors, spent fuel pools, nuclear weapons, and other fissile systems. The
+reason they are called *eigenvalue* calculations is that the transport equation
+becomes an eigenvalue equation if a fissionable source is present since then the
+source of neutrons will depend on the flux of neutrons itself. Eigenvalue
+simulations using Monte Carlo methods are becoming increasingly common with the
+advent of high-performance computing.
 
-This section will explore the theory behind and implementation of criticality
+This section will explore the theory behind and implementation of eigenvalue
 calculations in a Monte Carlo code.
 
 .. _method-successive-generations:
@@ -23,7 +23,7 @@ calculations in a Monte Carlo code.
 Method of Successive Generations
 --------------------------------
 
-The method used to converge on the fission source distribution in a criticality
+The method used to converge on the fission source distribution in an eigenvalue
 calculation, known as the method of successive generations, was first introduced
 by [Lieberoth]_. In this method, a finite number of neutron histories,
 :math:`N`, are tracked through their lifetime iteratively. If fission occurs,
@@ -48,7 +48,7 @@ source distribution converges, tallies should not be scored to since they will
 otherwise include contributions from an unconverged source distribution.
 
 The method by which the fission source iterations are parallelized can have a
-large impact on the achiable parallel scaling. This topic is discussed at length
+large impact on the achievable parallel scaling. This topic is discussed at length
 in :ref:`fission-bank-algorithms`.
 
 -------------------------
@@ -74,7 +74,7 @@ finite set of coordinates in Euclidean space. In order to analyze the
 convergence, we would either need to use a method for assessing convergence of
 an N-dimensional quantity or transform our set of coordinates into a scalar
 metric. The latter approach has been developed considerably over the last decade
-and a method now commonly used in Monte Carlo criticality calculations is to use
+and a method now commonly used in Monte Carlo eigenvalue calculations is to use
 a metric called the `Shannon entropy`_, a concept borrowed from information
 theory.
 

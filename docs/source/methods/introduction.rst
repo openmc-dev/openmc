@@ -45,13 +45,13 @@ following steps:
 
   - Initialize the pseudorandom number generator.
 
-  - Read ACE format cross-sections specified in the problem.
+  - Read ACE format cross sections specified in the problem.
 
   - If using a special energy grid treatment such as a union energy grid or
     lethargy bins, that must be initialized as well.
 
   - In a fixed source problem, source sites are sampled from the specified
-    source. In a criticality problem, source sites are sampled from some initial
+    source. In an eigenvalue problem, source sites are sampled from some initial
     source distribution or from a source file. The source sites consist of
     coordinates, a direction, and an energy.
 
@@ -64,15 +64,15 @@ proceed. The life of a single particle will proceed as follows:
   2. Based on the particle's coordinates, the current cell in which the particle
      resides is determined.
 
-  3. The energy-dependent cross-sections for the material that the particle is
+  3. The energy-dependent cross sections for the material that the particle is
      currently in are determined. Note that this includes the total
-     cross-section, which is not pre-calculated.
+     cross section, which is not pre-calculated.
 
   4. The distance to the nearest boundary of the particle's cell is determined
      based on the bounding surfaces to the cell.
 
   5. The distance to the next collision is sampled. If the total material
-     cross-section is :math:`\Sigma_t`, this can be shown to be
+     cross section is :math:`\Sigma_t`, this can be shown to be
 
      .. math::
 
@@ -88,7 +88,7 @@ proceed. The life of a single particle will proceed as follows:
 
   7. The material at the collision site may consist of multiple nuclides. First,
      the nuclide with which the collision will happen is sampled based on the
-     total cross-sections. If the total cross section of material :math:`i` is
+     total cross sections. If the total cross section of material :math:`i` is
      :math:`\Sigma_{t,i}`, then the probability that any nuclide is sampled is
 
      .. math::
@@ -97,7 +97,7 @@ proceed. The life of a single particle will proceed as follows:
 
   8. Once the specific nuclide is sampled, the random samples a reaction for
      that nuclide based on the microscopic cross sections. If the microscopic
-     cross-section for some reaction :math:`x` is :math:`\sigma_x` and the total
+     cross section for some reaction :math:`x` is :math:`\sigma_x` and the total
      microscopic cross section for the nuclide is :math:`\sigma_t`, then the
      probability that reaction :math:`x` will occur is
 
@@ -106,8 +106,8 @@ proceed. The life of a single particle will proceed as follows:
          P(x) = \frac{\sigma_x}{\sigma_t}.
 
   9. If the sampled reaction is elastic or inelastic scattering, the outgoing
-     energy and angle is sampled from the appropriate distribution.  If the
-     reaction is (n,xn), it's also treated as scattering and the weight of the
+     energy and angle is sampled from the appropriate distribution.  Reactions
+     of type :math:`(n,xn)` are treated as scattering and the weight of the
      particle is increased by the multiplicity of the reaction. The particle
      then continues from step 3. If the reaction is absorption or fission, the
      particle dies and if necessary, fission sites are created and stored in the
@@ -121,7 +121,7 @@ be performed before the run is finished. This include the following:
 
   - All tallies and other results are written to disk.
 
-  - If requested, a source file is written to disk
+  - If requested, a source file is written to disk.
 
   - All allocatable arrays are deallocated.
 

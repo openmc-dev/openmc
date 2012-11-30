@@ -11,12 +11,13 @@ Constructive Solid Geometry
 OpenMC uses a technique known as `constructive solid geometry`_ (CSG) to build
 arbitrarily complex three-dimensional models in Euclidean space. In a CSG model,
 every unique object is described as the union, intersection, or difference of
-half-spaces created by bounding `surfaces`_. Every surface divides all of space
-into exactly two half-spaces. We can mathematically define a surface as a
+*half-spaces* created by bounding `surfaces`_. Every surface divides all of
+space into exactly two half-spaces. We can mathematically define a surface as a
 collection of points that satisfy an equation of the form :math:`f(x,y,z) = 0`
-where :math:`f(x,y,z)` is a given function. The region for which :math:`f(x,y,z)
-< 0` can be called the negative half-space (or simply the "negative side") and
-the region for which :math:`f(x,y,z) > 0` can be called the positive half-space.
+where :math:`f(x,y,z)` is a given function. All coordinates for which
+:math:`f(x,y,z) < 0` are referred to as the negative half-space (or simply the
+*negative side*) and coordinates for which :math:`f(x,y,z) > 0` are referred to
+as the positive half-space.
 
 Let us take the example of a sphere centered at the point :math:`(x_0,y_0,z_0)`
 with radius :math:`R`. One would normally write the equation of the sphere as
@@ -41,28 +42,77 @@ One can confirm that any point inside this sphere will correspond to
 In OpenMC, every surface defined by the user is assigned an integer to uniquely
 identify it. We can then refer to either of the two half-spaces created by a
 surface by a combination of the unique ID of the surface and a positive/negative
-sign. For example, to refer to the negative half-space of a sphere (the volume
-inside the sphere) with unique ID 35, the reference would be -35. These
-references to half-spaces are used in created regions in space of homogeneous
-material, known as "cells".
-
+sign. The following illustration shows an example of an ellipse with unique ID 1
+dividing space into two half-spaces.
 
 .. figure:: ../../img/halfspace.svg
    :align: center
    :figclass: align-center
+
+   Example of an ellipse and its associated half-spaces.
+
+References to half-spaces created by surfaces are used to define regions of
+space of uniform composition, known as *cells*. While some codes allow regions
+to be defined by intersections, unions, and differences or half-spaces, OpenMC
+is currently limited to cells defined only as intersections of
+half-spaces. Thus, the specification of the cell must include a list of
+half-space references whose intersection defines the region. The region is then
+assigned a material defined elsewhere. The following illustration shows an
+example of a cell defined as the intersection of an ellipse and two planes.
    
 .. figure:: ../../img/union.svg
    :align: center
    :figclass: align-center
 
-In OpenMC, any second-order surface of the form
+   The shaded region represents a cell bounded by three surfaces.
 
-.. math::
+The ability to form regions based on bounding quadratic surfaces enables OpenMC
+to model arbitrarily complex three-dimensional objects. In practice, one is
+limited only by the different surface types available in OpenMC. The following
+table lists the available surface types, the identifier used to specify them in
+input files, the corresponding surface equation, and the input parameters needed
+to fully define the surface.
 
-    f(x,y,z) = Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
+.. table:: Surface types available in OpenMC.
 
-can be modeled in OpenMC. For example, the equation for a sphere centered at
-:math:`(\bar{x},\bar{y},\bar{z})` and of radius :math:`R` can be written as
+    +----------------------+------------+------------------------------+-------------------------+
+    | Surface              | Identifier | Equation                     | Parameters              |
+    +======================+============+==============================+=========================+
+    | Plane perpendicular  | x-plane    | :math:`x - x_0 = 0`          | :math:`x_0`             |
+    | to :math:`x`-axis    |            |                              |                         |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Plane perpendicular  | y-plane    | :math:`x - x_0 = 0`          | :math:`y_0`             |
+    | to :math:`y`-axis    |            |                              |                         |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Plane perpendicular  | z-plane    | :math:`x - x_0 = 0`          | :math:`z_0`             |
+    | to :math:`z`-axis    |            |                              |                         |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Arbitrary plane      | plane      | :math:`Ax + By + Cz = D`     | :math:`A\;B\;C\;D`      |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Infinite cylinder    | x-cylinder | :math:`(y-y_0)^2 + (z-z_0)^2 | :math:`y_0\;z_0\;R`     |
+    | parallel to          |            | = R^2`                       |                         |
+    | :math:`x`-axis       |            |                              |                         |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Infinite cylinder    | y-cylinder | :math:`(x-x_0)^2 + (z-z_0)^2 | :math:`x_0\;z_0\;R`     |
+    | parallel to          |            | = R^2`                       |                         |
+    | :math:`y`-axis       |            |                              |                         |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Infinite cylinder    | z-cylinder | :math:`(x-x_0)^2 + (y-y_0)^2 | :math:`x_0\;y_0\;R`     |
+    | parallel to          |            | = R^2`                       |                         |
+    | :math:`z`-axis       |            |                              |                         |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Sphere               | sphere     | :math:`(x-x_0)^2 + (y-y_0)^2 | :math:`x_0 \; y_0 \;    |
+    |                      |            | + (z-z_0)^2 = R^2`           | z_0 \; R`               |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Cone parallel to the | x-cone     | :math:`(y-y_0)^2 + (z-z_0)^2 | :math:`x_0 \; y_0 \;    |
+    | :math:`x`-axis       |            | = R^2(x-x_0)^2`              | z_0 \; R^2`             |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Cone parallel to the | y-cone     | :math:`(x-x_0)^2 + (z-z_0)^2 | :math:`x_0 \; y_0 \;    |
+    | :math:`y`-axis       |            | = R^2(y-y_0)^2`              | z_0 \; R^2`             |
+    +----------------------+------------+------------------------------+-------------------------+
+    | Cone parallel to the | z-cone     | :math:`(x-x_0)^2 + (y-y_0)^2 | :math:`x_0 \; y_0 \;    |
+    | :math:`z`-axis       |            | = R^2(z-z_0)^2`              | z_0 \; R^2`             |
+    +----------------------+------------+------------------------------+-------------------------+
 
 .. _universes:
 
@@ -75,13 +125,12 @@ structures once and then fill them in various spots in the geometry. A
 prototypical example of a repeated structure would be a fuel pin within a fuel
 assembly or a fuel assembly within a core.
 
-Each closed volume, or cell, in OpenMC can either be filled with a normal
-material or with a universe. If the cell is filled with a univese, only the
-region of the universe that is within the defined boundaries of the parent cell
-will be present in the geometry. That is to say, even though a collection of
-cells in a universe may extend to infinity, not all of the universe will be
-"visible" in the geometry since it will be truncated by the boundaries of the
-cell that contains it.
+Each cell in OpenMC can either be filled with a normal material or with a
+universe. If the cell is filled with a universe, only the region of the universe
+that is within the defined boundaries of the parent cell will be present in the
+geometry. That is to say, even though a collection of cells in a universe may
+extend to infinity, not all of the universe will be "visible" in the geometry
+since it will be truncated by the boundaries of the cell that contains it.
 
 When a cell is filled with a universe, it is possible to specify that the
 universe filling the cell should be rotated and translated. This is done through
@@ -91,7 +140,7 @@ a material).
 
 It is not necessary to use or assign universes in a geometry if there are no
 repeated structures. Any cell in the geometry that is not assigned to a
-specified universe is automatically part of the "base" universe whose
+specified universe is automatically part of the *base universe* whose
 coordinates are just the normal coordinates in Euclidean space.
 
 Lattices
@@ -103,7 +152,7 @@ for a user to have to define the boundaries of each of the cells to be filled
 with a universe. Thus, OpenMC provides a lattice capability similar to that used
 in MCNP_ and Serpent_.
 
-The implementation of lattices is similar in principle to universes -- instead
+The implementation of lattices is similar in principle to universes --- instead
 of a cell being filled with a universe, the user can specify that it is filled
 with a finite lattice. The lattice is then defined by a two-dimensional array of
 universes that are to fill each position in the lattice. A good example of the
@@ -127,17 +176,19 @@ necessary to check the distance to the surfaces bounding the cell in each
 level. This should be done starting the highest (most global) level going down
 to the lowest (most local) level. That ensures that if two surfaces on different
 levels are coincident, by default the one on the higher level will be selected
-as the nearest surface.
+as the nearest surface. Although they are not explicitly defined, it is also
+necessary to check the distance to surfaces representing lattice boundaries if a
+lattice exists on a given level.
 
 The following procedure is used to calculate the distance to each bounding
-surface. Suppose we have a particle at :math:`(x,y,z)` traveling in the
-direction :math:`u,v,w`. To find the distance :math:`d` to a surface
+surface. Suppose we have a particle at :math:`(x_0,y_0,z_0)` traveling in the
+direction :math:`u_0,v_0,w_0`. To find the distance :math:`d` to a surface
 :math:`f(x,y,z) = 0`, we need to solve the equation:
 
 .. math::
     :label: dist-to-boundary-1
 
-    f(x + du, y + dv, z + dw) = 0
+    f(x_0 + du_0, y_0 + dv_0, z_0 + dw_0) = 0
 
 If no solutions to equation :eq:`dist-to-boundary-1` exist or the only solutions
 are complex, then the particle's direction of travel will not intersect the
@@ -146,6 +197,15 @@ means that the surface is "behind" the particle, i.e. if the particle continues
 traveling in its current direction, it will not hit the surface. The complete
 derivation for different types of surfaces used in OpenMC will be presented in
 the following sections.
+
+Since :math:f(x,y,z)` in general is quadratic in :math:`x`, :math:`y`, and
+:math:`z`, this implies that :math:`f(x_0 + du_0, y + dv_0, z + dw_0)` is
+quadratic in :math:`d`. Thus we expect at most two real solutions to
+:eq:`dist-to-boundary-1`. If no solutions to :eq:`dist-to-boundary-1` exist or
+the only solutions are complex, then the particle's direction of travel will not
+intersect the surface. If the solution to :eq:`dist-to-boundary-1` is negative,
+this means that the surface is "behind" the particle, i.e. if the particle
+continues traveling in its current direction, it will not hit the surface.
 
 Once a distance has been computed to a surface, we need to check if it is closer
 than previously-computed distances to surfaces. Unfortunately, we cannot just
@@ -164,10 +224,6 @@ where :math:`d` is the distance to a surface just calculated, :math:`d_{min}` is
 the minimum distance found thus far, and :math:`\epsilon` is a small number. In
 OpenMC, this parameter is set to :math:`\epsilon = 10^{-14}` since all floating
 calculations are done on 8-byte floating point numbers.
-
-Although they are not explicitly defined, it is also necessary to check the
-distance to surfaces representing lattice boundaries if a lattice exists on a
-given level.
 
 Plane Perpendicular to an Axis
 ------------------------------
@@ -303,6 +359,8 @@ will then be either both positive or both negative. If they are both positive,
 the smaller (closer) one will be the solution with a negative sign on the square
 root of the discriminant.
 
+.. TODO: Need to add derivation for x-cone, y-cone, and z-cone.
+
 .. _find-cell:
 
 ----------------------------
@@ -314,7 +372,7 @@ global coordinate system, i.e. if the particle's position is :math:`(x,y,z)`,
 what cell is it currently in. This is done in the following manner in
 OpenMC. With the possibility of multiple levels of coordinates, we must perform
 a recursive search for the cell. First, we start in the highest (most global)
-universe which we call the base universe and do a loop over each cell within
+universe, which we call the base universe, and loop over each cell within
 that universe. For each cell, we check whether the specified point is inside the
 cell using the algorithm described in :ref:`cell-contains`. If the cell is
 filled with a normal material, the search is done and we have identified the
@@ -331,30 +389,27 @@ is found that contains the specified point.
 Determining if a Coordinate is in a Cell
 ----------------------------------------
 
-One aspect of being able to determine what cell a particle is in is determining
-if a particle's coordinates lie within a given cell. The current geometry
-implementation in OpenMC limits all cells to being simple cells, i.e. they are
-defined only with intersection of half-spaces and not unions, differences,
-etc. This makes the job of determining if a point is in a cell quite simple.
-
-The algorithm for determining if a cell contains a point is as follows. For each
-surface that bounds a cell, we determine the particle's sense with respect to
-the surface. As explained earlier, if we have a point :math:`(x_0,y_0,z_0)` and
-a surface :math:`f(x,y,z) = 0`, the point is said to have negative sense if
+To determine which cell a particle is in given its coordinates, we need to be
+able to check whether a given cell contains a point. The algorithm for
+determining if a cell contains a point is as follows. For each surface that
+bounds a cell, we determine the particle's sense with respect to the surface. As
+explained earlier, if we have a point :math:`(x_0,y_0,z_0)` and a surface
+:math:`f(x,y,z) = 0`, the point is said to have negative sense if
 :math:`f(x_0,y_0,z_0) < 0` and positive sense if :math:`f(x_0,y_0,z_0) > 0`. If
 for all surfaces, the sense of the particle with respect to the surface matches
 the specified sense that defines the half-space within the cell, then the point
-is inside the cell.
+is inside the cell. Note that this algorithm works only for *simple cells*
+defined as intersections of half-spaces.
 
-Let us illustrate this idea with a concept. Let's say we have a cell defined as
+It may help to illustrate this algorithm using a simple example. Let's say we
+have a cell defined as
 
 .. code-block:: xml
-
-    <cell id="1" surfaces="-1 2 -3" />
 
     <surface id="1" type="sphere"  coeffs="0 0 0 10" />
     <surface id="2" type="x-plane" coeffs="-3" />
     <surface id="3" type="y-plane" coeffs="2" />
+    <cell id="1" surfaces="-1 2 -3" />
 
 This means that the cell is defined as the intersection of the negative half
 space of a sphere, the positive half-space of an x-plane, and the negative
@@ -368,9 +423,9 @@ satisfy the following equations
     x - (-3) > 0 \\
     x - 2 < 0
 
-So in order to determine if a point is inside the cell, we would plug its
-coordinates into equation :eq:`cell-contains-example` and if the inequalities
-are satisfied, than the point is indeed inside the cell.
+In order to determine if a point is inside the cell, we would substitute its
+coordinates into equation :eq:`cell-contains-example`. If the inequalities are
+satisfied, than the point is indeed inside the cell.
 
 --------------------------
 Handling Surface Crossings
@@ -390,9 +445,9 @@ travel of the particle so that we can evaluate cross sections based on its
 material properties. At initialization, a list of neighboring cells is created
 for each surface in the problem as described in :ref:`neighbor-lists`. The
 algorithm outlined in :ref:`find-cell` is used to find a cell containing the
-particle except rather than searching all cells in the base universe, only the
-list of neighboring cells is searched. If this search is unsuccessful, then a
-search is done over every cell in the base universe.
+particle with one minor modification; rather than searching all cells in the
+base universe, only the list of neighboring cells is searched. If this search is
+unsuccessful, then a search is done over every cell in the base universe.
 
 .. _neighbor-lists:
 
@@ -401,15 +456,15 @@ Building Neighbor Lists
 -----------------------
 
 After the geometry has been loaded and stored in memory from an input file,
-OpenMC builds a list for each surface containing any cells that contain the
-surface in their specification in order to speed up processing of surface
-crossings. The algorithm to build these lists is as follows. First, we loop over
-all cells in the geometry and count up how many times each surface appears in a
-specification as bounding a negative half-space and bounding a positive
-half-space. Two arrays are then allocated for each surface, one that lists each
-cell that contains the negative half-space of the surface and one that lists
-each cell that contains the positive half-space of the surface. Another loop is
-performed over all cells and the neighbor lists are populated for each surface.
+OpenMC builds a list for each surface containing any cells that are bounded by
+that surface in order to speed up processing of surface crossings. The algorithm
+to build these lists is as follows. First, we loop over all cells in the
+geometry and count up how many times each surface appears in a specification as
+bounding a negative half-space and bounding a positive half-space. Two arrays
+are then allocated for each surface, one that lists each cell that contains the
+negative half-space of the surface and one that lists each cell that contains
+the positive half-space of the surface. Another loop is performed over all cells
+and the neighbor lists are populated for each surface.
 
 .. _reflection:
 
@@ -432,9 +487,9 @@ point of the surface crossing. The rationale for this can be understood by
 noting that :math:`(\mathbf{v} \cdot \hat{\mathbf{n}}) \hat{\mathbf{n}}` is the
 projection of the velocity vector onto the normal vector. By subtracting two
 times this projection, the velocity is reflected with respect to the surface
-normal. Since the velocity of the particle will not change as it undergoes
-reflection, we can work with the direction of the particle instead, simplifying
-equation :eq:`reflection-v` to
+normal. Since the magnitude of the velocity of the particle will not change as
+it undergoes reflection, we can work with the direction of the particle instead,
+simplifying equation :eq:`reflection-v` to
 
 .. math::
     :label: reflection-omega
@@ -442,10 +497,10 @@ equation :eq:`reflection-v` to
     \mathbf{\Omega'} = \mathbf{\Omega} - 2 (\mathbf{\Omega} \cdot
     \hat{\mathbf{n}}) \hat{\mathbf{n}}
 
-
-The direction of the surface normal will be the gradient to the surface at the
-point of crossing, i.e. :math:`\mathbf{n} = \nabla f(x,y,z)`. Substituting this
-into equation :eq:`reflection-omega`, we get
+where :math:`\mathbf{v} = || \mathbf{v} || \mathbf{\Omega}`. The direction of
+the surface normal will be the gradient of the surface at the point of crossing,
+i.e. :math:`\mathbf{n} = \nabla f(x,y,z)`. Substituting this into equation
+:eq:`reflection-omega`, we get
 
 .. math::
     :label: reflection-omega-2
@@ -471,8 +526,8 @@ series of equations:
     w' = w - \frac{2 ( \mathbf{\Omega} \cdot \nabla f )}{|| \nabla f ||^2}
     \frac{\partial f}{\partial z}
 
-We can now use this form to develop rules for how to transform a particle's
-direction for different types of surfaces.
+One can then use equation :eq:`reflection-system` to develop equations for
+transforming a particle's direction given the equation of the surface.
 
 Plane Perpendicular to an Axis
 ------------------------------
@@ -523,7 +578,8 @@ Cylinder Parallel to an Axis
 A cylinder parallel to, for example, the x-axis has the form :math:`f(x,y,z) =
 (y - y_0)^2 + (z - z_0)^2 - R^2 = 0`. Thus, the gradient to the surface is
 
-.. math:: :label: reflection-cylinder-grad
+.. math::
+    :label: reflection-cylinder-grad
 
     \nabla f = 2 \left ( \begin{array}{c} 0 \\ y - y_0 \\ z - z_0 \end{array}
     \right ) = 2 \left ( \begin{array}{c} 0 \\ \bar{y} \\ \bar{z} \end{array}
@@ -532,13 +588,15 @@ A cylinder parallel to, for example, the x-axis has the form :math:`f(x,y,z) =
 where we have introduced the constants :math:`\bar{y}` and
 :math:`\bar{z}`. Taking the square of the norm of the gradient, we find that
 
-.. math:: :label: reflection-cylinder-norm
+.. math::
+    :label: reflection-cylinder-norm
 
     || \nabla f ||^2 = 4 \bar{y}^2 + 4 \bar{z}^2 = 4 R^2
 
 This implies that
 
-.. math:: :label: reflection-cylinder-constant
+.. math::
+    :label: reflection-cylinder-constant
 
     \frac{2 (\mathbf{\Omega} \cdot \nabla f)}{|| \nabla f ||^2} =
     \frac{\bar{y}v + \bar{z}w}{R^2}
@@ -548,7 +606,8 @@ Substituting equations :eq:`reflection-cylinder-constant` and
 the form of the solution. In this case, the x-component will not change. The y-
 and z-components of the reflected direction will be
 
-.. math:: :label: reflection-cylinder
+.. math::
+    :label: reflection-cylinder
 
     v' = v - \frac{2 ( \bar{y}v + \bar{z}w ) \bar{y}}{R^2} \\
 
@@ -561,7 +620,8 @@ Sphere
 The surface equation for a sphere has the form :math:`f(x,y,z) = (x - x_0)^2 +
 (y - y_0)^2 + (z - z_0)^2 - R^2 = 0`. Thus, the gradient to the surface is
 
-.. math:: :label: reflection-sphere-grad
+.. math::
+    :label: reflection-sphere-grad
 
     \nabla f = 2 \left ( \begin{array}{c} x - x_0 \\ y - y_0 \\ z - z_0
     \end{array} \right ) = 2 \left ( \begin{array}{c} \bar{x} \\ \bar{y} \\
@@ -570,13 +630,15 @@ The surface equation for a sphere has the form :math:`f(x,y,z) = (x - x_0)^2 +
 where we have introduced the constants :math:`\bar{x}, \bar{y}, \bar{z}`. Taking
 the square of the norm of the gradient, we find that
 
-.. math:: :label: reflection-sphere-norm
+.. math::
+    :label: reflection-sphere-norm
 
     || \nabla f ||^2 = 4 \bar{x}^2 + 4 \bar{y}^2 + 4 \bar{z}^2 = 4 R^2
 
 This implies that
 
-.. math:: :label: reflection-sphere-constant
+.. math::
+    :label: reflection-sphere-constant
 
     \frac{2 (\mathbf{\Omega} \cdot \nabla f)}{|| \nabla f ||^2} =
     \frac{\bar{x}u + \bar{y}v + \bar{z}w}{R^2}
@@ -585,14 +647,16 @@ Substituting equations :eq:`reflection-sphere-constant` and
 :eq:`reflection-sphere-grad` into equation :eq:`reflection-system` gives us the
 form of the solution:
 
-.. math:: :label: reflection-sphere
+.. math::
+    :label: reflection-sphere
 
     u' = u - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{x} }{R^2} \\
 
     v' = v - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{y} }{R^2} \\
 
-    w' = w - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{z} }{R^2} \\
+    w' = w - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{z} }{R^2}
 
+.. TODO: Add in derivation for cone surfaces.
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _surfaces: http://en.wikipedia.org/wiki/Surface

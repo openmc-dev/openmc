@@ -19,7 +19,7 @@ module physics
   use search,          only: binary_search
   use string,          only: to_str
   use tally,           only: score_analog_tally, score_tracklength_tally, &
-                             score_surface_current, add_to_score
+                             score_surface_current
 
   implicit none
 
@@ -103,12 +103,10 @@ contains
       if (associated(active_tracklength_tallies)) &
            call score_tracklength_tally(distance)
 
-      ! Score global tracklength tallies
-      if (tallies_on) then
-        ! Score track-length estimate of k-eff
-        call add_to_score(global_tallies(K_TRACKLENGTH), &
-             p % wgt * distance * material_xs % nu_fission)
-      end if
+      ! Score track-length estimate of k-eff
+      if (tallies_on) global_tallies(K_TRACKLENGTH) % value = &
+           global_tallies(K_TRACKLENGTH) % value + p % wgt * distance * &
+           material_xs % nu_fission
 
       if (d_collision > d_boundary) then
         ! ====================================================================
@@ -132,10 +130,9 @@ contains
         ! PARTICLE HAS COLLISION
 
         ! Score collision estimate of keff
-        if (tallies_on) then
-          call add_to_score(global_tallies(K_COLLISION), &
-               p % wgt * material_xs % nu_fission / material_xs % total)
-        end if
+        if (tallies_on) global_tallies(K_COLLISION) % value = &
+             global_tallies(K_COLLISION) % value + p % wgt * &
+             material_xs % nu_fission / material_xs % total
 
         p % surface = NONE
         call collision()
@@ -908,7 +905,8 @@ contains
     end if
 
     ! Add to analog estimate of keff
-    call add_to_score(global_tallies(K_ANALOG), nu/weight * keff)
+    global_tallies(K_ANALOG) % value = &
+         global_tallies(K_ANALOG) % value + nu/weight * keff
 
     ! Bank source neutrons
     if (nu == 0 .or. n_bank == 3*work) return

@@ -330,7 +330,8 @@ contains
           end select
 
           ! Add score to tally
-          call add_to_score(t % scores(score_index, filter_index), score)
+          t % scores(score_index, filter_index) % value = &
+               t % scores(score_index, filter_index) % value + score
 
         end do SCORE_LOOP
 
@@ -399,7 +400,8 @@ contains
       i_filter = sum((t % matching_bins - 1) * t % stride) + 1
 
       ! Add score to tally
-      call add_to_score(t % scores(i_score, i_filter), score)
+      t % scores(i_score, i_filter) % value = &
+           t % scores(i_score, i_filter) % value + score
     end do
 
     ! reset outgoing energy bin and score index
@@ -559,7 +561,8 @@ contains
             score_index = (k - 1)*t % n_score_bins + j
 
             ! Add score to tally
-            call add_to_score(t % scores(score_index, filter_index), score)
+            t % scores(score_index, filter_index) % value = &
+                 t % scores(score_index, filter_index) % value + score
 
           end do SCORE_LOOP
 
@@ -653,7 +656,8 @@ contains
         score_index = (i_nuclide - 1)*t % n_score_bins + j
 
         ! Add score to tally
-        call add_to_score(t % scores(score_index, filter_index), score)
+        t % scores(score_index, filter_index) % value = &
+             t % scores(score_index, filter_index) % value + score
 
       end do SCORE_LOOP
 
@@ -693,7 +697,8 @@ contains
       score_index = n_nuclides_total*t % n_score_bins + j
 
       ! Add score to tally
-      call add_to_score(t % scores(score_index, filter_index), score)
+      t % scores(score_index, filter_index) % value = &
+           t % scores(score_index, filter_index) % value + score
 
     end do MATERIAL_SCORE_LOOP
 
@@ -981,7 +986,8 @@ contains
               score_index = (b - 1)*t % n_score_bins + j
 
               ! Add score to tally
-              call add_to_score(t % scores(score_index, filter_index), score)
+              t % scores(score_index, filter_index) % value = &
+                   t % scores(score_index, filter_index) % value + score
 
             end do SCORE_LOOP
 
@@ -1202,7 +1208,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              call add_to_score(t % scores(1, filter_index), p % wgt)
+              t % scores(1, filter_index) % value = &
+                   t % scores(1, filter_index) % value + p % wgt
             end if
           end do
         else
@@ -1213,7 +1220,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              call add_to_score(t % scores(1, filter_index), p % wgt)
+              t % scores(1, filter_index) % value = &
+                   t % scores(1, filter_index) % value + p % wgt
             end if
           end do
         end if
@@ -1229,7 +1237,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              call add_to_score(t % scores(1, filter_index), p % wgt)
+              t % scores(1, filter_index) % value = &
+                   t % scores(1, filter_index) % value + p % wgt
             end if
           end do
         else
@@ -1240,7 +1249,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              call add_to_score(t % scores(1, filter_index), p % wgt)
+              t % scores(1, filter_index) % value = &
+                   t % scores(1, filter_index) % value + p % wgt
             end if
           end do
         end if
@@ -1256,7 +1266,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              call add_to_score(t % scores(1, filter_index), p % wgt)
+              t % scores(1, filter_index) % value = &
+                   t % scores(1, filter_index) % value + p % wgt
             end if
           end do
         else
@@ -1267,7 +1278,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              call add_to_score(t % scores(1, filter_index), p % wgt)
+              t % scores(1, filter_index) % value = &
+                   t % scores(1, filter_index) % value + p % wgt
             end if
           end do
         end if
@@ -1391,7 +1403,8 @@ contains
           end if
 
           ! Add to surface current tally
-          call add_to_score(t % scores(1, filter_index), p % wgt)
+          t % scores(1, filter_index) % value = &
+               t % scores(1, filter_index) % value + p % wgt
         end if
 
         ! Calculate new coordinates
@@ -1634,21 +1647,6 @@ contains
     call statistics_score(global_tallies, n_realizations)
 
   end subroutine tally_statistics
-
-!===============================================================================
-! ADD_TO_SCORE accumulates a scoring contribution to a specific tally bin and
-! specific response function. Note that we don't need to add the square of the
-! contribution since that is done at the batch level, not the history level
-!===============================================================================
-
-  subroutine add_to_score(score, val)
-
-    type(TallyScore), intent(inout) :: score
-    real(8),          intent(in)    :: val
-
-    score % value    = score % value    + val
-
-  end subroutine add_to_score
 
 !===============================================================================
 ! ACCUMULATE_SCORE accumulates scores from many histories (or many generations)

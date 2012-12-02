@@ -8,7 +8,7 @@ module geometry
   use output,          only: write_message
   use particle_header, only: LocalCoord, deallocate_coord
   use string,          only: to_str
-  use tally,           only: score_surface_current, add_to_score
+  use tally,           only: score_surface_current
 
   implicit none
      
@@ -272,10 +272,9 @@ contains
         call score_surface_current()
       end if
 
-      if (tallies_on) then
-        ! Score to global leakage tally
-        call add_to_score(global_tallies(LEAKAGE), p % wgt)
-      end if
+      ! Score to global leakage tally
+      if (tallies_on) global_tallies(LEAKAGE) % value = &
+           global_tallies(LEAKAGE) % value + p % wgt
 
       ! Display message
       if (verbosity >= 10 .or. trace) then

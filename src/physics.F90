@@ -104,7 +104,7 @@ contains
            call score_tracklength_tally(distance)
 
       ! Score track-length estimate of k-eff
-      if (tallies_on) global_tallies(K_TRACKLENGTH) % value = &
+      global_tallies(K_TRACKLENGTH) % value = &
            global_tallies(K_TRACKLENGTH) % value + p % wgt * distance * &
            material_xs % nu_fission
 
@@ -130,7 +130,7 @@ contains
         ! PARTICLE HAS COLLISION
 
         ! Score collision estimate of keff
-        if (tallies_on) global_tallies(K_COLLISION) % value = &
+        global_tallies(K_COLLISION) % value = &
              global_tallies(K_COLLISION) % value + p % wgt * &
              material_xs % nu_fission / material_xs % total
 

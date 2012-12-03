@@ -69,37 +69,6 @@ deviation.
 
   *Default*: off
 
-``<criticality>`` Element
--------------------------
-
-The ``<criticality>`` element indicates that a criticality calculation should be
-performed. It has the following attributes/sub-elements:
-
-  :batches: 
-    The total number of batches, where each batch corresponds to multiple
-    fission source iterations. Batching is done to eliminate correlation between
-    realizations of random variables.
-
-    *Default*: None
-
-  :generations_per_batch:
-    The number of total fission source iterations per batch.
-
-    *Default*: 1
-
-  :inactive:
-    The number of inactive batches. In general, the starting cycles in a
-    criticality calculation can not be used to contribute to tallies since the
-    fission source distribution and eigenvalue are generally not converged
-    immediately.
-
-    *Default*: None
-
-  :particles:
-    The number of neutrons to simulate per fission source iteration.
-
-    *Default*: None
-
 .. _cross_sections:
 
 ``<cross_sections>`` Element
@@ -129,6 +98,37 @@ default. This element has the following attributes/sub-elements:
     roulette.
 
     *Default*: 1.0
+
+``<eigenvalue>`` Element
+------------------------
+
+The ``<eigenvalue>`` element indicates that a :math:`k`-eigenvalue calculation
+should be performed. It has the following attributes/sub-elements:
+
+  :batches: 
+    The total number of batches, where each batch corresponds to multiple
+    fission source iterations. Batching is done to eliminate correlation between
+    realizations of random variables.
+
+    *Default*: None
+
+  :generations_per_batch:
+    The number of total fission source iterations per batch.
+
+    *Default*: 1
+
+  :inactive:
+    The number of inactive batches. In general, the starting cycles in a
+    criticality calculation can not be used to contribute to tallies since the
+    fission source distribution and eigenvalue are generally not converged
+    immediately.
+
+    *Default*: None
+
+  :particles:
+    The number of neutrons to simulate per fission source iteration.
+
+    *Default*: None
 
 ``<energy_grid>`` Element
 -------------------------

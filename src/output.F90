@@ -1078,13 +1078,13 @@ contains
     ! Display problem summary
     call header("PROBLEM SUMMARY", unit=UNIT_SUMMARY)
     select case(run_mode)
-    case (MODE_CRITICALITY)
-      write(UNIT_SUMMARY,100) 'Problem type:', 'Criticality'
+    case (MODE_EIGENVALUE)
+      write(UNIT_SUMMARY,100) 'Problem type:', 'k eigenvalue'
       write(UNIT_SUMMARY,101) 'Number of Batches:', n_batches
       write(UNIT_SUMMARY,101) 'Number of Inactive Batches:', n_inactive
       write(UNIT_SUMMARY,101) 'Generations per Batch:', gen_per_batch
     case (MODE_FIXEDSOURCE)
-      write(UNIT_SUMMARY,100) 'Problem type:', 'External Source'
+      write(UNIT_SUMMARY,100) 'Problem type:', 'fixed source'
     end select
     write(UNIT_SUMMARY,101) 'Number of Particles:', n_particles
 

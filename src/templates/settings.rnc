@@ -2,7 +2,7 @@ element settings {
   element confidence_intervals { ( "on" | "off" ) }? &
 
   (
-    element criticality {
+    element eigenvalue {
       (element batches { xsd:positiveInteger } | 
         attribute batches { xsd:positiveInteger }) &
       (element inactive { xsd:nonNegativeInteger } | 

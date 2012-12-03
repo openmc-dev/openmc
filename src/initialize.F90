@@ -120,7 +120,7 @@ contains
       ! Allocate banks and create source particles -- for a fixed source
       ! calculation, the external source distribution is sampled during the
       ! run, not at initialization
-      if (run_mode == MODE_CRITICALITY) then
+      if (run_mode == MODE_EIGENVALUE) then
         call allocate_banks()
         if (.not. restart_run) call initialize_source()
       end if

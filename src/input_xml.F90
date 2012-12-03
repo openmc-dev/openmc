@@ -102,32 +102,41 @@ contains
     end if
 
     ! Make sure that either criticality or fixed source was specified
-    if (criticality_ % batches == 0 .and. fixed_source_ % batches == 0) then
-      message = "Number of batches on <criticality> or <fixed_source> " &
-           // "tag was zero."
+    if (eigenvalue_ % batches == 0 .and. fixed_source_ % batches == 0 &
+         .and. criticality_ % batches == 0) then
+      message = "Number of batches on <eigenvalue> or <fixed_source> &
+           &tag was zero."
       call fatal_error()
     end if
 
-    ! Criticality information
+    ! Check for old <criticality> tag
     if (criticality_ % batches > 0) then
+      eigenvalue_ = criticality_
+      message = "The <criticality> element has been deprecated and &
+           &replaced by <eigenvalue>."
+      call warning()
+    end if
+
+    ! Eigenvalue information
+    if (eigenvalue_ % batches > 0) then
       ! Set run mode
-      if (run_mode == NONE) run_mode = MODE_CRITICALITY
+      if (run_mode == NONE) run_mode = MODE_EIGENVALUE
 
       ! Check number of particles
-      if (len_trim(criticality_ % particles) == 0) then
+      if (len_trim(eigenvalue_ % particles) == 0) then
         message = "Need to specify number of particles per cycles."
         call fatal_error()
       end if
 
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
-      if (n_particles == 0) n_particles = str_to_int(criticality_ % particles)
+      if (n_particles == 0) n_particles = str_to_int(eigenvalue_ % particles)
 
       ! Copy batch and generation information
-      n_batches     = criticality_ % batches
-      n_inactive    = criticality_ % inactive
+      n_batches     = eigenvalue_ % batches
+      n_inactive    = eigenvalue_ % inactive
       n_active      = n_batches - n_inactive
-      gen_per_batch = criticality_ % generations_per_batch
+      gen_per_batch = eigenvalue_ % generations_per_batch
 
       ! Allocate array for batch keff and entropy
       allocate(k_batch(n_batches))

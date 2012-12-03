@@ -14,10 +14,10 @@ cmfd_power_solver.o \
 cmfd_prod_operator.o \
 cmfd_snes_solver.o \
 cross_section.o \
-criticality.o \
 datatypes.o \
 datatypes_header.o \
 doppler.o \
+eigenvalue.o \
 endf.o \
 endf_header.o \
 energy_grid.o \

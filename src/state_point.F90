@@ -120,7 +120,7 @@ contains
     ! ==========================================================================
     ! SOURCE BANK
 
-    if (run_mode == MODE_CRITICALITY) then
+    if (run_mode == MODE_EIGENVALUE) then
       if (source_separate) then
         ! If the user has specified that the source sites should be written in
         ! a separate file, we make a call to the appropriate subroutine to
@@ -179,8 +179,8 @@ contains
     ! Write out current batch number
     write(UNIT_STATE) current_batch
 
-    ! Write out information for criticality run
-    if (run_mode == MODE_CRITICALITY) then
+    ! Write out information for eigenvalue run
+    if (run_mode == MODE_EIGENVALUE) then
       write(UNIT_STATE) n_inactive, gen_per_batch
       write(UNIT_STATE) k_batch(1:current_batch)
       write(UNIT_STATE) entropy(1:current_batch)
@@ -281,7 +281,7 @@ contains
     end if
 
     ! Write out source bank 
-    if (run_mode == MODE_CRITICALITY) then
+    if (run_mode == MODE_EIGENVALUE) then
       if (source_separate) then
         ! If the user has specified that the source sites should be written in
         ! a separate file, we make a call to the appropriate subroutine to
@@ -349,8 +349,8 @@ contains
     call MPI_FILE_WRITE(fh, current_batch, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
 
-    ! Write out information for criticality run
-    if (run_mode == MODE_CRITICALITY) then
+    ! Write out information for eigenvalue run
+    if (run_mode == MODE_EIGENVALUE) then
       call MPI_FILE_WRITE(fh, n_inactive, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, gen_per_batch, 1, MPI_INTEGER, &
@@ -644,8 +644,8 @@ contains
     call MPI_FILE_READ_ALL(fh, restart_batch, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
 
-    ! Read information specific to criticality run
-    if (mode == MODE_CRITICALITY) then
+    ! Read information specific to eigenvalue run
+    if (mode == MODE_EIGENVALUE) then
       call MPI_FILE_READ_ALL(fh, n_inactive, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_READ_ALL(fh, gen_per_batch, 1, MPI_INTEGER, &
@@ -781,7 +781,7 @@ contains
     ! ==========================================================================
     ! SOURCE BANK
 
-    if (run_mode == MODE_CRITICALITY) then
+    if (run_mode == MODE_EIGENVALUE) then
       ! Get current offset for master
       if (master) call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
 
@@ -841,8 +841,8 @@ contains
     ! Read batch number to restart at
     read(UNIT_STATE) restart_batch
 
-    ! Read information specific to criticality run
-    if (mode == MODE_CRITICALITY) then
+    ! Read information specific to eigenvalue run
+    if (mode == MODE_EIGENVALUE) then
       read(UNIT_STATE) n_inactive, gen_per_batch
       read(UNIT_STATE) k_batch(1:restart_batch)
       read(UNIT_STATE) entropy(1:restart_batch)
@@ -966,8 +966,8 @@ contains
       end if
     end if
 
-    ! Read source bank for criticality run
-    if (mode == MODE_CRITICALITY .and. run_mode /= MODE_TALLIES) then
+    ! Read source bank for eigenvalue run
+    if (mode == MODE_EIGENVALUE .and. run_mode /= MODE_TALLIES) then
       read(UNIT_STATE) source_bank
     end if
 
@@ -995,7 +995,7 @@ contains
       call write_message(1)
     end if
 
-    ! For criticality calculations, turn on tallies if we've reached active
+    ! For eigenvalue calculations, turn on tallies if we've reached active
     ! batches
     if (current_batch == n_inactive) then
       tallies_on = .true.

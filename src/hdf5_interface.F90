@@ -94,8 +94,8 @@ contains
     ! Write header information
     call hdf5_write_header()
 
-    ! Write criticality information
-    if (run_mode == MODE_CRITICALITY) then
+    ! Write eigenvalue information
+    if (run_mode == MODE_EIGENVALUE) then
       ! Need to write integer(8)'s using double instead since there is no H5LT
       ! call for making a dataset of type long
       call hdf5_write_double(hdf5_output_file, "n_particles", real(n_particles,8))
@@ -865,8 +865,8 @@ contains
     ! Write out current batch number
     call hdf5_write_integer(hdf5_state_point, "current_batch", current_batch)
 
-    ! Write out information for criticality run
-    if (run_mode == MODE_CRITICALITY) then
+    ! Write out information for eigenvalue run
+    if (run_mode == MODE_EIGENVALUE) then
       call hdf5_write_integer(hdf5_state_point, "n_inactive", n_inactive)
       call hdf5_write_integer(hdf5_state_point, "gen_per_batch", gen_per_batch)
 
@@ -1132,8 +1132,8 @@ contains
     ! Read batch number to restart at
     call hdf5_read_integer(hdf5_state_point, "current_batch", restart_batch)
 
-    ! Read information specific to criticality run
-    if (mode == MODE_CRITICALITY) then
+    ! Read information specific to eigenvalue run
+    if (mode == MODE_EIGENVALUE) then
       call hdf5_read_integer(hdf5_state_point, "n_inactive", n_inactive)
       call hdf5_read_integer(hdf5_state_point, "gen_per_batch", gen_per_batch)
 

@@ -789,7 +789,10 @@ The following filters can be specified for a tally:
   :mesh:
     The ``id`` of a structured mesh to be tallied over.
 
-The following responses can be tallied.
+The following responses can be tallied. Note that there are two different 
+categories of scattering responses, ``scatter-N``, and ``scatter-PN``.
+The ``scatter-N`` responses represent only the N-th scattering moment whereas
+the ``scatter-PN`` responses will score all moments from P0 to PN.
 
   :flux:
     Total flux
@@ -806,6 +809,26 @@ The following responses can be tallied.
     multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
     slightly higher than the scattering rate.
 
+  :scatter-P0:
+    Tally the zeroth scattering moment. Can also be identified with the ``scatter``
+    response type, but is provided for consistency with the rest of the ``scatter-PN` 
+    class of responses.
+  
+  :scatter-P1:
+    Zeroth through first scattering moments
+
+  :scatter-P2:
+    Zeroth through second scattering moments
+
+  :scatter-P3:
+    Zeroth through third scattering moments
+    
+  :scatter-P4:
+    Zeroth through fourth scattering moments
+
+  :scatter-P5:
+    Zeroth through fifth scattering moments    
+    
   :scatter-0:
     Zeroth scattering moment. Can also be identified with the ``scatter``
     response type, but is provided for consistency with the higher order
@@ -825,7 +848,7 @@ The following responses can be tallied.
 
   :scatter-5:
     Fifth scattering moment
-
+    
   :absorption:
     Total absorption rate. This accounts for all reactions which do not produce
     secondary neutrons.

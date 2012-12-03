@@ -1191,6 +1191,7 @@ contains
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
     integer :: k             ! another loop index
+    integer :: l             ! another loop index
     integer :: i_analog      ! index in analog_tallies array
     integer :: i_tracklength ! index in tracklength_tallies array
     integer :: i_current     ! index in current_tallies array
@@ -1199,6 +1200,8 @@ contains
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filters     ! number of filters
+    integer :: n_new         ! number of new scores to add based on Pn tally
+    integer :: n_scores      ! number of tot scores after adjusting for Pn tally
     logical :: file_exists   ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
@@ -1668,11 +1671,37 @@ contains
       ! READ DATA FOR SCORES
 
       if (associated(tally_(i) % scores)) then
+        ! Loop through scores and determine if a scatter-p# input was used
+        ! to allow for proper pre-allocating of t % score_bins
+        ! This scheme allows multiple scatter-p# to be requested by the user
+        ! if so desired
         n_words = size(tally_(i) % scores)
-        allocate(t % score_bins(n_words))
+        n_new = 0
         do j = 1, n_words
-          call lower_case(tally_(i) % scores(j))
-          select case (tally_(i) % scores(j))
+	  call lower_case(tally_(i) % scores(j))
+	  select case (tally_(i) % scores(j))
+	  case ('scatter-p0')
+	    n_new = n_new + 0
+	  case ('scatter-p1')
+	    n_new = n_new + 1
+	  case ('scatter-p2')
+	    n_new = n_new + 2
+	  case ('scatter-p3')
+	    n_new = n_new + 3
+	  case ('scatter-p4')
+	    n_new = n_new + 4
+	  case ('scatter-p5')
+	    n_new = n_new + 5
+	  end select
+	end do
+        n_scores = n_words + n_new
+        
+        ! Allocate accordingly
+        allocate(t % score_bins(n_scores))
+        j = 0
+        do l = 1, n_words
+          j = j + 1
+          select case (tally_(i) % scores(l))
           case ('flux')
             ! Prohibit user from tallying flux for an individual nuclide
             if (.not. (t % n_nuclide_bins == 1 .and. &
@@ -1727,6 +1756,65 @@ contains
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
+            
+          case ('scatter-p0')
+	    ! Same as a scatter-0 or scatter
+	    t % score_bins(j) = SCORE_SCATTER
+	  case ('scatter-p1')
+	    ! Setup each of P0 and P1
+	    t % estimator = ESTIMATOR_ANALOG
+	    t % score_bins(j) = SCORE_SCATTER
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_1
+	    
+	  case ('scatter-p2')
+	    ! Setup each of P0:P2
+	    t % estimator = ESTIMATOR_ANALOG
+	    t % score_bins(j) = SCORE_SCATTER
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_1
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_2
+	    
+	  case ('scatter-p3')
+	    ! Setup each of P0:P3
+	    t % estimator = ESTIMATOR_ANALOG
+	    t % score_bins(j) = SCORE_SCATTER
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_1
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_2
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_3
+	    
+	  case ('scatter-p4')
+	    ! Setup each of P0:P4
+	    t % estimator = ESTIMATOR_ANALOG
+	    t % score_bins(j) = SCORE_SCATTER
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_1
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_2
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_3
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_4
+	    
+	  case ('scatter-p5')
+	    ! Setup each of P0:P5
+	    t % estimator = ESTIMATOR_ANALOG
+	    t % score_bins(j) = SCORE_SCATTER
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_1
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_2
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_3
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_4
+	    j = j + 1
+	    t % score_bins(j) = SCORE_SCATTER_5
+	    
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT
 
@@ -1829,11 +1917,11 @@ contains
 
           case default
             message = "Unknown scoring function: " // &
-                 trim(tally_(i) % scores(j))
+                 trim(tally_(i) % scores(l))
             call fatal_error()
           end select
         end do
-        t % n_score_bins = n_words
+        t % n_score_bins = n_scores
       else
         message = "No <scores> specified on tally " // trim(to_str(t % id)) &
              // "."

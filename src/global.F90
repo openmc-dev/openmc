@@ -154,7 +154,7 @@ module global
   type(ListInt), pointer :: active_tallies => null()
 
   ! ============================================================================
-  ! CRITICALITY SIMULATION VARIABLES
+  ! EIGENVALUE SIMULATION VARIABLES
 
   integer(8) :: n_particles = 0   ! # of particles per generation
   integer    :: n_batches         ! # of batches
@@ -250,7 +250,7 @@ module global
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
-  ! Mode to run in (fixed source, criticality, plotting, etc)
+  ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer :: run_mode = NONE
 
   ! Restart run

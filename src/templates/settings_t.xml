@@ -42,9 +42,9 @@
   </typedef>
 
   <variable name="confidence_intervals_" tag="confidence_intervals" type="word" length="3" />
-  <variable name="criticality_" tag="criticality" type="run_parameters_xml" />
   <variable name="cross_sections_" tag="cross_sections" type="word" length="255" />
   <variable name="cutoff_" tag="cutoff" type="cutoff_xml" dimension="1" />
+  <variable name="eigenvalue_" tag="eigenvalue" type="run_parameters_xml" />
   <variable name="energy_grid_" tag="energy_grid" type="word" length="7" />
   <variable name="entropy_" tag="entropy" type="mesh_xml" dimension="1" />
   <variable name="fixed_source_" tag="fixed_source" type="run_parameters_xml" />
@@ -59,5 +59,8 @@
   <variable name="trace_" tag="trace" type="integer-array" />
   <variable name="uniform_fs_" tag="uniform_fs" type="mesh_xml" dimension="1" />
   <variable name="verbosity_" tag="verbosity" type="integer" />
+
+  <!-- Check for old criticality tag -->
+  <variable name="criticality_" tag="criticality" type="run_parameters_xml" />
 
 </template>

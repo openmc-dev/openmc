@@ -1,4 +1,4 @@
-module criticality
+module eigenvalue
 
 #ifdef MPI
   use mpi
@@ -29,15 +29,15 @@ module criticality
 contains
 
 !===============================================================================
-! RUN_CRITICALITY encompasses all the main logic where iterations are performed
-! over the batches, generations, and histories.
+! RUN_EIGENVALUE encompasses all the main logic where iterations are performed
+! over the batches, generations, and histories in a k-eigenvalue calculation.
 !===============================================================================
 
-  subroutine run_criticality()
+  subroutine run_eigenvalue()
 
     integer(8) :: i  ! index over individual particles
 
-    if (master) call header("CRITICALITY TRANSPORT SIMULATION", level=1)
+    if (master) call header("K EIGENVALUE SIMULATION", level=1)
 
     ! Allocate particle
     allocate(p)
@@ -99,7 +99,7 @@ contains
 
     if (master) call header("SIMULATION FINISHED", level=1)
 
-  end subroutine run_criticality
+  end subroutine run_eigenvalue
 
 !===============================================================================
 ! INITIALIZE_BATCH
@@ -692,4 +692,4 @@ contains
 
   end subroutine count_source_for_ufs
 
-end module criticality
+end module eigenvalue

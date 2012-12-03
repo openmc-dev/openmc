@@ -90,23 +90,23 @@ cmfd_snes_solver.o: constants.o
 cmfd_snes_solver.o: global.o
 cmfd_snes_solver.o: string.o
 
-criticality.o: cmfd_execute.o
-criticality.o: constants.o
-criticality.o: error.o
-criticality.o: global.o
-criticality.o: hdf5_interface.o
-criticality.o: math.o
-criticality.o: mesh.o
-criticality.o: mesh_header.o
-criticality.o: output.o
-criticality.o: physics.o
-criticality.o: random_lcg.o
-criticality.o: search.o
-criticality.o: source.o
-criticality.o: state_point.o
-criticality.o: string.o
-criticality.o: tally.o
-criticality.o: timing.o
+eigenvalue.o: cmfd_execute.o
+eigenvalue.o: constants.o
+eigenvalue.o: error.o
+eigenvalue.o: global.o
+eigenvalue.o: hdf5_interface.o
+eigenvalue.o: math.o
+eigenvalue.o: mesh.o
+eigenvalue.o: mesh_header.o
+eigenvalue.o: output.o
+eigenvalue.o: physics.o
+eigenvalue.o: random_lcg.o
+eigenvalue.o: search.o
+eigenvalue.o: source.o
+eigenvalue.o: state_point.o
+eigenvalue.o: string.o
+eigenvalue.o: tally.o
+eigenvalue.o: timing.o
 
 cross_section.o: ace_header.o
 cross_section.o: constants.o
@@ -243,7 +243,7 @@ interpolation.o: search.o
 interpolation.o: string.o
 
 main.o: constants.o
-main.o: criticality.o
+main.o: eigenvalue.o
 main.o: finalize.o
 main.o: fixed_source.o
 main.o: global.o

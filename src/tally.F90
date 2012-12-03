@@ -1506,7 +1506,7 @@ contains
         curr_ptr => curr_ptr % next
       end do
 
-      if (run_mode == MODE_CRITICALITY) then
+      if (run_mode == MODE_EIGENVALUE) then
         ! Before accumulating scores for global_tallies, we need to get the
         ! current batch estimate of k_analog for displaying to output
         if (active_batches) k_batch(current_batch) = global_tallies(K_ANALOG) % value

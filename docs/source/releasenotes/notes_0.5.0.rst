@@ -32,6 +32,9 @@ New Features
 Bug Fixes
 ---------
 
+- 737b90_: Coincident surfaces from separate universes / particle traveling
+  tangent to a surface.
+- a819b4_: Output of surface neighbors in summary.out file.
 - b11696_: Reading long attribute lists in XML input.
 - 2bd46a_: Search for tallying nuclides when no default_xs specified.
 - 7a1f08_: Fix word wrapping when writing messages.
@@ -39,6 +42,8 @@ Bug Fixes
 - 6f8d9d_: Set default tally labels.
 - 6a3a5e_: Fix problem with corner-crossing in lattices.
 
+.. _737b90: https://github.com/mit-crpg/openmc/commit/737b90
+.. _a819b4: https://github.com/mit-crpg/openmc/commit/a819b4
 .. _b11696: https://github.com/mit-crpg/openmc/commit/b11696
 .. _2bd46a: https://github.com/mit-crpg/openmc/commit/2bd46a
 .. _7a1f08: https://github.com/mit-crpg/openmc/commit/7a1f08

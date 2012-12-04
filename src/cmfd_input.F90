@@ -369,12 +369,16 @@ contains
         ! allocate scoring bins 
         allocate(t % score_bins(4))
         t % n_score_bins = 4
-
+        ! allocate scattering order data
+        allocate(t % scatt_order(4))
+        t % scatt_order = 0
+        
         ! set macro_bins
-        t % score_bins(1) = SCORE_FLUX
-        t % score_bins(2) = SCORE_TOTAL
-        t % score_bins(3) = SCORE_SCATTER_1
-        t % score_bins(4) = SCORE_DIFFUSION
+        t % score_bins(1)  = SCORE_FLUX
+        t % score_bins(2)  = SCORE_TOTAL
+        t % score_bins(3)  = SCORE_SCATTER_N
+        t % scatt_order(3) = 1
+        t % score_bins(4)  = SCORE_DIFFUSION
 
         ! Increment the appropriate index and set pointer
         analog_tallies(n_user_analog_tallies + 1) = i
@@ -413,6 +417,9 @@ contains
         ! allocate macro reactions
         allocate(t % score_bins(2))
         t % n_score_bins = 2
+        ! allocate scattering order data
+        allocate(t % scatt_order(2))
+        t % scatt_order = 0
 
         ! set macro_bins
         t % score_bins(1) = SCORE_NU_SCATTER
@@ -454,6 +461,9 @@ contains
         ! allocate macro reactions
         allocate(t % score_bins(1))
         t % n_score_bins = 1
+        ! allocate scattering order data
+        allocate(t % scatt_order(1))
+        t % scatt_order = 0
 
         ! set macro bins
         t % score_bins(1) = SCORE_CURRENT

@@ -97,8 +97,13 @@ module tally_header
     logical              :: all_nuclides = .false.
 
     ! Values to score, e.g. flux, absorption, etc.
+    ! scat_order is the scattering order for each score.
+    ! It is to be 0 if the scattering order is 0, or if the score is not a
+    ! scattering response.
     integer              :: n_score_bins = 0
     integer, allocatable :: score_bins(:)
+    integer, allocatable :: scatt_order(:)
+    integer              :: n_nonPN_score_bins = 0
 
     ! Scores for each bin -- the first dimenion of the array is for scores
     ! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the

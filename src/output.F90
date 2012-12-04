@@ -1574,7 +1574,7 @@ contains
               if (t % scatt_order(k) == 0) then
                 score_name = "Scattering Rate"
               else
-                score_name = 'Order-' // trim(to_str(t % scatt_order(k))) // &
+                score_name = 'P' // trim(to_str(t % scatt_order(k))) // &
                   ' Scattering Moment'
               end if
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
@@ -1589,7 +1589,7 @@ contains
                 trim(to_str(t % scores(score_index,filter_index) % sum_sq))
               do nOrder = 1, t % scatt_order(k)
                 score_index = score_index + 1
-                score_name = 'Order-' // trim(to_str(nOrder)) // &
+                score_name = 'P' // trim(to_str(nOrder)) // &
                   ' Scattering Moment'
                 write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                   repeat(" ", indent), score_name, &

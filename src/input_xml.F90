@@ -1202,7 +1202,8 @@ contains
     integer :: n_filters     ! number of filters
     integer :: n_new         ! number of new scores to add based on Pn tally
     integer :: n_scores      ! number of tot scores after adjusting for Pn tally
-    integer :: nOrder        ! Scattering order requested
+    integer :: n_order       ! Scattering order requested
+    integer :: n_order_pos   ! Position of Scattering order in score name string
     logical :: file_exists   ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
@@ -1684,24 +1685,22 @@ contains
           ! Find if scores(j) is of the form 'scatter-p'
           ! If so, get the number and do a select case on that.
           score_name = tally_(i) % scores(j)
-          
-          
-          
-          
-          select case (tally_(i) % scores(j))
-          case ('scatter-p0')
-            n_new = n_new + 0
-          case ('scatter-p1')
-            n_new = n_new + 1
-          case ('scatter-p2')
-            n_new = n_new + 2
-          case ('scatter-p3')
-            n_new = n_new + 3
-          case ('scatter-p4')
-            n_new = n_new + 4
-          case ('scatter-p5')
-            n_new = n_new + 5
-          end select
+          if (starts_with(score_name,'scatter-p')) then
+            n_order_pos = scan(score_name,'0123456789')
+            n_order = int(str_to_int( &
+              score_name(n_order_pos:(len_trim(score_name)))),4)
+            if (n_order > SCATT_ORDER_MAX) then
+              ! Throw a warning. Set to the maximum number.
+              ! The above scheme will essentially take the absolute value
+              message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                " requested. Setting to the maximum permissible value, " // &
+                trim(to_str(SCATT_ORDER_MAX))
+              call warning()
+              n_order = SCATT_ORDER_MAX
+              tally_(i) % scores(j) = SCATT_ORDER_MAX_PNSTR
+            end if
+            n_new = n_new + n_order
+          end if
         end do
         n_scores = n_words + n_new
         
@@ -1715,6 +1714,37 @@ contains
           ! Get the input string in scores(l) but if scatter-n or scatter-pn
           ! then strip off the n, and store it as an integer to be used later
           ! Peform the select case on this modified (number removed) string
+          score_name = tally_(i) % scores(j)
+          if (starts_with(score_name,'scatter-p')) then
+            n_order_pos = scan(score_name,'0123456789')
+            n_order = int(str_to_int( &
+              score_name(n_order_pos:(len_trim(score_name)))),4)
+            if (n_order > SCATT_ORDER_MAX) then
+              ! Throw a warning. Set to the maximum number.
+              ! The above scheme will essentially take the absolute value
+              message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                " requested. Setting to the maximum permissible value, " // &
+                trim(to_str(SCATT_ORDER_MAX))
+              call warning()
+              n_order = SCATT_ORDER_MAX
+              score_name = "scatter-p"
+            end if
+          else if (starts_with(score_name,'scatter-')) then
+            n_order_pos = scan(score_name,'0123456789')
+            n_order = int(str_to_int( &
+              score_name(n_order_pos:(len_trim(score_name)))),4)
+            if (n_order > SCATT_ORDER_MAX) then
+              ! Throw a warning. Set to the maximum number.
+              ! The above scheme will essentially take the absolute value
+              message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                " requested. Setting to the maximum permissible value, " // &
+                trim(to_str(SCATT_ORDER_MAX))
+              call warning()
+              n_order = SCATT_ORDER_MAX
+              score_name = "scatter-"
+            end if
+          end if
+          
           select case (tally_(i) % scores(l))
           case ('flux')
             ! Prohibit user from tallying flux for an individual nuclide

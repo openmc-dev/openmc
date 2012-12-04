@@ -270,6 +270,10 @@ module constants
        SCORE_NU_FISSION = -15, & ! neutron production rate
        SCORE_CURRENT    = -16, & ! partial current
        SCORE_EVENTS     = -17    ! number of events
+       
+  ! Maximum scattering order supported
+  integer, parameter :: SCATT_ORDER_MAX = 5
+  character(len=*), parameter :: SCATT_ORDER_MAX_PNSTR = "scatter-p5"
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1

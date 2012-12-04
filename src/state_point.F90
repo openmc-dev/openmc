@@ -82,7 +82,7 @@ contains
       ! If using the no-tally-reduction method, we need to collect tally
       ! results before writing them to the state point file.
 
-      call write_tally_scores_nr(fh)
+      call write_tally_results_nr(fh)
 
     elseif (master) then
       ! Write number of realizations
@@ -93,7 +93,7 @@ contains
       call MPI_FILE_WRITE(fh, N_GLOBAL_TALLIES, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, global_tallies, N_GLOBAL_TALLIES, &
-           MPI_TALLYSCORE, MPI_STATUS_IGNORE, mpi_err)
+           MPI_TALLYRESULT, MPI_STATUS_IGNORE, mpi_err)
 
       if (tallies_on) then
         ! Indicate that tallies are on
@@ -101,14 +101,14 @@ contains
         call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
 
-        ! Write all tally scores
-        TALLY_SCORES: do i = 1, n_tallies
+        ! Write all tally results
+        TALLY_RESULTS: do i = 1, n_tallies
           t => tallies(i)
 
-          n = size(t % scores, 1) * size(t % scores, 2)
-          call MPI_FILE_WRITE(fh, t % scores, n, MPI_TALLYSCORE, &
+          n = size(t % results, 1) * size(t % results, 2)
+          call MPI_FILE_WRITE(fh, t % results, n, MPI_TALLYRESULT, &
                MPI_STATUS_IGNORE, mpi_err)
-        end do TALLY_SCORES
+        end do TALLY_RESULTS
       else
         ! Indicate that tallies are off
         temp = 0
@@ -209,7 +209,7 @@ contains
       ! Number of realizations
       write(UNIT_STATE) t % n_realizations
 
-      ! Write size of each dimension of tally scores array
+      ! Write size of each dimension of tally results array
       write(UNIT_STATE) t % total_score_bins
       write(UNIT_STATE) t % total_filter_bins
 
@@ -263,18 +263,18 @@ contains
       ! Indicate that tallies are on
       write(UNIT_STATE) 1
 
-      TALLY_SCORES: do i = 1, n_tallies
+      TALLY_RESULTS: do i = 1, n_tallies
         ! Get pointer to tally
         t => tallies(i)
 
         ! Write tally sum and sum_sq for each bin
-        do k = 1, size(t % scores, 2)
-          do j = 1, size(t % scores, 1)
-            write(UNIT_STATE) t % scores(j,k) % sum
-            write(UNIT_STATE) t % scores(j,k) % sum_sq
+        do k = 1, size(t % results, 2)
+          do j = 1, size(t % results, 1)
+            write(UNIT_STATE) t % results(j,k) % sum
+            write(UNIT_STATE) t % results(j,k) % sum_sq
           end do
         end do
-      end do TALLY_SCORES
+      end do TALLY_RESULTS
     else
       ! Indicate that tallies are off
       write(UNIT_STATE) 0
@@ -454,10 +454,10 @@ contains
 
 #ifdef MPI
 !===============================================================================
-! WRITE_TALLY_SCORES_NR
+! WRITE_TALLY_RESULTS_NR
 !===============================================================================
 
-  subroutine write_tally_scores_nr(fh)
+  subroutine write_tally_results_nr(fh)
 
     integer, intent(in) :: fh ! file handle
 
@@ -466,7 +466,7 @@ contains
     integer :: m      ! number of score bins
     integer :: temp   ! temporary variable
     integer :: n_bins ! total number of bins
-    real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of scores
+    real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
     real(8) :: global_temp(2,N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
     type(TallyObject), pointer :: t => null()
@@ -518,20 +518,20 @@ contains
              MPI_STATUS_IGNORE, mpi_err)
       end if
 
-      ! Write all tally scores
-      TALLY_SCORES: do i = 1, n_tallies
+      ! Write all tally results
+      TALLY_RESULTS: do i = 1, n_tallies
         t => tallies(i)
 
-        ! Determine size of tally scores array
-        m = size(t % scores, 1)
-        n = size(t % scores, 2)
+        ! Determine size of tally results array
+        m = size(t % results, 1)
+        n = size(t % results, 2)
         n_bins = m*n*2
 
         ! Allocate array for storing sums and sums of squares, but
         ! contiguously in memory for each
         allocate(tally_temp(2,m,n))
-        tally_temp(1,:,:) = t % scores(:,:) % sum
-        tally_temp(2,:,:) = t % scores(:,:) % sum_sq
+        tally_temp(1,:,:) = t % results(:,:) % sum
+        tally_temp(2,:,:) = t % results(:,:) % sum_sq
 
         if (master) then
           ! The MPI_IN_PLACE specifier allows the master to copy values into
@@ -544,10 +544,10 @@ contains
                MPI_STATUS_IGNORE, mpi_err)
 
           ! At the end of the simulation, store the results back in the
-          ! regular TallyScores array
+          ! regular TallyResults array
           if (current_batch == n_batches) then
-            t % scores(:,:) % sum = tally_temp(1,:,:)
-            t % scores(:,:) % sum_sq = tally_temp(2,:,:)
+            t % results(:,:) % sum = tally_temp(1,:,:)
+            t % results(:,:) % sum_sq = tally_temp(2,:,:)
           end if
         else
           ! Receive buffer not significant at other processors
@@ -557,7 +557,7 @@ contains
 
         ! Deallocate temporary copy of tally results
         deallocate(tally_temp)
-      end do TALLY_SCORES
+      end do TALLY_RESULTS
     else
       if (master) then
         ! Indicate that tallies are off
@@ -567,7 +567,7 @@ contains
       end if
     end if
 
-  end subroutine write_tally_scores_nr
+  end subroutine write_tally_results_nr
 #endif
 
 !===============================================================================
@@ -687,12 +687,12 @@ contains
         call MPI_FILE_READ(fh, tallies(i) % n_realizations, 1, &
              MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
 
-        ! Read dimensions of tally filters and scores and make sure they
+        ! Read dimensions of tally filters and results and make sure they
         ! match
         call MPI_FILE_READ(fh, temp, 2, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
-        if (temp(1) /= size(tallies(i) % scores, 1) .or. &
-             temp(2) /= size(tallies(i) % scores, 2)) then
+        if (temp(1) /= size(tallies(i) % results, 1) .or. &
+             temp(2) /= size(tallies(i) % results, 2)) then
           message = "Tally dimensions do not match in state point."
           call fatal_error()
         end if
@@ -736,7 +736,7 @@ contains
              MPI_STATUS_IGNORE, mpi_err)
         deallocate(int_array)
 
-        ! Read number of scores
+        ! Read number of results
         call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
 
@@ -760,7 +760,7 @@ contains
 
       ! Read global tally data
       call MPI_FILE_READ(fh, global_tallies, N_GLOBAL_TALLIES, &
-           MPI_TALLYSCORE, MPI_STATUS_IGNORE, mpi_err)
+           MPI_TALLYRESULT, MPI_STATUS_IGNORE, mpi_err)
 
       ! Check if tally results are present
       call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
@@ -770,11 +770,11 @@ contains
 
       ! Read sum and sum squared
       if (temp(1) == 1) then
-        TALLY_SCORES: do i = 1, n_tallies
-          n = size(tallies(i) % scores, 1) * size(tallies(i) % scores, 2)
-          call MPI_FILE_READ(fh, tallies(i) % scores, n, MPI_TALLYSCORE, &
+        TALLY_RESULTS: do i = 1, n_tallies
+          n = size(tallies(i) % results, 1) * size(tallies(i) % results, 2)
+          call MPI_FILE_READ(fh, tallies(i) % results, n, MPI_TALLYRESULT, &
                MPI_STATUS_IGNORE, mpi_err)
-        end do TALLY_SCORES
+        end do TALLY_RESULTS
       end if
     end if
 
@@ -886,11 +886,11 @@ contains
         ! Read number of realizations
         read(UNIT_STATE) tallies(i) % n_realizations
 
-        ! Read dimensions of tally filters and scores and make sure they
+        ! Read dimensions of tally filters and results and make sure they
         ! match
         read(UNIT_STATE) temp(1:2)
-        if (temp(1) /= size(tallies(i) % scores, 1) .or. &
-             temp(2) /= size(tallies(i) % scores, 2)) then
+        if (temp(1) /= size(tallies(i) % results, 1) .or. &
+             temp(2) /= size(tallies(i) % results, 2)) then
           message = "Tally dimensions do not match in state point."
           call fatal_error()
         end if
@@ -927,7 +927,7 @@ contains
         read(UNIT_STATE) int_array
         deallocate(int_array)
 
-        ! Read number of scores
+        ! Read number of results
         read(UNIT_STATE) temp(1)
 
         ! Read nuclide bins
@@ -955,14 +955,14 @@ contains
       ! Read sum and sum squared
       read(UNIT_STATE) temp(1)
       if (temp(1) == 1) then
-        TALLY_SCORES: do i = 1, n_tallies
-          do k = 1, size(tallies(i) % scores, 2)
-            do j = 1, size(tallies(i) % scores, 1)
-              read(UNIT_STATE) tallies(i) % scores(j,k) % sum
-              read(UNIT_STATE) tallies(i) % scores(j,k) % sum_sq
+        TALLY_RESULTS: do i = 1, n_tallies
+          do k = 1, size(tallies(i) % results, 2)
+            do j = 1, size(tallies(i) % results, 1)
+              read(UNIT_STATE) tallies(i) % results(j,k) % sum
+              read(UNIT_STATE) tallies(i) % results(j,k) % sum_sq
             end do
           end do
-        end do TALLY_SCORES
+        end do TALLY_RESULTS
       end if
     end if
 

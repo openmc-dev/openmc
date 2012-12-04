@@ -11,7 +11,7 @@ module tally
   use output,        only: header
   use search,        only: binary_search
   use string,        only: to_str
-  use tally_header,  only: TallyScore, TallyMapItem, TallyMapElement
+  use tally_header,  only: TallyResult, TallyMapItem, TallyMapElement
 
 #ifdef MPI
   use mpi
@@ -73,10 +73,10 @@ contains
       end if
 
       ! =======================================================================
-      ! CALCULATE SCORES AND ACCUMULATE TALLY
+      ! CALCULATE RESULTS AND ACCUMULATE TALLY
 
       ! If we have made it here, we have a scoring combination of bins for this
-      ! tally -- now we need to determine where in the scores array we should
+      ! tally -- now we need to determine where in the results array we should
       ! be accumulating the tally values
 
       ! Determine scoring index for this filter combination
@@ -303,7 +303,7 @@ contains
               ! bin. However, in the case of fission, since multiple
               ! fission neutrons were emitted with different energies,
               ! multiple outgoing energy bins may have been scored to. The
-              ! following logic treats this special case and scores to
+              ! following logic treats this special case and results to
               ! multiple bins
 
               call score_fission_eout(t, score_index)
@@ -330,8 +330,8 @@ contains
           end select
 
           ! Add score to tally
-          t % scores(score_index, filter_index) % value = &
-               t % scores(score_index, filter_index) % value + score
+          t % results(score_index, filter_index) % value = &
+               t % results(score_index, filter_index) % value + score
 
         end do SCORE_LOOP
 
@@ -400,8 +400,8 @@ contains
       i_filter = sum((t % matching_bins - 1) * t % stride) + 1
 
       ! Add score to tally
-      t % scores(i_score, i_filter) % value = &
-           t % scores(i_score, i_filter) % value + score
+      t % results(i_score, i_filter) % value = &
+           t % results(i_score, i_filter) % value + score
     end do
 
     ! reset outgoing energy bin and score index
@@ -465,10 +465,10 @@ contains
       end if
 
       ! =======================================================================
-      ! CALCULATE SCORES AND ACCUMULATE TALLY
+      ! CALCULATE RESULTS AND ACCUMULATE TALLY
 
       ! If we have made it here, we have a scoring combination of bins for this
-      ! tally -- now we need to determine where in the scores array we should
+      ! tally -- now we need to determine where in the results array we should
       ! be accumulating the tally values
 
       ! Determine scoring index for this filter combination
@@ -561,8 +561,8 @@ contains
             score_index = (k - 1)*t % n_score_bins + j
 
             ! Add score to tally
-            t % scores(score_index, filter_index) % value = &
-                 t % scores(score_index, filter_index) % value + score
+            t % results(score_index, filter_index) % value = &
+                 t % results(score_index, filter_index) % value + score
 
           end do SCORE_LOOP
 
@@ -656,8 +656,8 @@ contains
         score_index = (i_nuclide - 1)*t % n_score_bins + j
 
         ! Add score to tally
-        t % scores(score_index, filter_index) % value = &
-             t % scores(score_index, filter_index) % value + score
+        t % results(score_index, filter_index) % value = &
+             t % results(score_index, filter_index) % value + score
 
       end do SCORE_LOOP
 
@@ -697,8 +697,8 @@ contains
       score_index = n_nuclides_total*t % n_score_bins + j
 
       ! Add score to tally
-      t % scores(score_index, filter_index) % value = &
-           t % scores(score_index, filter_index) % value + score
+      t % results(score_index, filter_index) % value = &
+           t % results(score_index, filter_index) % value + score
 
     end do MATERIAL_SCORE_LOOP
 
@@ -986,8 +986,8 @@ contains
               score_index = (b - 1)*t % n_score_bins + j
 
               ! Add score to tally
-              t % scores(score_index, filter_index) % value = &
-                   t % scores(score_index, filter_index) % value + score
+              t % results(score_index, filter_index) % value = &
+                   t % results(score_index, filter_index) % value + score
 
             end do SCORE_LOOP
 
@@ -1208,8 +1208,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              t % scores(1, filter_index) % value = &
-                   t % scores(1, filter_index) % value + p % wgt
+              t % results(1, filter_index) % value = &
+                   t % results(1, filter_index) % value + p % wgt
             end if
           end do
         else
@@ -1220,8 +1220,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              t % scores(1, filter_index) % value = &
-                   t % scores(1, filter_index) % value + p % wgt
+              t % results(1, filter_index) % value = &
+                   t % results(1, filter_index) % value + p % wgt
             end if
           end do
         end if
@@ -1237,8 +1237,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              t % scores(1, filter_index) % value = &
-                   t % scores(1, filter_index) % value + p % wgt
+              t % results(1, filter_index) % value = &
+                   t % results(1, filter_index) % value + p % wgt
             end if
           end do
         else
@@ -1249,8 +1249,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              t % scores(1, filter_index) % value = &
-                   t % scores(1, filter_index) % value + p % wgt
+              t % results(1, filter_index) % value = &
+                   t % results(1, filter_index) % value + p % wgt
             end if
           end do
         end if
@@ -1266,8 +1266,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              t % scores(1, filter_index) % value = &
-                   t % scores(1, filter_index) % value + p % wgt
+              t % results(1, filter_index) % value = &
+                   t % results(1, filter_index) % value + p % wgt
             end if
           end do
         else
@@ -1278,8 +1278,8 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-              t % scores(1, filter_index) % value = &
-                   t % scores(1, filter_index) % value + p % wgt
+              t % results(1, filter_index) % value = &
+                   t % results(1, filter_index) % value + p % wgt
             end if
           end do
         end if
@@ -1403,8 +1403,8 @@ contains
           end if
 
           ! Add to surface current tally
-          t % scores(1, filter_index) % value = &
-               t % scores(1, filter_index) % value + p % wgt
+          t % results(1, filter_index) % value = &
+               t % results(1, filter_index) % value + p % wgt
         end if
 
         ! Calculate new coordinates
@@ -1499,7 +1499,7 @@ contains
 
     ! Accumulate on master only unless run is not reduced then do it on all
     if (master .or. (.not. reduce_tallies)) then
-      ! Accumulate scores for each tally
+      ! Accumulate results for each tally
       curr_ptr => active_tallies
       do while(associated(curr_ptr))
         call accumulate_tally(tallies(curr_ptr % data))
@@ -1507,13 +1507,13 @@ contains
       end do
 
       if (run_mode == MODE_EIGENVALUE) then
-        ! Before accumulating scores for global_tallies, we need to get the
+        ! Before accumulating results for global_tallies, we need to get the
         ! current batch estimate of k_analog for displaying to output
         if (active_batches) k_batch(current_batch) = global_tallies(K_ANALOG) % value
       end if
 
-      ! Accumulate scores for global tallies
-      if (active_batches) call accumulate_score(global_tallies)
+      ! Accumulate results for global tallies
+      if (active_batches) call accumulate_result(global_tallies)
     end if
 
     if (associated(curr_ptr)) nullify(curr_ptr)
@@ -1530,7 +1530,7 @@ contains
     integer :: n      ! number of filter bins
     integer :: m      ! number of score bins
     integer :: n_bins ! total number of bins
-    real(8), allocatable :: tally_temp(:,:) ! contiguous array of scores
+    real(8), allocatable :: tally_temp(:,:) ! contiguous array of results
     real(8) :: global_temp(N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
     type(TallyObject), pointer :: t => null()
@@ -1546,7 +1546,7 @@ contains
 
       allocate(tally_temp(m,n))
 
-      tally_temp = t % scores(:,:) % value
+      tally_temp = t % results(:,:) % value
 
       if (master) then
         ! The MPI_IN_PLACE specifier allows the master to copy values into
@@ -1555,14 +1555,14 @@ contains
              MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
         ! Transfer values to value on master
-        t % scores(:,:) % value = tally_temp
+        t % results(:,:) % value = tally_temp
       else
         ! Receive buffer not significant at other processors
         call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, &
              MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
         ! Reset value on other processors
-        t % scores(:,:) % value = 0
+        t % results(:,:) % value = 0
       end if
 
       deallocate(tally_temp)
@@ -1620,14 +1620,14 @@ contains
       t % n_realizations = t % n_realizations + n_procs
     end if
 
-    ! Accumulate each TallyScore
-    call accumulate_score(t % scores)
+    ! Accumulate each TallyResult
+    call accumulate_result(t % results)
 
   end subroutine accumulate_tally
 
 !===============================================================================
 ! TALLY_STATISTICS computes the mean and standard deviation of the mean of each
-! tally and stores them in the val and val_sq attributes of the TallyScores
+! tally and stores them in the val and val_sq attributes of the TallyResults
 ! respectively
 !===============================================================================
 
@@ -1640,72 +1640,72 @@ contains
     do i = 1, n_tallies
       t => tallies(i)
 
-      call statistics_score(t % scores, t % n_realizations)
+      call statistics_result(t % results, t % n_realizations)
     end do
 
     ! Calculate statistics for global tallies
-    call statistics_score(global_tallies, n_realizations)
+    call statistics_result(global_tallies, n_realizations)
 
   end subroutine tally_statistics
 
 !===============================================================================
-! ACCUMULATE_SCORE accumulates scores from many histories (or many generations)
+! ACCUMULATE_RESULT accumulates results from many histories (or many generations)
 ! into a single realization of a random variable.
 !===============================================================================
 
-  elemental subroutine accumulate_score(score)
+  elemental subroutine accumulate_result(this)
 
-    type(TallyScore), intent(inout) :: score
+    type(TallyResult), intent(inout) :: this
 
     real(8) :: val
 
-    ! Add the sum and square of the sum of contributions from a tally score to
+    ! Add the sum and square of the sum of contributions from a tally result to
     ! the variables sum and sum_sq. This will later allow us to calculate a
     ! variance on the tallies.
 
-    val = score % value/total_weight
-    score % sum    = score % sum    + val
-    score % sum_sq = score % sum_sq + val*val
+    val = this % value/total_weight
+    this % sum    = this % sum    + val
+    this % sum_sq = this % sum_sq + val*val
 
     ! Reset the single batch estimate
-    score % value = ZERO
+    this % value = ZERO
 
-  end subroutine accumulate_score
+  end subroutine accumulate_result
 
 !===============================================================================
-! STATISTICS_SCORE determines the sample mean and the standard deviation of the
-! mean for a TallyScore.
+! STATISTICS_RESULT determines the sample mean and the standard deviation of the
+! mean for a TallyResult.
 !===============================================================================
 
-  elemental subroutine statistics_score(score, n)
+  elemental subroutine statistics_result(this, n)
 
-    type(TallyScore), intent(inout) :: score
-    integer,          intent(in)    :: n
+    type(TallyResult), intent(inout) :: this
+    integer,           intent(in)    :: n
 
     ! Calculate sample mean and standard deviation of the mean -- note that we
     ! have used Bessel's correction so that the estimator of the variance of the
     ! sample mean is unbiased.
 
-    score % sum    = score % sum/n
-    score % sum_sq = sqrt((score % sum_sq/n - score % sum * &
-         score % sum) / (n - 1))
+    this % sum    = this % sum/n
+    this % sum_sq = sqrt((this % sum_sq/n - this % sum * &
+         this % sum) / (n - 1))
 
-  end subroutine statistics_score
+  end subroutine statistics_result
 
 !===============================================================================
-! RESET_SCORE zeroes out the value and accumulated sum and sum-squared for a
-! single TallyScore.
+! RESET_RESULT zeroes out the value and accumulated sum and sum-squared for a
+! single TallyResult.
 !===============================================================================
 
-  elemental subroutine reset_score(score)
+  elemental subroutine reset_result(this)
 
-    type(TallyScore), intent(inout) :: score
+    type(TallyResult), intent(inout) :: this
 
-    score % value    = ZERO
-    score % sum      = ZERO
-    score % sum_sq   = ZERO
+    this % value    = ZERO
+    this % sum      = ZERO
+    this % sum_sq   = ZERO
 
-  end subroutine reset_score
+  end subroutine reset_result
 
 !===============================================================================
 ! SETUP_ACTIVE_USERTALLIES

@@ -173,7 +173,7 @@ contains
     use mesh_header,    only: StructuredMesh
     use string
     use tally,          only: setup_active_cmfdtallies
-    use tally_header,   only: TallyObject, TallyScore, TallyFilter
+    use tally_header,   only: TallyObject, TallyFilter
     use xml_data_cmfd_t
 
     integer :: i           ! loop counter

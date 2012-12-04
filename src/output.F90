@@ -1387,7 +1387,7 @@ contains
     integer :: n            ! loop index for nuclides
     integer :: type         ! type of tally filter        
     integer :: indent       ! number of spaces to preceed output
-    integer :: filter_index ! index in scores array for filters
+    integer :: filter_index ! index in results array for filters
     integer :: score_index  ! scoring bin index
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_listing    ! index in xs_listings array
@@ -1453,14 +1453,14 @@ contains
 
       ! Multiply uncertainty by t-value
       if (confidence_intervals) then
-        do k = 1, size(t % scores, 2)
-          do j = 1, size(t % scores, 1)
+        do k = 1, size(t % results, 2)
+          do j = 1, size(t % results, 1)
             ! Calculate t-value for confidence intervals
             if (confidence_intervals) then
               alpha = ONE - CONFIDENCE_LEVEL
               t_value = t_percentile(ONE - alpha/TWO, t % n_realizations - 1)
             end if
-            t % scores(j,k) % sum_sq = t_value * t % scores(j,k) % sum_sq
+            t % results(j,k) % sum_sq = t_value * t % results(j,k) % sum_sq
           end do
         end do
       end if
@@ -1480,7 +1480,7 @@ contains
         cycle
       end if
 
-      ! WARNING: Admittedly, the logic for moving for printing scores is
+      ! WARNING: Admittedly, the logic for moving for printing results is
       ! extremely confusing and took quite a bit of time to get correct. The
       ! logic is structured this way since it is not practical to have a do
       ! loop for each filter variable (given that only a few filters are likely
@@ -1511,7 +1511,7 @@ contains
             indent = indent - 2
 
             ! =================================================================
-            ! VALID BIN -- WRITE FILTER INFORMATION OR EXIT TO WRITE SCORES
+            ! VALID BIN -- WRITE FILTER INFORMATION OR EXIT TO WRITE RESULTS
 
           else
             ! Check if this is last filter
@@ -1544,7 +1544,7 @@ contains
           filter_index = 1
         end if
 
-        ! Write scores for this filter bin combination
+        ! Write results for this filter bin combination
         score_index = 0
         if (t % n_filters > 0) indent = indent + 2
         do n = 1, t % n_nuclide_bins
@@ -1564,8 +1564,8 @@ contains
             score_index = score_index + 1
             write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                  repeat(" ", indent), score_name(abs(t % score_bins(k))), &
-                 to_str(t % scores(score_index,filter_index) % sum), &
-                 trim(to_str(t % scores(score_index,filter_index) % sum_sq))
+                 to_str(t % results(score_index,filter_index) % sum), &
+                 trim(to_str(t % results(score_index,filter_index) % sum_sq))
           end do
           indent = indent - 2
 
@@ -1601,7 +1601,7 @@ contains
     integer :: n                    ! number of incoming energy bins
     integer :: len1                 ! length of string 
     integer :: len2                 ! length of string 
-    integer :: filter_index         ! index in scores array for filters
+    integer :: filter_index         ! index in results array for filters
     logical :: print_ebin           ! should incoming energy bin be displayed?
     character(MAX_LINE_LEN) :: string
     type(StructuredMesh), pointer :: m => null()
@@ -1652,15 +1652,15 @@ contains
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Outgoing Current to Left", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
 
             t % matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Incoming Current from Left", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Right Surface
             t % matching_bins(i_filter_mesh) = &
@@ -1669,15 +1669,15 @@ contains
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Incoming Current from Right", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
 
             t % matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Outgoing Current to Right", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Back Surface
             t % matching_bins(i_filter_mesh) = &
@@ -1686,15 +1686,15 @@ contains
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Outgoing Current to Back", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
 
             t % matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Incoming Current from Back", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Front Surface
             t % matching_bins(i_filter_mesh) = &
@@ -1703,15 +1703,15 @@ contains
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Incoming Current from Front", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
 
             t % matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Outgoing Current to Front", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Bottom Surface
             t % matching_bins(i_filter_mesh) = &
@@ -1720,15 +1720,15 @@ contains
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Outgoing Current to Bottom", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
 
             t % matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Incoming Current from Bottom", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
 
             ! Top Surface
             t % matching_bins(i_filter_mesh) = &
@@ -1737,15 +1737,15 @@ contains
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Incoming Current from Top", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
 
             t % matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((t % matching_bins - 1) * t % stride) + 1
             write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
                  "Outgoing Current to Top", &
-                 to_str(t % scores(1,filter_index) % sum), &
-                 trim(to_str(t % scores(1,filter_index) % sum_sq))
+                 to_str(t % results(1,filter_index) % sum), &
+                 trim(to_str(t % results(1,filter_index) % sum_sq))
           end do
 
         end do

@@ -81,7 +81,7 @@ class StatePoint(BinaryFile):
 
         # Set flags for what data  was read
         self._metadata = False
-        self._values = False
+        self._results = False
         self._source = False
 
         # Initialize arrays for meshes and tallies
@@ -194,7 +194,7 @@ class StatePoint(BinaryFile):
         # Set flag indicating metadata has already been read
         self._metadata = True
 
-    def read_values(self):
+    def read_results(self):
         # Check whether metadata has been read
         if not self._metadata:
             self._read_metadata()
@@ -215,16 +215,16 @@ class StatePoint(BinaryFile):
 
             for t in self.tallies:
                 n = t.total_score_bins * t.total_filter_bins
-                t.values = np.array(self._get_double(2*n))
-                t.values.shape = (t.total_filter_bins, t.total_score_bins, 2)
+                t.results = np.array(self._get_double(2*n))
+                t.results.shape = (t.total_filter_bins, t.total_score_bins, 2)
 
-        # Indicate that tally values have been read
-        self._values = True
+        # Indicate that tally results have been read
+        self._results = True
 
     def read_source(self):
-        # Check whether tally values have been read
-        if not self._values:
-            self.read_values()
+        # Check whether tally results have been read
+        if not self._results:
+            self.read_results()
 
         for i in range(self.n_particles):
             s = SourceSite()
@@ -274,18 +274,18 @@ class StatePoint(BinaryFile):
 
         # Regular tallies
         for t in self.tallies:
-            for i in range(t.values.shape[0]):
-                for j in range(t.values.shape[1]):
+            for i in range(t.results.shape[0]):
+                for j in range(t.results.shape[1]):
                     # Get sum and sum of squares
-                    s, s2 = t.values[i,j]
+                    s, s2 = t.results[i,j]
                     
                     # Calculate sample mean and replace value
                     s /= n
-                    t.values[i,j,0] = s
+                    t.results[i,j,0] = s
 
                     # Calculate standard deviation
                     if s != 0.0:
-                        t.values[i,j,1] = t_value*sqrt((s2/n - s*s)/(n-1))
+                        t.results[i,j,1] = t_value*sqrt((s2/n - s*s)/(n-1))
 
     def get_value(self, tally_index, spec_list, score_index):
         """Returns a tally score given a list of filters to satisfy.
@@ -305,14 +305,14 @@ class StatePoint(BinaryFile):
 
         score_index : int
             Index corresponding to score for tally, i.e. the second index in
-            Tally.values[:,:,:].
+            Tally.results[:,:,:].
 
         """
 
         # Get Tally object given the index
         t = self.tallies[tally_index]
 
-        # Initialize index for filter in Tally.values[:,:,:]
+        # Initialize index for filter in Tally.results[:,:,:]
         filter_index = 0
 
         # Loop over specified filters in spec_list
@@ -335,7 +335,7 @@ class StatePoint(BinaryFile):
             else:
                 filter_index += f_index*t.filters[f_type].stride
         
-        # Return the desired result from Tally.values. This could be the sum and
+        # Return the desired result from Tally.results. This could be the sum and
         # sum of squares, or it could be mean and stdev if self.generate_stdev()
         # has been called already.
-        return t.values[filter_index, score_index]
+        return t.results[filter_index, score_index]

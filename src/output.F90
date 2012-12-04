@@ -484,6 +484,7 @@ contains
     integer :: i     ! loop index for coefficients
     integer :: unit_ ! unit to write to
     character(MAX_LINE_LEN) :: string
+    type(Cell), pointer :: c => null()
 
     ! set default unit if not specified
     if (present(unit)) then
@@ -539,7 +540,9 @@ contains
     string = ""
     if (allocated(surf % neighbor_pos)) then
       do i = 1, size(surf % neighbor_pos)
-        string = trim(string) // ' ' // to_str(surf % neighbor_pos(i))
+        c => cells(abs(surf % neighbor_pos(i)))
+        string = trim(string) // ' ' // to_str(&
+             sign(c % id, surf % neighbor_pos(i)))
       end do
     end if
     write(unit_,*) '    Positive Neighbors = ' // trim(string)
@@ -548,7 +551,9 @@ contains
     string = ""
     if (allocated(surf % neighbor_neg)) then
       do i = 1, size(surf % neighbor_neg)
-        string = trim(string) // ' ' // to_str(surf % neighbor_neg(i))
+        c => cells(abs(surf % neighbor_neg(i)))
+        string = trim(string) // ' ' // to_str(&
+             sign(c % id, surf % neighbor_neg(i)))
       end do
     end if
     write(unit_,*) '    Negative Neighbors =' // trim(string)

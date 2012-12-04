@@ -95,7 +95,7 @@ contains
     allocate(p)
     call initialize_particle()
     p % coord % xyz = xyz
-    p % coord % uvw = (/ 1, 0, 0 /)
+    p % coord % uvw = (/ 0.5, 0.5, 0.5 /)
     p % coord % universe = BASE_UNIVERSE
 
     do y = 1, img % height

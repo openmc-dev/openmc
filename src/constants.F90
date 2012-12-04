@@ -32,6 +32,7 @@ module constants
   ! User for precision in geometry
   real(8), parameter :: FP_PRECISION = 1e-14_8
   real(8), parameter :: FP_REL_PRECISION = 1e-5_8
+  real(8), parameter :: FP_COINCIDENT = 1e-12_8
 
   ! Maximum number of collisions/crossings
   integer, parameter :: MAX_EVENTS = 10000

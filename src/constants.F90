@@ -272,8 +272,8 @@ module constants
        SCORE_EVENTS     = -17    ! number of events
        
   ! Maximum scattering order supported
-  integer, parameter :: SCATT_ORDER_MAX = 5
-  character(len=*), parameter :: SCATT_ORDER_MAX_PNSTR = "scatter-p5"
+  integer, parameter :: SCATT_ORDER_MAX = 10
+  character(len=*), parameter :: SCATT_ORDER_MAX_PNSTR = "scatter-p10"
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1

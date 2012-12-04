@@ -1397,7 +1397,7 @@ contains
     integer :: score_index  ! scoring bin index
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_listing    ! index in xs_listings array
-    integer :: nOrder       ! loop index for scattering orders
+    integer :: n_order       ! loop index for scattering orders
     real(8) :: t_value      ! t-values for confidence intervals
     real(8) :: alpha        ! significance level for CI
     character(MAX_FILE_LEN) :: filename                    ! name of output file
@@ -1587,16 +1587,16 @@ contains
                 repeat(" ", indent), score_name, &
                 to_str(t % scores(score_index,filter_index) % sum), &
                 trim(to_str(t % scores(score_index,filter_index) % sum_sq))
-              do nOrder = 1, t % scatt_order(k)
+              do n_order = 1, t % scatt_order(k)
                 score_index = score_index + 1
-                score_name = 'P' // trim(to_str(nOrder)) // &
+                score_name = 'P' // trim(to_str(n_order)) // &
                   ' Scattering Moment'
                 write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                   repeat(" ", indent), score_name, &
                   to_str(t % scores(score_index,filter_index) % sum), &
                   trim(to_str(t % scores(score_index,filter_index) % sum_sq))
               end do
-              k = k + nOrder - 1
+              k = k + n_order - 1
             else
               score_name = score_names(abs(t % score_bins(k)))
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 

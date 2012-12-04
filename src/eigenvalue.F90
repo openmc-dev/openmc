@@ -26,6 +26,9 @@ module eigenvalue
   use hdf5_interface, only: hdf5_write_state_point
 #endif
 
+  private
+  public :: run_eigenvalue
+
 contains
 
 !===============================================================================
@@ -160,8 +163,7 @@ contains
 
     ! Before accumulating results for global_tallies, we need to get the
     ! current batch estimate of k_analog for displaying to output
-    if (run_mode == MODE_EIGENVALUE) k_batch(current_batch) = &
-         global_tallies(K_ANALOG) % value
+    k_batch(current_batch) = global_tallies(K_ANALOG) % value
 
     ! Collect tallies
     if (tallies_on) then

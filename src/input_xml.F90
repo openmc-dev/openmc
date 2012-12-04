@@ -177,9 +177,6 @@ contains
       call fatal_error()
     end if
 
-    ! Turn on tallies if no inactive batches
-    if (n_inactive == 0) tallies_on = .true.
-
     ! Copy random number seed if specified
     if (seed_ > 0) seed = seed_
 

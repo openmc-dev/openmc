@@ -1202,10 +1202,11 @@ contains
     integer :: n_filters     ! number of filters
     integer :: n_new         ! number of new scores to add based on Pn tally
     integer :: n_scores      ! number of tot scores after adjusting for Pn tally
+    integer :: nOrder        ! Scattering order requested
     logical :: file_exists   ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
-    character(MAX_WORD_LEN) :: scatter_name
+    character(MAX_WORD_LEN) :: score_name
     type(ListKeyValueCI), pointer :: key_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
@@ -1680,6 +1681,13 @@ contains
         n_new = 0
         do j = 1, n_words
           call lower_case(tally_(i) % scores(j))
+          ! Find if scores(j) is of the form 'scatter-p'
+          ! If so, get the number and do a select case on that.
+          score_name = tally_(i) % scores(j)
+          
+          
+          
+          
           select case (tally_(i) % scores(j))
           case ('scatter-p0')
             n_new = n_new + 0
@@ -1704,6 +1712,9 @@ contains
         j = 0
         do l = 1, n_words
           j = j + 1
+          ! Get the input string in scores(l) but if scatter-n or scatter-pn
+          ! then strip off the n, and store it as an integer to be used later
+          ! Peform the select case on this modified (number removed) string
           select case (tally_(i) % scores(l))
           case ('flux')
             ! Prohibit user from tallying flux for an individual nuclide

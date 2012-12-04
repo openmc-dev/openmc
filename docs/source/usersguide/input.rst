@@ -808,14 +808,14 @@ The following responses can be tallied.
 
   :scatter-N:
     Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre expansion order.
-    N must be between 0 and 5. As an example, tallying the 2\ :sup:`nd` \ scattering 
+    N must be between 0 and 10. As an example, tallying the 2\ :sup:`nd` \ scattering 
     moment would be specified as ``<scores> scatter-2 </scores>``.
   
   :scatter-PN:
     Tally all of the scattering moments from order 0 to N, where N is 
     the Legendre expansion order.  That is, ``scatter-P1`` is equivalent
     to requesting tallies of ``scatter-0`` and ``scatter-1``.  
-    N must be between 0 and 5. As an example, tallying up to the 2\ :sup:`nd` \
+    N must be between 0 and 10. As an example, tallying up to the 2\ :sup:`nd` \
     scattering moment would be specified as ``<scores> scatter-P2 </scores>``.
     
   :absorption:

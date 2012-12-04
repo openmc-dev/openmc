@@ -181,7 +181,10 @@ contains
 
           case (SCORE_SCATTER_PN)
             ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
+            if (p % event /= EVENT_SCATTER) then
+              j = j + t % scatt_order(j)
+              cycle SCORE_LOOP
+            end if
             score_index = score_index - 1
             ! Find the scattering order for a collection of requested moments
             ! and store the moment contribution of each

@@ -45,6 +45,9 @@ contains
     ! Display column titles
     call print_columns()
 
+    ! Turn on inactive timer
+    call timer_start(time_inactive)
+
     ! ==========================================================================
     ! LOOP OVER BATCHES
     BATCH_LOOP: do current_batch = 1, n_batches
@@ -113,18 +116,21 @@ contains
     ! Reset total starting particle weight used for normalizing tallies
     total_weight = ZERO
 
+    if (current_batch == n_inactive + 1) then
+      ! Switch from inactive batch timer to active batch timer
+      call timer_stop(time_inactive)
+      call timer_start(time_active)
+
+      ! Enable active batches (and tallies_on if it hasn't been enabled)
+      active_batches = .true.
+      tallies_on = .true.
+
+      ! Add user tallies to active tallies list
+      call setup_active_usertallies()
+    end if
+
     ! check CMFD initialize batch
     if (cmfd_run) call cmfd_init_batch()
-
-    if (current_batch == n_inactive + 1) then
-      ! This will start the active timer at the first non-inactive batch
-      ! (including batch 1 if there are no inactive batches).
-      call timer_start(time_active)
-    elseif (current_batch == 1) then
-      ! If there are inactive batches, start the inactive timer on the first
-      ! batch.
-      call timer_start(time_inactive)
-    end if
 
   end subroutine initialize_batch
 
@@ -188,15 +194,6 @@ contains
         exit
       end if
     end do
-
-    ! Turn tallies on once inactive batches are complete
-    if (current_batch == n_inactive) then
-      tallies_on = .true.
-      active_batches = .true.
-      call timer_stop(time_inactive)
-      call timer_start(time_active)
-      call setup_active_usertallies()
-    end if
 
   end subroutine finalize_batch
 

@@ -17,8 +17,8 @@ sp1 = StatePoint(path1)
 sp2 = StatePoint(path2)
 
 # Read tally results
-sp1.read_values()
-sp2.read_values()
+sp1.read_results()
+sp2.read_results()
 
 # Compare header information
 assert sp1.revision == sp2.revision
@@ -71,7 +71,7 @@ for t1, t2 in zip(sp1.tallies, sp2.tallies):
     assert t1.scores == t2.scores
 
     # Compare tally results
-    assert_allclose(t1.values, t2.values)
+    assert_allclose(t1.results, t2.results)
 
 # If criticality, compare source sites
 if sp1.run_mode == 2:

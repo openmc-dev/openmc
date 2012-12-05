@@ -9,8 +9,8 @@ Prerequisites
 -------------
 
 In order to compile OpenMC, you will need to have a Fortran compiler installed
-on your machine. Since a number of Fortran 2003 features are used in the code,
-it is recommended that you use the latest version of whatever compiler you
+on your machine. Since a number of Fortran 2003/2008 features are used in the
+code, it is recommended that you use the latest version of whatever compiler you
 choose. For gfortran_, it is recommended that you use version 4.5.0 or above.
 
 If you are using Debian or a Debian derivative such as Ubuntu, you can install
@@ -21,9 +21,10 @@ the gfortran compiler using the following command::
 To compile with support for parallel runs on a distributed-memory architecture,
 you will need to have a valid implementation of MPI installed on your
 machine. The code has been tested and is known to work with the latest versions
-of both OpenMPI_ and MPICH2_. You may use older versions of MPI implementations
-at your own risk. OpenMPI and/or MPICH2 can be installed on Debian derivatives
-with::
+of both OpenMPI_ and MPICH2_. Note that if using OpenMPI, make sure that
+--with-mpi-f90-size is not set to medium or large since this may prevent MPI
+calls from completing successfully in OpenMC. OpenMPI and/or MPICH2 can be
+installed on Debian derivatives with::
 
     sudo apt-get install mpich2
     sudo apt-get install openmpi-bin
@@ -75,7 +76,7 @@ Options sections in the Makefile:
 
 COMPILER
   This variable tells the Makefile which compiler to use. Valid options are
-  gfortran, intel, pgi, ibm, and cray.
+  gnu, intel, pgi, ibm, and cray. The default is gnu (gfortran).
 
 DEBUG
   Enables debugging when compiling. The flags added are dependent on which
@@ -85,17 +86,21 @@ PROFILE
   Enables profiling using the GNU profiler, gprof.
 
 OPTIMIZE
-  Enables high-optimization using compiler-dependent flags. For gfortran,
-  this compiles with -O3. For Intel Fortran, this compiles with -O3 as well as
-  interprocedural optimization.
+  Enables high-optimization using compiler-dependent flags. For gfortran and
+  Intel Fortran, this compiles with -O3.
 
-USE_MPI
-  Enables parallel runs using the Message Passing Interface. Users should also
-  set the MPI_ROOT directory further down in the Makefile.
+MPI
+  Enables parallel runs using the Message Passing Interface. The MPI_DIR
+  variable should be set to the base directory of the MPI implementation.
 
-USE_HDF5
-  Enables HDF5 output in addition to normal screen and text file output. Users
-  should also set the HDF5_ROOT directory further down in the Makefile.
+HDF5
+  Enables HDF5 output in addition to normal screen and text file output. The
+  HDF5_DIR variable should be set to the base directory of the HDF5
+  installation.
+
+PETSC
+  Enables PETSc for use in CMFD acceleration. The PETSC_DIR variable should be
+  set to the base directory of the PETSc installation.
 
 It is also possible to change these options from the command line itself. For
 example, if you want to compile with DEBUG turned on without actually change the

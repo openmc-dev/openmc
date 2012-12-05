@@ -244,9 +244,12 @@ contains
         end if
       end do NUCLIDE_LOOP
 
-      ! Write number of score bins
+      ! Write number of score bins, score bins, and scatt order
       write(UNIT_STATE) t % n_score_bins
       write(UNIT_STATE) t % score_bins
+      write(UNIT_STATE) t % scatt_order
+      ! Write number of nonPN score bins
+      write(UNIT_STATE) t % n_nonPN_score_bins
     end do TALLY_METADATA
 
     ! Number of realizations for global tallies
@@ -442,11 +445,16 @@ contains
         end if
       end do NUCLIDE_LOOP
 
-      ! Write number of score bins
+      ! Write number of score bins, score bins, and scatt order
       call MPI_FILE_WRITE(fh, t % n_score_bins, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, t % score_bins, t % n_score_bins, &
            MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+      call MPI_FILE_WRITE(fh, t % scatt_order, t % n_score_bins, &
+           MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+      ! Write number of nonPN score bins
+      call MPI_FILE_WRITE(fh, t % n_nonPN_score_bins, 1, MPI_INTEGER, &
+           MPI_STATUS_IGNORE, mpi_err)
     end do TALLY_METADATA
 
   end subroutine write_state_point_header
@@ -740,11 +748,19 @@ contains
         call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
 
-        ! Read nuclide bins
+        ! Read score bins and scatt_order
         allocate(int_array(temp(1)))
         call MPI_FILE_READ(fh, int_array, temp(1), MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
+        call MPI_FILE_READ(fh, int_array, temp(1), MPI_INTEGER, &
+             MPI_STATUS_IGNORE, mpi_err)
         deallocate(int_array)
+        call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
+             MPI_STATUS_IGNORE, mpi_err)
+        
+        ! Read number of nonPN score bins
+        call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
+             MPI_STATUS_IGNORE, mpi_err)
       end do TALLY_METADATA
 
       ! Read number of realizations for global tallies
@@ -930,10 +946,14 @@ contains
         ! Read number of results
         read(UNIT_STATE) temp(1)
 
-        ! Read nuclide bins
+        ! Read results bins and scatt_order
         allocate(int_array(temp(1)))
         read(UNIT_STATE) int_array
+        read(UNIT_STATE) int_array
         deallocate(int_array)
+        
+        ! Read number of nonPN bins
+        read(UNIT_STATE) temp(1)
       end do TALLY_METADATA
 
       ! Read number of realizations for global tallies
@@ -965,7 +985,7 @@ contains
         end do TALLY_RESULTS
       end if
     end if
-
+    
     ! Read source bank for eigenvalue run
     if (mode == MODE_EIGENVALUE .and. run_mode /= MODE_TALLIES) then
       read(UNIT_STATE) source_bank

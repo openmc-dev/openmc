@@ -1902,7 +1902,8 @@ contains
             call fatal_error()
           end select
         end do
-        t % n_score_bins = n_words
+        t % n_score_bins = n_scores
+        t % n_nonPN_score_bins = n_words
       else
         message = "No <scores> specified on tally " // trim(to_str(t % id)) &
              // "."

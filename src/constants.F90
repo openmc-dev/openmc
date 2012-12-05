@@ -260,9 +260,9 @@ module constants
        SCORE_NU_SCATTER = -4,  & ! scattering production rate
        SCORE_SCATTER_N  = -5,  & ! arbitrary scattering moment
        SCORE_SCATTER_PN = -6,  & ! system for scoring 0th through nth moment
-       SCORE_TRANSPORT  = -7, & ! transport reaction rate
-       SCORE_DIFFUSION  = -8, & ! diffusion coefficient
-       SCORE_N_1N       = -9, & ! (n,1n) rate
+       SCORE_TRANSPORT  = -7,  & ! transport reaction rate
+       SCORE_DIFFUSION  = -8,  & ! diffusion coefficient
+       SCORE_N_1N       = -9,  & ! (n,1n) rate
        SCORE_N_2N       = -10, & ! (n,2n) rate
        SCORE_N_3N       = -11, & ! (n,3n) rate
        SCORE_N_4N       = -12, & ! (n,4n) rate

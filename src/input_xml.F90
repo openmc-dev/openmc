@@ -140,6 +140,7 @@ contains
       ! Allocate array for batch keff and entropy
       allocate(k_batch(n_batches))
       allocate(entropy(n_batches))
+      entropy = ZERO
     end if
 
     ! Fixed source calculation information

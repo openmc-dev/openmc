@@ -1506,6 +1506,14 @@ contains
         curr_ptr => curr_ptr % next
       end do
 
+      if (run_mode == MODE_EIGENVALUE) then
+        ! Get the current batch estimate of k_analog for displaying to output
+        ! --- this has to be performed after reduce_tally_values and before
+        ! accumulate_result
+
+        k_batch(current_batch) = global_tallies(K_ANALOG) % value
+      end if
+
       ! Accumulate results for global tallies
       if (active_batches) call accumulate_result(global_tallies)
     end if

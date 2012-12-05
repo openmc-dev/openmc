@@ -161,10 +161,6 @@ contains
 
     integer :: i ! loop index for state point batches
 
-    ! Before accumulating results for global_tallies, we need to get the
-    ! current batch estimate of k_analog for displaying to output
-    k_batch(current_batch) = global_tallies(K_ANALOG) % value
-
     ! Collect tallies
     if (tallies_on) then
       call timer_start(time_tallies)
@@ -548,6 +544,8 @@ contains
 
     ! =========================================================================
     ! SINGLE-BATCH ESTIMATE OF K-EFFECTIVE
+
+    if (.not. active_batches) k_batch(current_batch) = global_tallies(K_ANALOG) % value
 
 #ifdef MPI
     if ((.not. active_batches) .or. (.not. reduce_tallies)) then

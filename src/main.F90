@@ -1,7 +1,7 @@
 program main
 
   use constants
-  use criticality,  only: run_criticality
+  use eigenvalue,   only: run_eigenvalue
   use finalize,     only: finalize_run
   use fixed_source, only: run_fixedsource
   use global
@@ -17,8 +17,8 @@ program main
   select case (run_mode)
   case (MODE_FIXEDSOURCE)
     call run_fixedsource()
-  case (MODE_CRITICALITY)
-    call run_criticality()
+  case (MODE_EIGENVALUE)
+    call run_eigenvalue()
   case (MODE_PLOTTING)
     call run_plot()
   case (MODE_TALLIES)

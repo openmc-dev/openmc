@@ -478,7 +478,7 @@ contains
 
     use global,  only: n_user_tallies, n_tallies, tallies, message
     use output,  only: write_message
-    use tally,   only: reset_score
+    use tally,   only: reset_result
 
     integer :: i ! loop counter
 
@@ -491,7 +491,7 @@ contains
 
       ! reset that tally
       tallies(i) % n_realizations = 0
-      call reset_score(tallies(i) % scores)
+      call reset_result(tallies(i) % results)
 
     end do
 

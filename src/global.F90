@@ -13,7 +13,7 @@ module global
   use particle_header,  only: Particle
   use plot_header,      only: Plot
   use source_header,    only: ExtSource
-  use tally_header,     only: TallyObject, TallyMap, TallyScore
+  use tally_header,     only: TallyObject, TallyMap, TallyResult
   use timing,           only: Timer
 
 #ifdef MPI
@@ -111,7 +111,7 @@ module global
   !   3) track-length estimate of k-eff
   !   4) leakage fraction
 
-  type(TallyScore), target :: global_tallies(N_GLOBAL_TALLIES)
+  type(TallyResult), target :: global_tallies(N_GLOBAL_TALLIES)
 
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
@@ -154,7 +154,7 @@ module global
   type(ListInt), pointer :: active_tallies => null()
 
   ! ============================================================================
-  ! CRITICALITY SIMULATION VARIABLES
+  ! EIGENVALUE SIMULATION VARIABLES
 
   integer(8) :: n_particles = 0   ! # of particles per generation
   integer    :: n_batches         ! # of batches
@@ -208,7 +208,7 @@ module global
   logical :: mpi_enabled = .false. ! is MPI in use and initialized?
   integer :: mpi_err               ! MPI error code
   integer :: MPI_BANK              ! MPI datatype for fission bank
-  integer :: MPI_TALLYSCORE        ! MPI datatype for TallyScore
+  integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
 
   ! No reduction at end of batch
   logical :: reduce_tallies = .true.
@@ -240,17 +240,17 @@ module global
   ! HDF5 VARIABLES
 
 #ifdef HDF5
-  integer(HID_T) :: hdf5_output_file  ! identifier for output file
-  integer(HID_T) :: hdf5_tallyscore_t ! Compound type for TallyScore
-  integer(HID_T) :: hdf5_bank_t       ! Compound type for Bank
-  integer(HID_T) :: hdf5_integer8_t   ! type for integer(8)
-  integer        :: hdf5_err          ! error flag 
+  integer(HID_T) :: hdf5_output_file   ! identifier for output file
+  integer(HID_T) :: hdf5_tallyresult_t ! Compound type for TallyResult
+  integer(HID_T) :: hdf5_bank_t        ! Compound type for Bank
+  integer(HID_T) :: hdf5_integer8_t    ! type for integer(8)
+  integer        :: hdf5_err           ! error flag 
 #endif
 
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
-  ! Mode to run in (fixed source, criticality, plotting, etc)
+  ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer :: run_mode = NONE
 
   ! Restart run

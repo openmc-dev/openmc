@@ -30,20 +30,20 @@ contains
 
   subroutine hdf5_initialize()
 
-    type(TallyScore), target :: tmp(2)          ! temporary TallyScore
-    type(Bank),       target :: tmpb(2)         ! temporary Bank
-    integer(HID_T)           :: coordinates_t   ! HDF5 type for 3 reals
-    integer(HSIZE_T)         :: dims(1) = (/3/) ! size of coordinates
+    type(TallyResult), target :: tmp(2)          ! temporary TallyResult
+    type(Bank),        target :: tmpb(2)         ! temporary Bank
+    integer(HID_T)            :: coordinates_t   ! HDF5 type for 3 reals
+    integer(HSIZE_T)          :: dims(1) = (/3/) ! size of coordinates
 
     ! Initialize FORTRAN interface.
     call h5open_f(hdf5_err)
 
-    ! Create the compound datatype for TallyScore
+    ! Create the compound datatype for TallyResult
     call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmp(1)), &
-         c_loc(tmp(2))), hdf5_tallyscore_t, hdf5_err)
-    call h5tinsert_f(hdf5_tallyscore_t, "sum", h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(2))), hdf5_tallyresult_t, hdf5_err)
+    call h5tinsert_f(hdf5_tallyresult_t, "sum", h5offsetof(c_loc(tmp(1)), &
          c_loc(tmp(1)%sum)), H5T_NATIVE_DOUBLE, hdf5_err)
-    call h5tinsert_f(hdf5_tallyscore_t, "sum_sq", h5offsetof(c_loc(tmp(1)), &
+    call h5tinsert_f(hdf5_tallyresult_t, "sum_sq", h5offsetof(c_loc(tmp(1)), &
          c_loc(tmp(1)%sum_sq)), H5T_NATIVE_DOUBLE, hdf5_err)
 
     ! Create compound type for xyz and uvw
@@ -73,7 +73,7 @@ contains
   subroutine hdf5_finalize()
 
     ! Release compound datatypes
-    call h5tclose_f(hdf5_tallyscore_t, hdf5_err)
+    call h5tclose_f(hdf5_tallyresult_t, hdf5_err)
 
     ! Close FORTRAN interface.
     call h5close_f(hdf5_err)
@@ -94,8 +94,8 @@ contains
     ! Write header information
     call hdf5_write_header()
 
-    ! Write criticality information
-    if (run_mode == MODE_CRITICALITY) then
+    ! Write eigenvalue information
+    if (run_mode == MODE_EIGENVALUE) then
       ! Need to write integer(8)'s using double instead since there is no H5LT
       ! call for making a dataset of type long
       call hdf5_write_double(hdf5_output_file, "n_particles", real(n_particles,8))
@@ -865,8 +865,8 @@ contains
     ! Write out current batch number
     call hdf5_write_integer(hdf5_state_point, "current_batch", current_batch)
 
-    ! Write out information for criticality run
-    if (run_mode == MODE_CRITICALITY) then
+    ! Write out information for eigenvalue run
+    if (run_mode == MODE_EIGENVALUE) then
       call hdf5_write_integer(hdf5_state_point, "n_inactive", n_inactive)
       call hdf5_write_integer(hdf5_state_point, "gen_per_batch", gen_per_batch)
 
@@ -1031,10 +1031,10 @@ contains
     ! Write global tallies
     dims(1) = N_GLOBAL_TALLIES
     call h5screate_simple_f(1, dims, dspace, hdf5_err)
-    call h5dcreate_f(hdf5_state_point, "global_tallies", hdf5_tallyscore_t, &
+    call h5dcreate_f(hdf5_state_point, "global_tallies", hdf5_tallyresult_t, &
          dspace, dset, hdf5_err)
     f_ptr = c_loc(global_tallies(1))
-    CALL h5dwrite_f(dset, hdf5_tallyscore_t, f_ptr, hdf5_err)
+    CALL h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
 
@@ -1043,7 +1043,7 @@ contains
       call hdf5_write_integer(tallies_group, "tallies_present", 1)
 
       ! Write tally sum and sum_sq
-      TALLY_SCORES: do i = 1, n_tallies
+      TALLY_RESULTS: do i = 1, n_tallies
         ! Get pointer to tally
         t => tallies(i)
 
@@ -1052,18 +1052,18 @@ contains
              temp_group, hdf5_err)
 
         ! Write sum and sum_sq for each bin
-        dims2 = shape(t % scores)
+        dims2 = shape(t % results)
         call h5screate_simple_f(2, dims2, dspace, hdf5_err)
-        call h5dcreate_f(temp_group, "values", hdf5_tallyscore_t, &
+        call h5dcreate_f(temp_group, "results", hdf5_tallyresult_t, &
              dspace, dset, hdf5_err)
-        f_ptr = c_loc(t % scores(1, 1))
-        CALL h5dwrite_f(dset, hdf5_tallyscore_t, f_ptr, hdf5_err)
+        f_ptr = c_loc(t % results(1, 1))
+        CALL h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
         call h5dclose_f(dset, hdf5_err)
         call h5sclose_f(dspace, hdf5_err)
 
         ! Close group for the i-th tally
         call h5gclose_f(temp_group, hdf5_err)
-      end do TALLY_SCORES
+      end do TALLY_RESULTS
     else
       ! Indicate that tallies are off
       call hdf5_write_integer(tallies_group, "tallies_present", 0)
@@ -1132,8 +1132,8 @@ contains
     ! Read batch number to restart at
     call hdf5_read_integer(hdf5_state_point, "current_batch", restart_batch)
 
-    ! Read information specific to criticality run
-    if (mode == MODE_CRITICALITY) then
+    ! Read information specific to eigenvalue run
+    if (mode == MODE_EIGENVALUE) then
       call hdf5_read_integer(hdf5_state_point, "n_inactive", n_inactive)
       call hdf5_read_integer(hdf5_state_point, "gen_per_batch", gen_per_batch)
 
@@ -1153,7 +1153,7 @@ contains
 
       ! Read global tallies
       f_ptr = c_loc(global_tallies(1))
-      call h5dread_f(dset, hdf5_tallyscore_t, f_ptr, hdf5_err)
+      call h5dread_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
 
       ! Close global tallies dataset
       call h5dclose_f(dset, hdf5_err)
@@ -1167,14 +1167,14 @@ contains
         call hdf5_read_integer(tally_group, "n_realizations", &
              tallies(i) % n_realizations)
 
-        ! Open dataset for tally values
-        call h5dopen_f(tally_group, "values", dset, hdf5_err)
+        ! Open dataset for tally results
+        call h5dopen_f(tally_group, "results", dset, hdf5_err)
 
         ! Read sum and sum_sq for each tally bin
-        f_ptr = c_loc(tallies(i) % scores(1,1))
-        call h5dread_f(dset, hdf5_tallyscore_t, f_ptr, hdf5_err)
+        f_ptr = c_loc(tallies(i) % results(1,1))
+        call h5dread_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
 
-        ! Close dataset for tally values
+        ! Close dataset for tally results
         call h5dclose_f(dset, hdf5_err)
 
         ! Close tally group
@@ -1191,7 +1191,7 @@ contains
     f_ptr = c_loc(source_bank(1))
     call h5dread_f(dset, hdf5_bank_t, f_ptr, hdf5_err)
 
-    ! Close dataset for tally values
+    ! Close dataset for source bank
     call h5dclose_f(dset, hdf5_err)
 
     ! Close HDF5 state point file

@@ -19,7 +19,7 @@ module input_xml
   implicit none
 
   type(DictionaryII), pointer :: &  ! used to count how many cells each
-      cells_in_univ_dict => null() ! universe contains
+       cells_in_univ_dict => null() ! universe contains
 
 contains
 
@@ -92,7 +92,7 @@ contains
       call get_environment_variable("CROSS_SECTIONS", env_variable)
       if (len_trim(env_variable) == 0) then
         message = "No cross_sections.xml file was specified in settings.xml &
-            &or in the CROSS_SECTIONS environment variable."
+             &or in the CROSS_SECTIONS environment variable."
         call fatal_error()
       else
         path_cross_sections = trim(env_variable)
@@ -102,32 +102,41 @@ contains
     end if
 
     ! Make sure that either criticality or fixed source was specified
-    if (criticality_ % batches == 0 .and. fixed_source_ % batches == 0) then
-      message = "Number of batches on <criticality> or <fixed_source> " &
-          // "tag was zero."
+    if (eigenvalue_ % batches == 0 .and. fixed_source_ % batches == 0 &
+         .and. criticality_ % batches == 0) then
+      message = "Number of batches on <eigenvalue> or <fixed_source> &
+           &tag was zero."
       call fatal_error()
     end if
 
-    ! Criticality information
+    ! Check for old <criticality> tag
     if (criticality_ % batches > 0) then
+      eigenvalue_ = criticality_
+      message = "The <criticality> element has been deprecated and &
+           &replaced by <eigenvalue>."
+      call warning()
+    end if
+
+    ! Eigenvalue information
+    if (eigenvalue_ % batches > 0) then
       ! Set run mode
-      if (run_mode == NONE) run_mode = MODE_CRITICALITY
+      if (run_mode == NONE) run_mode = MODE_EIGENVALUE
 
       ! Check number of particles
-      if (len_trim(criticality_ % particles) == 0) then
+      if (len_trim(eigenvalue_ % particles) == 0) then
         message = "Need to specify number of particles per cycles."
         call fatal_error()
       end if
 
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
-      if (n_particles == 0) n_particles = str_to_int(criticality_ % particles)
+      if (n_particles == 0) n_particles = str_to_int(eigenvalue_ % particles)
 
       ! Copy batch and generation information
-      n_batches     = criticality_ % batches
-      n_inactive    = criticality_ % inactive
+      n_batches     = eigenvalue_ % batches
+      n_inactive    = eigenvalue_ % inactive
       n_active      = n_batches - n_inactive
-      gen_per_batch = criticality_ % generations_per_batch
+      gen_per_batch = eigenvalue_ % generations_per_batch
 
       ! Allocate array for batch keff and entropy
       allocate(k_batch(n_batches))
@@ -168,9 +177,6 @@ contains
       call fatal_error()
     end if
 
-    ! Turn on tallies if no inactive batches
-    if (n_inactive == 0) tallies_on = .true.
-
     ! Copy random number seed if specified
     if (seed_ > 0) seed = seed_
 
@@ -202,7 +208,7 @@ contains
       inquire(FILE=path_source, EXIST=file_exists)
       if (.not. file_exists) then
         message = "Binary source file '" // trim(path_source) // &
-            "' does not exist!"
+             "' does not exist!"
         call fatal_error()
       end if
 
@@ -221,7 +227,7 @@ contains
           coeffs_reqd = 3
         case default
           message = "Invalid spatial distribution for external source: " &
-              // trim(source_ % space % type)
+               // trim(source_ % space % type)
           call fatal_error()
         end select
 
@@ -235,11 +241,11 @@ contains
         ! Read parameters for spatial distribution
         if (n < coeffs_reqd) then
           message = "Not enough parameters specified for spatial " &
-              // "distribution of external source."
+               // "distribution of external source."
           call fatal_error()
         elseif (n > coeffs_reqd) then
           message = "Too many parameters specified for spatial " &
-              // "distribution of external source."
+               // "distribution of external source."
           call fatal_error()
         elseif (n > 0) then
           allocate(external_source % params_space(n))
@@ -266,7 +272,7 @@ contains
           external_source % type_angle = SRC_ANGLE_TABULAR
         case default
           message = "Invalid angular distribution for external source: " &
-              // trim(source_ % angle % type)
+               // trim(source_ % angle % type)
           call fatal_error()
         end select
 
@@ -280,11 +286,11 @@ contains
         ! Read parameters for angle distribution
         if (n < coeffs_reqd) then
           message = "Not enough parameters specified for angle " &
-              // "distribution of external source."
+               // "distribution of external source."
           call fatal_error()
         elseif (n > coeffs_reqd) then
           message = "Too many parameters specified for angle " &
-              // "distribution of external source."
+               // "distribution of external source."
           call fatal_error()
         elseif (n > 0) then
           allocate(external_source % params_angle(n))
@@ -314,7 +320,7 @@ contains
           external_source % type_energy = SRC_ENERGY_TABULAR
         case default
           message = "Invalid energy distribution for external source: " &
-              // trim(source_ % energy % type)
+               // trim(source_ % energy % type)
           call fatal_error()
         end select
 
@@ -328,11 +334,11 @@ contains
         ! Read parameters for energy distribution
         if (n < coeffs_reqd) then
           message = "Not enough parameters specified for energy " &
-              // "distribution of external source."
+               // "distribution of external source."
           call fatal_error()
         elseif (n > coeffs_reqd) then
           message = "Too many parameters specified for energy " &
-              // "distribution of external source."
+               // "distribution of external source."
           call fatal_error()
         elseif (n > 0) then
           allocate(external_source % params_energy(n))
@@ -370,10 +376,10 @@ contains
       ! Check to make sure enough values were supplied
       if (size(entropy_(1) % lower_left) /= 3) then
         message = "Need to specify (x,y,z) coordinates of lower-left corner &
-            &of Shannon entropy mesh."
+             &of Shannon entropy mesh."
       elseif (size(entropy_(1) % upper_right) /= 3) then
         message = "Need to specify (x,y,z) coordinates of upper-right corner &
-            &of Shannon entropy mesh."
+             &of Shannon entropy mesh."
       end if
 
       ! Allocate mesh object and coordinates on mesh
@@ -388,7 +394,7 @@ contains
       ! Check on values provided
       if (.not. all(entropy_mesh % upper_right > entropy_mesh % lower_left)) then
         message = "Upper-right coordinate must be greater than lower-left &
-            &coordinate for Shannon entropy mesh."
+             &coordinate for Shannon entropy mesh."
         call fatal_error()
       end if
 
@@ -399,7 +405,7 @@ contains
         ! If so, make sure proper number of values were given
         if (size(entropy_(1) % dimension) /= 3) then
           message = "Dimension of entropy mesh must be given as three &
-              &integers."
+               &integers."
           call fatal_error()
         end if
 
@@ -420,13 +426,13 @@ contains
       ! Check to make sure enough values were supplied
       if (size(uniform_fs_(1) % lower_left) /= 3) then
         message = "Need to specify (x,y,z) coordinates of lower-left corner &
-            &of UFS mesh."
+             &of UFS mesh."
       elseif (size(uniform_fs_(1) % upper_right) /= 3) then
         message = "Need to specify (x,y,z) coordinates of upper-right corner &
-            &of UFS mesh."
+             &of UFS mesh."
       elseif (size(uniform_fs_(1) % dimension) /= 3) then
         message = "Dimension of UFS mesh must be given as three &
-            &integers."
+             &integers."
         call fatal_error()
       end if
 
@@ -450,13 +456,13 @@ contains
       ! Check on values provided
       if (.not. all(ufs_mesh % upper_right > ufs_mesh % lower_left)) then
         message = "Upper-right coordinate must be greater than lower-left &
-            &coordinate for UFS mesh."
+             &coordinate for UFS mesh."
         call fatal_error()
       end if
 
       ! Calculate width
       ufs_mesh % width = (ufs_mesh % upper_right - &
-          ufs_mesh % lower_left) / ufs_mesh % dimension
+           ufs_mesh % lower_left) / ufs_mesh % dimension
 
       ! Calculate volume fraction of each cell
       ufs_mesh % volume_frac = ONE/real(product(ufs_mesh % dimension),8)
@@ -466,7 +472,7 @@ contains
 
       ! Allocate source_frac
       allocate(source_frac(1, ufs_mesh % dimension(1), &
-          ufs_mesh % dimension(2), ufs_mesh % dimension(3)))
+           ufs_mesh % dimension(2), ufs_mesh % dimension(3)))
     end if
 
     ! Check if the user has specified to write state points
@@ -488,7 +494,7 @@ contains
         n_state_points = n_batches / state_point_(1) % interval
         allocate(statepoint_batch(n_state_points))
         statepoint_batch = (/ (state_point_(1) % interval * i, i = 1, &
-            n_state_points) /)
+             n_state_points) /)
       else
         ! If neither were specified, write state point at last batch
         n_state_points = 1
@@ -498,7 +504,7 @@ contains
 
       ! Check if the user has specified to write binary source file
       if (trim(state_point_(1) % source_separate) == 'on') &
-          source_separate = .true.
+           source_separate = .true.
     else
       ! If no <state_point> tag was present, by default write state point at
       ! last batch only
@@ -629,7 +635,7 @@ contains
       ! Check to make sure that either material or fill was specified
       if (c % material == NONE .and. c % fill == NONE) then
         message = "Neither material nor fill was specified for cell " // & 
-            trim(to_str(c % id))
+             trim(to_str(c % id))
         call fatal_error()
       end if
 
@@ -643,7 +649,7 @@ contains
       ! Check to make sure that surfaces were specified
       if (.not. associated(cell_(i) % surfaces)) then
         message = "No surfaces specified for cell " // &
-            trim(to_str(c % id))
+             trim(to_str(c % id))
         call fatal_error()
       end if
 
@@ -659,7 +665,7 @@ contains
         ! another universe
         if (c % fill == NONE) then
           message = "Cannot apply a rotation to cell " // trim(to_str(&
-              c % id)) // " because it is not filled with another universe"
+               c % id)) // " because it is not filled with another universe"
           call fatal_error()
         end if
 
@@ -667,7 +673,7 @@ contains
         n = size(cell_(i) % rotation)
         if (n /= 3) then
           message = "Incorrect number of rotation parameters on cell " // &
-              to_str(c % id)
+               to_str(c % id)
           call fatal_error()
         end if
 
@@ -679,13 +685,13 @@ contains
         ! Calculate rotation matrix based on angles given
         allocate(c % rotation(3,3))
         c % rotation = reshape((/ &
-            cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta), &
-            -cos(phi)*sin(psi) + sin(phi)*sin(theta)*cos(psi), &
-            cos(phi)*cos(psi) + sin(phi)*sin(theta)*sin(psi), &
-            sin(phi)*cos(theta), &
-            sin(phi)*sin(psi) + cos(phi)*sin(theta)*cos(psi), &
-            -sin(phi)*cos(psi) + cos(phi)*sin(theta)*sin(psi), &
-            cos(phi)*cos(theta) /), (/ 3,3 /))
+             cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta), &
+             -cos(phi)*sin(psi) + sin(phi)*sin(theta)*cos(psi), &
+             cos(phi)*cos(psi) + sin(phi)*sin(theta)*sin(psi), &
+             sin(phi)*cos(theta), &
+             sin(phi)*sin(psi) + cos(phi)*sin(theta)*cos(psi), &
+             -sin(phi)*cos(psi) + cos(phi)*sin(theta)*sin(psi), &
+             cos(phi)*cos(theta) /), (/ 3,3 /))
       end if
 
       ! Translation vector
@@ -694,7 +700,7 @@ contains
         ! another universe
         if (c % fill == NONE) then
           message = "Cannot apply a translation to cell " // trim(to_str(&
-              c % id)) // " because it is not filled with another universe"
+               c % id)) // " because it is not filled with another universe"
           call fatal_error()
         end if
 
@@ -702,7 +708,7 @@ contains
         n = size(cell_(i) % translation)
         if (n /= 3) then
           message = "Incorrect number of translation parameters on cell " &
-              // to_str(c % id)
+               // to_str(c % id)
           call fatal_error()
         end if
 
@@ -814,11 +820,11 @@ contains
       n = size(surface_(i) % coeffs)
       if (n < coeffs_reqd) then
         message = "Not enough coefficients specified for surface: " // & 
-            trim(to_str(s % id))
+             trim(to_str(s % id))
         call fatal_error()
       elseif (n > coeffs_reqd) then
         message = "Too many coefficients specified for surface: " // &
-            trim(to_str(s % id))
+             trim(to_str(s % id))
         call fatal_error()
       else
         allocate(s % coeffs(n))
@@ -839,7 +845,7 @@ contains
         s % bc = BC_PERIODIC
       case default
         message = "Unknown boundary condition '" // trim(word) // &
-            "' specified on surface " // trim(to_str(s % id))
+             "' specified on surface " // trim(to_str(s % id))
         call fatal_error()
       end select
 
@@ -888,7 +894,7 @@ contains
       ! Read lattice lower-left location
       if (size(lattice_(i) % dimension) /= size(lattice_(i) % lower_left)) then
         message = "Number of entries on <lower_left> must be the same as " // &
-            "the number of entries on <dimension>."
+             "the number of entries on <dimension>."
         call fatal_error()
       end if
       l % x0 = lattice_(i) % lower_left(1)
@@ -897,7 +903,7 @@ contains
       ! Read lattice widths
       if (size(lattice_(i) % width) /= size(lattice_(i) % lower_left)) then
         message = "Number of entries on <width> must be the same as " // &
-            "the number of entries on <lower_left>."
+             "the number of entries on <lower_left>."
         call fatal_error()
       end if
       l % width_x = lattice_(i) % width(1)
@@ -998,7 +1004,7 @@ contains
         sum_density = .false.
         if (val <= ZERO) then
           message = "Need to specify a positive density on material " // &
-              trim(to_str(mat % id)) // "."
+               trim(to_str(mat % id)) // "."
           call fatal_error()
         end if
 
@@ -1015,7 +1021,7 @@ contains
           mat % density = 1.0e-24 * val
         case default
           message = "Unkwown units '" // trim(material_(i) % density % units) &
-              // "' specified on material " // trim(to_str(mat % id))
+               // "' specified on material " // trim(to_str(mat % id))
           call fatal_error()
         end select
       end if
@@ -1026,7 +1032,7 @@ contains
       ! Check to ensure material has at least one nuclide
       if (.not. associated(material_(i) % nuclides)) then
         message = "No nuclides specified on material " // &
-            trim(to_str(mat % id))
+             trim(to_str(mat % id))
         call fatal_error()
       end if
 
@@ -1044,7 +1050,7 @@ contains
         ! Check for empty name on nuclide
         if (len_trim(nuc % name) == 0) then
           message = "No name specified on nuclide in material " // &
-              trim(to_str(mat % id))
+               trim(to_str(mat % id))
           call fatal_error()
         end if
 
@@ -1052,7 +1058,7 @@ contains
         if (len_trim(nuc % xs) == 0) then
           if (default_xs == '') then
             message = "No cross section specified for nuclide in material " &
-                // trim(to_str(mat % id))
+                 // trim(to_str(mat % id))
             call fatal_error()
           else
             nuc % xs = default_xs
@@ -1066,7 +1072,7 @@ contains
         ! Check that this nuclide is listed in the cross_sections.xml file
         if (.not. dict_has_key(xs_listing_dict, name)) then
           message = "Could not find nuclide " // trim(name) // &
-              " in cross_sections.xml file!"
+               " in cross_sections.xml file!"
           call fatal_error()
         end if
 
@@ -1074,7 +1080,7 @@ contains
         n = len_trim(name)
         if (name(n:n) /= 'c') then
           message = "Cross-section table " // trim(name) // & 
-              " is not a continuous-energy neutron table."
+               " is not a continuous-energy neutron table."
           call fatal_error()
         end if
 
@@ -1099,11 +1105,11 @@ contains
         ! weight percents were specified
         if (nuc % ao == ZERO .and. nuc % wo == ZERO) then
           message = "No atom or weight percent specified for nuclide " // &
-              trim(name)
+               trim(name)
           call fatal_error()
         elseif (nuc % ao /= ZERO .and. nuc % wo /= ZERO) then
           message = "Cannot specify both atom and weight percents for a &
-              &nuclide: " // trim(name)
+               &nuclide: " // trim(name)
           call fatal_error()
         end if
 
@@ -1118,9 +1124,9 @@ contains
       ! Check to make sure either all atom percents or all weight percents are
       ! given
       if (.not. (all(mat % atom_density > ZERO) .or. & 
-          all(mat % atom_density < ZERO))) then
+           all(mat % atom_density < ZERO))) then
         message = "Cannot mix atom and weight percents in material " // &
-            to_str(mat % id)
+             to_str(mat % id)
         call fatal_error()
       end if
 
@@ -1141,7 +1147,7 @@ contains
         ! Check that this nuclide is listed in the cross_sections.xml file
         if (.not. dict_has_key(xs_listing_dict, name)) then
           message = "Could not find S(a,b) table " // trim(name) // &
-              " in cross_sections.xml file!"
+               " in cross_sections.xml file!"
           call fatal_error()
         end if
         mat % has_sab_table = .true.
@@ -1304,7 +1310,7 @@ contains
       ! Check that dimensions are all greater than zero
       if (any(mesh_(i) % dimension <= 0)) then
         message = "All entries on the <dimension> element for a tally mesh &
-            &must be positive."
+             &must be positive."
         call fatal_error()
       end if
 
@@ -1314,24 +1320,24 @@ contains
       ! Read mesh lower-left corner location
       if (m % n_dimension /= size(mesh_(i) % lower_left)) then
         message = "Number of entries on <lower_left> must be the same as &
-            &the number of entries on <dimension>."
+             &the number of entries on <dimension>."
         call fatal_error()
       end if
       m % lower_left = mesh_(i) % lower_left
 
       ! Make sure either upper-right or width was specified
       if (associated(mesh_(i) % upper_right) .and. &
-          associated(mesh_(i) % width)) then
+           associated(mesh_(i) % width)) then
         message = "Cannot specify both <upper_right> and <width> on a &
-            &tally mesh."
+             &tally mesh."
         call fatal_error()
       end if
 
       ! Make sure either upper-right or width was specified
       if (.not. associated(mesh_(i) % upper_right) .and. &
-          .not. associated(mesh_(i) % width)) then
+           .not. associated(mesh_(i) % width)) then
         message = "Must specify either <upper_right> and <width> on a &
-            &tally mesh."
+             &tally mesh."
         call fatal_error()
       end if
 
@@ -1339,7 +1345,7 @@ contains
         ! Check to ensure width has same dimensions
         if (size(mesh_(i) % width) /= size(mesh_(i) % lower_left)) then
           message = "Number of entries on <width> must be the same as the &
-              &number of entries on <lower_left>."
+               &number of entries on <lower_left>."
           call fatal_error()
         end if
 
@@ -1357,14 +1363,14 @@ contains
         ! Check to ensure width has same dimensions
         if (size(mesh_(i) % upper_right) /= size(mesh_(i) % lower_left)) then
           message = "Number of entries on <upper_right> must be the same as &
-              &the number of entries on <lower_left>."
+               &the number of entries on <lower_left>."
           call fatal_error()
         end if
 
         ! Check that upper-right is above lower-left
         if (any(mesh_(i) % upper_right < mesh_(i) % lower_left)) then
           message = "The <upper_right> coordinates must be greater than the &
-              &<lower_left> coordinates on a tally mesh."
+               &<lower_left> coordinates on a tally mesh."
           call fatal_error()
         end if
 
@@ -1413,7 +1419,7 @@ contains
 
       if (size(tally_(i) % filters) > 0) then
         message = "Tally filters should be specified with multiple <filter> &
-            &elements. Did you forget to change your <filters> element?"
+             &elements. Did you forget to change your <filters> element?"
         call fatal_error()
       end if
 
@@ -1445,7 +1451,7 @@ contains
             allocate(t % filters(j) % int_bins(n_words))
             do k = 1, n_words
               t % filters(j) % int_bins(k) = int(str_to_int(&
-                  tally_(i) % filter(j) % bins(k)),4)
+                   tally_(i) % filter(j) % bins(k)),4)
             end do
 
           case ('cellborn')
@@ -1459,7 +1465,7 @@ contains
             allocate(t % filters(j) % int_bins(n_words))
             do k = 1, n_words
               t % filters(j) % int_bins(k) = int(str_to_int(&
-                  tally_(i) % filter(j) % bins(k)),4)
+                   tally_(i) % filter(j) % bins(k)),4)
             end do
 
           case ('material')
@@ -1473,7 +1479,7 @@ contains
             allocate(t % filters(j) % int_bins(n_words))
             do k = 1, n_words
               t % filters(j) % int_bins(k) = int(str_to_int(&
-                  tally_(i) % filter(j) % bins(k)),4)
+                   tally_(i) % filter(j) % bins(k)),4)
             end do
 
           case ('universe')
@@ -1487,7 +1493,7 @@ contains
             allocate(t % filters(j) % int_bins(n_words))
             do k = 1, n_words
               t % filters(j) % int_bins(k) = int(str_to_int(&
-                  tally_(i) % filter(j) % bins(k)),4)
+                   tally_(i) % filter(j) % bins(k)),4)
             end do
 
           case ('surface')
@@ -1501,7 +1507,7 @@ contains
             allocate(t % filters(j) % int_bins(n_words))
             do k = 1, n_words
               t % filters(j) % int_bins(k) = int(str_to_int(&
-                  tally_(i) % filter(j) % bins(k)),4)
+                   tally_(i) % filter(j) % bins(k)),4)
             end do
 
           case ('mesh')
@@ -1523,7 +1529,7 @@ contains
               m => meshes(i_mesh)
             else
               message = "Could not find mesh " // trim(to_str(id)) // &
-                  " specified on tally " // trim(to_str(t % id))
+                   " specified on tally " // trim(to_str(t % id))
               call fatal_error()
             end if
 
@@ -1547,7 +1553,7 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             do k = 1, n_words
               t % filters(j) % real_bins(k) = str_to_real(&
-                  tally_(i) % filter(j) % bins(k))
+                   tally_(i) % filter(j) % bins(k))
             end do
 
           case ('energyout')
@@ -1561,7 +1567,7 @@ contains
             allocate(t % filters(j) % real_bins(n_words))
             do k = 1, n_words
               t % filters(j) % real_bins(k) = str_to_real(&
-                  tally_(i) % filter(j) % bins(k))
+                   tally_(i) % filter(j) % bins(k))
             end do
 
           end select
@@ -1575,9 +1581,9 @@ contains
 
         ! Check that both cell and surface weren't specified
         if (t % find_filter(FILTER_CELL) > 0 .and. &
-            t % find_filter(FILTER_SURFACE) > 0) then
+             t % find_filter(FILTER_SURFACE) > 0) then
           message = "Cannot specify both cell and surface filters for tally " &
-              // trim(to_str(t % id))
+               // trim(to_str(t % id))
           call fatal_error()
         end if
 
@@ -1596,7 +1602,7 @@ contains
 
           ! Set bins to 1, 2, 3, ..., n_nuclides_total, -1
           t % nuclide_bins(1:n_nuclides_total) = &
-              (/ (j, j=1, n_nuclides_total) /)
+               (/ (j, j=1, n_nuclides_total) /)
           t % nuclide_bins(n_nuclides_total + 1) = -1
 
           ! Set number of nuclide bins
@@ -1624,7 +1630,7 @@ contains
                 key_list => dict_keys(nuclide_dict)
                 do while (associated(key_list))
                   if (starts_with(key_list % data % key, &
-                      tally_(i) % nuclides(j))) then
+                       tally_(i) % nuclides(j))) then
                     word = key_list % data % key
                     exit
                   end if
@@ -1636,8 +1642,8 @@ contains
                 ! Check if no nuclide was found
                 if (.not. associated(key_list)) then
                   message = "Could not find the nuclide " // trim(&
-                      tally_(i) % nuclides(j)) // " specified in tally " &
-                      // trim(to_str(t % id)) // " in any material."
+                       tally_(i) % nuclides(j)) // " specified in tally " &
+                       // trim(to_str(t % id)) // " in any material."
                   call fatal_error()
                 end if
                 deallocate(key_list)
@@ -1650,7 +1656,7 @@ contains
             ! Check to make sure nuclide specified is in problem
             if (.not. dict_has_key(nuclide_dict, word)) then
               message = "The nuclide " // trim(word) // " from tally " // &
-                  trim(to_str(t % id)) // " is not present in any material."
+                   trim(to_str(t % id)) // " is not present in any material."
               call fatal_error()
             end if
 
@@ -1749,7 +1755,7 @@ contains
           case ('flux')
             ! Prohibit user from tallying flux for an individual nuclide
             if (.not. (t % n_nuclide_bins == 1 .and. &
-                t % nuclide_bins(1) == -1)) then
+                 t % nuclide_bins(1) == -1)) then
               message = "Cannot tally flux for an individual nuclide."
               call fatal_error()
             end if
@@ -1763,7 +1769,7 @@ contains
             t % score_bins(j) = SCORE_TOTAL
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               message = "Cannot tally total reaction rate with an &
-                  &outgoing energy filter."
+                   &outgoing energy filter."
               call fatal_error()
             end if
           case ('scatter')
@@ -1824,14 +1830,14 @@ contains
             t % score_bins(j) = SCORE_ABSORPTION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               message = "Cannot tally absorption rate with an outgoing &
-                  &energy filter."
+                   &energy filter."
               call fatal_error()
             end if
           case ('fission')
             t % score_bins(j) = SCORE_FISSION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               message = "Cannot tally fission rate with an outgoing &
-                  &energy filter."
+                   &energy filter."
               call fatal_error()
             end if
           case ('nu-fission')
@@ -1844,8 +1850,8 @@ contains
             ! for this tally
             if (n_words > 1) then
               message = "Cannot tally other scoring functions in the same &
-                  &tally as surface currents. Separate other scoring &
-                  &functions into a distinct tally."
+                   &tally as surface currents. Separate other scoring &
+                   &functions into a distinct tally."
               call fatal_error()
             end if
 
@@ -1877,13 +1883,13 @@ contains
             t % filters(t % n_filters) % type = FILTER_SURFACE
             t % filters(t % n_filters) % n_bins = 2 * m % n_dimension
             allocate(t % filters(t % n_filters) % int_bins(&
-                2 * m % n_dimension))
+                 2 * m % n_dimension))
             if (m % n_dimension == 2) then
               t % filters(t % n_filters) % int_bins = (/ IN_RIGHT, &
-                  OUT_RIGHT, IN_FRONT, OUT_FRONT /)
+                   OUT_RIGHT, IN_FRONT, OUT_FRONT /)
             elseif (m % n_dimension == 3) then
               t % filters(t % n_filters) % int_bins = (/ IN_RIGHT, &
-                  OUT_RIGHT, IN_FRONT, OUT_FRONT, IN_TOP, OUT_TOP /)
+                   OUT_RIGHT, IN_FRONT, OUT_FRONT, IN_TOP, OUT_TOP /)
             end if
             t % find_filter(FILTER_SURFACE) = t % n_filters
 
@@ -1892,15 +1898,14 @@ contains
 
           case default
             message = "Unknown scoring function: " // &
-                trim(tally_(i) % scores(l))
+                 trim(tally_(i) % scores(j))
             call fatal_error()
           end select
         end do
-        t % n_score_bins = n_scores
-        t % n_nonPN_score_bins = n_words
+        t % n_score_bins = n_words
       else
         message = "No <scores> specified on tally " // trim(to_str(t % id)) &
-            // "."
+             // "."
         call fatal_error()
       end if
 
@@ -1918,7 +1923,7 @@ contains
           ! tally needs post-collision information
           if (t % estimator == ESTIMATOR_ANALOG) then
             message = "Cannot use track-length estimator for tally " &
-                // to_str(t % id)
+                 // to_str(t % id)
             call fatal_error()
           end if
 
@@ -1927,7 +1932,7 @@ contains
 
         case default
           message = "Invalid estimator '" // trim(tally_(i) % estimator) &
-              // "' on tally " // to_str(t % id)
+               // "' on tally " // to_str(t % id)
           call fatal_error()
         end select
       end if
@@ -2031,7 +2036,7 @@ contains
 
       ! Set output file path
       pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
-          "_" // trim(plot_(i) % filename) // ".ppm"
+           "_" // trim(plot_(i) % filename) // ".ppm"
 
       ! Copy plot pixel size
       if (size(plot_(i) % pixels) == 2) then
@@ -2047,7 +2052,7 @@ contains
           pl % not_found % rgb = plot_(i) % background
         else
           message = "Bad background RGB " &
-              // "in plot " // trim(to_str(pl % id))
+               // "in plot " // trim(to_str(pl % id))
           call fatal_error()
         end if
       else
@@ -2062,7 +2067,7 @@ contains
         !  pl % type = PLOT_TYPE_POINTS
       case default
         message = "Unsupported plot type '" // plot_(i) % type &
-            // "' in plot " // trim(to_str(pl % id))
+             // "' in plot " // trim(to_str(pl % id))
         call fatal_error()
       end select
 
@@ -2076,7 +2081,7 @@ contains
         pl % basis = PLOT_BASIS_YZ
       case default
         message = "Unsupported plot basis '" // plot_(i) % basis &
-            // "' in plot " // trim(to_str(pl % id))
+             // "' in plot " // trim(to_str(pl % id))
         call fatal_error()
       end select
 
@@ -2085,7 +2090,7 @@ contains
         pl % origin = plot_(i) % origin
       else
         message = "Origin must be length 3 " &
-            // "in plot " // trim(to_str(pl % id))
+             // "in plot " // trim(to_str(pl % id))
         call fatal_error()
       end if
 
@@ -2097,7 +2102,7 @@ contains
         pl % width(2) = plot_(i) % width(2)
       else
         message = "Bad plot width " &
-            // "in plot " // trim(to_str(pl % id))
+             // "in plot " // trim(to_str(pl % id))
         call fatal_error()
       end if
 
@@ -2125,7 +2130,7 @@ contains
 
       case default
         message = "Unsupported plot color type '" // plot_(i) % color &
-            // "' in plot " // trim(to_str(pl % id))
+             // "' in plot " // trim(to_str(pl % id))
         call fatal_error()
       end select
 
@@ -2135,7 +2140,7 @@ contains
         do j = 1, n_cols
           if (size(plot_(i) % col_spec_(j) % rgb) /= 3) then
             message = "Bad RGB " &
-                // "in plot " // trim(to_str(pl % id))
+                 // "in plot " // trim(to_str(pl % id))
             call fatal_error()          
           end if
 
@@ -2147,7 +2152,7 @@ contains
               pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
             else
               message = "Could not find cell " // trim(to_str(col_id)) // &
-                  " specified in plot " // trim(to_str(pl % id))
+                   " specified in plot " // trim(to_str(pl % id))
               call fatal_error()
             end if
 
@@ -2157,7 +2162,7 @@ contains
               pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
             else
               message = "Could not find material " // trim(to_str(col_id)) // &
-                  " specified in plot " // trim(to_str(pl % id))
+                   " specified in plot " // trim(to_str(pl % id))
               call fatal_error()
             end if
 
@@ -2169,7 +2174,7 @@ contains
       if (associated(plot_(i) % mask_)) then
         if (size(plot_(i) % mask_) > 1) then
           message = "Mutliple masks" // &
-              " specified in plot " // trim(to_str(pl % id))
+               " specified in plot " // trim(to_str(pl % id))
           call fatal_error()
         else if (.not. size(plot_(i) % mask_) == 0) then
           do j=1,size(pl % colors)
@@ -2204,10 +2209,10 @@ contains
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-      ! Could not find cross_sections.xml file
-      message = "Cross sections XML file '" // trim(path_cross_sections) // &
+       ! Could not find cross_sections.xml file
+       message = "Cross sections XML file '" // trim(path_cross_sections) // &
             "' does not exist!"
-      call fatal_error()
+       call fatal_error()
     end if
     
     message = "Reading cross sections XML file..."
@@ -2223,25 +2228,25 @@ contains
     call read_xml_file_cross_sections_t(path_cross_sections)
 
     if (len_trim(directory_) > 0) then
-      ! Copy directory information if present
-      directory = trim(directory_)
+       ! Copy directory information if present
+       directory = trim(directory_)
     else
-      ! If no directory is listed in cross_sections.xml, by default select the
-      ! directory in which the cross_sections.xml file resides
-      i = index(path_cross_sections, "/", BACK=.true.)
-      directory = path_cross_sections(1:i)
+       ! If no directory is listed in cross_sections.xml, by default select the
+       ! directory in which the cross_sections.xml file resides
+       i = index(path_cross_sections, "/", BACK=.true.)
+       directory = path_cross_sections(1:i)
     end if
 
     ! determine whether binary/ascii
     if (filetype_ == 'ascii') then
-      filetype = ASCII
+       filetype = ASCII
     elseif (filetype_ == 'binary') then
-      filetype = BINARY
+       filetype = BINARY
     elseif (len_trim(filetype_) == 0) then
-      filetype = ASCII
+       filetype = ASCII
     else
-      message = "Unknown filetype in cross_sections.xml: " // trim(filetype_)
-      call fatal_error()
+       message = "Unknown filetype in cross_sections.xml: " // trim(filetype_)
+       call fatal_error()
     end if
 
     ! copy default record length and entries for binary files
@@ -2250,57 +2255,57 @@ contains
 
     ! Allocate xs_listings array
     if (.not. associated(ace_tables_)) then
-      message = "No ACE table listings present in cross_sections.xml file!"
-      call fatal_error()
+       message = "No ACE table listings present in cross_sections.xml file!"
+       call fatal_error()
     else
-      n_listings = size(ace_tables_)
-      allocate(xs_listings(n_listings))
+       n_listings = size(ace_tables_)
+       allocate(xs_listings(n_listings))
     end if
 
     do i = 1, n_listings
-      listing => xs_listings(i)
+       listing => xs_listings(i)
 
-      ! copy a number of attributes
-      listing % name       = trim(ace_tables_(i) % name)
-      listing % alias      = trim(ace_tables_(i) % alias)
-      listing % zaid       = ace_tables_(i) % zaid
-      listing % awr        = ace_tables_(i) % awr
-      listing % kT         = ace_tables_(i) % temperature
-      listing % location   = ace_tables_(i) % location
+       ! copy a number of attributes
+       listing % name       = trim(ace_tables_(i) % name)
+       listing % alias      = trim(ace_tables_(i) % alias)
+       listing % zaid       = ace_tables_(i) % zaid
+       listing % awr        = ace_tables_(i) % awr
+       listing % kT         = ace_tables_(i) % temperature
+       listing % location   = ace_tables_(i) % location
 
-      ! determine type of cross section
-      if (ends_with(listing % name, 'c')) then
+       ! determine type of cross section
+       if (ends_with(listing % name, 'c')) then
           listing % type = ACE_NEUTRON
-      elseif (ends_with(listing % name, 't')) then
+       elseif (ends_with(listing % name, 't')) then
           listing % type = ACE_THERMAL
-      end if
+       end if
 
-      ! set filetype, record length, and number of entries
-      listing % filetype = filetype
-      listing % recl     = recl
-      listing % entries  = entries
+       ! set filetype, record length, and number of entries
+       listing % filetype = filetype
+       listing % recl     = recl
+       listing % entries  = entries
 
-      ! determine metastable state
-      if (ace_tables_(i) % metastable == 0) then
+       ! determine metastable state
+       if (ace_tables_(i) % metastable == 0) then
           listing % metastable = .false.
-      else
+       else
           listing % metastable = .true.
-      end if
+       end if
 
-      ! determine path of cross section table
-      if (starts_with(ace_tables_(i) % path, '/')) then
+       ! determine path of cross section table
+       if (starts_with(ace_tables_(i) % path, '/')) then
           listing % path = ace_tables_(i) % path
-      else
+       else
           if (ends_with(directory,'/')) then
-            listing % path = trim(directory) // trim(ace_tables_(i) % path)
+             listing % path = trim(directory) // trim(ace_tables_(i) % path)
           else
-            listing % path = trim(directory) // '/' // trim(ace_tables_(i) % path)
+             listing % path = trim(directory) // '/' // trim(ace_tables_(i) % path)
           end if
-      end if
+       end if
 
-      ! create dictionary entry for both name and alias
-      call dict_add_key(xs_listing_dict, listing % name, i)
-      call dict_add_key(xs_listing_dict, listing % alias, i)
+       ! create dictionary entry for both name and alias
+       call dict_add_key(xs_listing_dict, listing % name, i)
+       call dict_add_key(xs_listing_dict, listing % alias, i)
     end do
 
   end subroutine read_cross_sections_xml

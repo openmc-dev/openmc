@@ -25,7 +25,7 @@ contains
 
 !===============================================================================
 ! SETUP_TALLY_ARRAYS allocates and populates several member arrays of the
-! TallyObject derived type, including stride, matching_bins, and scores.
+! TallyObject derived type, including stride, matching_bins, and results.
 !===============================================================================
 
   subroutine setup_tally_arrays()
@@ -57,8 +57,8 @@ contains
       t % total_filter_bins = n
       t % total_score_bins = t % n_score_bins * t % n_nuclide_bins
 
-      ! Allocate scores array
-      allocate(t % scores(t % total_score_bins, t % total_filter_bins))
+      ! Allocate results array
+      allocate(t % results(t % total_score_bins, t % total_filter_bins))
 
     end do TALLY_LOOP
 
@@ -68,7 +68,7 @@ contains
 ! SETUP_TALLY_MAPS creates a map that allows a quick determination of which
 ! tallies and bins need to be scored to when a particle makes a collision. This
 ! subroutine also sets the stride attribute for each tally as well as allocating
-! storage for the scores array.
+! storage for the results array.
 !===============================================================================
 
   subroutine setup_tally_maps()

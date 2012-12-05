@@ -854,6 +854,10 @@ contains
     call h5ltmake_dataset_string_f(hdf5_state_point, "date_and_time", &
          time_stamp(), hdf5_err)
 
+    ! Write path to input
+    call h5ltmake_dataset_string_f(hdf5_state_point, "path", &
+         path_input, hdf5_err)
+
     ! Write out random number seed
     call hdf5_write_long(hdf5_state_point, "seed", seed)
 
@@ -890,7 +894,8 @@ contains
       call h5gcreate_f(tallies_group, "mesh " // to_str(meshes(i) % id), &
            temp_group, hdf5_err)
 
-      ! Write type and number of dimensions
+      ! Write id, type, and number of dimensions
+      call hdf5_write_integer(temp_group, "id", meshes(i) % id)
       call hdf5_write_integer(temp_group, "type", meshes(i) % type)
       call hdf5_write_integer(temp_group, "n_dimension", &
            meshes(i) % n_dimension)
@@ -920,6 +925,9 @@ contains
       ! Create group for this tally
       call h5gcreate_f(tallies_group, "tally " // to_str(t % id), &
            temp_group, hdf5_err)
+
+      ! Write id
+      call hdf5_write_integer(temp_group, "id", t % id)
 
       ! Write number of realizations
       call hdf5_write_integer(temp_group, "n_realizations", &

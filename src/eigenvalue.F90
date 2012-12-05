@@ -19,7 +19,8 @@ module eigenvalue
   use source,       only: get_source_particle
   use state_point,  only: write_state_point, replay_batch_history
   use string,       only: to_str
-  use tally,        only: synchronize_tallies, setup_active_usertallies
+  use tally,        only: synchronize_tallies, setup_active_usertallies, &
+                          reset_result
   use timing,       only: timer_start, timer_stop
 
 #ifdef HDF5
@@ -162,11 +163,9 @@ contains
     integer :: i ! loop index for state point batches
 
     ! Collect tallies
-    if (tallies_on) then
-      call timer_start(time_tallies)
-      call synchronize_tallies()
-      call timer_stop(time_tallies)
-    end if
+    call timer_start(time_tallies)
+    call synchronize_tallies()
+    call timer_stop(time_tallies)
 
     ! Calculate shannon entropy
     if (entropy_on) call shannon_entropy()
@@ -545,10 +544,8 @@ contains
     ! =========================================================================
     ! SINGLE-BATCH ESTIMATE OF K-EFFECTIVE
 
-    if (.not. active_batches) k_batch(current_batch) = global_tallies(K_ANALOG) % value
-
 #ifdef MPI
-    if ((.not. active_batches) .or. (.not. reduce_tallies)) then
+    if (.not. reduce_tallies) then
       ! Reduce value of k_batch if running in parallel
       if (master) then
         call MPI_REDUCE(MPI_IN_PLACE, k_batch(current_batch), 1, MPI_REAL8, &
@@ -567,77 +564,71 @@ contains
            (n_particles * gen_per_batch)
     end if
 
-    if (active_batches) then
-      ! =======================================================================
-      ! ACTIVE BATCHES
+    ! =========================================================================
+    ! ACCUMULATED K-EFFECTIVE AND ITS VARIANCE
 
-      if (reduce_tallies) then
-        ! In this case, global_tallies has already been reduced, so we don't
-        ! need to perform any more reductions and just take the values from
-        ! global_tallies directly
+    if (reduce_tallies) then
+      ! In this case, global_tallies has already been reduced, so we don't
+      ! need to perform any more reductions and just take the values from
+      ! global_tallies directly
 
-        ! Sample mean of keff
-        keff = global_tallies(K_ANALOG) % sum / n_realizations
+      ! Sample mean of keff
+      keff = global_tallies(K_ANALOG) % sum / n_realizations
 
-        if (n_realizations > 1) then
-          if (confidence_intervals) then
-            ! Calculate t-value for confidence intervals
-            alpha = ONE - CONFIDENCE_LEVEL
-            t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
-          else
-            t_value = ONE
-          end if
-
-          ! Standard deviation of the sample mean of k
-          keff_std = t_value * sqrt((global_tallies(K_ANALOG) % sum_sq / &
-               n_realizations - keff * keff) / (n_realizations - 1))
+      if (n_realizations > 1) then
+        if (confidence_intervals) then
+          ! Calculate t-value for confidence intervals
+          alpha = ONE - CONFIDENCE_LEVEL
+          t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+        else
+          t_value = ONE
         end if
-      else
-        ! In this case, no reduce was ever done on global_tallies. Thus, we
-        ! need to reduce the values in sum and sum^2 to get the sample mean
-        ! and its standard deviation
+
+        ! Standard deviation of the sample mean of k
+        keff_std = t_value * sqrt((global_tallies(K_ANALOG) % sum_sq / &
+             n_realizations - keff * keff) / (n_realizations - 1))
+      end if
+    else
+      ! In this case, no reduce was ever done on global_tallies. Thus, we need
+      ! to reduce the values in sum and sum^2 to get the sample mean and its
+      ! standard deviation
 
 #ifdef MPI
-        call MPI_REDUCE(global_tallies(K_ANALOG) % sum, temp, 2, &
-             MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+      call MPI_REDUCE(global_tallies(K_ANALOG) % sum, temp, 2, &
+           MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 #else
-        temp(1) = global_tallies(K_ANALOG) % sum
-        temp(2) = global_tallies(K_ANALOG) % sum_sq
+      temp(1) = global_tallies(K_ANALOG) % sum
+      temp(2) = global_tallies(K_ANALOG) % sum_sq
 #endif
 
-        ! Sample mean of k
-        keff = temp(1) / n_realizations
+      ! Sample mean of k
+      keff = temp(1) / n_realizations
 
-        if (n_realizations > 1) then
-          if (confidence_intervals) then
-            ! Calculate t-value for confidence intervals
-            alpha = ONE - CONFIDENCE_LEVEL
-            t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
-          else
-            t_value = ONE
-          end if
-
-          ! Standard deviation of the sample mean of k
-          keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) / &
-               (n_realizations - 1))
+      if (n_realizations > 1) then
+        if (confidence_intervals) then
+          ! Calculate t-value for confidence intervals
+          alpha = ONE - CONFIDENCE_LEVEL
+          t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+        else
+          t_value = ONE
         end if
+
+        ! Standard deviation of the sample mean of k
+        keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) / &
+             (n_realizations - 1))
       end if
-
-    else
-      ! =======================================================================
-      ! INACTIVE BATCHES
-
-      ! Set keff
-      keff = k_batch(current_batch)
-
-      ! Reset tally values
-      global_tallies(:) % value = ZERO
     end if
 
 #ifdef MPI
     ! Broadcast new keff value to all processors
     call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
 #endif
+
+    ! Reset global tally results
+    if (.not. active_batches) then
+      call reset_result(global_tallies)
+      n_realizations = 0
+    end if
 
   end subroutine calculate_keff
 

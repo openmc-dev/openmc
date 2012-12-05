@@ -1485,16 +1485,15 @@ contains
     type(ListInt), pointer :: curr_ptr => null()
 
 #ifdef MPI
-    if (reduce_tallies) call reduce_tally_values()
+    ! Combine tally results onto master process
+    if (reduce_tallies) call reduce_tally_results()
 #endif
 
     ! Increase number of realizations (only used for global tallies)
-    if (active_batches) then
-      if (reduce_tallies) then
-        n_realizations = n_realizations + 1
-      else
-        n_realizations = n_realizations + n_procs
-      end if
+    if (reduce_tallies) then
+      n_realizations = n_realizations + 1
+    else
+      n_realizations = n_realizations + n_procs
     end if
 
     ! Accumulate on master only unless run is not reduced then do it on all
@@ -1515,7 +1514,7 @@ contains
       end if
 
       ! Accumulate results for global tallies
-      if (active_batches) call accumulate_result(global_tallies)
+      call accumulate_result(global_tallies)
     end if
 
     if (associated(curr_ptr)) nullify(curr_ptr)
@@ -1523,11 +1522,11 @@ contains
   end subroutine synchronize_tallies
 
 !===============================================================================
-! REDUCE_TALLY_VALUES collects all the results from tallies onto one processor
+! REDUCE_TALLY_RESULTS collects all the results from tallies onto one processor
 !===============================================================================
 
 #ifdef MPI
-  subroutine reduce_tally_values()
+  subroutine reduce_tally_results()
 
     integer :: n      ! number of filter bins
     integer :: m      ! number of score bins
@@ -1572,23 +1571,21 @@ contains
     end do
 
     ! Copy global tallies into array to be reduced
-    if (active_batches) then
-      global_temp = global_tallies(:) % value
+    global_temp = global_tallies(:) % value
 
-      if (master) then
-        call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
-             MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+    if (master) then
+      call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
+           MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
-        ! Transfer values back to global_tallies on master
-        global_tallies(:) % value = global_temp
-      else
-        ! Receive buffer not significant at other processors
-        call MPI_REDUCE(global_temp, dummy, N_GLOBAL_TALLIES, &
-             MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+      ! Transfer values back to global_tallies on master
+      global_tallies(:) % value = global_temp
+    else
+      ! Receive buffer not significant at other processors
+      call MPI_REDUCE(global_temp, dummy, N_GLOBAL_TALLIES, &
+           MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
-        ! Reset value on other processors
-        global_tallies(:) % value = ZERO
-      end if
+      ! Reset value on other processors
+      global_tallies(:) % value = ZERO
     end if
 
     ! We also need to determine the total starting weight of particles from the
@@ -1604,7 +1601,7 @@ contains
 
     if (associated(curr_ptr)) nullify(curr_ptr)
 
-  end subroutine reduce_tally_values
+  end subroutine reduce_tally_results
 #endif
 
 !===============================================================================

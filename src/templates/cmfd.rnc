@@ -20,37 +20,37 @@ element cmfd {
   
   element norm { xsd:double }? &
 
-  element feedback { ".true." | ".false." }? &
+  element feedback { xsd:boolean }? &
 
   element n_cmfd_procs { xsd:int }? &
 
-  element reset { ".true." | ".false." }? &
+  element reset { xsd:boolean }? &
 
-  element balance { ".true." | ".false." }? &
+  element balance { xsd:boolean }? &
 
-  element downscatter { ".true." | ".false." }? &
+  element downscatter { xsd:boolean }? &
 
-  element run_2grp { ".true." | ".false." }? &
+  element run_2grp { xsd:boolean }? &
 
   element solver { xsd:string }? &
 
-  element snes_monitor { ".true." | ".false." }? &
+  element snes_monitor { xsd:boolean }? &
 
-  element ksp_monitor { ".true." | ".false." }? &
+  element ksp_monitor { xsd:boolean }? &
 
-  element power_monitor { ".true." | ".false." }? &
+  element power_monitor { xsd:boolean }? &
 
-  element write_balance { ".true." | ".false." }? &
+  element write_balance { xsd:boolean }? &
 
-  element write_matrices { ".true." | ".false." }? &
+  element write_matrices { xsd:boolean }? &
 
-  element run_adjoint { ".true." | ".false." }? &
+  element run_adjoint { xsd:boolean }? &
 
-  element write_hdf5 { ".true." | ".false." }? &
+  element write_hdf5 { xsd:boolean }? &
 
   element begin { xsd:int }? &
 
-  element inactive { ".true." | ".false." }? &
+  element inactive { xsd:boolean }? &
 
   element active_flush { xsd:int }? &
 

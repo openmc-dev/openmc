@@ -186,6 +186,9 @@ class StatePoint(BinaryFile):
             # Read score bins
             t.n_scores = self._get_int()[0]
             t.scores = [score_types[j] for j in self._get_int(t.n_scores)]
+            t.scatt_order = [score_types[j] for j in self._get_int(t.n_scores)]
+            # Read number of nonPN Bins
+            t.n_nonPn_scores = self._get_int()[0]
 
             # Set up stride
             stride = 1

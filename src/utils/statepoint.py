@@ -130,9 +130,8 @@ class StatePoint(BinaryFile):
             m = Mesh()
             self.meshes.append(m)
 
-            # Read type of mesh and number of dimensions
-            m.type = self._get_int()[0]
-            n = self._get_int()[0]
+            # Read id, mesh type, and number of dimensions
+            m.id, m.type, n = self._get_int(3)
 
             # Read mesh size, lower-left coordinates, upper-right coordinates,
             # and width of each mesh cell
@@ -149,8 +148,8 @@ class StatePoint(BinaryFile):
             t = Tally()
             self.tallies.append(t)
 
-            # Read number of realizations
-            t.n_realizations = self._get_int()[0]
+            # Read id and number of realizations
+            t.id, t.n_realizations = self._get_int(2)
 
             # Read sizes of tallies
             t.total_score_bins = self._get_int()[0]

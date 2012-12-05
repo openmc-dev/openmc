@@ -894,7 +894,8 @@ contains
       call h5gcreate_f(tallies_group, "mesh " // to_str(meshes(i) % id), &
            temp_group, hdf5_err)
 
-      ! Write type and number of dimensions
+      ! Write id, type, and number of dimensions
+      call hdf5_write_integer(temp_group, "id", meshes(i) % id)
       call hdf5_write_integer(temp_group, "type", meshes(i) % type)
       call hdf5_write_integer(temp_group, "n_dimension", &
            meshes(i) % n_dimension)
@@ -924,6 +925,9 @@ contains
       ! Create group for this tally
       call h5gcreate_f(tallies_group, "tally " // to_str(t % id), &
            temp_group, hdf5_err)
+
+      ! Write id
+      call hdf5_write_integer(temp_group, "id", t % id)
 
       ! Write number of realizations
       call hdf5_write_integer(temp_group, "n_realizations", &

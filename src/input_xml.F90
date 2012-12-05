@@ -69,11 +69,10 @@ contains
     end if
 
     ! Initialize XML scalar variables
-    cross_sections_ = ""
+    cross_sections_ = ''
     verbosity_ = 0
-    energy_grid_ = "union"
+    energy_grid_ = 'union'
     seed_ = 0_8
-    no_reduce_ = ""
     source_ % file = ''
     source_ % space % type = ''
     source_ % angle % type = ''
@@ -353,10 +352,12 @@ contains
     end if
 
     ! Survival biasing
-    if (trim(survival_) == 'on') survival_biasing = .true.
+    call lower_case(survival_)
+    if (survival_ == 'true' .or. survival_ == '1') survival_biasing = .true.
 
     ! Probability tables
-    if (ptables_ == 'off') urr_ptables_on = .false.
+    call lower_case(ptables_)
+    if (ptables_ == 'false' .or. ptables_ == '0') urr_ptables_on = .false.
 
     ! Cutoffs
     if (size(cutoff_) > 0) then
@@ -503,8 +504,9 @@ contains
       end if
 
       ! Check if the user has specified to write binary source file
-      if (trim(state_point_(1) % source_separate) == 'on') &
-           source_separate = .true.
+      call lower_case(state_point_(1) % source_separate)
+      if (state_point_(1) % source_separate == 'true' .or. &
+           state_point_(1) % source_separate == '1') source_separate = .true.
     else
       ! If no <state_point> tag was present, by default write state point at
       ! last batch only
@@ -515,11 +517,14 @@ contains
 
     ! Check if the user has specified to not reduce tallies at the end of every
     ! batch
-    if (trim(no_reduce_) == 'on') reduce_tallies = .false.
+    call lower_case(no_reduce_)
+    if (no_reduce_ == 'true' .or. no_reduce_ == '1') reduce_tallies = .false.
 
     ! Check if the user has specified to use confidence intervals for
     ! uncertainties rather than standard deviations
-    if (trim(confidence_intervals_) == 'on') confidence_intervals = .true.
+    call lower_case(confidence_intervals_)
+    if (confidence_intervals_ == 'true' .or. &
+         confidence_intervals_ == '1') confidence_intervals = .true.
 
     ! Check for output options
     if (associated(output_)) then
@@ -537,7 +542,8 @@ contains
     end if
 
     ! check for cmfd run
-    if (run_cmfd_) then
+    call lower_case(run_cmfd_)
+    if (run_cmfd_ == 'true' .or. run_cmfd_ == '1') then
       cmfd_run = .true.
 #ifndef PETSC
       if (master) then

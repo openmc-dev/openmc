@@ -1,5 +1,5 @@
 element settings {
-  element confidence_intervals { ( "on" | "off" ) }? &
+  element confidence_intervals { xsd:boolean }? &
 
   (
     element eigenvalue {
@@ -38,14 +38,14 @@ element settings {
       attribute upper_right { list { xsd:double+ } })
   }? &
 
-  element no_reduce { ( "off" | "on" ) }? &
+  element no_reduce { xsd:boolean }? &
 
   element output { list { 
     ( "summary" | "cross_sections" | "tallies" )+ } }? &
 
-  element ptables { ( "off" | "on" ) }? &
+  element ptables { xsd:boolean }? &
 
-  element run_cmfd { ( ".false." | ".true." ) }? &
+  element run_cmfd { xsd:boolean }? &
 
   element seed { xsd:positiveInteger }? &
 
@@ -87,11 +87,11 @@ element settings {
       (element interval { xsd:positiveInteger } | 
         attribute interval { xsd:positiveInteger })
     ) &
-    (element source_separate { ( "off" | "on" ) } | 
-      attribute source_separate { ( "off" | "on" ) })?
+    (element source_separate { xsd:boolean } | 
+      attribute source_separate { xsd:boolean })?
   }? &
 
-  element survival_biasing { ( "off" | "on" ) }? &
+  element survival_biasing { xsd:boolean }? &
 
   element trace { list { xsd:positiveInteger+ } }? &
 

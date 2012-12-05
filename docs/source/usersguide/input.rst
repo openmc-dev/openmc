@@ -62,12 +62,12 @@ settings.xml file.
 ----------------------------------
 
 The ``<confidence_intervals>`` element has no attributes and has an accepted
-value of "on" or "off". If set to "on", uncertainties on tally results will be
-reported as the half-width of the 95% two-sided confidence interval. If set to
-"off", uncertainties on tally results will be reported as the sample standard
-deviation.
+value of "true" or "flase". If set to "true", uncertainties on tally results
+will be reported as the half-width of the 95% two-sided confidence interval. If
+set to "false", uncertainties on tally results will be reported as the sample
+standard deviation.
 
-  *Default*: off
+  *Default*: false
 
 .. _cross_sections:
 
@@ -185,14 +185,14 @@ performed. It has the following attributes/sub-elements:
 ``<no_reduce>`` Element
 -----------------------
 
-The ``<no_reduce>`` element has no attributes and has an accepted value of "on"
-or "off". If set to "on", all user-defined tallies and global tallies will not
-be reduced across processors in a parallel calculation. This means that the
-accumulate score in one batch on a single processor is considered as an
+The ``<no_reduce>`` element has no attributes and has an accepted value of
+"true" or "false". If set to "true", all user-defined tallies and global tallies
+will not be reduced across processors in a parallel calculation. This means that
+the accumulate score in one batch on a single processor is considered as an
 independent realization for the tally random variable. For a problem with large
 tally data, this option can significantly improve the parallel efficiency.
 
-  *Default*: off
+  *Default*: false
 
 ``<output>`` Element
 --------------------
@@ -217,9 +217,18 @@ sections summary file to be written, this element should be given as:
 
 The ``<ptables>`` element determines whether probability tables should be used
 in the unresolved resonance range if available. This element has no attributes
-or sub-elements and can be set to either "off" or "on".
+or sub-elements and can be set to either "false" or "true".
 
-  *Default*: on
+  *Default*: true
+
+``<run_cmfd>`` Element
+----------------------
+
+The ``<run_cmfd>`` element indicates whether or not CMFD acceleration should be
+turned on or off. This element has no attributes or sub-elements and can be set
+to either "false" or "true".
+
+  *Defualt*: false
 
 ``<seed>`` Element
 ------------------
@@ -340,20 +349,20 @@ attributes/sub-elements:
     *Default*: None
 
   :source_separate:
-    If this element is set to "on", a separate binary source file will be
+    If this element is set to "true", a separate binary source file will be
     written. Otherwise, the source sites will be written in the state point
     directly.
 
-    *Default*: "off"
+    *Default*: false
 
 ``<survival_biasing>`` Element
 ------------------------------
 
 The ``<survival_biasing>`` element has no attributes and has an accepted value
-of "on" or "off". If set to "on", this option will enable the use of survival
-biasing, otherwise known as implicit capture or absorption.
+of "true" or "false". If set to "true", this option will enable the use of
+survival biasing, otherwise known as implicit capture or absorption.
 
-  *Default*: off
+  *Default*: false
 
 .. _trace:
 
@@ -998,14 +1007,14 @@ sub-elements:
 
     *Default*: None
 
---------------------------------------------
+------------------------------
 CMFD Specification -- cmfd.xml
---------------------------------------------
+------------------------------
     
 Coarse mesh finite difference acceleration method has been implemented in OpenMC.
 Currently, it allows users to accelerate fission source convergence during 
 inactive neutron batches. To run CMFD, the ``<run_cmfd>`` element in 
-``settings.xml`` should be set to ``.true.``.
+``settings.xml`` should be set to "true".
 
 ``<active_flush>`` Element
 --------------------------
@@ -1026,11 +1035,11 @@ The ``<begin>`` element controls what batch CMFD calculations should begin.
 ``<feedback>`` Element
 ----------------------
 
-The ``<feedback>`` element controls whether or not the CMFD diffusion result is 
-used to adjust the weight of fission source neutrons on the next OpenMC batch. 
-It can be turned on with ".true." and off with ".false.". 
+The ``<feedback>`` element controls whether or not the CMFD diffusion result is
+used to adjust the weight of fission source neutrons on the next OpenMC batch.
+It can be turned on with "true" and off with "false".
 
-  *Default*: .false.
+  *Default*: false
 
 ``<inactive>`` Element
 ----------------------
@@ -1038,9 +1047,9 @@ It can be turned on with ".true." and off with ".false.".
 The ``<inactive>`` element controls if cmfd tallies should be accumulated 
 during inactive batches. For some applications, CMFD tallies may not be 
 needed until the start of active batches. This option can be turned on 
-with ".true." and off with ".false."
+with "true" and off with "false"
 
-  *Default*: .true.
+  *Default*: true
 
 ``<keff_tol>`` Element
 ----------------------
@@ -1055,11 +1064,11 @@ CMFD is allowed to modify source neutron weights.
 -------------------------
 
 The ``<ksp_monitor>`` element is used to view the convergence of linear GMRES 
-iterations in PETSc. This option can be turned on with ".true." and turned off 
-with ".false.".
+iterations in PETSc. This option can be turned on with "true" and turned off 
+with "false".
 
 
-  *Default*: .false. 
+  *Default*: false 
 
 ``<mesh>`` Element
 ------------------
@@ -1146,28 +1155,28 @@ processors used during OpenMC.
 ---------------------------
 
 The ``<power_monitor>`` element is used to view the convergence of power iteration. 
-This option can be turned on with ".true." and turned off with ".false.".
+This option can be turned on with "true" and turned off with "false".
 
 
-  *Default*: .false.
+  *Default*: false
 
 ``<write_balance>`` Element
 ---------------------------
 
 The ``<write_balance>`` element is used to view the balance of OpenMC tally
 residuals for every coarse mesh region and energy group. This option can be 
-turned on with ".true." and off with ".false.". 
+turned on with "true" and off with "false". 
 
 
-  *Default*: .false.
+  *Default*: false
 
 ``<write_hdf5>`` Element
 ------------------------
 
-The ``<write_hdf5>`` element can be turned on with ".true." to get an 
+The ``<write_hdf5>`` element can be turned on with "true" to get an 
 HDF5 output file of CMFD results. 
 
-  *Default*: .false.
+  *Default*: false
 
 ``<write_matrices>`` Element
 ----------------------------
@@ -1175,6 +1184,6 @@ HDF5 output file of CMFD results.
 The ``<write_matrices>`` element is used to view the PETSc sparse matrices
 created when solving CMFD equations. These binary output files can be imported
 into MATLAB using PETSc-MATLAB utilities. This option can be
-turned on with ".true." and off with ".false.".
+turned on with "true" and off with "false".
 
-  *Default*: .false.
+  *Default*: false

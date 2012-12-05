@@ -17,9 +17,9 @@ Building the executable for OpenMC is as easy as going to the src directory and
 running make. By default, the Makefile is set to use the GNU Fortran compiler,
 gfortran. This can be changed by the F90 variable in the Makefile.
 
-Compiling for multiple processors can be controlled with the USE_MPI and MPI
-variables. The MPI variable should be set to the base directory of the MPI
-implementation installed on your computer.
+Compiling with support for distributed-memory parallelism can be controlled with
+the MPI and MPI_DIR variables. The MPI_DIR variable should be set to the base
+directory of the MPI implementation installed on your computer.
 
 OpenMC has been tested on Linux, Mac, and Windows platforms with Intel, GNU,
 IBM, Cray, and PGI compilers. It is recommended to use the latest version of

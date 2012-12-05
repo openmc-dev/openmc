@@ -170,6 +170,9 @@ contains
     ! Write current date and time
     write(UNIT_STATE) time_stamp()
 
+    ! Write path to input
+    write(UNIT_STATE) path_input
+
     ! Write out random number seed
     write(UNIT_STATE) seed
 
@@ -191,6 +194,7 @@ contains
 
     ! Write information for meshes
     MESH_LOOP: do i = 1, n_meshes
+      write(UNIT_STATE) meshes(i) % id
       write(UNIT_STATE) meshes(i) % type
       write(UNIT_STATE) meshes(i) % n_dimension
       write(UNIT_STATE) meshes(i) % dimension
@@ -205,6 +209,9 @@ contains
     TALLY_METADATA: do i = 1, n_tallies
       ! Get pointer to tally
       t => tallies(i)
+
+      ! Write id
+      write(UNIT_STATE) t % id
 
       ! Number of realizations
       write(UNIT_STATE) t % n_realizations
@@ -336,6 +343,10 @@ contains
     call MPI_FILE_WRITE(fh, time_stamp(), 19, MPI_CHARACTER, &
          MPI_STATUS_IGNORE, mpi_err)
 
+    ! Write path to input
+    call MPI_FILE_WRITE(fh, path_input, MAX_FILE_LEN, MPI_CHARACTER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
     ! Write out random number seed
     call MPI_FILE_WRITE(fh, seed, 1, MPI_INTEGER8, &
          MPI_STATUS_IGNORE, mpi_err)
@@ -370,6 +381,8 @@ contains
 
     ! Write information for meshes
     MESH_LOOP: do i = 1, n_meshes
+      call MPI_FILE_WRITE(fh, meshes(i) % id, 1, MPI_INTEGER, &
+           MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, meshes(i) % type, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, meshes(i) % n_dimension, 1, MPI_INTEGER, &
@@ -393,6 +406,10 @@ contains
     TALLY_METADATA: do i = 1, n_tallies
       ! Get pointer to tally
       t => tallies(i)
+
+      ! Write id
+      call MPI_FILE_WRITE(fh, t % id, 1, MPI_INTEGER, &
+           MPI_STATUS_IGNORE, mpi_err)
 
       ! Write number of realizations
       call MPI_FILE_WRITE(fh, t % n_realizations, 1, MPI_INTEGER, &
@@ -591,6 +608,7 @@ contains
     integer, allocatable :: int_array(:)
     real(8), allocatable :: real_array(:)
     character(19)        :: current_time  ! current date and time
+    character(MAX_FILE_LEN) :: path_temp
 
 #ifdef MPI
     integer :: fh                      ! file handle
@@ -636,6 +654,10 @@ contains
     call MPI_FILE_READ_ALL(fh, current_time, 19, MPI_CHARACTER, &
          MPI_STATUS_IGNORE, mpi_err)
 
+    ! Read path to input
+    call MPI_FILE_READ_ALL(fh, path_temp, MAX_FILE_LEN, MPI_CHARACTER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
     ! Read and overwrite random number seed
     call MPI_FILE_READ_ALL(fh, seed, 1, MPI_INTEGER8, &
          MPI_STATUS_IGNORE, mpi_err)
@@ -673,13 +695,13 @@ contains
       end if
 
       MESH_LOOP: do i = 1, n_meshes
-        ! Read type of mesh and dimension
-        call MPI_FILE_READ(fh, temp, 2, MPI_INTEGER, MPI_STATUS_IGNORE, &
+        ! Read id, mesh type, and dimension
+        call MPI_FILE_READ(fh, temp, 3, MPI_INTEGER, MPI_STATUS_IGNORE, &
              mpi_err)
 
         ! Skip mesh data
         call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
-        offset = offset + temp(2)*(4 + 3*8)
+        offset = offset + temp(3)*(4 + 3*8)
         call MPI_FILE_SEEK(fh, offset, MPI_SEEK_SET, mpi_err)
       end do MESH_LOOP
 
@@ -691,6 +713,10 @@ contains
       end if
 
       TALLY_METADATA: do i = 1, n_tallies
+        ! Read tally id
+        call MPI_FILE_READ(fh, tallies(i) % id, 1, MPI_INTEGER, &
+             MPI_STATUS_IGNORE, mpi_err)
+
         ! Read number of realizations for global tallies
         call MPI_FILE_READ(fh, tallies(i) % n_realizations, 1, &
              MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
@@ -848,6 +874,9 @@ contains
     ! Read date and time
     read(UNIT_STATE) current_time
 
+    ! Read path
+    read(UNIT_STATE) path_temp
+
     ! Read and overwrite random number seed
     read(UNIT_STATE) seed
 
@@ -873,12 +902,12 @@ contains
       end if
 
       MESH_LOOP: do i = 1, n_meshes
-        ! Read type of mesh and dimension
-        read(UNIT_STATE) temp(1:2)
+        ! Read id, mesh type, and dimension
+        read(UNIT_STATE) temp(1:3)
 
         ! Allocate temporary arrays
-        allocate(int_array(temp(2)))
-        allocate(real_array(temp(2)))
+        allocate(int_array(temp(3)))
+        allocate(real_array(temp(3)))
 
         ! Read dimension, lower_left, upper_right, width
         read(UNIT_STATE) int_array
@@ -899,6 +928,9 @@ contains
       end if
 
       TALLY_METADATA: do i = 1, n_tallies
+        ! Read id
+        read(UNIT_STATE) temp(1)
+
         ! Read number of realizations
         read(UNIT_STATE) tallies(i) % n_realizations
 

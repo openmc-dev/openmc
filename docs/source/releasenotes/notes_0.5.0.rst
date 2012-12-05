@@ -21,6 +21,9 @@ the problem at hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
+- All user input options that formerly accepted "off" or "on" should now be
+  "false" or "true" (the proper XML schema datatype).
+- The <criticality> element is deprecated and was replaced with <eigenvalue>.
 - Added 'events' score that returns number of events that scored to a tally.
 - Restructured tally filter implementation and user input.
 - Source convergence acceleration via CMFD (implemented with PETSc).

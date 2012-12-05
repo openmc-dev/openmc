@@ -1510,7 +1510,7 @@ contains
         ! --- this has to be performed after reduce_tally_values and before
         ! accumulate_result
 
-        k_batch(current_batch) = global_tallies(K_ANALOG) % value
+        k_batch(current_batch) = global_tallies(K_TRACKLENGTH) % value
       end if
 
       ! Accumulate results for global tallies

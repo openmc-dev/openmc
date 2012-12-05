@@ -573,7 +573,7 @@ contains
       ! global_tallies directly
 
       ! Sample mean of keff
-      keff = global_tallies(K_ANALOG) % sum / n_realizations
+      keff = global_tallies(K_TRACKLENGTH) % sum / n_realizations
 
       if (n_realizations > 1) then
         if (confidence_intervals) then
@@ -585,7 +585,7 @@ contains
         end if
 
         ! Standard deviation of the sample mean of k
-        keff_std = t_value * sqrt((global_tallies(K_ANALOG) % sum_sq / &
+        keff_std = t_value * sqrt((global_tallies(K_TRACKLENGTH) % sum_sq / &
              n_realizations - keff * keff) / (n_realizations - 1))
       end if
     else
@@ -594,11 +594,11 @@ contains
       ! standard deviation
 
 #ifdef MPI
-      call MPI_REDUCE(global_tallies(K_ANALOG) % sum, temp, 2, &
+      call MPI_REDUCE(global_tallies(K_TRACKLENGTH) % sum, temp, 2, &
            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 #else
-      temp(1) = global_tallies(K_ANALOG) % sum
-      temp(2) = global_tallies(K_ANALOG) % sum_sq
+      temp(1) = global_tallies(K_TRACKLENGTH) % sum
+      temp(2) = global_tallies(K_TRACKLENGTH) % sum_sq
 #endif
 
       ! Sample mean of k

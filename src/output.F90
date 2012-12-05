@@ -1362,8 +1362,6 @@ contains
     end if
 
     ! write global tallies
-    write(ou,102) "k-effective (Analog)", global_tallies(K_ANALOG) % sum, &
-         global_tallies(K_ANALOG) % sum_sq
     write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) % sum, &
          global_tallies(K_COLLISION) % sum_sq
     write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) % sum, &

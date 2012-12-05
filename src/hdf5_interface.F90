@@ -854,6 +854,10 @@ contains
     call h5ltmake_dataset_string_f(hdf5_state_point, "date_and_time", &
          time_stamp(), hdf5_err)
 
+    ! Write path to input
+    call h5ltmake_dataset_string_f(hdf5_state_point, "path", &
+         path_input, hdf5_err)
+
     ! Write out random number seed
     call hdf5_write_long(hdf5_state_point, "seed", seed)
 

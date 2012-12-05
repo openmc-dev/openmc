@@ -170,6 +170,9 @@ contains
     ! Write current date and time
     write(UNIT_STATE) time_stamp()
 
+    ! Write path to input
+    write(UNIT_STATE) path_input
+
     ! Write out random number seed
     write(UNIT_STATE) seed
 
@@ -331,6 +334,10 @@ contains
 
     ! Write current date and time
     call MPI_FILE_WRITE(fh, time_stamp(), 19, MPI_CHARACTER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Write path to input
+    call MPI_FILE_WRITE(fh, path_input, MAX_FILE_LEN, MPI_CHARACTER, &
          MPI_STATUS_IGNORE, mpi_err)
 
     ! Write out random number seed
@@ -583,6 +590,7 @@ contains
     integer, allocatable :: int_array(:)
     real(8), allocatable :: real_array(:)
     character(19)        :: current_time  ! current date and time
+    character(MAX_FILE_LEN) :: path_temp
 
 #ifdef MPI
     integer :: fh                      ! file handle
@@ -626,6 +634,10 @@ contains
 
     ! Read date and time
     call MPI_FILE_READ_ALL(fh, current_time, 19, MPI_CHARACTER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+    ! Read path to input
+    call MPI_FILE_READ_ALL(fh, path_temp, MAX_FILE_LEN, MPI_CHARACTER, &
          MPI_STATUS_IGNORE, mpi_err)
 
     ! Read and overwrite random number seed
@@ -831,6 +843,9 @@ contains
 
     ! Read date and time
     read(UNIT_STATE) current_time
+
+    ! Read path
+    read(UNIT_STATE) path_temp
 
     ! Read and overwrite random number seed
     read(UNIT_STATE) seed

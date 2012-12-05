@@ -193,8 +193,12 @@ contains
               score_index = score_index + 1
               ! get the score and tally it
               score = last_wgt * calc_pn(n, mu)
-              if (n < t % scatt_order(j)) &
-                call add_to_score(t % scores(score_index, filter_index), score)
+              ! Do not do if its the last time through, the scores += at
+              ! the end of this select case will handle that one.
+              if (n < t % scatt_order(j)) then
+                t % results(score_index, filter_index) % value = &
+                  t % results(score_index, filter_index) + score
+              end if
             end do
             j = j + t % scatt_order(j)
 
@@ -323,7 +327,8 @@ contains
           end select
 
           ! Add score to tally
-          call add_to_score(t % scores(score_index, filter_index), score)
+          t % results(score_index, filter_index) % value = &
+            t % results(score_index, filter_index) + score
 
         end do SCORE_LOOP
 

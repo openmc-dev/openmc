@@ -1579,30 +1579,30 @@ contains
               end if
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                 repeat(" ", indent), score_name, &
-                to_str(t % scores(score_index,filter_index) % sum), &
-                trim(to_str(t % scores(score_index,filter_index) % sum_sq))
+                to_str(t % results(score_index,filter_index) % sum), &
+                trim(to_str(t % results(score_index,filter_index) % sum_sq))
             else if (t % score_bins(k) == SCORE_SCATTER_PN) then
               score_name = "Scattering Rate"
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                 repeat(" ", indent), score_name, &
-                to_str(t % scores(score_index,filter_index) % sum), &
-                trim(to_str(t % scores(score_index,filter_index) % sum_sq))
+                to_str(t % results(score_index,filter_index) % sum), &
+                trim(to_str(t % results(score_index,filter_index) % sum_sq))
               do n_order = 1, t % scatt_order(k)
                 score_index = score_index + 1
                 score_name = 'P' // trim(to_str(n_order)) // &
                   ' Scattering Moment'
                 write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                   repeat(" ", indent), score_name, &
-                  to_str(t % scores(score_index,filter_index) % sum), &
-                  trim(to_str(t % scores(score_index,filter_index) % sum_sq))
+                  to_str(t % results(score_index,filter_index) % sum), &
+                  trim(to_str(t % results(score_index,filter_index) % sum_sq))
               end do
               k = k + n_order - 1
             else
               score_name = score_names(abs(t % score_bins(k)))
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                 repeat(" ", indent), score_name, &
-                to_str(t % scores(score_index,filter_index) % sum), &
-                trim(to_str(t % scores(score_index,filter_index) % sum_sq))
+                to_str(t % results(score_index,filter_index) % sum), &
+                trim(to_str(t % results(score_index,filter_index) % sum_sq))
             end if
           end do
           indent = indent - 2

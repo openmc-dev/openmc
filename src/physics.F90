@@ -904,10 +904,6 @@ contains
       nu = int(nu_t) + 1
     end if
 
-    ! Add to analog estimate of keff
-    global_tallies(K_ANALOG) % value = &
-         global_tallies(K_ANALOG) % value + nu/weight * keff
-
     ! Bank source neutrons
     if (nu == 0 .or. n_bank == 3*work) return
     do i = int(n_bank,4) + 1, int(min(n_bank + nu, 3*work),4)

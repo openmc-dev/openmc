@@ -302,10 +302,9 @@ module constants
   ! Global tallY parameters
   integer, parameter :: N_GLOBAL_TALLIES = 4
   integer, parameter :: &
-       K_ANALOG      = 1, &
-       K_COLLISION   = 2, &
-       K_TRACKLENGTH = 3, &
-       LEAKAGE       = 4
+       K_COLLISION   = 1, &
+       K_TRACKLENGTH = 2, &
+       LEAKAGE       = 3
 
   ! ============================================================================
   ! EXTERNAL SOURCE PARAMETERS

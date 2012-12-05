@@ -102,6 +102,9 @@ class StatePoint(BinaryFile):
         # Read date and time
         self.date_and_time = self._get_string(19)[0]
 
+        # Read path
+        self.path = self._get_string(255)[0].strip()
+
         # Read random number seed
         self.seed = self._get_long()[0]
 

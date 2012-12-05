@@ -35,14 +35,14 @@ module tally_header
   end type TallyMap
 
 !===============================================================================
-! TALLYSCORE provides accumulation of scores in a particular tally bin
+! TALLYRESULT provides accumulation of results in a particular tally bin
 !===============================================================================
 
-  type TallyScore
+  type TallyResult
     real(8) :: value    = 0.
     real(8) :: sum      = 0.
     real(8) :: sum_sq   = 0.
-  end type TallyScore
+  end type TallyResult
 
 !===============================================================================
 ! TALLYFILTER describes a filter that limits what events score to a tally. For
@@ -59,8 +59,8 @@ module tally_header
 
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
-! tally in is given by the TallyBins and the scores are stored in a TallyScore
-! array.
+! tally in is given by the TallyFilters and the results are stored in a
+! TallyResult array.
 !===============================================================================
 
   type TallyObject
@@ -77,10 +77,10 @@ module tally_header
     integer                        :: n_filters    ! Number of filters
     type(TallyFilter), allocatable :: filters(:)   ! Filter data (type/bins)
 
-    ! The stride attribute is used for determining the index in the scores
+    ! The stride attribute is used for determining the index in the results
     ! array for a matching_bin combination. Since multiple dimensions are
-    ! mapped onto one dimension in the scores array, the stride attribute gives
-    ! the stride for a given filter type within the scores array
+    ! mapped onto one dimension in the results array, the stride attribute gives
+    ! the stride for a given filter type within the results array
 
     integer, allocatable :: matching_bins(:)
     integer, allocatable :: stride(:)
@@ -105,14 +105,14 @@ module tally_header
     integer, allocatable :: scatt_order(:)
     integer              :: n_nonPN_score_bins = 0
 
-    ! Scores for each bin -- the first dimenion of the array is for scores
+    ! Results for each bin -- the first dimension of the array is for scores
     ! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the
     ! second dimension of the array is for the combination of filters
     ! (e.g. specific cell, specific energy group, etc.)
 
     integer :: total_filter_bins
     integer :: total_score_bins
-    type(TallyScore), allocatable :: scores(:,:)
+    type(TallyResult), allocatable :: results(:,:)
 
     ! reset property - allows a tally to be reset after every batch
     logical :: reset = .false.

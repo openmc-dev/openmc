@@ -12,9 +12,10 @@ filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
 
 score_types = {-1: 'flux', -2: 'total', -3: 'scatter', -4: 'nu-scatter', 
                -5: 'scatter-1', -6: 'scatter-2', -7: 'scatter-3', 
-               -8: 'transport', -9: 'diffusion', -10: 'n1n', -11: 'n2n',
-               -12: 'n3n', -13: 'n4n', -14: 'absorption', -15: 'fission',
-                -16: 'nu-fission', -17: 'current', -18: 'events'}
+                -8: 'scatter-4', -9: 'scatter-5', -10: 'transport',
+                -11: 'diffusion', -12: 'n1n', -13: 'n2n', -14: 'n3n', 
+                -15: 'n4n', -16: 'absorption', -17: 'fission',
+                -18: 'nu-fission', -19: 'current', -20: 'events'}
 
 class BinaryFile(object):
     def __init__(self, filename):
@@ -80,7 +81,7 @@ class StatePoint(BinaryFile):
 
         # Set flags for what data  was read
         self._metadata = False
-        self._values = False
+        self._results = False
         self._source = False
 
         # Initialize arrays for meshes and tallies
@@ -193,7 +194,7 @@ class StatePoint(BinaryFile):
         # Set flag indicating metadata has already been read
         self._metadata = True
 
-    def read_values(self):
+    def read_results(self):
         # Check whether metadata has been read
         if not self._metadata:
             self._read_metadata()
@@ -214,16 +215,16 @@ class StatePoint(BinaryFile):
 
             for t in self.tallies:
                 n = t.total_score_bins * t.total_filter_bins
-                t.values = np.array(self._get_double(2*n))
-                t.values.shape = (t.total_filter_bins, t.total_score_bins, 2)
+                t.results = np.array(self._get_double(2*n))
+                t.results.shape = (t.total_filter_bins, t.total_score_bins, 2)
 
-        # Indicate that tally values have been read
-        self._values = True
+        # Indicate that tally results have been read
+        self._results = True
 
     def read_source(self):
-        # Check whether tally values have been read
-        if not self._values:
-            self.read_values()
+        # Check whether tally results have been read
+        if not self._results:
+            self.read_results()
 
         for i in range(self.n_particles):
             s = SourceSite()
@@ -273,18 +274,18 @@ class StatePoint(BinaryFile):
 
         # Regular tallies
         for t in self.tallies:
-            for i in range(t.values.shape[0]):
-                for j in range(t.values.shape[1]):
+            for i in range(t.results.shape[0]):
+                for j in range(t.results.shape[1]):
                     # Get sum and sum of squares
-                    s, s2 = t.values[i,j]
+                    s, s2 = t.results[i,j]
                     
                     # Calculate sample mean and replace value
                     s /= n
-                    t.values[i,j,0] = s
+                    t.results[i,j,0] = s
 
                     # Calculate standard deviation
                     if s != 0.0:
-                        t.values[i,j,1] = t_value*sqrt((s2/n - s*s)/(n-1))
+                        t.results[i,j,1] = t_value*sqrt((s2/n - s*s)/(n-1))
 
     def get_value(self, tally_index, spec_list, score_index):
         """Returns a tally score given a list of filters to satisfy.
@@ -304,14 +305,14 @@ class StatePoint(BinaryFile):
 
         score_index : int
             Index corresponding to score for tally, i.e. the second index in
-            Tally.values[:,:,:].
+            Tally.results[:,:,:].
 
         """
 
         # Get Tally object given the index
         t = self.tallies[tally_index]
 
-        # Initialize index for filter in Tally.values[:,:,:]
+        # Initialize index for filter in Tally.results[:,:,:]
         filter_index = 0
 
         # Loop over specified filters in spec_list
@@ -334,7 +335,7 @@ class StatePoint(BinaryFile):
             else:
                 filter_index += f_index*t.filters[f_type].stride
         
-        # Return the desired result from Tally.values. This could be the sum and
+        # Return the desired result from Tally.results. This could be the sum and
         # sum of squares, or it could be mean and stdev if self.generate_stdev()
         # has been called already.
-        return t.values[filter_index, score_index]
+        return t.results[filter_index, score_index]

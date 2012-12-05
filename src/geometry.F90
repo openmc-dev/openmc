@@ -8,7 +8,7 @@ module geometry
   use output,          only: write_message
   use particle_header, only: LocalCoord, deallocate_coord
   use string,          only: to_str
-  use tally,           only: score_surface_current, add_to_score
+  use tally,           only: score_surface_current
 
   implicit none
      
@@ -47,7 +47,7 @@ contains
       ! Determine the specified sense of the surface in the cell and the actual
       ! sense of the particle with respect to the surface
       s => surfaces(abs(i_surface))
-      actual_sense = sense(s, p % coord % xyz)
+      actual_sense = sense(s)
       specified_sense = (c % surfaces(i) > 0)
 
       ! Compare sense of point to specified sense
@@ -272,10 +272,9 @@ contains
         call score_surface_current()
       end if
 
-      if (tallies_on) then
-        ! Score to global leakage tally
-        call add_to_score(global_tallies(LEAKAGE), p % wgt)
-      end if
+      ! Score to global leakage tally
+      if (tallies_on) global_tallies(LEAKAGE) % value = &
+           global_tallies(LEAKAGE) % value + p % wgt
 
       ! Display message
       if (verbosity >= 10 .or. trace) then
@@ -481,14 +480,32 @@ contains
     ! ==========================================================================
     ! COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
 
+    ! Remove lower coordinate levels and assignment of surface
+    p % surface = NONE
+    p % coord => p % coord0
+    call deallocate_coord(p % coord % next)
     call find_cell(found)
 
-    ! Couldn't find next cell anywhere!
-    if ((.not. found) .and. (run_mode /= MODE_PLOTTING)) then
-      message = "After particle " // trim(to_str(p % id)) // " crossed surface " &
-           // trim(to_str(surfaces(abs(p%surface)) % id)) // " it could not be &
-           &located in any cell and it did not leak."
-      call fatal_error()
+    if (run_mode /= MODE_PLOTTING .and. (.not. found)) then
+      ! If a cell is still not found, there are two possible causes: 1) there is
+      ! a void in the model, and 2) the particle hit a surface at a tangent. If
+      ! the particle is really traveling tangent to a surface, if we move it
+      ! forward a tiny bit it should fix the problem.
+
+      p % coord => p % coord0
+      call deallocate_coord(p % coord % next)
+      p % coord % xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
+      call find_cell(found)
+
+      ! Couldn't find next cell anywhere! This probably means there is an actual
+      ! undefined region in the geometry.
+
+      if (.not. found) then
+        message = "After particle " // trim(to_str(p % id)) // " crossed surface " &
+             // trim(to_str(surfaces(abs(p%surface)) % id)) // " it could not be &
+             &located in any cell and it did not leak."
+        call fatal_error()
+      end if
     end if
        
   end subroutine cross_surface
@@ -1142,10 +1159,9 @@ contains
 ! is in.
 !===============================================================================
 
-  function sense(surf, xyz) result(s)
+  recursive function sense(surf) result(s)
 
     type(Surface), pointer    :: surf   ! surface
-    real(8),       intent(in) :: xyz(3) ! coordinates of particle
     logical                   :: s      ! sense of particle
 
     real(8) :: x,y,z    ! coordinates of particle
@@ -1164,9 +1180,9 @@ contains
     real(8) :: r        ! radius for quadratic surfaces
     real(8) :: x1,y1,z1 ! upper-right corner of box
 
-    x = xyz(1)
-    y = xyz(2)
-    z = xyz(3)
+    x = p % coord % xyz(1)
+    y = p % coord % xyz(2)
+    z = p % coord % xyz(3)
 
     select case (surf % type)
     case (SURF_PX)
@@ -1320,7 +1336,12 @@ contains
     end select
 
     ! Check which side of surface the point is on
-    if (func > 0) then
+    if (abs(func) < FP_COINCIDENT) then
+      ! Particle may be coincident with this surface. Artifically move the
+      ! particle forward a tiny bit.
+      p % coord % xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
+      s = sense(surf)
+    elseif (func > 0) then
       s = .true.
     else
       s = .false.

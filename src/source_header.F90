@@ -4,7 +4,7 @@ module source_header
 
 !===============================================================================
 ! EXTSOURCE describes an external source of neutrons for a fixed-source problem
-! or for the starting source in a criticality problem
+! or for the starting source in a k eigenvalue problem
 !===============================================================================
 
   type ExtSource

@@ -93,7 +93,7 @@ contains
 
 !===============================================================================
 ! MESH_INDICES_TO_BIN maps (i,j) or (i,j,k) indices to a single bin number for
-! use in a TallyObject scores array
+! use in a TallyObject results array
 !===============================================================================
 
   function mesh_indices_to_bin(m, ijk, surface_current) result(bin)
@@ -126,7 +126,7 @@ contains
   end function mesh_indices_to_bin
 
 !===============================================================================
-! BIN_TO_MESH_INDICES maps a single mesh bin from a TallyObject scores array to
+! BIN_TO_MESH_INDICES maps a single mesh bin from a TallyObject results array to
 ! (i,j) or (i,j,k) indices
 !===============================================================================
 

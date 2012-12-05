@@ -120,7 +120,7 @@ contains
       ! Allocate banks and create source particles -- for a fixed source
       ! calculation, the external source distribution is sampled during the
       ! run, not at initialization
-      if (run_mode == MODE_CRITICALITY) then
+      if (run_mode == MODE_EIGENVALUE) then
         call allocate_banks()
         if (.not. restart_run) call initialize_source()
       end if
@@ -169,14 +169,14 @@ contains
     integer                   :: bank_types(4)   ! Datatypes
     integer(MPI_ADDRESS_KIND) :: bank_disp(4)    ! Displacements
     integer                   :: temp_type       ! temporary derived type
-    integer                   :: score_blocks(1) ! Count for each datatype
-    integer                   :: score_types(1)  ! Datatypes
-    integer(MPI_ADDRESS_KIND) :: score_disp(1)   ! Displacements
-    integer(MPI_ADDRESS_KIND) :: score_base_disp ! Base displacement
-    integer(MPI_ADDRESS_KIND) :: lower_bound     ! Lower bound for TallyScore
-    integer(MPI_ADDRESS_KIND) :: extent          ! Extent for TallyScore
+    integer                   :: result_blocks(1) ! Count for each datatype
+    integer                   :: result_types(1)  ! Datatypes
+    integer(MPI_ADDRESS_KIND) :: result_disp(1)   ! Displacements
+    integer(MPI_ADDRESS_KIND) :: result_base_disp ! Base displacement
+    integer(MPI_ADDRESS_KIND) :: lower_bound     ! Lower bound for TallyResult
+    integer(MPI_ADDRESS_KIND) :: extent          ! Extent for TallyResult
     type(Bank)       :: b
-    type(TallyScore) :: ts
+    type(TallyResult) :: tr
 
     ! Indicate that MPI is turned on
     mpi_enabled = .true.
@@ -215,29 +215,29 @@ contains
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
     ! ==========================================================================
-    ! CREATE MPI_TALLYSCORE TYPE
+    ! CREATE MPI_TALLYRESULT TYPE
 
     ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(ts % value, score_base_disp, mpi_err)
-    call MPI_GET_ADDRESS(ts % sum, score_disp(1), mpi_err)
+    call MPI_GET_ADDRESS(tr % value, result_base_disp, mpi_err)
+    call MPI_GET_ADDRESS(tr % sum, result_disp(1), mpi_err)
 
     ! Adjust displacements
-    score_disp = score_disp - score_base_disp
+    result_disp = result_disp - result_base_disp
 
-    ! Define temporary type for tallyscore
-    score_blocks = (/ 2 /)
-    score_types = (/ MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(1, score_blocks, score_disp, score_types, &
+    ! Define temporary type for TallyResult
+    result_blocks = (/ 2 /)
+    result_types = (/ MPI_REAL8 /)
+    call MPI_TYPE_CREATE_STRUCT(1, result_blocks, result_disp, result_types, &
          temp_type, mpi_err)
 
     ! Adjust lower-bound and extent of type for tally score
     lower_bound = 0
-    extent      = score_disp(1) + 16
+    extent      = result_disp(1) + 16
     call MPI_TYPE_CREATE_RESIZED(temp_type, lower_bound, extent, &
-         MPI_TALLYSCORE, mpi_err)
+         MPI_TALLYRESULT, mpi_err)
 
     ! Commit derived type for tally scores
-    call MPI_TYPE_COMMIT(MPI_TALLYSCORE, mpi_err)
+    call MPI_TYPE_COMMIT(MPI_TALLYRESULT, mpi_err)
 
   end subroutine initialize_mpi
 #endif

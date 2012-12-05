@@ -32,6 +32,7 @@ module constants
   ! User for precision in geometry
   real(8), parameter :: FP_PRECISION = 1e-14_8
   real(8), parameter :: FP_REL_PRECISION = 1e-5_8
+  real(8), parameter :: FP_COINCIDENT = 1e-12_8
 
   ! Maximum number of collisions/crossings
   integer, parameter :: MAX_EVENTS = 10000
@@ -348,7 +349,7 @@ module constants
   ! Running modes
   integer, parameter ::        &
        MODE_FIXEDSOURCE = 1, & ! Fixed source mode
-       MODE_CRITICALITY = 2, & ! Criticality mode
+       MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
        MODE_PLOTTING    = 3, & ! Plotting mode
        MODE_TALLIES     = 4    ! Tally results mode
 

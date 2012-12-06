@@ -538,6 +538,10 @@ contains
           output_xs = .true.
         case ('tallies')
           output_tallies = .true.
+        case ('none')
+          output_summary = .false.
+          output_xs = .false.
+          output_tallies = .false.
         end select
       end do
     end if

@@ -186,7 +186,7 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       write(UNIT_STATE) n_inactive, gen_per_batch
       write(UNIT_STATE) k_batch(1:current_batch)
-      write(UNIT_STATE) entropy(1:current_batch)
+      write(UNIT_STATE) entropy(1:current_batch*gen_per_batch)
     end if
 
     ! Write number of meshes
@@ -368,7 +368,7 @@ contains
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, k_batch, current_batch, MPI_REAL8, &
            MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_WRITE(fh, entropy, current_batch, MPI_REAL8, &
+      call MPI_FILE_WRITE(fh, entropy, current_batch*gen_per_batch, MPI_REAL8, &
            MPI_STATUS_IGNORE, mpi_err)
     end if
 
@@ -674,8 +674,8 @@ contains
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_READ_ALL(fh, k_batch, restart_batch, MPI_REAL8, &
            MPI_STATUS_IGNORE, mpi_err)
-      call MPI_FILE_READ_ALL(fh, entropy, restart_batch, MPI_REAL8, &
-           MPI_STATUS_IGNORE, mpi_err)
+      call MPI_FILE_READ_ALL(fh, entropy, restart_batch*gen_per_batch, &
+           MPI_REAL8, MPI_STATUS_IGNORE, mpi_err)
     end if
 
     if (master) then
@@ -874,7 +874,7 @@ contains
     if (mode == MODE_EIGENVALUE) then
       read(UNIT_STATE) n_inactive, gen_per_batch
       read(UNIT_STATE) k_batch(1:restart_batch)
-      read(UNIT_STATE) entropy(1:restart_batch)
+      read(UNIT_STATE) entropy(1:restart_batch*gen_per_batch)
     end if
 
     if (master) then

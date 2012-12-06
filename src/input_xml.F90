@@ -139,7 +139,7 @@ contains
 
       ! Allocate array for batch keff and entropy
       allocate(k_batch(n_batches))
-      allocate(entropy(n_batches))
+      allocate(entropy(n_batches*gen_per_batch))
       entropy = ZERO
     end if
 

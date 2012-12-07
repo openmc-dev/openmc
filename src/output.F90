@@ -1236,7 +1236,7 @@ contains
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy(current_batch)
+         entropy(current_gen + gen_per_batch*(current_batch - 1))
 
     ! next line
     write(UNIT=OUTPUT_UNIT, FMT=*)
@@ -1258,7 +1258,7 @@ contains
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy(current_batch)
+         entropy(current_batch*gen_per_batch)
 
     ! write out accumulated k-effective if after first active batch
     if (current_batch > n_inactive + 1) then 

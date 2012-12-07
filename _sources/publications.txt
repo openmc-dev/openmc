@@ -6,7 +6,7 @@ Publications
 
 - Paul K. Romano and Benoit Forget, "Reducing Parallel Communication in Monte
   Carlo Simulations via Batch Statistics," *Trans. Am. Nucl. Soc.*, **107**,
-  xxx--xxx (2012).
+  519--522 (2012).
 
 - Paul K. Romano and Benoit Forget, "The OpenMC Monte Carlo Particle Transport
   Code," *Ann. Nucl. Energy*, **51**, 274--281

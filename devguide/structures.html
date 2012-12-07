@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.4.4',
+        VERSION:     '0.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -116,6 +116,59 @@ density in atom/barn-cm for each nuclide in the <tt class="docutils literal"><sp
 low-energy scattering, a <img class="math" src="../_images/math/610a7fba4c1d89de40e26ba8f6c2915102b17eae.png" alt="S(\alpha,\beta)"/> can be associated with that
 material through the <tt class="docutils literal"><span class="pre">sab_table</span></tt> component. Again, this component contains the
 index in the <tt class="docutils literal"><span class="pre">sab_tables</span></tt> array from the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>.</p>
+</div>
+<div class="section" id="nuclide">
+<h2>1.5. Nuclide<a class="headerlink" href="#nuclide" title="Permalink to this headline">¶</a></h2>
+<p>The Nuclide derived type stores cross section and interaction data for a nucleus
+and is defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/ace_header.F90">ace_header module</a>. The <tt class="docutils literal"><span class="pre">energy</span></tt> component is an array
+that gives the discrete energies at which microscopic cross sections are
+tabulated. The actual microscopic cross sections are stored in a separate
+derived type, Reaction. An arrays of Reactions is present in the <tt class="docutils literal"><span class="pre">reactions</span></tt>
+component. There are a few summary microscopic cross sections stored in other
+components, such as <tt class="docutils literal"><span class="pre">total</span></tt>, <tt class="docutils literal"><span class="pre">elastic</span></tt>, <tt class="docutils literal"><span class="pre">fission</span></tt>, and <tt class="docutils literal"><span class="pre">nu_fission</span></tt>.</p>
+<p>If a Nuclide is fissionable, the prompt and delayed neutron yield and energy
+distributions are also stored on the Nuclide type. Many nuclides also have
+unresolved resonance probability table data. If present, this data is stored in
+the component <tt class="docutils literal"><span class="pre">urr_data</span></tt> of derived type UrrData. A complete description of
+the probability table method is given in <a class="reference internal" href="../methods/physics.html#probability-tables"><em>Unresolved Resonance Region Probability Tables</em></a>.</p>
+<p>The list of nuclides present in a problem is stored in the <tt class="docutils literal"><span class="pre">nuclides</span></tt> array
+defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a>.</p>
+</div>
+<div class="section" id="salphabeta">
+<h2>1.6. SAlphaBeta<a class="headerlink" href="#salphabeta" title="Permalink to this headline">¶</a></h2>
+<p>The SAlphaBeta derived type stores <img class="math" src="../_images/math/610a7fba4c1d89de40e26ba8f6c2915102b17eae.png" alt="S(\alpha,\beta)"/> data to account for
+molecular binding effects when treating thermal scattering. Each SAlphaBeta
+table is associated with a specific nuclide as identified in the <tt class="docutils literal"><span class="pre">zaid</span></tt>
+component. A complete description of the <img class="math" src="../_images/math/610a7fba4c1d89de40e26ba8f6c2915102b17eae.png" alt="S(\alpha,\beta)"/> treatment can
+be found in <a class="reference internal" href="../methods/physics.html#sab-tables"><em>S() Tables</em></a>.</p>
+</div>
+<div class="section" id="xslisting">
+<h2>1.7. XsListing<a class="headerlink" href="#xslisting" title="Permalink to this headline">¶</a></h2>
+<p>The XsListing derived type stores information on the location of an ACE cross
+section table based on the data in cross_sections.xml and is defined in the
+<a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/ace_header.F90">ace_header module</a>. For each <tt class="docutils literal"><span class="pre">&lt;ace_table&gt;</span></tt> you see in cross_sections.xml,
+there is a XsListing with its information. When the user input is read, the
+array <tt class="docutils literal"><span class="pre">xs_listings</span></tt> in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a> that is of derived type XsListing
+is used to locate the ACE data to parse.</p>
+</div>
+<div class="section" id="nuclidemicroxs">
+<h2>1.8. NuclideMicroXS<a class="headerlink" href="#nuclidemicroxs" title="Permalink to this headline">¶</a></h2>
+<p>The NuclideMicroXS derived type, defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/ace_header.F90">ace_header module</a>, acts as a
+&#8216;cache&#8217; for microscopic cross sections. As a particle is traveling through
+different materials, cross sections can be reused if the energy of the particle
+hasn&#8217;t changed. The components <tt class="docutils literal"><span class="pre">total</span></tt>, <tt class="docutils literal"><span class="pre">elastic</span></tt>, <tt class="docutils literal"><span class="pre">absorption</span></tt>,
+<tt class="docutils literal"><span class="pre">fission</span></tt>, and <tt class="docutils literal"><span class="pre">nu_fission</span></tt> represent those microscopic cross sections at
+the current energy of the particle for a given nuclide. An array <tt class="docutils literal"><span class="pre">micro_xs</span></tt> in
+the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global module</a> that is the same length as the <tt class="docutils literal"><span class="pre">nuclides</span></tt> array stores
+these cached cross sections for each nuclide in the problem.</p>
+</div>
+<div class="section" id="materialmacroxs">
+<h2>1.9. MaterialMacroXS<a class="headerlink" href="#materialmacroxs" title="Permalink to this headline">¶</a></h2>
+<p>In addition to the NuclideMicroXS type, there is also a MaterialMacroXS derived
+type, defined in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/ace_header.F90">ace_header module</a> that stored cached <em>macroscopic</em> cross
+sections for the current material. These macroscopic cross sections are used for
+both physics and tallying purposes. The variable <tt class="docutils literal"><span class="pre">material_xs</span></tt> in the <a class="reference external" href="https://github.com/mit-crpg/openmc/blob/master/src/global.F90">global
+module</a> is of type MaterialMacroXS.</p>
 </div>
 </div>
 

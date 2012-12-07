@@ -9,9 +9,10 @@ Theory and Methodology
     :maxdepth: 3
 
     introduction
-    criticality
-    statistics
     geometry
+    cross_sections
+    random_numbers
     physics
     tallies
+    eigenvalue
     parallelization

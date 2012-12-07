@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.4.4',
+        VERSION:     '0.5.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -29,7 +29,7 @@
     <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="next" title="1. A Beginner’s Guide to OpenMC" href="beginners.html" />
-    <link rel="prev" title="7. Parallelization" href="../methods/parallelization.html" /> 
+    <link rel="prev" title="8. Parallelization" href="../methods/parallelization.html" /> 
   </head>
   <body>
       <div class="header">
@@ -40,7 +40,7 @@
       <div class="topnav">
       
         <p>
-        «&#160;&#160;<a href="../methods/parallelization.html">7. Parallelization</a>
+        «&#160;&#160;<a href="../methods/parallelization.html">8. Parallelization</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
@@ -78,22 +78,23 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 <li class="toctree-l2"><a class="reference internal" href="input.html#overview-of-files">3.1. Overview of Files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="input.html#settings-specification-settings-xml">3.2. Settings Specification &#8211; settings.xml</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="input.html#confidence-intervals-element">3.2.1. <tt class="docutils literal"><span class="pre">&lt;confidence_intervals&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#criticality-element">3.2.2. <tt class="docutils literal"><span class="pre">&lt;criticality&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#cross-sections-element">3.2.3. <tt class="docutils literal"><span class="pre">&lt;cross_sections&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#cutoff-element">3.2.4. <tt class="docutils literal"><span class="pre">&lt;cutoff&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#cross-sections-element">3.2.2. <tt class="docutils literal"><span class="pre">&lt;cross_sections&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#cutoff-element">3.2.3. <tt class="docutils literal"><span class="pre">&lt;cutoff&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#eigenvalue-element">3.2.4. <tt class="docutils literal"><span class="pre">&lt;eigenvalue&gt;</span></tt> Element</a></li>
 <li class="toctree-l3"><a class="reference internal" href="input.html#energy-grid-element">3.2.5. <tt class="docutils literal"><span class="pre">&lt;energy_grid&gt;</span></tt> Element</a></li>
 <li class="toctree-l3"><a class="reference internal" href="input.html#entropy-element">3.2.6. <tt class="docutils literal"><span class="pre">&lt;entropy&gt;</span></tt> Element</a></li>
 <li class="toctree-l3"><a class="reference internal" href="input.html#fixed-source-element">3.2.7. <tt class="docutils literal"><span class="pre">&lt;fixed_source&gt;</span></tt> Element</a></li>
 <li class="toctree-l3"><a class="reference internal" href="input.html#no-reduce-element">3.2.8. <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> Element</a></li>
 <li class="toctree-l3"><a class="reference internal" href="input.html#output-element">3.2.9. <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> Element</a></li>
 <li class="toctree-l3"><a class="reference internal" href="input.html#ptables-element">3.2.10. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#seed-element">3.2.11. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#source-element">3.2.12. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#state-point-element">3.2.13. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#survival-biasing-element">3.2.14. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#trace-element">3.2.15. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#uniform-fs-element">3.2.16. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#verbosity-element">3.2.17. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#run-cmfd-element">3.2.11. <tt class="docutils literal"><span class="pre">&lt;run_cmfd&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#seed-element">3.2.12. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#source-element">3.2.13. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#state-point-element">3.2.14. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#survival-biasing-element">3.2.15. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#trace-element">3.2.16. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#uniform-fs-element">3.2.17. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#verbosity-element">3.2.18. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="input.html#geometry-specification-geometry-xml">3.3. Geometry Specification &#8211; geometry.xml</a><ul>
@@ -161,7 +162,7 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
       <div class="bottomnav">
       
         <p>
-        «&#160;&#160;<a href="../methods/parallelization.html">7. Parallelization</a>
+        «&#160;&#160;<a href="../methods/parallelization.html">8. Parallelization</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;

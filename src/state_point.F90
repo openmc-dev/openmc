@@ -1047,14 +1047,6 @@ contains
       call write_message(1)
     end if
 
-    ! For eigenvalue calculations, turn on tallies if we've reached active
-    ! batches
-    if (current_batch == n_inactive) then
-      tallies_on = .true.
-      active_batches = .true.
-      call setup_active_usertallies()
-    end if
-
     ! Add to number of realizations
     if (current_batch > n_inactive) then
       n = n + 1

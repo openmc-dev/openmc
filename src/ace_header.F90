@@ -192,6 +192,7 @@ module ace_header
     real(8) :: absorption      ! microscopic absorption xs
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
+    real(8) :: k_fission       ! microscopic energy-released from fission
 
     ! Information for S(a,b) use
     logical :: use_sab     ! in S(a,b) energy range?
@@ -212,6 +213,7 @@ module ace_header
     real(8) :: absorption ! macroscopic absorption xs
     real(8) :: fission    ! macroscopic fission xs
     real(8) :: nu_fission ! macroscopic production xs
+    real(8) :: k_fission  ! macroscopic energy-released from fission
   end type MaterialMacroXS
 
 end module ace_header

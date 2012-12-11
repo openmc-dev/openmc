@@ -315,6 +315,26 @@ contains
               score = keff * p % wgt_bank
 
             end if
+          
+          case (SCORE_K_FISSION)
+            ! Skip any non-fission events
+            if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
+
+            ! All fission events will contribute, so again we can use
+            ! particle's weight entering the collision as the estimate for
+            ! the fission energy production rate
+            ! The ENDF standard (ENDF-102) states that MT 18 stores
+            ! the fission energy as the Q_value, so this will be obtained from
+            ! the MT of index_fission(1); the standard is mute on
+            ! whether or not the other fission channels store their own
+            ! fission energy output; after inspection of the ACE files, all
+            ! nuclides observed with multiple fission channels have the same 
+            ! Q-value for all of them; therefore, this code just uses the first
+            ! fission reaction instead of storing the actual fission type which
+            ! occured.
+            n = nuclides(p % event_nuclide) % index_fission(1)
+            score = last_wgt * &
+              nuclides(p % event_nuclide) % reactions(n) % Q_value
 
           case (SCORE_EVENTS)
             ! Simply count number of scoring events

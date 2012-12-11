@@ -252,7 +252,7 @@ module constants
        EVENT_FISSION =  3 
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 17
+  integer, parameter :: N_SCORE_TYPES = 19
   integer, parameter :: &
        SCORE_FLUX       = -1,  & ! flux
        SCORE_TOTAL      = -2,  & ! total reaction rate
@@ -269,8 +269,10 @@ module constants
        SCORE_ABSORPTION = -13, & ! absorption rate
        SCORE_FISSION    = -14, & ! fission rate
        SCORE_NU_FISSION = -15, & ! neutron production rate
-       SCORE_CURRENT    = -16, & ! partial current
-       SCORE_EVENTS     = -17    ! number of events
+       SCORE_K_FISSION  = -16, & ! fission energy production rate
+       SCORE_CHI        = -17, & ! outgoing fission neutron energy distribution
+       SCORE_CURRENT    = -18, & ! partial current
+       SCORE_EVENTS     = -19    ! number of events
        
   ! Maximum scattering order supported
   integer, parameter :: SCATT_ORDER_MAX = 10

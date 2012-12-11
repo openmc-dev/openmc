@@ -1201,31 +1201,52 @@ contains
 
     if (entropy_on) then
       if (cmfd_run) then
-        message = " Batch   k(batch)   Entropy         Average k          CMFD k    CMFD Ent"
+        message = " Bat./Gen.   k(batch)   Entropy         Average k          CMFD k    CMFD Ent"
         call write_message(1)
-        message = " =====   ========   ========   ====================   ========   ========"
+        message = " =========   ========   ========   ====================   ========   ========"
         call write_message(1)
       else
-        message = " Batch   k(batch)   Entropy         Average k"
+        message = " Bat./Gen.   k(batch)   Entropy         Average k"
         call write_message(1)
-        message = " =====   ========   ========   ===================="
+        message = " =========   ========   ========   ===================="
         call write_message(1)
       end if
     else
       if (cmfd_run) then
-        message = " Batch   k(batch)        Average k          CMFD k"
+        message = " Bat./Gen.   k(batch)        Average k          CMFD k"
         call write_message(1)
-        message = " =====   ========   ====================   ========"
+        message = " =========   ========   ====================   ========"
         call write_message(1)
       else
-        message = " Batch   k(batch)        Average k"
+        message = " Bat./Gen.   k(batch)        Average k"
         call write_message(1)
-        message = " =====   ========   ===================="
+        message = " =========   ========   ===================="
         call write_message(1)
       end if
     end if
 
   end subroutine print_columns
+
+!===============================================================================
+! PRINT_GENERATION displays information for a generation of neutrons. For now,
+! if the user has entropy on, it will print out the entropy
+!===============================================================================
+
+  subroutine print_generation()
+
+    ! write out information about batch and generation
+    write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
+         trim(to_str(current_batch)) // "/" // trim(to_str(current_gen))
+    write(UNIT=OUTPUT_UNIT, FMT='(11X)', ADVANCE='NO')
+
+    ! write out entropy info
+    if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+         entropy(current_gen + gen_per_batch*(current_batch - 1))
+
+    ! next line
+    write(UNIT=OUTPUT_UNIT, FMT=*)
+
+  end subroutine print_generation
 
 !===============================================================================
 ! PRINT_BATCH_KEFF displays the last batch's tallied value of the neutron
@@ -1235,13 +1256,14 @@ contains
   subroutine print_batch_keff()
 
     ! write out information batch and option independent output
-    write(UNIT=OUTPUT_UNIT, FMT='(2X,I5)', ADVANCE='NO') current_batch
+    write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
+         trim(to_str(current_batch)) // "/" // trim(to_str(gen_per_batch))
     write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') &
          k_batch(current_batch)
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy(current_batch)
+         entropy(current_batch*gen_per_batch)
 
     ! write out accumulated k-effective if after first active batch
     if (current_batch > n_inactive + 1) then 

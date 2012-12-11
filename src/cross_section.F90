@@ -95,9 +95,6 @@ contains
       material_xs % k_fission = material_xs % k_fission + &
            atom_density * micro_xs(i_nuclide) % k_fission
     end do
-    ! renormalize k_fission
-    !material_xs % k_fission = material_xs % k_fission / &
-    !  material_xs % fission
 
   end subroutine calculate_xs
 

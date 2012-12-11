@@ -4,10 +4,6 @@
 Release Notes for OpenMC 0.5.0
 ==============================
 
-.. note::
-   These release notes are for an upcoming release of OpenMC and are still
-   subject to change.
-
 -------------------
 System Requirements
 -------------------

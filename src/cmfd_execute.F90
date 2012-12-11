@@ -153,8 +153,6 @@ contains
     if (cmfd_run .and. cmfd_begin == current_batch) then
       cmfd_on = .true.
       cmfd_tally_on = .true.
-      cmfd_hold_weights = .true.
-      call cmfd_tally_reset()
     end if
 
     ! check to flush cmfd tallies for active batches, no more inactive flush

@@ -139,7 +139,7 @@ contains
 
       ! Allocate array for batch keff and entropy
       allocate(k_batch(n_batches))
-      allocate(entropy(n_batches))
+      allocate(entropy(n_batches*gen_per_batch))
       entropy = ZERO
     end if
 
@@ -538,6 +538,10 @@ contains
           output_xs = .true.
         case ('tallies')
           output_tallies = .true.
+        case ('none')
+          output_summary = .false.
+          output_xs = .false.
+          output_tallies = .false.
         end select
       end do
     end if

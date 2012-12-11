@@ -31,9 +31,9 @@ contains
     call timer_start(time_finalize)
 
     if (run_mode /= MODE_PLOTTING) then
+      ! Calculate statistics for tallies and write to tallies.out
+      if (master) call tally_statistics()
       if (output_tallies) then
-        ! Calculate statistics for tallies and write to tallies.out
-        if (master) call tally_statistics()
         if (master) call write_tallies()
       end if
     end if

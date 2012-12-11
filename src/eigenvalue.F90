@@ -12,7 +12,7 @@ module eigenvalue
   use mesh,         only: count_bank_sites
   use mesh_header,  only: StructuredMesh
   use output,       only: write_message, header, print_columns,              &
-                          print_batch_keff
+                          print_batch_keff, print_generation
   use physics,      only: transport
   use random_lcg,   only: prn, set_particle_seed, prn_skip
   use search,       only: binary_search
@@ -93,6 +93,12 @@ contains
         call synchronize_bank()
         call timer_stop(time_bank)
 
+        ! Calculate shannon entropy
+        if (entropy_on) call shannon_entropy()
+
+        ! Write generation output
+        if (master .and. current_gen /= gen_per_batch) call print_generation()
+
       end do GENERATION_LOOP
 
       call finalize_batch()
@@ -166,9 +172,6 @@ contains
     call timer_start(time_tallies)
     call synchronize_tallies()
     call timer_stop(time_tallies)
-
-    ! Calculate shannon entropy
-    if (entropy_on) call shannon_entropy()
 
     ! Collect results and statistics
     call calculate_keff()
@@ -462,6 +465,7 @@ contains
 
   subroutine shannon_entropy()
 
+    integer :: ent_idx        ! entropy index
     integer :: i, j, k        ! index for bank sites
     integer :: n              ! # of boxes in each dimension
     logical :: sites_outside  ! were there sites outside entropy box?
@@ -512,12 +516,13 @@ contains
       ! Normalize to total weight of bank sites
       entropy_p = entropy_p / sum(entropy_p)
 
-      entropy(current_batch) = ZERO
+      ent_idx = current_gen + gen_per_batch*(current_batch - 1)
+      entropy(ent_idx) = ZERO
       do i = 1, m % dimension(1)
         do j = 1, m % dimension(2)
           do k = 1, m % dimension(3)
             if (entropy_p(1,i,j,k) > ZERO) then
-              entropy(current_batch) = entropy(current_batch) - &
+              entropy(ent_idx) = entropy(ent_idx) - &
                    entropy_p(1,i,j,k) * log(entropy_p(1,i,j,k))/log(TWO)
             end if
           end do

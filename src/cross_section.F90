@@ -33,6 +33,7 @@ contains
     material_xs % absorption = ZERO
     material_xs % fission    = ZERO
     material_xs % nu_fission = ZERO
+    material_xs % k_fission  = ZERO
 
     ! Exit subroutine if material is void
     if (p % material == MATERIAL_VOID) return
@@ -89,7 +90,14 @@ contains
       ! Add contributions to material macroscopic nu-fission cross section
       material_xs % nu_fission = material_xs % nu_fission + &
            atom_density * micro_xs(i_nuclide) % nu_fission
+           
+      ! Add contributions to material macroscopic energy release from fission
+      material_xs % k_fission = material_xs % k_fission + &
+           atom_density * micro_xs(i_nuclide) % k_fission
     end do
+    ! renormalize k_fission
+    !material_xs % k_fission = material_xs % k_fission / &
+    !  material_xs % fission
 
   end subroutine calculate_xs
 
@@ -150,6 +158,7 @@ contains
     ! Initialize nuclide cross-sections to zero
     micro_xs(i_nuclide) % fission    = ZERO
     micro_xs(i_nuclide) % nu_fission = ZERO
+    micro_xs(i_nuclide) % k_fission  = ZERO
 
     ! Calculate microscopic nuclide total cross section
     micro_xs(i_nuclide) % total = (ONE - f) * nuc % total(i_grid) &
@@ -171,6 +180,22 @@ contains
       ! Calculate microscopic nuclide nu-fission cross section
       micro_xs(i_nuclide) % nu_fission = (ONE - f) * nuc % nu_fission( &
            i_grid) + f * nuc % nu_fission(i_grid+1)
+           
+      ! Calculate microscopic nuclide k-fission cross section
+      ! The ENDF standard (ENDF-102) states that MT 18 stores
+      ! the fission energy as the Q_value, so this will be obtained from
+      ! the MT of index_fission(1); the standard is mute on
+      ! whether or not the other fission channels store their own
+      ! fission energy output; after inspection of the ACE files, all
+      ! nuclides observed with multiple fission channels have the same 
+      ! Q-value for all of them; therefore, this code just uses the first
+      ! fission reaction instead of storing the actual fission type which
+      ! occured.
+      micro_xs(i_nuclide) % k_fission = &
+           nuc % reactions(nuc % index_fission(1)) % Q_value * &
+           micro_xs(i_nuclide) % fission
+           
+           
     end if
 
     ! If there is S(a,b) data for this nuclide, we need to do a few

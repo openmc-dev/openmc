@@ -1853,6 +1853,16 @@ contains
             end if
           case ('nu-fission')
             t % score_bins(j) = SCORE_NU_FISSION
+          case ('k-fission')
+            t % score_bins(j) = SCORE_K_FISSION
+            
+            ! Set tally estimator to analog
+            t % estimator = ESTIMATOR_ANALOG
+          case ('chi')
+            t % score_bins(j) = SCORE_CHI
+            
+            ! Set tally estimator to analog
+            t % estimator = ESTIMATOR_ANALOG
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
             t % type = TALLY_SURFACE_CURRENT

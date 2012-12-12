@@ -823,8 +823,6 @@ contains
         string = trim(string) // ' nu-fission'
       case (SCORE_K_FISSION)
         string = trim(string) // ' k-fission'
-      case (SCORE_CHI)
-        string = trim(string) // ' chi'
       case (SCORE_CURRENT)
         string = trim(string) // ' current'
       end select
@@ -1466,7 +1464,6 @@ contains
     score_names(abs(SCORE_FISSION))    = "Fission Rate"
     score_names(abs(SCORE_NU_FISSION)) = "Nu-Fission Rate"
     score_names(abs(SCORE_K_FISSION)) = "Kappa-Fission Rate"
-    score_names(abs(SCORE_CHI)) = "Chi"
     score_names(abs(SCORE_EVENTS))     = "Events"
 
     ! Create filename for tally output

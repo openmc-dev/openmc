@@ -328,32 +328,6 @@ contains
             score = last_wgt * &
               nuclides(p % event_nuclide) % reactions(n) % Q_value
 
-          case (SCORE_CHI)
-            ! Skip any non-fission events
-            if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
-
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              ! Normally, we only need to make contributions to one scoring
-              ! bin. However, in the case of fission, since multiple
-              ! fission neutrons were emitted with different energies,
-              ! multiple outgoing energy bins may have been scored to. The
-              ! following logic treats this special case and results to
-              ! multiple bins
-
-              call score_fission_eout(t, score_index)
-              cycle SCORE_LOOP
-
-            else
-              ! If there is no outgoing energy filter, than we only need to
-              ! score to one bin. For the score to be 'analog', we need to
-              ! score the number of particles that were banked in the
-              ! fission bank. Since this was weighted by 1/keff, we
-              ! multiply by keff to get the proper score.
-
-              score = keff * p % wgt_bank
-
-            end if
-          
           case (SCORE_EVENTS)
             ! Simply count number of scoring events
             score = ONE

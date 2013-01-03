@@ -123,7 +123,7 @@ contains
 
         ! Determine score for each bin
         j = 0
-        SCORE_LOOP: do l = 1, t % n_nonPN_score_bins
+        SCORE_LOOP: do l = 1, t % n_user_score_bins
           j = j + 1
           ! determine what type of score bin
           score_bin = t % score_bins(j)

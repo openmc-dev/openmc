@@ -255,8 +255,8 @@ contains
       write(UNIT_STATE) t % n_score_bins
       write(UNIT_STATE) t % score_bins
       write(UNIT_STATE) t % scatt_order
-      ! Write number of nonPN score bins
-      write(UNIT_STATE) t % n_nonPN_score_bins
+      ! Write number of user score bins
+      write(UNIT_STATE) t % n_user_score_bins
     end do TALLY_METADATA
 
     ! Number of realizations for global tallies
@@ -469,8 +469,8 @@ contains
            MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, t % scatt_order, t % n_score_bins, &
            MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
-      ! Write number of nonPN score bins
-      call MPI_FILE_WRITE(fh, t % n_nonPN_score_bins, 1, MPI_INTEGER, &
+      ! Write number of user score bins
+      call MPI_FILE_WRITE(fh, t % n_user_score_bins, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
     end do TALLY_METADATA
 
@@ -784,7 +784,7 @@ contains
         call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
         
-        ! Read number of nonPN score bins
+        ! Read number of user score bins
         call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
       end do TALLY_METADATA
@@ -984,7 +984,7 @@ contains
         read(UNIT_STATE) int_array
         deallocate(int_array)
         
-        ! Read number of nonPN bins
+        ! Read number of user bins
         read(UNIT_STATE) temp(1)
       end do TALLY_METADATA
 

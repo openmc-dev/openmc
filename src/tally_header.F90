@@ -103,7 +103,7 @@ module tally_header
     integer              :: n_score_bins = 0
     integer, allocatable :: score_bins(:)
     integer, allocatable :: scatt_order(:)
-    integer              :: n_nonPN_score_bins = 0
+    integer              :: n_user_score_bins = 0
 
     ! Results for each bin -- the first dimension of the array is for scores
     ! (e.g. flux, total reaction rate, fission reaction rate, etc.) and the

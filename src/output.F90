@@ -781,7 +781,7 @@ contains
     ! Write score bins
     string   = ""
     j = 0
-    do i = 1, t % n_nonPN_score_bins
+    do i = 1, t % n_user_score_bins
       j = j + 1
       select case (t % score_bins(j))
       case (SCORE_FLUX)
@@ -1417,7 +1417,7 @@ contains
     integer :: j            ! level in tally hierarchy
     integer :: k            ! loop index for scoring bins
     integer :: n            ! loop index for nuclides
-    integer :: l            ! loop index for nonPN scores
+    integer :: l            ! loop index for user scores
     integer :: type         ! type of tally filter        
     integer :: indent       ! number of spaces to preceed output
     integer :: filter_index ! index in results array for filters
@@ -1595,7 +1595,7 @@ contains
 
           indent = indent + 2
           k = 0
-          do l = 1, t % n_nonPN_score_bins
+          do l = 1, t % n_user_score_bins
             k = k + 1
             score_index = score_index + 1
             if (t % score_bins(k) == SCORE_SCATTER_N) then

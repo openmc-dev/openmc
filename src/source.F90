@@ -214,6 +214,7 @@ contains
     p % last_material = NONE
     p % wgt           = ONE
     p % last_wgt      = ONE
+    p % absorb_wgt    = ZERO
     p % n_bank        = 0
     p % wgt_bank      = ZERO
     p % n_collision   = 0

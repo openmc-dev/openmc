@@ -1623,7 +1623,11 @@ contains
               end do
               k = k + n_order - 1
             else
-              score_name = score_names(abs(t % score_bins(k)))
+              if (t % score_bins(k) > 0) then
+                score_name = reaction_name(t % score_bins(k))
+              else
+                score_name = score_names(abs(t % score_bins(k)))
+              end if
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                 repeat(" ", indent), score_name, &
                 to_str(t % results(score_index,filter_index) % sum), &

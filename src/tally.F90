@@ -337,8 +337,12 @@ contains
             score = ONE
 
           case default
-            message = "Invalid score type on tally " // to_str(t % id) // "."
-            call fatal_error()
+            ! Any other score is assumed to be a MT number. Thus, we just need
+            ! to check if it matches the MT number of the event
+            if (p % event_MT /= score_bin) cycle SCORE_LOOP
+
+            score = last_wgt
+
           end select
 
           ! Add score to tally

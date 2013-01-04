@@ -1221,6 +1221,7 @@ contains
     integer :: n_scores      ! number of tot scores after adjusting for Pn tally
     integer :: n_order       ! Scattering order requested
     integer :: n_order_pos   ! Position of Scattering order in score name string
+    integer :: MT            ! user-specified MT for score
     logical :: file_exists   ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
@@ -1908,9 +1909,29 @@ contains
             t % score_bins(j) = SCORE_EVENTS
 
           case default
-            message = "Unknown scoring function: " // &
-                 trim(tally_(i) % scores(j))
-            call fatal_error()
+            ! Assume that user has specified an MT number
+            MT = str_to_int(score_name)
+
+            if (MT /= ERROR_INT) then
+              ! Specified score was an integer
+              if (MT > 1) then
+                t % score_bins(j) = MT
+
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
+              else
+                message = "Invalid MT on <scores>: " // &
+                     trim(tally_(i) % scores(j))
+                call fatal_error()
+              end if
+
+            else
+              ! Specified score was not an integer
+              message = "Unknown scoring function: " // &
+                   trim(tally_(i) % scores(j))
+              call fatal_error()
+            end if
+
           end select
         end do
         t % n_score_bins = n_scores

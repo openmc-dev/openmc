@@ -34,6 +34,9 @@ contains
 
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
+    integer :: n                    ! loop index for scattering order
+    integer :: l                    ! scoring bin loop index, allowing for changing 
+                                    ! position during the loop
     integer :: filter_index         ! single index for single bin
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: i_nuclide            ! index in nuclides array
@@ -119,7 +122,9 @@ contains
         end if
 
         ! Determine score for each bin
-        SCORE_LOOP: do j = 1, t % n_score_bins
+        j = 0
+        SCORE_LOOP: do l = 1, t % n_user_score_bins
+          j = j + 1
           ! determine what type of score bin
           score_bin = t % score_bins(j)
 
@@ -166,52 +171,41 @@ contains
             ! reaction with neutrons in the exit channel
 
             score = wgt
-
-          case (SCORE_SCATTER_1)
+            
+          case (SCORE_SCATTER_N)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
-            ! The first scattering moment can be determined by using the
-            ! rate of scattering reactions multiplied by the cosine of the
-            ! change in neutron's angle due to the collision
+            ! Find the scattering order for a singly requested moment, and
+            ! store its moment contribution.
 
-            score = last_wgt * mu
+            if (t % scatt_order(j) == 1) then
+              score = last_wgt * mu ! avoid function call overhead
+            else
+              score = last_wgt * calc_pn(t % scatt_order(j), mu)
+            endif
 
-          case (SCORE_SCATTER_2)
+          case (SCORE_SCATTER_PN)
             ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
+            if (p % event /= EVENT_SCATTER) then
+              j = j + t % scatt_order(j)
+              cycle SCORE_LOOP
+            end if
+            score_index = score_index - 1
+            ! Find the scattering order for a collection of requested moments
+            ! and store the moment contribution of each
+            do n = 0, t % scatt_order(j)
+              ! determine scoring bin index
+              score_index = score_index + 1
+              ! get the score and tally it
+              score = last_wgt * calc_pn(n, mu)
+              
+              t % results(score_index, filter_index) % value = &
+                t % results(score_index, filter_index) % value + score
+            end do
+            j = j + t % scatt_order(j)
+            cycle SCORE_LOOP
 
-            ! The second scattering moment can be determined in a similar
-            ! manner to the first scattering moment
-
-            score = last_wgt * calc_pn(2, mu)
-
-          case (SCORE_SCATTER_3)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! The third scattering moment can be determined in a similar
-            ! manner to the first scattering moment
-
-            score = last_wgt * calc_pn(3, mu)
-
-          case (SCORE_SCATTER_4)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! The fourth scattering moment can be determined in a similar
-            ! manner to the first scattering moment
-
-            score = last_wgt * calc_pn(4, mu)
-
-          case (SCORE_SCATTER_5)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! The fifth scattering moment can be determined in a similar
-            ! manner to the first scattering moment
-
-            score = last_wgt * calc_pn(5, mu)
           case (SCORE_TRANSPORT)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP

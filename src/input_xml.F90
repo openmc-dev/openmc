@@ -1208,6 +1208,7 @@ contains
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
     integer :: k             ! another loop index
+    integer :: l             ! another loop index
     integer :: i_analog      ! index in analog_tallies array
     integer :: i_tracklength ! index in tracklength_tallies array
     integer :: i_current     ! index in current_tallies array
@@ -1216,9 +1217,14 @@ contains
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filters     ! number of filters
+    integer :: n_new         ! number of new scores to add based on Pn tally
+    integer :: n_scores      ! number of tot scores after adjusting for Pn tally
+    integer :: n_order       ! Scattering order requested
+    integer :: n_order_pos   ! Position of Scattering order in score name string
     logical :: file_exists   ! does tallies.xml file exist?
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
+    character(MAX_WORD_LEN) :: score_name
     type(ListKeyValueCI), pointer :: key_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
@@ -1685,11 +1691,78 @@ contains
       ! READ DATA FOR SCORES
 
       if (associated(tally_(i) % scores)) then
+        ! Loop through scores and determine if a scatter-p# input was used
+        ! to allow for proper pre-allocating of t % score_bins
+        ! This scheme allows multiple scatter-p# to be requested by the user
+        ! if so desired
         n_words = size(tally_(i) % scores)
-        allocate(t % score_bins(n_words))
+        n_new = 0
         do j = 1, n_words
           call lower_case(tally_(i) % scores(j))
-          select case (tally_(i) % scores(j))
+          ! Find if scores(j) is of the form 'scatter-p'
+          ! If so, get the number and do a select case on that.
+          score_name = tally_(i) % scores(j)
+          if (starts_with(score_name,'scatter-p')) then
+            n_order_pos = scan(score_name,'0123456789')
+            n_order = int(str_to_int( &
+              score_name(n_order_pos:(len_trim(score_name)))),4)
+            if (n_order > SCATT_ORDER_MAX) then
+              ! Throw a warning. Set to the maximum number.
+              ! The above scheme will essentially take the absolute value
+              message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                " requested. Setting to the maximum permissible value, " // &
+                trim(to_str(SCATT_ORDER_MAX))
+              call warning()
+              n_order = SCATT_ORDER_MAX
+              tally_(i) % scores(j) = SCATT_ORDER_MAX_PNSTR
+            end if
+            n_new = n_new + n_order
+          end if
+        end do
+        n_scores = n_words + n_new
+        
+        ! Allocate accordingly
+        allocate(t % score_bins(n_scores))
+        allocate(t % scatt_order(n_scores))
+        t % scatt_order = 0
+        j = 0
+        do l = 1, n_words
+          j = j + 1
+          ! Get the input string in scores(l) but if scatter-n or scatter-pn
+          ! then strip off the n, and store it as an integer to be used later
+          ! Peform the select case on this modified (number removed) string
+          score_name = tally_(i) % scores(l)
+          if (starts_with(score_name,'scatter-p')) then
+            n_order_pos = scan(score_name,'0123456789')
+            n_order = int(str_to_int( &
+              score_name(n_order_pos:(len_trim(score_name)))),4)
+            if (n_order > SCATT_ORDER_MAX) then
+              ! Throw a warning. Set to the maximum number.
+              ! The above scheme will essentially take the absolute value
+              message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                " requested. Setting to the maximum permissible value, " // &
+                trim(to_str(SCATT_ORDER_MAX))
+              call warning()
+              n_order = SCATT_ORDER_MAX
+            end if
+            score_name = "scatter-pn"
+          else if (starts_with(score_name,'scatter-')) then
+            n_order_pos = scan(score_name,'0123456789')
+            n_order = int(str_to_int( &
+              score_name(n_order_pos:(len_trim(score_name)))),4)
+            if (n_order > SCATT_ORDER_MAX) then
+              ! Throw a warning. Set to the maximum number.
+              ! The above scheme will essentially take the absolute value
+              message = "Invalid scattering order of " // trim(to_str(n_order)) // &
+                " requested. Setting to the maximum permissible value, " // &
+                trim(to_str(SCATT_ORDER_MAX))
+              call warning()
+              n_order = SCATT_ORDER_MAX
+            end if
+            score_name = "scatter-n"
+          end if
+          
+          select case (score_name)
           case ('flux')
             ! Prohibit user from tallying flux for an individual nuclide
             if (.not. (t % n_nuclide_bins == 1 .and. &
@@ -1717,33 +1790,23 @@ contains
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
-          case ('scatter-0') !does the same as 'scatter', for convenience
-            t % score_bins(j) = SCORE_SCATTER
-          case ('scatter-1')
-            t % score_bins(j) = SCORE_SCATTER_1
-
-            ! Set tally estimator to analog
+          case ('scatter-n')
+            if (n_order == 0) then
+              t % score_bins(j) = SCORE_SCATTER
+            else
+              t % score_bins(j) = SCORE_SCATTER_N
+              ! Set tally estimator to analog
+              t % estimator = ESTIMATOR_ANALOG
+            end if
+            t % scatt_order(j) = n_order
+            
+          case ('scatter-pn')
             t % estimator = ESTIMATOR_ANALOG
-          case ('scatter-2')
-            t % score_bins(j) = SCORE_SCATTER_2
-
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
-          case ('scatter-3')
-            t % score_bins(j) = SCORE_SCATTER_3
-
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
-          case ('scatter-4')
-            t % score_bins(j) = SCORE_SCATTER_4
-
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
-          case ('scatter-5')
-            t % score_bins(j) = SCORE_SCATTER_5
-
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
+            ! Setup P0:Pn
+            t % score_bins(j : j + n_order) = SCORE_SCATTER_PN
+            t % scatt_order(j : j + n_order) = n_order
+            j = j + n_order
+            
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT
 
@@ -1850,7 +1913,8 @@ contains
             call fatal_error()
           end select
         end do
-        t % n_score_bins = n_words
+        t % n_score_bins = n_scores
+        t % n_user_score_bins = n_words
       else
         message = "No <scores> specified on tally " // trim(to_str(t % id)) &
              // "."

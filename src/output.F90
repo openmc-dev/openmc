@@ -633,7 +633,9 @@ contains
     integer :: j     ! index in filters array
     integer :: id    ! user-specified id
     integer :: unit_ ! unit to write to
+    integer :: n     ! scattering order to include in name
     character(MAX_LINE_LEN) :: string
+    character(MAX_WORD_LEN) :: pn_string
     type(Cell),           pointer :: c => null()
     type(Surface),        pointer :: s => null()
     type(Universe),       pointer :: u => null()
@@ -777,9 +779,11 @@ contains
 
 
     ! Write score bins
-    string = ""
-    do i = 1, t % n_score_bins
-      select case (t % score_bins(i))
+    string   = ""
+    j = 0
+    do i = 1, t % n_user_score_bins
+      j = j + 1
+      select case (t % score_bins(j))
       case (SCORE_FLUX)
         string = trim(string) // ' flux'
       case (SCORE_TOTAL)
@@ -788,16 +792,17 @@ contains
         string = trim(string) // ' scatter'
       case (SCORE_NU_SCATTER)
         string = trim(string) // ' nu-scatter'
-      case (SCORE_SCATTER_1)
-        string = trim(string) // ' scatter-1'
-      case (SCORE_SCATTER_2)
-        string = trim(string) // ' scatter-2'
-      case (SCORE_SCATTER_3)
-        string = trim(string) // ' scatter-3'
-      case (SCORE_SCATTER_4)
-        string = trim(string) // ' scatter-4'
-      case (SCORE_SCATTER_5)
-        string = trim(string) // ' scatter-5'
+      case (SCORE_SCATTER_N)
+        pn_string = ' scatter-' // trim(to_str(t % scatt_order(j)))
+        string = trim(string) // pn_string
+      case (SCORE_SCATTER_PN)
+        pn_string = ' scatter'
+        string = trim(string) // pn_string
+        do n = 1, t % scatt_order(j)
+          pn_string = ' scatter-' // trim(to_str(n))
+          string = trim(string) // pn_string
+        end do
+        j = j + n - 1
       case (SCORE_TRANSPORT)
         string = trim(string) // ' transport'
       case (SCORE_DIFFUSION)
@@ -1410,17 +1415,21 @@ contains
     integer :: j            ! level in tally hierarchy
     integer :: k            ! loop index for scoring bins
     integer :: n            ! loop index for nuclides
+    integer :: l            ! loop index for user scores
     integer :: type         ! type of tally filter        
     integer :: indent       ! number of spaces to preceed output
     integer :: filter_index ! index in results array for filters
     integer :: score_index  ! scoring bin index
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_listing    ! index in xs_listings array
+    integer :: n_order      ! loop index for scattering orders
     real(8) :: t_value      ! t-values for confidence intervals
     real(8) :: alpha        ! significance level for CI
     character(MAX_FILE_LEN) :: filename                    ! name of output file
     character(15)           :: filter_name(N_FILTER_TYPES) ! names of tally filters
-    character(27)           :: score_name(N_SCORE_TYPES)   ! names of scoring function
+    character(27)           :: score_names(N_SCORE_TYPES)  ! names of scoring function
+    character(27)           :: score_name                  ! names of scoring function
+                                                           ! to be applied at write-time
     type(TallyObject), pointer :: t
 
     ! Skip if there are no tallies
@@ -1437,25 +1446,22 @@ contains
     filter_name(FILTER_ENERGYOUT) = "Outgoing Energy"
 
     ! Initialize names for scores
-    score_name(abs(SCORE_FLUX))       = "Flux"
-    score_name(abs(SCORE_TOTAL))      = "Total Reaction Rate"
-    score_name(abs(SCORE_SCATTER))    = "Scattering Rate"
-    score_name(abs(SCORE_NU_SCATTER)) = "Scattering Production Rate"
-    score_name(abs(SCORE_SCATTER_1))  = "First Scattering Moment"
-    score_name(abs(SCORE_SCATTER_2))  = "Second Scattering Moment"
-    score_name(abs(SCORE_SCATTER_3))  = "Third Scattering Moment"
-    score_name(abs(SCORE_SCATTER_4))  = "Fourth Scattering Moment"
-    score_name(abs(SCORE_SCATTER_5))  = "Fifth Scattering Moment"
-    score_name(abs(SCORE_TRANSPORT))  = "Transport Rate"
-    score_name(abs(SCORE_DIFFUSION))  = "Diffusion Coefficient"
-    score_name(abs(SCORE_N_1N))       = "(n,1n) Rate"
-    score_name(abs(SCORE_N_2N))       = "(n,2n) Rate"
-    score_name(abs(SCORE_N_3N))       = "(n,3n) Rate"
-    score_name(abs(SCORE_N_4N))       = "(n,4n) Rate"
-    score_name(abs(SCORE_ABSORPTION)) = "Absorption Rate"
-    score_name(abs(SCORE_FISSION))    = "Fission Rate"
-    score_name(abs(SCORE_NU_FISSION)) = "Nu-Fission Rate"
-    score_name(abs(SCORE_EVENTS))     = "Events"
+    score_names(abs(SCORE_FLUX))       = "Flux"
+    score_names(abs(SCORE_TOTAL))      = "Total Reaction Rate"
+    score_names(abs(SCORE_SCATTER))    = "Scattering Rate"
+    score_names(abs(SCORE_NU_SCATTER)) = "Scattering Production Rate"
+    score_names(abs(SCORE_SCATTER_N))  = ""
+    score_names(abs(SCORE_SCATTER_PN)) = ""
+    score_names(abs(SCORE_TRANSPORT))  = "Transport Rate"
+    score_names(abs(SCORE_DIFFUSION))  = "Diffusion Coefficient"
+    score_names(abs(SCORE_N_1N))       = "(n,1n) Rate"
+    score_names(abs(SCORE_N_2N))       = "(n,2n) Rate"
+    score_names(abs(SCORE_N_3N))       = "(n,3n) Rate"
+    score_names(abs(SCORE_N_4N))       = "(n,4n) Rate"
+    score_names(abs(SCORE_ABSORPTION)) = "Absorption Rate"
+    score_names(abs(SCORE_FISSION))    = "Fission Rate"
+    score_names(abs(SCORE_NU_FISSION)) = "Nu-Fission Rate"
+    score_names(abs(SCORE_EVENTS))     = "Events"
 
     ! Create filename for tally output
     if (run_mode == MODE_TALLIES) then
@@ -1585,12 +1591,44 @@ contains
           end if
 
           indent = indent + 2
-          do k = 1, t % n_score_bins
+          k = 0
+          do l = 1, t % n_user_score_bins
+            k = k + 1
             score_index = score_index + 1
-            write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
-                 repeat(" ", indent), score_name(abs(t % score_bins(k))), &
-                 to_str(t % results(score_index,filter_index) % sum), &
-                 trim(to_str(t % results(score_index,filter_index) % sum_sq))
+            if (t % score_bins(k) == SCORE_SCATTER_N) then
+              if (t % scatt_order(k) == 0) then
+                score_name = "Scattering Rate"
+              else
+                score_name = 'P' // trim(to_str(t % scatt_order(k))) // &
+                  ' Scattering Moment'
+              end if
+              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+                repeat(" ", indent), score_name, &
+                to_str(t % results(score_index,filter_index) % sum), &
+                trim(to_str(t % results(score_index,filter_index) % sum_sq))
+            else if (t % score_bins(k) == SCORE_SCATTER_PN) then
+              score_name = "Scattering Rate"
+              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+                repeat(" ", indent), score_name, &
+                to_str(t % results(score_index,filter_index) % sum), &
+                trim(to_str(t % results(score_index,filter_index) % sum_sq))
+              do n_order = 1, t % scatt_order(k)
+                score_index = score_index + 1
+                score_name = 'P' // trim(to_str(n_order)) // &
+                  ' Scattering Moment'
+                write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+                  repeat(" ", indent), score_name, &
+                  to_str(t % results(score_index,filter_index) % sum), &
+                  trim(to_str(t % results(score_index,filter_index) % sum_sq))
+              end do
+              k = k + n_order - 1
+            else
+              score_name = score_names(abs(t % score_bins(k)))
+              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+                repeat(" ", indent), score_name, &
+                to_str(t % results(score_index,filter_index) % sum), &
+                trim(to_str(t % results(score_index,filter_index) % sum_sq))
+            end if
           end do
           indent = indent - 2
 

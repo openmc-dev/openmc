@@ -193,14 +193,12 @@ contains
               score_index = score_index + 1
               ! get the score and tally it
               score = last_wgt * calc_pn(n, mu)
-              ! Do not do if its the last time through, the scores += at
-              ! the end of this select case will handle that one.
-              if (n < t % scatt_order(j)) then
-                t % results(score_index, filter_index) % value = &
-                  t % results(score_index, filter_index) % value + score
-              end if
+              
+              t % results(score_index, filter_index) % value = &
+                t % results(score_index, filter_index) % value + score
             end do
             j = j + t % scatt_order(j)
+            cycle SCORE_LOOP
 
           case (SCORE_TRANSPORT)
             ! Skip any event where the particle didn't scatter

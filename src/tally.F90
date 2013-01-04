@@ -246,33 +246,18 @@ contains
             score = last_wgt
 
           case (SCORE_N_2N)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! Skip any scattering events where the weight didn't double
-            if (nint(wgt/last_wgt) /= 2) cycle SCORE_LOOP
-
-            ! All events that reach this point are (n,2n) reactions
+            ! Skip any event that is not (n,2n)
+            if (p % event_MT /= N_2N) cycle SCORE_LOOP
             score = last_wgt
 
           case (SCORE_N_3N)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! Skip any scattering events where the weight didn't double
-            if (nint(wgt/last_wgt) /= 3) cycle SCORE_LOOP
-
-            ! All events that reach this point are (n,3n) reactions
+            ! Skip any event that is not (n,3n)
+            if (p % event_MT /= N_3N) cycle SCORE_LOOP
             score = last_wgt
 
           case (SCORE_N_4N)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! Skip any scattering events where the weight didn't double
-            if (nint(wgt/last_wgt) /= 4) cycle SCORE_LOOP
-
-            ! All events that reach this point are (n,3n) reactions
+            ! Skip any event that is not (n,4n)
+            if (p % event /= N_4N) cycle SCORE_LOOP
             score = last_wgt
 
           case (SCORE_ABSORPTION)

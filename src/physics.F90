@@ -201,17 +201,9 @@ contains
 
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
-      select case (p % event)
-      case (EVENT_SCATTER)
-        message = "    Scattered off of"
-      case (EVENT_FISSION)
-        message = "    Fissioned in"
-      case (EVENT_ABSORB)
-        message = "    Absorbed in"
-      end select
-      message = trim(message) // " " // trim(nuclides(&
-           p % event_nuclide) % name) // ". Energy = " // &
-           trim(to_str(p % E * 1e6_8)) // " eV." 
+      message = "    " // trim(reaction_name(p % event_MT)) // " with " // &
+           trim(adjustl(nuclides(p % event_nuclide) % name)) // &
+           ". Energy = " // trim(to_str(p % E * 1e6_8)) // " eV." 
       call write_message()
     end if
 
@@ -318,6 +310,7 @@ contains
       if (prob > cutoff) then
         p % alive = .false.
         p % event = EVENT_ABSORB
+        p % event_MT = N_DISAPPEAR
         return
       end if
     end if
@@ -353,6 +346,7 @@ contains
           if (.not. survival_biasing) then
             p % alive = .false.
             p % event = EVENT_FISSION
+            p % event_MT = rxn % MT
             return
           end if
         end if
@@ -389,6 +383,7 @@ contains
               ! its life is over
               p % alive = .false.
               p % event = EVENT_FISSION
+              p % event_MT = rxn % MT
               return
             end if
           end if
@@ -437,8 +432,9 @@ contains
 
         ! Perform collision physics for elastic scattering
         call elastic_scatter(i_nuclide, rxn)
-
       end if
+
+      p % event_MT = ELASTIC
 
     else
       ! =======================================================================
@@ -479,6 +475,7 @@ contains
 
       ! Perform collision physics for inelastics scattering
       call inelastic_scatter(nuc, rxn)
+      p % event_MT = rxn % MT
 
     end if
 

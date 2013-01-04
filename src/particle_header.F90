@@ -58,6 +58,7 @@ module particle_header
     ! What event last took place
     integer    :: event         ! scatter, absorption, fission
     integer    :: event_nuclide ! index in nuclides array
+    integer    :: event_MT      ! reaction MT
 
     ! Post-collision physical data
     integer    :: n_bank        ! number of fission sites banked

@@ -222,10 +222,9 @@ contains
       call warning()
     end if
 
-    ! Score collision estimator tallies for any macro tallies -- this is done
-    ! after a collision has occurred rather than before because we need
-    ! information on the outgoing energy for any tallies with an outgoing energy
-    ! filter
+    ! Score collision estimator tallies -- this is done after a collision has
+    ! occurred rather than before because we need information on the outgoing
+    ! energy for any tallies with an outgoing energy filter
 
     if (associated(active_analog_tallies)) &
          call score_analog_tally()

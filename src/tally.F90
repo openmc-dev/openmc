@@ -144,7 +144,13 @@ contains
             ! use the weight of the particle entering the collision as the
             ! score
 
-            score = last_wgt
+            if (survival_biasing) then
+              ! We need to account for the fact that some weight was already
+              ! absorbed
+              score = last_wgt + p % absorb_wgt
+            else
+              score = last_wgt
+            end if
 
           case (SCORE_SCATTER)
             ! Skip any event where the particle didn't scatter
@@ -240,78 +246,90 @@ contains
             score = last_wgt
 
           case (SCORE_N_2N)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! Skip any scattering events where the weight didn't double
-            if (nint(wgt/last_wgt) /= 2) cycle SCORE_LOOP
-
-            ! All events that reach this point are (n,2n) reactions
+            ! Skip any event that is not (n,2n)
+            if (p % event_MT /= N_2N) cycle SCORE_LOOP
             score = last_wgt
 
           case (SCORE_N_3N)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! Skip any scattering events where the weight didn't double
-            if (nint(wgt/last_wgt) /= 3) cycle SCORE_LOOP
-
-            ! All events that reach this point are (n,3n) reactions
+            ! Skip any event that is not (n,3n)
+            if (p % event_MT /= N_3N) cycle SCORE_LOOP
             score = last_wgt
 
           case (SCORE_N_4N)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! Skip any scattering events where the weight didn't double
-            if (nint(wgt/last_wgt) /= 4) cycle SCORE_LOOP
-
-            ! All events that reach this point are (n,3n) reactions
+            ! Skip any event that is not (n,4n)
+            if (p % event /= N_4N) cycle SCORE_LOOP
             score = last_wgt
 
           case (SCORE_ABSORPTION)
-            ! Skip any event where the particle wasn't absorbed
-            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
+            if (survival_biasing) then
+              ! No absorption events actually occur if survival biasing is on --
+              ! just use weight absorbed in survival biasing
 
-            ! All fission and absorption events will contribute here, so we
-            ! can just use the particle's weight entering the collision
-
-            score = last_wgt
-
-          case (SCORE_FISSION)
-            ! Skip any non-fission events
-            if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
-
-            ! All fission events will contribute, so again we can use
-            ! particle's weight entering the collision as the estimate for
-            ! the fission reaction rate
-
-            score = last_wgt
-
-          case (SCORE_NU_FISSION)
-            ! Skip any non-fission events
-            if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
-
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              ! Normally, we only need to make contributions to one scoring
-              ! bin. However, in the case of fission, since multiple
-              ! fission neutrons were emitted with different energies,
-              ! multiple outgoing energy bins may have been scored to. The
-              ! following logic treats this special case and results to
-              ! multiple bins
-
-              call score_fission_eout(t, score_index)
-              cycle SCORE_LOOP
+              score = p % absorb_wgt
 
             else
-              ! If there is no outgoing energy filter, than we only need to
-              ! score to one bin. For the score to be 'analog', we need to
-              ! score the number of particles that were banked in the
-              ! fission bank. Since this was weighted by 1/keff, we
-              ! multiply by keff to get the proper score.
+              ! Skip any event where the particle wasn't absorbed
+              if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
 
-              score = keff * p % wgt_bank
+              ! All fission and absorption events will contribute here, so we
+              ! can just use the particle's weight entering the collision
 
+              score = last_wgt
+            end if
+
+          case (SCORE_FISSION)
+            if (survival_biasing) then
+              ! No fission events occur if survival biasing is on -- need to
+              ! calculate fraction of absorptions that would have resulted in
+              ! fission
+
+              score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission / &
+                   micro_xs(p % event_nuclide) % absorption
+
+            else
+              ! Skip any non-fission events
+              if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
+
+              ! All fission events will contribute, so again we can use
+              ! particle's weight entering the collision as the estimate for the
+              ! fission reaction rate
+
+              score = last_wgt
+            end if
+
+          case (SCORE_NU_FISSION)
+            if (survival_biasing) then
+              ! No fission events occur if survival biasing is on -- need to
+              ! calculate fraction of absorptions that would have resulted in
+              ! nu-fission
+
+              score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
+                   nu_fission / micro_xs(p % event_nuclide) % absorption
+
+            else
+              ! Skip any non-fission events
+              if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
+
+              if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+                ! Normally, we only need to make contributions to one scoring
+                ! bin. However, in the case of fission, since multiple fission
+                ! neutrons were emitted with different energies, multiple
+                ! outgoing energy bins may have been scored to. The following
+                ! logic treats this special case and results to multiple bins
+
+                call score_fission_eout(t, score_index)
+                cycle SCORE_LOOP
+
+              else
+                ! If there is no outgoing energy filter, than we only need to
+                ! score to one bin. For the score to be 'analog', we need to
+                ! score the number of particles that were banked in the fission
+                ! bank. Since this was weighted by 1/keff, we multiply by keff
+                ! to get the proper score.
+
+                score = keff * p % wgt_bank
+
+              end if
             end if
           
           case (SCORE_K_FISSION)

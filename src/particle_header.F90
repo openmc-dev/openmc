@@ -51,12 +51,14 @@ module particle_header
 
     ! Pre-collision physical data
     real(8)    :: last_xyz(3)   ! previous coordinates
-    real(8)    :: last_wgt      ! last particle weight
-    real(8)    :: last_E        ! last energy
+    real(8)    :: last_wgt      ! pre-collision particle weight
+    real(8)    :: last_E        ! pre-collision energy
+    real(8)    :: absorb_wgt    ! weight absorbed for survival biasing
 
     ! What event last took place
     integer    :: event         ! scatter, absorption, fission
     integer    :: event_nuclide ! index in nuclides array
+    integer    :: event_MT      ! reaction MT
 
     ! Post-collision physical data
     integer    :: n_bank        ! number of fission sites banked

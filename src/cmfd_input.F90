@@ -391,6 +391,8 @@ contains
         ! allocate scoring bins 
         allocate(t % score_bins(4))
         t % n_score_bins = 4
+        t % n_user_score_bins = 4
+
         ! allocate scattering order data
         allocate(t % scatt_order(4))
         t % scatt_order = 0
@@ -439,6 +441,8 @@ contains
         ! allocate macro reactions
         allocate(t % score_bins(2))
         t % n_score_bins = 2
+        t % n_user_score_bins = 2
+
         ! allocate scattering order data
         allocate(t % scatt_order(2))
         t % scatt_order = 0
@@ -483,6 +487,8 @@ contains
         ! allocate macro reactions
         allocate(t % score_bins(1))
         t % n_score_bins = 1
+        t % n_user_score_bins = 1
+
         ! allocate scattering order data
         allocate(t % scatt_order(1))
         t % scatt_order = 0

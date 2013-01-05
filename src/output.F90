@@ -809,12 +809,6 @@ contains
         string = trim(string) // ' diffusion'
       case (SCORE_N_1N)
         string = trim(string) // ' n1n'
-      case (SCORE_N_2N)
-        string = trim(string) // ' n2n'
-      case (SCORE_N_3N)
-        string = trim(string) // ' n3n'
-      case (SCORE_N_4N)
-        string = trim(string) // ' n4n'
       case (SCORE_ABSORPTION)
         string = trim(string) // ' absorption'
       case (SCORE_FISSION)
@@ -1455,9 +1449,6 @@ contains
     score_names(abs(SCORE_TRANSPORT))  = "Transport Rate"
     score_names(abs(SCORE_DIFFUSION))  = "Diffusion Coefficient"
     score_names(abs(SCORE_N_1N))       = "(n,1n) Rate"
-    score_names(abs(SCORE_N_2N))       = "(n,2n) Rate"
-    score_names(abs(SCORE_N_3N))       = "(n,3n) Rate"
-    score_names(abs(SCORE_N_4N))       = "(n,4n) Rate"
     score_names(abs(SCORE_ABSORPTION)) = "Absorption Rate"
     score_names(abs(SCORE_FISSION))    = "Fission Rate"
     score_names(abs(SCORE_NU_FISSION)) = "Nu-Fission Rate"

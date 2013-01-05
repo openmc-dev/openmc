@@ -18,7 +18,7 @@ contains
     case (TOTAL_XS)
       string = '(n,total)'
     case (ELASTIC)
-      string = '(elastic)'
+      string = '(n,elastic)'
     case (N_LEVEL)
       string = '(n,level)'
     case (N_2ND)
@@ -75,6 +75,8 @@ contains
       string = '(n,n' // trim(to_str(MT-50)) // ')'
     case (N_NC)
       string = '(n,nc)'
+    case (N_DISAPPEAR)
+      string = '(n,disappear)'
     case (N_GAMMA)
       string = '(n,gamma)'
     case (N_P)

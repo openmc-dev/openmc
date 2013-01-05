@@ -201,17 +201,9 @@ contains
 
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
-      select case (p % event)
-      case (EVENT_SCATTER)
-        message = "    Scattered off of"
-      case (EVENT_FISSION)
-        message = "    Fissioned in"
-      case (EVENT_ABSORB)
-        message = "    Absorbed in"
-      end select
-      message = trim(message) // " " // trim(nuclides(&
-           p % event_nuclide) % name) // ". Energy = " // &
-           trim(to_str(p % E * 1e6_8)) // " eV." 
+      message = "    " // trim(reaction_name(p % event_MT)) // " with " // &
+           trim(adjustl(nuclides(p % event_nuclide) % name)) // &
+           ". Energy = " // trim(to_str(p % E * 1e6_8)) // " eV." 
       call write_message()
     end if
 
@@ -222,10 +214,9 @@ contains
       call warning()
     end if
 
-    ! Score collision estimator tallies for any macro tallies -- this is done
-    ! after a collision has occurred rather than before because we need
-    ! information on the outgoing energy for any tallies with an outgoing energy
-    ! filter
+    ! Score collision estimator tallies -- this is done after a collision has
+    ! occurred rather than before because we need information on the outgoing
+    ! energy for any tallies with an outgoing energy filter
 
     if (associated(active_analog_tallies)) &
          call score_analog_tally()
@@ -298,9 +289,13 @@ contains
     ! DISAPPEARANCE REACTIONS (ANALOG) OR IMPLICIT CAPTURE (SURVIVAL BIASING)
 
     if (survival_biasing) then
-      ! adjust weight of particle by probability of absorption
-      p % wgt = p % wgt * (ONE - micro_xs(i_nuclide) % absorption / &
-           micro_xs(i_nuclide) % total)
+      ! Determine weight absorbed in survival biasing
+      p % absorb_wgt = p % wgt * micro_xs(i_nuclide) % absorption / &
+           micro_xs(i_nuclide) % total
+
+      ! Adjust weight of particle by probability of absorption
+      p % wgt = p % wgt - p % absorb_wgt
+      p % last_wgt = p % wgt
 
     else
       ! set cutoff variable for analog cases
@@ -315,6 +310,7 @@ contains
       if (prob > cutoff) then
         p % alive = .false.
         p % event = EVENT_ABSORB
+        p % event_MT = N_DISAPPEAR
         return
       end if
     end if
@@ -350,6 +346,7 @@ contains
           if (.not. survival_biasing) then
             p % alive = .false.
             p % event = EVENT_FISSION
+            p % event_MT = rxn % MT
             return
           end if
         end if
@@ -386,6 +383,7 @@ contains
               ! its life is over
               p % alive = .false.
               p % event = EVENT_FISSION
+              p % event_MT = rxn % MT
               return
             end if
           end if
@@ -401,9 +399,11 @@ contains
       if (p % wgt < weight_cutoff) then
         if (prn() < p % wgt / weight_survive) then
           p % wgt = weight_survive
+          p % last_wgt = p % wgt
         else
           p % wgt = ZERO
           p % alive = .false.
+          return
         end if
       end if
 
@@ -434,8 +434,9 @@ contains
 
         ! Perform collision physics for elastic scattering
         call elastic_scatter(i_nuclide, rxn)
-
       end if
+
+      p % event_MT = ELASTIC
 
     else
       ! =======================================================================
@@ -476,6 +477,7 @@ contains
 
       ! Perform collision physics for inelastics scattering
       call inelastic_scatter(nuc, rxn)
+      p % event_MT = rxn % MT
 
     end if
 
@@ -892,9 +894,10 @@ contains
     end if
 
     ! Sample number of neutrons produced
-    if (survival_biasing) then 
-      nu_t = p % last_wgt * micro_xs(i_nuclide) % fission / (keff * &
-           micro_xs(i_nuclide) % total) * nu_t * weight
+    if (survival_biasing) then
+      ! Need to use the weight before survival biasing
+      nu_t = (p % wgt + p % absorb_wgt) * micro_xs(i_nuclide) % fission / &
+           (keff * micro_xs(i_nuclide) % total) * nu_t * weight
     else 
       nu_t = p % wgt / keff * nu_t * weight
     end if

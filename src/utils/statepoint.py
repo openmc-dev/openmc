@@ -12,9 +12,8 @@ filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
 
 score_types = {-1: 'flux', -2: 'total', -3: 'scatter', -4: 'nu-scatter', 
                -5: 'scatter-n', -6: 'scatter-pn', -7: 'transport',
-               -8: 'diffusion', -9: 'n1n', -10: 'n2n', -11: 'n3n', 
-               -12: 'n4n', -13: 'absorption', -14: 'fission',
-               -15: 'nu-fission', -16: 'current', -17: 'events'}
+               -8: 'diffusion', -9: 'n1n', -10: 'absorption', -11: 'fission',
+               -12: 'nu-fission', -13: 'current', -14: 'events'}
 
 class BinaryFile(object):
     def __init__(self, filename):

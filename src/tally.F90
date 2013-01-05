@@ -245,21 +245,6 @@ contains
             ! All events that reach this point are (n,1n) reactions
             score = last_wgt
 
-          case (SCORE_N_2N)
-            ! Skip any event that is not (n,2n)
-            if (p % event_MT /= N_2N) cycle SCORE_LOOP
-            score = last_wgt
-
-          case (SCORE_N_3N)
-            ! Skip any event that is not (n,3n)
-            if (p % event_MT /= N_3N) cycle SCORE_LOOP
-            score = last_wgt
-
-          case (SCORE_N_4N)
-            ! Skip any event that is not (n,4n)
-            if (p % event /= N_4N) cycle SCORE_LOOP
-            score = last_wgt
-
           case (SCORE_ABSORPTION)
             if (survival_biasing) then
               ! No absorption events actually occur if survival biasing is on --

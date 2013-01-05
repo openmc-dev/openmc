@@ -1824,17 +1824,17 @@ contains
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
           case ('n2n')
-            t % score_bins(j) = SCORE_N_2N
+            t % score_bins(j) = N_2N
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
           case ('n3n')
-            t % score_bins(j) = SCORE_N_3N
+            t % score_bins(j) = N_3N
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
           case ('n4n')
-            t % score_bins(j) = SCORE_N_4N
+            t % score_bins(j) = N_4N
 
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG

@@ -336,6 +336,7 @@ string.o: constants.o
 string.o: error.o
 string.o: global.o
 
+tally.o: ace_header.o
 tally.o: constants.o
 tally.o: datatypes_header.o
 tally.o: error.o

@@ -333,17 +333,26 @@ contains
             end if
           
           case (SCORE_K_FISSION)
-            ! Skip any non-fission events
-            if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
+            if (survival_biasing) then
+              ! No fission events occur if survival biasing is on -- need to
+              ! calculate fraction of absorptions that would have resulted in
+              ! fission and multiply by Q
 
-            ! All fission events will contribute, so again we can use
-            ! particle's weight entering the collision as the estimate for
-            ! the fission energy production rate
-            
-            n = nuclides(p % event_nuclide) % index_fission(1)
-            score = last_wgt * &
-              nuclides(p % event_nuclide) % reactions(n) % Q_value
+              score = p % absorb_wgt * micro_xs(p % event_nuclide) % k_fission / &
+                      micro_xs(p % event_nuclide) % absorption
+              
+            else
+              ! Skip any non-fission events
+              if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
 
+              ! All fission events will contribute, so again we can use
+              ! particle's weight entering the collision as the estimate for
+              ! the fission energy production rate
+              
+              n = nuclides(p % event_nuclide) % index_fission(1)
+              score = last_wgt * &
+                nuclides(p % event_nuclide) % reactions(n) % Q_value
+            end if
           case (SCORE_EVENTS)
             ! Simply count number of scoring events
             score = ONE

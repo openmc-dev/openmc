@@ -180,19 +180,10 @@ contains
            
       ! Calculate microscopic nuclide k-fission cross section
       ! The ENDF standard (ENDF-102) states that MT 18 stores
-      ! the fission energy as the Q_value, so this will be obtained from
-      ! the MT of index_fission(1); the standard is mute on
-      ! whether or not the other fission channels store their own
-      ! fission energy output; after inspection of the ACE files, all
-      ! nuclides observed with multiple fission channels have the same 
-      ! Q-value for all of them; therefore, this code just uses the first
-      ! fission reaction instead of storing the actual fission type which
-      ! occured.
+      ! the fission energy as the Q_value (fission(1))
       micro_xs(i_nuclide) % k_fission = &
            nuc % reactions(nuc % index_fission(1)) % Q_value * &
            micro_xs(i_nuclide) % fission
-           
-           
     end if
 
     ! If there is S(a,b) data for this nuclide, we need to do a few

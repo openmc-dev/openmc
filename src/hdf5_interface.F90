@@ -1022,9 +1022,17 @@ contains
       ! Write number of score bins
       call hdf5_write_integer(temp_group, "n_score_bins", &
            t % n_score_bins)
+
+      ! Write score bins and scattering order
       dims(1) = t % n_score_bins
       call h5ltmake_dataset_int_f(temp_group, "score_bins", 1, &
            dims, t % score_bins, hdf5_err)
+      call h5ltmake_dataset_int_f(temp_group, "scatt_order", 1, &
+           dims, t % scatt_order, hdf5_err)
+
+      ! Write number of user score bins
+      call hdf5_write_integer(temp_group, "n_user_score_bins", &
+           t % n_user_score_bins)
 
       ! Close tally group
       call h5gclose_f(temp_group, hdf5_err)

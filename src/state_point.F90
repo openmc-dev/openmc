@@ -255,6 +255,7 @@ contains
       write(UNIT_STATE) t % n_score_bins
       write(UNIT_STATE) t % score_bins
       write(UNIT_STATE) t % scatt_order
+
       ! Write number of user score bins
       write(UNIT_STATE) t % n_user_score_bins
     end do TALLY_METADATA

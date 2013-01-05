@@ -1,5 +1,6 @@
 module tally
 
+  use ace_header,    only: Reaction
   use constants
   use datatypes_header, only: ListInt
   use error,         only: fatal_error
@@ -423,10 +424,15 @@ contains
 
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
+    integer :: l                    ! loop index for nuclides in material
+    integer :: m                    ! loop index for reactions
     integer :: filter_index         ! single index for single bin
-    integer :: i_nuclide            ! index in nuclides array
+    integer :: i_nuclide            ! index in nuclides array (from bins)
+    integer :: i_nuc                ! index in nuclides array (from material)
+    integer :: i_energy             ! index in nuclide energy grid
     integer :: score_bin            ! scoring type, e.g. SCORE_FLUX
     integer :: score_index          ! scoring bin index
+    real(8) :: f                    ! interpolation factor
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: score                ! actual score (e.g., flux*xs)
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
@@ -434,6 +440,7 @@ contains
     type(TallyObject), pointer :: t => null()
     type(Material), pointer :: mat => null()
     type(ListInt), pointer :: curr_ptr => null()
+    type(Reaction), pointer :: rxn => null()
 
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
@@ -510,51 +517,164 @@ contains
             score_bin = t % score_bins(j)
 
             if (i_nuclide > 0) then
-              ! Determine macroscopic nuclide cross section 
+              ! ================================================================
+              ! DETERMINE NUCLIDE CROSS SECTION
+
               select case(score_bin)
               case (SCORE_TOTAL)
+                ! Total cross section is pre-calculated
                 score = micro_xs(i_nuclide) % total * &
                      atom_density * flux
+
               case (SCORE_SCATTER)
+                ! Scattering cross section is pre-calculated
                 score = (micro_xs(i_nuclide) % total - &
                      micro_xs(i_nuclide) % absorption) * &
                      atom_density * flux
+
               case (SCORE_ABSORPTION)
+                ! Absorption cross section is pre-calculated
                 score = micro_xs(i_nuclide) % absorption * &
                      atom_density * flux
+
               case (SCORE_FISSION)
+                ! Fission cross section is pre-calculated
                 score = micro_xs(i_nuclide) % fission * &
                      atom_density * flux
+
               case (SCORE_NU_FISSION)
+                ! Nu-fission cross section is pre-calculated
                 score = micro_xs(i_nuclide) % nu_fission * &
                      atom_density * flux
+
               case (SCORE_EVENTS)
+                ! For number of events, just score unity
                 score = ONE
+
               case default
-                message = "Invalid score type on tally " // to_str(t % id) // "."
-                call fatal_error()
+                ! Any other cross section has to be calculated on-the-fly. For
+                ! cross sections that are used often (e.g. n2n, ngamma, etc. for
+                ! depletion), it might make sense to optimize this section or
+                ! pre-calculate cross sections
+
+                if (score_bin > 1) then
+                  ! Set default score
+                  score = ZERO
+
+                  ! TODO: The following search for the matching reaction could
+                  ! be replaced by adding a dictionary on each Nuclide instance
+                  ! of the form {MT: i_reaction, ...}
+
+                  REACTION_LOOP: do m = 1, nuclides(i_nuclide) % n_reaction
+                    ! Get pointer to reaction
+                    rxn => nuclides(i_nuclide) % reactions(m)
+
+                    ! Check if this is the desired MT
+                    if (score_bin == rxn % MT) then
+                      ! Retrieve index on nuclide energy grid and interpolation
+                      ! factor
+                      i_energy = micro_xs(i_nuclide) % index_grid
+                      f = micro_xs(i_nuclide) % interp_factor
+
+                      if (i_energy >= rxn % threshold) then
+                        score = ((ONE - f) * rxn % sigma(i_energy - &
+                             rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                             rxn%threshold + 2)) * atom_density * flux
+                      end if
+
+                      exit REACTION_LOOP
+                    end if
+                  end do REACTION_LOOP
+
+                else
+                  message = "Invalid score type on tally " // to_str(t % id) // "."
+                  call fatal_error()
+                end if
               end select
 
             else
-              ! Determine macroscopic material cross section 
+              ! ================================================================
+              ! DETERMINE MATERIAL CROSS SECTION
+
               select case(score_bin)
               case (SCORE_FLUX)
+                ! For flux, we need no cross section
                 score = flux
+
               case (SCORE_TOTAL)
+                ! Total cross section is pre-calculated
                 score = material_xs % total * flux
+
               case (SCORE_SCATTER)
+                ! Scattering cross section is pre-calculated
                 score = (material_xs % total - material_xs % absorption) * flux
+
               case (SCORE_ABSORPTION)
+                ! Absorption cross section is pre-calculated
                 score = material_xs % absorption * flux
+
               case (SCORE_FISSION)
+                ! Fission cross section is pre-calculated
                 score = material_xs % fission * flux
+
               case (SCORE_NU_FISSION)
+                ! Nu-fission cross section is pre-calculated
                 score = material_xs % nu_fission * flux
+
               case (SCORE_EVENTS)
+                ! For number of events, just score unity
                 score = ONE
+
               case default
-                message = "Invalid score type on tally " // to_str(t % id) // "."
-                call fatal_error()
+                ! Any other cross section has to be calculated on-the-fly. This
+                ! is somewhat costly since it requires a loop over each nuclide
+                ! in a material and each reaction in the nuclide
+
+                if (score_bin > 1) then
+                  ! Set default score
+                  score = ZERO
+
+                  ! Get pointer to current material
+                  mat => materials(p % material)
+
+                  do l = 1, mat % n_nuclides
+                    ! Get atom density
+                    atom_density = mat % atom_density(l)
+                    
+                    ! Get index in nuclides array
+                    i_nuc = mat % nuclide(l)
+
+                    ! TODO: The following search for the matching reaction could
+                    ! be replaced by adding a dictionary on each Nuclide
+                    ! instance of the form {MT: i_reaction, ...}
+
+                    do m = 1, nuclides(i_nuc) % n_reaction
+                      ! Get pointer to reaction
+                      rxn => nuclides(i_nuc) % reactions(m)
+
+                      ! Check if this is the desired MT
+                      if (score_bin == rxn % MT) then
+                        ! Retrieve index on nuclide energy grid and interpolation
+                        ! factor
+                        i_energy = micro_xs(i_nuc) % index_grid
+                        f = micro_xs(i_nuc) % interp_factor
+
+                        if (i_energy >= rxn % threshold) then
+                          score = score + ((ONE - f) * rxn % sigma(i_energy - &
+                               rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                               rxn%threshold + 2)) * atom_density * flux
+                        end if
+
+                        exit
+                      end if
+                    end do
+
+                  end do
+
+                else
+                  message = "Invalid score type on tally " // to_str(t % id) // "."
+                  call fatal_error()
+                end if
               end select
             end if
 

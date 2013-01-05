@@ -1826,18 +1826,12 @@ contains
           case ('n2n')
             t % score_bins(j) = N_2N
 
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
           case ('n3n')
             t % score_bins(j) = N_3N
 
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
           case ('n4n')
             t % score_bins(j) = N_4N
 
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
           case ('absorption')
             t % score_bins(j) = SCORE_ABSORPTION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
@@ -1916,9 +1910,6 @@ contains
               ! Specified score was an integer
               if (MT > 1) then
                 t % score_bins(j) = MT
-
-                ! Set tally estimator to analog
-                t % estimator = ESTIMATOR_ANALOG
               else
                 message = "Invalid MT on <scores>: " // &
                      trim(tally_(i) % scores(j))

@@ -838,7 +838,8 @@ The following responses can be tallied.
     Total production of neutrons due to fission
     
   :k-fission:
-    Kappa-Fission; the recoverable energy production due to fission.
+    Kappa-Fission; the recoverable energy production due to fission. ``kappa-fission``
+    is also a valid identifier for this response.
 
   :events:
     Number of scoring events

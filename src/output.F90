@@ -817,6 +817,8 @@ contains
         string = trim(string) // ' nu-fission'
       case (SCORE_CURRENT)
         string = trim(string) // ' current'
+      case default
+        string = trim(string) // ' ' // reaction_name(t % score_bins(j))
       end select
     end do
     write(unit_,*) '    Scores:' // trim(string)

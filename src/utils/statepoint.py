@@ -181,10 +181,11 @@ class StatePoint(BinaryFile):
             t.n_nuclides = n_nuclides
             t.nuclides = self._get_int(n_nuclides)
 
-            # Read score bins
+            # Read score bins and scattering order
             t.n_scores = self._get_int()[0]
             t.scores = [score_types[j] for j in self._get_int(t.n_scores)]
-            t.scatt_order = [score_types[j] for j in self._get_int(t.n_scores)]
+            t.scatt_order = self._get_int(t.n_scores)
+
             # Read number of user score bins
             t.n_user_scores = self._get_int()[0]
 

@@ -142,26 +142,63 @@ This will build an executable named ``openmc``.
 .. _Cygwin: http://www.cygwin.com/
 
 ---------------------------
-Cross-Section Configuration
+Cross Section Configuration
 ---------------------------
 
-In order to run a simulation with OpenMC, you will need cross-section data for
-each nuclide in your problem. Since OpenMC uses ACE format cross-sections, you
-can use nuclear data distributed with MCNP_ or Serpent_.
+In order to run a simulation with OpenMC, you will need cross section data for
+each nuclide in your problem. Since OpenMC uses ACE format cross sections, you
+can use nuclear data that was processed with NJOY, such as that distributed with
+MCNP_ or Serpent_.
+
+Using JEFF Cross Sections from OECD/NEA
+---------------------------------------
+
+The NEA_ provides processed ACE data from the JEFF_ nuclear library upon
+request. A DVD of the data can be requested here_. To use this data with OpenMC,
+the following steps must be taken:
+
+1. Copy and unzip the data on the DVD to a directory on your computer.
+2. In the root directory, a file named ``xsdir``, or some variant thereof,
+   should be present. This file contains a listing of all the cross sections and
+   is used by MCNP. This file should be converted to a ``cross_sections.xml``
+   file for use with OpenMC. A Python script is provided in the OpenMC
+   distribution for this purpose:
+
+   .. code-block:: sh
+
+       openmc/src/utils/convert_xsdir.py xsdir31 cross_sections.xml
+
+3. In the converted ``cross_sections.xml`` file, change the contents of the
+   <directory> element to the absolute path of the directory containing the
+   actual ACE files.
+4. Additionally, you may need to change any occurrences of upper-case "ACE"
+   within the ``cross_sections.xml`` file to lower-case.
+5. Either set the :ref:`cross_sections` in a settings.xml file or the
+   :envvar:`CROSS_SECTIONS` environment variable to the absolute path of the
+   ``cross_sections.xml`` file.
+
+Using Cross Sections from MCNP
+------------------------------
 
 To use cross sections distributed with MCNP, change the <directory> element in
 the ``cross_sections.xml`` file in the root directory of the OpenMC distribution
-to the location of the MCNP cross-sections. Then, either set the
+to the location of the MCNP cross sections. Then, either set the
 :ref:`cross_sections` in a settings.xml file or the :envvar:`CROSS_SECTIONS`
 environment variable to the absolute path of the ``cross_sections.xml`` file.
 
-Similarly, to use cross-sections distributed with Serpent, change the
-<directory> element in the ``cross_sections_serpent.xml`` file in the root
-directory of the OpenMC distribution to the location of the Serpent
-cross-sections. Then, either set the :ref:`cross_sections` in a settings.xml
-file or the :envvar:`CROSS_SECTIONS` environment variable to the absolute path
-of the ``cross_sections_serpent.xml`` file.
+Using Cross Sections from Serpent
+---------------------------------
 
+To use cross sections distributed with Serpent, change the <directory> element
+in the ``cross_sections_serpent.xml`` file in the root directory of the OpenMC
+distribution to the location of the Serpent cross sections. Then, either set the
+:ref:`cross_sections` in a settings.xml file or the :envvar:`CROSS_SECTIONS`
+environment variable to the absolute path of the ``cross_sections_serpent.xml``
+file.
+
+.. _NEA: http://www.oecd-nea.org
+.. _JEFF: http://www.oecd-nea.org/dbdata/jeff/
+.. _here: http://www.oecd-nea.org/dbdata/pubs/jeff312-cd.html
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 

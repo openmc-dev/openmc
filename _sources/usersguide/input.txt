@@ -761,8 +761,8 @@ The ``<tally>`` element accepts the following sub-elements:
     *Default*: total
 
   :scores:
-    The desired responses to be accumulated. See below for full details on what
-    responses can be tallied.
+    The desired responses to be accumulated. See below for full details on the
+    responses which be tallied.
 
 The following filters can be specified for a tally:
 
@@ -815,26 +815,18 @@ The following responses can be tallied.
     multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
     slightly higher than the scattering rate.
 
-  :scatter-0:
-    Zeroth scattering moment. Can also be identified with the ``scatter``
-    response type, but is provided for consistency with the higher order
-    scattering moments.
+  :scatter-N:
+    Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre expansion order.
+    N must be between 0 and 10. As an example, tallying the 2\ :sup:`nd` \ scattering 
+    moment would be specified as ``<scores> scatter-2 </scores>``.
   
-  :scatter-1:
-    First scattering moment
-
-  :scatter-2:
-    Second scattering moment
-
-  :scatter-3:
-    Third scattering moment
+  :scatter-PN:
+    Tally all of the scattering moments from order 0 to N, where N is 
+    the Legendre expansion order.  That is, ``scatter-P1`` is equivalent
+    to requesting tallies of ``scatter-0`` and ``scatter-1``.  
+    N must be between 0 and 10. As an example, tallying up to the 2\ :sup:`nd` \
+    scattering moment would be specified as ``<scores> scatter-P2 </scores>``.
     
-  :scatter-4:
-    Fourth scattering moment
-
-  :scatter-5:
-    Fifth scattering moment
-
   :absorption:
     Total absorption rate. This accounts for all reactions which do not produce
     secondary neutrons.

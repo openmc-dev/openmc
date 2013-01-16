@@ -345,6 +345,7 @@ tally.o: math.o
 tally.o: mesh.o
 tally.o: mesh_header.o
 tally.o: output.o
+tally.o: particle_header.o
 tally.o: search.o
 tally.o: string.o
 tally.o: tally_header.o

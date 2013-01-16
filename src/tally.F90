@@ -1,18 +1,20 @@
 module tally
 
-  use ace_header,    only: Reaction
+  use ace_header,       only: Reaction
   use constants
   use datatypes_header, only: ListInt
-  use error,         only: fatal_error
+  use error,            only: fatal_error
   use global
-  use math,          only: t_percentile, calc_pn
-  use mesh,          only: get_mesh_bin, bin_to_mesh_indices, get_mesh_indices, &
-                           mesh_indices_to_bin, mesh_intersects
-  use mesh_header,   only: StructuredMesh
-  use output,        only: header
-  use search,        only: binary_search
-  use string,        only: to_str
-  use tally_header,  only: TallyResult, TallyMapItem, TallyMapElement
+  use math,             only: t_percentile, calc_pn
+  use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
+                              get_mesh_indices, mesh_indices_to_bin, &
+                              mesh_intersects
+  use mesh_header,      only: StructuredMesh
+  use output,           only: header
+  use particle_header,  only: LocalCoord
+  use search,           only: binary_search
+  use string,           only: to_str
+  use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
 
 #ifdef MPI
   use mpi
@@ -963,6 +965,7 @@ contains
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(Material),       pointer :: mat => null()
+    type(LocalCoord),     pointer :: coord => null()
 
     t => tallies(i_tally)
     t % matching_bins = 1
@@ -1010,9 +1013,15 @@ contains
 
       case (FILTER_CELL)
         ! determine next cell bin
-        ! TODO: Account for cells in multiple levels when performing this filter
-        t % matching_bins(i) = get_next_bin(FILTER_CELL, &
-             p % coord % cell, i_tally)
+        coord => p % coord0
+        do while(associated(coord))
+          position(FILTER_CELL) = 0
+          t % matching_bins(i) = get_next_bin(FILTER_CELL, &
+               coord % cell, i_tally)
+          if (t % matching_bins(i) /= NO_BIN_FOUND) exit
+          coord => coord % next
+        end do
+        nullify(coord)
 
       case (FILTER_CELLBORN)
         ! determine next cellborn bin
@@ -1237,6 +1246,7 @@ contains
     real(8) :: E ! particle energy
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
+    type(LocalCoord),     pointer :: coord => null()
 
     found_bin = .true.
     t => tallies(i_tally)
@@ -1264,9 +1274,15 @@ contains
 
       case (FILTER_CELL)
         ! determine next cell bin
-        ! TODO: Account for cells in multiple levels when performing this filter
-        t % matching_bins(i) = get_next_bin(FILTER_CELL, &
-             p % coord % cell, i_tally)
+        coord => p % coord0
+        do while(associated(coord))
+          position(FILTER_CELL) = 0
+          t % matching_bins(i) = get_next_bin(FILTER_CELL, &
+               coord % cell, i_tally)
+          if (t % matching_bins(i) /= NO_BIN_FOUND) exit
+          coord => coord % next
+        end do
+        nullify(coord)
 
       case (FILTER_CELLBORN)
         ! determine next cellborn bin

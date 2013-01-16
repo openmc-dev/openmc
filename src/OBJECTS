@@ -13,6 +13,7 @@ cmfd_output.o \
 cmfd_power_solver.o \
 cmfd_prod_operator.o \
 cmfd_snes_solver.o \
+constants.o \
 cross_section.o \
 datatypes.o \
 datatypes_header.o \

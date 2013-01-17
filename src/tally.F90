@@ -1,17 +1,20 @@
 module tally
 
+  use ace_header,       only: Reaction
   use constants
   use datatypes_header, only: ListInt
-  use error,         only: fatal_error
+  use error,            only: fatal_error
   use global
-  use math,          only: t_percentile, calc_pn
-  use mesh,          only: get_mesh_bin, bin_to_mesh_indices, get_mesh_indices, &
-                           mesh_indices_to_bin, mesh_intersects
-  use mesh_header,   only: StructuredMesh
-  use output,        only: header
-  use search,        only: binary_search
-  use string,        only: to_str
-  use tally_header,  only: TallyResult, TallyMapItem, TallyMapElement
+  use math,             only: t_percentile, calc_pn
+  use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
+                              get_mesh_indices, mesh_indices_to_bin, &
+                              mesh_intersects
+  use mesh_header,      only: StructuredMesh
+  use output,           only: header
+  use particle_header,  only: LocalCoord
+  use search,           only: binary_search
+  use string,           only: to_str
+  use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
 
 #ifdef MPI
   use mpi
@@ -245,21 +248,6 @@ contains
             ! All events that reach this point are (n,1n) reactions
             score = last_wgt
 
-          case (SCORE_N_2N)
-            ! Skip any event that is not (n,2n)
-            if (p % event_MT /= N_2N) cycle SCORE_LOOP
-            score = last_wgt
-
-          case (SCORE_N_3N)
-            ! Skip any event that is not (n,3n)
-            if (p % event_MT /= N_3N) cycle SCORE_LOOP
-            score = last_wgt
-
-          case (SCORE_N_4N)
-            ! Skip any event that is not (n,4n)
-            if (p % event /= N_4N) cycle SCORE_LOOP
-            score = last_wgt
-
           case (SCORE_ABSORPTION)
             if (survival_biasing) then
               ! No absorption events actually occur if survival biasing is on --
@@ -358,8 +346,12 @@ contains
             score = ONE
 
           case default
-            message = "Invalid score type on tally " // to_str(t % id) // "."
-            call fatal_error()
+            ! Any other score is assumed to be a MT number. Thus, we just need
+            ! to check if it matches the MT number of the event
+            if (p % event_MT /= score_bin) cycle SCORE_LOOP
+
+            score = last_wgt
+
           end select
 
           ! Add score to tally
@@ -455,10 +447,15 @@ contains
 
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
+    integer :: l                    ! loop index for nuclides in material
+    integer :: m                    ! loop index for reactions
     integer :: filter_index         ! single index for single bin
-    integer :: i_nuclide            ! index in nuclides array
+    integer :: i_nuclide            ! index in nuclides array (from bins)
+    integer :: i_nuc                ! index in nuclides array (from material)
+    integer :: i_energy             ! index in nuclide energy grid
     integer :: score_bin            ! scoring type, e.g. SCORE_FLUX
     integer :: score_index          ! scoring bin index
+    real(8) :: f                    ! interpolation factor
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: score                ! actual score (e.g., flux*xs)
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
@@ -466,6 +463,7 @@ contains
     type(TallyObject), pointer :: t => null()
     type(Material), pointer :: mat => null()
     type(ListInt), pointer :: curr_ptr => null()
+    type(Reaction), pointer :: rxn => null()
 
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
@@ -542,56 +540,171 @@ contains
             score_bin = t % score_bins(j)
 
             if (i_nuclide > 0) then
-              ! Determine macroscopic nuclide cross section 
+              ! ================================================================
+              ! DETERMINE NUCLIDE CROSS SECTION
+
               select case(score_bin)
               case (SCORE_TOTAL)
+                ! Total cross section is pre-calculated
                 score = micro_xs(i_nuclide) % total * &
                      atom_density * flux
+
               case (SCORE_SCATTER)
+                ! Scattering cross section is pre-calculated
                 score = (micro_xs(i_nuclide) % total - &
                      micro_xs(i_nuclide) % absorption) * &
                      atom_density * flux
+
               case (SCORE_ABSORPTION)
+                ! Absorption cross section is pre-calculated
                 score = micro_xs(i_nuclide) % absorption * &
                      atom_density * flux
+
               case (SCORE_FISSION)
+                ! Fission cross section is pre-calculated
                 score = micro_xs(i_nuclide) % fission * &
                      atom_density * flux
+
               case (SCORE_NU_FISSION)
+                ! Nu-fission cross section is pre-calculated
                 score = micro_xs(i_nuclide) % nu_fission * &
                      atom_density * flux
+
               case (SCORE_K_FISSION)
                 score = micro_xs(i_nuclide) % k_fission * &
                      atom_density * flux
+
               case (SCORE_EVENTS)
+                ! For number of events, just score unity
                 score = ONE
+
               case default
-                message = "Invalid score type on tally " // to_str(t % id) // "."
-                call fatal_error()
+                ! Any other cross section has to be calculated on-the-fly. For
+                ! cross sections that are used often (e.g. n2n, ngamma, etc. for
+                ! depletion), it might make sense to optimize this section or
+                ! pre-calculate cross sections
+
+                if (score_bin > 1) then
+                  ! Set default score
+                  score = ZERO
+
+                  ! TODO: The following search for the matching reaction could
+                  ! be replaced by adding a dictionary on each Nuclide instance
+                  ! of the form {MT: i_reaction, ...}
+
+                  REACTION_LOOP: do m = 1, nuclides(i_nuclide) % n_reaction
+                    ! Get pointer to reaction
+                    rxn => nuclides(i_nuclide) % reactions(m)
+
+                    ! Check if this is the desired MT
+                    if (score_bin == rxn % MT) then
+                      ! Retrieve index on nuclide energy grid and interpolation
+                      ! factor
+                      i_energy = micro_xs(i_nuclide) % index_grid
+                      f = micro_xs(i_nuclide) % interp_factor
+
+                      if (i_energy >= rxn % threshold) then
+                        score = ((ONE - f) * rxn % sigma(i_energy - &
+                             rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                             rxn%threshold + 2)) * atom_density * flux
+                      end if
+
+                      exit REACTION_LOOP
+                    end if
+                  end do REACTION_LOOP
+
+                else
+                  message = "Invalid score type on tally " // to_str(t % id) // "."
+                  call fatal_error()
+                end if
               end select
 
             else
-              ! Determine macroscopic material cross section 
+              ! ================================================================
+              ! DETERMINE MATERIAL CROSS SECTION
+
               select case(score_bin)
               case (SCORE_FLUX)
+                ! For flux, we need no cross section
                 score = flux
+
               case (SCORE_TOTAL)
+                ! Total cross section is pre-calculated
                 score = material_xs % total * flux
+
               case (SCORE_SCATTER)
+                ! Scattering cross section is pre-calculated
                 score = (material_xs % total - material_xs % absorption) * flux
+
               case (SCORE_ABSORPTION)
+                ! Absorption cross section is pre-calculated
                 score = material_xs % absorption * flux
+
               case (SCORE_FISSION)
+                ! Fission cross section is pre-calculated
                 score = material_xs % fission * flux
+
               case (SCORE_NU_FISSION)
+                ! Nu-fission cross section is pre-calculated
                 score = material_xs % nu_fission * flux
+
               case (SCORE_K_FISSION)
                 score = material_xs % k_fission * flux
+
               case (SCORE_EVENTS)
+                ! For number of events, just score unity
                 score = ONE
+
               case default
-                message = "Invalid score type on tally " // to_str(t % id) // "."
-                call fatal_error()
+                ! Any other cross section has to be calculated on-the-fly. This
+                ! is somewhat costly since it requires a loop over each nuclide
+                ! in a material and each reaction in the nuclide
+
+                if (score_bin > 1) then
+                  ! Set default score
+                  score = ZERO
+
+                  ! Get pointer to current material
+                  mat => materials(p % material)
+
+                  do l = 1, mat % n_nuclides
+                    ! Get atom density
+                    atom_density = mat % atom_density(l)
+                    
+                    ! Get index in nuclides array
+                    i_nuc = mat % nuclide(l)
+
+                    ! TODO: The following search for the matching reaction could
+                    ! be replaced by adding a dictionary on each Nuclide
+                    ! instance of the form {MT: i_reaction, ...}
+
+                    do m = 1, nuclides(i_nuc) % n_reaction
+                      ! Get pointer to reaction
+                      rxn => nuclides(i_nuc) % reactions(m)
+
+                      ! Check if this is the desired MT
+                      if (score_bin == rxn % MT) then
+                        ! Retrieve index on nuclide energy grid and interpolation
+                        ! factor
+                        i_energy = micro_xs(i_nuc) % index_grid
+                        f = micro_xs(i_nuc) % interp_factor
+
+                        if (i_energy >= rxn % threshold) then
+                          score = score + ((ONE - f) * rxn % sigma(i_energy - &
+                               rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                               rxn%threshold + 2)) * atom_density * flux
+                        end if
+
+                        exit
+                      end if
+                    end do
+
+                  end do
+
+                else
+                  message = "Invalid score type on tally " // to_str(t % id) // "."
+                  call fatal_error()
+                end if
               end select
             end if
 
@@ -639,13 +752,17 @@ contains
 
     integer :: i             ! loop index for nuclides in material
     integer :: j             ! loop index for scoring bin types
+    integer :: m             ! loop index for reactions in nuclide
     integer :: i_nuclide     ! index in nuclides array
     integer :: score_bin     ! type of score, e.g. SCORE_FLUX
     integer :: score_index   ! scoring bin index
+    integer :: i_energy      ! index in nuclide energy grid
+    real(8) :: f             ! interpolation factor
     real(8) :: score         ! actual scoring tally value
     real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
     type(TallyObject), pointer :: t => null()
     type(Material),    pointer :: mat => null()
+    type(Reaction),    pointer :: rxn => null()
 
     ! Get pointer to tally
     t => tallies(i_tally)
@@ -673,22 +790,64 @@ contains
         select case(score_bin)
         case (SCORE_TOTAL)
           score = micro_xs(i_nuclide) % total * atom_density * flux
+
         case (SCORE_SCATTER)
           score = (micro_xs(i_nuclide) % total - &
                micro_xs(i_nuclide) % absorption) * atom_density * flux
+
         case (SCORE_ABSORPTION)
           score = micro_xs(i_nuclide) % absorption * atom_density * flux
+
         case (SCORE_FISSION)
           score = micro_xs(i_nuclide) % fission * atom_density * flux
+
         case (SCORE_NU_FISSION)
           score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
+
         case (SCORE_K_FISSION)
           score = micro_xs(i_nuclide) % k_fission * atom_density * flux
+
         case (SCORE_EVENTS)
           score = ONE
+
         case default
-          message = "Invalid score type on tally " // to_str(t % id) // "."
-          call fatal_error()
+          ! Any other cross section has to be calculated on-the-fly. For cross
+          ! sections that are used often (e.g. n2n, ngamma, etc. for depletion),
+          ! it might make sense to optimize this section or pre-calculate cross
+          ! sections
+          
+          if (score_bin > 1) then
+            ! Set default score
+            score = ZERO
+
+            ! TODO: The following search for the matching reaction could be
+            ! replaced by adding a dictionary on each Nuclide instance of the
+            ! form {MT: i_reaction, ...}
+
+            REACTION_LOOP: do m = 1, nuclides(i_nuclide) % n_reaction
+              ! Get pointer to reaction
+              rxn => nuclides(i_nuclide) % reactions(m)
+
+              ! Check if this is the desired MT
+              if (score_bin == rxn % MT) then
+                ! Retrieve index on nuclide energy grid and interpolation factor
+                i_energy = micro_xs(i_nuclide) % index_grid
+                f = micro_xs(i_nuclide) % interp_factor
+
+                if (i_energy >= rxn % threshold) then
+                  score = ((ONE - f) * rxn % sigma(i_energy - &
+                       rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                       rxn%threshold + 2)) * atom_density * flux
+                end if
+
+                exit REACTION_LOOP
+              end if
+            end do REACTION_LOOP
+
+          else
+            message = "Invalid score type on tally " // to_str(t % id) // "."
+            call fatal_error()
+          end if
         end select
 
         ! Determine scoring bin index based on what the index of the nuclide
@@ -704,7 +863,7 @@ contains
     end do NUCLIDE_LOOP
 
     ! ==========================================================================
-    ! SCORE ALL INDIVIDUAL NUCLIDE REACTION RATES
+    ! SCORE TOTAL MATERIAL REACTION RATES
 
     ! Loop over score types for each bin
     MATERIAL_SCORE_LOOP: do j = 1, t % n_score_bins
@@ -715,23 +874,78 @@ contains
       select case(score_bin)
       case (SCORE_FLUX)
         score = flux
+
       case (SCORE_TOTAL)
         score = material_xs % total * flux
+
       case (SCORE_SCATTER)
         score = (material_xs % total - material_xs % absorption) * flux
+
       case (SCORE_ABSORPTION)
         score = material_xs % absorption * flux
+
       case (SCORE_FISSION)
         score = material_xs % fission * flux
+
       case (SCORE_NU_FISSION)
         score = material_xs % nu_fission * flux
+
       case (SCORE_K_FISSION)
         score = material_xs % k_fission * flux
+
       case (SCORE_EVENTS)
         score = ONE
+
       case default
-        message = "Invalid score type on tally " // to_str(t % id) // "."
-        call fatal_error()
+        ! Any other cross section has to be calculated on-the-fly. This is
+        ! somewhat costly since it requires a loop over each nuclide in a
+        ! material and each reaction in the nuclide
+        
+        if (score_bin > 1) then
+          ! Set default score
+          score = ZERO
+
+          ! Get pointer to current material
+          mat => materials(p % material)
+
+          do i = 1, mat % n_nuclides
+            ! Get atom density
+            atom_density = mat % atom_density(i)
+
+            ! Get index in nuclides array
+            i_nuclide = mat % nuclide(i)
+
+            ! TODO: The following search for the matching reaction could
+            ! be replaced by adding a dictionary on each Nuclide
+            ! instance of the form {MT: i_reaction, ...}
+
+            do m = 1, nuclides(i_nuclide) % n_reaction
+              ! Get pointer to reaction
+              rxn => nuclides(i_nuclide) % reactions(m)
+
+              ! Check if this is the desired MT
+              if (score_bin == rxn % MT) then
+                ! Retrieve index on nuclide energy grid and interpolation
+                ! factor
+                i_energy = micro_xs(i_nuclide) % index_grid
+                f = micro_xs(i_nuclide) % interp_factor
+
+                if (i_energy >= rxn % threshold) then
+                  score = score + ((ONE - f) * rxn % sigma(i_energy - &
+                       rxn%threshold + 1) + f * rxn % sigma(i_energy - &
+                       rxn%threshold + 2)) * atom_density * flux
+                end if
+
+                exit
+              end if
+            end do
+
+          end do
+
+        else
+          message = "Invalid score type on tally " // to_str(t % id) // "."
+          call fatal_error()
+        end if
       end select
 
       ! Determine scoring bin index based on what the index of the nuclide
@@ -785,6 +999,7 @@ contains
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(Material),       pointer :: mat => null()
+    type(LocalCoord),     pointer :: coord => null()
 
     t => tallies(i_tally)
     t % matching_bins = 1
@@ -832,9 +1047,15 @@ contains
 
       case (FILTER_CELL)
         ! determine next cell bin
-        ! TODO: Account for cells in multiple levels when performing this filter
-        t % matching_bins(i) = get_next_bin(FILTER_CELL, &
-             p % coord % cell, i_tally)
+        coord => p % coord0
+        do while(associated(coord))
+          position(FILTER_CELL) = 0
+          t % matching_bins(i) = get_next_bin(FILTER_CELL, &
+               coord % cell, i_tally)
+          if (t % matching_bins(i) /= NO_BIN_FOUND) exit
+          coord => coord % next
+        end do
+        nullify(coord)
 
       case (FILTER_CELLBORN)
         ! determine next cellborn bin
@@ -1063,6 +1284,7 @@ contains
     real(8) :: E ! particle energy
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
+    type(LocalCoord),     pointer :: coord => null()
 
     found_bin = .true.
     t => tallies(i_tally)
@@ -1090,9 +1312,15 @@ contains
 
       case (FILTER_CELL)
         ! determine next cell bin
-        ! TODO: Account for cells in multiple levels when performing this filter
-        t % matching_bins(i) = get_next_bin(FILTER_CELL, &
-             p % coord % cell, i_tally)
+        coord => p % coord0
+        do while(associated(coord))
+          position(FILTER_CELL) = 0
+          t % matching_bins(i) = get_next_bin(FILTER_CELL, &
+               coord % cell, i_tally)
+          if (t % matching_bins(i) /= NO_BIN_FOUND) exit
+          coord => coord % next
+        end do
+        nullify(coord)
 
       case (FILTER_CELLBORN)
         ! determine next cellborn bin

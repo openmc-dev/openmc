@@ -336,6 +336,7 @@ string.o: constants.o
 string.o: error.o
 string.o: global.o
 
+tally.o: ace_header.o
 tally.o: constants.o
 tally.o: datatypes_header.o
 tally.o: error.o
@@ -344,6 +345,7 @@ tally.o: math.o
 tally.o: mesh.o
 tally.o: mesh_header.o
 tally.o: output.o
+tally.o: particle_header.o
 tally.o: search.o
 tally.o: string.o
 tally.o: tally_header.o

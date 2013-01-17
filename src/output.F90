@@ -809,12 +809,6 @@ contains
         string = trim(string) // ' diffusion'
       case (SCORE_N_1N)
         string = trim(string) // ' n1n'
-      case (SCORE_N_2N)
-        string = trim(string) // ' n2n'
-      case (SCORE_N_3N)
-        string = trim(string) // ' n3n'
-      case (SCORE_N_4N)
-        string = trim(string) // ' n4n'
       case (SCORE_ABSORPTION)
         string = trim(string) // ' absorption'
       case (SCORE_FISSION)
@@ -825,6 +819,8 @@ contains
         string = trim(string) // ' k-fission'
       case (SCORE_CURRENT)
         string = trim(string) // ' current'
+      case default
+        string = trim(string) // ' ' // reaction_name(t % score_bins(j))
       end select
     end do
     write(unit_,*) '    Scores:' // trim(string)
@@ -1457,13 +1453,10 @@ contains
     score_names(abs(SCORE_TRANSPORT))  = "Transport Rate"
     score_names(abs(SCORE_DIFFUSION))  = "Diffusion Coefficient"
     score_names(abs(SCORE_N_1N))       = "(n,1n) Rate"
-    score_names(abs(SCORE_N_2N))       = "(n,2n) Rate"
-    score_names(abs(SCORE_N_3N))       = "(n,3n) Rate"
-    score_names(abs(SCORE_N_4N))       = "(n,4n) Rate"
     score_names(abs(SCORE_ABSORPTION)) = "Absorption Rate"
     score_names(abs(SCORE_FISSION))    = "Fission Rate"
     score_names(abs(SCORE_NU_FISSION)) = "Nu-Fission Rate"
-    score_names(abs(SCORE_K_FISSION)) = "Kappa-Fission Rate"
+    score_names(abs(SCORE_K_FISSION))  = "Kappa-Fission Rate"
     score_names(abs(SCORE_EVENTS))     = "Events"
 
     ! Create filename for tally output
@@ -1626,7 +1619,11 @@ contains
               end do
               k = k + n_order - 1
             else
-              score_name = score_names(abs(t % score_bins(k)))
+              if (t % score_bins(k) > 0) then
+                score_name = reaction_name(t % score_bins(k))
+              else
+                score_name = score_names(abs(t % score_bins(k)))
+              end if
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                 repeat(" ", indent), score_name, &
                 to_str(t % results(score_index,filter_index) % sum), &

@@ -13,6 +13,9 @@ src/openmc
 # emacs backups
 *~
 
+# OpenMC statepoints
+*.binary
+
 # Documentation builds
 docs/build
 

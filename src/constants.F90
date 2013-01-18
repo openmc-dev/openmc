@@ -299,7 +299,7 @@ module constants
        OUT_TOP   = 6
 
   ! Global tallY parameters
-  integer, parameter :: N_GLOBAL_TALLIES = 4
+  integer, parameter :: N_GLOBAL_TALLIES = 3
   integer, parameter :: &
        K_COLLISION   = 1, &
        K_TRACKLENGTH = 2, &

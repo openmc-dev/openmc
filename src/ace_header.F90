@@ -192,6 +192,7 @@ module ace_header
     real(8) :: absorption      ! microscopic absorption xs
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
+    real(8) :: kappa_fission   ! microscopic energy-released from fission
 
     ! Information for S(a,b) use
     logical :: use_sab     ! in S(a,b) energy range?
@@ -207,11 +208,12 @@ module ace_header
 !===============================================================================
 
   type MaterialMacroXS
-    real(8) :: total      ! macroscopic total xs
-    real(8) :: elastic    ! macroscopic elastic scattering xs
-    real(8) :: absorption ! macroscopic absorption xs
-    real(8) :: fission    ! macroscopic fission xs
-    real(8) :: nu_fission ! macroscopic production xs
+    real(8) :: total         ! macroscopic total xs
+    real(8) :: elastic       ! macroscopic elastic scattering xs
+    real(8) :: absorption    ! macroscopic absorption xs
+    real(8) :: fission       ! macroscopic fission xs
+    real(8) :: nu_fission    ! macroscopic production xs
+    real(8) :: kappa_fission ! macroscopic energy-released from fission
   end type MaterialMacroXS
 
 end module ace_header

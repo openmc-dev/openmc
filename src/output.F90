@@ -815,6 +815,8 @@ contains
         string = trim(string) // ' fission'
       case (SCORE_NU_FISSION)
         string = trim(string) // ' nu-fission'
+      case (SCORE_KAPPA_FISSION)
+        string = trim(string) // ' kappa-fission'
       case (SCORE_CURRENT)
         string = trim(string) // ' current'
       case default
@@ -1442,19 +1444,20 @@ contains
     filter_name(FILTER_ENERGYOUT) = "Outgoing Energy"
 
     ! Initialize names for scores
-    score_names(abs(SCORE_FLUX))       = "Flux"
-    score_names(abs(SCORE_TOTAL))      = "Total Reaction Rate"
-    score_names(abs(SCORE_SCATTER))    = "Scattering Rate"
-    score_names(abs(SCORE_NU_SCATTER)) = "Scattering Production Rate"
-    score_names(abs(SCORE_SCATTER_N))  = ""
-    score_names(abs(SCORE_SCATTER_PN)) = ""
-    score_names(abs(SCORE_TRANSPORT))  = "Transport Rate"
-    score_names(abs(SCORE_DIFFUSION))  = "Diffusion Coefficient"
-    score_names(abs(SCORE_N_1N))       = "(n,1n) Rate"
-    score_names(abs(SCORE_ABSORPTION)) = "Absorption Rate"
-    score_names(abs(SCORE_FISSION))    = "Fission Rate"
-    score_names(abs(SCORE_NU_FISSION)) = "Nu-Fission Rate"
-    score_names(abs(SCORE_EVENTS))     = "Events"
+    score_names(abs(SCORE_FLUX))          = "Flux"
+    score_names(abs(SCORE_TOTAL))         = "Total Reaction Rate"
+    score_names(abs(SCORE_SCATTER))       = "Scattering Rate"
+    score_names(abs(SCORE_NU_SCATTER))    = "Scattering Production Rate"
+    score_names(abs(SCORE_SCATTER_N))     = ""
+    score_names(abs(SCORE_SCATTER_PN))    = ""
+    score_names(abs(SCORE_TRANSPORT))     = "Transport Rate"
+    score_names(abs(SCORE_DIFFUSION))     = "Diffusion Coefficient"
+    score_names(abs(SCORE_N_1N))          = "(n,1n) Rate"
+    score_names(abs(SCORE_ABSORPTION))    = "Absorption Rate"
+    score_names(abs(SCORE_FISSION))       = "Fission Rate"
+    score_names(abs(SCORE_NU_FISSION))    = "Nu-Fission Rate"
+    score_names(abs(SCORE_KAPPA_FISSION)) = "Kappa-Fission Rate"
+    score_names(abs(SCORE_EVENTS))        = "Events"
 
     ! Create filename for tally output
     if (run_mode == MODE_TALLIES) then

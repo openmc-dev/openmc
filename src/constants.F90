@@ -254,21 +254,21 @@ module constants
   ! Tally score type
   integer, parameter :: N_SCORE_TYPES = 15
   integer, parameter :: &
-       SCORE_FLUX       = -1,  & ! flux
-       SCORE_TOTAL      = -2,  & ! total reaction rate
-       SCORE_SCATTER    = -3,  & ! scattering rate
-       SCORE_NU_SCATTER = -4,  & ! scattering production rate
-       SCORE_SCATTER_N  = -5,  & ! arbitrary scattering moment
-       SCORE_SCATTER_PN = -6,  & ! system for scoring 0th through nth moment
-       SCORE_TRANSPORT  = -7,  & ! transport reaction rate
-       SCORE_DIFFUSION  = -8,  & ! diffusion coefficient
-       SCORE_N_1N       = -9,  & ! (n,1n) rate
-       SCORE_ABSORPTION = -10, & ! absorption rate
-       SCORE_FISSION    = -11, & ! fission rate
-       SCORE_NU_FISSION = -12, & ! neutron production rate
-       SCORE_K_FISSION  = -13, & ! fission energy production rate
-       SCORE_CURRENT    = -14, & ! partial current
-       SCORE_EVENTS     = -15    ! number of events
+       SCORE_FLUX          = -1,  & ! flux
+       SCORE_TOTAL         = -2,  & ! total reaction rate
+       SCORE_SCATTER       = -3,  & ! scattering rate
+       SCORE_NU_SCATTER    = -4,  & ! scattering production rate
+       SCORE_SCATTER_N     = -5,  & ! arbitrary scattering moment
+       SCORE_SCATTER_PN    = -6,  & ! system for scoring 0th through nth moment
+       SCORE_TRANSPORT     = -7,  & ! transport reaction rate
+       SCORE_DIFFUSION     = -8,  & ! diffusion coefficient
+       SCORE_N_1N          = -9,  & ! (n,1n) rate
+       SCORE_ABSORPTION    = -10, & ! absorption rate
+       SCORE_FISSION       = -11, & ! fission rate
+       SCORE_NU_FISSION    = -12, & ! neutron production rate
+       SCORE_KAPPA_FISSION = -13, & ! fission energy production rate
+       SCORE_CURRENT       = -14, & ! partial current
+       SCORE_EVENTS        = -15    ! number of events
        
   ! Maximum scattering order supported
   integer, parameter :: SCATT_ORDER_MAX = 10

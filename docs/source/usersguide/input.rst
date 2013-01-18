@@ -836,6 +836,14 @@ The following responses can be tallied.
 
   :nu-fission:
     Total production of neutrons due to fission
+    
+  :kappa-fission:
+    The recoverable energy production rate due to fission. The recoverable
+    energy is defined as the fission product kinetic energy, prompt and delayed neutron
+    kinetic energies, prompt and delayed :math:`\gamma`-ray total energies,
+    and the total energy released by the delayed :math:`\beta` particles. The 
+    neutrino energy does not contribute to this response. The prompt and delayed 
+    :math:`\gamma`-rays are assumed to deposit their energy locally.
 
   :events:
     Number of scoring events

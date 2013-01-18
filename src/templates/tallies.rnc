@@ -32,10 +32,10 @@ element tallies {
         attribute groups { xsd:string { maxLength = "20" }+ })?
     }* &
     element nuclides {
-      list { xsd:string { maxLength = "20" }+ }
+      list { xsd:string { maxLength = "12" }+ }
     }? &
     element scores { 
-      list { xsd:string { maxLength = "12" }+ }
+      list { xsd:string { maxLength = "20" }+ }
     }
   }* &
 

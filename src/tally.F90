@@ -320,13 +320,14 @@ contains
               end if
             end if
           
-          case (SCORE_K_FISSION)
+          case (SCORE_KAPPA_FISSION)
             if (survival_biasing) then
               ! No fission events occur if survival biasing is on -- need to
               ! calculate fraction of absorptions that would have resulted in
               ! fission and multiply by Q
 
-              score = p % absorb_wgt * micro_xs(p % event_nuclide) % k_fission / &
+              score = p % absorb_wgt * &
+                      micro_xs(p % event_nuclide) % kappa_fission / &
                       micro_xs(p % event_nuclide) % absorption
               
             else
@@ -570,8 +571,8 @@ contains
                 score = micro_xs(i_nuclide) % nu_fission * &
                      atom_density * flux
 
-              case (SCORE_K_FISSION)
-                score = micro_xs(i_nuclide) % k_fission * &
+              case (SCORE_KAPPA_FISSION)
+                score = micro_xs(i_nuclide) % kappa_fission * &
                      atom_density * flux
 
               case (SCORE_EVENTS)
@@ -648,8 +649,8 @@ contains
                 ! Nu-fission cross section is pre-calculated
                 score = material_xs % nu_fission * flux
 
-              case (SCORE_K_FISSION)
-                score = material_xs % k_fission * flux
+              case (SCORE_KAPPA_FISSION)
+                score = material_xs % kappa_fission * flux
 
               case (SCORE_EVENTS)
                 ! For number of events, just score unity
@@ -804,8 +805,8 @@ contains
         case (SCORE_NU_FISSION)
           score = micro_xs(i_nuclide) % nu_fission * atom_density * flux
 
-        case (SCORE_K_FISSION)
-          score = micro_xs(i_nuclide) % k_fission * atom_density * flux
+        case (SCORE_KAPPA_FISSION)
+          score = micro_xs(i_nuclide) % kappa_fission * atom_density * flux
 
         case (SCORE_EVENTS)
           score = ONE
@@ -890,8 +891,8 @@ contains
       case (SCORE_NU_FISSION)
         score = material_xs % nu_fission * flux
 
-      case (SCORE_K_FISSION)
-        score = material_xs % k_fission * flux
+      case (SCORE_KAPPA_FISSION)
+        score = material_xs % kappa_fission * flux
 
       case (SCORE_EVENTS)
         score = ONE
@@ -1213,8 +1214,8 @@ contains
                 case (SCORE_NU_FISSION)
                   score = micro_xs(i_nuclide) % nu_fission * &
                        atom_density * flux
-                case (SCORE_K_FISSION)
-                  score = micro_xs(i_nuclide) % k_fission * atom_density * flux
+                case (SCORE_KAPPA_FISSION)
+                  score = micro_xs(i_nuclide) % kappa_fission * atom_density * flux
                 case (SCORE_EVENTS)
                   score = ONE
                 case default
@@ -1238,8 +1239,8 @@ contains
                   score = material_xs % fission * flux
                 case (SCORE_NU_FISSION)
                   score = material_xs % nu_fission * flux
-                case (SCORE_K_FISSION)
-                  score = material_xs % k_fission * flux
+                case (SCORE_KAPPA_FISSION)
+                  score = material_xs % kappa_fission * flux
                 case (SCORE_EVENTS)
                   score = ONE
                 case default

@@ -1852,8 +1852,8 @@ contains
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
-          case ('k-fission', 'kappa-fission')
-            t % score_bins(j) = SCORE_K_FISSION
+          case ('kappa-fission')
+            t % score_bins(j) = SCORE_KAPPA_FISSION
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
             t % type = TALLY_SURFACE_CURRENT

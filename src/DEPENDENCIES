@@ -242,6 +242,8 @@ interpolation.o: global.o
 interpolation.o: search.o
 interpolation.o: string.o
 
+list_header.o: constants.o
+
 main.o: constants.o
 main.o: eigenvalue.o
 main.o: finalize.o
@@ -311,6 +313,8 @@ random_lcg.o: global.o
 
 search.o: error.o
 search.o: global.o
+
+set_header.o: list_header.o
 
 source.o: bank_header.o
 source.o: constants.o

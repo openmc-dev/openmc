@@ -2,7 +2,6 @@ module tally
 
   use ace_header,       only: Reaction
   use constants
-  use datatypes_header, only: ListInt
   use error,            only: fatal_error
   use global
   use math,             only: t_percentile, calc_pn
@@ -35,6 +34,8 @@ contains
 
   subroutine score_analog_tally()
 
+    integer :: i
+    integer :: i_tally
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
     integer :: n                    ! loop index for scattering order
@@ -52,31 +53,25 @@ contains
     real(8) :: macro_scatt          ! material macro scatt xs
     logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer :: t => null()
-    type(ListInt), pointer :: curr_ptr => null()
 
     ! Copy particle's pre- and post-collision weight and angle
     last_wgt = p % last_wgt
     wgt = p % wgt
     mu = p % mu
 
-    ! set current pointer to active analog tallies
-    curr_ptr => active_analog_tallies
-
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
 
-    TALLY_LOOP: do while (associated(curr_ptr))
-
-      t => tallies(analog_tallies(curr_ptr % data))
+    TALLY_LOOP: do i = 1, active_analog_tallies % size()
+      ! Get index of tally and pointer to tally
+      i_tally = active_analog_tallies % get_item(i)
+      t => tallies(analog_tallies(i_tally))
 
       ! =======================================================================
       ! DETERMINE SCORING BIN COMBINATION
 
-      call get_scoring_bins(analog_tallies(curr_ptr % data), found_bin)
-      if (.not. found_bin) then
-        curr_ptr => curr_ptr % next
-        cycle
-      end if
+      call get_scoring_bins(analog_tallies(i_tally), found_bin)
+      if (.not. found_bin) cycle
 
       ! =======================================================================
       ! CALCULATE RESULTS AND ACCUMULATE TALLY
@@ -370,15 +365,10 @@ contains
 
       if (assume_separate) exit TALLY_LOOP
 
-      ! select next active tally
-      curr_ptr => curr_ptr % next
-
     end do TALLY_LOOP
 
     ! Reset tally map positioning
     position = 0
-
-    nullify(curr_ptr)
 
   end subroutine score_analog_tally
 
@@ -446,6 +436,8 @@ contains
 
     real(8), intent(in) :: distance
 
+    integer :: i
+    integer :: i_tally
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
     integer :: l                    ! loop index for nuclides in material
@@ -462,39 +454,33 @@ contains
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
     logical :: found_bin            ! scoring bin found?
     type(TallyObject), pointer :: t => null()
-    type(Material), pointer :: mat => null()
-    type(ListInt), pointer :: curr_ptr => null()
-    type(Reaction), pointer :: rxn => null()
+    type(Material),    pointer :: mat => null()
+    type(Reaction),    pointer :: rxn => null()
 
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
 
-    ! set current pointer to active tracklength tallies
-    curr_ptr => active_tracklength_tallies
-
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
 
-    TALLY_LOOP: do while (associated(curr_ptr))
-      t => tallies(tracklength_tallies(curr_ptr % data))
+    TALLY_LOOP: do i = 1, active_tracklength_tallies % size()
+      ! Get index of tally and pointer to tally
+      i_tally = active_tracklength_tallies % get_item(i)
+      t => tallies(tracklength_tallies(i_tally))
 
       ! Check if this tally has a mesh filter -- if so, we treat it separately
       ! since multiple bins can be scored to with a single track
 
       if (t % find_filter(FILTER_MESH) > 0) then
-        call score_tl_on_mesh(tracklength_tallies(curr_ptr % data), distance)
-        curr_ptr => curr_ptr % next ! select next tally
+        call score_tl_on_mesh(tracklength_tallies(i_tally), distance)
         cycle
       end if
 
       ! =======================================================================
       ! DETERMINE SCORING BIN COMBINATION
 
-      call get_scoring_bins(tracklength_tallies(curr_ptr % data), found_bin)
-      if (.not. found_bin) then
-        curr_ptr => curr_ptr % next
-        cycle
-      end if
+      call get_scoring_bins(tracklength_tallies(i_tally), found_bin)
+      if (.not. found_bin) cycle
 
       ! =======================================================================
       ! CALCULATE RESULTS AND ACCUMULATE TALLY
@@ -507,7 +493,7 @@ contains
       filter_index = sum((t % matching_bins - 1) * t % stride) + 1
 
       if (t % all_nuclides) then
-        call score_all_nuclides(tracklength_tallies(curr_ptr % data), flux, &
+        call score_all_nuclides(tracklength_tallies(i_tally), flux, &
              filter_index)
       else
 
@@ -728,15 +714,10 @@ contains
 
       if (assume_separate) exit TALLY_LOOP
 
-      ! select next active tally
-      curr_ptr => curr_ptr % next
-
     end do TALLY_LOOP
 
     ! Reset tally map positioning
     position = 0
-
-    nullify(curr_ptr)
 
   end subroutine score_tracklength_tally
 
@@ -1387,6 +1368,8 @@ contains
 
   subroutine score_surface_current()
 
+    integer :: i
+    integer :: i_tally
     integer :: j                    ! loop indices
     integer :: k                    ! loop indices
     integer :: ijk0(3)              ! indices of starting coordinates
@@ -1409,18 +1392,15 @@ contains
     logical :: z_same               ! same starting/ending z index (k)
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
-    type(ListInt), pointer :: curr_ptr => null()
 
-    ! set current pointer to active current tallies
-    curr_ptr => active_current_tallies
-
-    TALLY_LOOP: do while (associated(curr_ptr))
+    TALLY_LOOP: do i = 1, active_current_tallies % size()
       ! Copy starting and ending location of particle
       xyz0 = p % last_xyz
       xyz1 = p % coord0 % xyz
 
       ! Get pointer to tally
-      t => tallies(current_tallies(curr_ptr % data))
+      i_tally = active_current_tallies % get_item(i)
+      t => tallies(current_tallies(i_tally))
 
       ! Get index for mesh and surface filters
       i_filter_mesh = t % find_filter(FILTER_MESH)
@@ -1435,7 +1415,6 @@ contains
       ! intersects with mesh
       if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
         if (.not. mesh_intersects(m, xyz0, xyz1)) then
-          curr_ptr => curr_ptr % next ! select next tally
           cycle
         end if
       end if
@@ -1443,7 +1422,6 @@ contains
       ! Calculate number of surface crossings
       n_cross = sum(abs(ijk1 - ijk0))
       if (n_cross == 0) then
-        curr_ptr => curr_ptr % next ! select next tally
         cycle
       end if
 
@@ -1457,7 +1435,6 @@ contains
         ! check if energy of the particle is within energy bins
         if (p % E < t % filters(j) % real_bins(1) .or. &
              p % E > t % filters(j) % real_bins(n + 1)) then
-          curr_ptr => curr_ptr % next ! select next tally
           cycle
         end if
 
@@ -1500,7 +1477,6 @@ contains
             end if
           end do
         end if
-        curr_ptr => curr_ptr % next ! select next tally
         cycle
       elseif (x_same .and. z_same) then
         ! Only y crossings
@@ -1529,7 +1505,6 @@ contains
             end if
           end do
         end if
-        curr_ptr => curr_ptr % next ! select next tally
         cycle
       elseif (y_same .and. z_same) then
         ! Only x crossings
@@ -1558,7 +1533,6 @@ contains
             end if
           end do
         end if
-        curr_ptr => curr_ptr % next ! select next tally
         cycle
       end if
 
@@ -1686,12 +1660,7 @@ contains
         xyz0 = xyz0 + distance * uvw
       end do
 
-      ! select next active tally
-      curr_ptr => curr_ptr % next
-
     end do TALLY_LOOP
-
-    nullify(curr_ptr)
 
   end subroutine score_surface_current
 
@@ -1757,7 +1726,7 @@ contains
 
   subroutine synchronize_tallies()
 
-    type(ListInt), pointer :: curr_ptr => null()
+    integer :: i
 
 #ifdef MPI
     ! Combine tally results onto master process
@@ -1774,10 +1743,8 @@ contains
     ! Accumulate on master only unless run is not reduced then do it on all
     if (master .or. (.not. reduce_tallies)) then
       ! Accumulate results for each tally
-      curr_ptr => active_tallies
-      do while(associated(curr_ptr))
-        call accumulate_tally(tallies(curr_ptr % data))
-        curr_ptr => curr_ptr % next
+      do i = 1, active_tallies % size()
+        call accumulate_tally(tallies(active_tallies % get_item(i)))
       end do
 
       if (run_mode == MODE_EIGENVALUE) then
@@ -1792,8 +1759,6 @@ contains
       call accumulate_result(global_tallies)
     end if
 
-    if (associated(curr_ptr)) nullify(curr_ptr)
-
   end subroutine synchronize_tallies
 
 !===============================================================================
@@ -1803,6 +1768,7 @@ contains
 #ifdef MPI
   subroutine reduce_tally_results()
 
+    integer :: i
     integer :: n      ! number of filter bins
     integer :: m      ! number of score bins
     integer :: n_bins ! total number of bins
@@ -1810,11 +1776,9 @@ contains
     real(8) :: global_temp(N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
     type(TallyObject), pointer :: t => null()
-    type(ListInt), pointer :: curr_ptr => null()
 
-    curr_ptr => active_tallies
-    do while(associated(curr_ptr))
-      t => tallies(curr_ptr % data)
+    do i = 1, active_tallies % size()
+      t => tallies(active_tallies % get_item(i))
 
       m = t % total_score_bins
       n = t % total_filter_bins
@@ -1842,7 +1806,6 @@ contains
       end if
 
       deallocate(tally_temp)
-      curr_ptr => curr_ptr % next
     end do
 
     ! Copy global tallies into array to be reduced
@@ -1873,8 +1836,6 @@ contains
       call MPI_REDUCE(total_weight, dummy, 1, MPI_REAL8, MPI_SUM, &
            0, MPI_COMM_WORLD, mpi_err)
     end if
-
-    if (associated(curr_ptr)) nullify(curr_ptr)
 
   end subroutine reduce_tally_results
 #endif
@@ -1987,124 +1948,25 @@ contains
 
   subroutine setup_active_usertallies()
 
-    integer                  :: i       ! loop counter
-    type(ListInt), pointer :: curr_ptr  ! pointer to current list node
-    type(ListInt), pointer :: tall_ptr  ! pointer to active tallies only
-
-    !============================================================
-    ! TALLIES
-
-    ! traverse to end of tally list
-    tall_ptr => active_tallies
-    do while(associated(tall_ptr))
-      tall_ptr => tall_ptr % next
-    end do
-
-    !============================================================
-    ! ANALOG TALLIES
-
-    ! check to see if analog tallies have already been allocated
-    curr_ptr => null()
-    if (associated(active_analog_tallies)) then
-
-      ! traverse to the end of the linked list
-      curr_ptr => active_analog_tallies
-      do while(associated(curr_ptr))
-        curr_ptr => curr_ptr % next
-      end do
-
-    end if
+    integer :: i ! loop counter
 
     ! append all analog tallies
-    do i = n_user_analog_tallies,1,-1
-
-      ! allocate node
-      allocate(curr_ptr)
-
-      ! set the tally index
-      curr_ptr % data = i
-      curr_ptr % next => active_analog_tallies
-      active_analog_tallies => curr_ptr
-
-      ! set indices in active tallies
-      allocate(tall_ptr)
-      tall_ptr % data = analog_tallies(i)
-      tall_ptr % next => active_tallies
-      active_tallies => tall_ptr
-
+    do i = 1, n_user_analog_tallies
+      call active_analog_tallies % append(i)
+      call active_tallies % append(analog_tallies(i))
     end do
-
-    !============================================================
-    ! TRACKLENGTH TALLIES
-
-    ! check to see if tracklength tallies have already been allocated
-    curr_ptr => null()
-    if (associated(active_tracklength_tallies)) then
-
-      ! traverse to the end of the linked list
-      curr_ptr => active_tracklength_tallies
-      do while(associated(curr_ptr))
-        curr_ptr => curr_ptr % next
-      end do
-
-    end if
-
 
     ! append all tracklength tallies
-    do i = n_user_tracklength_tallies,1,-1
-
-      ! allocate node
-      allocate(curr_ptr)
-
-      ! set the tally index
-      curr_ptr % data = i
-      curr_ptr % next => active_tracklength_tallies
-      active_tracklength_tallies => curr_ptr
-
-      ! set indices in active tallies
-      allocate(tall_ptr)
-      tall_ptr % data = tracklength_tallies(i)
-      tall_ptr % next => active_tallies
-      active_tallies => tall_ptr
-
+    do i = 1, n_user_tracklength_tallies
+      call active_tracklength_tallies % append(i)
+      call active_tallies % append(tracklength_tallies(i))
     end do
-
-    !============================================================
-    ! CURRENT TALLIES
-
-    ! check to see if current tallies have already been allocated
-    curr_ptr => null()
-    if (associated(active_current_tallies)) then
-
-      ! traverse to the end of the linked list
-      curr_ptr => active_current_tallies
-      do while(associated(curr_ptr))
-        curr_ptr => curr_ptr % next
-      end do
-
-    end if
 
     ! append all current tallies
-    do i = n_user_current_tallies,1,-1
-
-      ! allocate node
-      allocate(curr_ptr)
-
-      ! set the tally index
-      curr_ptr % data = i
-      curr_ptr % next => active_current_tallies
-      active_current_tallies => curr_ptr
-
-      ! set indices in active tallies
-      allocate(tall_ptr)
-      tall_ptr % data = current_tallies(i)
-      tall_ptr % next => active_tallies
-      active_tallies => tall_ptr
-
+    do i = 1, n_user_current_tallies
+      call active_current_tallies % append(i)
+      call active_tallies % append(current_tallies(i))
     end do
-
-    ! nullify the temporary pointer
-    if (associated(curr_ptr)) nullify(curr_ptr)
 
   end subroutine setup_active_usertallies
 
@@ -2114,91 +1976,49 @@ contains
 
   subroutine setup_active_cmfdtallies()
 
-    integer                :: i         ! loop counter
-    type(ListInt), pointer :: curr_ptr  ! pointer to current list node
-    type(ListInt), pointer :: tall_ptr  ! pointer to active tallies only
+    integer :: i ! loop counter
 
     ! check to see if actives tallies has been allocated
-    tall_ptr => active_tallies
-    if (associated(active_tallies)) then
-      message = 'Active tallies should not exist before CMFD tallies!'
+    if (active_tallies % size() > 0) then
+      message = "Active tallies should not exist before CMFD tallies!"
       call fatal_error()
     end if
 
     ! check to see if analog tallies have already been allocated
-    curr_ptr => null()
-    if (associated(active_analog_tallies)) then
+    if (active_analog_tallies % size() > 0) then
       message = 'Active analog tallies should not exist before CMFD tallies!'
       call fatal_error()
     end if
 
-    do i = n_cmfd_analog_tallies + n_user_analog_tallies, n_user_analog_tallies + 1, -1
-
-      ! allocate node
-      allocate(curr_ptr)
-
-      ! set the tally index
-      curr_ptr % data = i
-      curr_ptr % next => active_analog_tallies
-      active_analog_tallies => curr_ptr
-
-      ! set indices in active tallies
-      allocate(tall_ptr)
-      tall_ptr % data = analog_tallies(i)
-      tall_ptr % next => active_tallies
-      active_tallies => tall_ptr
-
+    do i = n_user_analog_tallies + 1, &
+         n_user_analog_tallies + n_cmfd_analog_tallies
+      call active_analog_tallies % append(i)
+      call active_tallies % append(analog_tallies(i))
     end do
 
     ! check to see if tracklength tallies have already been allocated
-    curr_ptr => null()
-    if (associated(active_tracklength_tallies)) then
-      message = 'Active tracklength tallies should not exist before CMFD tallies!'
+    if (active_tracklength_tallies % size() > 0) then
+      message = "Active tracklength tallies should not exist before CMFD &
+           &tallies!"
       call fatal_error()
     end if
 
-    do i = n_cmfd_tracklength_tallies + n_user_tracklength_tallies, n_user_tracklength_tallies + 1, -1
-
-      ! allocate node
-      allocate(curr_ptr)
-
-      ! set the tally index
-      curr_ptr % data = i
-      curr_ptr % next => active_tracklength_tallies
-      active_tracklength_tallies => curr_ptr
-
-      ! set indices in active tallies
-      allocate(tall_ptr)
-      tall_ptr % data = tracklength_tallies(i)
-      tall_ptr % next => active_tallies
-      active_tallies => tall_ptr
-
+    do i = n_user_tracklength_tallies + 1, &
+         n_user_tracklength_tallies + n_cmfd_tracklength_tallies
+      call active_tracklength_tallies % append(i)
+      call active_tallies % append(tracklength_tallies(i))
     end do
 
     ! check to see if current tallies have already been allocated
-    curr_ptr => null()
-    if (associated(active_current_tallies)) then
-      message = 'Active current tallies should not exist before CMFD tallies!'
+    if (active_current_tallies % size() > 0) then
+      message = "Active current tallies should not exist before CMFD tallies!"
       call fatal_error()
     end if
 
-    do i = n_cmfd_current_tallies + n_user_current_tallies, &
-         n_user_current_tallies + 1, -1
-
-      ! allocate node
-      allocate(curr_ptr)
-
-      ! set the tally index
-      curr_ptr % data = i
-      curr_ptr % next => active_current_tallies
-      active_current_tallies => curr_ptr
-
-      ! set indices in active tallies
-      allocate(tall_ptr)
-      tall_ptr % data = current_tallies(i)
-      tall_ptr % next => active_tallies
-      active_tallies => tall_ptr
-
+    do i = n_user_current_tallies + 1, &
+         n_user_current_tallies + n_cmfd_current_tallies
+      call active_current_tallies % append(i)
+      call active_tallies % append(current_tallies(i))
     end do
 
   end subroutine setup_active_cmfdtallies

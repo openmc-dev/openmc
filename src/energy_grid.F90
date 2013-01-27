@@ -1,11 +1,8 @@
 module energy_grid
 
   use constants,        only: MAX_LINE_LEN
-  use datatypes,        only: list_insert, list_size, list_delete, &
-                              dict_create, dict_get_key, dict_has_key, &
-                              dict_add_key, dict_delete
-  use datatypes_header, only: ListReal, DictionaryCI
   use global
+  use list_header,      only: ListElemReal
   use output,           only: write_message
 
 contains
@@ -20,10 +17,10 @@ contains
 
   subroutine unionized_grid()
 
-    integer                 :: i ! index in nuclides array
-    type(ListReal), pointer :: list => null()
-    type(ListReal), pointer :: current => null()
-    type(Nuclide),  pointer :: nuc => null()
+    integer :: i ! index in nuclides array
+    type(ListElemReal), pointer :: list => null()
+    type(ListElemReal), pointer :: current => null()
+    type(Nuclide),      pointer :: nuc => null()
 
     message = "Creating unionized energy grid..."
     call write_message(5)
@@ -34,8 +31,15 @@ contains
       call add_grid_points(list, nuc % energy)
     end do
 
+    ! determine size of list
+    n_grid = 0
+    current => list
+    do while (associated(current))
+      n_grid = n_grid + 1
+      current => current % next
+    end do
+
     ! create allocated array from linked list
-    n_grid = list_size(list)
     allocate(e_grid(n_grid))
     current => list
     do i = 1, n_grid
@@ -44,7 +48,7 @@ contains
     end do
 
     ! delete linked list and dictionary
-    call list_delete(list)
+    ! call list_delete(list)
 
     ! Set pointers to unionized energy grid for each nuclide
     call grid_pointers()
@@ -58,16 +62,16 @@ contains
 
   subroutine add_grid_points(list, energy)
 
-    type(ListReal), pointer :: list
+    type(ListElemReal), pointer :: list
     real(8), intent(in) :: energy(:)
 
     integer :: i  ! index in energy array
     integer :: n  ! size of energy array
     real(8) :: E  ! actual energy value
-    type(ListReal), pointer :: current => null()
-    type(ListReal), pointer :: previous => null()
-    type(ListReal), pointer :: head => null()
-    type(ListReal), pointer :: tmp => null()
+    type(ListElemReal), pointer :: current => null()
+    type(ListElemReal), pointer :: previous => null()
+    type(ListElemReal), pointer :: head => null()
+    type(ListElemReal), pointer :: tmp => null()
 
     i = 1
     n = size(energy)

@@ -3,15 +3,13 @@ module ace
   use ace_header,       only: Nuclide, Reaction, SAlphaBeta, XsListing, &
                               DistEnergy
   use constants
-  use datatypes,        only: dict_create, dict_add_key, dict_get_key, &
-                              dict_has_key, dict_delete, dict_keys
-  use datatypes_header, only: DictionaryCI, ListKeyValueCI
   use endf,             only: reaction_name
   use error,            only: fatal_error, warning
   use fission,          only: nu_total
   use global
   use material_header,  only: Material
   use output,           only: write_message
+  use set_header,       only: SetChar
   use string,           only: str_to_int, str_to_real, lower_case, to_str
 
   implicit none
@@ -41,10 +39,10 @@ contains
     integer        :: i_sab     ! index in sab_tables
     character(12)  :: name      ! name of isotope, e.g. 92235.03c
     character(12)  :: alias     ! alias of nuclide, e.g. U-235.03c
-    type(Material),  pointer :: mat => null()
-    type(Nuclide),   pointer :: nuc => null()
+    type(Material),   pointer :: mat => null()
+    type(Nuclide),    pointer :: nuc => null()
     type(SAlphaBeta), pointer :: sab => null()
-    type(DictionaryCI), pointer :: already_read => null()
+    type(SetChar) :: already_read
 
     ! allocate arrays for ACE table storage and cross section cache
     allocate(nuclides(n_nuclides_total))
@@ -54,8 +52,6 @@ contains
     ! ==========================================================================
     ! READ ALL ACE CROSS SECTION TABLES
 
-    call dict_create(already_read)
-
     ! Loop over all files
     do i = 1, n_materials
       mat => materials(i)
@@ -63,9 +59,9 @@ contains
       do j = 1, mat % n_nuclides
         name = mat % names(j)
 
-        if (.not. dict_has_key(already_read, name)) then
-          i_listing = dict_get_key(xs_listing_dict, name)
-          i_nuclide = dict_get_key(nuclide_dict, name)
+        if (.not. already_read % contains(name)) then
+          i_listing = xs_listing_dict % get_key(name)
+          i_nuclide = nuclide_dict % get_key(name)
           name  = xs_listings(i_listing) % name
           alias = xs_listings(i_listing) % alias
 
@@ -78,29 +74,27 @@ contains
           call read_ace_table(i_nuclide, i_listing)
 
           ! Add name and alias to dictionary
-          call dict_add_key(already_read, name, 0)
-          call dict_add_key(already_read, alias, 0)
+          call already_read % add(name)
+          call already_read % add(alias)
         end if
       end do
 
       if (mat % has_sab_table) then
         name = mat % sab_name
 
-        if (.not. dict_has_key(already_read, name)) then
-          i_listing = dict_get_key(xs_listing_dict, name)
-          i_sab  = dict_get_key(sab_dict, name)
+        if (.not. already_read % contains(name)) then
+          i_listing = xs_listing_dict % get_key(name)
+          i_sab  = sab_dict % get_key(name)
 
           ! Read the ACE table into the appropriate entry on the sab_tables
           ! array
           call read_ace_table(i_sab, i_listing)
 
           ! Add name to dictionary
-          call dict_add_key(already_read, name, 0)
+          call already_read % add(name)
         end if
       end if
     end do
-
-    call dict_delete(already_read)
 
     ! ==========================================================================
     ! ASSIGN S(A,B) TABLES TO SPECIFIC NUCLIDES WITHIN MATERIALS

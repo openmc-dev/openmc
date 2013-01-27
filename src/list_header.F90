@@ -51,6 +51,7 @@ module list_header
     type(ListElemInt), public, pointer :: tail => null()
   contains
     procedure :: append => list_append_int     ! Add item to end of list
+    procedure :: clear => list_clear_int       ! Remove all items
     procedure :: contains => list_contains_int ! Does list contain?
     procedure :: get_item => list_get_item_int ! Get i-th item in list
     procedure :: index => list_index_int       ! Determine index of given item
@@ -72,6 +73,7 @@ module list_header
     type(ListElemReal), public, pointer :: tail => null()
   contains
     procedure :: append => list_append_real     ! Add item to end of list
+    procedure :: clear => list_clear_real       ! Remove all items
     procedure :: contains => list_contains_real ! Does list contain?
     procedure :: get_item => list_get_item_real ! Get i-th item in list
     procedure :: index => list_index_real       ! Determine index of given item
@@ -93,6 +95,7 @@ module list_header
     type(ListElemChar), public, pointer :: tail => null()
   contains
     procedure :: append => list_append_char     ! Add item to end of list
+    procedure :: clear => list_clear_char       ! Remove all items
     procedure :: contains => list_contains_char ! Does list contain?
     procedure :: get_item => list_get_item_char ! Get i-th item in list
     procedure :: index => list_index_char       ! Determine index of given item
@@ -179,6 +182,88 @@ contains
     this % count = this % count + 1
 
   end subroutine list_append_char
+
+!===============================================================================
+! LIST_CLEAR removes all elements from the list
+!===============================================================================
+
+  subroutine list_clear_int(this)
+    class(ListInt) :: this
+
+    type(ListElemInt), pointer :: current => null()
+    type(ListElemInt), pointer :: next => null()
+    
+    if (this % count > 0) then
+      current => this % head
+      do while (associated(current))
+        ! Set pointer to next element
+        next => current % next
+
+        ! Deallocate memory for current element
+        deallocate(current)
+
+        ! Move to next element
+        current => next
+      end do
+
+      nullify(this % head)
+      nullify(this % tail)
+      this % count = 0
+    end if
+
+  end subroutine list_clear_int
+
+  subroutine list_clear_real(this)
+    class(ListReal) :: this
+
+    type(ListElemReal), pointer :: current => null()
+    type(ListElemReal), pointer :: next => null()
+    
+    if (this % count > 0) then
+      current => this % head
+      do while (associated(current))
+        ! Set pointer to next element
+        next => current % next
+
+        ! Deallocate memory for current element
+        deallocate(current)
+
+        ! Move to next element
+        current => next
+      end do
+
+      nullify(this % head)
+      nullify(this % tail)
+      this % count = 0
+    end if
+
+  end subroutine list_clear_real
+
+  subroutine list_clear_char(this)
+    class(ListChar) :: this
+
+    type(ListElemChar), pointer :: current => null()
+    type(ListElemChar), pointer :: next => null()
+    
+    if (this % count > 0) then
+      current => this % head
+      do while (associated(current))
+        ! Set pointer to next element
+        next => current % next
+
+        ! Deallocate memory for current element
+        deallocate(current)
+
+        ! Move to next element
+        current => next
+      end do
+
+      nullify(this % head)
+      nullify(this % tail)
+      this % count = 0
+    end if
+
+  end subroutine list_clear_char
 
 !===============================================================================
 ! LIST_CONTAINS determines whether the list contains a specified item. Since it

@@ -15,8 +15,6 @@ cmfd_prod_operator.o \
 cmfd_snes_solver.o \
 constants.o \
 cross_section.o \
-datatypes.o \
-datatypes_header.o \
 dict_header.o \
 doppler.o \
 eigenvalue.o \

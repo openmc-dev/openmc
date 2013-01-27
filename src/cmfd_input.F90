@@ -188,7 +188,6 @@ contains
 
   subroutine create_cmfd_tally()
 
-    use datatypes,      only: dict_add_key, dict_get_key
     use error,          only: fatal_error, warning
     use global
     use mesh_header,    only: StructuredMesh
@@ -330,7 +329,7 @@ contains
     m % volume_frac = ONE/real(product(m % dimension),8)
 
     ! Add mesh to dictionary
-    call dict_add_key(mesh_dict, m % id, n_user_meshes + 1)
+    call mesh_dict % add_key(m % id, n_user_meshes + 1)
 
     ! allocate tallies
     if (.not. allocated(tallies)) allocate(tallies(n_tallies))

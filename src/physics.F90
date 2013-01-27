@@ -100,7 +100,7 @@ contains
       end do
 
       ! Score track-length tallies
-      if (associated(active_tracklength_tallies)) &
+      if (active_tracklength_tallies % size() > 0) &
            call score_tracklength_tally(distance)
 
       ! Score track-length estimate of k-eff
@@ -193,8 +193,7 @@ contains
     ! since the direction of the particle will change and we need to use the
     ! pre-collision direction to figure out what mesh surfaces were crossed
 
-    if (associated(active_current_tallies)) &
-         call score_surface_current()
+    if (active_current_tallies % size() > 0) call score_surface_current()
 
     ! Sample nuclide/reaction for the material the particle is in
     call sample_reaction()
@@ -218,8 +217,7 @@ contains
     ! occurred rather than before because we need information on the outgoing
     ! energy for any tallies with an outgoing energy filter
 
-    if (associated(active_analog_tallies)) &
-         call score_analog_tally()
+    if (active_analog_tallies % size() > 0) call score_analog_tally()
 
     ! Reset banked weight during collision
     p % n_bank   = 0

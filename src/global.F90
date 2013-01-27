@@ -106,10 +106,9 @@ module global
   integer, allocatable :: current_tallies(:)
 
   ! Global tallies
-  !   1) analog estimate of k-eff
-  !   2) collision estimate of k-eff
-  !   3) track-length estimate of k-eff
-  !   4) leakage fraction
+  !   1) collision estimate of k-eff
+  !   2) track-length estimate of k-eff
+  !   3) leakage fraction
 
   type(TallyResult), target :: global_tallies(N_GLOBAL_TALLIES)
 

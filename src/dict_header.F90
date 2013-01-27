@@ -67,6 +67,7 @@ module dict_header
     procedure :: delete => dict_delete_ci
     procedure :: get_key => dict_get_key_ci
     procedure :: has_key => dict_has_key_ci
+    procedure :: keys => dict_keys_ci
     procedure, private :: get_elem => dict_get_elem_ci
   end type DictCharInt
 
@@ -78,6 +79,7 @@ module dict_header
     procedure :: delete => dict_delete_ii
     procedure :: get_key => dict_get_key_ii
     procedure :: has_key => dict_has_key_ii
+    procedure :: keys => dict_keys_ii
     procedure, private :: get_elem => dict_get_elem_ii
   end type DictIntInt
 
@@ -197,6 +199,55 @@ contains
   end subroutine dict_delete_ii
 
 !===============================================================================
+! DICT_GET_ELEM returns a pointer to the (key,value) pair for a given key. This
+! method is private.
+!===============================================================================
+
+  function dict_get_elem_ci(this, key) result(elem)
+ 
+    class(DictCharInt)            :: this
+    character(*), intent(in)      :: key
+    type(ElemKeyValueCI), pointer :: elem
+
+    integer :: hash
+    
+    ! Check for dictionary not being allocated
+    if (.not. associated(this % table)) then
+      allocate(this % table(HASH_SIZE))
+    end if
+
+    hash = dict_hash_key_ci(key)
+    elem => this % table(hash) % list
+    do while (associated(elem))
+      if (elem % key == key) exit
+      elem => elem % next
+    end do
+
+  end function dict_get_elem_ci
+
+  function dict_get_elem_ii(this, key) result(elem)
+ 
+    class(DictIntInt)             :: this
+    integer, intent(in)           :: key
+    type(ElemKeyValueII), pointer :: elem
+
+    integer :: hash
+    
+    ! Check for dictionary not being allocated
+    if (.not. associated(this % table)) then
+      allocate(this % table(HASH_SIZE))
+    end if
+
+    hash = dict_hash_key_ii(key)
+    elem => this % table(hash) % list
+    do while (associated(elem))
+      if (elem % key == key) exit
+      elem => elem % next
+    end do
+
+  end function dict_get_elem_ii
+
+!===============================================================================
 ! DICT_GET_KEY returns the value matching a given key. If the dictionary does
 ! not contain the key, the value DICT_NULL is returned.
 !===============================================================================
@@ -269,55 +320,6 @@ contains
   end function dict_has_key_ii
 
 !===============================================================================
-! DICT_GET_ELEM returns a pointer to the (key,value) pair for a given key. This
-! method is private.
-!===============================================================================
-
-  function dict_get_elem_ci(this, key) result(elem)
- 
-    class(DictCharInt)            :: this
-    character(*), intent(in)      :: key
-    type(ElemKeyValueCI), pointer :: elem
-
-    integer :: hash
-    
-    ! Check for dictionary not being allocated
-    if (.not. associated(this % table)) then
-      allocate(this % table(HASH_SIZE))
-    end if
-
-    hash = dict_hash_key_ci(key)
-    elem => this % table(hash) % list
-    do while (associated(elem))
-      if (elem % key == key) exit
-      elem => elem % next
-    end do
-
-  end function dict_get_elem_ci
-
-  function dict_get_elem_ii(this, key) result(elem)
- 
-    class(DictIntInt)             :: this
-    integer, intent(in)           :: key
-    type(ElemKeyValueII), pointer :: elem
-
-    integer :: hash
-    
-    ! Check for dictionary not being allocated
-    if (.not. associated(this % table)) then
-      allocate(this % table(HASH_SIZE))
-    end if
-
-    hash = dict_hash_key_ii(key)
-    elem => this % table(hash) % list
-    do while (associated(elem))
-      if (elem % key == key) exit
-      elem => elem % next
-    end do
-
-  end function dict_get_elem_ii
-
-!===============================================================================
 ! DICT_HASH_KEY returns the hash value for a given key
 !===============================================================================
 
@@ -354,62 +356,74 @@ contains
   end function dict_hash_key_ii
 
 !===============================================================================
-! DICT_KEYS returns a pointer to a linked list containig the (key,values)
+! DICT_KEYS returns a pointer to a linked list of all (key,value) pairs
 !===============================================================================
 
-  function dict_keys_ci(this) result(head)
+  function dict_keys_ci(this) result(keys)
+    class(DictCharInt)            :: this
+    type(ElemKeyValueCI), pointer :: keys
 
-    class(DictCharInt) :: this
-    type(ElemKeyValueCI), pointer :: head
+    integer :: i
     type(ElemKeyValueCI), pointer :: current => null()
     type(ElemKeyValueCI), pointer :: elem => null()
 
-    integer :: i
-
-    head => null()
+    keys => null()
 
     do i = 1, size(this % table)
+      ! Get pointer to start of bucket i
       elem => this % table(i) % list
+
       do while (associated(elem))
-        if (.not. associated(head)) then
-          allocate(head)
-          current => head
+        ! Allocate (key,value) pair
+        if (.not. associated(keys)) then
+          allocate(keys)
+          current => keys
         else
           allocate(current % next)
           current => current % next
         end if
+
+        ! Copy (key,value) pair
         current % key   = elem % key
         current % value = elem % value
+
+        ! Move to next element in bucket i
         elem => elem % next
       end do
     end do
 
   end function dict_keys_ci
 
-  function dict_keys_ii(this) result(head)
+  function dict_keys_ii(this) result(keys)
+    class(DictIntInt)             :: this
+    type(ElemKeyValueII), pointer :: keys
 
-    class(DictIntInt) :: this
-    type(ElemKeyValueII), pointer :: head
+    integer :: i
     type(ElemKeyValueII), pointer :: current => null()
     type(ElemKeyValueII), pointer :: elem => null()
 
-    integer :: i
-    
-    head => null()
+    keys => null()
 
     do i = 1, size(this % table)
+      ! Get pointer to start of bucket i
       elem => this % table(i) % list
+
       do while (associated(elem))
-        if (.not. associated(head)) then
-          allocate(head)
-          current => head
+        ! Allocate (key,value) pair
+        if (.not. associated(keys)) then
+          allocate(keys)
+          current => keys
         else
           allocate(current % next)
           current => current % next
         end if
+
+        ! Copy (key,value) pair
         current % key   = elem % key
         current % value = elem % value
-        elem => elem%next
+
+        ! Move to next element in bucket i
+        elem => elem % next
       end do
     end do
 

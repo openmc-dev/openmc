@@ -36,7 +36,6 @@ contains
                                       cmfd_inact_flush, cmfd_keff_tol,          &
                                       cmfd_act_flush, current_batch, keff,      &
                                       n_batches, message, master, mpi_err, rank
-    use timing,                 only: timer_start, timer_stop
 
     logical :: leave_cmfd
 
@@ -45,7 +44,7 @@ contains
 
     ! stop cmfd timer
     if (master) then
-      call timer_start(time_cmfd)
+      call time_cmfd % start()
     end if
 
     ! filter processors (lowest PETSc group)
@@ -126,7 +125,7 @@ contains
 
     ! stop cmfd timer
     if (master) then
-      call timer_stop(time_cmfd)
+      call time_cmfd % stop()
     end if
 
     ! wait here for all procs

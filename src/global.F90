@@ -14,7 +14,7 @@ module global
   use plot_header,      only: Plot
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
-  use timing,           only: Timer
+  use timer_header,     only: Timer
 
 #ifdef MPI
   use mpi

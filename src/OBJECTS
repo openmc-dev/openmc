@@ -53,4 +53,4 @@ string.o \
 tally.o \
 tally_header.o \
 tally_initialize.o \
-timing.o
+timer_header.o

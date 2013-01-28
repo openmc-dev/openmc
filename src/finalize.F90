@@ -6,7 +6,6 @@ module finalize
   use global
   use output,         only: print_runtime, write_tallies
   use tally,          only: tally_statistics
-  use timing,         only: timer_start, timer_stop
 
 #ifdef MPI
   use mpi
@@ -28,7 +27,7 @@ contains
   subroutine finalize_run()
 
     ! Start finalization timer
-    call timer_start(time_finalize)
+    call time_finalize % start()
 
     if (run_mode /= MODE_PLOTTING) then
       ! Calculate statistics for tallies and write to tallies.out
@@ -44,8 +43,8 @@ contains
 #endif
 
     ! stop timers and show timing statistics
-    call timer_stop(time_finalize)
-    call timer_stop(time_total)
+    call time_finalize % stop()
+    call time_total % stop()
     if (master .and. (run_mode /= MODE_PLOTTING .and. &
          run_mode /= MODE_TALLIES)) call print_runtime()
 

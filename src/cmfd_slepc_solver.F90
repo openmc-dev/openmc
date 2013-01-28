@@ -31,10 +31,9 @@ contains
 
   subroutine cmfd_slepc_execute()
 
-    use global, only:time_cmfd,master
-    use timing
+    use global, only: time_cmfd, master
 
-call timer_start(time_cmfd)
+    call time_cmfd % start()
     ! initialize data
     call init_data()
 

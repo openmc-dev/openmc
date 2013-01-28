@@ -1,4 +1,4 @@
-module timing
+module timer_header
 
   use constants, only: ZERO
 
@@ -11,14 +11,15 @@ module timing
 !===============================================================================
 
   type Timer
+    private
     logical :: running      = .false. ! is timer running?
     integer :: start_counts = 0       ! counts when started
-    real(8) :: elapsed      = ZERO    ! total time elapsed in seconds
-!!$   contains
-!!$     procedure :: start     => timer_start
-!!$     procedure :: get_value => timer_get_value
-!!$     procedure :: stop      => timer_stop
-!!$     procedure :: reset     => timer_reset
+    real(8), public :: elapsed = ZERO ! total time elapsed in seconds
+   contains
+     procedure :: start     => timer_start
+     procedure :: get_value => timer_get_value
+     procedure :: stop      => timer_stop
+     procedure :: reset     => timer_reset
   end type Timer
 
 contains
@@ -29,7 +30,7 @@ contains
 
   subroutine timer_start(self)
 
-    type(Timer), intent(inout) :: self
+    class(Timer), intent(inout) :: self
 
     ! Turn timer on and measure starting time
     self % running = .true.
@@ -43,7 +44,7 @@ contains
 
   function timer_get_value(self) result(elapsed)
 
-    type(Timer), intent(in) :: self   ! the timer
+    class(Timer), intent(in) :: self   ! the timer
     real(8)                 :: elapsed ! total elapsed time
 
     integer :: end_counts   ! current number of counts
@@ -66,7 +67,7 @@ contains
 
   subroutine timer_stop(self)
 
-    type(Timer), intent(inout) :: self
+    class(Timer), intent(inout) :: self
 
     ! Check to make sure timer was running
     if (.not. self % running) return
@@ -83,7 +84,7 @@ contains
 
   subroutine timer_reset(self)
     
-    type(Timer), intent(inout) :: self
+    class(Timer), intent(inout) :: self
 
     self % running      = .false.
     self % start_counts = 0
@@ -91,4 +92,4 @@ contains
 
   end subroutine timer_reset
 
-end module timing
+end module timer_header

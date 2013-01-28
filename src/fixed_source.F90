@@ -10,7 +10,6 @@ module fixed_source
   use state_point, only: write_state_point
   use string,      only: to_str
   use tally,       only: synchronize_tallies, setup_active_usertallies
-  use timing,      only: timer_start, timer_stop
 
 #ifdef HDF5
   use hdf5_interface, only: hdf5_write_state_point
@@ -33,7 +32,7 @@ contains
     ! Turn timer and tallies on
     tallies_on = .true.
     call setup_active_usertallies()
-    call timer_start(time_active)
+    call time_active % start()
 
     ! ==========================================================================
     ! LOOP OVER BATCHES
@@ -48,7 +47,7 @@ contains
       call initialize_batch()
 
       ! Start timer for transport
-      call timer_start(time_transport)
+      call time_transport % start()
 
       ! =======================================================================
       ! LOOP OVER PARTICLES
@@ -74,13 +73,13 @@ contains
       end do PARTICLE_LOOP
 
       ! Accumulate time for transport
-      call timer_stop(time_transport)
+      call time_transport % stop()
 
       call finalize_batch()
 
     end do BATCH_LOOP
 
-    call timer_stop(time_active)
+    call time_active % stop()
 
     ! ==========================================================================
     ! END OF RUN WRAPUP
@@ -112,9 +111,9 @@ contains
     integer :: i ! loop index for state point batches
 
     ! Collect and accumulate tallies
-    call timer_start(time_tallies)
+    call time_tallies % start()
     call synchronize_tallies()
-    call timer_stop(time_tallies)
+    call time_tallies % stop()
 
     ! Write out state point if it's been specified for this batch
     do i = 1, n_state_points

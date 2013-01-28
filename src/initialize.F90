@@ -3,9 +3,7 @@ module initialize
   use ace,              only: read_xs
   use bank_header,      only: Bank
   use constants
-  use datatypes,        only: dict_create, dict_get_key, dict_has_key,         &
-                              dict_keys
-  use datatypes_header, only: ListKeyValueII, DictionaryII
+  use dict_header,      only: DictIntInt, ElemKeyValueII
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error
   use geometry,         only: neighbor_lists
@@ -66,9 +64,6 @@ contains
       call title()
       call header("INITIALIZATION", level=1)
     end if
-
-    ! set up dictionaries
-    call create_dictionaries()
 
     ! Read XML input files
     call read_input_xml()
@@ -344,31 +339,6 @@ contains
   end subroutine read_command_line
 
 !===============================================================================
-! CREATE_DICTIONARIES initializes the various dictionary variables. It would be
-! nice to avoid this and just have a check at the beginning of
-! dictionary_add_key.
-!===============================================================================
-
-  subroutine create_dictionaries()
-
-    ! Create all global dictionaries
-    call dict_create(cell_dict)
-    call dict_create(universe_dict)
-    call dict_create(lattice_dict)
-    call dict_create(surface_dict)
-    call dict_create(material_dict)
-    call dict_create(mesh_dict)
-    call dict_create(tally_dict)
-    call dict_create(xs_listing_dict)
-    call dict_create(nuclide_dict)
-    call dict_create(sab_dict)
-
-    ! Create special dictionary used in input_xml
-    call dict_create(cells_in_univ_dict)
-
-  end subroutine create_dictionaries
-
-!===============================================================================
 ! PREPARE_UNIVERSES allocates the universes array and determines the cells array
 ! for each universe.
 !===============================================================================
@@ -380,7 +350,7 @@ contains
     integer              :: n_cells_in_univ       ! number of cells in a universe
     integer, allocatable :: index_cell_in_univ(:) ! the index in the univ%cells
                                                   ! array for each universe
-    type(ListKeyValueII), pointer :: key_list => null()
+    type(ElemKeyValueII), pointer :: pair_list => null()
     type(Universe),       pointer :: univ => null()
     type(Cell),           pointer :: c => null()
 
@@ -391,25 +361,25 @@ contains
     ! pairs are the id of the universe and the index in the array. In
     ! cells_in_univ_dict, it's the id of the universe and the number of cells.
 
-    key_list => dict_keys(universe_dict)
-    do while (associated(key_list))
+    pair_list => universe_dict % keys()
+    do while (associated(pair_list))
       ! find index of universe in universes array
-      i_univ = key_list % data % value
+      i_univ = pair_list % value
       univ => universes(i_univ)
-      univ % id = key_list % data % key
+      univ % id = pair_list % key
 
       ! check for lowest level universe
       if (univ % id == 0) BASE_UNIVERSE = i_univ
 
       ! find cell count for this universe
-      n_cells_in_univ = dict_get_key(cells_in_univ_dict, univ % id)
+      n_cells_in_univ = cells_in_univ_dict % get_key(univ % id)
 
       ! allocate cell list for universe
       allocate(univ % cells(n_cells_in_univ))
       univ % n_cells = n_cells_in_univ
 
       ! move to next universe
-      key_list => key_list % next
+      pair_list => pair_list % next
     end do
 
     ! Also allocate a list for keeping track of where cells have been assigned
@@ -422,7 +392,7 @@ contains
       c => cells(i)
 
       ! get pointer to corresponding universe
-      i_univ = dict_get_key(universe_dict, c % universe)
+      i_univ = universe_dict % get_key(c % universe)
       univ => universes(i_univ)
 
       ! increment the index for the cells array within the Universe object and
@@ -460,8 +430,8 @@ contains
       do j = 1, c % n_surfaces
         id = c % surfaces(j)
         if (id < OP_DIFFERENCE) then
-          if (dict_has_key(surface_dict, abs(id))) then
-            i_array = dict_get_key(surface_dict, abs(id))
+          if (surface_dict % has_key(abs(id))) then
+            i_array = surface_dict % get_key(abs(id))
             c % surfaces(j) = sign(i_array, id)
           else
             message = "Could not find surface " // trim(to_str(abs(id))) // &
@@ -475,8 +445,8 @@ contains
       ! ADJUST UNIVERSE INDEX FOR EACH CELL
 
       id = c % universe
-      if (dict_has_key(universe_dict, id)) then
-        c % universe = dict_get_key(universe_dict, id)
+      if (universe_dict % has_key(id)) then
+        c % universe = universe_dict % get_key(id)
       else
         message = "Could not find universe " // trim(to_str(id)) // &
              " specified on cell " // trim(to_str(c % id))
@@ -490,9 +460,9 @@ contains
       if (id == MATERIAL_VOID) then
         c % type = CELL_NORMAL
       elseif (id /= 0) then
-        if (dict_has_key(material_dict, id)) then
+        if (material_dict % has_key(id)) then
           c % type = CELL_NORMAL
-          c % material = dict_get_key(material_dict, id)
+          c % material = material_dict % get_key(id)
         else
           message = "Could not find material " // trim(to_str(id)) // &
                " specified on cell " // trim(to_str(c % id))
@@ -500,12 +470,12 @@ contains
         end if
       else
         id = c % fill
-        if (dict_has_key(universe_dict, id)) then
+        if (universe_dict % has_key(id)) then
           c % type = CELL_FILL
-          c % fill = dict_get_key(universe_dict, id)
-        elseif (dict_has_key(lattice_dict, id)) then
+          c % fill = universe_dict % get_key(id)
+        elseif (lattice_dict % has_key(id)) then
           c % type = CELL_LATTICE
-          c % fill = dict_get_key(lattice_dict, id)
+          c % fill = lattice_dict % get_key(id)
         else
           message = "Specified fill " // trim(to_str(id)) // " on cell " // &
                trim(to_str(c % id)) // " is neither a universe nor a lattice."
@@ -522,8 +492,8 @@ contains
       do j = 1, l % n_x
         do k = 1, l % n_y
           id = l % element(j,k)
-          if (dict_has_key(universe_dict, id)) then
-            l % element(j,k) = dict_get_key(universe_dict, id)
+          if (universe_dict % has_key(id)) then
+            l % element(j,k) = universe_dict % get_key(id)
           else
             message = "Invalid universe number " // trim(to_str(id)) &
                  // " specified on lattice " // trim(to_str(l % id))
@@ -546,8 +516,8 @@ contains
 
           do k = 1, t % filters(j) % n_bins
             id = t % filters(j) % int_bins(k)
-            if (dict_has_key(cell_dict, id)) then
-              t % filters(j) % int_bins(k) = dict_get_key(cell_dict, id)
+            if (cell_dict % has_key(id)) then
+              t % filters(j) % int_bins(k) = cell_dict % get_key(id)
             else
               message = "Could not find cell " // trim(to_str(id)) // &
                    " specified on tally " // trim(to_str(t % id))
@@ -559,8 +529,8 @@ contains
 
           do k = 1, t % filters(j) % n_bins
             id = t % filters(j) % int_bins(k)
-            if (dict_has_key(surface_dict, id)) then
-              t % filters(j) % int_bins(k) = dict_get_key(surface_dict, id)
+            if (surface_dict % has_key(id)) then
+              t % filters(j) % int_bins(k) = surface_dict % get_key(id)
             else
               message = "Could not find surface " // trim(to_str(id)) // &
                    " specified on tally " // trim(to_str(t % id))
@@ -572,8 +542,8 @@ contains
 
           do k = 1, t % filters(j) % n_bins
             id = t % filters(j) % int_bins(k)
-            if (dict_has_key(universe_dict, id)) then
-              t % filters(j) % int_bins(k) = dict_get_key(universe_dict, id)
+            if (universe_dict % has_key(id)) then
+              t % filters(j) % int_bins(k) = universe_dict % get_key(id)
             else
               message = "Could not find universe " // trim(to_str(id)) // &
                    " specified on tally " // trim(to_str(t % id))
@@ -585,8 +555,8 @@ contains
 
           do k = 1, t % filters(j) % n_bins
             id = t % filters(j) % int_bins(k)
-            if (dict_has_key(material_dict, id)) then
-              t % filters(j) % int_bins(k) = dict_get_key(material_dict, id)
+            if (material_dict % has_key(id)) then
+              t % filters(j) % int_bins(k) = material_dict % get_key(id)
             else
               message = "Could not find material " // trim(to_str(id)) // &
                    " specified on tally " // trim(to_str(t % id))
@@ -597,8 +567,8 @@ contains
         case (FILTER_MESH)
 
           id = t % filters(j) % int_bins(1)
-          if (dict_has_key(mesh_dict, id)) then
-            t % filters(j) % int_bins(1) = dict_get_key(mesh_dict, id)
+          if (mesh_dict % has_key(id)) then
+            t % filters(j) % int_bins(1) = mesh_dict % get_key(id)
           else
             message = "Could not find mesh " // trim(to_str(id)) // &
                  " specified on tally " // trim(to_str(t % id))
@@ -640,7 +610,7 @@ contains
       sum_percent = ZERO
       do j = 1, mat % n_nuclides
         ! determine atomic weight ratio
-        index_list = dict_get_key(xs_listing_dict, mat % names(j))
+        index_list = xs_listing_dict % get_key(mat % names(j))
         awr = xs_listings(index_list) % awr
 
         ! if given weight percent, convert all values so that they are divided
@@ -662,7 +632,7 @@ contains
       if (.not. density_in_atom) then
         sum_percent = ZERO
         do j = 1, mat % n_nuclides
-          index_list = dict_get_key(xs_listing_dict, mat % names(j))
+          index_list = xs_listing_dict % get_key(mat % names(j))
           awr = xs_listings(index_list) % awr
           x = mat % atom_density(j)
           sum_percent = sum_percent + x*awr

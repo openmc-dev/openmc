@@ -2,9 +2,7 @@ module input_xml
 
   use cmfd_input,       only: configure_cmfd
   use constants
-  use datatypes,        only: dict_add_key, dict_has_key, dict_get_key, &
-                              dict_keys
-  use datatypes_header, only: ListKeyValueCI
+  use dict_header,      only: DictIntInt, ElemKeyValueCI
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Surface, Lattice
   use global
@@ -18,8 +16,8 @@ module input_xml
 
   implicit none
 
-  type(DictionaryII), pointer :: &  ! used to count how many cells each
-       cells_in_univ_dict => null() ! universe contains
+  type(DictIntInt) :: cells_in_univ_dict ! used to count how many cells each
+                                         ! universe contains
 
 contains
 
@@ -729,20 +727,20 @@ contains
       end if
 
       ! Add cell to dictionary
-      call dict_add_key(cell_dict, c % id, i)
+      call cell_dict % add_key(c % id, i)
 
       ! For cells, we also need to check if there's a new universe --
       ! also for every cell add 1 to the count of cells for the
       ! specified universe
       universe_num = cell_(i) % universe
-      if (.not. dict_has_key(cells_in_univ_dict, universe_num)) then
+      if (.not. cells_in_univ_dict % has_key(universe_num)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call dict_add_key(universe_dict, universe_num, n_universes)
+        call universe_dict % add_key(universe_num, n_universes)
       else
-        n_cells_in_univ = 1 + dict_get_key(cells_in_univ_dict, universe_num)
+        n_cells_in_univ = 1 + cells_in_univ_dict % get_key(universe_num)
       end if
-      call dict_add_key(cells_in_univ_dict, universe_num, n_cells_in_univ)
+      call cells_in_univ_dict % add_key(universe_num, n_cells_in_univ)
 
     end do
 
@@ -861,7 +859,7 @@ contains
       end select
 
       ! Add surface to dictionary
-      call dict_add_key(surface_dict, s % id, i)
+      call surface_dict % add_key(s % id, i)
 
     end do
 
@@ -929,7 +927,7 @@ contains
       end do
 
       ! Add lattice to dictionary
-      call dict_add_key(lattice_dict, l % id, i)
+      call lattice_dict % add_key(l % id, i)
 
     end do
 
@@ -1081,7 +1079,7 @@ contains
         mat % names(j) = name
 
         ! Check that this nuclide is listed in the cross_sections.xml file
-        if (.not. dict_has_key(xs_listing_dict, name)) then
+        if (.not. xs_listing_dict % has_key(name)) then
           message = "Could not find nuclide " // trim(name) // &
                " in cross_sections.xml file!"
           call fatal_error()
@@ -1096,20 +1094,20 @@ contains
         end if
 
         ! Find xs_listing and set the name/alias according to the listing
-        index_list = dict_get_key(xs_listing_dict, name)
+        index_list = xs_listing_dict % get_key(name)
         name       = xs_listings(index_list) % name
         alias      = xs_listings(index_list) % alias
 
         ! If this nuclide hasn't been encountered yet, we need to add its name
         ! and alias to the nuclide_dict
-        if (.not. dict_has_key(nuclide_dict, name)) then
+        if (.not. nuclide_dict % has_key(name)) then
           index_nuclide    = index_nuclide + 1
           mat % nuclide(j) = index_nuclide
 
-          call dict_add_key(nuclide_dict, name,  index_nuclide)
-          call dict_add_key(nuclide_dict, alias, index_nuclide)
+          call nuclide_dict % add_key(name, index_nuclide)
+          call nuclide_dict % add_key(alias, index_nuclide)
         else
-          mat % nuclide(j) = dict_get_key(nuclide_dict, name)
+          mat % nuclide(j) = nuclide_dict % get_key(name)
         end if
 
         ! Check if no atom/weight percents were specified or if both atom and
@@ -1156,7 +1154,7 @@ contains
         mat % sab_name = name
 
         ! Check that this nuclide is listed in the cross_sections.xml file
-        if (.not. dict_has_key(xs_listing_dict, name)) then
+        if (.not. xs_listing_dict % has_key(name)) then
           message = "Could not find S(a,b) table " // trim(name) // &
                " in cross_sections.xml file!"
           call fatal_error()
@@ -1165,20 +1163,20 @@ contains
 
         ! Find index in xs_listing and set the name and alias according to the
         ! listing
-        index_list = dict_get_key(xs_listing_dict, name)
+        index_list = xs_listing_dict % get_key(name)
         name       = xs_listings(index_list) % name
         alias      = xs_listings(index_list) % alias
 
         ! If this S(a,b) table hasn't been encountered yet, we need to add its
         ! name and alias to the sab_dict
-        if (.not. dict_has_key(sab_dict, name)) then
+        if (.not. sab_dict % has_key(name)) then
           index_sab       = index_sab + 1
           mat % sab_table = index_sab
 
-          call dict_add_key(sab_dict, name,  index_sab)
-          call dict_add_key(sab_dict, alias, index_sab)
+          call sab_dict % add_key(name, index_sab)
+          call sab_dict % add_key(alias, index_sab)
         else
-          mat % sab_table = dict_get_key(sab_dict, name)
+          mat % sab_table = sab_dict % get_key(name)
         end if
 
       elseif (size(material_(i) % sab) > 1) then
@@ -1187,7 +1185,7 @@ contains
       end if
 
       ! Add material to dictionary
-      call dict_add_key(material_dict, mat % id, i)
+      call material_dict % add_key(mat % id, i)
     end do
 
     ! Set total number of nuclides and S(a,b) tables
@@ -1226,7 +1224,7 @@ contains
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: score_name
-    type(ListKeyValueCI), pointer :: key_list => null()
+    type(ElemKeyValueCI), pointer :: pair_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(TallyFilter), allocatable :: filters(:) ! temporary filters
@@ -1395,7 +1393,7 @@ contains
       m % volume_frac = ONE/real(product(m % dimension),8)
 
       ! Add mesh to dictionary
-      call dict_add_key(mesh_dict, m % id, i)
+      call mesh_dict % add_key(m % id, i)
     end do
 
     ! ==========================================================================
@@ -1536,8 +1534,8 @@ contains
             id = int(str_to_int(tally_(i) % filter(j) % bins(1)),4)
 
             ! Get pointer to mesh
-            if (dict_has_key(mesh_dict, id)) then
-              i_mesh = dict_get_key(mesh_dict, id)
+            if (mesh_dict % has_key(id)) then
+              i_mesh = mesh_dict % get_key(id)
               m => meshes(i_mesh)
             else
               message = "Could not find mesh " // trim(to_str(id)) // &
@@ -1639,26 +1637,26 @@ contains
             else
               if (default_xs == '') then
                 ! No default cross section specified, search through nuclides
-                key_list => dict_keys(nuclide_dict)
-                do while (associated(key_list))
-                  if (starts_with(key_list % data % key, &
+                pair_list => nuclide_dict % keys()
+                do while (associated(pair_list))
+                  if (starts_with(pair_list % key, &
                        tally_(i) % nuclides(j))) then
-                    word = key_list % data % key
+                    word = pair_list % key
                     exit
                   end if
                   
                   ! Advance to next
-                  key_list => key_list % next
+                  pair_list => pair_list % next
                 end do
 
                 ! Check if no nuclide was found
-                if (.not. associated(key_list)) then
+                if (.not. associated(pair_list)) then
                   message = "Could not find the nuclide " // trim(&
                        tally_(i) % nuclides(j)) // " specified in tally " &
                        // trim(to_str(t % id)) // " in any material."
                   call fatal_error()
                 end if
-                deallocate(key_list)
+                deallocate(pair_list)
               else
                 ! Set nuclide to default xs
                 word = trim(tally_(i) % nuclides(j)) // "." // default_xs
@@ -1666,14 +1664,14 @@ contains
             end if
 
             ! Check to make sure nuclide specified is in problem
-            if (.not. dict_has_key(nuclide_dict, word)) then
+            if (.not. nuclide_dict % has_key(word)) then
               message = "The nuclide " // trim(word) // " from tally " // &
                    trim(to_str(t % id)) // " is not present in any material."
               call fatal_error()
             end if
 
             ! Set bin to index in nuclides array
-            t % nuclide_bins(j) = dict_get_key(nuclide_dict, word)
+            t % nuclide_bins(j) = nuclide_dict % get_key(word)
           end do
 
           ! Set number of nuclide bins
@@ -2178,7 +2176,7 @@ contains
 
           if (pl % color_by == PLOT_COLOR_CELLS) then
 
-            if (dict_has_key(cell_dict, col_id)) then
+            if (cell_dict % has_key(col_id)) then
               pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
             else
               message = "Could not find cell " // trim(to_str(col_id)) // &
@@ -2188,7 +2186,7 @@ contains
 
           else if (pl % color_by == PLOT_COLOR_MATS) then
 
-            if (dict_has_key(material_dict, col_id)) then
+            if (material_dict % has_key(col_id)) then
               pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
             else
               message = "Could not find material " // trim(to_str(col_id)) // &
@@ -2334,8 +2332,8 @@ contains
        end if
 
        ! create dictionary entry for both name and alias
-       call dict_add_key(xs_listing_dict, listing % name, i)
-       call dict_add_key(xs_listing_dict, listing % alias, i)
+       call xs_listing_dict % add_key(listing % name, i)
+       call xs_listing_dict % add_key(listing % alias, i)
     end do
 
   end subroutine read_cross_sections_xml

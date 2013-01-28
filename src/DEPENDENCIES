@@ -1,13 +1,12 @@
 ace.o: ace_header.o
 ace.o: constants.o
-ace.o: datatypes.o
-ace.o: datatypes_header.o
 ace.o: endf.o
 ace.o: error.o
 ace.o: fission.o
 ace.o: global.o
 ace.o: material_header.o
 ace.o: output.o
+ace.o: set_header.o
 ace.o: string.o
 
 ace_header.o: constants.o
@@ -38,7 +37,6 @@ cmfd_execute.o: tally.o
 cmfd_header.o: constants.o
 
 cmfd_input.o: cmfd_message_passing.o
-cmfd_input.o: datatypes.o
 cmfd_input.o: error.o
 cmfd_input.o: global.o
 cmfd_input.o: mesh_header.o
@@ -113,17 +111,14 @@ cross_section.o: material_header.o
 cross_section.o: random_lcg.o
 cross_section.o: search.o
 
-datatypes.o: datatypes_header.o
-
 doppler.o: constants.o
 
 endf.o: constants.o
 endf.o: string.o
 
 energy_grid.o: constants.o
-energy_grid.o: datatypes.o
-energy_grid.o: datatypes_header.o
 energy_grid.o: global.o
+energy_grid.o: list_header.o
 energy_grid.o: output.o
 
 error.o: global.o
@@ -153,7 +148,6 @@ fixed_source.o: string.o
 fixed_source.o: tally.o
 
 geometry.o: constants.o
-geometry.o: datatypes.o
 geometry.o: error.o
 geometry.o: geometry_header.o
 geometry.o: global.o
@@ -166,8 +160,8 @@ global.o: ace_header.o
 global.o: bank_header.o
 global.o: cmfd_header.o
 global.o: constants.o
-global.o: datatypes.o
-global.o: datatypes_header.o
+global.o: dict_header.o
+global.o: list_header.o
 global.o: geometry_header.o
 global.o: material_header.o
 global.o: mesh_header.o
@@ -192,8 +186,7 @@ hdf5_interface.o: tally_header.o
 initialize.o: ace.o
 initialize.o: bank_header.o
 initialize.o: constants.o
-initialize.o: datatypes.o
-initialize.o: datatypes_header.o
+initialize.o: dict_header.o
 initialize.o: energy_grid.o
 initialize.o: error.o
 initialize.o: geometry.o
@@ -211,8 +204,7 @@ initialize.o: tally_initialize.o
 
 input_xml.o: cmfd_input.o
 input_xml.o: constants.o
-input_xml.o: datatypes.o
-input_xml.o: datatypes_header.o
+input_xml.o: dict_header.o
 input_xml.o: error.o
 input_xml.o: geometry_header.o
 input_xml.o: global.o
@@ -235,6 +227,8 @@ interpolation.o: global.o
 interpolation.o: search.o
 interpolation.o: string.o
 
+list_header.o: constants.o
+
 main.o: constants.o
 main.o: eigenvalue.o
 main.o: finalize.o
@@ -253,7 +247,6 @@ mesh.o: search.o
 
 output.o: ace_header.o
 output.o: constants.o
-output.o: datatypes.o
 output.o: endf.o
 output.o: geometry_header.o
 output.o: global.o
@@ -305,6 +298,8 @@ random_lcg.o: global.o
 search.o: error.o
 search.o: global.o
 
+set_header.o: list_header.o
+
 source.o: bank_header.o
 source.o: constants.o
 source.o: error.o
@@ -331,7 +326,6 @@ string.o: global.o
 
 tally.o: ace_header.o
 tally.o: constants.o
-tally.o: datatypes_header.o
 tally.o: error.o
 tally.o: global.o
 tally.o: math.o

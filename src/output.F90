@@ -4,7 +4,6 @@ module output
 
   use ace_header,      only: Nuclide, Reaction, UrrData
   use constants
-  use datatypes,       only: dict_get_key
   use endf,            only: reaction_name
   use geometry_header, only: Cell, Universe, Surface, BASE_UNIVERSE
   use global
@@ -346,7 +345,7 @@ contains
     write(unit_,*) 'Cell ' // to_str(c % id)
 
     ! Find index in cells array and write
-    index_cell = dict_get_key(cell_dict, c % id)
+    index_cell = cell_dict % get_key(c % id)
     write(unit_,*) '    Array Index = ' // to_str(index_cell)
 
     ! Write what universe this cell is in

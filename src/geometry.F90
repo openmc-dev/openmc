@@ -1,7 +1,6 @@
 module geometry
 
   use constants
-  use datatypes,       only: dict_get_key
   use error,           only: fatal_error
   use geometry_header, only: Cell, Surface, Universe, Lattice
   use global
@@ -264,7 +263,7 @@ contains
       ! forward slightly so that if the mesh boundary is on the surface, it is
       ! still processed
 
-      if (associated(active_current_tallies)) then
+      if (active_current_tallies % size() > 0) then
         ! TODO: Find a better solution to score surface currents than
         ! physically moving the particle forward slightly
 
@@ -298,7 +297,7 @@ contains
       ! particle to change -- artificially move the particle slightly back in
       ! case the surface crossing in coincident with a mesh boundary
 
-      if (associated(active_current_tallies)) then
+      if (active_current_tallies % size() > 0) then
         p % coord0 % xyz = p % coord0 % xyz - TINY_BIT * p % coord0 % uvw
         call score_surface_current()
         p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw

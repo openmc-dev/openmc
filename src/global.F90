@@ -6,12 +6,12 @@ module global
   use cmfd_header
   use constants
   use dict_header,      only: DictCharInt, DictIntInt
-  use list_header,      only: ListInt
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
   use particle_header,  only: Particle
   use plot_header,      only: Plot
+  use set_header,       only: SetInt
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use timer_header,     only: Timer
@@ -109,10 +109,10 @@ module global
   integer :: i_cmfd_tallies
 
   ! Active tally lists
-  type(ListInt) :: active_analog_tallies
-  type(ListInt) :: active_tracklength_tallies
-  type(ListInt) :: active_current_tallies
-  type(ListInt) :: active_tallies
+  type(SetInt) :: active_analog_tallies
+  type(SetInt) :: active_tracklength_tallies
+  type(SetInt) :: active_current_tallies
+  type(SetInt) :: active_tallies
 
   ! Global tallies
   !   1) collision estimate of k-eff

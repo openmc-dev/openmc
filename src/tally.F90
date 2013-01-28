@@ -1951,17 +1951,17 @@ contains
 
     do i = 1, n_user_tallies
       ! Add tally to active tallies
-      call active_tallies % append(i_user_tallies + i)
+      call active_tallies % add(i_user_tallies + i)
 
       ! Check what type of tally this is and add it to the appropriate list
       if (user_tallies(i) % type == TALLY_VOLUME) then
         if (user_tallies(i) % estimator == ESTIMATOR_ANALOG) then
-          call active_analog_tallies % append(i_user_tallies + i)
+          call active_analog_tallies % add(i_user_tallies + i)
         elseif (user_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
-          call active_tracklength_tallies % append(i_user_tallies + i)
+          call active_tracklength_tallies % add(i_user_tallies + i)
         end if
       elseif (user_tallies(i) % type == TALLY_SURFACE_CURRENT) then
-        call active_current_tallies % append(i_user_tallies + i)
+        call active_current_tallies % add(i_user_tallies + i)
       end if
     end do
 
@@ -1993,17 +1993,17 @@ contains
 
     do i = 1, n_cmfd_tallies
       ! Add CMFD tally to active tallies
-      call active_tallies % append(i_cmfd_tallies + i)
+      call active_tallies % add(i_cmfd_tallies + i)
 
       ! Check what type of tally this is and add it to the appropriate list
       if (cmfd_tallies(i) % type == TALLY_VOLUME) then
         if (cmfd_tallies(i) % estimator == ESTIMATOR_ANALOG) then
-          call active_analog_tallies % append(i_cmfd_tallies + i)
+          call active_analog_tallies % add(i_cmfd_tallies + i)
         elseif (cmfd_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
-          call active_tracklength_tallies % append(i_cmfd_tallies + i)
+          call active_tracklength_tallies % add(i_cmfd_tallies + i)
         end if
       elseif (cmfd_tallies(i) % type == TALLY_SURFACE_CURRENT) then
-        call active_current_tallies % append(i_cmfd_tallies + i)
+        call active_current_tallies % add(i_cmfd_tallies + i)
       end if
     end do
 

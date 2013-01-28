@@ -161,12 +161,12 @@ global.o: bank_header.o
 global.o: cmfd_header.o
 global.o: constants.o
 global.o: dict_header.o
-global.o: list_header.o
 global.o: geometry_header.o
 global.o: material_header.o
 global.o: mesh_header.o
 global.o: particle_header.o
 global.o: plot_header.o
+global.o: set_header.o
 global.o: source_header.o
 global.o: tally_header.o
 global.o: timer_header.o

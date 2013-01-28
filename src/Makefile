@@ -1,4 +1,5 @@
 program = openmc
+prefix = /usr/local
 
 templates = $(wildcard templates/*.o)
 xml_fort = xml-fortran/xmlparse.o \
@@ -222,6 +223,12 @@ xml-fortran:
 	cd templates; make F90=$(F90) F90FLAGS="$(F90FLAGS)"
 $(program): $(objects)
 	$(F90) $(objects) $(templates) $(xml_fort) -o $@ $(LDFLAGS)
+install:
+	@cp $(program) $(prefix)/bin
+	@cp ../man/man1/openmc.1 $(prefix)/share/man/man1
+uninstall:
+	@rm $(prefix)/bin/$(program)
+	@rm $(prefix)/share/man/man1/openmc.1
 distclean: clean
 	cd xml-fortran; make clean
 	cd templates; make clean

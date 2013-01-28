@@ -21,7 +21,6 @@ module initialize
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject
   use tally_initialize, only: configure_tallies
-  use timing,           only: timer_start, timer_stop
 
 #ifdef MPI
   use mpi
@@ -46,8 +45,8 @@ contains
   subroutine initialize_run()
 
     ! Start total and initialization timer
-    call timer_start(time_total)
-    call timer_start(time_initialize)
+    call time_total % start()
+    call time_initialize % start()
 
 #ifdef MPI
     ! Setup MPI
@@ -100,15 +99,15 @@ contains
       call normalize_ao()
 
       ! Read ACE-format cross sections
-      call timer_start(time_read_xs)
+      call time_read_xs % start()
       call read_xs()
-      call timer_stop(time_read_xs)
+      call time_read_xs % stop()
 
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_UNION) then
-        call timer_start(time_unionize)
+        call time_unionize % start()
         call unionized_grid()
-        call timer_stop(time_unionize)
+        call time_unionize % stop()
       end if
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
@@ -152,7 +151,7 @@ contains
     end if
 
     ! Stop initialization timer
-    call timer_stop(time_initialize)
+    call time_initialize % stop()
 
   end subroutine initialize_run
 

@@ -34,7 +34,6 @@ cmfd_execute.o: mesh_header.o
 cmfd_execute.o: output.o
 cmfd_execute.o: search.o
 cmfd_execute.o: tally.o
-cmfd_execute.o: timing.o
 
 cmfd_header.o: constants.o
 
@@ -59,7 +58,6 @@ cmfd_loss_operator.o: global.o
 
 cmfd_message_passing.o: cmfd_header.o
 cmfd_message_passing.o: global.o
-cmfd_message_passing.o: timing.o
 
 cmfd_output.o: cmfd_data.o
 cmfd_output.o: cmfd_header.o
@@ -80,7 +78,6 @@ cmfd_slepc_solver.o: cmfd_loss_operator.o
 cmfd_slepc_solver.o: cmfd_prod_operator.o
 cmfd_slepc_solver.o: constants.o
 cmfd_slepc_solver.o: global.o
-cmfd_slepc_solver.o: timing.o
 
 cmfd_snes_solver.o: cmfd_jacobian_operator.o
 cmfd_snes_solver.o: cmfd_loss_operator.o
@@ -106,7 +103,6 @@ eigenvalue.o: source.o
 eigenvalue.o: state_point.o
 eigenvalue.o: string.o
 eigenvalue.o: tally.o
-eigenvalue.o: timing.o
 
 cross_section.o: ace_header.o
 cross_section.o: constants.o
@@ -137,7 +133,6 @@ finalize.o: global.o
 finalize.o: hdf5_interface.o
 finalize.o: output.o
 finalize.o: tally.o
-finalize.o: timing.o
 
 fission.o: ace_header.o
 fission.o: constants.o
@@ -156,7 +151,6 @@ fixed_source.o: source.o
 fixed_source.o: state_point.o
 fixed_source.o: string.o
 fixed_source.o: tally.o
-fixed_source.o: timing.o
 
 geometry.o: constants.o
 geometry.o: datatypes.o
@@ -181,7 +175,7 @@ global.o: particle_header.o
 global.o: plot_header.o
 global.o: source_header.o
 global.o: tally_header.o
-global.o: timing.o
+global.o: timer_header.o
 
 hdf5_interface.o: ace_header.o
 hdf5_interface.o: bank_header.o
@@ -214,7 +208,6 @@ initialize.o: state_point.o
 initialize.o: string.o
 initialize.o: tally_header.o
 initialize.o: tally_initialize.o
-initialize.o: timing.o
 
 input_xml.o: cmfd_input.o
 input_xml.o: constants.o
@@ -356,4 +349,4 @@ tally_initialize.o: constants.o
 tally_initialize.o: global.o
 tally_initialize.o: tally_header.o
 
-timing.o: constants.o
+timer_header.o: constants.o

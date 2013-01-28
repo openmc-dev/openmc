@@ -19,7 +19,6 @@ contains
   subroutine petsc_init_mpi()
 
     use global,       only: n_procs_cmfd, time_cmfd, rank, mpi_err
-    use timing,       only: timer_reset
 
     integer               :: new_comm   ! new communicator
     integer               :: color      ! communicator color
@@ -41,7 +40,7 @@ contains
     call PetscInitialize(PETSC_NULL_CHARACTER,mpi_err)
 
     ! initialize timer
-    call timer_reset(time_cmfd)
+    call time_cmfd % reset()
 
   end subroutine petsc_init_mpi
 

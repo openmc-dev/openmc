@@ -21,7 +21,6 @@ module eigenvalue
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
                           reset_result
-  use timing,       only: timer_start, timer_stop
 
 #ifdef HDF5
   use hdf5_interface, only: hdf5_write_state_point
@@ -50,7 +49,7 @@ contains
     call print_columns()
 
     ! Turn on inactive timer
-    call timer_start(time_inactive)
+    call time_inactive % start()
 
     ! ==========================================================================
     ! LOOP OVER BATCHES
@@ -71,7 +70,7 @@ contains
         call initialize_generation()
 
         ! Start timer for transport
-        call timer_start(time_transport)
+        call time_transport % start()
 
         ! ====================================================================
         ! LOOP OVER PARTICLES
@@ -86,12 +85,12 @@ contains
         end do PARTICLE_LOOP
 
         ! Accumulate time for transport
-        call timer_stop(time_transport)
+        call time_transport % stop()
 
         ! Distribute fission bank across processors evenly
-        call timer_start(time_bank)
+        call time_bank % start()
         call synchronize_bank()
-        call timer_stop(time_bank)
+        call time_bank % stop()
 
         ! Calculate shannon entropy
         if (entropy_on) call shannon_entropy()
@@ -105,7 +104,7 @@ contains
 
     end do BATCH_LOOP
 
-    call timer_stop(time_active)
+    call time_active % stop()
 
     ! ==========================================================================
     ! END OF RUN WRAPUP
@@ -128,8 +127,8 @@ contains
 
     if (current_batch == n_inactive + 1) then
       ! Switch from inactive batch timer to active batch timer
-      call timer_stop(time_inactive)
-      call timer_start(time_active)
+      call time_inactive % stop()
+      call time_active % start()
 
       ! Enable active batches (and tallies_on if it hasn't been enabled)
       active_batches = .true.
@@ -169,9 +168,9 @@ contains
     integer :: i ! loop index for state point batches
 
     ! Collect tallies
-    call timer_start(time_tallies)
+    call time_tallies % start()
     call synchronize_tallies()
-    call timer_stop(time_tallies)
+    call time_tallies % stop()
 
     ! Collect results and statistics
     call calculate_keff()
@@ -278,7 +277,7 @@ contains
     end if
     p_sample = real(sites_needed,8)/real(total,8)
 
-    call timer_start(time_bank_sample)
+    call time_bank_sample % start()
 
     ! ==========================================================================
     ! SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
@@ -353,8 +352,8 @@ contains
       finish = bank_last
     end if
 
-    call timer_stop(time_bank_sample)
-    call timer_start(time_bank_sendrecv)
+    call time_bank_sample % stop()
+    call time_bank_sendrecv % start()
 
 #ifdef MPI
     ! ==========================================================================
@@ -450,7 +449,7 @@ contains
     source_bank = temp_sites(1:n_particles)
 #endif
 
-    call timer_stop(time_bank_sendrecv)
+    call time_bank_sendrecv % stop()
 
     ! Deallocate space for the temporary source bank on the last generation
     if (current_batch == n_batches .and. current_gen == gen_per_batch) &

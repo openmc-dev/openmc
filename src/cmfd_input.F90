@@ -215,19 +215,7 @@ contains
     if (n_meshes == 0 .or. n_tallies == 0) then
       n_meshes = n_user_meshes + n_cmfd_meshes
       n_tallies = n_user_tallies + n_cmfd_tallies
-      n_analog_tallies = n_user_analog_tallies + n_cmfd_analog_tallies
-      n_tracklength_tallies = n_user_tracklength_tallies + &
-           n_cmfd_tracklength_tallies
-      n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies
     end if
-
-    ! Allocate list of pointers for tallies by type
-    if (.not. allocated(analog_tallies) .and. n_analog_tallies > 0) &
-         allocate(analog_tallies(n_analog_tallies))
-    if (.not. allocated(tracklength_tallies) .and. n_tracklength_tallies > 0) &
-         allocate(tracklength_tallies(n_tracklength_tallies))
-    if (.not. allocated(current_tallies) .and. n_current_tallies > 0) &
-         allocate(current_tallies(n_current_tallies))
 
     ! allocate mesh
     if (.not. allocated(meshes)) allocate(meshes(n_meshes))
@@ -332,13 +320,19 @@ contains
     call mesh_dict % add_key(m % id, n_user_meshes + 1)
 
     ! allocate tallies
-    if (.not. allocated(tallies)) allocate(tallies(n_tallies))
+    if (.not. allocated(tallies)) then
+      allocate(tallies(n_tallies))
+
+      ! Set index and pointer for CMDF tallies
+      i_cmfd_tallies = 0
+      cmfd_tallies => tallies(i_cmfd_tallies+1 : i_cmfd_tallies+n_cmfd_tallies)
+    end if
 
     ! begin loop around tallies
-    do i = n_user_tallies+1, n_tallies
+    do i = 1, n_cmfd_tallies
 
       ! point t to tally variable
-      t => tallies(i)
+      t => cmfd_tallies(i)
 
       ! set reset property
       call lower_case(reset_)
@@ -369,9 +363,9 @@ contains
       t % n_nuclide_bins = 1
 
       ! record tally id which is equivalent to loop number
-      t % id = i
+      t % id = i_cmfd_tallies + i
 
-      if (i == n_user_tallies + 1) then
+      if (i == 1) then
 
         ! set label
         t % label = "CMFD flux, total, scatter-1, diffusion"
@@ -403,10 +397,7 @@ contains
         t % scatt_order(3) = 1
         t % score_bins(4)  = SCORE_DIFFUSION
 
-        ! Increment the appropriate index and set pointer
-        analog_tallies(n_user_analog_tallies + 1) = i
-
-      else if (i == n_user_tallies + 2) then
+      else if (i == 2) then
 
         ! set label
         t % label = "CMFD neutron production"
@@ -450,10 +441,7 @@ contains
         t % score_bins(1) = SCORE_NU_SCATTER
         t % score_bins(2) = SCORE_NU_FISSION
 
-        ! Increment the appropriate index and set pointer
-        analog_tallies(n_user_analog_tallies + 2) = i
-
-      else if (i == n_user_tallies + 3) then
+      else if (i == 3) then
 
         ! set label
         t % label = "CMFD surface currents"
@@ -500,9 +488,6 @@ contains
         ! currents coming into and out of the boundary mesh cells.
         i_filter_mesh = t % find_filter(FILTER_MESH)
         t % filters(i_filter_mesh) % n_bins = product(m % dimension + 1)
-
-        ! Increment the appropriate index and set pointer
-        current_tallies(n_user_current_tallies + 1) = i 
 
       end if
 

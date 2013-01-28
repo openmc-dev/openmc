@@ -65,12 +65,12 @@ contains
     TALLY_LOOP: do i = 1, active_analog_tallies % size()
       ! Get index of tally and pointer to tally
       i_tally = active_analog_tallies % get_item(i)
-      t => tallies(analog_tallies(i_tally))
+      t => tallies(i_tally)
 
       ! =======================================================================
       ! DETERMINE SCORING BIN COMBINATION
 
-      call get_scoring_bins(analog_tallies(i_tally), found_bin)
+      call get_scoring_bins(i_tally, found_bin)
       if (.not. found_bin) cycle
 
       ! =======================================================================
@@ -466,20 +466,20 @@ contains
     TALLY_LOOP: do i = 1, active_tracklength_tallies % size()
       ! Get index of tally and pointer to tally
       i_tally = active_tracklength_tallies % get_item(i)
-      t => tallies(tracklength_tallies(i_tally))
+      t => tallies(i_tally)
 
       ! Check if this tally has a mesh filter -- if so, we treat it separately
       ! since multiple bins can be scored to with a single track
 
       if (t % find_filter(FILTER_MESH) > 0) then
-        call score_tl_on_mesh(tracklength_tallies(i_tally), distance)
+        call score_tl_on_mesh(i_tally, distance)
         cycle
       end if
 
       ! =======================================================================
       ! DETERMINE SCORING BIN COMBINATION
 
-      call get_scoring_bins(tracklength_tallies(i_tally), found_bin)
+      call get_scoring_bins(i_tally, found_bin)
       if (.not. found_bin) cycle
 
       ! =======================================================================
@@ -493,8 +493,7 @@ contains
       filter_index = sum((t % matching_bins - 1) * t % stride) + 1
 
       if (t % all_nuclides) then
-        call score_all_nuclides(tracklength_tallies(i_tally), flux, &
-             filter_index)
+        call score_all_nuclides(i_tally, flux, filter_index)
       else
 
         NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
@@ -1400,7 +1399,7 @@ contains
 
       ! Get pointer to tally
       i_tally = active_current_tallies % get_item(i)
-      t => tallies(current_tallies(i_tally))
+      t => tallies(i_tally)
 
       ! Get index for mesh and surface filters
       i_filter_mesh = t % find_filter(FILTER_MESH)
@@ -1950,22 +1949,20 @@ contains
 
     integer :: i ! loop counter
 
-    ! append all analog tallies
-    do i = 1, n_user_analog_tallies
-      call active_analog_tallies % append(i)
-      call active_tallies % append(analog_tallies(i))
-    end do
+    do i = 1, n_user_tallies
+      ! Add tally to active tallies
+      call active_tallies % append(i_user_tallies + i)
 
-    ! append all tracklength tallies
-    do i = 1, n_user_tracklength_tallies
-      call active_tracklength_tallies % append(i)
-      call active_tallies % append(tracklength_tallies(i))
-    end do
-
-    ! append all current tallies
-    do i = 1, n_user_current_tallies
-      call active_current_tallies % append(i)
-      call active_tallies % append(current_tallies(i))
+      ! Check what type of tally this is and add it to the appropriate list
+      if (user_tallies(i) % type == TALLY_VOLUME) then
+        if (user_tallies(i) % estimator == ESTIMATOR_ANALOG) then
+          call active_analog_tallies % append(i_user_tallies + i)
+        elseif (user_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
+          call active_tracklength_tallies % append(i_user_tallies + i)
+        end if
+      elseif (user_tallies(i) % type == TALLY_SURFACE_CURRENT) then
+        call active_current_tallies % append(i_user_tallies + i)
+      end if
     end do
 
   end subroutine setup_active_usertallies
@@ -1978,47 +1975,36 @@ contains
 
     integer :: i ! loop counter
 
-    ! check to see if actives tallies has been allocated
+    ! check to see if any of the active tally lists has been allocated
     if (active_tallies % size() > 0) then
       message = "Active tallies should not exist before CMFD tallies!"
       call fatal_error()
-    end if
-
-    ! check to see if analog tallies have already been allocated
-    if (active_analog_tallies % size() > 0) then
+    else if (active_analog_tallies % size() > 0) then
       message = 'Active analog tallies should not exist before CMFD tallies!'
       call fatal_error()
-    end if
-
-    do i = n_user_analog_tallies + 1, &
-         n_user_analog_tallies + n_cmfd_analog_tallies
-      call active_analog_tallies % append(i)
-      call active_tallies % append(analog_tallies(i))
-    end do
-
-    ! check to see if tracklength tallies have already been allocated
-    if (active_tracklength_tallies % size() > 0) then
+    else if (active_tracklength_tallies % size() > 0) then
       message = "Active tracklength tallies should not exist before CMFD &
            &tallies!"
       call fatal_error()
-    end if
-
-    do i = n_user_tracklength_tallies + 1, &
-         n_user_tracklength_tallies + n_cmfd_tracklength_tallies
-      call active_tracklength_tallies % append(i)
-      call active_tallies % append(tracklength_tallies(i))
-    end do
-
-    ! check to see if current tallies have already been allocated
-    if (active_current_tallies % size() > 0) then
+    else if (active_current_tallies % size() > 0) then
       message = "Active current tallies should not exist before CMFD tallies!"
       call fatal_error()
     end if
 
-    do i = n_user_current_tallies + 1, &
-         n_user_current_tallies + n_cmfd_current_tallies
-      call active_current_tallies % append(i)
-      call active_tallies % append(current_tallies(i))
+    do i = 1, n_cmfd_tallies
+      ! Add CMFD tally to active tallies
+      call active_tallies % append(i_cmfd_tallies + i)
+
+      ! Check what type of tally this is and add it to the appropriate list
+      if (cmfd_tallies(i) % type == TALLY_VOLUME) then
+        if (cmfd_tallies(i) % estimator == ESTIMATOR_ANALOG) then
+          call active_analog_tallies % append(i_cmfd_tallies + i)
+        elseif (cmfd_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
+          call active_tracklength_tallies % append(i_cmfd_tallies + i)
+        end if
+      elseif (cmfd_tallies(i) % type == TALLY_SURFACE_CURRENT) then
+        call active_current_tallies % append(i_cmfd_tallies + i)
+      end if
     end do
 
   end subroutine setup_active_cmfdtallies

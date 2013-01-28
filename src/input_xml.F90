@@ -1207,9 +1207,6 @@ contains
     integer :: j             ! loop over words
     integer :: k             ! another loop index
     integer :: l             ! another loop index
-    integer :: i_analog      ! index in analog_tallies array
-    integer :: i_tracklength ! index in tracklength_tallies array
-    integer :: i_current     ! index in current_tallies array
     integer :: id            ! user-specified identifier
     integer :: i_mesh        ! index in meshes array
     integer :: n             ! size of arrays in mesh specification
@@ -1278,6 +1275,18 @@ contains
 
     ! Allocate tally array
     if (n_tallies > 0) allocate(tallies(n_tallies))
+
+    ! Set user tally pointers
+    if (n_user_tallies > 0) then
+      i_user_tallies = 0
+      user_tallies => tallies(i_user_tallies+1 : i_user_tallies+n_user_tallies)
+    end if
+
+    ! Set CMFD tally pointers
+    if (cmfd_run) then
+      i_cmfd_tallies = n_user_tallies
+      cmfd_tallies => tallies(i_cmfd_tallies+1 : i_cmfd_tallies+n_cmfd_tallies)
+    end if
 
     ! Check for <assume_separate> setting
     if (separate_ == 'yes') assume_separate = .true.
@@ -1965,61 +1974,7 @@ contains
         end select
       end if
 
-      ! Count number of tallies by type
-      if (t % type == TALLY_VOLUME) then
-        if (t % estimator == ESTIMATOR_ANALOG) then
-          n_user_analog_tallies = n_user_analog_tallies + 1
-        elseif (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          n_user_tracklength_tallies = n_user_tracklength_tallies + 1
-        end if
-      elseif (t % type == TALLY_SURFACE_CURRENT) then
-        n_user_current_tallies = n_user_current_tallies + 1
-      end if
-
-
     end do READ_TALLIES
-
-    ! ==========================================================================
-    ! LISTS FOR ANALOG, TRACKLENGTH, CURRENT TALLIES
-
-    ! Determine number of types of tallies
-    if (cmfd_run) then
-      n_analog_tallies = n_user_analog_tallies + n_cmfd_analog_tallies
-      n_tracklength_tallies = n_user_tracklength_tallies + n_cmfd_tracklength_tallies
-      n_current_tallies = n_user_current_tallies + n_cmfd_current_tallies
-    else
-      n_analog_tallies = n_user_analog_tallies
-      n_tracklength_tallies = n_user_tracklength_tallies
-      n_current_tallies = n_user_current_tallies
-    end if
-
-    ! Allocate list of pointers for tallies by type
-    allocate(analog_tallies(n_analog_tallies))
-    allocate(tracklength_tallies(n_tracklength_tallies))
-    allocate(current_tallies(n_current_tallies))
-
-    ! Set indices for tally pointer lists to zero
-    i_analog = 0
-    i_tracklength = 0
-    i_current = 0
-
-    do i = 1, n_user_tallies
-      t => tallies(i)
-
-      ! Increment the appropriate index and set pointer
-      if (t % type == TALLY_VOLUME) then
-        if (t % estimator == ESTIMATOR_ANALOG) then
-          i_analog = i_analog + 1
-          analog_tallies(i_analog) = i
-        elseif (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          i_tracklength = i_tracklength + 1
-          tracklength_tallies(i_tracklength) = i
-        end if
-      elseif (t % type == TALLY_SURFACE_CURRENT) then
-        i_current = i_current + 1
-        current_tallies(i_current) = i
-      end if
-    end do
 
   end subroutine read_tallies_xml
 

@@ -26,6 +26,7 @@ module set_header
     type(ListInt) :: elements
   contains
     procedure :: add => set_add_int
+    procedure :: clear => set_clear_int
     procedure :: contains => set_contains_int
     procedure :: get_item => set_get_item_int
     procedure :: remove => set_remove_int
@@ -37,6 +38,7 @@ module set_header
     type(ListChar) :: elements
   contains
     procedure :: add => set_add_char
+    procedure :: clear => set_clear_char
     procedure :: contains => set_contains_char
     procedure :: get_item => set_get_item_char
     procedure :: remove => set_remove_char
@@ -68,6 +70,24 @@ contains
     end if
 
   end subroutine set_add_char
+
+!===============================================================================
+! SET_CLEAR removes all items in a set
+!===============================================================================
+
+  subroutine set_clear_int(this)
+    class(SetInt) :: this
+
+    call this % elements % clear()
+
+  end subroutine set_clear_int
+
+  subroutine set_clear_char(this)
+    class(SetChar) :: this
+
+    call this % elements % clear()
+
+  end subroutine set_clear_char
 
 !===============================================================================
 ! SET_CONTAINS determines if a specified item is in a set

@@ -51,8 +51,10 @@ the root directory of the source code:
 
     cd src
     make
+    sudo make install
 
-This will build an executable named ``openmc``.
+This will build an executable named ``openmc`` and install it (by default in
+/usr/local/bin).
 
 --------------------
 Compiling on Windows

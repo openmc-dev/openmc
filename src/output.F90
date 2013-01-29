@@ -1313,7 +1313,14 @@ contains
         write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
              " " // trim(to_str(pl % width(2)))
         write(ou,100) "Coloring:", trim(to_str(pl % color_by))
-        write(ou,100) "Basis:", trim(to_str(pl % basis))
+        select case (pl % basis)
+        case (PLOT_BASIS_XY)
+          write(ou,100) "Basis:", "xy"
+        case (PLOT_BASIS_XZ)
+          write(ou,100) "Basis:", "xz"
+        case (PLOT_BASIS_YZ)
+          write(ou,100) "Basis:", "yz"
+        end select
         write(ou,100) "Pixels:", trim(to_str(pl % pixels(1))) // " " // &
              trim(to_str(pl % pixels(2)))
       end if

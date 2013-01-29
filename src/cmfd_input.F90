@@ -188,12 +188,13 @@ contains
 
   subroutine create_cmfd_tally()
 
-    use error,          only: fatal_error, warning
+    use error,            only: fatal_error, warning
     use global
-    use mesh_header,    only: StructuredMesh
+    use mesh_header,      only: StructuredMesh
     use string
-    use tally,          only: setup_active_cmfdtallies
-    use tally_header,   only: TallyObject, TallyFilter
+    use tally,            only: setup_active_cmfdtallies
+    use tally_header,     only: TallyObject, TallyFilter
+    use tally_initialize, only: add_tallies
     use xml_data_cmfd_t
 
     integer :: i           ! loop counter
@@ -212,10 +213,7 @@ contains
 
     ! set global variables if they are 0 (this can happen if there is no tally
     ! file)
-    if (n_meshes == 0 .or. n_tallies == 0) then
-      n_meshes = n_user_meshes + n_cmfd_meshes
-      n_tallies = n_user_tallies + n_cmfd_tallies
-    end if
+    if (n_meshes == 0) n_meshes = n_user_meshes + n_cmfd_meshes
 
     ! allocate mesh
     if (.not. allocated(meshes)) allocate(meshes(n_meshes))
@@ -320,13 +318,7 @@ contains
     call mesh_dict % add_key(m % id, n_user_meshes + 1)
 
     ! allocate tallies
-    if (.not. allocated(tallies)) then
-      allocate(tallies(n_tallies))
-
-      ! Set index and pointer for CMDF tallies
-      i_cmfd_tallies = 0
-      cmfd_tallies => tallies(i_cmfd_tallies+1 : i_cmfd_tallies+n_cmfd_tallies)
-    end if
+    call add_tallies(cmfd_tallies, n_cmfd_tallies, i_cmfd_tallies)
 
     ! begin loop around tallies
     do i = 1, n_cmfd_tallies

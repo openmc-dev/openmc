@@ -13,6 +13,7 @@ module input_xml
   use string,           only: lower_case, to_str, str_to_int, str_to_real, &
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
+  use tally_initialize, only: add_tallies
 
   implicit none
 
@@ -1266,26 +1267,11 @@ contains
       call warning()
     else
       n_user_tallies = size(tally_)
-      if (cmfd_run) then
-        n_tallies = n_user_tallies + n_cmfd_tallies
-      else
-        n_tallies = n_user_tallies
-      end if
     end if
 
     ! Allocate tally array
-    if (n_tallies > 0) allocate(tallies(n_tallies))
-
-    ! Set user tally pointers
     if (n_user_tallies > 0) then
-      i_user_tallies = 0
-      user_tallies => tallies(i_user_tallies+1 : i_user_tallies+n_user_tallies)
-    end if
-
-    ! Set CMFD tally pointers
-    if (cmfd_run) then
-      i_cmfd_tallies = n_user_tallies
-      cmfd_tallies => tallies(i_cmfd_tallies+1 : i_cmfd_tallies+n_cmfd_tallies)
+      call add_tallies(user_tallies, n_user_tallies, i_user_tallies)
     end if
 
     ! Check for <assume_separate> setting

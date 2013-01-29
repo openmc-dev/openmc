@@ -105,8 +105,8 @@ module global
   type(TallyObject), pointer :: cmfd_tallies(:) => null()
 
   ! Starting index (minus 1) in tallies for each tally group
-  integer :: i_user_tallies
-  integer :: i_cmfd_tallies
+  integer :: i_user_tallies = -1
+  integer :: i_cmfd_tallies = -1
 
   ! Active tally lists
   type(SetInt) :: active_analog_tallies

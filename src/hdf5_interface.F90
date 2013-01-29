@@ -388,12 +388,12 @@ contains
         n_z = 1
       end if
         
-      ! Write lattice elements
+      ! Write lattice universes
       allocate(lattice_universes(n_x, n_y, n_z))
       do j = 1, n_x
         do k = 1, n_y
           do m = 1, n_z
-            lattice_universes(j,k,m) = universes(lat % element(j,k,m)) % id
+            lattice_universes(j,k,m) = universes(lat % universes(j,k,m)) % id
           end do
         end do
       end do

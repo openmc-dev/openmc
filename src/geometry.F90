@@ -220,7 +220,7 @@ contains
             p % coord % lattice_x = i_x
             p % coord % lattice_y = i_y
             p % coord % lattice_z = i_z
-            p % coord % universe  = lat % element(i_x,i_y,i_z)
+            p % coord % universe  = lat % universes(i_x,i_y,i_z)
           end if
 
           call find_cell(found)
@@ -613,7 +613,7 @@ contains
       end if
     else
       ! Find universe for next lattice element
-      p % coord % universe = lat % element(i_x, i_y, i_z)
+      p % coord % universe = lat % universes(i_x, i_y, i_z)
 
       ! Find cell in next lattice element
       call find_cell(found)

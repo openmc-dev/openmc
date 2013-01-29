@@ -502,9 +502,9 @@ contains
       do m = 1, n_z
         do k = 1, n_y
           do j = 1, n_x
-            id = lat % element(j,k,m)
+            id = lat % universes(j,k,m)
             if (universe_dict % has_key(id)) then
-              lat % element(j,k,m) = universe_dict % get_key(id)
+              lat % universes(j,k,m) = universe_dict % get_key(id)
             else
               message = "Invalid universe number " // trim(to_str(id)) &
                    // " specified on lattice " // trim(to_str(lat % id))

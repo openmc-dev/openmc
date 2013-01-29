@@ -928,11 +928,11 @@ contains
       else
         n_z = 1
       end if
-      allocate(lat % element(n_x, n_y, n_z))
+      allocate(lat % universes(n_x, n_y, n_z))
 
       ! Check that number of universes matches size
       if (size(lattice_(i) % universes) /= n_x*n_y*n_z) then
-        message = "Number of universes on <elements> does not match size of &
+        message = "Number of universes on <universes> does not match size of &
              &lattice " // trim(to_str(lat % id)) // "."
         call fatal_error()
       end if
@@ -941,7 +941,7 @@ contains
       do m = 1, n_z
         do k = 0, n_y - 1
           do j = 1, n_x
-            lat % element(j, n_y - k, m) = lattice_(i) % &
+            lat % universes(j, n_y - k, m) = lattice_(i) % &
                  universes(j + n_x*k + n_x*n_y*(m-1))
           end do
         end do

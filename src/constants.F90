@@ -93,10 +93,12 @@ module constants
 
   ! Lattice boundary crossings
   integer, parameter ::    &
-       LATTICE_LEFT   = 1, & ! Flag for crossing left lattice boundary
-       LATTICE_RIGHT  = 2, & ! Flag for crossing right lattice boundary
-       LATTICE_BOTTOM = 3, & ! Flag for crossing bottom lattice boundary
-       LATTICE_TOP    = 4    ! Flag for crossing top lattice boundary
+       LATTICE_LEFT   = 1, & ! Flag for crossing left (x) lattice boundary
+       LATTICE_RIGHT  = 2, & ! Flag for crossing right (x) lattice boundary
+       LATTICE_BACK   = 3, & ! Flag for crossing back (y) lattice boundary
+       LATTICE_FRONT  = 4, & ! Flag for crossing front (y) lattice boundary
+       LATTICE_BOTTOM = 5, & ! Flag for crossing bottom (z) lattice boundary
+       LATTICE_TOP    = 6    ! Flag for crossing top (z) lattice boundary
 
   ! Surface types
   integer, parameter ::  &

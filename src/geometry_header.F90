@@ -22,16 +22,14 @@ module geometry_header
 !===============================================================================
 
   type Lattice
-     integer :: id       ! Universe number for lattice
-     integer :: type     ! Type of lattice (rectangular, hex, etc)
-     integer :: level    ! Level of lattice
-     integer :: n_x      ! number of lattice cells in x-direction
-     integer :: n_y      ! number of lattice cells in y-direction
-     real(8) :: x0       ! x-coordinate of lower-left corner of lattice
-     real(8) :: y0       ! y-coordinate of lower-left corner of lattice
-     real(8) :: width_x  ! width of lattice cell 
-     real(8) :: width_y  ! width of lattice cell
-     integer, allocatable :: element(:,:) ! specified universes
+     integer :: id          ! Universe number for lattice
+     integer :: type        ! Type of lattice (rectangular, hex, etc)
+     integer :: level       ! Level of lattice
+     integer :: n_dimension ! Number of dimensions
+     integer, allocatable :: dimension(:)   ! number of cells in each direction
+     real(8), allocatable :: lower_left(:)  ! lower-left corner of lattice
+     real(8), allocatable :: width(:)       ! width of each lattice cell
+     integer, allocatable :: element(:,:,:) ! specified universes
   end type Lattice
 
 !===============================================================================

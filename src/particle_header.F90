@@ -17,6 +17,7 @@ module particle_header
     integer :: lattice   = NONE
     integer :: lattice_x = NONE
     integer :: lattice_y = NONE
+    integer :: lattice_z = NONE
 
     ! Particle position and direction for this level
     real(8) :: xyz(3)

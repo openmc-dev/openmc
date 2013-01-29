@@ -450,7 +450,10 @@ contains
     type(Lattice), pointer :: lat
     integer,      optional :: unit
 
+    integer :: i     ! loop index
     integer :: unit_ ! unit to write to
+    character(MAX_LINE_LEN) :: string
+
 
     ! set default unit if not specified
     if (present(unit)) then
@@ -461,12 +464,27 @@ contains
 
     ! Write information about lattice
     write(unit_,*) 'Lattice ' // to_str(lat % id)
-    write(unit_,*) '    n_x = ' // to_str(lat % n_x)
-    write(unit_,*) '    n_y = ' // to_str(lat % n_y)
-    write(unit_,*) '    x0 = ' // to_str(lat % x0)
-    write(unit_,*) '    y0 = ' // to_str(lat % y0)
-    write(unit_,*) '    width_x = ' // to_str(lat % width_x)
-    write(unit_,*) '    width_y = ' // to_str(lat % width_y)
+
+    ! Write dimension of lattice
+    string = ""
+    do i = 1, lat % n_dimension
+      string = trim(string) // ' ' // to_str(lat % dimension(i))
+    end do
+    write(unit_,*) '    Dimension =' // string
+
+    ! Write lower-left coordinates of lattice
+    string = ""
+    do i = 1, lat % n_dimension
+      string = trim(string) // ' ' // to_str(lat % lower_left(i))
+    end do
+    write(unit_,*) '    Lower-left =' // string
+
+    ! Write width of each lattice cell
+    string = ""
+    do i = 1, lat % n_dimension
+      string = trim(string) // ' ' // to_str(lat % width(i))
+    end do
+    write(unit_,*) '    Width =' // string
     write(unit_,*)
 
   end subroutine print_lattice

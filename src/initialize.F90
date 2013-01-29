@@ -413,11 +413,13 @@ contains
 
   subroutine adjust_indices()
 
-    integer :: i       ! index for various purposes
-    integer :: j       ! index for various purposes
-    integer :: k       ! loop index for lattices
-    integer :: i_array ! index in surfaces/materials array 
-    integer :: id      ! user-specified id
+    integer :: i             ! index for various purposes
+    integer :: j             ! index for various purposes
+    integer :: k             ! loop index for lattices
+    integer :: m             ! loop index for lattices
+    integer :: n_x, n_y, n_z ! size of lattice
+    integer :: i_array       ! index in surfaces/materials array 
+    integer :: id            ! user-specified id
     type(Cell),        pointer :: c => null()
     type(Lattice),     pointer :: l => null()
     type(TallyObject), pointer :: t => null()
@@ -489,18 +491,29 @@ contains
 
     do i = 1, n_lattices
       l => lattices(i)
-      do j = 1, l % n_x
-        do k = 1, l % n_y
-          id = l % element(j,k)
-          if (universe_dict % has_key(id)) then
-            l % element(j,k) = universe_dict % get_key(id)
-          else
-            message = "Invalid universe number " // trim(to_str(id)) &
-                 // " specified on lattice " // trim(to_str(l % id))
-            call fatal_error()
-          end if
+      n_x = l % dimension(1)
+      n_y = l % dimension(2)
+      if (l % n_dimension == 3) then
+        n_z = l % dimension(3)
+      else
+        n_z = 1
+      end if
+
+      do m = 1, n_z
+        do k = 1, n_y
+          do j = 1, n_x
+            id = l % element(j,k,m)
+            if (universe_dict % has_key(id)) then
+              l % element(j,k,m) = universe_dict % get_key(id)
+            else
+              message = "Invalid universe number " // trim(to_str(id)) &
+                   // " specified on lattice " // trim(to_str(l % id))
+              call fatal_error()
+            end if
+          end do
         end do
       end do
+
     end do
 
     TALLY_LOOP: do i = 1, n_tallies

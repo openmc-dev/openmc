@@ -73,8 +73,8 @@ contains
     integer, optional        :: search_cells(:)
 
     integer :: i                    ! index over cells
-    integer :: x                    ! x-index for lattice
-    integer :: y                    ! y-index for lattice
+    integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: n_x, n_y, n_z        ! size of lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
     real(8) :: xyz(3)               ! temporary location
@@ -163,14 +163,23 @@ contains
           ! Set current lattice
           lat => lattices(c % fill)
 
-          ! determine universe based on lattice position
+          ! determine lattice index based on position
           xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
-          x = ceiling((xyz(1) - lat % x0)/lat % width_x)
-          y = ceiling((xyz(2) - lat % y0)/lat % width_y)
+          i_x = ceiling((xyz(1) - lat % lower_left(1))/lat % width(1))
+          i_y = ceiling((xyz(2) - lat % lower_left(2))/lat % width(2))
+          n_x = lat % dimension(1)
+          n_y = lat % dimension(2)
+          if (lat % n_dimension == 3) then
+            i_z = ceiling((xyz(3) - lat % lower_left(3))/lat % width(3))
+            n_z = lat % dimension(3)
+          else
+            i_z = 1
+            n_z = 1
+          end if
 
           ! Check if lattice coordinates are within bounds
-          if (x < 1 .or. x > lat % n_x .or. &
-               y < 1 .or. y > lat % n_y) then
+          if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
+               i_z < 1 .or. i_z > n_z) then
 
             ! This condition should only get hit in rare circumstances where a
             ! neutron hits the corner of a lattice. In this case, the neutron
@@ -192,20 +201,26 @@ contains
 
             ! adjust local position of particle
             p % coord % next % xyz(1) = p % coord % xyz(1) - &
-                 (lat%x0 + (x-0.5_8)*lat%width_x)
+                 (lat % lower_left(1) + (i_x - 0.5_8)*lat % width(1))
             p % coord % next % xyz(2) = p % coord % xyz(2) - &
-                 (lat%y0 + (y-0.5_8)*lat%width_y)
-            p % coord % next % xyz(3) = p % coord % xyz(3)
-            p % coord % next % uvw    = p % coord % uvw
+                 (lat % lower_left(2) + (i_y - 0.5_8)*lat % width(2))
+            if (lat % n_dimension == 3) then
+              p % coord % next % xyz(3) = p % coord % xyz(3) - &
+                 (lat % lower_left(3) + (i_z - 0.5_8)*lat % width(3))
+            else
+              p % coord % next % xyz(3) = p % coord % xyz(3)
+            end if
+            p % coord % next % uvw = p % coord % uvw
 
             ! Move particle to next level
             p % coord => p % coord % next
 
             ! set particle lattice indices
             p % coord % lattice   = c % fill
-            p % coord % lattice_x = x
-            p % coord % lattice_y = y
-            p % coord % universe  = lat % element(x,y)
+            p % coord % lattice_x = i_x
+            p % coord % lattice_y = i_y
+            p % coord % lattice_z = i_z
+            p % coord % universe  = lat % element(i_x,i_y,i_z)
           end if
 
           call find_cell(found)
@@ -517,12 +532,11 @@ contains
 
     integer, intent(in) :: lattice_crossed
 
-    integer :: i_x   ! x index in lattice
-    integer :: i_y   ! y index in lattice
-    real(8) :: x0    ! half the width of lattice element
-    real(8) :: y0    ! half the height of lattice element
-    logical :: found ! particle found in cell?
-    type(Lattice),  pointer :: lat => null()
+    integer :: i_x, i_y, i_z ! indices in lattice
+    integer :: n_x, n_y, n_z ! size of lattice
+    real(8) :: x0, y0, z0    ! half width of lattice element
+    logical :: found         ! particle found in cell?
+    type(Lattice), pointer :: lat => null()
 
     lat => lattices(p % coord % lattice)
 
@@ -534,8 +548,9 @@ contains
     end if
 
     if (lat % type == LATTICE_RECT) then
-      x0 = lat % width_x * 0.5_8
-      y0 = lat % width_y * 0.5_8
+      x0 = lat % width(1) * 0.5_8
+      y0 = lat % width(2) * 0.5_8
+      if (lat % n_dimension == 3) z0 = lat % width(3) * 0.5_8
 
       select case (lattice_crossed)
       case (LATTICE_LEFT)
@@ -548,15 +563,25 @@ contains
         p % coord % lattice_x = p % coord % lattice_x + 1
         p % coord % xyz(1) = -x0
 
-      case (LATTICE_BOTTOM)
+      case (LATTICE_BACK)
         ! Move particle to bottom element
         p % coord % lattice_y = p % coord % lattice_y - 1
         p % coord % xyz(2) = y0
 
-      case (LATTICE_TOP)
+      case (LATTICE_FRONT)
         ! Move particle to top element
         p % coord % lattice_y = p % coord % lattice_y + 1
         p % coord % xyz(2) = -y0
+
+      case (LATTICE_BOTTOM)
+        ! Move particle to bottom element
+        p % coord % lattice_z = p % coord % lattice_z - 1
+        p % coord % xyz(3) = z0
+
+      case (LATTICE_TOP)
+        ! Move particle to top element
+        p % coord % lattice_z = p % coord % lattice_z + 1
+        p % coord % xyz(3) = -z0
 
       end select
     elseif (lat % type == LATTICE_HEX) then
@@ -566,7 +591,16 @@ contains
     ! Check to make sure still in lattice
     i_x = p % coord % lattice_x
     i_y = p % coord % lattice_y
-    if (i_x < 1 .or. i_x > lat % n_x .or. i_y < 1 .or. i_y > lat % n_y) then
+    i_z = p % coord % lattice_z
+    n_x = lat % dimension(1)
+    n_y = lat % dimension(2)
+    if (lat % n_dimension == 3) then
+      n_z = lat % dimension(3)
+    else
+      n_z = 1
+    end if
+    if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
+         i_z < 1 .or. i_z > n_z) then
       call deallocate_coord(p % coord0 % next)
       p % coord => p % coord0
 
@@ -579,7 +613,7 @@ contains
       end if
     else
       ! Find universe for next lattice element
-      p % coord % universe = lat % element(i_x, i_y)
+      p % coord % universe = lat % element(i_x, i_y, i_z)
 
       ! Find cell in next lattice element
       call find_cell(found)
@@ -1086,8 +1120,8 @@ contains
           z = coord % xyz(3)
 
           ! determine oncoming edge
-          x0 = sign(lat % width_x * 0.5_8, u)
-          y0 = sign(lat % width_y * 0.5_8, v)
+          x0 = sign(lat % width(1) * 0.5_8, u)
+          y0 = sign(lat % width(2) * 0.5_8, v)
 
           ! left and right sides
           if (abs(x - x0) < FP_PRECISION) then
@@ -1117,7 +1151,7 @@ contains
             end if
           end if
 
-          ! top and bottom sides
+          ! front and back sides
           if (abs(y - y0) < FP_PRECISION) then
             d = INFINITY
           elseif (v == ZERO) then
@@ -1130,11 +1164,36 @@ contains
             if (abs(d - dist)/dist >= FP_REL_PRECISION) then
               dist = d
               if (v > 0) then
-                lattice_crossed = LATTICE_TOP
+                lattice_crossed = LATTICE_FRONT
               else
-                lattice_crossed = LATTICE_BOTTOM
+                lattice_crossed = LATTICE_BACK
               end if
               final_coord => coord
+            end if
+          end if
+
+          if (lat % n_dimension == 3) then
+            z0 = sign(lat % width(3) * 0.5_8, w)
+
+            ! top and bottom sides
+            if (abs(z - z0) < FP_PRECISION) then
+              d = INFINITY
+            elseif (w == ZERO) then
+              d = INFINITY
+            else
+              d = (z0 - z)/w
+            end if
+
+            if (d < dist) then
+              if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+                dist = d
+                if (w > 0) then
+                  lattice_crossed = LATTICE_TOP
+                else
+                  lattice_crossed = LATTICE_BOTTOM
+                end if
+                final_coord => coord
+              end if
             end if
           end if
 

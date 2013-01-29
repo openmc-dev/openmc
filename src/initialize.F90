@@ -421,7 +421,7 @@ contains
     integer :: i_array       ! index in surfaces/materials array 
     integer :: id            ! user-specified id
     type(Cell),        pointer :: c => null()
-    type(Lattice),     pointer :: l => null()
+    type(Lattice),     pointer :: lat => null()
     type(TallyObject), pointer :: t => null()
 
     do i = 1, n_cells
@@ -490,11 +490,11 @@ contains
     ! ADJUST UNIVERSE INDICES FOR EACH LATTICE
 
     do i = 1, n_lattices
-      l => lattices(i)
-      n_x = l % dimension(1)
-      n_y = l % dimension(2)
-      if (l % n_dimension == 3) then
-        n_z = l % dimension(3)
+      lat => lattices(i)
+      n_x = lat % dimension(1)
+      n_y = lat % dimension(2)
+      if (lat % n_dimension == 3) then
+        n_z = lat % dimension(3)
       else
         n_z = 1
       end if
@@ -502,12 +502,12 @@ contains
       do m = 1, n_z
         do k = 1, n_y
           do j = 1, n_x
-            id = l % element(j,k,m)
+            id = lat % element(j,k,m)
             if (universe_dict % has_key(id)) then
-              l % element(j,k,m) = universe_dict % get_key(id)
+              lat % element(j,k,m) = universe_dict % get_key(id)
             else
               message = "Invalid universe number " // trim(to_str(id)) &
-                   // " specified on lattice " // trim(to_str(l % id))
+                   // " specified on lattice " // trim(to_str(lat % id))
               call fatal_error()
             end if
           end do

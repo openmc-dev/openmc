@@ -543,7 +543,8 @@ contains
     if (verbosity >= 10 .or. trace) then
       message = "    Crossing lattice " // trim(to_str(lat % id)) // &
            ". Current position (" // trim(to_str(p % coord % lattice_x)) &
-           // "," // trim(to_str(p % coord % lattice_y)) // ")"
+           // "," // trim(to_str(p % coord % lattice_y)) // "," // &
+           trim(to_str(p % coord % lattice_z)) // ")"
       call write_message()
     end if
 

@@ -224,11 +224,13 @@ xml-fortran:
 $(program): $(objects)
 	$(F90) $(objects) $(templates) $(xml_fort) -o $@ $(LDFLAGS)
 install:
-	@cp $(program) $(prefix)/bin
-	@cp ../man/man1/openmc.1 $(prefix)/share/man/man1
+	@install -D $(program) $(DESTDIR)$(prefix)/bin/$(program)
+	@install -D ../man/man1/openmc.1 $(DESTDIR)$(prefix)/share/man/man1/openmc.1
+	@install -D ../LICENSE $(DESTDIR)$(prefix)/share/doc/$(program)/copyright
 uninstall:
-	@rm $(prefix)/bin/$(program)
-	@rm $(prefix)/share/man/man1/openmc.1
+	@rm $(DESTDIR)$(prefix)/bin/$(program)
+	@rm $(DESTDIR)$(prefix)/share/man/man1/openmc.1
+	@rm $(DESTDIR)$(prefix)/share/doc/$(program)/copyright
 distclean: clean
 	cd xml-fortran; make clean
 	cd templates; make clean

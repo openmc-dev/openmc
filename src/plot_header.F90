@@ -29,15 +29,14 @@ module plot_header
     type(ObjectColor), allocatable :: colors(:) ! colors of cells/mats
   end type Plot
 
-  integer :: PLOT_TYPE_SLICE = 1
-  integer :: PLOT_TYPE_POINTS = 2
+  integer, parameter :: PLOT_TYPE_SLICE = 1
+  integer, parameter :: PLOT_TYPE_POINTS = 2
 
-  integer :: PLOT_BASIS_XY = 1
-  integer :: PLOT_BASIS_XZ = 2
-  integer :: PLOT_BASIS_YZ = 3
+  integer, parameter :: PLOT_BASIS_XY = 1
+  integer, parameter :: PLOT_BASIS_XZ = 2
+  integer, parameter :: PLOT_BASIS_YZ = 3
 
-  integer :: PLOT_COLOR_CELLS = 1
-  integer :: PLOT_COLOR_MATS = 2
-
+  integer, parameter :: PLOT_COLOR_CELLS = 1
+  integer, parameter :: PLOT_COLOR_MATS = 2
 
 end module plot_header

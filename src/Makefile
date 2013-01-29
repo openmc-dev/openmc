@@ -36,7 +36,7 @@ PETSC_DIR = /opt/petsc/3.3-$(COMPILER)
 # Add git SHA-1 hash
 #===============================================================================
 
-GIT_SHA1 = $(shell git log -1 | head -n 1 | awk '{print $$2}')
+GIT_SHA1 = $(shell git log -1 2>/dev/null | head -n 1 | awk '{print $$2}')
 
 #===============================================================================
 # GNU Fortran compiler options

@@ -44,6 +44,7 @@ cmfd_input.o: output.o
 cmfd_input.o: string.o
 cmfd_input.o: tally.o
 cmfd_input.o: tally_header.o
+cmfd_input.o: tally_initialize.o
 cmfd_input.o: templates/cmfd_t.o
 
 cmfd_jacobian_operator.o: cmfd_loss_operator.o
@@ -161,12 +162,12 @@ global.o: bank_header.o
 global.o: cmfd_header.o
 global.o: constants.o
 global.o: dict_header.o
-global.o: list_header.o
 global.o: geometry_header.o
 global.o: material_header.o
 global.o: mesh_header.o
 global.o: particle_header.o
 global.o: plot_header.o
+global.o: set_header.o
 global.o: source_header.o
 global.o: tally_header.o
 global.o: timer_header.o
@@ -214,6 +215,7 @@ input_xml.o: plot_header.o
 input_xml.o: random_lcg.o
 input_xml.o: string.o
 input_xml.o: tally_header.o
+input_xml.o: tally_initialize.o
 input_xml.o: templates/cross_sections_t.o
 input_xml.o: templates/geometry_t.o
 input_xml.o: templates/materials_t.o

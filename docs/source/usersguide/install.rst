@@ -4,38 +4,82 @@
 Installation and Configuration
 ==============================
 
--------------
+-----------------------------
+Installing on Ubuntu with PPA
+-----------------------------
+
+For users with Ubuntu 11.10 or later, a binary package for OpenMC is available
+through a Personal Package Archive (PPA) and can be installed through the APT
+package manager. First, add the following PPA to the repository sources:
+
+.. code-block:: sh
+
+    sudo apt-add-repository ppa:paulromano/staging
+
+Next, resynchronize the package index files:
+
+.. code-block:: sh
+
+    sudo apt-get update
+
+Now OpenMC should be recognized within the repository and can be installed:
+
+.. code-block:: sh
+
+    sudo apt-get install openmc
+
+--------------------
+Building from Source
+--------------------
+
 Prerequisites
 -------------
 
-In order to compile OpenMC, you will need to have a Fortran compiler installed
-on your machine. Since a number of Fortran 2003/2008 features are used in the
-code, it is recommended that you use the latest version of whatever compiler you
-choose. For gfortran_, it is necessary to use version 4.6.0 or above.
+.. admonition:: Required
 
-If you are using Debian or a Debian derivative such as Ubuntu, you can install
-the gfortran compiler using the following command::
+    * A Fortran compiler such as gfortran_
 
-    sudo apt-get install gfortran
+      In order to compile OpenMC, you will need to have a Fortran compiler
+      installed on your machine. Since a number of Fortran 2003/2008 features
+      are used in the code, it is recommended that you use the latest version of
+      whatever compiler you choose. For gfortran_, it is necessary to use
+      version 4.6.0 or above.
 
-To compile with support for parallel runs on a distributed-memory architecture,
-you will need to have a valid implementation of MPI installed on your
-machine. The code has been tested and is known to work with the latest versions
-of both OpenMPI_ and MPICH2_. Note that if using OpenMPI, make sure that
---with-mpi-f90-size is not set to medium or large since this may prevent MPI
-calls from completing successfully in OpenMC. OpenMPI and/or MPICH2 can be
-installed on Debian derivatives with::
+      If you are using Debian or a Debian derivative such as Ubuntu, you can
+      install the gfortran compiler using the following command::
 
-    sudo apt-get install mpich2
-    sudo apt-get install openmpi-bin
+          sudo apt-get install gfortran
 
-To compile with support for HDF5_ output (highly recommended), you will need to
-have HDF5 installed on your computer. The installed version will need to have
-been compiled with the same compiler you intend to compile OpenMC with.
+.. admonition:: Optional
 
-To enable CMFD acceleration, you will need to have PETSc_ installed on your
-computer. The installed version will need to have been compiled with the same
-compiler you intend to compile OpenMC with.
+    * An MPI implementation for distributed-memory parallel runs
+
+      To compile with support for parallel runs on a distributed-memory
+      architecture, you will need to have a valid implementation of MPI
+      installed on your machine. The code has been tested and is known to work
+      with the latest versions of both OpenMPI_ and MPICH2_. Note that if using
+      OpenMPI, make sure that --with-mpi-f90-size is not set to medium or large
+      since this may prevent MPI calls from completing successfully in
+      OpenMC. OpenMPI and/or MPICH2 can be installed on Debian derivatives
+      with::
+
+          sudo apt-get install mpich2
+          sudo apt-get install openmpi-bin
+
+    * HDF5_ Library for portable binary output format
+
+      To compile with support for HDF5_ output (highly recommended), you will
+      need to have HDF5 installed on your computer. The installed version will
+      need to have been compiled with the same compiler you intend to compile
+      OpenMC with.
+
+    * PETSc_ for CMFD acceleration
+
+      To enable CMFD acceleration, you will need to have PETSc_ installed on
+      your computer. The installed version will need to have been compiled with
+      the same compiler you intend to compile OpenMC with.
+
+    * git_ version control software for obtaining source code
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
 .. _OpenMPI: http://www.open-mpi.org
@@ -43,7 +87,6 @@ compiler you intend to compile OpenMC with.
 .. _HDF5: http://www.hdfgroup.org/HDF5/
 .. _PETSc: http://www.mcs.anl.gov/petsc/
 
---------------------
 Obtaining the Source
 --------------------
 
@@ -63,7 +106,6 @@ repository::
 .. _git: http://git-scm.com
 .. _ssh: http://en.wikipedia.org/wiki/Secure_Shell
 
--------------------
 Build Configuration
 -------------------
 
@@ -108,7 +150,6 @@ Makefile, you can enter the following from a terminal::
 
     make DEBUG=yes
 
--------------------------------
 Compiling on Linux and Mac OS X
 -------------------------------
 
@@ -124,12 +165,11 @@ the root directory of the source code:
 This will build an executable named ``openmc`` and install it (by default in
 /usr/local/bin).
 
---------------------
 Compiling on Windows
 --------------------
 
 Using Cygwin
-------------
+++++++++++++
 
 One option for compiling OpenMC on a Windows operating system is to use Cygwin_,
 a Linux-like environment for Windows. You will need to first `install
@@ -167,7 +207,7 @@ This will build an executable named ``openmc``.
 .. _install Cygwin: http://cygwin.com/setup.exe
 
 Using MinGW
------------
++++++++++++
 
 An alternate option for installing OpenMC on Windows is using MinGW_, which
 stands for Minimalist GNU for Windows. An executable for installing the MinGW

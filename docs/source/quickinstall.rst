@@ -8,69 +8,47 @@ This quick install guide outlines the basic steps needed to install OpenMC on
 your computer. For more detailed instructions on configuring and installing
 OpenMC, see :ref:`usersguide_install` in the User's Manual.
 
--------------
-Prerequisites
--------------
+--------------------------------
+Installing on Ubuntu through PPA
+--------------------------------
 
-In order to compile and run OpenMC, a number of prerequisite software packages
-and libraries may be needed. These include:
-
-- A Fortran compiler such as gfortran_
-- git_ version control software for obtaining source code (*optional*)
-- An MPI implementation for parallel runs (*optional*)
-- HDF5_ Library for portable binary output format (*optional*)
-- PETSc_ for CMFD acceleration (*optional*)
-
-.. _gfortran: http://gcc.gnu.org/wiki/GFortran
-.. _git: http://git-scm.com
-.. _HDF5: http://www.hdfgroup.org/HDF5/
-.. _PETSc: http://www.mcs.anl.gov/petsc/
-
---------------------
-Obtaining the Source
---------------------
-
-All OpenMC source code is hosted on GitHub_. The latest version of the OpenMC
-source code can be downloaded from GitHub with the following command::
-
-    git clone git@github.com:mit-crpg/openmc.git
-
-If you don't have git installed, you can download the source as a zip or tar
-file directly from GitHub.
-
-.. _GitHub: https://github.com/mit-crpg/openmc
-
--------------------------------
-Compiling on Linux and Mac OS X
--------------------------------
-
-To compile OpenMC on Linux or Max OS X, run the following commands from within
-the root directory of the source code:
+For users with Ubuntu 11.10 or later, a binary package for OpenMC is available
+through a `Personal Package Archive`_ (PPA) and can be installed through the `APT
+package manager`_. Simply enter the following commands into the terminal:
 
 .. code-block:: sh
 
-    cd src
+    sudo apt-add-repository ppa:paulromano/staging
+    sudo apt-get update
+    sudo apt-get install openmc
+
+Currently, the binary package does not allow for parallel simulations, HDF5_, or
+CMFD acceleration through PETSc_. Users who need such capabilities should build
+OpenMC from source as is described in :ref:`usersguide_install`.
+
+.. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/staging
+.. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
+.. _HDF5: http://www.hdfgroup.org/HDF5/
+.. _PETSc: http://www.mcs.anl.gov/petsc/
+
+-------------------------------------------
+Installing from Source on Linux or Mac OS X
+-------------------------------------------
+
+All OpenMC source code is hosted on GitHub_. If you have git_ and the gfortran_
+compiler installed, you can download and install OpenMC be entering the
+following commands in a terminal:
+
+.. code-block:: sh
+
+    git clone git@github.com:mit-crpg/openmc.git
+    cd openmc/src
     make
     sudo make install
 
 This will build an executable named ``openmc`` and install it (by default in
 /usr/local/bin).
 
---------------------
-Compiling on Windows
---------------------
-
-To compile OpenMC on a Windows operating system, you will need to first install
-Cygwin_, a Linux-like environment for Windows. When configuring Cygwin, make
-sure you install both the gfortran compiler as well as git. Once you have
-obtained the source code, run the following commands from within the source code
-root directory:
-
-.. code-block:: sh
-
-    cd src
-    make
-
-This will build an executable named ``openmc``.
-
-.. _Cygwin: http://www.cygwin.com/
+.. _GitHub: https://github.com/mit-crpg/openmc
+.. _git: http://git-scm.com
+.. _gfortran: http://gcc.gnu.org/wiki/GFortran

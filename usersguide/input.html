@@ -901,7 +901,14 @@ secondary neutrons.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">nu-fission:</th><td class="field-body">Total production of neutrons due to fission</td>
 </tr>
-<tr class="field-even field"><th class="field-name">events:</th><td class="field-body">Number of scoring events</td>
+<tr class="field-even field"><th class="field-name">kappa-fission:</th><td class="field-body">The recoverable energy production rate due to fission. The recoverable
+energy is defined as the fission product kinetic energy, prompt and delayed neutron
+kinetic energies, prompt and delayed <img class="math" src="../_images/math/66981fa3920210c6ad8dbe5e968783d5dd7520c3.png" alt="\gamma"/>-ray total energies,
+and the total energy released by the delayed <img class="math" src="../_images/math/fdb63b9e51abe6bbb16acfb5d7b773ddbb5bf4a8.png" alt="\beta"/> particles. The
+neutrino energy does not contribute to this response. The prompt and delayed
+<img class="math" src="../_images/math/66981fa3920210c6ad8dbe5e968783d5dd7520c3.png" alt="\gamma"/>-rays are assumed to deposit their energy locally.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">events:</th><td class="field-body">Number of scoring events</td>
 </tr>
 </tbody>
 </table>
@@ -1274,7 +1281,7 @@ turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
 
 
     <div class="footer">
-        &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
+        &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">

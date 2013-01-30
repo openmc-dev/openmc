@@ -54,35 +54,77 @@
         
   <div class="section" id="installation-and-configuration">
 <span id="usersguide-install"></span><h1>2. Installation and Configuration<a class="headerlink" href="#installation-and-configuration" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="installing-on-ubuntu-with-ppa">
+<h2>2.1. Installing on Ubuntu with PPA<a class="headerlink" href="#installing-on-ubuntu-with-ppa" title="Permalink to this headline">¶</a></h2>
+<p>For users with Ubuntu 11.10 or later, a binary package for OpenMC is available
+through a Personal Package Archive (PPA) and can be installed through the APT
+package manager. First, add the following PPA to the repository sources:</p>
+<div class="highlight-sh"><div class="highlight"><pre>sudo apt-add-repository ppa:paulromano/staging
+</pre></div>
+</div>
+<p>Next, resynchronize the package index files:</p>
+<div class="highlight-sh"><div class="highlight"><pre>sudo apt-get update
+</pre></div>
+</div>
+<p>Now OpenMC should be recognized within the repository and can be installed:</p>
+<div class="highlight-sh"><div class="highlight"><pre>sudo apt-get install openmc
+</pre></div>
+</div>
+</div>
+<div class="section" id="building-from-source">
+<h2>2.2. Building from Source<a class="headerlink" href="#building-from-source" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="prerequisites">
-<h2>2.1. Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
-<p>In order to compile OpenMC, you will need to have a Fortran compiler installed
-on your machine. Since a number of Fortran 2003/2008 features are used in the
-code, it is recommended that you use the latest version of whatever compiler you
-choose. For <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a>, it is recommended that you use version 4.5.0 or above.</p>
-<p>If you are using Debian or a Debian derivative such as Ubuntu, you can install
-the gfortran compiler using the following command:</p>
+<h3>2.2.1. Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h3>
+<div class="admonition-required admonition">
+<p class="first admonition-title">Required</p>
+<ul class="last">
+<li><p class="first">A Fortran compiler such as <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a></p>
+<p>In order to compile OpenMC, you will need to have a Fortran compiler
+installed on your machine. Since a number of Fortran 2003/2008 features
+are used in the code, it is recommended that you use the latest version of
+whatever compiler you choose. For <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a>, it is necessary to use
+version 4.6.0 or above.</p>
+<p>If you are using Debian or a Debian derivative such as Ubuntu, you can
+install the gfortran compiler using the following command:</p>
 <div class="highlight-python"><pre>sudo apt-get install gfortran</pre>
 </div>
-<p>To compile with support for parallel runs on a distributed-memory architecture,
-you will need to have a valid implementation of MPI installed on your
-machine. The code has been tested and is known to work with the latest versions
-of both <a class="reference external" href="http://www.open-mpi.org">OpenMPI</a> and <a class="reference external" href="http://www.mcs.anl.gov/mpi/mpich/">MPICH2</a>. Note that if using OpenMPI, make sure that
-&#8211;with-mpi-f90-size is not set to medium or large since this may prevent MPI
-calls from completing successfully in OpenMC. OpenMPI and/or MPICH2 can be
-installed on Debian derivatives with:</p>
+</li>
+</ul>
+</div>
+<div class="admonition-optional admonition">
+<p class="first admonition-title">Optional</p>
+<ul class="last">
+<li><p class="first">An MPI implementation for distributed-memory parallel runs</p>
+<p>To compile with support for parallel runs on a distributed-memory
+architecture, you will need to have a valid implementation of MPI
+installed on your machine. The code has been tested and is known to work
+with the latest versions of both <a class="reference external" href="http://www.open-mpi.org">OpenMPI</a> and <a class="reference external" href="http://www.mcs.anl.gov/mpi/mpich/">MPICH2</a>. Note that if using
+OpenMPI, make sure that &#8211;with-mpi-f90-size is not set to medium or large
+since this may prevent MPI calls from completing successfully in
+OpenMC. OpenMPI and/or MPICH2 can be installed on Debian derivatives
+with:</p>
 <div class="highlight-python"><pre>sudo apt-get install mpich2
 sudo apt-get install openmpi-bin</pre>
 </div>
-<p>To compile with support for <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> output (highly recommended), you will need to
-have HDF5 installed on your computer. The installed version will need to have
-been compiled with the same compiler you intend to compile OpenMC with.</p>
-<p>To enable CMFD acceleration, you will need to have <a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> installed on your
-computer. The installed version will need to have been compiled with the same
-compiler you intend to compile OpenMC with.</p>
+</li>
+<li><p class="first"><a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> Library for portable binary output format</p>
+<p>To compile with support for <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> output (highly recommended), you will
+need to have HDF5 installed on your computer. The installed version will
+need to have been compiled with the same compiler you intend to compile
+OpenMC with.</p>
+</li>
+<li><p class="first"><a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> for CMFD acceleration</p>
+<p>To enable CMFD acceleration, you will need to have <a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> installed on
+your computer. The installed version will need to have been compiled with
+the same compiler you intend to compile OpenMC with.</p>
+</li>
+<li><p class="first"><a class="reference external" href="http://git-scm.com">git</a> version control software for obtaining source code</p>
+</li>
+</ul>
+</div>
 </div>
 <div class="section" id="obtaining-the-source">
-<h2>2.2. Obtaining the Source<a class="headerlink" href="#obtaining-the-source" title="Permalink to this headline">¶</a></h2>
+<h3>2.2.2. Obtaining the Source<a class="headerlink" href="#obtaining-the-source" title="Permalink to this headline">¶</a></h3>
 <p>All OpenMC source code is hosted on <a class="reference external" href="https://github.com/mit-crpg/openmc">GitHub</a>. You can download the source code
 directly from GitHub or, if you have the <a class="reference external" href="http://git-scm.com">git</a> version control software installed
 on your computer, you can use git to obtain the source code. The latter method
@@ -95,7 +137,7 @@ repository:</p>
 </div>
 </div>
 <div class="section" id="build-configuration">
-<h2>2.3. Build Configuration<a class="headerlink" href="#build-configuration" title="Permalink to this headline">¶</a></h2>
+<h3>2.2.3. Build Configuration<a class="headerlink" href="#build-configuration" title="Permalink to this headline">¶</a></h3>
 <p>All configuration for OpenMC is done within the Makefile located in
 <tt class="docutils literal"><span class="pre">src/Makefile</span></tt>. In the Makefile, you will see that there are a number of User
 Options which can be changed. It is recommended that you do not change anything
@@ -132,19 +174,21 @@ Makefile, you can enter the following from a terminal:</p>
 </div>
 </div>
 <div class="section" id="compiling-on-linux-and-mac-os-x">
-<h2>2.4. Compiling on Linux and Mac OS X<a class="headerlink" href="#compiling-on-linux-and-mac-os-x" title="Permalink to this headline">¶</a></h2>
+<h3>2.2.4. Compiling on Linux and Mac OS X<a class="headerlink" href="#compiling-on-linux-and-mac-os-x" title="Permalink to this headline">¶</a></h3>
 <p>To compile OpenMC on Linux or Max OS X, run the following commands from within
 the root directory of the source code:</p>
 <div class="highlight-sh"><div class="highlight"><pre><span class="nb">cd </span>src
 make
+sudo make install
 </pre></div>
 </div>
-<p>This will build an executable named <tt class="docutils literal"><span class="pre">openmc</span></tt>.</p>
+<p>This will build an executable named <tt class="docutils literal"><span class="pre">openmc</span></tt> and install it (by default in
+/usr/local/bin).</p>
 </div>
 <div class="section" id="compiling-on-windows">
-<h2>2.5. Compiling on Windows<a class="headerlink" href="#compiling-on-windows" title="Permalink to this headline">¶</a></h2>
+<h3>2.2.5. Compiling on Windows<a class="headerlink" href="#compiling-on-windows" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="using-cygwin">
-<h3>2.5.1. Using Cygwin<a class="headerlink" href="#using-cygwin" title="Permalink to this headline">¶</a></h3>
+<h4>2.2.5.1. Using Cygwin<a class="headerlink" href="#using-cygwin" title="Permalink to this headline">¶</a></h4>
 <p>One option for compiling OpenMC on a Windows operating system is to use <a class="reference external" href="http://cygwin.com/">Cygwin</a>,
 a Linux-like environment for Windows. You will need to first <a class="reference external" href="http://cygwin.com/setup.exe">install
 Cygwin</a>. When you are asked to select packages, make sure the following are
@@ -176,7 +220,7 @@ make
 <p>This will build an executable named <tt class="docutils literal"><span class="pre">openmc</span></tt>.</p>
 </div>
 <div class="section" id="using-mingw">
-<h3>2.5.2. Using MinGW<a class="headerlink" href="#using-mingw" title="Permalink to this headline">¶</a></h3>
+<h4>2.2.5.2. Using MinGW<a class="headerlink" href="#using-mingw" title="Permalink to this headline">¶</a></h4>
 <p>An alternate option for installing OpenMC on Windows is using <a class="reference external" href="http://www.mingw.org">MinGW</a>, which
 stands for Minimalist GNU for Windows. An executable for installing the MinGW
 distribution is available on <a class="reference external" href="http://sourceforge.net/projects/mingw">SourceForge</a>. When installing MinGW, make sure the
@@ -196,14 +240,15 @@ make
 <p>This will build an executable named <tt class="docutils literal"><span class="pre">openmc</span></tt>.</p>
 </div>
 </div>
+</div>
 <div class="section" id="cross-section-configuration">
-<h2>2.6. Cross Section Configuration<a class="headerlink" href="#cross-section-configuration" title="Permalink to this headline">¶</a></h2>
+<h2>2.3. Cross Section Configuration<a class="headerlink" href="#cross-section-configuration" title="Permalink to this headline">¶</a></h2>
 <p>In order to run a simulation with OpenMC, you will need cross section data for
 each nuclide in your problem. Since OpenMC uses ACE format cross sections, you
 can use nuclear data that was processed with NJOY, such as that distributed with
 <a class="reference external" href="http://mcnp.lanl.gov">MCNP</a> or <a class="reference external" href="http://montecarlo.vtt.fi">Serpent</a>.</p>
 <div class="section" id="using-jeff-cross-sections-from-oecd-nea">
-<h3>2.6.1. Using JEFF Cross Sections from OECD/NEA<a class="headerlink" href="#using-jeff-cross-sections-from-oecd-nea" title="Permalink to this headline">¶</a></h3>
+<h3>2.3.1. Using JEFF Cross Sections from OECD/NEA<a class="headerlink" href="#using-jeff-cross-sections-from-oecd-nea" title="Permalink to this headline">¶</a></h3>
 <p>The <a class="reference external" href="http://www.oecd-nea.org">NEA</a> provides processed ACE data from the <a class="reference external" href="http://www.oecd-nea.org/dbdata/jeff/">JEFF</a> nuclear library upon
 request. A DVD of the data can be requested <a class="reference external" href="http://www.oecd-nea.org/dbdata/pubs/jeff312-cd.html">here</a>. To use this data with OpenMC,
 the following steps must be taken:</p>
@@ -233,7 +278,7 @@ within the <tt class="docutils literal"><span class="pre">cross_sections.xml</sp
 </ol>
 </div>
 <div class="section" id="using-cross-sections-from-mcnp">
-<h3>2.6.2. Using Cross Sections from MCNP<a class="headerlink" href="#using-cross-sections-from-mcnp" title="Permalink to this headline">¶</a></h3>
+<h3>2.3.2. Using Cross Sections from MCNP<a class="headerlink" href="#using-cross-sections-from-mcnp" title="Permalink to this headline">¶</a></h3>
 <p>To use cross sections distributed with MCNP, change the &lt;directory&gt; element in
 the <tt class="docutils literal"><span class="pre">cross_sections.xml</span></tt> file in the root directory of the OpenMC distribution
 to the location of the MCNP cross sections. Then, either set the
@@ -241,7 +286,7 @@ to the location of the MCNP cross sections. Then, either set the
 environment variable to the absolute path of the <tt class="docutils literal"><span class="pre">cross_sections.xml</span></tt> file.</p>
 </div>
 <div class="section" id="using-cross-sections-from-serpent">
-<h3>2.6.3. Using Cross Sections from Serpent<a class="headerlink" href="#using-cross-sections-from-serpent" title="Permalink to this headline">¶</a></h3>
+<h3>2.3.3. Using Cross Sections from Serpent<a class="headerlink" href="#using-cross-sections-from-serpent" title="Permalink to this headline">¶</a></h3>
 <p>To use cross sections distributed with Serpent, change the &lt;directory&gt; element
 in the <tt class="docutils literal"><span class="pre">cross_sections_serpent.xml</span></tt> file in the root directory of the OpenMC
 distribution to the location of the Serpent cross sections. Then, either set the
@@ -251,7 +296,7 @@ file.</p>
 </div>
 </div>
 <div class="section" id="running-openmc">
-<h2>2.7. Running OpenMC<a class="headerlink" href="#running-openmc" title="Permalink to this headline">¶</a></h2>
+<h2>2.4. Running OpenMC<a class="headerlink" href="#running-openmc" title="Permalink to this headline">¶</a></h2>
 <p>Once you have a model built (see <a class="reference internal" href="input.html#usersguide-input"><em>Writing XML Input Files</em></a>), you can either run
 the openmc executable directly from the directory containing your XML input
 files, or you can specify as a command-line argument the directory containing
@@ -270,7 +315,7 @@ openmc
 working directory which may be different from <tt class="docutils literal"><span class="pre">/home/username/somemodel</span></tt>.</p>
 </div>
 <div class="section" id="configuring-input-validation-with-gnu-emacs-nxml-mode">
-<h2>2.8. Configuring Input Validation with GNU Emacs nXML mode<a class="headerlink" href="#configuring-input-validation-with-gnu-emacs-nxml-mode" title="Permalink to this headline">¶</a></h2>
+<h2>2.5. Configuring Input Validation with GNU Emacs nXML mode<a class="headerlink" href="#configuring-input-validation-with-gnu-emacs-nxml-mode" title="Permalink to this headline">¶</a></h2>
 <p>The <a class="reference external" href="http://www.gnu.org/software/emacs/">GNU Emacs</a> text editor has a built-in mode that extends functionality for
 editing XML files. One of the features in nXML mode is the ability to perform
 real-time <a class="reference external" href="http://en.wikipedia.org/wiki/XML_validation">validation</a> of XML files against a <a class="reference external" href="http://relaxng.org/">RELAX NG</a> schema. The OpenMC
@@ -303,7 +348,7 @@ schemas.xml file in your own OpenMC source directory.</p>
 
 
     <div class="footer">
-        &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
+        &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">

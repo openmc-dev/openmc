@@ -56,49 +56,33 @@
 <p>This quick install guide outlines the basic steps needed to install OpenMC on
 your computer. For more detailed instructions on configuring and installing
 OpenMC, see <a class="reference internal" href="usersguide/install.html#usersguide-install"><em>Installation and Configuration</em></a> in the User&#8217;s Manual.</p>
-<div class="section" id="prerequisites">
-<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
-<p>In order to compile and run OpenMC, a number of prerequisite software packages
-and libraries may be needed. These include:</p>
-<ul class="simple">
-<li>A Fortran compiler such as <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a></li>
-<li><a class="reference external" href="http://git-scm.com">git</a> version control software for obtaining source code (<em>optional</em>)</li>
-<li>An MPI implementation for parallel runs (<em>optional</em>)</li>
-<li><a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> Library for portable binary output format (<em>optional</em>)</li>
-<li><a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> for CMFD acceleration (<em>optional</em>)</li>
-</ul>
-</div>
-<div class="section" id="obtaining-the-source">
-<h2>Obtaining the Source<a class="headerlink" href="#obtaining-the-source" title="Permalink to this headline">¶</a></h2>
-<p>All OpenMC source code is hosted on <a class="reference external" href="https://github.com/mit-crpg/openmc">GitHub</a>. The latest version of the OpenMC
-source code can be downloaded from GitHub with the following command:</p>
-<div class="highlight-python"><pre>git clone git@github.com:mit-crpg/openmc.git</pre>
-</div>
-<p>If you don&#8217;t have git installed, you can download the source as a zip or tar
-file directly from GitHub.</p>
-</div>
-<div class="section" id="compiling-on-linux-and-mac-os-x">
-<h2>Compiling on Linux and Mac OS X<a class="headerlink" href="#compiling-on-linux-and-mac-os-x" title="Permalink to this headline">¶</a></h2>
-<p>To compile OpenMC on Linux or Max OS X, run the following commands from within
-the root directory of the source code:</p>
-<div class="highlight-sh"><div class="highlight"><pre><span class="nb">cd </span>src
-make
+<div class="section" id="installing-on-ubuntu-through-ppa">
+<h2>Installing on Ubuntu through PPA<a class="headerlink" href="#installing-on-ubuntu-through-ppa" title="Permalink to this headline">¶</a></h2>
+<p>For users with Ubuntu 11.10 or later, a binary package for OpenMC is available
+through a <a class="reference external" href="https://launchpad.net/~paulromano/+archive/staging">Personal Package Archive</a> (PPA) and can be installed through the <a class="reference external" href="https://help.ubuntu.com/community/AptGet/Howto">APT
+package manager</a>. Simply enter the following commands into the terminal:</p>
+<div class="highlight-sh"><div class="highlight"><pre>sudo apt-add-repository ppa:paulromano/staging
+sudo apt-get update
+sudo apt-get install openmc
 </pre></div>
 </div>
-<p>This will build an executable named <tt class="docutils literal"><span class="pre">openmc</span></tt>.</p>
+<p>Currently, the binary package does not allow for parallel simulations, <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a>, or
+CMFD acceleration through <a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a>. Users who need such capabilities should build
+OpenMC from source as is described in <a class="reference internal" href="usersguide/install.html#usersguide-install"><em>Installation and Configuration</em></a>.</p>
 </div>
-<div class="section" id="compiling-on-windows">
-<h2>Compiling on Windows<a class="headerlink" href="#compiling-on-windows" title="Permalink to this headline">¶</a></h2>
-<p>To compile OpenMC on a Windows operating system, you will need to first install
-<a class="reference external" href="http://www.cygwin.com/">Cygwin</a>, a Linux-like environment for Windows. When configuring Cygwin, make
-sure you install both the gfortran compiler as well as git. Once you have
-obtained the source code, run the following commands from within the source code
-root directory:</p>
-<div class="highlight-sh"><div class="highlight"><pre><span class="nb">cd </span>src
+<div class="section" id="installing-from-source-on-linux-or-mac-os-x">
+<h2>Installing from Source on Linux or Mac OS X<a class="headerlink" href="#installing-from-source-on-linux-or-mac-os-x" title="Permalink to this headline">¶</a></h2>
+<p>All OpenMC source code is hosted on <a class="reference external" href="https://github.com/mit-crpg/openmc">GitHub</a>. If you have <a class="reference external" href="http://git-scm.com">git</a> and the <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a>
+compiler installed, you can download and install OpenMC be entering the
+following commands in a terminal:</p>
+<div class="highlight-sh"><div class="highlight"><pre>git clone git@github.com:mit-crpg/openmc.git
+<span class="nb">cd </span>openmc/src
 make
+sudo make install
 </pre></div>
 </div>
-<p>This will build an executable named <tt class="docutils literal"><span class="pre">openmc</span></tt>.</p>
+<p>This will build an executable named <tt class="docutils literal"><span class="pre">openmc</span></tt> and install it (by default in
+/usr/local/bin).</p>
 </div>
 </div>
 
@@ -118,7 +102,7 @@ make
 
 
     <div class="footer">
-        &copy; Copyright 2011-2012, Massachusetts Institute of Technology.
+        &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">

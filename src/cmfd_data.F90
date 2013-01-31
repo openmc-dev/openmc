@@ -57,8 +57,7 @@ contains
                             FILTER_SURFACE, IN_RIGHT, OUT_RIGHT, IN_FRONT,      &
                             OUT_FRONT, IN_TOP, OUT_TOP, CMFD_NOACCEL, ZERO, ONE
     use error,        only: fatal_error
-    use global,       only: cmfd, message, n_user_tallies, n_tallies, tallies,  &
-                            meshes
+    use global,       only: cmfd, message, n_cmfd_tallies, cmfd_tallies, meshes
     use mesh,         only: mesh_indices_to_bin
     use mesh_header,  only: StructuredMesh
     use tally_header, only: TallyObject
@@ -95,7 +94,7 @@ contains
     cmfd % openmc_src = ZERO
 
     ! associate tallies and mesh
-    t => tallies(n_user_tallies + 1)
+    t => cmfd_tallies(1)
     i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
     m => meshes(i_mesh)
 
@@ -105,10 +104,10 @@ contains
     cmfd % hxyz(3,:,:,:) = m % width(3) ! set z width
 
    ! begin loop around tallies
-   TAL: do ital = n_user_tallies + 1, n_tallies
+   TAL: do ital = 1, n_cmfd_tallies
 
      ! associate tallies and mesh
-     t => tallies(ital)
+     t => cmfd_tallies(ital)
      i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
      m => meshes(i_mesh)
 
@@ -135,7 +134,7 @@ contains
             OUTGROUP: do h = 1,ng
 
               ! start tally 1
-              TALLY: if (ital == n_user_tallies + 1) then
+              TALLY: if (ital == 1) then
 
                 ! reset all bins to 1
                 t % matching_bins = 1
@@ -180,7 +179,7 @@ contains
                      cmfd % p1scattxs(h,i,j,k)))
 !               cmfd % diffcof(h,i,j,k) = cmfd % diffusion(h,i,j,k)
 
-              else if (ital == n_user_tallies + 2) then
+              else if (ital == 2) then
 
                 ! begin loop to get energy out tallies
                 INGROUP: do g = 1, ng
@@ -219,7 +218,7 @@ contains
 
                 end do INGROUP
 
-              else
+              else if (ital == 3) then
 
                 ! initialize and filter for energy
                 t % matching_bins = 1

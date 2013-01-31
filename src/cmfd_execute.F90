@@ -469,7 +469,7 @@ contains
 
   subroutine cmfd_tally_reset()
 
-    use global,  only: n_user_tallies, n_tallies, tallies, message
+    use global,  only: n_cmfd_tallies, cmfd_tallies, message
     use output,  only: write_message
     use tally,   only: reset_result
 
@@ -480,11 +480,11 @@ contains
     call write_message(7)
 
     ! begin loop around CMFD tallies
-    do i = n_user_tallies + 1, n_tallies
+    do i = 1, n_cmfd_tallies
 
       ! reset that tally
-      tallies(i) % n_realizations = 0
-      call reset_result(tallies(i) % results)
+      cmfd_tallies(i) % n_realizations = 0
+      call reset_result(cmfd_tallies(i) % results)
 
     end do
 

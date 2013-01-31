@@ -830,10 +830,12 @@ contains
     integer              :: i, j             ! loop indices
     integer(HSIZE_T)     :: dims(1)          ! dimensions of 1D arrays
     integer(HSIZE_T)     :: dims2(2)         ! dimensions of 2D arrays
+    integer(HSIZE_T)     :: dims4(4)         ! dimensions of 4D arrays
     integer(HID_T)       :: hdf5_state_point ! identifier for state point file
     integer(HID_T)       :: tallies_group    ! "tallies" group
     integer(HID_T)       :: temp_group       ! group for i-th tally or mesh
     integer(HID_T)       :: filter_group     ! group for i-th filter
+    integer(HID_T)       :: cmfd_group       ! group for cmfd output
     integer(HID_T)       :: dspace           ! identifier for dataspace
     integer(HID_T)       :: dset             ! identifier for dataset
     integer, allocatable :: temp_array(:)    ! nuclide bin array
@@ -1112,6 +1114,30 @@ contains
     CALL h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err)
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
+
+    ! Write out CMFD info if active
+    if (cmfd_on) then
+
+      ! Create CMFD group
+      call h5gcreate_f(hdf5_state_point, "cmfd", cmfd_group, hdf5_err)
+
+      ! write out openmc source
+      dims4 = shape(cmfd % openmc_src) 
+      call h5ltmake_dataset_double_f(cmfd_group, "openmc_src", 4, &
+           dims4, cmfd % openmc_src, hdf5_err)
+
+      ! write out cmfd source
+      dims4 = shape(cmfd % cmfd_src) 
+      call h5ltmake_dataset_double_f(cmfd_group, "cmfd_src", 4, &
+           dims4, cmfd % cmfd_src, hdf5_err)
+
+      ! write out keff
+      call hdf5_write_double(cmfd_group, "cmfd_keff", cmfd % keff) 
+
+      ! Close CMFD group
+      call h5gclose_f(tallies_group, hdf5_err)
+
+    end if
 
     ! Close HDF5 state point file
     call h5fclose_f(hdf5_state_point, hdf5_err)

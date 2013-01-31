@@ -1292,7 +1292,7 @@ contains
 
     ! Allocate tally array
     if (n_user_tallies > 0) then
-      call add_tallies(n_user_tallies, i_user_tallies)
+      call add_tallies("user", n_user_tallies)
     end if
 
     ! Check for <assume_separate> setting

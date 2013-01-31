@@ -318,7 +318,7 @@ contains
     call mesh_dict % add_key(m % id, n_user_meshes + 1)
 
     ! allocate tallies
-    call add_tallies(cmfd_tallies, n_cmfd_tallies, i_cmfd_tallies)
+    call add_tallies(n_cmfd_tallies, i_cmfd_tallies)
 
     ! begin loop around tallies
     do i = 1, n_cmfd_tallies

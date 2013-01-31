@@ -162,9 +162,8 @@ contains
 ! tallies, etc.
 !===============================================================================
 
-  subroutine add_tallies(t, n, i_tally)
+  subroutine add_tallies(n, i_tally)
 
-    type(TallyObject), pointer :: t(:)    ! pointer to tally group
     integer, intent(in)        :: n       ! number of tallies to add
     integer, intent(out)       :: i_tally ! index of tally group
 

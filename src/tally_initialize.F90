@@ -162,10 +162,10 @@ contains
 ! tallies, etc.
 !===============================================================================
 
-  subroutine add_tallies(n, i_tally)
+  subroutine add_tallies(tally_group, n)
 
-    integer, intent(in)        :: n       ! number of tallies to add
-    integer, intent(out)       :: i_tally ! index of tally group
+    character(*), intent(in) :: tally_group ! name of tally group
+    integer,      intent(in) :: n           ! number of tallies to add
 
     type(TallyObject), allocatable :: temp(:) ! temporary tallies array
 
@@ -185,7 +185,12 @@ contains
     end if
 
     ! Set index for ths tally group
-    i_tally = n_tallies
+    select case(tally_group)
+    case ("user")
+      i_user_tallies = n_tallies
+    case ("cmfd")
+      i_cmfd_tallies = n_tallies
+    end select
 
     ! Set n_tallies
     n_tallies = size(tallies)

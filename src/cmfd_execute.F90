@@ -25,7 +25,6 @@ contains
 
     use cmfd_data,              only: set_up_cmfd
     use cmfd_message_passing,   only: petsc_init_mpi, cmfd_bcast
-    use cmfd_output,            only: write_hdf5_output
     use cmfd_power_solver,      only: cmfd_power_execute
     use cmfd_snes_solver,       only: cmfd_snes_execute
     use error,                  only: warning, fatal_error 
@@ -119,9 +118,6 @@ contains
 
     ! calculate weight factors
     if (cmfd_feedback) call cmfd_reweight(.true.)
-
-    ! write output
-    if (cmfd_write_hdf5 .and. master) call write_hdf5_output()
 
     ! stop cmfd timer
     if (master) then

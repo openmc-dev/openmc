@@ -138,7 +138,7 @@ contains
 #endif
 
     ! Abort program
-    stop
+    error stop 
 
   end subroutine fatal_error
 

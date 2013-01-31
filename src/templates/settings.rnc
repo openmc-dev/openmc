@@ -52,8 +52,8 @@ element settings {
   element source {
     element file { xsd:string { maxLength = "255" } }? &
     element space {
-      (element type { xsd:string { maxLength = "10" } } |
-        attribute type { xsd:string { maxLength = "10" } }) &
+      (element type { xsd:string { maxLength = "16" } } |
+        attribute type { xsd:string { maxLength = "16" } }) &
       (element length { xsd:int } | attribute length { xsd:int })? &
       (element interpolation { xsd:string { maxLength = "10" } } |
         attribute interplation { xsd:string { maxLength = "10" } })? &
@@ -61,8 +61,8 @@ element settings {
         attribute parameters { list { xsd:double+ } })?
     }? &
     element angle {
-      (element type { xsd:string { maxLength = "10" } } |
-        attribute type { xsd:string { maxLength = "10" } }) &
+      (element type { xsd:string { maxLength = "16" } } |
+        attribute type { xsd:string { maxLength = "16" } }) &
       (element length { xsd:int } | attribute length { xsd:int })? &
       (element interpolation { xsd:string { maxLength = "10" } } |
         attribute interplation { xsd:string { maxLength = "10" } })? &
@@ -70,8 +70,8 @@ element settings {
         attribute parameters { list { xsd:double+ } })?
     }? &
     element energy {
-      (element type { xsd:string { maxLength = "10" } } |
-        attribute type { xsd:string { maxLength = "10" } }) &
+      (element type { xsd:string { maxLength = "16" } } |
+        attribute type { xsd:string { maxLength = "16" } }) &
       (element length { xsd:int } | attribute length { xsd:int })? &
       (element interpolation { xsd:string { maxLength = "10" } } |
         attribute interplation { xsd:string { maxLength = "10" } })? &

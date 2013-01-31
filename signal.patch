@@ -1,5 +1,5 @@
 diff --git a/.gitignore b/.gitignore
-index 99ecbed..6e86cf7 100644
+index 8aa7c1f..4c50efb 100644
 --- a/.gitignore
 +++ b/.gitignore
 @@ -3,6 +3,7 @@
@@ -11,10 +11,10 @@ index 99ecbed..6e86cf7 100644
  # Compiler python objects
  *.pyc
 diff --git a/src/Makefile b/src/Makefile
-index a5c9237..d6c1bba 100644
+index bab47d2..92f3228 100644
 --- a/src/Makefile
 +++ b/src/Makefile
-@@ -33,6 +33,7 @@ GIT_SHA1 = $(shell git log -1 | head -n 1 | awk '{print $$2}')
+@@ -43,6 +43,7 @@ GIT_SHA1 = $(shell git log -1 2>/dev/null | head -n 1 | awk '{print $$2}')
  #===============================================================================
  
  ifeq ($(COMPILER),gnu)
@@ -22,7 +22,7 @@ index a5c9237..d6c1bba 100644
    F90 = gfortran
    F90FLAGS := -cpp -fbacktrace -DNO_F2008
    LDFLAGS =
-@@ -61,6 +62,7 @@ endif
+@@ -71,6 +72,7 @@ endif
  #===============================================================================
  
  ifeq ($(COMPILER),intel)
@@ -30,7 +30,7 @@ index a5c9237..d6c1bba 100644
    F90 = ifort
    F90FLAGS := -cpp -warn -assume byterecl -traceback
    LDFLAGS =
-@@ -88,6 +90,7 @@ endif
+@@ -98,6 +100,7 @@ endif
  #===============================================================================
  
  ifeq ($(COMPILER),pgi)
@@ -38,7 +38,7 @@ index a5c9237..d6c1bba 100644
    F90 = pgf90
    F90FLAGS := -Mpreprocess -DNO_F2008 -Minform=inform -traceback
    LDFLAGS =
-@@ -115,6 +118,7 @@ endif
+@@ -125,6 +128,7 @@ endif
  #===============================================================================
  
  ifeq ($(COMPILER),ibm)
@@ -46,18 +46,18 @@ index a5c9237..d6c1bba 100644
    F90 = xlf2003
    F90FLAGS := -WF,-DNO_F2008 -O2
  
-@@ -206,7 +210,7 @@ distclean: clean
+@@ -235,7 +239,7 @@ distclean: clean
  	cd xml-fortran; make clean
- 	cd xml-fortran/templates; make clean
+ 	cd templates; make clean
  clean:
 -	@rm -f *.o *.mod $(program)
 +	@rm -f *.o *.mod *__genmod.f90 $(program)
  neat:
  	@rm -f *.o *.mod
  
-@@ -220,6 +224,9 @@ neat:
+@@ -249,6 +253,9 @@ neat:
  %.o: %.F90
- 	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Ixml-fortran/templates -c $<
+ 	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Itemplates -c $<
  
 +csignal.o: csignal.c
 +	$(CC) -c $<
@@ -66,25 +66,25 @@ index a5c9237..d6c1bba 100644
  # Dependencies
  #===============================================================================
 diff --git a/src/OBJECTS b/src/OBJECTS
-index 0daf0f1..a476eb6 100644
+index d53f0a5..b2a7f52 100644
 --- a/src/OBJECTS
 +++ b/src/OBJECTS
-@@ -4,6 +4,7 @@ ace_header.o \
- bank_header.o \
+@@ -15,6 +15,7 @@ cmfd_prod_operator.o \
+ cmfd_snes_solver.o \
+ constants.o \
  cross_section.o \
- criticality.o \
 +csignal.o \
- datatypes.o \
- datatypes_header.o \
+ dict_header.o \
  doppler.o \
-@@ -17,6 +18,7 @@ fixed_source.o \
+ eigenvalue.o \
+@@ -28,6 +29,7 @@ fixed_source.o \
  geometry.o \
  geometry_header.o \
  global.o \
 +handle_sigint.o \
  hdf5_interface.o \
  initialize.o \
- intercycle.o \
+ interpolation.o \
 diff --git a/src/csignal.c b/src/csignal.c
 new file mode 100644
 index 0000000..96bfdb5
@@ -132,10 +132,10 @@ index 0000000..b2f7d1b
 +
 +end subroutine handle_sigint
 diff --git a/src/initialize.F90 b/src/initialize.F90
-index 60c0806..8cac6a5 100644
+index ff3a209..fd2e222 100644
 --- a/src/initialize.F90
 +++ b/src/initialize.F90
-@@ -46,6 +46,10 @@ contains
+@@ -42,6 +42,10 @@ contains
  
    subroutine initialize_run()
  
@@ -144,5 +144,5 @@ index 60c0806..8cac6a5 100644
 +    call signal(2, handle_sigint)
 +
      ! Start total and initialization timer
-     call timer_start(time_total)
-     call timer_start(time_initialize)
+     call time_total % start()
+     call time_initialize % start()

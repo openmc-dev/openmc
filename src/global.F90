@@ -6,12 +6,12 @@ module global
   use cmfd_header
   use constants
   use dict_header,      only: DictCharInt, DictIntInt
-  use list_header,      only: ListInt
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
   use particle_header,  only: Particle
   use plot_header,      only: Plot
+  use set_header,       only: SetInt
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use timer_header,     only: Timer
@@ -100,10 +100,19 @@ module global
   type(StructuredMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
 
-  ! Pointers for analog, track-length, and surface-current tallies
-  integer, allocatable :: analog_tallies(:)
-  integer, allocatable :: tracklength_tallies(:)
-  integer, allocatable :: current_tallies(:)
+  ! Pointers for different tallies
+  type(TallyObject), pointer :: user_tallies(:) => null()
+  type(TallyObject), pointer :: cmfd_tallies(:) => null()
+
+  ! Starting index (minus 1) in tallies for each tally group
+  integer :: i_user_tallies = -1
+  integer :: i_cmfd_tallies = -1
+
+  ! Active tally lists
+  type(SetInt) :: active_analog_tallies
+  type(SetInt) :: active_tracklength_tallies
+  type(SetInt) :: active_current_tallies
+  type(SetInt) :: active_tallies
 
   ! Global tallies
   !   1) collision estimate of k-eff
@@ -115,11 +124,10 @@ module global
   ! Tally map structure
   type(TallyMap), allocatable :: tally_maps(:)
 
-  integer :: n_meshes              = 0 ! # of structured meshes
-  integer :: n_tallies             = 0 ! # of tallies
-  integer :: n_analog_tallies      = 0 ! # of analog tallies
-  integer :: n_tracklength_tallies = 0 ! # of track-length tallies
-  integer :: n_current_tallies     = 0 ! # of surface current tallies
+  integer :: n_meshes       = 0 ! # of structured meshes
+  integer :: n_user_meshes  = 0 ! # of structured user meshes
+  integer :: n_tallies      = 0 ! # of tallies
+  integer :: n_user_tallies = 0 ! # of user tallies
 
   ! Normalization for statistics
   integer :: n_realizations = 0 ! # of independent realizations
@@ -134,23 +142,6 @@ module global
 
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
-
-  ! ============================================================================
-  ! USER TALLY-RELATED VARIABLES
-
-  integer :: n_user_meshes              = 0 ! # of structured user meshes
-  integer :: n_user_tallies             = 0 ! # of user tallies
-  integer :: n_user_analog_tallies      = 0 ! # of user analog tallies
-  integer :: n_user_tracklength_tallies = 0 ! # of user tracklength tallies
-  integer :: n_user_current_tallies     = 0 ! # of user current tallies
-
-  !=============================================================================
-  ! ACTIVE TALLY-RELATED VARIABLES
-
-  type(ListInt) :: active_analog_tallies
-  type(ListInt) :: active_tracklength_tallies
-  type(ListInt) :: active_current_tallies
-  type(ListInt) :: active_tallies
 
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
@@ -314,9 +305,6 @@ module global
   ! user-defined tally information
   integer :: n_cmfd_meshes              = 1 ! # of structured meshes
   integer :: n_cmfd_tallies             = 3 ! # of user-defined tallies
-  integer :: n_cmfd_analog_tallies      = 2 ! # of analog tallies
-  integer :: n_cmfd_tracklength_tallies = 0 ! # of track-length tallies
-  integer :: n_cmfd_current_tallies     = 1 ! # of surface current tallies
 
   ! overwrite with 2grp xs
   logical :: cmfd_run_2grp = .false.
@@ -399,9 +387,6 @@ contains
     ! Deallocate tally-related arrays
     if (allocated(meshes)) deallocate(meshes)
     if (allocated(tallies)) deallocate(tallies)
-    if (allocated(analog_tallies)) deallocate(analog_tallies)
-    if (allocated(tracklength_tallies)) deallocate(tracklength_tallies)
-    if (allocated(current_tallies)) deallocate(current_tallies)
     if (allocated(tally_maps)) deallocate(tally_maps)
 
     ! Deallocate energy grid

@@ -997,8 +997,8 @@ contains
 
     ! Determine indices for starting and ending location
     m => meshes(t % filters(i_filter_mesh) % int_bins(1))
-    call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
-    call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
+    call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
+    call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
 
     ! Check if start or end is in mesh -- if not, check if track still
     ! intersects with mesh
@@ -1407,8 +1407,8 @@ contains
 
       ! Determine indices for starting and ending location
       m => meshes(t % filters(i_filter_mesh) % int_bins(1))
-      call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
-      call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
+      call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
+      call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
 
       ! Check to if start or end is in mesh -- if not, check if track still
       ! intersects with mesh

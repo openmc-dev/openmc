@@ -1296,7 +1296,8 @@ contains
     end if
 
     ! Check for <assume_separate> setting
-    if (separate_ == 'yes') assume_separate = .true.
+    call lower_case(separate_)
+    if (separate_ == 'true' .or. separate_ == '1') assume_separate = .true.
 
     ! ==========================================================================
     ! READ MESH DATA

@@ -62,7 +62,7 @@ settings.xml file.
 ----------------------------------
 
 The ``<confidence_intervals>`` element has no attributes and has an accepted
-value of "true" or "flase". If set to "true", uncertainties on tally results
+value of "true" or "false". If set to "true", uncertainties on tally results
 will be reported as the half-width of the 95% two-sided confidence interval. If
 set to "false", uncertainties on tally results will be reported as the sample
 standard deviation.
@@ -876,12 +876,12 @@ In cases where the user needs to specify many different tallies each of which
 are spatially separate, this tag can be used to cut down on some of the tally
 overhead. The effect of assuming all tallies are spatially separate is that once
 one tally is scored to, the same event is assumed not to score to any other
-tallies. This element should be followed by "yes" or "no"
+tallies. This element should be followed by "true" or "false"
 
   .. warning:: If used incorrectly, the assumption that all tallies are spatially
     separate can lead to incorrect results.
 
-  *Default*: no
+  *Default*: false
 
 --------------------------------------------
 Geometry Plotting Specification -- plots.xml

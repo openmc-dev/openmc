@@ -39,5 +39,5 @@ element tallies {
     }
   }* &
 
-  element assume_separate { ( "off" | "on" ) }?
+  element assume_separate { xsd:boolean }?
 }

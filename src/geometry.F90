@@ -960,9 +960,9 @@ contains
           y = y - y0
           z = z - z0
           a = v*v + w*w - r*u*u
-          k = y*v + z*w + r*x*u
+          k = y*v + z*w - r*x*u
           c = y*y + z*z - r*x*x
-          quad = k*k - c
+          quad = k*k - a*c
 
           if (quad < ZERO .or. a == ZERO) then
             ! no intersection with cone
@@ -1007,9 +1007,9 @@ contains
           y = y - y0
           z = z - z0
           a = u*u + w*w - r*v*v
-          k = x*u + z*w + r*y*v
+          k = x*u + z*w - r*y*v
           c = x*x + z*z - r*y*y
-          quad = k*k - c
+          quad = k*k - a*c
 
           if (quad < ZERO .or. a == ZERO) then
             ! no intersection with cone
@@ -1054,9 +1054,9 @@ contains
           y = y - y0
           z = z - z0
           a = u*u + v*v - r*w*w
-          k = x*u + y*v + r*z*w
+          k = x*u + y*v - r*z*w
           c = x*x + y*y - r*z*z
-          quad = k*k - c
+          quad = k*k - a*c
 
           if (quad < ZERO .or. a == ZERO) then
             ! no intersection with cone

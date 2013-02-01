@@ -79,7 +79,7 @@ contains
     logical, intent(out)          :: in_mesh ! were given coords in mesh?
 
     ! Find particle in mesh
-    ijk = ceiling((xyz - m % lower_left)/m % width)
+    ijk = ceiling((xyz(:m % n_dimension) - m % lower_left)/m % width)
 
     ! Determine if particle is in mesh
     if (any(ijk(:m % n_dimension) < 1) .or. &

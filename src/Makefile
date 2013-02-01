@@ -225,10 +225,16 @@ $(program): $(objects)
 	$(F90) $(objects) $(templates) $(xml_fort) -o $@ $(LDFLAGS)
 install:
 	@install -D $(program) $(DESTDIR)$(prefix)/bin/$(program)
+	@install -D utils/statepoint_cmp.py $(DESTDIR)$(prefix)/bin/statepoint_cmp
+	@install -D utils/statepoint_histogram.py $(DESTDIR)$(prefix)/bin/statepoint_histogram
+	@install -D utils/statepoint_meshplot.py $(DESTDIR)$(prefix)/bin/statepoint_meshplot
 	@install -D ../man/man1/openmc.1 $(DESTDIR)$(prefix)/share/man/man1/openmc.1
 	@install -D ../LICENSE $(DESTDIR)$(prefix)/share/doc/$(program)/copyright
 uninstall:
 	@rm $(DESTDIR)$(prefix)/bin/$(program)
+	@rm $(DESTDIR)$(prefix)/bin/statepoint_cmp
+	@rm $(DESTDIR)$(prefix)/bin/statepoint_histogram
+	@rm $(DESTDIR)$(prefix)/bin/statepoint_meshplot
 	@rm $(DESTDIR)$(prefix)/share/man/man1/openmc.1
 	@rm $(DESTDIR)$(prefix)/share/doc/$(program)/copyright
 distclean: clean
@@ -244,7 +250,7 @@ neat:
 #===============================================================================
 
 .SUFFIXES: .F90 .o
-.PHONY: all xml-fortran clean neat distclean 
+.PHONY: all xml-fortran install uninstall clean neat distclean 
 
 %.o: %.F90
 	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Itemplates -c $<

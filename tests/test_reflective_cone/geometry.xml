@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <geometry>
 
-  <!-- Sphere with radius 10 -->
   <surface id="1" type="z-cone" coeffs="0 0 0 5" boundary="reflective"/>
   <cell id="1" material="1" surfaces="-1" />
     

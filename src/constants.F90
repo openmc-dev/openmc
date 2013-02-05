@@ -112,12 +112,7 @@ module constants
        SURF_SPHERE =  8, & ! Sphere
        SURF_CONE_X =  9, & ! Cone parallel to x-axis
        SURF_CONE_Y = 10, & ! Cone parallel to y-axis
-       SURF_CONE_Z = 11, & ! Cone parallel to z-axis
-       SURF_BOX_X  = 12, & ! Box extending infinitely in x-direction
-       SURF_BOX_Y  = 13, & ! Box extending infinitely in y-direction
-       SURF_BOX_Z  = 14, & ! Box extending infinitely in z-direction
-       SURF_BOX    = 15, & ! Rectangular prism
-       SURF_GQ     = 16    ! General quadratic surface
+       SURF_CONE_Z = 11    ! Cone parallel to z-axis
 
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS

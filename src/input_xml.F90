@@ -803,21 +803,6 @@ contains
       case ('z-cone')
         s % type = SURF_CONE_Z
         coeffs_reqd  = 4
-      case ('box-x')
-        s % type = SURF_BOX_X
-        coeffs_reqd  = 4
-      case ('box-y')
-        s % type = SURF_BOX_Y
-        coeffs_reqd  = 4
-      case ('box-z')
-        s % type = SURF_BOX_Z
-        coeffs_reqd  = 4
-      case ('box') 
-        s % type = SURF_BOX
-        coeffs_reqd  = 6
-      case ('quadratic')
-        s % type = SURF_GQ
-        coeffs_reqd  = 10
       case default
         message = "Invalid surface type: " // trim(surface_(i) % type)
         call fatal_error()

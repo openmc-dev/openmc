@@ -1101,10 +1101,6 @@ contains
           ! If the distance was negative, set boundary distance to infinity
           if (d <= ZERO) d = INFINITY
 
-        case (SURF_GQ)
-          message = "Surface distance not yet implement for general quadratic."
-          call fatal_error()
-
         end select
 
         ! Check is calculated distance is new minimum
@@ -1235,19 +1231,12 @@ contains
 
     real(8) :: x,y,z    ! coordinates of particle
     real(8) :: func     ! surface function evaluated at point
-    real(8) :: A        ! coefficient on x**2 term in GQ
-    real(8) :: B        ! coefficient on y**2 term in GQ
-    real(8) :: C        ! coefficient on z**2 term in GQ
-    real(8) :: D        ! coefficient on x*y term in GQ
-    real(8) :: E        ! coefficient on y*z term in GQ
-    real(8) :: F        ! coefficient on x*z term in GQ
-    real(8) :: G        ! coefficient on x term in GQ
-    real(8) :: H        ! coefficient on y term in GQ
-    real(8) :: I        ! coefficient on z term in GQ
-    real(8) :: J        ! coefficient on constant term in GQ
+    real(8) :: A        ! coefficient on x for plane
+    real(8) :: B        ! coefficient on y for plane
+    real(8) :: C        ! coefficient on z for plane
+    real(8) :: D        ! coefficient for plane
     real(8) :: x0,y0,z0 ! coefficients for quadratic surfaces / box
     real(8) :: r        ! radius for quadratic surfaces
-    real(8) :: x1,y1,z1 ! upper-right corner of box
 
     x = p % coord % xyz(1)
     y = p % coord % xyz(2)
@@ -1336,71 +1325,6 @@ contains
       y = y - y0
       z = z - z0
       func = x*x + y*y - r*z*z
-
-    case (SURF_BOX_X)
-      y0 = surf % coeffs(1)
-      z0 = surf % coeffs(2)
-      y1 = surf % coeffs(3)
-      z1 = surf % coeffs(4)
-      if (y >= y0 .and. y < y1 .and. z >= z0 .and. z < z1) then
-        s = .false.
-      else
-        s = .true.
-      end if
-      return
-
-    case (SURF_BOX_Y)
-      x0 = surf % coeffs(1)
-      z0 = surf % coeffs(2)
-      x1 = surf % coeffs(3)
-      z1 = surf % coeffs(4)
-      if (x >= x0 .and. x < x1 .and. z >= z0 .and. z < z1) then
-        s = .false.
-      else
-        s = .true.
-      end if
-      return
-
-    case (SURF_BOX_Z)
-      x0 = surf % coeffs(1)
-      y0 = surf % coeffs(2)
-      x1 = surf % coeffs(3)
-      y1 = surf % coeffs(4)
-      if (x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1) then
-        s = .false.
-      else
-        s = .true.
-      end if
-      return
-
-    case (SURF_BOX)
-      x0 = surf % coeffs(1)
-      y0 = surf % coeffs(2)
-      z0 = surf % coeffs(3)
-      x1 = surf % coeffs(4)
-      y1 = surf % coeffs(5)
-      z1 = surf % coeffs(6)
-      if (x >= x0 .and. x < x1 .and. y >= y0 .and. y < y1 .and. & 
-           z >= z0 .and. z < z1) then
-        s = .false.
-      else
-        s = .true.
-      end if
-      return
-
-    case (SURF_GQ)
-      A = surf % coeffs(1)
-      B = surf % coeffs(2)
-      C = surf % coeffs(3)
-      D = surf % coeffs(4)
-      E = surf % coeffs(5)
-      F = surf % coeffs(6)
-      G = surf % coeffs(7)
-      H = surf % coeffs(8)
-      I = surf % coeffs(9)
-      J = surf % coeffs(10)
-      func = A*x*x + B*y*y + C*z*z + D*x*y + E*y*z + F*x*z + G*x &
-           + H*y + I*z + J
 
     end select
 

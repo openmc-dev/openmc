@@ -274,12 +274,6 @@ contains
         call h5ltmake_dataset_string_f(temp_group, "type", "Y Cone", hdf5_err)
       case (SURF_CONE_Z)
         call h5ltmake_dataset_string_f(temp_group, "type", "Z Cone", hdf5_err)
-      case (SURF_BOX_X)
-      case (SURF_BOX_Y)
-      case (SURF_BOX_Z)
-      case (SURF_BOX)
-      case (SURF_GQ)
-        call h5ltmake_dataset_string_f(temp_group, "type", "General Quadratic", hdf5_err)
       end select
 
       ! Write coefficients for surface

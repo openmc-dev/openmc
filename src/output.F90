@@ -537,12 +537,6 @@ contains
       string = "Y Cone"
     case (SURF_CONE_Z)
       string = "Z Cone"
-    case (SURF_BOX_X)
-    case (SURF_BOX_Y)
-    case (SURF_BOX_Z)
-    case (SURF_BOX)
-    case (SURF_GQ)
-      string = "General Quadratic"
     end select
     write(unit_,*) '    Type = ' // trim(string)
 

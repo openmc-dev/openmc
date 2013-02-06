@@ -1303,7 +1303,7 @@ contains
   subroutine print_plot()
 
     integer :: i ! loop index for plots
-    type(Plot), pointer :: pl => null()
+    type(PlotSlice), pointer :: pl => null()
 
     ! Display header for plotting
     call header("PLOTTING SUMMARY")

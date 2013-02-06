@@ -10,7 +10,7 @@ module global
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
   use particle_header,  only: Particle
-  use plot_header,      only: Plot
+  use plot_header,      only: PlotSlice
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
@@ -36,12 +36,12 @@ module global
   ! GEOMETRY-RELATED VARIABLES
 
   ! Main arrays
-  type(Cell),     allocatable, target :: cells(:)
-  type(Universe), allocatable, target :: universes(:)
-  type(Lattice),  allocatable, target :: lattices(:)
-  type(Surface),  allocatable, target :: surfaces(:)
-  type(Material), allocatable, target :: materials(:)
-  type(Plot),     allocatable, target :: plots(:)
+  type(Cell),      allocatable, target :: cells(:)
+  type(Universe),  allocatable, target :: universes(:)
+  type(Lattice),   allocatable, target :: lattices(:)
+  type(Surface),   allocatable, target :: surfaces(:)
+  type(Material),  allocatable, target :: materials(:)
+  type(PlotSlice), allocatable, target :: plots(:)
 
   ! Size of main arrays
   integer :: n_cells     ! # of cells

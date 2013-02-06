@@ -6,7 +6,7 @@ program main
   use fixed_source, only: run_fixedsource
   use global
   use initialize,   only: initialize_run
-  use plotter,      only: run_plot
+  use plot,         only: run_plot
 
   implicit none
 

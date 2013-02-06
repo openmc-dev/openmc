@@ -1983,7 +1983,7 @@ contains
     integer n_cols, col_id
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
-    type(Plot),         pointer :: pl => null()
+    type(PlotSlice), pointer :: pl => null()
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"

@@ -1,4 +1,4 @@
-module plotter
+module plot
 
   use constants
   use error,           only: fatal_error
@@ -24,7 +24,7 @@ contains
   subroutine run_plot()
 
     integer :: i ! loop index for plots
-    type(Plot), pointer :: pl => null()
+    type(PlotSlice), pointer :: pl => null()
 
     do i = 1, n_plots
       pl => plots(i)
@@ -48,7 +48,7 @@ contains
 
   subroutine create_ppm(pl)
 
-    type(Plot), pointer :: pl
+    type(PlotSlice), pointer :: pl
 
     integer :: in_i
     integer :: out_i
@@ -163,8 +163,8 @@ contains
 
   subroutine output_ppm(pl, img)
 
-    type(Plot),  pointer    :: pl
-    type(Image), intent(in) :: img
+    type(PlotSlice), pointer :: pl
+    type(Image), intent(in)  :: img
 
     integer :: i ! loop index for height
     integer :: j ! loop index for width
@@ -190,4 +190,4 @@ contains
 
   end subroutine output_ppm
 
-end module plotter
+end module plot

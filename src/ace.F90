@@ -57,10 +57,10 @@ contains
     ! READ ALL ACE CROSS SECTION TABLES
 
     ! Loop over all files
-    do i = 1, n_materials
+    MATERIAL_LOOP: do i = 1, n_materials
       mat => materials(i)
 
-      do j = 1, mat % n_nuclides
+      NUCLIDE_LOOP: do j = 1, mat % n_nuclides
         name = mat % names(j)
 
         if (.not. already_read % contains(name)) then
@@ -81,9 +81,9 @@ contains
           call already_read % add(name)
           call already_read % add(alias)
         end if
-      end do
+      end do NUCLIDE_LOOP
 
-      do k = 1, mat % n_sab
+      SAB_LOOP: do k = 1, mat % n_sab
         ! Get name of S(a,b) table
         name = mat % sab_names(k)
 
@@ -98,16 +98,17 @@ contains
           ! Add name to dictionary
           call already_read % add(name)
         end if
-      end do
-    end do
+      end do SAB_LOOP
+    end do MATERIAL_LOOP
 
     ! ==========================================================================
     ! ASSIGN S(A,B) TABLES TO SPECIFIC NUCLIDES WITHIN MATERIALS
 
-    do i = 1, n_materials
+    MATERIAL_LOOP2: do i = 1, n_materials
+      ! Get pointer to material
       mat => materials(i)
 
-      do k = 1, mat % n_sab
+      ASSIGN_SAB: do k = 1, mat % n_sab
         ! In order to know which nuclide the S(a,b) table applies to, we need to
         ! search through the list of nuclides for one which has a matching zaid
         sab => sab_tables(mat % i_sab_tables(k))
@@ -126,7 +127,7 @@ contains
                &match any nuclide on material " // trim(to_str(mat % id))
           call fatal_error()
         end if
-      end do
+      end do ASSIGN_SAB
 
       ! If there are multiple S(a,b) tables, we need to make sure that the
       ! entries in i_sab_nuclides are sorted or else they won't be applied
@@ -134,13 +135,13 @@ contains
       ! insertion sort -- don't need anything fancy!
 
       if (mat % n_sab > 1) then
-        do k = 2, mat % n_sab
+        SORT_SAB: do k = 2, mat % n_sab
           ! Save value to move
           m = k
           temp_nuclide = mat % i_sab_nuclides(k)
           temp_table   = mat % i_sab_tables(k)
 
-          do
+          MOVE_OVER: do
             ! Check if insertion value is greater than (m-1)th value
             if (temp_nuclide >= mat % i_sab_nuclides(m-1)) exit
 
@@ -151,15 +152,19 @@ contains
 
             ! Exit if we've reached the beginning of the list
             if (m == 1) exit
-          end do
+          end do MOVE_OVER
 
           ! Put the original value into its new position
           mat % i_sab_nuclides(m) = temp_nuclide
           mat % i_sab_tables(m)   = temp_table
-        end do
+        end do SORT_SAB
       end if
-    end do
+      
+      ! Deallocate temporary arrays for names of nuclides and S(a,b) tables
+      if (allocated(mat % names)) deallocate(mat % names)
+      if (allocated(mat % sab_names)) deallocate(mat % sab_names)
 
+    end do MATERIAL_LOOP2
   end subroutine read_xs
 
 !===============================================================================

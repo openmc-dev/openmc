@@ -32,14 +32,17 @@ contains
 
   subroutine read_xs()
 
-    integer        :: i         ! index in materials array
-    integer        :: j         ! index over nuclides in material
-    integer        :: k         ! index over S(a,b) tables in material
-    integer        :: i_listing ! index in xs_listings array
-    integer        :: i_nuclide ! index in nuclides
-    integer        :: i_sab     ! index in sab_tables
-    character(12)  :: name      ! name of isotope, e.g. 92235.03c
-    character(12)  :: alias     ! alias of nuclide, e.g. U-235.03c
+    integer :: i            ! index in materials array
+    integer :: j            ! index over nuclides in material
+    integer :: k            ! index over S(a,b) tables in material
+    integer :: i_listing    ! index in xs_listings array
+    integer :: i_nuclide    ! index in nuclides
+    integer :: i_sab        ! index in sab_tables
+    integer :: m            ! position for sorting
+    integer :: temp_nuclide ! temporary value for sorting
+    integer :: temp_table   ! temporary value for sorting
+    character(12)  :: name  ! name of isotope, e.g. 92235.03c
+    character(12)  :: alias ! alias of nuclide, e.g. U-235.03c
     type(Material),   pointer :: mat => null()
     type(Nuclide),    pointer :: nuc => null()
     type(SAlphaBeta), pointer :: sab => null()
@@ -124,6 +127,37 @@ contains
           call fatal_error()
         end if
       end do
+
+      ! If there are multiple S(a,b) tables, we need to make sure that the
+      ! entries in i_sab_nuclides are sorted or else they won't be applied
+      ! correctly in the cross_section module. The algorithm here is a simple
+      ! insertion sort -- don't need anything fancy!
+
+      if (mat % n_sab > 1) then
+        do k = 2, mat % n_sab
+          ! Save value to move
+          m = k
+          temp_nuclide = mat % i_sab_nuclides(k)
+          temp_table   = mat % i_sab_tables(k)
+
+          do
+            ! Check if insertion value is greater than (m-1)th value
+            if (temp_nuclide >= mat % i_sab_nuclides(m-1)) exit
+
+            ! Move values over until hitting one that's not larger
+            mat % i_sab_nuclides(m) = mat % i_sab_nuclides(m-1)
+            mat % i_sab_tables(m)   = mat % i_sab_tables(m-1)
+            m = m - 1
+
+            ! Exit if we've reached the beginning of the list
+            if (m == 1) exit
+          end do
+
+          ! Put the original value into its new position
+          mat % i_sab_nuclides(m) = temp_nuclide
+          mat % i_sab_tables(m)   = temp_table
+        end do
+      end if
     end do
 
   end subroutine read_xs

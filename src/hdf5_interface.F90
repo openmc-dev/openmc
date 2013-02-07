@@ -414,13 +414,11 @@ contains
   subroutine hdf5_write_materials()
 
     integer          :: i
+    integer          :: j
     integer(HSIZE_T) :: dims(1)
-    integer(HSIZE_T) :: size_string = 12
     integer(HID_T)   :: materials_group
     integer(HID_T)   :: temp_group
-    integer(HID_T)   :: string_type
-    integer(HID_T)   :: dspace_id
-    integer(HID_T)   :: dset_id
+    integer, allocatable :: zaids(:)
     type(Material), pointer :: m => null()
 
     ! Create group for materials
@@ -442,22 +440,19 @@ contains
       call h5ltset_attribute_string_f(temp_group, "atom_density", &
            "units", "atom/barn-cm", hdf5_err)
 
-      ! Create string type of length 12
-      call h5tcopy_f(H5T_C_S1, string_type, hdf5_err)
-      call h5tset_size_f(string_type, size_string, hdf5_err)
+      ! Copy ZAID for each nuclide to temporary array
+      allocate(zaids(m % n_nuclides))
+      do j = 1, m % n_nuclides
+        zaids(j) = nuclides(m % nuclide(j)) % zaid
+      end do
 
-      ! Create dataspace and dataset for writing nuclides
+      ! Write temporary array to 'nuclides'
       dims(1) = m % n_nuclides
-      call h5screate_simple_f(1, dims, dspace_id, hdf5_err)
-      call h5dcreate_f(temp_group, "nuclides", string_type, dspace_id, &
-           dset_id, hdf5_err)
+      call h5ltmake_dataset_int_f(temp_group, "nuclides", 1, &
+           dims, zaids, hdf5_err)
 
-      ! Write list of nuclides
-      call h5dwrite_f(dset_id, string_type, m % names, dims, hdf5_err)
-
-      ! Close dataspace and dataset for nuclides
-      call h5dclose_f(dset_id, hdf5_err)
-      call h5sclose_f(dspace_id, hdf5_err)
+      ! Deallocate temporary array
+      deallocate(zaids)
 
       ! Write atom densities
       call h5ltmake_dataset_double_f(temp_group, "nuclide_densities", 1, &
@@ -465,10 +460,11 @@ contains
 
       ! Write S(a,b) information if present
       if (m % n_sab > 0) then
-        call hdf5_write_integer(temp_group, "i_sab_nuclides", &
-             m % i_sab_nuclides)
-        call hdf5_write_integer(temp_group, "i_sab_tables", &
-             m % i_sab_tables)
+        dims(1) = m % n_sab
+        call h5ltmake_dataset_int_f(temp_group, "i_sab_nuclides", 1, &
+             dims, m % i_sab_nuclides, hdf5_err)
+        call h5ltmake_dataset_int_f(temp_group, "i_sab_tables", 1, &
+             dims, m % i_sab_tables, hdf5_err)
       end if
 
       ! Close group for i-th material

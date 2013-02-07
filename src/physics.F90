@@ -422,9 +422,9 @@ contains
       ! =======================================================================
       ! ELASTIC SCATTERING
 
-      if (micro_xs(i_nuclide) % use_sab) then
+      if (micro_xs(i_nuclide) % index_sab /= NONE) then
         ! S(a,b) scattering
-        call sab_scatter(i_nuclide, mat % sab_table)
+        call sab_scatter(i_nuclide, micro_xs(i_nuclide) % index_sab)
 
       else
         ! get pointer to elastic scattering reaction

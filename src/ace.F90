@@ -34,6 +34,7 @@ contains
 
     integer        :: i         ! index in materials array
     integer        :: j         ! index over nuclides in material
+    integer        :: k         ! index over S(a,b) tables in material
     integer        :: i_listing ! index in xs_listings array
     integer        :: i_nuclide ! index in nuclides
     integer        :: i_sab     ! index in sab_tables
@@ -79,8 +80,9 @@ contains
         end if
       end do
 
-      if (mat % has_sab_table) then
-        name = mat % sab_name
+      do k = 1, mat % n_sab
+        ! Get name of S(a,b) table
+        name = mat % sab_names(k)
 
         if (.not. already_read % contains(name)) then
           i_listing = xs_listing_dict % get_key(name)
@@ -93,7 +95,7 @@ contains
           ! Add name to dictionary
           call already_read % add(name)
         end if
-      end if
+      end do
     end do
 
     ! ==========================================================================
@@ -102,26 +104,26 @@ contains
     do i = 1, n_materials
       mat => materials(i)
 
-      if (mat % has_sab_table) then
-        ! In order to know which nuclide the S(a,b) table applies to, we need
-        ! to search through the list of nuclides for one which has a matching
-        ! zaid
-        sab => sab_tables(mat % sab_table)
+      do k = 1, mat % n_sab
+        ! In order to know which nuclide the S(a,b) table applies to, we need to
+        ! search through the list of nuclides for one which has a matching zaid
+        sab => sab_tables(mat % i_sab_tables(k))
 
-        do j = 1, mat % n_nuclides
-          nuc => nuclides(mat % nuclide(j))
-          if (nuc % zaid == sab % zaid) then
-            mat % sab_nuclide = j
+        ! Loop through nuclides and find  match
+        FIND_NUCLIDE: do j = 1, mat % n_nuclides
+          if (nuclides(mat % nuclide(j)) % zaid == sab % zaid) then
+            mat % i_sab_nuclides(k) = j
+            exit FIND_NUCLIDE
           end if
-        end do
+        end do FIND_NUCLIDE
 
         ! Check to make sure S(a,b) table matched a nuclide
-        if (mat % sab_nuclide == 0) then
-          message = "S(a,b) table " // trim(mat % sab_name) // " did not match &
-               &any nuclide on material " // trim(to_str(mat % id))
+        if (mat % i_sab_nuclides(k) == NONE) then
+          message = "S(a,b) table " // trim(mat % sab_names(k)) // " did not &
+               &match any nuclide on material " // trim(to_str(mat % id))
           call fatal_error()
         end if
-      end if
+      end do
     end do
 
   end subroutine read_xs

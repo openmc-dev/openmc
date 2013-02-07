@@ -624,8 +624,12 @@ contains
     end do
 
     ! Write information on S(a,b) table
-    if (mat % has_sab_table) then
-      write(unit_,*) '    S(a,b) table = ' // trim(mat % sab_name)
+    if (mat % n_sab > 0) then
+        write(unit_,*) '    S(a,b) tables:'
+      do i = 1, mat % n_sab
+        write(unit_,*) '      ' // trim(&
+             sab_tables(mat % i_sab_tables(i)) % name)
+      end do
     end if
     write(unit_,*)
 

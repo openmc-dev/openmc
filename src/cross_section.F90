@@ -23,8 +23,9 @@ contains
     integer :: i             ! loop index over nuclides
     integer :: i_nuclide     ! index into nuclides array
     integer :: i_sab         ! index into sab_tables array
+    integer :: j             ! index in mat % i_sab_nuclides
     real(8) :: atom_density  ! atom density of a nuclide
-    real(8) :: sab_threshold ! threshold for S(a,b) table
+    logical :: check_sab     ! should we check for S(a,b) table?
     type(Material),  pointer :: mat => null() ! current material
 
     ! Set all material macroscopic cross sections to zero
@@ -43,30 +44,49 @@ contains
     ! Find energy index on unionized grid
     if (grid_method == GRID_UNION) call find_energy_index()
 
-    ! Check if there's an S(a,b) table for this material
-    if (mat % has_sab_table) then
-      sab_threshold = sab_tables(mat % sab_table) % threshold_inelastic
-    else
-      sab_threshold = ZERO
-    end if
+    ! Determine if this material has S(a,b) tables
+    check_sab = (mat % n_sab > 0)
+
+    ! Initialize position in i_sab_nuclides
+    j = 1
 
     ! Add contribution from each nuclide in material
     do i = 1, mat % n_nuclides
+      ! ========================================================================
+      ! CHECK FOR S(A,B) TABLE
+
+      i_sab = 0
+
+      ! Check if this nuclide matches one of the S(a,b) tables specified -- this
+      ! relies on i_sab_nuclides being in sorted order
+      if (check_sab .and. i == mat % i_sab_nuclides(j)) then
+        ! Get index in sab_tables
+        i_sab = mat % i_sab_tables(j)
+
+        ! If particle energy is greater than the highest energy for the S(a,b)
+        ! table, don't use the S(a,b) table
+        if (p % E > sab_tables(i_sab) % threshold_inelastic) i_sab = 0
+
+        ! Increment position in i_sab_nuclides
+        j = j + 1
+
+        ! Don't check for S(a,b) tables if there are no more left
+        if (j > mat % n_sab) check_sab = .false.
+      end if
+
+      ! ========================================================================
+      ! CALCULATE MICROSCOPIC CROSS SECTION
+
       ! Determine microscopic cross sections for this nuclide
       i_nuclide = mat % nuclide(i)
-
-      ! Determine whether to use S(a,b) based on energy of particle and whether
-      ! the nuclide matches the S(a,b) table
-      if (p % E < sab_threshold .and. i == mat % sab_nuclide) then
-        i_sab = mat % sab_table
-      else
-        i_sab = 0
-      end if
 
       ! Calculate microscopic cross section for this nuclide
       if (p % E /= micro_xs(i_nuclide) % last_E) then
         call calculate_nuclide_xs(i_nuclide, i_sab)
       end if
+
+      ! ========================================================================
+      ! ADD TO MACROSCOPIC CROSS SECTION
 
       ! Copy atom density of nuclide in material
       atom_density = mat % atom_density(i)
@@ -148,7 +168,7 @@ contains
     micro_xs(i_nuclide) % interp_factor = f
 
     ! Initialize sab treatment to false
-    micro_xs(i_nuclide) % use_sab     = .false.
+    micro_xs(i_nuclide) % index_sab   = NONE
     micro_xs(i_nuclide) % elastic_sab = ZERO
     micro_xs(i_nuclide) % use_ptable  = .false.
 
@@ -231,7 +251,7 @@ contains
     type(SAlphaBeta), pointer :: sab => null()
 
     ! Set flag that S(a,b) treatment should be used for scattering
-    micro_xs(i_nuclide) % use_sab = .true.
+    micro_xs(i_nuclide) % index_sab = i_sab
 
     ! Get pointer to S(a,b) table
     sab => sab_tables(i_sab)

@@ -952,6 +952,7 @@ contains
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
     integer :: n             ! number of nuclides
+    integer :: n_sab         ! number of sab tables for a material
     integer :: index_list    ! index in xs_listings array
     integer :: index_nuclide ! index in nuclides
     integer :: index_sab     ! index in sab_tables
@@ -1152,43 +1153,52 @@ contains
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
 
-      if (size(material_(i) % sab) == 1) then
-        ! Get pointer to S(a,b) table
-        sab => material_(i) % sab(1)
+      n_sab = size(material_(i) % sab)
+      if (n_sab > 0) then
+        ! Set number of S(a,b) tables
+        mat % n_sab = n_sab
 
-        ! Determine name of S(a,b) table
-        name = trim(sab % name) // "." // trim(sab % xs)
-        mat % sab_name = name
+        ! Allocate names and indices for nuclides and tables
+        allocate(mat % sab_names(n_sab))
+        allocate(mat % i_sab_nuclides(n_sab))
+        allocate(mat % i_sab_tables(n_sab))
 
-        ! Check that this nuclide is listed in the cross_sections.xml file
-        if (.not. xs_listing_dict % has_key(name)) then
-          message = "Could not find S(a,b) table " // trim(name) // &
-               " in cross_sections.xml file!"
-          call fatal_error()
-        end if
-        mat % has_sab_table = .true.
+        ! Initialize i_sab_nuclides
+        mat % i_sab_nuclides = NONE
 
-        ! Find index in xs_listing and set the name and alias according to the
-        ! listing
-        index_list = xs_listing_dict % get_key(name)
-        name       = xs_listings(index_list) % name
-        alias      = xs_listings(index_list) % alias
+        do j = 1, n_sab
+          ! Get pointer to S(a,b) table
+          sab => material_(i) % sab(j)
 
-        ! If this S(a,b) table hasn't been encountered yet, we need to add its
-        ! name and alias to the sab_dict
-        if (.not. sab_dict % has_key(name)) then
-          index_sab       = index_sab + 1
-          mat % sab_table = index_sab
+          ! Determine name of S(a,b) table
+          name = trim(sab % name) // "." // trim(sab % xs)
+          mat % sab_names(j) = name
 
-          call sab_dict % add_key(name, index_sab)
-          call sab_dict % add_key(alias, index_sab)
-        else
-          mat % sab_table = sab_dict % get_key(name)
-        end if
+          ! Check that this nuclide is listed in the cross_sections.xml file
+          if (.not. xs_listing_dict % has_key(name)) then
+            message = "Could not find S(a,b) table " // trim(name) // &
+                 " in cross_sections.xml file!"
+            call fatal_error()
+          end if
 
-      elseif (size(material_(i) % sab) > 1) then
-        message = "Cannot have multiple S(a,b) tables on a single material."
-        call fatal_error()
+          ! Find index in xs_listing and set the name and alias according to the
+          ! listing
+          index_list = xs_listing_dict % get_key(name)
+          name       = xs_listings(index_list) % name
+          alias      = xs_listings(index_list) % alias
+
+          ! If this S(a,b) table hasn't been encountered yet, we need to add its
+          ! name and alias to the sab_dict
+          if (.not. sab_dict % has_key(name)) then
+            index_sab           = index_sab + 1
+            mat % i_sab_tables(j) = index_sab
+
+            call sab_dict % add_key(name, index_sab)
+            call sab_dict % add_key(alias, index_sab)
+          else
+            mat % i_sab_tables(j) = sab_dict % get_key(name)
+          end if
+        end do
       end if
 
       ! Add material to dictionary

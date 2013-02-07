@@ -59,19 +59,21 @@ contains
 
       ! Check if this nuclide matches one of the S(a,b) tables specified -- this
       ! relies on i_sab_nuclides being in sorted order
-      if (check_sab .and. i == mat % i_sab_nuclides(j)) then
-        ! Get index in sab_tables
-        i_sab = mat % i_sab_tables(j)
+      if (check_sab) then
+        if (i == mat % i_sab_nuclides(j)) then
+          ! Get index in sab_tables
+          i_sab = mat % i_sab_tables(j)
 
-        ! If particle energy is greater than the highest energy for the S(a,b)
-        ! table, don't use the S(a,b) table
-        if (p % E > sab_tables(i_sab) % threshold_inelastic) i_sab = 0
+          ! If particle energy is greater than the highest energy for the S(a,b)
+          ! table, don't use the S(a,b) table
+          if (p % E > sab_tables(i_sab) % threshold_inelastic) i_sab = 0
 
-        ! Increment position in i_sab_nuclides
-        j = j + 1
+          ! Increment position in i_sab_nuclides
+          j = j + 1
 
-        ! Don't check for S(a,b) tables if there are no more left
-        if (j > mat % n_sab) check_sab = .false.
+          ! Don't check for S(a,b) tables if there are no more left
+          if (j > mat % n_sab) check_sab = .false.
+        end if
       end if
 
       ! ========================================================================

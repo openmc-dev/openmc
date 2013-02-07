@@ -464,9 +464,11 @@ contains
            dims, m % atom_density, hdf5_err)
 
       ! Write S(a,b) information if present
-      if (m % has_sab_table) then
-        call h5ltmake_dataset_string_f(temp_group, "sab_table", &
-             m % sab_name, hdf5_err)
+      if (m % n_sab > 0) then
+        call hdf5_write_integer(temp_group, "i_sab_nuclides", &
+             m % i_sab_nuclides)
+        call hdf5_write_integer(temp_group, "i_sab_tables", &
+             m % i_sab_tables)
       end if
 
       ! Close group for i-th material

@@ -656,7 +656,51 @@ form of the solution:
 
     w' = w - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{z} }{R^2}
 
-.. TODO: Add in derivation for cone surfaces.
+Cone Parallel to an Axis
+------------------------
+
+A cone parallel to, for example, the z-axis has the form :math:`f(x,y,z) = (x -
+x_0)^2 + (y - y_0)^2 - R^2(z - z_0)^2 = 0`. Thus, the gradient to the surface is
+
+.. math::
+    :label: reflection-cone-grad
+
+    \nabla f = 2 \left ( \begin{array}{c} x - x_0 \\ y - y_0 \\ -R^2(z - z_0)
+    \end{array} \right ) = 2 \left ( \begin{array}{c} \bar{x} \\ \bar{y} \\
+    -R^2\bar{z} \end{array} \right )
+
+where we have introduced the constants :math:`\bar{x}`, :math:`\bar{y}`, and
+:math:`\bar{z}`. Taking the square of the norm of the gradient, we find that
+
+.. math::
+    :label: reflection-cone-norm
+
+    || \nabla f ||^2 = 4 \bar{x}^2 + \bar{y}^2 + 4 R^4 \bar{z}^2 \\ = 4 R^2
+       \bar{z}^2 + 4 R^4 \bar{z}^2 \\ = 4 R^2 (1 + R^2) \bar{z}^2
+
+This implies that
+
+.. math::
+    :label: reflection-cone-constant
+
+    \frac{2 (\mathbf{\Omega} \cdot \nabla f)}{|| \nabla f ||^2} =
+    \frac{\bar{x}u + \bar{y}v - R^2\bar{z}w}{R^2 (1 + R^2) \bar{z}^2}
+
+Substituting equations :eq:`reflection-cone-constant` and
+:eq:`reflection-cone-grad` into equation :eq:`reflection-system` gives us the
+form of the solution:
+
+.. math::
+    :label: reflection-cone
+
+    u' = u - \frac{2 (\bar{x}u + \bar{y}v - R^2\bar{z}w) \bar{x}}{R^2 (1 + R^2)
+    \bar{z}^2}
+
+    v' = v - \frac{2 (\bar{x}u + \bar{y}v - R^2\bar{z}w) \bar{y}}{R^2 (1 + R^2)
+    \bar{z}^2}
+
+    w' = w + \frac{2 (\bar{x}u + \bar{y}v - R^2\bar{z}w)}{R^2 (1 + R^2) \bar{z}}
+
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _surfaces: http://en.wikipedia.org/wiki/Surface

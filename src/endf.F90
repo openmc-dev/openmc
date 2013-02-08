@@ -142,7 +142,7 @@ contains
     case (800 : 848)
       string = '(n,a' // trim(to_str(MT-800)) // ')'
     case (849)
-      string = '(n,tc)'
+      string = '(n,ac)'
     case default
       string = 'MT=' // trim(to_str(MT))
     end select

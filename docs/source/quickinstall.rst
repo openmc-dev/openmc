@@ -41,7 +41,7 @@ following commands in a terminal:
 
 .. code-block:: sh
 
-    git clone git@github.com:mit-crpg/openmc.git
+    git clone git://github.com/mit-crpg/openmc.git
     cd openmc/src
     make
     sudo make install

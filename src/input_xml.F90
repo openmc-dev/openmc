@@ -622,6 +622,12 @@ contains
       c % universe = cell_(i) % universe
       c % fill     = cell_(i) % fill
 
+      ! Check to make sure 'id' hasn't been used
+      if (cell_dict % has_key(c % id)) then
+        message = "Two or more cells use the same unique ID: " // to_str(c % id)
+        call fatal_error()
+      end if
+
       ! Read material
       word = cell_(i) % material
       call lower_case(word)
@@ -767,6 +773,13 @@ contains
       ! Copy data into cells
       s % id = surface_(i) % id
 
+      ! Check to make sure 'id' hasn't been used
+      if (surface_dict % has_key(s % id)) then
+        message = "Two or more surfaces use the same unique ID: " // &
+             to_str(s % id)
+        call fatal_error()
+      end if
+
       ! Copy and interpret surface type
       word = surface_(i) % type
       call lower_case(word)
@@ -862,6 +875,13 @@ contains
 
       ! ID of lattice
       lat % id = lattice_(i) % id
+
+      ! Check to make sure 'id' hasn't been used
+      if (lattice_dict % has_key(lat % id)) then
+        message = "Two or more lattices use the same unique ID: " // &
+             to_str(lat % id)
+        call fatal_error()
+      end if
 
       ! Read lattice type
       word = lattice_(i) % type
@@ -1004,6 +1024,13 @@ contains
 
       ! Copy material id
       mat % id = material_(i) % id
+
+      ! Check to make sure 'id' hasn't been used
+      if (material_dict % has_key(mat % id)) then
+        message = "Two or more materials use the same unique ID: " // &
+             to_str(mat % id)
+        call fatal_error()
+      end if
 
       ! =======================================================================
       ! READ AND PARSE <density> TAG
@@ -1371,6 +1398,13 @@ contains
       ! copy mesh id
       m % id = mesh_(i) % id
 
+      ! Check to make sure 'id' hasn't been used
+      if (mesh_dict % has_key(m % id)) then
+        message = "Two or more meshes use the same unique ID: " // &
+             to_str(m % id)
+        call fatal_error()
+      end if
+
       ! Read mesh type
       call lower_case(mesh_(i) % type)
       select case (mesh_(i) % type)
@@ -1496,6 +1530,13 @@ contains
 
       ! Copy material id
       t % id = tally_(i) % id
+
+      ! Check to make sure 'id' hasn't been used
+      if (tally_dict % has_key(t % id)) then
+        message = "Two or more tallies use the same unique ID: " // &
+             to_str(t % id)
+        call fatal_error()
+      end if
 
       ! Copy tally label
       t % label = tally_(i) % label
@@ -2045,6 +2086,9 @@ contains
         end select
       end if
 
+      ! Add tally to dictionary
+      call tally_dict % add_key(t % id, i)
+
     end do READ_TALLIES
 
   end subroutine read_tallies_xml
@@ -2082,11 +2126,18 @@ contains
     n_plots = size(plot_)
     allocate(plots(n_plots))
 
-    do i = 1, n_plots
+    READ_PLOTS: do i = 1, n_plots
       pl => plots(i)
 
       ! Copy data into plots
-      pl % id       = plot_(i) % id
+      pl % id = plot_(i) % id
+
+      ! Check to make sure 'id' hasn't been used
+      if (plot_dict % has_key(pl % id)) then
+        message = "Two or more plots use the same unique ID: " // &
+             to_str(pl % id)
+        call fatal_error()
+      end if
 
       ! Set output file path
       pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
@@ -2239,7 +2290,10 @@ contains
         end if
       end if
 
-    end do
+      ! Add plot to dictionary
+      call plot_dict % add_key(pl % id, i)
+
+    end do READ_PLOTS
 
   end subroutine read_plots_xml
 

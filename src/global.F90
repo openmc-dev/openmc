@@ -61,6 +61,7 @@ module global
   type(DictIntInt) :: material_dict
   type(DictIntInt) :: mesh_dict
   type(DictIntInt) :: tally_dict
+  type(DictIntInt) :: plot_dict
 
   ! ============================================================================
   ! CROSS SECTION RELATED VARIABLES

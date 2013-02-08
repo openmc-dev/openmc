@@ -19,6 +19,17 @@ element materials {
       )
     }*  &
 
+    element element {
+      (element name { xsd:string { maxLength = "2" } } | 
+        attribute name { xsd:string { maxLength = "2" } }) &
+      (element xs { xsd:string { maxLength = "3" } } |
+        attribute xs { xsd:string { maxLength = "3" } })? &
+      (
+        (element ao { xsd:double } | attribute ao { xsd:double }) |
+        (element wo { xsd:double } | attribute wo { xsd:double })
+      )
+    }*  &
+
     element sab {
       (element name { xsd:string { maxLength = "7" } } | 
         attribute name { xsd:string { maxLength = "7" } }) &

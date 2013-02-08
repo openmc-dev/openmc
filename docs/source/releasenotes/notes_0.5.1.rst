@@ -21,6 +21,10 @@ the problem at hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
+- Natural elements can now be specified in materials using <element> rather than
+  <nuclide>.
+- Support for multiple S(a,b) tables in a single material (e.g. BeO).
+- Test suite using Python nosetests.
 - Proper install capability with 'make install'.
 - Lattices can now be 2 or 3 dimensions.
 - New scatter-PN score type.
@@ -31,8 +35,12 @@ New Features
 Bug Fixes
 ---------
 
+- e77059_: Fix reaction name for MT=849.
+- b0fe88_: Fix distance to surface for cones.
 - 63bfd2_: Fix tracklength tallies with cell filter and universes.
 - 88daf7_: Fix analog tallies with survival biasing.
 
+.. _e77059: https://github.com/mit-crpg/openmc/commit/e77059
+.. _b0fe88: https://github.com/mit-crpg/openmc/commit/b0fe88
 .. _63bfd2: https://github.com/mit-crpg/openmc/commit/63bfd2
 .. _88daf7: https://github.com/mit-crpg/openmc/commit/88daf7

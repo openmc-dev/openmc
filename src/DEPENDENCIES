@@ -209,6 +209,7 @@ input_xml.o: dict_header.o
 input_xml.o: error.o
 input_xml.o: geometry_header.o
 input_xml.o: global.o
+input_xml.o: list_header.o
 input_xml.o: mesh_header.o
 input_xml.o: output.o
 input_xml.o: plot_header.o

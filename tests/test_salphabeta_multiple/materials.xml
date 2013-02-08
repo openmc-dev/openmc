@@ -1,0 +1,114 @@
+<?xml version="1.0"?>
+<materials>
+
+  <!-- pu-met-fast-021 case 2 -->
+
+  <default_xs>70c</default_xs>
+
+  <!-- Plutonium -->
+  <material id="1">
+    <density value="18.5345" units="g/cm3" />
+    <nuclide name="Pu-239" ao="4.4422e-02" />
+    <nuclide name="Pu-240" ao="2.1326e-03" />
+    <nuclide name="Pu-241" ao="9.2538e-05" />
+    <!-- C at 1.9515e-4 atom/b-cm -->
+    <nuclide name="C-Nat"  ao="1.9515e-04" />
+    <!-- Fe at 8.1943e-5 atom/b-cm -->
+    <nuclide name="Fe-54"  ao="4.7896e-06" />
+    <nuclide name="Fe-56"  ao="7.5186e-05" />
+    <nuclide name="Fe-57"  ao="1.7364e-06" />
+    <nuclide name="Fe-58"  ao="2.3108e-07" />
+  </material>
+
+  <!-- Berylium-oxide Reflector -->
+  <material id="2">
+    <density value="2.86750" units="g/cm3" />
+    <nuclide name="Be-9" ao="6.9041e-02" />
+    <!-- O at 6.9041e-2 -->
+    <nuclide name="O-16" ao="6.9015e-02" />
+    <nuclide name="O-17" ao="2.6236e-05" />
+    <sab name="be/o" xs="10t" />
+    <sab name="o/be" xs="10t" />
+  </material>
+
+  <!-- Steel Cover -->
+  <material id="3">
+    <density value="6.9323" units="g/cm3" />
+    <!-- Fe at 5.1280e-2 atom/b-cm -->
+    <nuclide name="Fe-54" ao="2.9973e-03" />
+    <nuclide name="Fe-56" ao="4.7051e-02" />
+    <nuclide name="Fe-57" ao="1.0866e-03" />
+    <nuclide name="Fe-58" ao="1.4461e-04" />
+    <!-- C at 3.4757e-4 atom/b-cm -->
+    <nuclide name="C-Nat" ao="3.4757e-04" />
+    <!-- Si at 8.9185e-4 atom/b-cm -->
+    <nuclide name="Si-28" ao="8.2255e-04" />
+    <nuclide name="Si-29" ao="4.1767e-05" />
+    <nuclide name="Si-30" ao="2.7533e-05" />
+    <!-- Ti at 6.1034e-4 atom/b-cm -->
+    <nuclide name="Ti-46" ao="5.0353e-05" />
+    <nuclide name="Ti-47" ao="4.5409e-05" />
+    <nuclide name="Ti-48" ao="4.4994e-04" />
+    <nuclide name="Ti-49" ao="3.3019e-05" />
+    <nuclide name="Ti-50" ao="3.1616e-05" />
+    <!-- Cr at 1.4452e-2 atom/b-cm -->
+    <nuclide name="Cr-50" ao="6.2794e-04" />
+    <nuclide name="Cr-52" ao="1.2109e-02" />
+    <nuclide name="Cr-53" ao="1.3731e-03" />
+    <nuclide name="Cr-54" ao="3.4179e-04" />
+    <!-- Mn at 1.5198e-3 atom/b-cm -->
+    <nuclide name="Mn-55" ao="1.5198e-03" />
+    <!-- Ni at 7.1131e-3 atom/b-cm -->
+    <nuclide name="Ni-58" ao="4.8424e-03" />
+    <nuclide name="Ni-60" ao="1.8653e-03" />
+    <nuclide name="Ni-61" ao="8.1082e-05" />
+    <nuclide name="Ni-62" ao="2.5853e-04" />
+    <nuclide name="Ni-64" ao="6.5839e-05" />
+  </material>
+
+  <!-- Duralumin base and top -->
+  <material id="4">
+    <density value="2.78" units="g/cm3" />
+    <nuclide name="Al-27" ao="5.8077e-02" />
+    <!-- Mg at 1.0332e-3 atom/b-cm -->
+    <nuclide name="Mg-24" ao="8.1612e-04" />
+    <nuclide name="Mg-25" ao="1.0332e-04" />
+    <nuclide name="Mg-26" ao="1.1376e-04" />
+    <!-- Mn at 1.8284e-4 atom/b-cm -->
+    <nuclide name="Mn-55" ao="1.8284e-04" />
+    <!-- Cu at 1.1329e-3 atom/b-cm -->
+    <nuclide name="Cu-63" ao="7.8363e-04" />
+    <nuclide name="Cu-65" ao="3.4927e-04" />
+  </material>
+
+  <!-- Duralumin top cylindrical shell -->
+  <material id="5">
+    <density value="0.417" units="g/cm3" />
+    <nuclide name="Al-27" ao="8.7115e-03" />
+    <!-- Mg at 1.5498e-4 atom/b-cm -->
+    <nuclide name="Mg-24" ao="1.2242e-04" />
+    <nuclide name="Mg-25" ao="1.5498e-05" />
+    <nuclide name="Mg-26" ao="1.7063e-05" />
+    <!-- Mn at 2.7426e-5 atom/b-cm -->
+    <nuclide name="Mn-55" ao="2.7426e-05" />
+    <!-- Cu at 1.6993e-4 atom/b-cm -->
+    <nuclide name="Cu-63" ao="1.1754e-04" />
+    <nuclide name="Cu-65" ao="5.2389e-05" />
+  </material>
+
+  <!-- Duralumin bottom cylindrical shell -->
+  <material id="6">
+    <density value="1.8155" units="g/cm3" />
+    <nuclide name="Al-27" ao="3.7928e-2" />
+    <!-- Mg at 6.7475e-4 atom/b-cm -->
+    <nuclide name="Mg-24" ao="5.3299e-04" />
+    <nuclide name="Mg-25" ao="6.7475e-05" />
+    <nuclide name="Mg-26" ao="7.4290e-05" />
+    <!-- Mn at 1.1941e-4 atom/b-cm -->
+    <nuclide name="Mn-55" ao="1.1941e-04" />
+    <!-- Cu 7.3982e-4 atom/b-cm -->
+    <nuclide name="Cu-63" ao="5.1173e-04" />
+    <nuclide name="Cu-65" ao="2.2809e-04" />
+  </material>
+
+</materials>

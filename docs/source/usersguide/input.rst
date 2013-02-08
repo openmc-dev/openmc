@@ -691,6 +691,26 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+  :element:
+
+    Specifies that a natural element is present in the material. The natural
+    element is split up into individual isotopes based on IUPAC Isotopic
+    Compositions of the Elements 1997. This element has attributes/sub-elements
+    called ``name``, ``xs``, and ``ao``. The ``name`` attribute is the atomic
+    symbol of the element while the ``xs`` attribute is the cross-section
+    identifier. Finally, the ``ao`` attribute specifies the atom percent of the
+    element within the material, respectively. One example would be as follows:
+
+    .. code-block:: xml
+
+        <element name="Al" ao="8.7115e-03" />
+        <element name="Mg" ao="1.5498e-04" />
+        <element name="Mn" ao="2.7426e-05" />
+        <element name="Cu" ao="1.6993e-04" />
+
+    *Default*: None
+
+
   :sab:
     Associates an S(a,b) table with the material. This element has
     attributes/sub-elements called ``name`` and ``xs``. The ``name`` attribute

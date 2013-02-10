@@ -17,6 +17,7 @@ module input_xml
   use tally_initialize, only: add_tallies
 
   implicit none
+  save
 
   type(DictIntInt) :: cells_in_univ_dict ! used to count how many cells each
                                          ! universe contains

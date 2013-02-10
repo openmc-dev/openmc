@@ -213,6 +213,13 @@ ifeq ($(MACHINE),crayxk6)
   F90FLAGS += -DMPI
 endif
 
+# IBM Blue Gene/Q ANL supercomputer
+
+ifeq ($(MACHINE),bluegeneq)
+  F90 = mpixlf2003
+  F90FLAGS = -WF,-DNO_F2008,-DMPI -O5
+endif
+
 #===============================================================================
 # Targets
 #===============================================================================

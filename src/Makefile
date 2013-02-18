@@ -230,7 +230,7 @@ xml-fortran:
 	cd xml-fortran; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
 	cd templates; make F90=$(F90) F90FLAGS="$(F90FLAGS)"
 $(program): $(objects)
-	$(F90) $(objects) $(templates) $(xml_fort) -o $@ $(LDFLAGS)
+	$(F90) $(objects) $(templates) $(xml_fort) $(LDFLAGS) -o $@
 install:
 	@install -D $(program) $(DESTDIR)$(prefix)/bin/$(program)
 	@install -D utils/statepoint_cmp.py $(DESTDIR)$(prefix)/bin/statepoint_cmp

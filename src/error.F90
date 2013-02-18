@@ -138,7 +138,11 @@ contains
 #endif
 
     ! Abort program
+#ifdef NO_F2008
+    stop
+#else
     error stop 
+#endif
 
   end subroutine fatal_error
 

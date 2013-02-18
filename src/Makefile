@@ -204,6 +204,7 @@ endif
 ifeq ($(MACHINE),bluegene)
   F90 = /bgsys/drivers/ppcfloor/comm/xl/bin/mpixlf2003
   F90FLAGS = -WF,-DNO_F2008,-DMPI -O3
+  LDFLAGS = -lmpich.cnkf90
 endif
 
 # Cray XK6 ORNL Titan supercomputer

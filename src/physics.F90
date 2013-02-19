@@ -295,6 +295,12 @@ contains
       p % wgt = p % wgt - p % absorb_wgt
       p % last_wgt = p % wgt
 
+      ! Score implicit absorption estimate of keff. Unlike the analog absorption
+      ! estimate, this only needs to be scored to in one place.
+      global_tallies(K_ABSORPTION) % value = &
+           global_tallies(K_ABSORPTION) % value + p % absorb_wgt * &
+           material_xs % nu_fission / material_xs % absorption
+
     else
       ! set cutoff variable for analog cases
       cutoff = prn() * micro_xs(i_nuclide) % total
@@ -306,6 +312,13 @@ contains
 
       ! See if disappearance reaction happens
       if (prob > cutoff) then
+        ! Score absorption estimate of keff. Note that this appears in three
+        ! places -- absorption reactions, total fission reactions, and
+        ! first/second/etc chance fission reactions
+        global_tallies(K_ABSORPTION) % value = &
+             global_tallies(K_ABSORPTION) % value + p % wgt * &
+             material_xs % nu_fission / material_xs % absorption
+
         p % alive = .false.
         p % event = EVENT_ABSORB
         p % event_MT = N_DISAPPEAR
@@ -342,6 +355,13 @@ contains
           ! With no survival biasing, the particle is absorbed and so its
           ! life is over
           if (.not. survival_biasing) then
+            ! Score absorption estimate of keff. Note that this appears in three
+            ! places -- absorption reactions, total fission reactions, and
+            ! first/second/etc chance fission reactions
+            global_tallies(K_ABSORPTION) % value = &
+                 global_tallies(K_ABSORPTION) % value + p % wgt * &
+                 material_xs % nu_fission / material_xs % absorption
+
             p % alive = .false.
             p % event = EVENT_FISSION
             p % event_MT = rxn % MT
@@ -377,6 +397,13 @@ contains
               ! loop
               exit FISSION_REACTION_LOOP
             else
+              ! Score absorption estimate of keff. Note that this appears in
+              ! three places -- absorption reactions, total fission reactions,
+              ! and first/second/etc chance fission reactions
+              global_tallies(K_ABSORPTION) % value = &
+                   global_tallies(K_ABSORPTION) % value + p % wgt * &
+                   material_xs % nu_fission / material_xs % absorption
+
               ! With no survival biasing, the particle is absorbed and so
               ! its life is over
               p % alive = .false.

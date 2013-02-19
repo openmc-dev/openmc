@@ -530,6 +530,10 @@ contains
               ! DETERMINE NUCLIDE CROSS SECTION
 
               select case(score_bin)
+              case (SCORE_FLUX)
+                ! For flux, we need no cross section
+                score = flux
+
               case (SCORE_TOTAL)
                 ! Total cross section is pre-calculated
                 score = micro_xs(i_nuclide) % total * &
@@ -769,6 +773,9 @@ contains
 
         ! Determine macroscopic nuclide cross section 
         select case(score_bin)
+        case (SCORE_FLUX)
+          score = flux
+
         case (SCORE_TOTAL)
           score = micro_xs(i_nuclide) % total * atom_density * flux
 
@@ -1178,6 +1185,8 @@ contains
               if (i_nuclide > 0) then
                 ! Determine macroscopic nuclide cross section 
                 select case(score_bin)
+                case (SCORE_FLUX)
+                  score = flux
                 case (SCORE_TOTAL)
                   score = micro_xs(i_nuclide) % total * &
                        atom_density * flux

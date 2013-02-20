@@ -31,9 +31,9 @@ contains
 
     if (run_mode /= MODE_PLOTTING) then
       ! Calculate statistics for tallies and write to tallies.out
-      if (master) call tally_statistics()
       if (master .and. run_mode == MODE_EIGENVALUE) &
            call calculate_combined_keff()
+      if (master) call tally_statistics()
       if (output_tallies) then
         if (master) call write_tallies()
       end if
@@ -93,14 +93,18 @@ contains
     n = n_realizations
     g = ZERO
     S = ZERO
+    k_combined = ZERO
 
     ! Copy estimates of k-effective and its variance (not variance of the mean)
-    kv(1) = global_tallies(K_COLLISION) % sum
-    kv(2) = global_tallies(K_ABSORPTION) % sum
-    kv(3) = global_tallies(K_TRACKLENGTH) % sum
-    cov(1,1) = global_tallies(K_COLLISION) % sum_sq**2 * n
-    cov(2,2) = global_tallies(K_ABSORPTION) % sum_sq**2 * n
-    cov(3,3) = global_tallies(K_TRACKLENGTH) % sum_sq**2 * n
+    kv(1) = global_tallies(K_COLLISION) % sum / n
+    kv(2) = global_tallies(K_ABSORPTION) % sum / n
+    kv(3) = global_tallies(K_TRACKLENGTH) % sum / n
+    cov(1,1) = (global_tallies(K_COLLISION) % sum_sq - &
+         n * kv(1) * kv(1)) / (n - 1)
+    cov(2,2) = (global_tallies(K_ABSORPTION) % sum_sq - &
+         n * kv(2) * kv(2)) / (n - 1)
+    cov(3,3) = (global_tallies(K_TRACKLENGTH) % sum_sq - &
+         n * kv(3) * kv(3)) / (n - 1)
 
     ! Calculate covariances based on sums with Bessel's correction
     cov(1,2) = (k_col_abs - n * kv(1) * kv(2))/(n - 1)

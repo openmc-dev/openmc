@@ -666,6 +666,10 @@ contains
     real(8) :: g        ! sum of weighting factors
     real(8) :: S(3)     ! sums used for variance calculation
 
+    ! Make sure we have at least four realizations. Notice that at the end,
+    ! there is a N-3 term in a denominator.
+    if (n_realizations <= 3) return
+
     ! Initialize variables
     n = n_realizations
     g = ZERO

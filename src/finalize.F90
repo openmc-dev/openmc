@@ -82,11 +82,11 @@ contains
 
     integer :: i 
     integer :: n
-    real(8) :: k_abs, k_col, k_tra
-    real(8) :: s_abs, s_col, s_tra
-    real(8) :: s_abs_col
+    real(8) :: k_col, k_abs, k_tra
+    real(8) :: s_col, s_abs, s_tra
+    real(8) :: s_col_abs
     real(8) :: s_col_tra
-    real(8) :: s_tra_abs
+    real(8) :: s_abs_tra
     real(8) :: s_ij, s_ik, s_jk
     real(8) :: s_kk, s_jj
     real(8) :: s_1i
@@ -100,17 +100,17 @@ contains
     S = ZERO
 
     ! Copy estimates of k-effective and its variance (not variance of the mean)
-    k_abs = global_tallies(K_ABSORPTION) % sum
     k_col = global_tallies(K_COLLISION) % sum
+    k_abs = global_tallies(K_ABSORPTION) % sum
     k_tra = global_tallies(K_TRACKLENGTH) % sum
-    s_abs = global_tallies(K_ABSORPTION) % sum_sq**2 * n
     s_col = global_tallies(K_COLLISION) % sum_sq**2 * n
+    s_abs = global_tallies(K_ABSORPTION) % sum_sq**2 * n
     s_tra = global_tallies(K_TRACKLENGTH) % sum_sq**2 * n
 
     ! Calculate covariances based on sums with Bessel's correction
-    s_abs_col = (k_abs_col - n * k_abs * k_col)/(n - 1)
+    s_col_abs = (k_col_abs - n * k_col * k_abs)/(n - 1)
     s_col_tra = (k_col_tra - n * k_col * k_tra)/(n - 1)
-    s_tra_abs = (k_tra_abs - n * k_tra * k_abs)/(n - 1)
+    s_abs_tra = (k_abs_tra - n * k_abs * k_tra)/(n - 1)
 
     do i = 1, 3
       if (i == 1) then
@@ -120,18 +120,18 @@ contains
         s_1i = s_col
         s_jj = s_abs
         s_kk = s_tra
-        s_ij = s_abs_col
+        s_ij = s_col_abs
         s_ik = s_col_tra
-        s_jk = s_tra_abs
+        s_jk = s_abs_tra
       elseif (i == 2) then
         ! i = absortion, j = tracklength, k = collision
         k_i  = k_abs
         k_j  = k_tra
-        s_1i = s_abs_col
+        s_1i = s_col_abs
         s_jj = s_tra
         s_kk = s_col
-        s_ij = s_tra_abs
-        s_ik = s_abs_col
+        s_ij = s_abs_tra
+        s_ik = s_col_abs
         s_jk = s_col_tra
       elseif (i == 3) then
         ! i = tracklength, j = collision, k = absorption
@@ -141,8 +141,8 @@ contains
         s_jj = s_col
         s_kk = s_abs
         s_ij = s_col_tra
-        s_ik = s_tra_abs
-        s_jk = s_abs_col
+        s_ik = s_abs_tra
+        s_jk = s_col_abs
       end if
 
       ! Calculate weighting

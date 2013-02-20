@@ -1359,8 +1359,6 @@ contains
 
     integer(8)    :: total_particles ! total # of particles simulated
     real(8)       :: speed           ! # of neutrons/second
-    real(8)       :: alpha           ! significance level for CI
-    real(8)       :: t_value         ! t-value for confidence intervals
     character(15) :: string
 
     ! display header block
@@ -1394,7 +1392,23 @@ contains
     speed = real(total_particles) / (time_inactive % elapsed + &
          time_active % elapsed)
     string = to_str(speed)
-    write(ou,101) "Calculation Rate", trim(string)
+    write(ou,101) trim(string)
+
+    ! format for write statements
+100 format (1X,A,T36,"= ",ES11.4," seconds")
+101 format (1X,"Calculation Rate",T36,"=  ",A," neutrons/second")
+
+  end subroutine print_runtime
+
+!===============================================================================
+! PRINT_RESULTS displays various estimates of k-effective as well as the global
+! leakage rate.
+!===============================================================================
+
+  subroutine print_results()
+
+    real(8) :: alpha   ! significance level for CI
+    real(8) :: t_value ! t-value for confidence intervals
 
     ! display header block for results
     call header("Results")
@@ -1409,22 +1423,19 @@ contains
     end if
 
     ! write global tallies
-    write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) % sum, &
-         global_tallies(K_COLLISION) % sum_sq
-    write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) % sum, &
-         global_tallies(K_TRACKLENGTH) % sum_sq
-    write(ou,102) "k-effective (Absorption)", global_tallies(K_ABSORPTION) % sum, &
-         global_tallies(K_ABSORPTION) % sum_sq
+    write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) &
+         % sum, global_tallies(K_COLLISION) % sum_sq
+    write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) &
+         % sum, global_tallies(K_TRACKLENGTH) % sum_sq
+    write(ou,102) "k-effective (Absorption)", global_tallies(K_ABSORPTION) &
+         % sum, global_tallies(K_ABSORPTION) % sum_sq
     write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
          global_tallies(LEAKAGE) % sum_sq
     write(ou,*)
 
-    ! format for write statements
-100 format (1X,A,T36,"= ",ES11.4," seconds")
-101 format (1X,A,T36,"=  ",A," neutrons/second")
 102 format (1X,A,T30,"= ",F8.5," +/- ",F8.5)
 
-  end subroutine print_runtime
+  end subroutine print_results
 
 !===============================================================================
 ! WRITE_TALLIES creates an output file and writes out the mean values of all

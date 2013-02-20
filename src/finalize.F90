@@ -80,19 +80,14 @@ contains
 
   subroutine calculate_combined_keff()
 
-    integer :: i 
-    integer :: n
-    real(8) :: k_col, k_abs, k_tra
-    real(8) :: s_col, s_abs, s_tra
-    real(8) :: s_col_abs
-    real(8) :: s_col_tra
-    real(8) :: s_abs_tra
-    real(8) :: s_ij, s_ik, s_jk
-    real(8) :: s_kk, s_jj
-    real(8) :: s_1i
-    real(8) :: k_i, k_j
-    real(8) :: f, g
-    real(8) :: S(3)
+    integer :: l        ! loop index
+    integer :: i, j, k  ! indices referring to collision, absorption, or track
+    integer :: n        ! number of realizations
+    real(8) :: kv(3)    ! vector of k-effective estimates
+    real(8) :: cov(3,3) ! sample covariance matrix
+    real(8) :: f        ! weighting factor
+    real(8) :: g        ! sum of weighting factors
+    real(8) :: S(3)     ! sums used for variance calculation
 
     ! Initialize variables
     n = n_realizations
@@ -100,61 +95,51 @@ contains
     S = ZERO
 
     ! Copy estimates of k-effective and its variance (not variance of the mean)
-    k_col = global_tallies(K_COLLISION) % sum
-    k_abs = global_tallies(K_ABSORPTION) % sum
-    k_tra = global_tallies(K_TRACKLENGTH) % sum
-    s_col = global_tallies(K_COLLISION) % sum_sq**2 * n
-    s_abs = global_tallies(K_ABSORPTION) % sum_sq**2 * n
-    s_tra = global_tallies(K_TRACKLENGTH) % sum_sq**2 * n
+    kv(1) = global_tallies(K_COLLISION) % sum
+    kv(2) = global_tallies(K_ABSORPTION) % sum
+    kv(3) = global_tallies(K_TRACKLENGTH) % sum
+    cov(1,1) = global_tallies(K_COLLISION) % sum_sq**2 * n
+    cov(2,2) = global_tallies(K_ABSORPTION) % sum_sq**2 * n
+    cov(3,3) = global_tallies(K_TRACKLENGTH) % sum_sq**2 * n
 
     ! Calculate covariances based on sums with Bessel's correction
-    s_col_abs = (k_col_abs - n * k_col * k_abs)/(n - 1)
-    s_col_tra = (k_col_tra - n * k_col * k_tra)/(n - 1)
-    s_abs_tra = (k_abs_tra - n * k_abs * k_tra)/(n - 1)
+    cov(1,2) = (k_col_abs - n * kv(1) * kv(2))/(n - 1)
+    cov(1,3) = (k_col_tra - n * kv(1) * kv(3))/(n - 1)
+    cov(2,3) = (k_abs_tra - n * kv(2) * kv(3))/(n - 1)
+    cov(2,1) = cov(1,2)
+    cov(3,1) = cov(1,3)
+    cov(3,2) = cov(2,3)
 
-    do i = 1, 3
-      if (i == 1) then
+    do l = 1, 3
+      ! Permutations of estimates
+      if (l == 1) then
         ! i = collision, j = absorption, k = tracklength
-        k_i  = k_col
-        k_j  = k_abs
-        s_1i = s_col
-        s_jj = s_abs
-        s_kk = s_tra
-        s_ij = s_col_abs
-        s_ik = s_col_tra
-        s_jk = s_abs_tra
-      elseif (i == 2) then
+        i = 1
+        j = 2
+        k = 3
+      elseif (l == 2) then
         ! i = absortion, j = tracklength, k = collision
-        k_i  = k_abs
-        k_j  = k_tra
-        s_1i = s_col_abs
-        s_jj = s_tra
-        s_kk = s_col
-        s_ij = s_abs_tra
-        s_ik = s_col_abs
-        s_jk = s_col_tra
-      elseif (i == 3) then
+        i = 2
+        j = 3
+        k = 1
+      elseif (l == 3) then
         ! i = tracklength, j = collision, k = absorption
-        k_i  = k_tra
-        k_j  = k_col
-        s_1i = s_col_tra
-        s_jj = s_col
-        s_kk = s_abs
-        s_ij = s_col_tra
-        s_ik = s_abs_tra
-        s_jk = s_col_abs
+        i = 3
+        j = 1
+        k = 2
       end if
 
       ! Calculate weighting
-      f = s_jj*(s_kk - s_ik) - s_kk*s_ij + s_jk*(s_ij + s_ik - s_jk)
+      f = cov(j,j)*(cov(k,k) - cov(i,k)) - cov(k,k)*cov(i,j) + &
+           cov(j,k)*(cov(i,j) + cov(i,k) - cov(j,k))
 
       ! Add to S sums for variance of combined estimate
-      S(1) = S(1) + f*s_1i
-      S(2) = S(2) + (s_jj + s_kk - TWO*s_jk)*k_i*k_i
-      S(3) = S(3) + (s_kk + s_ij - s_jk - s_ik)*k_i*k_j
+      S(1) = S(1) + f * cov(1,l)
+      S(2) = S(2) + (cov(j,j) + cov(k,k) - TWO*cov(j,k))*kv(l)*kv(l)
+      S(3) = S(3) + (cov(k,k) + cov(i,j) - cov(j,k) - cov(i,k))*kv(l)*kv(j)
 
       ! Add to sum for combined k-effective
-      k_combined(1) = k_combined(1) + f*k_i
+      k_combined(1) = k_combined(1) + f * kv(l)
       g = g + f
     end do
 

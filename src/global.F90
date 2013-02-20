@@ -171,9 +171,9 @@ module global
   real(8), allocatable :: k_batch(:) ! batch estimates of k
   real(8) :: keff = ONE       ! average k over active batches
   real(8) :: keff_std         ! standard deviation of average k
-  real(8) :: k_abs_col = ZERO ! sum over batches of k_absorption * k_collision
+  real(8) :: k_col_abs = ZERO ! sum over batches of k_collision * k_absorption
   real(8) :: k_col_tra = ZERO ! sum over batches of k_collision * k_tracklength
-  real(8) :: k_tra_abs = ZERO ! sum over batches of k_trackelngth * k_absorption
+  real(8) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength
   real(8) :: k_combined(2)    ! combined best estimate of k-effective
 
   ! Shannon entropy

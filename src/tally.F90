@@ -1735,6 +1735,9 @@ contains
   subroutine synchronize_tallies()
 
     integer :: i
+    real(8) :: k_abs ! Copy of batch absorption estimate of keff
+    real(8) :: k_col ! Copy of batch collision estimate of keff
+    real(8) :: k_tra ! Copy of batch tracklength estimate of keff
 
 #ifdef MPI
     ! Combine tally results onto master process
@@ -1761,6 +1764,16 @@ contains
         ! accumulate_result
 
         k_batch(current_batch) = global_tallies(K_TRACKLENGTH) % value
+
+        if (active_batches) then
+          ! Accumulate products of different estimators of k
+          k_abs = global_tallies(K_ABSORPTION) % value / total_weight
+          k_col = global_tallies(K_COLLISION) % value / total_weight
+          k_tra = global_tallies(K_TRACKLENGTH) % value / total_weight
+          k_abs_col = k_abs_col + k_abs * k_col
+          k_col_tra = k_col_tra + k_col * k_tra
+          k_tra_abs = k_tra_abs + k_tra * k_abs
+        end if
       end if
 
       ! Accumulate results for global tallies

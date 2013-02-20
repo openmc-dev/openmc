@@ -1420,6 +1420,9 @@ contains
 
       ! Adjust sum_sq
       global_tallies(:) % sum_sq = t_value * global_tallies(:) % sum_sq
+
+      ! Adjust combined estimator
+      k_combined(2) = t_value * k_combined(2)
     end if
 
     ! write global tallies

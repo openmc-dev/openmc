@@ -979,7 +979,7 @@ contains
   subroutine compute_effective_downscatter()
 
     use constants, only: ZERO, CMFD_NOACCEL
-    use global,    only: cmfd, cmfd_downscatter, keff
+    use global,    only: cmfd, cmfd_downscatter
 
     integer :: nx                ! number of mesh cells in x direction
     integer :: ny                ! number of mesh cells in y direction

@@ -137,8 +137,7 @@ contains
 
   subroutine cmfd_init_batch()
 
-    use global,            only: cmfd_begin, cmfd_on,                        &
-                                 cmfd_tally_on, n_inactive,                  &
+    use global,            only: cmfd_begin, cmfd_on, cmfd_tally_on,         &
                                  cmfd_inact_flush, cmfd_act_flush, cmfd_run, &
                                  current_batch, cmfd_hold_weights
 

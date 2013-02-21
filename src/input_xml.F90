@@ -1766,7 +1766,7 @@ contains
                 do while (associated(pair_list))
                   if (starts_with(pair_list % key, &
                        tally_(i) % nuclides(j))) then
-                    word = pair_list % key
+                    word = pair_list % key(1:150)
                     exit
                   end if
                   
@@ -2033,7 +2033,7 @@ contains
 
           case default
             ! Assume that user has specified an MT number
-            MT = str_to_int(score_name)
+            MT = int(str_to_int(score_name))
 
             if (MT /= ERROR_INT) then
               ! Specified score was an integer

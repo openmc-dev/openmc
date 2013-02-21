@@ -121,7 +121,7 @@ contains
     if (run_2grp_ == 'true' .or. run_2grp_ == '1') cmfd_run_2grp = .true.
 
     ! set the solver type
-    cmfd_solver_type = solver_
+    cmfd_solver_type = solver_(1:10)
 
     ! set monitoring 
     call lower_case(snes_monitor_)

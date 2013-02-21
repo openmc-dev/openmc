@@ -195,6 +195,10 @@ class StatePoint(BinaryFile):
             self.n_inactive, self.gen_per_batch = self._get_int(2)
             self.k_batch = self._get_double(self.current_batch)
             self.entropy = self._get_double(self.current_batch)
+            self.k_col_abs = self._get_double()[0]
+            self.k_col_tra = self._get_double()[0]
+            self.k_abs_tra = self._get_double()[0]
+            self.k_combined = self._get_double(2)
 
         # Read number of meshes
         n_meshes = self._get_int()[0]

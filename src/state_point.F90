@@ -187,6 +187,10 @@ contains
       write(UNIT_STATE) n_inactive, gen_per_batch
       write(UNIT_STATE) k_batch(1:current_batch)
       write(UNIT_STATE) entropy(1:current_batch*gen_per_batch)
+      write(UNIT_STATE) k_col_abs
+      write(UNIT_STATE) k_col_tra
+      write(UNIT_STATE) k_abs_tra
+      write(UNIT_STATE) k_combined
     end if
 
     ! Write number of meshes
@@ -373,6 +377,14 @@ contains
       call MPI_FILE_WRITE(fh, k_batch, current_batch, MPI_REAL8, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, entropy, current_batch*gen_per_batch, MPI_REAL8, &
+           MPI_STATUS_IGNORE, mpi_err)
+      call MPI_FILE_WRITE(fh, k_col_abs, 1, MPI_REAL8, &
+           MPI_STATUS_IGNORE, mpi_err)
+      call MPI_FILE_WRITE(fh, k_col_tra, 1, MPI_REAL8, &
+           MPI_STATUS_IGNORE, mpi_err)
+      call MPI_FILE_WRITE(fh, k_abs_tra, 1, MPI_REAL8, &
+           MPI_STATUS_IGNORE, mpi_err)
+      call MPI_FILE_WRITE(fh, k_combined, 2, MPI_REAL8, &
            MPI_STATUS_IGNORE, mpi_err)
     end if
 
@@ -685,6 +697,16 @@ contains
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_READ_ALL(fh, entropy, restart_batch*gen_per_batch, &
            MPI_REAL8, MPI_STATUS_IGNORE, mpi_err)
+      call MPI_FILE_READ_ALL(fh, k_col_abs, 1, MPI_REAL8, &
+           MPI_STATUS_IGNORE, mpi_err)
+      call MPI_FILE_READ_ALL(fh, k_col_tra, 1, MPI_REAL8, &
+           MPI_STATUS_IGNORE, mpi_err)
+      call MPI_FILE_READ_ALL(fh, k_abs_tra, 1, MPI_REAL8, &
+           MPI_STATUS_IGNORE, mpi_err)
+      allocate(real_array(2))
+      call MPI_FILE_READ_ALL(fh, real_array, 2, MPI_REAL8, &
+           MPI_STATUS_IGNORE, mpi_err)
+      deallocate(real_array)
     end if
 
     if (master) then
@@ -892,6 +914,12 @@ contains
       read(UNIT_STATE) n_inactive, gen_per_batch
       read(UNIT_STATE) k_batch(1:restart_batch)
       read(UNIT_STATE) entropy(1:restart_batch*gen_per_batch)
+      read(UNIT_STATE) k_col_abs
+      read(UNIT_STATE) k_col_tra
+      read(UNIT_STATE) k_abs_tra
+      allocate(real_array(2))
+      read(UNIT_STATE) real_array
+      deallocate(real_array)
     end if
 
     if (master) then

@@ -184,6 +184,9 @@ contains
     ! Write out state point if it's been specified for this batch
     do i = 1, n_state_points
       if (current_batch == statepoint_batch(i)) then
+        ! Calculate combined estimate of k-effective
+        if (master) call calculate_combined_keff()
+
         ! Create state point file
 #ifdef HDF5
         call hdf5_write_state_point()
@@ -193,6 +196,12 @@ contains
         exit
       end if
     end do
+
+    if (master .and. current_batch == n_batches) then
+      ! Make sure combined estimate of k-effective is calculated at the last
+      ! batch in case no state point is written
+      call calculate_combined_keff()
+    end if
 
   end subroutine finalize_batch
 
@@ -635,6 +644,102 @@ contains
     end if
 
   end subroutine calculate_keff
+
+!===============================================================================
+! CALCULATE_COMBINED_KEFF calculates a minimum variance estimate of k-effective
+! based on a linear combination of the collision, absorption, and tracklength
+! estimates. The theory behind this can be found in M. Halperin, "Almost
+! linearly-optimum combination of unbiased estimates," J. Am. Stat. Assoc., 56,
+! 36-43 (1961), doi:10.1080/01621459.1961.10482088. The implementation here
+! follows that described in T. Urbatsch et al., "Estimation and interpretation
+! of keff confidence intervals in MCNP," Nucl. Technol., 111, 169-182 (1995).
+!===============================================================================
+
+  subroutine calculate_combined_keff()
+
+    integer :: l        ! loop index
+    integer :: i, j, k  ! indices referring to collision, absorption, or track
+    integer :: n        ! number of realizations
+    real(8) :: kv(3)    ! vector of k-effective estimates
+    real(8) :: cov(3,3) ! sample covariance matrix
+    real(8) :: f        ! weighting factor
+    real(8) :: g        ! sum of weighting factors
+    real(8) :: S(3)     ! sums used for variance calculation
+
+    ! Make sure we have at least four realizations. Notice that at the end,
+    ! there is a N-3 term in a denominator.
+    if (n_realizations <= 3) return
+
+    ! Initialize variables
+    n = n_realizations
+    g = ZERO
+    S = ZERO
+    k_combined = ZERO
+
+    ! Copy estimates of k-effective and its variance (not variance of the mean)
+    kv(1) = global_tallies(K_COLLISION) % sum / n
+    kv(2) = global_tallies(K_ABSORPTION) % sum / n
+    kv(3) = global_tallies(K_TRACKLENGTH) % sum / n
+    cov(1,1) = (global_tallies(K_COLLISION) % sum_sq - &
+         n * kv(1) * kv(1)) / (n - 1)
+    cov(2,2) = (global_tallies(K_ABSORPTION) % sum_sq - &
+         n * kv(2) * kv(2)) / (n - 1)
+    cov(3,3) = (global_tallies(K_TRACKLENGTH) % sum_sq - &
+         n * kv(3) * kv(3)) / (n - 1)
+
+    ! Calculate covariances based on sums with Bessel's correction
+    cov(1,2) = (k_col_abs - n * kv(1) * kv(2))/(n - 1)
+    cov(1,3) = (k_col_tra - n * kv(1) * kv(3))/(n - 1)
+    cov(2,3) = (k_abs_tra - n * kv(2) * kv(3))/(n - 1)
+    cov(2,1) = cov(1,2)
+    cov(3,1) = cov(1,3)
+    cov(3,2) = cov(2,3)
+
+    do l = 1, 3
+      ! Permutations of estimates
+      if (l == 1) then
+        ! i = collision, j = absorption, k = tracklength
+        i = 1
+        j = 2
+        k = 3
+      elseif (l == 2) then
+        ! i = absortion, j = tracklength, k = collision
+        i = 2
+        j = 3
+        k = 1
+      elseif (l == 3) then
+        ! i = tracklength, j = collision, k = absorption
+        i = 3
+        j = 1
+        k = 2
+      end if
+
+      ! Calculate weighting
+      f = cov(j,j)*(cov(k,k) - cov(i,k)) - cov(k,k)*cov(i,j) + &
+           cov(j,k)*(cov(i,j) + cov(i,k) - cov(j,k))
+
+      ! Add to S sums for variance of combined estimate
+      S(1) = S(1) + f * cov(1,l)
+      S(2) = S(2) + (cov(j,j) + cov(k,k) - TWO*cov(j,k))*kv(l)*kv(l)
+      S(3) = S(3) + (cov(k,k) + cov(i,j) - cov(j,k) - cov(i,k))*kv(l)*kv(j)
+
+      ! Add to sum for combined k-effective
+      k_combined(1) = k_combined(1) + f * kv(l)
+      g = g + f
+    end do
+
+    ! Complete calculations of S sums
+    S = (n - 1)*S
+    S(1) = (n - 1)**2 * S(1)
+
+    ! Calculate combined estimate of k-effective
+    k_combined(1) = k_combined(1) / g
+
+    ! Calculate standard deviation of combined estimate
+    g = (n - 1)**2 * g
+    k_combined(2) = sqrt(S(1)/(g*n*(n-3)) * (ONE + n*((S(2) - TWO*S(3))/g)))
+
+  end subroutine calculate_combined_keff
 
 !===============================================================================
 ! COUNT_SOURCE_FOR_UFS determines the source fraction in each UFS mesh cell and

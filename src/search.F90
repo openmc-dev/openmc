@@ -3,8 +3,6 @@ module search
   use error,     only: fatal_error
   use global,    only: message
 
-  integer, parameter :: MAX_ITERATION = 64
-
   interface binary_search
     module procedure binary_search_real, binary_search_int4, binary_search_int8
   end interface binary_search
@@ -69,7 +67,7 @@ contains
     do while (R > L)
       ! Find values at midpoint
       array_index = (R + L)/2
-      if (val >= array(array_index)) then
+      if (val > array(array_index)) then
         L = array_index + 1
       else
         R = array_index
@@ -100,8 +98,7 @@ contains
 
     do while (R > L)
       ! Find values at midpoint
-      array_index = L + (R + L)/2
-      testval = 
+      array_index = (R + L)/2
       if (val > array(array_index)) then
         L = array_index + 1
       else

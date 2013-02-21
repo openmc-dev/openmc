@@ -887,6 +887,12 @@ contains
       dims(1) = current_batch*gen_per_batch
       call h5ltmake_dataset_double_f(hdf5_state_point, "entropy", 1, &
            dims, entropy, hdf5_err)
+      call hdf5_write_double(hdf5_state_point, "k_col_abs", k_col_abs)
+      call hdf5_write_double(hdf5_state_point, "k_col_tra", k_col_tra)
+      call hdf5_write_double(hdf5_state_point, "k_abs_tra", k_abs_tra)
+      dims(1) = 2
+      call h5ltmake_dataset_double_f(hdf5_state_point, "k_combined", 1, &
+           dims, k_combined, hdf5_err)
     end if
 
     ! Create group for tallies
@@ -1189,6 +1195,9 @@ contains
            k_batch(1:restart_batch), dims, hdf5_err)
       call h5ltread_dataset_double_f(hdf5_state_point, "entropy", &
            entropy(1:restart_batch*gen_per_batch), dims, hdf5_err)
+      call hdf5_read_double(hdf5_state_point, "k_col_abs", k_col_abs)
+      call hdf5_read_double(hdf5_state_point, "k_col_tra", k_col_tra)
+      call hdf5_read_double(hdf5_state_point, "k_abs_tra", k_abs_tra)
     end if
 
     ! Read number of realizations for global tallies

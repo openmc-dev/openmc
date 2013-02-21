@@ -385,6 +385,7 @@ contains
     integer, intent(in)        :: i_score ! index for score
 
     integer :: i             ! index of outgoing energy filter
+    integer :: n             ! number of energies on filter
     integer :: k             ! loop index for bank sites
     integer :: bin_energyout ! original outgoing energy bin
     integer :: i_filter      ! index for matching filter bin combination
@@ -394,6 +395,9 @@ contains
     ! save original outgoing energy bin and score index
     i = t % find_filter(FILTER_ENERGYOUT)
     bin_energyout = t % matching_bins(i)
+
+    ! Get number of energies on filter
+    n = size(t % filters(i) % real_bins)
 
     ! Since the creation of fission sites is weighted such that it is
     ! expected to create n_particles sites, we need to multiply the
@@ -408,9 +412,12 @@ contains
       ! determine outgoing energy from fission bank
       E_out = fission_bank(n_bank - p % n_bank + k) % E
 
+      ! check if outgoing energy is within specified range on filter
+      if (E_out < t % filters(i) % real_bins(1) .or. &
+           E_out > t % filters(i) % real_bins(n)) cycle
+
       ! change outgoing energy bin
-      t % matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-           size(t % filters(i) % real_bins), E_out)
+      t % matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
 
       ! determine scoring index
       i_filter = sum((t % matching_bins - 1) * t % stride) + 1
@@ -1348,8 +1355,8 @@ contains
         n = t % filters(i) % n_bins
 
         ! check if energy of the particle is within energy bins
-        if (E < t % filters(i) % real_bins(1) .or. &
-             E > t % filters(i) % real_bins(n + 1)) then
+        if (p % E < t % filters(i) % real_bins(1) .or. &
+             p % E > t % filters(i) % real_bins(n + 1)) then
           t % matching_bins(i) = NO_BIN_FOUND
         else
           ! search to find incoming energy bin

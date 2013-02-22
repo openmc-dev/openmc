@@ -1705,6 +1705,13 @@ contains
                    tally_(i) % filter(j) % bins(k))
             end do
 
+          case default
+            ! Specified tally filter is invalid, raise error
+            message = "Unknown filter type '" // trim(tally_(i) % &
+                 filter(j) % type) // "' on tally " // &
+                 trim(to_str(t % id)) // "."
+            call fatal_error()
+
           end select
 
           ! Set find_filter, e.g. if filter(3) has type FILTER_CELL, then

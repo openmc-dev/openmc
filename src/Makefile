@@ -28,9 +28,9 @@ PETSC    = no
 # External Library Paths
 #===============================================================================
 
-MPI_DIR   = /opt/mpich2/1.5-$(COMPILER)
-HDF5_DIR  = /opt/hdf5/1.8.9-$(COMPILER)
-PETSC_DIR = /opt/petsc/3.3-$(COMPILER)
+MPI_DIR   = /opt/mpich/3.0.2-$(COMPILER)
+HDF5_DIR  = /opt/hdf5/1.8.10-$(COMPILER)
+PETSC_DIR = /opt/petsc/3.3-p6-$(COMPILER)
 
 #===============================================================================
 # Add git SHA-1 hash

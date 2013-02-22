@@ -4,10 +4,6 @@
 Release Notes for OpenMC 0.5.1
 ==============================
 
-.. note::
-   These release notes are for an upcoming release of OpenMC and are still
-   subject to change.
-
 -------------------
 System Requirements
 -------------------
@@ -21,6 +17,7 @@ the problem at hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
+- Absorption and combined estimators for k-effective.
 - Natural elements can now be specified in materials using <element> rather than
   <nuclide>.
 - Support for multiple S(a,b) tables in a single material (e.g. BeO).
@@ -35,11 +32,13 @@ New Features
 Bug Fixes
 ---------
 
+- 94103e_: Two checks for outgoing energy filters.
 - e77059_: Fix reaction name for MT=849.
 - b0fe88_: Fix distance to surface for cones.
 - 63bfd2_: Fix tracklength tallies with cell filter and universes.
 - 88daf7_: Fix analog tallies with survival biasing.
 
+.. _94103e: https://github.com/mit-crpg/openmc/commit/94103e
 .. _e77059: https://github.com/mit-crpg/openmc/commit/e77059
 .. _b0fe88: https://github.com/mit-crpg/openmc/commit/b0fe88
 .. _63bfd2: https://github.com/mit-crpg/openmc/commit/63bfd2

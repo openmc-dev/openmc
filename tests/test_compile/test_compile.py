@@ -30,6 +30,11 @@ def test_gfortran_debug():
     returncode = run(['make', 'DEBUG=yes'])
     assert returncode == 0
 
+def test_gfortran_profile():
+    returncode = run(['make','distclean'])
+    returncode = run(['make', 'PROFILE=yes'])
+    assert returncode == 0
+
 def test_gfortran_optimize():
     returncode = run(['make','distclean'])
     returncode = run(['make', 'OPTIMIZE=yes'])
@@ -68,6 +73,11 @@ def test_intel():
 def test_intel_debug():
     returncode = run(['make','distclean'])
     returncode = run(['make', 'COMPILER=intel', 'DEBUG=yes'])
+    assert returncode == 0
+
+def test_intel_profile():
+    returncode = run(['make','distclean'])
+    returncode = run(['make', 'COMPILER=intel', 'PROFILE=yes'])
     assert returncode == 0
 
 def test_intel_optimize():

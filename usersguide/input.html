@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.0',
+        VERSION:     '0.5.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -100,7 +100,7 @@ settings.xml file.</p>
 <div class="section" id="confidence-intervals-element">
 <h3>3.2.1. <tt class="docutils literal"><span class="pre">&lt;confidence_intervals&gt;</span></tt> Element<a class="headerlink" href="#confidence-intervals-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;confidence_intervals&gt;</span></tt> element has no attributes and has an accepted
-value of &#8220;true&#8221; or &#8220;flase&#8221;. If set to &#8220;true&#8221;, uncertainties on tally results
+value of &#8220;true&#8221; or &#8220;false&#8221;. If set to &#8220;true&#8221;, uncertainties on tally results
 will be reported as the half-width of the 95% two-sided confidence interval. If
 set to &#8220;false&#8221;, uncertainties on tally results will be reported as the sample
 standard deviation.</p>
@@ -761,7 +761,23 @@ be given in atom percent. The same applies for weight percentages.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">sab:</th><td class="field-body"><p class="first">Associates an S(a,b) table with the material. This element has
+<tr class="field-even field"><th class="field-name">element:</th><td class="field-body"><p class="first">Specifies that a natural element is present in the material. The natural
+element is split up into individual isotopes based on IUPAC Isotopic
+Compositions of the Elements 1997. This element has attributes/sub-elements
+called <tt class="docutils literal"><span class="pre">name</span></tt>, <tt class="docutils literal"><span class="pre">xs</span></tt>, and <tt class="docutils literal"><span class="pre">ao</span></tt>. The <tt class="docutils literal"><span class="pre">name</span></tt> attribute is the atomic
+symbol of the element while the <tt class="docutils literal"><span class="pre">xs</span></tt> attribute is the cross-section
+identifier. Finally, the <tt class="docutils literal"><span class="pre">ao</span></tt> attribute specifies the atom percent of the
+element within the material, respectively. One example would be as follows:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;element</span> <span class="na">name=</span><span class="s">&quot;Al&quot;</span> <span class="na">ao=</span><span class="s">&quot;8.7115e-03&quot;</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;element</span> <span class="na">name=</span><span class="s">&quot;Mg&quot;</span> <span class="na">ao=</span><span class="s">&quot;1.5498e-04&quot;</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;element</span> <span class="na">name=</span><span class="s">&quot;Mn&quot;</span> <span class="na">ao=</span><span class="s">&quot;2.7426e-05&quot;</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;element</span> <span class="na">name=</span><span class="s">&quot;Cu&quot;</span> <span class="na">ao=</span><span class="s">&quot;1.6993e-04&quot;</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
+<p><em>Default</em>: None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">sab:</th><td class="field-body"><p class="first">Associates an S(a,b) table with the material. This element has
 attributes/sub-elements called <tt class="docutils literal"><span class="pre">name</span></tt> and <tt class="docutils literal"><span class="pre">xs</span></tt>. The <tt class="docutils literal"><span class="pre">name</span></tt> attribute
 is the name of the S(a,b) table that should be associated with the material,
 and <tt class="docutils literal"><span class="pre">xs</span></tt> is the cross-section identifier for the table.</p>
@@ -944,14 +960,14 @@ given, it is assumed that the mesh is an x-y mesh.</td>
 are spatially separate, this tag can be used to cut down on some of the tally
 overhead. The effect of assuming all tallies are spatially separate is that once
 one tally is scored to, the same event is assumed not to score to any other
-tallies. This element should be followed by &#8220;yes&#8221; or &#8220;no&#8221;</p>
+tallies. This element should be followed by &#8220;true&#8221; or &#8220;false&#8221;</p>
 <blockquote>
 <div><div class="admonition warning">
 <p class="first admonition-title">Warning</p>
 <p class="last">If used incorrectly, the assumption that all tallies are spatially
 separate can lead to incorrect results.</p>
 </div>
-<p><em>Default</em>: no</p>
+<p><em>Default</em>: false</p>
 </div></blockquote>
 </div>
 </div>

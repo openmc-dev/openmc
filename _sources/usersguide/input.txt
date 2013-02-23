@@ -62,7 +62,7 @@ settings.xml file.
 ----------------------------------
 
 The ``<confidence_intervals>`` element has no attributes and has an accepted
-value of "true" or "flase". If set to "true", uncertainties on tally results
+value of "true" or "false". If set to "true", uncertainties on tally results
 will be reported as the half-width of the 95% two-sided confidence interval. If
 set to "false", uncertainties on tally results will be reported as the sample
 standard deviation.
@@ -691,6 +691,26 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     *Default*: None
 
+  :element:
+
+    Specifies that a natural element is present in the material. The natural
+    element is split up into individual isotopes based on IUPAC Isotopic
+    Compositions of the Elements 1997. This element has attributes/sub-elements
+    called ``name``, ``xs``, and ``ao``. The ``name`` attribute is the atomic
+    symbol of the element while the ``xs`` attribute is the cross-section
+    identifier. Finally, the ``ao`` attribute specifies the atom percent of the
+    element within the material, respectively. One example would be as follows:
+
+    .. code-block:: xml
+
+        <element name="Al" ao="8.7115e-03" />
+        <element name="Mg" ao="1.5498e-04" />
+        <element name="Mn" ao="2.7426e-05" />
+        <element name="Cu" ao="1.6993e-04" />
+
+    *Default*: None
+
+
   :sab:
     Associates an S(a,b) table with the material. This element has
     attributes/sub-elements called ``name`` and ``xs``. The ``name`` attribute
@@ -876,12 +896,12 @@ In cases where the user needs to specify many different tallies each of which
 are spatially separate, this tag can be used to cut down on some of the tally
 overhead. The effect of assuming all tallies are spatially separate is that once
 one tally is scored to, the same event is assumed not to score to any other
-tallies. This element should be followed by "yes" or "no"
+tallies. This element should be followed by "true" or "false"
 
   .. warning:: If used incorrectly, the assumption that all tallies are spatially
     separate can lead to incorrect results.
 
-  *Default*: no
+  *Default*: false
 
 --------------------------------------------
 Geometry Plotting Specification -- plots.xml

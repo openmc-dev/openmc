@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.0',
+        VERSION:     '0.5.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -581,6 +581,35 @@ form of the solution:</p>
 v' = v - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{y} }{R^2} \\
 
 w' = w - \frac{2 ( \bar{x}u + \bar{y}v + \bar{z}w ) \bar{z} }{R^2}"/></p>
+</div></div>
+<div class="section" id="cone-parallel-to-an-axis">
+<h3>2.7.5. Cone Parallel to an Axis<a class="headerlink" href="#cone-parallel-to-an-axis" title="Permalink to this headline">¶</a></h3>
+<p>A cone parallel to, for example, the z-axis has the form <img class="math" src="../_images/math/73a8ce22dca28b87146936a02a04e8bd04506ec0.png" alt="f(x,y,z) = (x -
+x_0)^2 + (y - y_0)^2 - R^2(z - z_0)^2 = 0"/>. Thus, the gradient to the surface is</p>
+<div class="math" id="equation-reflection-cone-grad">
+<p><span class="eqno">(30)</span><img src="../_images/math/a1ef9d021f4c802bdae5f783eab9e51dcee72510.png" alt="\nabla f = 2 \left ( \begin{array}{c} x - x_0 \\ y - y_0 \\ -R^2(z - z_0)
+\end{array} \right ) = 2 \left ( \begin{array}{c} \bar{x} \\ \bar{y} \\
+-R^2\bar{z} \end{array} \right )"/></p>
+</div><p>where we have introduced the constants <img class="math" src="../_images/math/f06e84fe84a6c63a9c2c392af11652f6e0d72cf4.png" alt="\bar{x}"/>, <img class="math" src="../_images/math/e1d96428f0b377d49f1f2facce5de7e3eefd1e1d.png" alt="\bar{y}"/>, and
+<img class="math" src="../_images/math/e2af86094c2d1dd57039c8e83bcc4193cf421714.png" alt="\bar{z}"/>. Taking the square of the norm of the gradient, we find that</p>
+<div class="math" id="equation-reflection-cone-norm">
+<p><span class="eqno">(31)</span><img src="../_images/math/ca751f3a8d974a9e697e3eddbcc09585ac5df268.png" alt="|| \nabla f ||^2 = 4 \bar{x}^2 + \bar{y}^2 + 4 R^4 \bar{z}^2 \\ = 4 R^2
+   \bar{z}^2 + 4 R^4 \bar{z}^2 \\ = 4 R^2 (1 + R^2) \bar{z}^2"/></p>
+</div><p>This implies that</p>
+<div class="math" id="equation-reflection-cone-constant">
+<p><span class="eqno">(32)</span><img src="../_images/math/adadb93cd8f30555c42a551b1d1c7fa176ed763b.png" alt="\frac{2 (\mathbf{\Omega} \cdot \nabla f)}{|| \nabla f ||^2} =
+\frac{\bar{x}u + \bar{y}v - R^2\bar{z}w}{R^2 (1 + R^2) \bar{z}^2}"/></p>
+</div><p>Substituting equations <a href="#equation-reflection-cone-constant">(32)</a> and
+<a href="#equation-reflection-cone-grad">(30)</a> into equation <a href="#equation-reflection-system">(18)</a> gives us the
+form of the solution:</p>
+<div class="math" id="equation-reflection-cone">
+<p><span class="eqno">(33)</span><img src="../_images/math/8f4e28657fb41efbe66f8788f3d50b030eaa25ae.png" alt="u' = u - \frac{2 (\bar{x}u + \bar{y}v - R^2\bar{z}w) \bar{x}}{R^2 (1 + R^2)
+\bar{z}^2}
+
+v' = v - \frac{2 (\bar{x}u + \bar{y}v - R^2\bar{z}w) \bar{y}}{R^2 (1 + R^2)
+\bar{z}^2}
+
+w' = w + \frac{2 (\bar{x}u + \bar{y}v - R^2\bar{z}w)}{R^2 (1 + R^2) \bar{z}}"/></p>
 </div></div>
 </div>
 </div>

@@ -482,6 +482,7 @@ contains
            MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, t % scatt_order, t % n_score_bins, &
            MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+
       ! Write number of user score bins
       call MPI_FILE_WRITE(fh, t % n_user_score_bins, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
@@ -793,19 +794,15 @@ contains
              MPI_STATUS_IGNORE, mpi_err)
         deallocate(int_array)
 
-        ! Read number of results
+        ! Read number of score bins, score bins, and scatt_order
         call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
-
-        ! Read score bins and scatt_order
         allocate(int_array(temp(1)))
         call MPI_FILE_READ(fh, int_array, temp(1), MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
         call MPI_FILE_READ(fh, int_array, temp(1), MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
         deallocate(int_array)
-        call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
-             MPI_STATUS_IGNORE, mpi_err)
         
         ! Read number of user score bins
         call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &

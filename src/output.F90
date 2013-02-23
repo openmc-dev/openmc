@@ -145,7 +145,7 @@ contains
     if (master) then
       write(UNIT=OUTPUT_UNIT, FMT='(1X,A,1X,I1,".",I1,".",I1)') &
            "OpenMC version", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
-      write(UNIT=OUTPUT_UNIT, FMT=*) "Copyright (c) 2011-2012 &
+      write(UNIT=OUTPUT_UNIT, FMT=*) "Copyright (c) 2011-2013 &
            &Massachusetts Institute of Technology"
       write(UNIT=OUTPUT_UNIT, FMT=*) "MIT/X license at &
            &<http://mit-crpg.github.com/openmc/license.html>"
@@ -1083,7 +1083,7 @@ contains
 
     call header("OpenMC Monte Carlo Code", unit=UNIT_SUMMARY, level=1)
     write(UNIT=UNIT_SUMMARY, FMT=*) &
-         "Copyright:     2011-2012 Massachusetts Institute of Technology"
+         "Copyright:     2011-2013 Massachusetts Institute of Technology"
     write(UNIT=UNIT_SUMMARY, FMT='(1X,A,7X,2(I1,"."),I1)') &
          "Version:", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1

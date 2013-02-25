@@ -195,10 +195,11 @@ class StatePoint(BinaryFile):
             self.n_inactive, self.gen_per_batch = self._get_int(2)
             self.k_batch = self._get_double(self.current_batch)
             self.entropy = self._get_double(self.current_batch*self.gen_per_batch)
-            self.k_col_abs = self._get_double()[0]
-            self.k_col_tra = self._get_double()[0]
-            self.k_abs_tra = self._get_double()[0]
-            self.k_combined = self._get_double(2)
+            if self.revision >= 8:
+              self.k_col_abs = self._get_double()[0]
+              self.k_col_tra = self._get_double()[0]
+              self.k_abs_tra = self._get_double()[0]
+              self.k_combined = self._get_double(2)
 
         # Read number of meshes
         n_meshes = self._get_int()[0]
@@ -423,3 +424,77 @@ class StatePoint(BinaryFile):
         # sum of squares, or it could be mean and stdev if self.generate_stdev()
         # has been called already.
         return t.results[filter_index, score_index]
+
+    def extract_results(self,tally_id,score_str):
+
+        # get tally
+        try:
+          tally = self.tallies[tally_id-1]
+        except:
+          print 'Tally does not exist'
+          return
+
+        # get the score index if it is present
+        try:
+            idx = tally.scores.index(score_str)
+        except ValueError:
+            print 'Score does not exist'
+            return
+
+        # create numpy array for mean and 95% CI
+        n_bins = len(tally.results)
+        n_filters = len(tally.filters)
+        n_scores = len(tally.scores)
+        meanv = np.zeros(n_bins)
+        unctv = np.zeros(n_bins)
+        filters = np.zeros((n_bins,n_filters))
+        filtmax = np.zeros(n_filters+1)
+        meshmax = np.zeros(4)
+        filtmax[0] = 1
+        meshmax[0] = 1
+
+        # get number of realizations
+        n = tally.n_realizations
+
+        # get t-value
+        t_value = scipy.stats.t.ppf(0.975, n - 1)
+
+        # calculate mean
+        meanv = tally.results[:,idx,0]
+        meanv = meanv / n
+
+        # calculate 95% two-sided CI
+        unctv = tally.results[:,idx,1]
+        unctv = t_value*np.sqrt((unctv/n - meanv*meanv)/(n-1))/meanv
+
+        # create output dictionary
+        data = {'mean':meanv,'CI95':unctv}
+
+        # get bounds of filter bins
+        for akey in tally.filters.keys():
+          idx = tally.filters.keys().index(akey)
+          filtmax[n_filters - idx] = tally.filters[akey].length
+
+        # compute bin info
+        i = 0
+        while i < n_filters:
+
+           # compute indices for filter combination
+           filters[:,n_filters - i - 1] = np.floor((np.arange(n_bins) % np.prod(filtmax[0:i+2]))/(np.prod(filtmax[0:i+1]))) + 1
+
+           # append in dictionary bin with filter
+           data.update({tally.filters.keys()[n_filters - i - 1]:filters[:,n_filters - i - 1]})
+
+           # check for mesh
+           if tally.filters.keys()[n_filters - i - 1] == 'mesh':
+             mesh_idx = tally.filters['mesh'].bins
+             meshmax[1:4] = self.meshes[tally.filters['mesh'].bins[0] - 1].dimension 
+             mesh_bins = np.zeros((n_bins,3))
+             mesh_bins[:,0] = np.floor(((filters[:,n_filters - i - 1] - 1) % np.prod(meshmax[0:2]))/(np.prod(meshmax[0:1]))) + 1
+             mesh_bins[:,1] = np.floor(((filters[:,n_filters - i - 1] - 1) % np.prod(meshmax[0:3]))/(np.prod(meshmax[0:2]))) + 1
+             mesh_bins[:,2] = np.floor(((filters[:,n_filters - i - 1] - 1) % np.prod(meshmax[0:4]))/(np.prod(meshmax[0:3]))) + 1
+             data.update({'mesh':zip(mesh_bins[:,0],mesh_bins[:,1],mesh_bins[:,2])})
+           i += 1
+
+        return data 
+

@@ -50,9 +50,17 @@ contains
         i_end = i_start + index(message(i_start+1:i_start+line_wrap-indent+1), &
              ' ', BACK=.true.)
 
-        ! Write up to last space
-        write(OUTPUT_UNIT, fmt='(A/A)', advance='no') &
-             message(i_start+1:i_end-1), repeat(' ', indent)
+        if (i_end == i_start) then
+          ! This is a special case where there is no space
+          i_end = i_start + line_wrap - indent + 1
+          write(ERROR_UNIT, fmt='(A/A)', advance='no') &
+               message(i_start+1:i_end-1), repeat(' ', indent)
+          i_end = i_end - 1
+        else
+          ! Write up to last space
+          write(OUTPUT_UNIT, fmt='(A/A)', advance='no') &
+               message(i_start+1:i_end-1), repeat(' ', indent)
+        end if
 
         ! Advance starting position
         i_start = i_end
@@ -109,9 +117,17 @@ contains
         i_end = i_start + index(message(i_start+1:i_start+line_wrap-indent+1), &
              ' ', BACK=.true.)
 
-        ! Write up to last space
-        write(ERROR_UNIT, fmt='(A/A)', advance='no') &
-             message(i_start+1:i_end-1), repeat(' ', indent)
+        if (i_end == i_start) then
+          ! This is a special case where there is no space
+          i_end = i_start + line_wrap - indent + 1
+          write(ERROR_UNIT, fmt='(A/A)', advance='no') &
+               message(i_start+1:i_end-1), repeat(' ', indent)
+          i_end = i_end - 1
+        else
+          ! Write up to last space
+          write(ERROR_UNIT, fmt='(A/A)', advance='no') &
+               message(i_start+1:i_end-1), repeat(' ', indent)
+        end if
 
         ! Advance starting position
         i_start = i_end

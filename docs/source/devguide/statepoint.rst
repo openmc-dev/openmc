@@ -69,7 +69,7 @@ if (run_mode == MODE_EIGENVALUE)
 
              k-effective for the i-th batch
 
-    *do i = 1, current_batch*
+    *do i = 1, current_batch \* gen_per_batch*
 
         **real(8) entropy(i)**
 
@@ -317,7 +317,7 @@ if (run_mode == MODE_EIGENVALUE)
 
              k-effective for the i-th batch
 
-    *do i = 1, current_batch*
+    *do i = 1, current_batch \* gen_per_batch*
 
         **real(8) entropy(i)**
 

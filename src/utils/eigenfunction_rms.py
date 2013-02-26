@@ -5,8 +5,9 @@
 import statepoint
 import numpy as np
 import os
+import sys
 
-def main():
+def main(batch_start, batch_end):
 
   # read in statepoint header data
   sp = statepoint.StatePoint('statepoint.ref.binary')
@@ -14,8 +15,53 @@ def main():
   # read in results
   sp.read_results()
 
+  # extract reference mean
+  mean_ref = extract_mean(sp, 2,'nu-fission')
+
+  # write gnuplot file
+  write_src_gnuplot('testsrc_pin','Pin Mesh',mean_ref,np.size(mean_ref,0))
+
+  # preallocate arrays
+  hists = np.zeros(batch_end - batch_start + 1)
+  norms = np.zeros(batch_end - batch_start + 1)
+
+  i = batch_start
+  while i <= batch_end:
+
+    # process statepoint
+    sp = statepoint.StatePoint('statepoint.'+str(i)+'.binary')
+    sp.read_results()
+
+    # extract mean
+    mean = extract_mean(sp, 2, 'nu-fission')
+
+    # calculate L2 norm
+    norm = np.linalg.norm(mean - mean_ref)
+
+    # get history information
+    n_inactive = sp.n_inactive
+    current_batch = sp.current_batch
+    n_particles = sp.n_particles
+    gen_per_batch = sp.gen_per_batch
+    n_histories = (current_batch - n_inactive)*n_particles*gen_per_batch
+
+    # batch in vectors
+    hists[i - n_inactive - 1] = n_histories
+    norms[i - n_inactive - 1] = norm
+
+    # print
+    print 'Batch: '+str(i)+' Histories: '+str(n_histories)+' Norm: '+str(norm)
+
+    i += 1
+
+  # write out gnuplot file
+  write_norm_gnuplot('norms','NORMS',hists,norms,np.size(hists))
+
+
+def extract_mean(sp, tally_id,score_id):
+
   # extract results
-  results = sp.extract_results(2,'nu-fission')
+  results = sp.extract_results(tally_id,score_id)
 
   # extract means and copy
   mean = results['mean'].copy()
@@ -26,40 +72,45 @@ def main():
   mean = np.sum(mean,0)
   mean = mean/mean.sum()*(mean > 1.e-8).sum()
 
-  # write gnuplot file
-  write_gnuplot('testsrc_pin','Pin Mesh',mean,np.size(mean,0))
+  return mean
 
-  # extract results
-  results = sp.extract_results(5,'nu-fission')
+def write_norm_gnuplot(path,name,xdat,ydat,size):
 
-  # extract means and copy
-  mean = results['mean'].copy()
+  # Header String for GNUPLOT
+  headerstr = """#!/usr/bin/env gnuplot
 
-  # reshape and integrate over energy
-  mean = mean.reshape(results['bin_max'],order='F')
-  mean = np.sum(mean,0)
-  mean = np.sum(mean,0)
-  mean = mean/mean.sum()*(mean > 1.e-8).sum()
+set terminal pdf enhanced
+set output '{output}'
+set ylabel 'L-2 norm'
+set xlabel 'Histories'
+set log x
+set log y
+set title  '{title}'""".format(output=path+'.pdf',title=name)
 
-  # write gnuplot file
-  write_gnuplot('testsrc_quart','Quarter Assembly Mesh',mean,np.size(mean,0))
+  # Write out the plot string
+  pltstr = "plot '-' using 1:2 with lines"
 
-  # extract results
-  results = sp.extract_results(8,'nu-fission')
+  # Write out the data string
+  i = 0
+  datastr = ''
+  while i < size:
+    datastr = datastr + '{0} {1}\n'.format(xdat[i],ydat[i])
+    i += 1
 
-  # extract means and copy
-  mean = results['mean'].copy()
+  # replace all nan with zero
+# datastr = datastr.replace('nan','0.0')
 
-  # reshape and integrate over energy
-  mean = mean.reshape(results['bin_max'],order='F')
-  mean = np.sum(mean,0)
-  mean = np.sum(mean,0)
-  mean = mean/mean.sum()*(mean > 1.e-8).sum()
+  # Concatenate all
+  outstr = headerstr + '\n' + pltstr + '\n' + datastr
 
-  # write gnuplot file
-  write_gnuplot('testsrc_assy','Assembly Mesh',mean,np.size(mean,0))
+  # Write File
+  with open(path+".plot",'w') as f:
+    f.write(outstr)
 
-def write_gnuplot(path,name,src,size):
+  # Run GNUPLOT
+# os.system('gnuplot ' + path+".plot")
+
+def write_src_gnuplot(path,name,src,size):
 
   # Header String for GNUPLOT
   headerstr = """#!/usr/bin/env gnuplot
@@ -105,4 +156,6 @@ set title  '{title}'""".format(output=path+'.pdf',title=name)
   os.system('gnuplot ' + path+".plot")
 
 if __name__ == "__main__":
-  main()
+  batch_start = int(sys.argv[1])
+  batch_end = int(sys.argv[2])
+  main(batch_start, batch_end)

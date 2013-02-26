@@ -496,5 +496,16 @@ class StatePoint(BinaryFile):
              data.update({'mesh':zip(mesh_bins[:,0],mesh_bins[:,1],mesh_bins[:,2])})
            i += 1
 
-        return data 
+        # add in maximum bin filters and order
+        b = tally.filters.keys()
+        b.reverse()
+        filtmax = list(filtmax[1:])
+        try:
+          idx = b.index('mesh')
+          filtmax[idx] = np.max(mesh_bins[:,2])
+          filtmax.insert(idx,np.max(mesh_bins[:,1]))
+          filtmax.insert(idx,np.max(mesh_bins[:,0]))
+        except ValueError: pass
+        data.update({'bin_order':b,'bin_max':filtmax})
 
+        return data

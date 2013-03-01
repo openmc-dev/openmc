@@ -71,7 +71,6 @@ class AppForm(QMainWindow):
         # Axial level within selected basis
         label_axial_level = QLabel("Axial Level:")
         self.axial_level = QComboBox()
-        self.axial_level.addItems([str(i+1) for i in range(self.nz)])
         self.connect(self.axial_level, SIGNAL('activated(int)'),
                      self.on_draw)
 
@@ -91,14 +90,11 @@ class AppForm(QMainWindow):
 
         # Reusable comboboxes labelled with filter names
         self.boxes = {}
-#        n = 4
         for key in self.labels.keys():
             self.nextBox = QComboBox()
             self.connect(self.nextBox, SIGNAL('activated(int)'),
                          self.on_draw)
             self.boxes[key] = self.nextBox
-#            self.grid.addWidget(self.nextBox, n, 1)
-#            n += 1
 
         # Combobox to select among scores
         self.score_label = QLabel("Score:")
@@ -117,6 +113,7 @@ class AppForm(QMainWindow):
         self.grid.addWidget(self.axial_level, 2, 1)
         self.grid.addWidget(self.label_filters, 3, 0)
 
+        self._update()
         self.populate_boxes() 
         self.on_draw()
 
@@ -129,7 +126,7 @@ class AppForm(QMainWindow):
         self.datafile.read_results()
         self.datafile.generate_stdev()
 
-        self.setWindowTitle('Core Map Tool :' + str(self.datafile.path))
+        self.setWindowTitle('Core Map Tool : ' + str(self.datafile.path))
 
         # Set maximum colorbar value by maximum tally data value
         self.maxvalue = self.datafile.tallies[0].results.max()
@@ -137,10 +134,8 @@ class AppForm(QMainWindow):
         self.labelList = []
 
         # Read mesh dimensions
-        for mesh in self.datafile.meshes:
-            self.nx = mesh.dimension[0]
-            self.ny = mesh.dimension[1]
-            self.nz = mesh.dimension[2]
+#        for mesh in self.datafile.meshes:
+#            self.nx, self.ny, self.nz = mesh.dimension
 
         # Read filter types from statepoint file
         self.n_tallies = len(self.datafile.tallies)
@@ -202,7 +197,7 @@ class AppForm(QMainWindow):
 
         # Make figure, set up color bar
         self.axes = self.fig.add_subplot(111)
-        cax = self.axes.imshow(matrix, vmin=0.0, vmax=self.maxvalue, interpolation="nearest")
+        cax = self.axes.imshow(matrix, vmin=0.0, vmax=matrix.max(), interpolation="nearest")
         self.fig.colorbar(cax)
 
         self.axes.set_xticks([])
@@ -216,6 +211,10 @@ class AppForm(QMainWindow):
         '''Updates widget to display new relevant comboboxes and figure data
         '''
         print 'Calling _update...'
+
+        self.mesh = self.datafile.meshes[self.datafile.tallies[self.tally.currentIndex()].filters['mesh'].bins[0] - 1]
+
+        self.nx, self.ny, self.nz = self.mesh.dimension
 
         # Clear axial level combobox
         self.axial_level.clear()

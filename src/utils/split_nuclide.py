@@ -13,6 +13,6 @@ for line in open('abundances_modified.txt','r'):
     words = line.split()
     if words[1] == element:
         print('<nuclide name="{0}-{1}" ao="{2:10.4e}" />'.format(
-                element, words[2], float(words[3])*ao*0.01))
+                element, words[2], float(words[3])*ao))
 
     

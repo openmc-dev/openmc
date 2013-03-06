@@ -7,7 +7,7 @@ import numpy as np
 import os
 import sys
 
-def main(batch_start, batch_end):
+def main(tally_id, score_id, batch_start, batch_end, name):
 
   # read in statepoint header data
   sp = statepoint.StatePoint('statepoint.ref.binary')
@@ -16,10 +16,10 @@ def main(batch_start, batch_end):
   sp.read_results()
 
   # extract reference mean
-  mean_ref = extract_mean(sp, 2,'nu-fission')
+  mean_ref = extract_mean(sp, tally_id, score_id)
 
   # write gnuplot file
-  write_src_gnuplot('testsrc_pin','Pin Mesh',mean_ref,np.size(mean_ref,0))
+  write_src_gnuplot('testsrc_pin','Pin mesh',mean_ref,np.size(mean_ref,0))
 
   # preallocate arrays
   hists = np.zeros(batch_end - batch_start + 1)
@@ -33,7 +33,7 @@ def main(batch_start, batch_end):
     sp.read_results()
 
     # extract mean
-    mean = extract_mean(sp, 2, 'nu-fission')
+    mean = extract_mean(sp, tally_id, score_id)
 
     # calculate L2 norm
     norm = np.linalg.norm(mean - mean_ref)
@@ -46,8 +46,8 @@ def main(batch_start, batch_end):
     n_histories = (current_batch - n_inactive)*n_particles*gen_per_batch
 
     # batch in vectors
-    hists[i - n_inactive - 1] = n_histories
-    norms[i - n_inactive - 1] = norm
+    hists[i - batch_start] = n_histories
+    norms[i - batch_start] = norm
 
     # print
     print 'Batch: '+str(i)+' Histories: '+str(n_histories)+' Norm: '+str(norm)
@@ -55,8 +55,7 @@ def main(batch_start, batch_end):
     i += 1
 
   # write out gnuplot file
-  write_norm_gnuplot('norms','NORMS',hists,norms,np.size(hists))
-
+  write_norm_gnuplot(name,hists,norms,np.size(hists))
 
 def extract_mean(sp, tally_id,score_id):
 
@@ -74,7 +73,7 @@ def extract_mean(sp, tally_id,score_id):
 
   return mean
 
-def write_norm_gnuplot(path,name,xdat,ydat,size):
+def write_norm_gnuplot(path,xdat,ydat,size):
 
   # Header String for GNUPLOT
   headerstr = """#!/usr/bin/env gnuplot
@@ -85,7 +84,7 @@ set ylabel 'L-2 norm'
 set xlabel 'Histories'
 set log x
 set log y
-set title  '{title}'""".format(output=path+'.pdf',title=name)
+""".format(output=path+'.pdf')
 
   # Write out the plot string
   pltstr = "plot '-' using 1:2 with lines"
@@ -97,9 +96,6 @@ set title  '{title}'""".format(output=path+'.pdf',title=name)
     datastr = datastr + '{0} {1}\n'.format(xdat[i],ydat[i])
     i += 1
 
-  # replace all nan with zero
-# datastr = datastr.replace('nan','0.0')
-
   # Concatenate all
   outstr = headerstr + '\n' + pltstr + '\n' + datastr
 
@@ -108,7 +104,7 @@ set title  '{title}'""".format(output=path+'.pdf',title=name)
     f.write(outstr)
 
   # Run GNUPLOT
-# os.system('gnuplot ' + path+".plot")
+  os.system('gnuplot ' + path+".plot")
 
 def write_src_gnuplot(path,name,src,size):
 
@@ -126,7 +122,7 @@ set bmargin at screen 0.15
 set tmargin at screen 0.90
 unset xtics
 unset ytics
-set title  '{title}'""".format(output=path+'.pdf',title=name)
+set title '{title}'""".format(output=path+'.pdf',title=name)
 
   # Write out the plot string
   pltstr = "splot '-' matrix with image "
@@ -156,6 +152,9 @@ set title  '{title}'""".format(output=path+'.pdf',title=name)
   os.system('gnuplot ' + path+".plot")
 
 if __name__ == "__main__":
-  batch_start = int(sys.argv[1])
-  batch_end = int(sys.argv[2])
-  main(batch_start, batch_end)
+  tally_id = int(sys.argv[1])
+  score_id = sys.argv[2]
+  batch_start = int(sys.argv[3])
+  batch_end = int(sys.argv[4])
+  name = sys.argv[5]
+  main(tally_id, score_id, batch_start, batch_end, name)

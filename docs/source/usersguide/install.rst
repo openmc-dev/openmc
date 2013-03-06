@@ -63,8 +63,8 @@ Prerequisites
       OpenMC. OpenMPI and/or MPICH2 can be installed on Debian derivatives
       with::
 
-          sudo apt-get install mpich2
-          sudo apt-get install openmpi-bin
+          sudo apt-get install mpich2 libmpich2-dev
+          sudo apt-get install openmpi1.6-bin libopenmpi1.6-dev
 
     * HDF5_ Library for portable binary output format
 

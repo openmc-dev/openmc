@@ -45,7 +45,7 @@ License
 
 OpenMC is distributed under the MIT/X license_.
 
-.. _mailing list: mailto:openmc-users@googlegroups.com
+.. _mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-users
 .. _installation instructions: http://mit-crpg.github.com/openmc/usersguide/install.html
 .. _Troubleshooting section: http://mit-crpg.github.com/openmc/usersguide/troubleshoot.html
 .. _Issues: https://github.com/mit-crpg/openmc/issues

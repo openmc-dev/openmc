@@ -43,9 +43,10 @@ feature be added to the code, you may create an Issue on github.
 License
 -------
 
-.. include:: LICENSE
+OpenMC is distributed under the MIT/X license_.
 
 .. _mailing list: mailto:openmc-users@googlegroups.com
 .. _installation instructions: http://mit-crpg.github.com/openmc/usersguide/install.html
 .. _Troubleshooting section: http://mit-crpg.github.com/openmc/usersguide/troubleshoot.html
 .. _Issues: https://github.com/mit-crpg/openmc/issues
+.. _license: http://mit-crpg.github.com/openmc/license.html

@@ -104,7 +104,7 @@ format of the state-point file, this integer is incremented.</div></blockquote>
 <blockquote>
 <div>k-effective for the i-th batch</div></blockquote>
 </div></blockquote>
-<p><em>do i = 1, current_batch</em></p>
+<p><em>do i = 1, current_batch * gen_per_batch</em></p>
 <blockquote>
 <div><p><strong>real(8) entropy(i)</strong></p>
 <blockquote>
@@ -314,7 +314,7 @@ format of the state-point file, this integer is incremented.</div></blockquote>
 <blockquote>
 <div>k-effective for the i-th batch</div></blockquote>
 </div></blockquote>
-<p><em>do i = 1, current_batch</em></p>
+<p><em>do i = 1, current_batch * gen_per_batch</em></p>
 <blockquote>
 <div><p><strong>real(8) entropy(i)</strong></p>
 <blockquote>

@@ -189,6 +189,7 @@ module global
 
   ! Write source at end of simulation
   logical :: source_separate = .false.
+  logical :: source_write = .true.
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES

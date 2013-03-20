@@ -507,8 +507,11 @@ contains
 
       ! Check if the user has specified to write binary source file
       call lower_case(state_point_(1) % source_separate)
+      call lower_case(state_point_(1) % source_write)
       if (state_point_(1) % source_separate == 'true' .or. &
            state_point_(1) % source_separate == '1') source_separate = .true.
+      if (state_point_(1) % source_write == 'false' .or. &
+           state_point_(1) % source_write == '0') source_write = .false.
     else
       ! If no <state_point> tag was present, by default write state point at
       ! last batch only

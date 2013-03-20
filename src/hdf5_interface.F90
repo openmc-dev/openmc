@@ -1104,14 +1104,16 @@ contains
     ! TODO: Use parallel HDF5 to write source bank
 
     ! Write source bank
-    dims(1) = work
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
-    call h5dcreate_f(hdf5_state_point, "source_bank", hdf5_bank_t, &
-         dspace, dset, hdf5_err)
-    f_ptr = c_loc(source_bank(1))
-    CALL h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
+    if (source_write) then
+      dims(1) = work
+      call h5screate_simple_f(1, dims, dspace, hdf5_err)
+      call h5dcreate_f(hdf5_state_point, "source_bank", hdf5_bank_t, &
+           dspace, dset, hdf5_err)
+      f_ptr = c_loc(source_bank(1))
+      CALL h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err)
+      call h5dclose_f(dset, hdf5_err)
+      call h5sclose_f(dspace, hdf5_err)
+    end if
 
     ! Write out CMFD info if active
     if (cmfd_on) then

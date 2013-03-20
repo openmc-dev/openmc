@@ -355,6 +355,12 @@ attributes/sub-elements:
 
     *Default*: false
 
+  :source_write: If this element is set to "false", source sites are not written
+    to the state point file. This can substantially reduce the size of state
+    points if large numbers of particles per batch are used.
+
+    *Default*: true
+
 ``<survival_biasing>`` Element
 ------------------------------
 

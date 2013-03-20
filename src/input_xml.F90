@@ -489,20 +489,20 @@ contains
 
       if (n_state_points > 0) then
         ! User gave specific batches to write state points
-        allocate(statepoint_batch(n_state_points))
-        statepoint_batch = state_point_(1) % batches
+        do i = 1, n_state_points
+          call statepoint_batch % add(state_point_(1) % batches(i))
+        end do
 
       elseif (state_point_(1) % interval /= 0) then
         ! User gave an interval for writing state points
         n_state_points = n_batches / state_point_(1) % interval
-        allocate(statepoint_batch(n_state_points))
-        statepoint_batch = (/ (state_point_(1) % interval * i, i = 1, &
-             n_state_points) /)
+        do i = 1, n_state_points
+          call statepoint_batch % add(state_point_(1) % interval * i)
+        end do
       else
         ! If neither were specified, write state point at last batch
         n_state_points = 1
-        allocate(statepoint_batch(n_state_points))
-        statepoint_batch(1) = n_batches
+        call statepoint_batch % add(n_batches)
       end if
 
       ! Check if the user has specified to write binary source file
@@ -513,8 +513,7 @@ contains
       ! If no <state_point> tag was present, by default write state point at
       ! last batch only
       n_state_points = 1
-      allocate(statepoint_batch(n_state_points))
-      statepoint_batch(1) = n_batches
+      call statepoint_batch % add(n_batches)
     end if
 
     ! Check if the user has specified to not reduce tallies at the end of every

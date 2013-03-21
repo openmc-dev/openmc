@@ -582,14 +582,8 @@ contains
 
         case (FILTER_MESH)
 
-          id = t % filters(j) % int_bins(1)
-          if (mesh_dict % has_key(id)) then
-            t % filters(j) % int_bins(1) = mesh_dict % get_key(id)
-          else
-            message = "Could not find mesh " // trim(to_str(id)) // &
-                 " specified on tally " // trim(to_str(t % id))
-            call fatal_error()
-          end if
+          ! The mesh filter already has been set to the index in meshes rather
+          ! than the user-specified id, so it doesn't need to be changed.
 
         end select
 

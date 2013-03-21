@@ -499,7 +499,7 @@ contains
     ! Write information for meshes
     MESH_LOOP: do i = 1, n_meshes
       ! Create temporary group for each mesh
-      call h5gcreate_f(tallies_group, "mesh " // to_str(meshes(i) % id), &
+      call h5gcreate_f(tallies_group, "mesh" // to_str(i), &
            temp_group, hdf5_err)
 
       ! Write type and number of dimensions
@@ -530,7 +530,7 @@ contains
       t => tallies(i)
 
       ! Create group for this tally
-      call h5gcreate_f(tallies_group, "tally " // to_str(t % id), &
+      call h5gcreate_f(tallies_group, "tally" // to_str(i), &
            temp_group, hdf5_err)
 
       ! Write size of each tally
@@ -544,7 +544,7 @@ contains
 
       FILTER_LOOP: do j = 1, t % n_filters
         ! Create filter group
-        call h5gcreate_f(temp_group, "filter " // to_str(j), filter_group, &
+        call h5gcreate_f(temp_group, "filter" // to_str(j), filter_group, &
              hdf5_err)
 
         ! Write type of filter
@@ -904,7 +904,7 @@ contains
     ! Write information for meshes
     MESH_LOOP: do i = 1, n_meshes
       ! Create temporary group for each mesh
-      call h5gcreate_f(tallies_group, "mesh " // to_str(meshes(i) % id), &
+      call h5gcreate_f(tallies_group, "mesh" // to_str(i), &
            temp_group, hdf5_err)
 
       ! Write id, type, and number of dimensions
@@ -936,7 +936,7 @@ contains
       t => tallies(i)
 
       ! Create group for this tally
-      call h5gcreate_f(tallies_group, "tally " // to_str(t % id), &
+      call h5gcreate_f(tallies_group, "tally" // to_str(i), &
            temp_group, hdf5_err)
 
       ! Write id
@@ -957,7 +957,7 @@ contains
 
       FILTER_LOOP: do j = 1, t % n_filters
         ! Create filter group
-        call h5gcreate_f(temp_group, "filter " // to_str(j), filter_group, &
+        call h5gcreate_f(temp_group, "filter" // to_str(j), filter_group, &
              hdf5_err)
 
         ! Write type of filter
@@ -1077,7 +1077,7 @@ contains
         t => tallies(i)
 
         ! Open group for the i-th tally
-        call h5gopen_f(tallies_group, "tally " // to_str(t % id), &
+        call h5gopen_f(tallies_group, "tally" // to_str(i), &
              temp_group, hdf5_err)
 
         ! Write sum and sum_sq for each bin
@@ -1218,8 +1218,8 @@ contains
 
       TALLIES_LOOP: do i = 1, n_tallies
         ! Open tally group
-        call h5gopen_f(hdf5_state_point, "tallies/tally " // &
-             to_str(tallies(i) % id), tally_group, hdf5_err)
+        call h5gopen_f(hdf5_state_point, "tallies/tally" // &
+             to_str(i), tally_group, hdf5_err)
 
         ! Read number of realizations
         call hdf5_read_integer(tally_group, "n_realizations", &

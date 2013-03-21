@@ -540,6 +540,9 @@ contains
 
         case (FILTER_SURFACE)
 
+          ! Check if this is a surface filter only for surface currents
+          if (any(t % score_bins == SCORE_CURRENT)) cycle FILTER_LOOP
+
           do k = 1, t % filters(j) % n_bins
             id = t % filters(j) % int_bins(k)
             if (surface_dict % has_key(id)) then

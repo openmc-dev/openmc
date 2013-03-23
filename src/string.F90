@@ -161,7 +161,7 @@ contains
 
     do i = 1, len(word)
       ic = ichar(word(i:i))
-      if (ic >= 65 .and. ic < 90) word(i:i) = char(ic+32)
+      if (ic >= 65 .and. ic <= 90) word(i:i) = char(ic+32)
     end do
 
   end subroutine lower_case

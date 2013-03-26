@@ -439,6 +439,7 @@ class StatePoint(BinaryFile):
             idx = tally.scores.index(score_str)
         except ValueError:
             print 'Score does not exist'
+            print tally.scores
             return
 
         # create numpy array for mean and 95% CI
@@ -488,11 +489,16 @@ class StatePoint(BinaryFile):
            # check for mesh
            if tally.filters.keys()[n_filters - i - 1] == 'mesh':
              mesh_idx = tally.filters['mesh'].bins
-             meshmax[1:4] = self.meshes[tally.filters['mesh'].bins[0] - 1].dimension 
+             dims = self.meshes[tally.filters['mesh'].bins[0] - 1].dimension
+             dims.reverse()
+             dims = np.asarray(dims)
+             if score_str == 'current':
+                dims += 1 
+             meshmax[1:4] = dims 
              mesh_bins = np.zeros((n_bins,3))
-             mesh_bins[:,0] = np.floor(((filters[:,n_filters - i - 1] - 1) % np.prod(meshmax[0:2]))/(np.prod(meshmax[0:1]))) + 1
+             mesh_bins[:,2] = np.floor(((filters[:,n_filters - i - 1] - 1) % np.prod(meshmax[0:2]))/(np.prod(meshmax[0:1]))) + 1
              mesh_bins[:,1] = np.floor(((filters[:,n_filters - i - 1] - 1) % np.prod(meshmax[0:3]))/(np.prod(meshmax[0:2]))) + 1
-             mesh_bins[:,2] = np.floor(((filters[:,n_filters - i - 1] - 1) % np.prod(meshmax[0:4]))/(np.prod(meshmax[0:3]))) + 1
+             mesh_bins[:,0] = np.floor(((filters[:,n_filters - i - 1] - 1) % np.prod(meshmax[0:4]))/(np.prod(meshmax[0:3]))) + 1
              data.update({'mesh':zip(mesh_bins[:,0],mesh_bins[:,1],mesh_bins[:,2])})
            i += 1
 
@@ -505,6 +511,7 @@ class StatePoint(BinaryFile):
           filtmax[idx] = np.max(mesh_bins[:,2])
           filtmax.insert(idx,np.max(mesh_bins[:,1]))
           filtmax.insert(idx,np.max(mesh_bins[:,0]))
+
         except ValueError: pass
         data.update({'bin_order':b,'bin_max':filtmax})
 

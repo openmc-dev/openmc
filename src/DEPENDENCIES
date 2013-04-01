@@ -222,6 +222,7 @@ input_xml.o: templates/geometry_t.o
 input_xml.o: templates/materials_t.o
 input_xml.o: templates/settings_t.o
 input_xml.o: templates/tallies_t.o
+input_xml.o: templates/plots_t.o
 
 interpolation.o: constants.o
 interpolation.o: endf_header.o

@@ -179,7 +179,7 @@ contains
 
     do i = 1, len(word)
       ic = ichar(word(i:i))
-      if (ic >= 97 .and. ic < 122) word(i:i) = char(ic-32)
+      if (ic >= 97 .and. ic <= 122) word(i:i) = char(ic-32)
     end do
 
   end subroutine upper_case

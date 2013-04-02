@@ -264,6 +264,10 @@ output.o: tally_header.o
 
 particle_header.o: constants.o
 
+particle_restart.o: constants.o
+particle_restart.o: global.o
+particle_restart.o: hdf5_interface.o
+
 physics.o: ace_header.o
 physics.o: constants.o
 physics.o: cross_section.o

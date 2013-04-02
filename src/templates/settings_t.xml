@@ -39,6 +39,7 @@
     <component name="batches" type="integer-array" />
     <component name="interval" type="integer" default="0" />
     <component name="source_separate" type="word" length="5" default="''" />
+    <component name="source_write" type="word" length="5" default="''" />
   </typedef>
 
   <variable name="confidence_intervals_" tag="confidence_intervals" type="word" length="5" />

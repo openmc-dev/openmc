@@ -1,8 +1,8 @@
 .. _usersguide_troubleshoot:
 
-======================
-Troubleshooting OpenMC
-======================
+===============
+Troubleshooting
+===============
 
 -------------------------
 Problems with Compilation
@@ -11,14 +11,31 @@ Problems with Compilation
 If you are experiencing problems trying to compile OpenMC, first check if the
 error you are receiving is among the following options.
 
-Fatal Error: File 'xml_data_settings_t.mod' opened at (1) is not a GFORTRAN module file
-***************************************************************************************
+undefined reference to `_vtab$...
+*********************************
+
+If you see this message when trying to compile, the most likely cause is that
+you are using a compiler that does not support type-bound procedures from
+Fortran 2003. This affects any version of gfortran prior to 4.6. Downloading and
+installing the latest gfortran_ compiler should resolve this problem.
+
+Fatal Error: Wrong module version '4' (expected '9') for file 'xml_data_cmfd_t.mod' opened at (1)
+*************************************************************************************************
+
+The `.mod` modules files that are created by gfortran are versioned and
+sometimes are usually not backwards compatible. If gfortran is upgraded and the
+modules files for xml-fortran source files are not deleted, this error may
+occur. To fix this, clear out all module and object files with :program:`make
+distclean` and then recompiling.
+
+Fatal Error: File 'xml_data_cmfd_t.mod' opened at (1) is not a GFORTRAN module file
+***********************************************************************************
 
 When OpenMC compiles, the first thing it needs to do is compile source in the
 xml-fortran subdirectory. If you compiled everything with a compiler other than
 gfortran, performed a :program:`make clean`, and then tried to :program:`make`
 with gfortran, the xml-fortran modules would have been compiled with a different
-compiler. To fix this, try clearing out all modules and object files with
+compiler. To fix this, try clearing out all module and object files with
 :program:`make distclean` and then recompiling.
 
 gfortran: unrecognized option '-cpp'
@@ -68,8 +85,7 @@ the following commands:
 
 Now when you re-run your problem, it should report exactly where the program
 failed. If after reading the debug output, you are still unsure why the program
-failed, send an email to the OpenMC `developers
-<mailto:paul.k.romano@gmail.com>`_.
+failed, send an email to the OpenMC User's Group `mailing list`_.
 
 ERROR: No cross_sections.xml file was specified in settings.xml or in the CROSS_SECTIONS environment variable.
 **************************************************************************************************************
@@ -105,4 +121,4 @@ has a collision. For example, if you received this error at cycle 5, generation
     <trace>5 1 4032</trace>
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
-
+.. _mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-users

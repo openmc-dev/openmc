@@ -540,6 +540,9 @@ contains
 
         case (FILTER_SURFACE)
 
+          ! Check if this is a surface filter only for surface currents
+          if (any(t % score_bins == SCORE_CURRENT)) cycle FILTER_LOOP
+
           do k = 1, t % filters(j) % n_bins
             id = t % filters(j) % int_bins(k)
             if (surface_dict % has_key(id)) then
@@ -579,14 +582,8 @@ contains
 
         case (FILTER_MESH)
 
-          id = t % filters(j) % int_bins(1)
-          if (mesh_dict % has_key(id)) then
-            t % filters(j) % int_bins(1) = mesh_dict % get_key(id)
-          else
-            message = "Could not find mesh " // trim(to_str(id)) // &
-                 " specified on tally " // trim(to_str(t % id))
-            call fatal_error()
-          end if
+          ! The mesh filter already has been set to the index in meshes rather
+          ! than the user-specified id, so it doesn't need to be changed.
 
         end select
 

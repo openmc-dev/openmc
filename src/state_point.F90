@@ -126,9 +126,11 @@ contains
         ! a separate file, we make a call to the appropriate subroutine to
         ! write it separately
 
-        path_source = "source." // trim(to_str(current_batch)) // ".binary"
-        call write_source_binary()
-      else
+        if (source_write) then
+          path_source = "source." // trim(to_str(current_batch)) // ".binary"
+          call write_source_binary()
+        end if
+      elseif (source_write) then
         ! Otherwise, write the source sites in the state point file
 
         ! Get current offset for master
@@ -302,9 +304,11 @@ contains
         ! a separate file, we make a call to the appropriate subroutine to
         ! write it separately
 
-        path_source = "source." // trim(to_str(current_batch)) // ".binary"
-        call write_source_binary()
-      else
+        if (source_write) then
+          path_source = "source." // trim(to_str(current_batch)) // ".binary"
+          call write_source_binary()
+        end if
+      elseif (source_write) then
         ! Otherwise, write the source sites in the state point file
 
         write(UNIT_STATE) source_bank

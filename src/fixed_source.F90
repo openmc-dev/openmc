@@ -108,24 +108,19 @@ contains
 
   subroutine finalize_batch()
 
-    integer :: i ! loop index for state point batches
-
     ! Collect and accumulate tallies
     call time_tallies % start()
     call synchronize_tallies()
     call time_tallies % stop()
 
     ! Write out state point if it's been specified for this batch
-    do i = 1, n_state_points
-      if (current_batch == statepoint_batch(i)) then
+    if (statepoint_batch % contains(current_batch)) then
 #ifdef HDF5
-        call hdf5_write_state_point()
+      call hdf5_write_state_point()
 #else
-        call write_state_point()
+      call write_state_point()
 #endif
-        exit
-      end if
-    end do
+    end if
 
   end subroutine finalize_batch
 

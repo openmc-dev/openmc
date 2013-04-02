@@ -88,7 +88,9 @@ element settings {
         attribute interval { xsd:positiveInteger })
     ) &
     (element source_separate { xsd:boolean } | 
-      attribute source_separate { xsd:boolean })?
+      attribute source_separate { xsd:boolean })? &
+    (element source_write { xsd:boolean } | 
+      attribute source_write { xsd:boolean })?
   }? &
 
   element survival_biasing { xsd:boolean }? &

@@ -1,5 +1,7 @@
 module particle_restart 
 
+  use, intrinsic :: ISO_FORTRAN_ENV
+
   use bank_header,     only: Bank
   use constants
   use geometry_header, only: BASE_UNIVERSE
@@ -15,7 +17,13 @@ module particle_restart
   private
   public ::  write_particle_restart, run_particle_restart
 
+#ifdef HDF5
   integer(HID_T) :: hdf5_particle_file
+#endif HDF5
+
+  ! Short names for output and error units
+  integer :: ou = OUTPUT_UNIT
+  integer :: eu = ERROR_UNIT
 
 contains
 
@@ -24,7 +32,7 @@ contains
 !===============================================================================
 
   subroutine write_particle_restart()
-
+#ifdef HDF5
     character(MAX_FILE_LEN) :: filename
     integer(HSIZE_T)        :: dims1(1)
     type(Bank), pointer     :: src => null()
@@ -54,16 +62,21 @@ contains
 
     ! close hdf5 file
     call h5fclose_f(hdf5_particle_file, hdf5_err)
-
+#endif
   end subroutine write_particle_restart
 
 !===============================================================================
 ! READ_PARTICLE_RESTART
 !===============================================================================
 
-  subroutine read_particle_restart()
-
+  subroutine read_hdf5_particle_restart()
+#ifdef HDF5
     integer(HSIZE_T)        :: dims1(1)
+
+    ! write meessage
+    message = "Loading particle restart file " // trim(path_particle_restart) &
+              // "..."
+    call write_message(1)
 
     ! open hdf5 file
     call h5fopen_f(path_particle_restart, H5F_ACC_RDONLY_F, hdf5_particle_file,&
@@ -90,26 +103,26 @@ contains
 
     ! close hdf5 file
     call h5fclose_f(hdf5_particle_file, hdf5_err)
-
-  end subroutine read_particle_restart
+#endif
+  end subroutine read_hdf5_particle_restart
 
 !===============================================================================
 ! RUN_PARTICLE_RESTART
 !===============================================================================
 
   subroutine run_particle_restart()
-
+#ifdef HDF5
     ! initialize the particle to be tracked
     call initialize_particle()
 
     ! read in the restart information
-    call read_particle_restart()
+    call read_hdf5_particle_restart()
 
     ! set all tallies to 0 for now (just tracking errors)
     n_tallies = 0
 
     ! compute seed
-
+#endif HDF5
   end subroutine run_particle_restart
 
 !===============================================================================
@@ -150,7 +163,7 @@ contains
 !===============================================================================
 ! HDF5_WRITE_INTEGER
 !===============================================================================
-
+#ifdef HDF5
   subroutine hdf5_write_integer(group, name, buffer)
 
     integer(HID_T), intent(in) :: group
@@ -289,5 +302,54 @@ contains
     str = adjustl(str)
 
   end function int4_to_str
+#endif
+
+!===============================================================================
+! WRITE_MESSAGE displays an informational message to the log file and the 
+! standard output stream.
+!===============================================================================
+
+  subroutine write_message(level)
+
+    integer, optional :: level ! verbosity level
+
+    integer :: i_start   ! starting position
+    integer :: i_end     ! ending position
+    integer :: line_wrap ! length of line
+    integer :: length    ! length of message
+
+    ! Set length of line
+    line_wrap = 80
+
+    ! Only allow master to print to screen
+    if (.not. master .and. present(level)) return
+
+    if (.not. present(level) .or. level <= verbosity) then
+      ! Determine length of message
+      length = len_trim(message)
+
+      i_start = 0
+      do
+        if (length - i_start < line_wrap - 1) then
+          ! Remainder of message will fit on line
+          write(ou, fmt='(1X,A)') message(i_start+1:length)
+          exit
+
+        else
+          ! Determine last space in current line
+          i_end = i_start + index(message(i_start+1:i_start+line_wrap), &
+               ' ', BACK=.true.)
+
+          ! Write up to last space
+          write(ou, fmt='(1X,A)') message(i_start+1:i_end-1)
+
+          ! Advance starting position
+          i_start = i_end
+          if (i_start > length) exit
+        end if
+      end do
+    end if
+
+  end subroutine write_message
 
 end module particle_restart

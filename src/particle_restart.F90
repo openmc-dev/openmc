@@ -7,15 +7,18 @@ module particle_restart
   use geometry_header, only: BASE_UNIVERSE
   use global
   use particle_header, only: deallocate_coord
+  use output,          only: write_message
+  use physics,         only: transport
+  use random_lcg,      only: set_particle_seed
+  use source,          only: initialize_particle
 
 #ifdef HDF5
-  use hdf5
-  use h5lt
+  use hdf5_interface 
 #endif
 
   implicit none
   private
-  public ::  write_particle_restart, run_particle_restart
+  public ::  run_particle_restart
 
 #ifdef HDF5
   integer(HID_T) :: hdf5_particle_file
@@ -26,44 +29,6 @@ module particle_restart
   integer :: eu = ERROR_UNIT
 
 contains
-
-!===============================================================================
-! WRITE_PARTICLE_RESTART
-!===============================================================================
-
-  subroutine write_particle_restart()
-#ifdef HDF5
-    character(MAX_FILE_LEN) :: filename
-    integer(HSIZE_T)        :: dims1(1)
-    type(Bank), pointer     :: src => null()
-
-    ! set up file name
-    filename = 'particle_'//trim(int4_to_str(rank))//'.h5'
-
-    ! create hdf5 file
-    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, hdf5_particle_file, hdf5_err)
-
-    ! get information about source particle
-    src => source_bank(current_work)
-
-    ! write data to file
-    call hdf5_write_integer(hdf5_particle_file, 'current_batch', current_batch)
-    call hdf5_write_integer(hdf5_particle_file, 'gen_per_batch', gen_per_batch)
-    call hdf5_write_integer(hdf5_particle_file, 'current_gen', current_gen)
-    call hdf5_write_long(hdf5_particle_file, 'n_particles', n_particles)
-    call hdf5_write_long(hdf5_particle_file, 'id', p % id)
-    call hdf5_write_double(hdf5_particle_file, 'weight', src % wgt)
-    call hdf5_write_double(hdf5_particle_file, 'energy', src % E)
-    dims1 = (/3/)
-    call h5ltmake_dataset_double_f(hdf5_particle_file, 'xyz', 1, dims1, &
-         src % xyz, hdf5_err)
-    call h5ltmake_dataset_double_f(hdf5_particle_file, 'uvw', 1, dims1, &
-         src % uvw, hdf5_err)
-
-    ! close hdf5 file
-    call h5fclose_f(hdf5_particle_file, hdf5_err)
-#endif
-  end subroutine write_particle_restart
 
 !===============================================================================
 ! READ_PARTICLE_RESTART
@@ -112,7 +77,11 @@ contains
 
   subroutine run_particle_restart()
 #ifdef HDF5
+
+    integer(8) :: particle_seed
+
     ! initialize the particle to be tracked
+    allocate(p)
     call initialize_particle()
 
     ! read in the restart information
@@ -121,235 +90,19 @@ contains
     ! set all tallies to 0 for now (just tracking errors)
     n_tallies = 0
 
-    ! compute seed
+    ! compute random number seed
+    particle_seed = ((current_batch - 1)*gen_per_batch + &
+         current_gen - 1)*n_particles + p % id
+    call set_particle_seed(particle_seed)
+
+    ! transport neutron
+    call transport()
+    print *, 'WEIGHT:', p % wgt
+    print *, 'ENERGY:', p % E
+    print *, 'LOCATION:', p % coord % xyz
+    print *, 'ANGLE:', p % coord % uvw
+
 #endif HDF5
   end subroutine run_particle_restart
-
-!===============================================================================
-! INITIALIZE_PARTICLE
-!===============================================================================
-
-  subroutine initialize_particle()
-
-    ! Allocate particle
-    allocate(p)
-
-    ! Set particle to neutron that's alive
-    p % type  = NEUTRON
-    p % alive = .true.
-
-    ! clear attributes
-    p % surface       = NONE
-    p % cell_born     = NONE
-    p % material      = NONE
-    p % last_material = NONE
-    p % wgt           = ONE
-    p % last_wgt      = ONE
-    p % absorb_wgt    = ZERO
-    p % n_bank        = 0
-    p % wgt_bank      = ZERO
-    p % n_collision   = 0
-
-    ! remove any original coordinates
-    call deallocate_coord(p % coord0)
-
-    ! Set up base level coordinates
-    allocate(p % coord0)
-    p % coord0 % universe = BASE_UNIVERSE
-    p % coord             => p % coord0
-
-  end subroutine initialize_particle
-
-!===============================================================================
-! HDF5_WRITE_INTEGER
-!===============================================================================
-#ifdef HDF5
-  subroutine hdf5_write_integer(group, name, buffer)
-
-    integer(HID_T), intent(in) :: group
-    character(*),   intent(in) :: name
-    integer,        intent(in) :: buffer
-
-    integer          :: rank = 1
-    integer(HSIZE_T) :: dims(1) = (/1/)
-
-    call h5ltmake_dataset_int_f(group, name, rank, dims, &
-         (/ buffer /), hdf5_err)
-
-  end subroutine hdf5_write_integer
-
-!===============================================================================
-! HDF5_WRITE_LONG
-!===============================================================================
-
-  subroutine hdf5_write_long(group, name, buffer)
-
-    integer(HID_T),     intent(in) :: group
-    character(*),       intent(in) :: name
-    integer(8), target, intent(in) :: buffer
-
-    integer          :: rank = 1
-    integer(HSIZE_T) :: dims(1) = (/1/)
-    integer(HID_T)   :: dspace
-    integer(HID_T)   :: dset
-    type(c_ptr)      :: f_ptr
-
-    ! Create dataspace and dataset
-    call h5screate_simple_f(rank, dims, dspace, hdf5_err)
-    call h5dcreate_f(group, name, hdf5_integer8_t, dspace, dset, hdf5_err)
-
-    ! Write eight-byte integer
-    f_ptr = c_loc(buffer)
-    call h5dwrite_f(dset, hdf5_integer8_t, f_ptr, hdf5_err)
-
-    ! Close dataspace and dataset for long integer
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-
-  end subroutine hdf5_write_long
-
-!===============================================================================
-! HDF5_WRITE_DOUBLE
-!===============================================================================
-
-  subroutine hdf5_write_double(group, name, buffer)
-
-    integer(HID_T), intent(in) :: group
-    character(*),   intent(in) :: name
-    real(8),        intent(in) :: buffer
-
-    integer          :: rank = 1
-    integer(HSIZE_T) :: dims(1) = (/1/)
-
-    call h5ltmake_dataset_double_f(group, name, rank, dims, &
-         (/ buffer /), hdf5_err)
-
-  end subroutine hdf5_write_double
-
-!===============================================================================
-! HDF5_READ_INTEGER
-!===============================================================================
-
-  subroutine hdf5_read_integer(group, name, buffer)
-
-    integer(HID_T), intent(in)    :: group
-    character(*),   intent(in)    :: name
-    integer,        intent(inout) :: buffer
-
-    integer          :: buffer_copy(1)
-    integer(HSIZE_T) :: dims(1) = (/1/)
-
-    call h5ltread_dataset_int_f(group, name, buffer_copy, dims, hdf5_err)
-    buffer = buffer_copy(1)
-
-  end subroutine hdf5_read_integer
-
-!===============================================================================
-! HDF5_READ_LONG
-!===============================================================================
-
-  subroutine hdf5_read_long(group, name, buffer)
-
-    integer(HID_T),     intent(in)  :: group
-    character(*),       intent(in)  :: name
-    integer(8), target, intent(out) :: buffer
-
-    integer(HID_T) :: dset
-    type(c_ptr)    :: f_ptr
-
-    ! Open dataset
-    call h5dopen_f(group, name, dset, hdf5_err)
-
-    ! Get pointer to buffer
-    f_ptr = c_loc(buffer)
-
-    ! Read data from dataset
-    call h5dread_f(dset, hdf5_integer8_t, f_ptr, hdf5_err)
-
-    ! Close dataset
-    call h5dclose_f(dset, hdf5_err)
-
-  end subroutine hdf5_read_long
-
-!===============================================================================
-! HDF5_READ_DOUBLE
-!===============================================================================
-
-  subroutine hdf5_read_double(group, name, buffer)
-
-    integer(HID_T), intent(in)  :: group
-    character(*),   intent(in)  :: name
-    real(8),        intent(out) :: buffer
-
-    real(8)          :: buffer_copy(1)
-    integer(HSIZE_T) :: dims(1) = (/1/)
-
-    call h5ltread_dataset_double_f(group, name, buffer_copy, dims, hdf5_err)
-    buffer = buffer_copy(1)
-
-  end subroutine hdf5_read_double
-
-!===============================================================================
-! INT4_TO_STR converts an integer(4) to a string.
-!===============================================================================
-
-  function int4_to_str(num) result(str)
-
-    integer, intent(in) :: num
-    character(11) :: str
-
-    write (str, '(I11)') num
-    str = adjustl(str)
-
-  end function int4_to_str
-#endif
-
-!===============================================================================
-! WRITE_MESSAGE displays an informational message to the log file and the 
-! standard output stream.
-!===============================================================================
-
-  subroutine write_message(level)
-
-    integer, optional :: level ! verbosity level
-
-    integer :: i_start   ! starting position
-    integer :: i_end     ! ending position
-    integer :: line_wrap ! length of line
-    integer :: length    ! length of message
-
-    ! Set length of line
-    line_wrap = 80
-
-    ! Only allow master to print to screen
-    if (.not. master .and. present(level)) return
-
-    if (.not. present(level) .or. level <= verbosity) then
-      ! Determine length of message
-      length = len_trim(message)
-
-      i_start = 0
-      do
-        if (length - i_start < line_wrap - 1) then
-          ! Remainder of message will fit on line
-          write(ou, fmt='(1X,A)') message(i_start+1:length)
-          exit
-
-        else
-          ! Determine last space in current line
-          i_end = i_start + index(message(i_start+1:i_start+line_wrap), &
-               ' ', BACK=.true.)
-
-          ! Write up to last space
-          write(ou, fmt='(1X,A)') message(i_start+1:i_end-1)
-
-          ! Advance starting position
-          i_start = i_end
-          if (i_start > length) exit
-        end if
-      end do
-    end if
-
-  end subroutine write_message
 
 end module particle_restart

@@ -41,6 +41,7 @@ mesh.o \
 output.o \
 particle_header.o \
 particle_restart.o \
+particle_restart_write.o \
 physics.o \
 plot.o \
 plot_header.o \

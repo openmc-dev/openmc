@@ -1,13 +1,14 @@
 module geometry
 
   use constants
-  use error,           only: fatal_error
-  use geometry_header, only: Cell, Surface, Universe, Lattice
+  use error,                  only: fatal_error
+  use geometry_header,        only: Cell, Surface, Universe, Lattice
   use global
-  use output,          only: write_message
-  use particle_header, only: LocalCoord, deallocate_coord
-  use string,          only: to_str
-  use tally,           only: score_surface_current
+  use output,                 only: write_message
+  use particle_header,        only: LocalCoord, deallocate_coord
+  use particle_restart_write, only: write_particle_restart
+  use string,                 only: to_str
+  use tally,                  only: score_surface_current
 
   implicit none
      
@@ -303,6 +304,7 @@ contains
 
       ! Do not handle reflective boundary conditions on lower universes
       if (.not. associated(p % coord, p % coord0)) then
+        call write_particle_restart()
         message = "Cannot reflect particle " // trim(to_str(p % id)) // &
              " off surface in a lower universe."
         call fatal_error()
@@ -436,6 +438,7 @@ contains
         w = w + 2*dot_prod*R*z
 
       case default
+        call write_particle_restart()
         message = "Reflection not supported for surface " // &
              trim(to_str(surf % id))
         call fatal_error()
@@ -456,6 +459,7 @@ contains
         call deallocate_coord(p % coord0 % next)
         call find_cell(found)
         if (.not. found) then
+          call write_particle_restart()
           message = "Couldn't find particle after reflecting from surface."
           call fatal_error()
         end if
@@ -515,6 +519,7 @@ contains
       ! undefined region in the geometry.
 
       if (.not. found) then
+        call write_particle_restart()
         message = "After particle " // trim(to_str(p % id)) // " crossed surface " &
              // trim(to_str(surfaces(abs(p%surface)) % id)) // " it could not be &
              &located in any cell and it did not leak."
@@ -608,6 +613,7 @@ contains
       ! Search for particle
       call find_cell(found)
       if (.not. found) then
+        call write_particle_restart()
         message = "Could not locate particle " // trim(to_str(p % id)) // &
              " after crossing a lattice boundary."
         call fatal_error()
@@ -630,6 +636,7 @@ contains
         ! Search for particle
         call find_cell(found)
         if (.not. found) then
+          call write_particle_restart()
           message = "Could not locate particle " // trim(to_str(p % id)) // &
                " after crossing a lattice boundary."
           call fatal_error()

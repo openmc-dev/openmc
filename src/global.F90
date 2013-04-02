@@ -166,6 +166,7 @@ module global
   integer(8) :: bank_last    ! index of last particle in bank
   integer(8) :: work         ! number of particles per processor
   integer(8) :: maxwork      ! maximum number of particles per processor
+  integer    :: current_work ! current work
 
   ! Temporary k-effective values
   real(8), allocatable :: k_batch(:) ! batch estimates of k

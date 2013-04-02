@@ -3,6 +3,7 @@ module error
   use, intrinsic :: ISO_FORTRAN_ENV
 
   use global
+  use particle_restart,  only: write_particle_restart
 
 #ifdef MPI
   use mpi
@@ -144,6 +145,9 @@ contains
       write(ERROR_UNIT,'(1X,A,3ES12.4)') 'Direction: ', p % coord0 % uvw
       write(ERROR_UNIT,*)
     end if
+
+    ! Write particle restart
+    call write_particle_restart()
 
     ! Release memory from all allocatable arrays
     call free_memory()

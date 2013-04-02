@@ -75,6 +75,7 @@ contains
 
     integer :: i                    ! index over cells
     integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: i_x0, i_y0, i_z0     ! original indices in lattice
     integer :: n_x, n_y, n_z        ! size of lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
@@ -165,6 +166,13 @@ contains
           lat => lattices(c % fill)
 
           ! determine lattice index based on position
+          xyz = p % coord % xyz
+          i_x0 = ceiling((xyz(1) - lat % lower_left(1))/lat % width(1))
+          i_y0 = ceiling((xyz(2) - lat % lower_left(2))/lat % width(2))
+          if (lat % n_dimension == 3) & 
+             i_z0 = ceiling((xyz(3) - lat % lower_left(3))/lat % width(3))
+
+          ! now move lattice tiny bit along its unit vector
           xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
           i_x = ceiling((xyz(1) - lat % lower_left(1))/lat % width(1))
           i_y = ceiling((xyz(2) - lat % lower_left(2))/lat % width(2))
@@ -177,6 +185,16 @@ contains
             i_z = 1
             n_z = 1
           end if
+
+          ! Check if neutron out of lattice bounds by moving TINY_BIT.
+          ! This can happen if neutron is within tolerance of TINY_BIT
+          ! to corner, this action will put neutron out of lattice.
+          if (i_x0 >= 1 .and. i_x < 1) i_x = 1       ! -x direction
+          if (i_y0 >= 1 .and. i_y < 1) i_y = 1       ! -y direction
+          if (i_z0 >= 1 .and. i_z < 1) i_z = 1       ! -z direction
+          if (i_x0 <= n_x .and. i_x > n_x) i_x = n_x ! +x direction
+          if (i_y0 <= n_x .and. i_y > n_x) i_y = n_y ! +y direction
+          if (i_z0 <= n_x .and. i_z > n_x) i_z = n_z ! +z direction
 
           ! Check if lattice coordinates are within bounds
           if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &

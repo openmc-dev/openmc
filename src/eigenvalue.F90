@@ -165,8 +165,6 @@ contains
 
   subroutine finalize_batch()
 
-    integer :: i ! loop index for state point batches
-
     ! Collect tallies
     call time_tallies % start()
     call synchronize_tallies()
@@ -182,20 +180,17 @@ contains
     if (master) call print_batch_keff()
 
     ! Write out state point if it's been specified for this batch
-    do i = 1, n_state_points
-      if (current_batch == statepoint_batch(i)) then
-        ! Calculate combined estimate of k-effective
-        if (master) call calculate_combined_keff()
+    if (statepoint_batch % contains(current_batch)) then
+      ! Calculate combined estimate of k-effective
+      if (master) call calculate_combined_keff()
 
-        ! Create state point file
+      ! Create state point file
 #ifdef HDF5
-        call hdf5_write_state_point()
+      call hdf5_write_state_point()
 #else
-        call write_state_point()
+      call write_state_point()
 #endif
-        exit
-      end if
-    end do
+    end if
 
     if (master .and. current_batch == n_batches) then
       ! Make sure combined estimate of k-effective is calculated at the last

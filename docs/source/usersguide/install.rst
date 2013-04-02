@@ -57,10 +57,10 @@ Prerequisites
       To compile with support for parallel runs on a distributed-memory
       architecture, you will need to have a valid implementation of MPI
       installed on your machine. The code has been tested and is known to work
-      with the latest versions of both OpenMPI_ and MPICH2_. Note that if using
+      with the latest versions of both OpenMPI_ and MPICH_. Note that if using
       OpenMPI, make sure that --with-mpi-f90-size is not set to medium or large
       since this may prevent MPI calls from completing successfully in
-      OpenMC. OpenMPI and/or MPICH2 can be installed on Debian derivatives
+      OpenMC. OpenMPI and/or MPICH can be installed on Debian derivatives
       with::
 
           sudo apt-get install mpich2 libmpich2-dev
@@ -83,7 +83,7 @@ Prerequisites
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
 .. _OpenMPI: http://www.open-mpi.org
-.. _MPICH2: http://www.mcs.anl.gov/mpi/mpich/
+.. _MPICH2: http://www.mpich.org
 .. _HDF5: http://www.hdfgroup.org/HDF5/
 .. _PETSc: http://www.mcs.anl.gov/petsc/
 

@@ -2,7 +2,7 @@
 
 import sys
 
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 from statepoint import StatePoint
 
@@ -47,10 +47,10 @@ assert_allclose(sp1.global_tallies, sp2.global_tallies)
 assert len(sp1.meshes) == len(sp2.meshes)
 for m1, m2 in zip(sp1.meshes, sp2.meshes):
     assert m1.type == m2.type
-    assert m1.dimension == m2.dimension
-    assert m1.lower_left == m2.lower_left
-    assert m1.upper_right == m2.upper_right
-    assert m1.width == m2.width
+    assert_equal(m1.dimension, m2.dimension)
+    assert_equal(m1.lower_left, m2.lower_left)
+    assert_equal(m1.upper_right, m2.upper_right)
+    assert_equal(m1.width, m2.width)
 
 # Compare tallies
 assert len(sp1.tallies) == len(sp2.tallies)
@@ -64,11 +64,11 @@ for t1, t2 in zip(sp1.tallies, sp2.tallies):
     for f1, f2 in zip(t1.filters.values(), t2.filters.values()):
         assert f1.type == f2.type
         assert f1.length == f2.length
-        assert f1.bins == f2.bins
+        assert_equal(f1.bins, f2.bins)
 
     # Compare nuclide and score bins
-    assert t1.nuclides == t2.nuclides
-    assert t1.scores == t2.scores
+    assert_equal(t1.nuclides, t2.nuclides)
+    assert_equal(t1.scores, t2.scores)
 
     # Compare tally results
     assert_allclose(t1.results, t2.results)
@@ -80,7 +80,7 @@ if sp1.run_mode == 2:
 
     assert len(sp1.source) == len(sp2.source)
     for s1, s2 in zip(sp1.source, sp2.source):
-        assert_allclose(s1.weight, s2.weight)
+        assert s1.weight == s2.weight
         assert_allclose(s1.xyz, s2.xyz)
         assert_allclose(s1.uvw, s2.uvw)
-        assert_allclose(s1.E, s2.E)
+        assert s1.E == s2.E

@@ -184,10 +184,10 @@ class StatePoint(object):
             self.entropy = self._get_double(
                 self.current_batch*self.gen_per_batch, path='entropy')
             if self.revision >= 8:
-            self.k_col_abs = self._get_double(path='k_col_abs')[0]
-            self.k_col_tra = self._get_double(path='k_col_tra')[0]
-            self.k_abs_tra = self._get_double(path='k_abs_tra')[0]
-            self.k_combined = self._get_double(2, path='k_combined')
+                self.k_col_abs = self._get_double(path='k_col_abs')[0]
+                self.k_col_tra = self._get_double(path='k_col_tra')[0]
+                self.k_abs_tra = self._get_double(path='k_abs_tra')[0]
+                self.k_combined = self._get_double(2, path='k_combined')
 
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]

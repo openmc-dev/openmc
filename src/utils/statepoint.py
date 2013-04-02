@@ -429,10 +429,10 @@ class StatePoint(BinaryFile):
 
         # get tally
         try:
-          tally = self.tallies[tally_id-1]
+            tally = self.tallies[tally_id-1]
         except:
-          print 'Tally does not exist'
-          return
+            print 'Tally does not exist'
+            return
 
         # get the score index if it is present
         try:
@@ -473,46 +473,53 @@ class StatePoint(BinaryFile):
 
         # get bounds of filter bins
         for akey in tally.filters.keys():
-          idx = tally.filters.keys().index(akey)
-          filtmax[n_filters - idx] = tally.filters[akey].length
+            idx = tally.filters.keys().index(akey)
+            filtmax[n_filters - idx] = tally.filters[akey].length
 
         # compute bin info
         i = 0
         while i < n_filters:
 
-           # compute indices for filter combination
-           filters[:,n_filters - i - 1] = np.floor((np.arange(n_bins) % np.prod(filtmax[0:i+2]))/(np.prod(filtmax[0:i+1]))) + 1
+            # compute indices for filter combination
+            filters[:,n_filters - i - 1] = np.floor((np.arange(n_bins) % 
+                   np.prod(filtmax[0:i+2]))/(np.prod(filtmax[0:i+1]))) + 1
 
-           # append in dictionary bin with filter
-           data.update({tally.filters.keys()[n_filters - i - 1]:filters[:,n_filters - i - 1]})
+            # append in dictionary bin with filter
+            data.update({tally.filters.keys()[n_filters - i - 1]:
+                         filters[:,n_filters - i - 1]})
 
-           # check for mesh
-           if tally.filters.keys()[n_filters - i - 1] == 'mesh':
-             mesh_idx = tally.filters['mesh'].bins
-             dims = self.meshes[tally.filters['mesh'].bins[0] - 1].dimension
-             dims.reverse()
-             dims = np.asarray(dims)
-             if score_str == 'current':
-                dims += 1 
-             meshmax[1:4] = dims 
-             mesh_bins = np.zeros((n_bins,3))
-             mesh_bins[:,2] = np.floor(((filters[:,n_filters - i - 1] - 1) % np.prod(meshmax[0:2]))/(np.prod(meshmax[0:1]))) + 1
-             mesh_bins[:,1] = np.floor(((filters[:,n_filters - i - 1] - 1) % np.prod(meshmax[0:3]))/(np.prod(meshmax[0:2]))) + 1
-             mesh_bins[:,0] = np.floor(((filters[:,n_filters - i - 1] - 1) % np.prod(meshmax[0:4]))/(np.prod(meshmax[0:3]))) + 1
-             data.update({'mesh':zip(mesh_bins[:,0],mesh_bins[:,1],mesh_bins[:,2])})
-           i += 1
+            # check for mesh
+            if tally.filters.keys()[n_filters - i - 1] == 'mesh':
+                mesh_idx = tally.filters['mesh'].bins
+                dims = self.meshes[tally.filters['mesh'].bins[0] - 1].dimension
+                dims.reverse()
+                dims = np.asarray(dims)
+                if score_str == 'current':
+                    dims += 1 
+                meshmax[1:4] = dims 
+                mesh_bins = np.zeros((n_bins,3))
+                mesh_bins[:,2] = np.floor(((filters[:,n_filters - i - 1] - 1) % 
+                            np.prod(meshmax[0:2]))/(np.prod(meshmax[0:1]))) + 1
+                mesh_bins[:,1] = np.floor(((filters[:,n_filters - i - 1] - 1) % 
+                            np.prod(meshmax[0:3]))/(np.prod(meshmax[0:2]))) + 1
+                mesh_bins[:,0] = np.floor(((filters[:,n_filters - i - 1] - 1) % 
+                            np.prod(meshmax[0:4]))/(np.prod(meshmax[0:3]))) + 1
+                data.update({'mesh':zip(mesh_bins[:,0],mesh_bins[:,1],
+                            mesh_bins[:,2])})
+            i += 1
 
         # add in maximum bin filters and order
         b = tally.filters.keys()
         b.reverse()
         filtmax = list(filtmax[1:])
         try:
-          idx = b.index('mesh')
-          filtmax[idx] = np.max(mesh_bins[:,2])
-          filtmax.insert(idx,np.max(mesh_bins[:,1]))
-          filtmax.insert(idx,np.max(mesh_bins[:,0]))
+            idx = b.index('mesh')
+            filtmax[idx] = np.max(mesh_bins[:,2])
+            filtmax.insert(idx,np.max(mesh_bins[:,1]))
+            filtmax.insert(idx,np.max(mesh_bins[:,0]))
 
-        except ValueError: pass
+        except ValueError:
+            pass
         data.update({'bin_order':b,'bin_max':filtmax})
 
         return data

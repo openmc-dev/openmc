@@ -1,17 +1,19 @@
 module particle_restart 
 
-  use bank_header,  only: Bank
+  use bank_header,     only: Bank
   use constants
+  use geometry_header, only: BASE_UNIVERSE
   use global
+  use particle_header, only: deallocate_coord
 
 #ifdef HDF5
   use hdf5
   use h5lt
-  use, intrinsic :: ISO_C_BINDING
 #endif
 
+  implicit none
   private
-  public ::  write_particle_restart
+  public ::  write_particle_restart, run_particle_restart
 
   integer(HID_T) :: hdf5_particle_file
 
@@ -59,7 +61,35 @@ contains
 ! READ_PARTICLE_RESTART
 !===============================================================================
 
-  subroutine read_particle_restart
+  subroutine read_particle_restart()
+
+    integer(HSIZE_T)        :: dims1(1)
+
+    ! open hdf5 file
+    call h5fopen_f(path_particle_restart, H5F_ACC_RDONLY_F, hdf5_particle_file,&
+                   hdf5_err)
+
+    ! read data from file
+    call hdf5_read_integer(hdf5_particle_file, 'current_batch', current_batch)
+    call hdf5_read_integer(hdf5_particle_file, 'gen_per_batch', gen_per_batch)
+    call hdf5_read_integer(hdf5_particle_file, 'current_gen', current_gen)
+    call hdf5_read_long(hdf5_particle_file, 'n_particles', n_particles)
+    call hdf5_read_long(hdf5_particle_file, 'id', p % id)
+    call hdf5_read_double(hdf5_particle_file, 'weight', p % wgt)
+    call hdf5_read_double(hdf5_particle_file, 'energy', p % E)
+    dims1 = (/3/)
+    call h5ltread_dataset_double_f(hdf5_particle_file, 'xyz', p % coord % xyz, &
+         dims1, hdf5_err)
+    call h5ltread_dataset_double_f(hdf5_particle_file, 'uvw', p % coord % uvw, &
+         dims1, hdf5_err)
+
+    ! set particle last attributes
+    p % last_wgt = p % wgt
+    p % last_xyz = p % coord % xyz
+    p % last_E   = p % E
+
+    ! close hdf5 file
+    call h5fclose_f(hdf5_particle_file, hdf5_err)
 
   end subroutine read_particle_restart
 
@@ -67,9 +97,55 @@ contains
 ! RUN_PARTICLE_RESTART
 !===============================================================================
 
-  subroutine run_particle_restart
+  subroutine run_particle_restart()
+
+    ! initialize the particle to be tracked
+    call initialize_particle()
+
+    ! read in the restart information
+    call read_particle_restart()
+
+    ! set all tallies to 0 for now (just tracking errors)
+    n_tallies = 0
+
+    ! compute seed
 
   end subroutine run_particle_restart
+
+!===============================================================================
+! INITIALIZE_PARTICLE
+!===============================================================================
+
+  subroutine initialize_particle()
+
+    ! Allocate particle
+    allocate(p)
+
+    ! Set particle to neutron that's alive
+    p % type  = NEUTRON
+    p % alive = .true.
+
+    ! clear attributes
+    p % surface       = NONE
+    p % cell_born     = NONE
+    p % material      = NONE
+    p % last_material = NONE
+    p % wgt           = ONE
+    p % last_wgt      = ONE
+    p % absorb_wgt    = ZERO
+    p % n_bank        = 0
+    p % wgt_bank      = ZERO
+    p % n_collision   = 0
+
+    ! remove any original coordinates
+    call deallocate_coord(p % coord0)
+
+    ! Set up base level coordinates
+    allocate(p % coord0)
+    p % coord0 % universe = BASE_UNIVERSE
+    p % coord             => p % coord0
+
+  end subroutine initialize_particle
 
 !===============================================================================
 ! HDF5_WRITE_INTEGER

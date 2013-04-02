@@ -265,8 +265,11 @@ output.o: tally_header.o
 
 particle_header.o: constants.o
 
+particle_restart.o: bank_header.o
 particle_restart.o: constants.o
+particle_restart.o: geometry_header.o
 particle_restart.o: global.o
+particle_restart.o: particle_header.o
 
 physics.o: ace_header.o
 physics.o: constants.o

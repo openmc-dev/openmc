@@ -440,7 +440,7 @@ class StatePoint(object):
         # has been called already.
         return t.results[filter_index, score_index]
 
-    def extract_results(self,tally_id,score_str):
+    def extract_results(self, tally_id, score_str):
 
         # get tally
         try:

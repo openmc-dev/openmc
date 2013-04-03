@@ -371,11 +371,14 @@ module global
 contains
 
 !===============================================================================
-! FREE_MEMORY deallocates all global allocatable arrays in the program
+! FREE_MEMORY deallocates and clears  all global allocatable arrays in the 
+! program
 !===============================================================================
 
   subroutine free_memory()
-
+    
+    integer :: i ! Loop Index
+    
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)
@@ -385,7 +388,13 @@ contains
     if (allocated(plots)) deallocate(plots)
 
     ! Deallocate cross section data, listings, and cache
-    if (allocated(nuclides)) deallocate(nuclides)
+    if (allocated(nuclides)) then
+    ! First call the clear routines
+      do i = 1, size(nuclides)
+        call nuclides(i) % clear()
+      end do
+      deallocate(nuclides)
+    end if
     if (allocated(sab_tables)) deallocate(sab_tables)
     if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)

@@ -505,8 +505,7 @@ class StatePoint(object):
 
             # check for mesh
             if tally.filters.keys()[n_filters - i - 1] == 'mesh':
-                mesh_idx = tally.filters['mesh'].bins
-                dims = self.meshes[tally.filters['mesh'].bins[0] - 1].dimension
+                dims = list(self.meshes[tally.filters['mesh'].bins[0] - 1].dimension)
                 dims.reverse()
                 dims = np.asarray(dims)
                 if score_str == 'current':

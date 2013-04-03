@@ -420,7 +420,7 @@ contains
     call active_tracklength_tallies % clear()
     call active_current_tallies % clear()
     call active_tallies % clear()
-
+    
   end subroutine free_memory
 
 end module global

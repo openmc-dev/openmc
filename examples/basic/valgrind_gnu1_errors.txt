@@ -1,642 +1,604 @@
-==31586== Memcheck, a memory error detector
-==31586== Copyright (C) 2002-2012, and GNU GPL'd, by Julian Seward et al.
-==31586== Using Valgrind-3.8.1 and LibVEX; rerun with -h for copyright info
-==31586== Command: ../../src/openmc
-==31586== Parent PID: 22901
-==31586== 
---31586-- 
---31586-- Valgrind options:
---31586--    -v
---31586--    --leak-check=yes
---31586--    --log-file=valgrind_gnu1_errors.txt
---31586-- Contents of /proc/version:
---31586--   Linux version 3.7.10-1.1-desktop (geeko@buildhost) (gcc version 4.7.2 20130108 [gcc-4_7-branch revision 195012] (SUSE Linux) ) #1 SMP PREEMPT Thu Feb 28 15:06:29 UTC 2013 (82d3f21)
---31586-- Arch and hwcaps: AMD64, amd64-sse3-cx16-avx
---31586-- Page sizes: currently 4096, max supported 4096
---31586-- Valgrind library directory: /usr/lib64/valgrind
---31586-- Reading syms from /home/nelsonag/data/git/openmc/src/openmc
---31586-- Reading syms from /lib64/ld-2.17.so
---31586-- Reading syms from /usr/lib64/valgrind/memcheck-amd64-linux
---31586--    object doesn't have a symbol table
---31586--    object doesn't have a dynamic symbol table
---31586-- Scheduler: using generic scheduler lock implementation.
---31586-- Reading suppressions file: /usr/lib64/valgrind/default.supp
-==31586== embedded gdbserver: reading from /tmp/vgdb-pipe-from-vgdb-to-31586-by-nelsonag-on-Deimos123.umich
-==31586== embedded gdbserver: writing to   /tmp/vgdb-pipe-to-vgdb-from-31586-by-nelsonag-on-Deimos123.umich
-==31586== embedded gdbserver: shared mem   /tmp/vgdb-pipe-shared-mem-vgdb-31586-by-nelsonag-on-Deimos123.umich
-==31586== 
-==31586== TO CONTROL THIS PROCESS USING vgdb (which you probably
-==31586== don't want to do, unless you know exactly what you're doing,
-==31586== or are doing some strange experiment):
-==31586==   /usr/lib64/valgrind/../../bin/vgdb --pid=31586 ...command...
-==31586== 
-==31586== TO DEBUG THIS PROCESS USING GDB: start GDB like this
-==31586==   /path/to/gdb ../../src/openmc
-==31586== and then give GDB the following command
-==31586==   target remote | /usr/lib64/valgrind/../../bin/vgdb --pid=31586
-==31586== --pid is optional if only one valgrind process is running
-==31586== 
---31586-- REDIR: 0x40177a0 (strlen) redirected to 0x3806c661 (???)
---31586-- Reading syms from /usr/lib64/valgrind/vgpreload_core-amd64-linux.so
---31586--    object doesn't have a symbol table
---31586-- Reading syms from /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so
---31586--    object doesn't have a symbol table
---31586-- REDIR: 0x4017610 (index) redirected to 0x4c2c940 (index)
---31586-- REDIR: 0x4017690 (strcmp) redirected to 0x4c2d950 (strcmp)
---31586-- Reading syms from /usr/lib64/libgfortran.so.3.0.0
---31586--    object doesn't have a symbol table
---31586-- Reading syms from /lib64/libm-2.17.so
---31586-- Reading syms from /lib64/libgcc_s.so.1
---31586--    object doesn't have a symbol table
---31586-- Reading syms from /usr/lib64/libquadmath.so.0.0.0
---31586--    object doesn't have a symbol table
---31586-- Reading syms from /lib64/libc-2.17.so
---31586-- REDIR: 0x591af70 (strcasecmp) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
---31586-- REDIR: 0x5917330 (strnlen) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
---31586-- REDIR: 0x591d240 (strncasecmp) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
---31586-- REDIR: 0x5919d80 (memset) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
---31586-- REDIR: 0x5919d30 (memcpy@GLIBC_2.2.5) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
---31586-- REDIR: 0x5918d20 (__GI_strrchr) redirected to 0x4c2c760 (__GI_strrchr)
---31586-- REDIR: 0x5911b60 (calloc) redirected to 0x4c2a030 (calloc)
---31586-- REDIR: 0x5911200 (malloc) redirected to 0x4c2c210 (malloc)
---31586-- REDIR: 0x5917250 (__GI_strlen) redirected to 0x4c2ccc0 (__GI_strlen)
---31586-- REDIR: 0x5917200 (strlen) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
---31586-- REDIR: 0x59e2730 (__strlen_sse2_pminub) redirected to 0x4c2cca0 (strlen)
---31586-- REDIR: 0x591f920 (memcpy@@GLIBC_2.14) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
---31586-- REDIR: 0x59c7af0 (__memcpy_ssse3_back) redirected to 0x4c2dc80 (memcpy@@GLIBC_2.14)
---31586-- REDIR: 0x5917450 (__GI_strncmp) redirected to 0x4c2d190 (__GI_strncmp)
---31586-- REDIR: 0x5919dc0 (__GI_memset) redirected to 0x4c2ed80 (memset)
---31586-- REDIR: 0x5911620 (free) redirected to 0x4c2af00 (free)
---31586-- REDIR: 0x59cd090 (__memmove_ssse3_back) redirected to 0x4c2da70 (memcpy@GLIBC_2.2.5)
---31586-- REDIR: 0xffffffffff600000 (???) redirected to 0x3806c643 (???)
---31586-- REDIR: 0x5916be0 (__GI_strcpy) redirected to 0x4c2cdb0 (__GI_strcpy)
---31586-- REDIR: 0x5915750 (__GI_strcmp) redirected to 0x4c2d900 (__GI_strcmp)
---31586-- REDIR: 0x5920f50 (strchrnul) redirected to 0x4c2f2d0 (strchrnul)
---31586-- REDIR: 0x5917410 (strncmp) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
---31586-- REDIR: 0x59b3ca0 (__strncmp_sse42) redirected to 0x4c2d120 (strncmp)
---31586-- REDIR: 0x5919760 (bcmp) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
---31586-- REDIR: 0x59dd060 (__memcmp_sse4_1) redirected to 0x4c2e9a0 (bcmp)
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F20927: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x48D812: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F2094B: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x48D812: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x48D812: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x48D812: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x456AF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x456AF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x456B16: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x456B58: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Use of uninitialised value of size 8
-==31586==    at 0x456BA6: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4C2E9B1: bcmp (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
-==31586==    by 0x4F20766: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456BD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F20769: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456BD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x456BD5: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x457447: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x457447: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x457565: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4575AD: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Use of uninitialised value of size 8
-==31586==    at 0x45760E: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x457638: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x457680: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Use of uninitialised value of size 8
-==31586==    at 0x4576E2: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208F8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x456AF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208F8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x457447: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208F8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x48D812: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4C2E9D3: bcmp (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
-==31586==    by 0x4F20766: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456BD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
---31586-- REDIR: 0x59bb850 (__strncasecmp_avx) redirected to 0x4c2d2e0 (strncasecmp)
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x418D2D: __ace_header_MOD_reaction_clear (ace_header.F90:284)
-==31586==    by 0x418415: __ace_header_MOD_nuclide_clear (ace_header.F90:351)
-==31586==    by 0x473055: __global_MOD_free_memory (global.F90:394)
-==31586==    by 0x465379: __finalize_MOD_finalize_run (finalize.F90:55)
-==31586==    by 0x4D1A25: MAIN__ (main.F90:30)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== HEAP SUMMARY:
-==31586==     in use at exit: 3,431,973 bytes in 83,599 blocks
-==31586==   total heap usage: 541,843 allocs, 458,244 frees, 22,583,032,767 bytes allocated
-==31586== 
-==31586== Searching for pointers to 83,599 not-freed blocks
-==31586== Checked 10,422,648 bytes
-==31586== 
-==31586== 16 bytes in 1 blocks are definitely lost in loss record 15 of 62
-==31586==    at 0x4C2C27B: malloc (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
-==31586==    by 0x455E6B: __dict_header_MOD_dict_keys_ii (dict_header.F90:414)
-==31586==    by 0x479F67: __initialize_MOD_prepare_universes (initialize.F90:364)
-==31586==    by 0x47BAC0: __initialize_MOD_initialize_run (initialize.F90:82)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 1,120 (160 direct, 960 indirect) bytes in 1 blocks are definitely lost in loss record 46 of 62
-==31586==    at 0x4C2C27B: malloc (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
-==31586==    by 0x4D15E9: __list_header_MOD_list_append_char (list_header.F90:169)
-==31586==    by 0x51104D: __set_header_MOD_set_add_char (set_header.F90:69)
-==31586==    by 0x415D51: __ace_MOD_read_xs (ace.F90:81)
-==31586==    by 0x47BAFF: __initialize_MOD_initialize_run (initialize.F90:98)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 16,864 bytes in 62 blocks are definitely lost in loss record 48 of 62
-==31586==    at 0x4C2C27B: malloc (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
-==31586==    by 0x40A17E: __ace_MOD_read_energy_dist (ace.F90:807)
-==31586==    by 0x414995: __ace_MOD_read_ace_table (ace.F90:300)
-==31586==    by 0x415D1D: __ace_MOD_read_xs (ace.F90:78)
-==31586==    by 0x47BAFF: __initialize_MOD_initialize_run (initialize.F90:98)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== LEAK SUMMARY:
-==31586==    definitely lost: 17,040 bytes in 64 blocks
-==31586==    indirectly lost: 960 bytes in 6 blocks
-==31586==      possibly lost: 0 bytes in 0 blocks
-==31586==    still reachable: 3,413,973 bytes in 83,529 blocks
-==31586==         suppressed: 0 bytes in 0 blocks
-==31586== Reachable blocks (those to which a pointer was found) are not shown.
-==31586== To see them, rerun with: --leak-check=full --show-reachable=yes
-==31586== 
-==31586== Use --track-origins=yes to see where uninitialised values come from
-==31586== ERROR SUMMARY: 1186 errors from 28 contexts (suppressed: 2 from 2)
-==31586== 
-==31586== 3 errors in context 1 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208F8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x48D812: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 4 errors in context 2 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208F8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x457447: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 6 errors in context 3 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208F8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x456AF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 14 errors in context 4 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x457447: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 14 errors in context 5 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x456AF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 14 errors in context 6 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4C2E9D3: bcmp (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
-==31586==    by 0x4F20766: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456BD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 18 errors in context 7 of 28:
-==31586== Use of uninitialised value of size 8
-==31586==    at 0x4576E2: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 18 errors in context 8 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x457680: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 18 errors in context 9 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x457638: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 18 errors in context 10 of 28:
-==31586== Use of uninitialised value of size 8
-==31586==    at 0x45760E: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 18 errors in context 11 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4575AD: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 18 errors in context 12 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x457565: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 18 errors in context 13 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x457447: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 20 errors in context 14 of 28:
-==31586== Use of uninitialised value of size 8
-==31586==    at 0x456BA6: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 20 errors in context 15 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x456B58: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 20 errors in context 16 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x456B16: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 20 errors in context 17 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456295: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
-==31586==    by 0x456AF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 24 errors in context 18 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x456BD5: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 24 errors in context 19 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F20769: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456BD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 24 errors in context 20 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4C2E9B1: bcmp (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
-==31586==    by 0x4F20766: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x456BD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
-==31586==    by 0x457402: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
-==31586==    by 0x48E436: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 60 errors in context 21 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x418D2D: __ace_header_MOD_reaction_clear (ace_header.F90:284)
-==31586==    by 0x418415: __ace_header_MOD_nuclide_clear (ace_header.F90:351)
-==31586==    by 0x473055: __global_MOD_free_memory (global.F90:394)
-==31586==    by 0x465379: __finalize_MOD_finalize_run (finalize.F90:55)
-==31586==    by 0x4D1A25: MAIN__ (main.F90:30)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 95 errors in context 22 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x48D812: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 95 errors in context 23 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x48D812: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 111 errors in context 24 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F20927: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x48D812: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
-==31586== 
-==31586== 489 errors in context 25 of 28:
-==31586== Conditional jump or move depends on uninitialised value(s)
-==31586==    at 0x4F2094B: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
-==31586==    by 0x48D812: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
-==31586==    by 0x4CFD8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
-==31586==    by 0x47BAA6: __initialize_MOD_initialize_run (initialize.F90:69)
-==31586==    by 0x4D19EC: MAIN__ (main.F90:14)
-==31586==    by 0x4D1A65: main (main.F90:3)
-==31586== 
---31586-- 
---31586-- used_suppression:      2 dl-hack3-cond-1
-==31586== 
-==31586== ERROR SUMMARY: 1186 errors from 28 contexts (suppressed: 2 from 2)
+==7653== Memcheck, a memory error detector
+==7653== Copyright (C) 2002-2012, and GNU GPL'd, by Julian Seward et al.
+==7653== Using Valgrind-3.8.1 and LibVEX; rerun with -h for copyright info
+==7653== Command: ../../src/openmc
+==7653== Parent PID: 22901
+==7653== 
+--7653-- 
+--7653-- Valgrind options:
+--7653--    -v
+--7653--    --leak-check=yes
+--7653--    --log-file=valgrind_gnu1_errors.txt
+--7653-- Contents of /proc/version:
+--7653--   Linux version 3.7.10-1.1-desktop (geeko@buildhost) (gcc version 4.7.2 20130108 [gcc-4_7-branch revision 195012] (SUSE Linux) ) #1 SMP PREEMPT Thu Feb 28 15:06:29 UTC 2013 (82d3f21)
+--7653-- Arch and hwcaps: AMD64, amd64-sse3-cx16-avx
+--7653-- Page sizes: currently 4096, max supported 4096
+--7653-- Valgrind library directory: /usr/lib64/valgrind
+--7653-- Reading syms from /home/nelsonag/data/git/openmc/src/openmc
+--7653-- Reading syms from /lib64/ld-2.17.so
+--7653-- Reading syms from /usr/lib64/valgrind/memcheck-amd64-linux
+--7653--    object doesn't have a symbol table
+--7653--    object doesn't have a dynamic symbol table
+--7653-- Scheduler: using generic scheduler lock implementation.
+--7653-- Reading suppressions file: /usr/lib64/valgrind/default.supp
+==7653== embedded gdbserver: reading from /tmp/vgdb-pipe-from-vgdb-to-7653-by-nelsonag-on-Deimos123.umich
+==7653== embedded gdbserver: writing to   /tmp/vgdb-pipe-to-vgdb-from-7653-by-nelsonag-on-Deimos123.umich
+==7653== embedded gdbserver: shared mem   /tmp/vgdb-pipe-shared-mem-vgdb-7653-by-nelsonag-on-Deimos123.umich
+==7653== 
+==7653== TO CONTROL THIS PROCESS USING vgdb (which you probably
+==7653== don't want to do, unless you know exactly what you're doing,
+==7653== or are doing some strange experiment):
+==7653==   /usr/lib64/valgrind/../../bin/vgdb --pid=7653 ...command...
+==7653== 
+==7653== TO DEBUG THIS PROCESS USING GDB: start GDB like this
+==7653==   /path/to/gdb ../../src/openmc
+==7653== and then give GDB the following command
+==7653==   target remote | /usr/lib64/valgrind/../../bin/vgdb --pid=7653
+==7653== --pid is optional if only one valgrind process is running
+==7653== 
+--7653-- REDIR: 0x40177a0 (strlen) redirected to 0x3806c661 (???)
+--7653-- Reading syms from /usr/lib64/valgrind/vgpreload_core-amd64-linux.so
+--7653--    object doesn't have a symbol table
+--7653-- Reading syms from /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so
+--7653--    object doesn't have a symbol table
+--7653-- REDIR: 0x4017610 (index) redirected to 0x4c2c940 (index)
+--7653-- REDIR: 0x4017690 (strcmp) redirected to 0x4c2d950 (strcmp)
+--7653-- Reading syms from /usr/lib64/libgfortran.so.3.0.0
+--7653--    object doesn't have a symbol table
+--7653-- Reading syms from /lib64/libm-2.17.so
+--7653-- Reading syms from /lib64/libgcc_s.so.1
+--7653--    object doesn't have a symbol table
+--7653-- Reading syms from /usr/lib64/libquadmath.so.0.0.0
+--7653--    object doesn't have a symbol table
+--7653-- Reading syms from /lib64/libc-2.17.so
+--7653-- REDIR: 0x591af70 (strcasecmp) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
+--7653-- REDIR: 0x5917330 (strnlen) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
+--7653-- REDIR: 0x591d240 (strncasecmp) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
+--7653-- REDIR: 0x5919d80 (memset) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
+--7653-- REDIR: 0x5919d30 (memcpy@GLIBC_2.2.5) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
+--7653-- REDIR: 0x5918d20 (__GI_strrchr) redirected to 0x4c2c760 (__GI_strrchr)
+--7653-- REDIR: 0x5911b60 (calloc) redirected to 0x4c2a030 (calloc)
+--7653-- REDIR: 0x5911200 (malloc) redirected to 0x4c2c210 (malloc)
+--7653-- REDIR: 0x5917250 (__GI_strlen) redirected to 0x4c2ccc0 (__GI_strlen)
+--7653-- REDIR: 0x5917200 (strlen) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
+--7653-- REDIR: 0x59e2730 (__strlen_sse2_pminub) redirected to 0x4c2cca0 (strlen)
+--7653-- REDIR: 0x591f920 (memcpy@@GLIBC_2.14) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
+--7653-- REDIR: 0x59c7af0 (__memcpy_ssse3_back) redirected to 0x4c2dc80 (memcpy@@GLIBC_2.14)
+--7653-- REDIR: 0x5917450 (__GI_strncmp) redirected to 0x4c2d190 (__GI_strncmp)
+--7653-- REDIR: 0x5919dc0 (__GI_memset) redirected to 0x4c2ed80 (memset)
+--7653-- REDIR: 0x5911620 (free) redirected to 0x4c2af00 (free)
+--7653-- REDIR: 0x59cd090 (__memmove_ssse3_back) redirected to 0x4c2da70 (memcpy@GLIBC_2.2.5)
+--7653-- REDIR: 0xffffffffff600000 (???) redirected to 0x3806c643 (???)
+--7653-- REDIR: 0x5916be0 (__GI_strcpy) redirected to 0x4c2cdb0 (__GI_strcpy)
+--7653-- REDIR: 0x5915750 (__GI_strcmp) redirected to 0x4c2d900 (__GI_strcmp)
+--7653-- REDIR: 0x5920f50 (strchrnul) redirected to 0x4c2f2d0 (strchrnul)
+--7653-- REDIR: 0x5917410 (strncmp) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
+--7653-- REDIR: 0x59b3ca0 (__strncmp_sse42) redirected to 0x4c2d120 (strncmp)
+--7653-- REDIR: 0x5919760 (bcmp) redirected to 0x4a24760 (_vgnU_ifunc_wrapper)
+--7653-- REDIR: 0x59dd060 (__memcmp_sse4_1) redirected to 0x4c2e9a0 (bcmp)
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F20927: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x48DA12: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F2094B: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x48DA12: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x48DA12: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x48DA12: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x456CF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x456CF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x456D16: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x456D58: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Use of uninitialised value of size 8
+==7653==    at 0x456DA6: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4C2E9B1: bcmp (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7653==    by 0x4F20766: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456DD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F20769: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456DD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x456DD5: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x457647: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x457647: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x457765: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4577AD: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Use of uninitialised value of size 8
+==7653==    at 0x45780E: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x457838: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x457880: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Use of uninitialised value of size 8
+==7653==    at 0x4578E2: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F208F8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x456CF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F208F8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x457647: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4C2E9D3: bcmp (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7653==    by 0x4F20766: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456DD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+--7653-- REDIR: 0x59bb850 (__strncasecmp_avx) redirected to 0x4c2d2e0 (strncasecmp)
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x418D51: __ace_header_MOD_reaction_clear (ace_header.F90:286)
+==7653==    by 0x418439: __ace_header_MOD_nuclide_clear (ace_header.F90:355)
+==7653==    by 0x473255: __global_MOD_free_memory (global.F90:394)
+==7653==    by 0x465579: __finalize_MOD_finalize_run (finalize.F90:55)
+==7653==    by 0x4D1C25: MAIN__ (main.F90:30)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== HEAP SUMMARY:
+==7653==     in use at exit: 3,414,101 bytes in 83,531 blocks
+==7653==   total heap usage: 206,786 allocs, 123,255 frees, 22,549,340,381 bytes allocated
+==7653== 
+==7653== Searching for pointers to 83,531 not-freed blocks
+==7653== Checked 10,422,728 bytes
+==7653== 
+==7653== 16 bytes in 1 blocks are definitely lost in loss record 15 of 57
+==7653==    at 0x4C2C27B: malloc (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7653==    by 0x45606B: __dict_header_MOD_dict_keys_ii (dict_header.F90:414)
+==7653==    by 0x47A167: __initialize_MOD_prepare_universes (initialize.F90:364)
+==7653==    by 0x47BCC0: __initialize_MOD_initialize_run (initialize.F90:82)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== LEAK SUMMARY:
+==7653==    definitely lost: 16 bytes in 1 blocks
+==7653==    indirectly lost: 0 bytes in 0 blocks
+==7653==      possibly lost: 0 bytes in 0 blocks
+==7653==    still reachable: 3,414,085 bytes in 83,530 blocks
+==7653==         suppressed: 0 bytes in 0 blocks
+==7653== Reachable blocks (those to which a pointer was found) are not shown.
+==7653== To see them, rerun with: --leak-check=full --show-reachable=yes
+==7653== 
+==7653== Use --track-origins=yes to see where uninitialised values come from
+==7653== ERROR SUMMARY: 1429 errors from 25 contexts (suppressed: 2 from 2)
+==7653== 
+==7653== 3 errors in context 1 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F208F8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x457647: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 4 errors in context 2 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F208F8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x456CF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 16 errors in context 3 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x457647: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 18 errors in context 4 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x457647: __dict_header_MOD_dict_add_key_ci (dict_header.F90:109)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 19 errors in context 5 of 25:
+==7653== Use of uninitialised value of size 8
+==7653==    at 0x4578E2: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 19 errors in context 6 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x457880: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 19 errors in context 7 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x457838: __dict_header_MOD_dict_add_key_ci (dict_header.F90:118)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 19 errors in context 8 of 25:
+==7653== Use of uninitialised value of size 8
+==7653==    at 0x45780E: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 19 errors in context 9 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4577AD: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 19 errors in context 10 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x457765: __dict_header_MOD_dict_add_key_ci (dict_header.F90:117)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 20 errors in context 11 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x456CF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 23 errors in context 12 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456495: __dict_header_MOD_dict_hash_key_ci (dict_header.F90:335)
+==7653==    by 0x456CF2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:219)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 24 errors in context 13 of 25:
+==7653== Use of uninitialised value of size 8
+==7653==    at 0x456DA6: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 24 errors in context 14 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x456D58: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 24 errors in context 15 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x456D16: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:220)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 52 errors in context 16 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4C2E9D3: bcmp (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7653==    by 0x4F20766: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456DD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 60 errors in context 17 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x418D51: __ace_header_MOD_reaction_clear (ace_header.F90:286)
+==7653==    by 0x418439: __ace_header_MOD_nuclide_clear (ace_header.F90:355)
+==7653==    by 0x473255: __global_MOD_free_memory (global.F90:394)
+==7653==    by 0x465579: __finalize_MOD_finalize_run (finalize.F90:55)
+==7653==    by 0x4D1C25: MAIN__ (main.F90:30)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 89 errors in context 18 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F208E8: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x48DA12: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 89 errors in context 19 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F2096E: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x48DA12: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 99 errors in context 20 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x456DD5: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 99 errors in context 21 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F20769: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456DD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 99 errors in context 22 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4C2E9B1: bcmp (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
+==7653==    by 0x4F20766: _gfortran_compare_string (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x456DD2: __dict_header_MOD_dict_get_elem_ci (dict_header.F90:222)
+==7653==    by 0x457602: __dict_header_MOD_dict_add_key_ci (dict_header.F90:103)
+==7653==    by 0x48E636: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2470)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 111 errors in context 23 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F20927: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x48DA12: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+==7653== 
+==7653== 460 errors in context 24 of 25:
+==7653== Conditional jump or move depends on uninitialised value(s)
+==7653==    at 0x4F2094B: _gfortran_string_len_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x4F209D5: _gfortran_string_trim (in /usr/lib64/libgfortran.so.3.0.0)
+==7653==    by 0x48DA12: __input_xml_MOD_read_cross_sections_xml (input_xml.F90:2432)
+==7653==    by 0x4CFF8B: __input_xml_MOD_read_input_xml (input_xml.F90:35)
+==7653==    by 0x47BCA6: __initialize_MOD_initialize_run (initialize.F90:69)
+==7653==    by 0x4D1BEC: MAIN__ (main.F90:14)
+==7653==    by 0x4D1C65: main (main.F90:3)
+==7653== 
+--7653-- 
+--7653-- used_suppression:      2 dl-hack3-cond-1
+==7653== 
+==7653== ERROR SUMMARY: 1429 errors from 25 contexts (suppressed: 2 from 2)

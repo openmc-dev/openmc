@@ -400,7 +400,7 @@ contains
       index_cell_in_univ(i_univ) = index_cell_in_univ(i_univ) + 1
       univ % cells(index_cell_in_univ(i_univ)) = i
     end do
-
+    
   end subroutine prepare_universes
 
 !===============================================================================

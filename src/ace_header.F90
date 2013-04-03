@@ -264,9 +264,11 @@ module ace_header
       if (allocated(this % data)) &
         deallocate(this % data)
         
-      if (associated(this % next)) &
+      if (associated(this % next)) then
         ! recursively clear this item
         call this % next % clear()
+        nullify(this % next)
+      end if
       
     end subroutine DistEnergy_clear
     
@@ -281,8 +283,10 @@ module ace_header
       if (allocated(this % sigma)) &
         deallocate(this % sigma)
       
-      if (associated(this % edist)) &
+      if (associated(this % edist)) then
         call this % edist % clear()
+        deallocate(this % edist)
+      end if
         
       call this % adist % clear()
       

@@ -56,7 +56,7 @@ module ace_header
     logical :: has_angle_dist          ! Angle distribution present?
     logical :: has_energy_dist         ! Energy distribution present?
     type(DistAngle)           :: adist ! Secondary angular distribution
-    type(DistEnergy), pointer :: edist ! Secondary energy distribution
+    type(DistEnergy), pointer :: edist => null() ! Secondary energy distribution
     
     ! Type-Bound procedures
     contains
@@ -346,10 +346,11 @@ module ace_header
         deallocate(this % nu_d_edist)
       end if
       
-      if (associated(this % urr_data)) &
+      if (associated(this % urr_data)) then
         call this % urr_data % clear()
         deallocate(this % urr_data)
-        
+      end if
+      
       if (associated(this % reactions)) then
         do i = 1, size(this % reactions)
           call this % reactions(i) % clear()

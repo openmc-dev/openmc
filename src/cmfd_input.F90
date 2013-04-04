@@ -78,13 +78,9 @@ contains
       cmfd%egrid = (/0.0_8,20.0_8/)
       cmfd % indices(4) = 1 ! one energy group
     end if
-    
+
     ! set global albedo
-    if (associated(mesh_ % albedo)) then
-      cmfd % albedo = mesh_ % albedo
-    else
-      cmfd % albedo = (/1.0, 1.0, 1.0, 1.0, 1.0, 1.0/)
-    end if
+    cmfd % albedo = mesh_ % albedo
 
     ! get acceleration map
     if (associated(mesh_ % map)) then

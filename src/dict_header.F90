@@ -68,6 +68,7 @@ module dict_header
     procedure :: get_key => dict_get_key_ci
     procedure :: has_key => dict_has_key_ci
     procedure :: keys => dict_keys_ci
+    procedure :: clear => dict_clear_ci
     procedure, private :: get_elem => dict_get_elem_ci
   end type DictCharInt
 
@@ -80,6 +81,7 @@ module dict_header
     procedure :: get_key => dict_get_key_ii
     procedure :: has_key => dict_has_key_ii
     procedure :: keys => dict_keys_ii
+    procedure :: clear => dict_clear_ii
     procedure, private :: get_elem => dict_get_elem_ii
   end type DictIntInt
 
@@ -428,5 +430,65 @@ contains
     end do
 
   end function dict_keys_ii
+
+!===============================================================================
+! DICT_DELETE deletes all (key,value) pairs from the dictionary
+!===============================================================================
+
+  subroutine dict_clear_ci(this)
+
+    class(DictCharInt) :: this
+
+    integer :: i
+    type(ElemKeyValueCI), pointer :: current
+    type(ElemKeyValueCI), pointer :: next
+
+    if (associated(this % table)) then
+      do i = 1, size(this % table)
+        current => this % table(i) % list
+        do while (associated(current))
+          if (associated(current % next)) then
+            next => current % next
+          else
+            nullify(next)
+          end if
+          deallocate(current)
+          current => next
+        end do
+        if (associated(this % table(i) % list)) &
+          nullify(this % table(i) % list)
+      end do
+      deallocate(this % table)
+    end if
+
+  end subroutine dict_clear_ci
+
+  subroutine dict_clear_ii(this)
+
+    class(DictIntInt) :: this
+
+    integer :: i
+    type(ElemKeyValueII), pointer :: current
+    type(ElemKeyValueII), pointer :: next
+    
+    if (associated(this % table)) then
+      do i = 1, size(this % table)
+        current => this % table(i) % list
+        do while (associated(current))
+          if (associated(current % next)) then
+            next => current % next
+          else
+            nullify(next)
+          end if
+          deallocate(current)
+          current => next
+        end do
+        if (associated(this % table(i) % list)) &
+          nullify(this % table(i) % list)
+      end do
+      deallocate(this % table)
+    end if
+
+  end subroutine dict_clear_ii
   
 end module dict_header

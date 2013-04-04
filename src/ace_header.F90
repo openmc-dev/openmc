@@ -267,7 +267,7 @@ module ace_header
       if (associated(this % next)) then
         ! recursively clear this item
         call this % next % clear()
-        nullify(this % next)
+        deallocate(this % next)
       end if
       
     end subroutine DistEnergy_clear
@@ -348,7 +348,7 @@ module ace_header
       
       if (associated(this % urr_data)) &
         call this % urr_data % clear()
-        nullify(this % urr_data)
+        deallocate(this % urr_data)
         
       if (associated(this % reactions)) then
         do i = 1, size(this % reactions)

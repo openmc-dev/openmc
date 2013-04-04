@@ -5,10 +5,7 @@
 
   <material id="40">
     <density value="4.5" units="g/cc" />
-<!--
     <nuclide name="U-235" ao="1.0" />
--->
-     <nuclide name="Pu-240" ao="1.0" />
   </material>
 
   <material id="41">

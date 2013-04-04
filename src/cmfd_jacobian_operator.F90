@@ -250,7 +250,7 @@ contains
       call MatGetRow(ctx%loss%M, irow, ncols, cols, vals, ierr)
 
       ! set that row to Jacobian matrix
-      call MatSetValues(jac_prec, 1, irow, ncols, cols(1:ncols), vals, &
+      call MatSetValues(jac_prec, 1, (/irow/), ncols, cols(1:ncols), vals, &
            INSERT_VALUES, ierr)
 
       ! restore the row
@@ -283,7 +283,7 @@ contains
     ! set values in last row of matrix
     if (rank == n_procs_cmfd - 1) then
       phi_tmp = -phi_tmp ! negate the transpose
-      call MatSetValues(jac_prec, 1, n, n, (/(k,k=0,n-1)/), phi_tmp, &
+      call MatSetValues(jac_prec, 1, (/n/), n, (/(k,k=0,n-1)/), phi_tmp, &
            INSERT_VALUES, ierr)
       call MatSetValue(jac_prec, n, n, ONE, INSERT_VALUES, ierr)
     end if

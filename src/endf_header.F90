@@ -30,10 +30,10 @@ module endf_header
       class(Tab1), intent(inout) :: this ! The Tab1 to clear
       
       if (allocated(this % nbt)) &
-        deallocate(this % nbt, this % int)
+           deallocate(this % nbt, this % int)
         
       if (allocated(this % x)) &
-        deallocate(this % x, this % y)
+           deallocate(this % x, this % y)
         
     end subroutine Tab1_clear
 

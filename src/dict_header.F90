@@ -432,7 +432,7 @@ contains
   end function dict_keys_ii
 
 !===============================================================================
-! DICT_DELETE deletes all (key,value) pairs from the dictionary
+! DICT_CLEAR Deletes and deallocates the dictionary item
 !===============================================================================
 
   subroutine dict_clear_ci(this)
@@ -456,7 +456,7 @@ contains
           current => next
         end do
         if (associated(this % table(i) % list)) &
-          nullify(this % table(i) % list)
+             nullify(this % table(i) % list)
       end do
       deallocate(this % table)
     end if
@@ -484,7 +484,7 @@ contains
           current => next
         end do
         if (associated(this % table(i) % list)) &
-          nullify(this % table(i) % list)
+             nullify(this % table(i) % list)
       end do
       deallocate(this % table)
     end if

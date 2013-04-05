@@ -142,9 +142,9 @@ module tally_header
       this % type = NONE
       this % n_bins = 0
       if (allocated(this % int_bins)) &
-        deallocate(this % int_bins)
+           deallocate(this % int_bins)
       if (allocated(this % real_bins)) &
-        deallocate(this % real_bins)
+           deallocate(this % real_bins)
       
     end subroutine TallyFilter_clear
     
@@ -170,26 +170,26 @@ module tally_header
       end if
       
       if (allocated(this % matching_bins)) &
-        deallocate(this % matching_bins)
+           deallocate(this % matching_bins)
       if (allocated(this % stride)) &
-        deallocate(this % stride)
+           deallocate(this % stride)
       
       this % find_filter = 0
       
       this % n_nuclide_bins = 0
       if (allocated(this % nuclide_bins)) &
-        deallocate(this % nuclide_bins)
+           deallocate(this % nuclide_bins)
       this % all_nuclides = .false.
       
       this % n_score_bins = 0
       if (allocated(this % score_bins)) &
-        deallocate(this % score_bins)
+           deallocate(this % score_bins)
       if (allocated(this % scatt_order)) &
-        deallocate(this % scatt_order)
+           deallocate(this % scatt_order)
       this % n_user_score_bins = 0
       
       if (allocated(this % results)) &
-        deallocate(this % results)
+           deallocate(this % results)
       
       this % reset = .false.
       

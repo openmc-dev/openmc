@@ -246,7 +246,7 @@ module ace_header
       class(DistAngle), intent(inout) :: this ! The DistAngle object to clear
       
       if (allocated(this % energy)) &
-        deallocate(this % energy, this % type, this % location, this % data)
+           deallocate(this % energy, this % type, this % location, this % data)
       
     end subroutine DistAngle_clear    
 
@@ -262,7 +262,7 @@ module ace_header
       call this % p_valid % clear()
       
       if (allocated(this % data)) &
-        deallocate(this % data)
+           deallocate(this % data)
         
       if (associated(this % next)) then
         ! recursively clear this item
@@ -281,7 +281,7 @@ module ace_header
       class(Reaction), intent(inout) :: this ! The Reaction object to clear
       
       if (allocated(this % sigma)) &
-        deallocate(this % sigma)
+           deallocate(this % sigma)
       
       if (associated(this % edist)) then
         call this % edist % clear()
@@ -301,7 +301,7 @@ module ace_header
       class(UrrData), intent(inout) :: this ! The UrrData object to clear
       
       if (allocated(this % energy)) &
-        deallocate(this % energy, this % prob)
+           deallocate(this % energy, this % prob)
       
     end subroutine UrrData_clear      
 
@@ -316,28 +316,28 @@ module ace_header
       integer :: i ! Loop counter
       
       if (allocated(this % grid_index)) &
-        deallocate(this % grid_index)
+           deallocate(this % grid_index)
       
       if (allocated(this % energy)) &
-        deallocate(this % total, this % elastic, this % fission,  &
+           deallocate(this % total, this % elastic, this % fission,  &
           this % nu_fission, this % absorption)
       if (allocated(this % heating)) &
-        deallocate(this % heating)
+           deallocate(this % heating)
       
       if (allocated(this % index_fission)) &
-        deallocate(this % index_fission)
+           deallocate(this % index_fission)
         
       if (allocated(this % nu_t_data)) &
-        deallocate(this % nu_t_data)
+           deallocate(this % nu_t_data)
         
       if (allocated(this % nu_p_data)) &
-        deallocate(this % nu_p_data)
+           deallocate(this % nu_p_data)
         
       if (allocated(this % nu_d_data)) &
-        deallocate(this % nu_d_data)
+           deallocate(this % nu_d_data)
         
       if (allocated(this % nu_d_precursor_data)) &
-        deallocate(this % nu_d_precursor_data)
+           deallocate(this % nu_d_precursor_data)
         
       if (associated(this % nu_d_edist)) then
         do i = 1, size(this % nu_d_edist)

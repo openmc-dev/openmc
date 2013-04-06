@@ -25,7 +25,7 @@ module endf_header
 ! TAB1_CLEAR deallocates the items in Tab1
 !===============================================================================
 
-    subroutine Tab1_clear(this)
+    subroutine tab1_clear(this)
       
       class(Tab1), intent(inout) :: this ! The Tab1 to clear
       
@@ -35,6 +35,6 @@ module endf_header
       if (allocated(this % x)) &
            deallocate(this % x, this % y)
         
-    end subroutine Tab1_clear
+    end subroutine tab1_clear
 
 end module endf_header

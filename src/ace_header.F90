@@ -19,7 +19,7 @@ module ace_header
     
     ! Type-Bound procedures
     contains
-      procedure :: clear => DistAngle_clear ! Deallocates DistAngle
+      procedure :: clear => distangle_clear ! Deallocates DistAngle
   end type DistAngle
 
 !===============================================================================
@@ -38,7 +38,7 @@ module ace_header
     
     ! Type-Bound procedures
     contains
-      procedure :: clear => DistEnergy_clear ! Deallocates DistEnergy
+      procedure :: clear => distenergy_clear ! Deallocates DistEnergy
   end type DistEnergy
 
 !===============================================================================
@@ -60,7 +60,7 @@ module ace_header
     
     ! Type-Bound procedures
     contains
-      procedure :: clear => Reaction_clear ! Deallocates DistEnergy
+      procedure :: clear => reaction_clear ! Deallocates Reaction
   end type Reaction
 
 !===============================================================================
@@ -79,7 +79,7 @@ module ace_header
     
     ! Type-Bound procedures
     contains
-      procedure :: clear => UrrData_clear ! Deallocates UrrData
+      procedure :: clear => urrdata_clear ! Deallocates UrrData
   end type UrrData
 
 !===============================================================================
@@ -140,7 +140,7 @@ module ace_header
     
     ! Type-Bound procedures
     contains
-      procedure :: clear => Nuclide_clear ! Deallocates Nuclide
+      procedure :: clear => nuclide_clear ! Deallocates Nuclide
   end type Nuclide
 
 !===============================================================================
@@ -241,20 +241,20 @@ module ace_header
 ! DISTANGLE_CLEAR resets and deallocates data in Reaction.
 !===============================================================================    
   
-    subroutine DistAngle_clear(this)
+    subroutine distangle_clear(this)
       
       class(DistAngle), intent(inout) :: this ! The DistAngle object to clear
       
       if (allocated(this % energy)) &
            deallocate(this % energy, this % type, this % location, this % data)
       
-    end subroutine DistAngle_clear    
+    end subroutine distangle_clear    
 
 !===============================================================================
 ! DISTENERGY_CLEAR resets and deallocates data in DistEnergy.
 !===============================================================================    
   
-    recursive subroutine DistEnergy_clear(this)
+    recursive subroutine distenergy_clear(this)
       
       class(DistEnergy), intent(inout) :: this ! The DistEnergy object to clear
       
@@ -270,13 +270,13 @@ module ace_header
         deallocate(this % next)
       end if
       
-    end subroutine DistEnergy_clear
+    end subroutine distenergy_clear
     
 !===============================================================================
 ! REACTION_CLEAR resets and deallocates data in Reaction.
 !===============================================================================    
   
-    subroutine Reaction_clear(this)
+    subroutine reaction_clear(this)
       
       class(Reaction), intent(inout) :: this ! The Reaction object to clear
       
@@ -290,26 +290,26 @@ module ace_header
         
       call this % adist % clear()
       
-    end subroutine Reaction_clear    
+    end subroutine reaction_clear    
     
 !===============================================================================
 ! URRDATA_CLEAR resets and deallocates data in Reaction.
 !===============================================================================    
   
-    subroutine UrrData_clear(this)
+    subroutine urrdata_clear(this)
       
       class(UrrData), intent(inout) :: this ! The UrrData object to clear
       
       if (allocated(this % energy)) &
            deallocate(this % energy, this % prob)
       
-    end subroutine UrrData_clear      
+    end subroutine urrdata_clear      
 
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide.
 !===============================================================================    
   
-    subroutine Nuclide_clear(this)
+    subroutine nuclide_clear(this)
       
       class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
       
@@ -358,6 +358,6 @@ module ace_header
         deallocate(this % reactions)
       end if
       
-    end subroutine Nuclide_clear    
+    end subroutine nuclide_clear    
 
 end module ace_header

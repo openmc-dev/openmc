@@ -58,7 +58,7 @@ module tally_header
     
     ! Type-Bound procedures
     contains
-      procedure :: clear => TallyFilter_clear ! Deallocates TallyFilter
+      procedure :: clear => tallyfilter_clear ! Deallocates TallyFilter
   end type TallyFilter
 
 !===============================================================================
@@ -126,7 +126,7 @@ module tally_header
     
     ! Type-Bound procedures
     contains
-      procedure :: clear => TallyObject_clear ! Deallocates TallyObject
+      procedure :: clear => tallyobject_clear ! Deallocates TallyObject
   end type TallyObject
   
   contains
@@ -136,7 +136,7 @@ module tally_header
 ! initialized state.
 !===============================================================================
 
-    subroutine TallyFilter_clear(this)
+    subroutine tallyfilter_clear(this)
       class(TallyFilter), intent(inout) :: this ! The TallyFilter to be cleared
       
       this % type = NONE
@@ -146,14 +146,14 @@ module tally_header
       if (allocated(this % real_bins)) &
            deallocate(this % real_bins)
       
-    end subroutine TallyFilter_clear
+    end subroutine tallyfilter_clear
     
 !===============================================================================
 ! TALLYOBJECT_CLEAR deallocates a TallyObject element and sets it to its as
 ! initialized state.
 !===============================================================================
 
-    subroutine TallyObject_clear(this)
+    subroutine tallyobject_clear(this)
       class(TallyObject), intent(inout) :: this ! The TallyObject to be cleared
       
       integer :: i  ! Loop Index
@@ -195,6 +195,6 @@ module tally_header
       
       this % n_realizations = 0
       
-    end subroutine TallyObject_clear
+    end subroutine tallyobject_clear
 
 end module tally_header

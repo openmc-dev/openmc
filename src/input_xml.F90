@@ -580,6 +580,7 @@ contains
     integer :: coeffs_reqd
     real(8) :: phi, theta, psi
     logical :: file_exists
+    logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     type(Cell),    pointer :: c => null()
@@ -758,6 +759,10 @@ contains
     ! ==========================================================================
     ! READ SURFACES FROM GEOMETRY.XML
 
+    ! This variable is used to check whether at least one boundary condition was
+    ! applied to a surface
+    boundary_exists = .false.
+
     ! Get number of <surface> tags
     n_surfaces = size(surface_)
 
@@ -851,10 +856,10 @@ contains
         s % bc = BC_TRANSMIT
       case ('vacuum')
         s % bc = BC_VACUUM
+        boundary_exists = .true.
       case ('reflective', 'reflect', 'reflecting')
         s % bc = BC_REFLECT
-      case ('periodic')
-        s % bc = BC_PERIODIC
+        boundary_exists = .true.
       case default
         message = "Unknown boundary condition '" // trim(word) // &
              "' specified on surface " // trim(to_str(s % id))
@@ -865,6 +870,13 @@ contains
       call surface_dict % add_key(s % id, i)
 
     end do
+
+    ! Check to make sure a boundary condition was applied to at least one
+    ! surface
+    if (.not. boundary_exists) then
+      message = "No boundary conditions were applied to any surfaces!"
+      call fatal_error()
+    end if
 
     ! ==========================================================================
     ! READ LATTICES FROM GEOMETRY.XML

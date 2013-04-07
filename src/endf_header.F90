@@ -16,7 +16,7 @@ module endf_header
     
     ! Type-Bound procedures
     contains
-      procedure :: clear => Tab1_clear ! deallocates a Tab1 Object.
+      procedure :: clear => tab1_clear ! deallocates a Tab1 Object.
   end type Tab1
   
   contains

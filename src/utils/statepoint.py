@@ -441,6 +441,18 @@ class StatePoint(object):
         return t.results[filter_index, score_index]
 
     def extract_results(self, tally_id, score_str):
+        """Returns a tally results dictionary given a tally_id and score string.
+
+           Parameters
+           ----------
+           tally_id : int
+               Index for the tally in StatePoint.tallies list
+
+           score_str : string
+               Corresponds to the string entered for a score in tallies.xml.
+               For a flux score extraction it would be 'score'
+
+        """
 
         # get tally
         try:

@@ -38,8 +38,6 @@ contains
 
   subroutine run_eigenvalue()
 
-    integer(8) :: i  ! index over individual particles
-
     if (master) call header("K EIGENVALUE SIMULATION", level=1)
 
     ! Allocate particle

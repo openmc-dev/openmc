@@ -30,12 +30,14 @@ module particle_restart
 
 contains
 
+#ifdef HDF5
+
 !===============================================================================
-! READ_PARTICLE_RESTART
+! READ_HDF5_PARTICLE_RESTART
 !===============================================================================
 
   subroutine read_hdf5_particle_restart()
-#ifdef HDF5
+
     integer(HSIZE_T)        :: dims1(1)
 
     ! write meessage
@@ -68,15 +70,52 @@ contains
 
     ! close hdf5 file
     call h5fclose_f(hdf5_particle_file, hdf5_err)
-#endif
+
   end subroutine read_hdf5_particle_restart
+
+#endif
+
+!===============================================================================
+! READ_BINARY_PARTICLE_RESTART
+!===============================================================================
+
+  subroutine read_binary_particle_restart()
+
+    ! write meessage
+    message = "Loading particle restart file " // trim(path_particle_restart) &
+              // "..."
+    call write_message(1)
+
+    ! open file
+    open(UNIT=UNIT_PARTICLE, FILE=path_particle_restart, STATUS='old', &
+         ACCESS='stream')
+
+    ! read data from file
+    read(UNIT_PARTICLE) current_batch
+    read(UNIT_PARTICLE) gen_per_batch
+    read(UNIT_PARTICLE) current_gen
+    read(UNIT_PARTICLE) n_particles
+    read(UNIT_PARTICLE) p % id
+    read(UNIT_PARTICLE) p % wgt
+    read(UNIT_PARTICLE) p % E
+    read(UNIT_PARTICLE) p % coord % xyz
+    read(UNIT_PARTICLE) p % coord % uvw
+
+    ! set particle last attributes
+    p % last_wgt = p % wgt
+    p % last_xyz = p % coord % xyz
+    p % last_E   = p % E
+
+    ! close hdf5 file
+    close(UNIT_PARTICLE)
+
+  end subroutine read_binary_particle_restart
 
 !===============================================================================
 ! RUN_PARTICLE_RESTART
 !===============================================================================
 
   subroutine run_particle_restart()
-#ifdef HDF5
 
     integer(8) :: particle_seed
 
@@ -85,7 +124,11 @@ contains
     call initialize_particle()
 
     ! read in the restart information
+#ifdef HDF5
     call read_hdf5_particle_restart()
+#else
+    call read_binary_particle_restart()
+#endif
 
     ! set all tallies to 0 for now (just tracking errors)
     n_tallies = 0
@@ -97,12 +140,14 @@ contains
 
     ! transport neutron
     call transport()
-    print *, 'WEIGHT:', p % wgt
-    print *, 'ENERGY:', p % E
-    print *, 'LOCATION:', p % coord % xyz
-    print *, 'ANGLE:', p % coord % uvw
 
-#endif HDF5
+    ! write output if particle made it
+    write(ou,*) 'Particle Successfully Transport:'
+    write(ou,*) 'WEIGHT:', p % wgt
+    write(ou,*) 'ENERGY:', p % E
+    write(ou,*) 'LOCATION:', p % coord % xyz
+    write(ou,*) 'ANGLE:', p % coord % uvw
+
   end subroutine run_particle_restart
 
 end module particle_restart

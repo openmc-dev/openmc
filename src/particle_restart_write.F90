@@ -25,7 +25,27 @@ contains
 !===============================================================================
 
   subroutine write_particle_restart()
+
+    ! Dont write another restart file if in particle restart mode
+    if (run_mode == MODE_PARTICLE) return
+
+    ! write out binary or HDF5 file
 #ifdef HDF5
+    call write_particle_restart_hdf5()
+#else
+    call write_particle_restart_binary()
+#endif
+
+  end subroutine write_particle_restart
+
+#ifdef HDF5
+
+!===============================================================================
+! WRITE_PARTICLE_RESTART_HDF5
+!===============================================================================
+
+  subroutine write_particle_restart_hdf5()
+
     character(MAX_FILE_LEN) :: filename
     integer(HSIZE_T)        :: dims1(1)
     type(Bank), pointer     :: src => null()
@@ -55,7 +75,44 @@ contains
 
     ! close hdf5 file
     call h5fclose_f(hdf5_particle_file, hdf5_err)
+
+  end subroutine write_particle_restart_hdf5
+
 #endif
-  end subroutine write_particle_restart
+
+!===============================================================================
+! WRITE_PARTICLE_RESTART_BINARY
+!===============================================================================
+
+  subroutine write_particle_restart_binary()
+
+    character(MAX_FILE_LEN) :: filename
+    type(Bank), pointer     :: src => null()
+
+    ! set up file name
+    filename = 'particle_'//trim(to_str(rank))//'.binary'
+
+    ! create hdf5 file
+    open(UNIT=UNIT_PARTICLE, FILE=filename, STATUS='replace', &
+         ACCESS='stream')
+
+    ! get information about source particle
+    src => source_bank(current_work)
+
+    ! write data to file
+    write(UNIT_PARTICLE) current_batch
+    write(UNIT_PARTICLE) gen_per_batch
+    write(UNIT_PARTICLE) current_gen
+    write(UNIT_PARTICLE) n_particles
+    write(UNIT_PARTICLE) p % id
+    write(UNIT_PARTICLE) src % wgt
+    write(UNIT_PARTICLE) src % E
+    write(UNIT_PARTICLE) src % xyz
+    write(UNIT_PARTICLE) src % uvw
+
+    ! close hdf5 file
+    close(UNIT_PARTICLE)
+
+  end subroutine write_particle_restart_binary
 
 end module particle_restart_write

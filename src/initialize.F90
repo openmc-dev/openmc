@@ -306,7 +306,7 @@ contains
         case ('-eps_tol', '-ksp_gmres_restart')
           ! Handle options that would be based to PETSC
           i = i + 1
-        case ('-partcle','--particle')
+        case ('-particle','--particle')
           ! Read in path for particle restart
           i = i + 1
           path_particle_restart = argv(i)

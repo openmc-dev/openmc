@@ -1,206 +1,160 @@
 #!/usr/bin/python
 # Filename: eigenfunction_rms.py
 
-import h5py
+# import packages
+import statepoint
 import numpy as np
-import cPickle
-import matplotlib.pyplot as plt
+import os
 import sys
-#
-class EigenFunction:
-#
- 	'''Represents the reference eigenfunction'''
- 	reference = 0.
-#
-	def __init__(self,data):
-#
-		'''Initializes the eigenfunction'''
-		self.function = 0.
-		self.data = data
-		self.meanfunction = 0.
-#
-        def read_hdf5(self,h5_file,cycle):
-#
-		'''Read data from HDF5 file'''
-                self.cycle = cycle
-                f = h5py.File(h5_file,'r')
-                group = '/cycle'+str(cycle)+'/'+self.data
-                dataset = f[group]
-                self.function = np.empty(dataset.shape,dataset.dtype)
-                dataset.read_direct(self.function)
-		self.function = self.function
-                self.iamref = 'F'
-#
-	def set_reference(self):
-#
-		'''Sets instance to be reference calc'''
-		self.iamref = 'T'
-		EigenFunction.reference = self.function
-#
-	def compute_rms(self):
-#
-		'''Computes RMS value'''
-		Np = self.function.size
-		Np = 41772
-                tmp = (self.meanfunction - EigenFunction.reference)**2
-                tmp2 = tmp.sum()
-                self.rms = np.sqrt((1.0/float(Np))*tmp2)
-#
-def read_runs(runpath,hdfile,cycle_start,cycle_end,run_start,run_end,data):
-	runlist = []
-	tmp = EigenFunction(data)
-	tmp.read_hdf5(runpath+str(run_start)+'/'+hdfile,cycle_start)
-	indices = tmp.function.shape # extent of all dimensions
-	i = cycle_start
-	while i <= cycle_end:
-		meantmp = EigenFunction(data) # init mean object
-		j = run_start
-		runs = np.zeros((run_end - run_start + 1,indices[0],indices[1],indices[2],indices[3])) # init runs array
-		while j <= run_end:
-			tmp.read_hdf5(runpath+str(j)+'/'+hdfile,i) # read hdf5 file
-			runs[j-run_start] = tmp.function # put function into runs
-			if i == cycle_start:
-				print runs[j-run_start,0,150,150,0]
-			j += 1
-		meantmp.meanfunction = np.average(runs, axis=0) # compute the mean
-		meantmp.function = runs
-		runlist.append(meantmp)
-		print 'Read in from path: '+runpath+' Cycle: '+str(i)
-		i += 1
-	return runlist
 
-def create_reference(runpath,hdfile,cycle,run_start,run_end,data):
+def main(tally_id, score_id, batch_start, batch_end, name):
 
-#	 calculate reference solution
-	print 'Calculating Reference solution...'
-	tmp = EigenFunction(data)
-	tmp.read_hdf5(runpath+str(run_start)+'/'+hdfile,cycle) # load first eigenfunction
-	print 'Read in: '+runpath+str(1)+hdfile+' '+str(tmp.function[0,150,150,0])
-	indices = tmp.function.shape # extent of all dimensions
-	ref = np.zeros((run_end,indices[0],indices[1],indices[2],indices[3])) # initialize ref array
-	ref[0] = tmp.function # set the first run in ref
-	i = run_start + 1
-	while i <= run_end: # begin loop around all runs
-		tmp.read_hdf5(runpath+str(i)+'/'+hdfile,cycle)
-		print 'Read in: '+runpath+str(i)+hdfile+' '+str(tmp.function[0,150,150,0])
-		ref[i - run_start] = tmp.function
-		i += 1
-	meanref = np.average(ref, axis=0) # compute average of all runs
-	EigenFunction.reference = meanref # set to global space in EigenFunction instances
-	return meanref
+  # read in statepoint header data
+  sp = statepoint.StatePoint('statepoint.ref.binary')
 
-def compute_rms(runlist):
+  # read in results
+  sp.read_results()
 
-	# calculate rms array
-	print 'Calculating rms...'
-	rms = np.zeros(len(runlist))
-	i = 0
-	while i < len(runlist):
-		runlist[i].compute_rms()
-		rms[i] = runlist[i].rms
-		i += 1
-	return rms
+  # extract reference mean
+  mean_ref = extract_mean(sp, tally_id, score_id)
 
-def plot_rms(rms):
-	print 'Generating plot...'
-	ax = plt.subplot(111)
-	size = rms.shape[0]
-	x = np.linspace(1,size,size)*1e6
-	y = (rms[0]/x[0]**(-0.5))*x**(-0.5)
-	plt.loglog(x,rms*100,'b+')
-	plt.loglog(x,y*100,'g--')
-	ax.xaxis.grid(True,'minor')
-	ax.yaxis.grid(True,'minor')
-	ax.xaxis.grid(True,'major',linewidth=2)
-	ax.yaxis.grid(True,'major',linewidth=2)
-	plt.xlabel('# of Total Neutron Histories (active cycles)')
-	plt.ylabel('RMS Error [%]')
-	plt.legend(('1 million (10 runs)','Ideal Error 1 mil'))
-	return
+  # write gnuplot file
+  write_src_gnuplot('testsrc_pin','Pin mesh',mean_ref,np.size(mean_ref,0))
 
-def plot_source(source):
-	plt.figure()
-	X = np.linspace(1,272,272)
-	Y = np.linspace(1,272,272)
-	Y,X = np.meshgrid(Y,X)
-	plt.contourf(X,Y,source[0,:,:,0],100)
-	plt.colorbar()
-	plt.xlabel('Mesh Cell in x-direction')
-	plt.ylabel('Mesh Cell in y-direction')
-	plt.title('OPR Converged Fission Source Distribution')
-	plt.show() 
-#
+  # preallocate arrays
+  hists = np.zeros(batch_end - batch_start + 1)
+  norms = np.zeros(batch_end - batch_start + 1)
+
+  i = batch_start
+  while i <= batch_end:
+
+    # process statepoint
+    sp = statepoint.StatePoint('statepoint.'+str(i)+'.binary')
+    sp.read_results()
+
+    # extract mean
+    mean = extract_mean(sp, tally_id, score_id)
+
+    # calculate L2 norm
+    norm = np.linalg.norm(mean - mean_ref)
+
+    # get history information
+    n_inactive = sp.n_inactive
+    current_batch = sp.current_batch
+    n_particles = sp.n_particles
+    gen_per_batch = sp.gen_per_batch
+    n_histories = (current_batch - n_inactive)*n_particles*gen_per_batch
+
+    # batch in vectors
+    hists[i - batch_start] = n_histories
+    norms[i - batch_start] = norm
+
+    # print
+    print 'Batch: '+str(i)+' Histories: '+str(n_histories)+' Norm: '+str(norm)
+
+    i += 1
+
+  # write out gnuplot file
+  write_norm_gnuplot(name,hists,norms,np.size(hists))
+
+def extract_mean(sp, tally_id,score_id):
+
+  # extract results
+  results = sp.extract_results(tally_id,score_id)
+
+  # extract means and copy
+  mean = results['mean'].copy()
+
+  # reshape and integrate over energy
+  mean = mean.reshape(results['bin_max'],order='F')
+  mean = np.sum(mean,0)
+  mean = np.sum(mean,0)
+  mean = mean/mean.sum()*(mean > 1.e-8).sum()
+
+  return mean
+
+def write_norm_gnuplot(path,xdat,ydat,size):
+
+  # Header String for GNUPLOT
+  headerstr = """#!/usr/bin/env gnuplot
+
+set terminal pdf enhanced
+set output '{output}'
+set ylabel 'L-2 norm'
+set xlabel 'Histories'
+set log x
+set log y
+""".format(output=path+'.pdf')
+
+  # Write out the plot string
+  pltstr = "plot '-' using 1:2 with lines"
+
+  # Write out the data string
+  i = 0
+  datastr = ''
+  while i < size:
+    datastr = datastr + '{0} {1}\n'.format(xdat[i],ydat[i])
+    i += 1
+
+  # Concatenate all
+  outstr = headerstr + '\n' + pltstr + '\n' + datastr
+
+  # Write File
+  with open(path+".plot",'w') as f:
+    f.write(outstr)
+
+  # Run GNUPLOT
+  os.system('gnuplot ' + path+".plot")
+
+def write_src_gnuplot(path,name,src,size):
+
+  # Header String for GNUPLOT
+  headerstr = """#!/usr/bin/env gnuplot
+
+set terminal pdf enhanced
+set output '{output}'
+set palette defined (0 '#000090', 1 '#000fff', 2 '#0090ff', 3 '#0fffee', 4 '#90ff70', 5 '#ffee00', 6 '#ff7000', 7 '#ee0000', 8 '#7f0000')
+set view map
+set size ratio -1
+set lmargin at screen 0.10
+set rmargin at screen 0.90
+set bmargin at screen 0.15
+set tmargin at screen 0.90
+unset xtics
+unset ytics
+set title '{title}'""".format(output=path+'.pdf',title=name)
+
+  # Write out the plot string
+  pltstr = "splot '-' matrix with image "
+
+  # Write out the data string
+  i = 0
+  datastr = ''
+  while i < size:
+    j = 0
+    while j < size:
+      datastr = datastr + '{0} '.format(src[i,j][0])
+      j += 1
+    datastr = datastr + '\n'
+    i += 1
+
+  # replace all nan with zero
+  datastr = datastr.replace('nan','0.0')
+
+  # Concatenate all
+  outstr = headerstr + '\n' + pltstr + '\n' + datastr
+
+  # Write File
+  with open(path+".plot",'w') as f:
+    f.write(outstr)
+
+  # Run GNUPLOT
+  os.system('gnuplot ' + path+".plot")
+
 if __name__ == "__main__":
-
-	if sys.argv[1] == 'restart':
-
-		# load in data
-		print 'Loading input...'
-		filein = open('rms.out','r')
-		output = cPickle.load(filein)
-		filein.close()
-		rms = output['1milrms']
-		meanref = output['ref']
-		EigenFunction.reference = meanref
-
-		# plot rms
-	        plot_rms(rms)
-
-		# plot mean source distribution
-		plot_source(meanref)
-
-	elif sys.argv[1] == 'interactive':
-
-                # load in data
-		print 'Loading input...'
-		filein = open('rms.out','r')
-		output = cPickle.load(filein)
-		filein.close()
-		rms = output['1milrms']
-		meanref = output['ref']
-		EigenFunction.reference = meanref
-
-		# pop an interactive python shell
-	 	from IPython import embed
-		embed()
-
-	else:
-
-		# calculate reference solution
-		runpath = '/media/Backup/opr_runs/64mil/run'
-		hdfile = 'output.h5'
-		cycle = 210
-		run_start = 1
-		run_end = 4
-		data = 'openmc_src'
-		meanref = create_reference(runpath,hdfile,cycle,run_start,run_end,data)
-
-		# calculate rms for 1 million case
-                runpath = '/media/Backup/opr_runs/1mil/run'
-                hdfile = 'output.h5'
-		cycle_start = 201
-		cycle_end = 840
-		run_start = 1
-		run_end = 10
-		data = 'openmc_src'
-		onemil = read_runs(runpath,hdfile,cycle_start,cycle_end,run_start,run_end,data)
-
-		# calculate rms array
-		rms = compute_rms(onemil)
-
-		# write out numpy array to binary file
-		print 'Writing output...'
-		output = {}
-		output.update({'1milrms':rms})
-		output.update({'ref':meanref})
-		fileout = open('rms.out','wb')
-		cPickle.dump(output,fileout)
-		fileout.close()
-
-		# plot rms
-		plot_rms(rms)
-
-		# plot mean source distribution
-		plot_source(meanref)
-
-
+  tally_id = int(sys.argv[1])
+  score_id = sys.argv[2]
+  batch_start = int(sys.argv[3])
+  batch_end = int(sys.argv[4])
+  name = sys.argv[5]
+  main(tally_id, score_id, batch_start, batch_end, name)

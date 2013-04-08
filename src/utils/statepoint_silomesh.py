@@ -8,6 +8,8 @@ import silomesh # https://github.com/nhorelik/silomesh/
 
 from statepoint import StatePoint
 
+alphanum = re.compile(r"[\W_]+")
+
 ################################################################################
 def parse_options():
   """Process command line arguments"""
@@ -30,6 +32,22 @@ def parse_options():
       setattr(parser.values, option.dest, scores)
     except: p.print_help()
   
+  def filters_callback(option, opt, value, parser):
+    """Option parser function for list of filters"""
+    try:
+      filters = {}
+      entries = value.split(',')
+      for e in entries:
+        tally,filter_,bin = [i for i in e.split('.')]
+        tally,bin = int(tally),int(bin)
+        if not tally in filters: filters[tally] = {}
+        if not filter_ in filters[tally]: filters[tally][filter_] = []
+        filters[tally][filter_].append(bin)
+      setattr(parser.values, option.dest, filters)
+    except:
+      raise
+      p.print_help()
+  
   from optparse import OptionParser
   usage = r"""%prog [options] <statepoint_file>
 
@@ -39,7 +57,13 @@ with all scores on tally 2 and only scores 1 and 3 on tally 4:
 
 %prog -t 2,4 -f 4.1,4.3 <statepoint_file>
 
-You can list the available tallies and scores with the -l option:
+Likewise if you have additional filters on a tally you can specify a subset of
+bins for each filter for that tally. For example to process all tallies and
+scores, but only energyin bin #1 in tally 2:
+
+%prog -f 2.energyin.1 <statepoint_file>
+
+You can list the available tallies, scores, and filters with the -l option:
 
 %prog -l <statepoint_file>"""
   p = OptionParser(usage=usage)
@@ -52,6 +76,11 @@ You can list the available tallies and scores with the -l option:
             help='List of score indices to process, separated by commas, ' \
                  'specified as {tallyid}.{scoreid}.' \
                  ' Default is to process all scores in each tally.')
+  p.add_option('-f', '--filters', dest='filters', type='string', default=None,
+            action='callback', callback=filters_callback,
+            help='List of filter bins to process, separated by commas, ' \
+                 'specified as {tallyid}.{filter}.{binid}. ' \
+                 'Default is to process all filter combinaiton for each score.')
   p.add_option('-l', '--list', dest='list', action='store_true',
                help='List the tally and score indices available in the file.')
   p.add_option('-o', '--output', action='store', dest='output',
@@ -85,10 +114,8 @@ def main(file_, o):
     print_available(sp)
     return
 
-  pattern = re.compile(r"[\W_]+")
-
   silomesh.init_silo(o.output)
-  
+
   # Tally loop #################################################################
   for tally in sp.tallies:
   
@@ -114,15 +141,21 @@ def main(file_, o):
       # Filter loop ############################################################
       for filterspec in filtercombos:
         
+        # skip non-user-specified filter bins
+        skip = False
+        if o.filters and tally.id in o.filters:
+          for filter_,bin in filterspec[1:]:
+            if filter_ in o.filters[tally.id] and \
+               not bin in o.filters[tally.id][filter_]:
+              skip = True
+              break
+        if skip: continue
+        
         # find and sanitize the variable name for this score
-        comboname = "_"+" ".join(["{}_{}".format(filter_, bin)
-                              for filter_, bin in filterspec[1:]])
-        if len(filterspec[1:]) == 0: comboname = ''
-        varname = 'Tally_{}_{}{}'.format(tally.id, score, comboname)
-        varname = pattern.sub('_', varname)
+        varname = get_sanitized_filterspec_name(tally, score, filterspec)
         silomesh.init_var(varname)
         
-        print "\t Score {}.{} {}:\t\t{}".format(tally.id, sid, score, varname)
+        print "\t Score {}.{} {}:\t\t{}".format(tally.id, sid+1, score, varname)
         
         # Mesh fill loop #######################################################
         for x in range(1,nx+1):
@@ -142,6 +175,17 @@ def main(file_, o):
     
   # end tally loop
   silomesh.finalize_silo()
+
+################################################################################
+def get_sanitized_filterspec_name(tally, score, filterspec):
+  """Returns a name fit for silo vars for a given filterspec, tally and score"""
+  
+  comboname = "_"+" ".join(["{}_{}".format(filter_, bin)
+                        for filter_, bin in filterspec[1:]])
+  if len(filterspec[1:]) == 0: comboname = ''
+  varname = 'Tally_{}_{}{}'.format(tally.id, score, comboname)
+  varname = alphanum.sub('_', varname)
+  return varname
 
 ################################################################################
 def get_filter_combos(tally):
@@ -197,6 +241,10 @@ def print_available(sp):
               for sid, score in enumerate(tally.scores)]
     for score in scores:
       print "\t\tScore {}".format(score)
+      for filter_ in tally.filters:
+        if filter_ == 'mesh': continue
+        for bin in range(tally.filters[filter_].length):
+          print "\t\t\tFilters: {}.{}.{}".format(tally.id, filter_, bin)
 
 ################################################################################
 def validate_options(sp,o):
@@ -223,6 +271,34 @@ def validate_options(sp,o):
       if not otally in available_tallies:
         warnings.warn('Tally {} not in statepoint file'.format(otally))
         continue
+      if o.tallies and not otally in o.tallies:
+        warnings.warn(
+          'Skipping scores for tally {}, excluded by tally list'.format(otally))
+        continue
+        
+  if o.filters:
+    for otally in o.filters.keys():
+      if not otally in available_tallies:
+        warnings.warn('Tally {} not in statepoint file'.format(otally))
+        continue
+      if o.tallies and not otally in o.tallies:
+        warnings.warn(
+          'Skipping filters for tally {}, excluded by tally list'.format(otally))
+        continue
+      for tally in sp.tallies:
+        if tally.id == otally: break
+      for filter_ in o.filters[otally]:
+        if filter_ == 'mesh':
+          warnings.warn('Cannot specify mesh filter bins')
+          continue
+        if not filter_ in tally.filters.keys():
+          warnings.warn(
+                  'Tally {} does not contain filter {}'.format(otally, filter_))
+          continue
+        for bin in o.filters[otally][filter_]:
+          if bin >= tally.filters[filter_].length:
+            warnings.warn(
+                 'No bin {} in tally {} filter {}'.format(bin, otally, filter_))
 
 ################################################################################  
 # monkeypatch to suppress the source echo produced by warnings

@@ -376,11 +376,14 @@ module global
 contains
 
 !===============================================================================
-! FREE_MEMORY deallocates all global allocatable arrays in the program
+! FREE_MEMORY deallocates and clears  all global allocatable arrays in the 
+! program
 !===============================================================================
 
   subroutine free_memory()
-
+    
+    integer :: i ! Loop Index
+    
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)
@@ -390,14 +393,27 @@ contains
     if (allocated(plots)) deallocate(plots)
 
     ! Deallocate cross section data, listings, and cache
-    if (allocated(nuclides)) deallocate(nuclides)
+    if (allocated(nuclides)) then
+    ! First call the clear routines
+      do i = 1, size(nuclides)
+        call nuclides(i) % clear()
+      end do
+      deallocate(nuclides)
+    end if
     if (allocated(sab_tables)) deallocate(sab_tables)
     if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)
 
     ! Deallocate tally-related arrays
     if (allocated(meshes)) deallocate(meshes)
-    if (allocated(tallies)) deallocate(tallies)
+    if (allocated(tallies)) then
+    ! First call the clear routines
+      do i = 1, size(tallies)
+        call tallies(i) % clear()
+      end do
+      ! Now deallocate the tally array
+      deallocate(tallies)
+    end if
     if (allocated(tally_maps)) deallocate(tally_maps)
 
     ! Deallocate energy grid
@@ -416,7 +432,20 @@ contains
     call active_tracklength_tallies % clear()
     call active_current_tallies % clear()
     call active_tallies % clear()
-
+    
+    ! Deallocate dictionaries
+    call cell_dict % clear()
+    call universe_dict % clear()
+    call lattice_dict % clear()
+    call surface_dict % clear()
+    call material_dict % clear()
+    call mesh_dict % clear()
+    call tally_dict % clear()
+    call plot_dict % clear()
+    call nuclide_dict % clear()
+    call sab_dict % clear()
+    call xs_listing_dict % clear()
+    
   end subroutine free_memory
 
 end module global

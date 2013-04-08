@@ -32,7 +32,7 @@ contains
   subroutine read_input_xml()
 
     call read_settings_xml()
-    call read_cross_sections_xml()
+    if ((run_mode /= MODE_PLOTTING)) call read_cross_sections_xml()
     call read_geometry_xml()
     call read_materials_xml()
     call read_tallies_xml()
@@ -86,7 +86,7 @@ contains
     ! settings.xml file. If no file is found there, then we check the
     ! CROSS_SECTIONS environment variable
 
-    if (len_trim(cross_sections_) == 0) then
+    if (len_trim(cross_sections_) == 0 .and. run_mode /= MODE_PLOTTING) then
       ! No cross_sections.xml file specified in settings.xml, check environment
       ! variable
       call get_environment_variable("CROSS_SECTIONS", env_variable)
@@ -580,6 +580,7 @@ contains
     integer :: coeffs_reqd
     real(8) :: phi, theta, psi
     logical :: file_exists
+    logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     type(Cell),    pointer :: c => null()
@@ -758,6 +759,10 @@ contains
     ! ==========================================================================
     ! READ SURFACES FROM GEOMETRY.XML
 
+    ! This variable is used to check whether at least one boundary condition was
+    ! applied to a surface
+    boundary_exists = .false.
+
     ! Get number of <surface> tags
     n_surfaces = size(surface_)
 
@@ -851,10 +856,10 @@ contains
         s % bc = BC_TRANSMIT
       case ('vacuum')
         s % bc = BC_VACUUM
+        boundary_exists = .true.
       case ('reflective', 'reflect', 'reflecting')
         s % bc = BC_REFLECT
-      case ('periodic')
-        s % bc = BC_PERIODIC
+        boundary_exists = .true.
       case default
         message = "Unknown boundary condition '" // trim(word) // &
              "' specified on surface " // trim(to_str(s % id))
@@ -865,6 +870,13 @@ contains
       call surface_dict % add_key(s % id, i)
 
     end do
+
+    ! Check to make sure a boundary condition was applied to at least one
+    ! surface
+    if (.not. boundary_exists) then
+      message = "No boundary conditions were applied to any surfaces!"
+      call fatal_error()
+    end if
 
     ! ==========================================================================
     ! READ LATTICES FROM GEOMETRY.XML
@@ -1033,6 +1045,12 @@ contains
         message = "Two or more materials use the same unique ID: " // &
              to_str(mat % id)
         call fatal_error()
+      end if
+
+      if (run_mode == MODE_PLOTTING) then
+        ! add to the dictionary and skip xs processing
+        call material_dict % add_key(mat % id, i)
+        cycle
       end if
 
       ! =======================================================================
@@ -2176,13 +2194,11 @@ contains
       else
         pl % not_found % rgb = (/ 255, 255, 255 /)
       end if
-
+      
       ! Copy plot type
       select case (plot_(i) % type)
       case ("slice")
         pl % type = PLOT_TYPE_SLICE
-        !case ("points")
-        !  pl % type = PLOT_TYPE_POINTS
       case default
         message = "Unsupported plot type '" // plot_(i) % type &
              // "' in plot " // trim(to_str(pl % id))
@@ -2267,6 +2283,7 @@ contains
           if (pl % color_by == PLOT_COLOR_CELLS) then
 
             if (cell_dict % has_key(col_id)) then
+              col_id = cell_dict % get_key(col_id)
               pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
             else
               message = "Could not find cell " // trim(to_str(col_id)) // &
@@ -2277,6 +2294,7 @@ contains
           else if (pl % color_by == PLOT_COLOR_MATS) then
 
             if (material_dict % has_key(col_id)) then
+              col_id = material_dict % get_key(col_id)
               pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
             else
               message = "Could not find material " // trim(to_str(col_id)) // &
@@ -2288,19 +2306,54 @@ contains
         end do
       end if
 
-      ! Alter colors based on mask information
+      ! Deal with masks
       if (associated(plot_(i) % mask_)) then
-        if (size(plot_(i) % mask_) > 1) then
-          message = "Mutliple masks" // &
-               " specified in plot " // trim(to_str(pl % id))
-          call fatal_error()
-        else if (.not. size(plot_(i) % mask_) == 0) then
-          do j=1,size(pl % colors)
-            if (.not. any(j .eq. plot_(i) % mask_(1) % components)) then
-              pl % colors(j) % rgb = plot_(i) % mask_(1) % background
-            end if
-          end do
-        end if
+      
+        select case(size(plot_(i) % mask_))
+          case default
+            message = "Mutliple masks" // &
+                 " specified in plot " // trim(to_str(pl % id))
+            call fatal_error()
+          case (0)
+          case (1)
+          
+            ! First we need to change the user-specified identifiers to indices in
+            ! the cell and material arrays
+            do j=1,size(plot_(i) % mask_(1) % components)
+              col_id = plot_(i) % mask_(1) % components(j)
+            
+              if (pl % color_by == PLOT_COLOR_CELLS) then
+              
+                if (cell_dict % has_key(col_id)) then
+                  plot_(i) % mask_(1) % components(j) = cell_dict % get_key(col_id)
+                else
+                  message = "Could not find cell " // trim(to_str(col_id)) // &
+                       " specified in the mask in plot " // trim(to_str(pl % id))
+                  call fatal_error()
+                end if
+              
+              else if (pl % color_by == PLOT_COLOR_MATS) then
+              
+                if (material_dict % has_key(col_id)) then
+                  plot_(i) % mask_(1) % components(j) = material_dict % get_key(col_id)
+                else
+                  message = "Could not find material " // trim(to_str(col_id)) // &
+                       " specified in the mask in plot " // trim(to_str(pl % id))
+                  call fatal_error()
+                end if
+                
+              end if  
+            end do
+          
+            ! Alter colors based on mask information
+            do j=1,size(pl % colors)
+              if (.not. any(j .eq. plot_(i) % mask_(1) % components)) then
+                pl % colors(j) % rgb = plot_(i) % mask_(1) % background
+              end if
+            end do
+            
+        end select
+        
       end if
 
       ! Add plot to dictionary

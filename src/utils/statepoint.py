@@ -504,8 +504,7 @@ class StatePoint(object):
             filtmax[n_filters - idx] = tally.filters[akey].length
 
         # compute bin info
-        i = 0
-        while i < n_filters:
+        for i in range(n_filters):
 
             # compute indices for filter combination
             filters[:,n_filters - i - 1] = np.floor((np.arange(n_bins) % 

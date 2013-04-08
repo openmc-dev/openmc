@@ -45,7 +45,9 @@ contains
 
     ! Write version information
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     Developed At:  Massachusetts Institute of Technology'
+         '     Copyright:     2011-2013 Massachusetts Institute of Technology'
+    write(UNIT=OUTPUT_UNIT, FMT=*) &
+         '     License:       http://mit-crpg.github.io/openmc/license.html'
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",7X,I1,".",I1,".",I1)') &
          VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1
@@ -148,7 +150,7 @@ contains
       write(UNIT=OUTPUT_UNIT, FMT=*) "Copyright (c) 2011-2013 &
            &Massachusetts Institute of Technology"
       write(UNIT=OUTPUT_UNIT, FMT=*) "MIT/X license at &
-           &<http://mit-crpg.github.com/openmc/license.html>"
+           &<http://mit-crpg.github.io/openmc/license.html>"
     end if
 
   end subroutine print_version

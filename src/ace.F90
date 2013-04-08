@@ -165,6 +165,10 @@ contains
       if (allocated(mat % sab_names)) deallocate(mat % sab_names)
 
     end do MATERIAL_LOOP2
+    
+    ! Avoid some valgrind leak errors
+    call already_read % clear()
+    
   end subroutine read_xs
 
 !===============================================================================

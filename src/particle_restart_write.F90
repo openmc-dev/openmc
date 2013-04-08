@@ -16,7 +16,7 @@ module particle_restart_write
 
 #ifdef HDF5
   integer(HID_T) :: hdf5_particle_file
-#endif HDF5
+#endif
 
 contains
 

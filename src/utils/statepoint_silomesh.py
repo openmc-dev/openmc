@@ -63,7 +63,7 @@ You can list the available tallies and scores with the -l option:
   
   if not parsed[1]:
     p.print_help()
-    return
+    return parsed
 
   if parsed[0].valerr:
     parsed[0].valerr = 1
@@ -88,33 +88,59 @@ def main(file_, o):
   pattern = re.compile(r"[\W_]+")
 
   silomesh.init_silo(o.output)
+  
+  # Tally loop #################################################################
   for tally in sp.tallies:
+  
+    # skip non-mesh tallies or non-user-specified tallies
     if o.tallies and not tally.id in o.tallies: continue
     if not 'mesh' in tally.filters: continue
+    
     print "Processing Tally {}...".format(tally.id)
+    
+    # extract filter options and mesh parameters for this tally
     filtercombos = get_filter_combos(tally)
     meshparms = get_mesh_parms(sp, tally)
-    nx,ny,nz = meshparms[0],meshparms[1],meshparms[2]
-    silomesh.init_mesh('Tally_{}'.format(tally.id),*meshparms)
+    nx,ny,nz = meshparms[0], meshparms[1], meshparms[2]
+    silomesh.init_mesh('Tally_{}'.format(tally.id), *meshparms)
+    
+    # Score loop ###############################################################
     for sid,score in enumerate(tally.scores):
+    
+      # skip non-user-specified scrores for this tally
       if o.scores and tally.id in o.scores and not sid in o.scores[tally.id]:
         continue
+      
+      # Filter loop ############################################################
       for filterspec in filtercombos:
-        comboname = "_"+" ".join(["{}_{}".format(filter_,bin)
-                              for filter_,bin in filterspec[1:]])
+        
+        # find and sanitize the variable name for this score
+        comboname = "_"+" ".join(["{}_{}".format(filter_, bin)
+                              for filter_, bin in filterspec[1:]])
         if len(filterspec[1:]) == 0: comboname = ''
-        varname = 'Tally_{}_{}{}'.format(tally.id,score,comboname)
-        varname = pattern.sub('_',varname)
-        print "\t Score {}.{} {}:\t\t{}".format(tally.id,sid,score,varname)
+        varname = 'Tally_{}_{}{}'.format(tally.id, score, comboname)
+        varname = pattern.sub('_', varname)
         silomesh.init_var(varname)
+        
+        print "\t Score {}.{} {}:\t\t{}".format(tally.id, sid, score, varname)
+        
+        # Mesh fill loop #######################################################
         for x in range(1,nx+1):
           for y in range(1,ny+1):
             for z in range(1,nz+1):
               filterspec[0][1] = (x,y,z)
-              val = sp.get_value(tally.id-1,filterspec,sid)[o.valerr]
-              silomesh.set_value(float(val),x,y,z)
+              val = sp.get_value(tally.id-1, filterspec, sid)[o.valerr]
+              silomesh.set_value(float(val), x, y, z)
+              
+        # end mesh fill loop
         silomesh.finalize_var()
+        
+      # end filter loop
+      
+    # end score loop
     silomesh.finalize_mesh()
+    
+  # end tally loop
   silomesh.finalize_silo()
 
 ################################################################################
@@ -128,7 +154,7 @@ def get_filter_combos(tally):
   specs = []
 
   if len(tally.filters) == 1:
-    return [[['mesh',[1,1,1]]]]
+    return [[['mesh', [1, 1, 1]]]]
   
   filters = tally.filters.keys()
   filters.pop(filters.index('mesh'))
@@ -136,16 +162,16 @@ def get_filter_combos(tally):
   
   combos = [ [b] for b in range(nbins[0])]
   for i,b in enumerate(nbins[1:]):
-    prod = list(itertools.product(combos,range(b)))
+    prod = list(itertools.product(combos, range(b)))
     if i == 0:
       combos = prod
     else:
-      combos = [[v for v in p[0]]+[p[1]] for p in prod]
+      combos = [[v for v in p[0]] + [p[1]] for p in prod]
 
   for c in combos:
-    spec = [['mesh',[1,1,1]]]
+    spec = [['mesh', [1, 1, 1]]]
     for i,bin in enumerate(c):
-      spec.append((filters[i],bin))
+      spec.append((filters[i], bin))
     specs.append(spec)
 
   return specs
@@ -166,9 +192,9 @@ def print_available(sp):
   for tally in sp.tallies:
     mesh = ""
     if not 'mesh' in tally.filters: mesh = "(no mesh)"
-    print "\tTally {} {}".format(tally.id,mesh)
+    print "\tTally {} {}".format(tally.id, mesh)
     scores = ["{}.{}: {}".format(tally.id, sid+1, score) 
-              for sid,score in enumerate(tally.scores)]
+              for sid, score in enumerate(tally.scores)]
     for score in scores:
       print "\t\tScore {}".format(score)
 
@@ -190,7 +216,7 @@ def validate_options(sp,o):
       if o.scores and otally in o.scores.keys():
         for oscore in o.scores[otally]:
           if oscore > len(tally.scores):
-            warnings.warn('No score {} in tally {}'.format(oscore,otally))
+            warnings.warn('No score {} in tally {}'.format(oscore, otally))
               
   if o.scores:
     for otally in o.scores.keys():
@@ -201,7 +227,7 @@ def validate_options(sp,o):
 ################################################################################  
 # monkeypatch to suppress the source echo produced by warnings
 def formatwarning(message, category, filename, lineno, line):
-  return "%s:%s: %s: %s\n" % (filename, lineno, category.__name__, message)
+  return "{}:{}: {}: {}\n".format(filename, lineno, category.__name__, message)
 warnings.formatwarning = formatwarning
 
 ################################################################################

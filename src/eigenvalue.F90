@@ -38,8 +38,6 @@ contains
 
   subroutine run_eigenvalue()
 
-    integer(8) :: i  ! index over individual particles
-
     if (master) call header("K EIGENVALUE SIMULATION", level=1)
 
     ! Allocate particle
@@ -74,10 +72,10 @@ contains
 
         ! ====================================================================
         ! LOOP OVER PARTICLES
-        PARTICLE_LOOP: do i = 1, work
+        PARTICLE_LOOP: do current_work = 1, work
 
           ! grab source particle from bank
-          call get_source_particle(i)
+          call get_source_particle(current_work)
 
           ! transport particle
           call transport()

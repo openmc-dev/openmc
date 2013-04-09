@@ -1,13 +1,14 @@
 module geometry
 
   use constants
-  use error,           only: fatal_error
-  use geometry_header, only: Cell, Surface, Universe, Lattice
+  use error,                  only: fatal_error
+  use geometry_header,        only: Cell, Surface, Universe, Lattice
   use global
-  use output,          only: write_message
-  use particle_header, only: LocalCoord, deallocate_coord
-  use string,          only: to_str
-  use tally,           only: score_surface_current
+  use output,                 only: write_message
+  use particle_header,        only: LocalCoord, deallocate_coord
+  use particle_restart_write, only: write_particle_restart
+  use string,                 only: to_str
+  use tally,                  only: score_surface_current
 
   implicit none
      
@@ -246,22 +247,24 @@ contains
 
     integer, intent(in)     :: last_cell  ! last cell particle was in
 
-    real(8) :: x        ! x-x0 for sphere
-    real(8) :: y        ! y-y0 for sphere
-    real(8) :: z        ! z-z0 for sphere
-    real(8) :: R        ! radius of sphere
-    real(8) :: u        ! x-component of direction
-    real(8) :: v        ! y-component of direction
-    real(8) :: w        ! z-component of direction
-    real(8) :: n1       ! x-component of surface normal
-    real(8) :: n2       ! y-component of surface normal
-    real(8) :: n3       ! z-component of surface normal
-    real(8) :: dot_prod ! dot product of direction and normal
-    real(8) :: norm     ! "norm" of surface normal
-    logical :: found    ! particle found in universe?
+    real(8) :: x         ! x-x0 for sphere
+    real(8) :: y         ! y-y0 for sphere
+    real(8) :: z         ! z-z0 for sphere
+    real(8) :: R         ! radius of sphere
+    real(8) :: u         ! x-component of direction
+    real(8) :: v         ! y-component of direction
+    real(8) :: w         ! z-component of direction
+    real(8) :: n1        ! x-component of surface normal
+    real(8) :: n2        ! y-component of surface normal
+    real(8) :: n3        ! z-component of surface normal
+    real(8) :: dot_prod  ! dot product of direction and normal
+    real(8) :: norm      ! "norm" of surface normal
+    integer :: i_surface ! index in surfaces
+    logical :: found     ! particle found in universe?
     type(Surface),  pointer :: surf => null()
 
-    surf => surfaces(abs(p % surface))
+    i_surface = abs(p % surface)
+    surf => surfaces(i_surface)
     if (verbosity >= 10 .or. trace) then
       message = "    Crossing surface " // trim(to_str(surf % id))
       call write_message()
@@ -303,6 +306,7 @@ contains
 
       ! Do not handle reflective boundary conditions on lower universes
       if (.not. associated(p % coord, p % coord0)) then
+        call write_particle_restart()
         message = "Cannot reflect particle " // trim(to_str(p % id)) // &
              " off surface in a lower universe."
         call fatal_error()
@@ -436,6 +440,7 @@ contains
         w = w + 2*dot_prod*R*z
 
       case default
+        call write_particle_restart()
         message = "Reflection not supported for surface " // &
              trim(to_str(surf % id))
         call fatal_error()
@@ -456,6 +461,7 @@ contains
         call deallocate_coord(p % coord0 % next)
         call find_cell(found)
         if (.not. found) then
+          call write_particle_restart()
           message = "Couldn't find particle after reflecting from surface."
           call fatal_error()
         end if
@@ -515,8 +521,9 @@ contains
       ! undefined region in the geometry.
 
       if (.not. found) then
+        call write_particle_restart()
         message = "After particle " // trim(to_str(p % id)) // " crossed surface " &
-             // trim(to_str(surfaces(abs(p%surface)) % id)) // " it could not be &
+             // trim(to_str(surfaces(i_surface) % id)) // " it could not be &
              &located in any cell and it did not leak."
         call fatal_error()
       end if
@@ -608,6 +615,7 @@ contains
       ! Search for particle
       call find_cell(found)
       if (.not. found) then
+        call write_particle_restart()
         message = "Could not locate particle " // trim(to_str(p % id)) // &
              " after crossing a lattice boundary."
         call fatal_error()
@@ -630,6 +638,7 @@ contains
         ! Search for particle
         call find_cell(found)
         if (.not. found) then
+          call write_particle_restart()
           message = "Could not locate particle " // trim(to_str(p % id)) // &
                " after crossing a lattice boundary."
           call fatal_error()

@@ -398,7 +398,6 @@ contains
       ! increment the index for the cells array within the Universe object and
       ! then store the index of the Cell object in that array
       index_cell_in_univ(i_univ) = index_cell_in_univ(i_univ) + 1
-      
       univ % cells(index_cell_in_univ(i_univ)) = i
     end do
     
@@ -418,7 +417,7 @@ contains
     integer :: j             ! index for various purposes
     integer :: k             ! loop index for lattices
     integer :: m             ! loop index for lattices
-    integer :: mid, lid      ! material and lattice ids
+    integer :: mid, lid      ! material and lattice IDs
     integer :: n_x, n_y, n_z ! size of lattice
     integer :: i_array       ! index in surfaces/materials array 
     integer :: id            ! user-specified id

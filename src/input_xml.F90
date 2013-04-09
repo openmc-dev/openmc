@@ -608,7 +608,7 @@ contains
 
     ! Get number of <cell> tags
     n_cells = size(cell_)
-    
+
     ! Check for no cells
     if (n_cells == 0) then
       message = "No cells found in geometry.xml!"

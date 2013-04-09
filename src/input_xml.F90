@@ -578,6 +578,7 @@ contains
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
+    integer :: mid
     real(8) :: phi, theta, psi
     logical :: file_exists
     logical :: boundary_exists
@@ -607,7 +608,7 @@ contains
 
     ! Get number of <cell> tags
     n_cells = size(cell_)
-
+    
     ! Check for no cells
     if (n_cells == 0) then
       message = "No cells found in geometry.xml!"
@@ -968,7 +969,15 @@ contains
           end do
         end do
       end do
-        
+
+      ! Read material for area outside lattice
+      mid = lattice_(i) % outside
+      if (mid == 0 .or. mid == MATERIAL_VOID) then
+        lat % outside = MATERIAL_VOID
+      else
+        lat % outside = mid
+      end if
+
       ! Add lattice to dictionary
       call lattice_dict % add_key(lat % id, i)
 

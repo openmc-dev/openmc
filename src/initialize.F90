@@ -398,6 +398,7 @@ contains
       ! increment the index for the cells array within the Universe object and
       ! then store the index of the Cell object in that array
       index_cell_in_univ(i_univ) = index_cell_in_univ(i_univ) + 1
+      
       univ % cells(index_cell_in_univ(i_univ)) = i
     end do
     
@@ -417,6 +418,7 @@ contains
     integer :: j             ! index for various purposes
     integer :: k             ! loop index for lattices
     integer :: m             ! loop index for lattices
+    integer :: mid, lid      ! material and lattice ids
     integer :: n_x, n_y, n_z ! size of lattice
     integer :: i_array       ! index in surfaces/materials array 
     integer :: id            ! user-specified id
@@ -476,8 +478,20 @@ contains
           c % type = CELL_FILL
           c % fill = universe_dict % get_key(id)
         elseif (lattice_dict % has_key(id)) then
+          lid = lattice_dict % get_key(id)
+          mid = lattices(lid) % outside
           c % type = CELL_LATTICE
-          c % fill = lattice_dict % get_key(id)
+          c % fill = lid
+          if (mid == MATERIAL_VOID) then
+            c % material = mid
+          else if (material_dict % has_key(mid)) then
+            c % material = material_dict % get_key(mid)
+          else
+            message = "Could not find material " // trim(to_str(mid)) // &
+               " specified on lattice " // trim(to_str(lid))
+            call fatal_error()
+          end if
+          
         else
           message = "Specified fill " // trim(to_str(id)) // " on cell " // &
                trim(to_str(c % id)) // " is neither a universe nor a lattice."

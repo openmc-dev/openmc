@@ -29,6 +29,7 @@
     <component name="lower_left" type="double-array" />
     <component name="width" type="double-array" />
     <component name="universes" type="integer-array" />
+    <component name="outside" type="integer" default="0"/>
   </typedef>
 
   <variable name="cell_" tag="cell" type="cell_xml" dimension="1" />

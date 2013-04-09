@@ -371,6 +371,7 @@ subroutine xml_get( info, tag, endtag, attribs, no_attribs, &
 
    integer         :: kspace
    integer         :: kend
+   integer         :: kcend
    integer         :: keq
    integer         :: kfirst
    integer         :: ksecond
@@ -405,6 +406,7 @@ subroutine xml_get( info, tag, endtag, attribs, no_attribs, &
    close_bracket = .false.
    kspace        = index( info%line, ' ' )
    kend          = index( info%line, '>' )
+   kcend         = index( info%line, '-->' )
    do while ( kend <= 0 )
       read( info%lun, '(a)', iostat = ierr ) nextline
       call xml_remove_tabs_(nextline)
@@ -423,6 +425,8 @@ subroutine xml_get( info, tag, endtag, attribs, no_attribs, &
    enddo
    if ( kend > kspace ) then
       kend = kspace
+   else if (info%line(1:4) == '<!--' .and. kend > kcend) then
+      kend = kcend-1
    else
       close_bracket = .true.
    endif

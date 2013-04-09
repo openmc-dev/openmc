@@ -425,7 +425,7 @@ subroutine xml_get( info, tag, endtag, attribs, no_attribs, &
    enddo
    if ( kend > kspace ) then
       kend = kspace
-   else if (info%line(1:4) == '<!--' .and. kend > kcend) then
+   else if (info%line(1:4) == '<!--' .and. kcend > 0) then
       kend = kcend-1
    else
       close_bracket = .true.

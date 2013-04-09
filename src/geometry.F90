@@ -79,6 +79,8 @@ contains
     integer :: index_cell           ! index in cells array
     real(8) :: xyz(3)               ! temporary location
     logical :: use_search_cells     ! use cells provided as argument
+    logical :: outside_lattice      ! if particle is not inside lattice bounds
+    logical :: lattice_edge         ! if the particle is on a lattice edge
     type(Cell),     pointer :: c    ! pointer to cell
     type(Lattice),  pointer :: lat  ! pointer to lattice
     type(Universe), pointer :: univ ! universe to search in
@@ -162,6 +164,8 @@ contains
 
           ! Set current lattice
           lat => lattices(c % fill)
+          
+          outside_lattice = .false.
 
           ! determine lattice index based on position
           xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
@@ -181,19 +185,42 @@ contains
           if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
                i_z < 1 .or. i_z > n_z) then
 
-            ! This condition should only get hit in rare circumstances where a
-            ! neutron hits the corner of a lattice. In this case, the neutron
-            ! may need to be moved diagonally across the lattice. To do so, we
-            ! remove all lower coordinate levels and then search from universe
-            ! 0.
+            ! Check for when particle is on lattice edge
+            lattice_edge = .false.
+            if ( abs(xyz(1) - lat % lower_left(1)) < FP_COINCIDENT .or. &
+                 abs(xyz(2) - lat % lower_left(2)) < FP_COINCIDENT) then
+              lattice_edge = .true.
+            end if
+            if (lat % n_dimension == 3) then
+              if (abs(xyz(3) - lat % lower_left(3)) < FP_COINCIDENT) then
+                lattice_edge = .true.
+              end if
+            end if
+            
+            if (lattice_edge) then
+              
+              ! In this case the neutron is leaving the lattice, so we move it
+              ! out, remove all lower coordinate levels and then search from
+              ! universe 0.
+            
+              p % coord => p % coord0
+              call deallocate_coord(p % coord % next)
 
-            p % coord => p % coord0
-            call deallocate_coord(p % coord % next)
+              ! Reset surface and advance particle a tiny bit
+              p % surface = NONE
+              p % coord % xyz = xyz
 
-            ! Reset surface and advance particle a tiny bit
-            p % surface = NONE
-            p % coord % xyz = xyz
+            else
+            
+              ! We're outside the lattice, so treat this as a normal cell with
+              ! the material specified for the outside
 
+              outside_lattice = .true.
+              p % last_material = p % material
+              p % material = c % material
+              
+            end if
+            
           else
 
             ! Create new level of coordinates
@@ -223,8 +250,10 @@ contains
             p % coord % universe  = lat % universes(i_x,i_y,i_z)
           end if
 
-          call find_cell(found)
-          if (.not. found) exit
+          if (.not. outside_lattice) then
+            call find_cell(found)
+            if (.not. found) exit
+          end if
         end if
 
         ! Found cell so we can return

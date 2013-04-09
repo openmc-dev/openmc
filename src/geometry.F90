@@ -80,7 +80,7 @@ contains
     real(8) :: xyz(3)               ! temporary location
     logical :: use_search_cells     ! use cells provided as argument
     logical :: outside_lattice      ! if particle is not inside lattice bounds
-    logical :: lattice_edge         ! if the particle is on a lattice edge
+    logical :: lattice_edge         ! if particle is on a lattice edge
     type(Cell),     pointer :: c    ! pointer to cell
     type(Lattice),  pointer :: lat  ! pointer to lattice
     type(Universe), pointer :: univ ! universe to search in

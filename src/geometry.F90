@@ -245,25 +245,25 @@ contains
             end if
             p % coord % next % uvw = p % coord % uvw
 
-            ! Move particle to next level
-            p % coord => p % coord % next
-
             ! set particle lattice indices
-            p % coord % lattice   = c % fill
-            p % coord % lattice_x = i_x
-            p % coord % lattice_y = i_y
-            p % coord % lattice_z = i_z
+            p % coord % next% lattice   = c % fill
+            p % coord % next% lattice_x = i_x
+            p % coord % next% lattice_y = i_y
+            p % coord % next% lattice_z = i_z
             if (.not. outside_lattice) then
-              p % coord % universe = lat % universes(i_x,i_y,i_z)
+              p % coord % next % universe = lat % universes(i_x,i_y,i_z)
             else
 
-              ! If we define a void universe, we could 
-              p % coord % universe = NONE
+              ! Set universe as the same for subsequent calls to find_cell
+              p % coord % next % universe = p % coord % universe
 
-              ! Set coord cell for distance_to_boundary
-              p % coord % cell = index_cell
+              ! Set coord cell for calls to distance_to_boundary
+              p % coord % next % cell = index_cell
 
             end if
+
+            ! Move particle to next level
+            p % coord => p % coord % next
 
           end if
 

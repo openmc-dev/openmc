@@ -164,8 +164,9 @@ contains
 
           ! Set current lattice
           lat => lattices(c % fill)
-          
+
           outside_lattice = .false.
+          lattice_edge = .false.
 
           ! determine lattice index based on position
           xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
@@ -186,7 +187,6 @@ contains
                i_z < 1 .or. i_z > n_z) then
 
             ! Check for when particle is on lattice edge
-            lattice_edge = .false.
             if ( abs(xyz(1) - lat % lower_left(1)) < FP_COINCIDENT .or. &
                  abs(xyz(2) - lat % lower_left(2)) < FP_COINCIDENT) then
               lattice_edge = .true.
@@ -211,17 +211,23 @@ contains
               p % coord % xyz = xyz
 
             else
-            
+
               ! We're outside the lattice, so treat this as a normal cell with
               ! the material specified for the outside
 
               outside_lattice = .true.
               p % last_material = p % material
               p % material = c % material
-              
+
+              ! We'll still make a new coordinate for the particle, as 
+              ! distance_to_boundary will still need to track through lattice
+              ! widths even though there's nothing in them but this material
+
             end if
-            
-          else
+
+          end if
+
+          if (.not. lattice_edge) then
 
             ! Create new level of coordinates
             allocate(p % coord % next)
@@ -247,13 +253,25 @@ contains
             p % coord % lattice_x = i_x
             p % coord % lattice_y = i_y
             p % coord % lattice_z = i_z
-            p % coord % universe  = lat % universes(i_x,i_y,i_z)
+            if (.not. outside_lattice) then
+              p % coord % universe = lat % universes(i_x,i_y,i_z)
+            else
+
+              ! If we define a void universe, we could 
+              p % coord % universe = NONE
+
+              ! Set coord cell for distance_to_boundary
+              p % coord % cell = index_cell
+
+            end if
+
           end if
 
           if (.not. outside_lattice) then
             call find_cell(found)
             if (.not. found) exit
           end if
+
         end if
 
         ! Found cell so we can return

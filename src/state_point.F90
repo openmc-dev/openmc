@@ -25,7 +25,6 @@ module state_point
   use source,       only: write_source_binary
   use string,       only: to_str
   use tally_header, only: TallyObject
-  use tally,        only: setup_active_usertallies
 
 #ifdef MPI
   use mpi

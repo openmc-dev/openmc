@@ -29,7 +29,7 @@
     <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="User’s Guide" href="index.html" />
-    <link rel="next" title="4. Troubleshooting OpenMC" href="troubleshoot.html" />
+    <link rel="next" title="4. Troubleshooting" href="troubleshoot.html" />
     <link rel="prev" title="2. Installation and Configuration" href="install.html" /> 
   </head>
   <body>
@@ -45,7 +45,7 @@
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="troubleshoot.html">4. Troubleshooting OpenMC</a>&#160;&#160;»
+        <a href="troubleshoot.html">4. Troubleshooting</a>&#160;&#160;»
         </p>
 
       </div>
@@ -418,7 +418,13 @@ batches explicitly.</p>
 <tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first">If this element is set to &#8220;true&#8221;, a separate binary source file will be
 written. Otherwise, the source sites will be written in the state point
 directly.</p>
-<p class="last"><em>Default</em>: false</p>
+<p><em>Default</em>: false</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">source_write:</th><td class="field-body"><p class="first">If this element is set to &#8220;false&#8221;, source sites are not written
+to the state point file. This can substantially reduce the size of state
+points if large numbers of particles per batch are used.</p>
+<p class="last"><em>Default</em>: true</p>
 </td>
 </tr>
 </tbody>
@@ -814,7 +820,8 @@ preventing others from scoring to the tally.</p>
 filters can be used for a tally. The following types of filter are available:
 cell, universe, material, surface, birth region, pre-collision energy,
 post-collision energy, and an arbitrary structured mesh.</p>
-<p>The two valid elements in the tallies.xml file are <tt class="docutils literal"><span class="pre">&lt;tally&gt;</span></tt> and <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt>.</p>
+<p>The three valid elements in the tallies.xml file are <tt class="docutils literal"><span class="pre">&lt;tally&gt;</span></tt>, <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt>,
+and <tt class="docutils literal"><span class="pre">&lt;assume_separate&gt;</span></tt>.</p>
 <div class="section" id="tally-element">
 <h3>3.5.1. <tt class="docutils literal"><span class="pre">&lt;tally&gt;</span></tt> Element<a class="headerlink" href="#tally-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;tally&gt;</span></tt> element accepts the following sub-elements:</p>
@@ -828,32 +835,26 @@ for output purposes. This string is limited to 52 characters for formatting
 purposes.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">filters:</th><td class="field-body"><p class="first">A list of filters to specify what region of phase space should contribute to
-the tally. See below for full details on what filters are available.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">nuclides:</th><td class="field-body"><p class="first">If specified, the scores listed will be for particular nuclides, not the
-summation of reactions from all nuclides. The format for nuclides should be
-[Atomic symbol]-[Mass number], e.g. &#8220;U-235&#8221;. The reaction rate for all
-nuclides can be obtained with &#8220;total&#8221;. For example, to obtain the reaction
-rates for U-235, Pu-239, and all nuclides in a material, this element should
-be:</p>
-<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;nuclides&gt;</span>U-235 Pu-239 total<span class="nt">&lt;/nuclides&gt;</span>
-</pre></div>
+<tr class="field-even field"><th class="field-name">filter:</th><td class="field-body"><p class="first">Specify a filter that restricts contributions to the tally to particles
+within certain regions of phase space. This element and its
+attributes/sub-elements are described below.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">You may specify zero, one, or multiple filters to apply to the tally. To
+specify multiple filters, you must use multiple <tt class="docutils literal"><span class="pre">&lt;filter&gt;</span></tt> elements.</p>
 </div>
-<p><em>Default</em>: total</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">scores:</th><td class="field-body"><p class="first last">The desired responses to be accumulated. See below for full details on the
-responses which be tallied.</p>
-</td>
-</tr>
-</tbody>
-</table>
-</div></blockquote>
-<p>The following filters can be specified for a tally:</p>
+<p>The <tt class="docutils literal"><span class="pre">filter</span></tt> element has the following attributes/sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of the filter. Accepted options are &#8220;cell&#8221;, &#8220;cellborn&#8221;, &#8220;material&#8221;,
+&#8220;universe&#8221;, &#8220;energy&#8221;, &#8220;energyout&#8221;, and &#8220;mesh&#8221;.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">bins:</th><td class="field-body"><p class="first">For each filter type, the corresponding <tt class="docutils literal"><span class="pre">bins</span></tt> entry is given as follows:</p>
+<table class="last docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
@@ -868,63 +869,112 @@ originally born in a specified cell.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">universe:</th><td class="field-body">A list of universes for which the tally should be accumulated.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">energy:</th><td class="field-body">A monotonically increasing list of bounding <strong>pre-collision</strong> energies for a
-number of groups. For example, if this filter is specified as <tt class="docutils literal"><span class="pre">&lt;energy&gt;0.0</span>
-<span class="pre">1.0</span> <span class="pre">20.0&lt;/energy&gt;</span></tt>, then two energy bins will be created, one with energies
-between 0 and 1 MeV and the other with energies between 1 and 20 MeV.</td>
+<tr class="field-even field"><th class="field-name">energy:</th><td class="field-body">A monotonically increasing list of bounding <strong>pre-collision</strong> energies
+for a number of groups. For example, if this filter is specified as
+<tt class="docutils literal"><span class="pre">&lt;filter</span> <span class="pre">type=&quot;energy&quot;</span> <span class="pre">bins=&quot;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&quot;</span> <span class="pre">/&gt;</span></tt>, then two energy bins
+will be created, one with energies between 0 and 1 MeV and the other
+with energies between 1 and 20 MeV.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">energyout:</th><td class="field-body">A monotonically increasing list of bounding <strong>post-collision</strong> energies for
-a number of groups. For example, if this filter is specified as
-<tt class="docutils literal"><span class="pre">&lt;energyout&gt;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&lt;/energyout&gt;</span></tt>, then two post-collision energy bins
-will be created, one with energies between 0 and 1 MeV and the other with
-energies between 1 and 20 MeV.</td>
+<tr class="field-odd field"><th class="field-name">energyout:</th><td class="field-body">A monotonically increasing list of bounding <strong>post-collision</strong>
+energies for a number of groups. For example, if this filter is
+specified as <tt class="docutils literal"><span class="pre">&lt;filter</span> <span class="pre">type=&quot;energyout&quot;</span> <span class="pre">bins=&quot;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&quot;</span> <span class="pre">/&gt;</span></tt>, then
+two post-collision energy bins will be created, one with energies
+between 0 and 1 MeV and the other with energies between 1 and 20 MeV.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">mesh:</th><td class="field-body">The <tt class="docutils literal"><span class="pre">id</span></tt> of a structured mesh to be tallied over.</td>
 </tr>
 </tbody>
 </table>
+</td>
+</tr>
+</tbody>
+</table>
 </div></blockquote>
-<p>The following responses can be tallied.</p>
-<blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">nuclides:</th><td class="field-body"><p class="first">If specified, the scores listed will be for particular nuclides, not the
+summation of reactions from all nuclides. The format for nuclides should be
+[Atomic symbol]-[Mass number], e.g. &#8220;U-235&#8221;. The reaction rate for all
+nuclides can be obtained with &#8220;total&#8221;. For example, to obtain the reaction
+rates for U-235, Pu-239, and all nuclides in a material, this element should
+be:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;nuclides&gt;</span>U-235 Pu-239 total<span class="nt">&lt;/nuclides&gt;</span>
+</pre></div>
+</div>
+<p><em>Default</em>: total</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">scores:</th><td class="field-body"><p class="first">A space-separated list of the desired responses to be accumulated. Accepted
+options are &#8220;flux&#8221;, &#8220;total&#8221;, &#8220;scatter&#8221;, &#8220;nu-scatter&#8221;, &#8220;scatter-N&#8221;,
+&#8220;scatter-PN&#8221;, &#8220;absorption&#8221;, &#8220;fission&#8221;, &#8220;nu-fission&#8221;, &#8220;kappa-fission&#8221;,
+&#8220;current&#8221;, and &#8220;events&#8221;. These corresponding to the following physical
+quantities.</p>
+<table class="last docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">flux:</th><td class="field-body">Total flux</td>
+<tr class="field-odd field"><th class="field-name">flux:</th><td class="field-body"><p class="first">Total flux</p>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">total:</th><td class="field-body">Total reaction rate</td>
+<tr class="field-even field"><th class="field-name">total:</th><td class="field-body"><p class="first">Total reaction rate</p>
+</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">scatter:</th><td class="field-body">Total scattering rate. Can also be identified with the <tt class="docutils literal"><span class="pre">scatter-0</span></tt>
-response type.</td>
+<tr class="field-odd field"><th class="field-name">scatter:</th><td class="field-body"><p class="first">Total scattering rate. Can also be identified with the <tt class="docutils literal"><span class="pre">scatter-0</span></tt>
+response type.</p>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">nu-scatter:</th><td class="field-body">Total production of neutrons due to scattering. This accounts for
+<tr class="field-even field"><th class="field-name">nu-scatter:</th><td class="field-body"><p class="first">Total production of neutrons due to scattering. This accounts for
 multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
-slightly higher than the scattering rate.</td>
+slightly higher than the scattering rate.</p>
+</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">scatter-N:</th><td class="field-body">Tally the N<sup>th</sup> scattering moment, where N is the Legendre expansion order.
-N must be between 0 and 10. As an example, tallying the 2<sup>nd</sup> scattering
-moment would be specified as <tt class="docutils literal"><span class="pre">&lt;scores&gt;</span> <span class="pre">scatter-2</span> <span class="pre">&lt;/scores&gt;</span></tt>.</td>
+<tr class="field-odd field"><th class="field-name">scatter-N:</th><td class="field-body"><p class="first">Tally the N<sup>th</sup> scattering moment, where N is the Legendre
+expansion order.  N must be between 0 and 10. As an example, tallying the
+2<sup>nd</sup> scattering moment would be specified as <tt class="docutils literal"><span class="pre">&lt;scores&gt;</span>
+<span class="pre">scatter-2</span> <span class="pre">&lt;/scores&gt;</span></tt>.</p>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">scatter-PN:</th><td class="field-body">Tally all of the scattering moments from order 0 to N, where N is
-the Legendre expansion order.  That is, <tt class="docutils literal"><span class="pre">scatter-P1</span></tt> is equivalent
-to requesting tallies of <tt class="docutils literal"><span class="pre">scatter-0</span></tt> and <tt class="docutils literal"><span class="pre">scatter-1</span></tt>.
-N must be between 0 and 10. As an example, tallying up to the 2<sup>nd</sup> scattering moment would be specified as <tt class="docutils literal"><span class="pre">&lt;scores&gt;</span> <span class="pre">scatter-P2</span> <span class="pre">&lt;/scores&gt;</span></tt>.</td>
+<tr class="field-even field"><th class="field-name">scatter-PN:</th><td class="field-body"><p class="first">Tally all of the scattering moments from order 0 to N, where N is the
+Legendre expansion order.  That is, <tt class="docutils literal"><span class="pre">scatter-P1</span></tt> is equivalent to
+requesting tallies of <tt class="docutils literal"><span class="pre">scatter-0</span></tt> and <tt class="docutils literal"><span class="pre">scatter-1</span></tt>.  N must be between
+0 and 10. As an example, tallying up to the 2<sup>nd</sup> scattering
+moment would be specified as <tt class="docutils literal"><span class="pre">&lt;scores&gt;</span> <span class="pre">scatter-P2</span> <span class="pre">&lt;/scores&gt;</span></tt>.</p>
+</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">absorption:</th><td class="field-body">Total absorption rate. This accounts for all reactions which do not produce
-secondary neutrons.</td>
+<tr class="field-odd field"><th class="field-name">absorption:</th><td class="field-body"><p class="first">Total absorption rate. This accounts for all reactions which do not
+produce secondary neutrons.</p>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">fission:</th><td class="field-body">Total fission rate</td>
+<tr class="field-even field"><th class="field-name">fission:</th><td class="field-body"><p class="first">Total fission rate</p>
+</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">nu-fission:</th><td class="field-body">Total production of neutrons due to fission</td>
+<tr class="field-odd field"><th class="field-name">nu-fission:</th><td class="field-body"><p class="first">Total production of neutrons due to fission</p>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">kappa-fission:</th><td class="field-body">The recoverable energy production rate due to fission. The recoverable
-energy is defined as the fission product kinetic energy, prompt and delayed neutron
-kinetic energies, prompt and delayed <img class="math" src="../_images/math/66981fa3920210c6ad8dbe5e968783d5dd7520c3.png" alt="\gamma"/>-ray total energies,
-and the total energy released by the delayed <img class="math" src="../_images/math/fdb63b9e51abe6bbb16acfb5d7b773ddbb5bf4a8.png" alt="\beta"/> particles. The
-neutrino energy does not contribute to this response. The prompt and delayed
-<img class="math" src="../_images/math/66981fa3920210c6ad8dbe5e968783d5dd7520c3.png" alt="\gamma"/>-rays are assumed to deposit their energy locally.</td>
+<tr class="field-even field"><th class="field-name">kappa-fission:</th><td class="field-body"><p class="first">The recoverable energy production rate due to fission. The recoverable
+energy is defined as the fission product kinetic energy, prompt and
+delayed neutron kinetic energies, prompt and delayed <img class="math" src="../_images/math/66981fa3920210c6ad8dbe5e968783d5dd7520c3.png" alt="\gamma"/>-ray
+total energies, and the total energy released by the delayed <img class="math" src="../_images/math/fdb63b9e51abe6bbb16acfb5d7b773ddbb5bf4a8.png" alt="\beta"/>
+particles. The neutrino energy does not contribute to this response. The
+prompt and delayed <img class="math" src="../_images/math/66981fa3920210c6ad8dbe5e968783d5dd7520c3.png" alt="\gamma"/>-rays are assumed to deposit their energy
+locally.</p>
+</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">events:</th><td class="field-body">Number of scoring events</td>
+<tr class="field-odd field"><th class="field-name">current:</th><td class="field-body"><p class="first">Partial currents on the boundaries of each cell in a mesh.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This score can only be used if a mesh filter has been
+specified. Furthermore, it may not be used in conjunction with any
+other score.</p>
+</div>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">events:</th><td class="field-body"><p class="first last">Number of scoring events</p>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
 </tr>
 </tbody>
 </table>
@@ -943,15 +993,23 @@ attributes/sub-elements:</p>
 <tr class="field-odd field"><th class="field-name">type:</th><td class="field-body">The type of structured mesh. Valid options include &#8220;rectangular&#8221; and
 &#8220;hexagonal&#8221;.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body">The lower-left corner of the structured mesh. If only two coordinate are
+<tr class="field-even field"><th class="field-name">dimension:</th><td class="field-body">The number of mesh cells in each direction.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">lower_left:</th><td class="field-body">The lower-left corner of the structured mesh. If only two coordinates are
 given, it is assumed that the mesh is an x-y mesh.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body">The number of mesh cells in each direction.</td>
+<tr class="field-even field"><th class="field-name">upper_right:</th><td class="field-body">The upper-right corner of the structured mesh. If only two coordinates are
+given, it is assumed that the mesh is an x-y mesh.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">width:</th><td class="field-body">The width of mesh cells in each direction.</td>
+<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body">The width of mesh cells in each direction.</td>
 </tr>
 </tbody>
 </table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">One of <tt class="docutils literal"><span class="pre">&lt;upper_right&gt;</span></tt> or <tt class="docutils literal"><span class="pre">&lt;width&gt;</span></tt> must be specified, but not both
+(even if they are consistent with one another).</p>
+</div>
 </div></blockquote>
 </div>
 <div class="section" id="assume-separate-element">
@@ -960,7 +1018,7 @@ given, it is assumed that the mesh is an x-y mesh.</td>
 are spatially separate, this tag can be used to cut down on some of the tally
 overhead. The effect of assuming all tallies are spatially separate is that once
 one tally is scored to, the same event is assumed not to score to any other
-tallies. This element should be followed by &#8220;true&#8221; or &#8220;false&#8221;</p>
+tallies. This element should be followed by &#8220;true&#8221; or &#8220;false&#8221;.</p>
 <blockquote>
 <div><div class="admonition warning">
 <p class="first admonition-title">Warning</p>
@@ -1290,7 +1348,7 @@ turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="troubleshoot.html">4. Troubleshooting OpenMC</a>&#160;&#160;»
+        <a href="troubleshoot.html">4. Troubleshooting</a>&#160;&#160;»
         </p>
 
       </div>

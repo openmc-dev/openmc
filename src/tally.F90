@@ -218,21 +218,6 @@ contains
             ! total/scatter macro
             score = (macro_total - mu*macro_scatt)*(ONE/macro_scatt)
 
-          case (SCORE_DIFFUSION)
-            ! Skip any event where the particle didn't scatter
-            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
-
-            ! Temporarily store the scattering cross section
-            score = material_xs % total - material_xs % absorption
-
-            ! Since this only gets tallied at every scattering event, the
-            ! flux estimator is 1/Sigma_s. Therefore, the diffusion
-            ! coefficient times flux is 1/(3*Sigma_s*(Sigma_t -
-            ! mu*Sigma_s)).
-
-            score = last_wgt / (3.0_8 * score * (material_xs % total - &
-                 mu * score))
-
           case (SCORE_N_1N)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP

@@ -1964,10 +1964,9 @@ contains
             ! Set tally estimator to analog
             t % estimator = ESTIMATOR_ANALOG
           case ('diffusion')
-            t % score_bins(j) = SCORE_DIFFUSION
-
-            ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
+            message = "Diffusion score no longer supported for tallies, & 
+                      please remove"
+            call fatal_error()
           case ('n1n')
             t % score_bins(j) = SCORE_N_1N
 

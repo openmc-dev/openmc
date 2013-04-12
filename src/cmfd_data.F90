@@ -170,14 +170,9 @@ contains
                 ! get p1 scatter rr and convert to p1 scatter xs
                 cmfd % p1scattxs(h,i,j,k) = t % results(3,score_index) % sum / flux
 
-                ! extract diffusion coefficient tally
-                cmfd % diffusion(h,i,j,k) = t % results(4,score_index) % sum / flux
-
                 ! calculate diffusion coefficient
-!               cmfd % diffcof(h,i,j,k) = ONE/(3.0_8*cmfd%totalxs(h,i,j,k))
                 cmfd % diffcof(h,i,j,k) = ONE/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
                      cmfd % p1scattxs(h,i,j,k)))
-!               cmfd % diffcof(h,i,j,k) = cmfd % diffusion(h,i,j,k)
 
               else if (ital == 2) then
 

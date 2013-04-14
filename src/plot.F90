@@ -248,8 +248,7 @@ contains
          ACCESS='stream')
     
     ! write plot header info
-    write(UNIT_PLOT) pl % pixels(1), pl % pixels(2), pl % pixels(3)
-    write(UNIT_PLOT) vox, ll
+    write(UNIT_PLOT) pl % pixels, vox, ll
     
     do x = 1, pl % pixels(1)
       do y = 1, pl % pixels(2)

@@ -12,7 +12,7 @@ def parse_options():
   """Process command line arguments"""
 
   from optparse import OptionParser
-  usage = r"""%prog [options] <3draster_file>"""
+  usage = r"""%prog [options] <voxel_file>"""
   p = OptionParser(usage=usage)
   p.add_option('-o', '--output', action='store', dest='output',
              default='plot.silo', help='Path to output SILO file.')

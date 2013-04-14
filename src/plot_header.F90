@@ -31,7 +31,7 @@ module plot_header
 
   ! Plot type
   integer, parameter :: PLOT_TYPE_SLICE = 1
-  integer, parameter :: PLOT_TYPE_3DRASTER = 2
+  integer, parameter :: PLOT_TYPE_VOXEL = 2
 
   ! Plot basis plane
   integer, parameter :: PLOT_BASIS_XY = 1

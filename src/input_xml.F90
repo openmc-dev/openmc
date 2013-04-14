@@ -2174,10 +2174,10 @@ contains
       select case (plot_(i) % type)
       case ("slice")
         pl % type = PLOT_TYPE_SLICE
-      case ("3draster")
-        pl % type = PLOT_TYPE_3DRASTER
+      case ("voxel")
+        pl % type = PLOT_TYPE_VOXEL
       case default
-        message = "Unsupported plot type '" // plot_(i) % type &
+        message = "Unsupported plot type '" // trim(plot_(i) % type) &
              // "' in plot " // trim(to_str(pl % id))
         call fatal_error()
       end select
@@ -2187,9 +2187,9 @@ contains
       case (PLOT_TYPE_SLICE)
         pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
              "_" // trim(plot_(i) % filename) // ".ppm"
-      case (PLOT_TYPE_3DRASTER)
+      case (PLOT_TYPE_VOXEL)
         pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
-             "_" // trim(plot_(i) % filename) // ".3draster"
+             "_" // trim(plot_(i) % filename) // ".voxel"
       end select
       
       ! Copy plot pixel size
@@ -2202,11 +2202,11 @@ contains
                     trim(to_str(pl % id))
           call fatal_error()
         end if
-      else if (pl % type == PLOT_TYPE_3DRASTER) then
+      else if (pl % type == PLOT_TYPE_VOXEL) then
         if (size(plot_(i) % pixels) == 3) then
           pl % pixels = plot_(i) % pixels
         else
-          message = "<pixels> must be length 3 in 3draster plot " // &
+          message = "<pixels> must be length 3 in voxel plot " // &
                     trim(to_str(pl % id))
           call fatal_error()
         end if
@@ -2214,8 +2214,8 @@ contains
 
       ! Copy plot background color
       if (associated(plot_(i) % background)) then
-        if (pl % type == PLOT_TYPE_3DRASTER) then
-          message = "Background color ignored in 3D raster plot " // & 
+        if (pl % type == PLOT_TYPE_VOXEL) then
+          message = "Background color ignored in voxel plot " // & 
                      trim(to_str(pl % id))
           call warning()
         end if
@@ -2265,11 +2265,11 @@ contains
                     trim(to_str(pl % id))
           call fatal_error()
         end if
-      else if (pl % type == PLOT_TYPE_3DRASTER) then
+      else if (pl % type == PLOT_TYPE_VOXEL) then
         if (size(plot_(i) % width) == 3) then
           pl % width = plot_(i) % width
         else
-          message = "<width> must be length 3 in 3draster plot " // &
+          message = "<width> must be length 3 in voxel plot " // &
                     trim(to_str(pl % id))
           call fatal_error()
         end if
@@ -2306,8 +2306,8 @@ contains
       ! Copy user specified colors
       if (associated(plot_(i) % col_spec_)) then
       
-        if (pl % type == PLOT_TYPE_3DRASTER) then
-          message = "Color specifications ignored in 3D raster plot " // & 
+        if (pl % type == PLOT_TYPE_VOXEL) then
+          message = "Color specifications ignored in voxel plot " // & 
                      trim(to_str(pl % id))
           call warning()
         end if
@@ -2351,8 +2351,8 @@ contains
       ! Deal with masks
       if (associated(plot_(i) % mask_)) then
       
-        if (pl % type == PLOT_TYPE_3DRASTER) then
-          message = "Mask ignored in 3D raster plot " // & 
+        if (pl % type == PLOT_TYPE_VOXEL) then
+          message = "Mask ignored in voxel plot " // & 
                      trim(to_str(pl % id))
           call warning()
         end if

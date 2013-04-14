@@ -24,7 +24,7 @@ contains
   subroutine run_plot()
 
     integer :: i ! loop index for plots
-    type(PlotSlice), pointer :: pl => null()
+    type(ObjectPlot), pointer :: pl => null()
 
     do i = 1, n_plots
       pl => plots(i)
@@ -36,10 +36,59 @@ contains
       if (pl % type == PLOT_TYPE_SLICE) then
         ! create 2d image
         call create_ppm(pl)
+      else if (pl % type == PLOT_TYPE_3DRASTER) then
+        ! create dump for 3D silomesh utility script
+        call create_3d_dump(pl)
       end if
     end do
 
   end subroutine run_plot
+
+!===============================================================================
+! POSITION_RGB computes the red/green/blue values for a given plot with the 
+! current particle's position
+!===============================================================================
+
+  subroutine position_rgb(pl, rgb, id)
+  
+    type(ObjectPlot), pointer, intent(in) :: pl
+    integer, intent(out)                  :: rgb(3)
+    integer, intent(out)                  :: id
+    
+    logical :: found_cell
+    type(Cell), pointer :: c => null()
+    
+    call deallocate_coord(p % coord0 % next)
+    p % coord => p % coord0
+
+    call find_cell(found_cell)
+
+    if (.not. found_cell) then
+      ! If no cell, revert to default color
+      rgb = pl % not_found % rgb
+      id = -1
+    else
+      if (pl % color_by == PLOT_COLOR_MATS) then
+        ! Assign color based on material
+        c => cells(p % coord % cell)
+        id = materials(c % material) % id
+        if (c % material == MATERIAL_VOID) then
+          ! By default, color void cells white
+          rgb = 255
+        else
+          rgb = pl % colors(c % material) % rgb
+        end if
+      else if (pl % color_by == PLOT_COLOR_CELLS) then
+        ! Assign color based on cell
+        rgb = pl % colors(p % coord % cell) % rgb
+        id = cells(p % coord % cell) % id
+      else
+        rgb = 0
+        id = -1
+      end if
+    end if
+    
+  end subroutine position_rgb
 
 !===============================================================================
 ! CREATE_PPM creates an image based on user input from a plots.xml <plot>
@@ -48,18 +97,17 @@ contains
 
   subroutine create_ppm(pl)
 
-    type(PlotSlice), pointer :: pl
+    type(ObjectPlot), pointer :: pl
 
     integer :: in_i
     integer :: out_i
     integer :: x, y      ! pixel location
-    integer :: r, g, b   ! colors (red, green, blue) from 0-255
+    integer :: rgb(3)    ! colors (red, green, blue) from 0-255
+    integer :: id
     real(8) :: in_pixel
     real(8) :: out_pixel
     real(8) :: xyz(3)
-    logical :: found_cell
     type(Image) :: img
-    type(Cell), pointer :: c => null()
 
     ! Initialize and allocate space for image
     call init_image(img)
@@ -101,44 +149,11 @@ contains
     do y = 1, img % height
       do x = 1, img % width
 
-        call deallocate_coord(p % coord0 % next)
-        p % coord => p % coord0
-
-        call find_cell(found_cell)
-
-        if (.not. found_cell) then
-          ! If no cell, revert to default color
-          r = pl % not_found % rgb(1)
-          g = pl % not_found % rgb(2)
-          b = pl % not_found % rgb(3)
-        else
-          if (pl % color_by == PLOT_COLOR_MATS) then
-            ! Assign color based on material
-            c => cells(p % coord % cell)
-            if (c % material == MATERIAL_VOID) then
-              ! By default, color void cells white
-              r = 255
-              g = 255
-              b = 255
-            else
-              r = pl % colors(c % material) % rgb(1)
-              g = pl % colors(c % material) % rgb(2)
-              b = pl % colors(c % material) % rgb(3)
-            end if
-          else if (pl % color_by == PLOT_COLOR_CELLS) then
-            ! Assign color based on cell
-            r = pl % colors(p % coord % cell) % rgb(1)
-            g = pl % colors(p % coord % cell) % rgb(2)
-            b = pl % colors(p % coord % cell) % rgb(3)
-          else
-            r = 0
-            g = 0
-            b = 0
-          end if
-        end if
+        ! get pixel color
+        call position_rgb(pl, rgb, id)
 
         ! Create a pixel at (x,y) with color (r,g,b)
-        call set_pixel(img, x, y, r, g, b)
+        call set_pixel(img, x, y, rgb(1), rgb(2), rgb(3))
 
         ! Advance pixel in first direction
         p % coord0 % xyz(in_i) = p % coord0 % xyz(in_i) + in_pixel
@@ -163,7 +178,7 @@ contains
 
   subroutine output_ppm(pl, img)
 
-    type(PlotSlice), pointer :: pl
+    type(ObjectPlot), pointer :: pl
     type(Image), intent(in)  :: img
 
     integer :: i ! loop index for height
@@ -189,5 +204,83 @@ contains
     close(UNIT=UNIT_PLOT)
 
   end subroutine output_ppm
+
+!===============================================================================
+! CREATE_3D_DUMP outputs a binary file that can be input into silomesh for 3D
+! geometry visualization.  It works the same way as create_ppm by dragging a
+! particle across the geometry for the specified number of voxels. The first
+! 3 int(4)'s in the binary are the number of x, y, and z voxels.  The next 3
+! real(8)'s are the widths of the voxels in the x, y, and z directions. The next
+! 3 real(8)'s are the x, y, and z coordinates of the lower left point. Finally
+! the binary is filled with entries of four int(4)'s each. Each 'row' in the
+! binary contains four int(4)'s: 3 for x,y,z position and 1 for cell or material
+! id.  For 1 million voxels this produces a file of approximately 15MB.
+!===============================================================================
+
+  subroutine create_3d_dump(pl)
+
+    type(ObjectPlot), pointer :: pl
+    
+    integer :: x, y, z      ! voxel location indices
+    integer :: rgb(3)       ! colors (red, green, blue) from 0-255
+    integer :: id           ! id of cell or material
+    real(8) :: vox(3)       ! x, y, and z voxel widths
+    real(8) :: ll(3)        ! lower left starting point for each sweep direction
+
+    ! compute voxel widths in each direction
+    vox = pl % width/dble(pl % pixels)
+    
+    ! initial particle position
+    ll = pl % origin - pl % width / 2.0
+
+    ! allocate and initialize particle
+    allocate(p)
+    call initialize_particle()
+    p % coord0 % xyz = ll
+    p % coord0 % uvw = (/ 0.5, 0.5, 0.5 /)
+    p % coord0 % universe = BASE_UNIVERSE
+
+    ! move to center of voxels    
+    ll = ll + vox / 2.0
+    
+    ! Open binary plot file for writing
+    open(UNIT=UNIT_PLOT, FILE=pl % path_plot, STATUS='replace', &
+         ACCESS='stream')
+    
+    ! write plot header info
+    write(UNIT_PLOT) pl % pixels(1), pl % pixels(2), pl % pixels(3)
+    write(UNIT_PLOT) vox, ll
+    
+    do x = 1, pl % pixels(1)
+      do y = 1, pl % pixels(2)
+        do z = 1, pl % pixels(3)
+
+          ! get voxel color
+          call position_rgb(pl, rgb, id)
+
+          ! write to plot file
+          write(UNIT_PLOT) x, y, z, id
+
+          ! advance particle in z direction
+          p % coord0 % xyz(3) = p % coord0 % xyz(3) + vox(3)
+          
+        end do
+        
+        ! advance particle in y direction
+        p % coord0 % xyz(2) = p % coord0 % xyz(2) + vox(2)
+        p % coord0 % xyz(3) = ll(3)
+        
+      end do
+      
+      ! advance particle in y direction
+      p % coord0 % xyz(1) = p % coord0 % xyz(1) + vox(1)
+      p % coord0 % xyz(2) = ll(2)
+      p % coord0 % xyz(3) = ll(3)
+      
+    end do
+
+    close(UNIT_PLOT)
+
+  end subroutine create_3d_dump
 
 end module plot

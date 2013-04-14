@@ -1310,7 +1310,7 @@ contains
   subroutine print_plot()
 
     integer :: i ! loop index for plots
-    type(PlotSlice), pointer :: pl => null()
+    type(ObjectPlot), pointer :: pl => null()
 
     ! Display header for plotting
     call header("PLOTTING SUMMARY")

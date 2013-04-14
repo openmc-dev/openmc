@@ -41,10 +41,8 @@ def main(file_, o):
     sys.stdout.flush()
     for y in range(1,ny+1):
       for z in range(1,nz+1):
-        xm,ym,zm,id_ = get_int(fh, 4)
+        id_ = get_int(fh)[0]
         silomesh.set_value(float(id_), x, y, z)
-        if not x == xm or not y == ym or not z == zm:
-          raise Exception("mesh mismatch!")
   print
   silomesh.finalize_var()
   silomesh.finalize_mesh()

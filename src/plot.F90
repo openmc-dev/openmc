@@ -258,7 +258,7 @@ contains
           call position_rgb(pl, rgb, id)
 
           ! write to plot file
-          write(UNIT_PLOT) x, y, z, id
+          write(UNIT_PLOT) id
 
           ! advance particle in z direction
           p % coord0 % xyz(3) = p % coord0 % xyz(3) + vox(3)

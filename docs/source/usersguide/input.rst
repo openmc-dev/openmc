@@ -945,15 +945,21 @@ tallies. This element should be followed by "true" or "false".
 Geometry Plotting Specification -- plots.xml
 --------------------------------------------
 
-A basic 2D plotting capability is available in OpenMC by creating a plots.xml
+Basic plotting capabilities are available in OpenMC by creating a plots.xml
 file and subsequently running with the command-line flag ``-plot``. The root
-element of the plots.xml is simply ``<plots>`` and any number output figures can
-be defined with ``<plot>`` sub-elements.
+element of the plots.xml is simply ``<plots>`` and any number output plots can
+be defined with ``<plot>`` sub-elements.  Two plot types are currently
+implemented in openMC:
+
+* ``slice``  2D pixel plot along one of the major axes. Produces a PPM image file.
+* ``voxel``  3D voxel data dump. Produces a binary file containing voxel xyz position and cell or material id.
+
 
 ``<plot>`` Element
 ------------------
 
-Each plot must contain a combination of the following attributes or sub-elements:
+Each plot must contain a combination of the following attributes or
+sub-elements:
 
   :id:
     The unique ``id`` of the plot.
@@ -967,7 +973,9 @@ Each plot must contain a combination of the following attributes or sub-elements
 
   :color:
     Keyword for plot coloring.  This can only be either ``cell`` or ``mat``,
-    which colors regions by cells and materials, respectively.
+    which colors regions by cells and materials, respectively. For voxel plots,
+    this determines which id (cell or material) is associated with each
+    position.
 
     *Default*: ``cell``
 
@@ -985,60 +993,75 @@ Each plot must contain a combination of the following attributes or sub-elements
     *Default*: None - Required entry
 
   :type:
-    Keyword for type of plot to be produced.  Currently only ``slice`` plots are
-    implemented, which create 2D pixel maps saved in the PPM file format.  PPM
-    files can be displayed in most viewers (e.g. the default Gnome viewer,
-    IrfanView, etc.).
+    Keyword for type of plot to be produced. Currently only "slice" and
+    "voxel" plots are implemented. The "slice" plot type creates 2D pixel
+    maps saved in the PPM file format. PPM files can be displayed in most
+    viewers (e.g. the default Gnome viewer, IrfanView, etc.).  The "voxel"
+    plot type produces a binary datafile containing voxel grid positioning and
+    the cell or material (specified by the ``color`` tag) at the center of each
+    voxel. These datafiles can be processed into 3D SILO files using the
+    ``voxel.py`` utility provided with the OpenMC source, and subsequently
+    viewed with a 3D viewer such as VISIT or Paraview. See the
+    :ref:`devguide_voxel` for information about the datafile structure.
 
     .. note:: Since the PPM format is saved without any kind of compression,
               the resulting file sizes can be quite large.  Saving the image in
               the PNG format can often times reduce the file size by orders of
-              magnitude without any loss of image quality.
+              magnitude without any loss of image quality. Likewise,
+              high-resolution voxel files produced by OpenMC can be quite large,
+              but the equivalent SILO files will by significantly smaller.
 
     *Default*: "slice"
 
-``<plot>`` elements of ``type`` "slice" also contain the following attributes or
-sub-elements:
+``<plot>`` elements of ``type`` "slice" and "voxel" must contain the ``pixels``
+attribute or sub-element:
+
+  :pixels:
+    Specifies the number of pixes or voxels to be used along each of the basis
+    directions for "slice" and "voxel" plots, respectively. Should be two or
+    three integers separated by spaces.
+
+    .. warning:: The ``pixels`` input determines the output file size.  For the
+                 PPM format, 10 million pixels will result in a file just under
+                 30 MB in size. A 10 million voxel binary file will be around
+                 152 MB.
+
+    .. warning:: If the aspect ratio defined in ``pixels`` does not match the
+                 aspect ratio defined in ``width`` the plot may appear stretched
+                 or squeezed.
+
+    .. warning:: Geometry features along a basis direction smaller than
+                 ``width``/``pixels`` along that basis direction may not appear
+                 in the plot.
+
+    *Default*: None - Required entry for "slice" and "voxel" plots
+
+``<plot>`` elements of ``type`` "slice" can also contain the following
+attributes or sub-elements.  These are not used in "voxel" plots:
 
   :basis:
-    Keyword specifying the plane of the plot for ``slice`` type plots.  Can be
+    Keyword specifying the plane of the plot for "slice" type plots.  Can be
     one of: "xy", "xz", "yz".
 
     *Default*: "xy"
 
-  :pixels:
-    Specifies the number of pixes to be used along each of the basis directions
-    for "slice" plots. Should be two integers separated by spaces.
-
-    .. warning:: The ``pixels`` input determines the output file size.  For the PPM
-                 format, 10 million pixels will result in a file just under 30 MB in
-                 size.
-
-    .. warning:: If the aspect ratio defined in ``pixels`` does not match the aspect
-              ratio defined in ``width`` the plot may appear stretched or squeezed.
-
-    .. warning:: Geometry features along a basis direction smaller than ``width``/``pixels``
-                 along that basis direction may not appear in the plot.
-
-    *Default*: None - Required entry for "slice" plots
-
   :background:
-    Specifies the RGB color of the regions where no OpenMC cell can be found. Should
-    be three integers separated by spaces.
+    Specifies the RGB color of the regions where no OpenMC cell can be found.
+    Should be three integers separated by spaces.
 
     *Default*: 0 0 0 (white)
 
   :col_spec:
-    Any number of this optional tag may be included in each ``<plot>`` element, which can
-    override the default random colors for cells or materials.  Each ``col_spec``
-    element must contain ``id`` and ``rgb`` sub-elements.
+    Any number of this optional tag may be included in each ``<plot>`` element,
+    which can override the default random colors for cells or materials. Each
+    ``col_spec`` element must contain ``id`` and ``rgb`` sub-elements.
   
     :id:
       Specifies the cell or material unique id for the color specification.
 
     :rgb:
-      Specifies the custom color for the cell or material.  Should be 3 integers separated
-      by spaces.
+      Specifies the custom color for the cell or material. Should be 3 integers
+      separated by spaces.
 
     As an example, if your plot is colored by material and you want material 23
     to be blue, the corresponding ``col_spec`` element would look like:
@@ -1051,17 +1074,18 @@ sub-elements:
 
   :mask:
     The special ``mask`` sub-element allows for the selective plotting of *only*
-    user-specified cells or materials.  Only one ``mask`` element is allowed per ``plot``
-    element, and it must contain as attributes or sub-elements a background masking color and
-    a list of cells or materials to plot:
+    user-specified cells or materials. Only one ``mask`` element is allowed per
+    ``plot`` element, and it must contain as attributes or sub-elements a
+    background masking color and a list of cells or materials to plot:
 
     :components:
-      List of unique ``id`` numbers of the cells or materials to plot.  Should be any number
-      of integers separated by spaces.
+      List of unique ``id`` numbers of the cells or materials to plot. Should be
+      any number of integers separated by spaces.
 
     :background:
-      Color to apply to all cells or materials not in the ``components`` list of cells or
-      materials to plot.  This overrides any ``col_spec`` color specifications.
+      Color to apply to all cells or materials not in the ``components`` list of
+      cells or materials to plot. This overrides any ``col_spec`` color
+      specifications.
 
     *Default*: None
 

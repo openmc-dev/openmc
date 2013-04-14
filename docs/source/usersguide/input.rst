@@ -1024,7 +1024,7 @@ attribute or sub-element:
     .. warning:: The ``pixels`` input determines the output file size.  For the
                  PPM format, 10 million pixels will result in a file just under
                  30 MB in size. A 10 million voxel binary file will be around
-                 152 MB.
+                 40 MB.
 
     .. warning:: If the aspect ratio defined in ``pixels`` does not match the
                  aspect ratio defined in ``width`` the plot may appear stretched

@@ -2136,7 +2136,7 @@ contains
     integer n_cols, col_id
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
-    type(PlotSlice), pointer :: pl => null()
+    type(ObjectPlot), pointer :: pl => null()
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"
@@ -2170,16 +2170,46 @@ contains
         call fatal_error()
       end if
 
-      ! Set output file path
-      pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
-           "_" // trim(plot_(i) % filename) // ".ppm"
-
-      ! Copy plot pixel size
-      if (size(plot_(i) % pixels) == 2) then
-        pl % pixels = plot_(i) % pixels
-      else
-        message = "<pixels> must be length 2 in plot " // to_str(pl % id)
+      ! Copy plot type
+      select case (plot_(i) % type)
+      case ("slice")
+        pl % type = PLOT_TYPE_SLICE
+      case ("3draster")
+        pl % type = PLOT_TYPE_3DRASTER
+      case default
+        message = "Unsupported plot type '" // plot_(i) % type &
+             // "' in plot " // trim(to_str(pl % id))
         call fatal_error()
+      end select
+
+      ! Set output file path
+      select case (pl % type)
+      case (PLOT_TYPE_SLICE)
+        pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
+             "_" // trim(plot_(i) % filename) // ".ppm"
+      case (PLOT_TYPE_3DRASTER)
+        pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
+             "_" // trim(plot_(i) % filename) // ".3draster"
+      end select
+      
+      ! Copy plot pixel size
+      if (pl % type == PLOT_TYPE_SLICE) then
+        if (size(plot_(i) % pixels) == 2) then
+          pl % pixels(1) = plot_(i) % pixels(1)
+          pl % pixels(2) = plot_(i) % pixels(2)
+        else
+          message = "<pixels> must be length 2 in slice plot " // &
+                    trim(to_str(pl % id))
+          call fatal_error()
+        end if
+      else if (pl % type == PLOT_TYPE_3DRASTER) then
+        if (size(plot_(i) % pixels) == 3) then
+          pl % pixels = plot_(i) % pixels
+        else
+          message = "<pixels> must be length 3 in 3draster plot " // &
+                    trim(to_str(pl % id))
+          call fatal_error()
+        end if
       end if
 
       ! Copy plot background color
@@ -2195,30 +2225,22 @@ contains
         pl % not_found % rgb = (/ 255, 255, 255 /)
       end if
       
-      ! Copy plot type
-      select case (plot_(i) % type)
-      case ("slice")
-        pl % type = PLOT_TYPE_SLICE
-      case default
-        message = "Unsupported plot type '" // plot_(i) % type &
-             // "' in plot " // trim(to_str(pl % id))
-        call fatal_error()
-      end select
-
       ! Copy plot basis
-      select case (plot_(i) % basis)
-      case ("xy")
-        pl % basis = PLOT_BASIS_XY
-      case ("xz")
-        pl % basis = PLOT_BASIS_XZ
-      case ("yz")
-        pl % basis = PLOT_BASIS_YZ
-      case default
-        message = "Unsupported plot basis '" // plot_(i) % basis &
-             // "' in plot " // trim(to_str(pl % id))
-        call fatal_error()
-      end select
-
+      if (pl % type == PLOT_TYPE_SLICE) then
+        select case (plot_(i) % basis)
+        case ("xy")
+          pl % basis = PLOT_BASIS_XY
+        case ("xz")
+          pl % basis = PLOT_BASIS_XZ
+        case ("yz")
+          pl % basis = PLOT_BASIS_YZ
+        case default
+          message = "Unsupported plot basis '" // plot_(i) % basis &
+               // "' in plot " // trim(to_str(pl % id))
+          call fatal_error()
+        end select
+      end if
+      
       ! Copy plotting origin
       if (size(plot_(i) % origin) == 3) then
         pl % origin = plot_(i) % origin
@@ -2229,15 +2251,23 @@ contains
       end if
 
       ! Copy plotting width
-      if (size(plot_(i) % width) == 3) then
-        pl % width = plot_(i) % width
-      else if (size(plot_(i) % width) == 2) then
-        pl % width(1) = plot_(i) % width(1)
-        pl % width(2) = plot_(i) % width(2)
-      else
-        message = "Bad plot width " &
-             // "in plot " // trim(to_str(pl % id))
-        call fatal_error()
+      if (pl % type == PLOT_TYPE_SLICE) then
+        if (size(plot_(i) % width) == 2) then
+          pl % width(1) = plot_(i) % width(1)
+          pl % width(2) = plot_(i) % width(2)
+        else
+          message = "<width> must be length 2 in slice plot " // &
+                    trim(to_str(pl % id))
+          call fatal_error()
+        end if
+      else if (pl % type == PLOT_TYPE_3DRASTER) then
+        if (size(plot_(i) % width) == 3) then
+          pl % width = plot_(i) % width
+        else
+          message = "<width> must be length 3 in 3draster plot " // &
+                    trim(to_str(pl % id))
+          call fatal_error()
+        end if
       end if
 
       ! Copy plot color type and initialize all colors randomly

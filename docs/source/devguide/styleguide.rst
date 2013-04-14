@@ -72,6 +72,8 @@ Do not use old-style character/array length (e.g. character*80, real*8).
 Integer values being used to indicate a certain state should be defined as named
 constants (see the constants.F90 module for many examples).
 
+Always use a double colon :: when declaring a variable.
+
 Yes:
 
 .. code-block:: fortran

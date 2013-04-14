@@ -2214,6 +2214,11 @@ contains
 
       ! Copy plot background color
       if (associated(plot_(i) % background)) then
+        if (pl % type == PLOT_TYPE_3DRASTER) then
+          message = "Background color ignored in 3D raster plot " // & 
+                     trim(to_str(pl % id))
+          call warning()
+        end if
         if (size(plot_(i) % background) == 3) then
           pl % not_found % rgb = plot_(i) % background
         else
@@ -2300,6 +2305,13 @@ contains
 
       ! Copy user specified colors
       if (associated(plot_(i) % col_spec_)) then
+      
+        if (pl % type == PLOT_TYPE_3DRASTER) then
+          message = "Color specifications ignored in 3D raster plot " // & 
+                     trim(to_str(pl % id))
+          call warning()
+        end if
+      
         n_cols = size(plot_(i) % col_spec_)
         do j = 1, n_cols
           if (size(plot_(i) % col_spec_(j) % rgb) /= 3) then
@@ -2338,6 +2350,12 @@ contains
 
       ! Deal with masks
       if (associated(plot_(i) % mask_)) then
+      
+        if (pl % type == PLOT_TYPE_3DRASTER) then
+          message = "Mask ignored in 3D raster plot " // & 
+                     trim(to_str(pl % id))
+          call warning()
+        end if
       
         select case(size(plot_(i) % mask_))
           case default

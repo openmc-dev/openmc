@@ -1324,8 +1324,8 @@ contains
       ! Plot type
       if (pl % type == PLOT_TYPE_SLICE) then
         write(ou,100) "Plot Type:", "Slice"
-      else if (pl % type == PLOT_TYPE_3DRASTER) then
-        write(ou,100) "Plot Type:", "3D Raster"
+      else if (pl % type == PLOT_TYPE_VOXEL) then
+        write(ou,100) "Plot Type:", "Voxel"
       end if
 
       ! Plot parameters
@@ -1350,7 +1350,7 @@ contains
         end select
         write(ou,100) "Pixels:", trim(to_str(pl % pixels(1))) // " " // &
              trim(to_str(pl % pixels(2)))
-      else if (pl % type == PLOT_TYPE_3DRASTER) then
+      else if (pl % type == PLOT_TYPE_VOXEL) then
         write(ou,100) "Voxels:", trim(to_str(pl % pixels(1))) // " " // &
              trim(to_str(pl % pixels(2))) // " " // trim(to_str(pl % pixels(3))) 
       end if

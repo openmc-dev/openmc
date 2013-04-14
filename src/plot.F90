@@ -36,7 +36,7 @@ contains
       if (pl % type == PLOT_TYPE_SLICE) then
         ! create 2d image
         call create_ppm(pl)
-      else if (pl % type == PLOT_TYPE_3DRASTER) then
+      else if (pl % type == PLOT_TYPE_VOXEL) then
         ! create dump for 3D silomesh utility script
         call create_3d_dump(pl)
       end if

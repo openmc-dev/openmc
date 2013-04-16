@@ -22,7 +22,7 @@ module particle_restart
 
 #ifdef HDF5
   integer(HID_T) :: hdf5_particle_file
-#endif HDF5
+#endif
 
   ! Short names for output and error units
   integer :: ou = OUTPUT_UNIT

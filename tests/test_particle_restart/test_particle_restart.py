@@ -10,19 +10,18 @@ def setup():
     os.chdir(pwd)
 
 def test_run():
-    proc = Popen([pwd + '/../../src/openmc'], stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
-    print(proc.communicate()[0])
-    assert returncode == 0
-
-def test_run_restart():
-    proc = Popen([pwd + '/../../src/openmc'], stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
-    print(proc.communicate()[0])
-    assert returncode == 0
+    proc = Popen([pwd + '/../../src/openmc'], stderr=PIPE, stdout=PIPE)
+    stdout, stderr = proc.communicate()
+    assert stderr != ''
 
 def test_created_restart():
     assert os.path.exists(pwd + '/particle_0.binary')
+
+def test_run_restart():
+    proc = Popen([pwd + '/../../src/openmc -s particle_0.binary'], 
+           stderr=PIPE, stdout=PIPE, shell=True)
+    stdout, stderr = proc.communicate()
+    assert stderr != ''
 
 def teardown():
     output = [pwd + '/particle_0.binary']

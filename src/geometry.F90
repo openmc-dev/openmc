@@ -265,22 +265,24 @@ contains
 
     integer, intent(in)     :: last_cell  ! last cell particle was in
 
-    real(8) :: x        ! x-x0 for sphere
-    real(8) :: y        ! y-y0 for sphere
-    real(8) :: z        ! z-z0 for sphere
-    real(8) :: R        ! radius of sphere
-    real(8) :: u        ! x-component of direction
-    real(8) :: v        ! y-component of direction
-    real(8) :: w        ! z-component of direction
-    real(8) :: n1       ! x-component of surface normal
-    real(8) :: n2       ! y-component of surface normal
-    real(8) :: n3       ! z-component of surface normal
-    real(8) :: dot_prod ! dot product of direction and normal
-    real(8) :: norm     ! "norm" of surface normal
-    logical :: found    ! particle found in universe?
+    real(8) :: x         ! x-x0 for sphere
+    real(8) :: y         ! y-y0 for sphere
+    real(8) :: z         ! z-z0 for sphere
+    real(8) :: R         ! radius of sphere
+    real(8) :: u         ! x-component of direction
+    real(8) :: v         ! y-component of direction
+    real(8) :: w         ! z-component of direction
+    real(8) :: n1        ! x-component of surface normal
+    real(8) :: n2        ! y-component of surface normal
+    real(8) :: n3        ! z-component of surface normal
+    real(8) :: dot_prod  ! dot product of direction and normal
+    real(8) :: norm      ! "norm" of surface normal
+    integer :: i_surface ! index in surfaces
+    logical :: found     ! particle found in universe?
     type(Surface),  pointer :: surf => null()
 
-    surf => surfaces(abs(p % surface))
+    i_surface = abs(p % surface)
+    surf => surfaces(i_surface)
     if (verbosity >= 10 .or. trace) then
       message = "    Crossing surface " // trim(to_str(surf % id))
       call write_message()
@@ -539,7 +541,7 @@ contains
       if (.not. found) then
         call write_particle_restart()
         message = "After particle " // trim(to_str(p % id)) // " crossed surface " &
-             // trim(to_str(surfaces(abs(p%surface)) % id)) // " it could not be &
+             // trim(to_str(surfaces(i_surface) % id)) // " it could not be &
              &located in any cell and it did not leak."
         call fatal_error()
       end if

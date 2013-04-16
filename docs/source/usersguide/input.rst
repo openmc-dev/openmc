@@ -755,7 +755,8 @@ filters can be used for a tally. The following types of filter are available:
 cell, universe, material, surface, birth region, pre-collision energy,
 post-collision energy, and an arbitrary structured mesh.
 
-The two valid elements in the tallies.xml file are ``<tally>`` and ``<mesh>``.
+The three valid elements in the tallies.xml file are ``<tally>``, ``<mesh>``,
+and ``<assume_separate>``.
 
 ``<tally>`` Element
 -------------------
@@ -767,12 +768,58 @@ The ``<tally>`` element accepts the following sub-elements:
     for output purposes. This string is limited to 52 characters for formatting 
     purposes.
 
-  :filters:
-    A list of filters to specify what region of phase space should contribute to
-    the tally. See below for full details on what filters are available.
+  :filter:
+    Specify a filter that restricts contributions to the tally to particles
+    within certain regions of phase space. This element and its
+    attributes/sub-elements are described below.
+
+    .. note::
+        You may specify zero, one, or multiple filters to apply to the tally. To
+        specify multiple filters, you must use multiple ``<filter>`` elements.
+
+    The ``filter`` element has the following attributes/sub-elements:
+
+      :type:
+        The type of the filter. Accepted options are "cell", "cellborn", "material",
+        "universe", "energy", "energyout", and "mesh".
+
+      :bins:
+        For each filter type, the corresponding ``bins`` entry is given as follows:
+
+        :cell:
+          A list of cells in which the tally should be accumulated.
+
+        :cellborn:
+          This filter allows the tally to be scored to only when particles were
+          originally born in a specified cell.
+
+        :surface:
+          A list of surfaces for which the tally should be accumulated.
+
+        :material:
+          A list of materials for which the tally should be accumulated.
+
+        :universe:
+          A list of universes for which the tally should be accumulated.
+
+        :energy:
+          A monotonically increasing list of bounding **pre-collision** energies
+          for a number of groups. For example, if this filter is specified as
+          ``<filter type="energy" bins="0.0 1.0 20.0" />``, then two energy bins
+          will be created, one with energies between 0 and 1 MeV and the other
+          with energies between 1 and 20 MeV.
+
+        :energyout:
+          A monotonically increasing list of bounding **post-collision**
+          energies for a number of groups. For example, if this filter is
+          specified as ``<filter type="energyout" bins="0.0 1.0 20.0" />``, then
+          two post-collision energy bins will be created, one with energies
+          between 0 and 1 MeV and the other with energies between 1 and 20 MeV.
+
+        :mesh:
+          The ``id`` of a structured mesh to be tallied over.
 
   :nuclides:
-
     If specified, the scores listed will be for particular nuclides, not the
     summation of reactions from all nuclides. The format for nuclides should be
     [Atomic symbol]-[Mass number], e.g. "U-235". The reaction rate for all
@@ -787,92 +834,69 @@ The ``<tally>`` element accepts the following sub-elements:
     *Default*: total
 
   :scores:
-    The desired responses to be accumulated. See below for full details on the
-    responses which be tallied.
+    A space-separated list of the desired responses to be accumulated. Accepted
+    options are "flux", "total", "scatter", "nu-scatter", "scatter-N",
+    "scatter-PN", "absorption", "fission", "nu-fission", "kappa-fission",
+    "current", and "events". These corresponding to the following physical
+    quantities.
 
-The following filters can be specified for a tally:
+    :flux:
+      Total flux
 
-  :cell:
-    A list of cells in which the tally should be accumulated.
+    :total:
+      Total reaction rate
 
-  :cellborn:
-    This filter allows the tally to be scored to only when particles were
-    originally born in a specified cell.
+    :scatter:
+      Total scattering rate. Can also be identified with the ``scatter-0``
+      response type.
 
-  :surface:
-    A list of surfaces for which the tally should be accumulated.
+    :nu-scatter:
+      Total production of neutrons due to scattering. This accounts for
+      multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
+      slightly higher than the scattering rate.
 
-  :material:
-    A list of materials for which the tally should be accumulated.
-
-  :universe:
-    A list of universes for which the tally should be accumulated.
-
-  :energy:
-    A monotonically increasing list of bounding **pre-collision** energies for a
-    number of groups. For example, if this filter is specified as ``<energy>0.0
-    1.0 20.0</energy>``, then two energy bins will be created, one with energies
-    between 0 and 1 MeV and the other with energies between 1 and 20 MeV.
-
-  :energyout:
-    A monotonically increasing list of bounding **post-collision** energies for
-    a number of groups. For example, if this filter is specified as
-    ``<energyout>0.0 1.0 20.0</energyout>``, then two post-collision energy bins
-    will be created, one with energies between 0 and 1 MeV and the other with
-    energies between 1 and 20 MeV.
-
-  :mesh:
-    The ``id`` of a structured mesh to be tallied over.
-
-The following responses can be tallied.
-
-  :flux:
-    Total flux
-
-  :total:
-    Total reaction rate
-
-  :scatter:
-    Total scattering rate. Can also be identified with the ``scatter-0``
-    response type.
-
-  :nu-scatter:
-    Total production of neutrons due to scattering. This accounts for
-    multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
-    slightly higher than the scattering rate.
-
-  :scatter-N:
-    Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre expansion order.
-    N must be between 0 and 10. As an example, tallying the 2\ :sup:`nd` \ scattering 
-    moment would be specified as ``<scores> scatter-2 </scores>``.
+    :scatter-N:
+      Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre
+      expansion order.  N must be between 0 and 10. As an example, tallying the
+      2\ :sup:`nd` \ scattering moment would be specified as ``<scores>
+      scatter-2 </scores>``.
   
-  :scatter-PN:
-    Tally all of the scattering moments from order 0 to N, where N is 
-    the Legendre expansion order.  That is, ``scatter-P1`` is equivalent
-    to requesting tallies of ``scatter-0`` and ``scatter-1``.  
-    N must be between 0 and 10. As an example, tallying up to the 2\ :sup:`nd` \
-    scattering moment would be specified as ``<scores> scatter-P2 </scores>``.
+    :scatter-PN:
+      Tally all of the scattering moments from order 0 to N, where N is the
+      Legendre expansion order.  That is, ``scatter-P1`` is equivalent to
+      requesting tallies of ``scatter-0`` and ``scatter-1``.  N must be between
+      0 and 10. As an example, tallying up to the 2\ :sup:`nd` \ scattering
+      moment would be specified as ``<scores> scatter-P2 </scores>``.
     
-  :absorption:
-    Total absorption rate. This accounts for all reactions which do not produce
-    secondary neutrons.
+    :absorption:
+      Total absorption rate. This accounts for all reactions which do not
+      produce secondary neutrons.
 
-  :fission:
-    Total fission rate
+    :fission:
+      Total fission rate
 
-  :nu-fission:
-    Total production of neutrons due to fission
+    :nu-fission:
+      Total production of neutrons due to fission
     
-  :kappa-fission:
-    The recoverable energy production rate due to fission. The recoverable
-    energy is defined as the fission product kinetic energy, prompt and delayed neutron
-    kinetic energies, prompt and delayed :math:`\gamma`-ray total energies,
-    and the total energy released by the delayed :math:`\beta` particles. The 
-    neutrino energy does not contribute to this response. The prompt and delayed 
-    :math:`\gamma`-rays are assumed to deposit their energy locally.
+    :kappa-fission:
+      The recoverable energy production rate due to fission. The recoverable
+      energy is defined as the fission product kinetic energy, prompt and
+      delayed neutron kinetic energies, prompt and delayed :math:`\gamma`-ray
+      total energies, and the total energy released by the delayed :math:`\beta`
+      particles. The neutrino energy does not contribute to this response. The
+      prompt and delayed :math:`\gamma`-rays are assumed to deposit their energy
+      locally.
 
-  :events:
-    Number of scoring events
+    :current:
+      Partial currents on the boundaries of each cell in a mesh.
+
+      .. note::
+          This score can only be used if a mesh filter has been
+          specified. Furthermore, it may not be used in conjunction with any
+          other score.
+
+    :events:
+      Number of scoring events
 
 ``<mesh>`` Element
 ------------------
@@ -885,15 +909,23 @@ attributes/sub-elements:
     The type of structured mesh. Valid options include "rectangular" and
     "hexagonal".
 
-  :lower_left:
-    The lower-left corner of the structured mesh. If only two coordinate are
-    given, it is assumed that the mesh is an x-y mesh.
-
   :dimension:
     The number of mesh cells in each direction.
 
+  :lower_left:
+    The lower-left corner of the structured mesh. If only two coordinates are
+    given, it is assumed that the mesh is an x-y mesh.
+
+  :upper_right:
+    The upper-right corner of the structured mesh. If only two coordinates are
+    given, it is assumed that the mesh is an x-y mesh.
+
   :width:
     The width of mesh cells in each direction.
+
+  .. note::
+      One of ``<upper_right>`` or ``<width>`` must be specified, but not both
+      (even if they are consistent with one another).
 
 ``<assume_separate>`` Element
 -----------------------------
@@ -902,7 +934,7 @@ In cases where the user needs to specify many different tallies each of which
 are spatially separate, this tag can be used to cut down on some of the tally
 overhead. The effect of assuming all tallies are spatially separate is that once
 one tally is scored to, the same event is assumed not to score to any other
-tallies. This element should be followed by "true" or "false"
+tallies. This element should be followed by "true" or "false".
 
   .. warning:: If used incorrectly, the assumption that all tallies are spatially
     separate can lead to incorrect results.

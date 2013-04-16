@@ -332,15 +332,14 @@ source.o: output.o
 source.o: particle_header.o
 source.o: physics.o
 source.o: random_lcg.o
+source.o: state_point.o
 source.o: string.o
 
 state_point.o: error.o
 state_point.o: global.o
 state_point.o: math.o
 state_point.o: output.o
-state_point.o: source.o
 state_point.o: string.o
-state_point.o: tally.o
 state_point.o: tally_header.o
 
 string.o: constants.o

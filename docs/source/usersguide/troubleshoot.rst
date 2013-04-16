@@ -11,8 +11,8 @@ Problems with Compilation
 If you are experiencing problems trying to compile OpenMC, first check if the
 error you are receiving is among the following options.
 
-undefined reference to `_vtab$...
-*********************************
+undefined reference to \`_vtab$...
+**********************************
 
 If you see this message when trying to compile, the most likely cause is that
 you are using a compiler that does not support type-bound procedures from

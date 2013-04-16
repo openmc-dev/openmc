@@ -83,7 +83,7 @@ Prerequisites
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
 .. _OpenMPI: http://www.open-mpi.org
-.. _MPICH2: http://www.mpich.org
+.. _MPICH: http://www.mpich.org
 .. _HDF5: http://www.hdfgroup.org/HDF5/
 .. _PETSc: http://www.mcs.anl.gov/petsc/
 

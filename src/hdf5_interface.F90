@@ -1195,6 +1195,7 @@ contains
       dims(1) = restart_batch
       call h5ltread_dataset_double_f(hdf5_state_point, "k_batch", &
            k_batch(1:restart_batch), dims, hdf5_err)
+      dims(1) = restart_batch*gen_per_batch
       call h5ltread_dataset_double_f(hdf5_state_point, "entropy", &
            entropy(1:restart_batch*gen_per_batch), dims, hdf5_err)
       call hdf5_read_double(hdf5_state_point, "k_col_abs", k_col_abs)

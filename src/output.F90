@@ -1332,8 +1332,14 @@ contains
       write(ou,100) "Origin:", trim(to_str(pl % origin(1))) // &
            " " // trim(to_str(pl % origin(2))) // " " // &
            trim(to_str(pl % origin(3)))
-      write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
-           " " // trim(to_str(pl % width(2)))
+      if (pl % type == PLOT_TYPE_SLICE) then
+        write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
+             " " // trim(to_str(pl % width(2)))
+      else if (pl % type == PLOT_TYPE_VOXEL) then
+        write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
+             " " // trim(to_str(pl % width(2))) // &
+             " " // trim(to_str(pl % width(3)))
+      end if
       if (pl % color_by == PLOT_COLOR_CELLS) then
         write(ou,100) "Coloring:", "Cells"
       else if (pl % color_by == PLOT_COLOR_MATS) then

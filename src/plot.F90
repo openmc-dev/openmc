@@ -240,16 +240,17 @@ contains
     p % coord0 % uvw = (/ 0.5, 0.5, 0.5 /)
     p % coord0 % universe = BASE_UNIVERSE
 
-    ! move to center of voxels    
-    ll = ll + vox / 2.0
-    
     ! Open binary plot file for writing
     open(UNIT=UNIT_PLOT, FILE=pl % path_plot, STATUS='replace', &
          ACCESS='stream')
-    
+
+      print *, ll
     ! write plot header info
     write(UNIT_PLOT) pl % pixels, vox, ll
-    
+
+    ! move to center of voxels    
+    ll = ll + vox / 2.0
+
     do x = 1, pl % pixels(1)
       do y = 1, pl % pixels(2)
         do z = 1, pl % pixels(3)

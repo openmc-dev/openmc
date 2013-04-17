@@ -14,11 +14,15 @@ alphanum = re.compile(r"[\W_]+")
 def parse_options():
   """Process command line arguments"""
 
+  err = False
+
   def tallies_callback(option, opt, value, parser):
     """Option parser function for list of tallies"""
     try:
       setattr(parser.values, option.dest, [int(v) for v in value.split(',')])
-    except: p.print_help()
+    except:
+      p.print_help()
+      err = True
 
   def scores_callback(option, opt, value, parser):
     """Option parser function for list of scores"""
@@ -30,7 +34,9 @@ def parse_options():
         if not tally in scores: scores[tally] = []
         scores[tally].append(score)
       setattr(parser.values, option.dest, scores)
-    except: p.print_help()
+    except:
+      p.print_help()
+      err = True
   
   def filters_callback(option, opt, value, parser):
     """Option parser function for list of filters"""
@@ -45,8 +51,8 @@ def parse_options():
         filters[tally][filter_].append(bin)
       setattr(parser.values, option.dest, filters)
     except:
-      raise
       p.print_help()
+      err = True
   
   from optparse import OptionParser
   usage = r"""%prog [options] <statepoint_file>
@@ -55,7 +61,7 @@ The default is to process all tallies and all scores into one silo file. Subsets
 can be chosen using the options.  For example, to only process tallies 2 and 4
 with all scores on tally 2 and only scores 1 and 3 on tally 4:
 
-%prog -t 2,4 -f 4.1,4.3 <statepoint_file>
+%prog -t 2,4 -s 4.1,4.3 <statepoint_file>
 
 Likewise if you have additional filters on a tally you can specify a subset of
 bins for each filter for that tally. For example to process all tallies and
@@ -92,14 +98,14 @@ You can list the available tallies, scores, and filters with the -l option:
   
   if not parsed[1]:
     p.print_help()
-    return parsed
+    return parsed, err
 
   if parsed[0].valerr:
     parsed[0].valerr = 1
   else:
     parsed[0].valerr = 0
 
-  return parsed
+  return parsed, err
 
 ################################################################################
 def main(file_, o):
@@ -237,7 +243,7 @@ def print_available(sp):
     mesh = ""
     if not 'mesh' in tally.filters: mesh = "(no mesh)"
     print "\tTally {} {}".format(tally.id, mesh)
-    scores = ["{}.{}: {}".format(tally.id, sid+1, score) 
+    scores = ["{}.{}: {}".format(tally.id, sid, score) 
               for sid, score in enumerate(tally.scores)]
     for score in scores:
       print "\t\tScore {}".format(score)
@@ -308,6 +314,6 @@ warnings.formatwarning = formatwarning
 
 ################################################################################
 if __name__ == '__main__':
-    (options, args) = parse_options()
-    if args:
+    (options, args, err) = parse_options()
+    if args and not err:
       main(args[0],options)

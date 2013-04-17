@@ -10,14 +10,17 @@ from statepoint import StatePoint
 
 alphanum = re.compile(r"[\W_]+")
 
+err = False
+
 ################################################################################
 def parse_options():
   """Process command line arguments"""
 
-  err = False
+  
 
   def tallies_callback(option, opt, value, parser):
     """Option parser function for list of tallies"""
+    global err
     try:
       setattr(parser.values, option.dest, [int(v) for v in value.split(',')])
     except:
@@ -26,6 +29,7 @@ def parse_options():
 
   def scores_callback(option, opt, value, parser):
     """Option parser function for list of scores"""
+    global err
     try:
       scores = {}
       entries = value.split(',')
@@ -40,6 +44,7 @@ def parse_options():
   
   def filters_callback(option, opt, value, parser):
     """Option parser function for list of filters"""
+    global err
     try:
       filters = {}
       entries = value.split(',')
@@ -314,6 +319,6 @@ warnings.formatwarning = formatwarning
 
 ################################################################################
 if __name__ == '__main__':
-    (options, args, err) = parse_options()
+    (options, args), err = parse_options()
     if args and not err:
       main(args[0],options)

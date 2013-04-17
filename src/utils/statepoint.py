@@ -579,6 +579,6 @@ class StatePoint(object):
 
     def _get_string(self, n=1, path=None):
         if self._hdf5:
-            return [str(v) for v in self._f[path].value]
+            return str(self._f[path].value)
         else:
             return str(self._get_data(n, 's', 1)[0])

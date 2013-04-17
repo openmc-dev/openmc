@@ -244,7 +244,6 @@ contains
     open(UNIT=UNIT_PLOT, FILE=pl % path_plot, STATUS='replace', &
          ACCESS='stream')
 
-      print *, ll
     ! write plot header info
     write(UNIT_PLOT) pl % pixels, vox, ll
 

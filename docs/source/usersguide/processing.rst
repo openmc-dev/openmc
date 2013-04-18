@@ -13,16 +13,19 @@ Python installation to contain:
 
 * [1]_ `Numpy <http://www.numpy.org/>`_
 * [1]_ `Scipy <http://www.scipy.org/>`_
-* [2]_ `Matplotlib <http://matplotlib.org/>`_
-* [2]_ `Silomesh <https://github.com/nhorelik/silomesh>`_
-* [2]_ `VTK <http://www.vtk.org/>`_
-* [3]_ `PyQt <http://www.riverbankcomputing.com/software/pyqt>`_
+* [2]_ `h5py <http://code.google.com/p/h5py/>`_
+* [3]_ `Matplotlib <http://matplotlib.org/>`_
+* [3]_ `Silomesh <https://github.com/nhorelik/silomesh>`_
+* [3]_ `VTK <http://www.vtk.org/>`_
+* [4]_ `PyQt <http://www.riverbankcomputing.com/software/pyqt>`_
 
-All of these are easily obtainable in Ubuntu.
+Most of these are easily obtainable in Ubuntu through the package manager, or
+are easily installed with distutils.
 
 .. [1] Required for tally data extraction from statepoints with statepoint.py
-.. [2] Optional for plotting utilities
-.. [3] Optional for interactive GUIs
+.. [2] Required only if reading HDF5 statepoint files. 
+.. [3] Optional for plotting utilities
+.. [4] Optional for interactive GUIs
 
 ----------------------
 Geometry Visualization
@@ -152,8 +155,8 @@ the data extraction functions of StatePoint objects. However, for now it is up
 to the user to explore the classes in statepoint.py to discover what data is
 available in StatePoint objects (we highly recommend interactively exploring
 with `IPython <http://ipython.org/>`_). Many exmaples can be found by looking
-through the other utilies that use statepoint.py, and a few common tasks will be
-described here in the following sections.
+through the other utilies that use statepoint.py, and a few common visualization
+tasks will be described here in the following sections.
 
 Plotting in 2D
 --------------

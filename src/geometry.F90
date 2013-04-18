@@ -1132,7 +1132,7 @@ contains
 
         ! Check is calculated distance is new minimum
         if (d < dist) then
-          if (abs(d - dist)/dist >= FP_PRECISION) then
+          if (abs(d - dist)/dist >= FP_REL_PRECISION) then
             dist = d
             surface_crossed = -cl % surfaces(i)
             lattice_crossed = NONE
@@ -1174,7 +1174,8 @@ contains
           ! point precision.
 
           if (d < dist) then 
-            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+            if (abs(d - dist)/dist >= FP_REL_PRECISION &
+                    .and. abs(d - dist) >= FP_PRECISION) then 
               dist = d
               if (u > 0) then
                 lattice_crossed = LATTICE_RIGHT
@@ -1195,7 +1196,8 @@ contains
           end if
 
           if (d < dist) then
-            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+            if (abs(d - dist)/dist >= FP_REL_PRECISION &
+                    .and. abs(d - dist) >= FP_PRECISION) then
               dist = d
               if (v > 0) then
                 lattice_crossed = LATTICE_FRONT
@@ -1219,7 +1221,8 @@ contains
             end if
 
             if (d < dist) then
-              if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+              if (abs(d - dist)/dist >= FP_REL_PRECISION &
+                      .and. abs(d - dist) >= FP_PRECISION) then
                 dist = d
                 if (w > 0) then
                   lattice_crossed = LATTICE_TOP

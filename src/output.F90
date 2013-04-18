@@ -1310,7 +1310,7 @@ contains
   subroutine print_plot()
 
     integer :: i ! loop index for plots
-    type(PlotSlice), pointer :: pl => null()
+    type(ObjectPlot), pointer :: pl => null()
 
     ! Display header for plotting
     call header("PLOTTING SUMMARY")
@@ -1318,20 +1318,34 @@ contains
     do i = 1, n_plots
       pl => plots(i)
 
-      ! Write plot id
+      ! Plot id
       write(ou,100) "Plot ID:", trim(to_str(pl % id))
+      
+      ! Plot type
+      if (pl % type == PLOT_TYPE_SLICE) then
+        write(ou,100) "Plot Type:", "Slice"
+      else if (pl % type == PLOT_TYPE_VOXEL) then
+        write(ou,100) "Plot Type:", "Voxel"
+      end if
 
-      ! Write plotting origin
+      ! Plot parameters
       write(ou,100) "Origin:", trim(to_str(pl % origin(1))) // &
            " " // trim(to_str(pl % origin(2))) // " " // &
            trim(to_str(pl % origin(3)))
-
-      ! Write plotting width
       if (pl % type == PLOT_TYPE_SLICE) then
-
         write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
              " " // trim(to_str(pl % width(2)))
-        write(ou,100) "Coloring:", trim(to_str(pl % color_by))
+      else if (pl % type == PLOT_TYPE_VOXEL) then
+        write(ou,100) "Width:", trim(to_str(pl % width(1))) // &
+             " " // trim(to_str(pl % width(2))) // &
+             " " // trim(to_str(pl % width(3)))
+      end if
+      if (pl % color_by == PLOT_COLOR_CELLS) then
+        write(ou,100) "Coloring:", "Cells"
+      else if (pl % color_by == PLOT_COLOR_MATS) then
+        write(ou,100) "Coloring:", "Materials"
+      end if
+      if (pl % type == PLOT_TYPE_SLICE) then
         select case (pl % basis)
         case (PLOT_BASIS_XY)
           write(ou,100) "Basis:", "xy"
@@ -1342,6 +1356,9 @@ contains
         end select
         write(ou,100) "Pixels:", trim(to_str(pl % pixels(1))) // " " // &
              trim(to_str(pl % pixels(2)))
+      else if (pl % type == PLOT_TYPE_VOXEL) then
+        write(ou,100) "Voxels:", trim(to_str(pl % pixels(1))) // " " // &
+             trim(to_str(pl % pixels(2))) // " " // trim(to_str(pl % pixels(3))) 
       end if
 
       write(ou,*)

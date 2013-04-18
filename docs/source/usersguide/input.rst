@@ -941,6 +941,8 @@ tallies. This element should be followed by "true" or "false".
 
   *Default*: false
 
+.. _usersguide_plotting:
+
 --------------------------------------------
 Geometry Plotting Specification -- plots.xml
 --------------------------------------------

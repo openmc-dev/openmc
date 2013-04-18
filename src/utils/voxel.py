@@ -5,8 +5,6 @@ from __future__ import division
 import struct
 import sys
 
-import silomesh # https://github.com/nhorelik/silomesh/
-
 ################################################################################
 def parse_options():
   """Process command line arguments"""
@@ -15,7 +13,9 @@ def parse_options():
   usage = r"""%prog [options] <voxel_file>"""
   p = OptionParser(usage=usage)
   p.add_option('-o', '--output', action='store', dest='output',
-             default='plot.silo', help='Path to output SILO file.')
+             default='plot', help='Path to output SILO or VTK file.')
+  p.add_option('-v', '--vtk', action='store_true', dest='vtk',
+           default=False, help='Flag to convert to VTK instead of SILO.')
   parsed = p.parse_args()
   if not parsed[1]:
     p.print_help()
@@ -30,23 +30,66 @@ def main(file_, o):
   header = get_header(fh)
   meshparms = header['dimension'] + header['lower_left'] + header['upper_right']
   nx,ny,nz = meshparms[0], meshparms[1], meshparms[2]
-  
-  silomesh.init_silo(o.output)
-  silomesh.init_mesh('plot', *meshparms)
-  
-  silomesh.init_var("cell_or_mat_id")
-  
-  for x in range(1,nx+1):
-    sys.stdout.write(" {0}%\r".format(int(x/nx*100)))
-    sys.stdout.flush()
-    for y in range(1,ny+1):
-      for z in range(1,nz+1):
-        id_ = get_int(fh)[0]
-        silomesh.set_value(float(id_), x, y, z)
-  print
-  silomesh.finalize_var()
-  silomesh.finalize_mesh()
-  silomesh.finalize_silo()  
+  ll = header['lower_left']
+
+  if o.vtk:
+    try:
+      import vtk
+    except:
+      print 'The vtk python bindings do not appear to be installed properly.\n'+\
+            'On Ubuntu: sudo apt-get install python-vtk\n'+\
+            'See: http://www.vtk.org/'
+      return
+    
+    origin = [(l+w*n/2.) for n,l,w in zip((nx,ny,nz),ll,header['width'])]
+    
+    grid = vtk.vtkImageData()
+    grid.SetDimensions(nx+1,ny+1,nz+1)
+    grid.SetOrigin(*ll)
+    grid.SetSpacing(*header['width'])
+    
+    data = vtk.vtkDoubleArray()
+    data.SetName("id")
+    data.SetNumberOfTuples(nx*ny*nz)
+    for x in range(nx):
+      sys.stdout.write(" {0}%\r".format(int(x/nx*100)))
+      sys.stdout.flush()
+      for y in range(ny):
+        for z in range(nz):
+          i = z*nx*ny + y*nx + x
+          id_ = get_int(fh)[0]
+          data.SetValue(i, id_)
+    grid.GetCellData().AddArray(data)
+    
+    writer = vtk.vtkXMLImageDataWriter()
+    writer.SetInput(grid)
+    if not o.output[-4:] == ".vti": o.output += ".vti"
+    writer.SetFileName(o.output)
+    writer.Write()
+
+  else:
+
+    try:
+      import silomesh
+    except:
+      print 'The silomesh package does not appear to be installed properly.\n'+\
+            'See: https://github.com/nhorelik/silomesh/'
+      return
+    if not o.output[-5:] == ".silo": o.output += ".silo"
+    silomesh.init_silo(o.output)
+    silomesh.init_mesh('plot', *meshparms)
+    silomesh.init_var("id")
+    for x in range(1,nx+1):
+      sys.stdout.write(" {0}%\r".format(int(x/nx*100)))
+      sys.stdout.flush()
+      for y in range(1,ny+1):
+        for z in range(1,nz+1):
+          id_ = get_int(fh)[0]
+          silomesh.set_value(float(id_), x, y, z)
+    print
+    silomesh.finalize_var()
+    silomesh.finalize_mesh()
+    silomesh.finalize_silo()  
 
 ################################################################################
 def get_header(file_):

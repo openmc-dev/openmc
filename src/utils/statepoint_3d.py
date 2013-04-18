@@ -1,10 +1,11 @@
 #!/usr/bin/env python 
 
+from __future__ import division
+
+import sys
 import itertools
 import re
 import warnings
-
-import silomesh # https://github.com/nhorelik/silomesh/
 
 from statepoint import StatePoint
 
@@ -62,7 +63,7 @@ def parse_options():
   from optparse import OptionParser
   usage = r"""%prog [options] <statepoint_file>
 
-The default is to process all tallies and all scores into one silo file. Subsets
+The default is to process all tallies and all scores into one file. Subsets
 can be chosen using the options.  For example, to only process tallies 2 and 4
 with all scores on tally 2 and only scores 1 and 3 on tally 4:
 
@@ -83,22 +84,24 @@ You can list the available tallies, scores, and filters with the -l option:
                 help='List of tally indices to process, separated by commas.' \
                      ' Default is to process all tallies.')
   p.add_option('-s', '--scores', dest='scores', type='string', default=None,
-            action='callback', callback=scores_callback,
-            help='List of score indices to process, separated by commas, ' \
+               action='callback', callback=scores_callback,
+               help='List of score indices to process, separated by commas, ' \
                  'specified as {tallyid}.{scoreid}.' \
                  ' Default is to process all scores in each tally.')
   p.add_option('-f', '--filters', dest='filters', type='string', default=None,
-            action='callback', callback=filters_callback,
-            help='List of filter bins to process, separated by commas, ' \
+               action='callback', callback=filters_callback,
+               help='List of filter bins to process, separated by commas, ' \
                  'specified as {tallyid}.{filter}.{binid}. ' \
                  'Default is to process all filter combinaiton for each score.')
   p.add_option('-l', '--list', dest='list', action='store_true',
                help='List the tally and score indices available in the file.')
   p.add_option('-o', '--output', action='store', dest='output',
-               default='tally.silo', help='path to output SILO file.')
+               default='tally', help='path to output SILO file.')
   p.add_option('-e', '--error', dest='valerr', default=False,
                action='store_true', 
                help='Flag to extract errors instead of values.')
+  p.add_option('-v', '--vtk', action='store_true', dest='vtk',
+               default=False, help='Flag to convert to VTK instead of SILO.')
   parsed = p.parse_args()
   
   if not parsed[1]:
@@ -124,8 +127,34 @@ def main(file_, o):
   if o.list:
     print_available(sp)
     return
+  
+  if o.vtk:
+    if not o.output[-4:] == ".vtm": o.output += ".vtm"
+  else:
+    if not o.output[-5:] == ".silo": o.output += ".silo"
+    
+  if o.vtk:
+    try:
+      import vtk
+    except:
+      print 'The vtk python bindings do not appear to be installed properly.\n'+\
+            'On Ubuntu: sudo apt-get install python-vtk\n'+\
+            'See: http://www.vtk.org/'
+      return
+  else:
+    try:
+      import silomesh
+    except:
+      print 'The silomesh package does not appear to be installed properly.\n'+\
+            'See: https://github.com/nhorelik/silomesh/'
+      return
 
-  silomesh.init_silo(o.output)
+  if o.vtk:
+    blocks = vtk.vtkMultiBlockDataSet()
+    blocks.SetNumberOfBlocks(5)
+    block_idx = 0
+  else:
+    silomesh.init_silo(o.output)
 
   # Tally loop #################################################################
   for tally in sp.tallies:
@@ -139,8 +168,19 @@ def main(file_, o):
     # extract filter options and mesh parameters for this tally
     filtercombos = get_filter_combos(tally)
     meshparms = get_mesh_parms(sp, tally)
-    nx,ny,nz = meshparms[0], meshparms[1], meshparms[2]
-    silomesh.init_mesh('Tally_{}'.format(tally.id), *meshparms)
+    nx,ny,nz = meshparms[:3]
+    ll = meshparms[3:6]
+    ur = meshparms[6:9]
+    
+    if o.vtk:
+      ww = [(u-l)/n for u,l,n in zip(ur,ll,(nx,ny,nz))]
+      origin = [(l+w*n/2.) for n,l,w in zip((nx,ny,nz),ll,ww)]
+      grid = grid = vtk.vtkImageData()
+      grid.SetDimensions(nx+1,ny+1,nz+1)
+      grid.SetOrigin(*ll)
+      grid.SetSpacing(*ww)
+    else:
+      silomesh.init_mesh('Tally_{}'.format(tally.id), *meshparms)
     
     # Score loop ###############################################################
     for sid,score in enumerate(tally.scores):
@@ -164,28 +204,58 @@ def main(file_, o):
         
         # find and sanitize the variable name for this score
         varname = get_sanitized_filterspec_name(tally, score, filterspec)
-        silomesh.init_var(varname)
+        if o.vtk:
+          vtkdata = vtk.vtkDoubleArray()
+          vtkdata.SetName(varname)
+          dataforvtk = {}
+        else:
+          silomesh.init_var(varname)
         
-        print "\t Score {}.{} {}:\t\t{}".format(tally.id, sid+1, score, varname)
+        lbl = "\t Score {}.{} {}:\t\t{}".format(tally.id, sid+1, score, varname)
         
         # Mesh fill loop #######################################################
         for x in range(1,nx+1):
+          sys.stdout.write(lbl+" {0}%\r".format(int(x/nx*100)))
+          sys.stdout.flush()
           for y in range(1,ny+1):
             for z in range(1,nz+1):
               filterspec[0][1] = (x,y,z)
               val = sp.get_value(tally.id-1, filterspec, sid)[o.valerr]
-              silomesh.set_value(float(val), x, y, z)
-              
+              if o.vtk:
+                # vtk cells go z, y, x, so we store it now and enter it later
+                i = (z-1)*nx*ny + (y-1)*nx + x-1
+                dataforvtk[i] = float(val)
+              else:
+                silomesh.set_value(float(val), x, y, z)
+        
         # end mesh fill loop
-        silomesh.finalize_var()
+        print
+        if o.vtk:
+          for i in range(nx*ny*nz):
+            vtkdata.InsertNextValue(dataforvtk[i])
+          grid.GetCellData().AddArray(vtkdata)
+          del vtkdata
+          
+        else:
+          silomesh.finalize_var()
         
       # end filter loop
       
     # end score loop
-    silomesh.finalize_mesh()
+    if o.vtk:
+      blocks.SetBlock(block_idx, grid)
+      block_idx += 1
+    else:
+      silomesh.finalize_mesh()
     
   # end tally loop
-  silomesh.finalize_silo()
+  if o.vtk:
+    writer = vtk.vtkXMLMultiBlockDataWriter()
+    writer.SetFileName(o.output)
+    writer.SetInput(blocks)
+    writer.Write()
+  else:
+    silomesh.finalize_silo()
 
 ################################################################################
 def get_sanitized_filterspec_name(tally, score, filterspec):
@@ -261,8 +331,8 @@ def print_available(sp):
 def validate_options(sp,o):
   """Validates specified tally/score options for the current statepoint"""
   
+  available_tallies = [t.id for t in sp.tallies]
   if o.tallies:
-    available_tallies = [t.id for t in sp.tallies]
     for otally in o.tallies:
       if not otally in available_tallies:
         warnings.warn('Tally {} not in statepoint file'.format(otally))

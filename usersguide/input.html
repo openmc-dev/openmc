@@ -3,17 +3,14 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
     <title>3. Writing XML Input Files &mdash; OpenMC Documentation</title>
-    
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/print.css" type="text/css" />
-    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
@@ -29,7 +26,7 @@
     <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="User’s Guide" href="index.html" />
-    <link rel="next" title="4. Troubleshooting" href="troubleshoot.html" />
+    <link rel="next" title="4. Data Processing and Visualization" href="processing.html" />
     <link rel="prev" title="2. Installation and Configuration" href="install.html" /> 
   </head>
   <body>
@@ -45,7 +42,7 @@
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="troubleshoot.html">4. Troubleshooting</a>&#160;&#160;»
+        <a href="processing.html">4. Data Processing and Visualization</a>&#160;&#160;»
         </p>
 
       </div>
@@ -105,7 +102,7 @@ will be reported as the half-width of the 95% two-sided confidence interval. If
 set to &#8220;false&#8221;, uncertainties on tally results will be reported as the sample
 standard deviation.</p>
 <blockquote>
-<div><em>Default</em>: false</div></blockquote>
+<em>Default</em>: false</blockquote>
 </div>
 <div class="section" id="cross-sections-element">
 <span id="cross-sections"></span><h3>3.2.2. <tt class="docutils literal"><span class="pre">&lt;cross_sections&gt;</span></tt> Element<a class="headerlink" href="#cross-sections-element" title="Permalink to this headline">¶</a></h3>
@@ -122,57 +119,57 @@ undergo Russian roulette. Surviving particles are assigned a user-determined
 weight. Note that weight cutoffs and Russian rouletting are not turned on by
 default. This element has the following attributes/sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">weight:</th><td class="field-body"><p class="first">The weight below which particles undergo Russian roulette.</p>
+<tr class="field"><th class="field-name">weight:</th><td class="field-body"><p class="first">The weight below which particles undergo Russian roulette.</p>
 <p><em>Default</em>: 0.25</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">weight_avg:</th><td class="field-body"><p class="first">The weight that is assigned to particles that are not killed after Russian
+<tr class="field"><th class="field-name">weight_avg:</th><td class="field-body"><p class="first">The weight that is assigned to particles that are not killed after Russian
 roulette.</p>
 <p class="last"><em>Default</em>: 1.0</p>
 </td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="eigenvalue-element">
 <h3>3.2.4. <tt class="docutils literal"><span class="pre">&lt;eigenvalue&gt;</span></tt> Element<a class="headerlink" href="#eigenvalue-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;eigenvalue&gt;</span></tt> element indicates that a <img class="math" src="../_images/math/8c325612684d41304b9751c175df7bcc0f61f64f.png" alt="k"/>-eigenvalue calculation
 should be performed. It has the following attributes/sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">batches:</th><td class="field-body"><p class="first">The total number of batches, where each batch corresponds to multiple
+<tr class="field"><th class="field-name">batches:</th><td class="field-body"><p class="first">The total number of batches, where each batch corresponds to multiple
 fission source iterations. Batching is done to eliminate correlation between
 realizations of random variables.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name" colspan="2">generations_per_batch:</th></tr>
-<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first">The number of total fission source iterations per batch.</p>
+<tr class="field"><th class="field-name" colspan="2">generations_per_batch:</th></tr>
+<tr><td>&nbsp;</td><td class="field-body"><p class="first">The number of total fission source iterations per batch.</p>
 <p><em>Default</em>: 1</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">inactive:</th><td class="field-body"><p class="first">The number of inactive batches. In general, the starting cycles in a
+<tr class="field"><th class="field-name">inactive:</th><td class="field-body"><p class="first">The number of inactive batches. In general, the starting cycles in a
 criticality calculation can not be used to contribute to tallies since the
 fission source distribution and eigenvalue are generally not converged
 immediately.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">particles:</th><td class="field-body"><p class="first">The number of neutrons to simulate per fission source iteration.</p>
+<tr class="field"><th class="field-name">particles:</th><td class="field-body"><p class="first">The number of neutrons to simulate per fission source iteration.</p>
 <p class="last"><em>Default</em>: None</p>
 </td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="energy-grid-element">
 <h3>3.2.5. <tt class="docutils literal"><span class="pre">&lt;energy_grid&gt;</span></tt> Element<a class="headerlink" href="#energy-grid-element" title="Permalink to this headline">¶</a></h3>
@@ -183,7 +180,7 @@ determining cross sections (i.e. non-unionized energy grid). To use a unionized
 energy grid, set this element to &#8220;union&#8221;. Note that the unionized energy grid
 treatment is slightly different than that employed in Serpent.</p>
 <blockquote>
-<div><em>Default</em>: union</div></blockquote>
+<em>Default</em>: union</blockquote>
 </div>
 <div class="section" id="entropy-element">
 <h3>3.2.6. <tt class="docutils literal"><span class="pre">&lt;entropy&gt;</span></tt> Element<a class="headerlink" href="#entropy-element" title="Permalink to this headline">¶</a></h3>
@@ -191,11 +188,11 @@ treatment is slightly different than that employed in Serpent.</p>
 entropy. This mesh should cover all possible fissionable materials in the
 problem. It has the following attributes/sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in the x, y, and z directions, respectively.</p>
+<tr class="field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in the x, y, and z directions, respectively.</p>
 <dl class="docutils">
 <dt><em>Default</em>: If this tag is not present, the number of mesh cells is</dt>
 <dd><p class="first last">automatically determined by the code.</p>
@@ -203,39 +200,39 @@ problem. It has the following attributes/sub-elements:</p>
 </dl>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartesian coordinates of the lower-left corner of the mesh.</p>
+<tr class="field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartesian coordinates of the lower-left corner of the mesh.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartesian coordinates of the upper-right corner of the mesh.</p>
+<tr class="field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartesian coordinates of the upper-right corner of the mesh.</p>
 <p class="last"><em>Default</em>: None</p>
 </td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="fixed-source-element">
 <h3>3.2.7. <tt class="docutils literal"><span class="pre">&lt;fixed_source&gt;</span></tt> Element<a class="headerlink" href="#fixed-source-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;fixed_source&gt;</span></tt> element indicates that a fixed source calculation should be
 performed. It has the following attributes/sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">batches:</th><td class="field-body"><p class="first">The total number of batches. For fixed source calculations, each batch
+<tr class="field"><th class="field-name">batches:</th><td class="field-body"><p class="first">The total number of batches. For fixed source calculations, each batch
 represents a realization of random variables for tallies.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">particles:</th><td class="field-body"><p class="first">The number of particles to simulate per batch.</p>
+<tr class="field"><th class="field-name">particles:</th><td class="field-body"><p class="first">The number of particles to simulate per batch.</p>
 <p class="last"><em>Default</em>: None</p>
 </td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="no-reduce-element">
 <h3>3.2.8. <tt class="docutils literal"><span class="pre">&lt;no_reduce&gt;</span></tt> Element<a class="headerlink" href="#no-reduce-element" title="Permalink to this headline">¶</a></h3>
@@ -246,7 +243,7 @@ the accumulate score in one batch on a single processor is considered as an
 independent realization for the tally random variable. For a problem with large
 tally data, this option can significantly improve the parallel efficiency.</p>
 <blockquote>
-<div><em>Default</em>: false</div></blockquote>
+<em>Default</em>: false</blockquote>
 </div>
 <div class="section" id="output-element">
 <h3>3.2.9. <tt class="docutils literal"><span class="pre">&lt;output&gt;</span></tt> Element<a class="headerlink" href="#output-element" title="Permalink to this headline">¶</a></h3>
@@ -256,7 +253,7 @@ to a list of strings separated by spaces. Valid options are &#8220;summary&#8221
 &#8220;cross-sections&#8221;, and &#8220;tallies&#8221;. For example, if you want the summary and cross
 sections summary file to be written, this element should be given as:</p>
 <blockquote>
-<div><div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;output&gt;</span>summary cross_sections<span class="nt">&lt;/output&gt;</span>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;output&gt;</span>summary cross_sections<span class="nt">&lt;/output&gt;</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -265,7 +262,7 @@ sections summary file to be written, this element should be given as:</p>
 default.</p>
 </div>
 <p><em>Default</em>: &#8220;tallies&#8221;</p>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="ptables-element">
 <h3>3.2.10. <tt class="docutils literal"><span class="pre">&lt;ptables&gt;</span></tt> Element<a class="headerlink" href="#ptables-element" title="Permalink to this headline">¶</a></h3>
@@ -273,7 +270,7 @@ default.</p>
 in the unresolved resonance range if available. This element has no attributes
 or sub-elements and can be set to either &#8220;false&#8221; or &#8220;true&#8221;.</p>
 <blockquote>
-<div><em>Default</em>: true</div></blockquote>
+<em>Default</em>: true</blockquote>
 </div>
 <div class="section" id="run-cmfd-element">
 <h3>3.2.11. <tt class="docutils literal"><span class="pre">&lt;run_cmfd&gt;</span></tt> Element<a class="headerlink" href="#run-cmfd-element" title="Permalink to this headline">¶</a></h3>
@@ -281,14 +278,14 @@ or sub-elements and can be set to either &#8220;false&#8221; or &#8220;true&#822
 turned on or off. This element has no attributes or sub-elements and can be set
 to either &#8220;false&#8221; or &#8220;true&#8221;.</p>
 <blockquote>
-<div><em>Defualt</em>: false</div></blockquote>
+<em>Defualt</em>: false</blockquote>
 </div>
 <div class="section" id="seed-element">
 <h3>3.2.12. <tt class="docutils literal"><span class="pre">&lt;seed&gt;</span></tt> Element<a class="headerlink" href="#seed-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">seed</span></tt> element is used to set the seed used for the linear congruential
 pseudo-random number generator.</p>
 <blockquote>
-<div><em>Default</em>: 1</div></blockquote>
+<em>Default</em>: 1</blockquote>
 </div>
 <div class="section" id="source-element">
 <h3>3.2.13. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element<a class="headerlink" href="#source-element" title="Permalink to this headline">¶</a></h3>
@@ -297,29 +294,29 @@ be used either as the source for a fixed source calculation or the initial
 source guess for criticality calculations. It takes the following
 attributes/sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">file:</th><td class="field-body"><p class="first">If this attribute is given, it indicates that the source is to be read from
+<tr class="field"><th class="field-name">file:</th><td class="field-body"><p class="first">If this attribute is given, it indicates that the source is to be read from
 a binary source file whose path is given by the value of this element</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">space:</th><td class="field-body"><p class="first">An element specifying the spatial distribution of source sites. This element
+<tr class="field"><th class="field-name">space:</th><td class="field-body"><p class="first">An element specifying the spatial distribution of source sites. This element
 has the following attributes:</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of spatial distribution. Valid options are &#8220;box&#8221; and &#8220;point&#8221;. A
+<tr class="field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of spatial distribution. Valid options are &#8220;box&#8221; and &#8220;point&#8221;. A
 &#8220;box&#8221; spatial distribution has coordinates sampled uniformly in a
 parallelepiped. A &#8220;point&#8221; spatial distribution has coordinates specified
 by a triplet.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">parameters:</th><td class="field-body"><p class="first">For a &#8220;box&#8221; spatial distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should be given as six
+<tr class="field"><th class="field-name">parameters:</th><td class="field-body"><p class="first">For a &#8220;box&#8221; spatial distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should be given as six
 real numbers, the first three of which specify the lower-left corner of a
 parallelepiped and the last three of which specify the upper-right
 corner. Source sites are sampled uniformly through that parallelepiped.</p>
@@ -333,13 +330,13 @@ point source</p>
 </table>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">angle:</th><td class="field-body"><p class="first">An element specifying the angular distribution of source sites. This element
+<tr class="field"><th class="field-name">angle:</th><td class="field-body"><p class="first">An element specifying the angular distribution of source sites. This element
 has the following attributes:</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of angular distribution. Valid options are &#8220;isotropic&#8221; and
+<tr class="field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of angular distribution. Valid options are &#8220;isotropic&#8221; and
 &#8220;monodirectional&#8221;. The angle of the particle emitted from a source site is
 isotropic if the &#8220;isotropic&#8221; option is given. The angle of the particle
 emitted from a source site is the direction specified in the &lt;parameters&gt;
@@ -347,7 +344,7 @@ attribute if &#8220;monodirectional&#8221; option is given.</p>
 <p><em>Default</em>: isotropic</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">parameters:</th><td class="field-body"><p class="first">For an &#8220;isotropic&#8221; angular distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should not be
+<tr class="field"><th class="field-name">parameters:</th><td class="field-body"><p class="first">For an &#8220;isotropic&#8221; angular distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should not be
 specified</p>
 <p>For a &#8220;monodirectional&#8221; angular distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should be
 given as three real numbers which specify the angular cosines with respect
@@ -359,13 +356,13 @@ to each axis.</p>
 </table>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">energy:</th><td class="field-body"><p class="first">An element specifying the energy distribution of source sites. This element
+<tr class="field"><th class="field-name">energy:</th><td class="field-body"><p class="first">An element specifying the energy distribution of source sites. This element
 has the following attributes:</p>
 <table class="last docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of energy distribution. Valid options are &#8220;monoenergetic&#8221;,
+<tr class="field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of energy distribution. Valid options are &#8220;monoenergetic&#8221;,
 &#8220;watt&#8221;, and &#8220;maxwell&#8221;. The &#8220;monoenergetic&#8221; option produces source sites at
 a single energy. The &#8220;watt&#8221; option produces source sites whose energy is
 sampled from a Watt fission spectrum. The &#8220;maxwell&#8221; option produce source
@@ -373,7 +370,7 @@ sites whose energy is sampled from a Maxwell fission spectrum</p>
 <p><em>Default</em>: watt</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">parameters:</th><td class="field-body"><p class="first">For a &#8220;monoenergetic&#8221; energy distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should not be
+<tr class="field"><th class="field-name">parameters:</th><td class="field-body"><p class="first">For a &#8220;monoenergetic&#8221; energy distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should not be
 given as the energy in MeV of the source sites.</p>
 <p>For a &#8220;watt&#8221; energy distribution, <tt class="docutils literal"><span class="pre">parameters</span></tt> should be given as two
 real numbers <img class="math" src="../_images/math/c7d457e388298246adb06c587bccd419ea67f7e8.png" alt="a"/> and <img class="math" src="../_images/math/8136a7ef6a03334a7246df9097e5bcc31ba33fd2.png" alt="b"/> that parameterize the distribution
@@ -390,7 +387,7 @@ c E e^{-E/a} dE"/>.</p>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="state-point-element">
 <h3>3.2.14. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element<a class="headerlink" href="#state-point-element" title="Permalink to this headline">¶</a></h3>
@@ -399,29 +396,29 @@ should be written. A state point file can be used to restart a run or to get
 tally results at any batch. This element has the following
 attributes/sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">batches:</th><td class="field-body"><p class="first">A list of integers separated by spaces indicating at what batches a state
+<tr class="field"><th class="field-name">batches:</th><td class="field-body"><p class="first">A list of integers separated by spaces indicating at what batches a state
 point file should be written.</p>
 <p><em>Default</em>: Last batch only</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">interval:</th><td class="field-body"><p class="first">A single integer <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> indicating that a state point should be written
+<tr class="field"><th class="field-name">interval:</th><td class="field-body"><p class="first">A single integer <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> indicating that a state point should be written
 every <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1da733a.png" alt="n"/> batches. This option can be given in lieu of listing
 batches explicitly.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">source_separate:</th></tr>
-<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first">If this element is set to &#8220;true&#8221;, a separate binary source file will be
+<tr class="field"><th class="field-name" colspan="2">source_separate:</th></tr>
+<tr><td>&nbsp;</td><td class="field-body"><p class="first">If this element is set to &#8220;true&#8221;, a separate binary source file will be
 written. Otherwise, the source sites will be written in the state point
 directly.</p>
 <p><em>Default</em>: false</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">source_write:</th><td class="field-body"><p class="first">If this element is set to &#8220;false&#8221;, source sites are not written
+<tr class="field"><th class="field-name">source_write:</th><td class="field-body"><p class="first">If this element is set to &#8220;false&#8221;, source sites are not written
 to the state point file. This can substantially reduce the size of state
 points if large numbers of particles per batch are used.</p>
 <p class="last"><em>Default</em>: true</p>
@@ -429,7 +426,7 @@ points if large numbers of particles per batch are used.</p>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="survival-biasing-element">
 <h3>3.2.15. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element<a class="headerlink" href="#survival-biasing-element" title="Permalink to this headline">¶</a></h3>
@@ -437,7 +434,7 @@ points if large numbers of particles per batch are used.</p>
 of &#8220;true&#8221; or &#8220;false&#8221;. If set to &#8220;true&#8221;, this option will enable the use of
 survival biasing, otherwise known as implicit capture or absorption.</p>
 <blockquote>
-<div><em>Default</em>: false</div></blockquote>
+<em>Default</em>: false</blockquote>
 </div>
 <div class="section" id="trace-element">
 <span id="trace"></span><h3>3.2.16. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
@@ -445,7 +442,7 @@ survival biasing, otherwise known as implicit capture or absorption.</p>
 single particle during a simulation. This element should be followed by three
 integers: the batch number, generation number, and particle number.</p>
 <blockquote>
-<div><em>Default</em>: None</div></blockquote>
+<em>Default</em>: None</blockquote>
 </div>
 <div class="section" id="uniform-fs-element">
 <h3>3.2.17. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
@@ -456,25 +453,25 @@ Carlo Performance Benchmark Problem,&#8221; Proceedings of <em>Physor 2012</em>,
 TN (2012). This mesh should cover all possible fissionable materials in the
 problem. It has the following attributes/sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in the x, y, and z directions, respectively.</p>
+<tr class="field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in the x, y, and z directions, respectively.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartesian coordinates of the lower-left corner of the mesh.</p>
+<tr class="field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The Cartesian coordinates of the lower-left corner of the mesh.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartesian coordinates of the upper-right corner of the mesh.</p>
+<tr class="field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The Cartesian coordinates of the upper-right corner of the mesh.</p>
 <p class="last"><em>Default</em>: None</p>
 </td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="verbosity-element">
 <h3>3.2.18. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
@@ -482,17 +479,17 @@ problem. It has the following attributes/sub-elements:</p>
 the standard output. A higher verbosity corresponds to more information being
 displayed. This element takes the following attributes:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">value:</th><td class="field-body"><p class="first">The specified verbosity between 1 and 10.</p>
+<tr class="field"><th class="field-name">value:</th><td class="field-body"><p class="first">The specified verbosity between 1 and 10.</p>
 <p class="last"><em>Default</em>: 5</p>
 </td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 </div>
 <div class="section" id="geometry-specification-geometry-xml">
@@ -546,98 +543,98 @@ could be written as:</p>
 <span id="id1"></span><h3>3.3.1. <tt class="docutils literal"><span class="pre">&lt;surface&gt;</span></tt> Element<a class="headerlink" href="#surface-element" title="Permalink to this headline">¶</a></h3>
 <p>Each <tt class="docutils literal"><span class="pre">&lt;surface&gt;</span></tt> element can have the following attributes or sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">id:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the surface.</p>
+<tr class="field"><th class="field-name">id:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the surface.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of the surfaces. This can be &#8220;x-plane&#8221;, &#8220;y-plane&#8221;, &#8220;z-plane&#8221;,
+<tr class="field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of the surfaces. This can be &#8220;x-plane&#8221;, &#8220;y-plane&#8221;, &#8220;z-plane&#8221;,
 &#8220;plane&#8221;, &#8220;x-cylinder&#8221;, &#8220;y-cylinder&#8221;, &#8220;z-cylinder&#8221;, or &#8220;sphere&#8221;.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">coeffs:</th><td class="field-body"><p class="first">The corresponding coefficients for the given type of surface. See below for
+<tr class="field"><th class="field-name">coeffs:</th><td class="field-body"><p class="first">The corresponding coefficients for the given type of surface. See below for
 a list a what coefficients to specify for a given surface</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">boundary:</th><td class="field-body"><p class="first">The boundary condition for the surface. This can be &#8220;transmission&#8221;,
+<tr class="field"><th class="field-name">boundary:</th><td class="field-body"><p class="first">The boundary condition for the surface. This can be &#8220;transmission&#8221;,
 &#8220;vacuum&#8221;, or &#8220;reflective&#8221;.</p>
 <p class="last"><em>Default</em>: &#8220;transmission&#8221;</p>
 </td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 <p>The following quadratic surfaces can be modeled:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">x-plane:</th><td class="field-body">A plane perpendicular to the x axis, i.e. a surface of the form <img class="math" src="../_images/math/0dab540990e85667cd0415d1805d6e3f65be986a.png" alt="x -
-x_0 = 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/17f1249ad95b7682b8316ad21de8ce4ee9fdcf93.png" alt="x_0"/>&#8221;.</td>
+<tr class="field"><th class="field-name">x-plane:</th><td class="field-body">A plane perpendicular to the x axis, i.e. a surface of the form <img class="math" src="../_images/math/0dab540990e85667cd0415d1805d6e3f65be986a.png" alt="x -
+x_0 = 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/17f1249ad95b7682b8316ad21de8ce4ee9fdcf93.png" alt="x_0"/>&#8220;.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">y-plane:</th><td class="field-body">A plane perpendicular to the y axis, i.e. a surface of the form <img class="math" src="../_images/math/8e5eed2beee65ae37c7422830ed72d18e4571fab.png" alt="y -
-y_0 = 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/721e40b7e0ac4359611aebe48cfb63122a347798.png" alt="y_0"/>&#8221;.</td>
+<tr class="field"><th class="field-name">y-plane:</th><td class="field-body">A plane perpendicular to the y axis, i.e. a surface of the form <img class="math" src="../_images/math/8e5eed2beee65ae37c7422830ed72d18e4571fab.png" alt="y -
+y_0 = 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/721e40b7e0ac4359611aebe48cfb63122a347798.png" alt="y_0"/>&#8220;.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">z-plane:</th><td class="field-body">A plane perpendicular to the z axis, i.e. a surface of the form <img class="math" src="../_images/math/cec8bbf54e84fba9217aeacb3d5e38d415a4ac7c.png" alt="z -
-z_0 = 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/bab9abe98679312d2a3308c76188cf2cbc492f68.png" alt="z_0"/>&#8221;.</td>
+<tr class="field"><th class="field-name">z-plane:</th><td class="field-body">A plane perpendicular to the z axis, i.e. a surface of the form <img class="math" src="../_images/math/cec8bbf54e84fba9217aeacb3d5e38d415a4ac7c.png" alt="z -
+z_0 = 0"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/bab9abe98679312d2a3308c76188cf2cbc492f68.png" alt="z_0"/>&#8220;.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">plane:</th><td class="field-body">An arbitrary plane of the form <img class="math" src="../_images/math/eb8661ea00d3e9e10ef23de03755960eec4b554f.png" alt="Ax + By + Cz = D"/>. The coefficients
-specified are &#8220;<img class="math" src="../_images/math/5d687cb5bc98aa30d5460e4d0f34feaa8ec52008.png" alt="A \: B \: C \: D"/>&#8221;.</td>
+<tr class="field"><th class="field-name">plane:</th><td class="field-body">An arbitrary plane of the form <img class="math" src="../_images/math/eb8661ea00d3e9e10ef23de03755960eec4b554f.png" alt="Ax + By + Cz = D"/>. The coefficients
+specified are &#8220;<img class="math" src="../_images/math/5d687cb5bc98aa30d5460e4d0f34feaa8ec52008.png" alt="A \: B \: C \: D"/>&#8220;.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">x-cylinder:</th><td class="field-body">An infinite cylinder whose length is parallel to the x-axis. This is a
+<tr class="field"><th class="field-name">x-cylinder:</th><td class="field-body">An infinite cylinder whose length is parallel to the x-axis. This is a
 quadratic surface of the form <img class="math" src="../_images/math/c70e001674ec3ce487852ca76aab6d872c634cbf.png" alt="(y - y_0)^2 + (z - z_0)^2 = R^2"/>. The
-coefficients specified are &#8220;<img class="math" src="../_images/math/8f0dd3d5d7c73c87564b7aa9d05b3b933a107e6c.png" alt="y_0 \: z_0 \: R"/>&#8221;.</td>
+coefficients specified are &#8220;<img class="math" src="../_images/math/8f0dd3d5d7c73c87564b7aa9d05b3b933a107e6c.png" alt="y_0 \: z_0 \: R"/>&#8220;.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">y-cylinder:</th><td class="field-body">An infinite cylinder whose length is parallel to the y-axis. This is a
+<tr class="field"><th class="field-name">y-cylinder:</th><td class="field-body">An infinite cylinder whose length is parallel to the y-axis. This is a
 quadratic surface of the form <img class="math" src="../_images/math/883b49d218bf8cf809fae9decb62b4231ecf964f.png" alt="(x - x_0)^2 + (z - z_0)^2 = R^2"/>. The
-coefficients specified are &#8220;<img class="math" src="../_images/math/c495d88c348c2f010641c13f26fdd9d841973a6b.png" alt="x_0 \: z_0 \: R"/>&#8221;.</td>
+coefficients specified are &#8220;<img class="math" src="../_images/math/c495d88c348c2f010641c13f26fdd9d841973a6b.png" alt="x_0 \: z_0 \: R"/>&#8220;.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">z-cylinder:</th><td class="field-body">An infinite cylinder whose length is parallel to the z-axis. This is a
+<tr class="field"><th class="field-name">z-cylinder:</th><td class="field-body">An infinite cylinder whose length is parallel to the z-axis. This is a
 quadratic surface of the form <img class="math" src="../_images/math/9486fcc643d149a10bc21b05ac1e123031f400da.png" alt="(x - x_0)^2 + (y - y_0)^2 = R^2"/>. The
-coefficients specified are &#8220;<img class="math" src="../_images/math/d9efe2f18fee6e45486f86bf704b28646bcc2867.png" alt="x_0 \: y_0 \: R"/>&#8221;.</td>
+coefficients specified are &#8220;<img class="math" src="../_images/math/d9efe2f18fee6e45486f86bf704b28646bcc2867.png" alt="x_0 \: y_0 \: R"/>&#8220;.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">sphere:</th><td class="field-body">A sphere of the form <img class="math" src="../_images/math/62a745995df775198e16354b6b1ed9887e88c8a2.png" alt="(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
-R^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/e13d971231512283e81d8480a218782f7d68b585.png" alt="x_0 \: y_0 \: z_0 \: R"/>&#8221;.</td>
+<tr class="field"><th class="field-name">sphere:</th><td class="field-body">A sphere of the form <img class="math" src="../_images/math/62a745995df775198e16354b6b1ed9887e88c8a2.png" alt="(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 =
+R^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/e13d971231512283e81d8480a218782f7d68b585.png" alt="x_0 \: y_0 \: z_0 \: R"/>&#8220;.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">x-cone:</th><td class="field-body">A cone parallel to the x-axis of the form <img class="math" src="../_images/math/48addcaae47a04de47d2a40f0095c771ec2ce891.png" alt="(y - y_0)^2 + (z - z_0)^2 =
+<tr class="field"><th class="field-name">x-cone:</th><td class="field-body">A cone parallel to the x-axis of the form <img class="math" src="../_images/math/48addcaae47a04de47d2a40f0095c771ec2ce891.png" alt="(y - y_0)^2 + (z - z_0)^2 =
 R^2 (x - x_0)^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/0ef6215a44c46c244ccd86bf6aadaa33b87b4e6d.png" alt="x_0 \: y_0 \: z_0
-\: R^2"/>&#8221;.</td>
+\: R^2"/>&#8220;.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">y-cone:</th><td class="field-body">A cone parallel to the y-axis of the form <img class="math" src="../_images/math/d939cb7e10ed48f1e43b0dd6c646e423a581ab40.png" alt="(x - x_0)^2 + (z - z_0)^2 =
+<tr class="field"><th class="field-name">y-cone:</th><td class="field-body">A cone parallel to the y-axis of the form <img class="math" src="../_images/math/d939cb7e10ed48f1e43b0dd6c646e423a581ab40.png" alt="(x - x_0)^2 + (z - z_0)^2 =
 R^2 (y - y_0)^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/0ef6215a44c46c244ccd86bf6aadaa33b87b4e6d.png" alt="x_0 \: y_0 \: z_0
-\: R^2"/>&#8221;.</td>
+\: R^2"/>&#8220;.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">z-cone:</th><td class="field-body">A cone parallel to the x-axis of the form <img class="math" src="../_images/math/2d94d2e3228f1977c395a51961b7184af5514ca7.png" alt="(x - x_0)^2 + (y - y_0)^2 =
+<tr class="field"><th class="field-name">z-cone:</th><td class="field-body">A cone parallel to the x-axis of the form <img class="math" src="../_images/math/2d94d2e3228f1977c395a51961b7184af5514ca7.png" alt="(x - x_0)^2 + (y - y_0)^2 =
 R^2 (z - z_0)^2"/>. The coefficients specified are &#8220;<img class="math" src="../_images/math/0ef6215a44c46c244ccd86bf6aadaa33b87b4e6d.png" alt="x_0 \: y_0 \: z_0
-\: R^2"/>&#8221;.</td>
+\: R^2"/>&#8220;.</td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="cell-element">
 <h3>3.3.2. <tt class="docutils literal"><span class="pre">&lt;cell&gt;</span></tt> Element<a class="headerlink" href="#cell-element" title="Permalink to this headline">¶</a></h3>
 <p>Each <tt class="docutils literal"><span class="pre">&lt;cell&gt;</span></tt> element can have the following attributes or sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">id:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the surface.</p>
+<tr class="field"><th class="field-name">id:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the surface.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">universe:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">id</span></tt> of the universe that this cell is contained in.</p>
+<tr class="field"><th class="field-name">universe:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">id</span></tt> of the universe that this cell is contained in.</p>
 <p><em>Default</em>: 0</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">fill:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">id</span></tt> of the universe that fills this cell.</p>
+<tr class="field"><th class="field-name">fill:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">id</span></tt> of the universe that fills this cell.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">If a fill is specified, no material should be given.</p>
@@ -645,7 +642,7 @@ R^2 (z - z_0)^2"/>. The coefficients specified are &#8220;<img class="math" src=
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">material:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">id</span></tt> of the material that this cell contains. If the cell should
+<tr class="field"><th class="field-name">material:</th><td class="field-body"><p class="first">The <tt class="docutils literal"><span class="pre">id</span></tt> of the material that this cell contains. If the cell should
 contain no material, this can also be set to &#8220;void&#8221;.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -654,13 +651,13 @@ contain no material, this can also be set to &#8220;void&#8221;.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">surfaces:</th><td class="field-body"><p class="first">A list of the <tt class="docutils literal"><span class="pre">ids</span></tt> for surfaces that bound this cell, e.g. if the cell
+<tr class="field"><th class="field-name">surfaces:</th><td class="field-body"><p class="first">A list of the <tt class="docutils literal"><span class="pre">ids</span></tt> for surfaces that bound this cell, e.g. if the cell
 is on the negative side of surface 3 and the positive side of surface 5, the
 bounding surfaces would be given as &#8220;-3 5&#8221;.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">rotation:</th><td class="field-body"><p class="first">If the cell is filled with a universe, this element specifies the angles in
+<tr class="field"><th class="field-name">rotation:</th><td class="field-body"><p class="first">If the cell is filled with a universe, this element specifies the angles in
 degrees about the x, y, and z axes that the filled universe should be
 rotated. Should be given as three real numbers. For example, if you wanted
 to rotate the filled universe by 90 degrees about the z-axis, the cell
@@ -671,7 +668,7 @@ element would look something like:</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">translation:</th><td class="field-body"><p class="first">If the cell is filled with a universe, this element specifies a vector that
+<tr class="field"><th class="field-name">translation:</th><td class="field-body"><p class="first">If the cell is filled with a universe, this element specifies a vector that
 is used to translate (shift) the universe. Should be given as three real
 numbers.</p>
 <div class="admonition note">
@@ -684,7 +681,7 @@ specified.</p>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="lattice-element">
 <h3>3.3.3. <tt class="docutils literal"><span class="pre">&lt;lattice&gt;</span></tt> Element<a class="headerlink" href="#lattice-element" title="Permalink to this headline">¶</a></h3>
@@ -693,38 +690,38 @@ in an assembly) or other geometry which naturally fits into a two-dimensional
 structured mesh. Each cell within the lattice is filled with a specified
 universe. A <tt class="docutils literal"><span class="pre">&lt;lattice&gt;</span></tt> accepts the following attributes or sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">id:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the surface.</p>
+<tr class="field"><th class="field-name">id:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the surface.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">type:</th><td class="field-body"><p class="first">A string indicating the arrangement of lattice cells. Currently, the only
+<tr class="field"><th class="field-name">type:</th><td class="field-body"><p class="first">A string indicating the arrangement of lattice cells. Currently, the only
 accepted option is &#8220;rectangular&#8221;.</p>
 <p><em>Default</em>: rectangular</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">Two integers representing the number of lattice cells in the x- and y-
+<tr class="field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">Two integers representing the number of lattice cells in the x- and y-
 directions, respectively.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The coordinates of the lower-left corner of the lattice.</p>
+<tr class="field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The coordinates of the lower-left corner of the lattice.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body"><p class="first">The width of the lattice cell in the x- and y- directions.</p>
+<tr class="field"><th class="field-name">width:</th><td class="field-body"><p class="first">The width of the lattice cell in the x- and y- directions.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">universes:</th><td class="field-body"><p class="first">A list of the universe numbers that fill each cell of the lattice.</p>
+<tr class="field"><th class="field-name">universes:</th><td class="field-body"><p class="first">A list of the universe numbers that fill each cell of the lattice.</p>
 <p class="last"><em>Default</em>: None</p>
 </td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 </div>
 <div class="section" id="materials-specification-materials-xml">
@@ -733,14 +730,14 @@ directions, respectively.</p>
 <h3>3.4.1. <tt class="docutils literal"><span class="pre">&lt;material&gt;</span></tt> Element<a class="headerlink" href="#material-element" title="Permalink to this headline">¶</a></h3>
 <p>Each <tt class="docutils literal"><span class="pre">material</span></tt> element can have the following attributes or sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">id:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the material.</p>
+<tr class="field"><th class="field-name">id:</th><td class="field-body"><p class="first">A unique integer that can be used to identify the material.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">density:</th><td class="field-body"><p class="first">An element with attributes/sub-elements called <tt class="docutils literal"><span class="pre">value</span></tt> and <tt class="docutils literal"><span class="pre">units</span></tt>. The
+<tr class="field"><th class="field-name">density:</th><td class="field-body"><p class="first">An element with attributes/sub-elements called <tt class="docutils literal"><span class="pre">value</span></tt> and <tt class="docutils literal"><span class="pre">units</span></tt>. The
 <tt class="docutils literal"><span class="pre">value</span></tt> attribute is the numeric value of the density while the <tt class="docutils literal"><span class="pre">units</span></tt>
 can be &#8220;g/cm3&#8221;, &#8220;kg/m3&#8221;, &#8220;atom/b-cm&#8221;, &#8220;atom/cm3&#8221;, or &#8220;sum&#8221;. The &#8220;sum&#8221; unit
 indicates that the density should be calculated as the sum of the atom
@@ -749,7 +746,7 @@ conjunction with weight percents.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">nuclide:</th><td class="field-body"><p class="first">An element with attributes/sub-elements called <tt class="docutils literal"><span class="pre">name</span></tt>, <tt class="docutils literal"><span class="pre">xs</span></tt>, and <tt class="docutils literal"><span class="pre">ao</span></tt>
+<tr class="field"><th class="field-name">nuclide:</th><td class="field-body"><p class="first">An element with attributes/sub-elements called <tt class="docutils literal"><span class="pre">name</span></tt>, <tt class="docutils literal"><span class="pre">xs</span></tt>, and <tt class="docutils literal"><span class="pre">ao</span></tt>
 or <tt class="docutils literal"><span class="pre">wo</span></tt>. The <tt class="docutils literal"><span class="pre">name</span></tt> attribute is the name of the cross-section for a
 desired nuclide while the <tt class="docutils literal"><span class="pre">xs</span></tt> attribute is the cross-section
 identifier. Finally, the <tt class="docutils literal"><span class="pre">ao</span></tt> and <tt class="docutils literal"><span class="pre">wo</span></tt> attributes specify the atom or
@@ -767,7 +764,7 @@ be given in atom percent. The same applies for weight percentages.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">element:</th><td class="field-body"><p class="first">Specifies that a natural element is present in the material. The natural
+<tr class="field"><th class="field-name">element:</th><td class="field-body"><p class="first">Specifies that a natural element is present in the material. The natural
 element is split up into individual isotopes based on IUPAC Isotopic
 Compositions of the Elements 1997. This element has attributes/sub-elements
 called <tt class="docutils literal"><span class="pre">name</span></tt>, <tt class="docutils literal"><span class="pre">xs</span></tt>, and <tt class="docutils literal"><span class="pre">ao</span></tt>. The <tt class="docutils literal"><span class="pre">name</span></tt> attribute is the atomic
@@ -783,7 +780,7 @@ element within the material, respectively. One example would be as follows:</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">sab:</th><td class="field-body"><p class="first">Associates an S(a,b) table with the material. This element has
+<tr class="field"><th class="field-name">sab:</th><td class="field-body"><p class="first">Associates an S(a,b) table with the material. This element has
 attributes/sub-elements called <tt class="docutils literal"><span class="pre">name</span></tt> and <tt class="docutils literal"><span class="pre">xs</span></tt>. The <tt class="docutils literal"><span class="pre">name</span></tt> attribute
 is the name of the S(a,b) table that should be associated with the material,
 and <tt class="docutils literal"><span class="pre">xs</span></tt> is the cross-section identifier for the table.</p>
@@ -792,7 +789,7 @@ and <tt class="docutils literal"><span class="pre">xs</span></tt> is the cross-s
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="default-xs-element">
 <h3>3.4.2. <tt class="docutils literal"><span class="pre">&lt;default_xs&gt;</span></tt> Element<a class="headerlink" href="#default-xs-element" title="Permalink to this headline">¶</a></h3>
@@ -803,7 +800,7 @@ set the default cross-section identifier for any nuclide without an identifier
 explicitly listed. This element has no attributes and accepts a 3-letter string
 that indicates the default cross-section identifier, e.g. &#8220;70c&#8221;.</p>
 <blockquote>
-<div><em>Default</em>: None</div></blockquote>
+<em>Default</em>: None</blockquote>
 </div>
 </div>
 <div class="section" id="tallies-specification-tallies-xml">
@@ -826,16 +823,16 @@ and <tt class="docutils literal"><span class="pre">&lt;assume_separate&gt;</span
 <h3>3.5.1. <tt class="docutils literal"><span class="pre">&lt;tally&gt;</span></tt> Element<a class="headerlink" href="#tally-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;tally&gt;</span></tt> element accepts the following sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">label:</th><td class="field-body"><p class="first">This is an optional sub-element specifying the name of this tally to be used
+<tr class="field"><th class="field-name">label:</th><td class="field-body"><p class="first">This is an optional sub-element specifying the name of this tally to be used
 for output purposes. This string is limited to 52 characters for formatting
 purposes.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">filter:</th><td class="field-body"><p class="first">Specify a filter that restricts contributions to the tally to particles
+<tr class="field"><th class="field-name">filter:</th><td class="field-body"><p class="first">Specify a filter that restricts contributions to the tally to particles
 within certain regions of phase space. This element and its
 attributes/sub-elements are described below.</p>
 <div class="admonition note">
@@ -845,43 +842,43 @@ specify multiple filters, you must use multiple <tt class="docutils literal"><sp
 </div>
 <p>The <tt class="docutils literal"><span class="pre">filter</span></tt> element has the following attributes/sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of the filter. Accepted options are &#8220;cell&#8221;, &#8220;cellborn&#8221;, &#8220;material&#8221;,
+<tr class="field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of the filter. Accepted options are &#8220;cell&#8221;, &#8220;cellborn&#8221;, &#8220;material&#8221;,
 &#8220;universe&#8221;, &#8220;energy&#8221;, &#8220;energyout&#8221;, and &#8220;mesh&#8221;.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">bins:</th><td class="field-body"><p class="first">For each filter type, the corresponding <tt class="docutils literal"><span class="pre">bins</span></tt> entry is given as follows:</p>
+<tr class="field"><th class="field-name">bins:</th><td class="field-body"><p class="first">For each filter type, the corresponding <tt class="docutils literal"><span class="pre">bins</span></tt> entry is given as follows:</p>
 <table class="last docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">cell:</th><td class="field-body">A list of cells in which the tally should be accumulated.</td>
+<tr class="field"><th class="field-name">cell:</th><td class="field-body">A list of cells in which the tally should be accumulated.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">cellborn:</th><td class="field-body">This filter allows the tally to be scored to only when particles were
+<tr class="field"><th class="field-name">cellborn:</th><td class="field-body">This filter allows the tally to be scored to only when particles were
 originally born in a specified cell.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">surface:</th><td class="field-body">A list of surfaces for which the tally should be accumulated.</td>
+<tr class="field"><th class="field-name">surface:</th><td class="field-body">A list of surfaces for which the tally should be accumulated.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">material:</th><td class="field-body">A list of materials for which the tally should be accumulated.</td>
+<tr class="field"><th class="field-name">material:</th><td class="field-body">A list of materials for which the tally should be accumulated.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">universe:</th><td class="field-body">A list of universes for which the tally should be accumulated.</td>
+<tr class="field"><th class="field-name">universe:</th><td class="field-body">A list of universes for which the tally should be accumulated.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">energy:</th><td class="field-body">A monotonically increasing list of bounding <strong>pre-collision</strong> energies
+<tr class="field"><th class="field-name">energy:</th><td class="field-body">A monotonically increasing list of bounding <strong>pre-collision</strong> energies
 for a number of groups. For example, if this filter is specified as
 <tt class="docutils literal"><span class="pre">&lt;filter</span> <span class="pre">type=&quot;energy&quot;</span> <span class="pre">bins=&quot;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&quot;</span> <span class="pre">/&gt;</span></tt>, then two energy bins
 will be created, one with energies between 0 and 1 MeV and the other
 with energies between 1 and 20 MeV.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">energyout:</th><td class="field-body">A monotonically increasing list of bounding <strong>post-collision</strong>
+<tr class="field"><th class="field-name">energyout:</th><td class="field-body">A monotonically increasing list of bounding <strong>post-collision</strong>
 energies for a number of groups. For example, if this filter is
 specified as <tt class="docutils literal"><span class="pre">&lt;filter</span> <span class="pre">type=&quot;energyout&quot;</span> <span class="pre">bins=&quot;0.0</span> <span class="pre">1.0</span> <span class="pre">20.0&quot;</span> <span class="pre">/&gt;</span></tt>, then
 two post-collision energy bins will be created, one with energies
 between 0 and 1 MeV and the other with energies between 1 and 20 MeV.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">mesh:</th><td class="field-body">The <tt class="docutils literal"><span class="pre">id</span></tt> of a structured mesh to be tallied over.</td>
+<tr class="field"><th class="field-name">mesh:</th><td class="field-body">The <tt class="docutils literal"><span class="pre">id</span></tt> of a structured mesh to be tallied over.</td>
 </tr>
 </tbody>
 </table>
@@ -889,10 +886,10 @@ between 0 and 1 MeV and the other with energies between 1 and 20 MeV.</td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">nuclides:</th><td class="field-body"><p class="first">If specified, the scores listed will be for particular nuclides, not the
+<tr class="field"><th class="field-name">nuclides:</th><td class="field-body"><p class="first">If specified, the scores listed will be for particular nuclides, not the
 summation of reactions from all nuclides. The format for nuclides should be
 [Atomic symbol]-[Mass number], e.g. &#8220;U-235&#8221;. The reaction rate for all
 nuclides can be obtained with &#8220;total&#8221;. For example, to obtain the reaction
@@ -904,7 +901,7 @@ be:</p>
 <p><em>Default</em>: total</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">scores:</th><td class="field-body"><p class="first">A space-separated list of the desired responses to be accumulated. Accepted
+<tr class="field"><th class="field-name">scores:</th><td class="field-body"><p class="first">A space-separated list of the desired responses to be accumulated. Accepted
 options are &#8220;flux&#8221;, &#8220;total&#8221;, &#8220;scatter&#8221;, &#8220;nu-scatter&#8221;, &#8220;scatter-N&#8221;,
 &#8220;scatter-PN&#8221;, &#8220;absorption&#8221;, &#8220;fission&#8221;, &#8220;nu-fission&#8221;, &#8220;kappa-fission&#8221;,
 &#8220;current&#8221;, and &#8220;events&#8221;. These corresponding to the following physical
@@ -913,45 +910,45 @@ quantities.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">flux:</th><td class="field-body"><p class="first">Total flux</p>
+<tr class="field"><th class="field-name">flux:</th><td class="field-body"><p class="first">Total flux</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">total:</th><td class="field-body"><p class="first">Total reaction rate</p>
+<tr class="field"><th class="field-name">total:</th><td class="field-body"><p class="first">Total reaction rate</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">scatter:</th><td class="field-body"><p class="first">Total scattering rate. Can also be identified with the <tt class="docutils literal"><span class="pre">scatter-0</span></tt>
+<tr class="field"><th class="field-name">scatter:</th><td class="field-body"><p class="first">Total scattering rate. Can also be identified with the <tt class="docutils literal"><span class="pre">scatter-0</span></tt>
 response type.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">nu-scatter:</th><td class="field-body"><p class="first">Total production of neutrons due to scattering. This accounts for
+<tr class="field"><th class="field-name">nu-scatter:</th><td class="field-body"><p class="first">Total production of neutrons due to scattering. This accounts for
 multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
 slightly higher than the scattering rate.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">scatter-N:</th><td class="field-body"><p class="first">Tally the N<sup>th</sup> scattering moment, where N is the Legendre
+<tr class="field"><th class="field-name">scatter-N:</th><td class="field-body"><p class="first">Tally the N<sup>th</sup> scattering moment, where N is the Legendre
 expansion order.  N must be between 0 and 10. As an example, tallying the
 2<sup>nd</sup> scattering moment would be specified as <tt class="docutils literal"><span class="pre">&lt;scores&gt;</span>
 <span class="pre">scatter-2</span> <span class="pre">&lt;/scores&gt;</span></tt>.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">scatter-PN:</th><td class="field-body"><p class="first">Tally all of the scattering moments from order 0 to N, where N is the
+<tr class="field"><th class="field-name">scatter-PN:</th><td class="field-body"><p class="first">Tally all of the scattering moments from order 0 to N, where N is the
 Legendre expansion order.  That is, <tt class="docutils literal"><span class="pre">scatter-P1</span></tt> is equivalent to
 requesting tallies of <tt class="docutils literal"><span class="pre">scatter-0</span></tt> and <tt class="docutils literal"><span class="pre">scatter-1</span></tt>.  N must be between
 0 and 10. As an example, tallying up to the 2<sup>nd</sup> scattering
 moment would be specified as <tt class="docutils literal"><span class="pre">&lt;scores&gt;</span> <span class="pre">scatter-P2</span> <span class="pre">&lt;/scores&gt;</span></tt>.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">absorption:</th><td class="field-body"><p class="first">Total absorption rate. This accounts for all reactions which do not
+<tr class="field"><th class="field-name">absorption:</th><td class="field-body"><p class="first">Total absorption rate. This accounts for all reactions which do not
 produce secondary neutrons.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">fission:</th><td class="field-body"><p class="first">Total fission rate</p>
+<tr class="field"><th class="field-name">fission:</th><td class="field-body"><p class="first">Total fission rate</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">nu-fission:</th><td class="field-body"><p class="first">Total production of neutrons due to fission</p>
+<tr class="field"><th class="field-name">nu-fission:</th><td class="field-body"><p class="first">Total production of neutrons due to fission</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">kappa-fission:</th><td class="field-body"><p class="first">The recoverable energy production rate due to fission. The recoverable
+<tr class="field"><th class="field-name">kappa-fission:</th><td class="field-body"><p class="first">The recoverable energy production rate due to fission. The recoverable
 energy is defined as the fission product kinetic energy, prompt and
 delayed neutron kinetic energies, prompt and delayed <img class="math" src="../_images/math/66981fa3920210c6ad8dbe5e968783d5dd7520c3.png" alt="\gamma"/>-ray
 total energies, and the total energy released by the delayed <img class="math" src="../_images/math/fdb63b9e51abe6bbb16acfb5d7b773ddbb5bf4a8.png" alt="\beta"/>
@@ -960,7 +957,7 @@ prompt and delayed <img class="math" src="../_images/math/66981fa3920210c6ad8dbe
 locally.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">current:</th><td class="field-body"><p class="first">Partial currents on the boundaries of each cell in a mesh.</p>
+<tr class="field"><th class="field-name">current:</th><td class="field-body"><p class="first">Partial currents on the boundaries of each cell in a mesh.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">This score can only be used if a mesh filter has been
@@ -969,7 +966,7 @@ other score.</p>
 </div>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">events:</th><td class="field-body"><p class="first last">Number of scoring events</p>
+<tr class="field"><th class="field-name">events:</th><td class="field-body"><p class="first last">Number of scoring events</p>
 </td>
 </tr>
 </tbody>
@@ -978,7 +975,7 @@ other score.</p>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="mesh-element">
 <h3>3.5.2. <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt> Element<a class="headerlink" href="#mesh-element" title="Permalink to this headline">¶</a></h3>
@@ -986,22 +983,22 @@ other score.</p>
 a separate element with the tag name <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt>. This element has the following
 attributes/sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body">The type of structured mesh. Valid options include &#8220;rectangular&#8221; and
+<tr class="field"><th class="field-name">type:</th><td class="field-body">The type of structured mesh. Valid options include &#8220;rectangular&#8221; and
 &#8220;hexagonal&#8221;.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">dimension:</th><td class="field-body">The number of mesh cells in each direction.</td>
+<tr class="field"><th class="field-name">dimension:</th><td class="field-body">The number of mesh cells in each direction.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">lower_left:</th><td class="field-body">The lower-left corner of the structured mesh. If only two coordinates are
+<tr class="field"><th class="field-name">lower_left:</th><td class="field-body">The lower-left corner of the structured mesh. If only two coordinates are
 given, it is assumed that the mesh is an x-y mesh.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">upper_right:</th><td class="field-body">The upper-right corner of the structured mesh. If only two coordinates are
+<tr class="field"><th class="field-name">upper_right:</th><td class="field-body">The upper-right corner of the structured mesh. If only two coordinates are
 given, it is assumed that the mesh is an x-y mesh.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body">The width of mesh cells in each direction.</td>
+<tr class="field"><th class="field-name">width:</th><td class="field-body">The width of mesh cells in each direction.</td>
 </tr>
 </tbody>
 </table>
@@ -1010,7 +1007,7 @@ given, it is assumed that the mesh is an x-y mesh.</td>
 <p class="last">One of <tt class="docutils literal"><span class="pre">&lt;upper_right&gt;</span></tt> or <tt class="docutils literal"><span class="pre">&lt;width&gt;</span></tt> must be specified, but not both
 (even if they are consistent with one another).</p>
 </div>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="assume-separate-element">
 <h3>3.5.3. <tt class="docutils literal"><span class="pre">&lt;assume_separate&gt;</span></tt> Element<a class="headerlink" href="#assume-separate-element" title="Permalink to this headline">¶</a></h3>
@@ -1020,119 +1017,149 @@ overhead. The effect of assuming all tallies are spatially separate is that once
 one tally is scored to, the same event is assumed not to score to any other
 tallies. This element should be followed by &#8220;true&#8221; or &#8220;false&#8221;.</p>
 <blockquote>
-<div><div class="admonition warning">
+<div class="admonition warning">
 <p class="first admonition-title">Warning</p>
 <p class="last">If used incorrectly, the assumption that all tallies are spatially
 separate can lead to incorrect results.</p>
 </div>
 <p><em>Default</em>: false</p>
-</div></blockquote>
+</blockquote>
 </div>
 </div>
 <div class="section" id="geometry-plotting-specification-plots-xml">
-<h2>3.6. Geometry Plotting Specification &#8211; plots.xml<a class="headerlink" href="#geometry-plotting-specification-plots-xml" title="Permalink to this headline">¶</a></h2>
-<p>A basic 2D plotting capability is available in OpenMC by creating a plots.xml
+<span id="usersguide-plotting"></span><h2>3.6. Geometry Plotting Specification &#8211; plots.xml<a class="headerlink" href="#geometry-plotting-specification-plots-xml" title="Permalink to this headline">¶</a></h2>
+<p>Basic plotting capabilities are available in OpenMC by creating a plots.xml
 file and subsequently running with the command-line flag <tt class="docutils literal"><span class="pre">-plot</span></tt>. The root
-element of the plots.xml is simply <tt class="docutils literal"><span class="pre">&lt;plots&gt;</span></tt> and any number output figures can
-be defined with <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> sub-elements.</p>
+element of the plots.xml is simply <tt class="docutils literal"><span class="pre">&lt;plots&gt;</span></tt> and any number output plots can
+be defined with <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> sub-elements.  Two plot types are currently
+implemented in openMC:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">slice</span></tt>  2D pixel plot along one of the major axes. Produces a PPM image file.</li>
+<li><tt class="docutils literal"><span class="pre">voxel</span></tt>  3D voxel data dump. Produces a binary file containing voxel xyz position and cell or material id.</li>
+</ul>
 <div class="section" id="plot-element">
 <h3>3.6.1. <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> Element<a class="headerlink" href="#plot-element" title="Permalink to this headline">¶</a></h3>
-<p>Each plot must contain a combination of the following attributes or sub-elements:</p>
+<p>Each plot must contain a combination of the following attributes or
+sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">id:</th><td class="field-body"><p class="first">The unique <tt class="docutils literal"><span class="pre">id</span></tt> of the plot.</p>
+<tr class="field"><th class="field-name">id:</th><td class="field-body"><p class="first">The unique <tt class="docutils literal"><span class="pre">id</span></tt> of the plot.</p>
 <p><em>Default</em>: None - Required entry</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">filename:</th><td class="field-body"><p class="first">Filename for the output plot file.</p>
+<tr class="field"><th class="field-name">filename:</th><td class="field-body"><p class="first">Filename for the output plot file.</p>
 <p><em>Default</em>: &#8220;plot&#8221;</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">color:</th><td class="field-body"><p class="first">Keyword for plot coloring.  This can only be either <tt class="docutils literal"><span class="pre">cell</span></tt> or <tt class="docutils literal"><span class="pre">mat</span></tt>,
-which colors regions by cells and materials, respectively.</p>
+<tr class="field"><th class="field-name">color:</th><td class="field-body"><p class="first">Keyword for plot coloring.  This can only be either <tt class="docutils literal"><span class="pre">cell</span></tt> or <tt class="docutils literal"><span class="pre">mat</span></tt>,
+which colors regions by cells and materials, respectively. For voxel plots,
+this determines which id (cell or material) is associated with each
+position.</p>
 <p><em>Default</em>: <tt class="docutils literal"><span class="pre">cell</span></tt></p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">origin:</th><td class="field-body"><p class="first">Specifies the (x,y,z) coordinate of the center of the plot.  Should be three
+<tr class="field"><th class="field-name">origin:</th><td class="field-body"><p class="first">Specifies the (x,y,z) coordinate of the center of the plot.  Should be three
 floats separated by spaces.</p>
 <p><em>Default</em>: None - Required entry</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body"><p class="first">Specifies the width of the plot along each of the basis directions.  Should
+<tr class="field"><th class="field-name">width:</th><td class="field-body"><p class="first">Specifies the width of the plot along each of the basis directions.  Should
 be two or three floats separated by spaces for 2D plots and 3D plots,
 respectively.</p>
 <p><em>Default</em>: None - Required entry</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">type:</th><td class="field-body"><p class="first">Keyword for type of plot to be produced.  Currently only <tt class="docutils literal"><span class="pre">slice</span></tt> plots are
-implemented, which create 2D pixel maps saved in the PPM file format.  PPM
-files can be displayed in most viewers (e.g. the default Gnome viewer,
-IrfanView, etc.).</p>
+<tr class="field"><th class="field-name">type:</th><td class="field-body"><p class="first">Keyword for type of plot to be produced. Currently only &#8220;slice&#8221; and
+&#8220;voxel&#8221; plots are implemented. The &#8220;slice&#8221; plot type creates 2D pixel
+maps saved in the PPM file format. PPM files can be displayed in most
+viewers (e.g. the default Gnome viewer, IrfanView, etc.).  The &#8220;voxel&#8221;
+plot type produces a binary datafile containing voxel grid positioning and
+the cell or material (specified by the <tt class="docutils literal"><span class="pre">color</span></tt> tag) at the center of each
+voxel. These datafiles can be processed into 3D SILO files using the
+<tt class="docutils literal"><span class="pre">voxel.py</span></tt> utility provided with the OpenMC source, and subsequently
+viewed with a 3D viewer such as VISIT or Paraview. See the
+<a class="reference internal" href="../devguide/voxel.html#devguide-voxel"><em>Voxel Plot Binary File Specifications</em></a> for information about the datafile structure.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">Since the PPM format is saved without any kind of compression,
 the resulting file sizes can be quite large.  Saving the image in
 the PNG format can often times reduce the file size by orders of
-magnitude without any loss of image quality.</p>
+magnitude without any loss of image quality. Likewise,
+high-resolution voxel files produced by OpenMC can be quite large,
+but the equivalent SILO files will by significantly smaller.</p>
 </div>
 <p class="last"><em>Default</em>: &#8220;slice&#8221;</p>
 </td>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
-<p><tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> elements of <tt class="docutils literal"><span class="pre">type</span></tt> &#8220;slice&#8221; also contain the following attributes or
-sub-elements:</p>
+</blockquote>
+<p><tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> elements of <tt class="docutils literal"><span class="pre">type</span></tt> &#8220;slice&#8221; and &#8220;voxel&#8221; must contain the <tt class="docutils literal"><span class="pre">pixels</span></tt>
+attribute or sub-element:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">basis:</th><td class="field-body"><p class="first">Keyword specifying the plane of the plot for <tt class="docutils literal"><span class="pre">slice</span></tt> type plots.  Can be
-one of: &#8220;xy&#8221;, &#8220;xz&#8221;, &#8220;yz&#8221;.</p>
-<p><em>Default</em>: &#8220;xy&#8221;</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">pixels:</th><td class="field-body"><p class="first">Specifies the number of pixes to be used along each of the basis directions
-for &#8220;slice&#8221; plots. Should be two integers separated by spaces.</p>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">The <tt class="docutils literal"><span class="pre">pixels</span></tt> input determines the output file size.  For the PPM
-format, 10 million pixels will result in a file just under 30 MB in
-size.</p>
-</div>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">If the aspect ratio defined in <tt class="docutils literal"><span class="pre">pixels</span></tt> does not match the aspect
-ratio defined in <tt class="docutils literal"><span class="pre">width</span></tt> the plot may appear stretched or squeezed.</p>
-</div>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">Geometry features along a basis direction smaller than <tt class="docutils literal"><span class="pre">width</span></tt>/<tt class="docutils literal"><span class="pre">pixels</span></tt>
-along that basis direction may not appear in the plot.</p>
-</div>
-<p><em>Default</em>: None - Required entry for &#8220;slice&#8221; plots</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">background:</th><td class="field-body"><p class="first">Specifies the RGB color of the regions where no OpenMC cell can be found. Should
-be three integers separated by spaces.</p>
-<p><em>Default</em>: 0 0 0 (white)</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">col_spec:</th><td class="field-body"><p class="first">Any number of this optional tag may be included in each <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> element, which can
-override the default random colors for cells or materials.  Each <tt class="docutils literal"><span class="pre">col_spec</span></tt>
-element must contain <tt class="docutils literal"><span class="pre">id</span></tt> and <tt class="docutils literal"><span class="pre">rgb</span></tt> sub-elements.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">id:</th><td class="field-body">Specifies the cell or material unique id for the color specification.</td>
+<tr class="field"><th class="field-name">pixels:</th><td class="field-body"><p class="first">Specifies the number of pixes or voxels to be used along each of the basis
+directions for &#8220;slice&#8221; and &#8220;voxel&#8221; plots, respectively. Should be two or
+three integers separated by spaces.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The <tt class="docutils literal"><span class="pre">pixels</span></tt> input determines the output file size.  For the
+PPM format, 10 million pixels will result in a file just under
+30 MB in size. A 10 million voxel binary file will be around
+40 MB.</p>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">If the aspect ratio defined in <tt class="docutils literal"><span class="pre">pixels</span></tt> does not match the
+aspect ratio defined in <tt class="docutils literal"><span class="pre">width</span></tt> the plot may appear stretched
+or squeezed.</p>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Geometry features along a basis direction smaller than
+<tt class="docutils literal"><span class="pre">width</span></tt>/<tt class="docutils literal"><span class="pre">pixels</span></tt> along that basis direction may not appear
+in the plot.</p>
+</div>
+<p class="last"><em>Default</em>: None - Required entry for &#8220;slice&#8221; and &#8220;voxel&#8221; plots</p>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">rgb:</th><td class="field-body">Specifies the custom color for the cell or material.  Should be 3 integers separated
-by spaces.</td>
+</tbody>
+</table>
+</blockquote>
+<p><tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> elements of <tt class="docutils literal"><span class="pre">type</span></tt> &#8220;slice&#8221; can also contain the following
+attributes or sub-elements.  These are not used in &#8220;voxel&#8221; plots:</p>
+<blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">basis:</th><td class="field-body"><p class="first">Keyword specifying the plane of the plot for &#8220;slice&#8221; type plots.  Can be
+one of: &#8220;xy&#8221;, &#8220;xz&#8221;, &#8220;yz&#8221;.</p>
+<p><em>Default</em>: &#8220;xy&#8221;</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">background:</th><td class="field-body"><p class="first">Specifies the RGB color of the regions where no OpenMC cell can be found.
+Should be three integers separated by spaces.</p>
+<p><em>Default</em>: 0 0 0 (white)</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">col_spec:</th><td class="field-body"><p class="first">Any number of this optional tag may be included in each <tt class="docutils literal"><span class="pre">&lt;plot&gt;</span></tt> element,
+which can override the default random colors for cells or materials. Each
+<tt class="docutils literal"><span class="pre">col_spec</span></tt> element must contain <tt class="docutils literal"><span class="pre">id</span></tt> and <tt class="docutils literal"><span class="pre">rgb</span></tt> sub-elements.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">id:</th><td class="field-body">Specifies the cell or material unique id for the color specification.</td>
+</tr>
+<tr class="field"><th class="field-name">rgb:</th><td class="field-body">Specifies the custom color for the cell or material. Should be 3 integers
+separated by spaces.</td>
 </tr>
 </tbody>
 </table>
@@ -1144,19 +1171,20 @@ to be blue, the corresponding <tt class="docutils literal"><span class="pre">col
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">mask:</th><td class="field-body"><p class="first">The special <tt class="docutils literal"><span class="pre">mask</span></tt> sub-element allows for the selective plotting of <em>only</em>
-user-specified cells or materials.  Only one <tt class="docutils literal"><span class="pre">mask</span></tt> element is allowed per <tt class="docutils literal"><span class="pre">plot</span></tt>
-element, and it must contain as attributes or sub-elements a background masking color and
-a list of cells or materials to plot:</p>
+<tr class="field"><th class="field-name">mask:</th><td class="field-body"><p class="first">The special <tt class="docutils literal"><span class="pre">mask</span></tt> sub-element allows for the selective plotting of <em>only</em>
+user-specified cells or materials. Only one <tt class="docutils literal"><span class="pre">mask</span></tt> element is allowed per
+<tt class="docutils literal"><span class="pre">plot</span></tt> element, and it must contain as attributes or sub-elements a
+background masking color and a list of cells or materials to plot:</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">components:</th><td class="field-body">List of unique <tt class="docutils literal"><span class="pre">id</span></tt> numbers of the cells or materials to plot.  Should be any number
-of integers separated by spaces.</td>
+<tr class="field"><th class="field-name">components:</th><td class="field-body">List of unique <tt class="docutils literal"><span class="pre">id</span></tt> numbers of the cells or materials to plot. Should be
+any number of integers separated by spaces.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">background:</th><td class="field-body">Color to apply to all cells or materials not in the <tt class="docutils literal"><span class="pre">components</span></tt> list of cells or
-materials to plot.  This overrides any <tt class="docutils literal"><span class="pre">col_spec</span></tt> color specifications.</td>
+<tr class="field"><th class="field-name">background:</th><td class="field-body">Color to apply to all cells or materials not in the <tt class="docutils literal"><span class="pre">components</span></tt> list of
+cells or materials to plot. This overrides any <tt class="docutils literal"><span class="pre">col_spec</span></tt> color
+specifications.</td>
 </tr>
 </tbody>
 </table>
@@ -1165,7 +1193,7 @@ materials to plot.  This overrides any <tt class="docutils literal"><span class=
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 </div>
 <div class="section" id="cmfd-specification-cmfd-xml">
@@ -1180,13 +1208,13 @@ inactive neutron batches. To run CMFD, the <tt class="docutils literal"><span cl
 reset. CMFD tallies should be reset before active batches so they are accumulated
 without bias.</p>
 <blockquote>
-<div><em>Default</em>: 0</div></blockquote>
+<em>Default</em>: 0</blockquote>
 </div>
 <div class="section" id="begin-element">
 <h3>3.7.2. <tt class="docutils literal"><span class="pre">&lt;begin&gt;</span></tt> Element<a class="headerlink" href="#begin-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;begin&gt;</span></tt> element controls what batch CMFD calculations should begin.</p>
 <blockquote>
-<div><em>Default</em>: 1</div></blockquote>
+<em>Default</em>: 1</blockquote>
 </div>
 <div class="section" id="feedback-element">
 <h3>3.7.3. <tt class="docutils literal"><span class="pre">&lt;feedback&gt;</span></tt> Element<a class="headerlink" href="#feedback-element" title="Permalink to this headline">¶</a></h3>
@@ -1194,7 +1222,7 @@ without bias.</p>
 used to adjust the weight of fission source neutrons on the next OpenMC batch.
 It can be turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
 <blockquote>
-<div><em>Default</em>: false</div></blockquote>
+<em>Default</em>: false</blockquote>
 </div>
 <div class="section" id="inactive-element">
 <h3>3.7.4. <tt class="docutils literal"><span class="pre">&lt;inactive&gt;</span></tt> Element<a class="headerlink" href="#inactive-element" title="Permalink to this headline">¶</a></h3>
@@ -1203,7 +1231,7 @@ during inactive batches. For some applications, CMFD tallies may not be
 needed until the start of active batches. This option can be turned on
 with &#8220;true&#8221; and off with &#8220;false&#8221;</p>
 <blockquote>
-<div><em>Default</em>: true</div></blockquote>
+<em>Default</em>: true</blockquote>
 </div>
 <div class="section" id="keff-tol-element">
 <h3>3.7.5. <tt class="docutils literal"><span class="pre">&lt;keff_tol&gt;</span></tt> Element<a class="headerlink" href="#keff-tol-element" title="Permalink to this headline">¶</a></h3>
@@ -1211,7 +1239,7 @@ with &#8220;true&#8221; and off with &#8220;false&#8221;</p>
 If the CMFD eigenvalue and OpenMC batch eigenvalue are within this tolerance,
 CMFD is allowed to modify source neutron weights.</p>
 <blockquote>
-<div><em>Default</em>: 0.005</div></blockquote>
+<em>Default</em>: 0.005</blockquote>
 </div>
 <div class="section" id="ksp-monitor-element">
 <h3>3.7.6. <tt class="docutils literal"><span class="pre">&lt;ksp_monitor&gt;</span></tt> Element<a class="headerlink" href="#ksp-monitor-element" title="Permalink to this headline">¶</a></h3>
@@ -1219,7 +1247,7 @@ CMFD is allowed to modify source neutron weights.</p>
 iterations in PETSc. This option can be turned on with &#8220;true&#8221; and turned off
 with &#8220;false&#8221;.</p>
 <blockquote>
-<div><em>Default</em>: false</div></blockquote>
+<em>Default</em>: false</blockquote>
 </div>
 <div class="section" id="id2">
 <h3>3.7.7. <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt> Element<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
@@ -1227,49 +1255,49 @@ with &#8220;false&#8221;.</p>
 a separate element with the tag name <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt>. This element has the following
 attributes/sub-elements:</p>
 <blockquote>
-<div><table class="docutils field-list" frame="void" rules="none">
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of structured mesh. Only &#8220;rectangular&#8221; is currently supported.</p>
+<tr class="field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of structured mesh. Only &#8220;rectangular&#8221; is currently supported.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The lower-left corner of the structured mesh. If only two coordinate are
+<tr class="field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The lower-left corner of the structured mesh. If only two coordinate are
 given, it is assumed that the mesh is an x-y mesh.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The upper-right corner of the structrued mesh. If only two coordinate are
+<tr class="field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The upper-right corner of the structrued mesh. If only two coordinate are
 given, it is assumed that the mesh is an x-y mesh.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in each direction.</p>
+<tr class="field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in each direction.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body"><p class="first">The width of mesh cells in each direction.</p>
+<tr class="field"><th class="field-name">width:</th><td class="field-body"><p class="first">The width of mesh cells in each direction.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">energy:</th><td class="field-body"><p class="first">Energy bins [in MeV], listed in ascending order (e.g. 0.0 0.625e-7 20.0)
+<tr class="field"><th class="field-name">energy:</th><td class="field-body"><p class="first">Energy bins [in MeV], listed in ascending order (e.g. 0.0 0.625e-7 20.0)
 for CMFD tallies and acceleration. If no energy bins are listed, OpenMC
 automatically assumes a one energy group calculation over the entire
 energy range.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">albedo:</th><td class="field-body"><p class="first">Surface ratio of incoming to outgoing partial currents on global boundary
+<tr class="field"><th class="field-name">albedo:</th><td class="field-body"><p class="first">Surface ratio of incoming to outgoing partial currents on global boundary
 conditions. They are listed in the following order: -x +x -y +y -z +z.</p>
 <p><em>Default</em>: 1.0 1.0 1.0 1.0 1.0 1.0</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">map:</th><td class="field-body"><p class="first">An optional acceleration map can be specified to overlay on the coarse
+<tr class="field"><th class="field-name">map:</th><td class="field-body"><p class="first">An optional acceleration map can be specified to overlay on the coarse
 mesh spatial grid. If this option is used a <tt class="docutils literal"><span class="pre">1</span></tt> is used for a
 non-accelerated region and a <tt class="docutils literal"><span class="pre">2</span></tt> is used for an accelerated region.
 For a simple 4x4 coarse mesh with a 2x2 fuel lattice surrounded by
 reflector, the map is:</p>
 <blockquote>
-<div><p><tt class="docutils literal"><span class="pre">1</span> <span class="pre">1</span> <span class="pre">1</span> <span class="pre">1</span></tt></p>
+<p><tt class="docutils literal"><span class="pre">1</span> <span class="pre">1</span> <span class="pre">1</span> <span class="pre">1</span></tt></p>
 <p><tt class="docutils literal"><span class="pre">1</span> <span class="pre">2</span> <span class="pre">2</span> <span class="pre">1</span></tt></p>
 <p><tt class="docutils literal"><span class="pre">1</span> <span class="pre">2</span> <span class="pre">2</span> <span class="pre">1</span></tt></p>
 <p><tt class="docutils literal"><span class="pre">1</span> <span class="pre">1</span> <span class="pre">1</span> <span class="pre">1</span></tt></p>
-</div></blockquote>
+</blockquote>
 <p>Therefore a 2x2 system of equations is solved rather than a 4x4. This
 is extremely important to use in reflectors as neutrons will not
 contribute to any tallies far away from fission source neutron regions.
@@ -1284,7 +1312,7 @@ of two of these will yield the third.</p>
 </tr>
 </tbody>
 </table>
-</div></blockquote>
+</blockquote>
 </div>
 <div class="section" id="norm-element">
 <h3>3.7.8. <tt class="docutils literal"><span class="pre">&lt;norm&gt;</span></tt> Element<a class="headerlink" href="#norm-element" title="Permalink to this headline">¶</a></h3>
@@ -1295,7 +1323,7 @@ fission source regions, in this case 289. This is useful when visualizing this
 distribution as the average peaking factor will be unity. This parameter will
 not impact the calculation.</p>
 <blockquote>
-<div><em>Default</em>: 1.0</div></blockquote>
+<em>Default</em>: 1.0</blockquote>
 </div>
 <div class="section" id="n-procs-cmfd-element">
 <h3>3.7.9. <tt class="docutils literal"><span class="pre">&lt;n_procs_cmfd&gt;</span></tt> Element<a class="headerlink" href="#n-procs-cmfd-element" title="Permalink to this headline">¶</a></h3>
@@ -1303,14 +1331,14 @@ not impact the calculation.</p>
 for CMFD calculation. It should be less than or equal to the number of
 processors used during OpenMC.</p>
 <blockquote>
-<div><em>Default</em>: 1</div></blockquote>
+<em>Default</em>: 1</blockquote>
 </div>
 <div class="section" id="power-monitor-element">
 <h3>3.7.10. <tt class="docutils literal"><span class="pre">&lt;power_monitor&gt;</span></tt> Element<a class="headerlink" href="#power-monitor-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;power_monitor&gt;</span></tt> element is used to view the convergence of power iteration.
 This option can be turned on with &#8220;true&#8221; and turned off with &#8220;false&#8221;.</p>
 <blockquote>
-<div><em>Default</em>: false</div></blockquote>
+<em>Default</em>: false</blockquote>
 </div>
 <div class="section" id="write-balance-element">
 <h3>3.7.11. <tt class="docutils literal"><span class="pre">&lt;write_balance&gt;</span></tt> Element<a class="headerlink" href="#write-balance-element" title="Permalink to this headline">¶</a></h3>
@@ -1318,14 +1346,14 @@ This option can be turned on with &#8220;true&#8221; and turned off with &#8220;
 residuals for every coarse mesh region and energy group. This option can be
 turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
 <blockquote>
-<div><em>Default</em>: false</div></blockquote>
+<em>Default</em>: false</blockquote>
 </div>
 <div class="section" id="write-hdf5-element">
 <h3>3.7.12. <tt class="docutils literal"><span class="pre">&lt;write_hdf5&gt;</span></tt> Element<a class="headerlink" href="#write-hdf5-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;write_hdf5&gt;</span></tt> element can be turned on with &#8220;true&#8221; to get an
 HDF5 output file of CMFD results.</p>
 <blockquote>
-<div><em>Default</em>: false</div></blockquote>
+<em>Default</em>: false</blockquote>
 </div>
 <div class="section" id="write-matrices-element">
 <h3>3.7.13. <tt class="docutils literal"><span class="pre">&lt;write_matrices&gt;</span></tt> Element<a class="headerlink" href="#write-matrices-element" title="Permalink to this headline">¶</a></h3>
@@ -1334,7 +1362,7 @@ created when solving CMFD equations. These binary output files can be imported
 into MATLAB using PETSc-MATLAB utilities. This option can be
 turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
 <blockquote>
-<div><em>Default</em>: false</div></blockquote>
+<em>Default</em>: false</blockquote>
 </div>
 </div>
 </div>
@@ -1348,7 +1376,7 @@ turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="troubleshoot.html">4. Troubleshooting</a>&#160;&#160;»
+        <a href="processing.html">4. Data Processing and Visualization</a>&#160;&#160;»
         </p>
 
       </div>
@@ -1356,7 +1384,7 @@ turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
 
     <div class="footer">
         &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
     </div>
 <script type="text/javascript">
 

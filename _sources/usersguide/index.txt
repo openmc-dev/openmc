@@ -14,4 +14,5 @@ essential aspects of using OpenMC to perform neutronic simulations.
     beginners
     install
     input
+    processing
     troubleshoot

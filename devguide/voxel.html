@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Release Notes for OpenMC 0.4.0 &mdash; OpenMC Documentation</title>
+    <title>6. Voxel Plot Binary File Specifications &mdash; OpenMC Documentation</title>
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/print.css" type="text/css" />
@@ -25,9 +25,9 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
-    <link rel="up" title="Release Notes" href="index.html" />
-    <link rel="next" title="Theory and Methodology" href="../methods/index.html" />
-    <link rel="prev" title="Release Notes for OpenMC 0.4.1" href="notes_0.4.1.html" /> 
+    <link rel="up" title="Developer’s Guide" href="index.html" />
+    <link rel="next" title="Publications" href="../publications.html" />
+    <link rel="prev" title="5. State Point Binary File Specifications" href="statepoint.html" /> 
   </head>
   <body>
       <div class="header">
@@ -38,47 +38,63 @@
       <div class="topnav">
       
         <p>
-        «&#160;&#160;<a href="notes_0.4.1.html">Release Notes for OpenMC 0.4.1</a>
+        «&#160;&#160;<a href="statepoint.html">5. State Point Binary File Specifications</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="../methods/index.html">Theory and Methodology</a>&#160;&#160;»
+        <a href="../publications.html">Publications</a>&#160;&#160;»
         </p>
 
       </div>
       <div class="content">
         
         
-  <div class="section" id="release-notes-for-openmc-0-4-0">
-<span id="notes-0-4-0"></span><h1>Release Notes for OpenMC 0.4.0<a class="headerlink" href="#release-notes-for-openmc-0-4-0" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="system-requirements">
-<h2>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h2>
-<p>There are no special requirements for running the OpenMC code. As of this
-release, OpenMC has been tested on a variety of Linux distributions as well as
-Mac OS X. However, it has not been tested yet on any releases of Microsoft
-Windows. Memory requirements will vary depending on the size of the problem at
-hand (mostly on the number of nuclides in the problem).</p>
-</div>
-<div class="section" id="new-features">
-<h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li>The probability table method for treatment of energy self-shielding in the
-unresolved resonance range has been implemented and is now turned on by
-default.</li>
-<li>Calculation of Shannon entropy for assessing convergence of the fission source
-distribution.</li>
-<li>Ability to compile with the PGI Fortran compiler.</li>
-<li>Ability to run on IBM BlueGene/P machines.</li>
-<li>Completely rewrote how nested universes are handled. Geometry is now much more
-robust.</li>
-</ul>
-</div>
-<div class="section" id="bug-fixes">
-<h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li>Many geometry errors have been fixed. The Monte Carlo performance benchmark
-can now be successfully run in OpenMC.</li>
-</ul>
+  <div class="section" id="voxel-plot-binary-file-specifications">
+<span id="devguide-voxel"></span><h1>6. Voxel Plot Binary File Specifications<a class="headerlink" href="#voxel-plot-binary-file-specifications" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="revision-1">
+<h2>6.1. Revision 1<a class="headerlink" href="#revision-1" title="Permalink to this headline">¶</a></h2>
+<p><strong>integer(4) n_voxels_x</strong></p>
+<blockquote>
+Number of voxels in the x direction</blockquote>
+<p><strong>integer(4) n_voxels_y</strong></p>
+<blockquote>
+Number of voxels in the y direction</blockquote>
+<p><strong>integer(4) n_voxels_z</strong></p>
+<blockquote>
+Number of voxels in the z direction</blockquote>
+<p><strong>real(8) width_voxel_x</strong></p>
+<blockquote>
+Width of voxels in the x direction</blockquote>
+<p><strong>real(8) width_voxel_y</strong></p>
+<blockquote>
+Width of voxels in the y direction</blockquote>
+<p><strong>real(8) width_voxel_z</strong></p>
+<blockquote>
+Width of voxels in the z direction</blockquote>
+<p><strong>real(8) lower_left_x</strong></p>
+<blockquote>
+Lower left x point of the voxel grid</blockquote>
+<p><strong>real(8) lower_left_y</strong></p>
+<blockquote>
+Lower left y point of the voxel grid</blockquote>
+<p><strong>real(8) lower_left_z</strong></p>
+<blockquote>
+Lower left z point of the voxel grid</blockquote>
+<dl class="docutils">
+<dt><em>do x = 1, n_voxels_x</em></dt>
+<dd><dl class="first last docutils">
+<dt><em>do y = 1, n_voxels_y</em></dt>
+<dd><p class="first"><em>do z = 1, n_voxels_z</em></p>
+<blockquote class="last">
+<p><strong>integer(4) id</strong></p>
+<blockquote>
+Cell or material id number at this voxel center. Set to -1 when
+cell not_found.</blockquote>
+</blockquote>
+</dd>
+</dl>
+</dd>
+</dl>
 </div>
 </div>
 
@@ -87,11 +103,11 @@ can now be successfully run in OpenMC.</li>
       <div class="bottomnav">
       
         <p>
-        «&#160;&#160;<a href="notes_0.4.1.html">Release Notes for OpenMC 0.4.1</a>
+        «&#160;&#160;<a href="statepoint.html">5. State Point Binary File Specifications</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="../methods/index.html">Theory and Methodology</a>&#160;&#160;»
+        <a href="../publications.html">Publications</a>&#160;&#160;»
         </p>
 
       </div>

@@ -109,7 +109,9 @@ should be comfortable working in a command line environment. There are many
 resources online for learning command line environments. If you are using Linux
 or Mac OS X (also Unix-derived), `this tutorial
 <http://www.ee.surrey.ac.uk/Teaching/Unix/>`_ will help you get acquainted with
-commonly-used commands.
+commonly-used commands. It is also helpful to be familiar with `Python
+<http://www.python.org/>`_, as most of the post-processing utilities provided
+with OpenMC rely on it for data manipulation and results visualization.
 
 OpenMC uses a version control software called `git`_ to keep track of changes to
 the code, document bugs and issues, and other development tasks. While you don't

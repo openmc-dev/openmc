@@ -561,9 +561,9 @@ class StatePoint(object):
 
     def _get_long(self, n=1, path=None):
         if self._hdf5:
-            return [float(v) for v in self._f[path].value]
+            return [long(v) for v in self._f[path].value]
         else:
-            return [float(v) for v in self._get_data(n, 'q', 8)]
+            return [long(v) for v in self._get_data(n, 'q', 8)]
 
     def _get_float(self, n=1, path=None):
         if self._hdf5:

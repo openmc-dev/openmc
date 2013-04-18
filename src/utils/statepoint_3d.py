@@ -174,7 +174,6 @@ def main(file_, o):
     
     if o.vtk:
       ww = [(u-l)/n for u,l,n in zip(ur,ll,(nx,ny,nz))]
-      origin = [(l+w*n/2.) for n,l,w in zip((nx,ny,nz),ll,ww)]
       grid = grid = vtk.vtkImageData()
       grid.SetDimensions(nx+1,ny+1,nz+1)
       grid.SetOrigin(*ll)

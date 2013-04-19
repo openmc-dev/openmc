@@ -173,7 +173,7 @@ as `PyQt <http://www.riverbankcomputing.com/software/pyqt>`_.
    :height: 200px
 
 Alternatively, the user can write their own Python script to manipulate the data
-appropriately. Consider a run where the first tally contains a 105x105x1 mesh
+appropriately. Consider a run where the first tally contains a 105x105x20 mesh
 over a small core, with a flux score and two energyin filter bins. To explicitly
 extract the data and create a plot with gnuplot, the following script can be
 used. The script operates in several steps for clarity, and is not necessarily

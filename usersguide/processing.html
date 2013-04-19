@@ -289,8 +289,8 @@ for both VTK and SILO. By default statepoint_3d.py processes a statepoint into a
 </div>
 <p>but it also provides several command-line options to selectively process only
 certain data arrays in order to keep file sizes down.</p>
-<div class="highlight-sh"><div class="highlight"><pre>&lt;openmc_root&gt;/src/utils/statepoint_3d.py &lt;statepoint_file&gt; -tallies 2,4 --scores 4.1,4.3 -o output.silo
-&lt;openmc_root&gt;/src/utils/statepoint_3d.py &lt;statepoint_file&gt; -filters 2.energyin.1 --vtk -o output.vtm
+<div class="highlight-sh"><div class="highlight"><pre>&lt;openmc_root&gt;/src/utils/statepoint_3d.py &lt;statepoint_file&gt; --tallies 2,4 --scores 4.1,4.3 -o output.silo
+&lt;openmc_root&gt;/src/utils/statepoint_3d.py &lt;statepoint_file&gt; --filters 2.energyin.1 --vtk -o output.vtm
 </pre></div>
 </div>
 <p>All available options for specifying a subset of tallies, scores, and filters

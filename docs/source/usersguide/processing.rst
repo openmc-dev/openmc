@@ -266,8 +266,8 @@ certain data arrays in order to keep file sizes down.
 
 .. code-block:: sh
 
-    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> -tallies 2,4 --scores 4.1,4.3 -o output.silo
-    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> -filters 2.energyin.1 --vtk -o output.vtm
+    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> --tallies 2,4 --scores 4.1,4.3 -o output.silo
+    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> --filters 2.energyin.1 --vtk -o output.vtm
 
 All available options for specifying a subset of tallies, scores, and filters
 can be listed with the ``--list`` or ``-l`` command line options.

@@ -78,6 +78,7 @@ contains
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
     real(8) :: xyz(3)               ! temporary location
+    real(8) :: upper_right(3)       ! lattice upper_right
     logical :: use_search_cells     ! use cells provided as argument
     logical :: outside_lattice      ! if particle is not inside lattice bounds
     logical :: lattice_edge         ! if particle is on a lattice edge
@@ -187,12 +188,21 @@ contains
                i_z < 1 .or. i_z > n_z) then
 
             ! Check for when particle is on lattice edge
+            upper_right(1) = lat % lower_left(1) + &
+                             lat % width(1) * dble(lat % dimension(1))
+            upper_right(2) = lat % lower_left(2) + &
+                             lat % width(2) * dble(lat % dimension(2))
             if ( abs(xyz(1) - lat % lower_left(1)) < FP_COINCIDENT .or. &
-                 abs(xyz(2) - lat % lower_left(2)) < FP_COINCIDENT) then
+                 abs(xyz(2) - lat % lower_left(2)) < FP_COINCIDENT .or. &
+                 abs(upper_right(1) - xyz(1)) < FP_COINCIDENT .or. &
+                 abs(upper_right(2) - xyz(2)) < FP_COINCIDENT) then
               lattice_edge = .true.
             end if
             if (lat % n_dimension == 3) then
-              if (abs(xyz(3) - lat % lower_left(3)) < FP_COINCIDENT) then
+              upper_right(3) = lat % lower_left(3) + &
+                               lat % width(3) * dble(lat % dimension(3))
+              if (abs(xyz(3) - lat % lower_left(3)) < FP_COINCIDENT .or. &
+                  abs(upper_right(3) - xyz(3)) < FP_COINCIDENT) then
                 lattice_edge = .true.
               end if
             end if

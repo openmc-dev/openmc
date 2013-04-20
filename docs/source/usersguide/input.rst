@@ -314,7 +314,7 @@ attributes/sub-elements:
       *Default*: watt
 
     :parameters:
-      For a "monoenergetic" energy distribution, ``parameters`` should not be
+      For a "monoenergetic" energy distribution, ``parameters`` should be
       given as the energy in MeV of the source sites.
 
       For a "watt" energy distribution, ``parameters`` should be given as two

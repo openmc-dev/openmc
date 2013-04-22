@@ -555,30 +555,30 @@ class StatePoint(object):
     
     def _get_int(self, n=1, path=None):
         if self._hdf5:
-            return self._f[path].value
+            return [int(v) for v in self._f[path].value]
         else:
-            return self._get_data(n, 'i', 4)
+            return [int(v) for v in self._get_data(n, 'i', 4)]
 
     def _get_long(self, n=1, path=None):
         if self._hdf5:
-            return self._f[path].value
+            return [long(v) for v in self._f[path].value]
         else:
-            return self._get_data(n, 'q', 8)
+            return [long(v) for v in self._get_data(n, 'q', 8)]
 
     def _get_float(self, n=1, path=None):
         if self._hdf5:
-            return self._f[path].value
+            return [float(v) for v in self._f[path].value]
         else:
-            return self._get_data(n, 'f', 4)
+            return [float(v) for v in self._get_data(n, 'f', 4)]
 
     def _get_double(self, n=1, path=None):
         if self._hdf5:
-            return self._f[path].value
+            return [float(v) for v in self._f[path].value]
         else:
-            return self._get_data(n, 'd', 8)
+            return [float(v) for v in self._get_data(n, 'd', 8)]
 
     def _get_string(self, n=1, path=None):
         if self._hdf5:
-            return self._f[path].value
+            return str(self._f[path].value)
         else:
-            return self._get_data(n, 's', 1)[0]
+            return str(self._get_data(n, 's', 1)[0])

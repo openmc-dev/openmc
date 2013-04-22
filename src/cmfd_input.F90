@@ -364,7 +364,7 @@ contains
       if (i == 1) then
 
         ! set label
-        t % label = "CMFD flux, total, scatter-1, diffusion"
+        t % label = "CMFD flux, total, scatter-1"
 
         ! set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
@@ -378,12 +378,12 @@ contains
         t % filters = filters(1:n_filters)
 
         ! allocate scoring bins 
-        allocate(t % score_bins(4))
-        t % n_score_bins = 4
-        t % n_user_score_bins = 4
+        allocate(t % score_bins(3))
+        t % n_score_bins = 3
+        t % n_user_score_bins = 3
 
         ! allocate scattering order data
-        allocate(t % scatt_order(4))
+        allocate(t % scatt_order(3))
         t % scatt_order = 0
         
         ! set macro_bins
@@ -391,7 +391,6 @@ contains
         t % score_bins(2)  = SCORE_TOTAL
         t % score_bins(3)  = SCORE_SCATTER_N
         t % scatt_order(3) = 1
-        t % score_bins(4)  = SCORE_DIFFUSION
 
       else if (i == 2) then
 

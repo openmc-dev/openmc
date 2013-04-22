@@ -823,8 +823,6 @@ contains
         j = j + n - 1
       case (SCORE_TRANSPORT)
         string = trim(string) // ' transport'
-      case (SCORE_DIFFUSION)
-        string = trim(string) // ' diffusion'
       case (SCORE_N_1N)
         string = trim(string) // ' n1n'
       case (SCORE_ABSORPTION)
@@ -1510,7 +1508,6 @@ contains
     score_names(abs(SCORE_SCATTER_N))     = ""
     score_names(abs(SCORE_SCATTER_PN))    = ""
     score_names(abs(SCORE_TRANSPORT))     = "Transport Rate"
-    score_names(abs(SCORE_DIFFUSION))     = "Diffusion Coefficient"
     score_names(abs(SCORE_N_1N))          = "(n,1n) Rate"
     score_names(abs(SCORE_ABSORPTION))    = "Absorption Rate"
     score_names(abs(SCORE_FISSION))       = "Fission Rate"

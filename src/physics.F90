@@ -790,7 +790,7 @@ contains
     kT = nuc % kT
 
     ! Check if energy is above threshold
-    if (p % E >= FREE_GAS_THRESHOLD * kT) then
+    if (p % E >= FREE_GAS_THRESHOLD * kT .and. nuc % awr > ONE) then
       v_target = ZERO
       return
     end if

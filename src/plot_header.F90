@@ -16,7 +16,7 @@ module plot_header
 ! PLOTSLICE holds plot information
 !===============================================================================
 
-  type PlotSlice
+  type ObjectPlot
     integer :: id                    ! Unique ID
     character(MAX_LINE_LEN) :: path_plot ! path for plot file
     integer :: type                  ! Type
@@ -24,14 +24,14 @@ module plot_header
     real(8) :: origin(3)             ! xyz center of plot location
     real(8) :: width(3)              ! xyz widths of plot
     integer :: basis                 ! direction of plot slice 
-    integer :: pixels(2)             ! pixel width/height of plot slice
+    integer :: pixels(3)             ! pixel width/height of plot slice
     type(ObjectColor) :: not_found   ! color for positions where no cell found
     type(ObjectColor), allocatable :: colors(:) ! colors of cells/mats
-  end type PlotSlice
+  end type ObjectPlot
 
-  ! Plot type -- note that only slice plots are implemented currently
+  ! Plot type
   integer, parameter :: PLOT_TYPE_SLICE = 1
-  integer, parameter :: PLOT_TYPE_POINTS = 2
+  integer, parameter :: PLOT_TYPE_VOXEL = 2
 
   ! Plot basis plane
   integer, parameter :: PLOT_BASIS_XY = 1

@@ -71,6 +71,7 @@ contains
 
     ! Initialize XML scalar variables
     cross_sections_ = ''
+    output_path_ = ''
     verbosity_ = 0
     energy_grid_ = 'union'
     seed_ = 0_8
@@ -99,6 +100,14 @@ contains
       end if
     else
       path_cross_sections = trim(cross_sections_)
+    end if
+
+    ! Set output directory if a path has been specified on the <output_path>
+    ! element
+    if (len_trim(output_path_) > 0) then
+      path_output = output_path_
+      if (.not. ends_with(path_output, "/")) &
+           path_output = trim(path_output) // "/"
     end if
 
     ! Make sure that either criticality or fixed source was specified

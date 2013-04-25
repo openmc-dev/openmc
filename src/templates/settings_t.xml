@@ -51,6 +51,7 @@
   <variable name="fixed_source_" tag="fixed_source" type="run_parameters_xml" />
   <variable name="no_reduce_" tag="no_reduce" type="word" length="5" />
   <variable name="output_" tag="output" type="word-array" length="20" />
+  <variable name="output_path_" tag="output_path" type="word" length="255" />
   <variable name="ptables_" tag="ptables" type="word" length="5" />
   <variable name="run_cmfd_" tag="run_cmfd" type="word" length="5" />
   <variable name="seed_" tag="seed" type="integer" />

@@ -212,6 +212,15 @@ sections summary file to be written, this element should be given as:
 
   *Default*: "tallies"
 
+``<output_path>`` Element
+-------------------------
+
+The ``<output_path>`` element specifies an absolute or relative path where all
+output files should be written to. The specified path must exist or else OpenMC
+will abort.
+
+  *Default*: Current working directory
+
 ``<ptables>`` Element
 ---------------------
 

@@ -43,6 +43,8 @@ element settings {
   element output { list { 
     ( "summary" | "cross_sections" | "tallies" )+ } }? &
 
+  element output_path { xsd:string { maxLength = "255" } }? &
+
   element ptables { xsd:boolean }? &
 
   element run_cmfd { xsd:boolean }? &

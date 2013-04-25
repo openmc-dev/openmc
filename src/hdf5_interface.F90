@@ -831,20 +831,22 @@ contains
     integer(HID_T)       :: dspace           ! identifier for dataspace
     integer(HID_T)       :: dset             ! identifier for dataset
     integer, allocatable :: temp_array(:)    ! nuclide bin array
+    character(MAX_FILE_LEN) :: filename      ! Path to state point
     type(c_ptr)          :: f_ptr            ! Pointer for h5dwrite
     type(TallyObject), pointer :: t => null()
 
-    path_state_point = 'statepoint.' // trim(to_str(current_batch)) // '.h5'
+    filename = trim(path_output) // 'statepoint.' // &
+         trim(to_str(current_batch)) // '.h5'
 
     ! Write message
-    message = "Creating HDF5 state point " // trim(path_state_point) // "..."
+    message = "Creating HDF5 state point " // trim(filename) // "..."
     call write_message(1)
 
     ! Only master process should continue from here
     if (.not. master) return
 
     ! Create a new state point file using default properties.
-    call h5fcreate_f(path_state_point, H5F_ACC_TRUNC_F, hdf5_state_point, &
+    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, hdf5_state_point, &
          hdf5_err)
 
     ! Write revision number for state point file

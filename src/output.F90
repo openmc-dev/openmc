@@ -1077,7 +1077,7 @@ contains
     type(TallyObject), pointer :: t => null()
 
     ! Create filename for log file
-    path = "summary.out"
+    path = trim(path_output) // "summary.out"
 
     ! Open log file for writing
     open(UNIT=UNIT_SUMMARY, FILE=path, STATUS='replace', ACTION='write')
@@ -1177,7 +1177,7 @@ contains
     type(SAlphaBeta), pointer :: sab => null()
 
     ! Create filename for log file
-    path = "cross_sections.out"
+    path = trim(path_output) // "cross_sections.out"
 
     ! Open log file for writing
     open(UNIT=UNIT_XS, FILE=path, STATUS='replace', ACTION='write')
@@ -1517,9 +1517,10 @@ contains
 
     ! Create filename for tally output
     if (run_mode == MODE_TALLIES) then
-      filename = "tallies." // trim(to_str(restart_batch)) // ".out"
+      filename = trim(path_output) // "tallies." // &
+           trim(to_str(restart_batch)) // ".out"
     else
-      filename = "tallies.out"
+      filename = trim(path_output) // "tallies.out"
     end if
 
     ! Open tally file for writing

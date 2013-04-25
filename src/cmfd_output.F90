@@ -1,6 +1,6 @@
 module cmfd_output
 
-# ifdef PETSC
+#ifdef PETSC
 
 ! This modules cleans up cmfd objects and echos the results
 
@@ -38,10 +38,14 @@ contains
   subroutine write_neutron_balance()
 
     use cmfd_data,    only: neutron_balance
-    use constants,    only: CMFD_BALANCE
+    use constants,    only: CMFD_BALANCE, MAX_FILE_LEN
+
+    character(MAX_FILE_LEN) :: filename
+
+    filename = trim(path_output) // 'neutron_balance.out'
 
     ! open file for output
-    open(unit=CMFD_BALANCE,file="neutron_balance.out")
+    open(UNIT=CMFD_BALANCE, FILE=filename, ACTION='write')
 
     ! write out the tally
     call neutron_balance(CMFD_BALANCE) 
@@ -51,6 +55,6 @@ contains
 
   end subroutine write_neutron_balance
 
-# endif
+#endif
 
 end module cmfd_output

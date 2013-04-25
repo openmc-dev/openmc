@@ -51,13 +51,15 @@ contains
 #else
     integer :: j, k                    ! loop indices
 #endif
+    character(MAX_FILE_LEN) :: filename
     type(TallyObject), pointer :: t => null()
 
     ! Set filename for binary state point
-    path_state_point = 'statepoint.' // trim(to_str(current_batch)) // '.binary'
+    filename = trim(path_output) // 'statepoint.' // &
+         trim(to_str(current_batch)) // '.binary'
 
     ! Write message
-    message = "Creating state point " // trim(path_state_point) // "..."
+    message = "Creating state point " // trim(filename) // "..."
     call write_message(1)
 
 #ifdef MPI
@@ -65,7 +67,7 @@ contains
     ! PARALLEL I/O USING MPI-2 ROUTINES
 
     ! Open binary source file for reading
-    call MPI_FILE_OPEN(MPI_COMM_WORLD, path_state_point, MPI_MODE_CREATE + &
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, filename, MPI_MODE_CREATE + &
          MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
 
     ! ==========================================================================
@@ -158,7 +160,7 @@ contains
 
 #else
     ! Open binary state point file for writing
-    open(UNIT=UNIT_STATE, FILE=path_state_point, STATUS='replace', &
+    open(UNIT=UNIT_STATE, FILE=filename, STATUS='replace', &
          ACCESS='stream')
 
     ! Write revision number for state point file

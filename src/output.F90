@@ -1450,7 +1450,7 @@ contains
          % sum, global_tallies(K_TRACKLENGTH) % sum_sq
     write(ou,102) "k-effective (Absorption)", global_tallies(K_ABSORPTION) &
          % sum, global_tallies(K_ABSORPTION) % sum_sq
-    write(ou,102) "Combined k-effective", k_combined
+    if (n_active > 3) write(ou,102) "Combined k-effective", k_combined
     write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
          global_tallies(LEAKAGE) % sum_sq
     write(ou,*)

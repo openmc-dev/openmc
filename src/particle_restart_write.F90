@@ -51,7 +51,7 @@ contains
     type(Bank), pointer     :: src => null()
 
     ! set up file name
-    filename = 'particle_'//trim(to_str(rank))//'.h5'
+    filename = trim(path_output) // 'particle_'//trim(to_str(rank))//'.h5'
 
     ! create hdf5 file
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, hdf5_particle_file, hdf5_err)
@@ -90,7 +90,7 @@ contains
     type(Bank), pointer     :: src => null()
 
     ! set up file name
-    filename = 'particle_'//trim(to_str(rank))//'.binary'
+    filename = path_output // 'particle_'//trim(to_str(rank))//'.binary'
 
     ! create hdf5 file
     open(UNIT=UNIT_PARTICLE, FILE=filename, STATUS='replace', &

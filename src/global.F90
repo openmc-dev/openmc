@@ -259,6 +259,7 @@ module global
   character(MAX_FILE_LEN) :: path_source = ''      ! Path to binary source
   character(MAX_FILE_LEN) :: path_state_point      ! Path to binary state point
   character(MAX_FILE_LEN) :: path_particle_restart ! Path to particle restart
+  character(MAX_FILE_LEN) :: path_output = ''      ! Path to output directory
 
   ! Message used in message/warning/fatal_error
   character(MAX_LINE_LEN) :: message

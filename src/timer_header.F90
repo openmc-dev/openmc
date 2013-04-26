@@ -45,7 +45,7 @@ contains
   function timer_get_value(self) result(elapsed)
 
     class(Timer), intent(in) :: self   ! the timer
-    real(8)                  :: elapsed ! total elapsed time
+    real(8)                 :: elapsed ! total elapsed time
 
     integer :: end_counts   ! current number of counts
     integer :: count_rate   ! system-dependent counting rate

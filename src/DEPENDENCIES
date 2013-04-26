@@ -311,6 +311,7 @@ plot.o: output.o
 plot.o: particle_header.o
 plot.o: plot_header.o
 plot.o: ppmlib.o
+plot.o: progress_header.o
 plot.o: source.o
 plot.o: string.o
 

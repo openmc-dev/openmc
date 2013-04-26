@@ -46,6 +46,7 @@ physics.o \
 plot.o \
 plot_header.o \
 ppmlib.o \
+progress_header.o \
 random_lcg.o \
 search.o \
 set_header.o \

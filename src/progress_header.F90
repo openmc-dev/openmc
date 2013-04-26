@@ -33,37 +33,37 @@ contains
 
     ! set the percentage
     if (val >= 100.) then
-      write(unit=self % bar(1:3),fmt="(i3)") 100
+      write(self % bar(1:3), "(I3)") 100
+    else if (val <= 0.) then
+      write(self % bar(1:3), "(I3)") 0
     else
-      write(unit=self % bar(1:3),fmt="(i3)") int(val)
+      write(self % bar(1:3), "(I3)") int(val)
     end if
 
     ! set the bar width
     if (val >= 100.) then
       do i=1,65
-        self % bar(i+6:i+6) = '='
+        write(self % bar(i+6:i+6), '(A)') '='
       end do
     else
       do i=1,int(dble(65)*val/100.)
-        self % bar(i+6:i+6) = '='
+        write(self % bar(i+6:i+6), '(A)') '='
       end do
     end if
 
-    open(UNIT=OUTPUT_UNIT, carriagecontrol='fortran')
-    write(UNIT=OUTPUT_UNIT, FMT='(a1,a1,a72)', ADVANCE='no') '+', char(13), &
-                                                             self % bar
-    call flush(OUTPUT_UNIT)
+    open(OUTPUT_UNIT)
+    write(OUTPUT_UNIT, '(A1,A1,A72)', ADVANCE='no') '+', char(13), self % bar
+    flush(OUTPUT_UNIT)
     
     if (val >= 100.) then
     
       ! make new line
-      write(UNIT=OUTPUT_UNIT, FMT="(A)") ""
-    
+      write(OUTPUT_UNIT, "(A)") ""
+      flush(OUTPUT_UNIT)
+      
       ! reset the bar in case we want to use this instance again
       self % bar = "???% |                                      " // &
                    "                           |"
-      
-      close(UNIT=OUTPUT_UNIT)
       
     end if
     

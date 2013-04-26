@@ -74,7 +74,7 @@ and VTK file formats:
 
 .. code-block:: sh
 
-    <openmc_root>/src/utils/myplot.voxel --vtk -o output.vti
+    <openmc_root>/src/utils/voxel.py myplot.voxel --vtk -o output.vti
 
 To use this utility you need either
 

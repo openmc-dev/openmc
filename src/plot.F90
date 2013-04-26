@@ -10,7 +10,7 @@ module plot
   use plot_header
   use ppmlib,          only: Image, init_image, allocate_image, &
                              deallocate_image, set_pixel
-  use progress_header
+  use progress_header, only: ProgressBar
   use source,          only: initialize_particle
   use string,          only: to_str
 

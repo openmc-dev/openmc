@@ -1,8 +1,16 @@
 module progress_header
 
-  use, intrinsic :: ISO_FORTRAN_ENV
+  use, intrinsic :: ISO_FORTRAN_ENV,      only: OUTPUT_UNIT
 
   implicit none
+
+  interface
+    function check_isatty(fd) bind(C, name = 'isatty')
+      use, intrinsic :: ISO_C_BINDING, only: c_int
+      integer(c_int)        :: check_isatty
+      integer(c_int), value :: fd
+    end function
+  end interface
 
 !===============================================================================
 ! PROGRESSBAR
@@ -31,6 +39,8 @@ contains
     
     integer :: i
 
+    if (check_isatty(1) == 0) return
+
     ! set the percentage
     if (val >= 100.) then
       write(self % bar(1:3), "(I3)") 100
@@ -51,7 +61,6 @@ contains
       end do
     end if
 
-    open(OUTPUT_UNIT)
     write(OUTPUT_UNIT, '(A1,A1,A72)', ADVANCE='no') '+', char(13), self % bar
     flush(OUTPUT_UNIT)
     

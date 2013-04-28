@@ -4,6 +4,7 @@ module progress_header
 
   implicit none
 
+#ifdef __linux__
   interface
     function check_isatty(fd) bind(C, name = 'isatty')
       use, intrinsic :: ISO_C_BINDING, only: c_int
@@ -11,6 +12,7 @@ module progress_header
       integer(c_int), value :: fd
     end function
   end interface
+#endif
 
 !===============================================================================
 ! PROGRESSBAR
@@ -29,7 +31,7 @@ contains
 !===============================================================================
 ! BAR_SET_VALUE prints the progress bar without advancing.  The value is
 ! specified as percent completion, from 0 to 100.  If the value is ever set to
-! 100 or above, the 
+! 100 or above, the bar is set to 100 and a newline is written.
 !===============================================================================
 
   subroutine bar_set_value(self, val)
@@ -39,7 +41,11 @@ contains
     
     integer :: i
 
+#ifdef __linux__
     if (check_isatty(1) == 0) return
+#else
+    return
+#endif
 
     ! set the percentage
     if (val >= 100.) then

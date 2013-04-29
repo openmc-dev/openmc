@@ -82,18 +82,19 @@ To use this utility you need either
 
 or
 
-* `VTK <http://www.vtk.org/>`_ with python bindings - On Ubuntu, these are easily obtained with ``sudo apt-get install python-vtk``
+* `VTK <http://www.vtk.org/>`_ with python bindings - On Ubuntu, these are
+  easily obtained with ``sudo apt-get install python-vtk``
 
 Users can process the binary into any other format if desired by following the
 example of voxel.py.  For the binary file structure, see :ref:`devguide_voxel`.
 
 .. note:: 3D voxel plotting can be very computer intensive for the viewing
-          program (Visit, Paraview, etc.) if the number of voxels is large
-          (>10million or so).  Thus if you want an accurate picture that
-          renders smoothly, consider using only one voxel in a certain
-          direction. For instance, the 3D pin lattice figure above was generated
-          with a 500x500x1 voxel mesh, which allows for resolution of the
-          cylinders without wasting too many voxels on the axial dimension.
+          program (Visit, Paraview, etc.) if the number of voxels is large (>10
+          million or so).  Thus if you want an accurate picture that renders
+          smoothly, consider using only one voxel in a certain direction. For
+          instance, the 3D pin lattice figure above was generated with a
+          500x500x1 voxel mesh, which allows for resolution of the cylinders
+          without wasting too many voxels on the axial dimension.
 
 
 -------------------

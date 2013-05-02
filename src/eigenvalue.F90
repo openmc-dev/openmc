@@ -183,11 +183,11 @@ contains
       if (master) call calculate_combined_keff()
 
       ! Create state point file
-#ifdef HDF5
-      call hdf5_write_state_point()
-#else
+!#ifdef HDF5
+!     call hdf5_write_state_point()
+!#else
       call write_state_point()
-#endif
+!#endif
     end if
 
     if (master .and. current_batch == n_batches) then

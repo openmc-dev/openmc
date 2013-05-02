@@ -18,12 +18,13 @@ module state_point
 ! intervals, using the <state_point ... /> tag.
 !===============================================================================
 
-  use error,        only: warning, fatal_error
+  use error,         only: warning, fatal_error
   use global
-  use math,         only: t_percentile
-  use output,       only: write_message, print_batch_keff, time_stamp
-  use string,       only: to_str
-  use tally_header, only: TallyObject
+  use hdf5_interface
+  use math,          only: t_percentile
+  use output,        only: write_message, print_batch_keff, time_stamp
+  use string,        only: to_str
+  use tally_header,  only: TallyObject
 
 #ifdef MPI
   use mpi
@@ -54,9 +55,24 @@ contains
     character(MAX_FILE_LEN) :: filename
     type(TallyObject), pointer :: t => null()
 
+# ifdef HDF5
+    integer(HSIZE_T)     :: dims(1)          ! dimensions of 1D arrays
+    integer(HSIZE_T)     :: dims2(2)         ! dimensions of 2D arrays
+    integer(HID_T)       :: dspace           ! identifier for dataspace
+    integer(HID_T)       :: dset             ! identifier for dataset
+    integer(HID_T)       :: tallies_group    ! "tallies" group
+    integer(HID_T)       :: temp_group       ! group for i-th tally or mesh
+    type(c_ptr)          :: f_ptr            ! Pointer for h5dwrite
+#endif
+
     ! Set filename for binary state point
+#ifdef HDF5
+    filename = trim(path_output) // 'statepoint.' // &
+         trim(to_str(current_batch)) // '.h5'
+#else
     filename = trim(path_output) // 'statepoint.' // &
          trim(to_str(current_batch)) // '.binary'
+#endif
 
     ! Write message
     message = "Creating state point " // trim(filename) // "..."
@@ -67,8 +83,12 @@ contains
     ! PARALLEL I/O USING MPI-2 ROUTINES
 
     ! Open binary source file for reading
+#ifdef HDF5
+    call hdf5_file_create(filename, hdf5_state_point) 
+#else
     call MPI_FILE_OPEN(MPI_COMM_WORLD, filename, MPI_MODE_CREATE + &
          MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
+#endif
 
     ! ==========================================================================
     ! RUN INFORMATION AND TALLY METADATA
@@ -86,39 +106,101 @@ contains
 
     elseif (master) then
       ! Write number of realizations
+#ifdef HDF5
+      call hdf5_write_integer(hdf5_state_point, "n_realizations", n_realizations)
+#else
       call MPI_FILE_WRITE(fh, n_realizations, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
+#endif
 
       ! Write global tallies
+#ifdef HDF5
+      call hdf5_write_integer(hdf5_state_point, "n_global_tallies", &
+           N_GLOBAL_TALLIES)
+      dims(1) = N_GLOBAL_TALLIES
+      print *,'GLOBAL:',rank,global_tallies
+      call h5screate_simple_f(1, dims, dspace, hdf5_err)
+      call h5dcreate_f(hdf5_state_point, "global_tallies", hdf5_tallyresult_t, &
+           dspace, dset, hdf5_err)
+      f_ptr = c_loc(global_tallies(1))
+      call h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
+      call h5dclose_f(dset, hdf5_err)
+      call h5sclose_f(dspace, hdf5_err)
+#else
       call MPI_FILE_WRITE(fh, N_GLOBAL_TALLIES, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, global_tallies, N_GLOBAL_TALLIES, &
            MPI_TALLYRESULT, MPI_STATUS_IGNORE, mpi_err)
+#endif
 
+      ! Write tallies
       if (tallies_on) then
+        print *,'TALLIES ON'
         ! Indicate that tallies are on
+#ifdef HDF5
+        call h5gopen_f(hdf5_state_point, "tallies", tallies_group, hdf5_err)
+        call hdf5_write_integer(tallies_group, "tallies_present", 1)
+#else
         temp = 1
         call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
+#endif
 
         ! Write all tally results
         TALLY_RESULTS: do i = 1, n_tallies
           t => tallies(i)
+#ifdef HDF5
+        ! Open group for the i-th tally
+        call h5gopen_f(tallies_group, "tally" // to_str(i), &
+             temp_group, hdf5_err)
 
+        ! Write sum and sum_sq for each bin
+        dims2 = shape(t % results)
+        call h5screate_simple_f(2, dims2, dspace, hdf5_err)
+        call h5dcreate_f(temp_group, "results", hdf5_tallyresult_t, &
+             dspace, dset, hdf5_err)
+        f_ptr = c_loc(t % results(1, 1))
+        CALL h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
+        call h5dclose_f(dset, hdf5_err)
+        call h5sclose_f(dspace, hdf5_err)
+
+        ! Close group for the i-th tally
+        call h5gclose_f(temp_group, hdf5_err)
+#else 
           n = size(t % results, 1) * size(t % results, 2)
           call MPI_FILE_WRITE(fh, t % results, n, MPI_TALLYRESULT, &
                MPI_STATUS_IGNORE, mpi_err)
+#endif
         end do TALLY_RESULTS
+#ifdef HDF5
+        ! Close the tallies group
+        call h5gclose_f(tallies_group, hdf5_err)
+#endif
       else
         ! Indicate that tallies are off
+#ifdef HDF5
+        call h5gopen_f(hdf5_state_point, "tallies", tallies_group, hdf5_err)
+        call hdf5_write_integer(tallies_group, "tallies_present", 0)
+        call h5gclose_f(tallies_group, hdf5_err)
+#else
         temp = 0
         call MPI_FILE_WRITE(fh, temp, 1, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
+#endif
       end if
+    call hdf5_file_close(hdf5_state_point)
+    message = 'STOPPING PARALLEL HDF5 RUN'
+    call fatal_error()
     end if
 
     ! ==========================================================================
     ! SOURCE BANK
+
+#ifdef HDF5
+    ! Close the serial HDF5 file and set logical for source separate
+    call hdf5_file_close(hdf5_state_point)
+    source_separate = .true.
+#endif
 
     if (run_mode == MODE_EIGENVALUE) then
       if (source_separate) then
@@ -156,7 +238,11 @@ contains
     end if
 
     ! Close binary source file
+#ifdef HDF5
+    call hdf5_file_close(hdf5_state_point)
+#else
     call MPI_FILE_CLOSE(fh, mpi_err)
+#endif
 
 #else
     ! Open binary state point file for writing
@@ -336,44 +422,105 @@ contains
     integer       :: n            ! temporary array length
     type(TallyObject), pointer :: t => null()
 
+#ifdef HDF5
+    integer(HSIZE_T)     :: dims(1)          ! dimensions of 1D arrays
+    integer(HID_T)       :: tallies_group    ! "tallies" group
+    integer(HID_T)       :: temp_group       ! group for i-th tally or mesh
+    integer(HID_T)       :: filter_group     ! group for i-th filter
+    integer, allocatable :: temp_array(:)    ! nuclide bin array
+#endif
+
     ! Write revision number for state point file
+#ifdef HDF5
+    call hdf5_write_integer(hdf5_state_point, "revision_statepoint", &
+         REVISION_STATEPOINT)
+#else
     call MPI_FILE_WRITE(fh, REVISION_STATEPOINT, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Write OpenMC version
+#ifdef HDF5
+    call hdf5_write_integer(hdf5_state_point, "version_major", VERSION_MAJOR)
+    call hdf5_write_integer(hdf5_state_point, "version_minor", VERSION_MINOR)
+    call hdf5_write_integer(hdf5_state_point, "version_release", VERSION_RELEASE)
+#else
     call MPI_FILE_WRITE(fh, VERSION_MAJOR, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
     call MPI_FILE_WRITE(fh, VERSION_MINOR, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
     call MPI_FILE_WRITE(fh, VERSION_RELEASE, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Write current date and time
+#ifdef HDF5
+    call h5ltmake_dataset_string_f(hdf5_state_point, "date_and_time", &
+         time_stamp(), hdf5_err)
+#else
     call MPI_FILE_WRITE(fh, time_stamp(), 19, MPI_CHARACTER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Write path to input
+#ifdef HDF5
+    call h5ltmake_dataset_string_f(hdf5_state_point, "path", &
+         path_input, hdf5_err)
+#else
     call MPI_FILE_WRITE(fh, path_input, MAX_FILE_LEN, MPI_CHARACTER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Write out random number seed
+#ifdef HDF5
+    call hdf5_write_long(hdf5_state_point, "seed", seed)
+#else
     call MPI_FILE_WRITE(fh, seed, 1, MPI_INTEGER8, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Write run information
+#ifdef HDF5
+    call hdf5_write_integer(hdf5_state_point, "run_mode", run_mode)
+    call hdf5_write_long(hdf5_state_point, "n_particles", n_particles)
+    call hdf5_write_integer(hdf5_state_point, "n_batches", n_batches)
+#else
     call MPI_FILE_WRITE(fh, run_mode, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
     call MPI_FILE_WRITE(fh, n_particles, 1, MPI_INTEGER8, &
          MPI_STATUS_IGNORE, mpi_err)
     call MPI_FILE_WRITE(fh, n_batches, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Write out current batch number
+#ifdef HDF5
+    call hdf5_write_integer(hdf5_state_point, "current_batch", current_batch)
+#else
     call MPI_FILE_WRITE(fh, current_batch, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Write out information for eigenvalue run
     if (run_mode == MODE_EIGENVALUE) then
+#ifdef HDF5
+      call hdf5_write_integer(hdf5_state_point, "n_inactive", n_inactive)
+      call hdf5_write_integer(hdf5_state_point, "gen_per_batch", gen_per_batch)
+
+      ! Write out keff and entropy
+      dims(1) = current_batch
+      call h5ltmake_dataset_double_f(hdf5_state_point, "k_batch", 1, &
+           dims, k_batch, hdf5_err)
+      dims(1) = current_batch*gen_per_batch
+      call h5ltmake_dataset_double_f(hdf5_state_point, "entropy", 1, &
+           dims, entropy, hdf5_err)
+      call hdf5_write_double(hdf5_state_point, "k_col_abs", k_col_abs)
+      call hdf5_write_double(hdf5_state_point, "k_col_tra", k_col_tra)
+      call hdf5_write_double(hdf5_state_point, "k_abs_tra", k_abs_tra)
+      dims(1) = 2
+      call h5ltmake_dataset_double_f(hdf5_state_point, "k_combined", 1, &
+           dims, k_combined, hdf5_err)
+#else
       call MPI_FILE_WRITE(fh, n_inactive, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, gen_per_batch, 1, MPI_INTEGER, &
@@ -390,21 +537,54 @@ contains
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, k_combined, 2, MPI_REAL8, &
            MPI_STATUS_IGNORE, mpi_err)
+#endif
     end if
 
     ! Write number of meshes
+#ifdef HDF5
+    call h5gcreate_f(hdf5_state_point, "tallies", tallies_group, hdf5_err)
+    call hdf5_write_integer(tallies_group, "n_meshes", n_meshes)
+#else
     call MPI_FILE_WRITE(fh, n_meshes, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Write information for meshes
     MESH_LOOP: do i = 1, n_meshes
+#ifdef HDF5
+      ! Create temporary group for each mesh
+      call h5gcreate_f(tallies_group, "mesh" // to_str(i), &
+           temp_group, hdf5_err)
+
+      ! Write id, type, and number of dimensions
+      call hdf5_write_integer(temp_group, "id", meshes(i) % id)
+      call hdf5_write_integer(temp_group, "type", meshes(i) % type)
+      call hdf5_write_integer(temp_group, "n_dimension", &
+           meshes(i) % n_dimension)
+#else
       call MPI_FILE_WRITE(fh, meshes(i) % id, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, meshes(i) % type, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, meshes(i) % n_dimension, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
+#endif
 
+      ! Write mesh information
+#ifdef HDF5
+      dims(1) = meshes(i) % n_dimension
+      call hdf5_write_array(temp_group, "dimension", &
+           meshes(i) % dimension, 1, dims)
+      call hdf5_write_array(temp_group, "lower_left", &
+           meshes(i) % lower_left, 1, dims)
+      call hdf5_write_array(temp_group, "upper_right", &
+           meshes(i) % upper_right, 1, dims)
+      call hdf5_write_array(temp_group, "width", &
+           meshes(i) % width, 1, dims)
+
+      ! Close temporary group for mesh
+      call h5gclose_f(temp_group, hdf5_err)
+#else
       n = meshes(i) % n_dimension
       call MPI_FILE_WRITE(fh, meshes(i) % dimension, n, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
@@ -414,83 +594,215 @@ contains
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, meshes(i) % width, n, MPI_REAL8, &
            MPI_STATUS_IGNORE, mpi_err)
+#endif
     end do MESH_LOOP
 
     ! Write number of tallies
+#ifdef HDF5
+    call hdf5_write_integer(tallies_group, "n_tallies", n_tallies)
+#else
     call MPI_FILE_WRITE(fh, n_tallies, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     TALLY_METADATA: do i = 1, n_tallies
       ! Get pointer to tally
       t => tallies(i)
 
+#ifdef HDF5
+      ! Create group for this tally
+      call h5gcreate_f(tallies_group, "tally" // to_str(i), &
+           temp_group, hdf5_err)
+
       ! Write id
+      call hdf5_write_integer(temp_group, "id", t % id)
+#else
       call MPI_FILE_WRITE(fh, t % id, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
+#endif
 
       ! Write number of realizations
+#ifdef HDF5
+     call hdf5_write_integer(temp_group, "n_realizations", &
+           t % n_realizations)
+#else
       call MPI_FILE_WRITE(fh, t % n_realizations, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
+#endif
 
       ! Write size of each tally
+#ifdef HDF5
+      call hdf5_write_integer(temp_group, "total_score_bins", &
+           t % total_score_bins)
+      call hdf5_write_integer(temp_group, "total_filter_bins", &
+           t % total_filter_bins)
+#else
       call MPI_FILE_WRITE(fh, t % total_score_bins, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, t % total_filter_bins, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
+#endif
 
       ! Write number of filters
+#ifdef HDF5
+      call hdf5_write_integer(temp_group, "n_filters", t % n_filters)
+#else
       call MPI_FILE_WRITE(fh, t % n_filters, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
+#endif
 
       FILTER_LOOP: do j = 1, t % n_filters
         ! Write type of filter
+#ifdef HDF5
+        call h5gcreate_f(temp_group, "filter" // to_str(j), filter_group, &
+             hdf5_err)
+#else
         call MPI_FILE_WRITE(fh, t % filters(j) % type, 1, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
+#endif
 
         ! Write number of bins for this filter
+#ifdef HDF5
+        call hdf5_write_integer(filter_group, "type", t % filters(j) % type)
+#else
         call MPI_FILE_WRITE(fh, t % filters(j) % n_bins, &
              1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+#endif
 
         ! Write bins
         if (t % filters(j) % type == FILTER_ENERGYIN .or. &
              t % filters(j) % type == FILTER_ENERGYOUT) then
+#ifdef HDF5
+          dims(1) = size(t % filters(j) % real_bins)
+          call h5ltmake_dataset_double_f(filter_group, "bins", 1, &
+               dims, t % filters(j) % real_bins, hdf5_err)
+#else
           n = size(t % filters(j) % real_bins)
           call MPI_FILE_WRITE(fh, t % filters(j) % real_bins, n, &
                MPI_REAL8, MPI_STATUS_IGNORE, mpi_err)
+#endif
         else
+#ifdef HDF5
+          dims(1) = size(t % filters(j) % int_bins)
+          call h5ltmake_dataset_int_f(filter_group, "bins", 1, &
+               dims, t % filters(j) % int_bins, hdf5_err)
+#else
           n = size(t % filters(j) % int_bins)
           call MPI_FILE_WRITE(fh, t % filters(j) % int_bins, n, &
                MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+#endif
         end if
+
+#ifdef HDF5
+        ! Write name of type
+        select case (t % filters(j) % type)
+        case(FILTER_UNIVERSE)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "universe", hdf5_err)
+        case(FILTER_MATERIAL)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "material", hdf5_err)
+        case(FILTER_CELL)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "cell", hdf5_err)
+        case(FILTER_CELLBORN)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "cellborn", hdf5_err)
+        case(FILTER_SURFACE)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "surface", hdf5_err)
+        case(FILTER_MESH)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "mesh", hdf5_err)
+        case(FILTER_ENERGYIN)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "energy", hdf5_err)
+        case(FILTER_ENERGYOUT)
+          call h5ltmake_dataset_string_f(filter_group, "type_name", &
+               "energyout", hdf5_err)
+        end select
+
+        ! Close group for this filter
+        call h5gclose_f(filter_group, hdf5_err)
+#endif
       end do FILTER_LOOP
 
       ! Write number of nuclide bins
+#ifdef HDF5
+      call hdf5_write_integer(temp_group, "n_nuclide_bins", &
+           t % n_nuclide_bins)
+#else
       call MPI_FILE_WRITE(fh, t % n_nuclide_bins, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
+#endif
 
       ! Write nuclide bins
+#ifdef HDF5
+      allocate(temp_array(t % n_nuclide_bins))
+#endif
       NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
         if (t % nuclide_bins(j) > 0) then
+#ifdef HDF5
+          temp_array(j) = nuclides(t % nuclide_bins(j)) % zaid
+#else
           call MPI_FILE_WRITE(fh, nuclides(t % nuclide_bins(j)) % zaid, &
                1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+#endif
         else
+#ifdef HDF5
+          temp_array(j) = t % nuclide_bins(j)
+#else
           call MPI_FILE_WRITE(fh, t % nuclide_bins(j), 1, &
                MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+#endif
         end if
       end do NUCLIDE_LOOP
 
+#ifdef HDF5
+      ! Write and deallocate nuclide bins
+      dims(1) = t % n_nuclide_bins
+      call h5ltmake_dataset_int_f(temp_group, "nuclide_bins", 1, &
+           dims, temp_array, hdf5_err)
+      deallocate(temp_array)
+#endif
+
       ! Write number of score bins, score bins, and scatt order
+#ifdef HDF5
+      call hdf5_write_integer(temp_group, "n_score_bins", &
+           t % n_score_bins)
+      dims(1) = t % n_score_bins
+      call h5ltmake_dataset_int_f(temp_group, "score_bins", 1, &
+           dims, t % score_bins, hdf5_err)
+      call h5ltmake_dataset_int_f(temp_group, "scatt_order", 1, &
+           dims, t % scatt_order, hdf5_err)
+#else
       call MPI_FILE_WRITE(fh, t % n_score_bins, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, t % score_bins, t % n_score_bins, &
            MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_WRITE(fh, t % scatt_order, t % n_score_bins, &
            MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+#endif
 
       ! Write number of user score bins
+#ifdef HDF5
+      call hdf5_write_integer(temp_group, "n_user_score_bins", &
+           t % n_user_score_bins)
+#else
       call MPI_FILE_WRITE(fh, t % n_user_score_bins, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
+#endif
+
+#ifdef HDF5
+      ! Close tally group
+      call h5gclose_f(temp_group, hdf5_err)
+#endif
     end do TALLY_METADATA
+
+# ifdef HDF5
+    ! Close tallies group
+    call h5gclose_f(tallies_group, hdf5_err)
+#endif
 
   end subroutine write_state_point_header
 #endif

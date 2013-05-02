@@ -20,6 +20,12 @@ module hdf5_interface
 
   implicit none
 
+  ! define array writing interface
+  interface hdf5_write_array
+    module procedure hdf5_write_double_1Darray
+    module procedure hdf5_write_integer_1Darray
+  end interface hdf5_write_array
+
 #ifdef HDF5
 
 contains
@@ -1261,6 +1267,73 @@ contains
   end subroutine hdf5_load_state_point
 
 !===============================================================================
+! HDF5_FILE_CREATE
+!===============================================================================
+
+  subroutine hdf5_file_create(filename, file_id)
+
+    character(MAX_FILE_LEN) :: filename
+    integer(HID_T)          :: file_id
+
+    ! Create the file
+    call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdf5_err)
+
+  end subroutine hdf5_file_create
+
+!===============================================================================
+! HDF5_FILE_CLOSE
+!===============================================================================
+
+  subroutine hdf5_file_close(file_id)
+
+    integer(HID_T) :: file_id
+
+    ! Close the file
+    call h5fclose_f(file_id, hdf5_err)
+
+  end subroutine hdf5_file_close
+
+#ifdef MPI
+
+!===============================================================================
+! HDF5_PARALLEL_FILE_CREATE
+!===============================================================================
+
+  subroutine hdf5_parallel_file_create(filename, file_id, plist_id)
+
+    character(MAX_FILE_LEN) :: filename
+    integer(HID_T)          :: file_id
+    integer(HID_T)          :: plist_id
+
+    ! Setup file access property list with parallel I/O access
+    call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdf5_err)
+    call h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+
+    ! Create the file collectively
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+    call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdf5_err, &
+                     access_prp = plist_id)
+
+  end subroutine hdf5_parallel_file_create
+
+!===============================================================================
+! HDF5_PARALLEL_FILE_CLOSE
+!===============================================================================
+
+  subroutine hdf5_parallel_file_close(file_id, plist_id)
+
+    integer(HID_T) :: file_id
+    integer(HID_T) :: plist_id
+
+    ! Close property list and the file
+    call h5pclose_f(plist_id, hdf5_err)
+    call h5fclose_f(file_id, hdf5_err)
+
+  end subroutine hdf5_parallel_file_close
+
+#endif
+
+!===============================================================================
 ! HDF5_WRITE_INTEGER
 !===============================================================================
 
@@ -1277,6 +1350,24 @@ contains
          (/ buffer /), hdf5_err)
 
   end subroutine hdf5_write_integer
+
+!===============================================================================
+! HDF5_WRITE_INTEGER_1DARRAY
+!===============================================================================
+
+  subroutine hdf5_write_integer_1Darray(group, name, buffer, rank, dims)
+
+    integer(HID_T), intent(in) :: group
+    character(*),   intent(in) :: name
+    integer,        intent(in) :: buffer(:)
+
+    integer          :: rank
+    integer(HSIZE_T) :: dims(rank)
+
+    call h5ltmake_dataset_int_f(group, name, rank, dims, &
+         buffer, hdf5_err)
+
+  end subroutine hdf5_write_integer_1Darray
 
 !===============================================================================
 ! HDF5_WRITE_LONG
@@ -1325,6 +1416,24 @@ contains
          (/ buffer /), hdf5_err)
 
   end subroutine hdf5_write_double
+
+!===============================================================================
+! HDF5_WRITE_DOUBLE_1DARRAY
+!===============================================================================
+
+  subroutine hdf5_write_double_1Darray(group, name, buffer, rank, dims)
+
+    integer(HID_T), intent(in) :: group
+    character(*),   intent(in) :: name
+    real(8),        intent(in) :: buffer(:)
+
+    integer          :: rank
+    integer(HSIZE_T) :: dims(rank)
+
+    call h5ltmake_dataset_double_f(group, name, rank, dims, &
+         buffer, hdf5_err)
+
+  end subroutine hdf5_write_double_1Darray
 
 !===============================================================================
 ! HDF5_READ_INTEGER

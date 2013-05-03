@@ -84,7 +84,7 @@ contains
 
     ! Open binary source file for reading
 #ifdef HDF5
-    call hdf5_file_create(filename, hdf5_state_point) 
+    if (master) call hdf5_file_create(filename, hdf5_state_point) 
 #else
     call MPI_FILE_OPEN(MPI_COMM_WORLD, filename, MPI_MODE_CREATE + &
          MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
@@ -195,7 +195,7 @@ contains
 
 #ifdef HDF5
     ! Close the serial HDF5 file and set logical for source separate
-    call hdf5_file_close(hdf5_state_point)
+    if (master) call hdf5_file_close(hdf5_state_point)
     source_separate = .true.
 #endif
 
@@ -240,7 +240,7 @@ contains
 
     ! Close binary source file
 #ifdef HDF5
-    call hdf5_file_close(hdf5_state_point)
+!   call hdf5_file_close(hdf5_state_point)
 #else
     call MPI_FILE_CLOSE(fh, mpi_err)
 #endif

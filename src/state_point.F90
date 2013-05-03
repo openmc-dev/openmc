@@ -188,9 +188,6 @@ contains
              MPI_STATUS_IGNORE, mpi_err)
 #endif
       end if
-    call hdf5_file_close(hdf5_state_point)
-    message = 'STOPPING PARALLEL HDF5 RUN'
-    call fatal_error()
     end if
 
     ! ==========================================================================
@@ -209,7 +206,11 @@ contains
         ! write it separately
 
         if (source_write) then
+#ifdef HDF5
+          path_source = "source." // trim(to_str(current_batch)) // ".h5"
+#else
           path_source = "source." // trim(to_str(current_batch)) // ".binary"
+#endif
           call write_source_binary()
         end if
       elseif (source_write) then
@@ -1435,14 +1436,50 @@ contains
 #ifdef MPI
     integer                  :: fh     ! file handle
     integer(MPI_OFFSET_KIND) :: offset ! offset in memory (0=beginning of file)
+    integer(HID_T) :: hdf5_source
+    integer(HSIZE_T) :: dims(1)
+    integer(HID_T) :: filespace
+    integer(HID_T) :: memspace
+    character(6) :: dsetname = 'source'
+    integer(HID_T) :: dset_id
+    integer(HID_T) :: plist_id
+    type(c_ptr) :: f_ptr
 
     ! ==========================================================================
     ! PARALLEL I/O USING MPI-2 ROUTINES
 
-    ! Open binary source file for reading
+    ! Open binary source file for writing
+#ifdef HDF5
+!   call hdf5_parallel_file_create(trim(path_source), hdf5_source, hdf5_plist)
+#else 
     call MPI_FILE_OPEN(MPI_COMM_WORLD, path_source, MPI_MODE_CREATE + &
          MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err)
+#endif
 
+#ifdef HDF5
+    call h5pclose_f(hdf5_plist, hdf5_err)
+    call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdf5_err)
+    call h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+    call h5fcreate_f('source.h5', H5F_ACC_TRUNC_F, hdf5_source, hdf5_err, access_prp=plist_id) 
+    call h5pclose_f(plist_id, hdf5_err)
+    dims(1) = n_particles
+    call h5screate_simple_f(1, dims, filespace, hdf5_err)
+    call h5dcreate_f(hdf5_source, dsetname, hdf5_bank_t, filespace, dset_id, hdf5_err) 
+    call h5sclose_f(filespace, hdf5_err)
+    call h5screate_simple_f(1, (/work/), memspace, hdf5_err)
+    call h5dget_space_f(dset_id, filespace, hdf5_err)
+    call h5sselect_hyperslab_f(filespace, H5S_SELECT_SET_F, (/bank_first-1/), (/work/), hdf5_err)
+    call h5pcreate_f(H5P_DATASET_XFER_F, hdf5_plist, hdf5_err)
+    call h5pset_dxpl_mpio_f(hdf5_plist, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
+    f_ptr = c_loc(source_bank(1))
+    call h5dwrite_f(dset_id, hdf5_bank_t, f_ptr, hdf5_err, file_space_id = filespace, mem_space_id = memspace, xfer_prp = hdf5_plist)
+    call h5sclose_f(filespace, hdf5_err)
+    call h5sclose_f(memspace, hdf5_err)
+    call h5dclose_f(dset_id, hdf5_err)
+    call hdf5_parallel_file_close(hdf5_source, hdf5_plist)
+    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+    call MPI_ABORT(MPI_COMM_WORLD,-1,mpi_err)
+#else
     if (master) then
       offset = 0
       call MPI_FILE_WRITE_AT(fh, offset, n_particles, 1, MPI_INTEGER8, &
@@ -1455,9 +1492,16 @@ contains
     ! Write all source sites
     call MPI_FILE_WRITE_AT(fh, offset, source_bank(1), work, MPI_BANK, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Close binary source file
+#ifdef HDF5
+!   call hdf5_parallel_file_close(hdf5_source, hdf5_plist)
+    message = "done with source"
+    call fatal_error()
+#else
     call MPI_FILE_CLOSE(fh, mpi_err)
+#endif
 
 #else
     ! ==========================================================================

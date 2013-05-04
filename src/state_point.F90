@@ -1305,6 +1305,7 @@ contains
 
 #ifdef HDF5
     call h5fclose_f(hdf5_state_point, mpi_err)
+    print *,'HDERE'
 #endif
 
     ! ==========================================================================
@@ -1312,8 +1313,9 @@ contains
 
     if (run_mode == MODE_EIGENVALUE) then
 #ifdef HDF5
-      path_source = "source." // trim(to_str(current_batch)) // ".h5"
-      call h5pclose_f(hdf5_plist, hdf5_err)
+      print *,'CURRENT BATCH',rank,restart_batch
+      path_source = "source." // trim(to_str(restart_batch)) // ".h5"
+!     call h5pclose_f(hdf5_plist, hdf5_err)
       call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdf5_err)
       call h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
       call h5fopen_f(trim(path_source), H5F_ACC_RDONLY_F, hdf5_source, hdf5_err, access_prp=plist_id) 
@@ -1329,7 +1331,8 @@ contains
       call h5sclose_f(filespace, hdf5_err)
       call h5sclose_f(memspace, hdf5_err)
       call h5dclose_f(dset_id, hdf5_err)
-      call hdf5_parallel_file_close(hdf5_source, plist_id)
+      call h5pclose_f(plist_id, hdf5_err)
+      call h5fclose_f(hdf5_source, hdf5_err)
       if (master) write(15,*) source_bank
 #else
       ! Get current offset for master
@@ -1630,7 +1633,6 @@ contains
 #endif
 
 #ifdef HDF5
-    call h5pclose_f(hdf5_plist, hdf5_err)
     call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdf5_err)
     call h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
     call h5fcreate_f(trim(path_source), H5F_ACC_TRUNC_F, hdf5_source, hdf5_err, access_prp=plist_id) 
@@ -1642,14 +1644,16 @@ contains
     call h5screate_simple_f(1, (/work/), memspace, hdf5_err)
     call h5dget_space_f(dset_id, filespace, hdf5_err)
     call h5sselect_hyperslab_f(filespace, H5S_SELECT_SET_F, (/bank_first-1/), (/work/), hdf5_err)
-    call h5pcreate_f(H5P_DATASET_XFER_F, hdf5_plist, hdf5_err)
-    call h5pset_dxpl_mpio_f(hdf5_plist, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
+    call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdf5_err)
+    call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
     f_ptr = c_loc(source_bank(1))
-    call h5dwrite_f(dset_id, hdf5_bank_t, f_ptr, hdf5_err, file_space_id = filespace, mem_space_id = memspace, xfer_prp = hdf5_plist)
+    call h5dwrite_f(dset_id, hdf5_bank_t, f_ptr, hdf5_err, file_space_id = filespace, mem_space_id = memspace, &
+         xfer_prp = plist_id)
     call h5sclose_f(filespace, hdf5_err)
     call h5sclose_f(memspace, hdf5_err)
     call h5dclose_f(dset_id, hdf5_err)
-    call hdf5_parallel_file_close(hdf5_source, hdf5_plist)
+    call h5pclose_f(plist_id, hdf5_err)
+    call h5fclose_f(hdf5_source, hdf5_err)
 #else
     if (master) then
       offset = 0

@@ -118,7 +118,6 @@ contains
       call hdf5_write_integer(hdf5_state_point, "n_global_tallies", &
            N_GLOBAL_TALLIES)
       dims(1) = N_GLOBAL_TALLIES
-      print *,'GLOBAL:',rank,global_tallies
       call h5screate_simple_f(1, dims, dspace, hdf5_err)
       call h5dcreate_f(hdf5_state_point, "global_tallies", hdf5_tallyresult_t, &
            dspace, dset, hdf5_err)
@@ -135,7 +134,6 @@ contains
 
       ! Write tallies
       if (tallies_on) then
-        print *,'TALLIES ON'
         ! Indicate that tallies are on
 #ifdef HDF5
         call h5gopen_f(hdf5_state_point, "tallies", tallies_group, hdf5_err)
@@ -951,21 +949,47 @@ contains
     integer :: k ! loop index
 #endif
 
+#ifdef HDF5
+    integer(HID_T)   :: hdf5_state_point ! identifier for state point file
+    integer(HID_T)   :: tally_group      ! identifier for tally group
+    integer(HID_T)   :: tallies_group
+    integer(HID_T)   :: temp_group
+    integer(HID_T)   :: dset             ! identifier for dataset
+    integer(HSIZE_T) :: dims(1)          ! dimensions of 1D arrays
+    integer(HID_T) :: hdf5_source
+    integer(HID_T) :: filespace
+    integer(HID_T) :: memspace
+    character(6) :: dsetname = 'source'
+    integer(HID_T) :: dset_id
+    integer(HID_T) :: plist_id
+    type(c_ptr) :: f_ptr
+    integer(HSIZE_T) :: maxdims(1)
+#endif
+
     ! Write message
     message = "Loading state point " // trim(path_state_point) // "..."
     call write_message(1)
 
 #ifdef MPI
     ! Open binary state point file for reading
+#ifdef HDF5
+    call h5fopen_f(path_state_point, H5F_ACC_RDONLY_F, &
+         hdf5_state_point, hdf5_err)
+#else
     call MPI_FILE_OPEN(MPI_COMM_WORLD, path_state_point, MPI_MODE_RDONLY, &
          MPI_INFO_NULL, fh, mpi_err)
+#endif
 
     ! ==========================================================================
     ! RUN INFORMATION AND TALLY METADATA
 
     ! Raad revision number for state point file and make sure it matches with
     ! current version
+#ifdef HDF5
+    call hdf5_read_integer(hdf5_state_point, "revision_statepoint", temp(1))
+#else
     call MPI_FILE_READ_ALL(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+#endif
     if (temp(1) /= REVISION_STATEPOINT) then
       message = "State point binary version does not match current version " &
            // "in OpenMC."
@@ -973,6 +997,11 @@ contains
     end if
 
     ! Read OpenMC version
+#ifdef HDF5
+!   call hdf5_read_integer(hdf5_state_point, "version_major", temp(1))
+!   call hdf5_read_integer(hdf5_state_point, "version_minor", temp(2))
+!   call hdf5_read_integer(hdf5_state_point, "version_release", temp(3))
+#else
     call MPI_FILE_READ_ALL(fh, temp, 3, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
     if (temp(1) /= VERSION_MAJOR .or. temp(2) /= VERSION_MINOR &
          .or. temp(3) /= VERSION_RELEASE) then
@@ -980,33 +1009,65 @@ contains
            "of OpenMC."
       call warning()
     end if
+#endif
 
     ! Read date and time
+#ifndef HDF5
     call MPI_FILE_READ_ALL(fh, current_time, 19, MPI_CHARACTER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Read path to input
+#ifndef HDF5
     call MPI_FILE_READ_ALL(fh, path_temp, MAX_FILE_LEN, MPI_CHARACTER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Read and overwrite random number seed
+#ifdef HDF5
+    call hdf5_read_long(hdf5_state_point, "seed", seed)
+#else
     call MPI_FILE_READ_ALL(fh, seed, 1, MPI_INTEGER8, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Read and overwrite run information
+#ifdef HDF5
+    call hdf5_read_integer(hdf5_state_point, "run_mode", mode)
+    call hdf5_read_long(hdf5_state_point, "n_particles", n_particles)
+    call hdf5_read_integer(hdf5_state_point, "n_batches", n_batches)
+#else
     call MPI_FILE_READ_ALL(fh, mode, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
     call MPI_FILE_READ_ALL(fh, n_particles, 1, MPI_INTEGER8, &
          MPI_STATUS_IGNORE, mpi_err)
     call MPI_FILE_READ_ALL(fh, n_batches, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Read batch number to restart at
+#ifdef HDF5
+    call hdf5_read_integer(hdf5_state_point, "current_batch", restart_batch)
+#else
     call MPI_FILE_READ_ALL(fh, restart_batch, 1, MPI_INTEGER, &
          MPI_STATUS_IGNORE, mpi_err)
+#endif
 
     ! Read information specific to eigenvalue run
     if (mode == MODE_EIGENVALUE) then
+#ifdef HDF5
+      call hdf5_read_integer(hdf5_state_point, "n_inactive", n_inactive)
+      call hdf5_read_integer(hdf5_state_point, "gen_per_batch", gen_per_batch)
+      dims(1) = restart_batch
+      call h5ltread_dataset_double_f(hdf5_state_point, "k_batch", &
+           k_batch(1:restart_batch), dims, hdf5_err)
+      dims(1) = restart_batch*gen_per_batch
+      call h5ltread_dataset_double_f(hdf5_state_point, "entropy", &
+           entropy(1:restart_batch*gen_per_batch), dims, hdf5_err)
+      call hdf5_read_double(hdf5_state_point, "k_col_abs", k_col_abs)
+      call hdf5_read_double(hdf5_state_point, "k_col_tra", k_col_tra)
+      call hdf5_read_double(hdf5_state_point, "k_abs_tra", k_abs_tra)
+#else
       call MPI_FILE_READ_ALL(fh, n_inactive, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
       call MPI_FILE_READ_ALL(fh, gen_per_batch, 1, MPI_INTEGER, &
@@ -1025,18 +1086,52 @@ contains
       call MPI_FILE_READ_ALL(fh, real_array, 2, MPI_REAL8, &
            MPI_STATUS_IGNORE, mpi_err)
       deallocate(real_array)
+#endif
     end if
+
+#ifdef HDF5
+    call hdf5_read_integer(hdf5_state_point, "n_realizations", n_realizations)
+#endif
 
     if (master) then
       ! Read number of meshes
+#ifdef HDF5
+!     call h5gopen_f(hdf5_state_point, "tallies", tallies_group, hdf5_err)
+!     call hdf5_read_integer(tallies_group, "n_meshes", temp(1))
+#else 
       call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
       if (temp(1) /= n_meshes) then
         message = "Number of meshes does not match in state point."
         call fatal_error()
       end if
-
+#endif
       MESH_LOOP: do i = 1, n_meshes
         ! Read id, mesh type, and dimension
+#ifdef HDF5
+        ! Create temporary group for each mesh
+!       call h5gcreate_f(tallies_group, "mesh" // to_str(i), &
+!            temp_group, hdf5_err)
+
+        ! Write id, type, and number of dimensions
+!       call hdf5_write_integer(temp_group, "id", meshes(i) % id)
+!       call hdf5_write_integer(temp_group, "type", meshes(i) % type)
+!       call hdf5_write_integer(temp_group, "n_dimension", &
+!            meshes(i) % n_dimension)
+
+        ! Write mesh information
+!       dims(1) = meshes(i) % n_dimension
+!       call h5ltmake_dataset_int_f(temp_group, "dimension", 1, &
+!            dims, meshes(i) % dimension, hdf5_err)
+!       call h5ltmake_dataset_double_f(temp_group, "lower_left", 1, &
+!            dims, meshes(i) % lower_left, hdf5_err)
+!       call h5ltmake_dataset_double_f(temp_group, "upper_right", 1, &
+!            dims, meshes(i) % upper_right, hdf5_err)
+!       call h5ltmake_dataset_double_f(temp_group, "width", 1, &
+!            dims, meshes(i) % width, hdf5_err)
+
+        ! Close temporary group for mesh
+!       call h5gclose_f(temp_group, hdf5_err)
+#else
         call MPI_FILE_READ(fh, temp, 3, MPI_INTEGER, MPI_STATUS_IGNORE, &
              mpi_err)
 
@@ -1044,16 +1139,22 @@ contains
         call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
         offset = offset + temp(3)*(4 + 3*8)
         call MPI_FILE_SEEK(fh, offset, MPI_SEEK_SET, mpi_err)
+#endif
       end do MESH_LOOP
 
       ! Read number of tallies and make sure it matches
+#ifdef HDF5
+!     call hdf5_write_integer(tallies_group, "n_tallies", temp(1))
+#else
       call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
       if (temp(1) /= n_tallies) then
         message = "Number of tallies does not match in state point."
         call fatal_error()
       end if
-
+#endif
+#ifndef HDF5
       TALLY_METADATA: do i = 1, n_tallies
+
         ! Read tally id
         call MPI_FILE_READ(fh, tallies(i) % id, 1, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
@@ -1125,8 +1226,12 @@ contains
         call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
              MPI_STATUS_IGNORE, mpi_err)
       end do TALLY_METADATA
+#endif
 
       ! Read number of realizations for global tallies
+#ifdef HDF5
+!     call hdf5_read_integer(hdf5_state_point, "n_realizations", n_realizations)
+#else
       call MPI_FILE_READ(fh, n_realizations, 1, MPI_INTEGER, &
            MPI_STATUS_IGNORE, mpi_err)
 
@@ -1136,13 +1241,31 @@ contains
         message = "Number of global tallies does not match in state point."
         call fatal_error()
       end if
+#endif
 
       ! Read global tally data
+#ifdef HDF5
+      ! Open global tallies dataset
+      call h5dopen_f(hdf5_state_point, "global_tallies", dset, hdf5_err)
+
+      ! Read global tallies
+      f_ptr = c_loc(global_tallies(1))
+      call h5dread_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
+
+      ! Close global tallies dataset
+      call h5dclose_f(dset, hdf5_err)
+#else
       call MPI_FILE_READ(fh, global_tallies, N_GLOBAL_TALLIES, &
            MPI_TALLYRESULT, MPI_STATUS_IGNORE, mpi_err)
-
+#endif
       ! Check if tally results are present
+#ifdef HDF5
+      call h5gopen_f(hdf5_state_point, "tallies", tallies_group, hdf5_err)
+      call hdf5_read_integer(tallies_group, "tallies_present", temp(1))
+      call h5gclose_f(tallies_group, hdf5_err)
+#else
       call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, mpi_err)
+#endif
 
       ! =======================================================================
       ! TALLY RESULTS
@@ -1150,17 +1273,65 @@ contains
       ! Read sum and sum squared
       if (temp(1) == 1) then
         TALLY_RESULTS: do i = 1, n_tallies
+#ifdef HDF5
+          ! Open tally group
+          call h5gopen_f(hdf5_state_point, "tallies/tally" // &
+               to_str(i), tally_group, hdf5_err)
+
+          ! Read number of realizations
+          call hdf5_read_integer(tally_group, "n_realizations", &
+               tallies(i) % n_realizations)
+
+          ! Open dataset for tally results
+          call h5dopen_f(tally_group, "results", dset, hdf5_err)
+
+          ! Read sum and sum_sq for each tally bin
+          f_ptr = c_loc(tallies(i) % results(1,1))
+          call h5dread_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
+
+          ! Close dataset for tally results
+          call h5dclose_f(dset, hdf5_err)
+
+          ! Close tally group
+          call h5gclose_f(tally_group, hdf5_err)
+#else
           n = size(tallies(i) % results, 1) * size(tallies(i) % results, 2)
           call MPI_FILE_READ(fh, tallies(i) % results, n, MPI_TALLYRESULT, &
                MPI_STATUS_IGNORE, mpi_err)
+#endif
         end do TALLY_RESULTS
       end if
     end if
+
+#ifdef HDF5
+    call h5fclose_f(hdf5_state_point, mpi_err)
+#endif
 
     ! ==========================================================================
     ! SOURCE BANK
 
     if (run_mode == MODE_EIGENVALUE) then
+#ifdef HDF5
+      path_source = "source." // trim(to_str(current_batch)) // ".h5"
+      call h5pclose_f(hdf5_plist, hdf5_err)
+      call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdf5_err)
+      call h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+      call h5fopen_f(trim(path_source), H5F_ACC_RDONLY_F, hdf5_source, hdf5_err, access_prp=plist_id) 
+      call h5pclose_f(plist_id, hdf5_err)
+      call h5dopen_f(hdf5_source, dsetname, dset_id, hdf5_err)
+      call h5dget_space_f(dset_id, filespace, hdf5_err)
+      call h5sselect_hyperslab_f(filespace, H5S_SELECT_SET_F, (/bank_first-1/), (/work/), hdf5_err)
+      call h5screate_simple_f(1, (/work/), memspace, hdf5_err)
+      call h5pcreate_f(H5P_DATASET_XFER_F, plist_id, hdf5_err)
+      call h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
+      f_ptr = c_loc(source_bank(1))
+      call h5dread_f(dset_id, hdf5_bank_t, f_ptr, hdf5_err, file_space_id = filespace, mem_space_id = memspace, xfer_prp = plist_id)
+      call h5sclose_f(filespace, hdf5_err)
+      call h5sclose_f(memspace, hdf5_err)
+      call h5dclose_f(dset_id, hdf5_err)
+      call hdf5_parallel_file_close(hdf5_source, plist_id)
+      if (master) write(15,*) source_bank
+#else
       ! Get current offset for master
       if (master) call MPI_FILE_GET_POSITION(fh, offset, mpi_err)
 
@@ -1180,11 +1351,13 @@ contains
       ! Write all source sites
       call MPI_FILE_READ_AT(fh, offset, source_bank(1), work, MPI_BANK, &
            MPI_STATUS_IGNORE, mpi_err)
+#endif
     end if
 
     ! Close binary state point file
+#ifndef HDF5
     call MPI_FILE_CLOSE(fh, mpi_err)
-
+#endif
 #else
     ! Open binary state point file for writing
     open(UNIT=UNIT_STATE, FILE=path_state_point, STATUS='old', &
@@ -1460,7 +1633,7 @@ contains
     call h5pclose_f(hdf5_plist, hdf5_err)
     call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdf5_err)
     call h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
-    call h5fcreate_f('source.h5', H5F_ACC_TRUNC_F, hdf5_source, hdf5_err, access_prp=plist_id) 
+    call h5fcreate_f(trim(path_source), H5F_ACC_TRUNC_F, hdf5_source, hdf5_err, access_prp=plist_id) 
     call h5pclose_f(plist_id, hdf5_err)
     dims(1) = n_particles
     call h5screate_simple_f(1, dims, filespace, hdf5_err)
@@ -1477,8 +1650,6 @@ contains
     call h5sclose_f(memspace, hdf5_err)
     call h5dclose_f(dset_id, hdf5_err)
     call hdf5_parallel_file_close(hdf5_source, hdf5_plist)
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-    call MPI_ABORT(MPI_COMM_WORLD,-1,mpi_err)
 #else
     if (master) then
       offset = 0
@@ -1497,8 +1668,6 @@ contains
     ! Close binary source file
 #ifdef HDF5
 !   call hdf5_parallel_file_close(hdf5_source, hdf5_plist)
-    message = "done with source"
-    call fatal_error()
 #else
     call MPI_FILE_CLOSE(fh, mpi_err)
 #endif

@@ -122,7 +122,8 @@ contains
       ! If this is a restart run, load the state point data and binary source
       ! file
 #ifdef HDF5
-      if (restart_run) call hdf5_load_state_point()
+!     if (restart_run) call hdf5_load_state_point()
+      if (restart_run) call load_state_point()
 #else
       if (restart_run) call load_state_point()
 #endif

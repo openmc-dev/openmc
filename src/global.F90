@@ -249,6 +249,9 @@ module global
 
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
   integer :: run_mode = NONE
+  
+  ! Flag for reaction rate plotting
+  logical :: rxn_plots = .false.
 
   ! Restart run
   logical :: restart_run = .false.
@@ -391,8 +394,16 @@ contains
     if (allocated(lattices)) deallocate(lattices)
     if (allocated(surfaces)) deallocate(surfaces)
     if (allocated(materials)) deallocate(materials)
-    if (allocated(plots)) deallocate(plots)
 
+    ! Deallocate plots
+    
+    if (allocated(plots)) then
+      do i = 1, size(plots)
+        if allocated(plots(i) % colors) deallocate(plots(i) % colors)
+        if allocated(plots(i) % rxncnt) deallocate(plots(i) % rxncnt)
+      end do
+      deallocate(plots)
+    end if
     ! Deallocate cross section data, listings, and cache
     if (allocated(nuclides)) then
     ! First call the clear routines

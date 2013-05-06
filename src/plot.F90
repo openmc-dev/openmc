@@ -14,6 +14,10 @@ module plot
   use progress_header
   use string,          only: to_str
 
+#ifdef MPI
+  use mpi
+#endif
+
   implicit none
 
 contains
@@ -77,7 +81,6 @@ contains
       if (bin == NO_BIN_FOUND) cycle
 
       if (nuclides(p % event_nuclide) % fissionable) then
-!        pl % fisswgt(bin) = pl % fisswgt(bin) + keff * p % wgt_bank
         n = nuclides(p % event_nuclide) % index_fission(1)
         pl % fisswgt(bin) = pl% fisswgt(bin) + p % last_wgt * &
                 nuclides(p % event_nuclide) % reactions(n) % Q_value
@@ -102,6 +105,13 @@ contains
       pl => plots(i)
 
       if (.not. pl % type == PLOT_TYPE_RXNRATE) cycle
+
+#ifdef MPI
+      call MPI_REDUCE(MPI_IN_PLACE, pl % fisswgt, size(pl % fisswgt), &
+           MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+      call MPI_REDUCE(MPI_IN_PLACE, pl % fluxwgt, size(pl % fluxwgt), &
+           MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+#endif
 
       pl % fisswgt = pl % fisswgt / maxval(pl % fisswgt)
       pl % fluxwgt = pl % fluxwgt / maxval(pl % fluxwgt)

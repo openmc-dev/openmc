@@ -1018,7 +1018,6 @@ contains
     type(ListChar) :: list_names   ! temporary list of nuclide names
     type(ListReal) :: list_density ! temporary list of nuclide densities
     type(Material),    pointer :: mat => null()
-    type(Nuclide),     pointer :: matnuc => null()
     type(nuclide_xml), pointer :: nuc => null()
     type(sab_xml),     pointer :: sab => null()
 
@@ -2431,10 +2430,6 @@ contains
 
         ! Copy rxn rate type
         select case (plot_(i) % rrtype)
-        case ("fission")
-          pl % rrtype = PLOT_RXN_FISSION
-        case ("absorption")
-          pl % rrtype = PLOT_RXN_ABSORPTION
         case ("fluxthermal")
           pl % rrtype = PLOT_RXN_FLUX_THERMAL
         case ("fluxfast")

@@ -1,6 +1,7 @@
 module initialize
 
   use ace,              only: read_xs
+  use ace_header,       only: Nuclide
   use bank_header,      only: Bank
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
@@ -11,6 +12,7 @@ module initialize
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
+  use material_header,  only: Material
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot
   use random_lcg,       only: initialize_prng
@@ -41,6 +43,10 @@ contains
 !===============================================================================
 
   subroutine initialize_run()
+
+    integer :: i, j
+    type(Material),    pointer :: mat => null()
+    type(Nuclide),     pointer :: nuc => null()
 
     ! Start total and initialization timer
     call time_total % start()
@@ -98,10 +104,16 @@ contains
       call read_xs()
       call time_read_xs % stop()
 
- TODO
-        ! Set material fissionable flag
-        matnuc => nuclides(mat % nuclide(j))
-        if (matnuc % fissionable) mat % fissionable = .true.
+      do i = 1, n_materials
+        mat => materials(i)
+        do j = 1, mat % n_nuclides
+        
+          ! Set material fissionable flag
+          nuc => nuclides(mat % nuclide(j))
+          if (nuc % fissionable) mat % fissionable = .true.
+
+        end do
+      end do
 
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_UNION) then

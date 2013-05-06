@@ -51,8 +51,6 @@ module plot_header
   ! Reaction rate plot types
   integer, parameter :: PLOT_RXN_FLUX_THERMAL = 1
   integer, parameter :: PLOT_RXN_FLUX_FAST = 2
-  integer, parameter :: PLOT_RXN_FISSION = 3
-  integer, parameter :: PLOT_RXN_ABSORPTION = 4
 
   contains
   

@@ -187,6 +187,7 @@ hdf5_interface.o: string.o
 hdf5_interface.o: tally_header.o
 
 initialize.o: ace.o
+initialize.o: ace_header.o
 initialize.o: bank_header.o
 initialize.o: constants.o
 initialize.o: dict_header.o
@@ -197,6 +198,7 @@ initialize.o: geometry_header.o
 initialize.o: global.o
 initialize.o: hdf5_interface.o
 initialize.o: input_xml.o
+initialize.o: material_header.o
 initialize.o: output.o
 initialize.o: random_lcg.o
 initialize.o: source.o

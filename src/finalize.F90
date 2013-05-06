@@ -54,7 +54,7 @@ contains
     end if
 
     ! Finish reaction rate plots
-    if (master .and. rxn_plots) call finalize_rxn_plots()
+    if (rxn_plots) call finalize_rxn_plots()
 
     ! deallocate arrays
     call free_memory()

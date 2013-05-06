@@ -107,10 +107,18 @@ contains
       if (.not. pl % type == PLOT_TYPE_RXNRATE) cycle
 
 #ifdef MPI
-      call MPI_REDUCE(MPI_IN_PLACE, pl % fisswgt, size(pl % fisswgt), &
-           MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-      call MPI_REDUCE(MPI_IN_PLACE, pl % fluxwgt, size(pl % fluxwgt), &
-           MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+      if (master) then
+        call MPI_REDUCE(MPI_IN_PLACE, pl % fisswgt, size(pl % fisswgt), &
+             MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+        call MPI_REDUCE(MPI_IN_PLACE, pl % fluxwgt, size(pl % fluxwgt), &
+             MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+      else
+        call MPI_REDUCE(pl % fisswgt, pl % fisswgt, size(pl % fisswgt), &
+             MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+        call MPI_REDUCE(pl % fluxwgt, pl % fluxwgt, size(pl % fluxwgt), &
+             MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+        cycle
+      end if
 #endif
 
       pl % fisswgt = pl % fisswgt / maxval(pl % fisswgt)

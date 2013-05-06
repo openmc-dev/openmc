@@ -572,7 +572,7 @@ contains
 
     ! Check flag to enable rxn plot scoring
     call lower_case(rxn_plots_)
-    if (rxn_plots_ == 'true' .or. rxn_plots == '1') then
+    if (rxn_plots_ == 'true' .or. rxn_plots_ == '1') then
      rxn_plots = .true.
     end if
 

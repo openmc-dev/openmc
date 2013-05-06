@@ -14,6 +14,7 @@ module physics
   use material_header,        only: Material
   use mesh,                   only: get_mesh_indices
   use output,                 only: write_message
+  use plot,                   only: score_rxn_rate_plots
   use particle_header,        only: LocalCoord
   use particle_restart_write, only: write_particle_restart
   use random_lcg,             only: prn
@@ -139,6 +140,8 @@ contains
 
         p % surface = NONE
         call collision()
+
+        if (rxn_plots .and. active_batches) call score_rxn_rate_plots()
 
         ! Save coordinates for tallying purposes
         p % last_xyz = p % coord0 % xyz

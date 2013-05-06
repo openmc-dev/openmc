@@ -76,7 +76,7 @@ contains
 
     ! Read plots.xml if it exists -- this has to be done separate from the other
     ! XML files because we need the PRNG to be initialized first
-    if (run_mode == MODE_PLOTTING) call read_plots_xml()
+    if (run_mode == MODE_PLOTTING .or. rxn_plots) call read_plots_xml()
 
     ! Set up universe structures
     call prepare_universes()
@@ -97,6 +97,11 @@ contains
       call time_read_xs % start()
       call read_xs()
       call time_read_xs % stop()
+
+ TODO
+        ! Set material fissionable flag
+        matnuc => nuclides(mat % nuclide(j))
+        if (matnuc % fissionable) mat % fissionable = .true.
 
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_UNION) then

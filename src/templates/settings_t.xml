@@ -54,6 +54,7 @@
   <variable name="output_path_" tag="output_path" type="word" length="255" />
   <variable name="ptables_" tag="ptables" type="word" length="5" />
   <variable name="run_cmfd_" tag="run_cmfd" type="word" length="5" />
+  <variable name="rxn_plots_" tag="enable_rxn_plots" type="word" length="5" />
   <variable name="seed_" tag="seed" type="integer" />
   <variable name="source_" tag="source" type="source_xml" />
   <variable name="state_point_" tag="state_point" type="statepoint_xml" dimension="1" />

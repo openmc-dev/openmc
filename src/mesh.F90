@@ -2,7 +2,7 @@ module mesh
 
   use constants
   use global
-  use mesh_header
+  use mesh_header,     only: StructuredMesh
   use particle_header, only: Particle
   use search,          only: binary_search
 

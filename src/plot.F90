@@ -5,13 +5,13 @@ module plot
   use geometry,        only: find_cell
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
+  use mesh,            only: get_mesh_bin, mesh_indices_to_bin
   use output,          only: write_message
   use particle_header, only: deallocate_coord
   use plot_header
   use ppmlib,          only: Image, init_image, allocate_image, &
                              deallocate_image, set_pixel
   use progress_header
-  use source,          only: initialize_particle
   use string,          only: to_str
 
   implicit none
@@ -19,10 +19,10 @@ module plot
 contains
 
 !===============================================================================
-! RUN_PLOT controls the logic for making one or many plots
+! RUN_PLOTs controls the logic for making one or many plots in MODE_PLOTTING
 !===============================================================================
 
-  subroutine run_plot()
+  subroutine run_plots()
 
     integer :: i ! loop index for plots
     type(ObjectPlot), pointer :: pl => null()
@@ -43,22 +43,96 @@ contains
       end if
     end do
 
-  end subroutine run_plot
+  end subroutine run_plots
+
+!===============================================================================
+! SCORE_RXN_RATE_PLOTS
+!===============================================================================
+
+  subroutine score_rxn_rate_plots()
+
+    integer :: i                             ! loop index for plots
+    integer :: n
+    integer :: bin
+    type(ObjectPlot), pointer     :: pl => null()
+    type(StructuredMesh), pointer :: m => null()
+
+    do i = 1, n_plots
+      pl => plots(i)
+
+      if (.not. pl % type == PLOT_TYPE_RXNRATE) cycle
+
+      if (.not. nuclides(p % event_nuclide) % fissionable) then
+        select case(pl % rrtype)
+          case (PLOT_RXN_FLUX_THERMAL)
+            if (.not. p % E <= 0.625e-6) cycle
+          case (PLOT_RXN_FLUX_FAST)
+            if (.not. p % E >= 0.625e-6) cycle
+        end select
+      end if
+
+      m => pl % pixmesh
+      call get_mesh_bin(m, p % coord0 % xyz, bin)
+
+      if (bin == NO_BIN_FOUND) cycle
+
+      if (nuclides(p % event_nuclide) % fissionable) then
+!        pl % fisswgt(bin) = pl % fisswgt(bin) + keff * p % wgt_bank
+        n = nuclides(p % event_nuclide) % index_fission(1)
+        pl % fisswgt(bin) = pl% fisswgt(bin) + p % last_wgt * &
+                nuclides(p % event_nuclide) % reactions(n) % Q_value
+      else
+        pl % fluxwgt(bin) = pl % fluxwgt(bin) + p % last_wgt / material_xs % total
+      end if
+      
+    end do
+
+  end subroutine score_rxn_rate_plots
+
+!===============================================================================
+! FINALIZE_RXN_PLOTS
+!===============================================================================
+
+  subroutine finalize_rxn_plots()
+
+    integer :: i                             ! loop index for plots
+    type(ObjectPlot), pointer     :: pl => null()
+
+    do i = 1, n_plots
+      pl => plots(i)
+
+      if (.not. pl % type == PLOT_TYPE_RXNRATE) cycle
+
+      pl % fisswgt = pl % fisswgt / maxval(pl % fisswgt)
+      pl % fluxwgt = pl % fluxwgt / maxval(pl % fluxwgt)
+
+      ! Display output message
+      message = "Processing rxn plot " // trim(to_str(pl % id)) // "..."
+      call write_message(5)
+
+      call create_ppm(pl, rxn_overlay=.true.)
+
+    end do
+
+  end subroutine finalize_rxn_plots
 
 !===============================================================================
 ! POSITION_RGB computes the red/green/blue values for a given plot with the 
 ! current particle's position
 !===============================================================================
 
-  subroutine position_rgb(pl, rgb, id)
+  subroutine position_rgb(pl, rgb, id, fissionable)
   
     type(ObjectPlot), pointer, intent(in) :: pl
     integer, intent(out)                  :: rgb(3)
     integer, intent(out)                  :: id
+    logical, intent(out), optional        :: fissionable
     
     logical :: found_cell
     type(Cell), pointer :: c => null()
     
+    if (present(fissionable)) fissionable = .false.
+
     call deallocate_coord(p % coord0 % next)
     p % coord => p % coord0
 
@@ -69,9 +143,9 @@ contains
       rgb = pl % not_found % rgb
       id = -1
     else
+      c => cells(p % coord % cell)
       if (pl % color_by == PLOT_COLOR_MATS) then
         ! Assign color based on material
-        c => cells(p % coord % cell)
         id = materials(c % material) % id
         if (c % material == MATERIAL_VOID) then
           ! By default, color void cells white
@@ -87,6 +161,9 @@ contains
         rgb = 0
         id = -1
       end if
+      if (present(fissionable)) then
+        fissionable = materials(c % material) % fissionable
+      end if
     end if
     
   end subroutine position_rgb
@@ -96,20 +173,32 @@ contains
 ! specification in the portable pixmap format (PPM)
 !===============================================================================
 
-  subroutine create_ppm(pl)
+  subroutine create_ppm(pl, rxn_overlay)
 
     type(ObjectPlot), pointer :: pl
+    logical, optional         :: rxn_overlay
 
     integer :: in_i
     integer :: out_i
     integer :: x, y      ! pixel location
+    integer :: ijk(2)    ! pixmesh indices
     integer :: rgb(3)    ! colors (red, green, blue) from 0-255
     integer :: id
+    integer :: bin       ! pixmesh results bin
+    real(8) :: rxnval    ! pixmesh results value
     real(8) :: in_pixel
     real(8) :: out_pixel
     real(8) :: xyz(3)
+    logical :: rxn = .false.
+    logical :: fissionable
     type(Image) :: img
     type(ProgressBar) :: progress
+    type(StructuredMesh), pointer :: m => null()
+
+    if (present(rxn_overlay) .and. rxn_overlay) then
+      rxn = .true.
+      m => pl % pixmesh
+    end if
 
     ! Initialize and allocate space for image
     call init_image(img)
@@ -142,8 +231,13 @@ contains
     end if
 
     ! allocate and initialize particle
+    ! We can't depend on source.F90 for initialize_particle due to
+    ! circular dependencies (since physics.F90 depends on this file)
+    ! To fix this, transport and physics could be 
     allocate(p)
-    call initialize_particle()
+    allocate(p % coord0)
+    p % coord0 % universe = BASE_UNIVERSE
+    p % coord => p % coord0
     p % coord % xyz = xyz
     p % coord % uvw = (/ 0.5, 0.5, 0.5 /)
     p % coord % universe = BASE_UNIVERSE
@@ -152,8 +246,26 @@ contains
       call progress % set_value(dble(y)/dble(img % height)*100.)
       do x = 1, img % width
 
-        ! get pixel color
-        call position_rgb(pl, rgb, id)
+        ! Get pixel color
+        call position_rgb(pl, rgb, id, fissionable)
+
+        ! Add rxn rate overlay if appropriate
+        if (rxn) then
+          ijk(1) = x
+          ijk(2) = y
+          bin = mesh_indices_to_bin(m, ijk)
+          if (fissionable) then
+            rxnval = pl % fisswgt(bin)
+            rgb(1) = min(int(1010.*rxnval),255)
+            rgb(2) = int(255.*rxnval)
+            rgb(3) = int(255.*rxnval)
+          else
+            rxnval = pl % fluxwgt(bin)
+            rgb(1) = int(255.*rxnval)
+            rgb(2) = int(255.*rxnval)
+            rgb(3) = min(int(1010.*rxnval),255)
+          end if
+        end if
 
         ! Create a pixel at (x,y) with color (r,g,b)
         call set_pixel(img, x, y, rgb(1), rgb(2), rgb(3))
@@ -238,8 +350,13 @@ contains
     ll = pl % origin - pl % width / 2.0
 
     ! allocate and initialize particle
+    ! We can't depend on source.F90 for initialize_particle due to
+    ! circular dependencies (since physics.F90 depends on this file)
+    ! To fix this, transport and physics could be 
     allocate(p)
-    call initialize_particle()
+    allocate(p % coord0)
+    p % coord0 % universe = BASE_UNIVERSE
+    p % coord => p % coord0
     p % coord0 % xyz = ll
     p % coord0 % uvw = (/ 0.5, 0.5, 0.5 /)
     p % coord0 % universe = BASE_UNIVERSE

@@ -7,7 +7,7 @@ program main
   use global
   use initialize,        only: initialize_run
   use particle_restart,  only: run_particle_restart
-  use plot,              only: run_plot
+  use plot,              only: run_plots
 
   implicit none
 
@@ -21,7 +21,7 @@ program main
   case (MODE_EIGENVALUE)
     call run_eigenvalue()
   case (MODE_PLOTTING)
-    call run_plot()
+    call run_plots()
   case (MODE_TALLIES)
     ! For tallies-only mode, we just skip straight to finalize_run to write out
     ! the tally results

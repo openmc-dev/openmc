@@ -5,6 +5,7 @@ module finalize
 # endif
   use global
   use output,         only: print_runtime, print_results, write_tallies
+  use plot,           only: finalize_rxn_plots
   use tally,          only: tally_statistics
 
 #ifdef MPI
@@ -51,6 +52,9 @@ contains
       call print_runtime()
       call print_results()
     end if
+
+    ! Finish reaction rate plots
+    if (master .and. rxn_plots) call finalize_rxn_plots()
 
     ! deallocate arrays
     call free_memory()

@@ -128,6 +128,7 @@ finalize.o: cmfd_output.o
 finalize.o: global.o
 finalize.o: hdf5_interface.o
 finalize.o: output.o
+finalize.o: plot.o
 finalize.o: tally.o
 
 fission.o: ace_header.o
@@ -297,6 +298,7 @@ physics.o: mesh.o
 physics.o: output.o
 physics.o: particle_header.o
 physics.o: particle_restart_write.o
+physics.o: plot.o
 physics.o: random_lcg.o
 physics.o: search.o
 physics.o: string.o
@@ -307,15 +309,16 @@ plot.o: error.o
 plot.o: geometry.o
 plot.o: geometry_header.o
 plot.o: global.o
+plot.o: mesh.o
 plot.o: output.o
 plot.o: particle_header.o
 plot.o: plot_header.o
 plot.o: ppmlib.o
 plot.o: progress_header.o
-plot.o: source.o
 plot.o: string.o
 
 plot_header.o: constants.o
+plot_header.o: mesh_header.o
 
 random_lcg.o: global.o
 

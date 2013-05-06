@@ -1,6 +1,7 @@
 module plot_header
 
   use constants
+  use mesh_header,             only: StructuredMesh
 
   implicit none
 
@@ -27,11 +28,16 @@ module plot_header
     integer :: pixels(3)             ! pixel width/height of plot slice
     type(ObjectColor) :: not_found   ! color for positions where no cell found
     type(ObjectColor), allocatable :: colors(:) ! colors of cells/mats
+    type(StructuredMesh) :: pixmesh  ! pixmesh for reaction rate plots
+    real(8), allocatable :: fisswgt(:)! Weights for rxn plot fissionable pixels
+    real(8), allocatable :: fluxwgt(:)! Weights for rxn plot non-fiss pix
+    integer              :: rrtype   ! particle event type to score
   end type ObjectPlot
 
   ! Plot type
   integer, parameter :: PLOT_TYPE_SLICE = 1
   integer, parameter :: PLOT_TYPE_VOXEL = 2
+  integer, parameter :: PLOT_TYPE_RXNRATE = 3
 
   ! Plot basis plane
   integer, parameter :: PLOT_BASIS_XY = 1
@@ -42,4 +48,12 @@ module plot_header
   integer, parameter :: PLOT_COLOR_CELLS = 1
   integer, parameter :: PLOT_COLOR_MATS = 2
 
+  ! Reaction rate plot types
+  integer, parameter :: PLOT_RXN_FLUX_THERMAL = 1
+  integer, parameter :: PLOT_RXN_FLUX_FAST = 2
+  integer, parameter :: PLOT_RXN_FISSION = 3
+  integer, parameter :: PLOT_RXN_ABSORPTION = 4
+
+  contains
+  
 end module plot_header

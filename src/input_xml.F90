@@ -570,6 +570,13 @@ contains
 #endif
     end if
 
+    ! Check flag to enable rxn plot scoring
+    call lower_case(rxn_plots_)
+    if (rxn_plots_ == 'true' .or. rxn_plots == '1') then
+     rxn_plots = .true.
+    end if
+
+
   end subroutine read_settings_xml
 
 !===============================================================================
@@ -1011,6 +1018,7 @@ contains
     type(ListChar) :: list_names   ! temporary list of nuclide names
     type(ListReal) :: list_density ! temporary list of nuclide densities
     type(Material),    pointer :: mat => null()
+    type(Nuclide),     pointer :: matnuc => null()
     type(nuclide_xml), pointer :: nuc => null()
     type(sab_xml),     pointer :: sab => null()
 
@@ -1257,6 +1265,7 @@ contains
         ! Copy name and atom/weight percent
         mat % names(j) = name
         mat % atom_density(j) = list_density % get_item(j)
+
       end do ALL_NUCLIDES
 
       ! Check to make sure either all atom percents or all weight percents are
@@ -2184,6 +2193,8 @@ contains
         pl % type = PLOT_TYPE_SLICE
       case ("voxel")
         pl % type = PLOT_TYPE_VOXEL
+      case ("rxn")
+        pl % type = PLOT_TYPE_RXNRATE
       case default
         message = "Unsupported plot type '" // trim(plot_(i) % type) &
              // "' in plot " // trim(to_str(pl % id))
@@ -2192,7 +2203,7 @@ contains
 
       ! Set output file path
       select case (pl % type)
-      case (PLOT_TYPE_SLICE)
+      case (PLOT_TYPE_SLICE, PLOT_TYPE_RXNRATE)
         pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
              "_" // trim(plot_(i) % filename) // ".ppm"
       case (PLOT_TYPE_VOXEL)
@@ -2201,7 +2212,8 @@ contains
       end select
       
       ! Copy plot pixel size
-      if (pl % type == PLOT_TYPE_SLICE) then
+      if (pl % type == PLOT_TYPE_SLICE .or. &
+          pl % type == PLOT_TYPE_RXNRATE) then
         if (size(plot_(i) % pixels) == 2) then
           pl % pixels(1) = plot_(i) % pixels(1)
           pl % pixels(2) = plot_(i) % pixels(2)
@@ -2239,7 +2251,8 @@ contains
       end if
       
       ! Copy plot basis
-      if (pl % type == PLOT_TYPE_SLICE) then
+      if (pl % type == PLOT_TYPE_SLICE .or. &
+          pl % type == PLOT_TYPE_RXNRATE) then
         select case (plot_(i) % basis)
         case ("xy")
           pl % basis = PLOT_BASIS_XY
@@ -2264,7 +2277,8 @@ contains
       end if
 
       ! Copy plotting width
-      if (pl % type == PLOT_TYPE_SLICE) then
+      if (pl % type == PLOT_TYPE_SLICE .or. &
+          pl % type == PLOT_TYPE_RXNRATE) then
         if (size(plot_(i) % width) == 2) then
           pl % width(1) = plot_(i) % width(1)
           pl % width(2) = plot_(i) % width(2)
@@ -2410,6 +2424,48 @@ contains
             
         end select
         
+      end if
+
+      ! Initialize attributes specific to reaction rate plots
+      if (pl % type == PLOT_TYPE_RXNRATE) then
+
+        ! Copy rxn rate type
+        select case (plot_(i) % rrtype)
+        case ("fission")
+          pl % rrtype = PLOT_RXN_FISSION
+        case ("absorption")
+          pl % rrtype = PLOT_RXN_ABSORPTION
+        case ("fluxthermal")
+          pl % rrtype = PLOT_RXN_FLUX_THERMAL
+        case ("fluxfast")
+          pl % rrtype = PLOT_RXN_FLUX_FAST
+        case default
+          message = "Unsupported plot rxn type '" // trim(plot_(i) % rrtype) &
+               // "' in plot " // trim(to_str(pl % id))
+          call fatal_error()
+        end select
+
+        ! Allocate and set pixel mesh parameters
+        allocate(pl % pixmesh % dimension(2))
+        allocate(pl % pixmesh % lower_left(2))
+        allocate(pl % pixmesh % upper_right(2))
+        allocate(pl % pixmesh % width(2))
+        pl % pixmesh % n_dimension = 2
+        pl % pixmesh % dimension(1) = pl % pixels(1)
+        pl % pixmesh % dimension(2) = pl % pixels(2)
+        pl % pixmesh % lower_left(1) = pl % origin(1) - pl % width(1) / 2.0
+        pl % pixmesh % lower_left(2) = pl % origin(2) - pl % width(2) / 2.0
+        pl % pixmesh % upper_right(1) = pl % origin(1) + pl % width(1) / 2.0
+        pl % pixmesh % upper_right(2) = pl % origin(2) + pl % width(2) / 2.0
+        pl % pixmesh % width(1) = pl % width(1) / dble(pl % pixels(1))
+        pl % pixmesh % width(2) = pl % width(2) / dble(pl % pixels(2))
+
+        ! Initialize reaction counter
+        allocate(pl % fisswgt(pl % pixels(1) * pl % pixels(2)))
+        allocate(pl % fluxwgt(pl % pixels(1) * pl % pixels(2)))
+        pl % fisswgt = ZERO
+        pl % fluxwgt = ZERO
+
       end if
 
       ! Add plot to dictionary

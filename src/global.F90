@@ -396,14 +396,23 @@ contains
     if (allocated(materials)) deallocate(materials)
 
     ! Deallocate plots
-    
     if (allocated(plots)) then
       do i = 1, size(plots)
-        if allocated(plots(i) % colors) deallocate(plots(i) % colors)
-        if allocated(plots(i) % rxncnt) deallocate(plots(i) % rxncnt)
+        if (allocated(plots(i) % colors)) deallocate(plots(i) % colors)
+        if (allocated(plots(i) % fisswgt)) deallocate(plots(i) % fisswgt)
+        if (allocated(plots(i) % fluxwgt)) deallocate(plots(i) % fluxwgt)
+        if (allocated(plots(i) % pixmesh % dimension)) &
+           deallocate(plots(i) % pixmesh % dimension)
+        if (allocated(plots(i) % pixmesh % lower_left)) &
+           deallocate(plots(i) % pixmesh % lower_left)
+        if (allocated(plots(i) % pixmesh % upper_right)) &
+           deallocate(plots(i) % pixmesh % upper_right)
+        if (allocated(plots(i) % pixmesh % width)) &
+           deallocate(plots(i) % pixmesh % width)
       end do
       deallocate(plots)
     end if
+
     ! Deallocate cross section data, listings, and cache
     if (allocated(nuclides)) then
     ! First call the clear routines

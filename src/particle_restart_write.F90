@@ -90,7 +90,7 @@ contains
     type(Bank), pointer     :: src => null()
 
     ! set up file name
-    filename = path_output // 'particle_'//trim(to_str(rank))//'.binary'
+    filename = trim(path_output) // 'particle_'//trim(to_str(rank))//'.binary'
 
     ! create hdf5 file
     open(UNIT=UNIT_PARTICLE, FILE=filename, STATUS='replace', &

@@ -240,6 +240,12 @@ contains
     start = 0_8
     call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
          MPI_COMM_WORLD, mpi_err)
+
+    ! While we would expect the value of start on rank 0 to be 0, the MPI
+    ! standard says that the receive buffer on rank 0 is undefined and not
+    ! significant
+    if (rank == 0) start = 0_8
+
     finish = start + n_bank
     total = finish
     call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 

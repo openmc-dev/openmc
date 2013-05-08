@@ -250,12 +250,12 @@ contains
 
         ! Read parameters for spatial distribution
         if (n < coeffs_reqd) then
-          message = "Not enough parameters specified for spatial " &
-               // "distribution of external source."
+          message = "Not enough parameters specified for spatial &
+               &distribution of external source."
           call fatal_error()
         elseif (n > coeffs_reqd) then
-          message = "Too many parameters specified for spatial " &
-               // "distribution of external source."
+          message = "Too many parameters specified for spatial &
+               &distribution of external source."
           call fatal_error()
         elseif (n > 0) then
           allocate(external_source % params_space(n))
@@ -295,12 +295,12 @@ contains
 
         ! Read parameters for angle distribution
         if (n < coeffs_reqd) then
-          message = "Not enough parameters specified for angle " &
-               // "distribution of external source."
+          message = "Not enough parameters specified for angle &
+               &distribution of external source."
           call fatal_error()
         elseif (n > coeffs_reqd) then
-          message = "Too many parameters specified for angle " &
-               // "distribution of external source."
+          message = "Too many parameters specified for angle &
+               &distribution of external source."
           call fatal_error()
         elseif (n > 0) then
           allocate(external_source % params_angle(n))
@@ -343,12 +343,12 @@ contains
 
         ! Read parameters for energy distribution
         if (n < coeffs_reqd) then
-          message = "Not enough parameters specified for energy " &
-               // "distribution of external source."
+          message = "Not enough parameters specified for energy &
+               &distribution of external source."
           call fatal_error()
         elseif (n > coeffs_reqd) then
-          message = "Too many parameters specified for energy " &
-               // "distribution of external source."
+          message = "Too many parameters specified for energy &
+               &distribution of external source."
           call fatal_error()
         elseif (n > 0) then
           allocate(external_source % params_energy(n))
@@ -443,8 +443,7 @@ contains
         message = "Need to specify (x,y,z) coordinates of upper-right corner &
              &of UFS mesh."
       elseif (size(uniform_fs_(1) % dimension) /= 3) then
-        message = "Dimension of UFS mesh must be given as three &
-             &integers."
+        message = "Dimension of UFS mesh must be given as three integers."
         call fatal_error()
       end if
 
@@ -933,8 +932,8 @@ contains
 
       ! Read lattice lower-left location
       if (size(lattice_(i) % dimension) /= size(lattice_(i) % lower_left)) then
-        message = "Number of entries on <lower_left> must be the same as " // &
-             "the number of entries on <dimension>."
+        message = "Number of entries on <lower_left> must be the same as &
+             &the number of entries on <dimension>."
         call fatal_error()
       end if
 
@@ -943,8 +942,8 @@ contains
 
       ! Read lattice widths
       if (size(lattice_(i) % width) /= size(lattice_(i) % lower_left)) then
-        message = "Number of entries on <width> must be the same as " // &
-             "the number of entries on <lower_left>."
+        message = "Number of entries on <width> must be the same as &
+             &the number of entries on <lower_left>."
         call fatal_error()
       end if
 
@@ -1974,7 +1973,7 @@ contains
             t % estimator = ESTIMATOR_ANALOG
           case ('diffusion')
             message = "Diffusion score no longer supported for tallies, & 
-                      please remove"
+                      &please remove"
             call fatal_error()
           case ('n1n')
             t % score_bins(j) = SCORE_N_1N
@@ -2373,8 +2372,8 @@ contains
           case (0)
           case (1)
           
-            ! First we need to change the user-specified identifiers to indices in
-            ! the cell and material arrays
+            ! First we need to change the user-specified identifiers to indices
+            ! in the cell and material arrays
             do j=1,size(plot_(i) % mask_(1) % components)
               col_id = plot_(i) % mask_(1) % components(j)
             

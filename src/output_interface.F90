@@ -16,7 +16,11 @@ module output_interface
 #endif
 
   interface write_data
+    module procedure write_double
+    module procedure write_double_1Darray
     module procedure write_integer
+    module procedure write_integer_1Darray
+    module procedure write_long
     module procedure write_string
   end interface write_data
 
@@ -103,6 +107,58 @@ contains
 
   end subroutine file_close
 
+!===============================================================================
+! WRITE_INTEGER
+!===============================================================================
+
+  subroutine write_double(buffer, name, group)
+
+    real(8),        intent(in)           :: buffer
+    character(*),   intent(in)           :: name
+    character(*),   intent(in), optional :: group
+
+#ifdef HDF5
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+    call hdf5_write_double(temp_group, name, buffer)
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+
+#else
+
+#endif
+
+  end subroutine write_double
+
+!===============================================================================
+! WRITE_INTEGER_1Darray
+!===============================================================================
+
+  subroutine write_double_1Darray(buffer, name, group, length)
+
+    integer,        intent(in)           :: length
+    real(8),        intent(in)           :: buffer(:)
+    character(*),   intent(in)           :: name
+    character(*),   intent(in), optional :: group
+
+#ifdef HDF5
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+    call hdf5_write_double_1Darray(temp_group, name, buffer, length)
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+
+#else
+
+#endif
+
+  end subroutine write_double_1Darray
 
 !===============================================================================
 ! WRITE_INTEGER
@@ -129,6 +185,60 @@ contains
 #endif
 
   end subroutine write_integer
+
+!===============================================================================
+! WRITE_INTEGER_1Darray
+!===============================================================================
+
+  subroutine write_integer_1Darray(buffer, name, group, length)
+
+    integer,        intent(in)           :: length
+    integer,        intent(in)           :: buffer(:)
+    character(*),   intent(in)           :: name
+    character(*),   intent(in), optional :: group
+
+#ifdef HDF5
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+    call hdf5_write_integer_1Darray(temp_group, name, buffer, length)
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+
+#else
+
+#endif
+
+  end subroutine write_integer_1Darray
+
+!===============================================================================
+! WRITE_LONG
+!===============================================================================
+
+  subroutine write_long(buffer, name, group)
+
+    integer(8),     intent(in)           :: buffer
+    character(*),   intent(in)           :: name
+    character(*),   intent(in), optional :: group
+
+#ifdef HDF5
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+    call hdf5_write_long(temp_group, name, buffer)
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+
+#else
+
+#endif
+
+  end subroutine write_long
+
 
 !===============================================================================
 ! WRITE_STRING

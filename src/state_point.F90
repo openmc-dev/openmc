@@ -1098,7 +1098,7 @@ contains
 
       ! Read number of tallies and make sure it matches
 #     ifdef HDF5
-        call hdf5_write_integer(tallies_group, "n_tallies", temp(1))
+        call hdf5_read_integer(tallies_group, "n_tallies", temp(1))
 #     elif MPI
         call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, MPI_STATUS_IGNORE, &
              mpi_err)
@@ -1109,6 +1109,8 @@ contains
         message = "Number of tallies does not match in state point."
         call fatal_error()
       end if
+!call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+!call MPI_ABORT(MPI_COMM_WORLD, -8, mpi_err)
 
       TALLY_METADATA: do i = 1, n_tallies
 
@@ -1163,8 +1165,8 @@ contains
 #       else
           read(UNIT_STATE) temp(1)
 #       endif
-call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
-call MPI_ABORT(MPI_COMM_WORLD, -8, mpi_err)
+!call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+!call MPI_ABORT(MPI_COMM_WORLD, -8, mpi_err)
 
         FILTER_LOOP: do j = 1, temp(1)
 #ifdef HDF5
@@ -1230,8 +1232,8 @@ call MPI_ABORT(MPI_COMM_WORLD, -8, mpi_err)
 
         ! Read number of nuclides
 #       ifdef HDF5
-          call hdf5_write_integer(temp_group, "n_nuclide_bins", &
-               tallies(i) % n_nuclide_bins)
+          call hdf5_read_integer(temp_group, "n_nuclide_bins", &
+               temp(1))
 #       elif MPI
           call MPI_FILE_READ(fh, temp, 1, MPI_INTEGER, &
                MPI_STATUS_IGNORE, mpi_err)
@@ -1406,9 +1408,11 @@ call MPI_ABORT(MPI_COMM_WORLD, -8, mpi_err)
     ! Close statepoint file
     if (.not. source_separate) then
 #     ifdef HDF5
-        call h5fclose_f(hdf5_state_point, hdf5_err)
+        if (master) call h5fclose_f(hdf5_state_point, hdf5_err)
 #     elif MPI
         call MPI_FILE_CLOSE(fh, mpi_err)
+#     else 
+        close(UNIT_STATE)
 #     endif
     end if 
 
@@ -1636,13 +1640,12 @@ call MPI_ABORT(MPI_COMM_WORLD, -8, mpi_err)
     source_separate = .true.
 # endif
 #endif
- call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
- call    MPI_ABORT(MPI_COMM_WORLD,-2,mpi_err)
+!call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
+!call    MPI_ABORT(MPI_COMM_WORLD,-2,mpi_err)
     ! Check if source separate
     if (source_separate) then
 #     ifdef MPI
 #       ifdef HDF5
-          call h5fclose_f(hdf5_state_point, hdf5_err)
           path_source = "source." // trim(to_str(restart_batch)) // ".h5"
           call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdf5_err)
           call h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)

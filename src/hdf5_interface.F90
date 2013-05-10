@@ -20,8 +20,8 @@ module hdf5_interface
 
   implicit none
 
-    integer(HID_T) :: hdf5_fh
-    integer(HID_T) :: temp_group 
+    integer(HID_T)  :: hdf5_fh
+    integer(HID_T)  :: temp_group 
 
 #ifdef HDF5
 
@@ -1315,19 +1315,6 @@ contains
 
   end subroutine hdf5_parallel_file_create
 
-!===============================================================================
-! HDF5_PARALLEL_FILE_CLOSE
-!===============================================================================
-
-  subroutine hdf5_parallel_file_close(file_id)
-
-    integer(HID_T) :: file_id
-
-    ! Close property list and the file
-    call h5fclose_f(file_id, hdf5_err)
-
-  end subroutine hdf5_parallel_file_close
-
 #endif
 
 !===============================================================================
@@ -1345,10 +1332,8 @@ contains
 
     ! Either create or open group
     if (status) then
-      print *,'OPENING GROUP'
       call h5gopen_f(hdf5_fh, trim(group), temp_group, hdf5_err)
     else
-      print *,'CREATING GROUP'
       call h5gcreate_f(hdf5_fh, trim(group), temp_group, hdf5_err)
     end if
 

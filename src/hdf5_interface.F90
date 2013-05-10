@@ -1338,7 +1338,19 @@ contains
 
     character(*) :: group
 
-    call h5gopen_f(hdf5_fh, trim(group), temp_group, hdf5_err)
+    logical :: status
+
+    ! Check if group exists
+    call h5ltpath_valid_f(hdf5_fh, trim(group), .true., status, hdf5_err) 
+
+    ! Either create or open group
+    if (status) then
+      print *,'OPENING GROUP'
+      call h5gopen_f(hdf5_fh, trim(group), temp_group, hdf5_err)
+    else
+      print *,'CREATING GROUP'
+      call h5gcreate_f(hdf5_fh, trim(group), temp_group, hdf5_err)
+    end if
 
   end subroutine hdf5_open_group
 
@@ -1374,14 +1386,18 @@ contains
 ! HDF5_WRITE_INTEGER_1DARRAY
 !===============================================================================
 
-  subroutine hdf5_write_integer_1Darray(group, name, buffer, rank, dims)
+  subroutine hdf5_write_integer_1Darray(group, name, buffer, len)
 
+    integer,        intent(in) :: len
     integer(HID_T), intent(in) :: group
     character(*),   intent(in) :: name
     integer,        intent(in) :: buffer(:)
 
     integer          :: rank
-    integer(HSIZE_T) :: dims(rank)
+    integer(HSIZE_T) :: dims(1)
+
+    rank = 1
+    dims(1) = len
 
     call h5ltmake_dataset_int_f(group, name, rank, dims, &
          buffer, hdf5_err)
@@ -1440,14 +1456,18 @@ contains
 ! HDF5_WRITE_DOUBLE_1DARRAY
 !===============================================================================
 
-  subroutine hdf5_write_double_1Darray(group, name, buffer, rank, dims)
+  subroutine hdf5_write_double_1Darray(group, name, buffer, len)
 
+    integer,        intent(in) :: len
     integer(HID_T), intent(in) :: group
     character(*),   intent(in) :: name
     real(8),        intent(in) :: buffer(:)
 
     integer          :: rank
-    integer(HSIZE_T) :: dims(rank)
+    integer(HSIZE_T) :: dims(1)
+
+    rank = 1
+    dims(1) = len
 
     call h5ltmake_dataset_double_f(group, name, rank, dims, &
          buffer, hdf5_err)

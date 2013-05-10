@@ -251,6 +251,8 @@ mesh.o: mesh_header.o
 mesh.o: particle_header.o
 mesh.o: search.o
 
+mpi_interface.o: constants.o
+
 output.o: ace_header.o
 output.o: constants.o
 output.o: endf.o
@@ -341,6 +343,7 @@ state_point.o: math.o
 state_point.o: output.o
 state_point.o: string.o
 state_point.o: tally_header.o
+state_point.o: write_output_file.o
 
 string.o: constants.o
 string.o: error.o
@@ -366,3 +369,6 @@ tally_initialize.o: global.o
 tally_initialize.o: tally_header.o
 
 timer_header.o: constants.o
+
+write_output_file.o: hdf5_interface.o
+write_output_file.o: mpi_interface.o

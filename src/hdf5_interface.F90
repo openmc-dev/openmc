@@ -20,11 +20,8 @@ module hdf5_interface
 
   implicit none
 
-  ! define array writing interface
-  interface hdf5_write_array
-    module procedure hdf5_write_double_1Darray
-    module procedure hdf5_write_integer_1Darray
-  end interface hdf5_write_array
+    integer(HID_T) :: hdf5_fh
+    integer(HID_T) :: temp_group 
 
 #ifdef HDF5
 
@@ -1299,7 +1296,7 @@ contains
 ! HDF5_PARALLEL_FILE_CREATE
 !===============================================================================
 
-  subroutine hdf5_parallel_file_create(filename, file_id, plist_id)
+  subroutine hdf5_parallel_file_create(filename, file_id)
 
     character(MAX_FILE_LEN) :: filename
     integer(HID_T)          :: file_id
@@ -1310,9 +1307,11 @@ contains
     call h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
 
     ! Create the file collectively
-    call MPI_BARRIER(MPI_COMM_WORLD, mpi_err)
     call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdf5_err, &
                      access_prp = plist_id)
+
+    ! Close the property list
+    call h5pclose_f(plist_id, hdf5_err)
 
   end subroutine hdf5_parallel_file_create
 
@@ -1320,18 +1319,38 @@ contains
 ! HDF5_PARALLEL_FILE_CLOSE
 !===============================================================================
 
-  subroutine hdf5_parallel_file_close(file_id, plist_id)
+  subroutine hdf5_parallel_file_close(file_id)
 
     integer(HID_T) :: file_id
-    integer(HID_T) :: plist_id
 
     ! Close property list and the file
-    call h5pclose_f(plist_id, hdf5_err)
     call h5fclose_f(file_id, hdf5_err)
 
   end subroutine hdf5_parallel_file_close
 
 #endif
+
+!===============================================================================
+! HDF5_OPEN_GROUP
+!===============================================================================
+
+  subroutine hdf5_open_group(group)
+
+    character(*) :: group
+
+    call h5gopen_f(hdf5_fh, trim(group), temp_group, hdf5_err)
+
+  end subroutine hdf5_open_group
+
+!===============================================================================
+! HDF5_CLOSE_GROUP
+!===============================================================================
+
+  subroutine hdf5_close_group()
+
+    call h5gclose_f(temp_group, hdf5_err)
+
+  end subroutine hdf5_close_group
 
 !===============================================================================
 ! HDF5_WRITE_INTEGER
@@ -1435,6 +1454,20 @@ contains
 
   end subroutine hdf5_write_double_1Darray
 
+!===============================================================================
+! HDF5_WRITE_STRING
+!===============================================================================
+
+  subroutine hdf5_write_string(group, name, buffer)
+
+    integer(HID_T), intent(in)    :: group
+    character(*),   intent(in)    :: name
+    character(*),   intent(in)    :: buffer
+
+    call h5ltmake_dataset_string_f(group, name, buffer, hdf5_err)
+
+  end subroutine hdf5_write_string
+      
 !===============================================================================
 ! HDF5_READ_INTEGER
 !===============================================================================

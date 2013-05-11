@@ -1,8 +1,22 @@
 module state_point
 
+!===============================================================================
+! STATE_POINT -- This module handles writing and reading state point
+! files. State points are contain complete tally results, source sites, and
+! various other data. They can be used to restart a run or to reconstruct
+! confidence intervals for tallies (this requires post-processing via Python
+! scripts).
+!
+! State points can be written at any batch during a simulation, or at specified
+! intervals, using the <state_point ... /> tag.
+!===============================================================================
+
+
   use constants
+  use error,              only: fatal_error, warning
   use global
-  use output,             only: write_message, time_stamp
+  use output,             only: write_message, time_stamp, print_batch_keff
+  use math,               only: t_percentile
   use string,             only: to_str
   use output_interface
   use tally_header,       only: TallyObject
@@ -68,7 +82,7 @@ contains
         call write_data(n_inactive, "n_inactive")
         call write_data(gen_per_batch, "gen_per_batch")
         call write_data(k_batch, "k_batch", length=current_batch)
-        call write_data(entropy, "entropy", length=current_batch)
+        call write_data(entropy, "entropy", length=current_batch*gen_per_batch)
         call write_data(k_col_abs, "k_col_abs")
         call write_data(k_col_tra, "k_col_tra")
         call write_data(k_abs_tra, "k_abs_tra")
@@ -175,7 +189,7 @@ contains
         call write_data(t % scatt_order, "scatt_order", &
              group="tallies/tally" // to_str(i), length=t % n_score_bins)
 
-        ! Write number of user socre bins
+        ! Write number of user score bins
         call write_data(t % n_user_score_bins, "n_user_score_bins", &
              group="tallies/tally" // to_str(i))
 
@@ -226,39 +240,49 @@ contains
 
     end if
 
-    ! Change file handles if source is separately written
+    ! Check for eigenvalue calculation
+    if (run_mode == MODE_EIGENVALUE .and. source_write) then
+
+      ! Change file handles if source is separately written
 #ifdef HDF5
 # ifdef MPI
-    source_separate = .true.
+      source_separate = .true.
 # endif
 #endif
 
-    if (source_separate) then
+      if (source_separate) then
 
-      ! Close statepoint file 
-      call file_close(fh_state_point)
+        ! Close statepoint file 
+        call file_close(fh_state_point)
 
-      ! Set filename for source
-      filename = trim(path_output) // 'source.' // &
-                 trim(to_str(current_batch))
+        ! Set filename for source
+        filename = trim(path_output) // 'source.' // &
+                   trim(to_str(current_batch))
 
-      ! Write message
-      message = "Creating source file " // trim(filename) // "..."
-      call write_message(1)
+        ! Write message
+        message = "Creating source file " // trim(filename) // "..."
+        call write_message(1)
 
-      ! Create statepoint file 
-      call file_create(filename, fh_source)
+        ! Create statepoint file 
+        call file_create(filename, fh_source)
 
-    end if
+      end if
 
-    ! Write out source
-    call write_source_bank()
+      ! Write out source
+      call write_source_bank()
 
-    ! Close file
-    if (source_separate) then
-      call file_close(fh_source)
+      ! Close file
+      if (source_separate) then
+        call file_close(fh_source)
+      else
+        call file_close(fh_state_point)
+      end if
+
     else
+
+      ! Close file if not in eigenvalue mode or no source writing
       call file_close(fh_state_point)
+
     end if
 
   end subroutine write_state_point
@@ -269,30 +293,333 @@ contains
 
   subroutine load_state_point()
 
+    character(MAX_FILE_LEN) :: filename
+    character(MAX_FILE_LEN) :: path_temp
+    character(MAX_WORD_LEN) :: fh_state_point = "state_point"
+    character(MAX_WORD_LEN) :: fh_source = "source"
+    character(19)           :: current_time
+    integer                 :: i
+    integer                 :: j
+    integer                 :: int_array(3)
+    integer, allocatable    :: temp_array(:)
+    real(8)                 :: real_array(3) 
+    type(TallyObject), pointer :: t => null()
+
+    ! Write message
+    message = "Loading state point " // trim(path_state_point) // "..."
+    call write_message(1)
+
+    ! Open file for reading
+    call file_open(path_state_point, fh_state_point)
+
+    ! Read revision number for state point file and make sure it matches with
+    ! current version
+    call read_data(int_array(1), "revision_statepoint")
+    if (int_array(1) /= REVISION_STATEPOINT) then
+      message = "State point version does not match current version " &
+                // "in OpenMC."
+      call fatal_error()
+    end if
+
+    ! Read OpenMC version
+    call read_data(int_array(1), "version_major")
+    call read_data(int_array(2), "version_minor")
+    call read_data(int_array(3), "version_release")
+    if (int_array(1) /= VERSION_MAJOR .or. int_array(2) /= VERSION_MINOR &
+        .or. int_array(3) /= VERSION_RELEASE) then
+      message = "State point file was created with a different version " &
+                // "of OpenMC."
+      call warning()
+    end if
+
+    ! Read date and time
+    call read_data(current_time, "date_and_time")
+
+    ! Read path to input
+    call read_data(path_temp, "path")
+
+    ! Read and overwrite random number seed
+    call read_data(seed, "seed")
+
+    ! Read and overwrite run information except number of batches
+    call read_data(run_mode, "run_mode")
+    call read_data(n_particles, "n_particles")
+    call read_data(int_array(1), "n_batches")
+
+    ! Take maximum of statepoint n_batches and input n_batches
+    n_batches = max(n_batches, int_array(1))
+
+    ! Read batch number to restart at
+    call read_data(restart_batch, "current_batch")
+
+    ! Read information specific to eigenvalue run
+    if (run_mode == MODE_EIGENVALUE) then
+      call read_data(int_array(1), "n_inactive")
+      call read_data(gen_per_batch, "gen_per_batch")
+      call read_data(k_batch, "k_batch", length=restart_batch)
+      call read_data(entropy, "entropy", length=restart_batch*gen_per_batch)
+      call read_data(k_col_abs, "k_col_abs")
+      call read_data(k_col_tra, "k_col_tra")
+      call read_data(k_abs_tra, "k_abs_tra")
+      call read_data(real_array(1:2), "k_combined", length=2)
+
+      ! Take maximum of statepoint n_inactive and input n_inactive
+      n_inactive = max(n_inactive, int_array(1))
+    end if
+
+    ! Read number of meshes
+    call read_data(n_meshes, "n_meshes", group="tallies")
+
+    ! Read and overwrite mesh information
+    MESH_LOOP: do i = 1, n_meshes
+      call read_data(meshes(i) % id, "id", &
+           group="tallies/mesh" // to_str(i))
+      call read_data(meshes(i) % type, "type", &
+           group="tallies/mesh" // to_str(i))
+      call read_data(meshes(i) % n_dimension, "n_dimension", &
+           group="tallies/mesh" // to_str(i))
+      call read_data(meshes(i) % dimension, "dimension", &
+           group="tallies/mesh" // to_str(i), &
+           length=meshes(i) % n_dimension)
+      call read_data(meshes(i) % lower_left, "lower_left", &
+           group="tallies/mesh" // to_str(i), &
+           length=meshes(i) % n_dimension)
+      call read_data(meshes(i) % upper_right, "upper_right", &
+           group="tallies/mesh" // to_str(i), &
+           length=meshes(i) % n_dimension)
+      call read_data(meshes(i) % width, "width", &
+           group="tallies/mesh" // to_str(i), &
+           length=meshes(i) % n_dimension)
+    end do MESH_LOOP
+
+    ! Read and overwrite number of tallies
+    call read_data(n_tallies, "n_tallies", group="tallies")
+
+    ! Read in tally metadata
+    TALLY_METADATA: do i = 1, n_tallies
+
+      ! Get pointer to tally
+      t => tallies(i)
+
+      ! Read tally id
+      call read_data(t % id, "id", group="tallies/tally" // to_str(i))
+
+      ! Read number of realizations
+      call read_data(t % n_realizations, "n_realizations", &
+           group="tallies/tally" // to_str(i))
+
+      ! Read size of tally results
+      call read_data(int_array(1), "total_score_bins", &
+           group="tallies/tally" // to_str(i))
+      call read_data(int_array(2), "total_filter_bins", &
+           group="tallies/tally" // to_str(i))
+
+      ! Check size of tally results array
+      if (int_array(1) /= t % total_score_bins .and. &
+          int_array(2) /= t % total_filter_bins) then
+        message = "Input file tally structure is different from restart."
+        call fatal_error()
+      end if
+
+      ! Read number of filters
+      call read_data(t % n_filters, "n_filters", &
+           group="tallies/tally" // to_str(i))
+
+      ! Read filter information
+      FILTER_LOOP: do j = 1, t % n_filters
+
+        ! Read type of filter
+        call read_data(t % filters(j) % type, "type", &
+             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+
+        ! Read number of bins for this filter
+        call read_data(t % filters(j) % n_bins, "n_bins", &
+             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+
+        ! Read bins
+        if (t % filters(j) % type == FILTER_ENERGYIN .or. &
+            t % filters(j) % type == FILTER_ENERGYOUT) then
+          call read_data(t % filters(j) % real_bins, "bins", &
+               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
+               length=size(t % filters(j) % real_bins))
+        else
+          call read_data(t % filters(j) % int_bins, "bins", &
+               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
+               length=size(t % filters(j) % int_bins))
+        end if
+
+      end do FILTER_LOOP
+
+      ! Read number of nuclide bins
+      call read_data(t % n_nuclide_bins, "n_nuclide_bins", &
+           group="tallies/tally" // to_str(i))
+
+      ! Set up nuclide bin array and then write
+      allocate(temp_array(t % n_nuclide_bins))
+      call read_data(temp_array, "nuclide_bins", &
+           group="tallies/tally" // to_str(i), length=t % n_nuclide_bins)
+      NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
+        if (temp_array(j) > 0) then
+          nuclides(t % nuclide_bins(j)) % zaid = temp_array(j)
+        else
+          t % nuclide_bins(j) = temp_array(j)
+        end if
+      end do NUCLIDE_LOOP
+      deallocate(temp_array)
+
+      ! Write number of score bins, score bins, and scatt order
+      call read_data(t % n_score_bins, "n_score_bins", &
+           group="tallies/tally" // to_str(i))
+      call read_data(t % score_bins, "score_bins", &
+           group="tallies/tally" // to_str(i), length=t % n_score_bins)
+      call read_data(t % scatt_order, "scatt_order", &
+           group="tallies/tally" // to_str(i), length=t % n_score_bins)
+
+      ! Write number of user score bins
+      call read_data(t % n_user_score_bins, "n_user_score_bins", &
+           group="tallies/tally" // to_str(i))
+
+    end do TALLY_METADATA
+
+    ! Read tallies to master
+    if (master) then
+
+      ! Read number of realizations for global tallies
+      call read_data(n_realizations, "n_realizations")
+
+      ! Read number of global tallies
+      call read_data(int_array(1), "n_global_tallies")
+      if (int_array(1) /= N_GLOBAL_TALLIES) then
+        message = "Number of global tallies does not match in state point."
+        call fatal_error()
+      end if
+
+      ! Read global tally data
+      call read_tally_result(global_tallies, "global_tallies", &
+           n1=N_GLOBAL_TALLIES, n2=1)
+
+      ! Check if tally results are present
+      call read_data(int_array(1), "tallies_present", group="tallies")
+
+      ! Read in sum and sum squared
+      if (int_array(1) == 1) then
+        TALLY_RESULTS: do i = 1, n_tallies
+
+          ! Set pointer to tally
+          t => tallies(i)
+
+          ! Read sum and sum_sq for each bin
+          call read_tally_result(t % results, "results", &
+               group="tallies/tally" // to_str(i), &
+               n1=size(t % results, 1), n2=size(t % results, 2))
+
+        end do TALLY_RESULTS
+      end if
+    end if
+
+    ! Read source if in eigenvalue mode 
+    if (run_mode == MODE_EIGENVALUE .and. run_mode /= MODE_TALLIES) then
+
+      ! Change file handles if source is separately written
+#ifdef HDF5
+# ifdef MPI
+      source_separate = .true.
+# endif
+#endif
+
+      if (source_separate) then
+
+        ! Close statepoint file 
+        call file_close(fh_state_point)
+
+        ! Set filename for source
+        filename = trim(path_output) // 'source.' // &
+                   trim(to_str(restart_batch))
+
+        ! Write message
+        message = "Loading source file " // trim(filename) // "..."
+        call write_message(1)
+
+        ! Create statepoint file
+        call file_open(filename, fh_source)
+
+      end if
+
+      ! Write out source
+      call read_source_bank()
+
+      ! Close file
+      if (source_separate) then
+        call file_close(fh_source)
+      else
+        call file_close(fh_state_point)
+      end if
+
+    else
+
+      ! Close file if not in eigenvalue mode
+      call file_close(fh_state_point)
+
+    end if
+
   end subroutine load_state_point
 
 !===============================================================================
-! WRITE_SOURCE
+! REPLAY_BATCH_HISTORY displays batch keff and entropy for each batch stored in
+! a state point file
 !===============================================================================
 
-  subroutine write_source()
+  subroutine replay_batch_history
 
-  end subroutine write_source
+    integer :: n = 0 ! number of realizations
+    real(8), save :: temp(2) = ZERO ! temporary values for keff
+    real(8) :: alpha ! significance level for CI
+    real(8) :: t_value ! t-value for confidence intervals
 
-!===============================================================================
-! READ_SOURCE
-!===============================================================================
+    ! Write message at beginning
+    if (current_batch == 1) then
+      message = "Replaying history from state point..."
+      call write_message(1)
+    end if
 
-  subroutine read_source()
+    ! Add to number of realizations
+    if (current_batch > n_inactive) then
+      n = n + 1
 
-  end subroutine read_source
+      temp(1) = temp(1) + k_batch(current_batch)
+      temp(2) = temp(2) + k_batch(current_batch)*k_batch(current_batch)
 
-!===============================================================================
-! REPLAY_BATCH_HISTORY
-!===============================================================================
+      ! calculate mean keff
+      keff = temp(1) / n
 
-  subroutine replay_batch_history()
+      if (n > 1) then
+        if (confidence_intervals) then
+          ! Calculate t-value for confidence intervals
+          alpha = ONE - CONFIDENCE_LEVEL
+          t_value = t_percentile(ONE - alpha/TWO, n - 1)
+        else
+          t_value = ONE
+        end if
+
+        keff_std = t_value * sqrt((temp(2)/n - keff*keff)/(n - 1))
+      end if
+    else
+      keff = k_batch(current_batch)
+    end if
+
+    ! print out batch keff
+    if (master) call print_batch_keff()
+
+    ! Write message at end
+    if (current_batch == restart_batch) then
+      message = "Resuming simulation..."
+      call write_message(1)
+    end if
 
   end subroutine replay_batch_history
 
+  subroutine read_source
+! TODO write this routine
+! TODO what if n_particles does not match source bank
+  end subroutine read_source
 end module state_point

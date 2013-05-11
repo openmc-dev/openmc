@@ -1275,6 +1275,20 @@ contains
   end subroutine hdf5_file_create
 
 !===============================================================================
+! HDF5_FILE_OPEN
+!===============================================================================
+
+  subroutine hdf5_file_open(filename, file_id)
+
+    character(MAX_FILE_LEN) :: filename
+    integer(HID_T)          :: file_id
+
+    ! Create the file
+    call h5fopen_f(trim(filename), H5F_ACC_RDONLY_F, file_id, hdf5_err)
+
+  end subroutine hdf5_file_open
+
+!===============================================================================
 ! HDF5_FILE_CLOSE
 !===============================================================================
 
@@ -1311,6 +1325,29 @@ contains
     call h5pclose_f(plist_id, hdf5_err)
 
   end subroutine hdf5_parallel_file_create
+
+!===============================================================================
+! HDF5_PARALLEL_FILE_OPEN
+!===============================================================================
+
+  subroutine hdf5_parallel_file_open(filename, file_id)
+
+    character(MAX_FILE_LEN) :: filename
+    integer(HID_T)          :: file_id
+    integer(HID_T)          :: plist_id
+
+    ! Setup file access property list with parallel I/O access
+    call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdf5_err)
+    call h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+
+    ! Create the file collectively
+    call h5fopen_f(trim(filename), H5F_ACC_RDONLY_F, file_id, hdf5_err, &
+                   access_prp = plist_id)
+
+    ! Close the property list
+    call h5pclose_f(plist_id, hdf5_err)
+
+  end subroutine hdf5_parallel_file_open
 
 #endif
 
@@ -1489,6 +1526,25 @@ contains
   end subroutine hdf5_read_integer
 
 !===============================================================================
+! HDF5_READ_INTEGER_1DARRAY
+!===============================================================================
+
+  subroutine hdf5_read_integer_1Darray(group, name, buffer, length)
+
+    integer(HID_T), intent(in)    :: group
+    character(*),   intent(in)    :: name
+    integer,        intent(inout) :: buffer(:)
+    integer,        intent(in)    :: length
+
+    integer(HSIZE_T) :: dims(1)
+
+    dims(1) = length
+    call h5ltread_dataset_int_f(group, name, buffer, dims, hdf5_err)
+
+  end subroutine hdf5_read_integer_1Darray
+
+
+!===============================================================================
 ! HDF5_READ_LONG
 !===============================================================================
 
@@ -1532,6 +1588,38 @@ contains
     buffer = buffer_copy(1)
 
   end subroutine hdf5_read_double
+
+!===============================================================================
+! HDF5_READ_DOUBLE_1DARRAY
+!===============================================================================
+
+  subroutine hdf5_read_double_1Darray(group, name, buffer, length)
+
+    integer(HID_T), intent(in)  :: group
+    integer,        intent(in)  :: length
+    character(*),   intent(in)  :: name
+    real(8),        intent(out) :: buffer(:)
+
+    integer(HSIZE_T) :: dims(1)
+
+    dims(1) = length
+    call h5ltread_dataset_double_f(group, name, buffer, dims, hdf5_err)
+
+  end subroutine hdf5_read_double_1Darray
+
+!===============================================================================
+! HDF5_READ_STRING
+!===============================================================================
+
+  subroutine hdf5_read_string(group, name, buffer)
+
+    integer(HID_T), intent(in)    :: group
+    character(*),   intent(in)    :: name
+    character(*),   intent(inout) :: buffer
+
+    call h5ltread_dataset_string_f(group, name, buffer, hdf5_err)
+
+  end subroutine hdf5_read_string
 
 #endif
 

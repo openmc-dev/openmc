@@ -196,13 +196,13 @@ contains
       ! Write global tallies
       call write_data(N_GLOBAL_TALLIES, "n_global_tallies")
       call write_tally_result(global_tallies, "global_tallies", &
-           length=N_GLOBAL_TALLIES)
+           n1=N_GLOBAL_TALLIES, n2=1)
 
       ! Write tallies
       if (tallies_on) then
 
         ! Indicate that tallies are on
-        call write_data(1, "tallies_present")
+        call write_data(1, "tallies_present", group="tallies")
 
         ! Write all tally results
         TALLY_RESULTS: do i = 1, n_tallies
@@ -213,14 +213,14 @@ contains
           ! Write sum and sum_sq for each bin
           call write_tally_result(t % results, "results", &
                group="tallies/tally" // to_str(i), &
-               length=size(t % results, 1) * size(t % results, 2))
+               n1=size(t % results, 1), n2=size(t % results, 2))
 
         end do TALLY_RESULTS
 
       else
 
         ! Indicate tallies are off
-        call write_data(0, "tallies_present")
+        call write_data(0, "tallies_present", group="tallies")
 
       end if
 

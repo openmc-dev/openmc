@@ -12,10 +12,7 @@ module output_interface
 
   implicit none
 
-#if MPI
-  integer :: fh_state_point ! mpi file for state point
-  integer :: fh_source      ! mpi file for source
-#endif
+  integer :: mpi_fh
 
   interface write_data
     module procedure write_double
@@ -35,7 +32,7 @@ contains
 
   subroutine file_create(filename, fh_str)
 
-    character(MAX_FILE_LEN) :: filename
+    character(*) :: filename
     character(MAX_WORD_LEN) :: fh_str
 
 #ifdef HDF5
@@ -44,7 +41,6 @@ contains
       if(master) call hdf5_file_create(trim(trim(filename) // '.h5'), &
                       hdf5_fh)
    else
-     print *,'Opening source'
      call hdf5_parallel_file_create(trim(filename) // '.h5', &
           hdf5_fh)
     endif
@@ -59,16 +55,16 @@ contains
 # endif
 #elif MPI
    if (trim(fh_str) == 'state_point') then
-     call mpi_file_create(trim(filename) // '.binary/' , fh_state_point) 
+     call mpi_file_create(trim(filename) // '.binary' , mpi_fh) 
    else
-     call mpi_file_create(trim(filename) // '.binary', fh_source)
+     call mpi_file_create(trim(filename) // '.binary', mpi_fh)
    endif
 #else
    if (trim(fh_str) == 'state_point') then
-     open(UNIT=UNIT_STATE, FILE=trim(filename) // '.binary', STATUS='replace', &
+     open(UNIT=UNIT_OUTPUT, FILE=trim(filename) // '.binary', STATUS='replace', &
           ACCESS='stream')
    else
-     open(UNIT=UNIT_SOURCE, FILE=trim(filename) // '.binary', STATUS='replace', &
+     open(UNIT=UNIT_OUTPUT, FILE=trim(filename) // '.binary', STATUS='replace', &
           ACCESS='stream')
    endif
 #endif
@@ -92,19 +88,18 @@ contains
     endif
 # else
      call hdf5_file_close(hdf5_fh)
-   endif
 # endif
 #elif MPI
    if (trim(fh_str) == 'state_point') then
-     call mpi_close_file(fh_state_point) 
+     call mpi_close_file(mpi_fh) 
    else
-     call mpi_close_file(fh_source)
+     call mpi_close_file(mpi_fh)
    endif
 #else
    if (trim(fh_str) == 'state_point') then
-     close(UNIT=UNIT_STATE)
+     close(UNIT=UNIT_OUTPUT)
    else
-     close(UNIT=UNIT_SOURCE)
+     close(UNIT=UNIT_OUTPUT)
    endif
 #endif
 
@@ -129,9 +124,9 @@ contains
     call hdf5_write_double(temp_group, name, buffer)
     if (present(group)) call hdf5_close_group()
 #elif MPI
-
+    call mpi_write_double(mpi_fh, buffer)
 #else
-
+    write(UNIT_OUTPUT) buffer
 #endif
 
   end subroutine write_double
@@ -156,9 +151,9 @@ contains
     call hdf5_write_double_1Darray(temp_group, name, buffer, length)
     if (present(group)) call hdf5_close_group()
 #elif MPI
-
+    call mpi_write_double_1Darray(mpi_fh, buffer, length)
 #else
-
+    write(UNIT_OUTPUT) buffer(1:length)
 #endif
 
   end subroutine write_double_1Darray
@@ -182,9 +177,9 @@ contains
     call hdf5_write_integer(temp_group, name, buffer)
     if (present(group)) call hdf5_close_group()
 #elif MPI
-
+    call mpi_write_integer(mpi_fh, buffer)
 #else
-
+    write(UNIT_OUTPUT) buffer
 #endif
 
   end subroutine write_integer
@@ -209,9 +204,9 @@ contains
     call hdf5_write_integer_1Darray(temp_group, name, buffer, length)
     if (present(group)) call hdf5_close_group()
 #elif MPI
-
+    call mpi_write_integer_1Darray(mpi_fh, buffer, length)
 #else
-
+    write(UNIT_OUTPUT) buffer(1:length)
 #endif
 
   end subroutine write_integer_1Darray
@@ -235,9 +230,9 @@ contains
     call hdf5_write_long(temp_group, name, buffer)
     if (present(group)) call hdf5_close_group()
 #elif MPI
-
+    call mpi_write_long(mpi_fh, buffer)
 #else
-
+    write(UNIT_OUTPUT) buffer
 #endif
 
   end subroutine write_long
@@ -253,6 +248,12 @@ contains
     character(*), intent(in)           :: name
     character(*), intent(in), optional :: group
 
+#ifndef HDF5
+# ifdef MPI
+    integer :: n
+# endif
+#endif
+
 #ifdef HDF5
     if (present(group)) then
       call hdf5_open_group(group)
@@ -262,9 +263,10 @@ contains
     call hdf5_write_string(temp_group, name, buffer)
     if (present(group)) call hdf5_close_group()
 #elif MPI
-
+    n = len(buffer)
+    call mpi_write_string(mpi_fh, buffer, n)
 #else
-
+    write(UNIT_OUTPUT) buffer
 #endif
 
   end subroutine write_string
@@ -273,18 +275,23 @@ contains
 ! WRITE_GLOBAL_TALLIES
 !===============================================================================
 
-  subroutine write_tally_result(buffer, name, group, length)
+  subroutine write_tally_result(buffer, name, group, n1, n2)
 
     character(*),      intent(in), optional :: group
     character(*),      intent(in)           :: name
-    integer,           intent(in)           :: length
-    type(TallyResult), intent(in)           :: buffer(length)
+    integer,           intent(in)           :: n1, n2
+    type(TallyResult), intent(in)           :: buffer(n1, n2)
 
+#ifdef HDF5
     integer          :: hdf5_err
     integer(HSIZE_T) :: dims(1)
     integer(HID_T)   :: dspace
     integer(HID_T)   :: dset
     type(c_ptr)      :: f_ptr
+#elif MPI
+#else
+    integer :: j,k
+#endif
 
 #ifdef HDF5
 
@@ -296,7 +303,7 @@ contains
     end if
 
     ! Set overall size of vector to write
-    dims(1) = length
+    dims(1) = n1*n2 
 
     ! Create up a dataspace for size
     call h5screate_simple_f(1, dims, dspace, hdf5_err)
@@ -318,7 +325,19 @@ contains
 
 #elif MPI
 
+    ! Write out tally buffer
+    call MPI_FILE_WRITE(mpi_fh, buffer, n1*n2, MPI_TALLYRESULT, &
+         MPI_STATUS_IGNORE, mpi_err)
+
 #else
+
+    ! Write out tally buffer
+    do k = 1, n2
+      do j = 1, n1
+        write(UNIT_OUTPUT) buffer(j,k) % sum
+        write(UNIT_OUTPUT) buffer(j,k) % sum_sq
+      end do
+    end do
 
 #endif 
    
@@ -339,6 +358,10 @@ contains
     integer          :: rank
     integer(8)       :: offset(1)
     type(c_ptr)      :: f_ptr
+#elif MPI
+    integer(MPI_OFFSET_KIND) :: offset
+    integer                  :: size_offset_kind
+    integer                  :: size_bank
 #endif
 
 #ifdef HDF5
@@ -352,7 +375,7 @@ contains
     call h5screate_simple_f(rank, dims, dspace, hdf5_err)
 
     ! Create the dataset for that dataspace
-    call h5dcreate_f(hdf5_fh, "source", hdf5_bank_t, dspace, dset, hdf5_err)
+    call h5dcreate_f(hdf5_fh, "source_bank", hdf5_bank_t, dspace, dset, hdf5_err)
 
     ! Close the dataspace
     call h5sclose_f(dspace, hdf5_err)
@@ -388,11 +411,54 @@ contains
 
 # else
 
+    ! Set size
+    dims(1) = work
+
+    ! Create dataspace
+    call h5screate_simple_f(1, dims, dspace, hdf5_err)
+
+    ! Create dataset
+    call h5dcreate_f(hdf5_fh, "source_bank", hdf5_bank_t, &
+         dspace, dset, hdf5_err)
+
+    ! Set up pointer to data
+    f_ptr = c_loc(source_bank(1))
+
+    ! Write dataset to file
+    call h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err)
+
+    ! Close all ids
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+
 # endif 
 
 #elif MPI
 
+    ! Get current offset for master 
+    if (master) call MPI_FILE_GET_POSITION(mpi_fh, offset, mpi_err)
+
+    ! Determine offset on master process and broadcast to all processors
+    call MPI_SIZEOF(offset, size_offset_kind, mpi_err)
+    select case (size_offset_kind)
+    case (4)
+      call MPI_BCAST(offset, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
+    case (8)
+      call MPI_BCAST(offset, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, mpi_err)
+    end select
+
+    ! Set the proper offset for source data on this processor
+    call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
+    offset = offset + size_bank*maxwork*rank
+
+    ! Write all source sites
+    call MPI_FILE_WRITE_AT(mpi_fh, offset, source_bank(1), work, MPI_BANK, &
+         MPI_STATUS_IGNORE, mpi_err)
+
 #else
+
+    ! Write out source sites
+    write(UNIT_OUTPUT) source_bank
 
 #endif
 

@@ -16,14 +16,11 @@ module hdf5_interface
   use hdf5
   use h5lt
   use, intrinsic :: ISO_C_BINDING
-#endif
 
   implicit none
 
-    integer(HID_T)  :: hdf5_fh
-    integer(HID_T)  :: temp_group 
-
-#ifdef HDF5
+  integer(HID_T)  :: hdf5_fh
+  integer(HID_T)  :: temp_group 
 
 contains
 

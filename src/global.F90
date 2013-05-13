@@ -241,8 +241,6 @@ module global
   integer(HID_T) :: hdf5_tallyresult_t ! Compound type for TallyResult
   integer(HID_T) :: hdf5_bank_t        ! Compound type for Bank
   integer(HID_T) :: hdf5_integer8_t    ! type for integer(8)
-  integer(HID_T) :: hdf5_state_point   ! file id
-  integer(HID_T) :: hdf5_plist         ! parallel property list
   integer        :: hdf5_err           ! error flag 
 #endif
 

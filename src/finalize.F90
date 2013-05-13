@@ -11,10 +11,6 @@ module finalize
   use mpi
 #endif
 
-#ifdef HDF5
-  use hdf5_interface, only: hdf5_finalize
-#endif
-
   implicit none
 
 contains
@@ -56,8 +52,12 @@ contains
     call free_memory()
 
 #ifdef HDF5
-    ! Close HDF5 interface and release memory
-    call hdf5_finalize()
+    ! Release compound datatypes
+    call h5tclose_f(hdf5_tallyresult_t, hdf5_err)
+    call h5tclose_f(hdf5_bank_t, hdf5_err)
+
+    ! Close FORTRAN interface.
+    call h5close_f(hdf5_err)
 #endif
 
 #ifdef MPI

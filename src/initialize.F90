@@ -17,7 +17,7 @@ module initialize
   use source,           only: initialize_source
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
-  use tally_header,     only: TallyObject
+  use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
 
 #ifdef MPI
@@ -25,8 +25,7 @@ module initialize
 #endif
 
 #ifdef HDF5
-  use hdf5_interface,   only: hdf5_initialize, hdf5_write_summary, &
-                              hdf5_load_state_point
+  use hdf5_interface
 #endif
 
   implicit none
@@ -238,6 +237,52 @@ contains
     call MPI_TYPE_COMMIT(MPI_TALLYRESULT, mpi_err)
 
   end subroutine initialize_mpi
+#endif
+
+#ifdef HDF5
+
+!===============================================================================
+! HDF5_INITIALIZE
+!===============================================================================
+
+  subroutine hdf5_initialize()
+
+    type(TallyResult), target :: tmp(2)          ! temporary TallyResult
+    type(Bank),        target :: tmpb(2)         ! temporary Bank
+    integer(HID_T)            :: coordinates_t   ! HDF5 type for 3 reals
+    integer(HSIZE_T)          :: dims(1) = (/3/) ! size of coordinates
+
+    ! Initialize FORTRAN interface.
+    call h5open_f(hdf5_err)
+
+    ! Create the compound datatype for TallyResult
+    call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(2))), hdf5_tallyresult_t, hdf5_err)
+    call h5tinsert_f(hdf5_tallyresult_t, "sum", h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(1)%sum)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_tallyresult_t, "sum_sq", h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(1)%sum_sq)), H5T_NATIVE_DOUBLE, hdf5_err)
+
+    ! Create compound type for xyz and uvw
+    call h5tarray_create_f(H5T_NATIVE_DOUBLE, 1, dims, coordinates_t, hdf5_err)
+
+    ! Create the compound datatype for Bank
+    call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(2))), hdf5_bank_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "wgt", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%wgt)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "xyz", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%xyz)), coordinates_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "uvw", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%uvw)), coordinates_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "E", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%E)), H5T_NATIVE_DOUBLE, hdf5_err)
+
+    ! Determine type for integer(8)
+    hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)
+
+  end subroutine hdf5_initialize
+
 #endif
 
 !===============================================================================

@@ -233,6 +233,12 @@ contains
     start = 0_8
     call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
          MPI_COMM_WORLD, mpi_err)
+
+    ! While we would expect the value of start on rank 0 to be 0, the MPI
+    ! standard says that the receive buffer on rank 0 is undefined and not
+    ! significant
+    if (rank == 0) start = 0_8
+
     finish = start + n_bank
     total = finish
     call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
@@ -357,32 +363,34 @@ contains
     index_local = 1
     n_request = 0
 
-    ! Determine the index of the processor which has the first part of the
-    ! source_bank for the local processor
-    neighbor = start / maxwork
+    if (start < n_particles) then
+      ! Determine the index of the processor which has the first part of the
+      ! source_bank for the local processor
+      neighbor = start / maxwork
 
-    SEND_SITES: do while (start < finish)
-      ! Determine the number of sites to send
-      n = min((neighbor + 1)*maxwork, finish) - start
+      SEND_SITES: do while (start < finish)
+        ! Determine the number of sites to send
+        n = min((neighbor + 1)*maxwork, finish) - start
 
-      ! Initiate an asynchronous send of source sites to the neighboring
-      ! process
-      if (neighbor /= rank) then
-        n_request = n_request + 1
-        call MPI_ISEND(temp_sites(index_local), n, MPI_BANK, neighbor, &
-             rank, MPI_COMM_WORLD, request(n_request), mpi_err)
-      end if
+        ! Initiate an asynchronous send of source sites to the neighboring
+        ! process
+        if (neighbor /= rank) then
+          n_request = n_request + 1
+          call MPI_ISEND(temp_sites(index_local), n, MPI_BANK, neighbor, &
+               rank, MPI_COMM_WORLD, request(n_request), mpi_err)
+        end if
 
-      ! Increment all indices
-      start       = start       + n
-      index_local = index_local + n
-      neighbor    = neighbor    + 1
+        ! Increment all indices
+        start       = start       + n
+        index_local = index_local + n
+        neighbor    = neighbor    + 1
 
-      ! Check for sites out of bounds -- this only happens in the rare
-      ! circumstance that a processor close to the end has so many sites that
-      ! it would exceed the bank on the last processor
-      if (neighbor > n_procs - 1) exit
-    end do SEND_SITES
+        ! Check for sites out of bounds -- this only happens in the rare
+        ! circumstance that a processor close to the end has so many sites that
+        ! it would exceed the bank on the last processor
+        if (neighbor > n_procs - 1) exit
+      end do SEND_SITES
+    end if
 
     ! ==========================================================================
     ! RECEIVE BANK SITES FROM NEIGHBORS OR TEMPORARY BANK

@@ -22,10 +22,6 @@ module eigenvalue
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
                           reset_result
 
-#ifdef HDF5
-  use hdf5_interface, only: hdf5_write_state_point
-#endif
-
   private
   public :: run_eigenvalue
 
@@ -183,11 +179,8 @@ contains
       if (master) call calculate_combined_keff()
 
       ! Create state point file
-!#ifdef HDF5
-!     call hdf5_write_state_point()
-!#else
       call write_state_point()
-!#endif
+
     end if
 
     if (master .and. current_batch == n_batches) then

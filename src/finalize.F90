@@ -11,6 +11,10 @@ module finalize
   use mpi
 #endif
 
+#ifdef HDF5
+  use hdf5_interface,  only: hdf5_err
+#endif
+
   implicit none
 
 contains

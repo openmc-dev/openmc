@@ -26,6 +26,7 @@ module initialize
 
 #ifdef HDF5
   use hdf5_interface
+  use hdf5_summary,     only: hdf5_write_summary
 #endif
 
   implicit none

@@ -173,17 +173,19 @@ global.o: source_header.o
 global.o: tally_header.o
 global.o: timer_header.o
 
-hdf5_interface.o: ace_header.o
-hdf5_interface.o: bank_header.o
 hdf5_interface.o: constants.o
-hdf5_interface.o: endf.o
-hdf5_interface.o: error.o
-hdf5_interface.o: geometry_header.o
-hdf5_interface.o: global.o
-hdf5_interface.o: material_header.o
-hdf5_interface.o: output.o
 hdf5_interface.o: string.o
-hdf5_interface.o: tally_header.o
+
+hdf5_summary.o: ace_header.o
+hdf5_summary.o: constants.o
+hdf5_summary.o: endf.o
+hdf5_summary.o: geometry_header.o
+hdf5_summary.o: global.o
+hdf5_summary.o: hdf5_interface.o
+hdf5_summary.o: material_header.o
+hdf5_summary.o: output.o
+hdf5_summary.o: string.o
+hdf5_summary.o: tally_header.o
 
 initialize.o: ace.o
 initialize.o: bank_header.o

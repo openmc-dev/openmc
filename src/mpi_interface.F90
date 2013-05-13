@@ -14,10 +14,10 @@ module mpi_interface
 contains
 
 !===============================================================================
-! MPI_FILE_CREATE
+! MPI_CREATE_FILE
 !===============================================================================
 
-  subroutine mpi_file_create(filename, fh)
+  subroutine mpi_create_file(filename, fh)
 
     character(*) :: filename
     integer, intent(in)     :: fh
@@ -26,7 +26,22 @@ contains
     call MPI_FILE_OPEN(MPI_COMM_WORLD, filename, MPI_MODE_CREATE + &
          MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err) 
 
-  end subroutine mpi_file_create
+  end subroutine mpi_create_file
+
+!===============================================================================
+! MPI_OPEN_FILE
+!===============================================================================
+
+  subroutine mpi_open_file(filename, fh)
+
+    character(*) :: filename
+    integer, intent(in)     :: fh
+
+    ! Create the file
+    call MPI_FILE_OPEN(MPI_COMM_WORLD, filename, &
+         MPI_MODE_RDONLY, MPI_INFO_NULL, fh, mpi_err) 
+
+  end subroutine mpi_open_file
 
 !===============================================================================
 ! MPI_CLOSE_FILE
@@ -126,5 +141,93 @@ contains
          MPI_STATUS_IGNORE, mpi_err)
 
   end subroutine mpi_write_string
+
+!===============================================================================
+! MPI_READ_INTEGER
+!===============================================================================
+
+  subroutine mpi_read_integer(fh, buffer)
+
+    integer, intent(in) :: fh
+    integer, intent(inout) :: buffer
+
+    call MPI_FILE_READ(fh, buffer, 1, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err) 
+
+  end subroutine mpi_read_integer
+
+!===============================================================================
+! MPI_READ_INTEGER_1DARRAY
+!===============================================================================
+
+  subroutine mpi_read_integer_1Darray(fh, buffer, length)
+
+    integer, intent(in) :: fh
+    integer, intent(in) :: length
+    integer, intent(inout) :: buffer(:)
+
+    call MPI_FILE_READ(fh, buffer, length, MPI_INTEGER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+  end subroutine mpi_read_integer_1Darray
+
+!===============================================================================
+! MPI_READ_LONG
+!===============================================================================
+
+  subroutine mpi_read_long(fh, buffer)
+
+    integer,    intent(in) :: fh
+    integer(8), intent(inout) :: buffer
+
+    call MPI_FILE_READ(fh, buffer, 1, MPI_INTEGER8, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+  end subroutine mpi_read_long
+
+!===============================================================================
+! MPI_READ_DOUBLE
+!===============================================================================
+
+  subroutine mpi_read_double(fh, buffer)
+
+    integer, intent(in) :: fh
+    real(8), intent(inout) :: buffer
+
+    call MPI_FILE_READ(fh, buffer, 1, MPI_REAL8, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+  end subroutine mpi_read_double
+
+!===============================================================================
+! MPI_READ_DOUBLE_1DARRAY
+!===============================================================================
+
+  subroutine mpi_read_double_1Darray(fh, buffer, length)
+
+    integer, intent(in) :: fh
+    integer, intent(in) :: length
+    real(8), intent(inout) :: buffer(:)
+
+    call MPI_FILE_READ(fh, buffer, length, MPI_REAL8, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+  end subroutine mpi_read_double_1Darray
+
+!===============================================================================
+! MPI_READ_STRING
+!===============================================================================
+
+  subroutine mpi_read_string(fh, buffer, length)
+
+    character(*), intent(inout) :: buffer
+    integer,      intent(in) :: fh
+    integer,      intent(in) :: length
+
+    call MPI_FILE_READ(fh, buffer, length, MPI_CHARACTER, &
+         MPI_STATUS_IGNORE, mpi_err)
+
+  end subroutine mpi_read_string
+
 #endif
 end module mpi_interface

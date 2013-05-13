@@ -46,7 +46,7 @@ contains
     call write_message(1)
 
     ! Create statepoint file 
-    call file_create(filename, 'serial', UNIT_STATE)
+    call file_create(filename, 'serial')
 
     if (master) then
 
@@ -251,7 +251,7 @@ contains
       if (source_separate) then
 
         ! Close statepoint file 
-        call file_close('serial', UNIT_STATE)
+        call file_close('serial')
 
         ! Set filename for source
         filename = trim(path_output) // 'source.' // &
@@ -262,7 +262,7 @@ contains
         call write_message(1)
 
         ! Create statepoint file 
-        call file_create(filename, 'parallel', UNIT_SOURCE)
+        call file_create(filename, 'parallel')
 
       end if
 
@@ -271,15 +271,15 @@ contains
 
       ! Close file
       if (source_separate) then
-        call file_close('parallel', UNIT_SOURCE)
+        call file_close('parallel')
       else
-        call file_close('serial', UNIT_STATE)
+        call file_close('serial')
       end if
 
     else
 
       ! Close file if not in eigenvalue mode or no source writing
-      call file_close('serial', UNIT_STATE)
+      call file_close('serial')
 
     end if
 
@@ -306,7 +306,7 @@ contains
     call write_message(1)
 
     ! Open file for reading
-    call file_open(path_state_point, 'serial', UNIT_STATE)
+    call file_open(path_state_point, 'serial')
 
     ! Read revision number for state point file and make sure it matches with
     ! current version
@@ -526,7 +526,7 @@ contains
       if (source_separate) then
 
         ! Close statepoint file 
-        call file_close('serial', UNIT_STATE)
+        call file_close('serial')
 
         ! Set filename for source
         filename = trim(path_output) // 'source.' // &
@@ -537,7 +537,7 @@ contains
         call write_message(1)
 
         ! Create statepoint file
-        call file_open(filename, 'parallel', UNIT_SOURCE)
+        call file_open(filename, 'parallel')
 
       end if
 
@@ -546,15 +546,15 @@ contains
 
       ! Close file
       if (source_separate) then
-        call file_close('parallel', UNIT_SOURCE)
+        call file_close('parallel')
       else
-        call file_close('serial', UNIT_STATE)
+        call file_close('serial')
       end if
 
     else
 
       ! Close file if not in eigenvalue mode
-      call file_close('serial', UNIT_STATE)
+      call file_close('serial')
 
     end if
 

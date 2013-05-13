@@ -32,8 +32,6 @@ contains
   subroutine write_state_point()
 
     character(MAX_FILE_LEN) :: filename
-    character(MAX_WORD_LEN) :: fh_state_point = "state_point"
-    character(MAX_WORD_LEN) :: fh_source = "source"
     integer                 :: i
     integer                 :: j
     integer, allocatable    :: temp_array(:)
@@ -48,7 +46,7 @@ contains
     call write_message(1)
 
     ! Create statepoint file 
-    call file_create(filename, fh_state_point)
+    call file_create(filename, 'serial', UNIT_STATE)
 
     if (master) then
 
@@ -253,7 +251,7 @@ contains
       if (source_separate) then
 
         ! Close statepoint file 
-        call file_close(fh_state_point)
+        call file_close('serial', UNIT_STATE)
 
         ! Set filename for source
         filename = trim(path_output) // 'source.' // &
@@ -264,7 +262,7 @@ contains
         call write_message(1)
 
         ! Create statepoint file 
-        call file_create(filename, fh_source)
+        call file_create(filename, 'parallel', UNIT_SOURCE)
 
       end if
 
@@ -273,15 +271,15 @@ contains
 
       ! Close file
       if (source_separate) then
-        call file_close(fh_source)
+        call file_close('parallel', UNIT_SOURCE)
       else
-        call file_close(fh_state_point)
+        call file_close('serial', UNIT_STATE)
       end if
 
     else
 
       ! Close file if not in eigenvalue mode or no source writing
-      call file_close(fh_state_point)
+      call file_close('serial', UNIT_STATE)
 
     end if
 
@@ -295,8 +293,6 @@ contains
 
     character(MAX_FILE_LEN) :: filename
     character(MAX_FILE_LEN) :: path_temp
-    character(MAX_WORD_LEN) :: fh_state_point = "state_point"
-    character(MAX_WORD_LEN) :: fh_source = "source"
     character(19)           :: current_time
     integer                 :: i
     integer                 :: j
@@ -310,7 +306,7 @@ contains
     call write_message(1)
 
     ! Open file for reading
-    call file_open(path_state_point, fh_state_point)
+    call file_open(path_state_point, 'serial', UNIT_STATE)
 
     ! Read revision number for state point file and make sure it matches with
     ! current version
@@ -530,7 +526,7 @@ contains
       if (source_separate) then
 
         ! Close statepoint file 
-        call file_close(fh_state_point)
+        call file_close('serial', UNIT_STATE)
 
         ! Set filename for source
         filename = trim(path_output) // 'source.' // &
@@ -541,7 +537,7 @@ contains
         call write_message(1)
 
         ! Create statepoint file
-        call file_open(filename, fh_source)
+        call file_open(filename, 'parallel', UNIT_SOURCE)
 
       end if
 
@@ -550,15 +546,15 @@ contains
 
       ! Close file
       if (source_separate) then
-        call file_close(fh_source)
+        call file_close('parallel', UNIT_SOURCE)
       else
-        call file_close(fh_state_point)
+        call file_close('serial', UNIT_STATE)
       end if
 
     else
 
       ! Close file if not in eigenvalue mode
-      call file_close(fh_state_point)
+      call file_close('serial', UNIT_STATE)
 
     end if
 

@@ -17,6 +17,24 @@ module hdf5_interface
   integer(HID_T)  :: temp_group 
   integer         :: hdf5_err
 
+  interface hdf5_write_data
+    module procedure hdf5_write_double
+    module procedure hdf5_write_double_1Darray
+    module procedure hdf5_write_integer
+    module procedure hdf5_write_integer_1Darray
+    module procedure hdf5_write_long
+    module procedure hdf5_write_string
+  end interface hdf5_write_data
+
+  interface hdf5_read_data
+    module procedure hdf5_read_double
+    module procedure hdf5_read_double_1Darray
+    module procedure hdf5_read_integer
+    module procedure hdf5_read_integer_1Darray
+    module procedure hdf5_read_long
+    module procedure hdf5_read_string
+  end interface hdf5_read_data
+
 contains
 
 !===============================================================================

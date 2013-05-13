@@ -38,43 +38,32 @@ contains
 ! FILE_CREATE
 !===============================================================================
 
-  subroutine file_create(filename, fh_str)
+  subroutine file_create(filename, fh_str, unit_)
 
     character(*) :: filename
-    character(MAX_WORD_LEN) :: fh_str
+    character(*) :: fh_str
+    integer, optional :: unit_
+
+#ifdef HDF5
+  filename = trim(filename) // '.h5'
+#else
+  filename = trim(filename) // '.binary'
+#endif
 
 #ifdef HDF5
 # ifdef MPI
-    if (trim(fh_str) == 'state_point') then
-      if(master) call hdf5_file_create(trim(trim(filename) // '.h5'), &
-                      hdf5_fh)
-   else
-     call hdf5_parallel_file_create(trim(filename) // '.h5', &
-          hdf5_fh)
+    if (trim(fh_str) == 'serial') then
+      if(master) call hdf5_file_create(filename, hdf5_fh)
+    else
+      call hdf5_parallel_file_create(filename, hdf5_fh)
     endif
 # else
-   if (trim(fh_str) == 'state_point') then
-     call hdf5_file_create(trim(filename) // '.h5', &
-          hdf5_fh)
-   else
-     call hdf5_file_create(trim(filename) // '.h5', &
-          hdf5_fh)
-   endif
+    call hdf5_file_create(filename, hdf5_fh)
 # endif
 #elif MPI
-   if (trim(fh_str) == 'state_point') then
-     call mpi_file_create(trim(filename) // '.binary' , mpi_fh) 
-   else
-     call mpi_file_create(trim(filename) // '.binary', mpi_fh)
-   endif
+    call mpi_file_create(filename, mpi_fh)
 #else
-   if (trim(fh_str) == 'state_point') then
-     open(UNIT=UNIT_OUTPUT, FILE=trim(filename) // '.binary', STATUS='replace', &
-          ACCESS='stream')
-   else
-     open(UNIT=UNIT_OUTPUT, FILE=trim(filename) // '.binary', STATUS='replace', &
-          ACCESS='stream')
-   endif
+    open(UNIT=unit_, FILE=filename, STATUS='replace', ACCESS='stream')
 #endif
 
   end subroutine file_create
@@ -83,43 +72,32 @@ contains
 ! FILE_OPEN
 !===============================================================================
 
-  subroutine file_open(filename, fh_str)
+  subroutine file_open(filename, fh_str, unit_)
 
     character(*) :: filename
-    character(MAX_WORD_LEN) :: fh_str
+    character(*) :: fh_str
+    integer, optional :: unit_
+
+#ifdef HDF5
+  filename = trim(filename) // '.h5'
+#else
+  filename = trim(filename) // '.binary'
+#endif
 
 #ifdef HDF5
 # ifdef MPI
-    if (trim(fh_str) == 'state_point') then
-      call hdf5_file_open(trim(trim(filename) // '.h5'), &
-           hdf5_fh)
-   else
-     call hdf5_parallel_file_open(trim(filename) // '.h5', &
-          hdf5_fh)
+    if (trim(fh_str) == 'serial') then
+      call hdf5_file_open(filename, hdf5_fh)
+    else
+      call hdf5_parallel_file_open(filename, hdf5_fh)
     endif
 # else
-   if (trim(fh_str) == 'state_point') then
-     call hdf5_file_open(trim(filename) // '.h5', &
-          hdf5_fh)
-   else
-     call hdf5_file_open(trim(filename) // '.h5', &
-          hdf5_fh)
-   endif
+    call hdf5_file_open(filename, hdf5_fh)
 # endif
 #elif MPI
-   if (trim(fh_str) == 'state_point') then
-     call mpi_file_open(trim(filename) // '.binary' , mpi_fh) 
-   else
-     call mpi_file_open(trim(filename) // '.binary', mpi_fh)
-   endif
+    call mpi_file_open(filename, mpi_fh)
 #else
-   if (trim(fh_str) == 'state_point') then
-     open(UNIT=UNIT_OUTPUT, FILE=trim(filename) // '.binary', STATUS='old', &
-          ACCESS='stream')
-   else
-     open(UNIT=UNIT_OUTPUT, FILE=trim(filename) // '.binary', STATUS='old', &
-          ACCESS='stream')
-   endif
+    open(UNIT=unit_, FILE=filename, STATUS='old', ACCESS='stream')
 #endif
 
   end subroutine file_open
@@ -128,13 +106,14 @@ contains
 ! FILE_CLOSE
 !===============================================================================
 
-  subroutine file_close(fh_str)
+  subroutine file_close(fh_str, unit_)
 
-    character(MAX_WORD_LEN) :: fh_str
+    character(*) :: fh_str
+    integer, optional :: unit_
 
 #ifdef HDF5
 # ifdef MPI
-    if (trim(fh_str) == 'state_point') then
+    if (trim(fh_str) == 'serial') then
      if(master) call hdf5_file_close(hdf5_fh)
    else
      call hdf5_file_close(hdf5_fh)
@@ -143,17 +122,9 @@ contains
      call hdf5_file_close(hdf5_fh)
 # endif
 #elif MPI
-   if (trim(fh_str) == 'state_point') then
-     call mpi_close_file(mpi_fh) 
-   else
      call mpi_close_file(mpi_fh)
-   endif
 #else
-   if (trim(fh_str) == 'state_point') then
-     close(UNIT=UNIT_OUTPUT)
-   else
-     close(UNIT=UNIT_OUTPUT)
-   endif
+     close(UNIT=unit_)
 #endif
 
   end subroutine file_close
@@ -574,7 +545,6 @@ contains
 #ifdef HDF5
     integer          :: hdf5_err
     integer(HSIZE_T) :: dims(1)
-    integer(HID_T)   :: dspace
     integer(HID_T)   :: dset
     type(c_ptr)      :: f_ptr
 #elif MPI

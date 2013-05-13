@@ -38,11 +38,10 @@ contains
 ! FILE_CREATE
 !===============================================================================
 
-  subroutine file_create(filename, fh_str, unit_)
+  subroutine file_create(filename, fh_str)
 
     character(*) :: filename
     character(*) :: fh_str
-    integer, optional :: unit_
 
 #ifdef HDF5
   filename = trim(filename) // '.h5'
@@ -61,9 +60,9 @@ contains
     call hdf5_file_create(filename, hdf5_fh)
 # endif
 #elif MPI
-    call mpi_file_create(filename, mpi_fh)
+    call mpi_create_file(filename, mpi_fh)
 #else
-    open(UNIT=unit_, FILE=filename, STATUS='replace', ACCESS='stream')
+    open(UNIT=UNIT_OUTPUT, FILE=filename, STATUS='replace', ACCESS='stream')
 #endif
 
   end subroutine file_create
@@ -72,11 +71,10 @@ contains
 ! FILE_OPEN
 !===============================================================================
 
-  subroutine file_open(filename, fh_str, unit_)
+  subroutine file_open(filename, fh_str)
 
     character(*) :: filename
     character(*) :: fh_str
-    integer, optional :: unit_
 
 #ifdef HDF5
   filename = trim(filename) // '.h5'
@@ -95,9 +93,9 @@ contains
     call hdf5_file_open(filename, hdf5_fh)
 # endif
 #elif MPI
-    call mpi_file_open(filename, mpi_fh)
+    call mpi_open_file(filename, mpi_fh)
 #else
-    open(UNIT=unit_, FILE=filename, STATUS='old', ACCESS='stream')
+    open(UNIT=UNIT_OUTPUT, FILE=filename, STATUS='old', ACCESS='stream')
 #endif
 
   end subroutine file_open
@@ -106,10 +104,9 @@ contains
 ! FILE_CLOSE
 !===============================================================================
 
-  subroutine file_close(fh_str, unit_)
+  subroutine file_close(fh_str)
 
     character(*) :: fh_str
-    integer, optional :: unit_
 
 #ifdef HDF5
 # ifdef MPI
@@ -124,7 +121,7 @@ contains
 #elif MPI
      call mpi_close_file(mpi_fh)
 #else
-     close(UNIT=unit_)
+     close(UNIT=UNIT_OUTPUT)
 #endif
 
   end subroutine file_close
@@ -540,7 +537,7 @@ contains
     character(*),      intent(in), optional :: group
     character(*),      intent(in)           :: name
     integer,           intent(in)           :: n1, n2
-    type(TallyResult), intent(in)           :: buffer(n1, n2)
+    type(TallyResult), intent(inout)        :: buffer(n1, n2)
 
 #ifdef HDF5
     integer          :: hdf5_err
@@ -785,7 +782,7 @@ contains
     dims(1) = work
 
     ! Open dataset
-    call h5dcreate_f(hdf5_fh, "source_bank", dset, hdf5_err)
+    call h5dopen_f(hdf5_fh, "source_bank", dset, hdf5_err)
 
     ! Set up pointer to data
     f_ptr = c_loc(source_bank(1))

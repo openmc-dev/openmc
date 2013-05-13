@@ -386,7 +386,7 @@ contains
     else
       temp_group = hdf5_fh
     endif
-    call hdf5_write_long(temp_group, name, buffer)
+    call hdf5_write_long(temp_group, name, buffer, hdf5_integer8_t)
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_write_long(mpi_fh, buffer)
@@ -412,7 +412,7 @@ contains
     else
       temp_group = hdf5_fh
     endif
-    call hdf5_read_long(temp_group, name, buffer)
+    call hdf5_read_long(temp_group, name, buffer, hdf5_integer8_t)
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_read_long(mpi_fh, buffer)

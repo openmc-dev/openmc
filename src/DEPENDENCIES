@@ -173,9 +173,6 @@ global.o: source_header.o
 global.o: tally_header.o
 global.o: timer_header.o
 
-hdf5_interface.o: constants.o
-hdf5_interface.o: string.o
-
 hdf5_summary.o: ace_header.o
 hdf5_summary.o: constants.o
 hdf5_summary.o: endf.o

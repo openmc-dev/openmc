@@ -143,6 +143,9 @@ contains
 
   subroutine initialize_generation()
 
+    ! set overall generation number
+    overall_gen = gen_per_batch*(current_batch - 1) + current_gen
+
     ! Reset number of fission bank sites
     n_bank = 0
 

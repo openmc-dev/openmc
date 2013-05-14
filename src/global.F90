@@ -156,7 +156,8 @@ module global
   integer    :: n_active          ! # of active batches
   integer    :: gen_per_batch = 1 ! # of generations per batch
   integer    :: current_batch = 0 ! current batch
-  integer    :: current_gen   = 0 ! current generation
+  integer    :: current_gen   = 0 ! current generation within a batch
+  integer    :: overall_gen   = 0 ! overall generation in the run
 
   ! External source
   type(ExtSource), target :: external_source
@@ -182,7 +183,7 @@ module global
 
   ! Shannon entropy
   logical :: entropy_on = .false.
-  real(8), allocatable :: entropy(:)         ! shannon entropy at each batch
+  real(8), allocatable :: entropy(:)         ! shannon entropy at each generation
   real(8), allocatable :: entropy_p(:,:,:,:) ! % of source sites in each cell
   type(StructuredMesh), pointer :: entropy_mesh
 

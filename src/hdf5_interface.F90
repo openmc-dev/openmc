@@ -2,7 +2,6 @@ module hdf5_interface
 
 #ifdef HDF5
 
-  use constants
   use hdf5
   use h5lt
   use, intrinsic :: ISO_C_BINDING
@@ -43,7 +42,7 @@ contains
 
   subroutine hdf5_file_create(filename, file_id)
 
-    character(MAX_FILE_LEN) :: filename
+    character(*) :: filename
     integer(HID_T)          :: file_id
 
     ! Create the file
@@ -57,7 +56,7 @@ contains
 
   subroutine hdf5_file_open(filename, file_id, mode)
 
-    character(MAX_FILE_LEN) :: filename
+    character(*) :: filename
     character(*)            :: mode
     integer(HID_T)          :: file_id
     integer                 :: open_mode
@@ -94,7 +93,7 @@ contains
 
   subroutine hdf5_parallel_file_create(filename, file_id)
 
-    character(MAX_FILE_LEN) :: filename
+    character(*) :: filename
     integer(HID_T)          :: file_id
     integer(HID_T)          :: plist_id
 
@@ -117,7 +116,7 @@ contains
 
   subroutine hdf5_parallel_file_open(filename, file_id, mode)
 
-    character(MAX_FILE_LEN) :: filename
+    character(*) :: filename
     character(*)            :: mode
     integer(HID_T)          :: file_id
     integer(HID_T)          :: plist_id

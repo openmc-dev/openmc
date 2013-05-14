@@ -241,13 +241,7 @@ contains
     ! Check for eigenvalue calculation
     if (run_mode == MODE_EIGENVALUE .and. source_write) then
 
-      ! Change file handles if source is separately written
-#ifdef HDF5
-# ifdef MPI
-      source_separate = .true.
-# endif
-#endif
-
+      ! Check for writing source out separately
       if (source_separate) then
 
         ! Close statepoint file 
@@ -264,17 +258,24 @@ contains
         ! Create statepoint file 
         call file_create(filename, 'parallel')
 
+#ifdef HDF5
+# ifdef MPI
+      else
+        ! Close HDF5 serial file and reopen in parallel
+        call file_close('serial')
+        filename = trim(path_output) // 'statepoint.' // &
+                   trim(to_str(current_batch))
+        call file_open(filename, 'parallel', 'rw') 
+# endif
+#endif
+
       end if
 
       ! Write out source
       call write_source_bank()
 
-      ! Close file
-      if (source_separate) then
-        call file_close('parallel')
-      else
-        call file_close('serial')
-      end if
+      ! Close file, all files in parallel mode
+      call file_close('parallel') ! even if no MPI, this will work for HDF5
 
     else
 
@@ -306,7 +307,7 @@ contains
     call write_message(1)
 
     ! Open file for reading
-    call file_open(path_state_point, 'serial')
+    call file_open(path_state_point, 'parallel', 'r')
 
     ! Read revision number for state point file and make sure it matches with
     ! current version
@@ -516,17 +517,11 @@ contains
     ! Read source if in eigenvalue mode 
     if (run_mode == MODE_EIGENVALUE .and. run_mode /= MODE_TALLIES) then
 
-      ! Change file handles if source is separately written
-#ifdef HDF5
-# ifdef MPI
-      source_separate = .true.
-# endif
-#endif
-
+      ! Check if source was written out separately
       if (source_separate) then
 
         ! Close statepoint file 
-        call file_close('serial')
+        call file_close('parallel')
 
         ! Set filename for source
         filename = trim(path_output) // 'source.' // &
@@ -537,7 +532,7 @@ contains
         call write_message(1)
 
         ! Create statepoint file
-        call file_open(filename, 'parallel')
+        call file_open(filename, 'parallel', 'r')
 
       end if
 
@@ -548,13 +543,13 @@ contains
       if (source_separate) then
         call file_close('parallel')
       else
-        call file_close('serial')
+        call file_close('parallel')
       end if
 
     else
 
       ! Close file if not in eigenvalue mode
-      call file_close('serial')
+      call file_close('parallel')
 
     end if
 

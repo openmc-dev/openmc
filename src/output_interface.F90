@@ -71,10 +71,11 @@ contains
 ! FILE_OPEN
 !===============================================================================
 
-  subroutine file_open(filename, fh_str)
+  subroutine file_open(filename, fh_str, mode)
 
     character(*) :: filename
     character(*) :: fh_str
+    character(*) :: mode
 
 #ifdef HDF5
   filename = trim(filename) // '.h5'
@@ -85,12 +86,12 @@ contains
 #ifdef HDF5
 # ifdef MPI
     if (trim(fh_str) == 'serial') then
-      call hdf5_file_open(filename, hdf5_fh)
+      if (master) call hdf5_file_open(filename, hdf5_fh, mode)
     else
-      call hdf5_parallel_file_open(filename, hdf5_fh)
+      call hdf5_parallel_file_open(filename, hdf5_fh, mode)
     endif
 # else
-    call hdf5_file_open(filename, hdf5_fh)
+    call hdf5_file_open(filename, hdf5_fh, mode)
 # endif
 #elif MPI
     call mpi_open_file(filename, mpi_fh)

@@ -4,6 +4,21 @@
 Publications
 ============
 
+- Paul K. Romano, Bryan R. Herman, Nicholas E. Horelik, Benoit Forget, Kord
+  Smith, and Andrew R. Siegel, "Progress and Status of the OpenMC Monte Carlo
+  Code," *Proc. Int. Conf. Mathematics and Computational Methods Applied to
+  Nuclear Science and Engineering*, Sun Valley, Idaho, May 5--9 (2013).
+
+- Nicholas Horelik, Bryan Herman, Benoit Forget, and Kord Smith, "Benchmark for
+  Evaluation and Validation of Reactor Simulations,"
+  *Proc. Int. Conf. Mathematics and Computational Methods Applied to Nuclear
+  Science and Engineering*, Sun Valley, Idaho, May 5--9 (2013).
+
+- Adam G. Nelson and William R. Martin, "Improved Convergence of Monte Carlo
+  Generated Multi-Group Scattering Moments," *Proc. Int. Conf. Mathematics and
+  Computational Methods Applied to Nuclear Science and Engineering*, Sun Valley,
+  Idaho, May 5--9 (2013).
+
 - Paul K. Romano and Benoit Forget, "The OpenMC Monte Carlo Particle Transport
   Code," *Ann. Nucl. Energy*, **51**, 274--281
   (2013). `<http://dx.doi.org/10.1016/j.anucene.2012.06.040>`_

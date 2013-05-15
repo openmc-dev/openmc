@@ -7,7 +7,7 @@ module tally
   use math,             only: t_percentile, calc_pn
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
                               get_mesh_indices, mesh_indices_to_bin, &
-                              mesh_intersects
+                              mesh_intersects_2d, mesh_intersects_3d
   use mesh_header,      only: StructuredMesh
   use output,           only: header
   use particle_header,  only: LocalCoord
@@ -1002,7 +1002,11 @@ contains
     ! Check if start or end is in mesh -- if not, check if track still
     ! intersects with mesh
     if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-      if (.not. mesh_intersects(m, xyz0, xyz1)) return
+      if (m % n_dimension == 2) then
+        if (.not. mesh_intersects_2d(m, xyz0, xyz1)) return
+      else
+        if (.not. mesh_intersects_3d(m, xyz0, xyz1)) return
+      end if
     end if
 
     ! Reset starting and ending location
@@ -1414,8 +1418,10 @@ contains
       ! Check to if start or end is in mesh -- if not, check if track still
       ! intersects with mesh
       if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-        if (.not. mesh_intersects(m, xyz0, xyz1)) then
-          cycle
+        if (m % n_dimension == 2) then
+          if (.not. mesh_intersects_2d(m, xyz0, xyz1)) cycle
+        else
+          if (.not. mesh_intersects_3d(m, xyz0, xyz1)) cycle
         end if
       end if
 

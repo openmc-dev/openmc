@@ -231,7 +231,7 @@ contains
     integer(HSIZE_T) :: dims(2)
 
     rank = 2
-    dims(2) = length(2)
+    dims = length
 
     call h5ltmake_dataset_int_f(group, name, rank, dims, &
          buffer, hdf5_err)
@@ -253,7 +253,7 @@ contains
     integer(HSIZE_T) :: dims(3)
 
     rank = 3
-    dims(3) = length(3)
+    dims = length
 
     call h5ltmake_dataset_int_f(group, name, rank, dims, &
          buffer, hdf5_err)
@@ -346,7 +346,7 @@ contains
     integer(HSIZE_T) :: dims(2)
 
     rank = 2
-    dims(2) = length(2)
+    dims = length
 
     call h5ltmake_dataset_double_f(group, name, rank, dims, &
          buffer, hdf5_err)
@@ -368,7 +368,7 @@ contains
     integer(HSIZE_T) :: dims(3)
 
     rank = 3
-    dims(3) = length(3)
+    dims = length
 
     call h5ltmake_dataset_double_f(group, name, rank, dims, &
          buffer, hdf5_err)

@@ -117,6 +117,9 @@ module constants
        SURF_CONE_Y = 10, & ! Cone parallel to y-axis
        SURF_CONE_Z = 11    ! Cone parallel to z-axis
 
+  ! Maximum number of lost particles
+  integer, parameter :: MAX_LOST_PARTICLES = 10
+
   ! ============================================================================
   ! CROSS SECTION RELATED CONSTANTS
 

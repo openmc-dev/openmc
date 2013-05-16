@@ -17,8 +17,12 @@ module output_interface
   interface write_data
     module procedure write_double
     module procedure write_double_1Darray
+    module procedure write_double_2Darray
+    module procedure write_double_3Darray
     module procedure write_integer
     module procedure write_integer_1Darray
+    module procedure write_integer_2Darray
+    module procedure write_integer_3Darray
     module procedure write_long
     module procedure write_string
   end interface write_data
@@ -234,6 +238,53 @@ contains
   end subroutine read_double_1Darray
 
 !===============================================================================
+! WRITE_DOUBLE_2DARRAY
+!===============================================================================
+
+  subroutine write_double_2Darray(buffer, name, group, length)
+
+    integer,        intent(in)           :: length(2)
+    real(8),        intent(in)           :: buffer(length(1),length(2))
+    character(*),   intent(in)           :: name
+    character(*),   intent(in), optional :: group
+
+#ifdef HDF5
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+    call hdf5_write_double_2Darray(temp_group, name, buffer, length)
+    if (present(group)) call hdf5_close_group()
+#endif
+
+  end subroutine write_double_2Darray
+
+!===============================================================================
+! WRITE_DOUBLE_3DARRAY
+!===============================================================================
+
+  subroutine write_double_3Darray(buffer, name, group, length)
+
+    integer,        intent(in)           :: length(3)
+    real(8),        intent(in)           :: buffer(length(1),length(2), &
+                                                   length(3))
+    character(*),   intent(in)           :: name
+    character(*),   intent(in), optional :: group
+
+#ifdef HDF5
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+    call hdf5_write_double_3Darray(temp_group, name, buffer, length)
+    if (present(group)) call hdf5_close_group()
+#endif
+
+  end subroutine write_double_3Darray
+
+!===============================================================================
 ! WRITE_INTEGER
 !===============================================================================
 
@@ -338,6 +389,53 @@ contains
 #endif
 
   end subroutine read_integer_1Darray
+
+!===============================================================================
+! WRITE_INTEGER_2DARRAY
+!===============================================================================
+
+  subroutine write_integer_2Darray(buffer, name, group, length)
+
+    integer,        intent(in)           :: length(2)
+    integer,        intent(in)           :: buffer(length(1),length(2))
+    character(*),   intent(in)           :: name
+    character(*),   intent(in), optional :: group
+
+#ifdef HDF5
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+    call hdf5_write_integer_2Darray(temp_group, name, buffer, length)
+    if (present(group)) call hdf5_close_group()
+#endif
+
+  end subroutine write_integer_2Darray
+
+!===============================================================================
+! WRITE_DOUBLE_3DARRAY
+!===============================================================================
+
+  subroutine write_integer_3Darray(buffer, name, group, length)
+
+    integer,        intent(in)           :: length(3)
+    integer,        intent(in)           :: buffer(length(1),length(2), &
+                                                   length(3))
+    character(*),   intent(in)           :: name
+    character(*),   intent(in), optional :: group
+
+#ifdef HDF5
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+    call hdf5_write_integer_3Darray(temp_group, name, buffer, length)
+    if (present(group)) call hdf5_close_group()
+#endif
+
+  end subroutine write_integer_3Darray
 
 !===============================================================================
 ! WRITE_LONG
@@ -458,6 +556,28 @@ contains
   end subroutine read_string
 
 !===============================================================================
+! WRITE_ATTRIBUTE_STRING
+!===============================================================================
+
+  subroutine write_attribute_string(var, attr_type, attr_str, group)
+
+    character(*), intent(in)           :: var
+    character(*), intent(in)           :: attr_type
+    character(*), intent(in)           :: attr_str
+    character(*), intent(in), optional :: group
+
+#ifdef HDF5
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+    call hdf5_write_attribute_string(temp_group, var, attr_type, attr_str)
+#endif
+
+  end subroutine write_attribute_string
+
+!===============================================================================
 ! WRITE_TALLY_RESULT
 !===============================================================================
 
@@ -466,7 +586,7 @@ contains
     character(*),      intent(in), optional :: group
     character(*),      intent(in)           :: name
     integer,           intent(in)           :: n1, n2
-    type(TallyResult), intent(in)           :: buffer(n1, n2)
+    type(TallyResult), intent(in), target   :: buffer(n1, n2)
 
 #ifdef HDF5
     integer          :: hdf5_err
@@ -535,10 +655,10 @@ contains
 
   subroutine read_tally_result(buffer, name, group, n1, n2)
 
-    character(*),      intent(in), optional :: group
-    character(*),      intent(in)           :: name
-    integer,           intent(in)           :: n1, n2
-    type(TallyResult), intent(inout)        :: buffer(n1, n2)
+    character(*),      intent(in), optional  :: group
+    character(*),      intent(in)            :: name
+    integer,           intent(in)            :: n1, n2
+    type(TallyResult), intent(inout), target :: buffer(n1, n2)
 
 #ifdef HDF5
     integer          :: hdf5_err

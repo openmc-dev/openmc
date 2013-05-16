@@ -171,6 +171,7 @@ contains
 
   subroutine hdf5_close_group()
 
+    ! Close the group
     call h5gclose_f(temp_group, hdf5_err)
 
   end subroutine hdf5_close_group
@@ -214,6 +215,50 @@ contains
          buffer, hdf5_err)
 
   end subroutine hdf5_write_integer_1Darray
+
+!===============================================================================
+! HDF5_WRITE_INTEGER_2DARRAY
+!===============================================================================
+
+  subroutine hdf5_write_integer_2Darray(group, name, buffer, length)
+
+    integer,        intent(in) :: length(2)
+    integer(HID_T), intent(in) :: group
+    character(*),   intent(in) :: name
+    integer,        intent(in) :: buffer(length(1),length(2))
+
+    integer          :: rank
+    integer(HSIZE_T) :: dims(2)
+
+    rank = 2
+    dims(2) = length(2)
+
+    call h5ltmake_dataset_int_f(group, name, rank, dims, &
+         buffer, hdf5_err)
+
+  end subroutine hdf5_write_integer_2Darray
+
+!===============================================================================
+! HDF5_WRITE_INTEGER_3DARRAY
+!===============================================================================
+
+  subroutine hdf5_write_integer_3Darray(group, name, buffer, length)
+
+    integer,        intent(in) :: length(3)
+    integer(HID_T), intent(in) :: group
+    character(*),   intent(in) :: name
+    integer,        intent(in) :: buffer(length(1),length(2), length(3))
+
+    integer          :: rank
+    integer(HSIZE_T) :: dims(3)
+
+    rank = 3
+    dims(3) = length(3)
+
+    call h5ltmake_dataset_int_f(group, name, rank, dims, &
+         buffer, hdf5_err)
+
+  end subroutine hdf5_write_integer_3Darray
 
 !===============================================================================
 ! HDF5_WRITE_LONG
@@ -287,6 +332,50 @@ contains
   end subroutine hdf5_write_double_1Darray
 
 !===============================================================================
+! HDF5_WRITE_DOUBLE_2DARRAY
+!===============================================================================
+
+  subroutine hdf5_write_double_2Darray(group, name, buffer, length)
+
+    integer,        intent(in) :: length(2)
+    integer(HID_T), intent(in) :: group
+    character(*),   intent(in) :: name
+    real(8),        intent(in) :: buffer(length(1),length(2))
+
+    integer          :: rank
+    integer(HSIZE_T) :: dims(2)
+
+    rank = 2
+    dims(2) = length(2)
+
+    call h5ltmake_dataset_double_f(group, name, rank, dims, &
+         buffer, hdf5_err)
+
+  end subroutine hdf5_write_double_2Darray
+
+!===============================================================================
+! HDF5_WRITE_DOUBLE_3DARRAY
+!===============================================================================
+
+  subroutine hdf5_write_double_3Darray(group, name, buffer, length)
+
+    integer,        intent(in) :: length(3)
+    integer(HID_T), intent(in) :: group
+    character(*),   intent(in) :: name
+    real(8),        intent(in) :: buffer(length(1),length(2), length(3))
+
+    integer          :: rank
+    integer(HSIZE_T) :: dims(3)
+
+    rank = 3
+    dims(3) = length(3)
+
+    call h5ltmake_dataset_double_f(group, name, rank, dims, &
+         buffer, hdf5_err)
+
+  end subroutine hdf5_write_double_3Darray
+
+!===============================================================================
 ! HDF5_WRITE_STRING
 !===============================================================================
 
@@ -299,7 +388,22 @@ contains
     call h5ltmake_dataset_string_f(group, name, buffer, hdf5_err)
 
   end subroutine hdf5_write_string
-      
+
+!===============================================================================
+! HDF5_WRITE_ATTRIBUTE_STRING
+!===============================================================================
+
+  subroutine hdf5_write_attribute_string(group, var, attr_type, attr_str)
+
+    integer(HID_T), intent(in) :: group
+    character(*),   intent(in) :: var
+    character(*),   intent(in) :: attr_type
+    character(*),   intent(in) :: attr_str
+
+    call h5ltset_attribute_string_f(group, var, attr_type, attr_str, hdf5_err)
+
+  end subroutine hdf5_write_attribute_string
+
 !===============================================================================
 ! HDF5_READ_INTEGER
 !===============================================================================

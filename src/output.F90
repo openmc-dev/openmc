@@ -1375,8 +1375,8 @@ contains
 
   subroutine print_runtime()
 
-    integer(8)    :: total_particles ! total # of particles simulated
-    real(8)       :: speed           ! # of neutrons/second
+    real(8)       :: speed_inactive  ! # of neutrons/second in inactive batches
+    real(8)       :: speed_active    ! # of neutrons/second in active batches
     character(15) :: string
 
     ! display header block
@@ -1399,22 +1399,35 @@ contains
     write(ou,100) "Total time for finalization", time_finalize % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 
+    ! Calculate particle rate in active/inactive batches
     if (restart_run) then
-      total_particles = n_particles * (n_batches - &
-           restart_batch) * gen_per_batch
+      if (restart_batch < n_inactive) then
+        speed_inactive = real(n_particles * (n_inactive - restart_batch) * &
+             gen_per_batch) / time_inactive % elapsed
+        speed_active = real(n_particles * n_active * gen_per_batch) / &
+           time_active % elapsed
+      else
+        speed_inactive = ZERO
+        speed_active = real(n_particles * (n_batches - restart_batch) * &
+             gen_per_batch) / time_active % elapsed
+      end if
     else
-      total_particles = n_particles * n_batches * gen_per_batch
+      speed_inactive = real(n_particles * n_inactive * gen_per_batch) / &
+           time_inactive % elapsed
+      speed_active = real(n_particles * n_active * gen_per_batch) / &
+           time_active % elapsed
     end if
 
-    ! display calculate rate
-    speed = real(total_particles) / (time_inactive % elapsed + &
-         time_active % elapsed)
-    string = to_str(speed)
-    write(ou,101) trim(string)
+    ! display calculation rate
+    string = to_str(speed_inactive)
+    if (.not. (restart_run .and. (restart_batch >= n_inactive))) &
+         write(ou,101) "Calculation Rate (inactive)", trim(string)
+    string = to_str(speed_active)
+    write(ou,101) "Calculation Rate (active)", trim(string)
 
     ! format for write statements
 100 format (1X,A,T36,"= ",ES11.4," seconds")
-101 format (1X,"Calculation Rate",T36,"=  ",A," neutrons/second")
+101 format (1X,A,T36,"=  ",A," neutrons/second")
 
   end subroutine print_runtime
 

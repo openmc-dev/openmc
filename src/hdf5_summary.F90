@@ -9,6 +9,7 @@ module hdf5_summary
   use global
   use hdf5_interface
   use material_header, only: Material
+  use output_interface
   use output,          only: time_stamp
   use string,          only: to_str
   use tally_header,    only: TallyObject
@@ -21,37 +22,37 @@ contains
 
   subroutine hdf5_write_summary()
 
-    character(MAX_FILE_LEN) :: filename = "summary.h5"
+    character(MAX_FILE_LEN) :: filename = "summary"
 
     ! Create a new file using default properties.
-    call h5fcreate_f(filename, H5F_ACC_TRUNC_F, hdf5_output_file, hdf5_err)
+    call file_create(filename, "serial") 
 
     ! Write header information
     call hdf5_write_header()
 
     ! Write eigenvalue information
     if (run_mode == MODE_EIGENVALUE) then
-      ! Need to write integer(8)'s using double instead since there is no H5LT
-      ! call for making a dataset of type long
-      call hdf5_write_double(hdf5_output_file, "n_particles", real(n_particles,8))
+
+      ! Write number of particles
+      call write_data(n_particles, "n_particles")
 
       ! Use H5LT interface to write n_batches, n_inactive, and n_active
-      call hdf5_write_integer(hdf5_output_file, "n_batches", n_batches)
-      call hdf5_write_integer(hdf5_output_file, "n_inactive", n_inactive)
-      call hdf5_write_integer(hdf5_output_file, "n_active", n_active)
-      call hdf5_write_integer(hdf5_output_file, "gen_per_batch", gen_per_batch)
+      call write_data(n_batches, "n_batches")
+      call write_data(n_inactive, "n_inactive")
+      call write_data(n_active, "n_active")
+      call write_data(gen_per_batch, "gen_per_batch")
 
       ! Add description of each variable
-      call h5ltset_attribute_string_f(hdf5_output_file, "n_particles", &
-           "description", "Number of particles per generation", hdf5_err)
-      call h5ltset_attribute_string_f(hdf5_output_file, "n_batches", &
-           "description", "Total number of batches", hdf5_err)
-      call h5ltset_attribute_string_f(hdf5_output_file, "n_inactive", &
-           "description", "Number of inactive batches", hdf5_err)
-      call h5ltset_attribute_string_f(hdf5_output_file, "n_active", &
-           "description", "Number of active batches", hdf5_err)
-      call h5ltset_attribute_string_f(hdf5_output_file, "gen_per_batch", &
-           "description", "Number of generations per batch", hdf5_err)
+      call write_attribute_string("n_particles", &
+           "description", "Number of particles per generation")
+      call write_attribute_string("n_batches", &
+           "description", "Total number of batches")
+      call write_attribute_string("n_inactive", &
+           "description", "Number of inactive batches")
+      call write_attribute_string("n_active", &
+           "description", "Number of active batches")
+      call write_attribute_string("gen_per_batch", &
+           "description", "Number of generations per batch")
     end if
 
     call hdf5_write_geometry()
@@ -73,18 +74,17 @@ contains
   subroutine hdf5_write_header()
 
     ! Write version information
-    call hdf5_write_integer(hdf5_output_file, "version_major", VERSION_MAJOR)
-    call hdf5_write_integer(hdf5_output_file, "version_minor", VERSION_MINOR)
-    call hdf5_write_integer(hdf5_output_file, "version_release", VERSION_RELEASE)
+    call write_data(VERSION_MAJOR, "version_major")
+    call write_data(VERSION_MINOR, "version_minor")
+    call write_data(VERSION_RELEASE, "version_release") 
 
     ! Write current date and time
-    call h5ltmake_dataset_string_f(hdf5_output_file, "date_and_time", &
-         time_stamp(), hdf5_err)
+    call write_data(time_stamp(), "date_and_time")
 
     ! Write MPI information
-    call hdf5_write_integer(hdf5_output_file, "n_procs", n_procs)
-    call h5ltset_attribute_string_f(hdf5_output_file, "n_procs", &
-         "description", "Number of MPI processes", hdf5_err)
+    call write_data(n_procs, "n_procs")
+    call write_attribute_string("n_procs", "description", &
+         "Number of MPI processes") 
 
   end subroutine hdf5_write_header
 
@@ -110,203 +110,193 @@ contains
     type(Universe), pointer :: u => null()
     type(Lattice),  pointer :: lat => null()
 
-    ! Create group for geometry
-    call h5gcreate_f(hdf5_output_file, "/geometry", geometry_group, hdf5_err)
-
     ! Use H5LT interface to write number of geometry objects
-    call hdf5_write_integer(geometry_group, "n_cells", n_cells)
-    call hdf5_write_integer(geometry_group, "n_surfaces", n_surfaces)
-    call hdf5_write_integer(geometry_group, "n_universes", n_universes)
-    call hdf5_write_integer(geometry_group, "n_lattices", n_lattices)
+    call write_data(n_cells, "n_cells", group="geometry")
+    call write_data(n_surfaces, "n_surfaces", group="geometry")
+    call write_data(n_universes, "n_universes", group="geometry")
+    call write_data(n_lattices, "n_lattices", group="geometry")
 
     ! ==========================================================================
     ! WRITE INFORMATION ON CELLS
 
-    call h5gcreate_f(geometry_group, "cells", cell_group, hdf5_err)
+    ! Create a cell group (nothing directly written in this group) then close
+    call hdf5_open_group("geometry/cells")
+    call hdf5_close_group()
 
     ! Write information on each cell
-    do i = 1, n_cells
+    CELL_LOOP: do i = 1, n_cells
       c => cells(i)
 
-      ! Create group for i-th cell
-      call h5gcreate_f(cell_group, "cell " // trim(to_str(c % id)), &
-           temp_group, hdf5_err)
-
       ! Write universe for this cell
-      call hdf5_write_integer(temp_group, "universe", &
-           universes(c % universe) % id)
+      call write_data(universes(c % universe) % id, "universe", &
+           group="geometry/cells/cell " // trim(to_str(c % id)))
 
       ! Write information on what fills this cell
       select case (c % type)
       case (CELL_NORMAL)
-        call h5ltmake_dataset_string_f(temp_group, "fill_type", "normal", &
-             hdf5_err)
+        call write_data("normal", "fill_type", &
+             group="geometry/cells/cell " // trim(to_str(c % id)))
         if (c % material == MATERIAL_VOID) then
-          call hdf5_write_integer(temp_group, "material", -1)
+          call write_data(-1, "material", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
         else
-          call hdf5_write_integer(temp_group, "material", &
-               materials(c % material) % id)
+          call write_data(materials(c % material) % id, "material", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
         end if
       case (CELL_FILL)
-        call h5ltmake_dataset_string_f(temp_group, "fill_type", "universe", &
-             hdf5_err) 
-        call hdf5_write_integer(temp_group, "material", &
-             universes(c % fill) % id)
+        call write_data("universe", "fill_type", &
+             group="geometry/cells/cell " // trim(to_str(c % id)))
+        call write_data(universes(c % fill) % id, "material", &
+             group="geometry/cells/cell " // trim(to_str(c % id))) 
       case (CELL_LATTICE)
-        call h5ltmake_dataset_string_f(temp_group, "fill_type", "lattice", &
-             hdf5_err) 
-        call hdf5_write_integer(temp_group, "lattice", &
-             lattices(c % fill) % id)
+        call write_data("lattice", "fill_type", &
+             group="geometry/cells/cell " // trim(to_str(c % id)))
+        call write_data(lattices(c % fill) % id, "lattice", &
+             group="geometry/cells/cell " // trim(to_str(c % id))) 
       end select
 
       ! Write list of bounding surfaces
       if (c % n_surfaces > 0) then
-        dims(1) = c % n_surfaces
-        call h5ltmake_dataset_int_f(temp_group, "surfaces", 1, &
-             dims, c % surfaces, hdf5_err)
+        call write_data(c % surfaces, "surfaces", length= c % n_surfaces, &
+             group="geometry/cells/cell " // trim(to_str(c % id)))
       end if
 
-      ! Close group for i-th cell
-      call h5gclose_f(temp_group, hdf5_err)
-    end do
-
-    call h5gclose_f(cell_group, hdf5_err)
+    end do CELL_LOOP
 
     ! ==========================================================================
     ! WRITE INFORMATION ON SURFACES
 
-    call h5gcreate_f(geometry_group, "surfaces", surface_group, hdf5_err)
+    ! Create surfaces group (nothing directly written here) then close
+    call hdf5_open_group("geometry/surfaces")
+    call hdf5_close_group()
 
     ! Write information on each surface
-    do i = 1, n_surfaces
+    SURFACE_LOOP: do i = 1, n_surfaces
       s => surfaces(i)
-
-      ! Create group for i-th surface
-      call h5gcreate_f(surface_group, "surface " // trim(to_str(s % id)), &
-           temp_group, hdf5_err)
 
       ! Write surface type
       select case (s % type)
       case (SURF_PX)
-        call h5ltmake_dataset_string_f(temp_group, "type", "X Plane", hdf5_err)
+        call write_data("X Plane", "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (SURF_PY)
-        call h5ltmake_dataset_string_f(temp_group, "type", "Y Plane", hdf5_err)
+        call write_data("Y Plane", "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (SURF_PZ)
-        call h5ltmake_dataset_string_f(temp_group, "type", "Z Plane", hdf5_err)
+        call write_data("Z Plane", "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (SURF_PLANE)
-        call h5ltmake_dataset_string_f(temp_group, "type", "Plane", hdf5_err)
+        call write_data("Plane", "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (SURF_CYL_X)
-        call h5ltmake_dataset_string_f(temp_group, "type", "X Cylinder", hdf5_err)
+        call write_data("X Cylinder", "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (SURF_CYL_Y)
-        call h5ltmake_dataset_string_f(temp_group, "type", "Y Cylinder", hdf5_err)
+        call write_data("Y Cylinder", "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (SURF_CYL_Z)
-        call h5ltmake_dataset_string_f(temp_group, "type", "Z Cylinder", hdf5_err)
+        call write_data("Z Cylinder", "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (SURF_SPHERE)
-        call h5ltmake_dataset_string_f(temp_group, "type", "Sphere", hdf5_err)
+        call write_data("Sphere", "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (SURF_CONE_X)
-        call h5ltmake_dataset_string_f(temp_group, "type", "X Cone", hdf5_err)
+        call write_data("X Cone", "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (SURF_CONE_Y)
-        call h5ltmake_dataset_string_f(temp_group, "type", "Y Cone", hdf5_err)
+        call write_data("Y Cone", "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (SURF_CONE_Z)
-        call h5ltmake_dataset_string_f(temp_group, "type", "Z Cone", hdf5_err)
+        call write_data("Z Cone", "type", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       end select
 
       ! Write coefficients for surface
-      dims(1) = size(s % coeffs)
-      call h5ltmake_dataset_double_f(temp_group, "coefficients", 1, dims, &
-           s % coeffs, hdf5_err)
+      call write_data(s % coeffs, "coefficients", length=size(s % coeffs), &
+           group="geometry/surfaces/surface " // trim(to_str(s % id)))
 
       ! Write positive neighbors
       if (allocated(s % neighbor_pos)) then
-        dims(1) = size(s % neighbor_pos)
-        call h5ltmake_dataset_int_f(temp_group, "neighbors_positive", 1, dims, &
-             s % neighbor_pos, hdf5_err)
+        call write_data(s % neighbor_pos, "neighbors_positive", &
+             length=size(s % neighbor_pos), &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       end if
 
       ! Write negative neighbors
       if (allocated(s % neighbor_neg)) then
-        dims(1) = size(s % neighbor_neg)
-        call h5ltmake_dataset_int_f(temp_group, "neighbors_negative", 1, dims, &
-             s % neighbor_neg, hdf5_err)
+        call write_data(s % neighbor_neg, "neighbors_negative", &
+             length=size(s % neighbor_neg), &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       end if
 
       ! Write boundary condition
       select case (s % bc)
       case (BC_TRANSMIT)
-        call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
-             "transmission", hdf5_err)
+        call write_data("transmission", "boundary_condition", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (BC_VACUUM)
-        call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
-             "vacuum", hdf5_err)
+        call write_data("vacuum", "boundary_condition", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (BC_REFLECT)
-        call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
-             "reflective", hdf5_err)
+        call write_data("reflective", "boundary_condition", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       case (BC_PERIODIC)
-        call h5ltmake_dataset_string_f(temp_group, "boundary_condition", &
-             "periodic", hdf5_err)
+        call write_data("periodic", "boundary_condition", &
+             group="geometry/surfaces/surface " // trim(to_str(s % id)))
       end select
 
-      ! Close group for i-th surface
-      call h5gclose_f(temp_group, hdf5_err)
-    end do
-
-    call h5gclose_f(surface_group, hdf5_err)
+    end do SURFACE_LOOP
 
     ! ==========================================================================
     ! WRITE INFORMATION ON UNIVERSES
 
-    call h5gcreate_f(geometry_group, "universes", universe_group, hdf5_err)
+    ! Create universes group (nothing directly written here) then close
+    call hdf5_open_group("geometry/universes")
+    call hdf5_close_group()
 
     ! Write information on each universe
-    do i = 1, n_universes
+    UNIVERSE_LOOP: do i = 1, n_universes
       u => universes(i)
-
-      ! Create group for i-th universe
-      call h5gcreate_f(universe_group, "universe " // trim(to_str(u % id)), &
-           temp_group, hdf5_err)
 
       ! Write list of cells in this universe
       if (u % n_cells > 0) then
-        dims(1) = u % n_cells
-        call h5ltmake_dataset_int_f(temp_group, "cells", 1, dims, &
-             u % cells, hdf5_err)
+        call write_data(u % cells, "cells", length=u % n_cells, &
+             group="geometry/universes/universe " // trim(to_str(u % id)))
       end if
 
-      ! Close group for i-th universe
-      call h5gclose_f(temp_group, hdf5_err)
-    end do
-
-    call h5gclose_f(universe_group, hdf5_err)
+    end do UNIVERSE_LOOP
 
     ! ==========================================================================
     ! WRITE INFORMATION ON LATTICES
 
-    call h5gcreate_f(geometry_group, "lattices", lattice_group, hdf5_err)
+    ! Create lattices group (nothing directly written here) then close
+    call hdf5_open_group("geometry/lattices")
+    call hdf5_close_group()
 
     ! Write information on each lattice
-    do i = 1, n_lattices
+    LATTICE_LOOP: do i = 1, n_lattices
       lat => lattices(i)
-
-      ! Create group for i-th lattice
-      call h5gcreate_f(lattice_group, "lattice " // trim(to_str(lat % id)), &
-           temp_group, hdf5_err)
 
       ! Write lattice type
       select case(lat % type)
       case (LATTICE_RECT)
-        call h5ltmake_dataset_string_f(temp_group, "type", "rectangular", hdf5_err)
+        call write_data("rectangular", "type", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
       case (LATTICE_HEX)
-        call h5ltmake_dataset_string_f(temp_group, "type", "hexagonal", hdf5_err)
+        call write_data("hexagonal", "type", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
       end select
 
       ! Write lattice dimensions, lower left corner, and width of element
-      dims(1) = lat % n_dimension
-      call h5ltmake_dataset_int_f(temp_group, "dimension", 1, dims, &
-           lat % dimension, hdf5_err)
-      call h5ltmake_dataset_double_f(temp_group, "lower_left", 1, dims, &
-           lat % lower_left, hdf5_err)
-      call h5ltmake_dataset_double_f(temp_group, "width", 1, dims, &
-           lat % width, hdf5_err)
+      call write_data(lat % dimension, "dimension", &
+           length=lat % n_dimension, &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+      call write_data(lat % lower_left, "lower_left", &
+           length=lat % n_dimension, &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+      call write_data(lat % width, "width", &
+           length=lat % n_dimension, &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
       ! Determine dimensions of lattice
       n_x = lat % dimension(1)
@@ -326,20 +316,13 @@ contains
           end do
         end do
       end do
-      dims3 = (/ n_x, n_y, n_z /)
-      call h5ltmake_dataset_int_f(temp_group, "universes", 3, dims3, &
-           lattice_universes, hdf5_err)
+      call write_data(lattice_universes, "universes", &
+           length=(/n_x, n_y, n_z/), &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
       deallocate(lattice_universes)
 
-      ! Close group for i-th lattice
-      call h5gclose_f(temp_group, hdf5_err)
-    end do
-
-    call h5gclose_f(lattice_group, hdf5_err)
-
-    ! Close geometry group
-    call h5gclose_f(geometry_group, hdf5_err)
-
+    end do LATTICE_LOOP
+stop
   end subroutine hdf5_write_geometry
 
 !===============================================================================

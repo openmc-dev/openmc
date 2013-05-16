@@ -242,6 +242,7 @@ main.o: particle_restart.o
 main.o: plot.o
 
 math.o: constants.o
+math.o: random_lcg.o
 
 mesh.o: constants.o
 mesh.o: global.o
@@ -294,6 +295,7 @@ physics.o: geometry_header.o
 physics.o: global.o
 physics.o: interpolation.o
 physics.o: material_header.o
+physics.o: math.o
 physics.o: mesh.o
 physics.o: output.o
 physics.o: particle_header.o
@@ -330,9 +332,9 @@ source.o: constants.o
 source.o: error.o
 source.o: geometry_header.o
 source.o: global.o
+source.o: math.o
 source.o: output.o
 source.o: particle_header.o
-source.o: physics.o
 source.o: random_lcg.o
 source.o: state_point.o
 source.o: string.o

@@ -63,6 +63,9 @@ module global
   type(DictIntInt) :: tally_dict
   type(DictIntInt) :: plot_dict
 
+  ! Number of lost particles
+  integer :: n_lost_particles
+
   ! ============================================================================
   ! CROSS SECTION RELATED VARIABLES
 

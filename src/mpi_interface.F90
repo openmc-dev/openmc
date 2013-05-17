@@ -35,7 +35,7 @@ contains
   subroutine mpi_open_file(filename, fh, mode)
 
     character(*), intent(in) :: filename
-    character(*)  intent(in) :: mode
+    character(*), intent(in) :: mode
     integer,      intent(in) :: fh
 
     integer :: open_mode

@@ -867,10 +867,10 @@ contains
 
     ! Set size
     dims1(1) = work
-    rank_data = 1
+    hdf5_rank = 1
 
     ! Create dataspace
-    call h5screate_simple_f(rank_data, dims1, dspace, hdf5_err)
+    call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
 
     ! Create dataset
     call h5dcreate_f(hdf5_fh, "source_bank", hdf5_bank_t, &

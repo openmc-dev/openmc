@@ -12,7 +12,7 @@ module finalize
 #endif
 
 #ifdef HDF5
-  use hdf5_interface,  only: hdf5_err
+  use hdf5_interface,  only: h5tclose_f, h5close_f, hdf5_err
 #endif
 
   implicit none

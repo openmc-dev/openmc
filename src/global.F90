@@ -21,7 +21,7 @@ module global
 #endif
 
 #ifdef HDF5
-  use hdf5
+  use hdf5_interface,  only: HID_T
 #endif
 
   implicit none

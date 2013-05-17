@@ -47,7 +47,6 @@ contains
   subroutine write_particle_restart_hdf5()
 
     character(MAX_FILE_LEN) :: filename
-    integer(HSIZE_T)        :: dims1(1)
     type(Bank), pointer     :: src => null()
 
     ! set up file name

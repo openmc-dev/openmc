@@ -38,8 +38,6 @@ contains
 
   subroutine read_hdf5_particle_restart()
 
-    integer(HSIZE_T)        :: dims1(1)
-
     ! write meessage
     message = "Loading particle restart file " // trim(path_particle_restart) &
               // "..."

@@ -22,7 +22,6 @@ cmfd_data.o: tally_header.o
 
 cmfd_execute.o: cmfd_data.o
 cmfd_execute.o: cmfd_message_passing.o
-cmfd_execute.o: cmfd_output.o
 cmfd_execute.o: cmfd_power_solver.o
 cmfd_execute.o: cmfd_snes_solver.o
 cmfd_execute.o: constants.o
@@ -62,7 +61,6 @@ cmfd_output.o: cmfd_data.o
 cmfd_output.o: cmfd_header.o
 cmfd_output.o: constants.o
 cmfd_output.o: global.o
-cmfd_output.o: string.o
 
 cmfd_power_solver.o: cmfd_loss_operator.o
 cmfd_power_solver.o: cmfd_prod_operator.o
@@ -86,6 +84,17 @@ cmfd_snes_solver.o: constants.o
 cmfd_snes_solver.o: global.o
 cmfd_snes_solver.o: string.o
 
+cross_section.o: ace_header.o
+cross_section.o: constants.o
+cross_section.o: error.o
+cross_section.o: fission.o
+cross_section.o: global.o
+cross_section.o: material_header.o
+cross_section.o: random_lcg.o
+cross_section.o: search.o
+
+doppler.o: constants.o
+
 eigenvalue.o: cmfd_execute.o
 eigenvalue.o: constants.o
 eigenvalue.o: error.o
@@ -102,17 +111,6 @@ eigenvalue.o: source.o
 eigenvalue.o: state_point.o
 eigenvalue.o: string.o
 eigenvalue.o: tally.o
-
-cross_section.o: ace_header.o
-cross_section.o: constants.o
-cross_section.o: error.o
-cross_section.o: fission.o
-cross_section.o: global.o
-cross_section.o: material_header.o
-cross_section.o: random_lcg.o
-cross_section.o: search.o
-
-doppler.o: constants.o
 
 endf.o: constants.o
 endf.o: string.o
@@ -220,9 +218,9 @@ input_xml.o: tally_initialize.o
 input_xml.o: templates/cross_sections_t.o
 input_xml.o: templates/geometry_t.o
 input_xml.o: templates/materials_t.o
+input_xml.o: templates/plots_t.o
 input_xml.o: templates/settings_t.o
 input_xml.o: templates/tallies_t.o
-input_xml.o: templates/plots_t.o
 
 interpolation.o: constants.o
 interpolation.o: endf_header.o
@@ -275,8 +273,8 @@ particle_restart.o: constants.o
 particle_restart.o: geometry_header.o
 particle_restart.o: global.o
 particle_restart.o: hdf5_interface.o
-particle_restart.o: particle_header.o
 particle_restart.o: output.o
+particle_restart.o: particle_header.o
 particle_restart.o: physics.o
 particle_restart.o: random_lcg.o
 particle_restart.o: source.o
@@ -325,6 +323,7 @@ random_lcg.o: global.o
 search.o: error.o
 search.o: global.o
 
+set_header.o: constants.o
 set_header.o: list_header.o
 
 source.o: bank_header.o

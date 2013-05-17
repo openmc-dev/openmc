@@ -39,6 +39,7 @@ contains
 
     use cmfd_data,    only: neutron_balance
     use constants,    only: CMFD_BALANCE, MAX_FILE_LEN
+    use global,       only: path_output
 
     character(MAX_FILE_LEN) :: filename
 

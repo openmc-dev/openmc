@@ -22,7 +22,7 @@ contains
 
   subroutine hdf5_write_summary()
 
-    character(MAX_FILE_LEN) :: filename = "summary"
+    character(MAX_FILE_LEN) :: filename = "summary.h5"
 
     ! Create a new file using default properties.
     call file_create(filename, "serial") 

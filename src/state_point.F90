@@ -41,6 +41,13 @@ contains
     filename = trim(path_output) // 'statepoint.' // &
                trim(to_str(current_batch))
 
+    ! Append appropriate extension
+#ifdef HDF5
+    filename = trim(filename) // '.h5'
+#else
+    filename = trim(filename) // '.binary'
+#endif
+
     ! Write message
     message = "Creating state point " // trim(filename) // "..."
     call write_message(1)
@@ -263,8 +270,6 @@ contains
       else
         ! Close HDF5 serial file and reopen in parallel
         call file_close('serial')
-        filename = trim(path_output) // 'statepoint.' // &
-                   trim(to_str(current_batch))
         call file_open(filename, 'parallel', 'rw') 
 # endif
 #endif

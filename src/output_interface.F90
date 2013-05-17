@@ -66,7 +66,8 @@ contains
 #elif MPI
     call mpi_create_file(filename, mpi_fh)
 #else
-    open(UNIT=UNIT_OUTPUT, FILE=filename, STATUS='replace', ACCESS='stream')
+    open(UNIT=UNIT_OUTPUT, FILE=filename, ACTION="write", &
+         STATUS='replace', ACCESS='stream')
 #endif
 
   end subroutine file_create
@@ -98,9 +99,15 @@ contains
     call hdf5_file_open(filename, hdf5_fh, mode)
 # endif
 #elif MPI
-    call mpi_open_file(filename, mpi_fh)
+    call mpi_open_file(filename, mpi_fh, mode)
 #else
-    open(UNIT=UNIT_OUTPUT, FILE=filename, STATUS='old', ACCESS='stream')
+    if (mode == 'rw') then
+      open(UNIT=UNIT_OUTPUT, FILE=filename, ACTION='write', &
+           STATUS='old', ACCESS='stream')
+    else
+      open(UNIT=UNIT_OUTPUT, FILE=filename, ACTION='read', &
+           STATUS='old', ACCESS='stream')
+    end if
 #endif
 
   end subroutine file_open
@@ -484,7 +491,7 @@ contains
 #elif MPI
     call mpi_read_long(mpi_fh, buffer)
 #else
-    write(UNIT_OUTPUT) buffer
+    read(UNIT_OUTPUT) buffer
 #endif
 
   end subroutine read_long

@@ -48,12 +48,6 @@ contains
     character(*) :: fh_str
 
 #ifdef HDF5
-  filename = trim(filename) // '.h5'
-#else
-  filename = trim(filename) // '.binary'
-#endif
-
-#ifdef HDF5
 # ifdef MPI
     if (trim(fh_str) == 'serial') then
       if(master) call hdf5_file_create(filename, hdf5_fh)
@@ -81,12 +75,6 @@ contains
     character(*) :: filename
     character(*) :: fh_str
     character(*) :: mode
-
-#ifdef HDF5
-  filename = trim(filename) // '.h5'
-#else
-  filename = trim(filename) // '.binary'
-#endif
 
 #ifdef HDF5
 # ifdef MPI

@@ -9,7 +9,6 @@ module source
   use particle_header, only: deallocate_coord
   use physics,         only: maxwell_spectrum, watt_spectrum
   use random_lcg,      only: prn, set_particle_seed
-  use state_point,     only: read_source
   use string,          only: to_str
 
 #ifdef MPI
@@ -38,7 +37,8 @@ contains
       ! Read the source from a binary file instead of sampling from some
       ! assumed source distribution
 
-      call read_source()
+      message = 'This feature is currently disabled and will be added back in.'
+      call fatal_error()
 
     else
       ! Generation source sites from specified distribution in user input

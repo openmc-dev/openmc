@@ -29,6 +29,7 @@ element geometry {
       attribute dimension { list { xsd:positiveInteger+ } }) &
     (element lower_left { list { xsd:double+ } } | attribute lower_left { list { xsd:double+ } }) &
     (element width { list { xsd:double+ } } | attribute width { list { xsd:double+ } }) &
-    (element universes { list { xsd:int+ } } | attribute universes { list { xsd:int+ } })
+    (element universes { list { xsd:int+ } } | attribute universes { list { xsd:int+ } }) &
+    (element outside { xsd:int } | attribute outside { xsd:int })?
   }*
 }

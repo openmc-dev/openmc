@@ -13,7 +13,9 @@ for src in glob.iglob('*.F90'):
             name = words[1].strip(',')
             if name in ['mpi','hdf5','h5lt']:
                 continue
-            d.add(words[1].strip(','))
+            if name.startswith('xml_data_'):
+                name = name.replace('xml_data_', 'templates/')
+            d.add(name)
     if d:
         d = list(d)
         d.sort()

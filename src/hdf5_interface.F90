@@ -12,9 +12,18 @@ module hdf5_interface
 
   implicit none
 
-  integer(HID_T)  :: hdf5_fh    ! HDF5 file handle
-  integer(HID_T)  :: temp_group ! temporary HDF5 group
-  integer         :: hdf5_err   ! HDF5 error code
+  integer          :: hdf5_err   ! HDF5 error code
+  integer          :: hdf5_rank  ! rank of data
+  integer(HID_T)   :: dset       ! data set handle
+  integer(HID_T)   :: dspace     ! data or file space handle
+  integer(HID_T)   :: hdf5_fh    ! HDF5 file handle
+  integer(HID_T)   :: temp_group ! temporary HDF5 group handle
+  integer(HID_T)   :: memspace   ! data space handle for individual procs
+  integer(HID_T)   :: plist      ! property list handle
+  integer(HSIZE_T) :: dims1(1)   ! dims type for 1-D array
+  integer(HSIZE_T) :: dims2(2)   ! dims type for 2-D array
+  integer(HSIZE_T) :: dims3(3)   ! dims type for 3-D array
+  type(c_ptr)      :: f_ptr      ! pointer to data
 
   ! Generic HDF5 write procedure interface
   interface hdf5_write_data
@@ -99,18 +108,16 @@ contains
     character(*),   intent(in)    :: filename ! name of file
     integer(HID_T), intent(inout) :: file_id  ! file handle
 
-    integer(HID_T) :: plist_id ! property list
-
     ! Setup file access property list with parallel I/O access
-    call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdf5_err)
-    call h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+    call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
+    call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
 
     ! Create the file collectively
     call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdf5_err, &
-                     access_prp = plist_id)
+                     access_prp = plist)
 
     ! Close the property list
-    call h5pclose_f(plist_id, hdf5_err)
+    call h5pclose_f(plist, hdf5_err)
 
   end subroutine hdf5_parallel_file_create
 
@@ -124,12 +131,11 @@ contains
     character(*),  intent(in)     :: mode     ! access mode
     integer(HID_T), intent(inout) :: file_id  ! file handle
 
-    integer(HID_T) :: plist_id  ! property list
     integer        :: open_mode ! HDF5 access mode
 
     ! Setup file access property list with parallel I/O access
-    call h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, hdf5_err)
-    call h5pset_fapl_mpio_f(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+    call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
+    call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
 
     ! Determine access type
     open_mode = H5F_ACC_RDONLY_F
@@ -139,10 +145,10 @@ contains
 
     ! Create the file collectively
     call h5fopen_f(trim(filename), open_mode, file_id, hdf5_err, &
-                   access_prp = plist_id)
+                   access_prp = plist)
 
     ! Close the property list
-    call h5pclose_f(plist_id, hdf5_err)
+    call h5pclose_f(plist, hdf5_err)
 
   end subroutine hdf5_parallel_file_open
 
@@ -191,10 +197,11 @@ contains
     character(*),   intent(in) :: name   ! name of data
     integer,        intent(in) :: buffer ! data to write
 
-    integer          :: rank = 1         ! rank of data
-    integer(HSIZE_T) :: dims(1) = (/1/)  ! dimensons of array
+    ! Set rank and dimensions
+    hdf5_rank = 1
+    dims1(1) = 1
 
-    call h5ltmake_dataset_int_f(group, name, rank, dims, &
+    call h5ltmake_dataset_int_f(group, name, hdf5_rank, dims1, &
          (/ buffer /), hdf5_err)
 
   end subroutine hdf5_write_integer
@@ -210,15 +217,12 @@ contains
     character(*),   intent(in) :: name      ! name of data
     integer,        intent(in) :: buffer(:) ! data to write
 
-    integer          :: rank    ! rank of data
-    integer(HSIZE_T) :: dims(1) ! dimensions of array
-
     ! Set rank and dimensions of data
-    rank = 1
-    dims(1) = len
+    hdf5_rank = 1
+    dims1(1) = len
 
     ! Write data
-    call h5ltmake_dataset_int_f(group, name, rank, dims, &
+    call h5ltmake_dataset_int_f(group, name, hdf5_rank, dims1, &
          buffer, hdf5_err)
 
   end subroutine hdf5_write_integer_1Darray
@@ -234,15 +238,12 @@ contains
     character(*),   intent(in) :: name      ! name of data
     integer,        intent(in) :: buffer(length(1),length(2)) ! data to write
 
-    integer          :: rank    ! rank of data
-    integer(HSIZE_T) :: dims(2) ! dimensions of array
-
     ! Set rank and dimensions
-    rank = 2
-    dims = length
+    hdf5_rank = 2
+    dims2 = length
 
     ! Write data
-    call h5ltmake_dataset_int_f(group, name, rank, dims, &
+    call h5ltmake_dataset_int_f(group, name, hdf5_rank, dims2, &
          buffer, hdf5_err)
 
   end subroutine hdf5_write_integer_2Darray
@@ -258,21 +259,18 @@ contains
     character(*),   intent(in) :: name      ! name of data
     integer,        intent(in) :: buffer(length(1),length(2), length(3)) ! data
 
-    integer          :: rank    ! rank of data
-    integer(HSIZE_T) :: dims(3) ! dimensions of array
-
     ! Set rank and dimensions
-    rank = 3
-    dims = length
+    hdf5_rank = 3
+    dims3 = length
 
     ! Write data
-    call h5ltmake_dataset_int_f(group, name, rank, dims, &
+    call h5ltmake_dataset_int_f(group, name, hdf5_rank, dims3, &
          buffer, hdf5_err)
 
   end subroutine hdf5_write_integer_3Darray
 
 !===============================================================================
-! HDF5_WRITE_LONG writes long integer data
+! HDF5_WRITE_LONG writes long integer scalar data
 !===============================================================================
 
   subroutine hdf5_write_long(group, name, buffer, long_type)
@@ -282,14 +280,12 @@ contains
     integer(8), target, intent(in) :: buffer    ! data to write
     integer(HID_T),     intent(in) :: long_type ! HDF5 long type
 
-    integer          :: rank = 1        ! rank of data
-    integer(HSIZE_T) :: dims(1) = (/1/) ! dimensions of array
-    integer(HID_T)   :: dspace
-    integer(HID_T)   :: dset
-    type(c_ptr)      :: f_ptr
+    ! Set up rank and dimensions
+    hdf5_rank = 1
+    dims1(1) = 1
 
     ! Create dataspace and dataset
-    call h5screate_simple_f(rank, dims, dspace, hdf5_err)
+    call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
     call h5dcreate_f(group, name, long_type, dspace, dset, hdf5_err)
 
     ! Write eight-byte integer
@@ -312,10 +308,12 @@ contains
     character(*),   intent(in) :: name   ! name of data
     real(8),        intent(in) :: buffer ! data to write
 
-    integer          :: rank = 1         ! rank of data
-    integer(HSIZE_T) :: dims(1) = (/1/)  ! dimensions of array
+    ! Set up rank and dimensions
+    hdf5_rank = 1
+    dims1(1) = 1 
 
-    call h5ltmake_dataset_double_f(group, name, rank, dims, &
+    ! Write data
+    call h5ltmake_dataset_double_f(group, name, hdf5_rank, dims1, &
          (/ buffer /), hdf5_err)
 
   end subroutine hdf5_write_double
@@ -331,15 +329,12 @@ contains
     character(*),   intent(in) :: name      ! name of data
     real(8),        intent(in) :: buffer(:) ! data to write
 
-    integer          :: rank    ! rank of data
-    integer(HSIZE_T) :: dims(1) ! dimensions of array
-
     ! Set rank and dimensions of data
-    rank = 1
-    dims(1) = len
+    hdf5_rank = 1
+    dims1(1) = len
 
     ! Write data
-    call h5ltmake_dataset_double_f(group, name, rank, dims, &
+    call h5ltmake_dataset_double_f(group, name, hdf5_rank, dims1, &
          buffer, hdf5_err)
 
   end subroutine hdf5_write_double_1Darray
@@ -355,15 +350,12 @@ contains
     character(*),   intent(in) :: name      ! name of data
     real(8),        intent(in) :: buffer(length(1),length(2)) ! data to write
 
-    integer          :: rank    ! rank of data
-    integer(HSIZE_T) :: dims(2) ! dimensions of array
-
     ! Set rank and dimensions of data
-    rank = 2
-    dims = length
+    hdf5_rank = 2
+    dims2 = length
 
     ! Write data
-    call h5ltmake_dataset_double_f(group, name, rank, dims, &
+    call h5ltmake_dataset_double_f(group, name, hdf5_rank, dims2, &
          buffer, hdf5_err)
 
   end subroutine hdf5_write_double_2Darray
@@ -379,15 +371,12 @@ contains
     character(*),   intent(in) :: name      ! name of data
     real(8),        intent(in) :: buffer(length(1),length(2), length(3)) ! data
 
-    integer          :: rank    ! rank of data
-    integer(HSIZE_T) :: dims(3) ! dimensions of data
-
     ! Set rank and dimensions
-    rank = 3
-    dims = length
+    hdf5_rank = 3
+    dims3 = length
 
     ! Write data
-    call h5ltmake_dataset_double_f(group, name, rank, dims, &
+    call h5ltmake_dataset_double_f(group, name, hdf5_rank, dims3, &
          buffer, hdf5_err)
 
   end subroutine hdf5_write_double_3Darray
@@ -431,10 +420,13 @@ contains
     character(*),   intent(in)    :: name   ! name of data
     integer,        intent(inout) :: buffer ! read data to here 
 
-    integer          :: buffer_copy(1)
-    integer(HSIZE_T) :: dims(1) = (/1/)
+    integer :: buffer_copy(1) ! need an array for read
 
-    call h5ltread_dataset_int_f(group, name, buffer_copy, dims, hdf5_err)
+    ! Set up dimensions
+    dims1(1) = 1
+
+    ! Read data
+    call h5ltread_dataset_int_f(group, name, buffer_copy, dims1, hdf5_err)
     buffer = buffer_copy(1)
 
   end subroutine hdf5_read_integer
@@ -450,13 +442,11 @@ contains
     integer,        intent(inout) :: buffer(:) ! read data to here
     integer,        intent(in)    :: length    ! length of array
 
-    integer(HSIZE_T) :: dims(1)
-
     ! Set dimensions
-    dims(1) = length
+    dims1(1) = length
 
     ! Read data
-    call h5ltread_dataset_int_f(group, name, buffer, dims, hdf5_err)
+    call h5ltread_dataset_int_f(group, name, buffer, dims1, hdf5_err)
 
   end subroutine hdf5_read_integer_1Darray
 
@@ -471,9 +461,6 @@ contains
     character(*),       intent(in)  :: name      ! name of data
     integer(8), target, intent(out) :: buffer    ! read data to here
     integer(HID_T),     intent(in)  :: long_type ! long integer type
-
-    integer(HID_T) :: dset
-    type(c_ptr)    :: f_ptr
 
     ! Open dataset
     call h5dopen_f(group, name, dset, hdf5_err)
@@ -499,10 +486,13 @@ contains
     character(*),   intent(in)    :: name   ! name of data
     real(8),        intent(inout) :: buffer ! read data to here
 
-    real(8)          :: buffer_copy(1)
-    integer(HSIZE_T) :: dims(1) = (/1/)
+    real(8) :: buffer_copy(1) ! need an array for read
 
-    call h5ltread_dataset_double_f(group, name, buffer_copy, dims, hdf5_err)
+    ! Set up dimensions
+    dims1(1) = 1
+
+    ! Read data
+    call h5ltread_dataset_double_f(group, name, buffer_copy, dims1, hdf5_err)
     buffer = buffer_copy(1)
 
   end subroutine hdf5_read_double
@@ -518,13 +508,11 @@ contains
     character(*),   intent(in)    :: name      ! name of data
     real(8),        intent(inout) :: buffer(:) ! read data to here
 
-    integer(HSIZE_T) :: dims(1)
- 
     ! Set dimensions of data
-    dims(1) = length
+    dims1(1) = length
 
     ! Read data
-    call h5ltread_dataset_double_f(group, name, buffer, dims, hdf5_err)
+    call h5ltread_dataset_double_f(group, name, buffer, dims1, hdf5_err)
 
   end subroutine hdf5_read_double_1Darray
 

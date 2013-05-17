@@ -43,16 +43,22 @@ contains
 ! FILE_CREATE creates a new file to write data to
 !===============================================================================
 
-  subroutine file_create(filename, fh_str)
+  subroutine file_create(filename, fh_str, proc_id)
 
-    character(*), intent(in) :: filename ! name of file to be created
-    character(*), intent(in) :: fh_str   ! parallel or serial HDF5 file
+    character(*),      intent(in) :: filename    ! name of file to be created
+    character(*),      intent(in) :: fh_str      ! parallel or serial HDF5 file
+    integer, optional, intent(in) :: proc_id     ! processor rank to write from
+
+    integer :: proc_create = 0 ! processor writing in serial (default master)
 
 #ifdef HDF5
 # ifdef MPI
+    ! Check for proc id
+    if (present(proc_id)) proc_create = proc_id
+
     ! Determine whether the file should be created by 1 or all procs
     if (trim(fh_str) == 'serial') then
-      if(master) call hdf5_file_create(filename, hdf5_fh)
+      if(rank == proc_create) call hdf5_file_create(filename, hdf5_fh)
     else
       call hdf5_parallel_file_create(filename, hdf5_fh)
     endif
@@ -72,17 +78,23 @@ contains
 ! FILE_OPEN opens an existing file for reading or read/writing
 !===============================================================================
 
-  subroutine file_open(filename, fh_str, mode)
+  subroutine file_open(filename, fh_str, mode, proc_id)
 
-    character(*), intent(in) :: filename ! name of file to be opened
-    character(*), intent(in) :: fh_str   ! parallel or serial HDF5 file
-    character(*), intent(in) :: mode     ! open mode 'r' read, 'rw' read/write
+    character(*),      intent(in) :: filename ! name of file to be opened
+    character(*),      intent(in) :: fh_str   ! parallel or serial HDF5 file
+    character(*),      intent(in) :: mode     ! file access mode 
+    integer, optional, intent(in) :: proc_id  ! processor rank to open file
+
+    integer :: proc_open = 0 ! processor to open file (default is master)
 
 #ifdef HDF5
 # ifdef MPI
+    ! Check for proc_id
+    if (present(proc_id)) proc_open = proc_id
+
     ! Determine if the file should be opened by 1 or all procs
     if (trim(fh_str) == 'serial') then
-      if (master) call hdf5_file_open(filename, hdf5_fh, mode)
+      if (rank == proc_open) call hdf5_file_open(filename, hdf5_fh, mode)
     else
       call hdf5_parallel_file_open(filename, hdf5_fh, mode)
     endif
@@ -108,15 +120,21 @@ contains
 ! FILE_CLOSE closes a file
 !===============================================================================
 
-  subroutine file_close(fh_str)
+  subroutine file_close(fh_str, proc_id)
 
-    character(*), intent(in) :: fh_str ! serial or parallel hdf5 file
+    character(*),      intent(in) :: fh_str  ! serial or parallel hdf5 file
+    integer, optional, intent(in) :: proc_id ! processor rank to close file
+
+    integer :: proc_close = 0 ! processor to close file
 
 #ifdef HDF5
 # ifdef MPI
+    ! Check for proc_id
+    if (present(proc_id)) proc_close = proc_id
+
     ! Determine whether a file should be closed by 1 or all procs
     if (trim(fh_str) == 'serial') then
-     if(master) call hdf5_file_close(hdf5_fh)
+     if(rank == proc_close) call hdf5_file_close(hdf5_fh)
    else
      call hdf5_file_close(hdf5_fh)
     endif

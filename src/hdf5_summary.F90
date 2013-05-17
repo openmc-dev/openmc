@@ -646,7 +646,6 @@ contains
 
   subroutine hdf5_write_timing()
 
-    integer(HID_T)   :: timing_group
     integer(8)       :: total_particles
     real(8)          :: speed
 

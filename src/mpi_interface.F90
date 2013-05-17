@@ -32,14 +32,23 @@ contains
 ! MPI_OPEN_FILE
 !===============================================================================
 
-  subroutine mpi_open_file(filename, fh)
+  subroutine mpi_open_file(filename, fh, mode)
 
-    character(*) :: filename
-    integer, intent(in)     :: fh
+    character(*), intent(in) :: filename
+    character(*)  intent(in) :: mode
+    integer,      intent(in) :: fh
+
+    integer :: open_mode
+
+    ! Determine access mode
+    open_mode = MPI_MODE_RDONLY
+    if (mode == 'rw') then
+      open_mode = MPI_MODE_RDWR
+    end if
 
     ! Create the file
     call MPI_FILE_OPEN(MPI_COMM_WORLD, filename, &
-         MPI_MODE_RDONLY, MPI_INFO_NULL, fh, mpi_err) 
+         open_mode, MPI_INFO_NULL, fh, mpi_err) 
 
   end subroutine mpi_open_file
 

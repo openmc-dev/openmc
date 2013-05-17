@@ -165,7 +165,7 @@ contains
   end subroutine write_double
 
 !===============================================================================
-! READ_INTEGER
+! READ_DOUBLE
 !===============================================================================
 
   subroutine read_double(buffer, name, group)
@@ -530,7 +530,7 @@ contains
   end subroutine write_string
 
 !===============================================================================
-! WRITE_STRING
+! READ_STRING
 !===============================================================================
 
   subroutine read_string(buffer, name, group)

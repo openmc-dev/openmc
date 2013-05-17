@@ -657,6 +657,12 @@ universe. A ``<lattice>`` accepts the following attributes or sub-elements:
 
     *Default*: None
 
+  :outside:
+    The unique integer identifier of a material that is to be used to fill all
+    space outside of the lattice. This element is optional.
+
+    *Default*: The region outside the defined lattice is treated as void.
+
   :universes:
     A list of the universe numbers that fill each cell of the lattice.
 

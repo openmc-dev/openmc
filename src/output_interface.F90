@@ -1,6 +1,7 @@
 module output_interface
 
   use constants
+  use error,         only: warning
   use global
   use tally_header,  only: TallyResult
 
@@ -12,8 +13,7 @@ module output_interface
 
   implicit none
 
-  integer :: mpi_fh
-
+  ! Generic write procedure interface 
   interface write_data
     module procedure write_double
     module procedure write_double_1Darray
@@ -27,6 +27,7 @@ module output_interface
     module procedure write_string
   end interface write_data
 
+  ! Generic read procedure interface
   interface read_data
     module procedure read_double
     module procedure read_double_1Darray
@@ -39,16 +40,17 @@ module output_interface
 contains
 
 !===============================================================================
-! FILE_CREATE
+! FILE_CREATE creates a new file to write data to
 !===============================================================================
 
   subroutine file_create(filename, fh_str)
 
-    character(*) :: filename
-    character(*) :: fh_str
+    character(*), intent(in) :: filename ! name of file to be created
+    character(*), intent(in) :: fh_str   ! parallel or serial HDF5 file
 
 #ifdef HDF5
 # ifdef MPI
+    ! Determine whether the file should be created by 1 or all procs
     if (trim(fh_str) == 'serial') then
       if(master) call hdf5_file_create(filename, hdf5_fh)
     else
@@ -67,17 +69,18 @@ contains
   end subroutine file_create
 
 !===============================================================================
-! FILE_OPEN
+! FILE_OPEN opens an existing file for reading or read/writing
 !===============================================================================
 
   subroutine file_open(filename, fh_str, mode)
 
-    character(*) :: filename
-    character(*) :: fh_str
-    character(*) :: mode
+    character(*), intent(in) :: filename ! name of file to be opened
+    character(*), intent(in) :: fh_str   ! parallel or serial HDF5 file
+    character(*), intent(in) :: mode     ! open mode 'r' read, 'rw' read/write
 
 #ifdef HDF5
 # ifdef MPI
+    ! Determine if the file should be opened by 1 or all procs
     if (trim(fh_str) == 'serial') then
       if (master) call hdf5_file_open(filename, hdf5_fh, mode)
     else
@@ -89,6 +92,7 @@ contains
 #elif MPI
     call mpi_open_file(filename, mpi_fh, mode)
 #else
+    ! Check for read/write mode to open, default is read only
     if (mode == 'rw') then
       open(UNIT=UNIT_OUTPUT, FILE=filename, ACTION='write', &
            STATUS='old', ACCESS='stream')
@@ -101,15 +105,16 @@ contains
   end subroutine file_open
 
 !===============================================================================
-! FILE_CLOSE
+! FILE_CLOSE closes a file
 !===============================================================================
 
   subroutine file_close(fh_str)
 
-    character(*) :: fh_str
+    character(*), intent(in) :: fh_str ! serial or parallel hdf5 file
 
 #ifdef HDF5
 # ifdef MPI
+    ! Determine whether a file should be closed by 1 or all procs
     if (trim(fh_str) == 'serial') then
      if(master) call hdf5_file_close(hdf5_fh)
    else
@@ -127,22 +132,27 @@ contains
   end subroutine file_close
 
 !===============================================================================
-! WRITE_DOUBLE
+! WRITE_DOUBLE writes double precision scalar data
 !===============================================================================
 
   subroutine write_double(buffer, name, group)
 
-    real(8),        intent(in)           :: buffer
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    real(8),      intent(in)           :: buffer ! data to write
+    character(*), intent(in)           :: name   ! name for data
+    character(*), intent(in), optional :: group  ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Write the data
     call hdf5_write_double(temp_group, name, buffer)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_write_double(mpi_fh, buffer)
@@ -153,22 +163,27 @@ contains
   end subroutine write_double
 
 !===============================================================================
-! READ_DOUBLE
+! READ_DOUBLE reads double precision scalar data
 !===============================================================================
 
   subroutine read_double(buffer, name, group)
 
-    real(8),        intent(inout)        :: buffer
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    real(8),      intent(inout)        :: buffer ! read data to here 
+    character(*), intent(in)           :: name   ! name for data
+    character(*), intent(in), optional :: group  ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Read the data
     call hdf5_read_double(temp_group, name, buffer)
+
+    ! Check if HDf5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_read_double(mpi_fh, buffer)
@@ -179,23 +194,28 @@ contains
   end subroutine read_double
 
 !===============================================================================
-! WRITE_DOUBLE_1DARRAY
+! WRITE_DOUBLE_1DARRAY writes double presicions 1-D array data
 !===============================================================================
 
   subroutine write_double_1Darray(buffer, name, group, length)
 
-    integer,        intent(in)           :: length
-    real(8),        intent(in)           :: buffer(:)
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer,      intent(in)           :: length    ! length of array to write
+    real(8),      intent(in)           :: buffer(:) ! data to write
+    character(*), intent(in)           :: name      ! name of data
+    character(*), intent(in), optional :: group     ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Write the data
     call hdf5_write_double_1Darray(temp_group, name, buffer, length)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_write_double_1Darray(mpi_fh, buffer, length)
@@ -206,23 +226,28 @@ contains
   end subroutine write_double_1Darray
 
 !===============================================================================
-! READ_DOUBLE_1DARRAY
+! READ_DOUBLE_1DARRAY reads double precision 1-D array data
 !===============================================================================
 
   subroutine read_double_1Darray(buffer, name, group, length)
 
-    integer,        intent(in)           :: length
-    real(8),        intent(inout)        :: buffer(:)
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer,        intent(in)           :: length    ! length of array to read
+    real(8),        intent(inout)        :: buffer(:) ! read data to here
+    character(*),   intent(in)           :: name      ! name of data
+    character(*),   intent(in), optional :: group     ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Read the data
     call hdf5_read_double_1Darray(temp_group, name, buffer, length)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_read_double_1Darray(mpi_fh, buffer, length)
@@ -233,69 +258,89 @@ contains
   end subroutine read_double_1Darray
 
 !===============================================================================
-! WRITE_DOUBLE_2DARRAY
+! WRITE_DOUBLE_2DARRAY writes double precision 2-D array data
 !===============================================================================
 
   subroutine write_double_2Darray(buffer, name, group, length)
 
-    integer,        intent(in)           :: length(2)
-    real(8),        intent(in)           :: buffer(length(1),length(2))
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer,      intent(in)           :: length(2) ! dimension of array
+    real(8),      intent(in)           :: buffer(length(1),length(2)) ! the data
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Write the data
     call hdf5_write_double_2Darray(temp_group, name, buffer, length)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
+#else
+    message = 'Double precision 2-D array writing not currently supported'
+    call warning()
 #endif
 
   end subroutine write_double_2Darray
 
 !===============================================================================
-! WRITE_DOUBLE_3DARRAY
+! WRITE_DOUBLE_3DARRAY writes double precision 3-D array data
 !===============================================================================
 
   subroutine write_double_3Darray(buffer, name, group, length)
 
-    integer,        intent(in)           :: length(3)
-    real(8),        intent(in)           :: buffer(length(1),length(2), &
-                                                   length(3))
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer,      intent(in)           :: length(3) ! length of each dimension
+    real(8),      intent(in)           :: buffer(length(1),length(2),length(3))        
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Write the data
     call hdf5_write_double_3Darray(temp_group, name, buffer, length)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
+#else
+    message = 'Double precision 3-D array writing not currently supported'
+    call warning()
 #endif
 
   end subroutine write_double_3Darray
 
 !===============================================================================
-! WRITE_INTEGER
+! WRITE_INTEGER writes integer scalar data
 !===============================================================================
 
   subroutine write_integer(buffer, name, group)
 
-    integer,        intent(in)           :: buffer
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer,      intent(in)           :: buffer ! data to write
+    character(*), intent(in)           :: name   ! name of data
+    character(*), intent(in), optional :: group  ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Write data
     call hdf5_write_integer(temp_group, name, buffer)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_write_integer(mpi_fh, buffer)
@@ -306,22 +351,27 @@ contains
   end subroutine write_integer
 
 !===============================================================================
-! READ_INTEGER
+! READ_INTEGER reads integer scalar data
 !===============================================================================
 
   subroutine read_integer(buffer, name, group)
 
-    integer,        intent(inout)        :: buffer
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer,      intent(inout)        :: buffer ! read data to here
+    character(*), intent(in)           :: name   ! name of data
+    character(*), intent(in), optional :: group  ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Read the data
     call hdf5_read_integer(temp_group, name, buffer)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_read_integer(mpi_fh, buffer)
@@ -332,23 +382,29 @@ contains
   end subroutine read_integer
 
 !===============================================================================
-! WRITE_INTEGER_1DARRAY
+! WRITE_INTEGER_1DARRAY writes integer 1-D array data
 !===============================================================================
 
   subroutine write_integer_1Darray(buffer, name, group, length)
 
-    integer,        intent(in)           :: length
-    integer,        intent(in)           :: buffer(:)
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer,      intent(in)           :: length    ! length of array to write
+    integer,      intent(in)           :: buffer(:) ! data to write
+    character(*), intent(in)           :: name      ! name of data
+    character(*), intent(in), optional :: group     ! HDF5 group name
 
 #ifdef HDF5
+
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Write the data
     call hdf5_write_integer_1Darray(temp_group, name, buffer, length)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_write_integer_1Darray(mpi_fh, buffer, length)
@@ -359,22 +415,25 @@ contains
   end subroutine write_integer_1Darray
 
 !===============================================================================
-! READ_INTEGER_1DARRAY
+! READ_INTEGER_1DARRAY reads integer 1-D array data
 !===============================================================================
 
   subroutine read_integer_1Darray(buffer, name, group, length)
 
-    integer,        intent(in)           :: length
-    integer,        intent(inout)        :: buffer(:)
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer,      intent(in)           :: length    ! length of array to read
+    integer,      intent(inout)        :: buffer(:) ! read data to here
+    character(*), intent(in)           :: name      ! name of data
+    character(*), intent(in), optional :: group     ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Read the data
     call hdf5_read_integer_1Darray(temp_group, name, buffer, length)
     if (present(group)) call hdf5_close_group()
 #elif MPI
@@ -386,69 +445,89 @@ contains
   end subroutine read_integer_1Darray
 
 !===============================================================================
-! WRITE_INTEGER_2DARRAY
+! WRITE_INTEGER_2DARRAY writes integer 2-D array data
 !===============================================================================
 
   subroutine write_integer_2Darray(buffer, name, group, length)
 
-    integer,        intent(in)           :: length(2)
-    integer,        intent(in)           :: buffer(length(1),length(2))
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer,      intent(in)           :: length(2) ! length of dimensions
+    integer,      intent(in)           :: buffer(length(1),length(2)) ! data
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Write the data
     call hdf5_write_integer_2Darray(temp_group, name, buffer, length)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
+#else
+    message = 'Integer 2-D array writing not currently supported'
+    call warning()
 #endif
 
   end subroutine write_integer_2Darray
 
 !===============================================================================
-! WRITE_DOUBLE_3DARRAY
+! WRITE_INTEGER_3DARRAY writes integer 3-D array data
 !===============================================================================
 
   subroutine write_integer_3Darray(buffer, name, group, length)
 
-    integer,        intent(in)           :: length(3)
-    integer,        intent(in)           :: buffer(length(1),length(2), &
-                                                   length(3))
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer,      intent(in)           :: length(3) ! length of dimensions
+    integer,      intent(in)           :: buffer(length(1),length(2),length(3)) 
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Write the data
     call hdf5_write_integer_3Darray(temp_group, name, buffer, length)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
+#else
+    message = 'Integer 3-D array writing not currently supported'
+    call warning()
 #endif
 
   end subroutine write_integer_3Darray
 
 !===============================================================================
-! WRITE_LONG
+! WRITE_LONG writes long integer scalar data
 !===============================================================================
 
   subroutine write_long(buffer, name, group)
 
-    integer(8),     intent(in)           :: buffer
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer(8),   intent(in)           :: buffer ! data to write
+    character(*), intent(in)           :: name   ! name of data
+    character(*), intent(in), optional :: group  ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Write the data
     call hdf5_write_long(temp_group, name, buffer, hdf5_integer8_t)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_write_long(mpi_fh, buffer)
@@ -459,22 +538,27 @@ contains
   end subroutine write_long
 
 !===============================================================================
-! READ_LONG
+! READ_LONG reads long integer scalar data
 !===============================================================================
 
   subroutine read_long(buffer, name, group)
 
-    integer(8),     intent(inout)        :: buffer
-    character(*),   intent(in)           :: name
-    character(*),   intent(in), optional :: group
+    integer(8),   intent(inout)        :: buffer ! read data to here
+    character(*), intent(in)           :: name   ! name of data
+    character(*), intent(in), optional :: group  ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Read the data
     call hdf5_read_long(temp_group, name, buffer, hdf5_integer8_t)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_read_long(mpi_fh, buffer)
@@ -485,31 +569,39 @@ contains
   end subroutine read_long
 
 !===============================================================================
-! WRITE_STRING
+! WRITE_STRING writes string data
 !===============================================================================
 
   subroutine write_string(buffer, name, group)
 
-    character(*), intent(in)           :: buffer
-    character(*), intent(in)           :: name
-    character(*), intent(in), optional :: group
+    character(*), intent(in)           :: buffer ! data to write
+    character(*), intent(in)           :: name   ! name of data
+    character(*), intent(in), optional :: group  ! HDF5 group name
 
 #ifndef HDF5
 # ifdef MPI
-    integer :: n
+    integer :: n ! length of string buffer to write
 # endif
 #endif
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Write the data
     call hdf5_write_string(temp_group, name, buffer)
+
+    ! Check if HDf5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
+    ! Length of string buffer to write
     n = len(buffer)
+
+    ! Write the data
     call mpi_write_string(mpi_fh, buffer, n)
 #else
     write(UNIT_OUTPUT) buffer
@@ -518,31 +610,40 @@ contains
   end subroutine write_string
 
 !===============================================================================
-! READ_STRING
+! READ_STRING reads string data
 !===============================================================================
 
   subroutine read_string(buffer, name, group)
 
-    character(*), intent(inout)        :: buffer
-    character(*), intent(in)           :: name
-    character(*), intent(in), optional :: group
+    character(*), intent(inout)        :: buffer ! read data to here
+    character(*), intent(in)           :: name   ! name of data
+    character(*), intent(in), optional :: group  ! HDF5 group name
 
 #ifndef HDF5
 # ifdef MPI
-    integer :: n
+    integer :: n ! length of string to read to
 # endif
 #endif
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Read the data
     call hdf5_read_string(temp_group, name, buffer)
+
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
+
+    ! Length of string buffer to read
     n = len(buffer)
+
+    ! Read the data
     call mpi_read_string(mpi_fh, buffer, n)
 #else
     read(UNIT_OUTPUT) buffer
@@ -556,32 +657,38 @@ contains
 
   subroutine write_attribute_string(var, attr_type, attr_str, group)
 
-    character(*), intent(in)           :: var
-    character(*), intent(in)           :: attr_type
-    character(*), intent(in)           :: attr_str
-    character(*), intent(in), optional :: group
+    character(*), intent(in)           :: var       ! variable name for attr
+    character(*), intent(in)           :: attr_type ! attr identifier type
+    character(*), intent(in)           :: attr_str  ! string for attr id type
+    character(*), intent(in), optional :: group     ! HDF5 group name
 
 #ifdef HDF5
+    ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
+
+    ! Write the attribute string
     call hdf5_write_attribute_string(temp_group, var, attr_type, attr_str)
+
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
 #endif
 
   end subroutine write_attribute_string
 
 !===============================================================================
-! WRITE_TALLY_RESULT
+! WRITE_TALLY_RESULT writes an OpenMC TallyResult type
 !===============================================================================
 
   subroutine write_tally_result(buffer, name, group, n1, n2)
 
-    character(*),      intent(in), optional :: group
-    character(*),      intent(in)           :: name
-    integer,           intent(in)           :: n1, n2
-    type(TallyResult), intent(in), target   :: buffer(n1, n2)
+    character(*),      intent(in), optional :: group   ! HDF5 group name
+    character(*),      intent(in)           :: name    ! name of data
+    integer,           intent(in)           :: n1, n2  ! TallyResult dims
+    type(TallyResult), intent(in), target   :: buffer(n1, n2) ! data to write
 
 #ifdef HDF5
     integer          :: hdf5_err
@@ -591,7 +698,7 @@ contains
     type(c_ptr)      :: f_ptr
 #elif MPI
 #else
-    integer :: j,k
+    integer :: j,k ! iteration counters
 #endif
 
 #ifdef HDF5
@@ -645,15 +752,15 @@ contains
   end subroutine write_tally_result
 
 !===============================================================================
-! READ_TALLY_RESULT 
+! READ_TALLY_RESULT reads OpenMC TallyResult data
 !===============================================================================
 
   subroutine read_tally_result(buffer, name, group, n1, n2)
 
-    character(*),      intent(in), optional  :: group
-    character(*),      intent(in)            :: name
-    integer,           intent(in)            :: n1, n2
-    type(TallyResult), intent(inout), target :: buffer(n1, n2)
+    character(*),      intent(in), optional  :: group  ! HDF5 group name
+    character(*),      intent(in)            :: name   ! name of data
+    integer,           intent(in)            :: n1, n2 ! TallyResult dims
+    type(TallyResult), intent(inout), target :: buffer(n1, n2) ! read data here
 
 #ifdef HDF5
     integer          :: hdf5_err
@@ -662,7 +769,7 @@ contains
     type(c_ptr)      :: f_ptr
 #elif MPI
 #else
-    integer :: j,k
+    integer :: j,k ! iteration counters
 #endif
 
 #ifdef HDF5
@@ -712,7 +819,7 @@ contains
 
 
 !===============================================================================
-! WRITE_SOURCE_BANK
+! WRITE_SOURCE_BANK writes OpenMC source_bank data
 !===============================================================================
 
   subroutine write_source_bank()
@@ -728,8 +835,8 @@ contains
     type(c_ptr)      :: f_ptr
 #elif MPI
     integer(MPI_OFFSET_KIND) :: offset
-    integer                  :: size_offset_kind
-    integer                  :: size_bank
+    integer                  :: size_offset_kind ! the data offset kind
+    integer                  :: size_bank        ! size of bank to write
 #endif
 
 #ifdef HDF5
@@ -833,7 +940,7 @@ contains
   end subroutine write_source_bank
 
 !===============================================================================
-! READ_SOURCE_BANK
+! READ_SOURCE_BANK reads OpenMC source_bank data
 !===============================================================================
 
   subroutine read_source_bank()
@@ -849,8 +956,8 @@ contains
     type(c_ptr)      :: f_ptr
 #elif MPI
     integer(MPI_OFFSET_KIND) :: offset
-    integer                  :: size_offset_kind
-    integer                  :: size_bank
+    integer                  :: size_offset_kind ! the data offset kind
+    integer                  :: size_bank        ! size of bank to read
 #endif
 
 #ifdef HDF5

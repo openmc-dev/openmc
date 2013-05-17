@@ -690,15 +690,10 @@ contains
     integer,           intent(in)           :: n1, n2  ! TallyResult dims
     type(TallyResult), intent(in), target   :: buffer(n1, n2) ! data to write
 
-#ifdef HDF5
-    integer          :: hdf5_err
-    integer(HSIZE_T) :: dims(1)
-    integer(HID_T)   :: dspace
-    integer(HID_T)   :: dset
-    type(c_ptr)      :: f_ptr
-#elif MPI
-#else
+#ifndef HDF5
+# ifndef MPI
     integer :: j,k ! iteration counters
+# endif
 #endif
 
 #ifdef HDF5
@@ -711,10 +706,10 @@ contains
     end if
 
     ! Set overall size of vector to write
-    dims(1) = n1*n2 
+    dims1(1) = n1*n2 
 
     ! Create up a dataspace for size
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
+    call h5screate_simple_f(1, dims1, dspace, hdf5_err)
 
     ! Create the dataset
     call h5dcreate_f(temp_group, name, hdf5_tallyresult_t, dspace, dset, &
@@ -762,14 +757,10 @@ contains
     integer,           intent(in)            :: n1, n2 ! TallyResult dims
     type(TallyResult), intent(inout), target :: buffer(n1, n2) ! read data here
 
-#ifdef HDF5
-    integer          :: hdf5_err
-    integer(HSIZE_T) :: dims(1)
-    integer(HID_T)   :: dset
-    type(c_ptr)      :: f_ptr
-#elif MPI
-#else
+#ifndef HDF5
+# ifndef MPI
     integer :: j,k ! iteration counters
+# endif
 #endif
 
 #ifdef HDF5
@@ -781,9 +772,6 @@ contains
       temp_group = hdf5_fh
     end if
 
-    ! Set overall size of vector to read
-    dims(1) = n1*n2 
-
     ! Open the dataset
     call h5dopen_f(temp_group, name, dset, hdf5_err)
 
@@ -793,9 +781,7 @@ contains
 
     ! Close ids
     call h5dclose_f(dset, hdf5_err)
-    if (present(group)) then
-      call hdf5_close_group()
-    end if
+    if (present(group)) call hdf5_close_group()
 
 #elif MPI
 
@@ -825,16 +811,9 @@ contains
   subroutine write_source_bank()
 
 #ifdef HDF5
-    integer(HSIZE_T) :: dims(1)
-    integer(HID_T)   :: dset
-    integer(HID_T)   :: dspace
-    integer(HID_T)   :: memspace
-    integer(HID_T)   :: plist
-    integer          :: rank
-    integer(8)       :: offset(1)
-    type(c_ptr)      :: f_ptr
+    integer(8)               :: offset(1)        ! source data offset
 #elif MPI
-    integer(MPI_OFFSET_KIND) :: offset
+    integer(MPI_OFFSET_KIND) :: offset           ! offset of data
     integer                  :: size_offset_kind ! the data offset kind
     integer                  :: size_bank        ! size of bank to write
 #endif
@@ -843,11 +822,11 @@ contains
 # ifdef MPI
 
     ! Set size of total dataspace for all procs and rank
-    dims(1) = n_particles
-    rank = 1
+    dims1(1) = n_particles
+    hdf5_rank = 1
 
     ! Create that dataspace
-    call h5screate_simple_f(rank, dims, dspace, hdf5_err)
+    call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
 
     ! Create the dataset for that dataspace
     call h5dcreate_f(hdf5_fh, "source_bank", hdf5_bank_t, dspace, dset, hdf5_err)
@@ -856,15 +835,15 @@ contains
     call h5sclose_f(dspace, hdf5_err)
 
     ! Create another data space but for each proc individually
-    dims(1) = work
-    call h5screate_simple_f(rank, dims, memspace, hdf5_err)
+    dims1(1) = work
+    call h5screate_simple_f(hdf5_rank, dims1, memspace, hdf5_err)
 
     ! Get the individual local proc dataspace
     call h5dget_space_f(dset, dspace, hdf5_err)
 
     ! Select hyperslab for this dataspace
     offset(1) = bank_first - 1_8
-    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
+    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims1, hdf5_err)
 
     ! Set up the property list for parallel writing
     call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
@@ -887,10 +866,11 @@ contains
 # else
 
     ! Set size
-    dims(1) = work
+    dims1(1) = work
+    rank_data = 1
 
     ! Create dataspace
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
+    call h5screate_simple_f(rank_data, dims1, dspace, hdf5_err)
 
     ! Create dataset
     call h5dcreate_f(hdf5_fh, "source_bank", hdf5_bank_t, &
@@ -946,16 +926,9 @@ contains
   subroutine read_source_bank()
 
 #ifdef HDF5
-    integer(HSIZE_T) :: dims(1)
-    integer(HID_T)   :: dset
-    integer(HID_T)   :: dspace
-    integer(HID_T)   :: memspace
-    integer(HID_T)   :: plist
-    integer          :: rank
-    integer(8)       :: offset(1)
-    type(c_ptr)      :: f_ptr
+    integer(8)               :: offset(1)        ! offset of data
 #elif MPI
-    integer(MPI_OFFSET_KIND) :: offset
+    integer(MPI_OFFSET_KIND) :: offset           ! offset of data
     integer                  :: size_offset_kind ! the data offset kind
     integer                  :: size_bank        ! size of bank to read
 #endif
@@ -964,22 +937,22 @@ contains
 # ifdef MPI
 
     ! Set size of total dataspace for all procs and rank
-    dims(1) = n_particles
-    rank = 1
+    dims1(1) = n_particles
+    hdf5_rank = 1
 
     ! Open the dataset
     call h5dopen_f(hdf5_fh, "source_bank", dset, hdf5_err)
 
     ! Create another data space but for each proc individually
-    dims(1) = work
-    call h5screate_simple_f(rank, dims, memspace, hdf5_err)
+    dims1(1) = work
+    call h5screate_simple_f(hdf5_rank, dims1, memspace, hdf5_err)
 
     ! Get the individual local proc dataspace
     call h5dget_space_f(dset, dspace, hdf5_err)
 
     ! Select hyperslab for this dataspace
     offset(1) = bank_first - 1_8
-    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
+    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims1, hdf5_err)
 
     ! Set up the property list for parallel writing
     call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
@@ -1000,9 +973,6 @@ contains
     call h5pclose_f(plist, hdf5_err)
 
 # else
-
-    ! Set size
-    dims(1) = work
 
     ! Open dataset
     call h5dopen_f(hdf5_fh, "source_bank", dset, hdf5_err)

@@ -257,6 +257,11 @@ contains
         ! Set filename for source
         filename = trim(path_output) // 'source.' // &
                    trim(to_str(current_batch))
+#ifdef HDF5
+        filename = trim(filename) // '.h5'
+#else
+        filename = trim(filename) // '.binary'
+#endif
 
         ! Write message
         message = "Creating source file " // trim(filename) // "..."
@@ -531,6 +536,11 @@ contains
         ! Set filename for source
         filename = trim(path_output) // 'source.' // &
                    trim(to_str(restart_batch))
+#ifdef HDF5
+        filename = trim(filename) // '.h5'
+#else
+        filename = trim(filename) // '.binary'
+#endif
 
         ! Write message
         message = "Loading source file " // trim(filename) // "..."

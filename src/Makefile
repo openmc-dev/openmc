@@ -1,16 +1,12 @@
 program = openmc
 prefix = /usr/local
 
+source = $(wildcard *.F90)
+objects = $(source:.F90=.o)
 templates = $(wildcard templates/*.o)
 xml_fort = xml-fortran/xmlparse.o \
            xml-fortran/read_xml_primitives.o \
            xml-fortran/write_xml_primitives.o
-
-#===============================================================================
-# Object Files
-#===============================================================================
-
-include OBJECTS
 
 #===============================================================================
 # User Options

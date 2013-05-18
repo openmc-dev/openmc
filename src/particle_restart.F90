@@ -8,9 +8,9 @@ module particle_restart
   use global
   use particle_header, only: deallocate_coord
   use output,          only: write_message, print_particle
-  use physics,         only: transport
   use random_lcg,      only: set_particle_seed
   use source,          only: initialize_particle
+  use tracking,        only: transport
 
 #ifdef HDF5
   use hdf5_interface 

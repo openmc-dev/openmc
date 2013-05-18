@@ -1215,24 +1215,24 @@ contains
 
     if (entropy_on) then
       if (cmfd_run) then
-        message = " Bat./Gen.   keff       Entropy         Average k          CMFD k    CMFD Ent"
+        message = " Bat./Gen.      k       Entropy         Average k          CMFD k    CMFD Ent"
         call write_message(1)
         message = " =========   ========   ========   ====================   ========   ========"
         call write_message(1)
       else
-        message = " Bat./Gen.   keff       Entropy         Average k"
+        message = " Bat./Gen.      k       Entropy         Average k"
         call write_message(1)
         message = " =========   ========   ========   ===================="
         call write_message(1)
       end if
     else
       if (cmfd_run) then
-        message = " Bat./Gen.   keff            Average k          CMFD k"
+        message = " Bat./Gen.      k            Average k          CMFD k"
         call write_message(1)
         message = " =========   ========   ====================   ========"
         call write_message(1)
       else
-        message = " Bat./Gen.   keff            Average k"
+        message = " Bat./Gen.      k            Average k"
         call write_message(1)
         message = " =========   ========   ===================="
         call write_message(1)

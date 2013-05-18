@@ -336,7 +336,8 @@ contains
       end do
 
       ! Perform collision physics for inelastics scattering
-      call inelastic_scatter(nuc, rxn)
+      call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
+           p % mu, p % wgt)
       p % event_MT = rxn % MT
 
     end if
@@ -891,22 +892,24 @@ contains
 ! than fission), i.e. level scattering, (n,np), (n,na), etc.
 !===============================================================================
 
-  subroutine inelastic_scatter(nuc, rxn)
+  subroutine inelastic_scatter(nuc, rxn, E, uvw, mu, wgt)
 
     type(Nuclide),  pointer :: nuc
     type(Reaction), pointer :: rxn
+    real(8), intent(inout)  :: E      ! energy in lab (incoming/outgoing)
+    real(8), intent(inout)  :: uvw(3) ! directional cosines
+    real(8), intent(out)    :: mu     ! cosine of scattering angle in lab
+    real(8), intent(inout)  :: wgt    ! particle weight
 
     integer :: law         ! secondary energy distribution law
     real(8) :: A           ! atomic weight ratio of nuclide
     real(8) :: E_in        ! incoming energy
-    real(8) :: mu          ! cosine of scattering angle
-    real(8) :: E           ! outgoing energy in laboratory
     real(8) :: E_cm        ! outgoing energy in center-of-mass
     real(8) :: u,v,w       ! direction cosines
     real(8) :: Q           ! Q-value of reaction
 
     ! copy energy of neutron
-    E_in = p % E
+    E_in = E
 
     ! determine A and Q
     A = nuc % awr
@@ -941,22 +944,16 @@ contains
     end if
 
     ! copy directional cosines
-    u = p % coord0 % uvw(1)
-    v = p % coord0 % uvw(2)
-    w = p % coord0 % uvw(3)
+    u = uvw(1)
+    v = uvw(2)
+    w = uvw(3)
 
     ! change direction of particle
     call rotate_angle(u, v, w, mu)
-    p % coord0 % uvw = (/ u, v, w /)
-
-    ! change energy of particle
-    p % E = E
-
-    ! Copy scattering cosine for tallies
-    p % mu = mu
+    uvw = (/ u, v, w /)
 
     ! change weight of particle based on multiplicity
-    p % wgt = rxn % multiplicity * p % wgt
+    wgt = rxn % multiplicity * wgt
 
   end subroutine inelastic_scatter
 

@@ -291,7 +291,8 @@ contains
         rxn => nuc % reactions(1)
 
         ! Perform collision physics for elastic scattering
-        call elastic_scatter(i_nuclide, rxn)
+        call elastic_scatter(i_nuclide, rxn, &
+             p % E, p % coord0 % uvw, p % mu)
       end if
 
       p % event_MT = ELASTIC
@@ -351,13 +352,16 @@ contains
 ! target.
 !===============================================================================
 
-  subroutine elastic_scatter(i_nuclide, rxn)
+  subroutine elastic_scatter(i_nuclide, rxn, E, uvw, mu_lab)
 
     integer, intent(in)     :: i_nuclide
     type(Reaction), pointer :: rxn
+    real(8), intent(inout)  :: E
+    real(8), intent(inout)  :: uvw(3)
+    real(8), intent(out)    :: mu_lab
 
     real(8) :: awr     ! atomic weight ratio of target
-    real(8) :: mu      ! cosine of polar angle
+    real(8) :: mu_cm   ! cosine of polar angle in center-of-mass
     real(8) :: vel     ! magnitude of velocity
     real(8) :: v_n(3)  ! velocity of neutron
     real(8) :: v_cm(3) ! velocity of center-of-mass
@@ -365,17 +369,16 @@ contains
     real(8) :: u       ! x-direction
     real(8) :: v       ! y-direction
     real(8) :: w       ! z-direction
-    real(8) :: E       ! energy
     type(Nuclide), pointer :: nuc => null()
 
     ! get pointer to nuclide
     nuc => nuclides(i_nuclide)
 
-    vel = sqrt(p % E)
+    vel = sqrt(E)
     awr = nuc % awr
 
     ! Neutron velocity in LAB
-    v_n = vel * p % coord0 % uvw
+    v_n = vel * uvw
 
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
@@ -394,7 +397,7 @@ contains
     vel = sqrt(dot_product(v_n, v_n))
 
     ! Sample scattering angle
-    mu = sample_angle(rxn, p % E)
+    mu_cm = sample_angle(rxn, E)
 
     ! Determine direction cosines in CM
     u = v_n(1)/vel
@@ -402,7 +405,7 @@ contains
     w = v_n(3)/vel
 
     ! Change direction cosines according to mu
-    call rotate_angle(u, v, w, mu)
+    call rotate_angle(u, v, w, mu_cm)
 
     ! Rotate neutron velocity vector to new angle -- note that the speed of the
     ! neutron in CM does not change in elastic scattering. However, the speed
@@ -417,14 +420,10 @@ contains
 
     ! compute cosine of scattering angle in LAB frame by taking dot product of
     ! neutron's pre- and post-collision angle
-    mu = dot_product(p % coord0 % uvw, v_n) / vel
+    mu_lab = dot_product(uvw, v_n) / vel
 
     ! Set energy and direction of particle in LAB frame
-    p % E = E
-    p % coord0 % uvw = v_n / vel
-
-    ! Copy scattering cosine for tallies
-    p % mu = mu
+    uvw = v_n / vel
 
   end subroutine elastic_scatter
 

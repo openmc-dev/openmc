@@ -173,7 +173,7 @@ module global
   integer(8) :: current_work ! index in source bank of current history simulated
 
   ! Temporary k-effective values
-  real(8), allocatable :: k_batch(:) ! batch estimates of k
+  real(8), allocatable :: k_generation(:) ! single-generation estimates of k
   real(8) :: keff = ONE       ! average k over active batches
   real(8) :: keff_std         ! standard deviation of average k
   real(8) :: k_col_abs = ZERO ! sum over batches of k_collision * k_absorption

@@ -25,6 +25,9 @@ module eigenvalue
   private
   public :: run_eigenvalue
 
+  ! Single-generation k on each processor
+  real(8) :: keff_generation
+
 contains
 
 !===============================================================================
@@ -81,16 +84,7 @@ contains
         ! Accumulate time for transport
         call time_transport % stop()
 
-        ! Distribute fission bank across processors evenly
-        call time_bank % start()
-        call synchronize_bank()
-        call time_bank % stop()
-
-        ! Calculate shannon entropy
-        if (entropy_on) call shannon_entropy()
-
-        ! Write generation output
-        if (master .and. current_gen /= gen_per_batch) call print_generation()
+        call finalize_generation()
 
       end do GENERATION_LOOP
 
@@ -152,7 +146,32 @@ contains
     ! Count source sites if using uniform fission source weighting
     if (ufs) call count_source_for_ufs()
 
+    ! Store current value of tracklength k
+    keff_generation = global_tallies(K_TRACKLENGTH) % value
+
   end subroutine initialize_generation
+
+!===============================================================================
+! FINALIZE_GENERATION
+!===============================================================================
+
+  subroutine finalize_generation()
+
+    ! Distribute fission bank across processors evenly
+    call time_bank % start()
+    call synchronize_bank()
+    call time_bank % stop()
+
+    ! Calculate shannon entropy
+    if (entropy_on) call shannon_entropy()
+
+    ! Collect results and statistics
+    call calculate_keff()
+
+    ! Write generation output
+    if (master .and. current_gen /= gen_per_batch) call print_generation()
+
+  end subroutine finalize_generation
 
 !===============================================================================
 ! FINALIZE_BATCH handles synchronization and accumulation of tallies,
@@ -167,8 +186,11 @@ contains
     call synchronize_tallies()
     call time_tallies % stop()
 
-    ! Collect results and statistics
-    call calculate_keff()
+    ! Reset global tally results
+    if (.not. active_batches) then
+      call reset_result(global_tallies)
+      n_realizations = 0
+    end if
 
     ! Perform CMFD calculation if on
     if (cmfd_on) call execute_cmfd()
@@ -183,7 +205,6 @@ contains
 
       ! Create state point file
       call write_state_point()
-
     end if
 
     if (master .and. current_batch == n_batches) then
@@ -544,77 +565,52 @@ contains
 
   subroutine calculate_keff()
 
-    real(8) :: temp(2) ! used to reduce sum and sum_sq
-    real(8) :: alpha   ! significance level for CI
-    real(8) :: t_value ! t-value for confidence intervals
+    integer :: n        ! number of active generations
+    real(8) :: alpha    ! significance level for CI
+    real(8) :: t_value  ! t-value for confidence intervals
+    real(8), save :: k_sum(2) = ZERO ! used to reduce sum and sum_sq
 
-    message = "Calculate batch keff..."
+    message = "Calculate generation keff..."
     call write_message(8)
 
     ! =========================================================================
-    ! SINGLE-BATCH ESTIMATE OF K-EFFECTIVE
+    ! SINGLE GENERATION ESTIMATE OF K-EFFECTIVE
+
+    ! Get keff for this generation by subtracting off the starting value
+    keff_generation = global_tallies(K_TRACKLENGTH) % value - keff_generation
 
 #ifdef MPI
-    if (.not. reduce_tallies) then
-      ! Reduce value of k_batch if running in parallel
-      if (master) then
-        call MPI_REDUCE(MPI_IN_PLACE, k_batch(current_batch), 1, MPI_REAL8, &
-             MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-      else
-        ! Receive buffer not significant at other processors
-        call MPI_REDUCE(k_batch(current_batch), temp, 1, MPI_REAL8, &
-             MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-      end if
-    end if
+    ! Combine values across all processors
+    call MPI_REDUCE(keff_generation, k_generation(overall_gen), 1, MPI_REAL8, &
+         MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+#else
+    k_generation(overall_gen) = keff_generation
 #endif
 
     ! Normalize single batch estimate of k
-    if (master) then
-      k_batch(current_batch) = k_batch(current_batch) / &
-           (n_particles * gen_per_batch)
-    end if
+    if (master) k_generation(overall_gen) = &
+         k_generation(overall_gen) / n_particles
 
     ! =========================================================================
     ! ACCUMULATED K-EFFECTIVE AND ITS VARIANCE
 
-    if (reduce_tallies) then
-      ! In this case, global_tallies has already been reduced, so we don't
-      ! need to perform any more reductions and just take the values from
-      ! global_tallies directly
+    ! Determine number of active generations
+    n = overall_gen - n_inactive*gen_per_batch
 
-      ! Sample mean of keff
-      keff = global_tallies(K_TRACKLENGTH) % sum / n_realizations
+    if (n <= 0) then
+      ! For inactive generations, use current generation k as estimate for next
+      ! generation
+      keff = k_generation(overall_gen)
 
-      if (n_realizations > 1) then
-        if (confidence_intervals) then
-          ! Calculate t-value for confidence intervals
-          alpha = ONE - CONFIDENCE_LEVEL
-          t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
-        else
-          t_value = ONE
-        end if
-
-        ! Standard deviation of the sample mean of k
-        keff_std = t_value * sqrt((global_tallies(K_TRACKLENGTH) % sum_sq / &
-             n_realizations - keff * keff) / (n_realizations - 1))
-      end if
     else
-      ! In this case, no reduce was ever done on global_tallies. Thus, we need
-      ! to reduce the values in sum and sum^2 to get the sample mean and its
-      ! standard deviation
+      ! Sample mean of keff
+      k_sum(1) = k_sum(1) + k_generation(overall_gen)
+      k_sum(2) = k_sum(2) + k_generation(overall_gen)**2
 
-#ifdef MPI
-      call MPI_REDUCE(global_tallies(K_TRACKLENGTH) % sum, temp, 2, &
-           MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-#else
-      temp(1) = global_tallies(K_TRACKLENGTH) % sum
-      temp(2) = global_tallies(K_TRACKLENGTH) % sum_sq
-#endif
+      ! Determine mean
+      keff = k_sum(1) / n
 
-      ! Sample mean of k
-      keff = temp(1) / n_realizations
-
-      if (n_realizations > 1) then
+      if (n > 1) then
         if (confidence_intervals) then
           ! Calculate t-value for confidence intervals
           alpha = ONE - CONFIDENCE_LEVEL
@@ -624,8 +620,7 @@ contains
         end if
 
         ! Standard deviation of the sample mean of k
-        keff_std = t_value * sqrt((temp(2)/n_realizations - keff*keff) / &
-             (n_realizations - 1))
+        keff_std = t_value * sqrt((k_sum(2)/n - keff**2) / (n - 1))
       end if
     end if
 
@@ -633,12 +628,6 @@ contains
     ! Broadcast new keff value to all processors
     call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
 #endif
-
-    ! Reset global tally results
-    if (.not. active_batches) then
-      call reset_result(global_tallies)
-      n_realizations = 0
-    end if
 
   end subroutine calculate_keff
 

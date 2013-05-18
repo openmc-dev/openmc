@@ -17,7 +17,7 @@ module eigenvalue
   use random_lcg,   only: prn, set_particle_seed, prn_skip
   use search,       only: binary_search
   use source,       only: get_source_particle
-  use state_point,  only: write_state_point, replay_batch_history
+  use state_point,  only: write_state_point
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
                           reset_result
@@ -25,8 +25,8 @@ module eigenvalue
   private
   public :: run_eigenvalue
 
-  ! Single-generation k on each processor
-  real(8) :: keff_generation
+  real(8) :: keff_generation ! Single-generation k on each processor
+  real(8) :: k_sum(2) = ZERO ! used to reduce sum and sum_sq
 
 contains
 
@@ -166,7 +166,8 @@ contains
     if (entropy_on) call shannon_entropy()
 
     ! Collect results and statistics
-    call calculate_keff()
+    call calculate_generation_keff()
+    call calculate_average_keff()
 
     ! Write generation output
     if (master .and. current_gen /= gen_per_batch) call print_generation()
@@ -559,22 +560,12 @@ contains
   end subroutine shannon_entropy
 
 !===============================================================================
-! CALCULATE_KEFF calculates the single batch estimate of keff as well as the
-! mean and standard deviation of the mean for active batches
+! CALCULATE_GENERATION_KEFF collects the single-processor tracklength k's onto
+! the master processor and normalizes them. This should work whether or not the
+! no-reduce method is being used.
 !===============================================================================
 
-  subroutine calculate_keff()
-
-    integer :: n        ! number of active generations
-    real(8) :: alpha    ! significance level for CI
-    real(8) :: t_value  ! t-value for confidence intervals
-    real(8), save :: k_sum(2) = ZERO ! used to reduce sum and sum_sq
-
-    message = "Calculate generation keff..."
-    call write_message(8)
-
-    ! =========================================================================
-    ! SINGLE GENERATION ESTIMATE OF K-EFFECTIVE
+  subroutine calculate_generation_keff()
 
     ! Get keff for this generation by subtracting off the starting value
     keff_generation = global_tallies(K_TRACKLENGTH) % value - keff_generation
@@ -588,11 +579,23 @@ contains
 #endif
 
     ! Normalize single batch estimate of k
+    ! TODO: This should be normalized by total_weight, not by n_particles
     if (master) k_generation(overall_gen) = &
          k_generation(overall_gen) / n_particles
 
-    ! =========================================================================
-    ! ACCUMULATED K-EFFECTIVE AND ITS VARIANCE
+  end subroutine calculate_generation_keff
+
+!===============================================================================
+! CALCULATE_AVERAGE_KEFF calculates the mean and standard deviation of the mean
+! of k-effective during active generations and broadcasts the mean to all
+! processors
+!===============================================================================
+
+  subroutine calculate_average_keff()
+
+    integer :: n        ! number of active generations
+    real(8) :: alpha    ! significance level for CI
+    real(8) :: t_value  ! t-value for confidence intervals
 
     ! Determine number of active generations
     n = overall_gen - n_inactive*gen_per_batch
@@ -629,7 +632,7 @@ contains
     call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
 #endif
 
-  end subroutine calculate_keff
+  end subroutine calculate_average_keff
 
 !===============================================================================
 ! CALCULATE_COMBINED_KEFF calculates a minimum variance estimate of k-effective
@@ -777,5 +780,38 @@ contains
     end if
 
   end subroutine count_source_for_ufs
+
+!===============================================================================
+! REPLAY_BATCH_HISTORY displays keff and entropy for each generation within a
+! batch using data read from a state point file
+!===============================================================================
+
+  subroutine replay_batch_history
+
+    ! Write message at beginning
+    if (current_batch == 1) then
+      message = "Replaying history from state point..."
+      call write_message(1)
+    end if
+
+    do current_gen = 1, gen_per_batch
+      overall_gen = overall_gen + 1
+      call calculate_average_keff()
+
+      ! print out batch keff
+      if (current_gen < gen_per_batch) then
+        if (master) call print_generation()
+      else
+        if (master) call print_batch_keff()
+      end if
+    end do
+
+    ! Write message at end
+    if (current_batch == restart_batch) then
+      message = "Resuming simulation..."
+      call write_message(1)
+    end if
+
+  end subroutine replay_batch_history
 
 end module eigenvalue

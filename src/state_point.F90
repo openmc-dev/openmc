@@ -15,8 +15,7 @@ module state_point
   use constants
   use error,              only: fatal_error, warning
   use global
-  use output,             only: write_message, time_stamp, print_batch_keff
-  use math,               only: t_percentile
+  use output,             only: write_message, time_stamp
   use string,             only: to_str
   use output_interface
   use tally_header,       only: TallyObject
@@ -571,60 +570,6 @@ contains
     end if
 
   end subroutine load_state_point
-
-!===============================================================================
-! REPLAY_BATCH_HISTORY displays batch keff and entropy for each batch stored in
-! a state point file
-!===============================================================================
-
-  subroutine replay_batch_history
-
-    integer :: n = 0 ! number of realizations
-    real(8), save :: temp(2) = ZERO ! temporary values for keff
-    real(8) :: alpha ! significance level for CI
-    real(8) :: t_value ! t-value for confidence intervals
-
-    ! Write message at beginning
-    if (current_batch == 1) then
-      message = "Replaying history from state point..."
-      call write_message(1)
-    end if
-
-    ! Add to number of realizations
-    if (current_batch > n_inactive) then
-      n = n + 1
-
-      temp(1) = temp(1) + k_generation(overall_gen)
-      temp(2) = temp(2) + k_generation(overall_gen)**2
-
-      ! calculate mean keff
-      keff = temp(1) / n
-
-      if (n > 1) then
-        if (confidence_intervals) then
-          ! Calculate t-value for confidence intervals
-          alpha = ONE - CONFIDENCE_LEVEL
-          t_value = t_percentile(ONE - alpha/TWO, n - 1)
-        else
-          t_value = ONE
-        end if
-
-        keff_std = t_value * sqrt((temp(2)/n - keff*keff)/(n - 1))
-      end if
-    else
-      keff = k_generation(overall_gen)
-    end if
-
-    ! print out batch keff
-    if (master) call print_batch_keff()
-
-    ! Write message at end
-    if (current_batch == restart_batch) then
-      message = "Resuming simulation..."
-      call write_message(1)
-    end if
-
-  end subroutine replay_batch_history
 
   subroutine read_source
 ! TODO write this routine

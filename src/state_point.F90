@@ -86,7 +86,8 @@ contains
       if (run_mode == MODE_EIGENVALUE) then
         call write_data(n_inactive, "n_inactive")
         call write_data(gen_per_batch, "gen_per_batch")
-        call write_data(k_batch, "k_batch", length=current_batch)
+        call write_data(k_generation, "k_generation", &
+             length=current_batch*gen_per_batch)
         call write_data(entropy, "entropy", length=current_batch*gen_per_batch)
         call write_data(k_col_abs, "k_col_abs")
         call write_data(k_col_tra, "k_col_tra")
@@ -363,7 +364,8 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       call read_data(int_array(1), "n_inactive")
       call read_data(gen_per_batch, "gen_per_batch")
-      call read_data(k_batch, "k_batch", length=restart_batch)
+      call read_data(k_generation, "k_generation", &
+           length=restart_batch*gen_per_batch)
       call read_data(entropy, "entropy", length=restart_batch*gen_per_batch)
       call read_data(k_col_abs, "k_col_abs")
       call read_data(k_col_tra, "k_col_tra")
@@ -592,8 +594,8 @@ contains
     if (current_batch > n_inactive) then
       n = n + 1
 
-      temp(1) = temp(1) + k_batch(current_batch)
-      temp(2) = temp(2) + k_batch(current_batch)*k_batch(current_batch)
+      temp(1) = temp(1) + k_generation(overall_gen)
+      temp(2) = temp(2) + k_generation(overall_gen)**2
 
       ! calculate mean keff
       keff = temp(1) / n
@@ -610,7 +612,7 @@ contains
         keff_std = t_value * sqrt((temp(2)/n - keff*keff)/(n - 1))
       end if
     else
-      keff = k_batch(current_batch)
+      keff = k_generation(overall_gen)
     end if
 
     ! print out batch keff

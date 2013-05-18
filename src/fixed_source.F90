@@ -3,13 +3,13 @@ module fixed_source
   use constants,   only: ZERO
   use global
   use output,      only: write_message, header
-  use physics,     only: transport
   use random_lcg,  only: set_particle_seed
   use source,      only: initialize_particle, sample_external_source, &
                          copy_source_attributes
   use state_point, only: write_state_point
   use string,      only: to_str
   use tally,       only: synchronize_tallies, setup_active_usertallies
+  use tracking,    only: transport
 
   type(Bank), pointer :: source_site => null()
 

@@ -108,7 +108,7 @@ contains
       ! estimate, this only needs to be scored to in one place.
       global_tallies(K_ABSORPTION) % value = &
            global_tallies(K_ABSORPTION) % value + p % absorb_wgt * &
-           material_xs % nu_fission / material_xs % absorption
+           micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
 
     else
       ! set cutoff variable for analog cases
@@ -126,7 +126,7 @@ contains
         ! first/second/etc chance fission reactions
         global_tallies(K_ABSORPTION) % value = &
              global_tallies(K_ABSORPTION) % value + p % wgt * &
-             material_xs % nu_fission / material_xs % absorption
+             micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
 
         p % alive = .false.
         p % event = EVENT_ABSORB
@@ -169,7 +169,8 @@ contains
             ! first/second/etc chance fission reactions
             global_tallies(K_ABSORPTION) % value = &
                  global_tallies(K_ABSORPTION) % value + p % wgt * &
-                 material_xs % nu_fission / material_xs % absorption
+                 micro_xs(i_nuclide) % nu_fission / &
+                 micro_xs(i_nuclide) % absorption
 
             p % alive = .false.
             p % event = EVENT_FISSION
@@ -211,7 +212,8 @@ contains
               ! and first/second/etc chance fission reactions
               global_tallies(K_ABSORPTION) % value = &
                    global_tallies(K_ABSORPTION) % value + p % wgt * &
-                   material_xs % nu_fission / material_xs % absorption
+                   micro_xs(i_nuclide) % nu_fission / &
+                   micro_xs(i_nuclide) % absorption
 
               ! With no survival biasing, the particle is absorbed and so
               ! its life is over

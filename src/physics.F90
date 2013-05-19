@@ -384,7 +384,7 @@ contains
 
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
-      call sample_target_velocity(nuc, v_t)
+      call sample_target_velocity(nuc, v_t, E, uvw)
     else
       v_t = ZERO
     end if
@@ -593,10 +593,12 @@ contains
 ! for this method can be found in FRA-TM-123.
 !===============================================================================
 
-  subroutine sample_target_velocity(nuc, v_target)
+  subroutine sample_target_velocity(nuc, v_target, E, uvw)
 
     type(Nuclide),  pointer :: nuc
     real(8), intent(out)    :: v_target(3)
+    real(8), intent(in)     :: E
+    real(8), intent(in)     :: uvw(3)
 
     real(8) :: u, v, w     ! direction of target 
     real(8) :: kT          ! equilibrium temperature of target in MeV
@@ -614,13 +616,13 @@ contains
     kT = nuc % kT
 
     ! Check if energy is above threshold
-    if (p % E >= FREE_GAS_THRESHOLD * kT .and. nuc % awr > ONE) then
+    if (E >= FREE_GAS_THRESHOLD * kT .and. nuc % awr > ONE) then
       v_target = ZERO
       return
     end if
 
     ! calculate beta
-    beta_vn = sqrt(nuc%awr * p%E / kT)
+    beta_vn = sqrt(nuc%awr * E / kT)
 
     alpha = ONE/(ONE + sqrt(pi)*beta_vn/TWO)
 
@@ -661,9 +663,9 @@ contains
 
     ! determine direction of target velocity based on the neutron's velocity
     ! vector and the sampled angle between them
-    u = p % coord0 % uvw(1)
-    v = p % coord0 % uvw(2)
-    w = p % coord0 % uvw(3)
+    u = uvw(1)
+    v = uvw(2)
+    w = uvw(3)
     call rotate_angle(u, v, w, mu)
 
     ! determine speed of target nucleus

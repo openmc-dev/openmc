@@ -7,7 +7,7 @@ module tracking
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
   use output,          only: write_message
-  use particle_header, only: LocalCoord
+  use particle_header, only: LocalCoord, Particle
   use physics,         only: collision
   use random_lcg,      only: prn
   use string,          only: to_str
@@ -20,7 +20,9 @@ contains
 ! TRANSPORT encompasses the main logic for moving a particle through geometry.
 !===============================================================================
 
-  subroutine transport()
+  subroutine transport(p)
+
+    type(Particle), intent(inout) :: p
 
     integer :: surface_crossed ! surface which particle is on
     integer :: lattice_crossed ! lattice boundary which particle crossed
@@ -41,7 +43,7 @@ contains
     ! If the cell hasn't been determined based on the particle's location,
     ! initiate a search for the current cell
     if (p % coord % cell == NONE) then
-      call find_cell(found_cell)
+      call find_cell(p, found_cell)
 
       ! Particle couldn't be located
       if (.not. found_cell) then
@@ -68,10 +70,10 @@ contains
       ! material is the same as the last material and the energy of the
       ! particle hasn't changed, we don't need to lookup cross sections again.
 
-      if (p % material /= p % last_material) call calculate_xs()
+      if (p % material /= p % last_material) call calculate_xs(p)
 
       ! Find the distance to the nearest boundary
-      call distance_to_boundary(d_boundary, surface_crossed, lattice_crossed)
+      call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)
 
       ! Sample a distance to collision
       if (material_xs % total == ZERO) then
@@ -92,7 +94,7 @@ contains
 
       ! Score track-length tallies
       if (active_tracklength_tallies % size() > 0) &
-           call score_tracklength_tally(distance)
+           call score_tracklength_tally(p, distance)
 
       ! Score track-length estimate of k-eff
       global_tallies(K_TRACKLENGTH) % value = &
@@ -108,12 +110,12 @@ contains
         if (lattice_crossed /= NONE) then
           ! Particle crosses lattice boundary
           p % surface = NONE
-          call cross_lattice(lattice_crossed)
+          call cross_lattice(p, lattice_crossed)
           p % event = EVENT_LATTICE
         else
           ! Particle crosses surface
           p % surface = surface_crossed
-          call cross_surface(last_cell)
+          call cross_surface(p, last_cell)
           p % event = EVENT_SURFACE
         end if
       else
@@ -129,18 +131,18 @@ contains
         ! since the direction of the particle will change and we need to use the
         ! pre-collision direction to figure out what mesh surfaces were crossed
 
-        if (active_current_tallies % size() > 0) call score_surface_current()
+        if (active_current_tallies % size() > 0) call score_surface_current(p)
 
         ! Clear surface component
         p % surface = NONE
 
-        call collision()
+        call collision(p)
 
         ! Score collision estimator tallies -- this is done after a collision
         ! has occurred rather than before because we need information on the
         ! outgoing energy for any tallies with an outgoing energy filter
 
-        if (active_analog_tallies % size() > 0) call score_analog_tally()
+        if (active_analog_tallies % size() > 0) call score_analog_tally(p)
 
         ! Reset banked weight during collision
         p % n_bank   = 0

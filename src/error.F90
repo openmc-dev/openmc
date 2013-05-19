@@ -139,9 +139,6 @@ contains
     if (current_batch > 0) then
       write(ERROR_UNIT,'(1X,A,I12) ') 'Batch:     ', current_batch
       write(ERROR_UNIT,'(1X,A,I12) ') 'Generation:', current_gen
-      write(ERROR_UNIT,'(1X,A,I12)')  'Particle:  ', p % id
-      write(ERROR_UNIT,'(1X,A,3ES12.4)') 'Location:  ', p % coord0 % xyz
-      write(ERROR_UNIT,'(1X,A,3ES12.4)') 'Direction: ', p % coord0 % uvw
       write(ERROR_UNIT,*)
     end if
 

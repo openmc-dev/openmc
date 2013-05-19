@@ -90,6 +90,7 @@ cross_section.o: error.o
 cross_section.o: fission.o
 cross_section.o: global.o
 cross_section.o: material_header.o
+cross_section.o: particle_header.o
 cross_section.o: random_lcg.o
 cross_section.o: search.o
 
@@ -104,6 +105,7 @@ eigenvalue.o: math.o
 eigenvalue.o: mesh.o
 eigenvalue.o: mesh_header.o
 eigenvalue.o: output.o
+eigenvalue.o: particle_header.o
 eigenvalue.o: random_lcg.o
 eigenvalue.o: search.o
 eigenvalue.o: source.o
@@ -139,6 +141,7 @@ fixed_source.o: constants.o
 fixed_source.o: global.o
 fixed_source.o: hdf5_interface.o
 fixed_source.o: output.o
+fixed_source.o: particle_header.o
 fixed_source.o: random_lcg.o
 fixed_source.o: source.o
 fixed_source.o: state_point.o
@@ -267,6 +270,7 @@ output_interface.o: hdf5_interface.o
 output_interface.o: mpiio_interface.o
 
 particle_header.o: constants.o
+particle_header.o: geometry_header.o
 
 particle_restart.o: bank_header.o
 particle_restart.o: constants.o
@@ -276,12 +280,12 @@ particle_restart.o: hdf5_interface.o
 particle_restart.o: output.o
 particle_restart.o: particle_header.o
 particle_restart.o: random_lcg.o
-particle_restart.o: source.o
 particle_restart.o: tracking.o
 
 particle_restart_write.o: bank_header.o
 particle_restart_write.o: global.o
 particle_restart_write.o: hdf5_interface.o
+particle_restart_write.o: particle_header.o
 particle_restart_write.o: string.o
 
 physics.o: ace_header.o
@@ -311,7 +315,6 @@ plot.o: output.o
 plot.o: particle_header.o
 plot.o: plot_header.o
 plot.o: ppmlib.o
-plot.o: source.o
 plot.o: string.o
 
 plot_header.o: constants.o

@@ -10,7 +10,7 @@ module output
   use math,            only: t_percentile
   use mesh_header,     only: StructuredMesh
   use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
-  use particle_header, only: LocalCoord
+  use particle_header, only: LocalCoord, Particle
   use plot_header
   use string,          only: upper_case, to_str
   use tally_header,    only: TallyObject
@@ -227,7 +227,9 @@ contains
 ! PRINT_PARTICLE displays the attributes of a particle
 !===============================================================================
 
-  subroutine print_particle()
+  subroutine print_particle(p)
+
+    type(Particle), intent(in) :: p
 
     integer :: i ! index for coordinate levels
     type(Cell),       pointer :: c => null()

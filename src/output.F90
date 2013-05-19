@@ -293,8 +293,6 @@ contains
     ! Display weight, energy, grid index, and interpolation factor
     write(ou,*) '  Weight = ' // to_str(p % wgt)
     write(ou,*) '  Energy = ' // to_str(p % E)
-    write(ou,*) '  Energy grid index = ' // to_str(p % index_grid)
-    write(ou,*) '  Interpolation factor = ' // to_str(p % interp)
     write(ou,*)
 
   end subroutine print_particle

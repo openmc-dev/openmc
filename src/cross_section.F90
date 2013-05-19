@@ -11,6 +11,8 @@ module cross_section
 
   implicit none
 
+  integer :: union_grid_index
+
 contains
 
 !===============================================================================
@@ -42,7 +44,7 @@ contains
     mat => materials(p % material)
 
     ! Find energy index on unionized grid
-    if (grid_method == GRID_UNION) call find_energy_index()
+    if (grid_method == GRID_UNION) call find_energy_index(p % E)
 
     ! Determine if this material has S(a,b) tables
     check_sab = (mat % n_sab > 0)
@@ -143,7 +145,7 @@ contains
       ! If we're using the unionized grid with pointers, finding the index on
       ! the nuclide energy grid is as simple as looking up the pointer
 
-      i_grid = nuc % grid_index(p % index_grid)
+      i_grid = nuc % grid_index(union_grid_index)
 
     case (GRID_NUCLIDE)
       ! If we're not using the unionized grid, we have to do a binary search on
@@ -447,36 +449,23 @@ contains
   end subroutine calculate_urr_xs
 
 !===============================================================================
-! FIND_ENERGY_INDEX determines the index on the union energy grid and the
-! interpolation factor for a particle at a certain energy
+! FIND_ENERGY_INDEX determines the index on the union energy grid at a certain
+! energy
 !===============================================================================
 
-  subroutine find_energy_index()
+  subroutine find_energy_index(E)
 
-    integer :: i_grid ! index on union energy grid
-    real(8) :: E      ! energy of particle
-    real(8) :: interp ! interpolation factor
-
-    ! copy particle's energy
-    E = p % E
+    real(8), intent(in) :: E ! energy of particle
 
     ! if particle's energy is outside of energy grid range, set to first or last
     ! index. Otherwise, do a binary search through the union energy grid.
     if (E < e_grid(1)) then
-      i_grid = 1
+      union_grid_index = 1
     elseif (E > e_grid(n_grid)) then
-      i_grid = n_grid - 1
+      union_grid_index = n_grid - 1
     else
-      i_grid = binary_search(e_grid, n_grid, E)
+      union_grid_index = binary_search(e_grid, n_grid, E)
     end if
-
-    ! calculate the interpolation factor -- note this will be outside of [0,1)
-    ! for a particle outside the energy range of the union grid
-    interp = (E - e_grid(i_grid))/(e_grid(i_grid+1) - e_grid(i_grid))
-
-    ! set particle attributes
-    p % index_grid = i_grid
-    p % interp     = interp
 
   end subroutine find_energy_index
 

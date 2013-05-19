@@ -131,6 +131,9 @@ contains
 
         if (active_current_tallies % size() > 0) call score_surface_current()
 
+        ! Clear surface component
+        p % surface = NONE
+
         call collision()
 
         ! Score collision estimator tallies -- this is done after a collision

@@ -34,9 +34,6 @@ contains
     ! Add to collision counter for particle
     p % n_collision = p % n_collision + 1
 
-    ! Clear surface component
-    p % surface = NONE
-
     ! Sample nuclide/reaction for the material the particle is in
     call sample_reaction()
 

@@ -166,8 +166,8 @@ contains
       write(OUTPUT_UNIT,*)
       write(OUTPUT_UNIT,*) 'Options:'
       write(OUTPUT_UNIT,*) '  -p, --plot      Run in plotting mode'
-      write(OUTPUT_UNIT,*) '  -r, --restart   Restart a previous run'
-      write(OUTPUT_UNIT,*) '  -s, --particle  Run a single particle history'
+      write(OUTPUT_UNIT,*) '  -r, --restart   Restart a previous run from a state point'
+      write(OUTPUT_UNIT,*) '                  or a particle restart file'
       write(OUTPUT_UNIT,*) '  -t, --tallies   Write tally results from state point'
       write(OUTPUT_UNIT,*) '  -v, --version   Show version information'
       write(OUTPUT_UNIT,*) '  -?, --help      Show this message'

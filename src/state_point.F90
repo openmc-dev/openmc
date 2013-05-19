@@ -55,9 +55,11 @@ contains
     call file_create(filename, 'serial')
 
     if (master) then
+      ! Write file type
+      call write_data(FILETYPE_STATEPOINT, "filetype")
 
       ! Write revision number for state point file
-      call write_data(REVISION_STATEPOINT, "revision_statepoint")
+      call write_data(REVISION_STATEPOINT, "revision")
 
       ! Write OpenMC version
       call write_data(VERSION_MAJOR, "version_major")
@@ -319,9 +321,12 @@ contains
     ! Open file for reading
     call file_open(path_state_point, 'parallel', 'r')
 
+    ! Read filetype
+    call read_data(int_array(1), "filetype")
+
     ! Read revision number for state point file and make sure it matches with
     ! current version
-    call read_data(int_array(1), "revision_statepoint")
+    call read_data(int_array(1), "revision")
     if (int_array(1) /= REVISION_STATEPOINT) then
       message = "State point version does not match current version " &
                 // "in OpenMC."

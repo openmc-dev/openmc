@@ -79,6 +79,9 @@ contains
 
   subroutine read_binary_particle_restart()
 
+    integer :: filetype
+    integer :: revision
+
     ! write meessage
     message = "Loading particle restart file " // trim(path_particle_restart) &
               // "..."
@@ -89,6 +92,8 @@ contains
          ACCESS='stream')
 
     ! read data from file
+    read(UNIT_PARTICLE) filetype
+    read(UNIT_PARTICLE) revision
     read(UNIT_PARTICLE) current_batch
     read(UNIT_PARTICLE) gen_per_batch
     read(UNIT_PARTICLE) current_gen

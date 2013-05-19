@@ -29,7 +29,7 @@ PETSC    = no
 #===============================================================================
 
 MPI_DIR   = /opt/mpich/3.0.2-$(COMPILER)
-HDF5_DIR  = /opt/phdf5/1.8.10-patch1-$(COMPILER)
+HDF5_DIR  = /opt/hdf5/1.8.10-patch1-$(COMPILER)
 PETSC_DIR = /opt/petsc/3.3-p6-$(COMPILER)
 
 #===============================================================================

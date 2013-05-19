@@ -76,42 +76,13 @@ contains
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_grid       ! index on nuclide energy grid
     real(8) :: f            ! interpolation factor
-    real(8) :: sigma        ! microscopic total xs for nuclide
     real(8) :: prob         ! cumulative probability
     real(8) :: cutoff       ! random number
-    real(8) :: atom_density ! atom density of nuclide in atom/b-cm
     type(Material), pointer :: mat => null()
     type(Nuclide),  pointer :: nuc => null()
     type(Reaction), pointer :: rxn => null()
 
-    ! Get pointer to current material
-    mat => materials(p % material)
-
-    ! ==========================================================================
-    ! SAMPLE NUCLIDE WITHIN THE MATERIAL
-
-    cutoff = prn() * material_xs % total
-    prob = ZERO
-
-    i = 0
-    do while (prob < cutoff)
-      i = i + 1
-
-      ! Check to make sure that a nuclide was sampled
-      if (i > mat % n_nuclides) then
-        call write_particle_restart(p)
-        message = "Did not sample any nuclide during collision."
-        call fatal_error()
-      end if
-
-      ! Find atom density and microscopic total cross section
-      i_nuclide    = mat % nuclide(i)
-      atom_density = mat % atom_density(i)
-      sigma        = atom_density * micro_xs(i_nuclide) % total
-
-      ! Increment probability to compare to cutoff
-      prob = prob + sigma
-    end do
+    i_nuclide = sample_nuclide(p)
 
     ! Get pointer to table, nuclide grid index and interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -269,6 +240,51 @@ contains
     call scatter(p, i_nuclide)
 
   end subroutine sample_reaction
+
+!===============================================================================
+! SAMPLE_NUCLIDE
+!===============================================================================
+
+  function sample_nuclide(p) result(i_nuclide)
+
+    type(Particle), intent(in)  :: p
+    integer                     :: i_nuclide
+
+    integer :: i
+    real(8) :: prob
+    real(8) :: cutoff
+    real(8) :: atom_density ! atom density of nuclide in atom/b-cm
+    real(8) :: sigma        ! microscopic total xs for nuclide
+    type(Material), pointer :: mat => null()
+
+    ! Get pointer to current material
+    mat => materials(p % material)
+
+    ! Sample cumulative distribution function
+    cutoff = prn() * material_xs % total
+    prob = ZERO
+
+    i = 0
+    do while (prob < cutoff)
+      i = i + 1
+
+      ! Check to make sure that a nuclide was sampled
+      if (i > mat % n_nuclides) then
+        call write_particle_restart(p)
+        message = "Did not sample any nuclide during collision."
+        call fatal_error()
+      end if
+
+      ! Find atom density and microscopic total cross section
+      i_nuclide    = mat % nuclide(i)
+      atom_density = mat % atom_density(i)
+      sigma        = atom_density * micro_xs(i_nuclide) % total
+
+      ! Increment probability to compare to cutoff
+      prob = prob + sigma
+    end do
+
+  end function sample_nuclide
 
 !===============================================================================
 ! RUSSIAN_ROULETTE

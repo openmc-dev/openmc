@@ -282,6 +282,47 @@ contains
     ! ==========================================================================
     ! SCATTERING REACTIONS
 
+    call scatter(p, i_nuclide, prob, cutoff)
+
+  end subroutine sample_reaction
+
+!===============================================================================
+! SCATTER
+!===============================================================================
+
+  subroutine scatter(p, i_nuclide, prob0, cutoff0)
+
+    type(Particle), intent(inout) :: p
+    integer,        intent(in)    :: i_nuclide
+    real(8), intent(in), optional :: prob0
+    real(8), intent(in), optional :: cutoff0
+
+    integer :: i
+    integer :: i_grid
+    real(8) :: f
+    real(8) :: prob
+    real(8) :: cutoff
+    type(Nuclide),  pointer :: nuc => null()
+    type(Reaction), pointer :: rxn => null()
+
+    ! Get pointer to nuclide and grid index/interpolation factor
+    nuc    => nuclides(i_nuclide)
+    i_grid =  micro_xs(i_nuclide) % index_grid
+    f      =  micro_xs(i_nuclide) % interp_factor
+
+    if (present(prob0)) then
+      ! During actual particle tracking, the probability and cutoff values are
+      ! already calculated in sample_reaction
+      prob = prob0
+      cutoff = cutoff0
+    else
+      ! For tallying purposes, this routine might be called directly. In that
+      ! case, we need to sample a reaction via the cutoff variable
+      prob = ZERO
+      cutoff = prn() * (micro_xs(i_nuclide) % total - &
+           micro_xs(i_nuclide) % absorption)
+    end if
+
     prob = prob + micro_xs(i_nuclide) % elastic
     if (prob > cutoff) then
       ! =======================================================================
@@ -317,8 +358,7 @@ contains
         if (i > nuc % n_reaction) then
           call write_particle_restart(p)
           message = "Did not sample any reaction for nuclide " // &
-               trim(nuc % name) // " on material " // &
-               trim(to_str(mat % id))
+               trim(nuc % name)
           call fatal_error()
         end if
 
@@ -348,11 +388,10 @@ contains
 
     end if
 
-    ! If we made it this far, it means that a scattering reaction took place
-    ! since the absorption and fission blocks had return statements.
+    ! Set event component
     p % event = EVENT_SCATTER
 
-  end subroutine sample_reaction
+  end subroutine scatter
 
 !===============================================================================
 ! ELASTIC_SCATTER treats the elastic scattering of a neutron with a

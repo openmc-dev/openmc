@@ -259,16 +259,8 @@ contains
     ! WEIGHT CUTOFF (SURVIVAL BIASING ONLY)
 
     if (survival_biasing) then
-      if (p % wgt < weight_cutoff) then
-        if (prn() < p % wgt / weight_survive) then
-          p % wgt = weight_survive
-          p % last_wgt = p % wgt
-        else
-          p % wgt = ZERO
-          p % alive = .false.
-          return
-        end if
-      end if
+      call russian_roulette(p)
+      if (.not. p % alive) return
     end if
 
     ! ==========================================================================
@@ -277,6 +269,26 @@ contains
     call scatter(p, i_nuclide)
 
   end subroutine sample_reaction
+
+!===============================================================================
+! RUSSIAN_ROULETTE
+!===============================================================================
+
+  subroutine russian_roulette(p)
+
+    type(Particle), intent(inout) :: p
+
+    if (p % wgt < weight_cutoff) then
+      if (prn() < p % wgt / weight_survive) then
+        p % wgt = weight_survive
+        p % last_wgt = p % wgt
+      else
+        p % wgt = ZERO
+        p % alive = .false.
+      end if
+    end if
+
+  end subroutine russian_roulette
 
 !===============================================================================
 ! SCATTER

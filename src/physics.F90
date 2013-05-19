@@ -82,7 +82,7 @@ contains
     type(Nuclide),  pointer :: nuc => null()
     type(Reaction), pointer :: rxn => null()
 
-    i_nuclide = sample_nuclide(p)
+    i_nuclide = sample_nuclide(p, 'total  ')
 
     ! Get pointer to table, nuclide grid index and interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -245,10 +245,11 @@ contains
 ! SAMPLE_NUCLIDE
 !===============================================================================
 
-  function sample_nuclide(p) result(i_nuclide)
+  function sample_nuclide(p, base) result(i_nuclide)
 
-    type(Particle), intent(in)  :: p
-    integer                     :: i_nuclide
+    type(Particle), intent(in) :: p
+    character(7),   intent(in) :: base      ! which reaction to sample based on
+    integer                    :: i_nuclide
 
     integer :: i
     real(8) :: prob
@@ -261,10 +262,17 @@ contains
     mat => materials(p % material)
 
     ! Sample cumulative distribution function
-    cutoff = prn() * material_xs % total
-    prob = ZERO
+    select case (base)
+    case ('total')
+      cutoff = prn() * material_xs % total
+    case ('scatter')
+      cutoff = prn() * material_xs % total - material_xs % absorption
+    case ('fission')
+      cutoff = prn() * material_xs % fission
+    end select
 
     i = 0
+    prob = ZERO
     do while (prob < cutoff)
       i = i + 1
 
@@ -275,10 +283,20 @@ contains
         call fatal_error()
       end if
 
-      ! Find atom density and microscopic total cross section
+      ! Find atom density 
       i_nuclide    = mat % nuclide(i)
       atom_density = mat % atom_density(i)
-      sigma        = atom_density * micro_xs(i_nuclide) % total
+
+      ! Determine microscopic cross section
+      select case (base)
+      case ('total')
+        sigma = atom_density * micro_xs(i_nuclide) % total
+      case ('scatter')
+        sigma = atom_density * (micro_xs(i_nuclide) % total - &
+             micro_xs(i_nuclide) % absorption)
+      case ('fission')
+        sigma = atom_density * micro_xs(i_nuclide) % fission
+      end select
 
       ! Increment probability to compare to cutoff
       prob = prob + sigma

@@ -65,10 +65,6 @@ module particle_header
     integer    :: n_bank        ! number of fission sites banked
     real(8)    :: wgt_bank      ! weight of fission sites banked
 
-    ! Energy grid data
-    integer    :: index_grid    ! index on unionized energy grid
-    real(8)    :: interp        ! interpolation factor for energy grid
-
     ! Indices for various arrays
     integer    :: surface       ! index for surface particle is on
     integer    :: cell_born     ! index for cell particle was born in

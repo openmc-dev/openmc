@@ -362,15 +362,13 @@ contains
     real(8), intent(inout)  :: uvw(3)
     real(8), intent(out)    :: mu_lab
 
-    real(8) :: awr     ! atomic weight ratio of target
-    real(8) :: mu_cm   ! cosine of polar angle in center-of-mass
-    real(8) :: vel     ! magnitude of velocity
-    real(8) :: v_n(3)  ! velocity of neutron
-    real(8) :: v_cm(3) ! velocity of center-of-mass
-    real(8) :: v_t(3)  ! velocity of target nucleus
-    real(8) :: u       ! x-direction
-    real(8) :: v       ! y-direction
-    real(8) :: w       ! z-direction
+    real(8) :: awr       ! atomic weight ratio of target
+    real(8) :: mu_cm     ! cosine of polar angle in center-of-mass
+    real(8) :: vel       ! magnitude of velocity
+    real(8) :: v_n(3)    ! velocity of neutron
+    real(8) :: v_cm(3)   ! velocity of center-of-mass
+    real(8) :: v_t(3)    ! velocity of target nucleus
+    real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
     type(Nuclide), pointer :: nuc => null()
 
     ! get pointer to nuclide
@@ -402,17 +400,12 @@ contains
     mu_cm = sample_angle(rxn, E)
 
     ! Determine direction cosines in CM
-    u = v_n(1)/vel
-    v = v_n(2)/vel
-    w = v_n(3)/vel
-
-    ! Change direction cosines according to mu
-    call rotate_angle(u, v, w, mu_cm)
+    uvw_cm = v_n/vel
 
     ! Rotate neutron velocity vector to new angle -- note that the speed of the
     ! neutron in CM does not change in elastic scattering. However, the speed
     ! will change when we convert back to LAB
-    v_n = vel * (/ u, v, w /)
+    v_n = vel * rotate_angle(uvw_cm, mu_cm)
 
     ! Transform back to LAB frame
     v_n = v_n + v_cm
@@ -453,7 +446,6 @@ contains
     real(8) :: mu_ijk       ! outgoing cosine k for E_in(i) and E_out(j)
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
     real(8) :: prob         ! probability for sampling Bragg edge
-    real(8) :: u, v, w      ! directional cosines
     type(SAlphaBeta), pointer :: sab => null()
 
     ! Get pointer to S(a,b) table
@@ -576,14 +568,8 @@ contains
       mu = (1 - f)*mu_ijk + f*mu_i1jk
     end if
 
-    ! copy directional cosines
-    u = uvw(1)
-    v = uvw(2)
-    w = uvw(3)
-
     ! change direction of particle
-    call rotate_angle(u, v, w, mu)
-    uvw = (/ u, v, w /)
+    uvw = rotate_angle(uvw, mu)
 
   end subroutine sab_scatter
 
@@ -600,7 +586,6 @@ contains
     real(8), intent(in)     :: E
     real(8), intent(in)     :: uvw(3)
 
-    real(8) :: u, v, w     ! direction of target 
     real(8) :: kT          ! equilibrium temperature of target in MeV
     real(8) :: alpha       ! probability of sampling f2 over f1
     real(8) :: mu          ! cosine of angle between neutron and target vel
@@ -661,20 +646,12 @@ contains
       if (prn() < accept_prob) exit
     end do
 
-    ! determine direction of target velocity based on the neutron's velocity
-    ! vector and the sampled angle between them
-    u = uvw(1)
-    v = uvw(2)
-    w = uvw(3)
-    call rotate_angle(u, v, w, mu)
-
     ! determine speed of target nucleus
     vt = sqrt(beta_vt_sq*kT/nuc % awr)
 
-    ! determine velocity vector of target nucleus
-    v_target(1) = u*vt
-    v_target(2) = v*vt
-    v_target(3) = w*vt
+    ! determine velocity vector of target nucleus based on neutron's velocity
+    ! and the sampled angle between them
+    v_target = vt * rotate_angle(uvw, mu)
 
   end subroutine sample_target_velocity
 
@@ -902,7 +879,6 @@ contains
     real(8) :: A           ! atomic weight ratio of nuclide
     real(8) :: E_in        ! incoming energy
     real(8) :: E_cm        ! outgoing energy in center-of-mass
-    real(8) :: u,v,w       ! direction cosines
     real(8) :: Q           ! Q-value of reaction
 
     ! copy energy of neutron
@@ -940,14 +916,8 @@ contains
       mu = mu * sqrt(E_cm/E) + ONE/(A+ONE) * sqrt(E_in/E)
     end if
 
-    ! copy directional cosines
-    u = uvw(1)
-    v = uvw(2)
-    w = uvw(3)
-
     ! change direction of particle
-    call rotate_angle(u, v, w, mu)
-    uvw = (/ u, v, w /)
+    uvw = rotate_angle(uvw, mu)
 
     ! change weight of particle based on multiplicity
     wgt = rxn % multiplicity * wgt
@@ -1088,12 +1058,11 @@ contains
 ! with direct sampling rather than rejection as is done in MCNP and SERPENT.
 !===============================================================================
 
-  subroutine rotate_angle(u, v, w, mu)
+  function rotate_angle(uvw0, mu) result(uvw)
 
-    real(8), intent(inout) :: u
-    real(8), intent(inout) :: v
-    real(8), intent(inout) :: w
-    real(8), intent(in)    :: mu ! cosine of angle in lab or CM
+    real(8), intent(in) :: uvw0(3) ! directional cosine
+    real(8), intent(in) :: mu      ! cosine of angle in lab or CM
+    real(8)             :: uvw(3)  ! rotated directional cosine
 
     real(8) :: phi    ! azimuthal angle
     real(8) :: sinphi ! sine of azimuthal angle
@@ -1105,9 +1074,9 @@ contains
     real(8) :: w0     ! original cosine in z direction
 
     ! Copy original directional cosines
-    u0 = u
-    v0 = v
-    w0 = w
+    u0 = uvw0(1)
+    v0 = uvw0(2)
+    w0 = uvw0(3)
 
     ! Sample azimuthal angle in [0,2pi)
     phi = TWO * PI * prn()
@@ -1121,17 +1090,17 @@ contains
     ! Need to treat special case where sqrt(1 - w**2) is close to zero by
     ! expanding about the v component rather than the w component
     if (b > 1e-10) then
-      u = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
-      v = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
-      w = mu*w0 - a*b*cosphi
+      uvw(1) = mu*u0 + a*(u0*w0*cosphi - v0*sinphi)/b
+      uvw(2) = mu*v0 + a*(v0*w0*cosphi + u0*sinphi)/b
+      uvw(3) = mu*w0 - a*b*cosphi
     else
       b = sqrt(ONE - v0*v0)
-      u = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b
-      v = mu*v0 - a*b*cosphi
-      w = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
+      uvw(1) = mu*u0 + a*(u0*v0*cosphi + w0*sinphi)/b
+      uvw(2) = mu*v0 - a*b*cosphi
+      uvw(3) = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
     end if
 
-  end subroutine rotate_angle
+  end function rotate_angle
     
 !===============================================================================
 ! SAMPLE_ENERGY samples an outgoing energy distribution, either for a secondary

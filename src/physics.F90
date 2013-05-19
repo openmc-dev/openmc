@@ -284,7 +284,8 @@ contains
 
       if (micro_xs(i_nuclide) % index_sab /= NONE) then
         ! S(a,b) scattering
-        call sab_scatter(i_nuclide, micro_xs(i_nuclide) % index_sab)
+        call sab_scatter(i_nuclide, micro_xs(i_nuclide) % index_sab, &
+             p % E, p % coord0 % uvw, p % mu)
 
       else
         ! get pointer to elastic scattering reaction
@@ -433,10 +434,13 @@ contains
 ! according to a specified S(a,b) table.
 !===============================================================================
 
-  subroutine sab_scatter(i_nuclide, i_sab)
+  subroutine sab_scatter(i_nuclide, i_sab, E, uvw, mu)
 
     integer, intent(in)     :: i_nuclide ! index in micro_xs
     integer, intent(in)     :: i_sab     ! index in sab_tables
+    real(8), intent(inout)  :: E         ! incoming/outgoing energy
+    real(8), intent(inout)  :: uvw(3)    ! directional cosines
+    real(8), intent(out)    :: mu        ! scattering cosine
 
     integer :: i            ! incoming energy bin
     integer :: j            ! outgoing energy bin
@@ -444,10 +448,8 @@ contains
     integer :: n_energy_out ! number of outgoing energy bins
     real(8) :: f            ! interpolation factor
     real(8) :: r            ! used for skewed sampling
-    real(8) :: E            ! outgoing energy
     real(8) :: E_ij         ! outgoing energy j for E_in(i)
     real(8) :: E_i1j        ! outgoing energy j for E_in(i+1)
-    real(8) :: mu           ! outgoing cosine
     real(8) :: mu_ijk       ! outgoing cosine k for E_in(i) and E_out(j)
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
     real(8) :: prob         ! probability for sampling Bragg edge
@@ -463,12 +465,12 @@ contains
       ! elastic scattering
 
       ! Get index and interpolation factor for elastic grid
-      if (p%E < sab % elastic_e_in(1)) then
+      if (E < sab % elastic_e_in(1)) then
         i = 1
         f = ZERO
       else
-        i = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
-        f = (p%E - sab%elastic_e_in(i)) / & 
+        i = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, E)
+        f = (E - sab%elastic_e_in(i)) / & 
              (sab%elastic_e_in(i+1) - sab%elastic_e_in(i))
       end if
 
@@ -502,24 +504,23 @@ contains
         end if
 
         ! Characteristic scattering cosine for this Bragg edge
-        mu = ONE - TWO*sab % elastic_e_in(k) / p % E
+        mu = ONE - TWO*sab % elastic_e_in(k) / E
 
       end if
 
-      ! Outgoing energy is same as incoming energy
-      E = p % E
+      ! Outgoing energy is same as incoming energy -- no need to do anything
 
     else
       ! Determine number of outgoing energy and angle bins
       n_energy_out = sab % n_inelastic_e_out
 
       ! Get index and interpolation factor for inelastic grid
-      if (p%E < sab % inelastic_e_in(1)) then
+      if (E < sab % inelastic_e_in(1)) then
         i = 1
         f = ZERO
       else
-        i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
-        f = (p%E - sab%inelastic_e_in(i)) / & 
+        i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, E)
+        f = (E - sab%inelastic_e_in(i)) / & 
              (sab%inelastic_e_in(i+1) - sab%inelastic_e_in(i))
       end if
 
@@ -576,19 +577,13 @@ contains
     end if
 
     ! copy directional cosines
-    u = p % coord0 % uvw(1)
-    v = p % coord0 % uvw(2)
-    w = p % coord0 % uvw(3)
+    u = uvw(1)
+    v = uvw(2)
+    w = uvw(3)
 
     ! change direction of particle
     call rotate_angle(u, v, w, mu)
-    p % coord0 % uvw = (/ u, v, w /)
-
-    ! change energy of particle
-    p % E = E
-
-    ! Copy scattering cosine for tallies
-    p % mu = mu
+    uvw = (/ u, v, w /)
 
   end subroutine sab_scatter
 

@@ -6,10 +6,12 @@ module cross_section
   use fission,         only: nu_total
   use global
   use material_header, only: Material
+  use particle_header, only: Particle
   use random_lcg,      only: prn
   use search,          only: binary_search
 
   implicit none
+  save
 
   integer :: union_grid_index
 
@@ -20,7 +22,9 @@ contains
 ! particle is currently traveling through.
 !===============================================================================
 
-  subroutine calculate_xs()
+  subroutine calculate_xs(p)
+
+    type(Particle), intent(inout) :: p
 
     integer :: i             ! loop index over nuclides
     integer :: i_nuclide     ! index into nuclides array
@@ -86,7 +90,7 @@ contains
 
       ! Calculate microscopic cross section for this nuclide
       if (p % E /= micro_xs(i_nuclide) % last_E) then
-        call calculate_nuclide_xs(i_nuclide, i_sab)
+        call calculate_nuclide_xs(i_nuclide, i_sab, p % E)
       end if
 
       ! ========================================================================
@@ -127,10 +131,11 @@ contains
 ! given index in the nuclides array at the energy of the given particle
 !===============================================================================
 
-  subroutine calculate_nuclide_xs(i_nuclide, i_sab)
+  subroutine calculate_nuclide_xs(i_nuclide, i_sab, E)
 
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: i_sab     ! index into sab_tables array
+    real(8), intent(in) :: E         ! energy
 
     integer :: i_grid ! index on nuclide energy grid
     real(8) :: f      ! interp factor on nuclide energy grid
@@ -152,12 +157,12 @@ contains
       ! the nuclide energy grid in order to determine which points to
       ! interpolate between
 
-      if (p % E < nuc % energy(1)) then
+      if (E < nuc % energy(1)) then
         i_grid = 1
-      elseif (p % E > nuc % energy(nuc % n_grid)) then
+      elseif (E > nuc % energy(nuc % n_grid)) then
         i_grid = nuc % n_grid - 1
       else
-        i_grid = binary_search(nuc % energy, nuc % n_grid, p % E)
+        i_grid = binary_search(nuc % energy, nuc % n_grid, E)
       end if
 
     end select
@@ -166,7 +171,7 @@ contains
     if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) i_grid = i_grid + 1
 
     ! calculate interpolation factor
-    f = (p%E - nuc%energy(i_grid))/(nuc%energy(i_grid+1) - nuc%energy(i_grid))
+    f = (E - nuc%energy(i_grid))/(nuc%energy(i_grid+1) - nuc%energy(i_grid))
 
     micro_xs(i_nuclide) % index_grid    = i_grid
     micro_xs(i_nuclide) % interp_factor = f
@@ -215,22 +220,22 @@ contains
     ! need to correct it by subtracting the non-S(a,b) elastic cross section and
     ! then add back in the calculated S(a,b) elastic+inelastic cross section.
 
-    if (i_sab > 0) call calculate_sab_xs(i_nuclide, i_sab)
+    if (i_sab > 0) call calculate_sab_xs(i_nuclide, i_sab, E)
 
     ! if the particle is in the unresolved resonance range and there are
     ! probability tables, we need to determine cross sections from the table
 
     if (urr_ptables_on .and. nuc % urr_present) then
-      if (p % E > nuc % urr_data % energy(1) .and. &
-           p % E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
-        call calculate_urr_xs(i_nuclide)
+      if (E > nuc % urr_data % energy(1) .and. &
+           E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
+        call calculate_urr_xs(i_nuclide, E)
       end if
     end if
 
     ! Set last evaluated energy -- if we're in S(a,b) region, force
     ! re-calculation of cross-section
     if (i_sab == 0) then
-      micro_xs(i_nuclide) % last_E = p % E
+      micro_xs(i_nuclide) % last_E = E
     else
       micro_xs(i_nuclide) % last_E = ZERO
     end if
@@ -243,10 +248,11 @@ contains
 ! whatever data were taken from the normal Nuclide table.
 !===============================================================================
 
-  subroutine calculate_sab_xs(i_nuclide, i_sab)
+  subroutine calculate_sab_xs(i_nuclide, i_sab, E)
 
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: i_sab     ! index into sab_tables array
+    real(8), intent(in) :: E         ! energy
 
     integer :: i_grid    ! index on S(a,b) energy grid
     real(8) :: f         ! interp factor on S(a,b) energy grid
@@ -261,12 +267,12 @@ contains
     sab => sab_tables(i_sab)
 
     ! Get index and interpolation factor for inelastic grid
-    if (p%E < sab % inelastic_e_in(1)) then
+    if (E < sab % inelastic_e_in(1)) then
       i_grid = 1
       f = ZERO
     else
-      i_grid = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
-      f = (p%E - sab%inelastic_e_in(i_grid)) / & 
+      i_grid = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, E)
+      f = (E - sab%inelastic_e_in(i_grid)) / & 
            (sab%inelastic_e_in(i_grid+1) - sab%inelastic_e_in(i_grid))
     end if
 
@@ -275,32 +281,32 @@ contains
          f * sab % inelastic_sigma(i_grid + 1)
 
     ! Check for elastic data
-    if (p % E < sab % threshold_elastic) then
+    if (E < sab % threshold_elastic) then
       ! Determine whether elastic scattering is given in the coherent or
       ! incoherent approximation. For coherent, the cross section is
       ! represented as P/E whereas for incoherent, it is simply P
 
       if (sab % elastic_mode == SAB_ELASTIC_EXACT) then
-        if (p % E < sab % elastic_e_in(1)) then
+        if (E < sab % elastic_e_in(1)) then
           ! If energy is below that of the lowest Bragg peak, the elastic
           ! cross section will be zero
           elastic = ZERO
         else
           i_grid = binary_search(sab % elastic_e_in, &
-               sab % n_elastic_e_in, p % E)
-          elastic = sab % elastic_P(i_grid) / p % E
+               sab % n_elastic_e_in, E)
+          elastic = sab % elastic_P(i_grid) / E
         end if
       else
         ! Determine index on elastic energy grid
-        if (p % E < sab % elastic_e_in(1)) then
+        if (E < sab % elastic_e_in(1)) then
           i_grid = 1
         else
           i_grid = binary_search(sab % elastic_e_in, &
-               sab % n_elastic_e_in, p%E)
+               sab % n_elastic_e_in, E)
         end if
 
         ! Get interpolation factor for elastic grid
-        f = (p%E - sab%elastic_e_in(i_grid))/(sab%elastic_e_in(i_grid+1) - &
+        f = (E - sab%elastic_e_in(i_grid))/(sab%elastic_e_in(i_grid+1) - &
              sab%elastic_e_in(i_grid))
 
         ! Calculate S(a,b) elastic scattering cross section
@@ -327,9 +333,10 @@ contains
 ! from probability tables
 !===============================================================================
 
-  subroutine calculate_urr_xs(i_nuclide)
+  subroutine calculate_urr_xs(i_nuclide, E)
 
     integer, intent(in) :: i_nuclide ! index into nuclides array
+    real(8), intent(in) :: E         ! energy
 
     integer :: i_energy   ! index for energy
     integer :: i_table    ! index for table
@@ -352,12 +359,12 @@ contains
     ! determine energy table
     i_energy = 1
     do
-      if (p % E < urr % energy(i_energy + 1)) exit
+      if (E < urr % energy(i_energy + 1)) exit
       i_energy = i_energy + 1
     end do
 
     ! determine interpolation factor on table
-    f = (p % E - urr % energy(i_energy)) / &
+    f = (E - urr % energy(i_energy)) / &
          (urr % energy(i_energy + 1) - urr % energy(i_energy))
 
     ! sample probability table using the cumulative distribution
@@ -379,7 +386,7 @@ contains
            f * urr % prob(i_energy + 1, URR_N_GAMMA, i_table)
     elseif (urr % interp == LOG_LOG) then
       ! Get logarithmic interpolation factor
-      f = log(p % E / urr % energy(i_energy)) / &
+      f = log(E / urr % energy(i_energy)) / &
            log(urr % energy(i_energy + 1) / urr % energy(i_energy))
 
       ! Calculate elastic cross section/factor
@@ -442,7 +449,7 @@ contains
 
     ! Determine nu-fission cross section
     if (nuc % fissionable) then
-      micro_xs(i_nuclide) % nu_fission = nu_total(nuc, p % E) * &
+      micro_xs(i_nuclide) % nu_fission = nu_total(nuc, E) * &
            micro_xs(i_nuclide) % fission
     end if
 

@@ -269,20 +269,12 @@ contains
           return
         end if
       end if
-
-      ! At this point, we also need to set the cutoff variable for cases with
-      ! survival biasing. The cutoff will be a random number times the
-      ! scattering cross section
-
-      cutoff = prn() * (micro_xs(i_nuclide) % total - &
-           micro_xs(i_nuclide) % absorption)
-      prob = ZERO
     end if
 
     ! ==========================================================================
     ! SCATTERING REACTIONS
 
-    call scatter(p, i_nuclide, prob, cutoff)
+    call scatter(p, i_nuclide)
 
   end subroutine sample_reaction
 
@@ -290,12 +282,10 @@ contains
 ! SCATTER
 !===============================================================================
 
-  subroutine scatter(p, i_nuclide, prob0, cutoff0)
+  subroutine scatter(p, i_nuclide)
 
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
-    real(8), intent(in), optional :: prob0
-    real(8), intent(in), optional :: cutoff0
 
     integer :: i
     integer :: i_grid
@@ -310,18 +300,11 @@ contains
     i_grid =  micro_xs(i_nuclide) % index_grid
     f      =  micro_xs(i_nuclide) % interp_factor
 
-    if (present(prob0)) then
-      ! During actual particle tracking, the probability and cutoff values are
-      ! already calculated in sample_reaction
-      prob = prob0
-      cutoff = cutoff0
-    else
-      ! For tallying purposes, this routine might be called directly. In that
-      ! case, we need to sample a reaction via the cutoff variable
-      prob = ZERO
-      cutoff = prn() * (micro_xs(i_nuclide) % total - &
-           micro_xs(i_nuclide) % absorption)
-    end if
+    ! For tallying purposes, this routine might be called directly. In that
+    ! case, we need to sample a reaction via the cutoff variable
+    prob = ZERO
+    cutoff = prn() * (micro_xs(i_nuclide) % total - &
+         micro_xs(i_nuclide) % absorption)
 
     prob = prob + micro_xs(i_nuclide) % elastic
     if (prob > cutoff) then

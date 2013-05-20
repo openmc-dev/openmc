@@ -7,7 +7,7 @@ module particle_restart
   use geometry_header, only: BASE_UNIVERSE
   use global
   use particle_header, only: deallocate_coord
-  use output,          only: write_message
+  use output,          only: write_message, print_particle
   use physics,         only: transport
   use random_lcg,      only: set_particle_seed
   use source,          only: initialize_particle
@@ -79,6 +79,9 @@ contains
 
   subroutine read_binary_particle_restart()
 
+    integer :: filetype
+    integer :: revision
+
     ! write meessage
     message = "Loading particle restart file " // trim(path_particle_restart) &
               // "..."
@@ -89,6 +92,8 @@ contains
          ACCESS='stream')
 
     ! read data from file
+    read(UNIT_PARTICLE) filetype
+    read(UNIT_PARTICLE) revision
     read(UNIT_PARTICLE) current_batch
     read(UNIT_PARTICLE) gen_per_batch
     read(UNIT_PARTICLE) current_gen
@@ -140,11 +145,7 @@ contains
     call transport()
 
     ! write output if particle made it
-    write(ou,*) 'Particle Successfully Transport:'
-    write(ou,*) 'WEIGHT:', p % wgt
-    write(ou,*) 'ENERGY:', p % E
-    write(ou,*) 'LOCATION:', p % coord % xyz
-    write(ou,*) 'ANGLE:', p % coord % uvw
+    call print_particle()
 
   end subroutine run_particle_restart
 

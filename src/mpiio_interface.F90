@@ -1,16 +1,12 @@
-module mpi_interface
-
-  use constants
-  use global
+module mpiio_interface
 
 #ifdef MPI
   use mpi
 
   implicit none
 
-  integer :: mpi_fh ! MPI file handle
-
-  ! TODO: eventually move mpi_err to here and use this for all other MPI calls
+  integer :: mpi_fh  ! MPI file handle
+  integer :: mpi_err ! MPI error code
 
 contains
 
@@ -240,4 +236,4 @@ contains
   end subroutine mpi_read_string
 
 #endif
-end module mpi_interface
+end module mpiio_interface

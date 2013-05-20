@@ -8,7 +8,7 @@ module output_interface
 #ifdef HDF5
   use hdf5_interface
 #elif MPI
-  use mpi_interface
+  use mpiio_interface
 #endif
 
   implicit none

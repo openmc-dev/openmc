@@ -39,7 +39,7 @@ material_header.o \
 math.o \
 mesh_header.o \
 mesh.o \
-mpi_interface.o \
+mpiio_interface.o \
 output.o \
 output_interface.o \
 particle_header.o \

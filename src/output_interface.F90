@@ -106,7 +106,7 @@ contains
 #else
     ! Check for read/write mode to open, default is read only
     if (mode == 'rw') then
-      open(UNIT=UNIT_OUTPUT, FILE=filename, ACTION='write', &
+      open(UNIT=UNIT_OUTPUT, FILE=filename, ACTION='readwrite', &
            STATUS='old', ACCESS='stream')
     else
       open(UNIT=UNIT_OUTPUT, FILE=filename, ACTION='read', &

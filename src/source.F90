@@ -167,8 +167,7 @@ contains
     p % id = bank_first + index_source - 1
 
     ! set random number seed
-    particle_seed = ((current_batch - 1)*gen_per_batch + & 
-         current_gen - 1)*n_particles + p % id
+    particle_seed = (overall_gen - 1)*n_particles + p % id
     call set_particle_seed(particle_seed)
 
     ! set particle trace

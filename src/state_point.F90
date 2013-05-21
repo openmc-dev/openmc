@@ -15,8 +15,7 @@ module state_point
   use constants
   use error,              only: fatal_error, warning
   use global
-  use output,             only: write_message, time_stamp, print_batch_keff
-  use math,               only: t_percentile
+  use output,             only: write_message, time_stamp
   use string,             only: to_str
   use output_interface
   use tally_header,       only: TallyObject
@@ -56,9 +55,11 @@ contains
     call file_create(filename, 'serial')
 
     if (master) then
+      ! Write file type
+      call write_data(FILETYPE_STATEPOINT, "filetype")
 
       ! Write revision number for state point file
-      call write_data(REVISION_STATEPOINT, "revision_statepoint")
+      call write_data(REVISION_STATEPOINT, "revision")
 
       ! Write OpenMC version
       call write_data(VERSION_MAJOR, "version_major")
@@ -86,7 +87,8 @@ contains
       if (run_mode == MODE_EIGENVALUE) then
         call write_data(n_inactive, "n_inactive")
         call write_data(gen_per_batch, "gen_per_batch")
-        call write_data(k_batch, "k_batch", length=current_batch)
+        call write_data(k_generation, "k_generation", &
+             length=current_batch*gen_per_batch)
         call write_data(entropy, "entropy", length=current_batch*gen_per_batch)
         call write_data(k_col_abs, "k_col_abs")
         call write_data(k_col_tra, "k_col_tra")
@@ -319,9 +321,12 @@ contains
     ! Open file for reading
     call file_open(path_state_point, 'parallel', 'r')
 
+    ! Read filetype
+    call read_data(int_array(1), "filetype")
+
     ! Read revision number for state point file and make sure it matches with
     ! current version
-    call read_data(int_array(1), "revision_statepoint")
+    call read_data(int_array(1), "revision")
     if (int_array(1) /= REVISION_STATEPOINT) then
       message = "State point version does not match current version " &
                 // "in OpenMC."
@@ -363,7 +368,8 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       call read_data(int_array(1), "n_inactive")
       call read_data(gen_per_batch, "gen_per_batch")
-      call read_data(k_batch, "k_batch", length=restart_batch)
+      call read_data(k_generation, "k_generation", &
+           length=restart_batch*gen_per_batch)
       call read_data(entropy, "entropy", length=restart_batch*gen_per_batch)
       call read_data(k_col_abs, "k_col_abs")
       call read_data(k_col_tra, "k_col_tra")
@@ -569,60 +575,6 @@ contains
     end if
 
   end subroutine load_state_point
-
-!===============================================================================
-! REPLAY_BATCH_HISTORY displays batch keff and entropy for each batch stored in
-! a state point file
-!===============================================================================
-
-  subroutine replay_batch_history
-
-    integer :: n = 0 ! number of realizations
-    real(8), save :: temp(2) = ZERO ! temporary values for keff
-    real(8) :: alpha ! significance level for CI
-    real(8) :: t_value ! t-value for confidence intervals
-
-    ! Write message at beginning
-    if (current_batch == 1) then
-      message = "Replaying history from state point..."
-      call write_message(1)
-    end if
-
-    ! Add to number of realizations
-    if (current_batch > n_inactive) then
-      n = n + 1
-
-      temp(1) = temp(1) + k_batch(current_batch)
-      temp(2) = temp(2) + k_batch(current_batch)*k_batch(current_batch)
-
-      ! calculate mean keff
-      keff = temp(1) / n
-
-      if (n > 1) then
-        if (confidence_intervals) then
-          ! Calculate t-value for confidence intervals
-          alpha = ONE - CONFIDENCE_LEVEL
-          t_value = t_percentile(ONE - alpha/TWO, n - 1)
-        else
-          t_value = ONE
-        end if
-
-        keff_std = t_value * sqrt((temp(2)/n - keff*keff)/(n - 1))
-      end if
-    else
-      keff = k_batch(current_batch)
-    end if
-
-    ! print out batch keff
-    if (master) call print_batch_keff()
-
-    ! Write message at end
-    if (current_batch == restart_batch) then
-      message = "Resuming simulation..."
-      call write_message(1)
-    end if
-
-  end subroutine replay_batch_history
 
   subroutine read_source
 ! TODO write this routine

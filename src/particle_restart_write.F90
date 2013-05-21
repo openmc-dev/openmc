@@ -60,6 +60,10 @@ contains
     src => source_bank(current_work)
 
     ! write data to file
+    call hdf5_write_integer(hdf5_particle_file, 'filetype', &
+         FILETYPE_PARTICLE_RESTART)
+    call hdf5_write_integer(hdf5_particle_file, 'revision', &
+         REVISION_PARTICLE_RESTART)
     call hdf5_write_integer(hdf5_particle_file, 'current_batch', current_batch)
     call hdf5_write_integer(hdf5_particle_file, 'gen_per_batch', gen_per_batch)
     call hdf5_write_integer(hdf5_particle_file, 'current_gen', current_gen)
@@ -101,6 +105,8 @@ contains
     src => source_bank(current_work)
 
     ! write data to file
+    write(UNIT_PARTICLE) FILETYPE_PARTICLE_RESTART
+    write(UNIT_PARTICLE) REVISION_PARTICLE_RESTART
     write(UNIT_PARTICLE) current_batch
     write(UNIT_PARTICLE) gen_per_batch
     write(UNIT_PARTICLE) current_gen

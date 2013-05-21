@@ -5,8 +5,8 @@ module mpiio_interface
 
   implicit none
 
-  integer :: mpi_fh  ! MPI file handle
-  integer :: mpi_err ! MPI error code
+  integer :: mpi_fh    ! MPI file handle
+  integer :: mpiio_err ! MPI error code
 
 contains
 
@@ -21,7 +21,7 @@ contains
 
     ! Create the file
     call MPI_FILE_OPEN(MPI_COMM_WORLD, filename, MPI_MODE_CREATE + &
-         MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpi_err) 
+         MPI_MODE_WRONLY, MPI_INFO_NULL, fh, mpiio_err) 
 
   end subroutine mpi_create_file
 
@@ -45,7 +45,7 @@ contains
 
     ! Create the file
     call MPI_FILE_OPEN(MPI_COMM_WORLD, filename, &
-         open_mode, MPI_INFO_NULL, fh, mpi_err) 
+         open_mode, MPI_INFO_NULL, fh, mpiio_err) 
 
   end subroutine mpi_open_file
 
@@ -57,7 +57,7 @@ contains
 
     integer, intent(inout) :: fh ! file handle
 
-    call MPI_FILE_CLOSE(fh, mpi_err)
+    call MPI_FILE_CLOSE(fh, mpiio_err)
 
   end subroutine mpi_close_file
 
@@ -71,7 +71,7 @@ contains
     integer, intent(in) :: buffer ! data to write
 
     call MPI_FILE_WRITE(fh, buffer, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err) 
+         MPI_STATUS_IGNORE, mpiio_err) 
 
   end subroutine mpi_write_integer
 
@@ -86,7 +86,7 @@ contains
     integer, intent(in) :: buffer(:) ! data to write
 
     call MPI_FILE_WRITE(fh, buffer, length, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
   end subroutine mpi_write_integer_1Darray
 
@@ -100,7 +100,7 @@ contains
     integer(8), intent(in) :: buffer ! data to write
 
     call MPI_FILE_WRITE(fh, buffer, 1, MPI_INTEGER8, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
   end subroutine mpi_write_long
 
@@ -114,7 +114,7 @@ contains
     real(8), intent(in) :: buffer ! data to write
 
     call MPI_FILE_WRITE(fh, buffer, 1, MPI_REAL8, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
   end subroutine mpi_write_double
 
@@ -129,7 +129,7 @@ contains
     real(8), intent(in) :: buffer(:) ! data to write
 
     call MPI_FILE_WRITE(fh, buffer, length, MPI_REAL8, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
   end subroutine mpi_write_double_1Darray
 
@@ -144,7 +144,7 @@ contains
     integer,      intent(in) :: length ! length of data
 
     call MPI_FILE_WRITE(fh, buffer, length, MPI_CHARACTER, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
   end subroutine mpi_write_string
 
@@ -158,7 +158,7 @@ contains
     integer, intent(inout) :: buffer ! read data to here
 
     call MPI_FILE_READ(fh, buffer, 1, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err) 
+         MPI_STATUS_IGNORE, mpiio_err) 
 
   end subroutine mpi_read_integer
 
@@ -173,7 +173,7 @@ contains
     integer, intent(inout) :: buffer(:) ! read data to here
 
     call MPI_FILE_READ(fh, buffer, length, MPI_INTEGER, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
   end subroutine mpi_read_integer_1Darray
 
@@ -187,7 +187,7 @@ contains
     integer(8), intent(inout) :: buffer ! read data to here
 
     call MPI_FILE_READ(fh, buffer, 1, MPI_INTEGER8, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
   end subroutine mpi_read_long
 
@@ -201,7 +201,7 @@ contains
     real(8), intent(inout) :: buffer ! read data to here
 
     call MPI_FILE_READ(fh, buffer, 1, MPI_REAL8, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
   end subroutine mpi_read_double
 
@@ -216,7 +216,7 @@ contains
     real(8), intent(inout) :: buffer(:) ! read data to here
 
     call MPI_FILE_READ(fh, buffer, length, MPI_REAL8, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
   end subroutine mpi_read_double_1Darray
 
@@ -231,7 +231,7 @@ contains
     integer,      intent(in)    :: length ! length of string
 
     call MPI_FILE_READ(fh, buffer, length, MPI_CHARACTER, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
   end subroutine mpi_read_string
 

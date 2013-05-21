@@ -204,6 +204,8 @@ contains
 
     ! Check for the no-tally-reduction method
     if (.not. reduce_tallies) then
+      ! If using the no-tally-reduction method, we need to collect tally
+      ! results before writing them to the state point file.
 
       call write_tally_results_nr()
 

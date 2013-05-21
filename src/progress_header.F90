@@ -4,7 +4,7 @@ module progress_header
 
   implicit none
 
-#if !defined(__WIN32)
+#if !defined(_WIN32)
   interface
     function check_isatty(fd) bind(C, name = 'isatty')
       use, intrinsic :: ISO_C_BINDING, only: c_int
@@ -41,7 +41,7 @@ contains
     
     integer :: i
 
-#if !defined(__WIN32)
+#if !defined(_WIN32)
     if (check_isatty(1) == 0) return
 #else
     return

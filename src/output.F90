@@ -166,8 +166,8 @@ contains
       write(OUTPUT_UNIT,*)
       write(OUTPUT_UNIT,*) 'Options:'
       write(OUTPUT_UNIT,*) '  -p, --plot      Run in plotting mode'
-      write(OUTPUT_UNIT,*) '  -r, --restart   Restart a previous run'
-      write(OUTPUT_UNIT,*) '  -s, --particle  Run a single particle history'
+      write(OUTPUT_UNIT,*) '  -r, --restart   Restart a previous run from a state point'
+      write(OUTPUT_UNIT,*) '                  or a particle restart file'
       write(OUTPUT_UNIT,*) '  -t, --tallies   Write tally results from state point'
       write(OUTPUT_UNIT,*) '  -v, --version   Show version information'
       write(OUTPUT_UNIT,*) '  -?, --help      Show this message'
@@ -1215,24 +1215,24 @@ contains
 
     if (entropy_on) then
       if (cmfd_run) then
-        message = " Bat./Gen.   k(batch)   Entropy         Average k          CMFD k    CMFD Ent"
+        message = " Bat./Gen.      k       Entropy         Average k          CMFD k    CMFD Ent"
         call write_message(1)
         message = " =========   ========   ========   ====================   ========   ========"
         call write_message(1)
       else
-        message = " Bat./Gen.   k(batch)   Entropy         Average k"
+        message = " Bat./Gen.      k       Entropy         Average k"
         call write_message(1)
         message = " =========   ========   ========   ===================="
         call write_message(1)
       end if
     else
       if (cmfd_run) then
-        message = " Bat./Gen.   k(batch)        Average k          CMFD k"
+        message = " Bat./Gen.      k            Average k          CMFD k"
         call write_message(1)
         message = " =========   ========   ====================   ========"
         call write_message(1)
       else
-        message = " Bat./Gen.   k(batch)        Average k"
+        message = " Bat./Gen.      k            Average k"
         call write_message(1)
         message = " =========   ========   ===================="
         call write_message(1)
@@ -1251,11 +1251,17 @@ contains
     ! write out information about batch and generation
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(current_gen))
-    write(UNIT=OUTPUT_UNIT, FMT='(11X)', ADVANCE='NO')
+    write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') &
+         k_generation(overall_gen)
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy(current_gen + gen_per_batch*(current_batch - 1))
+         entropy(overall_gen)
+
+    if (overall_gen - n_inactive*gen_per_batch > 1) then 
+      write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
+           keff, keff_std
+    end if
 
     ! next line
     write(UNIT=OUTPUT_UNIT, FMT=*)
@@ -1273,14 +1279,14 @@ contains
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(gen_per_batch))
     write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') &
-         k_batch(current_batch)
+         k_generation(overall_gen)
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
          entropy(current_batch*gen_per_batch)
 
     ! write out accumulated k-effective if after first active batch
-    if (current_batch > n_inactive + 1) then 
+    if (overall_gen - n_inactive*gen_per_batch > 1) then 
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
            keff, keff_std
     else

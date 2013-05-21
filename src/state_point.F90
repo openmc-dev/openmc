@@ -205,7 +205,7 @@ contains
     ! Check for the no-tally-reduction method
     if (.not. reduce_tallies) then
 
-       ! TODO Call the no tally reduce routine
+      call write_tally_results_nr()
 
     elseif (master) then
 
@@ -295,6 +295,113 @@ contains
     end if
 
   end subroutine write_state_point
+
+!===============================================================================
+! WRITE_TALLY_RESULTS_NR
+!===============================================================================
+
+  subroutine write_tally_results_nr()
+
+    integer :: i      ! loop index
+    integer :: n      ! number of filter bins
+    integer :: m      ! number of score bins
+    integer :: n_bins ! total number of bins
+    real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
+    real(8) :: global_temp(2,N_GLOBAL_TALLIES)
+    real(8) :: dummy  ! temporary receive buffer for non-root reduces
+    type(TallyObject), pointer :: t => null()
+
+    ! ==========================================================================
+    ! COLLECT AND WRITE GLOBAL TALLIES
+
+    if (master) then
+      ! Write number of realizations
+      call write_data(n_realizations, "n_realizations")
+
+      ! Write number of global tallies
+      call write_data(N_GLOBAL_TALLIES, "n_global_tallies")
+    end if
+
+    ! Copy global tallies into temporary array for reducing
+    n_bins = 2 * N_GLOBAL_TALLIES
+    global_temp(1,:) = global_tallies(:) % sum
+    global_temp(2,:) = global_tallies(:) % sum_sq 
+
+    if (master) then
+      ! The MPI_IN_PLACE specifier allows the master to copy values into a
+      ! receive buffer without having a temporary variable
+      call MPI_REDUCE(MPI_IN_PLACE, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
+           0, MPI_COMM_WORLD, mpi_err)
+
+      ! Transfer values to value on master
+      if (current_batch == n_batches) then
+        global_tallies(:) % sum    = global_temp(1,:)
+        global_tallies(:) % sum_sq = global_temp(2,:)
+      end if
+
+      ! Write out global tallies sum and sum_sq
+      call write_tally_result(global_tallies, "global_tallies", &
+           n1=N_GLOBAL_TALLIES, n2=1)
+    else
+      ! Receive buffer not significant at other processors
+      call MPI_REDUCE(global_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
+           0, MPI_COMM_WORLD, mpi_err)
+    end if
+
+    if (tallies_on) then
+      ! Indicate that tallies are on
+      if (master) then
+        call write_data(1, "tallies_present", group="tallies")
+      end if
+
+      ! Write all tally results
+      TALLY_RESULTS: do i = 1, n_tallies
+        t => tallies(i)
+
+        ! Determine size of tally results array
+        m = size(t % results, 1)
+        n = size(t % results, 2)
+        n_bins = m*n*2
+
+        ! Allocate array for storing sums and sums of squares, but
+        ! contiguously in memory for each
+        allocate(tally_temp(2,m,n))
+        tally_temp(1,:,:) = t % results(:,:) % sum
+        tally_temp(2,:,:) = t % results(:,:) % sum_sq
+
+        if (master) then
+          ! The MPI_IN_PLACE specifier allows the master to copy values into
+          ! a receive buffer without having a temporary variable
+          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
+               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+
+          ! At the end of the simulation, store the results back in the
+          ! regular TallyResults array
+          if (current_batch == n_batches) then
+            t % results(:,:) % sum = tally_temp(1,:,:)
+            t % results(:,:) % sum_sq = tally_temp(2,:,:)
+          end if
+ 
+         ! Write reduced tally results to file
+          call write_tally_result(t % results, "results", &
+               group="tallies/tally" // to_str(i), n1=m, n2=n)
+        else
+          ! Receive buffer not significant at other processors
+          call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
+               0, MPI_COMM_WORLD, mpi_err)
+        end if
+
+        ! Deallocate temporary copy of tally results
+        deallocate(tally_temp)
+      end do TALLY_RESULTS
+    else
+      if (master) then
+        ! Indicate that tallies are off
+        call write_data(0, "tallies_present", group="tallies")
+      end if
+    end if
+
+  end subroutine write_tally_results_nr
 
 !===============================================================================
 ! LOAD_STATE_POINT

@@ -339,11 +339,10 @@ source.o: string.o
 
 state_point.o: error.o
 state_point.o: global.o
-state_point.o: math.o
 state_point.o: output.o
+state_point.o: output_interface.o
 state_point.o: string.o
 state_point.o: tally_header.o
-state_point.o: output_interface.o
 
 string.o: constants.o
 string.o: error.o

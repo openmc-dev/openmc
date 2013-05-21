@@ -330,9 +330,10 @@ contains
     if (master) then
       ! The MPI_IN_PLACE specifier allows the master to copy values into a
       ! receive buffer without having a temporary variable
+#ifdef MPI
       call MPI_REDUCE(MPI_IN_PLACE, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
            0, MPI_COMM_WORLD, mpi_err)
-
+#endif
       ! Transfer values to value on master
       if (current_batch == n_batches) then
         global_tallies(:) % sum    = global_temp(1,:)
@@ -344,8 +345,10 @@ contains
            n1=N_GLOBAL_TALLIES, n2=1)
     else
       ! Receive buffer not significant at other processors
+#ifdef MPI
       call MPI_REDUCE(global_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
            0, MPI_COMM_WORLD, mpi_err)
+#endif
     end if
 
     if (tallies_on) then
@@ -372,9 +375,10 @@ contains
         if (master) then
           ! The MPI_IN_PLACE specifier allows the master to copy values into
           ! a receive buffer without having a temporary variable
+#ifdef MPI
           call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
                MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-
+#endif MPI
           ! At the end of the simulation, store the results back in the
           ! regular TallyResults array
           if (current_batch == n_batches) then
@@ -387,8 +391,10 @@ contains
                group="tallies/tally" // to_str(i), n1=m, n2=n)
         else
           ! Receive buffer not significant at other processors
+#ifdef MPI
           call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
                0, MPI_COMM_WORLD, mpi_err)
+#endif
         end if
 
         ! Deallocate temporary copy of tally results

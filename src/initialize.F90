@@ -332,9 +332,9 @@ contains
           i = i + 1
 
           ! Check what type of file this is
-          call file_open(argv(i), 'serial', 'r')
+          call file_open(argv(i), 'parallel', 'r')
           call read_data(filetype, 'filetype')
-          call file_close('serial')
+          call file_close('parallel')
 
           ! Set path and flag for type of run
           select case (filetype)

@@ -378,7 +378,7 @@ contains
 #ifdef MPI
           call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
                MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
-#endif MPI
+#endif
           ! At the end of the simulation, store the results back in the
           ! regular TallyResults array
           if (current_batch == n_batches) then

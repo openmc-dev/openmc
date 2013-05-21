@@ -105,8 +105,8 @@ contains
     call mpi_open_file(filename, mpi_fh, mode)
 #else
     ! Check for read/write mode to open, default is read only
-    if (mode == 'rw') then
-      open(UNIT=UNIT_OUTPUT, FILE=filename, ACTION='readwrite', &
+    if (mode == 'w') then
+      open(UNIT=UNIT_OUTPUT, FILE=filename, ACTION='write', &
            STATUS='old', ACCESS='stream')
     else
       open(UNIT=UNIT_OUTPUT, FILE=filename, ACTION='read', &

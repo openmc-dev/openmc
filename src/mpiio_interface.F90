@@ -32,15 +32,15 @@ contains
   subroutine mpi_open_file(filename, fh, mode)
 
     character(*), intent(in)    :: filename ! name of file to open
-    character(*), intent(in)    :: mode     ! open 'r' read, 'rw' read/write
+    character(*), intent(in)    :: mode     ! open 'r' read, 'w' write
     integer,      intent(inout) :: fh       ! file handle
 
     integer :: open_mode
 
     ! Determine access mode
     open_mode = MPI_MODE_RDONLY
-    if (mode == 'rw') then
-      open_mode = MPI_MODE_RDWR
+    if (mode == 'w') then
+      open_mode = MPI_MODE_WRONLY
     end if
 
     ! Create the file

@@ -311,9 +311,10 @@ contains
     integer :: m      ! number of score bins
     integer :: n_bins ! total number of bins
     real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
-    real(8) :: global_temp(2,N_GLOBAL_TALLIES)
+    real(8), target :: global_temp(2,N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
     type(TallyObject), pointer :: t => null()
+    type(TallyResult), allocatable :: tallyresult_temp(:,:)
 
     ! ==========================================================================
     ! COLLECT AND WRITE GLOBAL TALLIES
@@ -338,15 +339,25 @@ contains
       call MPI_REDUCE(MPI_IN_PLACE, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
            0, MPI_COMM_WORLD, mpi_err)
 #endif
+
       ! Transfer values to value on master
       if (current_batch == n_batches) then
         global_tallies(:) % sum    = global_temp(1,:)
         global_tallies(:) % sum_sq = global_temp(2,:)
       end if
 
+      ! Put reduced value in temporary tally result
+      allocate(tallyresult_temp(N_GLOBAL_TALLIES, 1))
+      tallyresult_temp(:,1) % sum    = global_temp(1,:)
+      tallyresult_temp(:,1) % sum_sq = global_temp(2,:)
+
+   
       ! Write out global tallies sum and sum_sq
-      call write_tally_result(global_tallies, "global_tallies", &
+      call write_tally_result(tallyresult_temp, "global_tallies", &
            n1=N_GLOBAL_TALLIES, n2=1)
+
+      ! Deallocate temporary tally result
+      deallocate(tallyresult_temp)
     else
       ! Receive buffer not significant at other processors
 #ifdef MPI
@@ -389,10 +400,18 @@ contains
             t % results(:,:) % sum = tally_temp(1,:,:)
             t % results(:,:) % sum_sq = tally_temp(2,:,:)
           end if
+
+         ! Put in temporary tally result
+         allocate(tallyresult_temp(m,n))
+         tallyresult_temp(:,:) % sum    = tally_temp(1,:,:)
+         tallyresult_temp(:,:) % sum_sq = tally_temp(2,:,:)
  
          ! Write reduced tally results to file
           call write_tally_result(t % results, "results", &
                group="tallies/tally" // to_str(i), n1=m, n2=n)
+
+          ! Deallocate temporary tally result
+          deallocate(tallyresult_temp)
         else
           ! Receive buffer not significant at other processors
 #ifdef MPI

@@ -748,7 +748,7 @@ contains
 
     ! Write out tally buffer
     call MPI_FILE_WRITE(mpi_fh, buffer, n1*n2, MPI_TALLYRESULT, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
 #else
 
@@ -805,7 +805,7 @@ contains
 
     ! Write out tally buffer
     call MPI_FILE_READ(mpi_fh, buffer, n1*n2, MPI_TALLYRESULT, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
 #else
 
@@ -909,7 +909,7 @@ contains
 #elif MPI
 
     ! Get current offset for master 
-    if (master) call MPI_FILE_GET_POSITION(mpi_fh, offset, mpi_err)
+    if (master) call MPI_FILE_GET_POSITION(mpi_fh, offset, mpiio_err)
 
     ! Determine offset on master process and broadcast to all processors
     call MPI_SIZEOF(offset, size_offset_kind, mpi_err)
@@ -926,7 +926,7 @@ contains
 
     ! Write all source sites
     call MPI_FILE_WRITE_AT(mpi_fh, offset, source_bank(1), work, MPI_BANK, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
 #else
 
@@ -1009,7 +1009,7 @@ contains
 #elif MPI
 
     ! Get current offset for master 
-    if (master) call MPI_FILE_GET_POSITION(mpi_fh, offset, mpi_err)
+    if (master) call MPI_FILE_GET_POSITION(mpi_fh, offset, mpiio_err)
 
     ! Determine offset on master process and broadcast to all processors
     call MPI_SIZEOF(offset, size_offset_kind, mpi_err)
@@ -1026,7 +1026,7 @@ contains
 
     ! Write all source sites
     call MPI_FILE_READ_AT(mpi_fh, offset, source_bank(1), work, MPI_BANK, &
-         MPI_STATUS_IGNORE, mpi_err)
+         MPI_STATUS_IGNORE, mpiio_err)
 
 #else
 

@@ -13,6 +13,7 @@ module initialize
                               cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot
+  use output_interface, only: file_open, file_close, read_data
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use state_point,      only: load_state_point
@@ -290,6 +291,7 @@ contains
     integer :: i         ! loop index
     integer :: argc      ! number of command line arguments
     integer :: last_flag ! index of last flag
+    integer :: filetype
     character(MAX_FILE_LEN) :: pwd      ! present working directory
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
 
@@ -326,10 +328,23 @@ contains
             call fatal_error()
           end if
         case ('-r', '-restart', '--restart')
-          ! Read path for state point
+          ! Read path for state point/particle restart
           i = i + 1
-          path_state_point = argv(i)
-          restart_run = .true.
+
+          ! Check what type of file this is
+          call file_open(argv(i), 'serial', 'r')
+          call read_data(filetype, 'filetype')
+          call file_close('serial')
+
+          ! Set path and flag for type of run
+          select case (filetype)
+          case (FILETYPE_STATEPOINT)
+            path_state_point = argv(i)
+            restart_run = .true.
+          case (FILETYPE_PARTICLE_RESTART)
+            path_particle_restart = argv(i)
+            particle_restart_run = .true.
+          end select
 
         case ('-t', '-tallies', '--tallies')
           run_mode = MODE_TALLIES
@@ -348,11 +363,6 @@ contains
         case ('-eps_tol', '-ksp_gmres_restart')
           ! Handle options that would be based to PETSC
           i = i + 1
-        case ('-s','-particle','--particle')
-          ! Read in path for particle restart
-          i = i + 1
-          path_particle_restart = argv(i)
-          particle_restart_run = .true.
         case default
           message = "Unknown command line option: " // argv(i)
           call fatal_error()

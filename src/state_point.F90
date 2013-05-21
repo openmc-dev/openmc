@@ -275,7 +275,7 @@ contains
       else
         ! Close HDF5 serial file and reopen in parallel
         call file_close('serial')
-        call file_open(filename, 'parallel', 'rw') 
+        call file_open(filename, 'parallel', 'w') 
 # endif
 #endif
 

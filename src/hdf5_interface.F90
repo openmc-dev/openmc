@@ -392,19 +392,41 @@ contains
     character(*),   intent(in)    :: buffer ! data to write
     integer,        intent(in)    :: length
 
-    type(c_ptr), dimension(1), target :: wdata
-    character(len=length, kind=c_char), dimension(1), target :: c_str
+    character(len=length), dimension(1) :: str_tmp
 
+!   Fortran 2003 implementation not compatible with IBM compiler Feb 2013
+!   type(c_ptr), dimension(1), target :: wdata
+!   character(len=length, kind=c_char), dimension(1), target :: c_str
+!   dims1(1) = 1
+!   call h5screate_simple_f(1, dims1, dspace, hdf5_err)
+!   call h5dcreate_f(group, name, H5T_STRING, dspace, dset, hdf5_err)
+!   c_str(1) = buffer
+!   wdata(1) = c_loc(c_str(1))
+!   f_ptr = c_loc(wdata(1))
+
+    ! Number of strings to write
     dims1(1) = 1
+
+    ! Insert null character at end of string when writing
+    call h5tset_strpad_f(H5T_STRING, H5T_STR_NULLPAD_F, hdf5_err)
+
+    ! Create the dataspace and dataset
     call h5screate_simple_f(1, dims1, dspace, hdf5_err)
     call h5dcreate_f(group, name, H5T_STRING, dspace, dset, hdf5_err)
-    c_str(1) = buffer
-    wdata(1) = c_loc(c_str(1))
-    f_ptr = c_loc(wdata(1))
-    call h5dwrite_f(dset, H5T_STRING, f_ptr, hdf5_err)
+
+    ! Set up dimesnions of string to write
+    dims2 = (/length, 1/) ! full array of strings to write 
+    dims1(1) = length     ! length of string
+
+    ! Copy over string buffer to a rank 1 array
+    str_tmp(1) = buffer
+
+    ! Write the variable dataset
+    call h5dwrite_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, mem_space_id=dspace)
+
+    ! Close all
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
-!   call h5ltmake_dataset_string_f(group, name, buffer, hdf5_err)
 
   end subroutine hdf5_write_string
 
@@ -715,8 +737,15 @@ contains
     integer,              intent(in)    :: p_type ! independent or collective IO
     integer,              intent(in)    :: length ! length of string
 
-    type(c_ptr), dimension(1), target :: buf_ptr
-    character(len=length, kind=c_char), pointer :: chr_ptr
+    character(len=length), dimension(1) :: str_tmp
+    ! Fortran 2003 implementation not compatible with IBM Feb 2013 compiler
+!    type(c_ptr), dimension(1), target :: buf_ptr
+!    character(len=length, kind=c_char), pointer :: chr_ptr
+!    f_ptr = c_loc(buf_ptr(1))
+!    call h5dread_f(dset, H5T_STRING, f_ptr, hdf5_err, xfer_prp=plist)
+!    call c_f_pointer(buf_ptr(1), chr_ptr) 
+!    buffer = chr_ptr
+!    nullify(chr_ptr)
 
     ! Create property list for independent or collective read
     call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
@@ -727,20 +756,22 @@ contains
     ! Open dataset
     call h5dopen_f(group, name, dset, hdf5_err)
 
-    ! Read data
-    f_ptr = c_loc(buf_ptr(1))
-    call h5dread_f(dset, H5T_STRING, f_ptr, hdf5_err, xfer_prp=plist)
+    ! Get dataspace to read
+    call h5dget_space_f(dset, dspace, hdf5_err)
 
-    ! Set to string
-    call c_f_pointer(buf_ptr(1), chr_ptr) 
-    buffer = chr_ptr
+    ! Set dimensions
+    dims2 = (/length, 1/)
+    dims1(1) = length
+
+    ! Read in the data
+    call h5dread_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, mem_space_id=dspace)
+
+    ! Copy over buffer
+    buffer = str_tmp(1)
 
     ! Close dataset and property list
     call h5dclose_f(dset, hdf5_err)
     call h5pclose_f(plist, hdf5_err)
-
-    ! Nullify pointers
-    nullify(chr_ptr)
 
   end subroutine hdf5_parallel_read_string
 

@@ -1,25 +1,23 @@
 #!/usr/bin/env python
 
 import glob
+import re
 
 dependencies = {}
 
 for src in glob.iglob('*.F90'):
     module = src.strip('.F90')
-    d = set()
-    for line in open(src, 'r'):
-        words = line.split()
-        if words and words[0].lower() == 'use':
-            name = words[1].strip(',')
-            if name in ['mpi','hdf5','h5lt']:
-                continue
-            if name.startswith('xml_data_'):
-                name = name.replace('xml_data_', 'templates/')
-            d.add(name)
-    if d:
-        d = list(d)
-        d.sort()
-        dependencies[module] = d
+    deps = set()
+    d = re.findall(r'\n\s*use\s+(\w+)',
+                   open(src,'r').read())
+    for name in d:
+        if name in ['mpi','hdf5','h5lt']:
+            continue
+        if name.startswith('xml_data_'):
+            name = name.replace('xml_data_', 'templates/')
+        deps.add(name)
+    if deps:
+        dependencies[module] = sorted(list(deps))
 
 
 keys = dependencies.keys()

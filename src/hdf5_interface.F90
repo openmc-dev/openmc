@@ -422,7 +422,8 @@ contains
     str_tmp(1) = buffer
 
     ! Write the variable dataset
-    call h5dwrite_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, mem_space_id=dspace)
+    call h5dwrite_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, &
+         mem_space_id=dspace)
 
     ! Close all
     call h5dclose_f(dset, hdf5_err)
@@ -764,7 +765,8 @@ contains
     dims1(1) = length
 
     ! Read in the data
-    call h5dread_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, mem_space_id=dspace)
+    call h5dread_vl_f(dset, H5T_STRING, str_tmp, dims2, dims1, hdf5_err, &
+         mem_space_id=dspace, xfer_prp = plist)
 
     ! Copy over buffer
     buffer = str_tmp(1)

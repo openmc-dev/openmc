@@ -640,10 +640,10 @@ contains
     if (master) then
 
       ! Read number of realizations for global tallies
-      call read_data(n_realizations, "n_realizations", option="independent")
+      call read_data(n_realizations, "n_realizations")
 
       ! Read number of global tallies
-      call read_data(int_array(1), "n_global_tallies", option="independent")
+      call read_data(int_array(1), "n_global_tallies")
       if (int_array(1) /= N_GLOBAL_TALLIES) then
         message = "Number of global tallies does not match in state point."
         call fatal_error()
@@ -654,8 +654,8 @@ contains
            n1=N_GLOBAL_TALLIES, n2=1)
 
       ! Check if tally results are present
-      call read_data(int_array(1), "tallies_present", group="tallies", &
-           option="independent")
+      call read_data(int_array(1), "tallies_present", group="tallies")
+!          option="independent")
 
       ! Read in sum and sum squared
       if (int_array(1) == 1) then

@@ -456,11 +456,11 @@ contains
     call file_open(path_state_point, 'parallel', 'r')
 
     ! Read filetype
-    call read_data(int_array(1), "filetype")
+    call read_data(int_array(1), "filetype", option="collective")
 
     ! Read revision number for state point file and make sure it matches with
     ! current version
-    call read_data(int_array(1), "revision")
+    call read_data(int_array(1), "revision", option="collective")
     if (int_array(1) /= REVISION_STATEPOINT) then
       message = "State point version does not match current version " &
                 // "in OpenMC."
@@ -468,9 +468,9 @@ contains
     end if
 
     ! Read OpenMC version
-    call read_data(int_array(1), "version_major")
-    call read_data(int_array(2), "version_minor")
-    call read_data(int_array(3), "version_release")
+    call read_data(int_array(1), "version_major", option="collective")
+    call read_data(int_array(2), "version_minor", option="collective")
+    call read_data(int_array(3), "version_release", option="collective")
     if (int_array(1) /= VERSION_MAJOR .or. int_array(2) /= VERSION_MINOR &
         .or. int_array(3) /= VERSION_RELEASE) then
       message = "State point file was created with a different version " &
@@ -479,68 +479,70 @@ contains
     end if
 
     ! Read date and time
-    call read_data(current_time, "date_and_time")
+    call read_data(current_time, "date_and_time", option="collective")
 
     ! Read path to input
-    call read_data(path_temp, "path")
+    call read_data(path_temp, "path", option="collective")
 
     ! Read and overwrite random number seed
-    call read_data(seed, "seed")
+    call read_data(seed, "seed", option="collective")
 
     ! Read and overwrite run information except number of batches
-    call read_data(run_mode, "run_mode")
-    call read_data(n_particles, "n_particles")
-    call read_data(int_array(1), "n_batches")
+    call read_data(run_mode, "run_mode", option="collective")
+    call read_data(n_particles, "n_particles", option="collective")
+    call read_data(int_array(1), "n_batches", option="collective")
 
     ! Take maximum of statepoint n_batches and input n_batches
     n_batches = max(n_batches, int_array(1))
 
     ! Read batch number to restart at
-    call read_data(restart_batch, "current_batch")
+    call read_data(restart_batch, "current_batch", option="collective")
 
     ! Read information specific to eigenvalue run
     if (run_mode == MODE_EIGENVALUE) then
-      call read_data(int_array(1), "n_inactive")
-      call read_data(gen_per_batch, "gen_per_batch")
+      call read_data(int_array(1), "n_inactive", option="collective")
+      call read_data(gen_per_batch, "gen_per_batch", option="collective")
       call read_data(k_generation, "k_generation", &
-           length=restart_batch*gen_per_batch)
-      call read_data(entropy, "entropy", length=restart_batch*gen_per_batch)
-      call read_data(k_col_abs, "k_col_abs")
-      call read_data(k_col_tra, "k_col_tra")
-      call read_data(k_abs_tra, "k_abs_tra")
-      call read_data(real_array(1:2), "k_combined", length=2)
+           length=restart_batch*gen_per_batch, option="collective")
+      call read_data(entropy, "entropy", length=restart_batch*gen_per_batch, &
+           option="collective")
+      call read_data(k_col_abs, "k_col_abs", option="collective")
+      call read_data(k_col_tra, "k_col_tra", option="collective")
+      call read_data(k_abs_tra, "k_abs_tra", option="collective")
+      call read_data(real_array(1:2), "k_combined", length=2, &
+            option="collective")
 
       ! Take maximum of statepoint n_inactive and input n_inactive
       n_inactive = max(n_inactive, int_array(1))
     end if
 
     ! Read number of meshes
-    call read_data(n_meshes, "n_meshes", group="tallies")
+    call read_data(n_meshes, "n_meshes", group="tallies", option="collective")
 
     ! Read and overwrite mesh information
     MESH_LOOP: do i = 1, n_meshes
       call read_data(meshes(i) % id, "id", &
-           group="tallies/mesh" // to_str(i))
+           group="tallies/mesh" // to_str(i), option="collective")
       call read_data(meshes(i) % type, "type", &
-           group="tallies/mesh" // to_str(i))
+           group="tallies/mesh" // to_str(i), option="collective")
       call read_data(meshes(i) % n_dimension, "n_dimension", &
-           group="tallies/mesh" // to_str(i))
+           group="tallies/mesh" // to_str(i), option="collective")
       call read_data(meshes(i) % dimension, "dimension", &
            group="tallies/mesh" // to_str(i), &
-           length=meshes(i) % n_dimension)
+           length=meshes(i) % n_dimension, option="collective")
       call read_data(meshes(i) % lower_left, "lower_left", &
            group="tallies/mesh" // to_str(i), &
-           length=meshes(i) % n_dimension)
+           length=meshes(i) % n_dimension, option="collective")
       call read_data(meshes(i) % upper_right, "upper_right", &
            group="tallies/mesh" // to_str(i), &
-           length=meshes(i) % n_dimension)
+           length=meshes(i) % n_dimension, option="collective")
       call read_data(meshes(i) % width, "width", &
            group="tallies/mesh" // to_str(i), &
-           length=meshes(i) % n_dimension)
+           length=meshes(i) % n_dimension, option="collective")
     end do MESH_LOOP
 
     ! Read and overwrite number of tallies
-    call read_data(n_tallies, "n_tallies", group="tallies")
+    call read_data(n_tallies, "n_tallies", group="tallies", option="collective")
 
     ! Read in tally metadata
     TALLY_METADATA: do i = 1, n_tallies
@@ -549,17 +551,18 @@ contains
       t => tallies(i)
 
       ! Read tally id
-      call read_data(t % id, "id", group="tallies/tally" // to_str(i))
+      call read_data(t % id, "id", group="tallies/tally" // to_str(i), &
+           option="collective")
 
       ! Read number of realizations
       call read_data(t % n_realizations, "n_realizations", &
-           group="tallies/tally" // to_str(i))
+           group="tallies/tally" // to_str(i), option="collective")
 
       ! Read size of tally results
       call read_data(int_array(1), "total_score_bins", &
-           group="tallies/tally" // to_str(i))
+           group="tallies/tally" // to_str(i), option="collective")
       call read_data(int_array(2), "total_filter_bins", &
-           group="tallies/tally" // to_str(i))
+           group="tallies/tally" // to_str(i), option="collective")
 
       ! Check size of tally results array
       if (int_array(1) /= t % total_score_bins .and. &
@@ -570,41 +573,44 @@ contains
 
       ! Read number of filters
       call read_data(t % n_filters, "n_filters", &
-           group="tallies/tally" // to_str(i))
+           group="tallies/tally" // to_str(i), option="collective")
 
       ! Read filter information
       FILTER_LOOP: do j = 1, t % n_filters
 
         ! Read type of filter
         call read_data(t % filters(j) % type, "type", &
-             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
+             option="collective")
 
         ! Read number of bins for this filter
         call read_data(t % filters(j) % n_bins, "n_bins", &
-             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+             group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
+             option="collective")
 
         ! Read bins
         if (t % filters(j) % type == FILTER_ENERGYIN .or. &
             t % filters(j) % type == FILTER_ENERGYOUT) then
           call read_data(t % filters(j) % real_bins, "bins", &
                group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
-               length=size(t % filters(j) % real_bins))
+               length=size(t % filters(j) % real_bins), option="collective")
         else
           call read_data(t % filters(j) % int_bins, "bins", &
                group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
-               length=size(t % filters(j) % int_bins))
+               length=size(t % filters(j) % int_bins), option="collective")
         end if
 
       end do FILTER_LOOP
 
       ! Read number of nuclide bins
       call read_data(t % n_nuclide_bins, "n_nuclide_bins", &
-           group="tallies/tally" // to_str(i))
+           group="tallies/tally" // to_str(i), option="collective")
 
       ! Set up nuclide bin array and then write
       allocate(temp_array(t % n_nuclide_bins))
       call read_data(temp_array, "nuclide_bins", &
-           group="tallies/tally" // to_str(i), length=t % n_nuclide_bins)
+           group="tallies/tally" // to_str(i), length=t % n_nuclide_bins, &
+           option="collective")
       NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
         if (temp_array(j) > 0) then
           nuclides(t % nuclide_bins(j)) % zaid = temp_array(j)
@@ -616,15 +622,17 @@ contains
 
       ! Write number of score bins, score bins, and scatt order
       call read_data(t % n_score_bins, "n_score_bins", &
-           group="tallies/tally" // to_str(i))
+           group="tallies/tally" // to_str(i), option="collective")
       call read_data(t % score_bins, "score_bins", &
-           group="tallies/tally" // to_str(i), length=t % n_score_bins)
+           group="tallies/tally" // to_str(i), length=t % n_score_bins, &
+           option="collective")
       call read_data(t % scatt_order, "scatt_order", &
-           group="tallies/tally" // to_str(i), length=t % n_score_bins)
+           group="tallies/tally" // to_str(i), length=t % n_score_bins, &
+           option="collective")
 
       ! Write number of user score bins
       call read_data(t % n_user_score_bins, "n_user_score_bins", &
-           group="tallies/tally" // to_str(i))
+           group="tallies/tally" // to_str(i), option="collective")
 
     end do TALLY_METADATA
 
@@ -632,10 +640,10 @@ contains
     if (master) then
 
       ! Read number of realizations for global tallies
-      call read_data(n_realizations, "n_realizations")
+      call read_data(n_realizations, "n_realizations", option="independent")
 
       ! Read number of global tallies
-      call read_data(int_array(1), "n_global_tallies")
+      call read_data(int_array(1), "n_global_tallies", option="independent")
       if (int_array(1) /= N_GLOBAL_TALLIES) then
         message = "Number of global tallies does not match in state point."
         call fatal_error()
@@ -646,7 +654,8 @@ contains
            n1=N_GLOBAL_TALLIES, n2=1)
 
       ! Check if tally results are present
-      call read_data(int_array(1), "tallies_present", group="tallies")
+      call read_data(int_array(1), "tallies_present", group="tallies", &
+           option="independent")
 
       ! Read in sum and sum squared
       if (int_array(1) == 1) then

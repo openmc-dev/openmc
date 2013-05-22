@@ -184,11 +184,12 @@ contains
 ! READ_DOUBLE reads double precision scalar data
 !===============================================================================
 
-  subroutine read_double(buffer, name, group)
+  subroutine read_double(buffer, name, group, option)
 
     real(8),      intent(inout)        :: buffer ! read data to here 
     character(*), intent(in)           :: name   ! name for data
     character(*), intent(in), optional :: group  ! HDF5 group name
+    character(*), intent(in), optional :: option ! type of read
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -197,10 +198,24 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
-    ! Read the data
+# ifdef MPI
+    ! Check for option for reading default is independent
+    if (present(option)) then
+      if (option == 'collective') then
+        call hdf5_parallel_read_double(temp_group, name, buffer, &
+             H5FD_MPIO_COLLECTIVE_F)
+      else
+        call hdf5_parallel_read_double(temp_group, name, buffer, &
+             H5FD_MPIO_INDEPENDENT_F)
+      end if
+    else
+      ! Standard read call
+      call hdf5_read_double(temp_group, name, buffer)
+    end if
+# else
+    ! Read the data serial
     call hdf5_read_double(temp_group, name, buffer)
-
+# endif
     ! Check if HDf5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
@@ -247,12 +262,13 @@ contains
 ! READ_DOUBLE_1DARRAY reads double precision 1-D array data
 !===============================================================================
 
-  subroutine read_double_1Darray(buffer, name, group, length)
+  subroutine read_double_1Darray(buffer, name, group, length, option)
 
     integer,        intent(in)           :: length    ! length of array to read
     real(8),        intent(inout)        :: buffer(:) ! read data to here
     character(*),   intent(in)           :: name      ! name of data
     character(*),   intent(in), optional :: group     ! HDF5 group name
+    character(*),   intent(in), optional :: option    ! read option
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -261,10 +277,24 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
-    ! Read the data
+# ifdef MPI
+    ! Check for option for reading default is independent
+    if (present(option)) then
+      if (option == 'collective') then
+        call hdf5_parallel_read_double_1Darray(temp_group, name, buffer, &
+             length, H5FD_MPIO_COLLECTIVE_F)
+      else 
+        call hdf5_parallel_read_double_1Darray(temp_group, name, buffer, &
+             length, H5FD_MPIO_INDEPENDENT_F)
+      end if
+    else
+      ! Standard read call
+      call hdf5_read_double_1Darray(temp_group, name, buffer, length)
+    end if
+# else
+    ! Read the data serial
     call hdf5_read_double_1Darray(temp_group, name, buffer, length)
-
+# endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
@@ -372,11 +402,12 @@ contains
 ! READ_INTEGER reads integer scalar data
 !===============================================================================
 
-  subroutine read_integer(buffer, name, group)
+  subroutine read_integer(buffer, name, group, option)
 
     integer,      intent(inout)        :: buffer ! read data to here
     character(*), intent(in)           :: name   ! name of data
     character(*), intent(in), optional :: group  ! HDF5 group name
+    character(*), intent(in), optional :: option ! read option
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -385,10 +416,24 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
-    ! Read the data
+# ifdef MPI
+    ! Check for option for reading default is independent
+    if (present(option)) then
+      if (option == 'collective') then
+        call hdf5_parallel_read_integer(temp_group, name, buffer, &
+             H5FD_MPIO_COLLECTIVE_F)
+      else 
+        call hdf5_parallel_read_integer(temp_group, name, buffer, &
+             H5FD_MPIO_INDEPENDENT_F)
+      end if
+    else
+      ! Standard read call
+      call hdf5_read_integer(temp_group, name, buffer)
+    end if
+# else
+    ! Read the data serial
     call hdf5_read_integer(temp_group, name, buffer)
-
+# endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
@@ -436,12 +481,13 @@ contains
 ! READ_INTEGER_1DARRAY reads integer 1-D array data
 !===============================================================================
 
-  subroutine read_integer_1Darray(buffer, name, group, length)
+  subroutine read_integer_1Darray(buffer, name, group, length, option)
 
     integer,      intent(in)           :: length    ! length of array to read
     integer,      intent(inout)        :: buffer(:) ! read data to here
     character(*), intent(in)           :: name      ! name of data
     character(*), intent(in), optional :: group     ! HDF5 group name
+    character(*), intent(in), optional :: option    ! read option
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -450,9 +496,24 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
-    ! Read the data
+# ifdef MPI
+    ! Check for option for reading default is independent
+    if (present(option)) then
+      if (option == 'collective') then
+        call hdf5_parallel_read_integer_1Darray(temp_group, name, buffer, &
+             length, H5FD_MPIO_COLLECTIVE_F)
+      else 
+        call hdf5_parallel_read_integer_1Darray(temp_group, name, buffer, &
+             length, H5FD_MPIO_INDEPENDENT_F)
+      end if
+    else
+      ! Standard read call
+      call hdf5_read_integer_1Darray(temp_group, name, buffer, length)
+    end if
+# else
+    ! Read the data serial
     call hdf5_read_integer_1Darray(temp_group, name, buffer, length)
+# endif
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_read_integer_1Darray(mpi_fh, buffer, length)
@@ -559,11 +620,12 @@ contains
 ! READ_LONG reads long integer scalar data
 !===============================================================================
 
-  subroutine read_long(buffer, name, group)
+  subroutine read_long(buffer, name, group, option)
 
     integer(8),   intent(inout)        :: buffer ! read data to here
     character(*), intent(in)           :: name   ! name of data
     character(*), intent(in), optional :: group  ! HDF5 group name
+    character(*), intent(in), optional :: option ! read option
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -572,10 +634,24 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
-    ! Read the data
+# ifdef MPI
+    ! Check for option for reading default is independent
+    if (present(option)) then
+      if (option == 'collective') then
+        call hdf5_parallel_read_long(temp_group, name, buffer, &
+             hdf5_integer8_t, H5FD_MPIO_COLLECTIVE_F)
+      else 
+        call hdf5_parallel_read_long(temp_group, name, buffer, &
+             hdf5_integer8_t, H5FD_MPIO_INDEPENDENT_F)
+      end if
+    else
+      ! Standard read call
+      call hdf5_read_long(temp_group, name, buffer, hdf5_integer8_t)
+    end if
+# else
+    ! Read the data serial
     call hdf5_read_long(temp_group, name, buffer, hdf5_integer8_t)
-
+# endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
@@ -611,7 +687,7 @@ contains
     endif
 
     ! Write the data
-    call hdf5_write_string(temp_group, name, buffer)
+    call hdf5_write_string(temp_group, name, buffer, len(buffer))
 
     ! Check if HDf5 group should be closed
     if (present(group)) call hdf5_close_group()
@@ -631,17 +707,17 @@ contains
 ! READ_STRING reads string data
 !===============================================================================
 
-  subroutine read_string(buffer, name, group)
+  subroutine read_string(buffer, name, group, option)
 
     character(*), intent(inout)        :: buffer ! read data to here
     character(*), intent(in)           :: name   ! name of data
     character(*), intent(in), optional :: group  ! HDF5 group name
+    character(*), intent(in), optional :: option ! read option
 
-#ifndef HDF5
-# ifdef MPI
     integer :: n ! length of string to read to
-# endif
-#endif
+
+    ! Length of string buffer to read
+    n = len(buffer)
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -650,16 +726,27 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
-    ! Read the data
+# ifdef MPI
+    ! Check for option for reading default is independent
+    if (present(option)) then
+      if (option == 'collective') then
+        call hdf5_parallel_read_string(temp_group, name, buffer, n, &
+             H5FD_MPIO_COLLECTIVE_F)
+      else 
+        call hdf5_parallel_read_string(temp_group, name, buffer, n, &
+             H5FD_MPIO_INDEPENDENT_F)
+      end if
+    else
+      ! Standard read call
+      call hdf5_read_string(temp_group, name, buffer)
+    end if
+# else
+    ! Read the data serial
     call hdf5_read_string(temp_group, name, buffer)
-
+# endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
-
-    ! Length of string buffer to read
-    n = len(buffer)
 
     ! Read the data
     call mpi_read_string(mpi_fh, buffer, n)

@@ -655,7 +655,6 @@ contains
 
       ! Check if tally results are present
       call read_data(int_array(1), "tallies_present", group="tallies")
-!          option="independent")
 
       ! Read in sum and sum squared
       if (int_array(1) == 1) then

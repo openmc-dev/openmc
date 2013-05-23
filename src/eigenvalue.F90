@@ -572,16 +572,15 @@ contains
 
 #ifdef MPI
     ! Combine values across all processors
-    call MPI_REDUCE(keff_generation, k_generation(overall_gen), 1, MPI_REAL8, &
-         MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_ALLREDUCE(keff_generation, k_generation(overall_gen), 1, &
+         MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, mpi_err)
 #else
     k_generation(overall_gen) = keff_generation
 #endif
 
     ! Normalize single batch estimate of k
     ! TODO: This should be normalized by total_weight, not by n_particles
-    if (master) k_generation(overall_gen) = &
-         k_generation(overall_gen) / n_particles
+    k_generation(overall_gen) = k_generation(overall_gen) / n_particles
 
   end subroutine calculate_generation_keff
 
@@ -626,11 +625,6 @@ contains
         keff_std = t_value * sqrt((k_sum(2)/n - keff**2) / (n - 1))
       end if
     end if
-
-#ifdef MPI
-    ! Broadcast new keff value to all processors
-    call MPI_BCAST(keff, 1, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
-#endif
 
   end subroutine calculate_average_keff
 

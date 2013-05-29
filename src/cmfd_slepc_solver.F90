@@ -162,7 +162,8 @@ contains
     cmfd%phi = ZERO
 
     ! extract run information
-    call EPSGetEigenpair(eps, i_eig, keff, PETSC_NULL, phi, PETSC_NULL_OBJECT, ierr)
+    call EPSGetEigenpair(eps, i_eig, keff, PETSC_NULL_DOUBLE, phi, &
+	  PETSC_NULL_OBJECT, ierr)
 
     ! get ownership range
     call VecGetOwnershipRange(phi, row_start, row_end, ierr)

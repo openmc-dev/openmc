@@ -56,7 +56,7 @@ contains
     call precondition_matrix()
 
     ! solve the system
-    call SNESSolve(snes, PETSC_NULL, xvec, ierr)
+    call SNESSolve(snes, PETSC_NULL_DOUBLE, xvec, ierr)
 
     ! extracts results to cmfd object
     call extract_results()
@@ -143,7 +143,7 @@ contains
 
     ! set the residual function
     call SNESSetFunction(snes, resvec, compute_nonlinear_residual, &
-         PETSC_NULL, ierr)
+         PETSC_NULL_DOUBLE, ierr)
 
     ! set GMRES solver
     call SNESGetKSP(snes, ksp, ierr)
@@ -166,7 +166,7 @@ contains
     call SNESSetFromOptions(snes, ierr)
 
     ! turn off line searching
-!   call SNESLineSearchSet(snes, SNESLineSearchNo, PETSC_NULL, ierr)
+!   call SNESLineSearchSet(snes, SNESLineSearchNo, PETSC_NULL_OBJECT, ierr)
 
   end subroutine init_solver
 

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 # Filename: eigenfunction_rms.py
 
 # import packages

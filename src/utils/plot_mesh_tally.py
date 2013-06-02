@@ -73,6 +73,17 @@ class AppForm(QMainWindow):
         self.axial_level = QComboBox()
         self.connect(self.axial_level, SIGNAL('activated(int)'),
                      self.on_draw)
+                     
+        # Add Option to plot mean or uncertainty
+        label_mean = QLabel("Mean or Uncertainty:")
+        self.mean = QComboBox()
+        self.mean.addItems(['Mean','Absolute Uncertainty', 
+                            'Relative Uncertainty'])
+        
+        # Update window when mean selection is changed
+        self.connect(self.mean, SIGNAL('activated(int)'),
+                     self.on_draw)
+        
 
         self.label_filters = QLabel("Filter options:")
 
@@ -111,7 +122,9 @@ class AppForm(QMainWindow):
         self.grid.addWidget(self.basis, 1, 1)
         self.grid.addWidget(label_axial_level, 2, 0)
         self.grid.addWidget(self.axial_level, 2, 1)
-        self.grid.addWidget(self.label_filters, 3, 0)
+        self.grid.addWidget(label_mean, 3, 0)
+        self.grid.addWidget(self.mean, 3, 1)
+        self.grid.addWidget(self.label_filters, 4, 0)
 
         self._update()
         self.populate_boxes() 
@@ -163,6 +176,7 @@ class AppForm(QMainWindow):
         # Get selected basis, axial_level and stage
         basis = self.basis.currentIndex() + 1
         axial_level = self.axial_level.currentIndex() + 1
+        is_mean = self.mean.currentIndex()
 
         # Create spec_list
         spec_list = []
@@ -171,24 +185,68 @@ class AppForm(QMainWindow):
                 continue
             index = self.boxes[tally.type].currentIndex()
             spec_list.append((tally.type, index))
-
+        
+        # Take is_mean and convert it to an index of the score
+        score_loc = is_mean
+        if score_loc > 1:
+            score_loc = 1
+        
         if self.basis.currentText() == 'xy':
             matrix = np.zeros((self.nx, self.ny))
             for i in range(self.nx):
                 for j in range(self.ny):
-                    matrix[i,j] = self.datafile.get_value(self.tally.currentIndex(), spec_list + [('mesh', (i, j, axial_level))], self.scoreBox.currentIndex())[0]
-
+                    matrix[i,j] = self.datafile.get_value(self.tally.currentIndex(), 
+                        spec_list + [('mesh', (i, j, axial_level))], 
+                        self.scoreBox.currentIndex())[score_loc]
+                    # Calculate relative uncertainty from absolute, if
+                    # requested
+                    if is_mean == 2:
+                        # Take care to handle zero means when normalizing
+                        mean_val = self.datafile.get_value(self.tally.currentIndex(), 
+                            spec_list + [('mesh', (i, j, axial_level))], 
+                            self.scoreBox.currentIndex())[0]
+                        if mean_val > 0.0:
+                            matrix[i,j] = matrix[i,j] / mean_val
+                        else:
+                            matrix[i,j] = 0.0
+                        
         elif self.basis.currentText() == 'yz':
             matrix = np.zeros((self.ny, self.nz))
             for i in range(self.ny):
                 for j in range(self.nz):
-                    matrix[i,j] = self.datafile.get_value(self.tally.currentIndex(), spec_list + [('mesh', (axial_level, i, j))], self.scoreBox.currentIndex())[0]
-
+                    matrix[i,j] = self.datafile.get_value(self.tally.currentIndex(), 
+                        spec_list + [('mesh', (axial_level, i, j))], 
+                        self.scoreBox.currentIndex())[score_loc]
+                    # Calculate relative uncertainty from absolute, if
+                    # requested
+                    if is_mean == 2:
+                        # Take care to handle zero means when normalizing
+                        mean_val = self.datafile.get_value(self.tally.currentIndex(), 
+                            spec_list + [('mesh', (axial_level, i, j))], 
+                            self.scoreBox.currentIndex())[0]
+                        if mean_val > 0.0:
+                            matrix[i,j] = matrix[i,j] / mean_val
+                        else:
+                            matrix[i,j] = 0.0
+                   
         else:
             matrix = np.zeros((self.nx, self.nz))
             for i in range(self.nx):
                 for j in range(self.nz):
-                    matrix[i,j] = self.datafile.get_value(self.tally.currentIndex(), spec_list + [('mesh', (i, axial_level, j))], self.scoreBox.currentIndex())[0]
+                    matrix[i,j] = self.datafile.get_value(self.tally.currentIndex(), 
+                        spec_list + [('mesh', (i, axial_level, j))], 
+                        self.scoreBox.currentIndex())[score_loc]
+                    # Calculate relative uncertainty from absolute, if
+                    # requested
+                    if is_mean == 2:
+                        # Take care to handle zero means when normalizing
+                        mean_val = self.datafile.get_value(self.tally.currentIndex(), 
+                            spec_list + [('mesh', (i, axial_level, j))], 
+                            self.scoreBox.currentIndex())[0]
+                        if mean_val > 0.0:
+                            matrix[i,j] = matrix[i,j] / mean_val
+                        else:
+                            matrix[i,j] = 0.0
 
 #        print spec_list
 
@@ -197,7 +255,8 @@ class AppForm(QMainWindow):
 
         # Make figure, set up color bar
         self.axes = self.fig.add_subplot(111)
-        cax = self.axes.imshow(matrix, vmin=0.0, vmax=matrix.max(), interpolation="nearest")
+        cax = self.axes.imshow(matrix, vmin=0.0, vmax=matrix.max(), 
+          interpolation="nearest")
         self.fig.colorbar(cax)
 
         self.axes.set_xticks([])
@@ -212,7 +271,9 @@ class AppForm(QMainWindow):
         '''
 #        print 'Calling _update...'
 
-        self.mesh = self.datafile.meshes[self.datafile.tallies[self.tally.currentIndex()].filters['mesh'].bins[0] - 1]
+        self.mesh = self.datafile.meshes[
+          self.datafile.tallies[
+          self.tally.currentIndex()].filters['mesh'].bins[0] - 1]
 
         self.nx, self.ny, self.nz = self.mesh.dimension
 
@@ -228,7 +289,8 @@ class AppForm(QMainWindow):
             self.axial_level.addItems([str(i+1) for i in range(self.ny)])
 
         # Determine maximum value from current tally data set
-        self.maxvalue = self.datafile.tallies[self.tally.currentIndex()].results.max()
+        self.maxvalue = self.datafile.tallies[
+          self.tally.currentIndex()].results.max()
 #        print self.maxvalue
 
         # Clear and hide old filter labels
@@ -245,7 +307,7 @@ class AppForm(QMainWindow):
     def populate_boxes(self):
 #        print 'Calling populate_boxes...'
 
-        n = 4
+        n = 5
         labels = {'cell': 'Cell : ',
                        'cellborn': 'Cell born: ',
                        'surface': 'Surface: ',
@@ -255,7 +317,8 @@ class AppForm(QMainWindow):
         # For each filter in newly-selected tally, name a label and fill the
         # relevant combobox with options
         for element in self.tally_list[self.tally.currentIndex()]:
-            nextFilter = self.datafile.tallies[self.tally.currentIndex()].filters[element]
+            nextFilter = self.datafile.tallies[
+              self.tally.currentIndex()].filters[element]
             if element == 'mesh':
                 continue
 
@@ -274,7 +337,8 @@ class AppForm(QMainWindow):
 
             elif element == 'energyin' or element == 'energyout':
                 for i in range(nextFilter.length):
-                    text = str(nextFilter.bins[i]) + ' to ' + str(nextFilter.bins[i+1])
+                    text = (str(nextFilter.bins[i]) + ' to ' + 
+                      str(nextFilter.bins[i+1]))
                     combobox.addItem(text)
 
         self.scoreBox.clear()

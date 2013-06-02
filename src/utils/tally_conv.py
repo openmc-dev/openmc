@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # This program takes OpenMC statepoint binary files and creates a variety of
 # outputs from them which should provide the user with an idea of the

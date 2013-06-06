@@ -150,7 +150,7 @@ contains
     if (particle_restart_run) run_mode = MODE_PARTICLE
 
     ! Warn if overlap checking is on
-    if (check_overlaps) then
+    if (master .and. check_overlaps) then
       message = ""
       call write_message()
       message = "Cell overlap checking is ON"

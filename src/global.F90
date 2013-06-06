@@ -275,8 +275,8 @@ module global
   integer :: verbosity = 7
 
   ! Flag for enabling cell overlap checking during transport
-  logical               :: check_overlaps = .false.
-  integer, allocatable  :: overlap_check_cnt(:)
+  logical                  :: check_overlaps = .false.
+  integer(8), allocatable  :: overlap_check_cnt(:)
 
   ! Trace for single particle
   logical    :: trace

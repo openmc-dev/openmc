@@ -297,6 +297,9 @@ contains
           path_state_point = argv(i)
           restart_run = .true.
 
+        case ('-g', '-geometry-debug', '--geometry-debug')
+          check_overlaps = .true.
+
         case ('-?', '-help', '--help')
           call print_usage()
           stop

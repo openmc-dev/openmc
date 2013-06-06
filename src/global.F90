@@ -274,6 +274,9 @@ module global
   ! screen and in logs
   integer :: verbosity = 7
 
+  ! Flag for enabling cell overlap checking during transport
+  logical :: check_overlaps = .false.
+
   ! Trace for single particle
   logical    :: trace
   integer    :: trace_batch

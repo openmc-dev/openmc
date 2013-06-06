@@ -62,6 +62,57 @@ contains
 
   end function simple_cell_contains
 
+
+!===============================================================================
+! CHECK_CELL_OVERLAP checks for overlapping cells at the current particle's
+! position using simple_cell_contains and the LocalCoord's built up by
+! find_cell.  This should be called immediately following calls to 
+! find_cell.
+!===============================================================================
+
+  subroutine check_cell_overlap()
+
+    integer :: i                       ! cell loop index on a level
+    integer :: n                       ! number of cells to search on a level
+    integer :: index_cell              ! index in cells array
+    type(Cell),       pointer :: c     ! pointer to cell
+    type(Universe),   pointer :: univ  ! universe to search in
+    type(LocalCoord), pointer :: coord ! particle coordinate to search on
+
+    coord => p % coord0
+
+    ! loop through each coordinate level
+    do while (associated(coord))
+
+      p % coord => coord
+
+      univ => universes(coord % universe)
+      n = univ % n_cells
+
+      ! loop through each cell on this level
+      do i = 1, n
+        index_cell = univ % cells(i)
+        c => cells(index_cell)
+
+        if (simple_cell_contains(c)) then
+          ! that particle should only be contained in one cell per level
+          if (index_cell /= coord % cell) then
+            message = "Overlapping cells detected: " //               &
+                      trim(to_str(cells(index_cell) % id)) // ", " // &
+                      trim(to_str(cells(coord % cell) % id)) //       &
+                      " on universe " // trim(to_str(univ % id))
+            call fatal_error()
+          end if
+        end if
+
+      end do
+
+      coord => coord % next
+
+    end do
+
+  end subroutine check_cell_overlap
+
 !===============================================================================
 ! FIND_CELL determines what cell a source particle is in within a particular
 ! universe. If the base universe is passed, the particle should be found as long

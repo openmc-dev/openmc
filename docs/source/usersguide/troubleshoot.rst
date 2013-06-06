@@ -98,8 +98,38 @@ with the :envvar:`CROSS_SECTIONS` environment variable. It is recommended to add
 a line in your ``.profile`` or ``.bash_profile`` setting the
 :envvar:`CROSS_SECTIONS` environment variable.
 
+Geometry Debugging
+******************
+
+Overlapping Cells
+^^^^^^^^^^^^^^^^^
+
+For fast run times, normal simulations do not check if the geometry is
+incorrectly defined to have overlapping cells.  This can lead to incorrect
+results that may or may not be obvious when there are errors in the geometry
+input file.  The built-in 2D and 3D plotters will check for cell overlaps at
+the center of every pixel or voxel position they process, however this might
+not be a sufficient check to ensure correctly defined geometry.  For instance,
+if an overlap is of small aspect ratio, the plotting resolution might not be
+high enough to produce any pixels in the overlapping area.
+
+To reliably validate a geometry input, it is best to run the problem in
+geometry debugging mode with the ``-g``, ``-geometry-debug``, or
+``--geometry-debug`` command-line options.  This will enable checks for
+overlapping cells at every move of esch simulated particle.  Depending on the
+complexity of the geometry input file, this could add considerable overhead to
+the run (these runs can still be done in parallel).  As a result, for this run
+mode the user will probably want to run fewer particles than a normal
+simulation run.  In this case it is important to be aware of how much coverage
+each area of the geometry is getting.  For instance, if certain regions do not
+have many particles travelling through them there will not be many locations
+where overlaps are checked for in that region.  The user should refer to the
+output after a geometry debug run to see how many checks were performed in each
+cell, and then adjust the number of starting particles or starting source
+distributions accordingly to achieve good coverage. 
+ 
 ERROR: After particle __ crossed surface __ it could not be located in any cell and it did not leak.
-****************************************************************************************************
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This error can arise either if a problem is specified with no boundary
 conditions or if there is an error in the geometry itself. First check to ensure
@@ -119,6 +149,11 @@ has a collision. For example, if you received this error at cycle 5, generation
 .. code-block:: xml
 
     <trace>5 1 4032</trace>
+
+For large runs it is often advantageous to run only the offending particle by
+using particle restart mode with the ``-s``, ``-particle``, or ``--particle``
+command-line options in conjunction with the particle restart files that are
+created when particles are lost with this error.
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
 .. _mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-users

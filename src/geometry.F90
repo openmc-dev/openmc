@@ -95,7 +95,7 @@ contains
         c => cells(index_cell)
 
         if (simple_cell_contains(c)) then
-          ! that particle should only be contained in one cell per level
+          ! the particle should only be contained in one cell per level
           if (index_cell /= coord % cell) then
             message = "Overlapping cells detected: " //               &
                       trim(to_str(cells(index_cell) % id)) // ", " // &
@@ -103,6 +103,9 @@ contains
                       " on universe " // trim(to_str(univ % id))
             call fatal_error()
           end if
+
+          overlap_check_cnt(index_cell) = overlap_check_cnt(index_cell) + 1
+
         end if
 
       end do

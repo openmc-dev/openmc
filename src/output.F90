@@ -1504,7 +1504,7 @@ contains
     write(ou,*)
 
 100 format (1X,A,T15,A)
-101 format (1X,I8,T15,I8)
+101 format (1X,I8,T15,I12)
 
   end subroutine print_overlap_check
 

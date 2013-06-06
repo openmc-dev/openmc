@@ -36,6 +36,7 @@ contains
       if (output_tallies) then
         if (master) call write_tallies()
       end if
+      if (check_overlaps) call reduce_overlap_count()
     end if
 
 #ifdef PETSC
@@ -68,5 +69,23 @@ contains
 #endif
 
   end subroutine finalize_run
+
+!===============================================================================
+! REDUCE_OVERLAP_COUNT accumulates cell overlap check counts to master
+!===============================================================================
+
+  subroutine reduce_overlap_count()
+
+#ifdef MPI
+      if (master) then
+        call MPI_REDUCE(MPI_IN_PLACE, overlap_check_cnt, n_cells, &
+             MPI_INTEGER8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+      else
+        call MPI_REDUCE(overlap_check_cnt, overlap_check_cnt, n_cells, &
+             MPI_INTEGER8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+      end if
+#endif
+
+  end subroutine reduce_overlap_count
 
 end module finalize

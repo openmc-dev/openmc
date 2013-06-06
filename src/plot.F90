@@ -62,7 +62,7 @@ contains
     p % coord => p % coord0
 
     call find_cell(found_cell)
-    call check_cell_overlap()
+    if (check_overlaps) call check_cell_overlap()
 
     if (.not. found_cell) then
       ! If no cell, revert to default color

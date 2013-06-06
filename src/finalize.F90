@@ -4,7 +4,8 @@ module finalize
   use cmfd_output,    only: finalize_cmfd
 # endif
   use global
-  use output,         only: print_runtime, print_results, write_tallies
+  use output,         only: print_runtime, print_results, &
+                            print_overlap_check, write_tallies
   use tally,          only: tally_statistics
 
 #ifdef MPI
@@ -50,6 +51,7 @@ contains
          run_mode /= MODE_PARTICLE)) then
       call print_runtime()
       call print_results()
+      if (check_overlaps) call print_overlap_check()
     end if
 
     ! deallocate arrays

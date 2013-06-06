@@ -65,9 +65,7 @@ contains
 
 !===============================================================================
 ! CHECK_CELL_OVERLAP checks for overlapping cells at the current particle's
-! position using simple_cell_contains and the LocalCoord's built up by
-! find_cell.  This should be called immediately following calls to 
-! find_cell.
+! position using simple_cell_contains and the LocalCoord's built up by find_cell
 !===============================================================================
 
   subroutine check_cell_overlap()

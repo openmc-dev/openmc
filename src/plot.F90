@@ -2,8 +2,8 @@ module plot
 
   use constants
   use error,           only: fatal_error
-  use geometry,        only: find_cell
-  use geometry_header, only: Universe, BASE_UNIVERSE
+  use geometry,        only: find_cell, check_cell_overlap
+  use geometry_header, only: Cell, BASE_UNIVERSE
   use global
   use output,          only: write_message
   use particle_header, only: deallocate_coord
@@ -62,6 +62,7 @@ contains
     p % coord => p % coord0
 
     call find_cell(found_cell)
+    call check_cell_overlap()
 
     if (.not. found_cell) then
       ! If no cell, revert to default color

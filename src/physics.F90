@@ -73,6 +73,12 @@ contains
     ! Force calculation of cross-sections by setting last energy to zero 
     micro_xs % last_E = ZERO
 
+    if (run_mode == MODE_PARTICLE) then
+      open(UNIT=UNIT_TRACK, FILE='test', STATUS='replace', &
+           ACCESS='stream')
+      write(UNIT_TRACK) p % coord0 % xyz
+    end if
+
     do while (p % alive)
 
       ! Calculate microscopic and macroscopic cross sections -- note: if the
@@ -100,6 +106,10 @@ contains
         coord % xyz = coord % xyz + distance * coord % uvw
         coord => coord % next
       end do
+      
+      if (run_mode == MODE_PARTICLE) then
+        write(UNIT_TRACK) p % coord0 % xyz
+      end if
 
       ! Score track-length tallies
       if (active_tracklength_tallies % size() > 0) &
@@ -174,6 +184,10 @@ contains
       end if
 
     end do
+
+    if (run_mode == MODE_PARTICLE) then
+      close(UNIT=UNIT_TRACK)
+    end if
 
   end subroutine transport
 

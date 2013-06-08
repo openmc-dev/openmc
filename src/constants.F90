@@ -363,6 +363,7 @@ module constants
   integer, parameter :: UNIT_STATE    = 16 ! unit # for writing state point
   integer, parameter :: CMFD_BALANCE  = 17 ! unit # for writing cmfd balance file
   integer, parameter :: UNIT_PARTICLE = 18 ! unit # for writing particle restart
+  integer, parameter :: UNIT_TRACK    = 19 ! unit # for writing particle tracks
 
   !=============================================================================
   ! CMFD CONSTANTS

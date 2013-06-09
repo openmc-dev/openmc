@@ -1757,12 +1757,6 @@ contains
       end do
 
       if (run_mode == MODE_EIGENVALUE) then
-        ! Get the current batch estimate of k_analog for displaying to output
-        ! --- this has to be performed after reduce_tally_values and before
-        ! accumulate_result
-
-        k_batch(current_batch) = global_tallies(K_TRACKLENGTH) % value
-
         if (active_batches) then
           ! Accumulate products of different estimators of k
           k_col = global_tallies(K_COLLISION) % value / total_weight

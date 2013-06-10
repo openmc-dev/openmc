@@ -200,6 +200,7 @@ endif
 #===============================================================================
 
 # IBM Blue Gene/P ANL supercomputer
+# NOTE: Job needs to be submitted with argument:  --env XLFRTEOPTS=ufmt_littleendian=7
 
 ifeq ($(MACHINE),bluegene)
   F90 = /bgsys/drivers/ppcfloor/comm/xl/bin/mpixlf2003
@@ -215,9 +216,10 @@ ifeq ($(MACHINE),crayxk6)
 endif
 
 # IBM Blue Gene/Q ANL supercomputer
+# NOTE: Job needs to be submitted with argument:  --env XLFRTEOPTS=ufmt_littleendian=7
 
 ifeq ($(MACHINE),bluegeneq)
-  F90 = mpixlf2003
+  F90 = /soft/compilers/wrappers/xl/mpixlf2003
   F90FLAGS = -WF,-DNO_F2008,-DMPI -O5
 endif
 

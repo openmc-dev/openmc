@@ -11,6 +11,7 @@ module particle_restart
   use physics,         only: transport
   use random_lcg,      only: set_particle_seed
   use source,          only: initialize_particle
+  use string,          only: to_str
 
 #ifdef HDF5
   use hdf5_interface 
@@ -19,6 +20,7 @@ module particle_restart
   implicit none
   private
   public ::  run_particle_restart
+  public ::  write_particle_track
 
 #ifdef HDF5
   integer(HID_T) :: hdf5_particle_file
@@ -118,6 +120,7 @@ contains
   subroutine run_particle_restart()
 
     integer(8) :: particle_seed
+    character(MAX_FILE_LEN) :: filename
 
     ! initialize the particle to be tracked
     allocate(p)
@@ -138,8 +141,21 @@ contains
          current_gen - 1)*n_particles + p % id
     call set_particle_seed(particle_seed)
 
+    ! Open particle track output file.
+    if (write_track) then
+      filename = trim(path_output) // 'track_' // trim(to_str(current_batch)) &
+           // '_' // trim(to_str(current_work)) // '.binary'
+      open(UNIT=UNIT_TRACK, FILE=filename, STATUS='replace', &
+           ACCESS='stream')
+    end if
+
     ! transport neutron
     call transport()
+
+    ! Close particle track output file.
+    if (write_track) then
+      close(UNIT=UNIT_TRACK)
+    endif
 
     ! write output if particle made it
     write(ou,*) 'Particle Successfully Transport:'
@@ -149,5 +165,9 @@ contains
     write(ou,*) 'ANGLE:', p % coord % uvw
 
   end subroutine run_particle_restart
+
+  subroutine write_particle_track()
+    write(UNIT_TRACK) p % coord0 % xyz
+  end subroutine write_particle_track
 
 end module particle_restart

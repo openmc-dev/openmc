@@ -311,6 +311,8 @@ contains
           i = i + 1
           path_particle_restart = argv(i)
           particle_restart_run = .true.
+        case ('-tr', '-track', '--track')
+          write_track = .true.
         case default
           message = "Unknown command line option: " // argv(i)
           call fatal_error()

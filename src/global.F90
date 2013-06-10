@@ -86,7 +86,7 @@ module global
   type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: sab_dict
   type(DictCharInt) :: xs_listing_dict
-
+  
   ! Unionized energy grid
   integer :: grid_method ! how to treat the energy grid
   integer :: n_grid      ! number of points on unionized grid
@@ -147,9 +147,19 @@ module global
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
   
+  ! ============================================================================
+  ! NDPP PREPROCESSED TALLY VARIABLES
+  
   ! Flag to indicate need to store pre-integrated scattering library
   logical        :: integrated_scatt = .false.
-  character(255) :: integrated_scatt_lib = ""
+  
+  ! File which stores ndpp library data.
+  character(MAX_FILE_LEN) :: integrated_scatt_lib = ""
+  
+  ! ndpp_lib.xml preprocessed data listings and associated data.
+  type(XsListing),  allocatable, target :: ndpp_listings(:) 
+  type(DictCharInt) :: ndpp_listing_dict
+  integer :: n_ndpp_listings
 
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES

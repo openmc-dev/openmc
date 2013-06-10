@@ -310,6 +310,12 @@ module constants
        K_ABSORPTION  = 2, &
        K_TRACKLENGTH = 3, &
        LEAKAGE       = 4
+       
+  ! ============================================================================
+  ! NDPP-BASED TALLY-RELATED CONSTANTS
+  integer, parameter ::           &
+       SCATT_TYPE_LEGENDRE  =  0, & ! Legendre moments
+       SCATT_TYPE_TABULAR   =  1    ! Tabular Representation
 
   ! ============================================================================
   ! EXTERNAL SOURCE PARAMETERS

@@ -1989,6 +1989,17 @@ contains
             j = j + n_order
             
           case ('int-scatter-pn')
+            if (t % find_filter(FILTER_ENERGYIN) == 0) then
+              message = "Cannot tally Integrated Scatter without an " // &
+                        "incoming energy filter."
+              call fatal_error()
+            end if
+            if (t % find_filter(FILTER_ENERGYOUT) == 0) then
+              message = "Cannot tally Integrated Scatter without an " // &
+                        "outgoing energy filter."
+              call fatal_error()
+            end if
+            
             ! Set flag to read and allocate storage for advanced scattering
             ! library
             integrated_scatt = .true.

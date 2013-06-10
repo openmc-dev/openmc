@@ -123,8 +123,8 @@ module ace_header
     real(8), allocatable :: heating(:)    ! heating
     
     ! Microscopic integrated scattering data for use only with
-    ! advanced scattering tallies
-    type(GrpTransfer), allocatable :: adv_scatt(:, :) ! incoming Energy x Moments
+    ! integrated scattering tallies
+    type(GrpTransfer), allocatable :: int_scatt(:, :) ! incoming Energy x Moments
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -384,13 +384,13 @@ module ace_header
         deallocate(this % urr_data)
       end if
       
-      if (allocated(this % adv_scatt)) then
-        do j = 1, size(this % adv_scatt, dim = 2)
-          do i = 1, size(this % adv_scatt, dim = 1)
-            call this % adv_scatt(i ,j) % clear()
+      if (allocated(this % int_scatt)) then
+        do j = 1, size(this % int_scatt, dim = 2)
+          do i = 1, size(this % int_scatt, dim = 1)
+            call this % int_scatt(i ,j) % clear()
           end do
         end do
-        deallocate(this % adv_scatt)
+        deallocate(this % int_scatt)
       end if
       
       if (associated(this % reactions)) then

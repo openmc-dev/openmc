@@ -252,9 +252,11 @@ mesh.o: search.o
 
 ndpp.o: ace_header.o
 ndpp.o: constants.o
+ndpp.o: dict_header.o
 ndpp.o: error.o
 ndpp.o: global.o
 ndpp.o: output.o
+ndpp.o: string.o
 
 output.o: ace_header.o
 output.o: constants.o

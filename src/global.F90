@@ -146,6 +146,10 @@ module global
 
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
+  
+  ! Flag to indicate need to store pre-integrated scattering library
+  logical :: integrated_scatt = .false.
+  integer :: integrated_scatt_lib
 
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
@@ -219,6 +223,8 @@ module global
   type(Timer) :: time_total         ! timer for total run
   type(Timer) :: time_initialize    ! timer for initialization
   type(Timer) :: time_read_xs       ! timer for reading cross sections
+  type(Timer) :: time_read_ndpp     ! timer for reading integrated 
+                                    ! scattering data produced by ndpp
   type(Timer) :: time_unionize      ! timer for unionizing energy grid
   type(Timer) :: time_bank          ! timer for fission bank synchronization
   type(Timer) :: time_bank_sample   ! timer for fission bank sampling

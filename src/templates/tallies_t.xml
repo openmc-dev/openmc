@@ -25,6 +25,8 @@
     <component name="filter" type="filter_xml" dimension="1" />
     <component name="scores" type="word-array" length="20" />
     <component name="nuclides" type="word-array" length="12" />
+    <component name="scatt_lib" type="word" length="255" default="''" />
+    <component name="scatt_lib_type" type="word" length="6" default="''" />
 
     <!-- Check for old tally filter format -->
     <component name="filters" type="filter_xml" dimension="1" />

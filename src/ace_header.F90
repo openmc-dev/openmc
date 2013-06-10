@@ -83,6 +83,20 @@ module ace_header
   end type UrrData
 
 !===============================================================================
+! GRPTRANSFER contains probability tables for the unresolved resonance range.
+!===============================================================================  
+
+  type GrpTransfer
+    integer :: gmin = 0                 ! Minimum possible outgoing group
+    integer :: gmax = 0                 ! Maximum possible outgoing group
+    real(8), allocatable :: outgoing(:) ! Outgoing transfer probabilities
+    
+    ! Type-Bound procedures
+    contains
+      procedure :: clear => grptransfer_clear ! Deallocates UrrData
+  end type GrpTransfer
+
+!===============================================================================
 ! NUCLIDE contains all the data for an ACE-format continuous-energy cross
 ! section. The ACE format (A Compact ENDF format) is used in MCNP and several
 ! other Monte Carlo codes.
@@ -107,6 +121,10 @@ module ace_header
     real(8), allocatable :: nu_fission(:) ! neutron production
     real(8), allocatable :: absorption(:) ! absorption (MT > 100)
     real(8), allocatable :: heating(:)    ! heating
+    
+    ! Microscopic integrated scattering data for use only with
+    ! advanced scattering tallies
+    type(GrpTransfer), allocatable :: adv_scatt(:, :) ! incoming Energy x Moments
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -303,7 +321,22 @@ module ace_header
       if (allocated(this % energy)) &
            deallocate(this % energy, this % prob)
       
-    end subroutine urrdata_clear      
+    end subroutine urrdata_clear   
+    
+!===============================================================================
+! GRPTRANSFER_CLEAR resets and deallocates data in Reaction.
+!===============================================================================    
+  
+    subroutine grptransfer_clear(this)
+      
+      class(GrpTransfer), intent(inout) :: this ! GrpTransfer object to clear
+      
+      if (allocated(this % outgoing)) &
+        deallocate(this % outgoing)
+      this % gmin = 0
+      this % gmax = 0         
+      
+    end subroutine grptransfer_clear   
 
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide.
@@ -313,7 +346,7 @@ module ace_header
       
       class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
       
-      integer :: i ! Loop counter
+      integer :: i, j ! Loop counters
       
       if (allocated(this % grid_index)) &
            deallocate(this % grid_index)
@@ -349,6 +382,15 @@ module ace_header
       if (associated(this % urr_data)) then
         call this % urr_data % clear()
         deallocate(this % urr_data)
+      end if
+      
+      if (allocated(this % adv_scatt)) then
+        do j = 1, size(this % adv_scatt, dim = 2)
+          do i = 1, size(this % adv_scatt, dim = 1)
+            call this % adv_scatt(i ,j) % clear()
+          end do
+        end do
+        deallocate(this % adv_scatt)
       end if
       
       if (associated(this % reactions)) then

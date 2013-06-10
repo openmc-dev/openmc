@@ -1870,7 +1870,8 @@ contains
           ! Find if scores(j) is of the form 'scatter-p'
           ! If so, get the number and do a select case on that.
           score_name = tally_(i) % scores(j)
-          if (starts_with(score_name,'scatter-p')) then
+          if ((starts_with(score_name,'scatter-p')) .or. &
+            (starts_with(score_name,'int-scatter-p'))) then
             n_order_pos = scan(score_name,'0123456789')
             n_order = int(str_to_int( &
               score_name(n_order_pos:(len_trim(score_name)))),4)
@@ -1882,7 +1883,11 @@ contains
                 trim(to_str(SCATT_ORDER_MAX))
               call warning()
               n_order = SCATT_ORDER_MAX
-              tally_(i) % scores(j) = SCATT_ORDER_MAX_PNSTR
+              if (starts_with(score_name,'scatter-p')) then
+                tally_(i) % scores(j) = SCATT_ORDER_MAX_PNSTR
+              else if (starts_with(score_name,'int-scatter-p')) then
+                tally_(i) % scores(j) = SCATT_ORDER_MAX_INTPNSTR
+              end if
             end if
             n_new = n_new + n_order
           end if
@@ -1900,7 +1905,8 @@ contains
           ! then strip off the n, and store it as an integer to be used later
           ! Peform the select case on this modified (number removed) string
           score_name = tally_(i) % scores(l)
-          if (starts_with(score_name,'scatter-p')) then
+          if ((starts_with(score_name,'scatter-p')) .or. &
+            (starts_with(score_name,'int-scatter-p'))) then
             n_order_pos = scan(score_name,'0123456789')
             n_order = int(str_to_int( &
               score_name(n_order_pos:(len_trim(score_name)))),4)
@@ -1913,7 +1919,11 @@ contains
               call warning()
               n_order = SCATT_ORDER_MAX
             end if
-            score_name = "scatter-pn"
+            if (starts_with(score_name,'scatter-p')) then
+              score_name = "scatter-pn"
+            else if (starts_with(score_name,'int-scatter-p')) then
+              score_name = "int-scatter-pn"
+            end if
           else if (starts_with(score_name,'scatter-')) then
             n_order_pos = scan(score_name,'0123456789')
             n_order = int(str_to_int( &
@@ -1973,6 +1983,44 @@ contains
             ! Setup P0:Pn
             t % score_bins(j : j + n_order) = SCORE_SCATTER_PN
             t % scatt_order(j : j + n_order) = n_order
+            j = j + n_order
+            
+          case ('int-scatter-pn')
+            if (tally_(i) % scatt_lib == "") then
+              message = "No Integrated Scattering Data Library provided. &
+                        &Please provide a library or use the SCATTER-PN &
+                        &score type."
+              call fatal_error()
+            end if
+            
+            ! Set flag to read and allocate storage for advanced scattering
+            ! library
+            integrated_scatt = .true.
+            ! Set which type of library is requested
+            call lower_case(tally_(i) % scatt_lib_type)
+            select case(tally_(i) % scatt_lib_type) 
+              case ('ascii')
+                integrated_scatt_lib = ASCII
+              case ('binary')
+                integrated_scatt_lib = BiNARY
+              case ('hdf5')
+                integrated_scatt_lib = HDF5
+              case ('')
+                message = "No Integrated Scattering Data Library Type provided. &
+                          &Please provide a library type."
+                call fatal_error()
+              case default
+                message = "Invalid Integrated Scattering Data Library Type provided. &
+                          &Please provide a library type."
+                call fatal_error()
+            end select
+                
+              
+            t % estimator = ESTIMATOR_TRACKLENGTH
+            ! Setup P0:Pn
+            t % score_bins(j : j + n_order) = SCORE_INTSCATT_PN
+            t % scatt_order(j : j + n_order) = n_order
+            t % scatt_lib = tally_(i) % scatt_lib
             j = j + n_order
             
           case('transport')

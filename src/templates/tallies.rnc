@@ -31,6 +31,9 @@ element tallies {
       (element groups { xsd:string { maxLength = "20" }+ } | 
         attribute groups { xsd:string { maxLength = "20" }+ })?
     }* &
+    element scatt_lib { xsd:string { maxLength="255" } } &
+    element scatt_lib_type { ( "ascii" | "binary"  | "hdf5" |
+      "ASCII" | "BINARY" | "HDF5") } &
     element nuclides {
       list { xsd:string { maxLength = "12" }+ }
     }? &

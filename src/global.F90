@@ -148,8 +148,8 @@ module global
   logical :: confidence_intervals = .false.
   
   ! Flag to indicate need to store pre-integrated scattering library
-  logical :: integrated_scatt = .false.
-  integer :: integrated_scatt_lib
+  logical        :: integrated_scatt = .false.
+  character(255) :: integrated_scatt_lib = ""
 
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES

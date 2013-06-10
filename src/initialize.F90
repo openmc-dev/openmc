@@ -11,6 +11,7 @@ module initialize
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
+  use ndpp,             only: read_ndpp_lib
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot
   use random_lcg,       only: initialize_prng
@@ -101,7 +102,7 @@ contains
       if (integrated_scatt) then
         ! Read NDPP-format integrated scattering data
         call time_read_ndpp % start()
-!~         call read_ndpp()
+        call read_ndpp_lib()
         call time_read_ndpp % stop()
       end if
 

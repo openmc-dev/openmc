@@ -194,6 +194,7 @@ initialize.o: geometry_header.o
 initialize.o: global.o
 initialize.o: hdf5_interface.o
 initialize.o: input_xml.o
+initialize.o: ndpp.o
 initialize.o: output.o
 initialize.o: random_lcg.o
 initialize.o: source.o
@@ -248,6 +249,12 @@ mesh.o: global.o
 mesh.o: mesh_header.o
 mesh.o: particle_header.o
 mesh.o: search.o
+
+ndpp.o: ace_header.o
+ndpp.o: constants.o
+ndpp.o: error.o
+ndpp.o: global.o
+ndpp.o: output.o
 
 output.o: ace_header.o
 output.o: constants.o

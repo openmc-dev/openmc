@@ -117,10 +117,6 @@ module tally_header
     integer :: total_filter_bins
     integer :: total_score_bins
     type(TallyResult), allocatable :: results(:,:)
-    
-    ! Scattering Library (produced by NDPP program) to be used by the 
-    ! advanced scatter-pn score type.
-    character(len=255) :: scatt_lib = ""
 
     ! reset property - allows a tally to be reset after every batch
     logical :: reset = .false.

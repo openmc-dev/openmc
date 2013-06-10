@@ -1426,7 +1426,10 @@ contains
     ! Check for <assume_separate> setting
     call lower_case(separate_)
     if (separate_ == 'true' .or. separate_ == '1') assume_separate = .true.
-
+    
+    ! Check for <ndpp_library> setting
+    integrated_scatt_lib = ndpp_library_
+    
     ! ==========================================================================
     ! READ MESH DATA
 
@@ -1986,43 +1989,18 @@ contains
             j = j + n_order
             
           case ('int-scatter-pn')
-            if (tally_(i) % scatt_lib == "") then
-              message = "No Integrated Scattering Data Library provided. &
-                        &Please provide a library or use the SCATTER-PN &
-                        &score type."
-              call fatal_error()
-            end if
-            
             ! Set flag to read and allocate storage for advanced scattering
             ! library
             integrated_scatt = .true.
-            ! Set which type of library is requested
-            call lower_case(tally_(i) % scatt_lib_type)
-            select case(tally_(i) % scatt_lib_type) 
-              case ('ascii')
-                integrated_scatt_lib = ASCII
-              case ('binary')
-                integrated_scatt_lib = BiNARY
-              case ('hdf5')
-                integrated_scatt_lib = HDF5
-              case ('')
-                message = "No Integrated Scattering Data Library Type provided. &
-                          &Please provide a library type."
-                call fatal_error()
-              case default
-                message = "Invalid Integrated Scattering Data Library Type provided. &
-                          &Please provide a library type."
-                call fatal_error()
-            end select
-                
-              
+            
             t % estimator = ESTIMATOR_TRACKLENGTH
             ! Setup P0:Pn
             t % score_bins(j : j + n_order) = SCORE_INTSCATT_PN
             t % scatt_order(j : j + n_order) = n_order
-            t % scatt_lib = tally_(i) % scatt_lib
             j = j + n_order
             
+            ! The presence of the ndpp_library_ tag will be checked when
+            ! these are read in read_ndpp()
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT
 

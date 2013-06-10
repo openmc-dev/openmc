@@ -15,6 +15,7 @@ module physics
   use mesh,                   only: get_mesh_indices
   use output,                 only: write_message
   use particle_header,        only: LocalCoord
+  use particle_restart,       only: write_particle_track
   use particle_restart_write, only: write_particle_restart
   use random_lcg,             only: prn
   use search,                 only: binary_search
@@ -73,13 +74,12 @@ contains
     ! Force calculation of cross-sections by setting last energy to zero 
     micro_xs % last_E = ZERO
 
-    if (run_mode == MODE_PARTICLE) then
-      open(UNIT=UNIT_TRACK, FILE='test', STATUS='replace', &
-           ACCESS='stream')
-      write(UNIT_TRACK) p % coord0 % xyz
-    end if
-
     do while (p % alive)
+
+      ! Write particle track.
+      if (write_track) then
+        call write_particle_track()
+      endif
 
       ! Calculate microscopic and macroscopic cross sections -- note: if the
       ! material is the same as the last material and the energy of the
@@ -184,10 +184,6 @@ contains
       end if
 
     end do
-
-    if (run_mode == MODE_PARTICLE) then
-      close(UNIT=UNIT_TRACK)
-    end if
 
   end subroutine transport
 

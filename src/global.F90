@@ -283,6 +283,9 @@ module global
   ! Particle restart run
   logical :: particle_restart_run = .false.
 
+  ! Particle track output
+  logical :: write_track = .false.
+
   ! ============================================================================
   ! CMFD VARIABLES 
 

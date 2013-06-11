@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<materials>
+
+  <default_xs>82c</default_xs>
+
+  <material id="40">
+    <density value="4.5" units="g/cc" />
+    <nuclide name="H-2" ao="1.0" />
+  </material>
+
+</materials>

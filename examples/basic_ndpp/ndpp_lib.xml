@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<ndpp_lib>
+  <directory> /home/nelsonag/data/git/openmc/examples/basic_ndpp/  </directory>
+  <filetype> ascii </filetype>
+  <entries> 1  </entries>
+  <chi_present> false </chi_present>
+  <scatt_type> 0 </scatt_type>
+  <scatt_order> 5 </scatt_order>
+  <print_tol> 1.00000E-08 </print_tol>
+  <thin_tol> 2.00000E-03 </thin_tol>
+  <mu_bins> 2001 </mu_bins>
+  <energy_bins>
+  1.000000000000E-11  1.020000000000E+02
+  </energy_bins>
+
+  <ndpp_table alias="H-2.82c" awr="1.99680" location="1" name="1002.82c" path="1002.82c.g1" temperature="2.53010E-08" zaid="1002" />
+</ndpp_lib>

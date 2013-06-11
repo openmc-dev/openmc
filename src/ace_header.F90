@@ -89,7 +89,8 @@ module ace_header
   type GrpTransfer
     integer :: gmin = 0                 ! Minimum possible outgoing group
     integer :: gmax = 0                 ! Maximum possible outgoing group
-    real(8), allocatable :: outgoing(:) ! Outgoing transfer probabilities
+    real(8), allocatable :: outgoing(:,:) ! Outgoing transfer probabilities
+                                          ! Dimension of (gmin:gmax, moments)
     
     ! Type-Bound procedures
     contains
@@ -124,7 +125,7 @@ module ace_header
     
     ! Microscopic integrated scattering data for use only with
     ! integrated scattering tallies
-    type(GrpTransfer), allocatable :: int_scatt(:, :) ! incoming Energy x Moments
+    type(GrpTransfer), allocatable :: int_scatt(:) ! Dimension is incoming energy
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -385,10 +386,8 @@ module ace_header
       end if
       
       if (allocated(this % int_scatt)) then
-        do j = 1, size(this % int_scatt, dim = 2)
-          do i = 1, size(this % int_scatt, dim = 1)
-            call this % int_scatt(i ,j) % clear()
-          end do
+        do i = 1, size(this % int_scatt)
+          call this % int_scatt(i) % clear()
         end do
         deallocate(this % int_scatt)
       end if

@@ -154,7 +154,7 @@ module global
   logical        :: integrated_scatt = .false.
   
   ! File which stores ndpp library data.
-  character(MAX_FILE_LEN) :: integrated_scatt_lib = ""
+  character(MAX_FILE_LEN) :: integrated_scatt_lib
   
   ! ndpp_lib.xml preprocessed data listings and associated data.
   type(XsListing),  allocatable, target :: ndpp_listings(:) 
@@ -465,6 +465,7 @@ contains
     call nuclide_dict % clear()
     call sab_dict % clear()
     call xs_listing_dict % clear()
+    call ndpp_listing_dict % clear()
     
   end subroutine free_memory
 

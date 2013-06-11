@@ -153,6 +153,10 @@ module global
   ! Flag to indicate need to store pre-integrated scattering library
   logical        :: integrated_scatt = .false.
   
+  ! Total number of energy groups and data order in the pre-integrated scattering library
+  integer        :: integrated_scatt_groups
+  integer        :: integrated_scatt_order
+  
   ! File which stores ndpp library data.
   character(MAX_FILE_LEN) :: integrated_scatt_lib
   

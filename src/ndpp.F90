@@ -43,9 +43,15 @@ contains
       ! read_ndpp_table will populate nuclide % int_scatt and also check that
       ! the temperatures match
       ndpp_listing => ndpp_listings(i_listing)
-      call read_ndpp_table(nuc, ndpp_listing)
-            
+      call read_ndpp_table(nuc, ndpp_listing) 
     end do
+    
+    ! Allocate material_xs % int_scatt now since the group information is 
+    ! available
+    material_xs % int_scatt % gmin = 1
+    material_xs % int_scatt % gmax = integrated_scatt_groups
+    allocate(material_xs % int_scatt % outgoing(integrated_scatt_order, &
+      material_xs % int_scatt % gmin : material_xs % int_scatt % gmax))
     
   end subroutine read_ndpp_data
 
@@ -121,8 +127,8 @@ contains
     
     ! Test metadata to ensure this library matches the problem definition
     ! First test to see if we have a legendre scattering type and not tabular
-    ! (This will be removed at an undefined data when OpenMC supports
-    ! tabular scattering distributions as opposed to Legendres.
+    !!! (This will be removed at an undefined data when OpenMC supports
+    !!! tabular scattering distributions as opposed to Legendres.
     if (scatt_type_ /= SCATT_TYPE_LEGENDRE) then
       message = "Invalid Scattering Type represented in NDPP data. Rerun " // &
                 "NDPP with the Legendre scattering type set."
@@ -185,6 +191,16 @@ contains
         end select
       end do SCORE_LOOP
     end do TALLY_LOOP
+
+    ! Store the number of groups
+    integrated_scatt_groups = size(energy_bins_) - 1
+    
+    ! Store the order
+    if (scatt_type_ == SCATT_TYPE_LEGENDRE) then
+      integrated_scatt_order = scatt_order_ + 1
+    else if (scatt_type_ == SCATT_TYPE_TABULAR) then
+      integrated_scatt_order = scatt_order_
+    end if
 
     ! Allocate ndpp_listings array
     if (.not. associated(ndpp_tables_)) then

@@ -238,6 +238,9 @@ module ace_header
 
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
+    
+    ! Information for integrated scattering moments use
+    type(GrpTransfer) :: int_scatt ! microscopic g'->g scattering moments
   end type NuclideMicroXS
 
 !===============================================================================
@@ -252,6 +255,9 @@ module ace_header
     real(8) :: fission       ! macroscopic fission xs
     real(8) :: nu_fission    ! macroscopic production xs
     real(8) :: kappa_fission ! macroscopic energy-released from fission
+    
+    ! Information for integrated scattering moments use
+    type(GrpTransfer) :: int_scatt ! macroscopic g'->g scattering moments
   end type MaterialMacroXS
 
   contains

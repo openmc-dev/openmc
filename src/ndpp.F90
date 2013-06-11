@@ -261,12 +261,12 @@ contains
     integer       :: filetype      ! Ascii, Binary or HDF5 filetype
     logical       :: file_exists   ! does NDPP library exist?
     character(7)  :: readable      ! is NDPP library readable?
-    character(20) :: name          ! name of NDPP table
+    character(10) :: name          ! name of NDPP table
     real(8)       :: kT            ! temperature of table
     integer       :: NG            ! Number of energy groups in library
-    character(MAX_WORD_LEN) :: tempstring ! temporary storage of info
     character(MAX_FILE_LEN) :: filename ! path to NDPP data library
     real(8), allocatable    :: energy_bins(:) ! Energy group structure
+    integer       :: mu_bins       ! NUmber of angular points used
     integer       :: scatt_type    ! Type of scattering data, discarded
     integer       :: scatt_order   ! Order of scattering data
     integer       :: chi_present   ! Flag as to if chi data is present
@@ -307,7 +307,7 @@ contains
       end do
       
       ! Read the header information to make sure this is the correct file
-      read(UNIT=in, FMT='(A20,1PE20.12,I20,A20)') name, kT, NG, tempstring
+      read(UNIT=in, FMT='(A20,1PE20.12,I20,A20)') name, kT, NG
       if ((adjustl(trim(name)) /= listing % name) .or. (kT /= listing % kT)) then 
         message = "NDPP library '" // trim(filename) // "' does not &
                   &contain the correct data set where expected!"
@@ -315,14 +315,17 @@ contains
       end if
       ! Get the energy bins (not checking, will assume from here on out we have
       ! the right data set)
-      allocate(energy_bins(NG))
-      read(UNIT=in, FMT='(1PE20.12)') energy_bins
+      allocate(energy_bins(NG + 1))
+      read(UNIT=in, FMT=*) energy_bins
       ! The next line is scatt_type, scatt_order, chi_present, thin_tol, which
       ! we already have. discard.
       read(UNIT=in, FMT='(I20,I20,I20,1PE20.12)') scatt_type, scatt_order, &
         chi_present, thin_tol
       ! Finally, mu_bins, which we can also discard.
       read(UNIT=in, FMT=*)
+      
+      ! set scatt_order to the right number for allocating the outgoing array
+      if (scatt_type == SCATT_TYPE_LEGENDRE) scatt_order = scatt_order + 1
       
       ! Now we get to the meat of the data. 
       ! Start with \chi(E_{in}) data
@@ -336,7 +339,7 @@ contains
       
       ! Move to \sigma_{s,g'->g,l}(E_{in}) data
       ! Get Ein information
-      read(UNIT=in, FMT='(I20)') NEin
+      read(UNIT=in, FMT=*) NEin
       allocate(Ein(NEin))
       read(UNIT=in, FMT=*) Ein
       !!! Right now the Ein information is the same as in nuc % energy, so
@@ -351,15 +354,75 @@ contains
         nuc % int_scatt(iE) % gmax = gmax
                 
         if ((gmin > ZERO) .and. (gmax > ZERO)) then
-          allocate(nuc % int_scatt(iE) % outgoing(gmin : gmax, scatt_order + 1))
+          allocate(nuc % int_scatt(iE) % outgoing(scatt_order, gmin : gmax))
           ! Now we have a space to store the data, get it.
           read(UNIT=in, FMT=*) nuc % int_scatt(iE) % outgoing
         end if
       end do
+      close(UNIT=in)
       
     else if (listing % filetype == BINARY) then
-      !!! TBI
+      ! =======================================================================
+      ! READ NDPP DATA IN BINARY FORMAT
+
+      ! Open file
+      open(UNIT=in, FILE=filename, STATUS='old', ACTION='read', ACCESS='stream')
+      rewind(UNIT=in)
+      !!! right now binary files dont have the capability to do location /= 1!
+      
+      ! Read the header information to make sure this is the correct file
+      read(UNIT=in) name, kT, NG
+      if ((adjustl(trim(name)) /= listing % name) .or. (kT /= listing % kT)) then 
+        message = "NDPP library '" // trim(filename) // "' does not &
+                  &contain the correct data set where expected!"
+        call fatal_error()
+      end if
+      ! Get the energy bins (not checking, will assume from here on out we have
+      ! the right data set), and the other meta information
+      allocate(energy_bins(NG + 1))
+      read(UNIT=in) energy_bins, scatt_type, scatt_order, &
+        chi_present, thin_tol, mu_bins
+      
+      ! set scatt_order to the right number for allocating the outgoing array
+      if (scatt_type == SCATT_TYPE_LEGENDRE) scatt_order = scatt_order + 1
+      
+      ! Now we get to the meat of the data. 
+      ! Start with \chi(E_{in}) data
+      if (chi_present == 1) then
+        !!! TBI
+      else if (chi_present /= 0) then
+        message = "NDPP library '" // trim(filename) // "' contains an invalid &
+                  & value of chi_present!"
+        call fatal_error()
+      end if
+      
+      ! Move to \sigma_{s,g'->g,l}(E_{in}) data
+      ! Get Ein information
+      read(UNIT=in) NEin
+      allocate(Ein(NEin))
+      read(UNIT=in) Ein
+      !!! Right now the Ein information is the same as in nuc % energy, so
+      !!! as for now we do nothing with Ein.
+      
+      ! Get the moments themselves
+      allocate(nuc % int_scatt(NEin))
+      do iE = 1, NEin
+        ! get gmin and gmax
+        read(UNIT=in) gmin, gmax
+        nuc % int_scatt(iE) % gmin = gmin
+        nuc % int_scatt(iE) % gmax = gmax
+                
+        if ((gmin > ZERO) .and. (gmax > ZERO)) then
+          allocate(nuc % int_scatt(iE) % outgoing(scatt_order, gmin : gmax))
+          ! Now we have a space to store the data, get it.
+          read(UNIT=in) nuc % int_scatt(iE) % outgoing
+        end if
+      end do
+      close(UNIT=in)
+      
     else if (listing % filetype == HDF5) then
+      ! =======================================================================
+      ! READ NDPP DATA IN HDF5 FORMAT
       !!! TBI
     end if ! No error handling needed; read_ndpp_xml() already checked filetype
     

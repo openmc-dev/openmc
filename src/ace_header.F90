@@ -90,7 +90,7 @@ module ace_header
     integer :: gmin = 0                 ! Minimum possible outgoing group
     integer :: gmax = 0                 ! Maximum possible outgoing group
     real(8), allocatable :: outgoing(:,:) ! Outgoing transfer probabilities
-                                          ! Dimension of (gmin:gmax, moments)
+                                          ! Dimension of (moments, gmin:gmax)
     
     ! Type-Bound procedures
     contains

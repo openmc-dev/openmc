@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <ndpp_lib>
-  <directory> /home/nelsonag/data/git/openmc/examples/basic_ndpp/  </directory>
-  <filetype> ascii </filetype>
+  <directory> /home/nelsonag/data/git/openmc/examples/basic_ndpp_bin/  </directory>
+  <filetype> binary </filetype>
   <entries> 1  </entries>
   <chi_present> false </chi_present>
   <scatt_type> 0 </scatt_type>

@@ -29,6 +29,7 @@ geometry.o \
 geometry_header.o \
 global.o \
 hdf5_interface.o \
+hdf5_summary.o \
 initialize.o \
 interpolation.o \
 input_xml.o \
@@ -38,7 +39,9 @@ material_header.o \
 math.o \
 mesh_header.o \
 mesh.o \
+mpiio_interface.o \
 output.o \
+output_interface.o \
 particle_header.o \
 particle_restart.o \
 particle_restart_write.o \

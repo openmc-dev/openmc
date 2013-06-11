@@ -45,6 +45,9 @@ contains
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: i_nuclide            ! index in nuclides array
     integer :: score_index          ! scoring bin index
+    integer :: score_index_init     ! scoring bin index for intscatt-pn
+    integer :: g                    ! loop index for outgoing energy
+    integer :: g_stride             ! outgoing energy stride
     real(8) :: score                ! analog tally score
     real(8) :: last_wgt             ! pre-collision particle weight
     real(8) :: wgt                  ! post-collision particle weight
@@ -203,7 +206,30 @@ contains
             end do
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP
-
+          
+          case (SCORE_INTSCATT_PN)
+            ! Skip any event where the particle didn't scatter
+            if (p % event /= EVENT_SCATTER) then
+              j = j + t % scatt_order(j)
+              cycle SCORE_LOOP
+            end if
+            score_index_init = score_index - 1
+            
+            g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
+            do g = micro_xs(i_nuclide) % int_scatt % gmin, &
+                   micro_xs(i_nuclide) % int_scatt % gmax
+              score_index = score_index_init
+              t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                filter_index + (g - 1) * g_stride) % value = &
+                t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                filter_index + (g - 1) * g_stride) % value + &
+                last_wgt * micro_xs(i_nuclide) % int_scatt % outgoing(:, g) / &
+                (micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption)
+            end do
+            
+            j = j + t % scatt_order(j)
+            cycle SCORE_LOOP
+          
           case (SCORE_TRANSPORT)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -544,7 +570,7 @@ contains
                      atom_density * flux
               
               case (SCORE_INTSCATT_PN)
-                score_index_init = score_index - 1
+                score_index_init = (k - 1)*t % n_score_bins + j
                 
                 g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
                 do g = micro_xs(i_nuclide) % int_scatt % gmin, &
@@ -642,6 +668,23 @@ contains
                 ! Scattering cross section is pre-calculated
                 score = (material_xs % total - material_xs % absorption) * flux
 
+              case (SCORE_INTSCATT_PN)
+                score_index_init = (k - 1)*t % n_score_bins + j
+                
+                g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
+                do g = micro_xs(i_nuclide) % int_scatt % gmin, &
+                       micro_xs(i_nuclide) % int_scatt % gmax
+                  score_index = score_index_init
+                  t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                    filter_index + (g - 1) * g_stride) % value = &
+                    t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                    filter_index + (g - 1) * g_stride) % value + &
+                    material_xs % int_scatt % outgoing(:, g) * flux
+                end do
+                
+                j = j + t % scatt_order(j)
+                cycle SCORE_LOOP
+              
               case (SCORE_ABSORPTION)
                 ! Absorption cross section is pre-calculated
                 score = material_xs % absorption * flux
@@ -754,10 +797,14 @@ contains
     integer :: i             ! loop index for nuclides in material
     integer :: j             ! loop index for scoring bin types
     integer :: m             ! loop index for reactions in nuclide
+    integer :: u             ! Loop index for user score bins
     integer :: i_nuclide     ! index in nuclides array
     integer :: score_bin     ! type of score, e.g. SCORE_FLUX
     integer :: score_index   ! scoring bin index
+    integer :: score_index_init ! scoring bin index for intscatt-pn
     integer :: i_energy      ! index in nuclide energy grid
+    integer :: g             ! loop index for outgoing energy
+    integer :: g_stride      ! outgoing energy stride
     real(8) :: f             ! interpolation factor
     real(8) :: score         ! actual scoring tally value
     real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
@@ -783,7 +830,9 @@ contains
       atom_density = mat % atom_density(i)
 
       ! Loop over score types for each bin
-      SCORE_LOOP: do j = 1, t % n_score_bins
+      j = 0
+      SCORE_LOOP: do u = 1, t % n_user_score_bins
+        j = j + 1
         ! determine what type of score bin
         score_bin = t % score_bins(j)
 
@@ -798,7 +847,25 @@ contains
         case (SCORE_SCATTER)
           score = (micro_xs(i_nuclide) % total - &
                micro_xs(i_nuclide) % absorption) * atom_density * flux
-
+        
+        case (SCORE_INTSCATT_PN)
+          score_index_init = (i_nuclide - 1)*t % n_score_bins + j
+          
+          g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
+          do g = micro_xs(i_nuclide) % int_scatt % gmin, &
+                 micro_xs(i_nuclide) % int_scatt % gmax
+            score_index = score_index_init
+            t % results(score_index : score_index + t % scatt_order(j) - 1, &
+              filter_index + (g - 1) * g_stride) % value = &
+              t % results(score_index : score_index + t % scatt_order(j) - 1, &
+              filter_index + (g - 1) * g_stride) % value + &
+              micro_xs(i_nuclide) % int_scatt % outgoing(:, g) * &
+              atom_density * flux
+          end do
+          
+          j = j + t % scatt_order(j)
+          cycle SCORE_LOOP
+        
         case (SCORE_ABSORPTION)
           score = micro_xs(i_nuclide) % absorption * atom_density * flux
 
@@ -870,7 +937,9 @@ contains
     ! SCORE TOTAL MATERIAL REACTION RATES
 
     ! Loop over score types for each bin
-    MATERIAL_SCORE_LOOP: do j = 1, t % n_score_bins
+    j = 0
+    MATERIAL_SCORE_LOOP: do u = 1, t % n_user_score_bins
+      j = j + 1
       ! determine what type of score bin
       score_bin = t % score_bins(j)
 
@@ -885,6 +954,23 @@ contains
       case (SCORE_SCATTER)
         score = (material_xs % total - material_xs % absorption) * flux
 
+      case (SCORE_INTSCATT_PN)
+        score_index_init = n_nuclides_total*t % n_score_bins + j
+        
+        g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
+        do g = micro_xs(i_nuclide) % int_scatt % gmin, &
+               micro_xs(i_nuclide) % int_scatt % gmax
+          score_index = score_index_init
+          t % results(score_index : score_index + t % scatt_order(j) - 1, &
+            filter_index + (g - 1) * g_stride) % value = &
+            t % results(score_index : score_index + t % scatt_order(j) - 1, &
+            filter_index + (g - 1) * g_stride) % value + &
+            material_xs % int_scatt % outgoing(:, g) * flux
+        end do
+        
+        j = j + t % scatt_order(j)
+        cycle MATERIAL_SCORE_LOOP
+      
       case (SCORE_ABSORPTION)
         score = material_xs % absorption * flux
 
@@ -979,6 +1065,10 @@ contains
     integer :: j                    ! loop index for direction
     integer :: k                    ! loop index for mesh cell crossings
     integer :: b                    ! loop index for nuclide bins
+    integer :: u                    ! Loop index for user score bins
+    integer :: g                    ! loop index for outgoing energy
+    integer :: g_stride             ! outgoing energy stride
+    integer :: score_index_init     ! scoring bin index for intscatt-pn
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: ijk_cross(3)         ! indices of mesh cell crossed
@@ -1198,7 +1288,9 @@ contains
             end if
 
             ! Determine score for each bin
-            SCORE_LOOP: do j = 1, t % n_score_bins
+            j = 0
+            SCORE_LOOP: do u = 1, t % n_user_score_bins
+              j = j + 1
               ! determine what type of score bin
               score_bin = t % score_bins(j)
 
@@ -1214,6 +1306,23 @@ contains
                   score = (micro_xs(i_nuclide) % total - &
                        micro_xs(i_nuclide) % absorption) * &
                        atom_density * flux
+                case (SCORE_INTSCATT_PN)
+                  score_index_init = (b - 1)*t % n_score_bins + j
+                  
+                  g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
+                  do g = micro_xs(i_nuclide) % int_scatt % gmin, &
+                         micro_xs(i_nuclide) % int_scatt % gmax
+                    score_index = score_index_init
+                    t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                      filter_index + (g - 1) * g_stride) % value = &
+                      t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                      filter_index + (g - 1) * g_stride) % value + &
+                      micro_xs(i_nuclide) % int_scatt % outgoing(:, g) * &
+                      atom_density * flux
+                  end do
+                  
+                  j = j + t % scatt_order(j)
+                  cycle SCORE_LOOP
                 case (SCORE_ABSORPTION)
                   score = micro_xs(i_nuclide) % absorption * &
                        atom_density * flux
@@ -1242,6 +1351,22 @@ contains
                   score = material_xs % total * flux
                 case (SCORE_SCATTER)
                   score = (material_xs % total - material_xs % absorption) * flux
+                case (SCORE_INTSCATT_PN)
+                  score_index_init = (b - 1)*t % n_score_bins + j
+                  
+                  g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
+                  do g = micro_xs(i_nuclide) % int_scatt % gmin, &
+                         micro_xs(i_nuclide) % int_scatt % gmax
+                    score_index = score_index_init
+                    t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                      filter_index + (g - 1) * g_stride) % value = &
+                      t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                      filter_index + (g - 1) * g_stride) % value + &
+                      material_xs % int_scatt % outgoing(:, g) * flux
+                  end do
+                  
+                  j = j + t % scatt_order(j)
+                  cycle SCORE_LOOP
                 case (SCORE_ABSORPTION)
                   score = material_xs % absorption * flux
                 case (SCORE_FISSION)

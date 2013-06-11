@@ -11,10 +11,6 @@ module fixed_source
   use string,      only: to_str
   use tally,       only: synchronize_tallies, setup_active_usertallies
 
-#ifdef HDF5
-  use hdf5_interface, only: hdf5_write_state_point
-#endif
-
   type(Bank), pointer :: source_site => null()
 
 contains
@@ -115,11 +111,7 @@ contains
 
     ! Write out state point if it's been specified for this batch
     if (statepoint_batch % contains(current_batch)) then
-#ifdef HDF5
-      call hdf5_write_state_point()
-#else
       call write_state_point()
-#endif
     end if
 
   end subroutine finalize_batch

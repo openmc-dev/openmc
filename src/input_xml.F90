@@ -148,7 +148,7 @@ contains
       gen_per_batch = eigenvalue_ % generations_per_batch
 
       ! Allocate array for batch keff and entropy
-      allocate(k_batch(n_batches))
+      allocate(k_generation(n_batches*gen_per_batch))
       allocate(entropy(n_batches*gen_per_batch))
       entropy = ZERO
     end if

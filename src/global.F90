@@ -21,7 +21,7 @@ module global
 #endif
 
 #ifdef HDF5
-  use hdf5
+  use hdf5_interface,  only: HID_T
 #endif
 
   implicit none
@@ -170,7 +170,8 @@ module global
   integer    :: n_active          ! # of active batches
   integer    :: gen_per_batch = 1 ! # of generations per batch
   integer    :: current_batch = 0 ! current batch
-  integer    :: current_gen   = 0 ! current generation
+  integer    :: current_gen   = 0 ! current generation within a batch
+  integer    :: overall_gen   = 0 ! overall generation in the run
 
   ! External source
   type(ExtSource), target :: external_source
@@ -186,7 +187,7 @@ module global
   integer(8) :: current_work ! index in source bank of current history simulated
 
   ! Temporary k-effective values
-  real(8), allocatable :: k_batch(:) ! batch estimates of k
+  real(8), allocatable :: k_generation(:) ! single-generation estimates of k
   real(8) :: keff = ONE       ! average k over active batches
   real(8) :: keff_std         ! standard deviation of average k
   real(8) :: k_col_abs = ZERO ! sum over batches of k_collision * k_absorption
@@ -196,7 +197,7 @@ module global
 
   ! Shannon entropy
   logical :: entropy_on = .false.
-  real(8), allocatable :: entropy(:)         ! shannon entropy at each batch
+  real(8), allocatable :: entropy(:)         ! shannon entropy at each generation
   real(8), allocatable :: entropy_p(:,:,:,:) ! % of source sites in each cell
   type(StructuredMesh), pointer :: entropy_mesh
 
@@ -260,7 +261,6 @@ module global
   integer(HID_T) :: hdf5_tallyresult_t ! Compound type for TallyResult
   integer(HID_T) :: hdf5_bank_t        ! Compound type for Bank
   integer(HID_T) :: hdf5_integer8_t    ! type for integer(8)
-  integer        :: hdf5_err           ! error flag 
 #endif
 
   ! ============================================================================

@@ -7,7 +7,7 @@ module particle_restart
   use geometry_header, only: BASE_UNIVERSE
   use global
   use particle_header, only: deallocate_coord
-  use output,          only: write_message
+  use output,          only: write_message, print_particle
   use physics,         only: transport
   use random_lcg,      only: set_particle_seed
   use source,          only: initialize_particle
@@ -38,8 +38,6 @@ contains
 
   subroutine read_hdf5_particle_restart()
 
-    integer(HSIZE_T)        :: dims1(1)
-
     ! write meessage
     message = "Loading particle restart file " // trim(path_particle_restart) &
               // "..."
@@ -53,8 +51,8 @@ contains
     call hdf5_read_integer(hdf5_particle_file, 'current_batch', current_batch)
     call hdf5_read_integer(hdf5_particle_file, 'gen_per_batch', gen_per_batch)
     call hdf5_read_integer(hdf5_particle_file, 'current_gen', current_gen)
-    call hdf5_read_long(hdf5_particle_file, 'n_particles', n_particles)
-    call hdf5_read_long(hdf5_particle_file, 'id', p % id)
+    call hdf5_read_long(hdf5_particle_file, 'n_particles', n_particles, hdf5_integer8_t)
+    call hdf5_read_long(hdf5_particle_file, 'id', p % id, hdf5_integer8_t)
     call hdf5_read_double(hdf5_particle_file, 'weight', p % wgt)
     call hdf5_read_double(hdf5_particle_file, 'energy', p % E)
     dims1 = (/3/)
@@ -81,6 +79,9 @@ contains
 
   subroutine read_binary_particle_restart()
 
+    integer :: filetype
+    integer :: revision
+
     ! write meessage
     message = "Loading particle restart file " // trim(path_particle_restart) &
               // "..."
@@ -91,6 +92,8 @@ contains
          ACCESS='stream')
 
     ! read data from file
+    read(UNIT_PARTICLE) filetype
+    read(UNIT_PARTICLE) revision
     read(UNIT_PARTICLE) current_batch
     read(UNIT_PARTICLE) gen_per_batch
     read(UNIT_PARTICLE) current_gen
@@ -142,11 +145,7 @@ contains
     call transport()
 
     ! write output if particle made it
-    write(ou,*) 'Particle Successfully Transport:'
-    write(ou,*) 'WEIGHT:', p % wgt
-    write(ou,*) 'ENERGY:', p % E
-    write(ou,*) 'LOCATION:', p % coord % xyz
-    write(ou,*) 'ANGLE:', p % coord % uvw
+    call print_particle()
 
   end subroutine run_particle_restart
 

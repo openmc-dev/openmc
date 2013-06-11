@@ -147,8 +147,11 @@ class StatePoint(object):
         self._read_metadata()
 
     def _read_metadata(self):
+        # Read filetype
+        self.filetype = self._get_int(path='filetype')[0]
+
         # Read statepoint revision
-        self.revision = self._get_int(path='revision_statepoint')[0]
+        self.revision = self._get_int(path='revision')[0]
 
         # Read OpenMC version
         if self._hdf5:
@@ -179,7 +182,8 @@ class StatePoint(object):
         if self.run_mode == 2:
             self.n_inactive = self._get_int(path='n_inactive')[0]
             self.gen_per_batch = self._get_int(path='gen_per_batch')[0]
-            self.k_batch = self._get_double(self.current_batch, path='k_batch')
+            self.k_batch = self._get_double(
+                self.current_batch*self.gen_per_batch, path='k_generation')
             self.entropy = self._get_double(
                 self.current_batch*self.gen_per_batch, path='entropy')
             if self.revision >= 8:

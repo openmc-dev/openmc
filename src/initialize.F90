@@ -13,11 +13,12 @@ module initialize
                               cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot
+  use output_interface, only: file_open, file_close, read_data
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
-  use tally_header,     only: TallyObject
+  use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
 
 #ifdef MPI
@@ -25,8 +26,8 @@ module initialize
 #endif
 
 #ifdef HDF5
-  use hdf5_interface,   only: hdf5_initialize, hdf5_write_summary, &
-                              hdf5_load_state_point
+  use hdf5_interface
+  use hdf5_summary,     only: hdf5_write_summary
 #endif
 
   implicit none
@@ -121,11 +122,7 @@ contains
 
       ! If this is a restart run, load the state point data and binary source
       ! file
-#ifdef HDF5
-      if (restart_run) call hdf5_load_state_point()
-#else
       if (restart_run) call load_state_point()
-#endif
     end if
 
     if (master) then
@@ -239,6 +236,52 @@ contains
   end subroutine initialize_mpi
 #endif
 
+#ifdef HDF5
+
+!===============================================================================
+! HDF5_INITIALIZE
+!===============================================================================
+
+  subroutine hdf5_initialize()
+
+    type(TallyResult), target :: tmp(2)          ! temporary TallyResult
+    type(Bank),        target :: tmpb(2)         ! temporary Bank
+    integer(HID_T)            :: coordinates_t   ! HDF5 type for 3 reals
+    integer(HSIZE_T)          :: dims(1) = (/3/) ! size of coordinates
+
+    ! Initialize FORTRAN interface.
+    call h5open_f(hdf5_err)
+
+    ! Create the compound datatype for TallyResult
+    call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(2))), hdf5_tallyresult_t, hdf5_err)
+    call h5tinsert_f(hdf5_tallyresult_t, "sum", h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(1)%sum)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_tallyresult_t, "sum_sq", h5offsetof(c_loc(tmp(1)), &
+         c_loc(tmp(1)%sum_sq)), H5T_NATIVE_DOUBLE, hdf5_err)
+
+    ! Create compound type for xyz and uvw
+    call h5tarray_create_f(H5T_NATIVE_DOUBLE, 1, dims, coordinates_t, hdf5_err)
+
+    ! Create the compound datatype for Bank
+    call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(2))), hdf5_bank_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "wgt", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%wgt)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "xyz", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%xyz)), coordinates_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "uvw", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%uvw)), coordinates_t, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "E", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%E)), H5T_NATIVE_DOUBLE, hdf5_err)
+
+    ! Determine type for integer(8)
+    hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)
+
+  end subroutine hdf5_initialize
+
+#endif
+
 !===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line
 !===============================================================================
@@ -248,6 +291,7 @@ contains
     integer :: i         ! loop index
     integer :: argc      ! number of command line arguments
     integer :: last_flag ! index of last flag
+    integer :: filetype
     character(MAX_FILE_LEN) :: pwd      ! present working directory
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
 
@@ -284,10 +328,23 @@ contains
             call fatal_error()
           end if
         case ('-r', '-restart', '--restart')
-          ! Read path for state point
+          ! Read path for state point/particle restart
           i = i + 1
-          path_state_point = argv(i)
-          restart_run = .true.
+
+          ! Check what type of file this is
+          call file_open(argv(i), 'parallel', 'r')
+          call read_data(filetype, 'filetype')
+          call file_close('parallel')
+
+          ! Set path and flag for type of run
+          select case (filetype)
+          case (FILETYPE_STATEPOINT)
+            path_state_point = argv(i)
+            restart_run = .true.
+          case (FILETYPE_PARTICLE_RESTART)
+            path_particle_restart = argv(i)
+            particle_restart_run = .true.
+          end select
 
         case ('-t', '-tallies', '--tallies')
           run_mode = MODE_TALLIES
@@ -306,11 +363,6 @@ contains
         case ('-eps_tol', '-ksp_gmres_restart')
           ! Handle options that would be based to PETSC
           i = i + 1
-        case ('-s','-particle','--particle')
-          ! Read in path for particle restart
-          i = i + 1
-          path_particle_restart = argv(i)
-          particle_restart_run = .true.
         case default
           message = "Unknown command line option: " // argv(i)
           call fatal_error()

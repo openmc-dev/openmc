@@ -85,7 +85,7 @@ contains
 
       ! Determine scoring index for this filter combination
       filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-
+      
       ! Check for nuclide bins
       k = 0
       NUCLIDE_LOOP: do while (k < t % n_nuclide_bins)
@@ -215,15 +215,15 @@ contains
               j = j + t % scatt_order(j)
               cycle SCORE_LOOP
             end if
-            score_index_init = score_index - 1
+            score_index_init = score_index
             
             g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
             do g = micro_xs(i_nuclide) % int_scatt % gmin, &
                    micro_xs(i_nuclide) % int_scatt % gmax
               score_index = score_index_init
-              t % results(score_index : score_index + t % scatt_order(j) - 1, &
+              t % results(score_index : score_index + t % scatt_order(j), &
                 filter_index + (g - 1) * g_stride) % value = &
-                t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                t % results(score_index : score_index + t % scatt_order(j), &
                 filter_index + (g - 1) * g_stride) % value + &
                 last_wgt * micro_xs(i_nuclide) % int_scatt % outgoing(:, g) / &
                 (micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption)
@@ -578,9 +578,9 @@ contains
                 do g = micro_xs(i_nuclide) % int_scatt % gmin, &
                        micro_xs(i_nuclide) % int_scatt % gmax
                   score_index = score_index_init
-                  t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                  t % results(score_index : score_index + t % scatt_order(j), &
                     filter_index + (g - 1) * g_stride) % value = &
-                    t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                    t % results(score_index : score_index + t % scatt_order(j), &
                     filter_index + (g - 1) * g_stride) % value + &
                     micro_xs(i_nuclide) % int_scatt % outgoing(:, g) * &
                     atom_density * flux
@@ -674,12 +674,11 @@ contains
                 score_index_init = (k - 1)*t % n_score_bins + j
                 
                 g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
-                do g = micro_xs(i_nuclide) % int_scatt % gmin, &
-                       micro_xs(i_nuclide) % int_scatt % gmax
+                do g = 1, integrated_scatt_groups
                   score_index = score_index_init
-                  t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                  t % results(score_index : score_index + t % scatt_order(j), &
                     filter_index + (g - 1) * g_stride) % value = &
-                    t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                    t % results(score_index : score_index + t % scatt_order(j), &
                     filter_index + (g - 1) * g_stride) % value + &
                     material_xs % int_scatt % outgoing(:, g) * flux
                 end do
@@ -857,9 +856,9 @@ contains
           do g = micro_xs(i_nuclide) % int_scatt % gmin, &
                  micro_xs(i_nuclide) % int_scatt % gmax
             score_index = score_index_init
-            t % results(score_index : score_index + t % scatt_order(j) - 1, &
+            t % results(score_index : score_index + t % scatt_order(j), &
               filter_index + (g - 1) * g_stride) % value = &
-              t % results(score_index : score_index + t % scatt_order(j) - 1, &
+              t % results(score_index : score_index + t % scatt_order(j), &
               filter_index + (g - 1) * g_stride) % value + &
               micro_xs(i_nuclide) % int_scatt % outgoing(:, g) * &
               atom_density * flux
@@ -960,12 +959,11 @@ contains
         score_index_init = n_nuclides_total*t % n_score_bins + j
         
         g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
-        do g = micro_xs(i_nuclide) % int_scatt % gmin, &
-               micro_xs(i_nuclide) % int_scatt % gmax
+        do g = 1, integrated_scatt_groups
           score_index = score_index_init
-          t % results(score_index : score_index + t % scatt_order(j) - 1, &
+          t % results(score_index : score_index + t % scatt_order(j), &
             filter_index + (g - 1) * g_stride) % value = &
-            t % results(score_index : score_index + t % scatt_order(j) - 1, &
+            t % results(score_index : score_index + t % scatt_order(j), &
             filter_index + (g - 1) * g_stride) % value + &
             material_xs % int_scatt % outgoing(:, g) * flux
         end do
@@ -1315,9 +1313,9 @@ contains
                   do g = micro_xs(i_nuclide) % int_scatt % gmin, &
                          micro_xs(i_nuclide) % int_scatt % gmax
                     score_index = score_index_init
-                    t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                    t % results(score_index : score_index + t % scatt_order(j), &
                       filter_index + (g - 1) * g_stride) % value = &
-                      t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                      t % results(score_index : score_index + t % scatt_order(j), &
                       filter_index + (g - 1) * g_stride) % value + &
                       micro_xs(i_nuclide) % int_scatt % outgoing(:, g) * &
                       atom_density * flux
@@ -1357,12 +1355,11 @@ contains
                   score_index_init = (b - 1)*t % n_score_bins + j
                   
                   g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
-                  do g = micro_xs(i_nuclide) % int_scatt % gmin, &
-                         micro_xs(i_nuclide) % int_scatt % gmax
+                  do g = 1, integrated_scatt_groups
                     score_index = score_index_init
-                    t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                    t % results(score_index : score_index + t % scatt_order(j), &
                       filter_index + (g - 1) * g_stride) % value = &
-                      t % results(score_index : score_index + t % scatt_order(j) - 1, &
+                      t % results(score_index : score_index + t % scatt_order(j), &
                       filter_index + (g - 1) * g_stride) % value + &
                       material_xs % int_scatt % outgoing(:, g) * flux
                   end do

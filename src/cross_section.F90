@@ -27,8 +27,6 @@ contains
     real(8) :: atom_density  ! atom density of a nuclide
     logical :: check_sab     ! should we check for S(a,b) table?
     type(Material),  pointer :: mat => null() ! current material
-    integer :: gmin, gmax    ! grp transfer boundaries of
-                             ! interpolated distro
     integer :: g             ! Group index
 
     ! Set all material macroscopic cross sections to zero
@@ -38,6 +36,9 @@ contains
     material_xs % fission    = ZERO
     material_xs % nu_fission = ZERO
     material_xs % kappa_fission  = ZERO
+    
+    if (integrated_scatt) &
+      material_xs % int_scatt % outgoing = ZERO
 
     ! Exit subroutine if material is void
     if (p % material == MATERIAL_VOID) return
@@ -122,8 +123,7 @@ contains
            
       ! Add contributions to material macroscopic \sigma_{s,Ein->g,l} at Ein (if needed)
       if (integrated_scatt) then
-        material_xs % int_scatt % outgoing = ZERO
-        do g = gmin, gmax
+        do g = 1, integrated_scatt_groups
           material_xs % int_scatt % outgoing(:, g) = &
             material_xs % int_scatt % outgoing(:, g) + atom_density * &
             micro_xs(i_nuclide) % int_scatt % outgoing(:, g)
@@ -253,48 +253,22 @@ contains
     
     ! Calculate microscopic nuclide \sigma_{s,Ein->g,l} at Ein (if needed)
     if (integrated_scatt) then
-      deallocate(micro_xs(i_nuclide) % int_scatt % outgoing)
       gmin_lo = nuc % int_scatt(i_grid) % gmin
       gmin_hi = nuc % int_scatt(i_grid + 1) % gmin
       gmax_lo = nuc % int_scatt(i_grid) % gmax
       gmax_hi = nuc % int_scatt(i_grid + 1) % gmax
-      ! First we need to determine the dimensionality to allocate
-      if ((gmin_lo == gmin_hi) .and. (gmax_lo == gmax_hi)) then
-        ! Do the easy one: they are the same
-        micro_xs(i_nuclide) % int_scatt % gmin = gmin_lo
-        micro_xs(i_nuclide) % int_scatt % gmax = gmax_lo
-        allocate(micro_xs(i_nuclide) % int_scatt % outgoing( &
-          integrated_scatt_order, gmin_lo : gmax_lo))
-        micro_xs(i_nuclide) % int_scatt % outgoing(:,:) = (ONE - f) * &
-          nuc % int_scatt(i_grid) % outgoing(:,:) + f * &
-          nuc % int_scatt(i_grid + 1) % outgoing(:,:)
-      else
-        ! Set gmin_min (gmin of interpolated distro)
-        if (gmin_lo == 0) then
-          gmin_min = gmin_hi
-        else if (gmin_hi == 0) then
-          gmin_min = gmin_lo
-        else
-          gmin_min = min(gmin_lo, gmin_hi)
-        end if
-        ! Set gmax_max (gmax of interpolated distro)
-        ! No ifs are needed here because we get to use max() now.
-        gmax_max = max(gmax_lo, gmax_hi)
-        allocate(micro_xs(i_nuclide) % int_scatt % outgoing( &
-          integrated_scatt_order, gmin_min:gmax_max))
-        micro_xs(i_nuclide) % int_scatt % outgoing = ZERO
-        ! Add in the low point
-        do g = gmin_lo, gmax_lo
-          micro_xs(i_nuclide) % int_scatt % outgoing(:, g) = (ONE - f) * &
-            nuc % int_scatt(i_grid) % outgoing(:,g)
-        end do
-        ! Add in the high point
-        do g = gmin_hi, gmax_hi
-          micro_xs(i_nuclide) % int_scatt % outgoing(:, g) = f * &
-            nuc % int_scatt(i_grid + 1) % outgoing(:,g)
-        end do
-      end if
+      micro_xs(i_nuclide) % int_scatt % outgoing(:,:) = ZERO
       
+      if (gmin_lo /= 0) then ! Then we can add in the low point contribution
+        micro_xs(i_nuclide) % int_scatt % outgoing(:, gmin_lo: gmax_lo) = &
+          micro_xs(i_nuclide) % int_scatt % outgoing(:,gmin_lo: gmax_lo) + &
+          (ONE - f) * nuc % int_scatt(i_grid) % outgoing(:,gmin_lo: gmax_lo)
+      end if
+      if (gmin_hi /= 0) then ! Then we can add inthe high point contribution
+        micro_xs(i_nuclide) % int_scatt % outgoing(:, gmin_hi: gmax_hi) = &
+          micro_xs(i_nuclide) % int_scatt % outgoing(:,gmin_hi: gmax_hi) + &
+          f * nuc % int_scatt(i_grid + 1) % outgoing(:,gmin_hi: gmax_hi)
+      end if
     end if
 
   end subroutine calculate_nuclide_xs

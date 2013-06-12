@@ -209,7 +209,7 @@ contains
     end if
 
     ! check for very low energy
-    if (p % E < 1.0e-100_8) then
+    if (p % E < MIN_ENERGY) then
       p % alive = .false.
       message = "Killing neutron with extremely low energy"
       call warning()
@@ -548,11 +548,12 @@ contains
     v_n = vel * p % coord0 % uvw
 
     ! Sample velocity of target nucleus
-    if (.not. micro_xs(i_nuclide) % use_ptable) then
-      call sample_target_velocity(nuc, v_t)
-    else
-      v_t = ZERO
-    end if
+!~     if (.not. micro_xs(i_nuclide) % use_ptable) then
+!~       call sample_target_velocity(nuc, v_t)
+!~     else
+!~       v_t = ZERO
+!~     end if
+    v_t = ZERO
 
     ! Velocity of center-of-mass
     v_cm = (v_n + awr*v_t)/(awr + ONE)

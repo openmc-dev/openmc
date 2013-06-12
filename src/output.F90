@@ -821,6 +821,14 @@ contains
           string = trim(string) // pn_string
         end do
         j = j + n - 1
+      case (SCORE_INTSCATT_PN)
+        pn_string = ' int-scatter'
+        string = trim(string) // pn_string
+        do n = 1, t % scatt_order(j)
+          pn_string = ' int-scatter-' // trim(to_str(n))
+          string = trim(string) // pn_string
+        end do
+        j = j + n - 1
       case (SCORE_TRANSPORT)
         string = trim(string) // ' transport'
       case (SCORE_N_1N)
@@ -1526,6 +1534,7 @@ contains
     score_names(abs(SCORE_NU_SCATTER))    = "Scattering Production Rate"
     score_names(abs(SCORE_SCATTER_N))     = ""
     score_names(abs(SCORE_SCATTER_PN))    = ""
+    score_names(abs(SCORE_INTSCATT_PN))   = ""
     score_names(abs(SCORE_TRANSPORT))     = "Transport Rate"
     score_names(abs(SCORE_N_1N))          = "(n,1n) Rate"
     score_names(abs(SCORE_ABSORPTION))    = "Absorption Rate"
@@ -1679,6 +1688,22 @@ contains
                 to_str(t % results(score_index,filter_index) % sum), &
                 trim(to_str(t % results(score_index,filter_index) % sum_sq))
             else if (t % score_bins(k) == SCORE_SCATTER_PN) then
+              score_name = "Scattering Rate"
+              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+                repeat(" ", indent), score_name, &
+                to_str(t % results(score_index,filter_index) % sum), &
+                trim(to_str(t % results(score_index,filter_index) % sum_sq))
+              do n_order = 1, t % scatt_order(k)
+                score_index = score_index + 1
+                score_name = 'P' // trim(to_str(n_order)) // &
+                  ' Scattering Moment'
+                write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+                  repeat(" ", indent), score_name, &
+                  to_str(t % results(score_index,filter_index) % sum), &
+                  trim(to_str(t % results(score_index,filter_index) % sum_sq))
+              end do
+              k = k + n_order - 1
+            else if (t % score_bins(k) == SCORE_INTSCATT_PN) then
               score_name = "Scattering Rate"
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                 repeat(" ", indent), score_name, &

@@ -44,8 +44,8 @@ module constants
   integer, parameter :: MAX_SAMPLE = 100000
   
   ! Minimum energy before killing a neutron
-!~   real(8), parameter :: MIN_ENERGY = 1.0e-100_8
-  real(8), parameter :: MIN_ENERGY = 1.0e-11_8
+  real(8), parameter :: MIN_ENERGY = 1.0e-100_8
+!~   real(8), parameter :: MIN_ENERGY = 1.0e-11_8
 
   ! Maximum number of words in a single line, length of line, and length of
   ! single word

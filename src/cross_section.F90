@@ -36,8 +36,9 @@ contains
     material_xs % fission    = ZERO
     material_xs % nu_fission = ZERO
     material_xs % kappa_fission  = ZERO
-    
-    if (integrated_scatt) &
+    ! We only do this if we have an int-scatter-pn tally, and if we are actively
+    ! tallying.
+    if ((integrated_scatt) .and. (active_tallies % size() > 0)) &
       material_xs % int_scatt % outgoing = ZERO
 
     ! Exit subroutine if material is void
@@ -121,8 +122,10 @@ contains
       material_xs % kappa_fission = material_xs % kappa_fission + &
            atom_density * micro_xs(i_nuclide) % kappa_fission
            
-      ! Add contributions to material macroscopic \sigma_{s,Ein->g,l} at Ein (if needed)
-      if (integrated_scatt) then
+      ! Add contributions to material macroscopic \sigma_{s,Ein->g,l} at Ein
+      ! We only do this if we have an int-scatter-pn tally, and if we are actively
+      ! tallying.
+      if ((integrated_scatt) .and. (active_tallies % size() > 0)) then
         do g = 1, integrated_scatt_groups
           material_xs % int_scatt % outgoing(:, g) = &
             material_xs % int_scatt % outgoing(:, g) + atom_density * &
@@ -148,10 +151,7 @@ contains
     type(Nuclide),   pointer :: nuc => null()
     integer :: gmin_lo, gmax_lo, gmin_hi, gmax_hi ! group transfer boundaries
                                                   ! at i_grid and i_grid + 1
-    integer :: gmin_min, gmax_max                 ! grp transfer boundaries of
-                                                  ! interpolated distro
-    integer :: g                                  ! Group index
-
+    
     ! Set pointer to nuclide
     nuc => nuclides(i_nuclide)
 
@@ -251,8 +251,10 @@ contains
       micro_xs(i_nuclide) % last_E = ZERO
     end if
     
-    ! Calculate microscopic nuclide \sigma_{s,Ein->g,l} at Ein (if needed)
-    if (integrated_scatt) then
+    ! Calculate microscopic nuclide \sigma_{s,Ein->g,l} at Ein
+    ! We only do this if we have an int-scatter-pn tally, and if we are actively
+    ! tallying.
+    if ((integrated_scatt) .and. (active_tallies % size() > 0)) then
       gmin_lo = nuc % int_scatt(i_grid) % gmin
       gmin_hi = nuc % int_scatt(i_grid + 1) % gmin
       gmax_lo = nuc % int_scatt(i_grid) % gmax

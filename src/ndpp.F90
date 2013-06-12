@@ -160,8 +160,8 @@ contains
       call warning()
     end if
     
-    ! Test that the energy group structure matches that requested in 
-    ! tallies.xml.
+    ! Test that the energy group structure and scattering order requested in 
+    ! tallies.xml are valid (i.e., groups match, orders are less than in the library).
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)
       j = 0
@@ -172,9 +172,18 @@ contains
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP ! Skip the others which will only waste cycles
           case (SCORE_INTSCATT_PN)
-            ! We found a tally with the right kind of score, compare the
-            ! energyin and energyout filters of this tally to the energy_bins_
-            ! metadata of the NDPP library.
+            ! We found the correct score, get comparing!
+            ! First check the scattering order
+            if (scatt_order_ > t % scatt_order(j)) then
+              message = "Invalid scattering order of " // &
+                        trim(to_str(scatt_order_)) // " requested. Order " // &
+                        "requested is larger than provided in the library (" // &
+                        trim(to_str(scatt_order_)) // ")!"
+              call fatal_error()
+            end if
+            
+            ! Compare the energyin and energyout filters of this tally to the 
+            ! energy_bins_ metadata of the NDPP library.
             ! Check the energyin filter first.
             i_filter = t % find_filter(FILTER_ENERGYIN)
             ! We have already checked to ensure some energyin filter exists,

@@ -125,7 +125,8 @@ contains
     elseif (filetype_ == 'hdf5') then
        filetype = HDF5
     else
-       message = "Unknown filetype in ndpp_library.xml: " // trim(filetype_)
+       message = "Unknown filetype in " // trim(integrated_scatt_lib) // &
+        ": " // trim(filetype_)
        call fatal_error()
     end if
 

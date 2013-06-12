@@ -1,7 +1,19 @@
 #!/usr/bin/env python2
 """Convert binary particle track to VTK poly data.
 
-Run 'track.py -help' for usage.
+Usage information can be obtained by running 'track.py --help':
+
+    usage: track.py [-h] [-o OUT] IN [IN ...]
+
+    Convert binary particle track file to a .pvtp file.
+
+    positional arguments:
+      IN                    Input particle track data filename(s).
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -o OUT, -out OUT, --out OUT
+                            Output VTK poly data filename.
 
 """
 
@@ -17,13 +29,14 @@ def _parse_args():
         description='Convert binary particle track file to a .pvtp file.')
     parser.add_argument('input', metavar='IN', type=argparse.FileType('rb'),
                         nargs='+',
-                        help='Input particle track data filename.')
-    parser.add_argument('-o', '-out', '--out', metavar='OUT', type=str, dest='out',
+                        help='Input particle track data filename(s).')
+    parser.add_argument('-o', '-out', '--out', metavar='OUT', type=str,
+                        dest='out',
                         help='Output VTK poly data filename.')
 
     # Parse and return commandline arguments.
     return parser.parse_args()
-    
+
 
 def main():
     # Parse commandline argumetns.
@@ -31,7 +44,7 @@ def main():
     
     # Make sure that the output filename ends with '.pvtp'.
     if not args.out:
-        args.out = ''.join([os.path.splitext(args.input.name)[0], '.pvtp'])
+        args.out = 'tracks.pvtp'
     elif os.path.splitext(args.out)[1] != '.pvtp':
         args.out = ''.join([args.out, '.pvtp'])
 
@@ -39,18 +52,14 @@ def main():
     cells = vtk.vtkCellArray()
     j = 0
     k = 0
-    arr = vtk.vtkIntArray()
     for fin in args.input:
         track = fin.read()
         coords = [struct.unpack("ddd", track[24*i : 24*(i+1)])
                   for i in range(len(track)/24)]
         n_points = len(coords)
-
-        i=0
+        
         for triplet in coords:
             points.InsertNextPoint(triplet)
-            arr.InsertTuple1(i,k)
-            i+=1
         
         # Create VTK line and assign points to line.
         line = vtk.vtkPolyLine()
@@ -61,8 +70,7 @@ def main():
         cells.InsertNextCell(line)
         j += n_points
         k += 1
-
-    points.SetData(arr)
+    global data
     data = vtk.vtkPolyData()
     data.SetPoints(points)
     data.SetLines(cells)
@@ -78,9 +86,7 @@ if __name__ == '__main__':
     main()
 
 
-#### The following code is retained for debugging purposes.  If 'data' in the
-#### in the function 'main' is made a global variable, the following code will
-#### automatically plot the tracks.
+#### The following code is retained for debugging purposes:
 
 ##poly_mapper = vtk.vtkPolyDataMapper()
 ##poly_mapper.SetInputConnection(data.GetProducerPort())

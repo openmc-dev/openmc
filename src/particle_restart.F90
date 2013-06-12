@@ -11,7 +11,6 @@ module particle_restart
   use physics,         only: transport
   use random_lcg,      only: set_particle_seed
   use source,          only: initialize_particle
-  use string,          only: to_str
 
 #ifdef HDF5
   use hdf5_interface 
@@ -20,7 +19,6 @@ module particle_restart
   implicit none
   private
   public ::  run_particle_restart
-  public ::  write_particle_track
 
 #ifdef HDF5
   integer(HID_T) :: hdf5_particle_file
@@ -144,36 +142,12 @@ contains
          current_gen - 1)*n_particles + p % id
     call set_particle_seed(particle_seed)
 
-    ! Open particle track output file.
-    if (write_track) then
-      filename = trim(path_output) // 'track_' // trim(to_str(current_batch)) &
-           // '_' // trim(to_str(current_work)) // '.binary'
-      open(UNIT=UNIT_TRACK, FILE=filename, STATUS='replace', &
-           ACCESS='stream')
-    end if
-
     ! transport neutron
     call transport()
-
-    ! Close particle track output file.
-    if (write_track) then
-      close(UNIT=UNIT_TRACK)
-    endif
 
     ! write output if particle made it
     call print_particle()
 
   end subroutine run_particle_restart
-
-!===============================================================================
-! WRITE_PARTICLE_TRACK outputs particle position to a binary file.  This
-! subroutine needs to be modified to work with HDF5 files.  Perhaps it should
-! also be made somehow more general so that it can output information other
-! than just particle position.
-!===============================================================================
-
-  subroutine write_particle_track()
-    write(UNIT_TRACK) p % coord0 % xyz
-  end subroutine write_particle_track
 
 end module particle_restart

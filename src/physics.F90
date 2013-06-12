@@ -13,9 +13,11 @@ module physics
   use interpolation,          only: interpolate_tab1
   use material_header,        only: Material
   use mesh,                   only: get_mesh_indices
-  use output,                 only: write_message
+  use output,                 only: write_message, initialize_particle_track, &
+                                    write_particle_track, &
+                                    finalize_particle_track
   use particle_header,        only: LocalCoord
-  use particle_restart,       only: write_particle_track
+!  use particle_restart,       only: write_particle_track
   use particle_restart_write, only: write_particle_restart
   use random_lcg,             only: prn
   use search,                 only: binary_search
@@ -74,6 +76,11 @@ contains
     ! Force calculation of cross-sections by setting last energy to zero 
     micro_xs % last_E = ZERO
 
+    ! Prepare to write out particle track.
+    if (write_track) then
+      call initialize_particle_track()
+    endif
+
     do while (p % alive)
 
       ! Write particle track.
@@ -106,9 +113,11 @@ contains
         coord % xyz = coord % xyz + distance * coord % uvw
         coord => coord % next
       end do
+
+      ! Write particle track
       
-      if (run_mode == MODE_PARTICLE) then
-        write(UNIT_TRACK) p % coord0 % xyz
+      if (write_track) then
+        call write_particle_track()
       end if
 
       ! Score track-length tallies
@@ -184,6 +193,11 @@ contains
       end if
 
     end do
+
+    ! Finish particle track.
+    if (write_track) then
+      call finalize_particle_track()
+    endif
 
   end subroutine transport
 

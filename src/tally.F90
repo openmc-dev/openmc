@@ -208,6 +208,8 @@ contains
             cycle SCORE_LOOP
           
           case (SCORE_INTSCATT_PN)
+            ! We should never get here since the estimator is set to tracklength
+            ! but further checking is needed.
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) then
               j = j + t % scatt_order(j)
@@ -1489,17 +1491,24 @@ contains
         end if
 
       case (FILTER_ENERGYOUT)
-        ! determine outgoing energy bin
-        n = t % filters(i) % n_bins
+        if (t % estimator /= ESTIMATOR_TRACKLENGTH) then
+          ! determine outgoing energy bin
+          n = t % filters(i) % n_bins
 
-        ! check if energy of the particle is within energy bins
-        if (p % E < t % filters(i) % real_bins(1) .or. &
-             p % E > t % filters(i) % real_bins(n + 1)) then
-          t % matching_bins(i) = NO_BIN_FOUND
+          ! check if energy of the particle is within energy bins
+          if (p % E < t % filters(i) % real_bins(1) .or. &
+               p % E > t % filters(i) % real_bins(n + 1)) then
+            t % matching_bins(i) = NO_BIN_FOUND
+          else
+            ! search to find incoming energy bin
+            t % matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+                 n + 1, p % E)
+          end if
+          
         else
-          ! search to find incoming energy bin
-          t % matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-               n + 1, p % E)
+          ! Set to the first outgoing energy bin, specifically for the case
+          ! of int-scatt-pn (with no effect on the cases)
+          t % matching_bins(i) = 1
         end if
 
       end select

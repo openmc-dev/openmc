@@ -2004,6 +2004,7 @@ contains
             ! library
             integrated_scatt = .true.
             
+            ! Force the estmiator to be tracklength
             t % estimator = ESTIMATOR_TRACKLENGTH
             ! Setup P0:Pn
             t % score_bins(j : j + n_order) = SCORE_INTSCATT_PN

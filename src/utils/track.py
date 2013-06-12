@@ -10,50 +10,77 @@ import argparse
 import struct
 import vtk
 
-if __name__ == '__main__':
+
+def _parse_args():
     # Create argument parser.
     parser = argparse.ArgumentParser(
         description='Convert binary particle track file to a .pvtp file.')
     parser.add_argument('input', metavar='IN', type=argparse.FileType('rb'),
+                        nargs='+',
                         help='Input particle track data filename.')
     parser.add_argument('-o', '-out', '--out', metavar='OUT', type=str, dest='out',
                         help='Output VTK poly data filename.')
-    # Parse commandline arguments.
-    args = parser.parse_args()
 
+    # Parse and return commandline arguments.
+    return parser.parse_args()
+    
+
+def main():
+    # Parse commandline argumetns.
+    args = _parse_args()
+    
     # Make sure that the output filename ends with '.pvtp'.
     if not args.out:
         args.out = ''.join([os.path.splitext(args.input.name)[0], '.pvtp'])
     elif os.path.splitext(args.out)[1] != '.pvtp':
         args.out = ''.join([args.out, '.pvtp'])
 
-    # Convert binary data into a list of coordinate triplets.
-    track = args.input.read()
-    coords = [struct.unpack("ddd", track[24*i : 24*(i+1)])
-              for i in range(len(track)/24)]
-
-    # Create VTK points.
     points = vtk.vtkPoints()
-    for triplet in coords:
-        points.InsertNextPoint(triplet)
-
-    # Create VTK line and assign points to line.
-    line = vtk.vtkPolyLine()
-    line.GetPointIds().SetNumberOfIds(points.GetNumberOfPoints())
-    for i in range(points.GetNumberOfPoints()):
-        line.GetPointIds().SetId(i,i)
-
     cells = vtk.vtkCellArray()
-    cells.InsertNextCell(line)
+    j = 0
+    k = 0
+    arr = vtk.vtkIntArray()
+    for fin in args.input:
+        track = fin.read()
+        coords = [struct.unpack("ddd", track[24*i : 24*(i+1)])
+                  for i in range(len(track)/24)]
+        n_points = len(coords)
 
+        i=0
+        for triplet in coords:
+            points.InsertNextPoint(triplet)
+            arr.InsertTuple1(i,k)
+            i+=1
+        
+        # Create VTK line and assign points to line.
+        line = vtk.vtkPolyLine()
+        line.GetPointIds().SetNumberOfIds(n_points)
+        for i in range(n_points):
+            line.GetPointIds().SetId(i, j+i)
+        
+        cells.InsertNextCell(line)
+        j += n_points
+        k += 1
+
+    points.SetData(arr)
     data = vtk.vtkPolyData()
     data.SetPoints(points)
     data.SetLines(cells)
-
+    
     writer = vtk.vtkXMLPPolyDataWriter()
     writer.SetInput(data)
     writer.SetFileName(args.out)
     writer.Write()
+
+
+
+if __name__ == '__main__':
+    main()
+
+
+#### The following code is retained for debugging purposes.  If 'data' in the
+#### in the function 'main' is made a global variable, the following code will
+#### automatically plot the tracks.
 
 ##poly_mapper = vtk.vtkPolyDataMapper()
 ##poly_mapper.SetInputConnection(data.GetProducerPort())

@@ -165,6 +165,13 @@ contains
 
   end subroutine run_particle_restart
 
+!===============================================================================
+! WRITE_PARTICLE_TRACK outputs particle position to a binary file.  This
+! subroutine needs to be modified to work with HDF5 files.  Perhaps it should
+! also be made somehow more general so that it can output information other
+! than just particle position.
+!===============================================================================
+
   subroutine write_particle_track()
     write(UNIT_TRACK) p % coord0 % xyz
   end subroutine write_particle_track

@@ -23,6 +23,14 @@ contains
     integer :: i_nuclide    ! index in nuclides
     type(XsListing), pointer :: ndpp_listing => null()
     
+    ! This is probably the best location in the code to do this:
+    ! Check to see if S(a,b) tables are in use; if so, print error and quit.
+    if (n_sab_tables > 0) then
+      message = "Pre-processed scattering kernels do not yet support S(a,b)" // &
+        " scattering tables!"
+      call fatal_error()
+    end if
+    
     ! First lets go read the ndpp_lib.xml file
     call read_ndpp_xml()
     
@@ -149,7 +157,7 @@ contains
       message = "Invalid scattering order of " // trim(to_str(scatt_order_)) // &
                 " requested. Setting to the maximum permissible value, " // &
                 trim(to_str(SCATT_ORDER_MAX))
-      call fatal_error()
+      call warning()
     end if
     
     ! Test that the energy group structure matches that requested in 

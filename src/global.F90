@@ -75,8 +75,8 @@ module global
   type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings 
 
   ! Cross section caches
-  type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
-  type(MaterialMacroXS)             :: material_xs  ! Cache for current material
+  type(NuclideMicroXS), allocatable, target :: micro_xs(:)  ! Cache for each nuclide
+  type(MaterialMacroXS), target             :: material_xs  ! Cache for current material
 
   integer :: n_nuclides_total ! Number of nuclide cross section tables
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables

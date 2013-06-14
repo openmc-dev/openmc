@@ -672,7 +672,6 @@ contains
 
               case (SCORE_INTSCATT_PN)
                 score_index_init = (k - 1)*t % n_score_bins + j
-                
                 g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
                 do g = 1, integrated_scatt_groups
                   score_index = score_index_init

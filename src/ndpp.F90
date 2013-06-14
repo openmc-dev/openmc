@@ -174,7 +174,7 @@ contains
           case (SCORE_INTSCATT_PN)
             ! We found the correct score, get comparing!
             ! First check the scattering order
-            if (scatt_order_ > t % scatt_order(j)) then
+            if (scatt_order_ < t % scatt_order(j)) then
               message = "Invalid scattering order of " // &
                         trim(to_str(scatt_order_)) // " requested. Order " // &
                         "requested is larger than provided in the library (" // &

@@ -156,6 +156,11 @@ contains
     real(8) :: sigS   ! scattering cross-section (tot - abs)
     integer :: gmin_lo, gmax_lo, gmin_hi, gmax_hi ! group transfer boundaries
                                                   ! at i_grid and i_grid + 1
+    integer :: g      ! group index
+    real(8), pointer    :: micro_lo(:, :) => null()
+    real(8), pointer    :: micro_hi(:, :) => null()
+    real(8), pointer    :: micro_out(:, :) => null()
+    real(8) :: one_f  ! (ONE - f) * sigS
     
     ! Set pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -260,25 +265,30 @@ contains
     ! We only do this if we have an int-scatter-pn tally, and if we are actively
     ! tallying.
     if ((integrated_scatt) .and. (active_tallies % size() > 0)) then
+      ! Reduce pointer de-referencing:
+      micro_lo => nuc % int_scatt(i_grid) % outgoing
+      micro_hi => nuc % int_scatt(i_grid + 1) % outgoing
+      micro_out => micro_xs(i_nuclide) % int_scatt % outgoing
       gmin_lo = nuc % int_scatt(i_grid) % gmin
       gmin_hi = nuc % int_scatt(i_grid + 1) % gmin
       gmax_lo = nuc % int_scatt(i_grid) % gmax
       gmax_hi = nuc % int_scatt(i_grid + 1) % gmax
-      micro_xs(i_nuclide) % int_scatt % outgoing(:,:) = ZERO
       sigS = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
+      one_f = (ONE - f) * sigS
+      f = f * sigS
       
-      if (gmin_lo /= 0) then ! Then we can add in the low point contribution
-        micro_xs(i_nuclide) % int_scatt % outgoing(:, gmin_lo : gmax_lo) = &
-          micro_xs(i_nuclide) % int_scatt % outgoing(:, gmin_lo : gmax_lo) + &
-          (ONE - f) * nuc % int_scatt(i_grid) % outgoing(:, gmin_lo : gmax_lo) * &
-          sigS
-      end if
-      if (gmin_hi /= 0) then ! Then we can add in the high point contribution
-        micro_xs(i_nuclide) % int_scatt % outgoing(:, gmin_hi : gmax_hi) = &
-          micro_xs(i_nuclide) % int_scatt % outgoing(:, gmin_hi : gmax_hi) + &
-          f * nuc % int_scatt(i_grid + 1) % outgoing(:, gmin_hi : gmax_hi) * &
-          sigS
-      end if
+      do g = 1, integrated_scatt_groups
+        if (((g >= gmin_lo) .and. (g <= gmax_lo)) .and. &
+          ((g >= gmin_hi) .and. (g <= gmax_hi))) then
+          micro_out(:, g) = one_f * micro_lo(:, g) + f * micro_hi(:, g)
+        else if ((g >= gmin_lo) .and. (g <= gmax_lo)) then
+          micro_out(:, g) = one_f * micro_lo(:, g)
+        else if ((g >= gmin_hi) .and. (g <= gmax_hi)) then
+          micro_out(:, g) = f * micro_hi(:, g)
+        else
+          micro_out(:, g) = ZERO
+        end if
+      end do
       
     end if
 

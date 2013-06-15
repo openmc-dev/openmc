@@ -165,6 +165,7 @@ contains
       write(OUTPUT_UNIT,*) 'Usage: openmc [options] [directory]'
       write(OUTPUT_UNIT,*)
       write(OUTPUT_UNIT,*) 'Options:'
+      write(OUTPUT_UNIT,*) '  -g, --geometry-debug   Run in geometry debugging mode'
       write(OUTPUT_UNIT,*) '  -p, --plot      Run in plotting mode'
       write(OUTPUT_UNIT,*) '  -r, --restart   Restart a previous run'
       write(OUTPUT_UNIT,*) '  -s, --particle  Run a single particle history'

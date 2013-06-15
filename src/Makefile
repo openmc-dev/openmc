@@ -28,8 +28,9 @@ PETSC    = no
 # External Library Paths
 #===============================================================================
 
-MPI_DIR   = /opt/mpich/3.0.2-$(COMPILER)
-HDF5_DIR  = /opt/hdf5/1.8.10-patch1-$(COMPILER)
+MPI_DIR   = /opt/mpich/3.0.4-$(COMPILER)
+HDF5_DIR  = /opt/hdf5/1.8.11-$(COMPILER)
+PHDF5_DIR = /opt/phdf5/1.8.11-$(COMPILER)
 PETSC_DIR = /opt/petsc/3.3-p6-$(COMPILER)
 
 #===============================================================================
@@ -165,20 +166,21 @@ endif
 # Setup External Libraries
 #===============================================================================
 
-# MPI for distributed-memory parallelism
+# MPI for distributed-memory parallelism and HDF5 for I/O
 
 ifeq ($(MPI),yes)
-  F90 = $(MPI_DIR)/bin/mpif90
+  ifeq ($(HDF5),yes)
+    F90 = $(PHDF5_DIR)/bin/h5pfc
+    F90FLAGS += -DHDF5
+  else
+    F90 = $(MPI_DIR)/bin/mpif90
+  endif
   F90FLAGS += -DMPI
-endif
-
-# HDF5 for I/O
-
-ifeq ($(HDF5),yes)
-  F90FLAGS += -DHDF5 -I$(HDF5_DIR)/include
-  LDFLAGS += -L$(HDF5_DIR)/lib $(HDF5_DIR)/lib/libhdf5hl_fortran.a \
-             $(HDF5_DIR)/lib/libhdf5_hl.a $(HDF5_DIR)/lib/libhdf5_fortran.a \
-             $(HDF5_DIR)/lib/libhdf5.a -lz -lrt -lm -Wl,-rpath -Wl,$(HDF5_DIR)/lib
+else
+  ifeq ($(HDF5),yes)
+    F90 = $(HDF5_DIR)/bin/h5fc
+    F90FLAGS += -DHDF5
+  endif
 endif
 
 # PETSC for CMFD functionality

@@ -45,7 +45,7 @@ GIT_SHA1 = $(shell git log -1 2>/dev/null | head -n 1 | awk '{print $$2}')
 
 ifeq ($(COMPILER),gnu)
   F90 = gfortran
-  F90FLAGS := -cpp -fbacktrace -DNO_F2008
+  F90FLAGS := -cpp -fbacktrace
   LDFLAGS =
 
   # Debugging

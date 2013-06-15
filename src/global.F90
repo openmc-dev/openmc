@@ -162,8 +162,8 @@ module global
   
   ! ndpp_lib.xml preprocessed data listings and associated data.
   type(XsListing),  allocatable, target :: ndpp_listings(:) 
-  type(DictCharInt) :: ndpp_listing_dict
-  integer :: n_ndpp_listings
+  type(DictCharInt)                     :: ndpp_listing_dict
+  integer                               :: n_ndpp_listings
 
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES

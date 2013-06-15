@@ -91,6 +91,7 @@ contains
     ! We can use the same XSListing type for our ndpp data since the NDPP
     ! data is a subset of whats in cross_sections.xml
     type(XsListing), pointer :: listing => null()
+    integer :: max_tally_order = 0
     
 
     ! Check if cross_sections.xml exists
@@ -155,9 +156,8 @@ contains
     ! Test to ensure the scattering order is less than the maximum
     if (scatt_order_ > SCATT_ORDER_MAX) then
       message = "Invalid scattering order of " // trim(to_str(scatt_order_)) // &
-                " requested. Setting to the maximum permissible value, " // &
-                trim(to_str(SCATT_ORDER_MAX))
-      call warning()
+                " requested."
+      call fatal_error()
     end if
     
     ! Test that the energy group structure and scattering order requested in 
@@ -181,6 +181,9 @@ contains
                         trim(to_str(scatt_order_)) // ")!"
               call fatal_error()
             end if
+            ! Find the maximum scattering order requested
+            if (t % scatt_order(j) > max_tally_order) &
+              max_tally_order = t  % scatt_order(j)
             
             ! Compare the energyin and energyout filters of this tally to the 
             ! energy_bins_ metadata of the NDPP library.
@@ -221,11 +224,12 @@ contains
     ! Store the number of groups
     integrated_scatt_groups = size(energy_bins_) - 1
     
-    ! Store the order
+    ! Store the order as the maximum requested in tallies
     if (scatt_type_ == SCATT_TYPE_LEGENDRE) then
-      integrated_scatt_order = scatt_order_ + 1
+      integrated_scatt_order = max_tally_order + 1
     else if (scatt_type_ == SCATT_TYPE_TABULAR) then
-      integrated_scatt_order = scatt_order_
+      ! This one uses scatt_order since there technically is no maximum here
+      integrated_scatt_order = scatt_order_ 
     end if
 
     ! Allocate ndpp_listings array
@@ -315,7 +319,8 @@ contains
     integer       :: gmin, gmax    ! Min and max possible group transfers
     real(8)       :: thin_tol      ! Thinning tolerance used in lib, discarded
     integer       :: NEin, iE      ! Number of incoming energies and the index
-    real(8), allocatable    :: Ein(:) ! Incoming energies
+    real(8), allocatable :: Ein(:) ! Incoming energies
+    real(8), allocatable :: temp_outgoing(:,:) ! Temporary storage of scatt data
     
     ! determine path, record length, and location of table
     filename      = listing % path
@@ -396,9 +401,20 @@ contains
         nuc % int_scatt(iE) % gmax = gmax
                 
         if ((gmin > ZERO) .and. (gmax > ZERO)) then
-          allocate(nuc % int_scatt(iE) % outgoing(scatt_order, gmin : gmax))
+          ! Then we can allocate the space. Do it to integrated_scatt_order
+          ! since this is the largest order requested in the tallies.
+          ! Since we only need to store up to the maximum, we also need to have
+          ! an array for reading the file which we can later truncate to fit
+          ! in to nuc % int_scatt(iE) % outgoing.
+          allocate(temp_outgoing(scatt_order, gmin : gmax))
+          
+          allocate(nuc % int_scatt(iE) % outgoing(integrated_scatt_order, &
+            gmin : gmax))
           ! Now we have a space to store the data, get it.
-          read(UNIT=in, FMT=*) nuc % int_scatt(iE) % outgoing
+          read(UNIT=in, FMT=*) temp_outgoing
+          ! And copy in to nuc % int_scatt
+          nuc % int_scatt(iE) % outgoing(:, gmin : gmax) = &
+            temp_outgoing(1 : integrated_scatt_order, gmin : gmax)
         end if
       end do
       close(UNIT=in)

@@ -353,7 +353,7 @@ module ace_header
       
       class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
       
-      integer :: i, j ! Loop counters
+      integer :: i ! Loop counter
       
       if (allocated(this % grid_index)) &
            deallocate(this % grid_index)

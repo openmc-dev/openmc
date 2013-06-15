@@ -1387,7 +1387,7 @@ contains
     ! Display output message
     message = "Reading tallies XML file..."
     call write_message(5)
-
+    
     ! Parse tallies.xml file
     call read_xml_file_tallies_t(filename)
 
@@ -2011,8 +2011,6 @@ contains
             t % scatt_order(j : j + n_order) = n_order
             j = j + n_order
             
-            ! The presence of the ndpp_library_ tag will be checked when
-            ! these are read in read_ndpp()
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT
 

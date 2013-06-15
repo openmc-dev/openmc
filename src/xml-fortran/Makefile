@@ -9,11 +9,11 @@ objects = $(source:.f90=.o)
 # Ignore unused variables
 
 ifeq ($(MACHINE),bluegene)
-  override F90 = xlf2003
+  override FC = xlf2003
 endif
 
-ifeq ($(F90),ifort)
-  override F90FLAGS += -warn nounused
+ifeq ($(FC),ifort)
+  override FCFLAGS += -warn nounused
 endif
 
 #===============================================================================
@@ -22,7 +22,7 @@ endif
 
 all: $(reader)
 $(reader): $(objects)
-	$(F90) $(objects) -o $@
+	$(FC) $(objects) -o $@
 clean:
 	@rm -f *.o *.mod $(reader)
 neat:
@@ -36,7 +36,7 @@ neat:
 .PHONY: all clean neat
 
 %.o: %.f90
-	$(F90) $(F90FLAGS) -c $<
+	$(FC) $(FCFLAGS) -c $<
 
 #===============================================================================
 # Dependencies

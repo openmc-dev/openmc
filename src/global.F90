@@ -268,6 +268,10 @@ module global
   ! screen and in logs
   integer :: verbosity = 7
 
+  ! Flag for enabling cell overlap checking during transport
+  logical                  :: check_overlaps = .false.
+  integer(8), allocatable  :: overlap_check_cnt(:)
+
   ! Trace for single particle
   logical    :: trace
   integer    :: trace_batch
@@ -389,6 +393,9 @@ contains
     if (allocated(surfaces)) deallocate(surfaces)
     if (allocated(materials)) deallocate(materials)
     if (allocated(plots)) deallocate(plots)
+
+    ! Deallocate geometry debugging information
+    if (allocated(overlap_check_cnt)) deallocate(overlap_check_cnt)
 
     ! Deallocate cross section data, listings, and cache
     if (allocated(nuclides)) then

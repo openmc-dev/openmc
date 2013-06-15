@@ -212,21 +212,24 @@ class XsdirTable(object):
     @property
     def alias(self):
         zaid = self.zaid
-        Z = int(zaid[:-3])
-        A = zaid[-3:]
+        if zaid:
+            Z = int(zaid[:-3])
+            A = zaid[-3:]
 
-        if A == '000':
-            s = 'Nat'
-        elif zaid == '95242':
-            s = '242m'
-        elif zaid == '95642':
-            s = '242'
-        elif int(A) > 300:
-            s = str(int(A) - 400) + "m"
+            if A == '000':
+                s = 'Nat'
+            elif zaid == '95242':
+                s = '242m'
+            elif zaid == '95642':
+                s = '242'
+            elif int(A) > 300:
+                s = str(int(A) - 400) + "m"
+            else:
+                s = str(int(A))
+
+            return "{0}-{1}.{2}".format(elements[Z], s, self.xs)
         else:
-            s = str(int(A))
-
-        return "{0}-{1}.{2}".format(elements[Z], s, self.xs)
+            return None
         
     @property
     def zaid(self):

@@ -72,12 +72,9 @@ contains
 
     type(Particle), intent(inout) :: p
 
-    integer :: i            ! index over nuclides in a material
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
-    type(Material), pointer :: mat => null()
     type(Nuclide),  pointer :: nuc => null()
-    type(Reaction), pointer :: rxn => null()
 
     i_nuclide = sample_nuclide(p, 'total  ')
 
@@ -805,7 +802,6 @@ contains
     real(8), intent(in)     :: E     ! incoming energy of neutron
     real(8)                 :: E_out ! outgoing energy of fission neutron
 
-    integer :: i            ! loop index
     integer :: j            ! index on nu energy grid / precursor group
     integer :: lc           ! index before start of energies/nu values
     integer :: NR           ! number of interpolation regions

@@ -415,6 +415,7 @@ contains
           ! And copy in to nuc % int_scatt
           nuc % int_scatt(iE) % outgoing(:, gmin : gmax) = &
             temp_outgoing(1 : integrated_scatt_order, gmin : gmax)
+          deallocate(temp_outgoing)
         end if
       end do
       close(UNIT=in)
@@ -471,9 +472,21 @@ contains
         nuc % int_scatt(iE) % gmax = gmax
                 
         if ((gmin > ZERO) .and. (gmax > ZERO)) then
-          allocate(nuc % int_scatt(iE) % outgoing(scatt_order, gmin : gmax))
+          ! Then we can allocate the space. Do it to integrated_scatt_order
+          ! since this is the largest order requested in the tallies.
+          ! Since we only need to store up to the maximum, we also need to have
+          ! an array for reading the file which we can later truncate to fit
+          ! in to nuc % int_scatt(iE) % outgoing.
+          allocate(temp_outgoing(scatt_order, gmin : gmax))
+          
+          allocate(nuc % int_scatt(iE) % outgoing(integrated_scatt_order, &
+            gmin : gmax))
           ! Now we have a space to store the data, get it.
-          read(UNIT=in) nuc % int_scatt(iE) % outgoing
+          read(UNIT=in) temp_outgoing
+          ! And copy in to nuc % int_scatt
+          nuc % int_scatt(iE) % outgoing(:, gmin : gmax) = &
+            temp_outgoing(1 : integrated_scatt_order, gmin : gmax)
+          deallocate(temp_outgoing)
         end if
       end do
       close(UNIT=in)

@@ -288,7 +288,7 @@ SILO file can be created with:
 
     import silomesh as sm
     sm.init_silo("fluxtally.silo")
-    sm.init_mesh('tally_mesh',*mesh.dimension, *mesh.lower_left, *mesh.upper_right)
+    sm.init_mesh('tally_mesh', *mesh.dimension, *mesh.lower_left, *mesh.upper_right)
     sm.init_var('flux_tally_thermal')
     for x in range(1,nx+1):
       for y in range(1,ny+1):

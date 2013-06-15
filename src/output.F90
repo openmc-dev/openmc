@@ -165,6 +165,7 @@ contains
       write(OUTPUT_UNIT,*) 'Usage: openmc [options] [directory]'
       write(OUTPUT_UNIT,*)
       write(OUTPUT_UNIT,*) 'Options:'
+      write(OUTPUT_UNIT,*) '  -g, --geometry-debug   Run in geometry debugging mode'
       write(OUTPUT_UNIT,*) '  -p, --plot      Run in plotting mode'
       write(OUTPUT_UNIT,*) '  -r, --restart   Restart a previous run from a state point'
       write(OUTPUT_UNIT,*) '                  or a particle restart file'
@@ -1477,6 +1478,42 @@ contains
 102 format (1X,A,T30,"= ",F8.5," +/- ",F8.5)
 
   end subroutine print_results
+
+!===============================================================================
+! PRINT_OVERLAP_DEBUG displays information regarding overlap checking results
+!===============================================================================
+
+  subroutine print_overlap_check
+
+    integer :: i, j
+    integer :: num_sparse = 0
+
+    ! display header block for geometry debugging section
+    call header("Cell Overlap Check Summary")
+
+    write(ou,100) 'Cell ID','No. Overlap Checks'
+
+    do i = 1, n_cells    
+      write(ou,101) cells(i) % id, overlap_check_cnt(i)
+      if (overlap_check_cnt(i) < 10) num_sparse = num_sparse + 1
+    end do
+    write(ou,*)
+    write(ou,'(1X,A)') 'There were ' // trim(to_str(num_sparse)) // &
+                       ' cells with less than 10 overlap checks'
+    j = 0
+    do i = 1, n_cells
+      if (overlap_check_cnt(i) < 10) then
+        j = j + 1
+        write(ou,'(1X,A8)', advance='no') trim(to_str(cells(i) % id))
+        if (modulo(j,8) == 0) write(ou,*)
+      end if
+    end do
+    write(ou,*)
+
+100 format (1X,A,T15,A)
+101 format (1X,I8,T15,I12)
+
+  end subroutine print_overlap_check
 
 !===============================================================================
 ! WRITE_TALLIES creates an output file and writes out the mean values of all

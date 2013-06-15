@@ -3,7 +3,7 @@ module tracking
   use cross_section,   only: calculate_xs
   use error,           only: fatal_error, warning
   use geometry,        only: find_cell, distance_to_boundary, cross_surface, &
-                             cross_lattice
+                             cross_lattice, check_cell_overlap
   use geometry_header, only: Universe, BASE_UNIVERSE
   use global
   use output,          only: write_message
@@ -65,6 +65,8 @@ contains
     micro_xs % last_E = ZERO
 
     do while (p % alive)
+
+      if (check_overlaps) call check_cell_overlap(p)
 
       ! Calculate microscopic and macroscopic cross sections -- note: if the
       ! material is the same as the last material and the energy of the

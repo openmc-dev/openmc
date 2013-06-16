@@ -20,9 +20,7 @@ for src in glob.iglob('*.F90'):
         dependencies[module] = sorted(list(deps))
 
 
-keys = dependencies.keys()
-keys.sort()
-for module in keys:
+for module in dependencies.keys():
     for dep in dependencies[module]:
         print("{0}.o: {1}.o".format(module, dep))
     print('')

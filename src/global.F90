@@ -284,11 +284,13 @@ module global
   integer    :: trace_gen
   integer(8) :: trace_particle
 
+  ! Particle tracks
+  logical :: write_track = .false.
+  logical :: write_all_tracks = .false.
+  integer, allocatable :: track_identifiers(:,:)
+
   ! Particle restart run
   logical :: particle_restart_run = .false.
-
-  ! Particle track output
-  logical :: write_track = .false.
 
   ! ============================================================================
   ! CMFD VARIABLES 

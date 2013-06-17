@@ -99,7 +99,6 @@ eigenvalue.o: cmfd_execute.o
 eigenvalue.o: constants.o
 eigenvalue.o: error.o
 eigenvalue.o: global.o
-eigenvalue.o: hdf5_interface.o
 eigenvalue.o: math.o
 eigenvalue.o: mesh.o
 eigenvalue.o: mesh_header.o
@@ -137,7 +136,6 @@ fission.o: search.o
 
 fixed_source.o: constants.o
 fixed_source.o: global.o
-fixed_source.o: hdf5_interface.o
 fixed_source.o: output.o
 fixed_source.o: physics.o
 fixed_source.o: random_lcg.o
@@ -177,8 +175,9 @@ hdf5_summary.o: constants.o
 hdf5_summary.o: endf.o
 hdf5_summary.o: geometry_header.o
 hdf5_summary.o: global.o
-hdf5_summary.o: hdf5_interface.o
 hdf5_summary.o: material_header.o
+hdf5_summary.o: mesh_header.o
+hdf5_summary.o: output_interface.o
 hdf5_summary.o: output.o
 hdf5_summary.o: string.o
 hdf5_summary.o: tally_header.o
@@ -193,7 +192,9 @@ initialize.o: geometry.o
 initialize.o: geometry_header.o
 initialize.o: global.o
 initialize.o: hdf5_interface.o
+initialize.o: hdf5_summary.o
 initialize.o: input_xml.o
+initialize.o: output_interface.o
 initialize.o: output.o
 initialize.o: random_lcg.o
 initialize.o: source.o
@@ -262,8 +263,12 @@ output.o: plot_header.o
 output.o: string.o
 output.o: tally_header.o
 
+output_interface.o: constants.o
+output_interface.o: error.o
+output_interface.o: global.o
 output_interface.o: hdf5_interface.o
 output_interface.o: mpiio_interface.o
+output_interface.o: tally_header.o
 
 particle_header.o: constants.o
 
@@ -334,9 +339,9 @@ source.o: output.o
 source.o: particle_header.o
 source.o: physics.o
 source.o: random_lcg.o
-source.o: state_point.o
 source.o: string.o
 
+state_point.o: constants.o
 state_point.o: error.o
 state_point.o: global.o
 state_point.o: output.o

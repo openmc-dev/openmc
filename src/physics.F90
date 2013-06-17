@@ -7,7 +7,8 @@ module physics
   use error,                  only: fatal_error, warning
   use fission,                only: nu_total, nu_delayed
   use geometry,               only: find_cell, distance_to_boundary, &
-                                    cross_surface, cross_lattice
+                                    cross_surface, cross_lattice,    &
+                                    check_cell_overlap
   use geometry_header,        only: Universe, BASE_UNIVERSE
   use global
   use interpolation,          only: interpolate_tab1
@@ -17,7 +18,6 @@ module physics
                                     write_particle_track, &
                                     finalize_particle_track
   use particle_header,        only: LocalCoord
-!  use particle_restart,       only: write_particle_track
   use particle_restart_write, only: write_particle_restart
   use random_lcg,             only: prn
   use search,                 only: binary_search
@@ -84,9 +84,9 @@ contains
     do while (p % alive)
 
       ! Write particle track.
-      if (write_track) then
-        call write_particle_track()
-      endif
+      if (write_track) call write_particle_track()
+
+      if (check_overlaps) call check_cell_overlap()
 
       ! Calculate microscopic and macroscopic cross sections -- note: if the
       ! material is the same as the last material and the energy of the

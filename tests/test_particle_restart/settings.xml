@@ -9,7 +9,7 @@
 
   <source>
     <space type="box">
-      <parameters>-20 -20 -5  20  20  5</parameters>
+      <parameters>-10 -10 -5  10  10  5</parameters>
     </space>
   </source>
 

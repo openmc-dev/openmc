@@ -29,7 +29,7 @@ contains
     if (.not. master) return
 
     ! Write warning at beginning
-    write(OUTPUT_UNIT, fmt='(1X,A)', advance='no') 'WARNING: '
+    write(ERROR_UNIT, fmt='(1X,A)', advance='no') 'WARNING: '
 
     ! Set line wrapping and indentation
     line_wrap = 80
@@ -42,7 +42,7 @@ contains
     do
       if (length - i_start < line_wrap - indent + 1) then
         ! Remainder of message will fit on line
-        write(OUTPUT_UNIT, fmt='(A)') message(i_start+1:length)
+        write(ERROR_UNIT, fmt='(A)') message(i_start+1:length)
         exit
 
       else
@@ -58,7 +58,7 @@ contains
           i_end = i_end - 1
         else
           ! Write up to last space
-          write(OUTPUT_UNIT, fmt='(A/A)', advance='no') &
+          write(ERROR_UNIT, fmt='(A/A)', advance='no') &
                message(i_start+1:i_end-1), repeat(' ', indent)
         end if
 

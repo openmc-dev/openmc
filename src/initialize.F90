@@ -5,14 +5,15 @@ module initialize
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueII
   use energy_grid,      only: unionized_grid
-  use error,            only: fatal_error
+  use error,            only: fatal_error, warning
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, write_summary, print_version,     &
-                              print_usage, write_xs_summary, print_plot
+                              print_usage, write_xs_summary, print_plot,       &
+                              write_message
   use output_interface, only: file_open, file_close, read_data
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
@@ -142,8 +143,16 @@ contains
       end if
     end if
 
-    ! check for particle restart run
+    ! Check for particle restart run
     if (particle_restart_run) run_mode = MODE_PARTICLE
+
+    ! Warn if overlap checking is on
+    if (master .and. check_overlaps) then
+      message = ""
+      call write_message()
+      message = "Cell overlap checking is ON"
+      call warning()
+    end if
 
     ! Stop initialization timer
     call time_initialize % stop()
@@ -316,6 +325,8 @@ contains
         select case (argv(i))
         case ('-p', '-plot', '--plot')
           run_mode = MODE_PLOTTING
+          check_overlaps = .true.
+
         case ('-n', '-n_particles', '--n_particles')
           ! Read number of particles per cycle
           i = i + 1
@@ -353,6 +364,9 @@ contains
           i = i + 1
           path_state_point = argv(i)
           restart_run = .true.
+
+        case ('-g', '-geometry-debug', '--geometry-debug')
+          check_overlaps = .true.
 
         case ('-?', '-help', '--help')
           call print_usage()

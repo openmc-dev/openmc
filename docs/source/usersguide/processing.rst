@@ -345,7 +345,8 @@ Getting Data into MATLAB
 ------------------------
 
 There is currently no front-end utility to dump tally data to MATLAB files, but
-the process is straightforward. First extract the data using a custom Python script with statepoint.py, put the data into appropriately-shaped numpy arrays,
+the process is straightforward. First extract the data using a custom Python
+script with statepoint.py, put the data into appropriately-shaped numpy arrays,
 and then use the `Scipy MATLAB IO routines
 <http://docs.scipy.org/doc/scipy/reference/tutorial/io.html>`_ to save to a MAT
 file. Note that the data contained in the output from
@@ -372,7 +373,7 @@ The settings.xml file can dictate that specific particle tracks are output.  The
         1 2 4
       </track>
 
-After running OpenMC, the directory should contain a file of the form "track_(batch #)_(work #).binary" for each particle tracked.  These binary track files can be converted into VTK poly data files with the "track.py" utility.  The usage of track.py is of the form "track.py [-o OUT] IN" where OUT is the optional output filename and IN is one or more filenames describing track binary files.  The default output name is "track.pvtp".  A common usage of track.py is "track.py track*.binary" which will use the data from all binary track files in the directory to write a "track.pvtp" VTK output file.  The .pvtp file can then be read and plotted by 3d visualization programs such as Paraview.
+After running OpenMC, the directory should contain a file of the form "track_(batch #)_(generation #)_(particle #).binary" for each particle tracked.  These binary track files can be converted into VTK poly data files with the "track.py" utility.  The usage of track.py is of the form "track.py [-o OUT] IN" where OUT is the optional output filename and IN is one or more filenames describing track binary files.  The default output name is "track.pvtp".  A common usage of track.py is "track.py track*.binary" which will use the data from all binary track files in the directory to write a "track.pvtp" VTK output file.  The .pvtp file can then be read and plotted by 3d visualization programs such as Paraview.
 
 
 

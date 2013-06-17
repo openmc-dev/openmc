@@ -378,7 +378,7 @@ contains
           ! Handle options that would be based to PETSC
           i = i + 1
         case ('-tr', '-track', '--track')
-          write_track = .true.
+          write_all_tracks = .true.
         case default
           message = "Unknown command line option: " // argv(i)
           call fatal_error()

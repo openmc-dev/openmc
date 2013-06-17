@@ -1994,7 +1994,8 @@ contains
     character(MAX_FILE_LEN) :: filename
 
     filename = trim(path_output) // 'track_' // trim(to_str(current_batch)) &
-         // '_' // trim(to_str(current_work)) // '.binary'
+         // '_' // trim(to_str(current_gen)) // '_' // trim(to_str(p % id)) &
+         // '.binary'
     open(UNIT=UNIT_TRACK, FILE=filename, STATUS='replace', &
          ACCESS='stream')
 

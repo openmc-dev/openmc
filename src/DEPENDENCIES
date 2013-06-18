@@ -272,6 +272,10 @@ output_interface.o: tally_header.o
 
 particle_header.o: constants.o
 
+particle_track.o: constants.o
+particle_track.o: global.o
+particle_track.o: string.o
+
 particle_restart.o: bank_header.o
 particle_restart.o: constants.o
 particle_restart.o: geometry_header.o
@@ -302,6 +306,7 @@ physics.o: material_header.o
 physics.o: mesh.o
 physics.o: output.o
 physics.o: particle_header.o
+physics.o: particle_track.o
 physics.o: particle_restart_write.o
 physics.o: random_lcg.o
 physics.o: search.o

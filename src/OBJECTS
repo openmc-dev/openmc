@@ -43,6 +43,7 @@ mpiio_interface.o \
 output.o \
 output_interface.o \
 particle_header.o \
+particle_track.o \
 particle_restart.o \
 particle_restart_write.o \
 physics.o \

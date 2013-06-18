@@ -265,30 +265,33 @@ contains
     ! We only do this if we have an int-scatter-pn tally, and if we are actively
     ! tallying.
     if ((integrated_scatt) .and. (active_tallies % size() > 0)) then
-      ! Reduce pointer de-referencing:
-      micro_lo => nuc % int_scatt(i_grid) % outgoing
-      micro_hi => nuc % int_scatt(i_grid + 1) % outgoing
-      micro_out => micro_xs(i_nuclide) % int_scatt % outgoing
-      gmin_lo = nuc % int_scatt(i_grid) % gmin
-      gmin_hi = nuc % int_scatt(i_grid + 1) % gmin
-      gmax_lo = nuc % int_scatt(i_grid) % gmax
-      gmax_hi = nuc % int_scatt(i_grid + 1) % gmax
-      sigS = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
-      one_f = (ONE - f) * sigS
-      f = f * sigS
-      
-      do g = 1, integrated_scatt_groups
-        if (((g >= gmin_lo) .and. (g <= gmax_lo)) .and. &
-          ((g >= gmin_hi) .and. (g <= gmax_hi))) then
-          micro_out(:, g) = one_f * micro_lo(:, g) + f * micro_hi(:, g)
-        else if ((g >= gmin_lo) .and. (g <= gmax_lo)) then
-          micro_out(:, g) = one_f * micro_lo(:, g)
-        else if ((g >= gmin_hi) .and. (g <= gmax_hi)) then
-          micro_out(:, g) = f * micro_hi(:, g)
-        else
-          micro_out(:, g) = ZERO
-        end if
-      end do
+      if (i_grid < size(nuc % int_scatt) then
+        ! Reduce pointer de-referencing:
+        micro_lo => nuc % int_scatt(i_grid) % outgoing
+        micro_hi => nuc % int_scatt(i_grid + 1) % outgoing
+        micro_out => micro_xs(i_nuclide) % int_scatt % outgoing
+        gmin_lo = nuc % int_scatt(i_grid) % gmin
+        gmin_hi = nuc % int_scatt(i_grid + 1) % gmin
+        gmax_lo = nuc % int_scatt(i_grid) % gmax
+        gmax_hi = nuc % int_scatt(i_grid + 1) % gmax
+        sigS = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
+        one_f = (ONE - f) * sigS
+        f = f * sigS
+        
+        do g = 1, integrated_scatt_groups
+          if (((g >= gmin_lo) .and. (g <= gmax_lo)) .and. &
+            ((g >= gmin_hi) .and. (g <= gmax_hi))) then
+            micro_out(:, g) = one_f * micro_lo(:, g) + f * micro_hi(:, g)
+          else if ((g >= gmin_lo) .and. (g <= gmax_lo)) then
+            micro_out(:, g) = one_f * micro_lo(:, g)
+          else if ((g >= gmin_hi) .and. (g <= gmax_hi)) then
+            micro_out(:, g) = f * micro_hi(:, g)
+          else
+            micro_out(:, g) = ZERO
+          end if
+        end do
+        
+      end if
       
     end if
 

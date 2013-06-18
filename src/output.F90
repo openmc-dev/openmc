@@ -170,7 +170,7 @@ contains
       write(OUTPUT_UNIT,*) '  -r, --restart          Restart a previous run from a state point'
       write(OUTPUT_UNIT,*) '                         or a particle restart file'
       write(OUTPUT_UNIT,*) '  -t, --tallies          Write tally results from state point'
-      write(OUTPUT_UNIT,*) '  -k, --tracks           Write tracks for all particles'
+      write(OUTPUT_UNIT,*) '  -k, --track            Write tracks for all particles'
       write(OUTPUT_UNIT,*) '  -v, --version          Show version information'
       write(OUTPUT_UNIT,*) '  -?, --help             Show this message'
     end if

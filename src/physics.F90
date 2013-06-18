@@ -14,10 +14,11 @@ module physics
   use interpolation,          only: interpolate_tab1
   use material_header,        only: Material
   use mesh,                   only: get_mesh_indices
-  use output,                 only: write_message, initialize_particle_track, &
+  use output,                 only: write_message
+  use particle_header,        only: LocalCoord
+  use particle_track,         only: initialize_particle_track, &
                                     write_particle_track, &
                                     finalize_particle_track
-  use particle_header,        only: LocalCoord
   use particle_restart_write, only: write_particle_restart
   use random_lcg,             only: prn
   use search,                 only: binary_search
@@ -114,12 +115,6 @@ contains
         coord => coord % next
       end do
 
-      ! Write particle track
-      
-      if (write_track) then
-        call write_particle_track()
-      end if
-
       ! Score track-length tallies
       if (active_tracklength_tallies % size() > 0) &
            call score_tracklength_tally(distance)
@@ -196,6 +191,7 @@ contains
 
     ! Finish particle track.
     if (write_track) then
+      call write_particle_track()
       call finalize_particle_track()
     endif
 

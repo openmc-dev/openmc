@@ -5,6 +5,7 @@ module output
   use ace_header,      only: Nuclide, Reaction, UrrData
   use constants
   use endf,            only: reaction_name
+  use error,           only: warning
   use geometry_header, only: Cell, Universe, Surface, BASE_UNIVERSE
   use global
   use math,            only: t_percentile
@@ -1464,18 +1465,29 @@ contains
     end if
 
     ! write global tallies
-    write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) &
-         % sum, global_tallies(K_COLLISION) % sum_sq
-    write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) &
-         % sum, global_tallies(K_TRACKLENGTH) % sum_sq
-    write(ou,102) "k-effective (Absorption)", global_tallies(K_ABSORPTION) &
-         % sum, global_tallies(K_ABSORPTION) % sum_sq
-    if (n_active > 3) write(ou,102) "Combined k-effective", k_combined
-    write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
-         global_tallies(LEAKAGE) % sum_sq
+    if (n_realizations > 1) then
+      write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) &
+           % sum, global_tallies(K_COLLISION) % sum_sq
+      write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) &
+           % sum, global_tallies(K_TRACKLENGTH) % sum_sq
+      write(ou,102) "k-effective (Absorption)", global_tallies(K_ABSORPTION) &
+           % sum, global_tallies(K_ABSORPTION) % sum_sq
+      if (n_realizations > 3) write(ou,102) "Combined k-effective", k_combined
+      write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
+           global_tallies(LEAKAGE) % sum_sq
+    else
+      message = "Could not compute uncertainties -- only one active batch simulated!"
+      call warning()
+
+      write(ou,103) "k-effective (Collision)", global_tallies(K_COLLISION) % sum
+      write(ou,103) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH)  % sum
+      write(ou,103) "k-effective (Absorption)", global_tallies(K_ABSORPTION) % sum
+      write(ou,103) "Leakage Fraction", global_tallies(LEAKAGE) % sum
+    end if
     write(ou,*)
 
 102 format (1X,A,T30,"= ",F8.5," +/- ",F8.5)
+103 format (1X,A,T30,"= ",F8.5)
 
   end subroutine print_results
 

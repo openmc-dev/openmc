@@ -1461,7 +1461,10 @@ contains
       global_tallies(:) % sum_sq = t_value * global_tallies(:) % sum_sq
 
       ! Adjust combined estimator
-      k_combined(2) = t_value * k_combined(2)
+      if (n_realizations > 3) then
+        t_value = t_percentile(ONE - alpha/TWO, n_realizations - 3)
+        k_combined(2) = t_value * k_combined(2)
+      end if
     end if
 
     ! write global tallies

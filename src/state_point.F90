@@ -312,7 +312,9 @@ contains
     integer :: n_bins ! total number of bins
     real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
     real(8), target :: global_temp(2,N_GLOBAL_TALLIES)
+#ifdef MPI
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
+#endif
     type(TallyObject), pointer :: t => null()
     type(TallyResult), allocatable :: tallyresult_temp(:,:)
 

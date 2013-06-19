@@ -1603,18 +1603,15 @@ contains
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)
 
-      ! Multiply uncertainty by t-value
       if (confidence_intervals) then
-        do k = 1, size(t % results, 2)
-          do j = 1, size(t % results, 1)
-            ! Calculate t-value for confidence intervals
-            if (confidence_intervals) then
-              alpha = ONE - CONFIDENCE_LEVEL
-              t_value = t_percentile(ONE - alpha/TWO, t % n_realizations - 1)
-            end if
-            t % results(j,k) % sum_sq = t_value * t % results(j,k) % sum_sq
-          end do
-        end do
+        ! Calculate t-value for confidence intervals
+        if (confidence_intervals) then
+          alpha = ONE - CONFIDENCE_LEVEL
+          t_value = t_percentile(ONE - alpha/TWO, t % n_realizations - 1)
+        end if
+
+        ! Multiply uncertainty by t-value
+        t % results % sum_sq = t_value * t % results % sum_sq
       end if
 
       ! Write header block

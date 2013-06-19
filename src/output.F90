@@ -5,6 +5,7 @@ module output
   use ace_header,      only: Nuclide, Reaction, UrrData
   use constants
   use endf,            only: reaction_name
+  use error,           only: warning
   use geometry_header, only: Cell, Universe, Surface, BASE_UNIVERSE
   use global
   use math,            only: t_percentile
@@ -165,12 +166,12 @@ contains
       write(OUTPUT_UNIT,*) 'Usage: openmc [options] [directory]'
       write(OUTPUT_UNIT,*)
       write(OUTPUT_UNIT,*) 'Options:'
-      write(OUTPUT_UNIT,*) '  -p, --plot      Run in plotting mode'
-      write(OUTPUT_UNIT,*) '  -r, --restart   Restart a previous run from a state point'
-      write(OUTPUT_UNIT,*) '                  or a particle restart file'
-      write(OUTPUT_UNIT,*) '  -t, --tallies   Write tally results from state point'
-      write(OUTPUT_UNIT,*) '  -v, --version   Show version information'
-      write(OUTPUT_UNIT,*) '  -?, --help      Show this message'
+      write(OUTPUT_UNIT,*) '  -g, --geometry-debug   Run in geometry debugging mode'
+      write(OUTPUT_UNIT,*) '  -p, --plot             Run in plotting mode'
+      write(OUTPUT_UNIT,*) '  -r, --restart          Restart a previous run from a state point'
+      write(OUTPUT_UNIT,*) '                         or a particle restart file'
+      write(OUTPUT_UNIT,*) '  -v, --version          Show version information'
+      write(OUTPUT_UNIT,*) '  -?, --help             Show this message'
     end if
 
   end subroutine print_usage
@@ -1467,24 +1468,74 @@ contains
       global_tallies(:) % sum_sq = t_value * global_tallies(:) % sum_sq
 
       ! Adjust combined estimator
-      k_combined(2) = t_value * k_combined(2)
+      if (n_realizations > 3) then
+        t_value = t_percentile(ONE - alpha/TWO, n_realizations - 3)
+        k_combined(2) = t_value * k_combined(2)
+      end if
     end if
 
     ! write global tallies
-    write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) &
-         % sum, global_tallies(K_COLLISION) % sum_sq
-    write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) &
-         % sum, global_tallies(K_TRACKLENGTH) % sum_sq
-    write(ou,102) "k-effective (Absorption)", global_tallies(K_ABSORPTION) &
-         % sum, global_tallies(K_ABSORPTION) % sum_sq
-    if (n_active > 3) write(ou,102) "Combined k-effective", k_combined
-    write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
-         global_tallies(LEAKAGE) % sum_sq
+    if (n_realizations > 1) then
+      write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) &
+           % sum, global_tallies(K_COLLISION) % sum_sq
+      write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) &
+           % sum, global_tallies(K_TRACKLENGTH) % sum_sq
+      write(ou,102) "k-effective (Absorption)", global_tallies(K_ABSORPTION) &
+           % sum, global_tallies(K_ABSORPTION) % sum_sq
+      if (n_realizations > 3) write(ou,102) "Combined k-effective", k_combined
+      write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
+           global_tallies(LEAKAGE) % sum_sq
+    else
+      message = "Could not compute uncertainties -- only one active batch simulated!"
+      call warning()
+
+      write(ou,103) "k-effective (Collision)", global_tallies(K_COLLISION) % sum
+      write(ou,103) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH)  % sum
+      write(ou,103) "k-effective (Absorption)", global_tallies(K_ABSORPTION) % sum
+      write(ou,103) "Leakage Fraction", global_tallies(LEAKAGE) % sum
+    end if
     write(ou,*)
 
 102 format (1X,A,T30,"= ",F8.5," +/- ",F8.5)
+103 format (1X,A,T30,"= ",F8.5)
 
   end subroutine print_results
+
+!===============================================================================
+! PRINT_OVERLAP_DEBUG displays information regarding overlap checking results
+!===============================================================================
+
+  subroutine print_overlap_check
+
+    integer :: i, j
+    integer :: num_sparse = 0
+
+    ! display header block for geometry debugging section
+    call header("Cell Overlap Check Summary")
+
+    write(ou,100) 'Cell ID','No. Overlap Checks'
+
+    do i = 1, n_cells    
+      write(ou,101) cells(i) % id, overlap_check_cnt(i)
+      if (overlap_check_cnt(i) < 10) num_sparse = num_sparse + 1
+    end do
+    write(ou,*)
+    write(ou,'(1X,A)') 'There were ' // trim(to_str(num_sparse)) // &
+                       ' cells with less than 10 overlap checks'
+    j = 0
+    do i = 1, n_cells
+      if (overlap_check_cnt(i) < 10) then
+        j = j + 1
+        write(ou,'(1X,A8)', advance='no') trim(to_str(cells(i) % id))
+        if (modulo(j,8) == 0) write(ou,*)
+      end if
+    end do
+    write(ou,*)
+
+100 format (1X,A,T15,A)
+101 format (1X,I8,T15,I12)
+
+  end subroutine print_overlap_check
 
 !===============================================================================
 ! WRITE_TALLIES creates an output file and writes out the mean values of all
@@ -1544,12 +1595,7 @@ contains
     score_names(abs(SCORE_EVENTS))        = "Events"
 
     ! Create filename for tally output
-    if (run_mode == MODE_TALLIES) then
-      filename = trim(path_output) // "tallies." // &
-           trim(to_str(restart_batch)) // ".out"
-    else
-      filename = trim(path_output) // "tallies.out"
-    end if
+    filename = trim(path_output) // "tallies.out"
 
     ! Open tally file for writing
     open(FILE=filename, UNIT=UNIT_TALLY, STATUS='replace', ACTION='write')
@@ -1563,18 +1609,15 @@ contains
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)
 
-      ! Multiply uncertainty by t-value
       if (confidence_intervals) then
-        do k = 1, size(t % results, 2)
-          do j = 1, size(t % results, 1)
-            ! Calculate t-value for confidence intervals
-            if (confidence_intervals) then
-              alpha = ONE - CONFIDENCE_LEVEL
-              t_value = t_percentile(ONE - alpha/TWO, t % n_realizations - 1)
-            end if
-            t % results(j,k) % sum_sq = t_value * t % results(j,k) % sum_sq
-          end do
-        end do
+        ! Calculate t-value for confidence intervals
+        if (confidence_intervals) then
+          alpha = ONE - CONFIDENCE_LEVEL
+          t_value = t_percentile(ONE - alpha/TWO, t % n_realizations - 1)
+        end if
+
+        ! Multiply uncertainty by t-value
+        t % results % sum_sq = t_value * t % results % sum_sq
       end if
 
       ! Write header block

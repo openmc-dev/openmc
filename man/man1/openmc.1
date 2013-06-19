@@ -13,15 +13,16 @@ It is assumed that if no
 is specified, the XML input files are present in the current directory.
 .SH OPTIONS
 .TP
+.B "\-g\fR, \fP\-\-geometry-debug"
+Run in geometry debugging mode, where cell overlaps are checked for after each
+move of a particle
+.TP
 .B "\-p\fR, \fP\-\-plot"
 Run in plotting mode
 .TP
-.BI \-r " statepoint" "\fR,\fP \-\-restart" " statepoint"
-Restart a previous run using data stored in \fIstatepoint\fP.
-.TP
-.BI \-s " particleFile" "\fR,\fP \-\-particle" " particleFile"
-Run a single particle history from a particle restart file named
-\fIparticleFile\fP.
+.BI \-r " binaryFile" "\fR,\fP \-\-restart" " binaryFile"
+Restart a previous run from a state point or a particle restart file named
+\fIbinaryFile\fP.
 .TP
 .B "\-v\fR, \fP\-\-version"
 Show version information.
@@ -62,6 +63,6 @@ The OpenMC source code is hosted on GitHub at
 https://github.com/mit-crpg/openmc. With a github account, you can submit issues
 directly on the github repository that will then be reviewed by OpenMC
 developers. Alternatively, you can send a bug report to
-.I openmc-dev@mit.edu\fP.
+.I openmc-users@googlegroups.com\fP.
 .SH AUTHOR
 Paul K. Romano (\fIpaul.k.romano@gmail.com\fP)

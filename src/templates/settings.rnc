@@ -99,6 +99,8 @@ element settings {
 
   element trace { list { xsd:positiveInteger+ } }? &
 
+  element track { list { xsd:positiveInteger+ } }? &
+
   element verbosity { xsd:positiveInteger }? &
 
   element uniform_fs{

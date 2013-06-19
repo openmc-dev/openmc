@@ -1958,6 +1958,11 @@ contains
             end if
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
+            
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              ! Set tally estimator to analog
+              t % estimator = ESTIMATOR_ANALOG
+            end if
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
 
@@ -1966,6 +1971,11 @@ contains
           case ('scatter-n')
             if (n_order == 0) then
               t % score_bins(j) = SCORE_SCATTER
+              
+              if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+                ! Set tally estimator to analog
+                t % estimator = ESTIMATOR_ANALOG
+              end if
             else
               t % score_bins(j) = SCORE_SCATTER_N
               ! Set tally estimator to analog

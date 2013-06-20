@@ -575,17 +575,18 @@ contains
                 score_index_init = (k - 1)*t % n_score_bins + j
                 
                 g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
-                do g = micro_xs(i_nuclide) % int_scatt % gmin, &
-                       micro_xs(i_nuclide) % int_scatt % gmax
-                  score_index = score_index_init
-                  t % results(score_index : score_index + t % scatt_order(j), &
-                    filter_index + (g - 1) * g_stride) % value = &
-                    t % results(score_index : score_index + t % scatt_order(j), &
-                    filter_index + (g - 1) * g_stride) % value + &
-                    micro_xs(i_nuclide) % int_scatt % outgoing(:, g) * &
-                    atom_density * flux
-                end do
-                
+!~                 do g = micro_xs(i_nuclide) % int_scatt % gmin, &
+!~                        micro_xs(i_nuclide) % int_scatt % gmax
+!~                   score_index = score_index_init
+!~                   t % results(score_index : score_index + t % scatt_order(j), &
+!~                     filter_index + (g - 1) * g_stride) % value = &
+!~                     t % results(score_index : score_index + t % scatt_order(j), &
+!~                     filter_index + (g - 1) * g_stride) % value + &
+!~                     micro_xs(i_nuclide) % int_scatt % outgoing(:, g) * &
+!~                     atom_density * flux
+!~                 end do
+                call tally_micro_int_pn(i_nuclide, score_index_init, filter_index, g_stride, &
+                  t % scatt_order(j), atom_density * flux, t % results)
                 j = j + t % scatt_order(j)
                 cycle SCORE_LOOP
               

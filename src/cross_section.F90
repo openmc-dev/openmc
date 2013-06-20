@@ -27,9 +27,6 @@ contains
     real(8) :: atom_density  ! atom density of a nuclide
     logical :: check_sab     ! should we check for S(a,b) table?
     type(Material),  pointer :: mat => null() ! current material
-    integer :: g             ! Group index
-    real(8), pointer         :: micro_out(:, :) => null()
-    real(8), pointer         :: macro_out(:, :) => null()
 
     ! Set all material macroscopic cross sections to zero
     material_xs % total      = ZERO
@@ -38,10 +35,6 @@ contains
     material_xs % fission    = ZERO
     material_xs % nu_fission = ZERO
     material_xs % kappa_fission  = ZERO
-    ! We only do this if we have an int-scatter-pn tally, and if we are actively
-    ! tallying.
-    if ((integrated_scatt) .and. (active_tallies % size() > 0)) &
-      material_xs % int_scatt % outgoing = ZERO
 
     ! Exit subroutine if material is void
     if (p % material == MATERIAL_VOID) return
@@ -124,18 +117,6 @@ contains
       material_xs % kappa_fission = material_xs % kappa_fission + &
            atom_density * micro_xs(i_nuclide) % kappa_fission
            
-      ! Add contributions to material macroscopic \sigma_{s,Ein->g,l} at Ein
-      ! We only do this if we have an int-scatter-pn tally, and if we are actively
-      ! tallying.
-!~       if ((integrated_scatt) .and. (active_tallies % size() > 0)) then
-!~         ! Use pointers to reduce the dereferencing needed, probably done by 
-!~         ! the compiler anyway, but just in case
-!~         micro_out => micro_xs(i_nuclide) % int_scatt % outgoing
-!~         macro_out => material_xs % int_scatt % outgoing
-!~         do g = 1, integrated_scatt_groups
-!~           macro_out(:, g) = macro_out(:, g) + atom_density * micro_out(:, g)
-!~         end do
-!~       end if
     end do
 
   end subroutine calculate_xs
@@ -153,14 +134,6 @@ contains
     integer :: i_grid ! index on nuclide energy grid
     real(8) :: f      ! interp factor on nuclide energy grid
     type(Nuclide),   pointer :: nuc => null()
-    real(8) :: sigS   ! scattering cross-section (tot - abs)
-    integer :: gmin_lo, gmax_lo, gmin_hi, gmax_hi ! group transfer boundaries
-                                                  ! at i_grid and i_grid + 1
-    integer :: g      ! group index
-    real(8), pointer    :: micro_lo(:, :) => null()
-    real(8), pointer    :: micro_hi(:, :) => null()
-    real(8), pointer    :: micro_out(:, :) => null()
-    real(8) :: one_f  ! (ONE - f) * sigS
     
     ! Set pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -260,40 +233,6 @@ contains
     else
       micro_xs(i_nuclide) % last_E = ZERO
     end if
-    
-    ! Calculate microscopic nuclide \sigma_{s,Ein->g,l} at Ein
-    ! We only do this if we have an int-scatter-pn tally, and if we are actively
-    ! tallying.
-!~     if ((integrated_scatt) .and. (active_tallies % size() > 0)) then
-!~       if (i_grid < size(nuc % int_scatt)) then
-!~         ! Reduce pointer de-referencing:
-!~         micro_lo => nuc % int_scatt(i_grid) % outgoing
-!~         micro_hi => nuc % int_scatt(i_grid + 1) % outgoing
-!~         micro_out => micro_xs(i_nuclide) % int_scatt % outgoing
-!~         gmin_lo = nuc % int_scatt(i_grid) % gmin
-!~         gmin_hi = nuc % int_scatt(i_grid + 1) % gmin
-!~         gmax_lo = nuc % int_scatt(i_grid) % gmax
-!~         gmax_hi = nuc % int_scatt(i_grid + 1) % gmax
-!~         sigS = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
-!~         one_f = (ONE - f) * sigS
-!~         f = f * sigS
-!~         
-!~         do g = 1, integrated_scatt_groups
-!~           if (((g >= gmin_lo) .and. (g <= gmax_lo)) .and. &
-!~             ((g >= gmin_hi) .and. (g <= gmax_hi))) then
-!~             micro_out(:, g) = one_f * micro_lo(:, g) + f * micro_hi(:, g)
-!~           else if ((g >= gmin_lo) .and. (g <= gmax_lo)) then
-!~             micro_out(:, g) = one_f * micro_lo(:, g)
-!~           else if ((g >= gmin_hi) .and. (g <= gmax_hi)) then
-!~             micro_out(:, g) = f * micro_hi(:, g)
-!~           else
-!~             micro_out(:, g) = ZERO
-!~           end if
-!~         end do
-!~         
-!~       end if
-!~       
-!~     end if
 
   end subroutine calculate_nuclide_xs
 

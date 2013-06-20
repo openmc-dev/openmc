@@ -52,22 +52,7 @@ contains
       ! the temperatures match
       ndpp_listing => ndpp_listings(i_listing)
       call read_ndpp_table(nuc, ndpp_listing) 
-      ! Allocate the micro_xs % int_scatt in the same fashion.
-      ! Allocating to full gmin=1, gmax=max to have fast tally loops
-      ! and updates when energy changes. This will consume more memory, however.
-      micro_xs(i_nuclide) % int_scatt % gmin = 1
-      micro_xs(i_nuclide) % int_scatt % gmax = integrated_scatt_groups
-      allocate(micro_xs(i_nuclide) % int_scatt % outgoing( &
-        integrated_scatt_order, 1 : integrated_scatt_groups))
     end do
-    
-    ! Allocate material_xs % int_scatt now since the group information is 
-    ! available. Allocating to full gmin=1, gmax=max to have fast tally loops
-    ! and updates when energy changes. This will consume more memory, however.
-    material_xs % int_scatt % gmin = 1
-    material_xs % int_scatt % gmax = integrated_scatt_groups
-    allocate(material_xs % int_scatt % outgoing(integrated_scatt_order, &
-      material_xs % int_scatt % gmin : material_xs % int_scatt % gmax))
     
   end subroutine read_ndpp_data
 

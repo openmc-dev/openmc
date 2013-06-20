@@ -673,14 +673,17 @@ contains
               case (SCORE_INTSCATT_PN)
                 score_index_init = (k - 1)*t % n_score_bins + j
                 g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
-                do g = 1, integrated_scatt_groups
-                  score_index = score_index_init
-                  t % results(score_index : score_index + t % scatt_order(j), &
-                    filter_index + (g - 1) * g_stride) % value = &
-                    t % results(score_index : score_index + t % scatt_order(j), &
-                    filter_index + (g - 1) * g_stride) % value + &
-                    material_xs % int_scatt % outgoing(:, g) * flux
-                end do
+!~                 do g = 1, integrated_scatt_groups
+!~                   score_index = score_index_init
+!~                   t % results(score_index : score_index + t % scatt_order(j), &
+!~                     filter_index + (g - 1) * g_stride) % value = &
+!~                     t % results(score_index : score_index + t % scatt_order(j), &
+!~                     filter_index + (g - 1) * g_stride) % value + &
+!~                     material_xs % int_scatt % outgoing(:, g) * flux
+!~                 end do
+                mat => materials(p % material)
+                call tally_macro_int_pn(mat, score_index_init, filter_index, &
+                  g_stride, t % scatt_order(j), flux, t % results)
                 
                 j = j + t % scatt_order(j)
                 cycle SCORE_LOOP
@@ -2176,5 +2179,96 @@ contains
     end do
 
   end subroutine setup_active_cmfdtallies
+
+!===============================================================================
+! TALLY_MICRO_INT_PN determines the microscopic scattering moments which were
+! previously calculated with a pre-processor such as NDPP
+!===============================================================================
+
+  subroutine tally_micro_int_pn(i_nuclide, init_score_index, filter_index, g_stride, &
+    t_order, N_flux, results)
+    
+    integer, intent(in)    :: i_nuclide        ! index into nuclides array
+    integer, intent(in)    :: init_score_index ! dim = 1 starting index in results
+    integer, intent(in)    :: filter_index     ! dim = 2 starting index (incoming E filter)
+    integer, intent(in)    :: g_stride         ! dim = 2 stride for outgoing groups
+    integer, intent(in)    :: t_order          ! # of scattering orders to tally
+    real(8), intent(in)    :: N_flux           ! atom_density * flux
+    type(TallyResult), intent(inout) :: results(:,:)     ! Tally results storage
+    
+    integer :: g      ! outgoing energy group index
+    integer :: i_grid ! index on nuclide energy grid
+    real(8) :: f      ! interp factor on nuclide energy grid
+    real(8) :: one_f  ! (ONE - f) * sigS
+    type(Nuclide), pointer :: nuc
+    real(8) :: sigS   ! scattering cross-section (tot - abs)
+    integer :: score_index ! current index of dim = 1 in results
+    
+    nuc => nuclides(i_nuclide)
+!!! I SUSPECT THAT THE filter_index and g_stride NEED WORK FOR THIS CASE
+!!! WHEN CALLED FROM THE NUCLIDIC TALLY IF-BLOCK (works fine for being
+!!! called frmo tally_macro_int_pn)
+
+!!! If we get a new energy grid, then we will need to add our own binary search
+! and calculation of interpolation factor, f, here.
+    
+    i_grid = micro_xs(i_nuclide) % index_grid
+    f = micro_xs(i_nuclide) % interp_factor
+    
+    sigS = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
+    one_f = (ONE - f) * sigS * N_flux
+    f = f * sigS * N_flux
+    
+    ! Add the contribution from the lower score
+    do g = nuc % int_scatt(i_grid) % gmin, &
+           nuc % int_scatt(i_grid) % gmax
+      score_index = init_score_index
+      results(score_index : score_index + t_order, &
+        filter_index + (g - 1) * g_stride) % value = &
+        results(score_index : score_index + t_order, &
+        filter_index + (g - 1) * g_stride) % value + &
+        nuc % int_scatt(i_grid) % outgoing(:, g) * one_f
+    end do
+    
+    ! Now add the contribution from the higher score
+    do g = nuc % int_scatt(i_grid + 1) % gmin, &
+           nuc % int_scatt(i_grid + 1) % gmax
+      score_index = init_score_index
+      results(score_index : score_index + t_order, &
+        filter_index + (g - 1) * g_stride) % value = &
+        results(score_index : score_index + t_order, &
+        filter_index + (g - 1) * g_stride) % value + &
+        nuc % int_scatt(i_grid + 1) % outgoing(:, g) * f
+    end do
+   
+  end subroutine tally_micro_int_pn
+  
+!===============================================================================
+! TALLY_MACRO_INT_PN determines the macroscopic scattering moments which were
+! previously calculated with a pre-processor such as NDPP
+!===============================================================================
+
+  subroutine tally_macro_int_pn(mat, init_score_index, filter_index, g_stride, &
+    t_order, flux, results)
+    
+    type(Material), pointer, intent(in) :: mat ! Working material
+    integer, intent(in)    :: init_score_index ! dim = 1 starting index in results
+    integer, intent(in)    :: filter_index     ! dim = 2 starting index (incoming E filter)
+    integer, intent(in)    :: g_stride         ! dim = 2 stride for outgoing groups
+    integer, intent(in)    :: t_order          ! # of scattering orders to tally
+    real(8), intent(in)    :: flux             ! flux
+    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
+    
+    integer :: i      ! index in nuclide list of materials
+    integer :: i_nuclide ! index in nuclides array of our working nuclide
+    real(8) :: N_flux ! atom_density * flux
+    
+    do i = 1, mat % n_nuclides
+      i_nuclide = mat % nuclide(i)
+      N_flux = mat % atom_density(i) * flux
+      call tally_micro_int_pn(i_nuclide, init_score_index, filter_index, g_stride, &
+        t_order, N_flux, results)
+    end do
+  end subroutine tally_macro_int_pn
 
 end module tally

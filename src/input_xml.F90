@@ -1746,7 +1746,10 @@ contains
               t % filters(j) % real_bins(k) = str_to_real(&
                    tally_(i) % filter(j) % bins(k))
             end do
-
+            
+            ! Set to analog estimator
+            t % estimator = ESTIMATOR_ANALOG
+            
           case default
             ! Specified tally filter is invalid, raise error
             message = "Unknown filter type '" // trim(tally_(i) % &
@@ -1959,10 +1962,6 @@ contains
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
             
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
-            end if
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
 
@@ -1972,10 +1971,6 @@ contains
             if (n_order == 0) then
               t % score_bins(j) = SCORE_SCATTER
               
-              if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-                ! Set tally estimator to analog
-                t % estimator = ESTIMATOR_ANALOG
-              end if
             else
               t % score_bins(j) = SCORE_SCATTER_N
               ! Set tally estimator to analog

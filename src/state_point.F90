@@ -675,7 +675,7 @@ contains
     end if
 
     ! Read source if in eigenvalue mode 
-    if (run_mode == MODE_EIGENVALUE .and. run_mode /= MODE_TALLIES) then
+    if (run_mode == MODE_EIGENVALUE) then
 
       ! Check if source was written out separately
       if (source_separate) then

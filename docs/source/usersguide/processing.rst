@@ -362,7 +362,7 @@ Particle Track Visualization
 
 OpenMC can dump particle tracks—the position of particles as they are transported through the geometry.  There are two ways to make OpenMC output tracks: all particle tracks through a commandline argument or specific particle tracks through settings.xml.
 
-Running OpenMC with the argument "-k", "-track", or "--track" will cause a track file to be created for every particle transported in the code.
+Running OpenMC with the argument "-t", "-track", or "--track" will cause a track file to be created for every particle transported in the code.
 
 The settings.xml file can dictate that specific particle tracks are output.  These particles are specified withen a ''track'' element.  The ''track'' element should contain triplets of integers specifying the batch, generation, and particle numbers, respectively.  For example, to output the tracks for particles 3 and 4 of batch 1 and generation 2 the settings.xml file should contain:
 

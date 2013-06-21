@@ -170,7 +170,7 @@ contains
       write(OUTPUT_UNIT,*) '  -p, --plot             Run in plotting mode'
       write(OUTPUT_UNIT,*) '  -r, --restart          Restart a previous run from a state point'
       write(OUTPUT_UNIT,*) '                         or a particle restart file'
-      write(OUTPUT_UNIT,*) '  -k, --track            Write tracks for all particles'
+      write(OUTPUT_UNIT,*) '  -t, --track            Write tracks for all particles'
       write(OUTPUT_UNIT,*) '  -v, --version          Show version information'
       write(OUTPUT_UNIT,*) '  -?, --help             Show this message'
     end if

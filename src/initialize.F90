@@ -369,7 +369,7 @@ contains
         case ('-eps_tol', '-ksp_gmres_restart')
           ! Handle options that would be based to PETSC
           i = i + 1
-        case ('-k', '-track', '--track')
+        case ('-t', '-track', '--track')
           write_all_tracks = .true.
           i = i + 1
         case default

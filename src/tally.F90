@@ -45,7 +45,6 @@ contains
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: i_nuclide            ! index in nuclides array
     integer :: score_index          ! scoring bin index
-    integer :: g_stride             ! outgoing energy stride
     real(8) :: score                ! analog tally score
     real(8) :: last_wgt             ! pre-collision particle weight
     real(8) :: wgt                  ! post-collision particle weight
@@ -207,15 +206,12 @@ contains
           case (SCORE_INTSCATT_PN)
             ! Skip any event where the particle didn't scatter
             if (p % event == EVENT_SCATTER) then
-              
-              g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
-              
               ! For the case of analog intscatt_pn tallying, filter_index needs
               ! to be adjusted to point to the first energyout filter
               call tally_analog_int_pn(p % event_nuclide, score_index, &
-                filter_index - t % matching_bins(t % find_filter(FILTER_ENERGYOUT)) * &
-                g_stride + g_stride, g_stride, t % scatt_order(j), last_wgt, &
-                t % results)
+                filter_index - &
+                t % matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+                t % scatt_order(j), last_wgt, t % results)
             end if
             
             j = j + t % scatt_order(j)
@@ -452,7 +448,6 @@ contains
     integer :: l                    ! loop index for nuclides in material
     integer :: u                    ! Loop index for user score bins
     integer :: m                    ! loop index for reactions
-    integer :: g_stride             ! outgoing energy stride
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array (from bins)
     integer :: i_nuc                ! index in nuclides array (from material)
@@ -562,10 +557,8 @@ contains
                      atom_density * flux
               
               case (SCORE_INTSCATT_PN)
-                g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
-                
                 call tally_micro_int_pn(i_nuclide, score_index, filter_index, &
-                  g_stride, t % scatt_order(j), atom_density * flux, t % results)
+                  t % scatt_order(j), atom_density * flux, t % results)
                 j = j + t % scatt_order(j)
                 cycle SCORE_LOOP
               
@@ -651,10 +644,9 @@ contains
                 score = (material_xs % total - material_xs % absorption) * flux
 
               case (SCORE_INTSCATT_PN)
-                g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
                 mat => materials(p % material)
                 call tally_macro_int_pn(mat, score_index, filter_index, &
-                  g_stride, t % scatt_order(j), flux, t % results)
+                  t % scatt_order(j), flux, t % results)
                 
                 j = j + t % scatt_order(j)
                 cycle SCORE_LOOP
@@ -773,7 +765,6 @@ contains
     integer :: score_bin     ! type of score, e.g. SCORE_FLUX
     integer :: score_index   ! scoring bin index
     integer :: i_energy      ! index in nuclide energy grid
-    integer :: g_stride      ! outgoing energy stride
     real(8) :: f             ! interpolation factor
     real(8) :: score         ! actual scoring tally value
     real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
@@ -822,10 +813,8 @@ contains
                micro_xs(i_nuclide) % absorption) * atom_density * flux
         
         case (SCORE_INTSCATT_PN)          
-          g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
-          
           call tally_micro_int_pn(i_nuclide, score_index, filter_index, &
-            g_stride, t % scatt_order(j), atom_density * flux, t % results)
+            t % scatt_order(j), atom_density * flux, t % results)
           
           j = j + t % scatt_order(j)
           cycle SCORE_LOOP
@@ -919,10 +908,9 @@ contains
         score = (material_xs % total - material_xs % absorption) * flux
 
       case (SCORE_INTSCATT_PN)
-        g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
         mat => materials(p % material)
         call tally_macro_int_pn(mat, score_index, filter_index, &
-          g_stride, t % scatt_order(j), flux, t % results)
+          t % scatt_order(j), flux, t % results)
         
         j = j + t % scatt_order(j)
         cycle MATERIAL_SCORE_LOOP
@@ -1018,7 +1006,6 @@ contains
     integer :: k                    ! loop index for mesh cell crossings
     integer :: b                    ! loop index for nuclide bins
     integer :: u                    ! Loop index for user score bins
-    integer :: g_stride             ! outgoing energy stride
     integer :: score_index_init     ! scoring bin index for intscatt-pn
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
@@ -1261,11 +1248,9 @@ contains
                        micro_xs(i_nuclide) % absorption) * &
                        atom_density * flux
                 case (SCORE_INTSCATT_PN)
-                  g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
-                  
                   call tally_micro_int_pn(i_nuclide, score_index_init, &
-                    filter_index, g_stride, t % scatt_order(j), &
-                    atom_density * flux, t % results)
+                    filter_index, t % scatt_order(j), atom_density * flux, &
+                    t % results)
                   
                   j = j + t % scatt_order(j)
                   cycle SCORE_LOOP
@@ -1298,10 +1283,9 @@ contains
                 case (SCORE_SCATTER)
                   score = (material_xs % total - material_xs % absorption) * flux
                 case (SCORE_INTSCATT_PN)
-                  g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
                   mat => materials(p % material)
                   call tally_macro_int_pn(mat, score_index_init, filter_index, &
-                    g_stride, t % scatt_order(j), flux, t % results)
+                    t % scatt_order(j), flux, t % results)
                   
                   j = j + t % scatt_order(j)
                   cycle SCORE_LOOP
@@ -2120,22 +2104,22 @@ contains
 ! tallies
 !===============================================================================
 
-  subroutine tally_analog_int_pn(i_nuclide, score_index, filter_index, &
-    g_stride, t_order, wgt, results)
+  subroutine tally_analog_int_pn(i_nuclide, score_index, filter_index, t_order, &
+    wgt, results)
     
     integer, intent(in)    :: i_nuclide        ! index into nuclides array
     integer, intent(in)    :: score_index ! dim = 1 starting index in results
     integer, intent(in)    :: filter_index     ! dim = 2 starting index (incoming E filter)
-    integer, intent(in)    :: g_stride         ! dim = 2 stride for outgoing groups
     integer, intent(in)    :: t_order          ! # of scattering orders to tally
     real(8), intent(in)    :: wgt              ! particle weight
     type(TallyResult), intent(inout) :: results(:,:)     ! Tally results storage
     
-    integer :: g      ! outgoing energy group index
-    integer :: i_grid ! index on nuclide energy grid
-    real(8) :: f      ! interp factor on nuclide energy grid
-    real(8) :: one_f  ! (ONE - f)
-    type(Nuclide), pointer :: nuc
+    integer :: g        ! outgoing energy group index
+    integer :: g_filter ! outgoing energy group index
+    integer :: i_grid   ! index on nuclide energy grid
+    real(8) :: f        ! interp factor on nuclide energy grid
+    real(8) :: one_f    ! (ONE - f)
+    type(Nuclide), pointer :: nuc ! Working nuclide
     
     nuc => nuclides(i_nuclide)
 
@@ -2149,22 +2133,18 @@ contains
     f = f * wgt
     
     ! Add the contribution from the lower score
-    do g = nuc % int_scatt(i_grid) % gmin, &
-           nuc % int_scatt(i_grid) % gmax
-      results(score_index : score_index + t_order, &
-        filter_index + (g - 1) * g_stride) % value = &
-        results(score_index : score_index + t_order, &
-        filter_index + (g - 1) * g_stride) % value + &
+    do g = nuc % int_scatt(i_grid) % gmin, nuc % int_scatt(i_grid) % gmax
+      g_filter = filter_index + g - 1
+      results(score_index : score_index + t_order, g_filter) % value = &
+        results(score_index : score_index + t_order, g_filter) % value + &
         nuc % int_scatt(i_grid) % outgoing(:, g) * one_f
     end do
     
     ! Now add the contribution from the higher score
-    do g = nuc % int_scatt(i_grid + 1) % gmin, &
-           nuc % int_scatt(i_grid + 1) % gmax
-      results(score_index : score_index + t_order, &
-        filter_index + (g - 1) * g_stride) % value = &
-        results(score_index : score_index + t_order, &
-        filter_index + (g - 1) * g_stride) % value + &
+    do g = nuc % int_scatt(i_grid + 1) % gmin, nuc % int_scatt(i_grid + 1) % gmax
+      g_filter = filter_index + g - 1
+      results(score_index : score_index + t_order, g_filter) % value = &
+        results(score_index : score_index + t_order, g_filter) % value + &
         nuc % int_scatt(i_grid + 1) % outgoing(:, g) * f
     end do
    
@@ -2176,23 +2156,23 @@ contains
 ! tallies
 !===============================================================================
 
-  subroutine tally_micro_int_pn(i_nuclide, score_index, filter_index, &
-    g_stride, t_order, N_flux, results)
+  subroutine tally_micro_int_pn(i_nuclide, score_index, filter_index, t_order, &
+    N_flux, results)
     
     integer, intent(in)    :: i_nuclide        ! index into nuclides array
     integer, intent(in)    :: score_index      ! dim = 1 starting index in results
     integer, intent(in)    :: filter_index     ! dim = 2 starting index (incoming E filter)
-    integer, intent(in)    :: g_stride         ! dim = 2 stride for outgoing groups
     integer, intent(in)    :: t_order          ! # of scattering orders to tally
     real(8), intent(in)    :: N_flux           ! atom_density * flux
     type(TallyResult), intent(inout) :: results(:,:)     ! Tally results storage
     
-    integer :: g      ! outgoing energy group index
-    integer :: i_grid ! index on nuclide energy grid
-    real(8) :: f      ! interp factor on nuclide energy grid
-    real(8) :: one_f  ! (ONE - f) * sigS
-    type(Nuclide), pointer :: nuc
-    real(8) :: sigS   ! scattering cross-section (tot - abs)
+    integer :: g        ! outgoing energy group index
+    integer :: g_filter ! outgoing energy group index
+    integer :: i_grid   ! index on nuclide energy grid
+    real(8) :: f        ! interp factor on nuclide energy grid
+    real(8) :: one_f    ! (ONE - f) * sigS
+    real(8) :: sigS     ! scattering cross-section (tot - abs)
+    type(Nuclide), pointer :: nuc ! The working nuclide
     
     nuc => nuclides(i_nuclide)
 
@@ -2207,22 +2187,18 @@ contains
     f = f * sigS * N_flux
     
     ! Add the contribution from the lower score
-    do g = nuc % int_scatt(i_grid) % gmin, &
-           nuc % int_scatt(i_grid) % gmax
-      results(score_index : score_index + t_order, &
-        filter_index + (g - 1) * g_stride) % value = &
-        results(score_index : score_index + t_order, &
-        filter_index + (g - 1) * g_stride) % value + &
+    do g = nuc % int_scatt(i_grid) % gmin, nuc % int_scatt(i_grid) % gmax
+      g_filter = filter_index + g - 1
+      results(score_index : score_index + t_order, g_filter) % value = &
+        results(score_index : score_index + t_order, g_filter) % value + &
         nuc % int_scatt(i_grid) % outgoing(:, g) * one_f
     end do
     
     ! Now add the contribution from the higher score
-    do g = nuc % int_scatt(i_grid + 1) % gmin, &
-           nuc % int_scatt(i_grid + 1) % gmax
-      results(score_index : score_index + t_order, &
-        filter_index + (g - 1) * g_stride) % value = &
-        results(score_index : score_index + t_order, &
-        filter_index + (g - 1) * g_stride) % value + &
+    do g = nuc % int_scatt(i_grid + 1) % gmin, nuc % int_scatt(i_grid + 1) % gmax
+      g_filter = filter_index + g - 1
+      results(score_index : score_index + t_order, g_filter) % value = &
+        results(score_index : score_index + t_order, g_filter) % value + &
         nuc % int_scatt(i_grid + 1) % outgoing(:, g) * f
     end do
    
@@ -2234,13 +2210,12 @@ contains
 ! tallies
 !===============================================================================
 
-  subroutine tally_macro_int_pn(mat, score_index, filter_index, g_stride, &
-    t_order, flux, results)
+  subroutine tally_macro_int_pn(mat, score_index, filter_index, t_order, flux, &
+    results)
     
     type(Material), pointer, intent(in) :: mat ! Working material
     integer, intent(in)    :: score_index      ! dim = 1 starting index in results
     integer, intent(in)    :: filter_index     ! dim = 2 starting index (incoming E filter)
-    integer, intent(in)    :: g_stride         ! dim = 2 stride for outgoing groups
     integer, intent(in)    :: t_order          ! # of scattering orders to tally
     real(8), intent(in)    :: flux             ! flux
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
@@ -2252,8 +2227,8 @@ contains
     do i = 1, mat % n_nuclides
       i_nuclide = mat % nuclide(i)
       N_flux = mat % atom_density(i) * flux
-      call tally_micro_int_pn(i_nuclide, score_index, filter_index, g_stride, &
-        t_order, N_flux, results)
+      call tally_micro_int_pn(i_nuclide, score_index, filter_index, t_order, &
+        N_flux, results)
     end do
   end subroutine tally_macro_int_pn
 

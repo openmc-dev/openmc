@@ -2005,6 +2005,18 @@ contains
               call fatal_error()
             end if
             
+            ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
+            ! last two declared by the user, and in that order too. This
+            ! guarantees that the stride is the lowest, and therefore most
+            ! efficient for int-scatter-pn.
+            if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
+              (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
+              message = "Energy and Energyout filter types must be the last " // &
+                        "declared (and in that order) in any tally with an " // &
+                        "int-scatter-pn score!"
+              call fatal_error()
+            end if
+            
             ! Set flag to read and allocate storage for advanced scattering
             ! library
             integrated_scatt = .true.

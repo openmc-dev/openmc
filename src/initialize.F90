@@ -357,14 +357,6 @@ contains
             particle_restart_run = .true.
           end select
 
-        case ('-t', '-tallies', '--tallies')
-          run_mode = MODE_TALLIES
-
-          ! Read path for state point
-          i = i + 1
-          path_state_point = argv(i)
-          restart_run = .true.
-
         case ('-g', '-geometry-debug', '--geometry-debug')
           check_overlaps = .true.
 

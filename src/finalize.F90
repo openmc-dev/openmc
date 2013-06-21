@@ -32,7 +32,9 @@ contains
 
     if (run_mode /= MODE_PLOTTING .and. run_mode /= MODE_PARTICLE) then
       ! Calculate statistics for tallies and write to tallies.out
-      if (master) call tally_statistics()
+      if (master) then
+        if (n_realizations > 1) call tally_statistics()
+      end if
       if (output_tallies) then
         if (master) call write_tallies()
       end if
@@ -48,7 +50,6 @@ contains
     call time_finalize % stop()
     call time_total % stop()
     if (master .and. (run_mode /= MODE_PLOTTING .and. &
-         run_mode /= MODE_TALLIES .and. &
          run_mode /= MODE_PARTICLE)) then
       call print_runtime()
       call print_results()

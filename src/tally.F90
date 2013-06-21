@@ -207,8 +207,6 @@ contains
             cycle SCORE_LOOP
           
           case (SCORE_INTSCATT_PN)
-            ! We should never get here since the estimator is set to tracklength
-            ! but further checking is needed.
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) then
               j = j + t % scatt_order(j)
@@ -217,8 +215,12 @@ contains
             score_index_init = score_index
             g_stride = t % stride(t % find_filter(FILTER_ENERGYOUT))
             
-            call tally_micro_int_pn(i_nuclide, score_index_init, filter_index, &
-              g_stride, t % scatt_order(j), last_wgt, t % results)
+            ! For the case of analog intscatt_pn tallying, filter_index needs
+            ! to be adjusted to point to the first energyout filter
+            call tally_micro_int_pn(p % event_nuclide, score_index_init, &
+              filter_index - t % matching_bins(t % find_filter(FILTER_ENERGYOUT)) * &
+              g_stride + g_stride, g_stride, t % scatt_order(j), last_wgt, &
+              t % results)
             
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP

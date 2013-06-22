@@ -1420,16 +1420,20 @@ contains
              gen_per_batch) / time_active % elapsed
       end if
     else
-      speed_inactive = real(n_particles * n_inactive * gen_per_batch) / &
-           time_inactive % elapsed
+      if (n_inactive > 0) then
+        speed_inactive = real(n_particles * n_inactive * gen_per_batch) / &
+             time_inactive % elapsed
+      end if
       speed_active = real(n_particles * n_active * gen_per_batch) / &
            time_active % elapsed
     end if
 
     ! display calculation rate
-    string = to_str(speed_inactive)
-    if (.not. (restart_run .and. (restart_batch >= n_inactive))) &
-         write(ou,101) "Calculation Rate (inactive)", trim(string)
+    if (.not. (restart_run .and. (restart_batch >= n_inactive)) &
+         .and. n_inactive > 0) then
+      string = to_str(speed_inactive)
+      write(ou,101) "Calculation Rate (inactive)", trim(string)
+    end if
     string = to_str(speed_active)
     write(ou,101) "Calculation Rate (active)", trim(string)
 

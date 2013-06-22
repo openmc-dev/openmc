@@ -2133,21 +2133,25 @@ contains
     f = f * wgt
     
     ! Add the contribution from the lower score
-    do g = nuc % int_scatt(i_grid) % gmin, nuc % int_scatt(i_grid) % gmax
-      g_filter = filter_index + g - 1
-      results(score_index : score_index + t_order, g_filter) % value = &
-        results(score_index : score_index + t_order, g_filter) % value + &
-        nuc % int_scatt(i_grid) % outgoing(:, g) * one_f
-    end do
+    if (nuc % int_scatt(i_grid) % gmin /= 0) then
+      do g = nuc % int_scatt(i_grid) % gmin, nuc % int_scatt(i_grid) % gmax
+        g_filter = filter_index + g - 1
+        results(score_index : score_index + t_order, g_filter) % value = &
+          results(score_index : score_index + t_order, g_filter) % value + &
+          nuc % int_scatt(i_grid) % outgoing(:, g) * one_f
+      end do
+    end if
     
     ! Now add the contribution from the higher score
-    do g = nuc % int_scatt(i_grid + 1) % gmin, nuc % int_scatt(i_grid + 1) % gmax
-      g_filter = filter_index + g - 1
-      results(score_index : score_index + t_order, g_filter) % value = &
-        results(score_index : score_index + t_order, g_filter) % value + &
-        nuc % int_scatt(i_grid + 1) % outgoing(:, g) * f
-    end do
-   
+    if (nuc % int_scatt(i_grid + 1) % gmin /= 0) then
+      do g = nuc % int_scatt(i_grid + 1) % gmin, nuc % int_scatt(i_grid + 1) % gmax
+        g_filter = filter_index + g - 1
+        results(score_index : score_index + t_order, g_filter) % value = &
+          results(score_index : score_index + t_order, g_filter) % value + &
+          nuc % int_scatt(i_grid + 1) % outgoing(:, g) * f
+      end do
+    end if
+    
   end subroutine tally_analog_int_pn
 
 !===============================================================================
@@ -2187,20 +2191,24 @@ contains
     f = f * sigS * N_flux
     
     ! Add the contribution from the lower score
-    do g = nuc % int_scatt(i_grid) % gmin, nuc % int_scatt(i_grid) % gmax
-      g_filter = filter_index + g - 1
-      results(score_index : score_index + t_order, g_filter) % value = &
-        results(score_index : score_index + t_order, g_filter) % value + &
-        nuc % int_scatt(i_grid) % outgoing(:, g) * one_f
-    end do
+    if (nuc % int_scatt(i_grid) % gmin /= 0) then
+      do g = nuc % int_scatt(i_grid) % gmin, nuc % int_scatt(i_grid) % gmax
+        g_filter = filter_index + g - 1
+        results(score_index : score_index + t_order, g_filter) % value = &
+          results(score_index : score_index + t_order, g_filter) % value + &
+          nuc % int_scatt(i_grid) % outgoing(:, g) * one_f
+      end do
+    end if
     
     ! Now add the contribution from the higher score
-    do g = nuc % int_scatt(i_grid + 1) % gmin, nuc % int_scatt(i_grid + 1) % gmax
-      g_filter = filter_index + g - 1
-      results(score_index : score_index + t_order, g_filter) % value = &
-        results(score_index : score_index + t_order, g_filter) % value + &
-        nuc % int_scatt(i_grid + 1) % outgoing(:, g) * f
-    end do
+    if (nuc % int_scatt(i_grid + 1) % gmin /= 0) then
+      do g = nuc % int_scatt(i_grid + 1) % gmin, nuc % int_scatt(i_grid + 1) % gmax
+        g_filter = filter_index + g - 1
+        results(score_index : score_index + t_order, g_filter) % value = &
+          results(score_index : score_index + t_order, g_filter) % value + &
+          nuc % int_scatt(i_grid + 1) % outgoing(:, g) * f
+      end do
+    end if
    
   end subroutine tally_micro_int_pn
   

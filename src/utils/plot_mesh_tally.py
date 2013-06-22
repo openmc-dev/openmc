@@ -255,7 +255,7 @@ class AppForm(QMainWindow):
 
         # Make figure, set up color bar
         self.axes = self.fig.add_subplot(111)
-        cax = self.axes.imshow(matrix, vmin=0.0, vmax=matrix.max(), 
+        cax = self.axes.imshow(matrix.transpose(), vmin=0.0, vmax=matrix.max(), 
           interpolation="nearest")
         self.fig.colorbar(cax)
 

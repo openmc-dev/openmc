@@ -36,11 +36,6 @@ contains
                                       cmfd_act_flush, current_batch, keff,      &
                                       n_batches, message, master, mpi_err, rank
 
-    logical :: leave_cmfd
-
-    ! set leave cmfd to false
-    leave_cmfd = .false.
-
     ! stop cmfd timer
     if (master) then
       call time_cmfd % start()
@@ -59,17 +54,6 @@ contains
       call process_cmfd_options()
 
     end if
-
-    ! check to hold weights
-    if (cmfd_hold_weights) then
-      message = 'Not Modifying Weights - Albedo estimate not good, increase batch size.'
-      call warning() 
-      cmfd_hold_weights = .false.
-      if (cmfd_feedback) call cmfd_reweight(.false.)
-      leave_cmfd = .true. 
-    end if
-    call MPI_BCAST(leave_cmfd, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, mpi_err)
-    if (leave_cmfd) return
 
     ! filter processors (lowest PETSc group)
     if (rank < n_procs_cmfd) then
@@ -99,19 +83,6 @@ contains
       end if
 
     end if
-
-    ! check to hold weights
-    if ((abs(cmfd%keff-keff)/keff > cmfd_keff_tol)) then
-      if (current_batch >= cmfd_inact_flush(1) .or. &
-           current_batch >= cmfd_act_flush - 1 ) then
-        message = 'Not Modifying Weights - keff %diff > 0.005, up batch size'
-        call warning() 
-        if (cmfd_feedback) call cmfd_reweight(.false.)
-        leave_cmfd = .true.
-      end if
-    end if
-    call MPI_BCAST(leave_cmfd, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, mpi_err)
-    if (leave_cmfd) return
 
     ! calculate fission source
     call calc_fission_source()

@@ -19,7 +19,7 @@ New Features
 
 - Python script for mesh tally plotting
 - Isotopic abundances based on IUPAC 2009 when using <element>
-- Particle restart file
+- Particle restart files for debugging
 - Code will abort after certain number of lost particles (defaults to 10)
 - Region outside lattice can be filled with material (void by default)
 - 3D voxel plots
@@ -41,6 +41,7 @@ Bug Fixes
 - a3c593_: Fixed bug in use of free gas scattering for H-1.
 - 3a66e3_: Fixed bug in 2D mesh tally implementation.
 - ab0793_: Corrected PETSC_NULL references to their correct types.
+- 182ebd_: Use analog estimator with energyout filter.
 
 .. _7632f3: https://github.com/mit-crpg/openmc/commit/7632f3
 .. _f85ac4: https://github.com/mit-crpg/openmc/commit/f85ac4
@@ -53,3 +54,4 @@ Bug Fixes
 .. _a3c593: https://github.com/mit-crpg/openmc/commit/a3c593
 .. _3a66e3: https://github.com/mit-crpg/openmc/commit/3a66e3
 .. _ab0793: https://github.com/mit-crpg/openmc/commit/ab0793
+.. _182ebd: https://github.com/mit-crpg/openmc/commit/182ebd

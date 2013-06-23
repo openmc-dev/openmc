@@ -3,18 +3,21 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
     <title>6. Tallies &mdash; OpenMC Documentation</title>
+    
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.1',
+        VERSION:     '0.5.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -60,7 +63,7 @@ be written in the following form:</p>
 <div class="math" id="equation-tally-integral">
 <p><span class="eqno">(1)</span><img src="../_images/math/6f7489fd2bc01b81438f2b62e88a6e3c39dde125.png" alt="X = \underbrace{\int d\mathbf{r} \int d\mathbf{\Omega} \int
 dE}_{\text{filters}} \underbrace{f(\mathbf{r}, \mathbf{\Omega},
-E)}_{\text{scores}} \psi (\mathbf{r}, \mathbf{\Omega}, E)" /></p>
+E)}_{\text{scores}} \psi (\mathbf{r}, \mathbf{\Omega}, E)"/></p>
 </div><p>A user can specify one or more filters which identify which regions of phase
 space should score to a given tally (the limits of integration as shown in
 equation <a href="#equation-tally-integral">(1)</a>) as well as the scoring function (<img class="math" src="../_images/math/bb2c93730dbb48558bb3c4738c956c4e8f816437.png" alt="f"/> in
@@ -109,7 +112,7 @@ basic idea is that we simply count the number of actual reactions that take
 place and use that as our estimate for the reaction rate. This can be written
 mathematically as</p>
 <div class="math" id="equation-analog-estimator">
-<p><span class="eqno">(2)</span><img src="../_images/math/5075b2fe167d0329008574cdb1a9e6d8cfdb6034.png" alt="R_x = \frac{1}{W} \sum_{i \in A} w_i" /></p>
+<p><span class="eqno">(2)</span><img src="../_images/math/5075b2fe167d0329008574cdb1a9e6d8cfdb6034.png" alt="R_x = \frac{1}{W} \sum_{i \in A} w_i"/></p>
 </div><p>where <img class="math" src="../_images/math/e04fc1458c243800934b8d2d2419f4d38d7d2e50.png" alt="R_x"/> is the reaction rate for reaction <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/>, <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/> denotes
 an index for each event, <img class="math" src="../_images/math/019e9892786e493964e145e7c5cf7b700314e53b.png" alt="A"/> is the set of all events resulting in
 reaction <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/>, and <img class="math" src="../_images/math/10cb764f88509fb1c8012366993fdbee98f31bc5.png" alt="W"/> is the total starting weight of the particles,
@@ -136,7 +139,7 @@ scalar flux, it stands to reason that we can estimate the flux by taking an
 estimate of the total reaction rate and dividing it by the total macroscopic
 cross section. This gives us the following formula:</p>
 <div class="math" id="equation-collision-estimator-flux">
-<p><span class="eqno">(3)</span><img src="../_images/math/99bb09b89d1018e8112899db4e6db62187f2b882.png" alt="\phi = \frac{1}{W} \sum_{i \in C} \frac{w_i}{\Sigma_t (E_i)}" /></p>
+<p><span class="eqno">(3)</span><img src="../_images/math/99bb09b89d1018e8112899db4e6db62187f2b882.png" alt="\phi = \frac{1}{W} \sum_{i \in C} \frac{w_i}{\Sigma_t (E_i)}"/></p>
 </div><p>where <img class="math" src="../_images/math/10cb764f88509fb1c8012366993fdbee98f31bc5.png" alt="W"/> is again the total starting weight of the particles, <img class="math" src="../_images/math/c3355896da590fc491a10150a50416687626d7cc.png" alt="C"/>
 is the set of all events resulting in a collision with a nucleus, and
 <img class="math" src="../_images/math/4123c4fb5bd5659657f63f0d4e59e06c6eaab8f7.png" alt="\Sigma_t (E)"/> is the total macroscopic cross section of the target
@@ -145,7 +148,7 @@ material at the incoming energy of the particle <img class="math" src="../_image
 macroscopic cross section for some reaction <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/>, then we get the collision
 estimate for the reaction rate for that reaction:</p>
 <div class="math" id="equation-collision-estimator">
-<p><span class="eqno">(4)</span><img src="../_images/math/d8eef5a56ca8e57f1809928db6159a4d5bfee23e.png" alt="R_x = \frac{1}{W} \sum_{i \in C} \frac{w_i \Sigma_x (E_i)}{\Sigma_t (E_i)}" /></p>
+<p><span class="eqno">(4)</span><img src="../_images/math/d8eef5a56ca8e57f1809928db6159a4d5bfee23e.png" alt="R_x = \frac{1}{W} \sum_{i \in C} \frac{w_i \Sigma_x (E_i)}{\Sigma_t (E_i)}"/></p>
 </div><p>where <img class="math" src="../_images/math/c9dff1417dfadc1338c77d9000f382dc03e058b5.png" alt="\Sigma_x (E_i)"/> is the macroscopic cross section for reaction
 <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> at the incoming energy of the particle <img class="math" src="../_images/math/f8f358aa01478e43f1a663db574b83f88d7be478.png" alt="E_i"/>. In comparison to
 equation <a href="#equation-analog-estimator">(2)</a>, we see that the collision estimate will result
@@ -161,7 +164,7 @@ track-length estimator, sometimes also called a path-length estimator. We first
 start with an expression for the volume integrated flux, which can be written as</p>
 <div class="math" id="equation-flux-integrated">
 <p><span class="eqno">(5)</span><img src="../_images/math/50b6e2c62e6e64b4bb36cd69b67aa136c2544429.png" alt="V \phi = \int d\mathbf{r} \int dE \int d\mathbf{\Omega} \int dt \,
-\psi(\mathbf{r}, \mathbf{\hat{\Omega}}, E, t)" /></p>
+\psi(\mathbf{r}, \mathbf{\hat{\Omega}}, E, t)"/></p>
 </div><p>where <img class="math" src="../_images/math/12d58aa29201da09d8e620f8698e3a37547f6b4a.png" alt="V"/> is the volume, <img class="math" src="../_images/math/8ada738001410f131563551fb68731e4f302048d.png" alt="\psi"/> is the angular flux,
 <img class="math" src="../_images/math/523765e6f77d2ff678e47c2a1ff0a59ace2e8e36.png" alt="\mathbf{r}"/> is the position of the particle, <img class="math" src="../_images/math/24e80eca0896a9a27e062e99d624799f9d56e32e.png" alt="\mathbf{\hat{\Omega}}"/>
 is the direction of the particle, <img class="math" src="../_images/math/fa2fa899f0afb05d6837885523503a2d4df434f9.png" alt="E"/> is the energy of the particle, and
@@ -171,24 +174,24 @@ where <img class="math" src="../_images/math/174fadd07fd54c9afe288e96558c92e0c1d
 <a href="#equation-flux-integrated">(5)</a> as</p>
 <div class="math" id="equation-flux-integrated-2">
 <p><span class="eqno">(6)</span><img src="../_images/math/5a6174258d5f693a187b1c384416e8c148a66065.png" alt="V \phi = \int d\mathbf{r} \int dE \int dt v \int d\mathbf{\Omega} \, n(\mathbf{r},
-\mathbf{\hat{\Omega}}, E, t))." /></p>
+\mathbf{\hat{\Omega}}, E, t))."/></p>
 </div><p>Using the relations <img class="math" src="../_images/math/fbd773ff4c9cf09101895f518aed3096cf05ac27.png" alt="N(\mathbf{r}, E, t) = \int d\mathbf{\Omega}
 n(\mathbf{r}, \mathbf{\hat{\Omega}}, E, t)"/> and <img class="math" src="../_images/math/1398cc90f5d6dc57f5585101970e32be7345d130.png" alt="d\ell = v \, dt"/> where
 <img class="math" src="../_images/math/492e4dcffdca8aa5f0f342ec9309bc75ca90b7f1.png" alt="d\ell"/> is the differential unit of track length, we then obtain</p>
 <div class="math" id="equation-track-length-integral">
-<p><span class="eqno">(7)</span><img src="../_images/math/c2865559d669db2d2cf737e2d36d6070f12d2a52.png" alt="V \phi = \int d\mathbf{r} \int dE \int d\ell N(\mathbf{r}, E, t)." /></p>
+<p><span class="eqno">(7)</span><img src="../_images/math/c2865559d669db2d2cf737e2d36d6070f12d2a52.png" alt="V \phi = \int d\mathbf{r} \int dE \int d\ell N(\mathbf{r}, E, t)."/></p>
 </div><p>Equation <a href="#equation-track-length-integral">(7)</a> indicates that we can use the length of a
 particle&#8217;s trajectory as an estimate for the flux, i.e. the track-length
 estimator of the flux would be</p>
 <div class="math" id="equation-track-length-flux">
-<p><span class="eqno">(8)</span><img src="../_images/math/821c18828f9814f8f0d361cd228fafe06543c582.png" alt="\phi = \frac{1}{W} \sum_{i \in T} w_i \ell_i" /></p>
+<p><span class="eqno">(8)</span><img src="../_images/math/821c18828f9814f8f0d361cd228fafe06543c582.png" alt="\phi = \frac{1}{W} \sum_{i \in T} w_i \ell_i"/></p>
 </div><p>where <img class="math" src="../_images/math/2554b6496c3b678897e9b060ef00aa9f0a7d7ece.png" alt="T"/> is the set of all the particle&#8217;s trajectories within the desired
 volume and <img class="math" src="../_images/math/cb2fdb61ac5f2b89ddc5b4207d7f3f1cb6a2c504.png" alt="\ell_i"/> is the length of the <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/>-th trajectory. In the
 same vein as equation <a href="#equation-collision-estimator">(4)</a>, the track-length estimate of a
 reaction rate is found by multiplying equation <a href="#equation-track-length-flux">(8)</a> by a
 macroscopic reaction cross section:</p>
 <div class="math" id="equation-track-length-estimator">
-<p><span class="eqno">(9)</span><img src="../_images/math/23dc55b9f305312b927279536a168654ce7f959f.png" alt="R_x = \frac{1}{W} \sum_{i \in T} w_i \ell_i \Sigma_x (E_i)." /></p>
+<p><span class="eqno">(9)</span><img src="../_images/math/23dc55b9f305312b927279536a168654ce7f959f.png" alt="R_x = \frac{1}{W} \sum_{i \in T} w_i \ell_i \Sigma_x (E_i)."/></p>
 </div><p>One important fact to take into consideration is that the use of a track-length
 estimator precludes us from using any filter that requires knowledge of the
 particle&#8217;s state following a collision because by definition, it will not have
@@ -221,11 +224,11 @@ X_n}{n}"/> <a class="reference external" href="http://en.wikipedia.org/wiki/Conv
 <img class="math" src="../_images/math/ce56cfc237a035a5b060ddc685c710b3fa4af2e8.png" alt="\epsilon &gt; 0"/></p>
 <div class="math">
 <p><img src="../_images/math/54b533b0558a6c319ad7d12a02144a6f255efef8.png" alt="\lim\limits_{n\rightarrow\infty} P \left ( \left | \bar{X}_n - \mu \right |
-\ge \epsilon \right ) = 0." /></p>
+\ge \epsilon \right ) = 0."/></p>
 </div></div>
 <div class="section" id="central-limit-theorem">
 <span id="id1"></span><h3>6.4.2. Central Limit Theorem<a class="headerlink" href="#central-limit-theorem" title="Permalink to this headline">¶</a></h3>
-<p>The <a class="reference external" href="#id1">central limit theorem</a> (CLT) is perhaps the most well-known and ubiquitous
+<p>The <a class="reference internal" href="#id1">central limit theorem</a> (CLT) is perhaps the most well-known and ubiquitous
 statistical theorem that has far-reaching implications across many
 disciplines. The CLT is similar to the law of large numbers in that it tells us
 the limiting behavior of the sample mean. Whereas the law of large numbers tells
@@ -241,7 +244,7 @@ normal, log-normal, Weibull, etc. The central limit theorem states that as
 \mu)"/> <a class="reference external" href="http://en.wikipedia.org/wiki/Convergence_of_random_variables#Convergence_in_distribution">converges in distribution</a> to the standard normal distribution:</p>
 <div class="math" id="equation-central-limit-theorem">
 <p><span class="eqno">(10)</span><img src="../_images/math/2869a05d52d095973e44b463f47d55eafcc70fa7.png" alt="\sqrt{n} \left ( \frac{1}{n} \sum_{i=1}^n X_i - \mu \right ) \xrightarrow{d}
-\mathcal{N} (0, \sigma^2)" /></p>
+\mathcal{N} (0, \sigma^2)"/></p>
 </div></div>
 <div class="section" id="estimating-statistics-of-a-random-variable">
 <h3>6.4.3. Estimating Statistics of a Random Variable<a class="headerlink" href="#estimating-statistics-of-a-random-variable" title="Permalink to this headline">¶</a></h3>
@@ -254,7 +257,7 @@ tallied. If <img class="math" src="../_images/math/6a47ca0fe7cb276abc022af6ac88d
 <img class="math" src="../_images/math/aa142101c9e55be687db5ed934821fd144de6ac4.png" alt="x_1, x_2, \dots, x_N"/>, then an unbiased estimator for the population mean
 is the sample mean, defined as</p>
 <div class="math" id="equation-sample-mean">
-<p><span class="eqno">(11)</span><img src="../_images/math/a375bac6a25dbabfdda5b25012ebb0648f18fed8.png" alt="\bar{x} = \frac{1}{N} \sum_{i=1}^N x_i." /></p>
+<p><span class="eqno">(11)</span><img src="../_images/math/a375bac6a25dbabfdda5b25012ebb0648f18fed8.png" alt="\bar{x} = \frac{1}{N} \sum_{i=1}^N x_i."/></p>
 </div></div>
 <div class="section" id="variance">
 <h4>6.4.3.2. Variance<a class="headerlink" href="#variance" title="Permalink to this headline">¶</a></h4>
@@ -266,17 +269,17 @@ population variance. One of these is the second central moment of the
 distribution also known as the biased sample variance:</p>
 <div class="math" id="equation-biased-variance">
 <p><span class="eqno">(12)</span><img src="../_images/math/c4e66f263a29337cbd2e5eb6510b34456dc79f72.png" alt="s_N^2 = \frac{1}{N} \sum_{i=1}^N \left ( x_i - \bar{x} \right )^2 = \left (
-\frac{1}{N} \sum_{i=1}^N x_i^2 \right ) - \bar{x}^2." /></p>
+\frac{1}{N} \sum_{i=1}^N x_i^2 \right ) - \bar{x}^2."/></p>
 </div><p>This estimator is biased because its expected value is actually not equal to the
 population variance:</p>
 <div class="math" id="equation-biased-variance-expectation">
-<p><span class="eqno">(13)</span><img src="../_images/math/457ebbdd58a1797c6a781adc38ba91884c2f568b.png" alt="E[s_N^2] = \frac{N - 1}{N} \sigma^2" /></p>
+<p><span class="eqno">(13)</span><img src="../_images/math/457ebbdd58a1797c6a781adc38ba91884c2f568b.png" alt="E[s_N^2] = \frac{N - 1}{N} \sigma^2"/></p>
 </div><p>where <img class="math" src="../_images/math/741fb9098efcb98055f467f87630a5d0ca599b6b.png" alt="\sigma^2"/> is the actual population variance. As a result, this
 estimator should not be used in practice. Instead, one can use <a class="reference external" href="http://en.wikipedia.org/wiki/Bessel's_correction">Bessel&#8217;s
 correction</a> to come up with an unbiased sample variance estimator:</p>
 <div class="math" id="equation-unbiased-variance">
 <p><span class="eqno">(14)</span><img src="../_images/math/888d03a43b4a11529ee58d8f91c4285100073191.png" alt="s^2 = \frac{1}{N - 1} \sum_{i=1}^N \left ( x_i - \bar{x} \right )^2 =
-\frac{1}{N - 1} \left ( \sum_{i=1}^N x_i^2 - N\bar{x}^2 \right )." /></p>
+\frac{1}{N - 1} \left ( \sum_{i=1}^N x_i^2 - N\bar{x}^2 \right )."/></p>
 </div><p>This is the estimator normally used to calculate sample variance. The final form
 in equation <a href="#equation-unbiased-variance">(14)</a> is especially suitable for computation since
 we do not need to store the values at every realization of the random variable
@@ -298,7 +301,7 @@ observation that if we have a series of uncorrelated random variables, we can
 write the variance of their sum as the sum of their variances:</p>
 <div class="math" id="equation-bienayme-formula">
 <p><span class="eqno">(15)</span><img src="../_images/math/f0291a889cbdc42198c8566b4c98813a9cc5edec.png" alt="\text{Var} \left ( \sum_{i=1}^N X_i \right ) = \sum_{i=1}^N \text{Var} \left
-( X_i \right )" /></p>
+( X_i \right )"/></p>
 </div><p>This result is known as the Bienaymé formula. We can use this result to
 determine a formula for the variance of the sample mean. Assuming that the
 realizations of our random variable are again identical,
@@ -307,12 +310,12 @@ independently-distributed samples, then we have that</p>
 <p><span class="eqno">(16)</span><img src="../_images/math/e7cc6034d7dabf98113bd86b88588c54c9d48249.png" alt="\text{Var} \left ( \bar{X} \right ) = \text{Var} \left ( \frac{1}{N}
 \sum_{i=1}^N X_i \right ) = \frac{1}{N^2} \sum_{i=1}^N \text{Var} \left (
 X_i \right ) = \frac{1}{N^2} \left ( N\sigma^2 \right ) =
-\frac{\sigma^2}{N}." /></p>
+\frac{\sigma^2}{N}."/></p>
 </div><p>We can combine this result with equation <a href="#equation-unbiased-variance">(14)</a> to come up with
 an unbiased estimator for the variance of the sample mean:</p>
 <div class="math" id="equation-sample-variance-mean-formula">
 <p><span class="eqno">(17)</span><img src="../_images/math/f07519008c3f2c717af15cd95f7acf81ec574563.png" alt="s_{\bar{X}}^2 = \frac{1}{N - 1} \left ( \frac{1}{N} \sum_{i=1}^N x_i^2 -
-\bar{x}^2 \right )." /></p>
+\bar{x}^2 \right )."/></p>
 </div><p>At this point, an important distinction should be made between the estimator for
 the variance of the population and the estimator for the variance of the
 mean. As the number of realizations increases, the estimated variance of the
@@ -338,7 +341,7 @@ intervals would encompass the true population parameter. Let <img class="math" s
 variables each with population mean <img class="math" src="../_images/math/2d8c833ed800824727cd7bd2fb9de1a12ad7e674.png" alt="\mu"/> and variance
 <img class="math" src="../_images/math/741fb9098efcb98055f467f87630a5d0ca599b6b.png" alt="\sigma^2"/>. The t-statistic is defined as</p>
 <div class="math" id="equation-t-statistic">
-<p><span class="eqno">(18)</span><img src="../_images/math/7a8fa6d18fdddd436cd3c52612a3372897f7c5c0.png" alt="t = \frac{\bar{x} - \mu}{s/\sqrt{N}}" /></p>
+<p><span class="eqno">(18)</span><img src="../_images/math/7a8fa6d18fdddd436cd3c52612a3372897f7c5c0.png" alt="t = \frac{\bar{x} - \mu}{s/\sqrt{N}}"/></p>
 </div><p>where <img class="math" src="../_images/math/f06e84fe84a6c63a9c2c392af11652f6e0d72cf4.png" alt="\bar{x}"/> is the sample mean from equation <a href="#equation-sample-mean">(11)</a> and
 <img class="math" src="../_images/math/f37bba504894945c07a32f5496d74299a37aa51c.png" alt="s"/> is the standard deviation based on equation
 <a href="#equation-unbiased-variance">(14)</a>. If the random variables <img class="math" src="../_images/math/5f8e5cbb6204882df1cf17cfe4b308d485af8056.png" alt="X_i"/> are
@@ -346,12 +349,12 @@ normally-distributed, then the t-statistic has a <a class="reference external" h
 with <img class="math" src="../_images/math/a256c70ad4c46ec1127c5be68f8bb3075e9ced31.png" alt="N-1"/> degrees of freedom. This implies that</p>
 <div class="math" id="equation-t-probability">
 <p><span class="eqno">(19)</span><img src="../_images/math/4a210f77a1c79011bdc5ac4f2cac91a4c5a08959.png" alt="Pr \left ( -t_{1 - \alpha/2, N - 1} \le \frac{\bar{x} - \mu}{s/\sqrt{N}} \le
-t_{1 - \alpha/2, N - 1} \right ) = 1 - \alpha" /></p>
+t_{1 - \alpha/2, N - 1} \right ) = 1 - \alpha"/></p>
 </div><p>where <img class="math" src="../_images/math/1bc7ce223ddb22edcd126ed8d841b796f2f337d9.png" alt="t_{1-\alpha/2, N-1}"/> is the <img class="math" src="../_images/math/f3f0133f5afb7e759a00024c929a5f273f316403.png" alt="1 - \alpha/2"/> percentile of a
 t-distribution with <img class="math" src="../_images/math/a256c70ad4c46ec1127c5be68f8bb3075e9ced31.png" alt="N-1"/> degrees of freedom. Thus, the <img class="math" src="../_images/math/e63009dbf6176a47dc83a6c06dd5ce224d6e57d4.png" alt="1 - \alpha"/>
 two sided confidence interval for the sample mean is</p>
 <div class="math" id="equation-two-sided-ci">
-<p><span class="eqno">(20)</span><img src="../_images/math/80bc7504239295d322d8606b71adc1190e09a896.png" alt="\bar{x} \pm t_{1 - \alpha/2, N-1} \frac{s}{\sqrt{N}}." /></p>
+<p><span class="eqno">(20)</span><img src="../_images/math/80bc7504239295d322d8606b71adc1190e09a896.png" alt="\bar{x} \pm t_{1 - \alpha/2, N-1} \frac{s}{\sqrt{N}}."/></p>
 </div><p>One should be cautioned that equation <a href="#equation-two-sided-ci">(20)</a> only applies if the
 <em>underlying random variables</em> are normally-distributed. In general, this may not
 be true for a tally random variable &#8212; the central limit theorem guarantees
@@ -364,18 +367,18 @@ t-distribution. For one or two degrees of freedom, the percentile can be written
 analytically. For one degree of freedom, the t-distribution becomes a standard
 <a class="reference external" href="http://en.wikipedia.org/wiki/Cauchy_distribution">Cauchy distribution</a> whose cumulative distribution function is</p>
 <div class="math" id="equation-cauchy-cdf">
-<p><span class="eqno">(21)</span><img src="../_images/math/436e8db97463066d1a7386a95b10ac520bbe8b3a.png" alt="c(x) = \frac{1}{\pi} \arctan x + \frac{1}{2}." /></p>
+<p><span class="eqno">(21)</span><img src="../_images/math/436e8db97463066d1a7386a95b10ac520bbe8b3a.png" alt="c(x) = \frac{1}{\pi} \arctan x + \frac{1}{2}."/></p>
 </div><p>Thus, inverting the cumulative distribution function, we find the <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/>
 percentile of the standard Cauchy distribution to be</p>
 <div class="math" id="equation-percentile-1">
-<p><span class="eqno">(22)</span><img src="../_images/math/fa2f03813f247d34e237d7d4f70aad833a23ac36.png" alt="t_{x,1} = \tan \left ( \pi \left ( x - \frac{1}{2} \right ) \right )." /></p>
+<p><span class="eqno">(22)</span><img src="../_images/math/fa2f03813f247d34e237d7d4f70aad833a23ac36.png" alt="t_{x,1} = \tan \left ( \pi \left ( x - \frac{1}{2} \right ) \right )."/></p>
 </div><p>For two degrees of freedom, the cumulative distribution function is the
 second-degree polynomial</p>
 <div class="math" id="equation-t-2-polynomial">
-<p><span class="eqno">(23)</span><img src="../_images/math/6951671d483dd1a00fdbf1c2a63f822d8a5dfb0f.png" alt="c(x) = \frac{1}{2} + \frac{x}{2\sqrt{x^2 + 2}}" /></p>
+<p><span class="eqno">(23)</span><img src="../_images/math/6951671d483dd1a00fdbf1c2a63f822d8a5dfb0f.png" alt="c(x) = \frac{1}{2} + \frac{x}{2\sqrt{x^2 + 2}}"/></p>
 </div><p>Solving for <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/>, we find the <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> percentile to be</p>
 <div class="math" id="equation-percentile-2">
-<p><span class="eqno">(24)</span><img src="../_images/math/9bc6d41e157898a5956cd9c4ccf338dea7050d12.png" alt="t_{x,2} = \frac{2\sqrt{2} (x - 1/2)}{\sqrt{1 - 4 (x - 1/2)^2}}" /></p>
+<p><span class="eqno">(24)</span><img src="../_images/math/9bc6d41e157898a5956cd9c4ccf338dea7050d12.png" alt="t_{x,2} = \frac{2\sqrt{2} (x - 1/2)}{\sqrt{1 - 4 (x - 1/2)^2}}"/></p>
 </div><p>For degrees of freedom greater than two, it is not possible to obtain an
 analytical formula for the inverse of the cumulative distribution function. We
 must resort to either numerically solving for the inverse or to an
@@ -385,7 +388,7 @@ found with high levels of accuracy. OpenMC uses the approximation from
 <div class="math" id="equation-percentile-n">
 <p><span class="eqno">(25)</span><img src="../_images/math/5ba93ef9c5f2963c0b31e884c59317c780965345.png" alt="t_{x,n} = \sqrt{\frac{n}{n-2}} \left ( z_x + \frac{1}{4} \frac{z_x^3 -
 3z_x}{n-2} + \frac{1}{96} \frac{5z_x^5 - 56z_x^3 + 75z_x}{(n-2)^2} +
-\frac{1}{384} \frac{3z_x^7 - 81z_x^5 + 417z_x^3 - 315z_x}{(n-2)^3} \right )" /></p>
+\frac{1}{384} \frac{3z_x^7 - 81z_x^5 + 417z_x^3 - 315z_x}{(n-2)^3} \right )"/></p>
 </div><p>where <img class="math" src="../_images/math/13ec3386d628b5ca8d96ff83af9b240831084348.png" alt="z_x"/> is the <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> percentile of the standard normal
 distribution. In order to determine an arbitrary percentile of the standard
 normal distribution, we use an <a class="reference external" href="http://home.online.no/~pjacklam/notes/invnorm/">unpublished rational approximation</a>. After
@@ -424,7 +427,7 @@ in Statistics - Simulation and Computation, 16 (4), pp. 1123-1132 (1987).</td></
 
     <div class="footer">
         &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">
 

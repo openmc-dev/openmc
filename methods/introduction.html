@@ -3,18 +3,21 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
     <title>1. Introduction &mdash; OpenMC Documentation</title>
+    
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.1',
+        VERSION:     '0.5.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -70,7 +73,7 @@ physical parameter being estimated with Monte Carlo will be inversely
 proportional to the number of realizations, i.e. the number of particles we
 simulate:</p>
 <div class="math">
-<p><img src="../_images/math/5cdd0f764bde67cbb5088eb5c4d83e7f39042a6c.png" alt="\sigma^2 \propto \frac{1}{N}." /></p>
+<p><img src="../_images/math/5cdd0f764bde67cbb5088eb5c4d83e7f39042a6c.png" alt="\sigma^2 \propto \frac{1}{N}."/></p>
 </div><p>where <img class="math" src="../_images/math/741fb9098efcb98055f467f87630a5d0ca599b6b.png" alt="\sigma^2"/> is the variance of the sample mean and <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/> is the
 number of realizations.</p>
 <div class="section" id="overview-of-program-flow">
@@ -80,7 +83,7 @@ is more than one particle being tracked on a single program instance. Before any
 particles are tracked, the problem must be initialized. This involves the
 following steps:</p>
 <blockquote>
-<ul class="simple">
+<div><ul class="simple">
 <li>Read input files and building data structures for the geometry, materials,
 tallies, and other associated variables.</li>
 <li>Initialize the pseudorandom number generator.</li>
@@ -92,11 +95,11 @@ source. In an eigenvalue problem, source sites are sampled from some initial
 source distribution or from a source file. The source sites consist of
 coordinates, a direction, and an energy.</li>
 </ul>
-</blockquote>
+</div></blockquote>
 <p>Once initialization is complete, the actual transport simulation can
 proceed. The life of a single particle will proceed as follows:</p>
 <blockquote>
-<ol class="arabic">
+<div><ol class="arabic">
 <li><p class="first">The particle&#8217;s properties are initialized from a source site previously
 sampled.</p>
 </li>
@@ -113,7 +116,7 @@ based on the bounding surfaces to the cell.</p>
 <li><p class="first">The distance to the next collision is sampled. If the total material
 cross section is <img class="math" src="../_images/math/b5e850feb16eb83bd01af5524126befff31f202b.png" alt="\Sigma_t"/>, this can be shown to be</p>
 <div class="math">
-<p><img src="../_images/math/f858ab9fda0fbd2bd776f6027772ff17a08151da.png" alt="d = -\frac{\ln \xi}{\Sigma_t}" /></p>
+<p><img src="../_images/math/f858ab9fda0fbd2bd776f6027772ff17a08151da.png" alt="d = -\frac{\ln \xi}{\Sigma_t}"/></p>
 </div><p>where <img class="math" src="../_images/math/ccfd1641d037d427d9dbf42cdd54b485a03eafe9.png" alt="\xi"/> is a <a class="reference external" href="http://en.wikipedia.org/wiki/Pseudorandom_number_generator">pseudorandom number</a> sampled from a uniform
 distribution on <img class="math" src="../_images/math/bc1a809324034256fb4541c3b1d336e005d488ef.png" alt="[0,1)"/>.</p>
 </li>
@@ -127,7 +130,7 @@ the nuclide with which the collision will happen is sampled based on the
 total cross sections. If the total cross section of material <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/> is
 <img class="math" src="../_images/math/9370fd1a9c12c92cee13fe4202567905e145ebbc.png" alt="\Sigma_{t,i}"/>, then the probability that any nuclide is sampled is</p>
 <div class="math">
-<p><img src="../_images/math/f7df9cfe77fcdfe0919a31faa002a24ee2f57d87.png" alt="P(i) = \frac{\Sigma_{t,i}}{\Sigma_t}." /></p>
+<p><img src="../_images/math/f7df9cfe77fcdfe0919a31faa002a24ee2f57d87.png" alt="P(i) = \frac{\Sigma_{t,i}}{\Sigma_t}."/></p>
 </div></li>
 <li><p class="first">Once the specific nuclide is sampled, the random samples a reaction for
 that nuclide based on the microscopic cross sections. If the microscopic
@@ -135,7 +138,7 @@ cross section for some reaction <img class="math" src="../_images/math/26eeb5258
 microscopic cross section for the nuclide is <img class="math" src="../_images/math/c7de8622e17cddfc652ab2dc62616c622ba3bcfb.png" alt="\sigma_t"/>, then the
 probability that reaction <img class="math" src="../_images/math/26eeb5258ca5099acf8fe96b2a1049c48c89a5e6.png" alt="x"/> will occur is</p>
 <div class="math">
-<p><img src="../_images/math/eb30a459c3289b2855c466485f76637bb58d1db4.png" alt="P(x) = \frac{\sigma_x}{\sigma_t}." /></p>
+<p><img src="../_images/math/eb30a459c3289b2855c466485f76637bb58d1db4.png" alt="P(x) = \frac{\sigma_x}{\sigma_t}."/></p>
 </div></li>
 <li><p class="first">If the sampled reaction is elastic or inelastic scattering, the outgoing
 energy and angle is sampled from the appropriate distribution.  Reactions
@@ -146,18 +149,18 @@ particle dies and if necessary, fission sites are created and stored in the
 fission bank.</p>
 </li>
 </ol>
-</blockquote>
+</div></blockquote>
 <p>After all particles have been simulated, there are a few final tasks that must
 be performed before the run is finished. This include the following:</p>
 <blockquote>
-<ul class="simple">
+<div><ul class="simple">
 <li>With the accumulated sum and sum of squares for each tally, the sample mean
 and its variance is calculated.</li>
 <li>All tallies and other results are written to disk.</li>
 <li>If requested, a source file is written to disk.</li>
 <li>All allocatable arrays are deallocated.</li>
 </ul>
-</blockquote>
+</div></blockquote>
 </div>
 </div>
 
@@ -178,7 +181,7 @@ and its variance is calculated.</li>
 
     <div class="footer">
         &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">
 

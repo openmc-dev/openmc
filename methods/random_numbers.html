@@ -3,18 +3,21 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
     <title>4. Random Number Generation &mdash; OpenMC Documentation</title>
+    
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.1',
+        VERSION:     '0.5.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -68,7 +71,7 @@ simplest and commonly used algorithms is called a <a class="reference external" 
 generator</a>. We start with a random number <em>seed</em> <img class="math" src="../_images/math/da04290a79211712a58bf7241c9fb64251e000c3.png" alt="\xi_0"/> and a sequence
 of random numbers can then be generated using the following recurrence relation:</p>
 <div class="math" id="equation-lcg">
-<p><span class="eqno">(1)</span><img src="../_images/math/838ea831f2458960d581811d15ea37bae3f20014.png" alt="\xi_{i+1} = g \xi_i + c \mod M" /></p>
+<p><span class="eqno">(1)</span><img src="../_images/math/838ea831f2458960d581811d15ea37bae3f20014.png" alt="\xi_{i+1} = g \xi_i + c \mod M"/></p>
 </div><p>where <img class="math" src="../_images/math/311cabda3a9b09f0dde217303ca9d1cd9201dcf6.png" alt="g"/>, <img class="math" src="../_images/math/3372c1cb6d68cf97c2d231acc0b47b95a9ed04cc.png" alt="c"/>, and <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/> are constants. The choice of these
 constants will have a profound effect on the quality and performance of the
 generator, so they should not be chosen arbitrarily. As Donald Knuth stated in
@@ -91,7 +94,7 @@ ahead in <img class="math" src="../_images/math/b1f5ad51fbccc6f210d02d9c3eb8ea96
 to do so is described in a paper by <a class="reference external" href="https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl_rn_arb-strides_1994.pdf">Brown</a>. This algorithm relies on the following
 relationship:</p>
 <div class="math" id="equation-lcg-skipahead">
-<p><span class="eqno">(2)</span><img src="../_images/math/29e04a6d8160c6dd91ec828d9133bcdeff0f1fdc.png" alt="\xi_{i+k} = g^k \xi_i + c \frac{g^k - 1}{g - 1} \mod M" /></p>
+<p><span class="eqno">(2)</span><img src="../_images/math/29e04a6d8160c6dd91ec828d9133bcdeff0f1fdc.png" alt="\xi_{i+k} = g^k \xi_i + c \frac{g^k - 1}{g - 1} \mod M"/></p>
 </div><p>Note that <a href="#equation-lcg-skipahead">(2)</a> has the same general form as eqref{eq:lcg}, so
 the idea is to determine the new multiplicative and additive constants in
 <img class="math" src="../_images/math/b1f5ad51fbccc6f210d02d9c3eb8ea96fdd9f505.png" alt="O(\log_2 N)"/> operations.</p>
@@ -127,7 +130,7 @@ Different Sizes and Good Lattice Structures,&#8221; <em>Math. Comput.</em>, <str
 
     <div class="footer">
         &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">
 

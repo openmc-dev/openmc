@@ -212,6 +212,15 @@ sections summary file to be written, this element should be given as:
 
   *Default*: "tallies"
 
+``<output_path>`` Element
+-------------------------
+
+The ``<output_path>`` element specifies an absolute or relative path where all
+output files should be written to. The specified path must exist or else OpenMC
+will abort.
+
+  *Default*: Current working directory
+
 ``<ptables>`` Element
 ---------------------
 
@@ -314,7 +323,7 @@ attributes/sub-elements:
       *Default*: watt
 
     :parameters:
-      For a "monoenergetic" energy distribution, ``parameters`` should not be
+      For a "monoenergetic" energy distribution, ``parameters`` should be
       given as the energy in MeV of the source sites.
 
       For a "watt" energy distribution, ``parameters`` should be given as two
@@ -647,6 +656,12 @@ universe. A ``<lattice>`` accepts the following attributes or sub-elements:
     The width of the lattice cell in the x- and y- directions.
 
     *Default*: None
+
+  :outside:
+    The unique integer identifier of a material that is to be used to fill all
+    space outside of the lattice. This element is optional.
+
+    *Default*: The region outside the defined lattice is treated as void.
 
   :universes:
     A list of the universe numbers that fill each cell of the lattice.

@@ -3,18 +3,21 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
     <title>2. Installation and Configuration &mdash; OpenMC Documentation</title>
+    
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.1',
+        VERSION:     '0.5.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -72,7 +75,7 @@ package manager. First, add the following PPA to the repository sources:</p>
 <h2>2.2. Building from Source<a class="headerlink" href="#building-from-source" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="prerequisites">
 <h3>2.2.1. Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h3>
-<div class="admonition-required admonition ">
+<div class="admonition-required admonition">
 <p class="first admonition-title">Required</p>
 <ul class="last">
 <li><p class="first">A Fortran compiler such as <a class="reference external" href="http://gcc.gnu.org/wiki/GFortran">gfortran</a></p>
@@ -88,7 +91,7 @@ install the gfortran compiler using the following command:</p>
 </li>
 </ul>
 </div>
-<div class="admonition-optional admonition ">
+<div class="admonition-optional admonition">
 <p class="first admonition-title">Optional</p>
 <ul class="last">
 <li><p class="first">An MPI implementation for distributed-memory parallel runs</p>
@@ -243,7 +246,8 @@ make
 <p>In order to run a simulation with OpenMC, you will need cross section data for
 each nuclide in your problem. Since OpenMC uses ACE format cross sections, you
 can use nuclear data that was processed with NJOY, such as that distributed with
-<a class="reference external" href="http://mcnp.lanl.gov">MCNP</a> or <a class="reference external" href="http://montecarlo.vtt.fi">Serpent</a>.</p>
+<a class="reference external" href="http://mcnp.lanl.gov">MCNP</a> or <a class="reference external" href="http://montecarlo.vtt.fi">Serpent</a>. The TALYS-based evaluated nuclear data library, <a class="reference external" href="ftp://ftp.nrg.eu/pub/www/talys/tendl2012/tendl2012.html">TENDL</a>, is
+openly available in ACE format.</p>
 <div class="section" id="using-jeff-cross-sections-from-oecd-nea">
 <h3>2.3.1. Using JEFF Cross Sections from OECD/NEA<a class="headerlink" href="#using-jeff-cross-sections-from-oecd-nea" title="Permalink to this headline">¶</a></h3>
 <p>The <a class="reference external" href="http://www.oecd-nea.org">NEA</a> provides processed ACE data from the <a class="reference external" href="http://www.oecd-nea.org/dbdata/jeff/">JEFF</a> nuclear library upon
@@ -346,7 +350,7 @@ schemas.xml file in your own OpenMC source directory.</p>
 
     <div class="footer">
         &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">
 

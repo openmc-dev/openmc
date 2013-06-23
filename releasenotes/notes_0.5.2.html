@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Release Notes for OpenMC 0.4.4 &mdash; OpenMC Documentation</title>
+    <title>Release Notes for OpenMC 0.5.2 &mdash; OpenMC Documentation</title>
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -29,8 +29,8 @@
     <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="Release Notes" href="index.html" />
-    <link rel="next" title="Release Notes for OpenMC 0.4.3" href="notes_0.4.3.html" />
-    <link rel="prev" title="Release Notes for OpenMC 0.5.0" href="notes_0.5.0.html" /> 
+    <link rel="next" title="Release Notes for OpenMC 0.5.1" href="notes_0.5.1.html" />
+    <link rel="prev" title="Release Notes" href="index.html" /> 
   </head>
   <body>
       <div class="header">
@@ -41,19 +41,19 @@
       <div class="topnav">
       
         <p>
-        «&#160;&#160;<a href="notes_0.5.0.html">Release Notes for OpenMC 0.5.0</a>
+        «&#160;&#160;<a href="index.html">Release Notes</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="notes_0.4.3.html">Release Notes for OpenMC 0.4.3</a>&#160;&#160;»
+        <a href="notes_0.5.1.html">Release Notes for OpenMC 0.5.1</a>&#160;&#160;»
         </p>
 
       </div>
       <div class="content">
         
         
-  <div class="section" id="release-notes-for-openmc-0-4-4">
-<span id="notes-0-4-4"></span><h1>Release Notes for OpenMC 0.4.4<a class="headerlink" href="#release-notes-for-openmc-0-4-4" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="release-notes-for-openmc-0-5-2">
+<span id="notes-0-5-2"></span><h1>Release Notes for OpenMC 0.5.2<a class="headerlink" href="#release-notes-for-openmc-0-5-2" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="system-requirements">
 <h2>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h2>
 <p>There are no special requirements for running the OpenMC code. As of this
@@ -64,26 +64,31 @@ the problem at hand (mostly on the number of nuclides in the problem).</p>
 <div class="section" id="new-features">
 <h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Ability to write state points when using &lt;no_reduce&gt;.</li>
-<li>Real-time XML validation in GNU Emacs with RELAX NG schemata.</li>
-<li>Writing state points every n batches with &lt;state_point interval=&#8221;...&#8221; /&gt;</li>
-<li>Suppress creation of summary.out and cross_sections.out by default with option
-to turn them on with &lt;output&gt; tag in settings.xml file.</li>
-<li>Ability to create HDF5 state points.</li>
-<li>Binary source file is now part of state point file by default.</li>
-<li>Enhanced state point usage and added state point Python scripts.</li>
-<li>Turning confidence intervals on affects k-effective.</li>
-<li>Option to specify &lt;upper_right&gt; for tally meshes.</li>
+<li>Python script for mesh tally plotting</li>
+<li>Isotopic abundances based on IUPAC 2009 when using &lt;element&gt;</li>
+<li>Particle restart files for debugging</li>
+<li>Code will abort after certain number of lost particles (defaults to 10)</li>
+<li>Region outside lattice can be filled with material (void by default)</li>
+<li>3D voxel plots</li>
+<li>Full HDF5/PHDF5 support (including support in statepoint.py)</li>
+<li>Cell overlap checking with -g command line flag (or when plotting)</li>
 </ul>
 </div>
 <div class="section" id="bug-fixes">
 <h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/4654ee">4654ee</a>: Fixed plotting with void cells.</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/7ee461">7ee461</a>: Fixed bug with multi-line input using type=&#8217;word&#8217;.</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/792eb3">792eb3</a>: Fixed degrees of freedom for confidence intervals.</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/7fd617">7fd617</a>: Fixed bug with restart runs in parallel.</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/dc4a8f">dc4a8f</a>: Fixed bug with fixed source restart runs.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/7632f3">7632f3</a>: Fixed bug in statepoint.py for multiple generations per batch.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/f85ac4">f85ac4</a>: Fix infinite loop bug in error module.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/49c36b">49c36b</a>: Don&#8217;t convert surface ids if surface filter is for current tallies.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/5ccc78">5ccc78</a>: Fix bug in reassignment of bins for mesh filter.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/b1f52f">b1f52f</a>: Fixed bug in plot color specification.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/eae7e5">eae7e5</a>: Fixed many memory leaks.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/10c1cc">10c1cc</a>: Minor CMFD fixes.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/afdb50">afdb50</a>: Add compatibility for XML comments without whitespace.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/a3c593">a3c593</a>: Fixed bug in use of free gas scattering for H-1.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/3a66e3">3a66e3</a>: Fixed bug in 2D mesh tally implementation.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/ab0793">ab0793</a>: Corrected PETSC_NULL references to their correct types.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/182ebd">182ebd</a>: Use analog estimator with energyout filter.</li>
 </ul>
 </div>
 </div>
@@ -93,11 +98,11 @@ to turn them on with &lt;output&gt; tag in settings.xml file.</li>
       <div class="bottomnav">
       
         <p>
-        «&#160;&#160;<a href="notes_0.5.0.html">Release Notes for OpenMC 0.5.0</a>
+        «&#160;&#160;<a href="index.html">Release Notes</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="notes_0.4.3.html">Release Notes for OpenMC 0.4.3</a>&#160;&#160;»
+        <a href="notes_0.5.1.html">Release Notes for OpenMC 0.5.1</a>&#160;&#160;»
         </p>
 
       </div>

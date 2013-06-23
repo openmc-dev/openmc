@@ -1,18 +1,23 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
     <title>4. Data Processing and Visualization &mdash; OpenMC Documentation</title>
+    
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.1',
+        VERSION:     '0.5.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -130,19 +135,20 @@ voxel.py accomplishes this for SILO:</p>
 </ul>
 <p>or</p>
 <ul class="simple">
-<li><a class="reference external" href="http://www.vtk.org/">VTK</a> with python bindings - On Ubuntu, these are easily obtained with <tt class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">python-vtk</span></tt></li>
+<li><a class="reference external" href="http://www.vtk.org/">VTK</a> with python bindings - On Ubuntu, these are
+easily obtained with <tt class="docutils literal"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">python-vtk</span></tt></li>
 </ul>
 <p>Users can process the binary into any other format if desired by following the
 example of voxel.py.  For the binary file structure, see <a class="reference internal" href="../devguide/voxel.html#devguide-voxel"><em>Voxel Plot Binary File Specifications</em></a>.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">3D voxel plotting can be very computer intensive for the viewing
-program (Visit, Paraview, etc.) if the number of voxels is large
-(&gt;10million or so).  Thus if you want an accurate picture that
-renders smoothly, consider using only one voxel in a certain
-direction. For instance, the 3D pin lattice figure above was generated
-with a 500x500x1 voxel mesh, which allows for resolution of the
-cylinders without wasting too many voxels on the axial dimension.</p>
+program (Visit, Paraview, etc.) if the number of voxels is large (&gt;10
+million or so).  Thus if you want an accurate picture that renders
+smoothly, consider using only one voxel in a certain direction. For
+instance, the 3D pin lattice figure above was generated with a
+500x500x1 voxel mesh, which allows for resolution of the cylinders
+without wasting too many voxels on the axial dimension.</p>
 </div>
 </div>
 </div>
@@ -212,68 +218,69 @@ extract the data and create a plot with gnuplot, the following script can be
 used. The script operates in several steps for clarity, and is not necessarily
 the most efficient way to extract data from large mesh tallies. This creates the
 two heatmaps in the previous figure.</p>
-<div class="highlight-python"><pre>  #!/usr/bin/env python
+<div class="highlight-python"><div class="highlight"><pre>  <span class="c">#!/usr/bin/env python</span>
 
-  import os
+  <span class="kn">import</span> <span class="nn">os</span>
 
-  import statepoint
+  <span class="kn">import</span> <span class="nn">statepoint</span>
 
-  # load and parse the statepoint file
-  sp = statepoint.StatePoint('statepoint.300.binary')
-  sp.read_results()
+  <span class="c"># load and parse the statepoint file</span>
+  <span class="n">sp</span> <span class="o">=</span> <span class="n">statepoint</span><span class="o">.</span><span class="n">StatePoint</span><span class="p">(</span><span class="s">&#39;statepoint.300.binary&#39;</span><span class="p">)</span>
+  <span class="n">sp</span><span class="o">.</span><span class="n">read_results</span><span class="p">()</span>
 
-  tallyid = 0 # This is tally 1
-  score = 0   # This corresponds to flux (see tally.scores)
+  <span class="n">tallyid</span> <span class="o">=</span> <span class="mi">0</span> <span class="c"># This is tally 1</span>
+  <span class="n">score</span> <span class="o">=</span> <span class="mi">0</span>   <span class="c"># This corresponds to flux (see tally.scores)</span>
 
-  # get mesh dimensions
-  meshid = sp.tallies[tallyid].filters['mesh'].bins[0]
-  for i,m in enumerate(sp.meshes):
-      if m.id == meshid:
-        mesh = m
-        break
-  nx,ny,nz = mesh.dimension
+  <span class="c"># get mesh dimensions</span>
+  <span class="n">meshid</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">tallies</span><span class="p">[</span><span class="n">tallyid</span><span class="p">]</span><span class="o">.</span><span class="n">filters</span><span class="p">[</span><span class="s">&#39;mesh&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">bins</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+  <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">m</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">meshes</span><span class="p">):</span>
+      <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">meshid</span><span class="p">:</span>
+        <span class="n">mesh</span> <span class="o">=</span> <span class="n">m</span>
+        <span class="k">break</span>
+  <span class="n">nx</span><span class="p">,</span><span class="n">ny</span><span class="p">,</span><span class="n">nz</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">dimension</span>
 
-  # loop through mesh and extract values to python dictionaries
-  thermal = {}
-  fast = {}
-  for x in range(1,nx+1):
-      for y in range(1,ny+1):
-          for z in range(1,nz+1):
-              val,err = sp.get_value(tallyid,
-                                     [('mesh',(x,y,z)),('energyin',0)],
-                                     score)
-              thermal[(x,y,z)] = val
-              val,err = sp.get_value(tallyid,
-                                     [('mesh',(x,y,z)),('energyin',1)],
-                                     score)
-              fast[(x,y,z)] = val
+  <span class="c"># loop through mesh and extract values to python dictionaries</span>
+  <span class="n">thermal</span> <span class="o">=</span> <span class="p">{}</span>
+  <span class="n">fast</span> <span class="o">=</span> <span class="p">{}</span>
+  <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nx</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+      <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">ny</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+          <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nz</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+              <span class="n">val</span><span class="p">,</span><span class="n">err</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">tallyid</span><span class="p">,</span>
+                                     <span class="p">[(</span><span class="s">&#39;mesh&#39;</span><span class="p">,(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)),(</span><span class="s">&#39;energyin&#39;</span><span class="p">,</span><span class="mi">0</span><span class="p">)],</span>
+                                     <span class="n">score</span><span class="p">)</span>
+              <span class="n">thermal</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)]</span> <span class="o">=</span> <span class="n">val</span>
+              <span class="n">val</span><span class="p">,</span><span class="n">err</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">tallyid</span><span class="p">,</span>
+                                     <span class="p">[(</span><span class="s">&#39;mesh&#39;</span><span class="p">,(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)),(</span><span class="s">&#39;energyin&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">)],</span>
+                                     <span class="n">score</span><span class="p">)</span>
+              <span class="n">fast</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)]</span> <span class="o">=</span> <span class="n">val</span>
 
-  # sum up the axial values and write datafile for gnuplot
-  with open('meshdata.dat','w') as fh:
-      for x in range(1,nx+1):
-          for y in range(1,ny+1):
-              thermalval = 0.
-              fastval = 0.
-              for z in range(1,nz+1):
-                thermalval += thermal[(x,y,z)]
-                fastval += fast[(x,y,z)]
-              fh.write("{} {} {} {}\n".format(x,y,thermalval,fastval))
+  <span class="c"># sum up the axial values and write datafile for gnuplot</span>
+  <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;meshdata.dat&#39;</span><span class="p">,</span><span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+      <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nx</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+          <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">ny</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+              <span class="n">thermalval</span> <span class="o">=</span> <span class="mf">0.</span>
+              <span class="n">fastval</span> <span class="o">=</span> <span class="mf">0.</span>
+              <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nz</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">thermalval</span> <span class="o">+=</span> <span class="n">thermal</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)]</span>
+                <span class="n">fastval</span> <span class="o">+=</span> <span class="n">fast</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)]</span>
+              <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;{} {} {} {}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">thermalval</span><span class="p">,</span><span class="n">fastval</span><span class="p">))</span>
 
-  # write gnuplot file
-  with open('tmp.gnuplot','w') as fh:
-    fh.write(r"""set terminal png size 1000 400
-set output 'fluxplot.png'
-set nokey
-set autoscale fix
-set multiplot layout 1,2 title "Pin Mesh Flux Tally"
-set title "Thermal"
-plot 'meshdata.dat' using 1:2:3 with image
-set title "Fast"
-plot 'meshdata.dat' using 1:2:4 with image
-""")
+  <span class="c"># write gnuplot file</span>
+  <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;tmp.gnuplot&#39;</span><span class="p">,</span><span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+    <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">r&quot;&quot;&quot;set terminal png size 1000 400</span>
+<span class="s">set output &#39;fluxplot.png&#39;</span>
+<span class="s">set nokey</span>
+<span class="s">set autoscale fix</span>
+<span class="s">set multiplot layout 1,2 title &quot;Pin Mesh Flux Tally&quot;</span>
+<span class="s">set title &quot;Thermal&quot;</span>
+<span class="s">plot &#39;meshdata.dat&#39; using 1:2:3 with image</span>
+<span class="s">set title &quot;Fast&quot;</span>
+<span class="s">plot &#39;meshdata.dat&#39; using 1:2:4 with image</span>
+<span class="s">&quot;&quot;&quot;</span><span class="p">)</span>
 
-  # make plot
-  os.system("gnuplot &lt; tmp.gnuplot")</pre>
+  <span class="c"># make plot</span>
+  <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s">&quot;gnuplot &lt; tmp.gnuplot&quot;</span><span class="p">)</span>
+</pre></div>
 </div>
 </div>
 <div class="section" id="id16">
@@ -307,23 +314,24 @@ loaded individually.</p>
 appropriately before insertion into a SILO or VTK file.  For instance, if the
 data has been extracted as was done in the 2D plotting example script above, a
 SILO file can be created with:</p>
-<div class="highlight-python"><pre>import silomesh as sm
-sm.init_silo("fluxtally.silo")
-sm.init_mesh('tally_mesh',*mesh.dimension, *mesh.lower_left, *mesh.upper_right)
-sm.init_var('flux_tally_thermal')
-for x in range(1,nx+1):
-  for y in range(1,ny+1):
-      for z in range(1,nz+1):
-        sm.set_value(float(thermal[(x,y,z)]),x,y,z)
-sm.finalize_var()
-sm.init_var('flux_tally_fast')
-for x in range(1,nx+1):
-  for y in range(1,ny+1):
-      for z in range(1,nz+1):
-          sm.set_value(float(fast[(x,y,z)]),x,y,z)
-sm.finalize_var()
-sm.finalize_mesh()
-sm.finalize_silo()</pre>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">silomesh</span> <span class="kn">as</span> <span class="nn">sm</span>
+<span class="n">sm</span><span class="o">.</span><span class="n">init_silo</span><span class="p">(</span><span class="s">&quot;fluxtally.silo&quot;</span><span class="p">)</span>
+<span class="n">sm</span><span class="o">.</span><span class="n">init_mesh</span><span class="p">(</span><span class="s">&#39;tally_mesh&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">mesh</span><span class="o">.</span><span class="n">dimension</span><span class="p">,</span> <span class="o">*</span><span class="n">mesh</span><span class="o">.</span><span class="n">lower_left</span><span class="p">,</span> <span class="o">*</span><span class="n">mesh</span><span class="o">.</span><span class="n">upper_right</span><span class="p">)</span>
+<span class="n">sm</span><span class="o">.</span><span class="n">init_var</span><span class="p">(</span><span class="s">&#39;flux_tally_thermal&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nx</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+  <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">ny</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+      <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nz</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">sm</span><span class="o">.</span><span class="n">set_value</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">thermal</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)]),</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)</span>
+<span class="n">sm</span><span class="o">.</span><span class="n">finalize_var</span><span class="p">()</span>
+<span class="n">sm</span><span class="o">.</span><span class="n">init_var</span><span class="p">(</span><span class="s">&#39;flux_tally_fast&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nx</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+  <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">ny</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+      <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">nz</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+          <span class="n">sm</span><span class="o">.</span><span class="n">set_value</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">fast</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)]),</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)</span>
+<span class="n">sm</span><span class="o">.</span><span class="n">finalize_var</span><span class="p">()</span>
+<span class="n">sm</span><span class="o">.</span><span class="n">finalize_mesh</span><span class="p">()</span>
+<span class="n">sm</span><span class="o">.</span><span class="n">finalize_silo</span><span class="p">()</span>
+</pre></div>
 </div>
 <p>and the equivalent VTK file with:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">vtk</span>
@@ -391,7 +399,7 @@ and dumped to MATLAB in one step.</p>
 
     <div class="footer">
         &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">
 

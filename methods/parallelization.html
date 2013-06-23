@@ -3,18 +3,21 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
     <title>8. Parallelization &mdash; OpenMC Documentation</title>
+    
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.1',
+        VERSION:     '0.5.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -113,7 +116,7 @@ reproducible, one must guarantee that the process by which fission sites are
 randomly sampled does not depend on the number of processors. What is typically
 done is the following:</p>
 <blockquote>
-<ol class="arabic simple">
+<div><ol class="arabic simple">
 <li>Each compute node <a class="reference external" href="http://www.mcs.anl.gov/research/projects/mpi/www/www3/MPI_Send.html">sends</a> its fission bank sites to a master process;</li>
 </ol>
 <p>2. The master process sorts or orders the fission sites based on a unique
@@ -122,7 +125,7 @@ identifier;</p>
 of <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/> sites; and</p>
 <p>4. The master process <a class="reference external" href="http://www.mcs.anl.gov/research/projects/mpi/www/www3/MPI_Bcast.html">broadcasts</a> all the fission sites to the compute
 nodes.</p>
-</blockquote>
+</div></blockquote>
 <p>The first and last steps of this process are the major sources of communication
 overhead between cycles. Since the master process must receive <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/> fission
 sites from the compute nodes, the first step is necessarily serial. This step
@@ -160,7 +163,7 @@ keeping the fission sites local, having each compute node sample fission sites,
 and sending sites between nodes only as needed, one can cut down on most of the
 communication. One algorithm to achieve this is as follows:</p>
 <blockquote>
-<p>1. An exclusive scan is performed on the number of sites banked, and the
+<div><p>1. An exclusive scan is performed on the number of sites banked, and the
 total number of fission bank sites is broadcasted to all compute nodes. By
 picturing the fission bank as one large array distributed across multiple
 nodes, one can see that this step enables each compute node to determine the
@@ -177,7 +180,7 @@ and sent to all other compute nodes. This can be done efficiently using the
 <a class="reference external" href="http://www.mcs.anl.gov/research/projects/mpi/www/www3/MPI_Allgather.html">allgather</a> collective operation;</p>
 <p>4. The extra sites are divided among those compute nodes that sampled fewer
 than <img class="math" src="../_images/math/c395cd3824fd2b81862d12d44397aa041de3156a.png" alt="N/p"/> fission sites.</p>
-</blockquote>
+</div></blockquote>
 <p>However, even this algorithm exhibits more communication than necessary since
 the allgather will send fission bank sites to nodes that don&#8217;t necessarily
 need any extra sites.</p>
@@ -195,7 +198,7 @@ are simulating <img class="math" src="../_images/math/82b5e178d68dd7eb9f2394965b
 example, it is instructive to look at the state of the fission bank and source
 bank at several points in the algorithm:</p>
 <blockquote>
-<ol class="arabic simple">
+<div><ol class="arabic simple">
 <li>The beginning of a cycle where each node has <img class="math" src="../_images/math/c395cd3824fd2b81862d12d44397aa041de3156a.png" alt="N/p"/> source sites;</li>
 <li>The end of a cycle where each node has accumulated fission sites;</li>
 </ol>
@@ -203,7 +206,7 @@ bank at several points in the algorithm:</p>
 not equal to <img class="math" src="../_images/math/c395cd3824fd2b81862d12d44397aa041de3156a.png" alt="N/p"/>;</p>
 <p>4. After redistribution, each node again has <img class="math" src="../_images/math/c395cd3824fd2b81862d12d44397aa041de3156a.png" alt="N/p"/> source sites for
 the next cycle;</p>
-</blockquote>
+</div></blockquote>
 <p>At the end of each cycle, each compute node needs 250 fission bank sites to
 continue on the next cycle. Let us suppose that <img class="math" src="../_images/math/d4e8cf09c5ced63a38ed87c9a03dd9aacf7e490a.png" alt="p_0"/> produces 270 fission
 banks sites, <img class="math" src="../_images/math/e01486dcc7cb25518b89692706b17389dc67c92b.png" alt="p_1"/> produces 230, <img class="math" src="../_images/math/a2e8bc2235f5b0094bc37f2ef74f7dc647f0a406.png" alt="p_2"/> produces 290, and <img class="math" src="../_images/math/d05d6a0d3fdb2123690c1b35c922d1e082e810f1.png" alt="p_3"/>
@@ -242,7 +245,7 @@ fission site.</p>
 master node, each of size <img class="math" src="../_images/math/fedbcdb9cda6169277d9b733d69494b45ceae1fc.png" alt="sN/p"/>. Thus, the total time to send these
 messages is</p>
 <div class="math" id="equation-t-send">
-<p><span class="eqno">(1)</span><img src="../_images/math/9d7c8ec12f7a641022948e5850e3bab46f27356c.png" alt="t_{\text{send}} = p\alpha + sN\beta." /></p>
+<p><span class="eqno">(1)</span><img src="../_images/math/9d7c8ec12f7a641022948e5850e3bab46f27356c.png" alt="t_{\text{send}} = p\alpha + sN\beta."/></p>
 </div><p>Generally, the best parallel performance is achieved in a weak scaling scheme
 where the total number of histories is proportional to the number of
 processors. However, we see that when <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/> is proportional to <img class="math" src="../_images/math/36f73fc1312ee0349b3f3a0f3bd9eb5504339011.png" alt="p"/>,
@@ -260,7 +263,7 @@ and then in the subsequent, both the root and the other node can send the data
 to other nodes. Thus, it takes a total of <img class="math" src="../_images/math/80b39ab3612493bf39ca358b1d1d8a7e48b93d9f.png" alt="\lceil \log_2 p \rceil"/> steps
 to complete the communication. The time to complete the communication is</p>
 <div class="math" id="equation-t-short">
-<p><span class="eqno">(2)</span><img src="../_images/math/d877313c0f3481831adea680053c38e247995c6f.png" alt="t_{\text{short}} = \lceil \log_2 p \rceil \left ( \alpha + sN\beta \right )." /></p>
+<p><span class="eqno">(2)</span><img src="../_images/math/d877313c0f3481831adea680053c38e247995c6f.png" alt="t_{\text{short}} = \lceil \log_2 p \rceil \left ( \alpha + sN\beta \right )."/></p>
 </div><p>This algorithm works well for short messages since the latency term scales
 logarithmically with the number of nodes. However, for long messages, an
 algorithm that has lower bandwidth has been proposed by <a class="reference external" href="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.51.7772">Barnett</a> and implemented
@@ -271,14 +274,14 @@ is performed using a ring algorithm that completes in <img class="math" src="../
 \frac{p-1}{p} N\beta"/>. Thus, together the time to complete the broadcast is</p>
 <div class="math" id="equation-t-broadcast">
 <p><span class="eqno">(3)</span><img src="../_images/math/4e33c067e2123099c4eef1b9974563cb21e6c796.png" alt="t_{\text{long}} = \left ( \log_2 p + p - 1 \right ) \alpha + 2 \frac{p-1}{p}
-sN\beta." /></p>
+sN\beta."/></p>
 </div><p>The fission bank data will generally exceed the threshold for switching from
 short to long messages (typically 8 kilobytes), and thus we will use the
 equation for long messages. Adding equations <a href="#equation-t-send">(1)</a> and <a href="#equation-t-broadcast">(3)</a>,
 the total cost of the series of sends and the broadcast is</p>
 <div class="math" id="equation-t-old">
 <p><span class="eqno">(4)</span><img src="../_images/math/67105d4b896a87e0d049f7fb875cd278e380e208.png" alt="t_{\text{old}} = \left ( \log_2 p + 2p - 1 \right ) \alpha + \frac{3p-2}{p}
-sN\beta." /></p>
+sN\beta."/></p>
 </div></div>
 <div class="section" id="cost-of-nearest-neighbor-algorithm">
 <h3>8.1.4. Cost of Nearest Neighbor Algorithm<a class="headerlink" href="#cost-of-nearest-neighbor-algorithm" title="Permalink to this headline">¶</a></h3>
@@ -296,7 +299,7 @@ fundamentals of the Monte Carlo process.</p>
 written in the form of an eigenvalue problem,</p>
 <div class="math" id="equation-NTE">
 <p><span class="eqno">(5)</span><img src="../_images/math/c84a08f8b1fd5eed92413a7efe3ba31a2bd520fa.png" alt="S(\mathbf{r})= \frac{1}{k} \int F(\mathbf{r}' \rightarrow
-\mathbf{r})S(\mathbf{r}')\: d\mathbf{r}," /></p>
+\mathbf{r})S(\mathbf{r}')\: d\mathbf{r},"/></p>
 </div><p>where <img class="math" src="../_images/math/523765e6f77d2ff678e47c2a1ff0a59ace2e8e36.png" alt="\mathbf{r}"/> is the spatial coordinates of the neutron,
 <img class="math" src="../_images/math/940b2b7c298023ee872920b7135b20eef2bfc7cc.png" alt="S(\mathbf{r})"/> is the source distribution defined as the expected number
 of neutrons born from fission per unit phase-space volume at <img class="math" src="../_images/math/523765e6f77d2ff678e47c2a1ff0a59ace2e8e36.png" alt="\mathbf{r}"/>,
@@ -315,24 +318,24 @@ fundamental source distribution and the noise component as (see <a class="refere
 Garlick</a>):</p>
 <div class="math" id="equation-source">
 <p><span class="eqno">(6)</span><img src="../_images/math/5687a35a0550bac9c6f55ccf67f18330a34542b8.png" alt="\hat{S}^{(m)}(\mathbf{r})= N S(\mathbf{r}) + \sqrt{N}
-\hat{\epsilon}^{(m)}(\mathbf{r})," /></p>
+\hat{\epsilon}^{(m)}(\mathbf{r}),"/></p>
 </div><p>where <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/> is the number of particle histories per cycle. Without loss of
 generality, we shall drop the superscript notation indicating the cycle as it is
 understood that the stochastic realization is at a particular cycle. The
 expected value of the stochastic source distribution is simply</p>
 <div class="math" id="equation-expected-value-source">
-<p><span class="eqno">(7)</span><img src="../_images/math/3634a65aaf7d5325cf150034f0c759f41955be26.png" alt="E \left[ \hat{S}(\mathbf{r})\right] = N S (\mathbf{r})" /></p>
+<p><span class="eqno">(7)</span><img src="../_images/math/3634a65aaf7d5325cf150034f0c759f41955be26.png" alt="E \left[ \hat{S}(\mathbf{r})\right] = N S (\mathbf{r})"/></p>
 </div><p>since <img class="math" src="../_images/math/275dd79da679dacccf9f85d7ed5028e0c68735aa.png" alt="E \left[ \hat{\epsilon}(\mathbf{r})\right] = 0"/>. The noise in the
 source distribution is due only to <img class="math" src="../_images/math/5cd8045db5708d33f68fbe6f31ea314e72c2224c.png" alt="\hat{\epsilon}(\mathbf{r})"/> and thus
 the variance of the source distribution will be</p>
 <div class="math" id="equation-var-source">
 <p><span class="eqno">(8)</span><img src="../_images/math/148cb8c308703a08ca7c78e23fc0f8fecda1124e.png" alt="\text{Var} \left[ \hat{S}(\mathbf{r})\right] = N \text{Var} \left[
-\hat{\epsilon}(\mathbf{r}) \right]." /></p>
+\hat{\epsilon}(\mathbf{r}) \right]."/></p>
 </div><p>Lastly, the stochastic and true eigenvalues can be written as integrals over all
 phase space of the stochastic and true source distributions, respectively, as</p>
 <div class="math" id="equation-k-to-source">
 <p><span class="eqno">(9)</span><img src="../_images/math/c9755e08705fc40ca865b2d9ab5a6daef2277c02.png" alt="\hat{k} = \frac{1}{N} \int \hat{S}(\mathbf{r}) \: d\mathbf{r} \quad
-\text{and} \quad k = \int S(\mathbf{r}) \: d\mathbf{r}," /></p>
+\text{and} \quad k = \int S(\mathbf{r}) \: d\mathbf{r},"/></p>
 </div><p>noting that <img class="math" src="../_images/math/940b2b7c298023ee872920b7135b20eef2bfc7cc.png" alt="S(\mathbf{r})"/> is <img class="math" src="../_images/math/62d0effd6477f4244d585fc25f46a645378a4ceb.png" alt="O(1)"/>. One should note that the
 expected value <img class="math" src="../_images/math/8c325612684d41304b9751c175df7bcc0f61f64f.png" alt="k"/> calculated by Monte Carlo power iteration (i.e. the
 method of successive generations) will be biased from the true fundamental
@@ -343,7 +346,7 @@ per cycle is sufficiently large to neglect this bias.</p>
 properties of the distribution of expected number of fission sites. The explicit
 form of the source distribution can be written as</p>
 <div class="math" id="equation-source-explicit">
-<p><span class="eqno">(10)</span><img src="../_images/math/9fce3887457954b2e16b64c6fd5d9a65696c57eb.png" alt="\hat{S}(\mathbf{r}) = \sum_{i=1}^{M} w_i \delta( \mathbf{r} - \mathbf{r}_i )" /></p>
+<p><span class="eqno">(10)</span><img src="../_images/math/9fce3887457954b2e16b64c6fd5d9a65696c57eb.png" alt="\hat{S}(\mathbf{r}) = \sum_{i=1}^{M} w_i \delta( \mathbf{r} - \mathbf{r}_i )"/></p>
 </div><p>where <img class="math" src="../_images/math/1357a3ea7b3d5d938c7f9daf28e6055832f9835e.png" alt="\mathbf{r}_i"/> is the spatial location of the <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/>-th fission
 site, <img class="math" src="../_images/math/535b2bfbb0a587e261a0d0af9b7b53e42629b14d.png" alt="w_i"/> is the statistical weight of the fission site at
 <img class="math" src="../_images/math/1357a3ea7b3d5d938c7f9daf28e6055832f9835e.png" alt="\mathbf{r}_i"/>, and <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/> is the total number of fission sites. It is
@@ -351,19 +354,19 @@ clear that the total weight of the fission sites is simply the integral of the
 source distribution. Integrating equation <a href="#equation-source">(6)</a> over all space, we obtain</p>
 <div class="math" id="equation-source-integrated">
 <p><span class="eqno">(11)</span><img src="../_images/math/25da7598817e81288a2761daf533422333e7a18c.png" alt="\int \hat{S}(\mathbf{r}) \: d\mathbf{r} = N \int S(\mathbf{r}) \:
-d\mathbf{r} + \sqrt{N} \int \hat{\epsilon}(\mathbf{r}) \: d\mathbf{r} ." /></p>
+d\mathbf{r} + \sqrt{N} \int \hat{\epsilon}(\mathbf{r}) \: d\mathbf{r} ."/></p>
 </div><p>Substituting the expressions for the stochastic and true eigenvalues from
 equation <a href="#equation-k-to-source">(9)</a>, we can relate the stochastic eigenvalue to the
 integral of the noise component of the source distribution as</p>
 <div class="math" id="equation-noise-integeral">
-<p><span class="eqno">(12)</span><img src="../_images/math/786d76bfb9d32746bd82be11ad6ef1eb87c24730.png" alt="N\hat{k} = Nk + \sqrt{N} \int \hat{\epsilon}(\mathbf{r}) \: d\mathbf{r}." /></p>
+<p><span class="eqno">(12)</span><img src="../_images/math/786d76bfb9d32746bd82be11ad6ef1eb87c24730.png" alt="N\hat{k} = Nk + \sqrt{N} \int \hat{\epsilon}(\mathbf{r}) \: d\mathbf{r}."/></p>
 </div><p>Since the expected value of <img class="math" src="../_images/math/9ada05558f1c9364ee3349687c0e7c6906b9adce.png" alt="\hat{\epsilon}"/> is zero, the expected value
 of its integral will also be zero. We thus see that the variance of the integral
 of the source distribution, i.e. the variance of the total weight of fission
 sites produced, is directly proportional to the variance of the integral of the
 noise component. Let us call this term <img class="math" src="../_images/math/741fb9098efcb98055f467f87630a5d0ca599b6b.png" alt="\sigma^2"/> for simplicity:</p>
 <div class="math" id="equation-variance-sigma2">
-<p><span class="eqno">(13)</span><img src="../_images/math/9c67861a3feee251052ccd0e8423cf6a7745831d.png" alt="\text{Var} \left[ \int \hat{S}(\mathbf{r}) \right ] = N \sigma^2." /></p>
+<p><span class="eqno">(13)</span><img src="../_images/math/9c67861a3feee251052ccd0e8423cf6a7745831d.png" alt="\text{Var} \left[ \int \hat{S}(\mathbf{r}) \right ] = N \sigma^2."/></p>
 </div><p>The actual value of <img class="math" src="../_images/math/741fb9098efcb98055f467f87630a5d0ca599b6b.png" alt="\sigma^2"/> will depend on the physical nature of the
 problem, whether variance reduction techniques are employed, etc. For instance,
 one could surmise that for a highly scattering problem, <img class="math" src="../_images/math/741fb9098efcb98055f467f87630a5d0ca599b6b.png" alt="\sigma^2"/> would
@@ -375,16 +378,16 @@ evenly across <img class="math" src="../_images/math/36f73fc1312ee0349b3f3a0f3bd
 histories, we can write the source distribution as</p>
 <div class="math" id="equation-source-node">
 <p><span class="eqno">(14)</span><img src="../_images/math/0f0dec55139688164cef0fc40331f0d9265804f4.png" alt="\hat{S}_i(\mathbf{r})= \frac{N}{p} S(\mathbf{r}) + \sqrt{\frac{N}{p}}
-\hat{\epsilon}_i(\mathbf{r}) \quad \text{for} \quad i = 1, \dots, p" /></p>
+\hat{\epsilon}_i(\mathbf{r}) \quad \text{for} \quad i = 1, \dots, p"/></p>
 </div><p>Integrating over all space and simplifying, we can obtain an expression for the
 eigenvalue on the <img class="math" src="../_images/math/34857b3ba74ce5cd8607f3ebd23e9015908ada71.png" alt="i"/>-th node:</p>
 <div class="math" id="equation-k-i-hat">
 <p><span class="eqno">(15)</span><img src="../_images/math/9446ee59de9bf61f6fddbaca53ac555824f94d98.png" alt="\hat{k}_i = k + \sqrt{\frac{p}{N}} \int \hat{\epsilon}_i(\mathbf{r}) \:
-d\mathbf{r}." /></p>
+d\mathbf{r}."/></p>
 </div><p>It is easy to show from this expression that the stochastic realization of the
 global eigenvalue is merely the average of these local eigenvalues:</p>
 <div class="math" id="equation-average-k-as-sum">
-<p><span class="eqno">(16)</span><img src="../_images/math/4c27fcd8a73517681348759d61834aeeafa25c55.png" alt="\hat{k} = \frac{1}{p} \sum_{i=1}^p \hat{k}_i." /></p>
+<p><span class="eqno">(16)</span><img src="../_images/math/4c27fcd8a73517681348759d61834aeeafa25c55.png" alt="\hat{k} = \frac{1}{p} \sum_{i=1}^p \hat{k}_i."/></p>
 </div><p>As was mentioned earlier, at the end of each cycle one must sample <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/>
 sites from the <img class="math" src="../_images/math/5d1e4485dc90c450e8c76826516c1b2ccb8fce16.png" alt="M"/> sites that were created. Thus, the source for the next
 cycle can be seen as the fission source from the current cycle divided by the
@@ -393,7 +396,7 @@ stochastic realization of the eigenvalue since it is clear from equation
 sampled on each compute node that will be used for the next cycle is</p>
 <div class="math" id="equation-sites-per-node">
 <p><span class="eqno">(17)</span><img src="../_images/math/b9075bdf821eb5e3ae3e404c2987ac541fa7bc4d.png" alt="M_i = \frac{1}{\hat{k}} \int \hat{S}_i(\mathbf{r}) \: d\mathbf{r} =
-\frac{N}{p} \frac{\hat{k}_i}{\hat{k}}." /></p>
+\frac{N}{p} \frac{\hat{k}_i}{\hat{k}}."/></p>
 </div><p>While we know conceptually that each compute node will under normal
 circumstances send two messages, many of these messages will overlap. Rather
 than trying to determine the actual communication cost, we will instead attempt
@@ -401,13 +404,13 @@ to determine the maximum amount of data being communicated from one node to
 another. At any given cycle, the number of fission sites that the <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/>-th
 compute node will send or receive (<img class="math" src="../_images/math/42c33d53819106d9c16057774cddf57154b5f560.png" alt="\Lambda_j"/>) is</p>
 <div class="math" id="equation-Lambda">
-<p><span class="eqno">(18)</span><img src="../_images/math/5ccde15a303c67b4d8ad0925c870ec03f09320ba.png" alt="\Lambda_j = \left | \sum_{i=1}^j M_i - \frac{jN}{p} \right |." /></p>
+<p><span class="eqno">(18)</span><img src="../_images/math/5ccde15a303c67b4d8ad0925c870ec03f09320ba.png" alt="\Lambda_j = \left | \sum_{i=1}^j M_i - \frac{jN}{p} \right |."/></p>
 </div><p>Noting that <img class="math" src="../_images/math/c16f8d4a25c864ac30e71e5ac25eaea0a9b7408c.png" alt="jN/p"/> is the expected value of the summation, we can write
 the expected value of <img class="math" src="../_images/math/42c33d53819106d9c16057774cddf57154b5f560.png" alt="\Lambda_j"/> as the mean absolute deviation of the
 summation:</p>
 <div class="math" id="equation-mean-dev-lambda">
 <p><span class="eqno">(19)</span><img src="../_images/math/5919c9a67835f19eb6a5c8b3d47b9e035c052657.png" alt="E \left [ \Lambda_j \right ] = E \left [ \left | \sum_{i=1}^j M_i -
-\frac{jN}{p} \right | \right ] = \text{MD} \left [ \sum_{i=1}^j M_i \right ]" /></p>
+\frac{jN}{p} \right | \right ] = \text{MD} \left [ \sum_{i=1}^j M_i \right ]"/></p>
 </div><p>where <img class="math" src="../_images/math/0415b987b655b923906c1471fc53dd6bbfe7a8c7.png" alt="\text{MD}"/> indicates the mean absolute deviation of a random
 variable. The mean absolute deviation is an alternative measure of variability.</p>
 <p>In order to ascertain any information about the mean deviation of <img class="math" src="../_images/math/50496bd204bbf34e209ecabe0729f4937fe69a1d.png" alt="M_i"/>,
@@ -439,14 +442,14 @@ be normal.</p>
 <div class="math" id="equation-mean-dev-to-stdev">
 <p><span class="eqno">(20)</span><img src="../_images/math/b6a1df04bfb7521e5518b69f4112f889be0328c7.png" alt="\int_{-\infty}^{\infty} f(x) \left | x - \mu \right | \: dx =
 \sqrt{\frac{2}{\pi} \int_{-\infty}^{\infty} f(x) \left ( x - \mu \right )^2
-\: dx}" /></p>
+\: dx}"/></p>
 </div><p>and thus the mean absolute deviation is <img class="math" src="../_images/math/c9c55370f9cc4f17e6a6bd91c7651e8fbe2ff67d.png" alt="\sqrt{2/\pi}"/> times the standard
 deviation. Therefore, to evaluate the mean absolute deviation of <img class="math" src="../_images/math/50496bd204bbf34e209ecabe0729f4937fe69a1d.png" alt="M_i"/>, we
 need to first determine its variance. Substituting equation
 <a href="#equation-average-k-as-sum">(16)</a> into equation <a href="#equation-sites-per-node">(17)</a>, we can rewrite
 <img class="math" src="../_images/math/50496bd204bbf34e209ecabe0729f4937fe69a1d.png" alt="M_i"/> solely in terms of <img class="math" src="../_images/math/a4b36cc557943d410394cb213db426eee8a6b264.png" alt="\hat{k}_1, \dots, \hat{k}_p"/>:</p>
 <div class="math" id="equation-M-i">
-<p><span class="eqno">(21)</span><img src="../_images/math/3ee8a3b33422d3a20490f9bddf55898f62955679.png" alt="M_i = \frac{N \hat{k}_i}{\sum\limits_{j=1}^p \hat{k}_j}." /></p>
+<p><span class="eqno">(21)</span><img src="../_images/math/3ee8a3b33422d3a20490f9bddf55898f62955679.png" alt="M_i = \frac{N \hat{k}_i}{\sum\limits_{j=1}^p \hat{k}_j}."/></p>
 </div><p>Since we know the variance of <img class="math" src="../_images/math/860dfd42afb922c444933ea12f24ff0dbc967b46.png" alt="\hat{k}_i"/>, we can use the error
 propagation law to determine the variance of <img class="math" src="../_images/math/50496bd204bbf34e209ecabe0729f4937fe69a1d.png" alt="M_i"/>:</p>
 <div class="math" id="equation-M-variance">
@@ -454,7 +457,7 @@ propagation law to determine the variance of <img class="math" src="../_images/m
 M_i}{\partial \hat{k}_j} \right )^2 \text{Var} \left [ \hat{k}_j \right ] +
 \sum\limits_{j \neq m} \sum\limits_{m=1}^p \left ( \frac{\partial
 M_i}{\partial \hat{k}_j} \right ) \left ( \frac{\partial M_i}{\partial
-\hat{k}_m} \right ) \text{Cov} \left [ \hat{k}_j, \hat{k}_m \right ]" /></p>
+\hat{k}_m} \right ) \text{Cov} \left [ \hat{k}_j, \hat{k}_m \right ]"/></p>
 </div><p>where the partial derivatives are evaluated at <img class="math" src="../_images/math/5389cb73491a3a8a8a87e7d1e080824bd1914029.png" alt="\hat{k}_j = k"/>. Since
 <img class="math" src="../_images/math/6f04d7c4f50443227e141ab0c211f4e2192184fe.png" alt="\hat{k}_j"/> and <img class="math" src="../_images/math/af8a46c0896f861c8d3626760cbf00689aae35a4.png" alt="\hat{k}_m"/> are independent if <img class="math" src="../_images/math/f2b2af70bb3cac0095ccc02ca2fce935291a6f3e.png" alt="j \neq m"/>,
 their covariance is zero and thus the second term cancels out. Evaluating the
@@ -462,19 +465,19 @@ partial derivatives, we obtain</p>
 <div class="math" id="equation-M-variance-2">
 <p><span class="eqno">(23)</span><img src="../_images/math/d30ca4442445b11dccca4111e1e67b4e05c57d38.png" alt="\text{Var} \left [ M_i \right ] = \left ( \frac{N(p-1)}{kp^2} \right )^2
 \frac{p\sigma^2}{N} + \sum_{j \neq i} \left ( \frac{-N}{kp^2} \right )^2
-\frac{p\sigma^2}{N} = \frac{N(p-1)}{k^2p^2} \sigma^2." /></p>
+\frac{p\sigma^2}{N} = \frac{N(p-1)}{k^2p^2} \sigma^2."/></p>
 </div><p>Through a similar analysis, one can show that the variance of
 <img class="math" src="../_images/math/4e7deed6cb4e8257b7a19106c6451f0a7b67a7d8.png" alt="\sum_{i=1}^j M_i"/> is</p>
 <div class="math" id="equation-sum-M-variance">
 <p><span class="eqno">(24)</span><img src="../_images/math/b7255d303286a1deba6950b2b3c866725c0ff688.png" alt="\text{Var} \left [ \sum_{i=1}^j M_i \right ] = \frac{Nj(p-j)}{k^2p^2}
-\sigma^2" /></p>
+\sigma^2"/></p>
 </div><p>Thus, the expected amount of communication on node <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/>, i.e. the mean
 absolute deviation of <img class="math" src="../_images/math/4e7deed6cb4e8257b7a19106c6451f0a7b67a7d8.png" alt="\sum_{i=1}^j M_i"/> is proportional to</p>
 <div class="math" id="equation-communication-cost">
-<p><span class="eqno">(25)</span><img src="../_images/math/1271a5033ea53711c7b12c29f2412d03e4a5d7d2.png" alt="E \left [ \Lambda_j \right ] = \sqrt{\frac{2Nj(p-j)\sigma^2}{\pi k^2p^2}}." /></p>
+<p><span class="eqno">(25)</span><img src="../_images/math/1271a5033ea53711c7b12c29f2412d03e4a5d7d2.png" alt="E \left [ \Lambda_j \right ] = \sqrt{\frac{2Nj(p-j)\sigma^2}{\pi k^2p^2}}."/></p>
 </div><p>This formula has all the properties that one would expect based on intuition:</p>
 <blockquote>
-<p>1. As the number of histories increases, the communication cost on each node
+<div><p>1. As the number of histories increases, the communication cost on each node
 increases as well;</p>
 <p>2. If <img class="math" src="../_images/math/9910fc8ed8a58c9874860c7482132fb871b8c502.png" alt="p=1"/>, i.e. if the problem is run on only one compute node, the
 variance will be zero. This reflects the fact that exactly <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/> sites
@@ -482,7 +485,7 @@ will be sampled if there is only one node.</p>
 <p>3. For <img class="math" src="../_images/math/0ba7b5d931c9548c6455cf3b379182f5a823bf22.png" alt="j=p"/>, the variance will be zero. Again, this says that when
 you sum the number of sites from each node, you will get exactly <img class="math" src="../_images/math/fc97ef67268cd4e91bacdf12b8901d7036c9a056.png" alt="N"/>
 sites.</p>
-</blockquote>
+</div></blockquote>
 <p>We can determine the node that has the highest communication cost by
 differentiating equation <a href="#equation-communication-cost">(25)</a> with respect to <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/>,
 setting it equal to zero, and solving for <img class="math" src="../_images/math/8122aa89ea6e80784c6513d22787ad86e36ad0cc.png" alt="j"/>. Doing so yields
@@ -491,7 +494,7 @@ equation <a href="#equation-communication-cost">(25)</a> shows us that the maxim
 is actually independent of the number of nodes:</p>
 <div class="math" id="equation-maximum-communication">
 <p><span class="eqno">(26)</span><img src="../_images/math/03f2199fb277a74a8f5f62b84516a2977ffca261.png" alt="E \left [ \Lambda_{j_{\text{max}}} \right ] = \sqrt{ \frac{N\sigma^2}{2\pi
-k^2}}." /></p>
+k^2}}."/></p>
 </div></div>
 </div>
 <div class="section" id="references">
@@ -524,7 +527,7 @@ Radiation Penetration Calculations on a Parallel Computer,&#8221;
 
     <div class="footer">
         &copy; Copyright 2011-2013, Massachusetts Institute of Technology.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.1.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
 <script type="text/javascript">
 

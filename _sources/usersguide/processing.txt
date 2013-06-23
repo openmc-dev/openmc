@@ -20,7 +20,7 @@ Python installation to contain:
 * [4]_ `PyQt <http://www.riverbankcomputing.com/software/pyqt>`_
 
 Most of these are easily obtainable in Ubuntu through the package manager, or
-are easily installed with setuptools.
+are easily installed with distutils.
 
 .. [1] Required for tally data extraction from statepoints with statepoint.py
 .. [2] Required only if reading HDF5 statepoint files. 
@@ -74,7 +74,7 @@ and VTK file formats:
 
 .. code-block:: sh
 
-    <openmc_root>/src/utils/myplot.voxel --vtk -o output.vti
+    <openmc_root>/src/utils/voxel.py myplot.voxel --vtk -o output.vti
 
 To use this utility you need either
 
@@ -82,18 +82,19 @@ To use this utility you need either
 
 or
 
-* `VTK <http://www.vtk.org/>`_ with python bindings - On Ubuntu, these are easily obtained with ``sudo apt-get install python-vtk``
+* `VTK <http://www.vtk.org/>`_ with python bindings - On Ubuntu, these are
+  easily obtained with ``sudo apt-get install python-vtk``
 
 Users can process the binary into any other format if desired by following the
 example of voxel.py.  For the binary file structure, see :ref:`devguide_voxel`.
 
 .. note:: 3D voxel plotting can be very computer intensive for the viewing
-          program (Visit, Paraview, etc.) if the number of voxels is large
-          (>10million or so).  Thus if you want an accurate picture that
-          renders smoothly, consider using only one voxel in a certain
-          direction. For instance, the 3D pin lattice figure above was generated
-          with a 500x500x1 voxel mesh, which allows for resolution of the
-          cylinders without wasting too many voxels on the axial dimension.
+          program (Visit, Paraview, etc.) if the number of voxels is large (>10
+          million or so).  Thus if you want an accurate picture that renders
+          smoothly, consider using only one voxel in a certain direction. For
+          instance, the 3D pin lattice figure above was generated with a
+          500x500x1 voxel mesh, which allows for resolution of the cylinders
+          without wasting too many voxels on the axial dimension.
 
 
 -------------------
@@ -173,7 +174,7 @@ as `PyQt <http://www.riverbankcomputing.com/software/pyqt>`_.
    :height: 200px
 
 Alternatively, the user can write their own Python script to manipulate the data
-appropriately. Consider a run where the first tally contains a 105x105x1 mesh
+appropriately. Consider a run where the first tally contains a 105x105x20 mesh
 over a small core, with a flux score and two energyin filter bins. To explicitly
 extract the data and create a plot with gnuplot, the following script can be
 used. The script operates in several steps for clarity, and is not necessarily
@@ -266,8 +267,8 @@ certain data arrays in order to keep file sizes down.
 
 .. code-block:: sh
 
-    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> -tallies 2,4 --scores 4.1,4.3 -o output.silo
-    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> -filters 2.energyin.1 --vtk -o output.vtm
+    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> --tallies 2,4 --scores 4.1,4.3 -o output.silo
+    <openmc_root>/src/utils/statepoint_3d.py <statepoint_file> --filters 2.energyin.1 --vtk -o output.vtm
 
 All available options for specifying a subset of tallies, scores, and filters
 can be listed with the ``--list`` or ``-l`` command line options.
@@ -287,7 +288,7 @@ SILO file can be created with:
 
     import silomesh as sm
     sm.init_silo("fluxtally.silo")
-    sm.init_mesh('tally_mesh',*mesh.dimension, *mesh.lower_left, *mesh.width)
+    sm.init_mesh('tally_mesh', *mesh.dimension, *mesh.lower_left, *mesh.upper_right)
     sm.init_var('flux_tally_thermal')
     for x in range(1,nx+1):
       for y in range(1,ny+1):

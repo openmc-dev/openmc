@@ -448,6 +448,9 @@ contains
     call active_tracklength_tallies % clear()
     call active_current_tallies % clear()
     call active_tallies % clear()
+
+    ! Deallocate track_identifiers
+    if (allocated(track_identifiers)) deallocate(track_identifiers)
     
     ! Deallocate dictionaries
     call cell_dict % clear()

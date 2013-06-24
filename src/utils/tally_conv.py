@@ -29,7 +29,7 @@ from statepoint import StatePoint
 # Set filetype (the file extension desired, without the period.)
 # Options are backend dependent, but most backends support png, pdf, ps, eps 
 # and svg.  Write "none" if no saved files are desired.
-fileType = "png"
+fileType = "none"
 
 # Set if cross-sections or reaction rates are desired printxs = True means X/S
 printxs = False
@@ -142,7 +142,7 @@ for i_batch in range(len(files)):
                                 relative_error = 0.0
                             uncert[i_batch][i_tally][i_filter][i_nuclide][i_score] = relative_error
                             i_score = i_score + 1
-                    else if  (t.scores[i_score] == 'scatter-n'):
+                    elif  (t.scores[i_score] == 'scatter-n'):
                         order = t.scatt_order[i_score]
                         scoreType[i_batch][i_tally][i_filter][i_nuclide][i_score] = \
                             t.scores[i_score][:-1]+str(order)

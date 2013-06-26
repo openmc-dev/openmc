@@ -1006,7 +1006,6 @@ contains
     integer :: k                    ! loop index for mesh cell crossings
     integer :: b                    ! loop index for nuclide bins
     integer :: u                    ! Loop index for user score bins
-    integer :: score_index_init     ! scoring bin index for intscatt-pn
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: ijk_cross(3)         ! indices of mesh cell crossed
@@ -1248,7 +1247,7 @@ contains
                        micro_xs(i_nuclide) % absorption) * &
                        atom_density * flux
                 case (SCORE_INTSCATT_PN)
-                  call tally_micro_int_pn(i_nuclide, score_index_init, &
+                  call tally_micro_int_pn(i_nuclide, score_index, &
                     filter_index, t % scatt_order(j), atom_density * flux, &
                     t % results)
                   
@@ -1284,7 +1283,7 @@ contains
                   score = (material_xs % total - material_xs % absorption) * flux
                 case (SCORE_INTSCATT_PN)
                   mat => materials(p % material)
-                  call tally_macro_int_pn(mat, score_index_init, filter_index, &
+                  call tally_macro_int_pn(mat, score_index, filter_index, &
                     t % scatt_order(j), flux, t % results)
                   
                   j = j + t % scatt_order(j)

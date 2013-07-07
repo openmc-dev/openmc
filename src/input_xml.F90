@@ -2552,7 +2552,9 @@ contains
 
        ! create dictionary entry for both name and alias
        call xs_listing_dict % add_key(listing % name, i)
-       call xs_listing_dict % add_key(listing % alias, i)
+       if (listing % alias /= '') then
+         call xs_listing_dict % add_key(listing % alias, i)
+       end if
     end do
 
   end subroutine read_cross_sections_xml

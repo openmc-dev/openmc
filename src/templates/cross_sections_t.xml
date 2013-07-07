@@ -7,7 +7,7 @@
 
   <typedef name="ace_table_xml">
     <component name="name" type="word" length="15" />
-    <component name="alias" type="word" length="15" />
+    <component name="alias" type="word" length="15" default="''" />
     <component name="type" type="word" length="10" default="'neutron'" />
     <component name="zaid" type="integer" default="0" />
     <component name="metastable" type="integer" default="0" />

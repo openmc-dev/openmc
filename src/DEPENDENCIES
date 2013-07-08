@@ -87,6 +87,7 @@ source.o: string.o
 
 cmfd_prod_operator.o: constants.o
 cmfd_prod_operator.o: global.o
+cmfd_prod_operator.o: matrix_header.o
 
 cmfd_slepc_solver.o: cmfd_loss_operator.o
 cmfd_slepc_solver.o: cmfd_prod_operator.o

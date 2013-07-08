@@ -39,7 +39,9 @@ cmfd_power_solver.o: cmfd_loss_operator.o
 cmfd_power_solver.o: cmfd_prod_operator.o
 cmfd_power_solver.o: constants.o
 cmfd_power_solver.o: global.o
-cmfd_power_solver.o: string.o
+cmfd_power_solver.o: matrix_header.o
+cmfd_power_solver.o: petsc_solver.o
+cmfd_power_solver.o: vector_header.o
 
 cmfd_message_passing.o: cmfd_header.o
 cmfd_message_passing.o: global.o
@@ -101,8 +103,6 @@ fission.o: global.o
 fission.o: interpolation.o
 fission.o: search.o
 
-cmfd_jacobian_operator.o: cmfd_loss_operator.o
-cmfd_jacobian_operator.o: cmfd_prod_operator.o
 cmfd_jacobian_operator.o: constants.o
 cmfd_jacobian_operator.o: global.o
 

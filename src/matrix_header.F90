@@ -97,10 +97,10 @@ contains
 # ifdef PETSC
 
 !===============================================================================
-! MATRIX_USE_PETSC
+! MATRIX_SETUP_PETSC
 !===============================================================================
 
-  subroutine matrix_use_petsc(self)
+  subroutine matrix_setup_petsc(self)
 
     class(matrix) :: self
 
@@ -112,9 +112,9 @@ contains
 
     ! link to petsc
     call MatCreateSeqAIJWithArrays(PETSC_COMM_WORLD, self % n, self % n, &
-            self % row, self % col, self % val, loss % petsc_mat, petsc_err)
+            self % row, self % col, self % val, self % petsc_mat, petsc_err)
 
-  end subroutine matrix_use_petsc
+  end subroutine matrix_setup_petsc
 
 # endif
 

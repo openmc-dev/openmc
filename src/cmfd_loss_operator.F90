@@ -336,36 +336,20 @@ contains
         ! get neighbor matrix index
         call indices_to_matrix(h, i, j, k, scatt_mat_idx, ng, nx, ny)
 
-        ! get scattering macro xs
-        scattxshg = cmfd%scattxs(h, g, i, j, k)
-
-        ! record value in matrix (negate it)
-        val = -scattxshg
-
-        ! check for adjoint and bank value
+        ! check for adjoint
         if (adjoint_calc) then
-
           ! get scattering macro xs, transposed!
           scattxshg = cmfd%scattxs(g, h, i, j, k)
-
-          ! negate the scattering xs 
-          val = -scattxshg
-
-          ! record value in matrix
-          call loss_matrix % add_value(scatt_mat_idx, val)
-
         else
-
           ! get scattering macro xs
           scattxshg = cmfd%scattxs(h, g, i, j, k)
-
-          ! negate the scattering xs 
-          val = -scattxshg
-
-          ! record value in matrix
-          call loss_matrix % add_value(scatt_mat_idx, val)
-
         end if
+
+        ! negate the scattering xs 
+        val = -scattxshg
+
+        ! record value in matrix
+        call loss_matrix % add_value(scatt_mat_idx, val)
 
       end do SCATTR
 

@@ -264,6 +264,8 @@ cross_section.o: material_header.o
 cross_section.o: random_lcg.o
 cross_section.o: search.o
 
+vector_header.o: constants.o
+
 state_point.o: constants.o
 state_point.o: error.o
 state_point.o: global.o

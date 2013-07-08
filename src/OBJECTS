@@ -46,6 +46,7 @@ output_interface.o \
 particle_header.o \
 particle_restart.o \
 particle_restart_write.o \
+petsc_solver.o \
 physics.o \
 plot.o \
 plot_header.o \

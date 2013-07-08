@@ -560,7 +560,8 @@ contains
       end select
 
       ! Set new particle direction
-      p % coord0 % uvw = (/ u, v, w /)
+      norm = sqrt(u*u + v*v + w*w)
+      p % coord0 % uvw = [u, v, w] / norm
 
       ! Reassign particle's cell and surface
       p % coord0 % cell = last_cell

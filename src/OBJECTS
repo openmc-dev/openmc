@@ -37,6 +37,7 @@ list_header.o \
 main.o \
 material_header.o \
 math.o \
+matrix_header.o \
 mesh_header.o \
 mesh.o \
 mpiio_interface.o \

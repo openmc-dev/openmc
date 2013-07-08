@@ -373,7 +373,7 @@ The settings.xml file can dictate that specific particle tracks are output.  The
         1 2 4
       </track>
 
-After running OpenMC, the directory should contain a file of the form "track_(batch #)_(generation #)_(particle #).binary" for each particle tracked.  These binary track files can be converted into VTK poly data files with the "track.py" utility.  The usage of track.py is of the form "track.py [-o OUT] IN" where OUT is the optional output filename and IN is one or more filenames describing track binary files.  The default output name is "track.pvtp".  A common usage of track.py is "track.py track*.binary" which will use the data from all binary track files in the directory to write a "track.pvtp" VTK output file.  The .pvtp file can then be read and plotted by 3d visualization programs such as Paraview.
+After running OpenMC, the directory should contain a file of the form "track_(batch #)_(generation #)_(particle #).(binary or h5)" for each particle tracked.  These track files can be converted into VTK poly data files with the "track.py" utility.  The usage of track.py is of the form "track.py [-o OUT] IN" where OUT is the optional output filename and IN is one or more filenames describing track files.  The default output name is "track.pvtp".  A common usage of track.py is "track.py track*.binary" which will use the data from all binary track files in the directory to write a "track.pvtp" VTK output file.  The .pvtp file can then be read and plotted by 3d visualization programs such as Paraview.
 
 
 

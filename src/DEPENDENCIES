@@ -275,6 +275,7 @@ particle_header.o: constants.o
 
 particle_track.o: constants.o
 particle_track.o: global.o
+particle_track.o: output_interface.o
 particle_track.o: string.o
 
 particle_restart.o: bank_header.o

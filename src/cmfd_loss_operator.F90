@@ -234,7 +234,7 @@ contains
     ROWS: do irow = 1, loss_matrix % n
 
       ! set up a new row in matrix
-      call loss_matrix % new_row
+      call loss_matrix % new_row()
 
       ! get indices for that row
       call matrix_to_indices(irow, g, i, j, k, ng, nx, ny, nz)
@@ -355,6 +355,9 @@ contains
 
     end do ROWS 
 
+    ! CSR requires n+1 row
+    call loss_matrix % new_row()
+
   end subroutine build_loss_matrix
 
 !===============================================================================
@@ -408,17 +411,17 @@ contains
 
       ! get indices from indexmap
       g = mod(irow, ng) + 1
-      i = cmfd % indexmap(irow/ng+1,1)
-      j = cmfd % indexmap(irow/ng+1,2)
-      k = cmfd % indexmap(irow/ng+1,3)
+      i = cmfd % indexmap((irow-1)/ng+1,1)
+      j = cmfd % indexmap((irow-1)/ng+1,2)
+      k = cmfd % indexmap((irow-1)/ng+1,3)
 
     else
 
       ! compute indices
-      g = mod(irow, ng) + 1
-      i = mod(irow, ng*nx)/ng + 1
-      j = mod(irow, ng*nx*ny)/(ng*nx)+ 1
-      k = mod(irow, ng*nx*ny*nz)/(ng*nx*ny) + 1
+      g = mod(irow-1, ng) + 1
+      i = mod(irow-1, ng*nx)/ng + 1
+      j = mod(irow-1, ng*nx*ny)/(ng*nx)+ 1
+      k = mod(irow-1, ng*nx*ny*nz)/(ng*nx*ny) + 1
 
     end if
 

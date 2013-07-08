@@ -21,6 +21,7 @@ module vector_header
      procedure :: add_value    => vector_add_value
 #   ifdef PETSC
      procedure :: setup_petsc  => vector_setup_petsc
+     procedure :: write_petsc_binary => vector_write_petsc_binary
 #   endif
   end type Vector
 
@@ -90,6 +91,24 @@ contains
 
   end subroutine vector_setup_petsc
 
+!===============================================================================
+! VECTOR_WRITE_PETSC_BINARY
+!===============================================================================
+
+  subroutine vector_write_petsc_binary(self, filename)
+
+    character(*) :: filename
+    class(Vector) :: self
+
+    integer :: petsc_err
+    PetscViewer :: viewer
+
+    call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(filename), &
+         FILE_MODE_WRITE, viewer, petsc_err)
+    call VecView(self % petsc_vec, viewer, petsc_err)
+    call PetscViewerDestroy(viewer, petsc_err)
+
+  end subroutine vector_write_petsc_binary
 # endif
 
 end module vector_header

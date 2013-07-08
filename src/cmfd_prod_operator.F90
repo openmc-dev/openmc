@@ -37,7 +37,7 @@ contains
     else
       n = nx*ny*nz*ng
     end if
-    nz = n * ng
+    nnz = n * ng
 
     ! configure prod matrix
     call prod_matrix % create(n, nnz)
@@ -68,12 +68,21 @@ contains
     real(8) :: nfissxs            ! nufission cross section h-->g
     real(8) :: val                ! temporary variable for nfissxs
 
+    ! get maximum number of cells in each direction
+    nx = cmfd%indices(1)
+    ny = cmfd%indices(2)
+    nz = cmfd%indices(3)
+    ng = cmfd%indices(4)
+
     ! check for adjoint
     adjoint_calc = .false.
     if (present(adjoint)) adjoint_calc = adjoint
 
     ! begin iteration loops
     ROWS: do irow = 1, prod_matrix % n
+
+      ! add a new row to matrix
+      call prod_matrix % new_row()
 
       ! get indices for that row
       call matrix_to_indices(irow, g, i, j, k, ng, nx, ny, nz)
@@ -89,6 +98,7 @@ contains
       end if
 
       ! loop around all other groups 
+
       NFISS: do h = 1, ng
 
         ! get matrix column location
@@ -107,11 +117,15 @@ contains
         val = nfissxs
 
         ! record value in matrix
+
         call prod_matrix % add_value(hmat_idx, val)
 
       end do NFISS
 
     end do ROWS 
+
+    ! CSR requires n+1 row
+    call prod_matrix % new_row()
 
   end subroutine build_prod_matrix
 
@@ -166,17 +180,17 @@ contains
 
       ! get indices from indexmap
       g = mod(irow, ng) + 1
-      i = cmfd % indexmap(irow/ng+1,1)
-      j = cmfd % indexmap(irow/ng+1,2)
-      k = cmfd % indexmap(irow/ng+1,3)
+      i = cmfd % indexmap((irow-1)/ng+1,1)
+      j = cmfd % indexmap((irow-1)/ng+1,2)
+      k = cmfd % indexmap((irow-1)/ng+1,3)
 
     else
 
       ! compute indices
-      g = mod(irow, ng) + 1
-      i = mod(irow, ng*nx)/ng + 1
-      j = mod(irow, ng*nx*ny)/(ng*nx)+ 1
-      k = mod(irow, ng*nx*ny*nz)/(ng*nx*ny) + 1
+      g = mod(irow-1, ng) + 1
+      i = mod(irow-1, ng*nx)/ng + 1
+      j = mod(irow-1, ng*nx*ny)/(ng*nx)+ 1
+      k = mod(irow-1, ng*nx*ny*nz)/(ng*nx*ny) + 1
 
     end if
 

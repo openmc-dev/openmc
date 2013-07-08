@@ -1,41 +1,30 @@
 module cmfd_power_solver
 
-# ifdef PETSC
-
 ! This module contains routines to execute the power iteration solver
 
-  use cmfd_loss_operator, only: loss_operator,init_M_operator, &
-                                build_loss_matrix,destroy_M_operator
-  use cmfd_prod_operator, only: prod_operator,init_F_operator, &
-                                build_prod_matrix,destroy_F_operator
+  use cmfd_loss_operator, only: init_loss_matrix, build_loss_matrix
+  use cmfd_prod_operator, only: init_prod_matrix, build_prod_matrix
+  use matrix_header,      only: Matrix
+  use petsc_solver,       only: Petsc_gmres
+  use vector_header,      only: Vector
 
   implicit none
   private
   public :: cmfd_power_execute 
 
-# include <finclude/petsc.h90>
-
-  type(loss_operator) :: loss   ! M loss matrix
-  type(prod_operator) :: prod   ! F production matrix
-
-  Vec     :: phi_n                ! new flux eigenvector
-  Vec     :: phi_o                ! old flux eigenvector
-  Vec     :: S_n                  ! new source vector
-  Vec     :: S_o                  ! old source vector
-  KSP     :: krylov               ! krylov solver
-  KSP     :: sub_krylov           ! sub-ksp for bjacobi
-  PC      :: prec                 ! preconditioner for krylov
-  PC      :: sub_prec             ! sub-prec for bjacobi
-  integer :: ierr                 ! error flag
-  integer :: nlocal
-  integer :: first
+  logical :: iconv                ! did the problem converged
   real(8) :: k_n                  ! new k-eigenvalue
   real(8) :: k_o                  ! old k-eigenvalue
   real(8) :: ktol = 1.e-8_8       ! tolerance on keff
   real(8) :: stol = 1.e-8_8       ! tolerance on source
-  logical :: iconv                ! did the problem converged
-
   logical :: adjoint_calc = .false. ! run an adjoint calculation
+  type(Matrix) :: loss            ! cmfd loss matrix
+  type(Matrix) :: prod            ! cmfd prod matrix
+  type(Vector) :: phi_n           ! new flux vector
+  type(Vector) :: phi_o           ! old flux vector
+  type(Vector) :: S_n             ! new source vector
+  type(Vector) :: S_o             ! old flux vector
+  type(Petsc_gmres) :: gmres      ! gmres solver
 
 contains
 
@@ -45,7 +34,7 @@ contains
 
   subroutine cmfd_power_execute(k_tol, s_tol, adjoint)
 
-    use global,  only: cmfd_adjoint_type, n_procs_cmfd
+    use global,  only: cmfd_adjoint_type
 
     real(8), optional :: k_tol    ! tolerance on keff
     real(8), optional :: s_tol    ! tolerance on source
@@ -65,26 +54,20 @@ contains
         physical_adjoint = .true.
 
     ! initialize solver
-    call init_solver()
+    call gmres % create()
 
     ! initialize matrices and vectors
-    call init_data()
-
-    ! set up M loss matrix
-    call build_loss_matrix(loss, adjoint=physical_adjoint) 
-
-    ! set up F production matrix
-    call build_prod_matrix(prod, adjoint=physical_adjoint)
+    call init_data(physical_adjoint)
 
     ! check for adjoint calculation
     if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math') &
         call compute_adjoint()
 
     ! set up krylov info
-    call KSPSetOperators(krylov, loss%M, loss%M, SAME_NONZERO_PATTERN, ierr)
+    call gmres % set_oper(loss % petsc_mat, loss % petsc_mat)
 
     ! precondition matrix
-    call precondition_matrix()
+    call gmres % precondition(loss % petsc_mat)
 
     ! begin power iteration 
     call execute_power_iter()
@@ -98,121 +81,57 @@ contains
   end subroutine cmfd_power_execute
 
 !===============================================================================
-! INIT_DATA allocates matrices vectors for CMFD solution
+! INIT_DATA allocates matrices and vectors for CMFD solution
 !===============================================================================
 
-  subroutine init_data()
+  subroutine init_data(adjoint)
 
     use constants, only: ONE
+
+    logical :: adjoint
 
     integer :: n      ! problem size
     real(8) :: guess  ! initial guess
 
     ! set up matrices
-    call init_M_operator(loss)
-    call init_F_operator(prod)
+    call init_loss_matrix(loss)
+    call init_prod_matrix(prod)
 
     ! get problem size
-    n = loss%localn
+    n = loss % n
 
     ! set up flux vectors
-    call VecCreateMPI(PETSC_COMM_WORLD, n, PETSC_DECIDE, phi_n, ierr)
-    call VecCreateMPI(PETSC_COMM_WORLD, n, PETSC_DECIDE, phi_o, ierr)
+    call phi_n % create(n)
+    call phi_o % create(n)
 
     ! set up source vectors
-    call VecCreateMPI(PETSC_COMM_WORLD, n, PETSC_DECIDE, S_n, ierr)
-    call VecCreateMPI(PETSC_COMM_WORLD, n, PETSC_DECIDE, S_o, ierr)
+    call S_n % create(n)
+    call S_o % create(n)
 
     ! set initial guess
     guess = ONE
-    call VecSet(phi_n, guess, ierr)
-    call VecSet(phi_o, guess, ierr)
+    phi_n % val = guess
+    phi_o % val = guess
     k_n = guess
     k_o = guess
 
+    ! set up loss matrix
+    call build_loss_matrix(loss, adjoint=adjoint) 
+
+    ! set up production matrix
+    call build_prod_matrix(prod, adjoint=adjoint)
+
+    ! setup petsc for everything
+    call loss % assemble()
+    call prod % assemble()
+    call loss % setup_petsc()
+    call prod % setup_petsc()
+    call phi_n % setup_petsc()
+    call phi_o % setup_petsc()
+    call S_o % setup_petsc()
+    call S_n % setup_petsc()
+
   end subroutine init_data
-
-!===============================================================================
-! INIT_SOLVER
-!===============================================================================
-
-  subroutine init_solver()
-
-    real(8)  :: rtol ! relative tolerance
-    real(8)  :: atol ! absolute tolerance  
-
-    ! set tolerance
-    rtol = 1.0e-10_8
-    atol = 1.0e-10_8
-
-    ! set up krylov solver
-    call KSPCreate(PETSC_COMM_WORLD, krylov, ierr)
-    call KSPSetTolerances(krylov, rtol, atol, PETSC_DEFAULT_DOUBLE_PRECISION, &
-         PETSC_DEFAULT_INTEGER, ierr)
-    call KSPSetType(krylov, KSPGMRES, ierr)
-    call KSPSetInitialGuessNonzero(krylov, PETSC_TRUE, ierr)
-
-  end subroutine init_solver
-
-!===============================================================================
-! PRECONDITION_MATRIX 
-!===============================================================================
-
-  subroutine precondition_matrix()
-
-    use global, only: cmfd_power_monitor, cmfd_solver_type, &
-                      n_procs_cmfd, cmfd_ilu_levels, master
-    use string, only: to_str
-    use, intrinsic :: ISO_FORTRAN_ENV
-
-    character(len=20) :: ksptype,pctype
- 
-    ! set up preconditioner
-    call KSPGetPC(krylov, prec, ierr)
-    if (n_procs_cmfd == 1) then
-      call PCSetType(prec, PCILU, ierr)
-      call PCFactorSetLevels(prec, cmfd_ilu_levels, ierr)
-      call KSPSetUp(krylov, ierr)
-      call PCFactorGetMatrix(prec, loss%M, ierr)
-    else
-      call PetscOptionsSetValue("-pc_type", "bjacobi", ierr)
-      call PetscOptionsSetValue("-sub_pc_type", "ilu", ierr)  
-      call PetscOptionsSetValue("-sub_pc_factor_levels", &
-           trim(to_str(cmfd_ilu_levels)), ierr)
-      call PCSetFromOptions(prec, ierr)
-      call KSPSetUp(krylov, ierr)
-    end if
-
-    ! get options
-    if (trim(cmfd_solver_type) == 'power') call KSPSetFromOptions(krylov, ierr)
-
-    ! get all types and print
-    call KSPGetType(krylov, ksptype, ierr)
-    call PCGetType(prec, pctype, ierr)
-
-    ! print heading information
-    if (cmfd_power_monitor .and. master) then
-      write(OUTPUT_UNIT,'(A)') ''
-      write(OUTPUT_UNIT,'(A)') '########################################################'
-      write(OUTPUT_UNIT,'(A)') '################ Power Iteration Solver ################'
-      write(OUTPUT_UNIT,'(A)') '########################################################'
-      write(OUTPUT_UNIT,'(A)')
-      write(OUTPUT_UNIT,100)   'Eigenvalue Tolerance:', ktol
-      write(OUTPUT_UNIT,100)   'Source Tolerance:    ', stol
-      write(OUTPUT_UNIT,'(A)') ''
-      write(OUTPUT_UNIT,102)   'Linear Solver Type:  ', ksptype
-      write(OUTPUT_UNIT,102)   'Preconditioner Type: ', pctype
-      write(OUTPUT_UNIT,101)   'ILU Fill Levels:', cmfd_ilu_levels
-      write(OUTPUT_UNIT,'(A)') ''
-      write(OUTPUT_UNIT,'(A)') '---------------------------------------------'
-      write(OUTPUT_UNIT,'(A)') ''
-    end if
-
- 100 FORMAT(A,1X,1PE11.4)
- 101 FORMAT(A,1X,I0)
- 102 FORMAT(A,1X,A)
-
-  end subroutine precondition_matrix
 
 !===============================================================================
 ! COMPUTE_ADJOINT 
@@ -222,23 +141,14 @@ contains
 
     use global,  only: cmfd_write_matrices
 
-    PetscViewer :: viewer
-
     ! transpose matrices
-    call MatTranspose(loss%M, MAT_REUSE_MATRIX, loss%M, ierr)
-    call MatTranspose(prod%F, MAT_REUSE_MATRIX, prod%F, ierr)
+    call loss % transpose()
+    call prod % transpose()
 
     ! write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
-      call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'adj_lossmat.bin', &
-           FILE_MODE_WRITE, viewer, ierr)
-      call MatView(loss%M, viewer, ierr)
-      call PetscViewerDestroy(viewer, ierr)
-
-      call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'adj_prodmat.bin', &
-           FILE_MODE_WRITE, viewer, ierr)
-      call MatView(prod%F, viewer, ierr)
-      call PetscViewerDestroy(viewer, ierr)
+      call loss % write_petsc_binary('adj_lossmat.bin')
+      call prod % write_petsc_binary('adj_prodmat.bin')
     end if
 
   end subroutine compute_adjoint
@@ -250,10 +160,6 @@ contains
 
   subroutine execute_power_iter()
 
-    use constants, only: ONE
-
-    real(8)     :: num       ! numerator for eigenvalue update
-    real(8)     :: den       ! denominator for eigenvalue update
     integer     :: i         ! iteration counter
 
     ! reset convergence flag
@@ -263,24 +169,22 @@ contains
     do i = 1, 10000
 
       ! compute source vector
-      call MatMult(prod%F, phi_o, S_o, ierr)
+      call prod % vector_multiply(phi_o % petsc_vec, S_o % petsc_vec)
 
       ! normalize source vector
-      call VecScale(S_o, ONE/k_o, ierr)
+      S_o % val = S_o % val / k_o
 
       ! compute new flux vector
-      call KSPSolve(krylov, S_o, phi_n, ierr)
+      call gmres % solve(S_o % petsc_vec, phi_n % petsc_vec)
 
       ! compute new source vector
-      call MatMult(prod%F, phi_n, S_n, ierr)
+      call prod % vector_multiply(phi_n % petsc_vec, S_n % petsc_vec)
 
       ! compute new k-eigenvalue
-      call VecSum(S_n, num, ierr)
-      call VecSum(S_o, den, ierr)
-      k_n = num/den
+      k_n = sum(S_n % val) / sum(S_o % val)
 
       ! renormalize the old source
-      call VecScale(S_o, k_o, ierr)
+      S_o % val = S_o % val * k_o
 
       ! check convergence
       call convergence(i)
@@ -289,7 +193,7 @@ contains
       if (iconv) exit
 
       ! record old values
-      call VecCopy(phi_n, phi_o, ierr)
+      phi_o % val = phi_n % val
       k_o = k_n
 
     end do
@@ -302,16 +206,14 @@ contains
 
   subroutine convergence(iter)
 
-    use global,  only: cmfd_power_monitor, master
+    use constants,  only: ONE
+    use global,     only: cmfd_power_monitor, master
     use, intrinsic :: ISO_FORTRAN_ENV
 
     integer     :: iter           ! iteration number
 
     real(8)     :: kerr           ! error in keff
     real(8)     :: serr           ! error in source
-    real(8)     :: norm_n         ! L2 norm of new source
-    real(8)     :: norm_o         ! L2 norm of old source
-    integer     :: ierr           ! petsc error code
 
     ! reset convergence flag
     iconv = .false.
@@ -320,9 +222,7 @@ contains
     kerr = abs(k_o - k_n)/k_n
 
     ! calculate max error in source
-    call VecNorm(S_n, NORM_2, norm_n, ierr)
-    call VecNorm(S_o, NORM_2, norm_o, ierr)
-    serr = abs(norm_n-norm_o)/norm_n
+    serr = sqrt(ONE/dble(S_n % n) * sum(((S_n % val - S_o % val)/S_n % val)**2))
 
     ! check for convergence
     if(kerr < ktol .and. serr < stol) iconv = .true.
@@ -341,18 +241,13 @@ contains
 
   subroutine extract_results()
 
-    use constants,        only: ZERO
-    use global,           only: cmfd, n_procs_cmfd, cmfd_write_matrices
+    use global, only: cmfd, cmfd_write_matrices
 
+    character(len=25)    :: filename  ! name of file to write data 
     integer              :: n         ! problem size
-    integer              :: row_start ! local row start
-    integer              :: row_end   ! local row end
-    real(8),allocatable  :: mybuf(:)  ! temp buffer
-    PetscScalar, pointer :: phi_v(:)  ! pointer to eigenvector info
-    PetscViewer          :: viewer    ! petsc viewer for binary write
 
     ! get problem size
-    n = loss%n
+    n = loss % n
 
     ! also allocate in cmfd object
     if (adjoint_calc) then
@@ -360,35 +255,19 @@ contains
     else
       if (.not. allocated(cmfd%phi)) allocate(cmfd%phi(n))
     end if
-    if (.not. allocated(mybuf)) allocate(mybuf(n))
 
-    ! get ownership range
-    call VecGetOwnershipRange(phi_n, row_start, row_end, ierr)
-
-    ! convert petsc phi_object to cmfd_obj
-    call VecGetArrayF90(phi_n, phi_v, ierr)
+    ! save values 
     if (adjoint_calc) then
-      cmfd%adj_phi(row_start+1:row_end) = phi_v
+      cmfd % adj_phi = phi_n % val
     else
-      cmfd%phi(row_start+1:row_end) = phi_v 
+      cmfd % phi = phi_n % val 
     end if
-    call VecRestoreArrayF90(phi_n, phi_v, ierr)
 
     ! save eigenvalue
     if(adjoint_calc) then
       cmfd%adj_keff = k_n
     else
       cmfd%keff = k_n
-    end if
-
-    ! reduce result to all 
-    mybuf = ZERO
-    if (adjoint_calc) then
-      call MPI_ALLREDUCE(cmfd%adj_phi, mybuf, n, MPI_REAL8, MPI_SUM, &
-           PETSC_COMM_WORLD, ierr)
-    else
-      call MPI_ALLREDUCE(cmfd%phi, mybuf, n, MPI_REAL8, MPI_SUM, &
-           PETSC_COMM_WORLD, ierr)
     end if
 
     ! normalize phi to 1
@@ -401,19 +280,12 @@ contains
     ! write out results
     if (cmfd_write_matrices) then
       if (adjoint_calc) then
-        call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'adj_fluxvec.bin', &
-             FILE_MODE_WRITE, viewer, ierr)
+        filename = 'adj_fluxvec.bin'
       else
-        call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'fluxvec.bin', &
-             FILE_MODE_WRITE, viewer, ierr)
+        filename = 'fluxvec.bin'
       end if
-      call VecView(phi_n, viewer, ierr)
-      call PetscViewerDestroy(viewer, ierr)
+      call phi_n % write_petsc_binary(filename)
     end if
-
-    ! nullify pointer and deallocate local vars
-    if (associated(phi_v)) nullify(phi_v)
-    if (allocated(mybuf)) deallocate(mybuf)
 
   end subroutine extract_results
 
@@ -423,23 +295,15 @@ contains
 
   subroutine finalize()
 
-    use global,  only: n_procs_cmfd
-
-    ! finalize solver objects
-    call KSPDestroy(krylov, ierr)
-    call KSPDestroy(sub_krylov, ierr)
-
-    ! finalize data objects
-    if (n_procs_cmfd > 1) call destroy_M_operator(loss) ! only destroy for jacobi
-    call destroy_F_operator(prod)
-
-    call VecDestroy(phi_n, ierr)
-    call VecDestroy(phi_o, ierr)
-    call VecDestroy(S_n, ierr)
-    call VecDestroy(S_o, ierr)
+    ! destroy all objects 
+    call gmres % destroy() 
+    call loss  % destroy() 
+    call prod  % destroy()
+    call phi_n % destroy()
+    call phi_o % destroy()
+    call S_n   % destroy()
+    call S_o   % destroy()
 
   end subroutine finalize
-
-# endif
 
 end module cmfd_power_solver

@@ -7,9 +7,9 @@ module matrix_header
 #  include <finclude/petsc.h90>
 # endif
 
-  type, public :: matrix
+  type, public :: Matrix
     integer :: n        ! number of rows/cols in matrix
-    integer :: nz       ! number of nonzeros in matrix
+    integer :: nnz      ! number of nonzeros in matrix
     integer :: n_kount  ! counter for length of matrix
     integer :: nz_kount ! counter for number of non zeros
     integer, allocatable :: row(:) ! csr row vector
@@ -34,20 +34,24 @@ contains
 ! MATRIX_CREATE allocates CSR vectors
 !===============================================================================
 
-  subroutine matrix_create(self, n, nz)
+  subroutine matrix_create(self, n, nnz)
 
     integer       :: n
-    integer       :: nz
-    class(matrix) :: self
+    integer       :: nnz
+    class(Matrix) :: self
 
     ! preallocate vectors
     if (.not.allocated(self % row)) allocate(self % row(n+1))
-    if (.not.allocated(self % col)) allocate(self % col(nz))
-    if (.not.allocated(self % val)) allocate(self % val(nz))
+    if (.not.allocated(self % col)) allocate(self % col(nnz))
+    if (.not.allocated(self % val)) allocate(self % val(nnz))
 
     ! set counters to 1
     self % n_kount  = 1
     self % nz_kount = 1
+
+    ! set n and nnz
+    self % n = n
+    self % nnz = nnz
 
   end subroutine matrix_create
 
@@ -57,7 +61,7 @@ contains
 
   subroutine matrix_destroy(self)
 
-    class(matrix) :: self
+    class(Matrix) :: self
 
     if (allocated(self % row)) deallocate(self % row)
     if (allocated(self % col)) deallocate(self % col)
@@ -73,7 +77,7 @@ contains
 
     integer       :: col
     real(8)       :: val
-    class(matrix) :: self
+    class(Matrix) :: self
 
     self % col(self % nz_kount) = col
     self % val(self % nz_kount) = val
@@ -87,7 +91,7 @@ contains
 
   subroutine matrix_new_row(self)
 
-    class(matrix) :: self
+    class(Matrix) :: self
 
     self % row(self % n_kount) = self % nz_kount
     self % n_kount = self % n_kount + 1
@@ -102,7 +106,7 @@ contains
 
   subroutine matrix_setup_petsc(self)
 
-    class(matrix) :: self
+    class(Matrix) :: self
 
     integer :: petsc_err
 

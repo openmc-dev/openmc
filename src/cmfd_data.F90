@@ -22,7 +22,7 @@ contains
 
     use cmfd_header,         only: allocate_cmfd
     use constants,           only: CMFD_NOACCEL
-    use global,              only: cmfd, cmfd_coremap, cmfd_run_2grp
+    use global,              only: cmfd, cmfd_coremap
 
     ! initialize cmfd object
     if (.not.allocated(cmfd%flux)) call allocate_cmfd(cmfd)
@@ -31,13 +31,10 @@ contains
     if ((cmfd_coremap) .and. (cmfd%mat_dim == CMFD_NOACCEL)) call set_coremap()
 
     ! calculate all cross sections based on reaction rates from last batch
-    if (.not. cmfd_run_2grp) call compute_xs()
+    call compute_xs()
 
     ! check neutron balance
 !   call neutron_balance(670)
-
-    ! fix 2 grp cross sections
-    if (cmfd_run_2grp) call fix_2_grp()
 
     ! calculate dtilde
     call compute_dtilde()
@@ -806,36 +803,6 @@ contains
     get_reflector_albedo = albedo
 
   end function get_reflector_albedo
-
-!===============================================================================
-! FIX_2_GRP modifies xs for benchmark with stand alone (homogeneous)
-!===============================================================================
-
-  subroutine fix_2_grp()
-
-    use global,  only: cmfd
-
-    ! overwrite cross sections
-    cmfd % totalxs(1,:,:,:) = 0.02597_8
-    cmfd % totalxs(2,:,:,:) = 0.06669_8
-    cmfd % scattxs(1,1,:,:,:) = 0.0_8
-    cmfd % scattxs(1,2,:,:,:) = 0.01742_8
-    cmfd % scattxs(2,1,:,:,:) = 0.0_8
-    cmfd % scattxs(2,2,:,:,:) = 0.0_8
-    cmfd % nfissxs(1,1,:,:,:) = 0.00536_8
-    cmfd % nfissxs(1,2,:,:,:) = 0.0_8
-    cmfd % nfissxs(2,1,:,:,:) = 0.10433_8
-    cmfd % nfissxs(2,2,:,:,:) = 0.0_8
-    cmfd % diffcof(1,:,:,:) = 1.4176_8
-    cmfd % diffcof(2,:,:,:) = 0.37336_8
-    cmfd % hxyz(1,:,:,:) = 0.5_8
-    cmfd % hxyz(2,:,:,:) = 0.5_8
-    cmfd % hxyz(3,:,:,:) = 0.5_8
-
-    ! set dhat reset to true
-    dhat_reset = .true.
-
-  end subroutine fix_2_grp
 
 !===============================================================================
 ! FIX_NEUTRON_BALANCE

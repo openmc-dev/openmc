@@ -34,7 +34,7 @@ contains
 
   subroutine cmfd_power_execute(k_tol, s_tol, adjoint)
 
-    use global,  only: cmfd_adjoint_type
+    use global,  only: cmfd_adjoint_type, time_cmfdbuild, time_cmfdsolve
 
     real(8), optional :: k_tol    ! tolerance on keff
     real(8), optional :: s_tol    ! tolerance on source
@@ -53,6 +53,9 @@ contains
     if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'physical') &
         physical_adjoint = .true.
 
+    ! start timer for build
+    call time_cmfdbuild % start()
+
     ! initialize solver
     call gmres % create()
 
@@ -69,8 +72,13 @@ contains
     ! precondition matrix
     call gmres % precondition(loss % petsc_mat)
 
+    ! stop timer for build
+    call time_cmfdbuild % stop()
+
     ! begin power iteration 
+    call time_cmfdsolve % start()
     call execute_power_iter()
+    call time_cmfdsolve % stop()
 
     ! extract results
     call extract_results()

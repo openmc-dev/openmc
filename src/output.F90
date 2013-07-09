@@ -1396,13 +1396,17 @@ contains
     write(ou,100) "Total time in simulation", time_inactive % elapsed + &
          time_active % elapsed
     write(ou,100) "  Time in transport only", time_transport % elapsed
-    if(cmfd_run) write(ou,100) "Total CMFD time", time_cmfd % elapsed
     write(ou,100) "  Time in inactive batches", time_inactive % elapsed
     write(ou,100) "  Time in active batches", time_active % elapsed
     write(ou,100) "  Time synchronizing fission bank", time_bank % elapsed
     write(ou,100) "    Sampling source sites", time_bank_sample % elapsed
     write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv % elapsed
     write(ou,100) "  Time accumulating tallies", time_tallies % elapsed
+    if (cmfd_run) write(ou,100) "  Total CMFD time", time_cmfd % elapsed
+    if (cmfd_run) write(ou,100) "    Time building matrices", &
+                  time_cmfdbuild % elapsed
+    if (cmfd_run) write(ou,100) "    Time solving matrices", &
+                  time_cmfdsolve % elapsed
     write(ou,100) "Total time for finalization", time_finalize % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 

@@ -37,7 +37,6 @@ contains
       call process_cmfd_options()
 
       ! Call solver
-      call time_solver % start()
       if (trim(cmfd_solver_type) == 'power') then
         call cmfd_power_execute()
       elseif (trim(cmfd_solver_type) == 'jfnk') then
@@ -46,10 +45,8 @@ contains
         message = 'solver type became invalid after input processing'
         call fatal_error() 
       end if
-      call time_solver % stop()
 
       ! check to perform adjoint on last batch
-      call time_solver % start()
       if (current_batch == n_batches .and. cmfd_run_adjoint) then
         if (trim(cmfd_solver_type) == 'power') then
           call cmfd_power_execute(adjoint = .true.)
@@ -57,7 +54,6 @@ contains
           call cmfd_snes_execute(adjoint = .true.)
         end if
       end if
-      call time_solver % stop()
 
     end if
 

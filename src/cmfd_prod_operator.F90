@@ -11,7 +11,7 @@ module cmfd_prod_operator
 contains
 
 !==============================================================================
-! INIT_PROD_MATRIX
+! INIT_PROD_MATRIX preallocates prod matrix and initializes it
 !==============================================================================
 
   subroutine init_prod_matrix(prod_matrix)
@@ -25,13 +25,13 @@ contains
     integer :: n    ! total length of matrix
     integer :: nnz  ! number of nonzeros in matrix
 
-    ! get maximum number of cells in each direction
+    ! Get maximum number of cells in each direction
     nx = cmfd%indices(1)
     ny = cmfd%indices(2)
     nz = cmfd%indices(3)
     ng = cmfd%indices(4)
 
-    ! calculate dimensions and number of nonzeros in matrix
+    ! Calculate dimensions and number of nonzeros in matrix
     if (cmfd_coremap) then
       n = cmfd % mat_dim * ng
     else
@@ -39,7 +39,7 @@ contains
     end if
     nnz = n * ng
 
-    ! configure prod matrix
+    ! Configure prod matrix
     call prod_matrix % create(n, nnz)
 
   end subroutine init_prod_matrix
@@ -160,7 +160,7 @@ contains
   end subroutine indices_to_matrix
 
 !===============================================================================
-! MATRIX_TO_INDICES
+! MATRIX_TO_INDICES converts matrix index to spatial and group indices
 !===============================================================================
 
   subroutine matrix_to_indices(irow, g, i, j, k, ng, nx, ny, nz)

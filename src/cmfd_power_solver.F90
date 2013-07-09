@@ -29,7 +29,7 @@ module cmfd_power_solver
 contains
 
 !===============================================================================
-! CMFD_POWER_EXECUTE
+! CMFD_POWER_EXECUTE sets up and runs power iteration solver for CMFD
 !===============================================================================
 
   subroutine cmfd_power_execute(k_tol, s_tol, adjoint)
@@ -42,48 +42,48 @@ contains
 
     logical :: physical_adjoint = .false.
 
-    ! set tolerances if present
+    ! Set tolerances if present
     if (present(k_tol)) ktol = k_tol
     if (present(s_tol)) stol = s_tol
 
-    ! check for adjoint execution
+    ! Check for adjoint execution
     if (present(adjoint)) adjoint_calc = adjoint
 
-    ! check for physical adjoint
+    ! Check for physical adjoint
     if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'physical') &
         physical_adjoint = .true.
 
-    ! start timer for build
+    ! Start timer for build
     call time_cmfdbuild % start()
 
-    ! initialize solver
+    ! Initialize solver
     call gmres % create()
 
-    ! initialize matrices and vectors
+    ! Initialize matrices and vectors
     call init_data(physical_adjoint)
 
-    ! check for adjoint calculation
+    ! Check for adjoint calculation
     if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math') &
         call compute_adjoint()
 
-    ! set up krylov info
+    ! Set up krylov info
     call gmres % set_oper(loss % petsc_mat, loss % petsc_mat)
 
-    ! precondition matrix
+    ! Precondition matrix
     call gmres % precondition(loss % petsc_mat)
 
-    ! stop timer for build
+    ! Stop timer for build
     call time_cmfdbuild % stop()
 
-    ! begin power iteration 
+    ! Begin power iteration 
     call time_cmfdsolve % start()
     call execute_power_iter()
     call time_cmfdsolve % stop()
 
-    ! extract results
+    ! Extract results
     call extract_results()
 
-    ! deallocate petsc objects
+    ! Deallocate petsc objects
     call finalize()
 
   end subroutine cmfd_power_execute
@@ -101,35 +101,35 @@ contains
     integer :: n      ! problem size
     real(8) :: guess  ! initial guess
 
-    ! set up matrices
+    ! Set up matrices
     call init_loss_matrix(loss)
     call init_prod_matrix(prod)
 
-    ! get problem size
+    ! Get problem size
     n = loss % n
 
-    ! set up flux vectors
+    ! Set up flux vectors
     call phi_n % create(n)
     call phi_o % create(n)
 
-    ! set up source vectors
+    ! Set up source vectors
     call S_n % create(n)
     call S_o % create(n)
 
-    ! set initial guess
+    ! Set initial guess
     guess = ONE
     phi_n % val = guess
     phi_o % val = guess
     k_n = guess
     k_o = guess
 
-    ! set up loss matrix
+    ! Set up loss matrix
     call build_loss_matrix(loss, adjoint=adjoint) 
 
-    ! set up production matrix
+    ! Set up production matrix
     call build_prod_matrix(prod, adjoint=adjoint)
 
-    ! setup petsc for everything
+    ! Setup petsc for everything
     call loss % assemble()
     call prod % assemble()
     call loss % setup_petsc()
@@ -142,7 +142,7 @@ contains
   end subroutine init_data
 
 !===============================================================================
-! COMPUTE_ADJOINT 
+! COMPUTE_ADJOINT computes a mathematical adjoint of CMFD problem 
 !===============================================================================
 
   subroutine compute_adjoint()
@@ -209,7 +209,7 @@ contains
   end subroutine execute_power_iter 
 
 !===============================================================================
-! CONVERGENCE
+! CONVERGENCE checks the convergence of the CMFD problem
 !===============================================================================
 
   subroutine convergence(iter)
@@ -244,7 +244,7 @@ contains
   end subroutine convergence
 
 !===============================================================================
-! EXTRACT_RESULTS 
+! EXTRACT_RESULTS takes results and puts them in CMFD global data object
 !===============================================================================
 
   subroutine extract_results()
@@ -298,7 +298,7 @@ contains
   end subroutine extract_results
 
 !===============================================================================
-! FINALIZE 
+! FINALIZE frees all memory associated with power iteration
 !===============================================================================
 
   subroutine finalize()

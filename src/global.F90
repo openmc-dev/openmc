@@ -293,8 +293,9 @@ module global
   logical :: cmfd_run = .false.
  
   ! Timing objects
-  type(Timer) :: time_cmfd   ! timer for whole cmfd calculation
-  type(Timer) :: time_solver ! timer for solver 
+  type(Timer) :: time_cmfd      ! timer for whole cmfd calculation
+  type(Timer) :: time_cmfdbuild ! timer for matrix build
+  type(Timer) :: time_cmfdsolve ! timer for solver 
 
   ! Flag for active core map
   logical :: cmfd_coremap = .false.

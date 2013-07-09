@@ -46,7 +46,8 @@ contains
 
     ! initialize timers
     call time_cmfd % reset()
-    call time_solver % reset()
+    call time_cmfdbuild % reset()
+    call time_cmfdsolve % reset()
 
   end subroutine configure_cmfd
 

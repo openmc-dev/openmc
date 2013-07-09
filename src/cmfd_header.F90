@@ -8,67 +8,67 @@ module cmfd_header
 
   type, public :: cmfd_type
 
-    ! indices for problem
+    ! Indices for problem
     integer :: indices(4)
 
-    ! albedo boundary condition
+    ! Albedo boundary condition
     real(8) :: albedo(6)
 
-    ! core overlay map
+    ! Core overlay map
     integer, allocatable :: coremap(:,:,:)
     integer, allocatable :: indexmap(:,:)
     integer :: mat_dim = CMFD_NOACCEL 
 
-    ! energy grid
+    ! Energy grid
     real(8), allocatable :: egrid(:)
 
-    ! cross sections
+    ! Cross sections
     real(8), allocatable :: totalxs(:,:,:,:)
     real(8), allocatable :: p1scattxs(:,:,:,:)
     real(8), allocatable :: scattxs(:,:,:,:,:)
     real(8), allocatable :: nfissxs(:,:,:,:,:)
 
-    ! diffusion coefficient
+    ! Diffusion coefficient
     real(8), allocatable :: diffcof(:,:,:,:)
 
-    ! current
+    ! Current
     real(8), allocatable :: current(:,:,:,:,:)
 
-    ! flux
+    ! Flux
     real(8), allocatable :: flux(:,:,:,:)
 
-    ! coupling coefficients and equivalence parameters
+    ! Coupling coefficients and equivalence parameters
     real(8), allocatable :: dtilde(:,:,:,:,:)
     real(8), allocatable :: dhat(:,:,:,:,:)
 
-    ! dimensions of mesh cells ([hu,hv,hw],xloc,yloc,zloc)
+    ! Dimensions of mesh cells ([hu,hv,hw],xloc,yloc,zloc)
     real(8), allocatable :: hxyz(:,:,:,:)
 
-    ! source distributions
+    ! Source distributions
     real(8), allocatable :: cmfd_src(:,:,:,:)
     real(8), allocatable :: openmc_src(:,:,:,:)
 
-    ! source sites in each mesh box
+    ! Source sites in each mesh box
     real(8), allocatable :: sourcecounts(:,:,:,:)
 
-    ! weight adjustment factors 
+    ! Weight adjustment factors 
     real(8), allocatable :: weightfactors(:,:,:,:)
 
-    ! eigenvector/eigenvalue from cmfd run
+    ! Eigenvector/eigenvalue from cmfd run
     real(8), allocatable :: phi(:)
     real(8) :: keff = ZERO
 
-    ! eigenvector/eigenvalue from adjoint run
+    ! Eigenvector/eigenvalue from adjoint run
     real(8), allocatable :: adj_phi(:)
     real(8) :: adj_keff = ZERO
 
-    ! residual for neutron balance
+    ! Residual for neutron balance
     real(8), allocatable :: resnb(:,:,:,:)
 
-    ! openmc source normalization factor
+    ! Openmc source normalization factor
     real(8) :: norm = ONE
 
-    ! Shannon entropy from cmfd fission source
+    ! "Shannon entropy" from cmfd fission source
     real(8) :: entropy 
 
   end type cmfd_type
@@ -76,7 +76,7 @@ module cmfd_header
 contains
 
 !==============================================================================
-! ALLOCATE_CMFD
+! ALLOCATE_CMFD allocates all data in of cmfd type
 !==============================================================================
 
   subroutine allocate_cmfd(this)
@@ -88,13 +88,13 @@ contains
     integer :: nz  ! number of mesh cells in z direction
     integer :: ng  ! number of energy groups
 
-   ! extract spatial and energy indices from object
+   ! Extract spatial and energy indices from object
     nx = this % indices(1)
     ny = this % indices(2)
     nz = this % indices(3)
     ng = this % indices(4)
 
-    ! allocate flux, cross sections and diffusion coefficient
+    ! Allocate flux, cross sections and diffusion coefficient
     if (.not. allocated(this % flux))       allocate(this % flux(ng,nx,ny,nz))
     if (.not. allocated(this % totalxs))    allocate(this % totalxs(ng,nx,ny,nz))
     if (.not. allocated(this % p1scattxs))  allocate(this % p1scattxs(ng,nx,ny,nz))
@@ -102,25 +102,25 @@ contains
     if (.not. allocated(this % nfissxs))    allocate(this % nfissxs(ng,ng,nx,ny,nz))
     if (.not. allocated(this % diffcof))    allocate(this % diffcof(ng,nx,ny,nz))
 
-    ! allocate dtilde and dhat 
+    ! Allocate dtilde and dhat 
     if (.not. allocated(this % dtilde))     allocate(this % dtilde(6,ng,nx,ny,nz))
     if (.not. allocated(this % dhat))       allocate(this % dhat(6,ng,nx,ny,nz))
 
-    ! allocate dimensions for each box (here for general case)
+    ! Allocate dimensions for each box (here for general case)
     if (.not. allocated(this % hxyz))       allocate(this % hxyz(3,nx,ny,nz))
 
-    ! allocate surface currents
+    ! Allocate surface currents
     if (.not. allocated(this % current))    allocate(this % current(12,ng,nx,ny,nz))
 
-    ! allocate source distributions
+    ! Allocate source distributions
     if (.not. allocated(this % cmfd_src)) allocate(this % cmfd_src(ng,nx,ny,nz))
     if (.not. allocated(this % openmc_src)) allocate(this % openmc_src(ng,nx,ny,nz))
 
-    ! allocate source weight modification vars
+    ! Allocate source weight modification vars
     if (.not. allocated(this % sourcecounts)) allocate(this % sourcecounts(ng,nx,ny,nz))
     if (.not. allocated(this % weightfactors)) allocate(this % weightfactors(ng,nx,ny,nz))
 
-    ! set everthing to 0 except weight multiply factors if feedback isnt on
+    ! Set everthing to 0 except weight multiply factors if feedback isnt on
     this % flux          = ZERO
     this % totalxs       = ZERO
     this % p1scattxs     = ZERO
@@ -139,7 +139,7 @@ contains
   end subroutine allocate_cmfd
 
 !===============================================================================
-! DEALLOCATE_CMFD 
+! DEALLOCATE_CMFD frees all memory of cmfd type 
 !===============================================================================
 
   subroutine deallocate_cmfd(this)

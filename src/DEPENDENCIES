@@ -49,6 +49,7 @@ cmfd_data.o: error.o
 cmfd_data.o: global.o
 cmfd_data.o: mesh.o
 cmfd_data.o: mesh_header.o
+cmfd_data.o: string.o
 cmfd_data.o: tally_header.o
 
 plot.o: constants.o

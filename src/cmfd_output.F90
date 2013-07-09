@@ -1,8 +1,6 @@
 module cmfd_output
 
-#ifdef PETSC
-
-! This modules cleans up cmfd objects and echos the results
+! This modules cleans up cmfd objects and outputs neutron balance info
 
   implicit none
   private
@@ -11,28 +9,30 @@ module cmfd_output
 contains
 
 !===============================================================================
-! FINALIZE_CMFD
+! FINALIZE_CMFD finalizes PETSc and frees memory associated with CMFD
 !===============================================================================
 
   subroutine finalize_cmfd() 
 
-    use global,      only: cmfd, cmfd_write_balance, cmfd_write_hdf5, &
+    use global,      only: cmfd, cmfd_write_balance, &
                            master, mpi_err
     use cmfd_header, only: deallocate_cmfd
 
-    ! finalize petsc
+    ! Finalize petsc
+#ifdef PETSC
     call PetscFinalize(mpi_err)
+# endif
 
-    ! write out final neutron balance
+    ! Write out final neutron balance
     if (master .and. cmfd_write_balance) call write_neutron_balance()
 
-    ! deallocate cmfd object
+    ! Deallocate cmfd object
     call deallocate_cmfd(cmfd)
 
   end subroutine finalize_cmfd 
 
 !===============================================================================
-! WRITE_NEUTRON_BALANCE 
+! WRITE_NEUTRON_BALANCE writes an ASCII neutron balance file out
 !===============================================================================
 
   subroutine write_neutron_balance()
@@ -45,17 +45,15 @@ contains
 
     filename = trim(path_output) // 'neutron_balance.out'
 
-    ! open file for output
+    ! Open file for output
     open(UNIT=CMFD_BALANCE, FILE=filename, ACTION='write')
 
-    ! write out the tally
+    ! Write out the tally
     call neutron_balance(CMFD_BALANCE) 
 
-    ! close file
+    ! Close file
     close(CMFD_BALANCE)
 
   end subroutine write_neutron_balance
-
-#endif
 
 end module cmfd_output

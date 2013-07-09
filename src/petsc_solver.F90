@@ -1,13 +1,20 @@
 module petsc_solver
 
+  use matrix_header,  only: Matrix
+  use vector_header,  only: Vector
+
   implicit none
   private
 
+#ifdef PETSC
 #  include <finclude/petsc.h90>
+#endif
 
   type, public :: Petsc_gmres 
+#ifdef PETSC
     KSP :: ksp
     PC  :: pc
+#endif
    contains
      procedure :: create       => gmres_create
      procedure :: precondition => gmres_precondition
@@ -32,6 +39,7 @@ contains
     real(8) :: rtol = 1.0e-10_8
     real(8) :: atol = 1.0e-10_8
 
+#ifdef PETSC
     call KSPCreate(PETSC_COMM_WORLD, self % ksp, petsc_err)
     call KSPSetTolerances(self % ksp, rtol, atol, &
          PETSC_DEFAULT_DOUBLE_PRECISION, PETSC_DEFAULT_INTEGER, petsc_err)
@@ -39,6 +47,7 @@ contains
     call KSPSetInitialGuessNonzero(self % ksp, PETSC_TRUE, petsc_err)
     call KSPGetPC(self % ksp, self % pc, petsc_err)
     call PCFactorSetLevels(self % pc, ilu_levels, petsc_err)
+#endif
 
   end subroutine gmres_create
 
@@ -46,13 +55,15 @@ contains
 ! GMRES_PRECONDITION
 !===============================================================================
 
-  subroutine gmres_precondition(self, matrix)
+  subroutine gmres_precondition(self, mat)
 
     class(Petsc_gmres) :: self
-    Mat          :: matrix
+    type(Matrix)       :: mat
 
+#ifdef PETSC
     call KSPSetUp(self % ksp, petsc_err) 
-    call PCFactorGetMatrix(self % pc, matrix, petsc_err) 
+    call PCFactorGetMatrix(self % pc, mat % petsc_mat, petsc_err) 
+#endif
 
   end subroutine gmres_precondition
 
@@ -60,14 +71,16 @@ contains
 ! GMRES_SET_OPER
 !===============================================================================
 
-  subroutine gmres_set_oper(self, prec_matrix, matrix)
+  subroutine gmres_set_oper(self, prec_mat, mat)
 
     class(Petsc_gmres) :: self
-    Mat                :: prec_matrix
-    Mat                :: matrix
+    type(Matrix)       :: prec_mat
+    type(Matrix)       :: mat
 
-    call KSPSetOperators(self % ksp, matrix, prec_matrix, &
+#ifdef PETSC
+    call KSPSetOperators(self % ksp, mat % petsc_mat, prec_mat % petsc_mat, &
          SAME_NONZERO_PATTERN, petsc_err)
+#endif
 
   end subroutine gmres_set_oper
 
@@ -79,7 +92,9 @@ contains
 
    class(Petsc_gmres) :: self
 
+#ifdef PETSC
     call KSPDestroy(self % ksp, petsc_err)
+#endif
 
   end subroutine gmres_destroy
 
@@ -90,12 +105,14 @@ contains
   subroutine gmres_solve(self, b, x)
 
     class(Petsc_gmres) :: self
-    Vec :: b
-    Vec :: x
+    type(Vector)       :: b
+    type(Vector)       :: x
 
     integer :: petsc_err
 
-    call KSPSolve(self % ksp, b, x, petsc_err)
+#ifdef PETSC
+    call KSPSolve(self % ksp, b % petsc_vec, x % petsc_vec, petsc_err)
+#endif
 
   end subroutine gmres_solve
 

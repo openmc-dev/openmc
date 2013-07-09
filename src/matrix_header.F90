@@ -24,12 +24,10 @@ module matrix_header
      procedure :: add_value    => matrix_add_value
      procedure :: new_row      => matrix_new_row
      procedure :: assemble     => matrix_assemble
-#   ifdef PETSC
      procedure :: setup_petsc        => matrix_setup_petsc
      procedure :: write_petsc_binary => matrix_write_petsc_binary
      procedure :: transpose          => matrix_transpose
      procedure :: vector_multiply    => matrix_vector_multiply
-#   endif
   end type matrix
 
 contains
@@ -101,8 +99,6 @@ contains
     self % n_kount = self % n_kount + 1
 
   end subroutine matrix_new_row
-
-# ifdef PETSC
 
 !===============================================================================
 ! MATRIX_ASSEMBLE
@@ -224,8 +220,10 @@ contains
     self % col = self % col - 1
 
     ! link to petsc
+#ifdef PETSC
     call MatCreateSeqAIJWithArrays(PETSC_COMM_WORLD, self % n, self % n, &
             self % row, self % col, self % val, self % petsc_mat, petsc_err)
+#endif
 
   end subroutine matrix_setup_petsc
 
@@ -239,12 +237,14 @@ contains
     class(Matrix) :: self
 
     integer :: petsc_err
+#ifdef PETSC
     PetscViewer :: viewer
 
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(filename), &
          FILE_MODE_WRITE, viewer, petsc_err)
     call MatView(self % petsc_mat, viewer, petsc_err)
     call PetscViewerDestroy(viewer, petsc_err)
+#endif
 
   end subroutine matrix_write_petsc_binary
 
@@ -258,8 +258,10 @@ contains
 
     integer :: petsc_err
 
+#ifdef PETSC
     call MatTranspose(self % petsc_mat, MAT_REUSE_MATRIX, self % petsc_mat, &
          petsc_err)
+#endif
 
   end subroutine matrix_transpose
 
@@ -269,16 +271,19 @@ contains
 
   subroutine matrix_vector_multiply(self, vec_in, vec_out)
 
+    use vector_header,  only: Vector
+
     class(Matrix) :: self
-    Vec           :: vec_in
-    Vec           :: vec_out
+    type(Vector)  :: vec_in
+    type(Vector)  :: vec_out
 
     integer :: petsc_err
-    call self % write_petsc_binary('prod_mat.bin')
-    call MatMult(self % petsc_mat, vec_in, vec_out, petsc_err)
+
+#ifdef PETSC
+    call MatMult(self % petsc_mat, vec_in % petsc_vec, vec_out % petsc_vec, &
+                 petsc_err)
+#endif
 
   end subroutine matrix_vector_multiply
-
-# endif
 
 end module matrix_header

@@ -11,10 +11,13 @@ cmfd_output.o: cmfd_header.o
 cmfd_output.o: constants.o
 cmfd_output.o: global.o
 
-list_header.o: constants.o
-
 ace_header.o: constants.o
 ace_header.o: endf_header.o
+
+list_header.o: constants.o
+
+petsc_solver.o: matrix_header.o
+petsc_solver.o: vector_header.o
 
 cmfd_loss_operator.o: constants.o
 cmfd_loss_operator.o: global.o
@@ -117,6 +120,8 @@ cmfd_input.o: tally.o
 cmfd_input.o: tally_header.o
 cmfd_input.o: tally_initialize.o
 cmfd_input.o: templates/cmfd_t.o
+
+matrix_header.o: vector_header.o
 
 input_xml.o: cmfd_input.o
 input_xml.o: constants.o

@@ -32,7 +32,7 @@ contains
     end if
 
     ! Split up procs
-# ifdef MPI
+# ifdef PETSC 
     call MPI_COMM_SPLIT(MPI_COMM_WORLD,color,0,new_comm,mpi_err)
 # endif
 

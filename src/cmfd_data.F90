@@ -15,31 +15,34 @@ module cmfd_data
 contains
 
 !==============================================================================
-! SET_UP_CMFD
+! SET_UP_CMFD configures cmfd object for a CMFD eigenvalue calculation
 !==============================================================================
 
   subroutine set_up_cmfd() 
 
     use cmfd_header,         only: allocate_cmfd
     use constants,           only: CMFD_NOACCEL
-    use global,              only: cmfd, cmfd_coremap
+    use global,              only: cmfd, cmfd_coremap, cmfd_downscatter
 
-    ! initialize cmfd object
+    ! Initialize cmfd object
     if (.not.allocated(cmfd%flux)) call allocate_cmfd(cmfd)
 
-    ! check for core map and set it up
+    ! Check for core map and set it up
     if ((cmfd_coremap) .and. (cmfd%mat_dim == CMFD_NOACCEL)) call set_coremap()
 
-    ! calculate all cross sections based on reaction rates from last batch
+    ! Calculate all cross sections based on reaction rates from last batch
     call compute_xs()
 
-    ! check neutron balance
+    ! Compute effective downscatter cross section
+    if (cmfd_downscatter) call compute_effective_downscatter()
+
+    ! Check neutron balance
 !   call neutron_balance(670)
 
-    ! calculate dtilde
+    ! Calculate dtilde
     call compute_dtilde()
 
-    ! calucate dhat
+    ! Calculate dhat
     call compute_dhat()
 
   end subroutine set_up_cmfd 
@@ -52,11 +55,13 @@ contains
 
     use constants,    only: FILTER_MESH, FILTER_ENERGYIN, FILTER_ENERGYOUT,     &
                             FILTER_SURFACE, IN_RIGHT, OUT_RIGHT, IN_FRONT,      &
-                            OUT_FRONT, IN_TOP, OUT_TOP, CMFD_NOACCEL, ZERO, ONE
+                            OUT_FRONT, IN_TOP, OUT_TOP, CMFD_NOACCEL, ZERO,     &
+                            ONE, TINY_BIT
     use error,        only: fatal_error
     use global,       only: cmfd, message, n_cmfd_tallies, cmfd_tallies, meshes
     use mesh,         only: mesh_indices_to_bin
     use mesh_header,  only: StructuredMesh
+    use string,       only: to_str
     use tally_header, only: TallyObject
 
     integer :: nx            ! number of mesh cells in x direction
@@ -80,30 +85,30 @@ contains
     type(TallyObject),    pointer :: t => null() ! pointer for tally object
     type(StructuredMesh), pointer :: m => null() ! pointer for mesh object
 
-    ! extract spatial and energy indices from object
+    ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
     ng = cmfd % indices(4)
 
-    ! set flux object and source distribution to all zeros
+    ! Set flux object and source distribution to all zeros
     cmfd % flux = ZERO
     cmfd % openmc_src = ZERO
 
-    ! associate tallies and mesh
+    ! Associate tallies and mesh
     t => cmfd_tallies(1)
     i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
     m => meshes(i_mesh)
 
-    ! set mesh widths
+    ! Set mesh widths
     cmfd % hxyz(1,:,:,:) = m % width(1) ! set x width
     cmfd % hxyz(2,:,:,:) = m % width(2) ! set y width
     cmfd % hxyz(3,:,:,:) = m % width(3) ! set z width
 
-   ! begin loop around tallies
+   ! Begin loop around tallies
    TAL: do ital = 1, n_cmfd_tallies
 
-     ! associate tallies and mesh
+     ! Associate tallies and mesh
      t => cmfd_tallies(ital)
      i_mesh = t % filters(t % find_filter(FILTER_MESH)) % int_bins(1)
      m => meshes(i_mesh)
@@ -113,98 +118,99 @@ contains
      i_filter_eout = t % find_filter(FILTER_ENERGYOUT)
      i_filter_surf = t % find_filter(FILTER_SURFACE)
 
-     ! begin loop around space
+     ! Begin loop around space
      ZLOOP: do k = 1,nz
 
        YLOOP: do j = 1,ny
 
           XLOOP: do i = 1,nx
  
-            ! check for active mesh cell
+            ! Check for active mesh cell
             if (allocated(cmfd%coremap)) then
               if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) then
                 cycle
               end if
             end if
 
-            ! loop around energy groups
+            ! Loop around energy groups
             OUTGROUP: do h = 1,ng
 
-              ! start tally 1
+              ! Start tally 1
               TALLY: if (ital == 1) then
 
-                ! reset all bins to 1
+                ! Reset all bins to 1
                 t % matching_bins = 1
 
-                ! set ijk as mesh indices
+                ! Set ijk as mesh indices
                 ijk = (/ i, j, k /)
 
-                ! get bin number for mesh indices
+                ! Get bin number for mesh indices
                 t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m,ijk)
 
-                ! apply energy in filter
+                ! Apply energy in filter
                 if (i_filter_ein > 0) then
                   t % matching_bins(i_filter_ein) = ng - h + 1
                 end if
 
-                ! calculate score index from bins
+                ! Calculate score index from bins
                 score_index = sum((t % matching_bins - 1) * t%stride) + 1
 
-                ! get flux
+                ! Get flux
                 flux = t % results(1,score_index) % sum
                 cmfd % flux(h,i,j,k) = flux
 
-                ! detect zero flux
-                if ((flux - 0.0D0) < 1.0E-10_8) then
-                  print *,h,i,j,k,flux
-                  message = 'Detected zero flux without coremap overlay'
+                ! Detect zero flux, abort if located
+                if ((flux - ZERO) < TINY_BIT) then
+                  message = 'Detected zero flux without coremap overlay at: (' &
+                          // to_str(i) // ',' // to_str(j) // ',' // to_str(k) &
+                          // ') in group ' // to_str(h)
                   call fatal_error()
                 end if
 
-                ! get total rr and convert to total xs
+                ! Get total rr and convert to total xs
                 cmfd % totalxs(h,i,j,k) = t % results(2,score_index) % sum / flux
 
-                ! get p1 scatter rr and convert to p1 scatter xs
+                ! Get p1 scatter rr and convert to p1 scatter xs
                 cmfd % p1scattxs(h,i,j,k) = t % results(3,score_index) % sum / flux
 
-                ! calculate diffusion coefficient
+                ! Calculate diffusion coefficient
                 cmfd % diffcof(h,i,j,k) = ONE/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
                      cmfd % p1scattxs(h,i,j,k)))
 
               else if (ital == 2) then
 
-                ! begin loop to get energy out tallies
+                ! Begin loop to get energy out tallies
                 INGROUP: do g = 1, ng
 
-                  ! reset all bins to 1
+                  ! Reset all bins to 1
                   t % matching_bins = 1
 
-                  ! set ijk as mesh indices
+                  ! Set ijk as mesh indices
                   ijk = (/ i, j, k /)
 
-                  ! get bin number for mesh indices
+                  ! Get bin number for mesh indices
                   t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m,ijk)
 
                   if (i_filter_ein > 0) then
-                    ! apply energy in filter
+                    ! Apply energy in filter
                     t % matching_bins(i_filter_ein) = ng - h + 1
 
-                    ! set energy out bin
+                    ! Set energy out bin
                     t % matching_bins(i_filter_eout) = ng - g + 1
                   end if
 
-                  ! calculate score index from bins
+                  ! Calculate score index from bins
                   score_index = sum((t % matching_bins - 1) * t%stride) + 1
 
-                  ! get scattering
+                  ! Get scattering
                   cmfd % scattxs(h,g,i,j,k) = t % results(1,score_index) % sum /&
                        cmfd % flux(h,i,j,k)
 
-                  ! get nu-fission
+                  ! Get nu-fission
                   cmfd % nfissxs(h,g,i,j,k) = t % results(2,score_index) % sum /&
                        cmfd % flux(h,i,j,k)
 
-                  ! bank source
+                  ! Bank source
                   cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) + &
                        t % results(2,score_index) % sum
 
@@ -212,13 +218,13 @@ contains
 
               else if (ital == 3) then
 
-                ! initialize and filter for energy
+                ! Initialize and filter for energy
                 t % matching_bins = 1
                 if (i_filter_ein > 0) then
                   t % matching_bins(i_filter_ein) = ng - h + 1
                 end if
 
-                ! left surface
+                ! Left surface
                 t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i-1, j, k /) + 1, .true.)
                 t % matching_bins(i_filter_surf) = IN_RIGHT
@@ -228,7 +234,7 @@ contains
                 score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! incoming
                 cmfd % current(2,h,i,j,k) = t % results(1,score_index) % sum
 
-                ! right surface
+                ! Right surface
                 t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k /) + 1, .true.)
                 t % matching_bins(i_filter_surf) = IN_RIGHT
@@ -238,7 +244,7 @@ contains
                 score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(4,h,i,j,k) = t % results(1,score_index) % sum
 
-                ! back surface
+                ! Back surface
                 t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j-1, k /) + 1, .true.)
                 t % matching_bins(i_filter_surf) = IN_FRONT
@@ -248,7 +254,7 @@ contains
                 score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! incoming
                 cmfd % current(6,h,i,j,k) = t % results(1,score_index) % sum
 
-                ! front surface
+                ! Front surface
                 t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k /) + 1, .true.)
                 t % matching_bins(i_filter_surf) = IN_FRONT
@@ -258,7 +264,7 @@ contains
                 score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(8,h,i,j,k) = t % results(1,score_index) % sum
 
-                ! bottom surface
+                ! Bottom surface
                 t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k-1 /) + 1, .true.)
                 t % matching_bins(i_filter_surf) = IN_TOP
@@ -268,7 +274,7 @@ contains
                 score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! incoming
                 cmfd % current(10,h,i,j,k) = t % results(1,score_index) % sum
 
-                ! top surface
+                ! Top surface
                 t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k /) + 1, .true.)
                 t % matching_bins(i_filter_surf) = IN_TOP
@@ -290,10 +296,10 @@ contains
 
     end do TAL
 
-    ! normalize openmc source distribution
+    ! Normalize openmc source distribution
     cmfd % openmc_src = cmfd % openmc_src/sum(cmfd % openmc_src)*cmfd%norm
 
-    ! nullify all pointers
+    ! Nullify all pointers
     if (associated(t)) nullify(t)
     if (associated(m)) nullify(m)
 
@@ -308,42 +314,42 @@ contains
     use constants,  only: CMFD_NOACCEL
     use global,     only: cmfd
 
-    integer :: kount=1           ! counter for unique fuel assemblies
-    integer :: nx                ! number of mesh cells in x direction
-    integer :: ny                ! number of mesh cells in y direction
-    integer :: nz                ! number of mesh cells in z direction
-    integer :: i                 ! iteration counter for x
-    integer :: j                 ! iteration counter for y
-    integer :: k                 ! iteration counter for z
+    integer :: kount=1 ! counter for unique fuel assemblies
+    integer :: nx      ! number of mesh cells in x direction
+    integer :: ny      ! number of mesh cells in y direction
+    integer :: nz      ! number of mesh cells in z direction
+    integer :: i       ! iteration counter for x
+    integer :: j       ! iteration counter for y
+    integer :: k       ! iteration counter for z
 
-    ! extract spatial indices from object
+    ! Extract spatial indices from object
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
 
-    ! count how many fuel assemblies exist
+    ! Count how many fuel assemblies exist
     cmfd % mat_dim = sum(cmfd % coremap - 1)
 
-    ! allocate indexmap
+    ! Allocate indexmap
     if (.not. allocated(cmfd % indexmap)) &
          allocate(cmfd % indexmap(cmfd % mat_dim,3))
 
-    ! begin loops over spatial indices
+    ! Begin loops over spatial indices
     ZLOOP: do k = 1, nz
 
       YLOOP: do j = 1, ny
 
         XLOOP: do i = 1, nx
 
-          ! check for reflector
+          ! Check for reflector
           if (cmfd % coremap(i,j,k) == 1) then
 
-            ! reset value to 99999
+            ! reset value to CMFD no acceleration constant 
             cmfd % coremap(i,j,k) = CMFD_NOACCEL 
 
           else
 
-            ! must be a fuel --> give unique id number
+            ! Must be a fuel --> give unique id number
             cmfd % coremap(i,j,k) = kount
             cmfd % indexmap(kount,1) = i
             cmfd % indexmap(kount,2) = j
@@ -386,19 +392,19 @@ contains
     real(8) :: fission      ! fission term in neutron balance
     real(8) :: res          ! residual of neutron balance
 
-    ! check if keff is close to 0 (happens on first active batch)
+    ! Check if keff is close to 0 (happens on first active batch)
     if (keff < 1e-8_8) return
 
-    ! extract spatial and energy indices from object
+    ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
     ng = cmfd % indices(4)
 
-    ! allocate res dataspace
+    ! Allocate res dataspace
     if (.not. allocated(cmfd%resnb)) allocate(cmfd%resnb(ng,nx,ny,nz))
 
-    ! begin loop around space and energy groups
+    ! Begin loop around space and energy groups
     ZLOOP: do k = 1, nz
 
       YLOOP: do j = 1, ny
@@ -407,7 +413,7 @@ contains
 
           GROUPG: do g = 1, ng
 
-            ! check for active mesh
+            ! Check for active mesh
             if (allocated(cmfd%coremap)) then
               if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) then
                 cmfd%resnb(g,i,j,k) = CMFD_NORES
@@ -415,7 +421,7 @@ contains
               end if
             end if
 
-            ! get leakage
+            ! Get leakage
             leakage = ZERO
             LEAK: do l = 1, 3
 
@@ -426,10 +432,10 @@ contains
 
             end do LEAK
 
-            ! interactions
+            ! Interactions
             interactions = cmfd % totalxs(g,i,j,k) * cmfd % flux(g,i,j,k)
 
-            ! get scattering and fission
+            ! Get scattering and fission
             scattering = ZERO
             fission = ZERO
             GROUPH: do h = 1, ng
@@ -442,16 +448,16 @@ contains
 
             end do GROUPH
 
-            ! compute residual
+            ! Compute residual
             res = leakage + interactions - scattering - (ONE/keff)*fission
 
-            ! normalize by flux
+            ! Normalize by flux
             res = res/cmfd%flux(g,i,j,k)
 
-            ! bank res in cmfd object
+            ! Bank res in cmfd object
             cmfd%resnb(g,i,j,k) = res
 
-            ! write out info to file
+            ! Write out info to file
             write(uid,'(A,1X,I0,1X,I0,1X,I0,1X,A,1X,I0,1X,A,1PE11.4)') &
                           'Location',i,j,k,' Group:',g,'Balance:',res
             write(uid,100) 'Leakage:',leakage
@@ -475,7 +481,7 @@ contains
   end subroutine neutron_balance
 
 !===============================================================================
-! COMPUTE_DTILDE computes the diffusion coupling coefficient
+! COMPUTE_DTILDE precomputes the diffusion coupling coefficient
 !===============================================================================
 
   subroutine compute_dtilde()
@@ -483,44 +489,44 @@ contains
     use constants,  only: CMFD_NOACCEL, ZERO_FLUX, TINY_BIT
     use global,     only: cmfd, cmfd_coremap
 
-    integer :: nx                 ! maximum number of cells in x direction
-    integer :: ny                 ! maximum number of cells in y direction
-    integer :: nz                 ! maximum number of cells in z direction
-    integer :: ng                 ! maximum number of energy groups
-    integer :: nxyz(3,2)          ! single vector containing boundary locations
-    integer :: i                  ! iteration counter for x
-    integer :: j                  ! iteration counter for y
-    integer :: k                  ! iteration counter for z
-    integer :: g                  ! iteration counter for groups
-    integer :: l                  ! iteration counter for leakages
-    integer :: xyz_idx            ! index for determining if x,y or z leakage
-    integer :: dir_idx            ! index for determining - or + face of cell
-    integer :: shift_idx          ! parameter to shift index by +1 or -1
-    integer :: neig_idx(3)        ! spatial indices of neighbour
-    integer :: bound(6)           ! vector containing indices for boudary check
-    real(8) :: albedo(6)          ! albedo vector with global boundaries
-    real(8) :: cell_dc            ! diffusion coef of current cell
-    real(8) :: cell_hxyz(3)       ! cell dimensions of current ijk cell
-    real(8) :: neig_dc            ! diffusion coefficient of neighbor cell
-    real(8) :: neig_hxyz(3)       ! cell dimensions of neighbor cell
-    real(8) :: dtilde             ! finite difference coupling parameter 
-    real(8) :: ref_albedo         ! albedo to reflector
+    integer :: nx           ! maximum number of cells in x direction
+    integer :: ny           ! maximum number of cells in y direction
+    integer :: nz           ! maximum number of cells in z direction
+    integer :: ng           ! maximum number of energy groups
+    integer :: nxyz(3,2)    ! single vector containing boundary locations
+    integer :: i            ! iteration counter for x
+    integer :: j            ! iteration counter for y
+    integer :: k            ! iteration counter for z
+    integer :: g            ! iteration counter for groups
+    integer :: l            ! iteration counter for leakages
+    integer :: xyz_idx      ! index for determining if x,y or z leakage
+    integer :: dir_idx      ! index for determining - or + face of cell
+    integer :: shift_idx    ! parameter to shift index by +1 or -1
+    integer :: neig_idx(3)  ! spatial indices of neighbour
+    integer :: bound(6)     ! vector containing indices for boudary check
+    real(8) :: albedo(6)    ! albedo vector with global boundaries
+    real(8) :: cell_dc      ! diffusion coef of current cell
+    real(8) :: cell_hxyz(3) ! cell dimensions of current ijk cell
+    real(8) :: neig_dc      ! diffusion coefficient of neighbor cell
+    real(8) :: neig_hxyz(3) ! cell dimensions of neighbor cell
+    real(8) :: dtilde       ! finite difference coupling parameter 
+    real(8) :: ref_albedo   ! albedo to reflector
 
-    ! get maximum of spatial and group indices
+    ! Get maximum of spatial and group indices
     nx = cmfd%indices(1)
     ny = cmfd%indices(2)
     nz = cmfd%indices(3)
     ng = cmfd%indices(4)
 
-    ! create single vector of these indices for boundary calculation
+    ! Create single vector of these indices for boundary calculation
     nxyz(1,:) = (/1,nx/)
     nxyz(2,:) = (/1,ny/)
     nxyz(3,:) = (/1,nz/)
 
-    ! get boundary condition information
+    ! Get boundary condition information
     albedo = cmfd%albedo
 
-    ! geting loop over group and spatial indices
+    ! Loop over group and spatial indices
     ZLOOP: do k = 1, nz
 
       YLOOP: do j = 1, ny
@@ -529,63 +535,63 @@ contains
 
           GROUP: do g = 1, ng
 
-            ! check for active mesh cell
+            ! Check for active mesh cell
             if (allocated(cmfd%coremap)) then
               if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) cycle
             end if
 
-            ! get cell data
+            ! Get cell data
             cell_dc = cmfd%diffcof(g,i,j,k)
             cell_hxyz = cmfd%hxyz(:,i,j,k)
 
-            ! setup of vector to identify boundary conditions
+            ! Setup of vector to identify boundary conditions
             bound = (/i,i,j,j,k,k/)
 
-            ! begin loop around sides of cell for leakage
+            ! Begin loop around sides of cell for leakage
             LEAK: do l = 1, 6
 
-              ! define xyz and +/- indices
+              ! Define xyz and +/- indices
               xyz_idx = int(ceiling(real(l)/real(2)))  ! x=1, y=2, z=3
               dir_idx = 2 - mod(l,2) ! -=1, +=2
-              shift_idx = -2*mod(l,2) + 1          ! shift neig by -1 or +1
+              shift_idx = -2*mod(l,2) + 1 ! shift neig by -1 or +1
 
-              ! check if at a boundary
+              ! Check if at a boundary
               if (bound(l) == nxyz(xyz_idx,dir_idx)) then
 
-                ! compute dtilde
+                ! Compute dtilde with albedo boundary condition
                 dtilde = (2*cell_dc*(1-albedo(l)))/(4*cell_dc*(1+albedo(l)) + &
                      (1-albedo(l))*cell_hxyz(xyz_idx))
 
-                ! check for zero flux
+                ! Check for zero flux
                 if (abs(albedo(l) - ZERO_FLUX) < TINY_BIT) dtilde = 2*cell_dc / &
                      cell_hxyz(xyz_idx)
 
               else  ! not a boundary
 
-                ! compute neighboring cell indices
+                ! Compute neighboring cell indices
                 neig_idx = (/i,j,k/)                ! begin with i,j,k
                 neig_idx(xyz_idx) = shift_idx + neig_idx(xyz_idx)
 
-                ! get neigbor cell data
+                ! Get neigbor cell data
                 neig_dc = cmfd%diffcof(g,neig_idx(1),neig_idx(2),neig_idx(3))
                 neig_hxyz = cmfd%hxyz(:,neig_idx(1),neig_idx(2),neig_idx(3))
 
-                ! check for fuel-reflector interface
+                ! Check for fuel-reflector interface
                 if (cmfd_coremap) then
 
                   if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) == &
                        CMFD_NOACCEL .and. cmfd % coremap(i,j,k) /= CMFD_NOACCEL) then
 
-                    ! get albedo
+                    ! Get albedo
                     ref_albedo = get_reflector_albedo(l,g,i,j,k)
 
-                    ! compute dtilde
+                    ! Compute dtilde
                     dtilde = (2*cell_dc*(1-ref_albedo))/(4*cell_dc*(1+ &
                          ref_albedo)+(1-ref_albedo)*cell_hxyz(xyz_idx))
 
-                  else ! not next to a reflector or no core map
+                  else ! Not next to a reflector or no core map
 
-                    ! compute dtilde
+                    ! Compute dtilde to neighbor cell
                     dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc + &
                          cell_hxyz(xyz_idx)*neig_dc)
 
@@ -593,7 +599,7 @@ contains
 
                 else ! no core map
 
-                  ! compute dtilde
+                  ! Compute dtilde to neighbor cell
                   dtilde = (2*cell_dc*neig_dc)/(neig_hxyz(xyz_idx)*cell_dc + &
                        cell_hxyz(xyz_idx)*neig_dc)
 
@@ -601,7 +607,7 @@ contains
 
               end if
 
-              ! record dtilde in cmfd object
+              ! Record dtilde in cmfd object
               cmfd%dtilde(l,g,i,j,k) = dtilde
 
             end do LEAK
@@ -625,40 +631,40 @@ contains
     use constants,  only: CMFD_NOACCEL, ZERO
     use global,     only: cmfd, cmfd_coremap
 
-    integer :: nx                 ! maximum number of cells in x direction
-    integer :: ny                 ! maximum number of cells in y direction
-    integer :: nz                 ! maximum number of cells in z direction
-    integer :: ng                 ! maximum number of energy groups
-    integer :: nxyz(3,2)          ! single vector containing boundary locations
-    integer :: i                  ! iteration counter for x
-    integer :: j                  ! iteration counter for y
-    integer :: k                  ! iteration counter for z
-    integer :: g                  ! iteration counter for groups
-    integer :: l                  ! iteration counter for leakages
-    integer :: xyz_idx            ! index for determining if x,y or z leakage
-    integer :: dir_idx            ! index for determining - or + face of cell
-    integer :: shift_idx          ! parameter to shift index by +1 or -1
-    integer :: neig_idx(3)        ! spatial indices of neighbour
-    integer :: bound(6)           ! vector containing indices for boudary check
-    real(8) :: cell_dtilde(6)     ! cell dtilde for each face
-    real(8) :: cell_flux          ! flux in current cell
-    real(8) :: current(12)        ! area integrated cell current at each face
-    real(8) :: net_current        ! net current on a face
-    real(8) :: neig_flux          ! flux in neighbor cell
-    real(8) :: dhat               ! dhat equivalence parameter
+    integer :: nx             ! maximum number of cells in x direction
+    integer :: ny             ! maximum number of cells in y direction
+    integer :: nz             ! maximum number of cells in z direction
+    integer :: ng             ! maximum number of energy groups
+    integer :: nxyz(3,2)      ! single vector containing boundary locations
+    integer :: i              ! iteration counter for x
+    integer :: j              ! iteration counter for y
+    integer :: k              ! iteration counter for z
+    integer :: g              ! iteration counter for groups
+    integer :: l              ! iteration counter for leakages
+    integer :: xyz_idx        ! index for determining if x,y or z leakage
+    integer :: dir_idx        ! index for determining - or + face of cell
+    integer :: shift_idx      ! parameter to shift index by +1 or -1
+    integer :: neig_idx(3)    ! spatial indices of neighbour
+    integer :: bound(6)       ! vector containing indices for boudary check
+    real(8) :: cell_dtilde(6) ! cell dtilde for each face
+    real(8) :: cell_flux      ! flux in current cell
+    real(8) :: current(12)    ! area integrated cell current at each face
+    real(8) :: net_current    ! net current on a face
+    real(8) :: neig_flux      ! flux in neighbor cell
+    real(8) :: dhat           ! dhat equivalence parameter
 
-    ! get maximum of spatial and group indices
+    ! Get maximum of spatial and group indices
     nx = cmfd%indices(1)
     ny = cmfd%indices(2)
     nz = cmfd%indices(3)
     ng = cmfd%indices(4)
 
-    ! create single vector of these indices for boundary calculation
+    ! Create single vector of these indices for boundary calculation
     nxyz(1,:) = (/1,nx/)
     nxyz(2,:) = (/1,ny/)
     nxyz(3,:) = (/1,nz/)
 
-    ! geting loop over group and spatial indices
+    ! Geting loop over group and spatial indices
     ZLOOP:  do k = 1,nz
 
       YLOOP: do j = 1,ny
@@ -667,51 +673,51 @@ contains
 
           GROUP: do g = 1,ng
 
-            ! check for active mesh cell
+            ! Check for active mesh cell
             if (allocated(cmfd%coremap)) then
               if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) then
                 cycle
               end if
             end if
 
-            ! get cell data
+            ! Get cell data
             cell_dtilde = cmfd%dtilde(:,g,i,j,k)
             cell_flux = cmfd%flux(g,i,j,k)/product(cmfd%hxyz(:,i,j,k))
             current = cmfd%current(:,g,i,j,k)
 
-            ! setup of vector to identify boundary conditions
+            ! Setup of vector to identify boundary conditions
             bound = (/i,i,j,j,k,k/)
 
-            ! begin loop around sides of cell for leakage
+            ! Begin loop around sides of cell for leakage
             LEAK: do l = 1,6
 
-              ! define xyz and +/- indices
+              ! Define xyz and +/- indices
               xyz_idx = int(ceiling(real(l)/real(2)))  ! x=1, y=2, z=3
               dir_idx = 2 - mod(l,2) ! -=1, +=2
               shift_idx = -2*mod(l,2) +1          ! shift neig by -1 or +1
 
-              ! calculate net current on l face (divided by surf area)
+              ! Calculate net current on l face (divided by surf area)
               net_current = (current(2*l) - current(2*l-1)) / &
                    product(cmfd%hxyz(:,i,j,k)) * cmfd%hxyz(xyz_idx,i,j,k)
 
-              ! check if at a boundary
+              ! Check if at a boundary
               if (bound(l) == nxyz(xyz_idx,dir_idx)) then
 
-                ! compute dhat
+                ! Compute dhat
                 dhat = (net_current - shift_idx*cell_dtilde(l)*cell_flux) / &
                      cell_flux
 
               else  ! not a boundary
 
-                ! compute neighboring cell indices
+                ! Compute neighboring cell indices
                 neig_idx = (/i,j,k/)                ! begin with i,j,k
                 neig_idx(xyz_idx) = shift_idx + neig_idx(xyz_idx)
 
-                ! get neigbor flux 
+                ! Get neigbor flux 
                 neig_flux = cmfd%flux(g,neig_idx(1),neig_idx(2),neig_idx(3)) / &
                      product(cmfd%hxyz(:,neig_idx(1),neig_idx(2),neig_idx(3)))
 
-                ! check for fuel-reflector interface
+                ! Check for fuel-reflector interface
                 if (cmfd_coremap) then
 
                   if (cmfd % coremap(neig_idx(1),neig_idx(2),neig_idx(3)) == &
@@ -723,7 +729,7 @@ contains
 
                   else ! not a fuel-reflector interface
 
-                    ! compute dhat 
+                    ! Compute dhat 
                     dhat = (net_current + shift_idx*cell_dtilde(l)* &
                          (neig_flux - cell_flux))/(neig_flux + cell_flux)
 
@@ -731,20 +737,13 @@ contains
 
                 else ! not for fuel-reflector case
 
-                  ! compute dhat 
+                  ! Compute dhat 
                   dhat = (net_current + shift_idx*cell_dtilde(l)* &
                        (neig_flux - cell_flux))/(neig_flux + cell_flux)
 
                 end if
 
               end if
-
-              ! check for zero net current
-!             if ((abs(current(2*l)-current(2*l-1)) < 1e-8_8).and.xyz_idx/=3) then
-!               print *,'Zero net current interface',g,i,j,k
-!               print *,current(2*l),current(2*l-1),net_current
-!               dhat = ZERO
-!             end if
 
               ! record dhat in cmfd object
               cmfd%dhat(l,g,i,j,k) = dhat
@@ -784,13 +783,13 @@ contains
     real(8) :: current(12)          ! partial currents for all faces of mesh cell            
     real(8) :: albedo               ! the albedo
 
-    ! get partial currents from object
+    ! Get partial currents from object
     current = cmfd%current(:,g,i,j,k)
 
-    ! define xyz and +/- indices
+    ! Define xyz and +/- indices
     shift_idx = -2*mod(l,2) + 1          ! shift neig by -1 or +1
 
-    ! calculate albedo
+    ! Calculate albedo
     if ((shift_idx ==  1 .and. current(2*l  ) < 1.0e-10_8) .or. &
         (shift_idx == -1 .and. current(2*l-1) < 1.0e-10_8)) then
       albedo = ALBEDO_REJECT 
@@ -799,7 +798,7 @@ contains
       albedo = (current(2*l-1)/current(2*l))**(shift_idx)
     end if
 
-    ! assign to function variable
+    ! Assign to function variable
     get_reflector_albedo = albedo
 
   end function get_reflector_albedo
@@ -814,54 +813,54 @@ contains
     use global,     only: cmfd, keff
     use, intrinsic :: ISO_FORTRAN_ENV
 
-    integer :: nx                ! number of mesh cells in x direction
-    integer :: ny                ! number of mesh cells in y direction
-    integer :: nz                ! number of mesh cells in z direction
-    integer :: ng                ! number of energy groups
-    integer :: i                 ! iteration counter for x
-    integer :: j                 ! iteration counter for y
-    integer :: k                 ! iteration counter for z
-    integer :: l                 ! iteration counter for surface
-    real(8) :: leak1             ! leakage rate in group 1
-    real(8) :: leak2             ! leakage rate in group 2
-    real(8) :: flux1             ! group 1 volume int flux
-    real(8) :: flux2             ! group 2 volume int flux
-    real(8) :: sigt1             ! group 1 total xs
-    real(8) :: sigt2             ! group 2 total xs
-    real(8) :: sigs11            ! scattering transfer 1 --> 1
-    real(8) :: sigs21            ! scattering transfer 2 --> 1
-    real(8) :: sigs12            ! scattering transfer 1 --> 2
-    real(8) :: sigs22            ! scattering transfer 2 --> 2
-    real(8) :: nsigf11           ! fission transfer 1 --> 1
-    real(8) :: nsigf21           ! fission transfer 2 --> 1
-    real(8) :: nsigf12           ! fission transfer 1 --> 2
-    real(8) :: nsigf22           ! fission transfer 2 --> 2
-    real(8) :: siga1             ! group 1 abs xs
-    real(8) :: siga2             ! group 2 abs xs
-    real(8) :: sigs12_eff        ! effective downscatter xs
+    integer :: nx         ! number of mesh cells in x direction
+    integer :: ny         ! number of mesh cells in y direction
+    integer :: nz         ! number of mesh cells in z direction
+    integer :: ng         ! number of energy groups
+    integer :: i          ! iteration counter for x
+    integer :: j          ! iteration counter for y
+    integer :: k          ! iteration counter for z
+    integer :: l          ! iteration counter for surface
+    real(8) :: leak1      ! leakage rate in group 1
+    real(8) :: leak2      ! leakage rate in group 2
+    real(8) :: flux1      ! group 1 volume int flux
+    real(8) :: flux2      ! group 2 volume int flux
+    real(8) :: sigt1      ! group 1 total xs
+    real(8) :: sigt2      ! group 2 total xs
+    real(8) :: sigs11     ! scattering transfer 1 --> 1
+    real(8) :: sigs21     ! scattering transfer 2 --> 1
+    real(8) :: sigs12     ! scattering transfer 1 --> 2
+    real(8) :: sigs22     ! scattering transfer 2 --> 2
+    real(8) :: nsigf11    ! fission transfer 1 --> 1
+    real(8) :: nsigf21    ! fission transfer 2 --> 1
+    real(8) :: nsigf12    ! fission transfer 1 --> 2
+    real(8) :: nsigf22    ! fission transfer 2 --> 2
+    real(8) :: siga1      ! group 1 abs xs
+    real(8) :: siga2      ! group 2 abs xs
+    real(8) :: sigs12_eff ! effective downscatter xs
 
-    ! extract spatial and energy indices from object
+    ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
     ng = cmfd % indices(4)
 
-    ! return if not two groups
+    ! Return if not two groups
     if (ng /= 2) return
 
-    ! begin loop around space and energy groups
+    ! Begin loop around space and energy groups
     ZLOOP: do k = 1, nz
 
       YLOOP: do j = 1, ny
 
         XLOOP: do i = 1, nx
 
-          ! check for active mesh
+          ! Check for active mesh
           if (allocated(cmfd%coremap)) then
             if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) cycle 
           end if
 
-          ! compute leakage in groups 1 and 2
+          ! Compute leakage in groups 1 and 2
           leak1 = ZERO 
           leak2 = ZERO
           LEAK: do l = 1, 3
@@ -879,7 +878,7 @@ contains
 
           end do LEAK
 
-          ! extract cross sections and flux from object
+          ! Extract cross sections and flux from object
           flux1 = cmfd % flux(1,i,j,k)
           flux2 = cmfd % flux(2,i,j,k)
           sigt1 = cmfd % totalxs(1,i,j,k)
@@ -893,37 +892,37 @@ contains
           nsigf12 = cmfd % nfissxs(1,2,i,j,k)
           nsigf22 = cmfd % nfissxs(2,2,i,j,k)
 
-          ! check for no fission into group 2
+          ! Check for no fission into group 2
           if (.not.(nsigf12 < 1e-6_8 .and. nsigf22 < 1e-6_8)) then
             write(OUTPUT_UNIT,'(A,1PE11.4,1X,1PE11.4)') 'Fission in G=2', &
                   nsigf12,nsigf22
           end if
 
-          ! compute absorption xs
+          ! Compute absorption xs
           siga1 = sigt1 - sigs11 - sigs12
           siga2 = sigt2 - sigs22 - sigs21
 
-          ! compute effective downscatter xs
+          ! Compute effective downscatter xs
           sigs12_eff = (ONE/keff*nsigf11*flux1 - leak1 - siga1*flux1 &
                - ONE/keff*nsigf21/siga2*leak2 ) / ( flux1*(ONE &
                - ONE/keff*nsigf21/siga2))
 
-          ! redefine flux 2
+          ! Redefine flux 2
           flux2 = (sigs12_eff*flux1 - leak2)/siga2
           cmfd % flux(2,i,j,k) = flux2
  
-          ! recompute total cross sections (use effective and no upscattering)
+          ! Recompute total cross sections (use effective and no upscattering)
           sigt1 = siga1 + sigs11 + sigs12_eff
           sigt2 = siga2 + sigs22
 
-          ! record total xs
+          ! Record total xs
           cmfd % totalxs(1,i,j,k) = sigt1
           cmfd % totalxs(2,i,j,k) = sigt2
 
-          ! record effective downscatter xs
+          ! Record effective downscatter xs
           cmfd % scattxs(1,2,i,j,k) = sigs12_eff
 
-          ! zero out upscatter cross section
+          ! Zero out upscatter cross section
           cmfd % scattxs(2,1,i,j,k) = ZERO 
 
         end do XLOOP
@@ -935,7 +934,7 @@ contains
   end subroutine fix_neutron_balance
 
 !===============================================================================
-! FIX_NEUTRON_BALANCE
+! COMPUTE_EFFECTIVE_DOWNSCATTER changes downscatter rate for zero upscatter
 !===============================================================================
 
   subroutine compute_effective_downscatter()
@@ -962,31 +961,28 @@ contains
     real(8) :: siga2             ! group 2 abs xs
     real(8) :: sigs12_eff        ! effective downscatter xs
 
-    ! check for balance
-    if (.not. cmfd_downscatter) return
-
-    ! extract spatial and energy indices from object
+    ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
     ng = cmfd % indices(4)
 
-    ! return if not two groups
+    ! Return if not two groups
     if (ng /= 2) return
 
-    ! begin loop around space and energy groups
+    ! Begin loop around space and energy groups
     ZLOOP: do k = 1, nz
 
       YLOOP: do j = 1, ny
 
         XLOOP: do i = 1, nx
 
-          ! check for active mesh
+          ! Check for active mesh
           if (allocated(cmfd%coremap)) then
             if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) cycle
           end if
 
-          ! extract cross sections and flux from object
+          ! Extract cross sections and flux from object
           flux1 = cmfd % flux(1,i,j,k)
           flux2 = cmfd % flux(2,i,j,k)
           sigt1 = cmfd % totalxs(1,i,j,k)
@@ -996,25 +992,25 @@ contains
           sigs12 = cmfd % scattxs(1,2,i,j,k)
           sigs22 = cmfd % scattxs(2,2,i,j,k)
 
-          ! compute absorption xs
+          ! Compute absorption xs
           siga1 = sigt1 - sigs11 - sigs12
           siga2 = sigt2 - sigs22 - sigs21
 
-          ! compute effective downscatter xs
+          ! Compute effective downscatter xs
           sigs12_eff = sigs12 - sigs21*flux2/flux1 
 
-          ! recompute total cross sections (use effective and no upscattering)
+          ! Recompute total cross sections (use effective and no upscattering)
           sigt1 = siga1 + sigs11 + sigs12_eff
           sigt2 = siga2 + sigs22
     
-          ! record total xs
+          ! Record total xs
           cmfd % totalxs(1,i,j,k) = sigt1
           cmfd % totalxs(2,i,j,k) = sigt2
 
-          ! record effective downscatter xs
+          ! Record effective downscatter xs
           cmfd % scattxs(1,2,i,j,k) = sigs12_eff
 
-          ! zero out upscatter cross section
+          ! Zero out upscatter cross section
           cmfd % scattxs(2,1,i,j,k) = ZERO 
 
         end do XLOOP

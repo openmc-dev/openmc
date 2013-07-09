@@ -105,8 +105,6 @@ contains
 
   end subroutine cmfd_init_batch
 
-# ifdef PETSC
-
 !==============================================================================
 ! PROCESS_CMFD_OPTIONS processes user options that interface with PETSc 
 !==============================================================================
@@ -403,8 +401,6 @@ contains
     end if
 
   end function get_matrix_idx
-
-# endif
 
 !===============================================================================
 ! CMFD_TALLY_RESET

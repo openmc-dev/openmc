@@ -67,10 +67,10 @@ contains
         call compute_adjoint()
 
     ! Set up krylov info
-    call gmres % set_oper(loss % petsc_mat, loss % petsc_mat)
+    call gmres % set_oper(loss, loss)
 
     ! Precondition matrix
-    call gmres % precondition(loss % petsc_mat)
+    call gmres % precondition(loss)
 
     ! Stop timer for build
     call time_cmfdbuild % stop()
@@ -177,16 +177,16 @@ contains
     do i = 1, 10000
 
       ! compute source vector
-      call prod % vector_multiply(phi_o % petsc_vec, S_o % petsc_vec)
+      call prod % vector_multiply(phi_o, S_o)
 
       ! normalize source vector
       S_o % val = S_o % val / k_o
 
       ! compute new flux vector
-      call gmres % solve(S_o % petsc_vec, phi_n % petsc_vec)
+      call gmres % solve(S_o, phi_n)
 
       ! compute new source vector
-      call prod % vector_multiply(phi_n % petsc_vec, S_n % petsc_vec)
+      call prod % vector_multiply(phi_n, S_n)
 
       ! compute new k-eigenvalue
       k_n = sum(S_n % val) / sum(S_o % val)

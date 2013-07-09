@@ -19,10 +19,8 @@ module vector_header
      procedure :: create       => vector_create
      procedure :: destroy      => vector_destroy
      procedure :: add_value    => vector_add_value
-#   ifdef PETSC
      procedure :: setup_petsc  => vector_setup_petsc
      procedure :: write_petsc_binary => vector_write_petsc_binary
-#   endif
   end type Vector
 
 contains
@@ -73,8 +71,6 @@ contains
 
   end subroutine vector_add_value
 
-# ifdef PETSC
-
 !===============================================================================
 ! VECTOR_SETUP_PETSC
 !===============================================================================
@@ -86,8 +82,10 @@ contains
     integer :: petsc_err
 
     ! link to petsc
+#ifdef PETSC
     call VecCreateSeqWithArray(PETSC_COMM_WORLD, 1, self % n, self % val, &
          self % petsc_vec, petsc_err) 
+#endif
 
   end subroutine vector_setup_petsc
 
@@ -101,14 +99,15 @@ contains
     class(Vector) :: self
 
     integer :: petsc_err
+#ifdef PETSC
     PetscViewer :: viewer
 
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(filename), &
          FILE_MODE_WRITE, viewer, petsc_err)
     call VecView(self % petsc_vec, viewer, petsc_err)
     call PetscViewerDestroy(viewer, petsc_err)
+#endif
 
   end subroutine vector_write_petsc_binary
-# endif
 
 end module vector_header

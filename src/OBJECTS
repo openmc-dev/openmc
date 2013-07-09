@@ -8,7 +8,6 @@ cmfd_header.o \
 cmfd_input.o \
 cmfd_jacobian_operator.o \
 cmfd_loss_operator.o \
-cmfd_message_passing.o \
 cmfd_output.o \
 cmfd_power_solver.o \
 cmfd_prod_operator.o \

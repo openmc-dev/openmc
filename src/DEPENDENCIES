@@ -43,9 +43,6 @@ cmfd_power_solver.o: matrix_header.o
 cmfd_power_solver.o: petsc_solver.o
 cmfd_power_solver.o: vector_header.o
 
-cmfd_message_passing.o: cmfd_header.o
-cmfd_message_passing.o: global.o
-
 cmfd_data.o: cmfd_header.o
 cmfd_data.o: constants.o
 cmfd_data.o: error.o
@@ -106,15 +103,10 @@ fission.o: search.o
 cmfd_jacobian_operator.o: constants.o
 cmfd_jacobian_operator.o: global.o
 
-cmfd_snes_solver.o: cmfd_jacobian_operator.o
-cmfd_snes_solver.o: cmfd_loss_operator.o
-cmfd_snes_solver.o: cmfd_power_solver.o
-cmfd_snes_solver.o: cmfd_prod_operator.o
 cmfd_snes_solver.o: constants.o
 cmfd_snes_solver.o: global.o
 cmfd_snes_solver.o: string.o
 
-cmfd_input.o: cmfd_message_passing.o
 cmfd_input.o: error.o
 cmfd_input.o: global.o
 cmfd_input.o: mesh_header.o
@@ -319,7 +311,6 @@ plot_header.o: constants.o
 cmfd_header.o: constants.o
 
 cmfd_execute.o: cmfd_data.o
-cmfd_execute.o: cmfd_message_passing.o
 cmfd_execute.o: cmfd_power_solver.o
 cmfd_execute.o: cmfd_snes_solver.o
 cmfd_execute.o: constants.o

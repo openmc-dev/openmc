@@ -104,13 +104,6 @@ fission.o: global.o
 fission.o: interpolation.o
 fission.o: search.o
 
-cmfd_jacobian_operator.o: constants.o
-cmfd_jacobian_operator.o: global.o
-
-cmfd_snes_solver.o: constants.o
-cmfd_snes_solver.o: global.o
-cmfd_snes_solver.o: string.o
-
 cmfd_input.o: error.o
 cmfd_input.o: global.o
 cmfd_input.o: mesh_header.o
@@ -121,6 +114,7 @@ cmfd_input.o: tally_header.o
 cmfd_input.o: tally_initialize.o
 cmfd_input.o: templates/cmfd_t.o
 
+matrix_header.o: constants.o
 matrix_header.o: vector_header.o
 
 input_xml.o: cmfd_input.o
@@ -143,6 +137,15 @@ input_xml.o: templates/materials_t.o
 input_xml.o: templates/plots_t.o
 input_xml.o: templates/settings_t.o
 input_xml.o: templates/tallies_t.o
+
+cmfd_jfnk_solver.o: cmfd_loss_operator.o
+cmfd_jfnk_solver.o: cmfd_power_solver.o
+cmfd_jfnk_solver.o: cmfd_prod_operator.o
+cmfd_jfnk_solver.o: constants.o
+cmfd_jfnk_solver.o: global.o
+cmfd_jfnk_solver.o: matrix_header.o
+cmfd_jfnk_solver.o: petsc_solver.o
+cmfd_jfnk_solver.o: vector_header.o
 
 main.o: constants.o
 main.o: eigenvalue.o
@@ -317,8 +320,8 @@ plot_header.o: constants.o
 cmfd_header.o: constants.o
 
 cmfd_execute.o: cmfd_data.o
+cmfd_execute.o: cmfd_jfnk_solver.o
 cmfd_execute.o: cmfd_power_solver.o
-cmfd_execute.o: cmfd_snes_solver.o
 cmfd_execute.o: constants.o
 cmfd_execute.o: error.o
 cmfd_execute.o: global.o

@@ -6,12 +6,11 @@ cmfd_data.o \
 cmfd_execute.o \
 cmfd_header.o \
 cmfd_input.o \
-cmfd_jacobian_operator.o \
+cmfd_jfnk_solver.o \
 cmfd_loss_operator.o \
 cmfd_output.o \
 cmfd_power_solver.o \
 cmfd_prod_operator.o \
-cmfd_snes_solver.o \
 constants.o \
 cross_section.o \
 dict_header.o \

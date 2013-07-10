@@ -21,7 +21,7 @@ contains
 
     use cmfd_data,              only: set_up_cmfd
     use cmfd_power_solver,      only: cmfd_power_execute
-    use cmfd_snes_solver,       only: cmfd_snes_execute
+    use cmfd_jfnk_solver,       only: cmfd_jfnk_execute
     use error,                  only: warning, fatal_error 
 
     ! CMFD single processor on master
@@ -40,7 +40,7 @@ contains
       if (trim(cmfd_solver_type) == 'power') then
         call cmfd_power_execute()
       elseif (trim(cmfd_solver_type) == 'jfnk') then
-        call cmfd_snes_execute()
+        call cmfd_jfnk_execute()
       else
         message = 'solver type became invalid after input processing'
         call fatal_error() 
@@ -51,7 +51,7 @@ contains
         if (trim(cmfd_solver_type) == 'power') then
           call cmfd_power_execute(adjoint = .true.)
         elseif (trim(cmfd_solver_type) == 'jfnk') then
-          call cmfd_snes_execute(adjoint = .true.)
+          call cmfd_jfnk_execute(adjoint = .true.)
         end if
       end if
 

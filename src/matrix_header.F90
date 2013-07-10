@@ -18,6 +18,7 @@ module matrix_header
 #  ifdef PETSC
     Mat :: petsc_mat
 #  endif
+    logical :: petsc_active = .false.
    contains
      procedure :: create       => matrix_create
      procedure :: destroy      => matrix_destroy
@@ -223,6 +224,7 @@ contains
 #ifdef PETSC
     call MatCreateSeqAIJWithArrays(PETSC_COMM_WORLD, self % n, self % n, &
             self % row, self % col, self % val, self % petsc_mat, petsc_err)
+    self % petsc_active = .true.
 #endif
 
   end subroutine matrix_setup_petsc
@@ -271,18 +273,44 @@ contains
 
   subroutine matrix_vector_multiply(self, vec_in, vec_out)
 
+    use constants,      only: ZERO
     use vector_header,  only: Vector
 
     class(Matrix) :: self
     type(Vector)  :: vec_in
     type(Vector)  :: vec_out
 
-    integer :: petsc_err
+    integer :: i
+    integer :: j
+    integer :: shift
 
-#ifdef PETSC
-    call MatMult(self % petsc_mat, vec_in % petsc_vec, vec_out % petsc_vec, &
-                 petsc_err)
-#endif
+!    integer :: petsc_err
+
+!#ifdef PETSC
+!     call MatMult(self % petsc_mat, vec_in % petsc_vec, vec_out % petsc_vec, &
+!                 petsc_err)
+!#endif
+
+    ! set shift by default 0 and change if petsc is active
+    ! this is because PETSc needs vectors to remain referenced to 0
+    shift = 0
+    if (self % petsc_active) shift = 1
+
+    ! begin loop around rows
+    ROWS: do i = 1, vec_in % n
+
+      ! initialize target location in vector
+      vec_out % val(i) = ZERO
+
+      ! begin loop around columns (need to shift if petsc is active)
+      COLS: do j = self % row(i) + shift, self % row(i + 1) - 1 + shift
+
+        vec_out % val(i) = vec_out % val(i) + self % val(j) * &
+                           vec_in % val(self % col(j) + shift)
+
+      end do COLS
+
+    end do ROWS
 
   end subroutine matrix_vector_multiply
 

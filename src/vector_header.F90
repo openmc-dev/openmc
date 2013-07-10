@@ -11,7 +11,7 @@ module vector_header
 
   type, public :: Vector 
     integer :: n        ! number of rows/cols in matrix
-    real(8), allocatable :: val(:) ! matrix value vector
+    real(8), pointer :: val(:) ! matrix value vector
 #  ifdef PETSC
     Vec :: petsc_vec
 #  endif
@@ -35,7 +35,7 @@ contains
     class(Vector) :: self
 
     ! preallocate vector
-    if (.not.allocated(self % val)) allocate(self % val(n))
+    if (.not.associated(self % val)) allocate(self % val(n))
 
     ! set n
     self % n = n
@@ -53,7 +53,7 @@ contains
 
     class(Vector) :: self
 
-    if (allocated(self % val)) deallocate(self % val)
+    if (associated(self % val)) deallocate(self % val)
 
   end subroutine vector_destroy
 

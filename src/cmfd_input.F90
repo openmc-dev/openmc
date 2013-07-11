@@ -40,7 +40,7 @@ contains
 # ifdef PETSC
     PETSC_COMM_WORLD = new_comm
 
-    ! Initialize petsc on all procs
+    ! Initialize PETSc on all procs
     call PetscInitialize(PETSC_NULL_CHARACTER,mpi_err)
 # endif
 

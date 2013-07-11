@@ -62,7 +62,7 @@ contains
     ! Initialize matrices and vectors
     call init_data(physical_adjoint)
 
-    ! Check for adjoint calculation
+    ! Check for mathematical adjoint calculation
     if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math') &
         call compute_adjoint()
 
@@ -80,7 +80,7 @@ contains
     ! Extract results
     call extract_results()
 
-    ! Deallocate petsc objects
+    ! Deallocate data 
     call finalize()
 
   end subroutine cmfd_power_execute
@@ -120,10 +120,10 @@ contains
     k_n = guess
     k_o = guess
 
-    ! Set up loss matrix
+    ! Fill in loss matrix
     call build_loss_matrix(loss, adjoint=adjoint) 
 
-    ! Set up production matrix
+    ! Fill in production matrix
     call build_prod_matrix(prod, adjoint=adjoint)
 
     ! Setup petsc for everything
@@ -159,13 +159,13 @@ contains
   end subroutine compute_adjoint
 
 !===============================================================================
-! EXECUTE_POWER_ITER  in the main power iteration routine
+! EXECUTE_POWER_ITER  is the main power iteration routine
 !                     for the cmfd calculation
 !===============================================================================
 
   subroutine execute_power_iter()
 
-    integer     :: i         ! iteration counter
+    integer :: i ! iteration counter
 
     ! Reset convergence flag
     iconv = .false.
@@ -234,8 +234,8 @@ contains
 
     ! Print out to user
     if (cmfd_power_monitor .and. master) then
-      write(OUTPUT_UNIT,FMT='(I0,":",T10,"k-eff: ",F0.8,T30,"k-error: ",1PE12.5,T55, &
-           "src-error: ",1PE12.5)') iter, k_n, kerr, serr
+      write(OUTPUT_UNIT,FMT='(I0,":",T10,"k-eff: ",F0.8,T30,"k-error: ", &
+           &1PE12.5,T55, "src-error: ",1PE12.5)') iter, k_n, kerr, serr
     end if
 
   end subroutine convergence
@@ -254,7 +254,7 @@ contains
     ! Get problem size
     n = loss % n
 
-    ! Also allocate in cmfd object
+    ! Allocate in cmfd object if not already allocated
     if (adjoint_calc) then
       if (.not. allocated(cmfd%adj_phi)) allocate(cmfd%adj_phi(n))
     else

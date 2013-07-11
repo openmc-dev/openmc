@@ -18,7 +18,7 @@ contains
                            master, mpi_err
     use cmfd_header, only: deallocate_cmfd
 
-    ! Finalize petsc
+    ! Finalize PETSc 
 #ifdef PETSC
     call PetscFinalize(mpi_err)
 # endif

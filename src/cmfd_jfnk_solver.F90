@@ -85,7 +85,7 @@ contains
     call build_loss_matrix(loss, adjoint = physical_adjoint)
     call build_prod_matrix(prod, adjoint = physical_adjoint)
 
-    ! Assembly matrices and use petsc
+    ! Assemble matrices and use PETSc
     call loss % assemble()
     call prod % assemble()
     call loss % setup_petsc()
@@ -102,28 +102,28 @@ contains
     call resvec % create(n + 1)
     call xvec % create(n + 1)
 
-    ! Set flux in guess
+    ! Set flux in guess from rough power iteration
     if (adjoint_calc) then
       xvec % val(1:n) = cmfd % adj_phi
     else
       xvec % val(1:n) = cmfd % phi
     end if
 
-    ! Set keff in guess
+    ! Set keff in guess from rough power iteration
     if (adjoint_calc) then
       xvec % val(n + 1) = ONE/cmfd % adj_keff
     else
       xvec % val(n + 1) = ONE/cmfd % keff
     end if
 
-    ! Set up vectors for petsc
+    ! Set up vectors for PETSc 
     call resvec   % setup_petsc()
     call xvec     % setup_petsc()
 
     ! Build jacobian from initial guess
     call build_jacobian_matrix(xvec)
 
-    ! Set up Jacobian for Petsc
+    ! Set up Jacobian for PETSc
     call jac_prec % setup_petsc()
 
   end subroutine init_data

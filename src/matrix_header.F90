@@ -31,6 +31,8 @@ module matrix_header
      procedure :: vector_multiply    => matrix_vector_multiply
   end type matrix
 
+  integer :: petsc_err
+
 contains
 
 !===============================================================================
@@ -68,6 +70,10 @@ contains
   subroutine matrix_destroy(self)
 
     class(Matrix) :: self
+
+#ifdef PETSC
+    if (self % petsc_active) call MatDestroy(self % petsc_mat, petsc_err)
+#endif
 
     if (allocated(self % row)) deallocate(self % row)
     if (allocated(self % col)) deallocate(self % col)
@@ -217,8 +223,6 @@ contains
 
     class(Matrix) :: self
 
-    integer :: petsc_err
-
     ! change indices to c notation
     self % row = self % row - 1
     self % col = self % col - 1
@@ -227,8 +231,10 @@ contains
 #ifdef PETSC
     call MatCreateSeqAIJWithArrays(PETSC_COMM_WORLD, self % n, self % n, &
             self % row, self % col, self % val, self % petsc_mat, petsc_err)
-    self % petsc_active = .true.
 #endif
+
+    ! Petsc is now active
+    self % petsc_active = .true.
 
   end subroutine matrix_setup_petsc
 
@@ -241,7 +247,6 @@ contains
     character(*) :: filename
     class(Matrix) :: self
 
-    integer :: petsc_err
 #ifdef PETSC
     PetscViewer :: viewer
 
@@ -260,8 +265,6 @@ contains
   subroutine matrix_transpose(self)
 
     class(Matrix) :: self
-
-    integer :: petsc_err
 
 #ifdef PETSC
     call MatTranspose(self % petsc_mat, MAT_REUSE_MATRIX, self % petsc_mat, &

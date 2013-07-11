@@ -15,6 +15,7 @@ module vector_header
 #  ifdef PETSC
     Vec :: petsc_vec
 #  endif
+    logical :: petsc_active
    contains
      procedure :: create       => vector_create
      procedure :: destroy      => vector_destroy
@@ -22,6 +23,8 @@ module vector_header
      procedure :: setup_petsc  => vector_setup_petsc
      procedure :: write_petsc_binary => vector_write_petsc_binary
   end type Vector
+
+  integer :: petsc_err
 
 contains
 
@@ -43,6 +46,9 @@ contains
     ! initialize to zero
     self % val = ZERO
 
+    ! petsc is default not active
+    self % petsc_active = .false.
+
   end subroutine vector_create
 
 !===============================================================================
@@ -52,6 +58,10 @@ contains
   subroutine vector_destroy(self)
 
     class(Vector) :: self
+
+#ifdef PETSC
+    if (self % petsc_active) call VecDestroy(self % petsc_vec, petsc_err)
+#endif
 
     if (associated(self % val)) deallocate(self % val)
 
@@ -79,13 +89,14 @@ contains
 
     class(Vector) :: self
 
-    integer :: petsc_err
-
     ! link to petsc
 #ifdef PETSC
     call VecCreateSeqWithArray(PETSC_COMM_WORLD, 1, self % n, self % val, &
          self % petsc_vec, petsc_err) 
 #endif
+
+    ! set that petsc is now active
+    self % petsc_active = .true.
 
   end subroutine vector_setup_petsc
 
@@ -98,7 +109,6 @@ contains
     character(*) :: filename
     class(Vector) :: self
 
-    integer :: petsc_err
 #ifdef PETSC
     PetscViewer :: viewer
 

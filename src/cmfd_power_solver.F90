@@ -70,7 +70,7 @@ contains
     call gmres % set_oper(loss, loss)
 
     ! Precondition matrix
-    call gmres % precondition(loss)
+!   call gmres % precondition(loss)
 
     ! Stop timer for build
     call time_cmfdbuild % stop()

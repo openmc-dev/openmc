@@ -84,6 +84,7 @@ contains
     call KSPSetInitialGuessNonzero(self % ksp, PETSC_TRUE, petsc_err)
     call KSPGetPC(self % ksp, self % pc, petsc_err)
     call PCFactorSetLevels(self % pc, ilu_levels, petsc_err)
+    call KSPSetFromOptions(self % ksp, petsc_err)
 #endif
 
   end subroutine gmres_create
@@ -98,8 +99,7 @@ contains
     type(Matrix)       :: mat_in
 
 #ifdef PETSC
-    call KSPSetUp(self % ksp, petsc_err) 
-    call PCFactorGetMatrix(self % pc, mat_in % petsc_mat, petsc_err) 
+!   call PCFactorGetMatrix(self % pc, mat_in % petsc_mat, petsc_err) 
 #endif
 
   end subroutine gmres_precondition
@@ -117,6 +117,7 @@ contains
 #ifdef PETSC
     call KSPSetOperators(self % ksp, mat_in % petsc_mat, prec_mat % petsc_mat, &
          SAME_NONZERO_PATTERN, petsc_err)
+    call KSPSetUp(self % ksp, petsc_err) 
 #endif
 
   end subroutine gmres_set_oper

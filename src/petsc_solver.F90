@@ -174,7 +174,6 @@ contains
     call SNESGetLineSearch(self % snes, self % ls, petsc_err)
     call SNESLineSearchSetType(self % ls, SNESLINESEARCHBASIC, petsc_err)
     call SNESSetFromOptions(self % snes, petsc_err)
-!   call SNESView(self % snes, PETSC_VIEWER_STDOUT_WORLD, petsc_err)
 
     ! Set up preconditioner
     call KSPGetPC(self % ksp, self % pc, petsc_err)
@@ -182,7 +181,6 @@ contains
     call PCFactorSetLevels(self % pc, 5, petsc_err)
     call PCSetFromOptions(self % pc, petsc_err)
     call KSPSetFromOptions(self % ksp, petsc_err)
-
 #endif
 
   end subroutine jfnk_create
@@ -257,28 +255,24 @@ contains
     integer        :: ierr
     type(Jfnk_ctx) :: ctx
 
-    PetscViewer ::viewer
-
     type(Vector) :: xvec
     type(Vector) :: resvec
 
+    ! Need to point an OpenMC vector to PETSc vector
+#ifdef PETSC
     call VecGetArrayF90(x, xvec % val, ierr)
     call VecGetArrayF90(res, resvec % val, ierr)
+#endif
 
+    ! Call user residual routine
     call ctx % res_proc_ptr(xvec, resvec)
-!   call VecView(x, PETSC_VIEWER_STDOUT_WORLD, ierr)
-!   call VecView(res, PETSC_VIEWER_STDOUT_WORLD, ierr)
 
-!   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'res.bin', FILE_MODE_WRITE, viewer, ierr)
-!   call VecView(res, viewer, ierr)
-!   call PetscViewerDestroy(viewer, ierr)
-!   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'x.bin', FILE_MODE_WRITE, viewer, ierr)
-!   call VecView(x, viewer, ierr)
-!   call PetscViewerDestroy(viewer, ierr)
-
+    ! Need to restore the PETSc vector
+#ifdef PETSC
     call VecRestoreArrayF90(x, xvec % val, ierr)
     call VecRestoreArrayF90(res, resvec % val, ierr)
-   ! read *
+#endif
+
   end subroutine jfnk_compute_residual
 
 !===============================================================================
@@ -298,21 +292,19 @@ contains
 
     type(Vector) :: xvec
 
-    PetscViewer :: viewer
-
+    ! Need to point OpenMC vector to PETSc Vector
+#ifdef PETSC
     call VecGetArrayF90(x, xvec % val, ierr)
+#endif
 
+    ! Evaluate user jacobian routine
     call ctx % jac_proc_ptr(xvec)
 
+    ! Restore the PETSc vector
+#ifdef PETSC
     call VecRestoreArrayF90(x, xvec % val, ierr)
+#endif
 
-!   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, 'jac.bin', FILE_MODE_WRITE, viewer, petsc_err)
-!   call MatView(jac_prec, viewer, petsc_err)
-!   call PetscViewerDestroy(viewer, petsc_err)
-
-!   call PetscViewerASCIIOpen(PETSC_COMM_WORLD, 'jac.out', viewer, petsc_err)
-!   call MatView(jac_prec, viewer, petsc_err)
-!   call PetscViewerDestroy(viewer, petsc_err)
 #ifdef PETSC
     call MatAssemblyBegin(jac_mf, MAT_FINAL_ASSEMBLY, petsc_err)
     call MatAssemblyEnd(jac_mf, MAT_FINAL_ASSEMBLY, petsc_err)

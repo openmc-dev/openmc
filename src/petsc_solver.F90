@@ -10,7 +10,7 @@ module petsc_solver
 #  include <finclude/petsc.h90>
 #endif
 
-  ! Petsc GMRES solver context
+  ! PETSc GMRES solver type 
   type, public :: Petsc_gmres 
 #ifdef PETSC
     KSP :: ksp
@@ -18,7 +18,6 @@ module petsc_solver
 #endif
    contains
      procedure :: create       => gmres_create
-     procedure :: precondition => gmres_precondition
      procedure :: set_oper     => gmres_set_oper
      procedure :: destroy      => gmres_destroy
      procedure :: solve        => gmres_solve
@@ -30,7 +29,7 @@ module petsc_solver
     procedure (jac_interface), pointer, nopass :: jac_proc_ptr
   end type Jfnk_ctx
 
-  ! Petsc SNES JFNK solver context
+  ! Petsc SNES JFNK solver type 
   type, public :: Petsc_jfnk
 #ifdef PETSC
     KSP  :: ksp
@@ -50,10 +49,10 @@ module petsc_solver
 
   ! Abstract interface stating how jacobian and residual routines look
   abstract interface
-    subroutine res_interface(x, r)
+    subroutine res_interface(x, res)
       import :: Vector
       type(Vector) :: x
-      type(Vector) :: r
+      type(Vector) :: res
     end subroutine res_interface
 
     subroutine jac_interface(x)
@@ -65,7 +64,7 @@ module petsc_solver
 contains
 
 !===============================================================================
-! GMRES_CREATE
+! GMRES_CREATE sets up a PETSc GMRES solver
 !===============================================================================
 
   subroutine gmres_create(self)
@@ -90,22 +89,7 @@ contains
   end subroutine gmres_create
 
 !===============================================================================
-! GMRES_PRECONDITION
-!===============================================================================
-
-  subroutine gmres_precondition(self, mat_in)
-
-    class(Petsc_gmres) :: self
-    type(Matrix)       :: mat_in
-
-#ifdef PETSC
-!   call PCFactorGetMatrix(self % pc, mat_in % petsc_mat, petsc_err) 
-#endif
-
-  end subroutine gmres_precondition
-
-!===============================================================================
-! GMRES_SET_OPER
+! GMRES_SET_OPER sets the matrix opetors for the GMRES solver
 !===============================================================================
 
   subroutine gmres_set_oper(self, prec_mat, mat_in)
@@ -123,7 +107,7 @@ contains
   end subroutine gmres_set_oper
 
 !===============================================================================
-! GMRES_DESTROY
+! GMRES_DESTROY frees all memory associated with the GMRES solver
 !===============================================================================
 
   subroutine gmres_destroy(self)
@@ -137,7 +121,7 @@ contains
   end subroutine gmres_destroy
 
 !===============================================================================
-! GMRES_SOLVE
+! GMRES_SOLVE solves the linear system
 !===============================================================================
 
   subroutine gmres_solve(self, b, x)
@@ -153,7 +137,7 @@ contains
   end subroutine gmres_solve
 
 !===============================================================================
-! JFNK_CREATE
+! JFNK_CREATE sets up a JFNK solver using PETSc SNES
 !===============================================================================
 
   subroutine jfnk_create(self)
@@ -187,7 +171,7 @@ contains
   end subroutine jfnk_create
 
 !===============================================================================
-! JFNK_DESTROY
+! JFNK_DESTROY frees all memory associated with JFNK solver
 !===============================================================================
 
   subroutine jfnk_destroy(self)
@@ -202,7 +186,7 @@ contains
   end subroutine jfnk_destroy
 
 !===============================================================================
-! JFNK_SET_FUNCTIONS
+! JFNK_SET_FUNCTIONS sets user functions and matrix free objects
 !===============================================================================
 
   subroutine jfnk_set_functions(self, ctx, res, jac_prec)
@@ -230,7 +214,7 @@ contains
   end subroutine jfnk_set_functions
 
 !===============================================================================
-! JFNK_SOLVE
+! JFNK_SOLVE solves the nonlinear system
 !===============================================================================
 
   subroutine jfnk_solve(self, xvec)
@@ -245,7 +229,7 @@ contains
   end subroutine jfnk_solve
 
 !===============================================================================
-! JFNK_COMPUTE_RESIDUAL
+! JFNK_COMPUTE_RESIDUAL buffer routine to user specifed residual routine
 !===============================================================================
 
   subroutine jfnk_compute_residual(snes, x, res, ctx, ierr)
@@ -258,6 +242,10 @@ contains
 
     type(Vector) :: xvec
     type(Vector) :: resvec
+
+    ! We need to use the x and res that come from PETSc because the pointer
+    ! location changes and therefore we can not use module variables
+    ! for the residual and x vectors here
 
     ! Need to point an OpenMC vector to PETSc vector
 #ifdef PETSC
@@ -292,6 +280,9 @@ contains
     integer        :: ierr
 
     type(Vector) :: xvec
+
+    ! Again, we use the vector that comes from Petsc to build the Jacobian
+    ! matrix
 
     ! Need to point OpenMC vector to PETSc Vector
 #ifdef PETSC

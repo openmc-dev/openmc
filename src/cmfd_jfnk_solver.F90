@@ -11,14 +11,14 @@ module cmfd_jfnk_solver
   private
   public :: cmfd_jfnk_execute
 
-  logical          :: adjoint_calc = .false. ! adjoint calculation
+  logical          :: adjoint_calc
   type(Jfnk_ctx)   :: jfnk_data
-  type(Matrix)     :: jac_prec
+  type(Matrix), target     :: jac_prec
   type(Matrix)     :: loss
   type(Matrix)     :: prod
   type(Petsc_jfnk) :: jfnk 
-  type(Vector)     :: resvec
-  type(Vector)     :: xvec
+  type(Vector), target     :: resvec
+  type(Vector), target     :: xvec
 
 contains
 
@@ -31,6 +31,7 @@ contains
     logical, optional :: adjoint ! adjoint calculation
 
     ! check for adjoint
+    adjoint_calc = .false.
     if (present(adjoint)) adjoint_calc = adjoint
 
     ! seed with power iteration
@@ -42,8 +43,13 @@ contains
     ! initialize solver
     call jfnk % create()
 
+    ! set up residual and jacobian routines
+    jfnk_data % res_proc_ptr => compute_nonlinear_residual
+    jfnk_data % jac_proc_ptr => build_jacobian_matrix
+    call jfnk % set_functions(jfnk_data, resvec, jac_prec)
+
     ! solve the system
-!   call SNESSolve(snes, PETSC_NULL_DOUBLE, xvec, ierr)
+    call jfnk % solve(xvec)
 
     ! extracts results to cmfd object
     call extract_results()
@@ -60,24 +66,46 @@ contains
   subroutine init_data()
 
     use constants, only: ONE
-    use global,    only: cmfd
+    use global,    only: cmfd, cmfd_adjoint_type
 
-    integer              :: n         ! problem size
-
+    logical :: physical_adjoint
+    integer :: n
+    type(Vector), pointer :: x
+    type(Vector), pointer :: res
+    type(Matrix), pointer :: jac
+    x => xvec
+    res => resvec
+    jac => jac_prec
     ! Set up all matrices
     call init_loss_matrix(loss)
     call init_prod_matrix(prod)
     call init_jacobian_matrix()
 
-    ! Set up for use with petsc
-    call jac_prec % setup_petsc()
+    ! Check for physical adjoint
+    physical_adjoint = .false.
+    if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'physical') &
+         physical_adjoint = .true.
+
+    ! Create matrix operators
+    call build_loss_matrix(loss, adjoint = physical_adjoint)
+    call build_prod_matrix(prod, adjoint = physical_adjoint)
+
+    ! Assembly matrices and use petsc
+    call loss % assemble()
+    call prod % assemble()
+    call loss % setup_petsc()
+    call prod % setup_petsc()
+
+    ! Check for mathematical adjoint
+    if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math') &
+         call compute_adjoint()
 
     ! Get problem size
-    n = jac_prec % n
+    n = loss % n
 
     ! Create problem vectors
-    call resvec % create(n)
-    call xvec % create(n)
+    call resvec % create(n + 1)
+    call xvec % create(n + 1)
 
     ! set flux in guess
     if (adjoint_calc) then
@@ -93,7 +121,21 @@ contains
       xvec % val(n + 1) = ONE/cmfd % keff
     end if
 
-    ! set solver names
+    ! Set up vectors for petsc
+    call resvec   % setup_petsc()
+    call xvec     % setup_petsc()
+
+    ! Build jacobian from initial guess
+    call build_jacobian_matrix(xvec)
+
+    ! Set up Jacobian for Petsc
+    call jac_prec % setup_petsc()
+
+    ! write all out
+    call loss % write_petsc_binary('loss.bin')
+    call prod % write_petsc_binary('prod.bin')
+    call jac_prec % write_petsc_binary('jac.bin')
+!   call xvec % write_petsc_binary('x.bin')
 
   end subroutine init_data
 
@@ -136,17 +178,22 @@ contains
     integer      :: jloss  ! loop counter for loss matrix cols
     integer      :: jprod  ! loop counter for prod matrix cols
     integer      :: n      ! problem size
+    integer      :: shift  ! integer to account for index shift for Petsc
     real(8)      :: lambda ! eigenvalue
     real(8)      :: val    ! temporary real scalar
     type(Vector) :: flux   ! flux vector
     type(Vector) :: fsrc   ! fission source vector
-
+print *, 'IN JACOBIAN'
     ! get the problem size
     n = loss % n
 
+    ! Check to use shift
+    shift = 0
+    if (loss % petsc_active) shift = 1
+
     ! get flux and eigenvalue
-    flux % val => x % val(1:n)
-    lambda = x % val(n + 1)
+    flux % val => xvec % val(1:n)
+    lambda = xvec % val(n + 1)
 
     ! create fission source vector
     call fsrc % create(n)
@@ -163,13 +210,15 @@ contains
       call jac_prec % new_row()
 
       ! begin loop around columns of loss matrix
-      COLS_LOSS: do jloss = loss % row(i), loss % row(i + 1) - 1
+      COLS_LOSS: do jloss = loss % row(i) + shift, &
+                            loss % row(i + 1) - 1 + shift
 
         ! start with the value in the loss matrix
         val = loss % val(jloss)
 
         ! loop around columns of prod matrix
-        COLS_PROD: do jprod = prod % row(i), prod % row(i + 1) - 1
+        COLS_PROD: do jprod = prod % row(i) + shift, &
+                              prod % row(i + 1) - 1 + shift
 
           ! see if columns agree with loss matrix
           if (prod % col(jprod) == loss % col(jloss)) then
@@ -180,12 +229,12 @@ contains
         end do COLS_PROD 
 
         ! record value in jacobian
-        call jac_prec % add_value(jloss, val)
+        call jac_prec % add_value(loss % col(jloss) + shift, val)
 
       end do COLS_LOSS
 
       ! add fission source value
-      val = fsrc % val(n)
+      val = -fsrc % val(i)
       call jac_prec % add_value(n + 1, val)
 
     end do ROWS
@@ -200,6 +249,15 @@ contains
     ! add unity on bottom right corner of matrix
     call jac_prec % add_value(n + 1, ONE)
 
+    ! CRS requires a final value in row
+    call jac_prec % new_row()
+
+    ! If the Jacobian is already associated with PETSc need to reshift row/col
+    if (jac_prec % petsc_active) then
+      jac_prec % row = jac_prec % row - 1
+      jac_prec % col = jac_prec % col - 1
+    end if
+
     ! free all allocated memory
     flux % val => null()
     call fsrc % destroy()
@@ -210,31 +268,27 @@ contains
 ! COMPUTE_NONLINEAR_RESIDUAL
 !===============================================================================
 
-  subroutine compute_nonlinear_residual(x)
+  subroutine compute_nonlinear_residual(x, res)
 
-    use global,       only: cmfd_write_matrices, cmfd_adjoint_type
+    use global,       only: cmfd_write_matrices
 
-    type(Vector)      :: x 
+    type(Vector) :: x
+    type(Vector) :: res
 
     character(len=25) :: filename
     integer           :: n
-    logical           :: physical_adjoint = .false.
     real(8)           :: lambda
     type(Vector)      :: res_loss
     type(Vector)      :: res_prod
     type(Vector)      :: flux
 
-    ! Check for physical adjoint
-    if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'physical') &
-         physical_adjoint = .true.
+    type(Vector), pointer :: res_ptr
+    type(Vector), pointer :: x_ptr
 
-    ! Create operators
-    call build_loss_matrix(loss, adjoint = physical_adjoint)
-    call build_prod_matrix(prod, adjoint = physical_adjoint)
+    res_ptr => resvec
+    x_ptr => xvec
 
-    ! Check for adjoint
-    if (adjoint_calc .and. trim(cmfd_adjoint_type) == 'math') &
-         call compute_adjoint()
+print *, 'IN RESIDUAL'
 
     ! Get problem size
     n = loss % n
@@ -255,10 +309,10 @@ contains
     call prod % vector_multiply(flux, res_prod)
 
     ! Put flux component values in residual vector
-    resvec % val(1:n) = res_loss % val - lambda*res_prod % val
+    res % val(1:n) = res_loss % val - lambda*res_prod % val
 
     ! Put eigenvalue component in residual vector
-    resvec % val(n+1) = 0.5_8 - 0.5_8*sum(flux % val * flux % val)
+    res % val(n+1) = 0.5_8 - 0.5_8*sum(flux % val * flux % val)
 
     ! write out data in binary files (debugging)
     if (cmfd_write_matrices) then
@@ -269,7 +323,7 @@ contains
       else
         filename = 'res.bin'
       end if
-      call resvec % write_petsc_binary(filename)
+      call res % write_petsc_binary(filename)
 
       ! write out solution vector
       if (adjoint_calc) then
@@ -280,7 +334,8 @@ contains
       call x % write_petsc_binary(filename)
 
     end if
-
+!   print *, x % val
+!   print *, res % val
   end subroutine compute_nonlinear_residual
 
 !===============================================================================
@@ -313,9 +368,12 @@ contains
     use global,    only: cmfd
 
     integer :: n ! problem size
-
+call loss % write_petsc_binary('loss.mat')
+call prod % write_petsc_binary('prod.mat')
+call xvec % write_petsc_binary('x.bin')
+call resvec % write_petsc_binary('res.bin')
     ! get problem size
-    n = jfnk_data % loss % n
+    n = loss % n
 
     ! also allocate in cmfd object
     if (adjoint_calc) then
@@ -330,9 +388,9 @@ contains
       cmfd % adj_keff = ONE / xvec % val(n+1)
     else
       cmfd % phi  = xvec % val(1:n)
-      cmfd % keff = xvec % val(n+1)
+      cmfd % keff = ONE / xvec % val(n+1)
     end if
-
+stop
   end subroutine extract_results
 
 !===============================================================================
@@ -341,12 +399,14 @@ contains
 
   subroutine finalize()
 
-    call jfnk_data % loss % destroy()
-    call jfnk_data % prod % destroy()
+    call loss % destroy()
+    call prod % destroy()
     call jac_prec % destroy()
     call xvec % destroy()
     call resvec % destroy()
     call jfnk % destroy() 
+    nullify(jfnk_data % res_proc_ptr)
+    nullify(jfnk_data % jac_proc_ptr)
 
   end subroutine finalize
 

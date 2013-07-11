@@ -18,7 +18,7 @@ module matrix_header
 #  ifdef PETSC
     Mat :: petsc_mat
 #  endif
-    logical :: petsc_active = .false.
+    logical :: petsc_active
    contains
      procedure :: create       => matrix_create
      procedure :: destroy      => matrix_destroy
@@ -55,6 +55,9 @@ contains
     ! set n and nnz
     self % n = n
     self % nnz = nnz
+
+    ! set petsc active by default to false
+    self % petsc_active = .false.
 
   end subroutine matrix_create
 
@@ -297,7 +300,7 @@ contains
     if (self % petsc_active) shift = 1
 
     ! begin loop around rows
-    ROWS: do i = 1, vec_in % n
+    ROWS: do i = 1, self % n
 
       ! initialize target location in vector
       vec_out % val(i) = ZERO

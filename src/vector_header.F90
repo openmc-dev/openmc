@@ -37,16 +37,16 @@ contains
     integer       :: n
     class(Vector) :: self
 
-    ! preallocate vector
+    ! Preallocate vector
     if (.not.associated(self % val)) allocate(self % val(n))
 
-    ! set n
+    ! Set n
     self % n = n
 
-    ! initialize to zero
+    ! Initialize to zero
     self % val = ZERO
 
-    ! petsc is default not active
+    ! Petsc is default not active
     self % petsc_active = .false.
 
   end subroutine vector_create
@@ -82,26 +82,26 @@ contains
   end subroutine vector_add_value
 
 !===============================================================================
-! VECTOR_SETUP_PETSC
+! VECTOR_SETUP_PETSC links the data to a PETSc vector
 !===============================================================================
 
   subroutine vector_setup_petsc(self)
 
     class(Vector) :: self
 
-    ! link to petsc
+    ! Link to PETSc 
 #ifdef PETSC
     call VecCreateSeqWithArray(PETSC_COMM_WORLD, 1, self % n, self % val, &
          self % petsc_vec, petsc_err) 
 #endif
 
-    ! set that petsc is now active
+    ! Set that PETSc is now active
     self % petsc_active = .true.
 
   end subroutine vector_setup_petsc
 
 !===============================================================================
-! VECTOR_WRITE_PETSC_BINARY
+! VECTOR_WRITE_PETSC_BINARY writes the PETSc vector to a binary file
 !===============================================================================
 
   subroutine vector_write_petsc_binary(self, filename)

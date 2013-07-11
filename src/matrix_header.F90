@@ -45,20 +45,20 @@ contains
     integer       :: nnz
     class(Matrix) :: self
 
-    ! preallocate vectors
+    ! Preallocate vectors
     if (.not.allocated(self % row)) allocate(self % row(n+1))
     if (.not.allocated(self % col)) allocate(self % col(nnz))
     if (.not.allocated(self % val)) allocate(self % val(nnz))
 
-    ! set counters to 1
+    ! Set counters to 1
     self % n_kount  = 1
     self % nz_kount = 1
 
-    ! set n and nnz
+    ! Set n and nnz
     self % n = n
     self % nnz = nnz
 
-    ! set petsc active by default to false
+    ! Set petsc active by default to false
     self % petsc_active = .false.
 
   end subroutine matrix_create
@@ -111,7 +111,7 @@ contains
   end subroutine matrix_new_row
 
 !===============================================================================
-! MATRIX_ASSEMBLE
+! MATRIX_ASSEMBLE main rountine to sort all the columns in CSR matrix
 !===============================================================================
 
   subroutine matrix_assemble(self)
@@ -122,14 +122,14 @@ contains
     integer :: first
     integer :: last
 
-    ! loop around row vector
+    ! Loop around row vector
     do i = 1, self % n
 
-      ! get bounds
+      ! Get bounds
       first = self % row(i)
       last  = self % row(i+1) - 1
 
-      ! sort a row
+      ! Sort a row
       call sort_csr(self % col, self % val, first, last)
 
     end do
@@ -137,7 +137,7 @@ contains
   end subroutine matrix_assemble
 
 !===============================================================================
-! SORT_CSR
+! SORT_CSR main routine that performs a sort on a CSR col/val subvector
 !===============================================================================
 
   recursive subroutine sort_csr(col, val, first, last)
@@ -158,7 +158,7 @@ contains
   end subroutine sort_csr
 
 !===============================================================================
-! SPLIT
+! SPLIT bisects the search space for the sorting routine
 !===============================================================================
 
   subroutine split(col, val, low, high, mid)
@@ -181,20 +181,20 @@ contains
     pivot = col(low)
     val0 = val(low)
 
-    ! repeat the following while left and right havent met
+    ! Repeat the following while left and right havent met
     do while (left < right)
 
-      ! scan right to left to find element < pivot
+      ! Scan right to left to find element < pivot
       do while (left < right .and. col(right) >= pivot)
         right = right - 1
       end do
 
-      ! scan left to right to find element > pivot
+      ! Scan left to right to find element > pivot
       do while (left < right .and. col(left) <= pivot)
         left = left + 1
       end do
 
-      ! if left and right havent met, exchange the items
+      ! If left and right havent met, exchange the items
       if (left < right) then
         iswap = col(left)
         col(left) = col(right)
@@ -206,7 +206,7 @@ contains
 
     end do
 
-    ! switch the element in split position with pivot
+    ! Switch the element in split position with pivot
     col(low) = col(right)
     col(right) = pivot
     mid = right
@@ -216,7 +216,7 @@ contains
   end subroutine split
 
 !===============================================================================
-! MATRIX_SETUP_PETSC
+! MATRIX_SETUP_PETSC configures the row/col vectors and links to a petsc object
 !===============================================================================
 
   subroutine matrix_setup_petsc(self)
@@ -227,7 +227,7 @@ contains
     self % row = self % row - 1
     self % col = self % col - 1
 
-    ! link to petsc
+    ! Link to petsc
 #ifdef PETSC
     call MatCreateSeqAIJWithArrays(PETSC_COMM_WORLD, self % n, self % n, &
             self % row, self % col, self % val, self % petsc_mat, petsc_err)
@@ -239,7 +239,7 @@ contains
   end subroutine matrix_setup_petsc
 
 !===============================================================================
-! MATRIX_WRITE_PETSC_BINARY
+! MATRIX_WRITE_PETSC_BINARY writes a petsc matrix binary file
 !===============================================================================
 
   subroutine matrix_write_petsc_binary(self, filename)
@@ -259,7 +259,7 @@ contains
   end subroutine matrix_write_petsc_binary
 
 !===============================================================================
-! MATRIX_TRANSPOSE
+! MATRIX_TRANSPOSE uses PETSc to transpose a matrix
 !===============================================================================
 
   subroutine matrix_transpose(self)
@@ -274,7 +274,7 @@ contains
   end subroutine matrix_transpose
 
 !===============================================================================
-! MATRIX_VECTOR_MULTIPLY
+! MATRIX_VECTOR_MULTIPLY allow a vector to multiply the matrix
 !===============================================================================
 
   subroutine matrix_vector_multiply(self, vec_in, vec_out)
@@ -290,25 +290,18 @@ contains
     integer :: j
     integer :: shift
 
-!    integer :: petsc_err
-
-!#ifdef PETSC
-!     call MatMult(self % petsc_mat, vec_in % petsc_vec, vec_out % petsc_vec, &
-!                 petsc_err)
-!#endif
-
-    ! set shift by default 0 and change if petsc is active
-    ! this is because PETSc needs vectors to remain referenced to 0
+    ! Set shift by default 0 and change if petsc is active
+    ! This is because PETSc needs vectors to remain referenced to 0
     shift = 0
     if (self % petsc_active) shift = 1
 
-    ! begin loop around rows
+    ! Begin loop around rows
     ROWS: do i = 1, self % n
 
-      ! initialize target location in vector
+      ! Initialize target location in vector
       vec_out % val(i) = ZERO
 
-      ! begin loop around columns (need to shift if petsc is active)
+      ! Begin loop around columns (need to shift if petsc is active)
       COLS: do j = self % row(i) + shift, self % row(i + 1) - 1 + shift
 
         vec_out % val(i) = vec_out % val(i) + self % val(j) * &

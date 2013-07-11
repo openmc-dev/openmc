@@ -11,50 +11,50 @@ module cmfd_jfnk_solver
   private
   public :: cmfd_jfnk_execute
 
-  logical          :: adjoint_calc
-  type(Jfnk_ctx)   :: jfnk_data
-  type(Matrix)     :: jac_prec
-  type(Matrix)     :: loss
-  type(Matrix)     :: prod
-  type(Petsc_jfnk) :: jfnk 
-  type(Vector)     :: resvec
-  type(Vector)     :: xvec
+  logical          :: adjoint_calc ! true if an adjoint is to be calculated
+  type(Jfnk_ctx)   :: jfnk_data    ! object that holds pointers to user routines
+  type(Matrix)     :: jac_prec     ! Jacobian preconditioner object
+  type(Matrix)     :: loss         ! CMFD loss matrix
+  type(Matrix)     :: prod         ! CMFD production matrix
+  type(Petsc_jfnk) :: jfnk         ! JFNK solver object
+  type(Vector)     :: resvec       ! JFNK residual vector
+  type(Vector)     :: xvec         ! JFNK solution vector
 
 contains
 
 !===============================================================================
-! CMFD_JFNK_EXECUTE
+! CMFD_JFNK_EXECUTE main routine for JFNK solver
 !===============================================================================
 
   subroutine cmfd_jfnk_execute(adjoint)
 
     logical, optional :: adjoint ! adjoint calculation
 
-    ! check for adjoint
+    ! Check for adjoint
     adjoint_calc = .false.
     if (present(adjoint)) adjoint_calc = adjoint
 
-    ! seed with power iteration
+    ! Seed with power iteration to help converge to fundamental mode
     call cmfd_power_execute(k_tol=1.E-3_8, s_tol=1.E-3_8, adjoint=adjoint_calc)
 
-    ! initialize data
+    ! Initialize data
     call init_data()
 
-    ! initialize solver
+    ! Initialize solver
     call jfnk % create()
 
-    ! set up residual and jacobian routines
+    ! Set up residual and jacobian routines
     jfnk_data % res_proc_ptr => compute_nonlinear_residual
     jfnk_data % jac_proc_ptr => build_jacobian_matrix
     call jfnk % set_functions(jfnk_data, resvec, jac_prec)
 
-    ! solve the system
+    ! Solve the system
     call jfnk % solve(xvec)
 
-    ! extracts results to cmfd object
+    ! Extracts results to cmfd object
     call extract_results()
 
-    ! deallocate all slepc data
+    ! Deallocate all slepc data
     call finalize()
 
   end subroutine cmfd_jfnk_execute
@@ -102,14 +102,14 @@ contains
     call resvec % create(n + 1)
     call xvec % create(n + 1)
 
-    ! set flux in guess
+    ! Set flux in guess
     if (adjoint_calc) then
       xvec % val(1:n) = cmfd % adj_phi
     else
       xvec % val(1:n) = cmfd % phi
     end if
 
-    ! set keff in guess
+    ! Set keff in guess
     if (adjoint_calc) then
       xvec % val(n + 1) = ONE/cmfd % adj_keff
     else
@@ -125,11 +125,6 @@ contains
 
     ! Set up Jacobian for Petsc
     call jac_prec % setup_petsc()
-
-    ! write all out
-    call loss % write_petsc_binary('loss.bin')
-    call prod % write_petsc_binary('prod.bin')
-    call jac_prec % write_petsc_binary('jac.bin')
 
   end subroutine init_data
 
@@ -178,43 +173,43 @@ contains
     type(Vector) :: flux   ! flux vector
     type(Vector) :: fsrc   ! fission source vector
 
-    ! get the problem size
+    ! Get the problem size
     n = loss % n
 
     ! Check to use shift
     shift = 0
     if (loss % petsc_active) shift = 1
 
-    ! get flux and eigenvalue
+    ! Get flux and eigenvalue
     flux % val => x % val(1:n)
     lambda = x % val(n + 1)
 
-    ! create fission source vector
+    ! Create fission source vector
     call fsrc % create(n)
     call prod % vector_multiply(flux, fsrc)
 
-    ! reset counters in Jacobian matrix
+    ! Reset counters in Jacobian matrix
     jac_prec % n_kount  = 1
     jac_prec % nz_kount = 1
 
-    ! begin loop around rows of Jacobian matrix
+    ! Begin loop around rows of Jacobian matrix
     ROWS: do i = 1, n
 
-      ! add a new row in Jacobian
+      ! Add a new row in Jacobian
       call jac_prec % new_row()
 
-      ! begin loop around columns of loss matrix
+      ! Begin loop around columns of loss matrix
       COLS_LOSS: do jloss = loss % row(i) + shift, &
                             loss % row(i + 1) - 1 + shift
 
-        ! start with the value in the loss matrix
+        ! Start with the value in the loss matrix
         val = loss % val(jloss)
 
-        ! loop around columns of prod matrix
+        ! Loop around columns of prod matrix
         COLS_PROD: do jprod = prod % row(i) + shift, &
                               prod % row(i + 1) - 1 + shift
 
-          ! see if columns agree with loss matrix
+          ! See if columns agree with loss matrix
           if (prod % col(jprod) == loss % col(jloss)) then
             val = val - lambda*prod % val(jprod)
             exit
@@ -222,25 +217,25 @@ contains
 
         end do COLS_PROD 
 
-        ! record value in jacobian
+        ! Record value in jacobian
         call jac_prec % add_value(loss % col(jloss) + shift, val)
 
       end do COLS_LOSS
 
-      ! add fission source value
+      ! Add fission source value
       val = -fsrc % val(i)
       call jac_prec % add_value(n + 1, val)
 
     end do ROWS
 
-    ! need to add negative transpose of flux vector on last row
+    ! Need to add negative transpose of flux vector on last row
     call jac_prec % new_row()
     do jjac = 1, n
       val = -flux % val(jjac)
       call jac_prec % add_value(jjac, val)
     end do
 
-    ! add unity on bottom right corner of matrix
+    ! Add unity on bottom right corner of matrix
     call jac_prec % add_value(n + 1, ONE)
 
     ! CRS requires a final value in row
@@ -252,14 +247,14 @@ contains
       jac_prec % col = jac_prec % col - 1
     end if
 
-    ! free all allocated memory
+    ! Free all allocated memory
     flux % val => null()
     call fsrc % destroy()
 
   end subroutine build_jacobian_matrix
 
 !===============================================================================
-! COMPUTE_NONLINEAR_RESIDUAL
+! COMPUTE_NONLINEAR_RESIDUAL computes the residual of the nonlinear equations
 !===============================================================================
 
   subroutine compute_nonlinear_residual(x, res)
@@ -300,10 +295,10 @@ contains
     ! Put eigenvalue component in residual vector
     res % val(n+1) = 0.5_8 - 0.5_8*sum(flux % val * flux % val)
 
-    ! write out data in binary files (debugging)
+    ! Write out data in binary files (debugging)
     if (cmfd_write_matrices) then
 
-      ! write out residual vector 
+      ! Write out residual vector 
       if (adjoint_calc) then
         filename = 'adj_res.bin'
       else
@@ -311,7 +306,7 @@ contains
       end if
       call res % write_petsc_binary(filename)
 
-      ! write out solution vector
+      ! Write out solution vector
       if (adjoint_calc) then
         filename = 'adj_x.bin'
       else
@@ -324,18 +319,18 @@ contains
   end subroutine compute_nonlinear_residual
 
 !===============================================================================
-! COMPUTE_ADJOINT
+! COMPUTE_ADJOINT calculates mathematical adjoint by taking transposes
 !===============================================================================
 
   subroutine compute_adjoint()
 
     use global,  only: cmfd_write_matrices
 
-    ! transpose matrices
+    ! Transpose matrices
     call loss % transpose()
     call prod % transpose()
 
-    ! write out matrix in binary file (debugging)
+    ! Write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
       call loss % write_petsc_binary('adj_lossmat.bin')
       call loss % write_petsc_binary('adj_prodmat.bin')
@@ -344,7 +339,7 @@ contains
   end subroutine compute_adjoint
 
 !===============================================================================
-! EXTRACT_RESULTS 
+! EXTRACT_RESULTS gets the results and puts them in global CMFD object
 !===============================================================================
 
   subroutine extract_results()
@@ -354,10 +349,10 @@ contains
 
     integer :: n ! problem size
 
-    ! get problem size
+    ! Get problem size
     n = loss % n
 
-    ! also allocate in cmfd object
+    ! Also allocate in cmfd object
     if (adjoint_calc) then
       if (.not. allocated(cmfd % adj_phi)) allocate(cmfd % adj_phi(n))
     else

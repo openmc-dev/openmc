@@ -69,9 +69,6 @@ contains
     ! Set up krylov info
     call gmres % set_oper(loss, loss)
 
-    ! Precondition matrix
-!   call gmres % precondition(loss)
-
     ! Stop timer for build
     call time_cmfdbuild % stop()
 
@@ -149,11 +146,11 @@ contains
 
     use global,  only: cmfd_write_matrices
 
-    ! transpose matrices
+    ! Transpose matrices
     call loss % transpose()
     call prod % transpose()
 
-    ! write out matrix in binary file (debugging)
+    ! Write out matrix in binary file (debugging)
     if (cmfd_write_matrices) then
       call loss % write_petsc_binary('adj_lossmat.bin')
       call prod % write_petsc_binary('adj_prodmat.bin')
@@ -170,37 +167,37 @@ contains
 
     integer     :: i         ! iteration counter
 
-    ! reset convergence flag
+    ! Reset convergence flag
     iconv = .false.
 
-    ! begin power iteration
+    ! Begin power iteration
     do i = 1, 10000
 
-      ! compute source vector
+      ! Compute source vector
       call prod % vector_multiply(phi_o, S_o)
 
-      ! normalize source vector
+      ! Normalize source vector
       S_o % val = S_o % val / k_o
 
-      ! compute new flux vector
+      ! Compute new flux vector
       call gmres % solve(S_o, phi_n)
 
-      ! compute new source vector
+      ! Compute new source vector
       call prod % vector_multiply(phi_n, S_n)
 
-      ! compute new k-eigenvalue
+      ! Compute new k-eigenvalue
       k_n = sum(S_n % val) / sum(S_o % val)
 
-      ! renormalize the old source
+      ! Renormalize the old source
       S_o % val = S_o % val * k_o
 
-      ! check convergence
+      ! Check convergence
       call convergence(i)
 
-      ! to break or not to break
+      ! To break or not to break
       if (iconv) exit
 
-      ! record old values
+      ! Record old values
       phi_o % val = phi_n % val
       k_o = k_n
 
@@ -223,19 +220,19 @@ contains
     real(8)     :: kerr           ! error in keff
     real(8)     :: serr           ! error in source
 
-    ! reset convergence flag
+    ! Reset convergence flag
     iconv = .false.
 
-    ! calculate error in keff
+    ! Calculate error in keff
     kerr = abs(k_o - k_n)/k_n
 
-    ! calculate max error in source
+    ! Calculate max error in source
     serr = sqrt(ONE/dble(S_n % n) * sum(((S_n % val - S_o % val)/S_n % val)**2))
 
-    ! check for convergence
+    ! Check for convergence
     if(kerr < ktol .and. serr < stol) iconv = .true.
 
-    ! print out to user
+    ! Print out to user
     if (cmfd_power_monitor .and. master) then
       write(OUTPUT_UNIT,FMT='(I0,":",T10,"k-eff: ",F0.8,T30,"k-error: ",1PE12.5,T55, &
            "src-error: ",1PE12.5)') iter, k_n, kerr, serr
@@ -254,38 +251,38 @@ contains
     character(len=25)    :: filename  ! name of file to write data 
     integer              :: n         ! problem size
 
-    ! get problem size
+    ! Get problem size
     n = loss % n
 
-    ! also allocate in cmfd object
+    ! Also allocate in cmfd object
     if (adjoint_calc) then
       if (.not. allocated(cmfd%adj_phi)) allocate(cmfd%adj_phi(n))
     else
       if (.not. allocated(cmfd%phi)) allocate(cmfd%phi(n))
     end if
 
-    ! save values 
+    ! Save values 
     if (adjoint_calc) then
       cmfd % adj_phi = phi_n % val
     else
       cmfd % phi = phi_n % val 
     end if
 
-    ! save eigenvalue
+    ! Save eigenvalue
     if(adjoint_calc) then
       cmfd%adj_keff = k_n
     else
       cmfd%keff = k_n
     end if
 
-    ! normalize phi to 1
+    ! Normalize phi to 1
     if (adjoint_calc) then
       cmfd%adj_phi = cmfd%adj_phi/sqrt(sum(cmfd%adj_phi*cmfd%adj_phi))
     else
       cmfd%phi = cmfd%phi/sqrt(sum(cmfd%phi*cmfd%phi))
     end if
 
-    ! write out results
+    ! Write out results
     if (cmfd_write_matrices) then
       if (adjoint_calc) then
         filename = 'adj_fluxvec.bin'
@@ -303,7 +300,7 @@ contains
 
   subroutine finalize()
 
-    ! destroy all objects 
+    ! Destroy all objects 
     call gmres % destroy() 
     call loss  % destroy() 
     call prod  % destroy()

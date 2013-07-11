@@ -259,7 +259,6 @@ neat:
 # Rules
 #===============================================================================
 
-.SUFFIXES: .F90 .o
 .PHONY: all xml-fortran install uninstall clean neat distclean 
 
 %.o: %.F90

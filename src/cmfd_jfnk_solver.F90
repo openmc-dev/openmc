@@ -13,12 +13,12 @@ module cmfd_jfnk_solver
 
   logical          :: adjoint_calc
   type(Jfnk_ctx)   :: jfnk_data
-  type(Matrix), target     :: jac_prec
+  type(Matrix)     :: jac_prec
   type(Matrix)     :: loss
   type(Matrix)     :: prod
   type(Petsc_jfnk) :: jfnk 
-  type(Vector), target     :: resvec
-  type(Vector), target     :: xvec
+  type(Vector)     :: resvec
+  type(Vector)     :: xvec
 
 contains
 
@@ -70,12 +70,7 @@ contains
 
     logical :: physical_adjoint
     integer :: n
-    type(Vector), pointer :: x
-    type(Vector), pointer :: res
-    type(Matrix), pointer :: jac
-    x => xvec
-    res => resvec
-    jac => jac_prec
+
     ! Set up all matrices
     call init_loss_matrix(loss)
     call init_prod_matrix(prod)
@@ -135,7 +130,6 @@ contains
     call loss % write_petsc_binary('loss.bin')
     call prod % write_petsc_binary('prod.bin')
     call jac_prec % write_petsc_binary('jac.bin')
-!   call xvec % write_petsc_binary('x.bin')
 
   end subroutine init_data
 
@@ -183,7 +177,7 @@ contains
     real(8)      :: val    ! temporary real scalar
     type(Vector) :: flux   ! flux vector
     type(Vector) :: fsrc   ! fission source vector
-!nprint *, 'IN JACOBIAN'
+
     ! get the problem size
     n = loss % n
 
@@ -192,8 +186,8 @@ contains
     if (loss % petsc_active) shift = 1
 
     ! get flux and eigenvalue
-    flux % val => xvec % val(1:n)
-    lambda = xvec % val(n + 1)
+    flux % val => x % val(1:n)
+    lambda = x % val(n + 1)
 
     ! create fission source vector
     call fsrc % create(n)
@@ -282,14 +276,6 @@ contains
     type(Vector)      :: res_prod
     type(Vector)      :: flux
 
-    type(Vector), pointer :: res_ptr
-    type(Vector), pointer :: x_ptr
-
-    res_ptr => resvec
-    x_ptr => xvec
-
-!print *, 'IN RESIDUAL'
-
     ! Get problem size
     n = loss % n
 
@@ -334,8 +320,7 @@ contains
       call x % write_petsc_binary(filename)
 
     end if
-!   print *, x % val
-!   print *, res % val
+
   end subroutine compute_nonlinear_residual
 
 !===============================================================================
@@ -368,10 +353,7 @@ contains
     use global,    only: cmfd
 
     integer :: n ! problem size
-call loss % write_petsc_binary('loss.mat')
-call prod % write_petsc_binary('prod.mat')
-call xvec % write_petsc_binary('x.bin')
-call resvec % write_petsc_binary('res.bin')
+
     ! get problem size
     n = loss % n
 

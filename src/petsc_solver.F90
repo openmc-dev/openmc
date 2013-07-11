@@ -161,10 +161,27 @@ contains
 
 #ifdef PETSC
     ! Turn on mf_operator option for matrix free jacobian
-!   call PetscOptionsSetValue("-snes_mf_operator", "TRUE", petsc_err)
+    call PetscOptionsSetValue("-snes_mf_operator", "TRUE", petsc_err)
 
     ! Create the SNES context
     call SNESCreate(PETSC_COMM_WORLD, self % snes, petsc_err)
+
+    ! Set up the GMRES solver
+    call SNESGetKSP(self % snes, self % ksp, petsc_err)
+    call KSPSetType(self % ksp, KSPGMRES, petsc_err)    
+
+    ! Apply options
+    call SNESGetLineSearch(self % snes, self % ls, petsc_err)
+    call SNESLineSearchSetType(self % ls, SNESLINESEARCHBASIC, petsc_err)
+    call SNESSetFromOptions(self % snes, petsc_err)
+!   call SNESView(self % snes, PETSC_VIEWER_STDOUT_WORLD, petsc_err)
+
+    ! Set up preconditioner
+    call KSPGetPC(self % ksp, self % pc, petsc_err)
+    call PCSetType(self % pc, PCILU, petsc_err)
+    call PCFactorSetLevels(self % pc, 5, petsc_err)
+    call PCSetFromOptions(self % pc, petsc_err)
+    call KSPSetFromOptions(self % ksp, petsc_err)
 
 #endif
 
@@ -200,33 +217,16 @@ contains
     call SNESSetFunction(self % snes, res % petsc_vec, jfnk_compute_residual, &
          ctx, petsc_err)
 
-    ! Set up the GMRES solver
-    call SNESGetKSP(self % snes, self % ksp, petsc_err)
-    call KSPSetType(self % ksp, KSPGMRES, petsc_err)    
-
     ! Create the matrix free jacobian
-!   call MatCreateSNESMF(self % snes, self % jac_mf, petsc_err)
+    call MatCreateSNESMF(self % snes, self % jac_mf, petsc_err)
 
     ! Set Jacobian procedure
-    call SNESSetJacobian(self % snes, jac_prec % petsc_mat, jac_prec % petsc_mat, &
+    call SNESSetJacobian(self % snes, self % jac_mf, jac_prec % petsc_mat, &
          jfnk_compute_jacobian, ctx, petsc_err)
 
     ! Set up Jacobian Lags
-!   call SNESSetLagJacobian(self % snes, -2, petsc_err)
-!   call SNESSetLagPreconditioner(self % snes, -1, petsc_err)
-
-    ! Apply options
-    call SNESGetLineSearch(self % snes, self % ls, petsc_err)
-    call SNESLineSearchSetType(self % ls, SNESLINESEARCHBASIC, petsc_err)
-    call SNESSetFromOptions(self % snes, petsc_err)
-    call SNESView(self % snes, PETSC_VIEWER_STDOUT_WORLD, petsc_err)
-
-    ! Set up preconditioner
-    call KSPGetPC(self % ksp, self % pc, petsc_err)
-    call PCSetType(self % pc, PCILU, petsc_err)
-    call PCFactorSetLevels(self % pc, 5, petsc_err)
-    call PCSetFromOptions(self % pc, petsc_err)
-    call KSPSetFromOptions(self % ksp, petsc_err)
+    call SNESSetLagJacobian(self % snes, -2, petsc_err)
+    call SNESSetLagPreconditioner(self % snes, -1, petsc_err)
 
   end subroutine jfnk_set_functions
 
@@ -278,7 +278,7 @@ contains
 
     call VecRestoreArrayF90(x, xvec % val, ierr)
     call VecRestoreArrayF90(res, resvec % val, ierr)
-    read *
+   ! read *
   end subroutine jfnk_compute_residual
 
 !===============================================================================
@@ -314,8 +314,8 @@ contains
 !   call MatView(jac_prec, viewer, petsc_err)
 !   call PetscViewerDestroy(viewer, petsc_err)
 #ifdef PETSC
-!   call MatAssemblyBegin(jac_mf, MAT_FINAL_ASSEMBLY, petsc_err)
-!   call MatAssemblyEnd(jac_mf, MAT_FINAL_ASSEMBLY, petsc_err)
+    call MatAssemblyBegin(jac_mf, MAT_FINAL_ASSEMBLY, petsc_err)
+    call MatAssemblyEnd(jac_mf, MAT_FINAL_ASSEMBLY, petsc_err)
 #endif
 
   end subroutine jfnk_compute_jacobian

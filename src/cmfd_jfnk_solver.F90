@@ -183,7 +183,7 @@ contains
     real(8)      :: val    ! temporary real scalar
     type(Vector) :: flux   ! flux vector
     type(Vector) :: fsrc   ! fission source vector
-print *, 'IN JACOBIAN'
+!nprint *, 'IN JACOBIAN'
     ! get the problem size
     n = loss % n
 
@@ -288,7 +288,7 @@ print *, 'IN JACOBIAN'
     res_ptr => resvec
     x_ptr => xvec
 
-print *, 'IN RESIDUAL'
+!print *, 'IN RESIDUAL'
 
     ! Get problem size
     n = loss % n
@@ -390,7 +390,7 @@ call resvec % write_petsc_binary('res.bin')
       cmfd % phi  = xvec % val(1:n)
       cmfd % keff = ONE / xvec % val(n+1)
     end if
-stop
+
   end subroutine extract_results
 
 !===============================================================================

@@ -58,7 +58,7 @@ contains
     self % n = n
     self % nnz = nnz
 
-    ! Set petsc active by default to false
+    ! Set PETSc active by default to false
     self % petsc_active = .false.
 
   end subroutine matrix_create
@@ -216,7 +216,7 @@ contains
   end subroutine split
 
 !===============================================================================
-! MATRIX_SETUP_PETSC configures the row/col vectors and links to a petsc object
+! MATRIX_SETUP_PETSC configures the row/col vectors and links to a PETSc object
 !===============================================================================
 
   subroutine matrix_setup_petsc(self)
@@ -239,7 +239,7 @@ contains
   end subroutine matrix_setup_petsc
 
 !===============================================================================
-! MATRIX_WRITE_PETSC_BINARY writes a petsc matrix binary file
+! MATRIX_WRITE_PETSC_BINARY writes a PETSc matrix binary file
 !===============================================================================
 
   subroutine matrix_write_petsc_binary(self, filename)
@@ -290,7 +290,7 @@ contains
     integer :: j
     integer :: shift
 
-    ! Set shift by default 0 and change if petsc is active
+    ! Set shift by default 0 and change if PETSc is active
     ! This is because PETSc needs vectors to remain referenced to 0
     shift = 0
     if (self % petsc_active) shift = 1
@@ -301,7 +301,7 @@ contains
       ! Initialize target location in vector
       vec_out % val(i) = ZERO
 
-      ! Begin loop around columns (need to shift if petsc is active)
+      ! Begin loop around columns (need to shift if PETSc is active)
       COLS: do j = self % row(i) + shift, self % row(i + 1) - 1 + shift
 
         vec_out % val(i) = vec_out % val(i) + self % val(j) * &

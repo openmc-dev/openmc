@@ -6,11 +6,6 @@ energy_grid.o: global.o
 energy_grid.o: list_header.o
 energy_grid.o: output.o
 
-cmfd_output.o: cmfd_data.o
-cmfd_output.o: cmfd_header.o
-cmfd_output.o: constants.o
-cmfd_output.o: global.o
-
 ace_header.o: constants.o
 ace_header.o: endf_header.o
 
@@ -104,6 +99,7 @@ fission.o: global.o
 fission.o: interpolation.o
 fission.o: search.o
 
+cmfd_input.o: cmfd_header.o
 cmfd_input.o: error.o
 cmfd_input.o: global.o
 cmfd_input.o: mesh_header.o
@@ -194,7 +190,6 @@ string.o: constants.o
 string.o: error.o
 string.o: global.o
 
-finalize.o: cmfd_output.o
 finalize.o: global.o
 finalize.o: hdf5_interface.o
 finalize.o: output.o

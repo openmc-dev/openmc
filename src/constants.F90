@@ -363,9 +363,8 @@ module constants
   integer, parameter :: UNIT_TALLY    = 12 ! unit # for writing tally file
   integer, parameter :: UNIT_PLOT     = 13 ! unit # for writing plot file
   integer, parameter :: UNIT_XS       = 14 ! unit # for writing xs summary file
-  integer, parameter :: CMFD_BALANCE  = 15 ! unit # for writing cmfd balance file
-  integer, parameter :: UNIT_PARTICLE = 16 ! unit # for writing particle restart
-  integer, parameter :: UNIT_OUTPUT   = 17 ! unit # for writing output
+  integer, parameter :: UNIT_PARTICLE = 15 ! unit # for writing particle restart
+  integer, parameter :: UNIT_OUTPUT   = 16 ! unit # for writing output
 
   !=============================================================================
   ! CMFD CONSTANTS

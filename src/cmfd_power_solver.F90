@@ -17,7 +17,9 @@ module cmfd_power_solver
   real(8) :: k_o                  ! old k-eigenvalue
   real(8) :: ktol = 1.e-8_8       ! tolerance on keff
   real(8) :: stol = 1.e-8_8       ! tolerance on source
-  logical :: adjoint_calc = .false. ! run an adjoint calculation
+  real(8) :: norm_n               ! current norm of source vector
+  real(8) :: norm_o               ! old norm of source vector
+  logical :: adjoint_calc         ! run an adjoint calculation
   type(Matrix) :: loss            ! cmfd loss matrix
   type(Matrix) :: prod            ! cmfd prod matrix
   type(Vector) :: phi_n           ! new flux vector
@@ -47,6 +49,7 @@ contains
     if (present(s_tol)) stol = s_tol
 
     ! Check for adjoint execution
+    adjoint_calc = .false.
     if (present(adjoint)) adjoint_calc = adjoint
 
     ! Check for physical adjoint
@@ -91,7 +94,7 @@ contains
 
   subroutine init_data(adjoint)
 
-    use constants, only: ONE
+    use constants, only: ONE, ZERO
 
     logical :: adjoint
 
@@ -135,6 +138,10 @@ contains
     call phi_o % setup_petsc()
     call S_o % setup_petsc()
     call S_n % setup_petsc()
+
+    ! Set norms to 0
+    norm_n = ZERO
+    norm_o = ZERO
 
   end subroutine init_data
 
@@ -194,12 +201,13 @@ contains
       ! Check convergence
       call convergence(i)
 
-      ! To break or not to break
+      ! Break loop if converged
       if (iconv) exit
 
       ! Record old values
       phi_o % val = phi_n % val
       k_o = k_n
+      norm_o = norm_n
 
     end do
 
@@ -232,6 +240,9 @@ contains
     ! Check for convergence
     if(kerr < ktol .and. serr < stol) iconv = .true.
 
+    ! Save the L2 norm of the source
+    norm_n = serr
+
     ! Print out to user
     if (cmfd_power_monitor .and. master) then
       write(OUTPUT_UNIT,FMT='(I0,":",T10,"k-eff: ",F0.8,T30,"k-error: ", &
@@ -246,7 +257,7 @@ contains
 
   subroutine extract_results()
 
-    use global, only: cmfd, cmfd_write_matrices
+    use global, only: cmfd, cmfd_write_matrices, current_batch
 
     character(len=25)    :: filename  ! name of file to write data 
     integer              :: n         ! problem size
@@ -281,6 +292,9 @@ contains
     else
       cmfd%phi = cmfd%phi/sqrt(sum(cmfd%phi*cmfd%phi))
     end if
+
+    ! Save dominance ratio
+    cmfd % dom(current_batch) = norm_n/norm_o
 
     ! Write out results
     if (cmfd_write_matrices) then

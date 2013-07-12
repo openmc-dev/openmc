@@ -69,7 +69,16 @@ module cmfd_header
     real(8) :: norm = ONE
 
     ! "Shannon entropy" from cmfd fission source
-    real(8) :: entropy 
+    real(8), allocatable :: entropy(:)
+
+    ! RMS of neutron balance equations
+    real(8), allocatable :: balance(:)
+
+    ! RMS deviation of OpenMC and CMFD normalized source
+    real(8), allocatable :: src_cmp(:)
+
+    ! Dominance ratio
+    real(8), allocatable :: dom(:)
 
   end type cmfd_type
 
@@ -79,9 +88,11 @@ contains
 ! ALLOCATE_CMFD allocates all data in of cmfd type
 !==============================================================================
 
-  subroutine allocate_cmfd(this)
+  subroutine allocate_cmfd(this, n_batches, entropy_on)
 
-    type(cmfd_type) :: this 
+    integer :: n_batches
+    logical :: entropy_on
+    type(cmfd_type) :: this
 
     integer :: nx  ! number of mesh cells in x direction
     integer :: ny  ! number of mesh cells in y direction
@@ -120,6 +131,12 @@ contains
     if (.not. allocated(this % sourcecounts)) allocate(this % sourcecounts(ng,nx,ny,nz))
     if (.not. allocated(this % weightfactors)) allocate(this % weightfactors(ng,nx,ny,nz))
 
+    ! Allocate batchwise parameters
+    if (.not. allocated(this % entropy) .and. entropy_on) allocate(this % entropy(n_batches))
+    if (.not. allocated(this % balance)) allocate(this % balance(n_batches))
+    if (.not. allocated(this % src_cmp)) allocate(this % src_cmp(n_batches))
+    if (.not. allocated(this % dom)) allocate(this % dom(n_batches))
+
     ! Set everthing to 0 except weight multiply factors if feedback isnt on
     this % flux          = ZERO
     this % totalxs       = ZERO
@@ -135,6 +152,10 @@ contains
     this % openmc_src    = ZERO
     this % sourcecounts  = ZERO
     this % weightfactors = ONE
+    this % balance       = ZERO
+    this % src_cmp       = ZERO
+    this % dom           = ZERO
+    if (entropy_on) this % entropy = ZERO
 
   end subroutine allocate_cmfd
 
@@ -164,6 +185,10 @@ contains
     if (allocated(this % weightfactors)) deallocate(this % weightfactors)
     if (allocated(this % cmfd_src))      deallocate(this % cmfd_src)
     if (allocated(this % openmc_src))    deallocate(this % openmc_src)
+    if (allocated(this % balance))       deallocate(this % balance)
+    if (allocated(this % src_cmp))       deallocate(this % src_cmp)
+    if (allocated(this % dom))           deallocate(this % dom)
+    if (allocated(this % entropy))       deallocate(this % entropy)
 
   end subroutine deallocate_cmfd
 

@@ -24,9 +24,6 @@ contains
     use constants,           only: CMFD_NOACCEL
     use global,              only: cmfd, cmfd_coremap, cmfd_downscatter
 
-    ! Initialize cmfd object
-    if (.not.allocated(cmfd%flux)) call allocate_cmfd(cmfd)
-
     ! Check for core map and set it up
     if ((cmfd_coremap) .and. (cmfd%mat_dim == CMFD_NOACCEL)) call set_coremap()
 
@@ -37,7 +34,7 @@ contains
     if (cmfd_downscatter) call compute_effective_downscatter()
 
     ! Check neutron balance
-!   call neutron_balance(670)
+    call neutron_balance()
 
     ! Calculate dtilde
     call compute_dtilde()
@@ -370,10 +367,10 @@ contains
 ! NEUTRON_BALANCE writes a file that contains n. bal. info for all cmfd mesh
 !===============================================================================
 
-  subroutine neutron_balance(uid)
+  subroutine neutron_balance()
 
     use constants,    only: ONE, ZERO, CMFD_NOACCEL, CMFD_NORES
-    use global,       only: cmfd, keff
+    use global,       only: cmfd, keff, current_batch
 
     integer :: nx           ! number of mesh cells in x direction
     integer :: ny           ! number of mesh cells in y direction
@@ -385,15 +382,13 @@ contains
     integer :: g            ! iteration counter for g
     integer :: h            ! iteration counter for outgoing groups
     integer :: l            ! iteration counter for leakage
-    integer :: uid
+    integer :: cnt          ! number of locations to count neutron balance
     real(8) :: leakage      ! leakage term in neutron balance
     real(8) :: interactions ! total number of interactions in balance
     real(8) :: scattering   ! scattering term in neutron balance
     real(8) :: fission      ! fission term in neutron balance
     real(8) :: res          ! residual of neutron balance
-
-    ! Check if keff is close to 0 (happens on first active batch)
-    if (keff < 1e-8_8) return
+    real(8) :: rms          ! RMS of the residual
 
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -403,6 +398,10 @@ contains
 
     ! Allocate res dataspace
     if (.not. allocated(cmfd%resnb)) allocate(cmfd%resnb(ng,nx,ny,nz))
+
+    ! Reset rms and cnt
+    rms = ZERO
+    cnt = 0
 
     ! Begin loop around space and energy groups
     ZLOOP: do k = 1, nz
@@ -457,16 +456,9 @@ contains
             ! Bank res in cmfd object
             cmfd%resnb(g,i,j,k) = res
 
-            ! Write out info to file
-            write(uid,'(A,1X,I0,1X,I0,1X,I0,1X,A,1X,I0,1X,A,1PE11.4)') &
-                          'Location',i,j,k,' Group:',g,'Balance:',res
-            write(uid,100) 'Leakage:',leakage
-            write(uid,100) 'Interactions:',interactions
-            write(uid,100) 'Scattering:',scattering
-            write(uid,100) 'Fission:',fission
-            write(uid,100) 'k-eff:',keff
-            write(uid,100) 'k-eff balanced:',fission/(leakage+interactions-scattering)
-            write(uid,100) 'Balance:',keff - fission/(leakage+interactions-scattering)
+            ! Take square for RMS calculation
+            rms = rms + res**2
+            cnt = cnt + 1
 
           end do GROUPG
 
@@ -476,7 +468,8 @@ contains
 
     end do ZLOOP
 
- 100 FORMAT(A,1X,1PE11.4)
+    ! Calculate RMS and record in vector for this batch
+    cmfd % balance(current_batch) = sqrt(ONE/dble(cnt)*rms)
 
   end subroutine neutron_balance
 

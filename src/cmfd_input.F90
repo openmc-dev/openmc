@@ -62,7 +62,7 @@ contains
 
   subroutine read_cmfd_xml()
     
-    use error,   only: fatal_error
+    use error,   only: fatal_error, warning
     use output,  only: write_message
     use string,  only: lower_case
     use xml_data_cmfd_t
@@ -192,6 +192,12 @@ contains
 
     ! Get display
     cmfd_display = display_
+    if (trim(cmfd_display) == 'dominance' .and. &
+        trim(cmfd_solver_type) /= 'power') then
+      message = 'Dominance Ratio only aviable with power iteration solver'
+      call warning()
+      cmfd_display = ''
+    end if
 
     ! Create tally objects
     call create_cmfd_tally()

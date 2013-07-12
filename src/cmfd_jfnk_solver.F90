@@ -167,7 +167,6 @@ contains
     integer      :: jloss  ! loop counter for loss matrix cols
     integer      :: jprod  ! loop counter for prod matrix cols
     integer      :: n      ! problem size
-    integer      :: shift  ! integer to account for index shift for Petsc
     real(8)      :: lambda ! eigenvalue
     real(8)      :: val    ! temporary real scalar
     type(Vector) :: flux   ! flux vector
@@ -175,10 +174,6 @@ contains
 
     ! Get the problem size
     n = loss % n
-
-    ! Check to use shift
-    shift = 0
-    if (loss % petsc_active) shift = 1
 
     ! Get flux and eigenvalue
     flux % val => x % val(1:n)
@@ -199,18 +194,16 @@ contains
       call jac_prec % new_row()
 
       ! Begin loop around columns of loss matrix
-      COLS_LOSS: do jloss = loss % row(i) + shift, &
-                            loss % row(i + 1) - 1 + shift
+      COLS_LOSS: do jloss = loss % get_row(i), loss % get_row(i + 1) - 1
 
         ! Start with the value in the loss matrix
         val = loss % val(jloss)
 
         ! Loop around columns of prod matrix
-        COLS_PROD: do jprod = prod % row(i) + shift, &
-                              prod % row(i + 1) - 1 + shift
+        COLS_PROD: do jprod = prod % get_row(i), prod % get_row(i + 1) - 1
 
           ! See if columns agree with loss matrix
-          if (prod % col(jprod) == loss % col(jloss)) then
+          if (prod % get_col(jprod) == loss % get_col(jloss)) then
             val = val - lambda*prod % val(jprod)
             exit
           end if
@@ -218,7 +211,7 @@ contains
         end do COLS_PROD 
 
         ! Record value in jacobian
-        call jac_prec % add_value(loss % col(jloss) + shift, val)
+        call jac_prec % add_value(loss % get_col(jloss), val)
 
       end do COLS_LOSS
 
@@ -240,12 +233,6 @@ contains
 
     ! CRS requires a final value in row
     call jac_prec % new_row()
-
-    ! If the Jacobian is already associated with PETSc need to reshift row/col
-    if (jac_prec % petsc_active) then
-      jac_prec % row = jac_prec % row - 1
-      jac_prec % col = jac_prec % col - 1
-    end if
 
     ! Free all allocated memory
     flux % val => null()

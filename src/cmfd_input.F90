@@ -18,6 +18,8 @@ contains
 
   subroutine configure_cmfd()
 
+    use cmfd_header,  only: allocate_cmfd
+
     integer :: new_comm ! new mpi communicator
     integer :: color    ! color group of processor
 
@@ -44,10 +46,13 @@ contains
     call PetscInitialize(PETSC_NULL_CHARACTER,mpi_err)
 # endif
 
-    ! initialize timers
+    ! Initialize timers
     call time_cmfd % reset()
     call time_cmfdbuild % reset()
     call time_cmfdsolve % reset()
+
+    ! Allocate cmfd object
+    call allocate_cmfd(cmfd, n_batches, entropy_on)
 
   end subroutine configure_cmfd
 
@@ -162,10 +167,7 @@ contains
          cmfd_power_monitor = .true.
 
     ! Output logicals
-    call lower_case(write_balance_)
     call lower_case(write_matrices_)
-    if (write_balance_ == 'true' .or. write_balance_ == '1') &
-         cmfd_write_balance = .true.
     if (write_matrices_ == 'true' .or. write_matrices_ == '1') &
          cmfd_write_matrices = .true.
 
@@ -187,6 +189,9 @@ contains
 
     ! Last flush before active batches
     cmfd_act_flush = active_flush_
+
+    ! Get display
+    cmfd_display = display_
 
     ! Create tally objects
     call create_cmfd_tally()

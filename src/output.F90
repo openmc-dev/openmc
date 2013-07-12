@@ -1220,6 +1220,16 @@ contains
     write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "     Average k      "
     if (cmfd_run) then
       write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') " CMFD k "
+      select case(trim(cmfd_display))
+        case('entropy')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "CMFD Ent"
+        case('balance')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "RMS Bal "
+        case('source')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "RMS Src "
+        case('dominance')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "Dom Rat "
+      end select
     end if
     write(UNIT=ou, FMT=*)
     
@@ -1228,7 +1238,9 @@ contains
     if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
     write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "===================="
     if (cmfd_run) then
-      write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========="
+      write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
+      if (cmfd_display /= '') &
+        write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
     end if
     write(UNIT=ou, FMT=*)
 
@@ -1285,9 +1297,25 @@ contains
       write(UNIT=OUTPUT_UNIT, FMT='(23X)', ADVANCE='NO')
     end if
 
-    ! write out cmfd keff if it is active
-    if (cmfd_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+    ! write out cmfd keff if it is active and other display info
+    if (cmfd_on) then
+      write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
          cmfd % keff 
+      select case(trim(cmfd_display))
+        case('entropy')
+          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+            cmfd % entropy(current_batch)
+        case('balance')
+          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+            cmfd % balance(current_batch)
+        case('source')
+          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+            cmfd % src_cmp(current_batch)
+        case('dominance')
+          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+            cmfd % dom(current_batch)
+      end select
+    end if
 
     ! next line
     write(UNIT=OUTPUT_UNIT, FMT=*)

@@ -340,15 +340,17 @@ module global
   logical :: cmfd_power_monitor = .false.
 
   ! Cmfd output
-  logical :: cmfd_write_balance  = .false.
   logical :: cmfd_write_matrices = .false.
 
   ! Run an adjoint calculation (last batch only)
   logical :: cmfd_run_adjoint = .false.
 
-  ! Cmfd run logicals
+  ! CMFD run logicals
   logical :: cmfd_on             = .false.
   logical :: cmfd_tally_on       = .true. 
+
+  ! CMFD display info
+  character(len=25) :: cmfd_display
 
   ! Information about state points to be written
   integer :: n_state_points = 0
@@ -413,7 +415,7 @@ contains
     if (allocated(source_bank)) deallocate(source_bank)
     if (allocated(entropy_p)) deallocate(entropy_p)
 
-    ! Deallocate cmfd
+    ! Deallocate CMFD
     call deallocate_cmfd(cmfd)
 
     ! Deallocate tally node lists

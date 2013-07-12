@@ -1214,37 +1214,28 @@ contains
 
   subroutine print_columns()
 
-    if (entropy_on) then
-      if (cmfd_run) then
-        message = " Bat./Gen.      k       Entropy         Average k          CMFD k    CMFD Ent"
-        call write_message(1)
-        message = " =========   ========   ========   ====================   ========   ========"
-        call write_message(1)
-      else
-        message = " Bat./Gen.      k       Entropy         Average k"
-        call write_message(1)
-        message = " =========   ========   ========   ===================="
-        call write_message(1)
-      end if
-    else
-      if (cmfd_run) then
-        message = " Bat./Gen.      k            Average k          CMFD k"
-        call write_message(1)
-        message = " =========   ========   ====================   ========"
-        call write_message(1)
-      else
-        message = " Bat./Gen.      k            Average k"
-        call write_message(1)
-        message = " =========   ========   ===================="
-        call write_message(1)
-      end if
+    write(UNIT=ou, FMT='(2X,A9,3X)', ADVANCE='NO') "Bat./Gen."
+    write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "   k    "
+    if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "Entropy "
+    write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "     Average k      "
+    if (cmfd_run) then
+      write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') " CMFD k "
     end if
+    write(UNIT=ou, FMT=*)
+    
+    write(UNIT=ou, FMT='(2X,A9,3X)', ADVANCE='NO') "========="
+    write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
+    if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
+    write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "===================="
+    if (cmfd_run) then
+      write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========="
+    end if
+    write(UNIT=ou, FMT=*)
 
   end subroutine print_columns
 
 !===============================================================================
-! PRINT_GENERATION displays information for a generation of neutrons. For now,
-! if the user has entropy on, it will print out the entropy
+! PRINT_GENERATION displays information for a generation of neutrons.
 !===============================================================================
 
   subroutine print_generation()
@@ -1294,14 +1285,9 @@ contains
       write(UNIT=OUTPUT_UNIT, FMT='(23X)', ADVANCE='NO')
     end if
 
-
     ! write out cmfd keff if it is active
     if (cmfd_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
          cmfd % keff 
-
-    ! write out cmfd entopy
-    if (cmfd_on .and. entropy_on) write(UNIT=OUTPUT_UNIT, &
-         FMT='(3X, F8.5)', ADVANCE='NO') cmfd % entropy
 
     ! next line
     write(UNIT=OUTPUT_UNIT, FMT=*)

@@ -43,7 +43,7 @@ contains
     allocate(p)
 
     ! Display column titles
-    call print_columns()
+    if(master) call print_columns()
 
     ! Turn on inactive timer
     call time_inactive % start()

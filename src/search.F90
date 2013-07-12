@@ -3,8 +3,6 @@ module search
   use error,     only: fatal_error
   use global,    only: message
 
-  integer, parameter :: MAX_ITERATION = 64
-
   interface binary_search
     module procedure binary_search_real, binary_search_int4, binary_search_int8
   end interface binary_search
@@ -25,8 +23,6 @@ contains
 
     integer :: L
     integer :: R
-    integer :: n_iteration
-    real(8) :: testval
 
     L = 1
     R = n
@@ -36,36 +32,17 @@ contains
       call fatal_error()
     end if
 
-    n_iteration = 0
-    do while (R - L > 1)
-
-      ! Check boundaries
-      if (val > array(L) .and. val < array(L+1)) then
-        array_index = L
-        return
-      elseif (val > array(R-1) .and. val < array(R)) then
-        array_index = R - 1
-        return
-      end if
-
+    do while (R > L)
       ! Find values at midpoint
-      array_index = L + (R - L)/2
-      testval = array(array_index)
-      if (val >= testval) then
-        L = array_index
-      elseif (val < testval) then
+      array_index = (R + L)/2
+      if (val > array(array_index)) then
+        L = array_index + 1
+      else
         R = array_index
-      end if
-
-      ! check for large number of iterations
-      n_iteration = n_iteration + 1
-      if (n_iteration == MAX_ITERATION) then
-        message = "Reached maximum number of iterations on binary search."
-        call fatal_error()
       end if
     end do
 
-    array_index = L
+    array_index = L - 1
 
   end function binary_search_real
 
@@ -78,8 +55,6 @@ contains
 
     integer :: L
     integer :: R
-    integer :: n_iteration
-    real(8) :: testval
 
     L = 1
     R = n
@@ -89,36 +64,17 @@ contains
       call fatal_error()
     end if
 
-    n_iteration = 0
-    do while (R - L > 1)
-
-      ! Check boundaries
-      if (val > array(L) .and. val < array(L+1)) then
-        array_index = L
-        return
-      elseif (val > array(R-1) .and. val < array(R)) then
-        array_index = R - 1
-        return
-      end if
-
+    do while (R > L)
       ! Find values at midpoint
-      array_index = L + (R - L)/2
-      testval = array(array_index)
-      if (val >= testval) then
-        L = array_index
-      elseif (val < testval) then
+      array_index = (R + L)/2
+      if (val > array(array_index)) then
+        L = array_index + 1
+      else
         R = array_index
-      end if
-
-      ! check for large number of iterations
-      n_iteration = n_iteration + 1
-      if (n_iteration == MAX_ITERATION) then
-        message = "Reached maximum number of iterations on binary search."
-        call fatal_error()
       end if
     end do
 
-    array_index = L
+    array_index = L - 1
 
   end function binary_search_int4
 
@@ -131,8 +87,6 @@ contains
 
     integer :: L
     integer :: R
-    integer :: n_iteration
-    real(8) :: testval
 
     L = 1
     R = n
@@ -142,36 +96,17 @@ contains
       call fatal_error()
     end if
 
-    n_iteration = 0
-    do while (R - L > 1)
-
-      ! Check boundaries
-      if (val > array(L) .and. val < array(L+1)) then
-        array_index = L
-        return
-      elseif (val > array(R-1) .and. val < array(R)) then
-        array_index = R - 1
-        return
-      end if
-
+    do while (R > L)
       ! Find values at midpoint
-      array_index = L + (R - L)/2
-      testval = array(array_index)
-      if (val >= testval) then
-        L = array_index
-      elseif (val < testval) then
+      array_index = (R + L)/2
+      if (val > array(array_index)) then
+        L = array_index + 1
+      else
         R = array_index
-      end if
-
-      ! check for large number of iterations
-      n_iteration = n_iteration + 1
-      if (n_iteration == MAX_ITERATION) then
-        message = "Reached maximum number of iterations on binary search."
-        call fatal_error()
       end if
     end do
 
-    array_index = L
+    array_index = L - 1
 
   end function binary_search_int8
 

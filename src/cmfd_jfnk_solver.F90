@@ -28,6 +28,8 @@ contains
 
   subroutine cmfd_jfnk_execute(adjoint)
 
+    use global,  only: time_cmfdbuild, time_cmfdsolve
+
     logical, optional :: adjoint ! adjoint calculation
 
     ! Check for adjoint
@@ -36,6 +38,9 @@ contains
 
     ! Seed with power iteration to help converge to fundamental mode
     call cmfd_power_execute(k_tol=1.E-3_8, s_tol=1.E-3_8, adjoint=adjoint_calc)
+
+    ! Start timer for build
+    call time_cmfdbuild % start()
 
     ! Initialize data
     call init_data()
@@ -48,8 +53,13 @@ contains
     jfnk_data % jac_proc_ptr => build_jacobian_matrix
     call jfnk % set_functions(jfnk_data, resvec, jac_prec)
 
+    ! Stop timer for build
+    call time_cmfdbuild % stop()
+
     ! Solve the system
+    call time_cmfdsolve % start()
     call jfnk % solve(xvec)
+    call time_cmfdsolve % stop()
 
     ! Extracts results to cmfd object
     call extract_results()

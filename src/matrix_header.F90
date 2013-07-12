@@ -12,8 +12,8 @@ module matrix_header
     integer :: nnz      ! number of nonzeros in matrix
     integer :: n_kount  ! counter for length of matrix
     integer :: nz_kount ! counter for number of non zeros
-    integer, allocatable :: row(:) ! csr row vector
-    integer, allocatable :: col(:) ! column vector
+    integer, private, allocatable :: row(:) ! csr row vector
+    integer, private, allocatable :: col(:) ! column vector
     real(8), allocatable :: val(:) ! matrix value vector
 #  ifdef PETSC
     Mat :: petsc_mat
@@ -25,6 +25,8 @@ module matrix_header
      procedure :: add_value    => matrix_add_value
      procedure :: new_row      => matrix_new_row
      procedure :: assemble     => matrix_assemble
+     procedure :: get_row      => matrix_get_row
+     procedure :: get_col      => matrix_get_col
      procedure :: setup_petsc        => matrix_setup_petsc
      procedure :: write_petsc_binary => matrix_write_petsc_binary
      procedure :: transpose          => matrix_transpose
@@ -91,8 +93,15 @@ contains
     real(8)       :: val
     class(Matrix) :: self
 
+    ! Record the data
     self % col(self % nz_kount) = col
     self % val(self % nz_kount) = val
+
+    ! Need to adjust column indices if PETSc is active
+    if (self % petsc_active) self % col(self % nz_kount) = &
+                             self % col(self % nz_kount) - 1
+
+    ! Increment the number of nonzeros currently stored
     self % nz_kount = self % nz_kount + 1
 
   end subroutine matrix_add_value
@@ -105,7 +114,14 @@ contains
 
     class(Matrix) :: self
 
+    ! Record the current number of nonzeros
     self % row(self % n_kount) = self % nz_kount
+
+    ! If PETSc is active, we have to reference indices off 0
+    if (self % petsc_active) self % row(self % n_kount) = &
+                             self % row(self % n_kount) - 1
+
+    ! Increment the current row that we are on
     self % n_kount = self % n_kount + 1
 
   end subroutine matrix_new_row
@@ -216,6 +232,38 @@ contains
   end subroutine split
 
 !===============================================================================
+! MATRIX_GET_ROW
+!===============================================================================
+
+  function matrix_get_row(self, i) result(row)
+
+    class(Matrix) :: self
+    integer       :: i
+    integer       :: row
+
+    row = self % row(i)
+
+    if (self % petsc_active) row = row + 1
+
+  end function matrix_get_row
+
+!===============================================================================
+! MATRIX_GET_COL
+!===============================================================================
+
+  function matrix_get_col(self, i) result(col)
+
+    class(Matrix) :: self
+    integer       :: i
+    integer       :: col
+
+    col = self % col(i)
+
+    if (self % petsc_active) col = col + 1
+
+  end function matrix_get_col
+
+!===============================================================================
 ! MATRIX_SETUP_PETSC configures the row/col vectors and links to a PETSc object
 !===============================================================================
 
@@ -288,12 +336,6 @@ contains
 
     integer :: i
     integer :: j
-    integer :: shift
-
-    ! Set shift by default 0 and change if PETSc is active
-    ! This is because PETSc needs vectors to remain referenced to 0
-    shift = 0
-    if (self % petsc_active) shift = 1
 
     ! Begin loop around rows
     ROWS: do i = 1, self % n
@@ -301,11 +343,11 @@ contains
       ! Initialize target location in vector
       vec_out % val(i) = ZERO
 
-      ! Begin loop around columns (need to shift if PETSc is active)
-      COLS: do j = self % row(i) + shift, self % row(i + 1) - 1 + shift
+      ! Begin loop around columns
+      COLS: do j = self % get_row(i), self % get_row(i + 1) - 1
 
         vec_out % val(i) = vec_out % val(i) + self % val(j) * &
-                           vec_in % val(self % col(j) + shift)
+                           vec_in % val(self % get_col(j))
 
       end do COLS
 

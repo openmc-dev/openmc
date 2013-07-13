@@ -176,7 +176,6 @@ contains
 
             ! Find the scattering order for a singly requested moment, and
             ! store its moment contribution.
-
             if (t % scatt_order(j) == 1) then
               score = last_wgt * mu ! avoid function call overhead
             else
@@ -186,7 +185,6 @@ contains
           case (SCORE_SCATTER_PN)
             ! Skip any event where the particle didn't scatter
             if (p % event == EVENT_SCATTER) then
-              
               score_index = score_index - 1
               ! Find the scattering order for a collection of requested moments
               ! and store the moment contribution of each
@@ -2118,8 +2116,8 @@ contains
     integer :: i_grid   ! index on nuclide energy grid
     real(8) :: f        ! interp factor on nuclide energy grid
     real(8) :: one_f    ! (ONE - f)
-    real(8) :: norm     ! normalization constant
     type(Nuclide), pointer :: nuc ! Working nuclide
+    real(8) :: norm
     
     nuc => nuclides(i_nuclide)
 
@@ -2134,9 +2132,6 @@ contains
     
     ! Add the contribution from the lower score
     if (nuc % int_scatt(i_grid) % gmin /= 0) then
-      ! Find the sum of all P0 values, we will multiply by its reciprocal
-      ! to ensure these are normalized correctly (since NDPP is written
-      ! to favor the tracklength estimator)
       norm = ONE / sum(nuc % int_scatt(i_grid) % outgoing(1, :))
       do g = nuc % int_scatt(i_grid) % gmin, nuc % int_scatt(i_grid) % gmax
         g_filter = filter_index + g - 1
@@ -2148,9 +2143,6 @@ contains
     
     ! Now add the contribution from the higher score
     if (nuc % int_scatt(i_grid + 1) % gmin /= 0) then
-      ! Find the sum of all P0 values, we will multiply by its reciprocal
-      ! to ensure these are normalized correctly (since NDPP is written
-      ! to favor the tracklength estimator)
       norm = ONE / sum(nuc % int_scatt(i_grid + 1) % outgoing(1, :))
       do g = nuc % int_scatt(i_grid + 1) % gmin, nuc % int_scatt(i_grid + 1) % gmax
         g_filter = filter_index + g - 1

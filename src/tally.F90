@@ -204,12 +204,30 @@ contains
           case (SCORE_INTSCATT_PN)
             ! Skip any event where the particle didn't scatter
             if (p % event == EVENT_SCATTER) then
-              ! For the case of analog intscatt_pn tallying, filter_index needs
-              ! to be adjusted to point to the first energyout filter
-              call tally_analog_int_pn(p % event_nuclide, score_index, &
-                filter_index - &
-                t % matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                t % scatt_order(j), last_wgt, t % results)
+              ! Now check to see if S(a,b) scattering took place.
+              ! Since NDPP can not yet handle S(a,b), we will resort to
+              ! using the old analog method (i.e., the SCORE_SCATTER_PN block)
+              if (micro_xs(p % event_nuclide) % index_sab /= NONE) then
+                score_index = score_index - 1
+                ! Find the scattering order for a collection of requested moments
+                ! and store the moment contribution of each
+                do n = 0, t % scatt_order(j)
+                  ! determine scoring bin index
+                  score_index = score_index + 1
+                  ! get the score and tally it
+                  score = last_wgt * calc_pn(n, mu)
+                  
+                  t % results(score_index, filter_index) % value = &
+                    t % results(score_index, filter_index) % value + score
+                end do
+              else ! then we can use the NDPP data
+                ! For the case of analog intscatt_pn tallying, filter_index needs
+                ! to be adjusted to point to the first energyout filter
+                call tally_analog_int_pn(p % event_nuclide, score_index, &
+                  filter_index - &
+                  t % matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+                  t % scatt_order(j), last_wgt, t % results)
+                end if
             end if
             
             j = j + t % scatt_order(j)

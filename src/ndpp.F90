@@ -27,8 +27,9 @@ contains
     ! Check to see if S(a,b) tables are in use; if so, print error and quit.
     if (n_sab_tables > 0) then
       message = "Pre-processed scattering kernels do not yet support S(a,b)" // &
-        " scattering tables!"
-      call fatal_error()
+        " scattering tables! S(a,b) collisions will be treated with the" // &
+        " analog Pn tally method."
+      call warning()
     end if
     
     ! First lets go read the ndpp_lib.xml file
@@ -145,8 +146,10 @@ contains
       call fatal_error()
     end if
     
-    ! Test that the energy group structure and scattering order requested in 
-    ! tallies.xml are valid (i.e., groups match, orders are less than in the library).
+    ! Check the tallies to ensure that the energy group structure, scattering 
+    ! order requested are valid (i.e., groups match, orders are less than in 
+    ! the library), and check set all tallies with tracklength estimators and
+    ! int-scatter-pn scores to analog so that S(a,b) will be handled.
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)
       j = 0
@@ -199,6 +202,19 @@ contains
               message = "NDPP Library group structure does not match that " // &
                         "requested in tally!"
               call fatal_error()
+            end if
+            
+            ! Check to see if the model has S(a,b) data.
+            if (n_sab_tables > 0) then
+              ! If it does, we can't use tracklength estimators yet with 
+              ! int-scatter-pn.  So set the estimator for this tally to analog.
+              if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+                t % estimator = ESTIMATOR_ANALOG
+                message = "Setting the estimator of Tally " // &
+                          trim(adjustl(to_str(i))) // " to analog due to the" // &
+                          " presence of S(a,b) tables."
+                call warning()
+              end if
             end if
             
             exit SCORE_LOOP ! we found what we want!

@@ -23,8 +23,8 @@ contains
     integer :: i_nuclide    ! index in nuclides
     type(XsListing), pointer :: ndpp_listing => null()
     
-    ! This is probably the best location in the code to do this:
-    ! Check to see if S(a,b) tables are in use; if so, print error and quit.
+    ! Check to see if S(a,b) tables are in use; if so, tell the user of changes
+    ! which may come to their tallies.
     if (n_sab_tables > 0) then
       message = "Pre-processed scattering kernels do not yet support S(a,b)" // &
         " scattering tables! S(a,b) collisions will be treated with the" // &
@@ -150,6 +150,10 @@ contains
     ! order requested are valid (i.e., groups match, orders are less than in 
     ! the library), and check set all tallies with tracklength estimators and
     ! int-scatter-pn scores to analog so that S(a,b) will be handled.
+    !!! It would be nice if this loop checked to see if tallies with nuclide
+    ! material, and energyin filters had anything to do with S(a,b) before we set them to
+    ! analog. Mesh, cell, universe, ..., are out of luck since its quite a bit more
+    ! difficult to guarantee there will not be s(a,b) scattering in these tallies
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)
       j = 0

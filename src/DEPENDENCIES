@@ -177,8 +177,8 @@ hdf5_summary.o: geometry_header.o
 hdf5_summary.o: global.o
 hdf5_summary.o: material_header.o
 hdf5_summary.o: mesh_header.o
-hdf5_summary.o: output_interface.o
 hdf5_summary.o: output.o
+hdf5_summary.o: output_interface.o
 hdf5_summary.o: string.o
 hdf5_summary.o: tally_header.o
 
@@ -194,8 +194,8 @@ initialize.o: global.o
 initialize.o: hdf5_interface.o
 initialize.o: hdf5_summary.o
 initialize.o: input_xml.o
-initialize.o: output_interface.o
 initialize.o: output.o
+initialize.o: output_interface.o
 initialize.o: random_lcg.o
 initialize.o: source.o
 initialize.o: state_point.o
@@ -277,8 +277,8 @@ particle_restart.o: bank_header.o
 particle_restart.o: constants.o
 particle_restart.o: geometry_header.o
 particle_restart.o: global.o
-particle_restart.o: hdf5_interface.o
 particle_restart.o: output.o
+particle_restart.o: output_interface.o
 particle_restart.o: particle_header.o
 particle_restart.o: physics.o
 particle_restart.o: random_lcg.o
@@ -286,7 +286,7 @@ particle_restart.o: source.o
 
 particle_restart_write.o: bank_header.o
 particle_restart_write.o: global.o
-particle_restart_write.o: hdf5_interface.o
+particle_restart_write.o: output_interface.o
 particle_restart_write.o: string.o
 
 physics.o: ace_header.o
@@ -374,3 +374,4 @@ tally_initialize.o: global.o
 tally_initialize.o: tally_header.o
 
 timer_header.o: constants.o
+

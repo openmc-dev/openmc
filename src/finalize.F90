@@ -40,7 +40,7 @@ contains
 
 #ifdef PETSC
     ! Finalize PETSc
-    call PetscFinalize(mpi_err)
+    if (cmfd_run) call PetscFinalize(mpi_err)
 #endif
 
     ! Stop timers and show timing statistics

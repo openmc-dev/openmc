@@ -6,13 +6,10 @@ cmfd_data.o \
 cmfd_execute.o \
 cmfd_header.o \
 cmfd_input.o \
-cmfd_jacobian_operator.o \
+cmfd_jfnk_solver.o \
 cmfd_loss_operator.o \
-cmfd_message_passing.o \
-cmfd_output.o \
 cmfd_power_solver.o \
 cmfd_prod_operator.o \
-cmfd_snes_solver.o \
 constants.o \
 cross_section.o \
 dict_header.o \
@@ -37,6 +34,7 @@ list_header.o \
 main.o \
 material_header.o \
 math.o \
+matrix_header.o \
 mesh_header.o \
 mesh.o \
 mpiio_interface.o \
@@ -45,6 +43,7 @@ output_interface.o \
 particle_header.o \
 particle_restart.o \
 particle_restart_write.o \
+petsc_solver.o \
 physics.o \
 plot.o \
 plot_header.o \
@@ -59,4 +58,5 @@ string.o \
 tally.o \
 tally_header.o \
 tally_initialize.o \
-timer_header.o
+timer_header.o \
+vector_header.o

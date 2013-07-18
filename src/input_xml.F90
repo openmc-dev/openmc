@@ -1764,6 +1764,9 @@ contains
                    tally_(i) % filter(j) % bins(k))
             end do
 
+            ! Set to analog estimator
+            t % estimator = ESTIMATOR_ANALOG
+
           case default
             ! Specified tally filter is invalid, raise error
             message = "Unknown filter type '" // trim(tally_(i) % &
@@ -1975,6 +1978,7 @@ contains
             end if
           case ('scatter')
             t % score_bins(j) = SCORE_SCATTER
+            
           case ('nu-scatter')
             t % score_bins(j) = SCORE_NU_SCATTER
 
@@ -2565,7 +2569,9 @@ contains
 
        ! create dictionary entry for both name and alias
        call xs_listing_dict % add_key(listing % name, i)
-       call xs_listing_dict % add_key(listing % alias, i)
+       if (listing % alias /= '') then
+         call xs_listing_dict % add_key(listing % alias, i)
+       end if
     end do
 
   end subroutine read_cross_sections_xml

@@ -186,10 +186,11 @@ contains
 
     integer, optional :: level ! verbosity level
 
-    integer :: i_start   ! starting position
-    integer :: i_end     ! ending position
-    integer :: line_wrap ! length of line
-    integer :: length    ! length of message
+    integer :: i_start    ! starting position
+    integer :: i_end      ! ending position
+    integer :: line_wrap  ! length of line
+    integer :: length     ! length of message
+    integer :: last_space ! index of last space (relative to start)
 
     ! Set length of line
     line_wrap = 80
@@ -210,11 +211,17 @@ contains
 
         else
           ! Determine last space in current line
-          i_end = i_start + index(message(i_start+1:i_start+line_wrap), &
+          last_space = index(message(i_start+1:i_start+line_wrap), &
                ' ', BACK=.true.)
+          if (last_space == 0) then 
+            i_end = min(length + 1, i_start+line_wrap) - 1
+            write(ou, fmt='(1X,A)') message(i_start+1:i_end)
+          else
+            i_end = i_start + last_space
+            write(ou, fmt='(1X,A)') message(i_start+1:i_end-1)
+          end if
 
           ! Write up to last space
-          write(ou, fmt='(1X,A)') message(i_start+1:i_end-1)
 
           ! Advance starting position
           i_start = i_end
@@ -1420,16 +1427,20 @@ contains
              gen_per_batch) / time_active % elapsed
       end if
     else
-      speed_inactive = real(n_particles * n_inactive * gen_per_batch) / &
-           time_inactive % elapsed
+      if (n_inactive > 0) then
+        speed_inactive = real(n_particles * n_inactive * gen_per_batch) / &
+             time_inactive % elapsed
+      end if
       speed_active = real(n_particles * n_active * gen_per_batch) / &
            time_active % elapsed
     end if
 
     ! display calculation rate
-    string = to_str(speed_inactive)
-    if (.not. (restart_run .and. (restart_batch >= n_inactive))) &
-         write(ou,101) "Calculation Rate (inactive)", trim(string)
+    if (.not. (restart_run .and. (restart_batch >= n_inactive)) &
+         .and. n_inactive > 0) then
+      string = to_str(speed_inactive)
+      write(ou,101) "Calculation Rate (inactive)", trim(string)
+    end if
     string = to_str(speed_active)
     write(ou,101) "Calculation Rate (active)", trim(string)
 

@@ -10,8 +10,8 @@ module matrix_header
   type, public :: Matrix
     integer :: n        ! number of rows/cols in matrix
     integer :: nnz      ! number of nonzeros in matrix
-    integer :: n_kount  ! counter for length of matrix
-    integer :: nz_kount ! counter for number of non zeros
+    integer :: n_count  ! counter for length of matrix
+    integer :: nz_count ! counter for number of non zeros
     integer, private, allocatable :: row(:) ! csr row vector
     integer, private, allocatable :: col(:) ! column vector
     real(8), allocatable :: val(:) ! matrix value vector
@@ -53,8 +53,8 @@ contains
     if (.not.allocated(self % val)) allocate(self % val(nnz))
 
     ! Set counters to 1
-    self % n_kount  = 1
-    self % nz_kount = 1
+    self % n_count  = 1
+    self % nz_count = 1
 
     ! Set n and nnz
     self % n = n
@@ -94,15 +94,15 @@ contains
     class(Matrix) :: self
 
     ! Record the data
-    self % col(self % nz_kount) = col
-    self % val(self % nz_kount) = val
+    self % col(self % nz_count) = col
+    self % val(self % nz_count) = val
 
     ! Need to adjust column indices if PETSc is active
-    if (self % petsc_active) self % col(self % nz_kount) = &
-                             self % col(self % nz_kount) - 1
+    if (self % petsc_active) self % col(self % nz_count) = &
+                             self % col(self % nz_count) - 1
 
     ! Increment the number of nonzeros currently stored
-    self % nz_kount = self % nz_kount + 1
+    self % nz_count = self % nz_count + 1
 
   end subroutine matrix_add_value
 
@@ -115,14 +115,14 @@ contains
     class(Matrix) :: self
 
     ! Record the current number of nonzeros
-    self % row(self % n_kount) = self % nz_kount
+    self % row(self % n_count) = self % nz_count
 
     ! If PETSc is active, we have to reference indices off 0
-    if (self % petsc_active) self % row(self % n_kount) = &
-                             self % row(self % n_kount) - 1
+    if (self % petsc_active) self % row(self % n_count) = &
+                             self % row(self % n_count) - 1
 
     ! Increment the current row that we are on
-    self % n_kount = self % n_kount + 1
+    self % n_count = self % n_count + 1
 
   end subroutine matrix_new_row
 

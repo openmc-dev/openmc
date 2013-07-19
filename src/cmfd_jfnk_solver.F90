@@ -194,8 +194,8 @@ contains
     call prod % vector_multiply(flux, fsrc)
 
     ! Reset counters in Jacobian matrix
-    jac_prec % n_kount  = 1
-    jac_prec % nz_kount = 1
+    jac_prec % n_count  = 1
+    jac_prec % nz_count = 1
 
     ! Begin loop around rows of Jacobian matrix
     ROWS: do i = 1, n

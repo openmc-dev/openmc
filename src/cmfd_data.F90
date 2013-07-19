@@ -311,13 +311,13 @@ contains
     use constants,  only: CMFD_NOACCEL
     use global,     only: cmfd
 
-    integer :: kount=1 ! counter for unique fuel assemblies
-    integer :: nx      ! number of mesh cells in x direction
-    integer :: ny      ! number of mesh cells in y direction
-    integer :: nz      ! number of mesh cells in z direction
-    integer :: i       ! iteration counter for x
-    integer :: j       ! iteration counter for y
-    integer :: k       ! iteration counter for z
+    integer :: counter=1 ! counter for unique fuel assemblies
+    integer :: nx        ! number of mesh cells in x direction
+    integer :: ny        ! number of mesh cells in y direction
+    integer :: nz        ! number of mesh cells in z direction
+    integer :: i         ! iteration counter for x
+    integer :: j         ! iteration counter for y
+    integer :: k         ! iteration counter for z
 
     ! Extract spatial indices from object
     nx = cmfd % indices(1)
@@ -347,11 +347,11 @@ contains
           else
 
             ! Must be a fuel --> give unique id number
-            cmfd % coremap(i,j,k) = kount
-            cmfd % indexmap(kount,1) = i
-            cmfd % indexmap(kount,2) = j
-            cmfd % indexmap(kount,3) = k
-            kount = kount + 1
+            cmfd % coremap(i,j,k) = counter
+            cmfd % indexmap(counter,1) = i
+            cmfd % indexmap(counter,2) = j
+            cmfd % indexmap(counter,3) = k
+            counter = counter + 1
 
           end if
 

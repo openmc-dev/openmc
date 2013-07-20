@@ -118,7 +118,7 @@ contains
     elseif (filetype_ == 'binary') then
        filetype = BINARY
     elseif (filetype_ == 'hdf5') then
-       filetype = HDF5
+       filetype = H5
     else
        message = "Unknown filetype in " // trim(integrated_scatt_lib) // &
         ": " // trim(filetype_)
@@ -496,7 +496,7 @@ contains
       end do
       close(UNIT=in)
       
-    else if (listing % filetype == HDF5) then
+    else if (listing % filetype == H5) then
       ! =======================================================================
       ! READ NDPP DATA IN HDF5 FORMAT
       !!! TBI

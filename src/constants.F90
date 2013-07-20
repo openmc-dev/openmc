@@ -229,7 +229,7 @@ module constants
   integer, parameter :: &
        ASCII  = 1, & ! ASCII cross section or NDPP file
        BINARY = 2, & ! Binary cross section or NDPP file
-       HDF5   = 3    ! HDF5 NDPP file
+       H5     = 3    ! HDF5 NDPP file
 
   ! Probability table parameters
   integer, parameter :: &

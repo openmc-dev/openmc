@@ -10,7 +10,7 @@ program main
   use plot,              only: run_plot
 
   implicit none
-
+  
   ! set up problem
   call initialize_run()
 

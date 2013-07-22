@@ -31,6 +31,7 @@ module m_dom_extras
      module procedure extractDataContentIntSca
      module procedure extractDataContentIntArr
      module procedure extractDataContentIntMat
+     module procedure extractDataContentLongSca
      module procedure extractDataContentLgSca
      module procedure extractDataContentLgArr
      module procedure extractDataContentLgMat
@@ -56,6 +57,7 @@ module m_dom_extras
      module procedure extractDataAttributeIntSca
      module procedure extractDataAttributeIntArr
      module procedure extractDataAttributeIntMat
+     module procedure extractDataAttributeLongSca
      module procedure extractDataAttributeLgSca
      module procedure extractDataAttributeLgArr
      module procedure extractDataAttributeLgMat
@@ -226,6 +228,33 @@ endif
     endif
 
   end subroutine extractDataContentIntSca
+
+subroutine extractDataContentLongSca(arg, data, num, iostat, ex)
+    type(DOMException), intent(out), optional :: ex
+    type(Node), pointer :: arg
+    integer(8), intent(out) :: data
+
+    integer, intent(out), optional :: num, iostat
+
+    if (.not.associated(arg)) then
+      if (getFoX_checks().or.FoX_NODE_IS_NULL<200) then
+  call throw_exception(FoX_NODE_IS_NULL, "extractDataContentIntSca", ex)
+  if (present(ex)) then
+    if (inException(ex)) then
+       return
+    endif
+  endif
+endif
+
+    endif
+
+    if (present(ex)) then
+      call rts(getTextContent(arg, ex), data, num, iostat)
+    else
+      call rts(getTextContent(arg), data, num, iostat)
+    endif
+
+  end subroutine extractDataContentLongSca
 
 subroutine extractDataContentLgSca(arg, data, num, iostat, ex)
     type(DOMException), intent(out), optional :: ex
@@ -862,6 +891,45 @@ endif
 
 
   end subroutine extractDataAttributeIntSca
+
+subroutine extractDataAttributeLongSca(arg, name, data, num, iostat, ex)
+    type(DOMException), intent(out), optional :: ex
+    type(Node), pointer :: arg
+    character(len=*), intent(in) :: name
+
+    integer(8), intent(out) :: data
+    integer, intent(out), optional :: num, iostat
+    if (.not.associated(arg)) then
+      if (getFoX_checks().or.FoX_NODE_IS_NULL<200) then
+  call throw_exception(FoX_NODE_IS_NULL, "extractDataAttributeIntSca", ex)
+  if (present(ex)) then
+    if (inException(ex)) then
+       return
+    endif
+  endif
+endif
+
+    elseif (getNodeType(arg)/=ELEMENT_NODE) then
+      if (getFoX_checks().or.FoX_INVALID_NODE<200) then
+  call throw_exception(FoX_INVALID_NODE, "extractDataAttributeIntSca", ex)
+  if (present(ex)) then
+    if (inException(ex)) then
+       return
+    endif
+  endif
+endif
+
+    endif
+
+
+    if (present(ex)) then
+      call rts(getAttribute(arg, name, ex), data, num, iostat)
+    else
+      call rts(getAttribute(arg, name), data, num, iostat)
+    endif
+
+
+  end subroutine extractDataAttributeLongSca
 
 subroutine extractDataAttributeLgSca(arg, name, data, num, iostat, ex)
     type(DOMException), intent(out), optional :: ex

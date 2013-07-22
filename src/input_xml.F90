@@ -48,6 +48,7 @@ contains
   subroutine read_settings_xml()
 
     use xml_data_settings_t
+    use xml_interface
 
     integer :: i ! loop index
     integer :: n
@@ -56,6 +57,11 @@ contains
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
+    type(Node), pointer :: doc
+    type(Node), pointer :: node_eigenvalue 
+    logical :: found
+    integer :: temp_int
+    integer(8) :: temp_long
 
     ! Display output message
     message = "Reading settings XML file..."
@@ -82,15 +88,16 @@ contains
 
     ! Parse settings.xml file
     call read_xml_file_settings_t(filename)
+    call open_xmldoc(doc, filename)
 
     ! Find cross_sections.xml file -- the first place to look is the
     ! settings.xml file. If no file is found there, then we check the
     ! CROSS_SECTIONS environment variable
-
-    if (len_trim(cross_sections_) == 0 .and. run_mode /= MODE_PLOTTING) then
+    found = check_for_node(doc, "cross_sections")
+    if (.not. found .and. run_mode /= MODE_PLOTTING) then
       ! No cross_sections.xml file specified in settings.xml, check environment
       ! variable
-      call get_environment_variable("CROSS_SECTIONS", env_variable)
+            call get_environment_variable("CROSS_SECTIONS", env_variable)
       if (len_trim(env_variable) == 0) then
         message = "No cross_sections.xml file was specified in settings.xml &
              &or in the CROSS_SECTIONS environment variable."
@@ -99,47 +106,45 @@ contains
         path_cross_sections = trim(env_variable)
       end if
     else
-      path_cross_sections = trim(cross_sections_)
+      call get_node_value(doc, "cross_sections", path_cross_sections)
     end if
 
     ! Set output directory if a path has been specified on the <output_path>
     ! element
-    if (len_trim(output_path_) > 0) then
-      path_output = output_path_
+    found = check_for_node(doc, "output_path")
+    if (found) then
+      call get_node_value(doc, "output_path", path_output)
       if (.not. ends_with(path_output, "/")) &
            path_output = trim(path_output) // "/"
     end if
 
-    ! Make sure that either criticality or fixed source was specified
-    if (eigenvalue_ % batches == 0 .and. fixed_source_ % batches == 0 &
-         .and. criticality_ % batches == 0) then
-      message = "Number of batches on <eigenvalue> or <fixed_source> &
-           &tag was zero."
+    ! Make sure that either eigenvalue or fixed source was specified
+    if (.not.check_for_node(doc, "eigenvalue") .and. &
+        .not.check_for_node(doc, "fixed_source")) then
+      message = "<eigenvalue> or <fixed_source> not specified."
       call fatal_error()
     end if
 
-    ! Check for old <criticality> tag
-    if (criticality_ % batches > 0) then
-      eigenvalue_ = criticality_
-      message = "The <criticality> element has been deprecated and &
-           &replaced by <eigenvalue>."
-      call warning()
-    end if
-
     ! Eigenvalue information
-    if (eigenvalue_ % batches > 0) then
+    if (check_for_node(doc, "eigenvalue")) then
       ! Set run mode
       if (run_mode == NONE) run_mode = MODE_EIGENVALUE
 
+      ! Get pointer to eigenvalue XML block
+      call get_node_ptr(doc, "eigenvalue", node_eigenvalue)
+
       ! Check number of particles
-      if (len_trim(eigenvalue_ % particles) == 0) then
-        message = "Need to specify number of particles per cycles."
+      if (.not.check_for_node(node_eigenvalue, "particles")) then
+        message = "Need to specify number of particles per generation."
         call fatal_error()
       end if
 
+      ! Get number of particles
+      call get_node_value(node_eigenvalue, "particles", temp_long)
+
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
-      if (n_particles == 0) n_particles = str_to_int(eigenvalue_ % particles)
+      if (n_particles == 0) n_particles = temp_long
 
       ! Copy batch and generation information
       n_batches     = eigenvalue_ % batches
@@ -568,6 +573,9 @@ contains
       end if
 #endif
     end if
+
+    ! Close settings XML file
+    call close_xmldoc(doc)
 
   end subroutine read_settings_xml
 

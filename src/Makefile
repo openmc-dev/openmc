@@ -227,7 +227,14 @@ endif
 # Targets
 #===============================================================================
 
-all: xml-fortran $(program)
+all: xml xml-fortran $(program)
+xml:
+	cd xml; cd fsys; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
+	cd xml; cd utils; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
+	cd xml; cd common; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
+	cd xml; cd wxml; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
+	cd xml; cd sax; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
+	cd xml; cd dom; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
 xml-fortran:
 	cd xml-fortran; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
 	cd templates; make F90=$(F90) F90FLAGS="$(F90FLAGS)"
@@ -248,6 +255,12 @@ uninstall:
 	@rm $(DESTDIR)$(prefix)/share/man/man1/openmc.1
 	@rm $(DESTDIR)$(prefix)/share/doc/$(program)/copyright
 distclean: clean
+	cd xml; cd fsys; make clean
+	cd xml; cd utils; make clean
+	cd xml; cd common; make clean
+	cd xml; cd wxml; make clean
+	cd xml; cd sax; make clean
+	cd xml; cd dom; make clean
 	cd xml-fortran; make clean
 	cd templates; make clean
 clean:
@@ -260,7 +273,7 @@ neat:
 #===============================================================================
 
 .SUFFIXES: .F90 .o
-.PHONY: all xml-fortran install uninstall clean neat distclean 
+.PHONY: all xml xml-fortran install uninstall clean neat distclean 
 
 %.o: %.F90
 	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Itemplates -c $<

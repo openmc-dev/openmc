@@ -1,5 +1,6 @@
 module FoX_dom
 
+  use fox_common, only: countrts
   use fox_m_fsys_array_str
   use fox_m_fsys_format
 
@@ -257,5 +258,8 @@ module FoX_dom
   public :: getLiveNodeLists
   public :: setLiveNodeLists
   public :: getNamespaceNodes
+
+  ! Length of array
+  public :: countrts
 
 end module FoX_dom

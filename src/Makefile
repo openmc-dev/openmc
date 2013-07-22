@@ -5,6 +5,7 @@ templates = $(wildcard templates/*.o)
 xml_fort = xml-fortran/xmlparse.o \
            xml-fortran/read_xml_primitives.o \
            xml-fortran/write_xml_primitives.o
+xml_lib = -Lxml/lib -lxml
 
 #===============================================================================
 # Object Files
@@ -248,6 +249,7 @@ uninstall:
 	@rm $(DESTDIR)$(prefix)/share/man/man1/openmc.1
 	@rm $(DESTDIR)$(prefix)/share/doc/$(program)/copyright
 distclean: clean
+	cd xml; make clean
 	cd xml-fortran; make clean
 	cd templates; make clean
 clean:
@@ -259,10 +261,11 @@ neat:
 # Rules
 #===============================================================================
 
-.PHONY: all xml-fortran install uninstall clean neat distclean 
+.SUFFIXES: .F90 .o
+.PHONY: all xml xml-fortran install uninstall clean neat distclean 
 
 %.o: %.F90
-	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Itemplates -c $<
+	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Itemplates -Ixml/include -c $<
 
 #===============================================================================
 # Dependencies

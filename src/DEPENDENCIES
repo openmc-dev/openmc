@@ -177,8 +177,8 @@ hdf5_summary.o: geometry_header.o
 hdf5_summary.o: global.o
 hdf5_summary.o: material_header.o
 hdf5_summary.o: mesh_header.o
-hdf5_summary.o: output_interface.o
 hdf5_summary.o: output.o
+hdf5_summary.o: output_interface.o
 hdf5_summary.o: string.o
 hdf5_summary.o: tally_header.o
 
@@ -194,8 +194,8 @@ initialize.o: global.o
 initialize.o: hdf5_interface.o
 initialize.o: hdf5_summary.o
 initialize.o: input_xml.o
-initialize.o: output_interface.o
 initialize.o: output.o
+initialize.o: output_interface.o
 initialize.o: random_lcg.o
 initialize.o: source.o
 initialize.o: state_point.o
@@ -223,6 +223,7 @@ input_xml.o: templates/materials_t.o
 input_xml.o: templates/plots_t.o
 input_xml.o: templates/settings_t.o
 input_xml.o: templates/tallies_t.o
+input_xml.o: xml_interface.o
 
 interpolation.o: constants.o
 interpolation.o: endf_header.o
@@ -374,3 +375,8 @@ tally_initialize.o: global.o
 tally_initialize.o: tally_header.o
 
 timer_header.o: constants.o
+
+xml_interface.o: constants.o
+xml_interface.o: error.o
+xml_interface.o: global.o
+

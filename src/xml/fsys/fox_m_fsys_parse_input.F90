@@ -16,6 +16,7 @@ module fox_m_fsys_parse_input
     module procedure scalartostring
     module procedure scalartological
     module procedure scalartointeger
+    module procedure scalartolong
     module procedure scalartorealsp
     module procedure scalartorealdp
     module procedure scalartocomplexsp
@@ -345,6 +346,82 @@ contains
     data = 0
 #endif
   end subroutine scalartointeger
+
+  subroutine scalartolong(s, data, num, iostat)
+    character(len=*), intent(in) :: s
+    integer(8), intent(out) :: data
+    integer, intent(out), optional :: num, iostat
+#ifndef DUMMYLIB
+    logical :: bracketed
+    integer :: i, j, ij, k, s_i, err, ios, length
+    real :: r, c
+
+
+    s_i = 1
+    err = 0
+    data = 0
+    ij = 0
+    length = 1
+    loop: do i = 1, 1
+      k = verify(s(s_i:), whitespace)
+      if (k==0) exit loop
+      s_i = s_i + k - 1
+      if (s(s_i:s_i)==",") then
+        if (s_i+1>len(s)) then
+          err = 2
+          exit loop
+        endif
+        k = verify(s(s_i+1:), whitespace)
+        s_i = s_i + k - 1
+      endif
+      k = scan(s(s_i:), whitespace//",")
+      if (k==0) then
+        k = len(s)
+      else
+        k = s_i + k - 2
+      endif
+      read(s(s_i:k), *, iostat=ios) data
+      if (ios/=0) then
+        err = 2
+        exit loop
+      endif
+      ij = ij + 1
+      s_i = k + 2
+      if (ij<length.and.s_i>len(s)) exit loop
+
+    end do loop
+
+    if (present(num)) num = ij
+    if (ij<length) then
+      if (err==0) err = -1
+    else
+      if (verify(s(s_i:), whitespace)/=0) err = 1
+    endif
+
+
+    if (present(iostat)) then
+      iostat = err
+    else
+      select case (err)
+      case(-1)
+        write(0, *) "Error in scalartointeger"
+        write(0, *) "Too few elements found"
+        stop
+      case(1)
+        write(0, *) "Error in scalartointeger"
+        write(0, *) "Too many elements found"
+        stop
+      case(2)
+        write(0, *) "Error in scalartointeger"
+        write(0, *) "Malformed input"
+        stop
+      end select
+    end if
+
+#else
+    data = 0
+#endif
+  end subroutine scalartolong
 
   subroutine scalartorealsp(s, data, num, iostat)
     character(len=*), intent(in) :: s

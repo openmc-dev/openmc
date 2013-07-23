@@ -13,8 +13,6 @@ for src in glob.iglob('*.F90'):
     for name in d:
         if name in ['mpi','hdf5','h5lt','fox_dom']:
             continue
-        if name.startswith('xml_data_'):
-            name = name.replace('xml_data_', 'templates/')
         deps.add(name)
     if deps:
         dependencies[module] = sorted(list(deps))

@@ -1,10 +1,6 @@
 program = openmc
 prefix = /usr/local
 
-templates = $(wildcard templates/*.o)
-xml_fort = xml-fortran/xmlparse.o \
-           xml-fortran/read_xml_primitives.o \
-           xml-fortran/write_xml_primitives.o
 xml_lib = -Lxml/lib -lxml
 
 #===============================================================================
@@ -228,14 +224,11 @@ endif
 # Targets
 #===============================================================================
 
-all: xml xml-fortran $(program)
+all: xml $(program)
 xml:
 	cd xml; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
-xml-fortran:
-	cd xml-fortran; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
-	cd templates; make F90=$(F90) F90FLAGS="$(F90FLAGS)"
 $(program): $(objects)
-	$(F90) $(objects) $(templates) $(xml_fort) $(xml_lib) $(LDFLAGS) -o $@
+	$(F90) $(objects) $(xml_lib) $(LDFLAGS) -o $@
 install:
 	@install -D $(program) $(DESTDIR)$(prefix)/bin/$(program)
 	@install -D utils/statepoint_cmp.py $(DESTDIR)$(prefix)/bin/statepoint_cmp
@@ -252,8 +245,6 @@ uninstall:
 	@rm $(DESTDIR)$(prefix)/share/doc/$(program)/copyright
 distclean: clean
 	cd xml; make clean
-	cd xml-fortran; make clean
-	cd templates; make clean
 clean:
 	@rm -f *.o *.mod $(program)
 neat:
@@ -264,10 +255,10 @@ neat:
 #===============================================================================
 
 .SUFFIXES: .F90 .o
-.PHONY: all xml xml-fortran install uninstall clean neat distclean 
+.PHONY: all xml install uninstall clean neat distclean 
 
 %.o: %.F90
-	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Itemplates -Ixml/include -c $<
+	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml/include -c $<
 
 #===============================================================================
 # Dependencies

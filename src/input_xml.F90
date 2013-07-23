@@ -2763,15 +2763,16 @@ contains
 
   subroutine read_cross_sections_xml()
 
-    use xml_data_cross_sections_t
-
     integer :: i           ! loop index
     integer :: filetype    ! default file type
     integer :: recl        ! default record length
     integer :: entries     ! default number of entries
     logical :: file_exists ! does cross_sections.xml exist?
     character(MAX_WORD_LEN)  :: directory ! directory with cross sections
+    character(MAX_LINE_LEN)  :: temp_str
     type(XsListing), pointer :: listing => null()
+    type(Node), pointer :: doc => null()
+    type(Node), pointer :: node_ace => null()
 
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
@@ -2785,18 +2786,12 @@ contains
     message = "Reading cross sections XML file..."
     call write_message(5)
 
-    ! Initialize variables that may go unused
-    directory_ = ""
-    filetype_ = ""
-    record_length_ = 0
-    entries_ = 0
-
     ! Parse cross_sections.xml file
-    call read_xml_file_cross_sections_t(path_cross_sections)
+    call open_xmldoc(doc, path_cross_sections)
 
-    if (len_trim(directory_) > 0) then
+    if (check_for_node(doc, "directory")) then
        ! Copy directory information if present
-       directory = trim(directory_)
+       call get_node_value(doc, "directory", directory)
     else
        ! If no directory is listed in cross_sections.xml, by default select the
        ! directory in which the cross_sections.xml file resides
@@ -2805,40 +2800,50 @@ contains
     end if
 
     ! determine whether binary/ascii
-    if (filetype_ == 'ascii') then
+    temp_str = ''
+    if (check_for_node(doc, "filetype")) &
+      call get_node_value(doc, "filetype", temp_str)
+    if (trim(temp_str) == 'ascii') then
        filetype = ASCII
-    elseif (filetype_ == 'binary') then
+    elseif (trim(temp_str) == 'binary') then
        filetype = BINARY
-    elseif (len_trim(filetype_) == 0) then
+    elseif (len_trim(temp_str) == 0) then
        filetype = ASCII
     else
-       message = "Unknown filetype in cross_sections.xml: " // trim(filetype_)
+       message = "Unknown filetype in cross_sections.xml: " // trim(temp_str)
        call fatal_error()
     end if
 
     ! copy default record length and entries for binary files
-    recl = record_length_
-    entries = entries_
+    if (filetype == BINARY) then
+      call get_node_value(doc, "record_length", recl)
+      call get_node_value(doc, "entries", entries)
+    end if
 
     ! Allocate xs_listings array
-    if (.not. associated(ace_tables_)) then
+    if (.not.check_for_node(doc, "ace_table")) then
        message = "No ACE table listings present in cross_sections.xml file!"
        call fatal_error()
     else
-       n_listings = size(ace_tables_)
+       n_listings = get_number_nodes(doc, "ace_table")
        allocate(xs_listings(n_listings))
     end if
 
     do i = 1, n_listings
        listing => xs_listings(i)
 
+       ! Get pointer to ace table XML node
+       call get_node_ptr(doc, "ace_table", node_ace, i)
+
        ! copy a number of attributes
-       listing % name       = trim(ace_tables_(i) % name)
-       listing % alias      = trim(ace_tables_(i) % alias)
-       listing % zaid       = ace_tables_(i) % zaid
-       listing % awr        = ace_tables_(i) % awr
-       listing % kT         = ace_tables_(i) % temperature
-       listing % location   = ace_tables_(i) % location
+       call get_node_value(node_ace, "name", listing % name)
+       if (check_for_node(node_ace, "alias")) &
+         call get_node_value(node_ace, "alias", listing % alias)
+       call get_node_value(node_ace, "zaid", listing % zaid)
+       call get_node_value(node_ace, "awr", listing % awr)
+       if (check_for_node(node_ace, "temperature")) &
+         call get_node_value(node_ace, "temperature", listing % kT)
+       call get_node_value(node_ace, "location", listing % location)
 
        ! determine type of cross section
        if (ends_with(listing % name, 'c')) then
@@ -2849,24 +2854,33 @@ contains
 
        ! set filetype, record length, and number of entries
        listing % filetype = filetype
-       listing % recl     = recl
-       listing % entries  = entries
+       if (filetype == BINARY) then
+         listing % recl     = recl
+         listing % entries  = entries
+       end if
 
        ! determine metastable state
-       if (ace_tables_(i) % metastable == 0) then
+       if (.not.check_for_node(node_ace, "metastable")) then
           listing % metastable = .false.
        else
           listing % metastable = .true.
        end if
 
        ! determine path of cross section table
-       if (starts_with(ace_tables_(i) % path, '/')) then
-          listing % path = ace_tables_(i) % path
+       if (check_for_node(node_ace, "path")) then
+         call get_node_value(node_ace, "path", temp_str)
+       else
+         message = "Path missing for isotope " // listing % name
+         call fatal_error()
+       end if
+
+       if (starts_with(temp_str, '/')) then
+          listing % path = trim(temp_str)
        else
           if (ends_with(directory,'/')) then
-             listing % path = trim(directory) // trim(ace_tables_(i) % path)
+             listing % path = trim(directory) // trim(temp_str)
           else
-             listing % path = trim(directory) // '/' // trim(ace_tables_(i) % path)
+             listing % path = trim(directory) // '/' // trim(temp_str)
           end if
        end if
 
@@ -2876,6 +2890,9 @@ contains
          call xs_listing_dict % add_key(listing % alias, i)
        end if
     end do
+
+    ! Close cross sections XML file
+    call close_xmldoc(doc)
 
   end subroutine read_cross_sections_xml
 

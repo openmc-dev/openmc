@@ -47,25 +47,29 @@ contains
 
   subroutine read_settings_xml()
 
-    use xml_data_settings_t
     use xml_interface
 
     character(MAX_LINE_LEN) :: temp_str
-    integer :: i ! loop index
+    integer :: i
     integer :: n
     integer :: coeffs_reqd
     integer :: temp_int
-    integer :: temp_int_array(3)
+    integer :: temp_int_array3(3)
+    integer, allocatable :: temp_int_array(:)
     integer(8) :: temp_long
     logical :: file_exists
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
-    type(Node), pointer :: doc
-    type(Node), pointer :: node_mode
-    type(Node), pointer :: node_source
-    type(Node), pointer :: node_dist
-    type(Node), pointer :: node_cutoff
+    type(Node), pointer :: doc          => null()
+    type(Node), pointer :: node_mode    => null()
+    type(Node), pointer :: node_source  => null()
+    type(Node), pointer :: node_dist    => null()
+    type(Node), pointer :: node_cutoff  => null()
+    type(Node), pointer :: node_entropy => null()
+    type(Node), pointer :: node_ufs     => null()
+    type(Node), pointer :: node_sp      => null()
+    type(Node), pointer :: node_output  => null()
 
     ! Display output message
     message = "Reading settings XML file..."
@@ -79,19 +83,7 @@ contains
       call fatal_error()
     end if
 
-    ! Initialize XML scalar variables
-    cross_sections_ = ''
-    output_path_ = ''
-    verbosity_ = 0
-    energy_grid_ = 'union'
-    seed_ = 0_8
-    source_ % file = ''
-    source_ % space % type = ''
-    source_ % angle % type = ''
-    source_ % energy % type = ''
-
     ! Parse settings.xml file
-    call read_xml_file_settings_t(filename)
     call open_xmldoc(doc, filename)
 
     ! Find cross_sections.xml file -- the first place to look is the
@@ -221,12 +213,11 @@ contains
       message = "Lethargy mapped energy grid not yet supported."
       call fatal_error()
     case default
-      message = "Unknown energy grid method: " // energy_grid_
+      message = "Unknown energy grid method: " // temp_str
       call fatal_error()
     end select
 
     ! Verbosity
-    if (verbosity_ > 0) verbosity = verbosity_
     if (check_for_node(doc, "verbosity")) &
       call get_node_value(doc, "verbosity", verbosity)
 
@@ -263,6 +254,7 @@ contains
         call get_node_ptr(node_source, "space", node_dist) 
 
         ! Check for type of spatial distribution
+        type = ''
         if (check_for_node(node_dist, "type")) &
           call get_node_value(node_dist, "type", type)
         call lower_case(type)
@@ -275,7 +267,7 @@ contains
           coeffs_reqd = 3
         case default
           message = "Invalid spatial distribution for external source: " &
-              // trim(source_ % space % type)
+              // trim(type)
           call fatal_error()
         end select
 
@@ -312,6 +304,7 @@ contains
         call get_node_ptr(node_source, "angle", node_dist)
 
         ! Check for type of angular distribution
+        type = ''
         if (check_for_node(node_dist, "type")) &
           call get_node_value(node_dist, "type", type)
         call lower_case(type)
@@ -326,7 +319,7 @@ contains
           external_source % type_angle = SRC_ANGLE_TABULAR
         case default
           message = "Invalid angular distribution for external source: " &
-               // trim(source_ % angle % type)
+               // trim(type)
           call fatal_error()
         end select
 
@@ -363,6 +356,7 @@ contains
         call get_node_ptr(node_source, "energy", node_dist)
 
         ! Check for type of energy distribution
+        type = ''
         if (check_for_node(node_dist, "type")) &
           call get_node_value(node_dist, "type", type)
         call lower_case(type)
@@ -380,7 +374,7 @@ contains
           external_source % type_energy = SRC_ENERGY_TABULAR
         case default
           message = "Invalid energy distribution for external source: " &
-               // trim(source_ % energy % type)
+               // trim(type)
           call fatal_error()
         end select
 
@@ -437,19 +431,23 @@ contains
 
     ! Particle trace
     if (check_for_node(doc, "trace")) then
-      call get_node_array(doc, "trace", temp_int_array)
-      trace_batch    = temp_int_array(1)
-      trace_gen      = temp_int_array(2)
-      trace_particle = int(temp_int_array(3), 8)
+      call get_node_array(doc, "trace", temp_int_array3)
+      trace_batch    = temp_int_array3(1)
+      trace_gen      = temp_int_array3(2)
+      trace_particle = int(temp_int_array3(3), 8)
     end if
 
     ! Shannon Entropy mesh
-    if (size(entropy_) > 0) then
+    if (check_for_node(doc, "entropy")) then
+
+      ! Get pointer to entropy node
+      call get_node_ptr(doc, "entropy", node_entropy)
+
       ! Check to make sure enough values were supplied
-      if (size(entropy_(1) % lower_left) /= 3) then
+      if (get_arraysize_double(node_entropy, "lower_left") /= 3) then
         message = "Need to specify (x,y,z) coordinates of lower-left corner &
              &of Shannon entropy mesh."
-      elseif (size(entropy_(1) % upper_right) /= 3) then
+      elseif (get_arraysize_double(node_entropy, "upper_right") /= 3) then
         message = "Need to specify (x,y,z) coordinates of upper-right corner &
              &of Shannon entropy mesh."
       end if
@@ -460,8 +458,10 @@ contains
       allocate(entropy_mesh % upper_right(3))
 
       ! Copy values
-      entropy_mesh % lower_left  = entropy_(1) % lower_left
-      entropy_mesh % upper_right = entropy_(1) % upper_right
+      call get_node_array(node_entropy, "lower_left", &
+           entropy_mesh % lower_left)
+      call get_node_array(node_entropy, "upper_right", &
+           entropy_mesh % upper_right)
 
       ! Check on values provided
       if (.not. all(entropy_mesh % upper_right > entropy_mesh % lower_left)) then
@@ -472,10 +472,10 @@ contains
 
       ! Check if dimensions were specified -- if not, they will be calculated
       ! automatically upon first entry into shannon_entropy
+      if (check_for_node(node_entropy, "dimension")) then
 
-      if (associated(entropy_(1) % dimension)) then
         ! If so, make sure proper number of values were given
-        if (size(entropy_(1) % dimension) /= 3) then
+        if (get_arraysize_integer(node_entropy, "dimension") /= 3) then
           message = "Dimension of entropy mesh must be given as three &
                &integers."
           call fatal_error()
@@ -486,7 +486,7 @@ contains
         allocate(entropy_mesh % dimension(3))
 
         ! Copy dimensions
-        entropy_mesh % dimension = entropy_(1) % dimension
+        call get_node_array(node_entropy, "dimension", entropy_mesh % dimension)
       end if
 
       ! Turn on Shannon entropy calculation
@@ -494,15 +494,19 @@ contains
     end if
 
     ! Uniform fission source weighting mesh
-    if (size(uniform_fs_) > 0) then
+    if (check_for_node(doc, "uniform_fs")) then
+
+      ! Get pointer to ufs node
+      call get_node_ptr(doc, "uniform_fs", node_ufs)
+
       ! Check to make sure enough values were supplied
-      if (size(uniform_fs_(1) % lower_left) /= 3) then
+      if (get_arraysize_double(node_ufs, "lower_left") /= 3) then
         message = "Need to specify (x,y,z) coordinates of lower-left corner &
              &of UFS mesh."
-      elseif (size(uniform_fs_(1) % upper_right) /= 3) then
+      elseif (get_arraysize_double(node_ufs, "upper_right") /= 3) then
         message = "Need to specify (x,y,z) coordinates of upper-right corner &
              &of UFS mesh."
-      elseif (size(uniform_fs_(1) % dimension) /= 3) then
+      elseif (get_arraysize_integer(node_ufs, "dimension") /= 3) then
         message = "Dimension of UFS mesh must be given as three integers."
         call fatal_error()
       end if
@@ -518,11 +522,11 @@ contains
       allocate(ufs_mesh % dimension(3))
 
       ! Copy dimensions
-      ufs_mesh % dimension = uniform_fs_(1) % dimension
+      call get_node_array(node_ufs, "dimension", ufs_mesh % dimension)
 
       ! Copy values
-      ufs_mesh % lower_left  = uniform_fs_(1) % lower_left
-      ufs_mesh % upper_right = uniform_fs_(1) % upper_right
+      call get_node_array(node_ufs, "lower_left", ufs_mesh % lower_left)
+      call get_node_array(node_ufs, "upper_right", ufs_mesh % upper_right)
 
       ! Check on values provided
       if (.not. all(ufs_mesh % upper_right > ufs_mesh % lower_left)) then
@@ -547,25 +551,32 @@ contains
     end if
 
     ! Check if the user has specified to write state points
-    if (size(state_point_) > 0) then
+    if (check_for_node(doc, "state_point")) then
+
+      ! Get pointer to state_point node
+      call get_node_ptr(doc, "state_point", node_sp)
+
       ! Determine number of batches at which to store state points
-      if (associated(state_point_(1) % batches)) then
-        n_state_points = size(state_point_(1) % batches)
+      if (check_for_node(node_sp, "batches")) then
+        n_state_points = get_arraysize_integer(node_sp, "batches")
       else
         n_state_points = 0
       end if
 
       if (n_state_points > 0) then
         ! User gave specific batches to write state points
+        allocate(temp_int_array(n_state_points))
+        call get_node_array(node_sp, "batches", temp_int_array)
         do i = 1, n_state_points
-          call statepoint_batch % add(state_point_(1) % batches(i))
+          call statepoint_batch % add(temp_int_array(i))
         end do
-
-      elseif (state_point_(1) % interval /= 0) then
+        deallocate(temp_int_array)
+      elseif (check_for_node(node_sp, "interval")) then
         ! User gave an interval for writing state points
-        n_state_points = n_batches / state_point_(1) % interval
+        call get_node_value(node_sp, "interval", temp_int)
+        n_state_points = n_batches / temp_int 
         do i = 1, n_state_points
-          call statepoint_batch % add(state_point_(1) % interval * i)
+          call statepoint_batch % add(temp_int * i)
         end do
       else
         ! If neither were specified, write state point at last batch
@@ -574,12 +585,18 @@ contains
       end if
 
       ! Check if the user has specified to write binary source file
-      call lower_case(state_point_(1) % source_separate)
-      call lower_case(state_point_(1) % source_write)
-      if (state_point_(1) % source_separate == 'true' .or. &
-           state_point_(1) % source_separate == '1') source_separate = .true.
-      if (state_point_(1) % source_write == 'false' .or. &
-           state_point_(1) % source_write == '0') source_write = .false.
+      if (check_for_node(node_sp, "source_separate")) then
+        call get_node_value(node_sp, "source_separate", temp_str)
+        call lower_case(temp_str)
+        if (trim(temp_str) == 'true' .or. &
+             trim(temp_str) == '1') source_separate = .true.
+      end if
+      if (check_for_node(node_sp, "source_write")) then
+        call get_node_value(node_sp, "source_write", temp_str)
+        call lower_case(temp_str)
+        if (trim(temp_str) == 'true' .or. &
+             trim(temp_str) == '1') source_separate = .true.
+      end if
     else
       ! If no <state_point> tag was present, by default write state point at
       ! last batch only
@@ -589,44 +606,66 @@ contains
 
     ! Check if the user has specified to not reduce tallies at the end of every
     ! batch
-    call lower_case(no_reduce_)
-    if (no_reduce_ == 'true' .or. no_reduce_ == '1') reduce_tallies = .false.
+    if (check_for_node(doc, "no_reduce")) then
+      call get_node_value(doc, "no_reduce", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        reduce_tallies = .false.
+    end if
 
     ! Check if the user has specified to use confidence intervals for
     ! uncertainties rather than standard deviations
-    call lower_case(confidence_intervals_)
-    if (confidence_intervals_ == 'true' .or. &
-         confidence_intervals_ == '1') confidence_intervals = .true.
-
-    ! Check for output options
-    if (associated(output_)) then
-      do i = 1, size(output_)
-        call lower_case(output_(i))
-        select case (output_(i))
-        case ('summary')
-          output_summary = .true.
-        case ('cross_sections')
-          output_xs = .true.
-        case ('tallies')
-          output_tallies = .true.
-        case ('none')
-          output_summary = .false.
-          output_xs = .false.
-          output_tallies = .false.
-        end select
-      end do
+    if (check_for_node(doc, "confidence_intervals")) then
+      call get_node_value(doc, "confidence_intervals", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. &
+           trim(temp_str) == '1') confidence_intervals = .true.
     end if
 
-    ! check for cmfd run
-    call lower_case(run_cmfd_)
-    if (run_cmfd_ == 'true' .or. run_cmfd_ == '1') then
-      cmfd_run = .true.
-#ifndef PETSC
-      if (master) then
-        message = 'CMFD is not available, compile OpenMC with PETSc'
-        call fatal_error()
+    ! Check for output options
+    if (check_for_node(doc, "output")) then
+
+      ! Get pointer to output node
+      call get_node_ptr(doc, "output", node_output)
+
+      ! Check for summary option
+      if (check_for_node(node_output, "summary")) then
+        call get_node_value(node_output, "summary", temp_str)
+        call lower_case(temp_str)
+        if (trim(temp_str) == 'true' .or. &
+             trim(temp_str) == '1') output_summary = .true.
       end if
+
+      ! Check for cross sections option
+      if (check_for_node(node_output, "cross_sections")) then
+        call get_node_value(node_output, "cross_sections", temp_str)
+        call lower_case(temp_str)
+        if (trim(temp_str) == 'true' .or. &
+             trim(temp_str) == '1') output_xs = .true.
+      end if
+
+      ! Check for ASCII tallies output option
+      if (check_for_node(node_output, "tallies")) then
+        call get_node_value(node_output, "tallies", temp_str)
+        call lower_case(temp_str)
+        if (trim(temp_str) == 'false' .or. &
+             trim(temp_str) == '0') output_tallies = .false.
+      end if
+    end if
+
+    ! Check for cmfd run
+    if (check_for_node(doc, "run_cmfd")) then
+      call get_node_value(doc, "run_cmfd", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') then
+        cmfd_run = .true.
+#ifndef PETSC
+        if (master) then
+          message = 'CMFD is not available, compile OpenMC with PETSc'
+          call fatal_error()
+        end if
 #endif
+      end if
     end if
 
     ! Close settings XML file

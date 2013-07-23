@@ -1577,14 +1577,21 @@ contains
     integer :: n_order       ! Scattering order requested
     integer :: n_order_pos   ! Position of Scattering order in score name string
     integer :: MT            ! user-specified MT for score
+    integer :: iarray3(3)    ! temporary integer array
     logical :: file_exists   ! does tallies.xml file exist?
+    real(8) :: rarray3(3)    ! temporary double prec. array
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: score_name
+    character(MAX_WORD_LEN) :: temp_str
     type(ElemKeyValueCI), pointer :: pair_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(TallyFilter), allocatable :: filters(:) ! temporary filters
+    type(Node), pointer :: doc => null()
+    type(Node), pointer :: node_mesh => null()
+    type(Node), pointer :: node_tal => null()
+    type(Node), pointer :: node_filt => null()
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
@@ -1600,15 +1607,16 @@ contains
 
     ! Parse tallies.xml file
     call read_xml_file_tallies_t(filename)
+    call open_xmldoc(doc, filename)
 
     ! ==========================================================================
     ! DETERMINE SIZE OF ARRAYS AND ALLOCATE
 
     ! Check for user meshes
-    if (.not. associated(mesh_)) then
+    if (.not.check_for_node(doc, "mesh")) then
       n_user_meshes = 0
     else
-      n_user_meshes = size(mesh_)
+      n_user_meshes = get_number_nodes(doc, "mesh")
       if (cmfd_run) then
         n_meshes = n_user_meshes + n_cmfd_meshes
       else
@@ -1620,12 +1628,12 @@ contains
     if (n_meshes > 0) allocate(meshes(n_meshes))
 
     ! Check for user tallies
-    if (.not. associated(tally_)) then
+    if (.not.check_for_node(doc, "tally")) then
       n_user_tallies = 0
       message = "No tallies present in tallies.xml file!"
       call warning()
     else
-      n_user_tallies = size(tally_)
+      n_user_tallies = get_number_nodes(doc, "tally")
     end if
 
     ! Allocate tally array
@@ -1634,8 +1642,12 @@ contains
     end if
 
     ! Check for <assume_separate> setting
-    call lower_case(separate_)
-    if (separate_ == 'true' .or. separate_ == '1') assume_separate = .true.
+    if (check_for_node(doc, "assume_separate")) then
+      call get_node_value(doc, "assume_separate", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        assume_separate = .true.
+    end if
 
     ! ==========================================================================
     ! READ MESH DATA
@@ -1643,8 +1655,16 @@ contains
     do i = 1, n_user_meshes
       m => meshes(i)
 
-      ! copy mesh id
-      m % id = mesh_(i) % id
+      ! Get pointer to mesh node
+      call get_node_ptr(doc, "mesh", node_mesh, i)
+
+      ! Copy mesh id
+      if (check_for_node(node_mesh, "id")) then
+        call get_node_value(node_mesh, "id", m % id)
+      else
+        message = "Must specify id for mesh in tally XML file."
+        call fatal_error()
+      end if
 
       ! Check to make sure 'id' hasn't been used
       if (mesh_dict % has_key(m % id)) then
@@ -1654,8 +1674,11 @@ contains
       end if
 
       ! Read mesh type
-      call lower_case(mesh_(i) % type)
-      select case (mesh_(i) % type)
+      temp_str = ''
+      if (check_for_node(node_mesh, "type")) &
+        call get_node_value(node_mesh, "type", temp_str)
+      call lower_case(temp_str)
+      select case (trim(temp_str))
       case ('rect', 'rectangle', 'rectangular')
         m % type = LATTICE_RECT
       case ('hex', 'hexagon', 'hexagonal')
@@ -1666,7 +1689,7 @@ contains
       end select
 
       ! Determine number of dimensions for mesh
-      n = size(mesh_(i) % dimension)
+      n = get_arraysize_integer(node_mesh, "dimension")
       if (n /= 2 .and. n /= 3) then
         message = "Mesh must be two or three dimensions."
         call fatal_error()
@@ -1680,74 +1703,79 @@ contains
       allocate(m % upper_right(n))
 
       ! Check that dimensions are all greater than zero
-      if (any(mesh_(i) % dimension <= 0)) then
+      call get_node_array(node_mesh, "dimension", iarray3(1:n))
+      if (any(iarray3(1:n) <= 0)) then
         message = "All entries on the <dimension> element for a tally mesh &
              &must be positive."
         call fatal_error()
       end if
 
       ! Read dimensions in each direction
-      m % dimension = mesh_(i) % dimension
+      m % dimension = iarray3(1:n)
 
       ! Read mesh lower-left corner location
-      if (m % n_dimension /= size(mesh_(i) % lower_left)) then
+      if (m % n_dimension /= get_arraysize_double(node_mesh, "lower_left")) then
         message = "Number of entries on <lower_left> must be the same as &
              &the number of entries on <dimension>."
         call fatal_error()
       end if
-      m % lower_left = mesh_(i) % lower_left
+      call get_node_array(node_mesh, "lower_left", m % lower_left)
 
-      ! Make sure either upper-right or width was specified
-      if (associated(mesh_(i) % upper_right) .and. &
-           associated(mesh_(i) % width)) then
+      ! Make sure both upper-right or width were specified
+      if (check_for_node(node_mesh, "upper_right") .and. &
+          check_for_node(node_mesh, "width")) then
         message = "Cannot specify both <upper_right> and <width> on a &
              &tally mesh."
         call fatal_error()
       end if
 
       ! Make sure either upper-right or width was specified
-      if (.not. associated(mesh_(i) % upper_right) .and. &
-           .not. associated(mesh_(i) % width)) then
+      if (.not.check_for_node(node_mesh, "upper_right") .and. &
+          .not.check_for_node(node_mesh, "width")) then
         message = "Must specify either <upper_right> and <width> on a &
              &tally mesh."
         call fatal_error()
       end if
 
-      if (associated(mesh_(i) % width)) then
+      if (check_for_node(node_mesh, "width")) then
         ! Check to ensure width has same dimensions
-        if (size(mesh_(i) % width) /= size(mesh_(i) % lower_left)) then
+        if (get_arraysize_double(node_mesh, "width") /= &
+            get_arraysize_double(node_mesh, "lower_left")) then
           message = "Number of entries on <width> must be the same as the &
                &number of entries on <lower_left>."
           call fatal_error()
         end if
 
         ! Check for negative widths
-        if (any(mesh_(i) % width < ZERO)) then
+        call get_node_array(node_mesh, "width", rarray3(1:n))
+        if (any(rarray3(1:n) < ZERO)) then
           message = "Cannot have a negative <width> on a tally mesh."
           call fatal_error()
         end if
 
         ! Set width and upper right coordinate
-        m % width = mesh_(i) % width
+        m % width = rarray3(1:n)
         m % upper_right = m % lower_left + m % dimension * m % width
 
-      elseif (associated(mesh_(i) % upper_right)) then
+      elseif (check_for_node(node_mesh, "upper_right")) then
         ! Check to ensure width has same dimensions
-        if (size(mesh_(i) % upper_right) /= size(mesh_(i) % lower_left)) then
+        if (get_arraysize_double(node_mesh, "upper_right") /= &
+            get_arraysize_double(node_mesh, "lower_left")) then
           message = "Number of entries on <upper_right> must be the same as &
                &the number of entries on <lower_left>."
           call fatal_error()
         end if
 
         ! Check that upper-right is above lower-left
-        if (any(mesh_(i) % upper_right < mesh_(i) % lower_left)) then
+        call get_node_array(node_mesh, "upper_right", rarray3(1:n))
+        if (any(rarray3(1:n) < mesh_(i) % lower_left)) then
           message = "The <upper_right> coordinates must be greater than the &
                &<lower_left> coordinates on a tally mesh."
           call fatal_error()
         end if
 
         ! Set width and upper right coordinate
-        m % upper_right = mesh_(i) % upper_right
+        m % upper_right = rarray3(1:n)
         m % width = (m % upper_right - m % lower_left) / m % dimension
       end if
 
@@ -2349,6 +2377,9 @@ contains
 
       ! Add tally to dictionary
       call tally_dict % add_key(t % id, i)
+
+      ! Close XML document
+      call close_xmldoc(doc)
 
     end do READ_TALLIES
 

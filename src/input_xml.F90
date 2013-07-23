@@ -88,20 +88,22 @@ contains
     ! Find cross_sections.xml file -- the first place to look is the
     ! settings.xml file. If no file is found there, then we check the
     ! CROSS_SECTIONS environment variable
-    if (.not. check_for_node(doc, "cross_sections") .and. &
-      run_mode /= MODE_PLOTTING) then
-      ! No cross_sections.xml file specified in settings.xml, check environment
-      ! variable
-            call get_environment_variable("CROSS_SECTIONS", env_variable)
-      if (len_trim(env_variable) == 0) then
-        message = "No cross_sections.xml file was specified in settings.xml &
-             &or in the CROSS_SECTIONS environment variable."
-        call fatal_error()
+    if (run_mode /= MODE_PLOTTING) then
+      if (.not. check_for_node(doc, "cross_sections") .and. &
+        run_mode /= MODE_PLOTTING) then
+        ! No cross_sections.xml file specified in settings.xml, check environment
+        ! variable
+              call get_environment_variable("CROSS_SECTIONS", env_variable)
+        if (len_trim(env_variable) == 0) then
+          message = "No cross_sections.xml file was specified in settings.xml &
+               &or in the CROSS_SECTIONS environment variable."
+          call fatal_error()
+        else
+          path_cross_sections = trim(env_variable)
+        end if
       else
-        path_cross_sections = trim(env_variable)
+        call get_node_value(doc, "cross_sections", path_cross_sections)
       end if
-    else
-      call get_node_value(doc, "cross_sections", path_cross_sections)
     end if
 
     ! Set output directory if a path has been specified on the <output_path>
@@ -2397,10 +2399,10 @@ contains
       ! Add tally to dictionary
       call tally_dict % add_key(t % id, i)
 
-      ! Close XML document
-      call close_xmldoc(doc)
-
     end do READ_TALLIES
+
+    ! Close XML document
+    call close_xmldoc(doc)
 
   end subroutine read_tallies_xml
 
@@ -2410,13 +2412,17 @@ contains
 
   subroutine read_plots_xml
 
-    use xml_data_plots_t
-
     integer i, j
-    integer n_cols, col_id
+    integer n_cols, col_id, n_comp
+    integer, allocatable :: iarray(:)
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
+    character(MAX_LINE_LEN) :: temp_str
     type(ObjectPlot), pointer :: pl => null()
+    type(Node), pointer :: doc => null()
+    type(Node), pointer :: node_plot => null()
+    type(Node), pointer :: node_col => null()
+    type(Node), pointer :: node_mask => null()
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"
@@ -2431,17 +2437,25 @@ contains
     call write_message(5)
 
     ! Parse plots.xml file
-    call read_xml_file_plots_t(filename)
+    call open_xmldoc(doc, filename)
 
     ! Allocate plots array
-    n_plots = size(plot_)
+    n_plots = get_number_nodes(doc, "plot")
     allocate(plots(n_plots))
 
     READ_PLOTS: do i = 1, n_plots
       pl => plots(i)
 
+      ! Get pointer to plot XML node
+      call get_node_ptr(doc, "plot", node_plot, i)
+
       ! Copy data into plots
-      pl % id = plot_(i) % id
+      if (check_for_node(node_plot, "id")) then
+        call get_node_value(node_plot, "id", pl % id)
+      else
+        message = "Must specify plot id in plots XML file."
+        call fatal_error()
+      end if
 
       ! Check to make sure 'id' hasn't been used
       if (plot_dict % has_key(pl % id)) then
@@ -2451,40 +2465,46 @@ contains
       end if
 
       ! Copy plot type
-      select case (plot_(i) % type)
+      temp_str = 'slice'
+      if (check_for_node(node_plot, "type")) &
+        call get_node_value(node_plot, "type", temp_str)
+      call lower_case(temp_str)
+      select case (trim(temp_str))
       case ("slice")
         pl % type = PLOT_TYPE_SLICE
       case ("voxel")
         pl % type = PLOT_TYPE_VOXEL
       case default
-        message = "Unsupported plot type '" // trim(plot_(i) % type) &
+        message = "Unsupported plot type '" // trim(temp_str) &
              // "' in plot " // trim(to_str(pl % id))
         call fatal_error()
       end select
 
       ! Set output file path
+      filename = "plot"
+      if (check_for_node(node_plot, "filename")) &
+        call get_node_value(node_plot, "filename", filename)
       select case (pl % type)
       case (PLOT_TYPE_SLICE)
         pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
-             "_" // trim(plot_(i) % filename) // ".ppm"
+             "_" // trim(filename) // ".ppm"
       case (PLOT_TYPE_VOXEL)
         pl % path_plot = trim(path_input) // trim(to_str(pl % id)) // &
-             "_" // trim(plot_(i) % filename) // ".voxel"
+             "_" // trim(filename) // ".voxel"
       end select
       
       ! Copy plot pixel size
       if (pl % type == PLOT_TYPE_SLICE) then
-        if (size(plot_(i) % pixels) == 2) then
-          pl % pixels(1) = plot_(i) % pixels(1)
-          pl % pixels(2) = plot_(i) % pixels(2)
+        if (get_arraysize_integer(node_plot, "pixels") == 2) then
+          call get_node_array(node_plot, "pixels", pl % pixels(1:2))
         else
           message = "<pixels> must be length 2 in slice plot " // &
                     trim(to_str(pl % id))
           call fatal_error()
         end if
       else if (pl % type == PLOT_TYPE_VOXEL) then
-        if (size(plot_(i) % pixels) == 3) then
-          pl % pixels = plot_(i) % pixels
+        if (get_arraysize_integer(node_plot, "pixels") == 3) then
+          call get_node_array(node_plot, "pixels", pl % pixels(1:3))
         else
           message = "<pixels> must be length 3 in voxel plot " // &
                     trim(to_str(pl % id))
@@ -2493,14 +2513,14 @@ contains
       end if
 
       ! Copy plot background color
-      if (associated(plot_(i) % background)) then
+      if (check_for_node(node_plot, "background")) then
         if (pl % type == PLOT_TYPE_VOXEL) then
           message = "Background color ignored in voxel plot " // & 
                      trim(to_str(pl % id))
           call warning()
         end if
-        if (size(plot_(i) % background) == 3) then
-          pl % not_found % rgb = plot_(i) % background
+        if (get_arraysize_integer(node_plot, "background") == 3) then
+          call get_node_array(node_plot, "background", pl % not_found % rgb)
         else
           message = "Bad background RGB " &
                // "in plot " // trim(to_str(pl % id))
@@ -2512,7 +2532,11 @@ contains
       
       ! Copy plot basis
       if (pl % type == PLOT_TYPE_SLICE) then
-        select case (plot_(i) % basis)
+        temp_str = 'xy'
+        if (check_for_node(node_plot, "basis")) &
+          call get_node_value(node_plot, "basis", temp_str)
+        call lower_case(temp_str)
+        select case (trim(temp_str))
         case ("xy")
           pl % basis = PLOT_BASIS_XY
         case ("xz")
@@ -2520,15 +2544,15 @@ contains
         case ("yz")
           pl % basis = PLOT_BASIS_YZ
         case default
-          message = "Unsupported plot basis '" // plot_(i) % basis &
+          message = "Unsupported plot basis '" // trim(temp_str) & 
                // "' in plot " // trim(to_str(pl % id))
           call fatal_error()
         end select
       end if
       
       ! Copy plotting origin
-      if (size(plot_(i) % origin) == 3) then
-        pl % origin = plot_(i) % origin
+      if (get_arraysize_double(node_plot, "origin") == 3) then
+        call get_node_array(node_plot, "origin", pl % origin)
       else
         message = "Origin must be length 3 " &
              // "in plot " // trim(to_str(pl % id))
@@ -2537,17 +2561,16 @@ contains
 
       ! Copy plotting width
       if (pl % type == PLOT_TYPE_SLICE) then
-        if (size(plot_(i) % width) == 2) then
-          pl % width(1) = plot_(i) % width(1)
-          pl % width(2) = plot_(i) % width(2)
+        if (get_arraysize_double(node_plot, "width") == 2) then
+          call get_node_array(node_plot, "width", pl % width(1:2))
         else
           message = "<width> must be length 2 in slice plot " // &
                     trim(to_str(pl % id))
           call fatal_error()
         end if
       else if (pl % type == PLOT_TYPE_VOXEL) then
-        if (size(plot_(i) % width) == 3) then
-          pl % width = plot_(i) % width
+        if (get_arraysize_double(node_plot, "width") == 3) then
+          call get_node_array(node_plot, "width", pl % width(1:3))
         else
           message = "<width> must be length 3 in voxel plot " // &
                     trim(to_str(pl % id))
@@ -2556,7 +2579,11 @@ contains
       end if
 
       ! Copy plot color type and initialize all colors randomly
-      select case (plot_(i) % color)
+      temp_str = ''
+      if (check_for_node(node_plot, "color")) &
+        call get_node_value(node_plot, "color", temp_str)
+      call lower_case(temp_str)
+      select case (trim(temp_str))
       case ("cell")
 
         pl % color_by = PLOT_COLOR_CELLS
@@ -2578,13 +2605,13 @@ contains
         end do
 
       case default
-        message = "Unsupported plot color type '" // plot_(i) % color &
+        message = "Unsupported plot color type '" // trim(temp_str) &
              // "' in plot " // trim(to_str(pl % id))
         call fatal_error()
       end select
 
       ! Copy user specified colors
-      if (associated(plot_(i) % col_spec_)) then
+      if (check_for_node(node_plot, "col_spec")) then
       
         if (pl % type == PLOT_TYPE_VOXEL) then
           message = "Color specifications ignored in voxel plot " // & 
@@ -2592,21 +2619,34 @@ contains
           call warning()
         end if
       
-        n_cols = size(plot_(i) % col_spec_)
+        n_cols = get_number_nodes(node_plot, "col_spec")
         do j = 1, n_cols
-          if (size(plot_(i) % col_spec_(j) % rgb) /= 3) then
+
+          ! Get pointer to color spec XML node
+          call get_node_ptr(node_plot, "col_spec", node_col, j)
+
+          ! Check and make sure 3 values are specified for RGB
+          if (get_arraysize_double(node_col, "rgb") /= 3) then
             message = "Bad RGB " &
                  // "in plot " // trim(to_str(pl % id))
             call fatal_error()          
           end if
 
-          col_id = plot_(i) % col_spec_(j) % id
+          ! Ensure that there is an id for this color specification
+          if (check_for_node(node_col, "id")) then
+            call get_node_value(node_col, "id", col_id)
+          else
+            message = "Must specify id for color specification in plot " // &
+                      trim(to_str(pl % id))
+            call fatal_error()
+          end if
 
+          ! Add RGB
           if (pl % color_by == PLOT_COLOR_CELLS) then
 
             if (cell_dict % has_key(col_id)) then
               col_id = cell_dict % get_key(col_id)
-              pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
+              call get_node_array(node_plot, "rgb", pl % colors(col_id) % rgb)
             else
               message = "Could not find cell " // trim(to_str(col_id)) // &
                    " specified in plot " // trim(to_str(pl % id))
@@ -2617,7 +2657,7 @@ contains
 
             if (material_dict % has_key(col_id)) then
               col_id = material_dict % get_key(col_id)
-              pl % colors(col_id) % rgb = plot_(i) % col_spec_(j) % rgb
+              call get_node_array(node_plot, "rgb", pl % colors(col_id) % rgb)
             else
               message = "Could not find material " // trim(to_str(col_id)) // &
                    " specified in plot " // trim(to_str(pl % id))
@@ -2629,7 +2669,7 @@ contains
       end if
 
       ! Deal with masks
-      if (associated(plot_(i) % mask_)) then
+      if (check_for_node(node_plot, "mask")) then
       
         if (pl % type == PLOT_TYPE_VOXEL) then
           message = "Mask ignored in voxel plot " // & 
@@ -2637,23 +2677,37 @@ contains
           call warning()
         end if
       
-        select case(size(plot_(i) % mask_))
+        select case(get_number_nodes(node_plot, "mask"))
           case default
             message = "Mutliple masks" // &
                  " specified in plot " // trim(to_str(pl % id))
             call fatal_error()
           case (0)
           case (1)
-          
+
+            ! Get pointer to mask
+            call get_node_ptr(node_plot, "mask", node_mask)
+
+            ! Determine how many components there are and allocate
+            n_comp = 0
+            n_comp = get_arraysize_integer(node_mask, "components")
+            if (n_comp == 0) then
+              message = "Missing <components> in mask of plot " // &
+                        trim(to_str(pl % id))
+              call fatal_error()
+            end if
+            allocate(iarray(n_comp))
+            call get_node_array(node_mask, "components", iarray)
+ 
             ! First we need to change the user-specified identifiers to indices
             ! in the cell and material arrays
-            do j=1,size(plot_(i) % mask_(1) % components)
-              col_id = plot_(i) % mask_(1) % components(j)
+            do j=1, n_comp
+              col_id = iarray(j)
             
               if (pl % color_by == PLOT_COLOR_CELLS) then
               
                 if (cell_dict % has_key(col_id)) then
-                  plot_(i) % mask_(1) % components(j) = cell_dict % get_key(col_id)
+                  iarray(j) = cell_dict % get_key(col_id)
                 else
                   message = "Could not find cell " // trim(to_str(col_id)) // &
                        " specified in the mask in plot " // trim(to_str(pl % id))
@@ -2663,7 +2717,7 @@ contains
               else if (pl % color_by == PLOT_COLOR_MATS) then
               
                 if (material_dict % has_key(col_id)) then
-                  plot_(i) % mask_(1) % components(j) = material_dict % get_key(col_id)
+                  iarray(j) = material_dict % get_key(col_id)
                 else
                   message = "Could not find material " // trim(to_str(col_id)) // &
                        " specified in the mask in plot " // trim(to_str(pl % id))
@@ -2675,10 +2729,18 @@ contains
           
             ! Alter colors based on mask information
             do j=1,size(pl % colors)
-              if (.not. any(j .eq. plot_(i) % mask_(1) % components)) then
-                pl % colors(j) % rgb = plot_(i) % mask_(1) % background
+              if (.not. any(j .eq. iarray)) then
+                if (check_for_node(node_mask, "background")) then
+                  call get_node_array(node_mask, "background", pl % colors(j) % rgb)
+                else
+                  message = "Missing <background> in mask of plot " // &
+                            trim(to_str(pl % id))
+                  call fatal_error()
+                end if
               end if
             end do
+
+            deallocate(iarray)
             
         end select
         
@@ -2688,6 +2750,9 @@ contains
       call plot_dict % add_key(pl % id, i)
 
     end do READ_PLOTS
+
+    ! Close plots XML file
+    call close_xmldoc(doc)
 
   end subroutine read_plots_xml
 

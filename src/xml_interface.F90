@@ -17,6 +17,7 @@ module xml_interface
   public :: get_node_array
   public :: get_arraysize_integer
   public :: get_arraysize_double
+  public :: get_arraysize_string
 
   integer, parameter :: ATTR_NODE = 0
   integer, parameter :: ELEM_NODE = 1
@@ -31,6 +32,7 @@ module xml_interface
   interface get_node_array
     module procedure get_node_array_integer
     module procedure get_node_array_double
+    module procedure get_node_array_string
   end interface get_node_array
 
 contains
@@ -316,6 +318,39 @@ contains
   end subroutine get_node_array_double
 
 !===============================================================================
+! GET_NODE_ARRAY_STRING
+!===============================================================================
+
+  subroutine get_node_array_string(ptr, node_name, result_string)
+
+    character(len=*), intent(in) :: node_name
+    character(len=*) :: result_string(:)
+    type(Node), pointer, intent(in) :: ptr
+
+    integer :: node_type
+    logical :: found
+    type(Node), pointer :: temp_ptr
+
+    ! Get pointer to the node
+    call get_node(ptr, node_name, temp_ptr, node_type, found)
+
+    ! Leave if it was not found
+    if (.not. found) then 
+      message = "Node " // node_name // " not part of Node " // &
+                getNodeName(ptr) // "."
+      call fatal_error()
+    end if
+      
+    ! Extract value
+    if (node_type == ATTR_NODE) then
+      call extractDataAttribute(ptr, node_name, result_string)
+    else
+      call extractDataContent(temp_ptr, result_string)
+    end if
+    
+  end subroutine get_node_array_string
+
+!===============================================================================
 ! GET_NODE_VALUE_STRING
 !===============================================================================
 
@@ -405,6 +440,35 @@ contains
     n = countrts(getTextContent(temp_ptr), 0.0_8)
 
   end function get_arraysize_double
+
+!===============================================================================
+! GET_NODE_ARRAYSIZE_STRING
+!===============================================================================
+
+  function get_arraysize_string(ptr, node_name) result(n)
+
+    character(len=*), intent(in) :: node_name
+    integer :: n
+    type(Node), pointer, intent(in) :: ptr
+
+    integer :: node_type
+    logical :: found
+    type(Node), pointer :: temp_ptr
+
+    ! Get pointer to the node
+    call get_node(ptr, node_name, temp_ptr, node_type, found)
+
+    ! Leave if it was not found
+    if (.not. found) then
+      message = "Node " // node_name // " not part of Node " // &
+                getNodeName(ptr) // "."
+      call fatal_error()
+    end if
+
+    ! Get the size
+    n = countrts(getTextContent(temp_ptr), 'a')
+
+  end function get_arraysize_string
 
 !===============================================================================
 ! GET_NODE

@@ -212,7 +212,7 @@ contains
       message = "Lethargy mapped energy grid not yet supported."
       call fatal_error()
     case default
-      message = "Unknown energy grid method: " // temp_str
+      message = "Unknown energy grid method: " // trim(temp_str)
       call fatal_error()
     end select
 
@@ -424,8 +424,9 @@ contains
 
     ! Cutoffs
     if (check_for_node(doc, "cutoff")) then
-      call get_node_value(doc, "weight", weight_cutoff)
-      call get_node_value(doc, "weight_avg", weight_survive)
+      call get_node_ptr(doc, "cutoff", node_cutoff)
+      call get_node_value(node_cutoff, "weight", weight_cutoff)
+      call get_node_value(node_cutoff, "weight_avg", weight_survive)
     end if
 
     ! Particle trace
@@ -1429,7 +1430,7 @@ contains
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
-        name = list_names % get_item(j)
+        name = trim(list_names % get_item(j))
         if (.not. xs_listing_dict % has_key(name)) then
           message = "Could not find nuclide " // trim(name) // &
                " in cross_sections.xml file!"
@@ -1561,8 +1562,6 @@ contains
 
   subroutine read_tallies_xml
 
-    use xml_data_tallies_t
-
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
     integer :: k             ! another loop index
@@ -1584,6 +1583,7 @@ contains
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: score_name
     character(MAX_WORD_LEN) :: temp_str
+    character(MAX_WORD_LEN), allocatable :: sarray(:)
     type(ElemKeyValueCI), pointer :: pair_list => null()
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
@@ -1606,7 +1606,6 @@ contains
     call write_message(5)
 
     ! Parse tallies.xml file
-    call read_xml_file_tallies_t(filename)
     call open_xmldoc(doc, filename)
 
     ! ==========================================================================
@@ -1684,7 +1683,7 @@ contains
       case ('hex', 'hexagon', 'hexagonal')
         m % type = LATTICE_HEX
       case default
-        message = "Invalid mesh type: " // trim(mesh_(i) % type)
+        message = "Invalid mesh type: " // trim(temp_str)
         call fatal_error()
       end select
 
@@ -1768,7 +1767,7 @@ contains
 
         ! Check that upper-right is above lower-left
         call get_node_array(node_mesh, "upper_right", rarray3(1:n))
-        if (any(rarray3(1:n) < mesh_(i) % lower_left)) then
+        if (any(rarray3(1:n) < m % lower_left)) then
           message = "The <upper_right> coordinates must be greater than the &
                &<lower_left> coordinates on a tally mesh."
           call fatal_error()
@@ -1793,6 +1792,9 @@ contains
       ! Get pointer to tally
       t => tallies(i)
 
+      ! Get pointer to tally xml node
+      call get_node_ptr(doc, "tally", node_tal, i)
+
       ! Set tally type to volume by default
       t % type = TALLY_VOLUME
 
@@ -1805,7 +1807,12 @@ contains
       t % estimator = ESTIMATOR_TRACKLENGTH
 
       ! Copy material id
-      t % id = tally_(i) % id
+      if (check_for_node(node_tal, "id")) then
+        call get_node_value(node_tal, "id", t % id)
+      else
+        message = "Must specify id for tally in tally XML file."
+        call fatal_error()
+      end if
 
       ! Check to make sure 'id' hasn't been used
       if (tally_dict % has_key(t % id)) then
@@ -1815,7 +1822,9 @@ contains
       end if
 
       ! Copy tally label
-      t % label = tally_(i) % label
+      t % label = ''
+      if (check_for_node(node_tal, "label")) &
+        call get_node_value(node_tal, "label", t % label)
 
       ! =======================================================================
       ! READ DATA FOR FILTERS
@@ -1824,29 +1833,45 @@ contains
       ! element followed by sub-elements <cell>, <mesh>, etc. This checks for
       ! the old format and if it is present, raises an error
 
-      if (size(tally_(i) % filters) > 0) then
+      if (get_number_nodes(node_tal, "filters") > 0) then
         message = "Tally filters should be specified with multiple <filter> &
              &elements. Did you forget to change your <filters> element?"
         call fatal_error()
       end if
 
-      if (associated(tally_(i) % filter)) then
+      if (check_for_node(node_tal, "filter")) then
         ! Determine number of filters
-        n_filters = size(tally_(i) % filter)
+        n_filters = get_number_nodes(node_tal, "filter")
 
         ! Allocate filters array
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
 
         READ_FILTERS: do j = 1, n_filters
+          ! Get pointer to filter xml node
+          call get_node_ptr(node_tal, "filter", node_filt, j)
+
           ! Convert filter type to lower case
-          call lower_case(tally_(i) % filter(j) % type)
+          temp_str = ''
+          if (check_for_node(node_filt, "type")) &
+            call get_node_value(node_filt, "type", temp_str)
+          call lower_case(temp_str)
 
           ! Determine number of bins
-          n_words = size(tally_(i) % filter(j) % bins)
+          if (check_for_node(node_filt, "bins")) then
+            if (trim(temp_str) == 'energy' .or. &
+                trim(temp_str) == 'energyout') then
+              n_words = get_arraysize_double(node_filt, "bins")
+            else
+              n_words = get_arraysize_integer(node_filt, "bins")
+            end if
+          else
+            message = "Bins not set in filter on tally " // trim(to_str(t % id))
+            call fatal_error()
+          end if
 
           ! Determine type of filter
-          select case (tally_(i) % filter(j) % type)
+          select case (temp_str)
           case ('cell')
             ! Set type of filter
             t % filters(j) % type = FILTER_CELL
@@ -1856,10 +1881,7 @@ contains
 
             ! Allocate and store bins
             allocate(t % filters(j) % int_bins(n_words))
-            do k = 1, n_words
-              t % filters(j) % int_bins(k) = int(str_to_int(&
-                   tally_(i) % filter(j) % bins(k)),4)
-            end do
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
 
           case ('cellborn')
             ! Set type of filter
@@ -1870,10 +1892,7 @@ contains
 
             ! Allocate and store bins
             allocate(t % filters(j) % int_bins(n_words))
-            do k = 1, n_words
-              t % filters(j) % int_bins(k) = int(str_to_int(&
-                   tally_(i) % filter(j) % bins(k)),4)
-            end do
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
 
           case ('material')
             ! Set type of filter
@@ -1884,10 +1903,7 @@ contains
 
             ! Allocate and store bins
             allocate(t % filters(j) % int_bins(n_words))
-            do k = 1, n_words
-              t % filters(j) % int_bins(k) = int(str_to_int(&
-                   tally_(i) % filter(j) % bins(k)),4)
-            end do
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
 
           case ('universe')
             ! Set type of filter
@@ -1898,10 +1914,7 @@ contains
 
             ! Allocate and store bins
             allocate(t % filters(j) % int_bins(n_words))
-            do k = 1, n_words
-              t % filters(j) % int_bins(k) = int(str_to_int(&
-                   tally_(i) % filter(j) % bins(k)),4)
-            end do
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
 
           case ('surface')
             message = "Surface filter is not yet supported!"
@@ -1915,10 +1928,7 @@ contains
 
             ! Allocate and store bins
             allocate(t % filters(j) % int_bins(n_words))
-            do k = 1, n_words
-              t % filters(j) % int_bins(k) = int(str_to_int(&
-                   tally_(i) % filter(j) % bins(k)),4)
-            end do
+            call get_node_array(node_filt, "bins", t % filters(j) % int_bins)
 
           case ('mesh')
             ! Set type of filter
@@ -1931,7 +1941,7 @@ contains
             end if
 
             ! Determine id of mesh
-            id = int(str_to_int(tally_(i) % filter(j) % bins(1)),4)
+            call get_node_value(node_filt, "bins", id)
 
             ! Get pointer to mesh
             if (mesh_dict % has_key(id)) then
@@ -1961,10 +1971,7 @@ contains
 
             ! Allocate and store bins
             allocate(t % filters(j) % real_bins(n_words))
-            do k = 1, n_words
-              t % filters(j) % real_bins(k) = str_to_real(&
-                   tally_(i) % filter(j) % bins(k))
-            end do
+            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
           case ('energyout')
             ! Set type of filter
@@ -1975,18 +1982,15 @@ contains
 
             ! Allocate and store bins
             allocate(t % filters(j) % real_bins(n_words))
-            do k = 1, n_words
-              t % filters(j) % real_bins(k) = str_to_real(&
-                   tally_(i) % filter(j) % bins(k))
-            end do
+            call get_node_array(node_filt, "bins", t % filters(j) % real_bins)
 
             ! Set to analog estimator
             t % estimator = ESTIMATOR_ANALOG
 
           case default
             ! Specified tally filter is invalid, raise error
-            message = "Unknown filter type '" // trim(tally_(i) % &
-                 filter(j) % type) // "' on tally " // &
+            message = "Unknown filter type '" // & 
+                 trim(temp_str) // "' on tally " // &
                  trim(to_str(t % id)) // "."
             call fatal_error()
 
@@ -2015,8 +2019,13 @@ contains
       ! =======================================================================
       ! READ DATA FOR NUCLIDES
 
-      if (associated(tally_(i) % nuclides)) then
-        if (tally_(i) % nuclides(1) == 'all') then
+      if (check_for_node(node_tal, "nuclides")) then
+
+        ! Allocate a temporary string array for nuclides and copy values over
+        allocate(sarray(get_arraysize_string(node_tal, "nuclides")))
+        call get_node_array(node_tal, "nuclides", sarray)
+
+        if (trim(sarray(1)) == 'all') then
           ! Handle special case <nuclides>all</nuclides>
           allocate(t % nuclide_bins(n_nuclides_total + 1))
 
@@ -2032,25 +2041,25 @@ contains
           t % all_nuclides = .true.
         else
           ! Any other case, e.g. <nuclides>U-235 Pu-239</nuclides>
-          n_words = size(tally_(i) % nuclides)
+          n_words = get_arraysize_string(node_tal, "nuclides") 
           allocate(t % nuclide_bins(n_words))
           do j = 1, n_words
             ! Check if total material was specified
-            if (tally_(i) % nuclides(j) == 'total') then
+            if (trim(sarray(j)) == 'total') then
               t % nuclide_bins(j) = -1
               cycle
             end if
 
             ! Check if xs specifier was given
-            if (ends_with(tally_(i) % nuclides(j), 'c')) then
-              word = tally_(i) % nuclides(j)
+            if (ends_with(sarray(j), 'c')) then
+              word = sarray(j)
             else
               if (default_xs == '') then
                 ! No default cross section specified, search through nuclides
                 pair_list => nuclide_dict % keys()
                 do while (associated(pair_list))
                   if (starts_with(pair_list % key, &
-                       tally_(i) % nuclides(j))) then
+                       sarray(j))) then
                     word = pair_list % key(1:150)
                     exit
                   end if
@@ -2062,14 +2071,14 @@ contains
                 ! Check if no nuclide was found
                 if (.not. associated(pair_list)) then
                   message = "Could not find the nuclide " // trim(&
-                       tally_(i) % nuclides(j)) // " specified in tally " &
+                       sarray(j)) // " specified in tally " &
                        // trim(to_str(t % id)) // " in any material."
                   call fatal_error()
                 end if
                 deallocate(pair_list)
               else
                 ! Set nuclide to default xs
-                word = trim(tally_(i) % nuclides(j)) // "." // default_xs
+                word = trim(sarray(j)) // "." // default_xs
               end if
             end if
 
@@ -2088,6 +2097,9 @@ contains
           t % n_nuclide_bins = n_words
         end if
 
+        ! Deallocate temporary string array
+        deallocate(sarray)
+
       else
         ! No <nuclides> were specified -- create only one bin will be added
         ! for the total material.
@@ -2099,18 +2111,20 @@ contains
       ! =======================================================================
       ! READ DATA FOR SCORES
 
-      if (associated(tally_(i) % scores)) then
+      if (check_for_node(node_tal, "scores")) then
         ! Loop through scores and determine if a scatter-p# input was used
         ! to allow for proper pre-allocating of t % score_bins
         ! This scheme allows multiple scatter-p# to be requested by the user
         ! if so desired
-        n_words = size(tally_(i) % scores)
+        n_words = get_arraysize_string(node_tal, "scores")
+        allocate(sarray(n_words))
+        call get_node_array(node_tal, "scores", sarray)
         n_new = 0
         do j = 1, n_words
-          call lower_case(tally_(i) % scores(j))
+          call lower_case(sarray(j))
           ! Find if scores(j) is of the form 'scatter-p'
           ! If so, get the number and do a select case on that.
-          score_name = tally_(i) % scores(j)
+          score_name = trim(sarray(j))
           if (starts_with(score_name,'scatter-p')) then
             n_order_pos = scan(score_name,'0123456789')
             n_order = int(str_to_int( &
@@ -2123,7 +2137,7 @@ contains
                 trim(to_str(SCATT_ORDER_MAX))
               call warning()
               n_order = SCATT_ORDER_MAX
-              tally_(i) % scores(j) = SCATT_ORDER_MAX_PNSTR
+              sarray(j) = SCATT_ORDER_MAX_PNSTR
             end if
             n_new = n_new + n_order
           end if
@@ -2140,7 +2154,7 @@ contains
           ! Get the input string in scores(l) but if scatter-n or scatter-pn
           ! then strip off the n, and store it as an integer to be used later
           ! Peform the select case on this modified (number removed) string
-          score_name = tally_(i) % scores(l)
+          score_name = sarray(l)
           if (starts_with(score_name,'scatter-p')) then
             n_order_pos = scan(score_name,'0123456789')
             n_order = int(str_to_int( &
@@ -2171,7 +2185,7 @@ contains
             score_name = "scatter-n"
           end if
           
-          select case (score_name)
+          select case (trim(score_name))
           case ('flux')
             ! Prohibit user from tallying flux for an individual nuclide
             if (.not. (t % n_nuclide_bins == 1 .and. &
@@ -2326,14 +2340,14 @@ contains
                 t % score_bins(j) = MT
               else
                 message = "Invalid MT on <scores>: " // &
-                     trim(tally_(i) % scores(j))
+                     trim(sarray(j))
                 call fatal_error()
               end if
 
             else
               ! Specified score was not an integer
               message = "Unknown scoring function: " // &
-                   trim(tally_(i) % scores(j))
+                   trim(sarray(j))
               call fatal_error()
             end if
 
@@ -2341,6 +2355,9 @@ contains
         end do
         t % n_score_bins = n_scores
         t % n_user_score_bins = n_words
+
+        ! Deallocate temporary string array of scores
+        deallocate(sarray)
       else
         message = "No <scores> specified on tally " // trim(to_str(t % id)) &
              // "."
@@ -2351,8 +2368,10 @@ contains
       ! SET TALLY ESTIMATOR
 
       ! Check if user specified estimator
-      if (len_trim(tally_(i) % estimator) > 0) then
-        select case(tally_(i) % estimator)
+      if (check_for_node(node_tal, "estimator")) then
+        temp_str = ''
+        call get_node_value(node_tal, "estimator", temp_str)
+        select case(trim(temp_str))
         case ('analog')
           t % estimator = ESTIMATOR_ANALOG
 
@@ -2369,7 +2388,7 @@ contains
           t % estimator = ESTIMATOR_TRACKLENGTH
 
         case default
-          message = "Invalid estimator '" // trim(tally_(i) % estimator) &
+          message = "Invalid estimator '" // trim(temp_str) &
                // "' on tally " // to_str(t % id)
           call fatal_error()
         end select

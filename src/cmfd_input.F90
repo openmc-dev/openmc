@@ -249,6 +249,7 @@ contains
 
   subroutine create_cmfd_tally(doc)
 
+    use constants,        only: MAX_LINE_LEN
     use error,            only: fatal_error, warning
     use global
     use mesh_header,      only: StructuredMesh
@@ -256,11 +257,11 @@ contains
     use tally,            only: setup_active_cmfdtallies
     use tally_header,     only: TallyObject, TallyFilter
     use tally_initialize, only: add_tallies
-    use xml_data_cmfd_t
     use xml_interface
 
     type(Node), pointer :: doc
 
+    character(MAX_LINE_LEN) :: temp_str
     integer :: i           ! loop counter
     integer :: n           ! size of arrays in mesh specification
     integer :: ng          ! number of energy groups (default 1)
@@ -393,8 +394,12 @@ contains
       t => cmfd_tallies(i)
 
       ! set reset property
-      call lower_case(reset_)
-      if (reset_ == 'true' .or. reset_ == '1') t % reset = .true.
+      if (check_for_node(doc, "reset")) then
+        call get_node_value(doc, "reset", temp_str)
+        call lower_case(temp_str)
+        if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+          t % reset = .true.
+      end if
 
       ! set up mesh filter
       n_filters = 1

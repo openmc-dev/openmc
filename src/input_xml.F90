@@ -50,18 +50,22 @@ contains
     use xml_data_settings_t
     use xml_interface
 
+    character(MAX_LINE_LEN) :: temp_str
     integer :: i ! loop index
     integer :: n
     integer :: coeffs_reqd
+    integer :: temp_int
+    integer :: temp_int_array(3)
+    integer(8) :: temp_long
     logical :: file_exists
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
     type(Node), pointer :: doc
-    type(Node), pointer :: node_eigenvalue 
-    logical :: found
-    integer :: temp_int
-    integer(8) :: temp_long
+    type(Node), pointer :: node_mode
+    type(Node), pointer :: node_source
+    type(Node), pointer :: node_dist
+    type(Node), pointer :: node_cutoff
 
     ! Display output message
     message = "Reading settings XML file..."
@@ -93,8 +97,8 @@ contains
     ! Find cross_sections.xml file -- the first place to look is the
     ! settings.xml file. If no file is found there, then we check the
     ! CROSS_SECTIONS environment variable
-    found = check_for_node(doc, "cross_sections")
-    if (.not. found .and. run_mode /= MODE_PLOTTING) then
+    if (.not. check_for_node(doc, "cross_sections") .and. &
+      run_mode /= MODE_PLOTTING) then
       ! No cross_sections.xml file specified in settings.xml, check environment
       ! variable
             call get_environment_variable("CROSS_SECTIONS", env_variable)
@@ -111,8 +115,7 @@ contains
 
     ! Set output directory if a path has been specified on the <output_path>
     ! element
-    found = check_for_node(doc, "output_path")
-    if (found) then
+    if (check_for_node(doc, "output_path")) then
       call get_node_value(doc, "output_path", path_output)
       if (.not. ends_with(path_output, "/")) &
            path_output = trim(path_output) // "/"
@@ -131,26 +134,28 @@ contains
       if (run_mode == NONE) run_mode = MODE_EIGENVALUE
 
       ! Get pointer to eigenvalue XML block
-      call get_node_ptr(doc, "eigenvalue", node_eigenvalue)
+      call get_node_ptr(doc, "eigenvalue", node_mode)
 
       ! Check number of particles
-      if (.not.check_for_node(node_eigenvalue, "particles")) then
+      if (.not.check_for_node(node_mode, "particles")) then
         message = "Need to specify number of particles per generation."
         call fatal_error()
       end if
 
       ! Get number of particles
-      call get_node_value(node_eigenvalue, "particles", temp_long)
+      call get_node_value(node_mode, "particles", temp_long)
 
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
       if (n_particles == 0) n_particles = temp_long
 
       ! Copy batch and generation information
-      n_batches     = eigenvalue_ % batches
-      n_inactive    = eigenvalue_ % inactive
+      call get_node_value(node_mode, "batches", n_batches)
+      call get_node_value(node_mode, "inactive", n_inactive)
       n_active      = n_batches - n_inactive
-      gen_per_batch = eigenvalue_ % generations_per_batch
+      if (check_for_node(node_mode, "generations_per_batch")) &
+        call get_node_value(node_mode, "generations_per_batch", &
+             gen_per_batch)
 
       ! Allocate array for batch keff and entropy
       allocate(k_generation(n_batches*gen_per_batch))
@@ -159,23 +164,29 @@ contains
     end if
 
     ! Fixed source calculation information
-    if (fixed_source_ % batches > 0) then
+    if (check_for_node(doc, "fixed_source")) then
       ! Set run mode
       if (run_mode == NONE) run_mode = MODE_FIXEDSOURCE
 
+      ! Get pointer to fixed_source XML block
+      call get_node_ptr(doc, "fixed_source", node_mode)
+
       ! Check number of particles
-      if (len_trim(fixed_source_ % particles) == 0) then
-        message = "Need to specify number of particles per cycles."
+      if (.not.check_for_node(node_mode, "fixed_source")) then
+        message = "Need to specify number of particles per batch."
         call fatal_error()
       end if
 
+      ! Get number of particles
+      call get_node_value(node_mode, "particles", temp_long)
+
       ! If the number of particles was specified as a command-line argument, we
       ! don't set it here
-      if (n_particles == 0) n_particles = str_to_int(fixed_source_ % particles)
+      if (n_particles == 0) n_particles = temp_long 
 
       ! Copy batch information
-      n_batches     = fixed_source_ % batches
-      n_active      = fixed_source_ % batches
+      call get_node_value(node_mode, "batches", n_batches)
+      n_active = n_batches
       n_inactive    = 0
       gen_per_batch = 1
     end if
@@ -193,10 +204,15 @@ contains
     end if
 
     ! Copy random number seed if specified
-    if (seed_ > 0) seed = seed_
+    if (check_for_node(doc, "seed")) call get_node_value(doc, "seed", seed)
 
     ! Energy grid methods
-    select case (energy_grid_)
+    if (check_for_node(doc, "energy_grid")) then
+      call get_node_value(doc, "energy_grid", temp_str)
+    else
+      temp_str = 'union'
+    end if
+    select case (trim(temp_str))
     case ('nuclide')
       grid_method = GRID_NUCLIDE
     case ('union')
@@ -211,13 +227,24 @@ contains
 
     ! Verbosity
     if (verbosity_ > 0) verbosity = verbosity_
+    if (check_for_node(doc, "verbosity")) &
+      call get_node_value(doc, "verbosity", verbosity)
 
     ! ==========================================================================
     ! EXTERNAL SOURCE
 
-    if (source_ % file /= '') then
+    ! Get pointer to source
+    if (check_for_node(doc, "source")) then
+      call get_node_ptr(doc, "source", node_source)
+    else
+      message = "No source specified in settings XML file."
+      call fatal_error()
+    end if
+
+    ! Check for external source file
+    if (check_for_node(node_source, "file")) then
       ! Copy path of source file
-      path_source = source_ % file
+      call get_node_value(node_source, "file", path_source)
 
       ! Check if source file exists
       inquire(FILE=path_source, EXIST=file_exists)
@@ -228,12 +255,18 @@ contains
       end if
 
     else
+
       ! Spatial distribution for external source
-      if (source_ % space % type /= '') then
-        ! Read type of spatial distribution
-        type = source_ % space % type
+      if (check_for_node(node_source, "space")) then 
+
+        ! Get pointer to spatial distribution
+        call get_node_ptr(node_source, "space", node_dist) 
+
+        ! Check for type of spatial distribution
+        if (check_for_node(node_dist, "type")) &
+          call get_node_value(node_dist, "type", type)
         call lower_case(type)
-        select case (type)
+        select case (trim(type))
         case ('box')
           external_source % type_space = SRC_SPACE_BOX
           coeffs_reqd = 6
@@ -242,13 +275,13 @@ contains
           coeffs_reqd = 3
         case default
           message = "Invalid spatial distribution for external source: " &
-               // trim(source_ % space % type)
+              // trim(source_ % space % type)
           call fatal_error()
         end select
 
         ! Determine number of parameters specified
-        if (associated(source_ % space % parameters)) then
-          n = size(source_ % space % parameters)
+        if (check_for_node(node_dist, "parameters")) then
+          n = get_arraysize_double(node_dist, "parameters")
         else
           n = 0
         end if
@@ -264,19 +297,25 @@ contains
           call fatal_error()
         elseif (n > 0) then
           allocate(external_source % params_space(n))
-          external_source % params_space = source_ % space % parameters
+          call get_node_array(node_dist, "parameters", &
+               external_source % params_space)
         end if
       else
-        message = "No spatial distribution specified for external source!"
+        message = "No spatial distribution specified for external source."
         call fatal_error()
       end if
 
       ! Determine external source angular distribution
-      if (source_ % angle % type /= '') then
-        ! Read type of angular distribution
-        type = source_ % angle % type
+      if (check_for_node(node_source, "angle")) then
+
+        ! Get pointer to angular distribution
+        call get_node_ptr(node_source, "angle", node_dist)
+
+        ! Check for type of angular distribution
+        if (check_for_node(node_dist, "type")) &
+          call get_node_value(node_dist, "type", type)
         call lower_case(type)
-        select case (type)
+        select case (trim(type))
         case ('isotropic')
           external_source % type_angle = SRC_ANGLE_ISOTROPIC
           coeffs_reqd = 0
@@ -292,8 +331,8 @@ contains
         end select
 
         ! Determine number of parameters specified
-        if (associated(source_ % angle % parameters)) then
-          n = size(source_ % angle % parameters)
+        if (check_for_node(node_dist, "parameters")) then
+          n = get_arraysize_double(node_dist, "parameters")
         else
           n = 0
         end if
@@ -309,7 +348,8 @@ contains
           call fatal_error()
         elseif (n > 0) then
           allocate(external_source % params_angle(n))
-          external_source % params_angle = source_ % angle % parameters
+          call get_node_array(node_dist, "parameters", &
+               external_source % params_angle)
         end if
       else
         ! Set default angular distribution isotropic
@@ -317,11 +357,16 @@ contains
       end if
 
       ! Determine external source energy distribution
-      if (source_ % energy % type /= '') then
-        ! Read type of energy distribution
-        type = source_ % energy % type
+      if (check_for_node(node_source, "energy")) then
+
+        ! Get pointer to energy distribution
+        call get_node_ptr(node_source, "energy", node_dist)
+
+        ! Check for type of energy distribution
+        if (check_for_node(node_dist, "type")) &
+          call get_node_value(node_dist, "type", type)
         call lower_case(type)
-        select case (type)
+        select case (trim(type))
         case ('monoenergetic')
           external_source % type_energy = SRC_ENERGY_MONO
           coeffs_reqd = 1
@@ -340,8 +385,8 @@ contains
         end select
 
         ! Determine number of parameters specified
-        if (associated(source_ % energy % parameters)) then
-          n = size(source_ % energy % parameters)
+        if (check_for_node(node_dist, "parameters")) then
+          n = get_arraysize_double(node_dist, "parameters")
         else
           n = 0
         end if
@@ -357,7 +402,8 @@ contains
           call fatal_error()
         elseif (n > 0) then
           allocate(external_source % params_energy(n))
-          external_source % params_energy = source_ % energy % parameters
+          call get_node_array(node_dist, "parameters", &
+               external_source % params_energy)
         end if
       else
         ! Set default energy distribution to Watt fission spectrum
@@ -368,24 +414,33 @@ contains
     end if
 
     ! Survival biasing
-    call lower_case(survival_)
-    if (survival_ == 'true' .or. survival_ == '1') survival_biasing = .true.
+    if (check_for_node(doc, "survival_biasing")) then
+      call get_node_value(doc, "survival_biasing", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        survival_biasing = .true.
+    end if
 
     ! Probability tables
-    call lower_case(ptables_)
-    if (ptables_ == 'false' .or. ptables_ == '0') urr_ptables_on = .false.
+    if (check_for_node(doc, "ptables")) then
+      call get_node_value(doc, "ptables", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'false' .or. trim(temp_str) == '0') &
+        urr_ptables_on = .false.
+    end if
 
     ! Cutoffs
-    if (size(cutoff_) > 0) then
-      weight_cutoff = cutoff_(1) % weight
-      weight_survive = cutoff_(1) % weight_avg
+    if (check_for_node(doc, "cutoff")) then
+      call get_node_value(doc, "weight", weight_cutoff)
+      call get_node_value(doc, "weight_avg", weight_survive)
     end if
 
     ! Particle trace
-    if (associated(trace_)) then
-      trace_batch    = trace_(1)
-      trace_gen      = trace_(2)
-      trace_particle = trace_(3)
+    if (check_for_node(doc, "trace")) then
+      call get_node_array(doc, "trace", temp_int_array)
+      trace_batch    = temp_int_array(1)
+      trace_gen      = temp_int_array(2)
+      trace_particle = int(temp_int_array(3), 8)
     end if
 
     ! Shannon Entropy mesh

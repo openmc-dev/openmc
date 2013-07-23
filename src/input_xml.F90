@@ -679,8 +679,6 @@ contains
 
   subroutine read_geometry_xml()
 
-    use xml_data_geometry_t
-
     integer :: i, j, k, m
     integer :: n
     integer :: n_x, n_y, n_z
@@ -719,7 +717,6 @@ contains
     end if
 
     ! Parse geometry.xml file
-    call read_xml_file_geometry_t(filename)
     call open_xmldoc(doc, filename)
 
     ! Get number of <cell> tags
@@ -979,7 +976,7 @@ contains
         s % type = SURF_CONE_Z
         coeffs_reqd  = 4
       case default
-        message = "Invalid surface type: " // trim(surface_(i) % type)
+        message = "Invalid surface type: " // trim(word)
         call fatal_error()
       end select
 

@@ -15,6 +15,7 @@ module input_xml
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
+  use xml_interface
 
   implicit none
   save
@@ -46,8 +47,6 @@ contains
 !===============================================================================
 
   subroutine read_settings_xml()
-
-    use xml_interface
 
     character(MAX_LINE_LEN) :: temp_str
     integer :: i
@@ -689,6 +688,8 @@ contains
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
     integer :: mid
+    integer :: temp_int_array3(3)
+    integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
     logical :: file_exists
     logical :: boundary_exists
@@ -697,6 +698,10 @@ contains
     type(Cell),    pointer :: c => null()
     type(Surface), pointer :: s => null()
     type(Lattice), pointer :: lat => null()
+    type(Node), pointer :: doc => null()
+    type(Node), pointer :: node_cell => null()
+    type(Node), pointer :: node_surf => null()
+    type(Node), pointer :: node_lat => null()
 
     ! Display output message
     message = "Reading geometry XML file..."
@@ -715,9 +720,11 @@ contains
 
     ! Parse geometry.xml file
     call read_xml_file_geometry_t(filename)
+    call open_xmldoc(doc, filename)
 
     ! Get number of <cell> tags
-    n_cells = size(cell_)
+    n_cells = 0 
+    n_cells = get_number_nodes(doc, "cell")
 
     ! Check for no cells
     if (n_cells == 0) then
@@ -737,10 +744,26 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
+      ! Get pointer to i-th cell node
+      call get_node_ptr(doc, "cell", node_cell, i)
+
       ! Copy data into cells
-      c % id       = cell_(i) % id
-      c % universe = cell_(i) % universe
-      c % fill     = cell_(i) % fill
+      if (check_for_node(node_cell, "id")) then
+        call get_node_value(node_cell, "id", c % id)
+      else
+        message = "Must specify id of cell in geometry XML file."
+        call fatal_error()
+      end if
+      if (check_for_node(node_cell, "universe")) then
+        call get_node_value(node_cell, "universe", c % universe)
+      else
+        c % universe = NONE
+      end if
+      if (check_for_node(node_cell, "fill")) then
+        call get_node_value(node_cell, "fill", c % fill)
+      else
+        c % fill = NONE
+      end if
 
       ! Check to make sure 'id' hasn't been used
       if (cell_dict % has_key(c % id)) then
@@ -749,7 +772,9 @@ contains
       end if
 
       ! Read material
-      word = cell_(i) % material
+      word = ''
+      if (check_for_node(node_cell, "material")) &
+        call get_node_value(node_cell, "material", word)
       call lower_case(word)
       select case(word)
       case ('void')
@@ -757,7 +782,7 @@ contains
 
       case ('')
         ! This case is called if no material was specified
-        c % material = 0
+        c % material = NONE
 
       case default
         c % material = int(str_to_int(word), 4)
@@ -784,20 +809,20 @@ contains
       end if
 
       ! Check to make sure that surfaces were specified
-      if (.not. associated(cell_(i) % surfaces)) then
+      if (.not. check_for_node(node_cell, "surfaces")) then
         message = "No surfaces specified for cell " // &
              trim(to_str(c % id))
         call fatal_error()
       end if
 
       ! Allocate array for surfaces and copy
-      n = size(cell_(i) % surfaces)
+      n = get_arraysize_integer(node_cell, "surfaces")
       c % n_surfaces = n
       allocate(c % surfaces(n))
-      c % surfaces = cell_(i) % surfaces
+      call get_node_array(node_cell, "surfaces", c % surfaces)
 
       ! Rotation matrix
-      if (associated(cell_(i) % rotation)) then
+      if (check_for_node(node_cell, "rotation")) then
         ! Rotations can only be applied to cells that are being filled with
         ! another universe
         if (c % fill == NONE) then
@@ -807,7 +832,7 @@ contains
         end if
 
         ! Read number of rotation parameters
-        n = size(cell_(i) % rotation)
+        n = get_arraysize_double(node_cell, "rotation")
         if (n /= 3) then
           message = "Incorrect number of rotation parameters on cell " // &
                to_str(c % id)
@@ -815,9 +840,10 @@ contains
         end if
 
         ! Copy rotation angles in x,y,z directions
-        phi   = -cell_(i) % rotation(1) * PI/180.0
-        theta = -cell_(i) % rotation(2) * PI/180.0
-        psi   = -cell_(i) % rotation(3) * PI/180.0
+        call get_node_array(node_cell, "rotation", temp_int_array3)
+        phi   = -temp_int_array3(1) * PI/180.0_8
+        theta = -temp_int_array3(2) * PI/180.0_8
+        psi   = -temp_int_array3(3) * PI/180.0_8
 
         ! Calculate rotation matrix based on angles given
         allocate(c % rotation(3,3))
@@ -832,7 +858,7 @@ contains
       end if
 
       ! Translation vector
-      if (associated(cell_(i) % translation)) then
+      if (check_for_node(node_cell, "translation")) then
         ! Translations can only be applied to cells that are being filled with
         ! another universe
         if (c % fill == NONE) then
@@ -842,7 +868,7 @@ contains
         end if
 
         ! Read number of translation parameters
-        n = size(cell_(i) % translation)
+        n = get_arraysize_double(node_cell, "translation")
         if (n /= 3) then
           message = "Incorrect number of translation parameters on cell " &
                // to_str(c % id)
@@ -851,7 +877,7 @@ contains
 
         ! Copy translation vector
         allocate(c % translation(3))
-        c % translation = cell_(i) % translation
+        call get_node_array(node_cell, "translation", c % translation)
       end if
 
       ! Add cell to dictionary
@@ -860,7 +886,7 @@ contains
       ! For cells, we also need to check if there's a new universe --
       ! also for every cell add 1 to the count of cells for the
       ! specified universe
-      universe_num = cell_(i) % universe
+      universe_num = c % universe
       if (.not. cells_in_univ_dict % has_key(universe_num)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
@@ -880,7 +906,8 @@ contains
     boundary_exists = .false.
 
     ! Get number of <surface> tags
-    n_surfaces = size(surface_)
+    n_surfaces = 0
+    n_surfaces = get_number_nodes(doc, "surface")
 
     ! Check for no surfaces
     if (n_surfaces == 0) then
@@ -894,8 +921,16 @@ contains
     do i = 1, n_surfaces
       s => surfaces(i)
 
+      ! Get pointer to i-th surface node
+      call get_node_ptr(doc, "surface", node_surf, i)
+
       ! Copy data into cells
-      s % id = surface_(i) % id
+      if (check_for_node(node_surf, "id")) then
+        call get_node_value(node_surf, "id", s % id)
+      else
+        message = "Must specify id of surface in geometry XML file."
+        call fatal_error()
+      end if
 
       ! Check to make sure 'id' hasn't been used
       if (surface_dict % has_key(s % id)) then
@@ -905,7 +940,9 @@ contains
       end if
 
       ! Copy and interpret surface type
-      word = surface_(i) % type
+      word = ''
+      if (check_for_node(node_surf, "type")) &
+        call get_node_value(node_surf, "type", word)
       call lower_case(word)
       select case(trim(word))
       case ('x-plane')
@@ -950,7 +987,7 @@ contains
       ! have been specified for the given type of surface. Then copy
       ! surface coordinates.
 
-      n = size(surface_(i) % coeffs)
+      n = get_arraysize_double(node_surf, "coeffs")
       if (n < coeffs_reqd) then
         message = "Not enough coefficients specified for surface: " // & 
              trim(to_str(s % id))
@@ -961,11 +998,13 @@ contains
         call fatal_error()
       else
         allocate(s % coeffs(n))
-        s % coeffs = surface_(i) % coeffs
+        call get_node_array(node_surf, "coeffs", s % coeffs)
       end if
 
       ! Boundary conditions
-      word = surface_(i) % boundary
+      word = ''
+      if (check_for_node(node_surf, "boundary")) &
+        call get_node_value(node_surf, "boundary", word)
       call lower_case(word)
       select case (trim(word))
       case ('transmission', 'transmit', '')
@@ -998,14 +1037,22 @@ contains
     ! READ LATTICES FROM GEOMETRY.XML
 
     ! Allocate lattices array
-    n_lattices = size(lattice_)
+    n_lattices = get_number_nodes(doc, "lattice")
     allocate(lattices(n_lattices))
 
     do i = 1, n_lattices
       lat => lattices(i)
 
+      ! Get pointer to i-th lattice
+      call get_node_ptr(doc, "lattice", node_lat, i)
+
       ! ID of lattice
-      lat % id = lattice_(i) % id
+      if (check_for_node(node_lat, "id")) then
+        call get_node_value(node_lat, "id", lat % id)
+      else
+        message = "Must specify id of lattice in geometry XML file."
+        call fatal_error()
+      end if
 
       ! Check to make sure 'id' hasn't been used
       if (lattice_dict % has_key(lat % id)) then
@@ -1015,7 +1062,9 @@ contains
       end if
 
       ! Read lattice type
-      word = lattice_(i) % type
+      word = ''
+      if (check_for_node(node_lat, "type")) &
+        call get_node_value(node_lat, "type", word)
       call lower_case(word)
       select case (trim(word))
       case ('rect', 'rectangle', 'rectangular')
@@ -1023,12 +1072,12 @@ contains
       case ('hex', 'hexagon', 'hexagonal')
         lat % type = LATTICE_HEX
       case default
-        message = "Invalid lattice type: " // trim(lattice_(i) % type)
+        message = "Invalid lattice type: " // trim(word)
         call fatal_error()
       end select
 
       ! Read number of lattice cells in each dimension
-      n = size(lattice_(i) % dimension)
+      n = get_arraysize_integer(node_lat, "dimension")
       if (n /= 2 .and. n /= 3) then
         message = "Lattice must be two or three dimensions."
         call fatal_error()
@@ -1036,27 +1085,29 @@ contains
 
       lat % n_dimension = n
       allocate(lat % dimension(n))
-      lat % dimension = lattice_(i) % dimension
+      call get_node_array(node_lat, "dimension", lat % dimension)
 
       ! Read lattice lower-left location
-      if (size(lattice_(i) % dimension) /= size(lattice_(i) % lower_left)) then
+      if (size(lat % dimension) /= &
+          get_arraysize_double(node_lat, "lower_left")) then
         message = "Number of entries on <lower_left> must be the same as &
              &the number of entries on <dimension>."
         call fatal_error()
       end if
 
       allocate(lat % lower_left(n))
-      lat % lower_left = lattice_(i) % lower_left
+      call get_node_array(node_lat, "lower_left", lat % lower_left)
 
       ! Read lattice widths
-      if (size(lattice_(i) % width) /= size(lattice_(i) % lower_left)) then
+      if (size(lat % dimension) /= &
+          get_arraysize_double(node_lat, "width")) then
         message = "Number of entries on <width> must be the same as &
              &the number of entries on <lower_left>."
         call fatal_error()
       end if
 
       allocate(lat % width(n))
-      lat % width = lattice_(i) % width
+      call get_node_array(node_lat, "width", lat % width)
 
       ! Copy number of dimensions
       n_x = lat % dimension(1)
@@ -1069,34 +1120,45 @@ contains
       allocate(lat % universes(n_x, n_y, n_z))
 
       ! Check that number of universes matches size
-      if (size(lattice_(i) % universes) /= n_x*n_y*n_z) then
+      n = get_arraysize_integer(node_lat, "universes")
+      if (n /= n_x*n_y*n_z) then
         message = "Number of universes on <universes> does not match size of &
              &lattice " // trim(to_str(lat % id)) // "."
         call fatal_error()
       end if
 
+      allocate(temp_int_array(n))
+      call get_node_array(node_lat, "universes", temp_int_array)
+
       ! Read universes
       do m = 1, n_z
         do k = 0, n_y - 1
           do j = 1, n_x
-            lat % universes(j, n_y - k, m) = lattice_(i) % &
-                 universes(j + n_x*k + n_x*n_y*(m-1))
+            lat % universes(j, n_y - k, m) = &
+               temp_int_array(j + n_x*k + n_x*n_y*(m-1))
           end do
         end do
       end do
+      deallocate(temp_int_array)
 
       ! Read material for area outside lattice
-      mid = lattice_(i) % outside
-      if (mid == 0 .or. mid == MATERIAL_VOID) then
-        lat % outside = MATERIAL_VOID
-      else
-        lat % outside = mid
+      lat % outside = MATERIAL_VOID
+      if (check_for_node(node_lat, "outside")) then
+        call get_node_value(node_lat, "outside", mid)
+        if (mid == 0 .or. mid == MATERIAL_VOID) then
+          lat % outside = MATERIAL_VOID
+        else
+          lat % outside = mid
+        end if
       end if
 
       ! Add lattice to dictionary
       call lattice_dict % add_key(lat % id, i)
 
     end do
+
+    ! Close geometry XML file
+    call close_xmldoc(doc)
 
   end subroutine read_geometry_xml
 

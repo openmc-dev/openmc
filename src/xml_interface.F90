@@ -13,6 +13,9 @@ module xml_interface
   public :: check_for_node
   public :: get_node_ptr
   public :: get_node_value
+  public :: get_node_array
+  public :: get_arraysize_integer
+  public :: get_arraysize_double
 
   integer, parameter :: ATTR_NODE = 0
   integer, parameter :: ELEM_NODE = 1
@@ -20,8 +23,14 @@ module xml_interface
   interface get_node_value
     module procedure get_node_value_integer
     module procedure get_node_value_long
+    module procedure get_node_value_double
     module procedure get_node_value_string
   end interface get_node_value
+
+  interface get_node_array
+    module procedure get_node_array_integer
+    module procedure get_node_array_double
+  end interface get_node_array
 
 contains
 
@@ -150,7 +159,7 @@ contains
   end subroutine get_node_value_integer
 
 !===============================================================================
-! GET_NODE_VALUE_INTEGER
+! GET_NODE_VALUE_LONG
 !===============================================================================
 
   subroutine get_node_value_long(ptr, node_name, result_long)
@@ -183,13 +192,112 @@ contains
   end subroutine get_node_value_long
 
 !===============================================================================
+! GET_NODE_VALUE_DOUBLE
+!===============================================================================
+
+  subroutine get_node_value_double(ptr, node_name, result_double)
+
+    character(len=*), intent(in) :: node_name
+    real(8) :: result_double
+    type(Node), pointer, intent(in) :: ptr
+
+    integer :: node_type
+    logical :: found
+    type(Node), pointer :: temp_ptr
+
+    ! Get pointer to the node
+    call get_node(ptr, node_name, temp_ptr, node_type, found)
+
+    ! Leave if it was not found
+    if (.not. found) then 
+      message = "Node " // node_name // " not part of Node " // &
+                getNodeName(ptr) // "."
+      call fatal_error()
+    end if
+      
+    ! Extract value
+    if (node_type == ATTR_NODE) then
+      call extractDataAttribute(ptr, node_name, result_double)
+    else
+      call extractDataContent(temp_ptr, result_double)
+    end if
+    
+  end subroutine get_node_value_double
+
+!===============================================================================
+! GET_NODE_ARRAY_INTEGER
+!===============================================================================
+
+  subroutine get_node_array_integer(ptr, node_name, result_int)
+
+    character(len=*), intent(in) :: node_name
+    integer :: result_int(:)
+    type(Node), pointer, intent(in) :: ptr
+
+    integer :: node_type
+    logical :: found
+    type(Node), pointer :: temp_ptr
+
+    ! Get pointer to the node
+    call get_node(ptr, node_name, temp_ptr, node_type, found)
+
+    ! Leave if it was not found
+    if (.not. found) then 
+      message = "Node " // node_name // " not part of Node " // &
+                getNodeName(ptr) // "."
+      call fatal_error()
+    end if
+      
+    ! Extract value
+    if (node_type == ATTR_NODE) then
+      call extractDataAttribute(ptr, node_name, result_int)
+    else
+      call extractDataContent(temp_ptr, result_int)
+    end if
+    
+  end subroutine get_node_array_integer
+
+!===============================================================================
+! GET_NODE_ARRAY_DOUBLE
+!===============================================================================
+
+  subroutine get_node_array_double(ptr, node_name, result_double)
+
+    character(len=*), intent(in) :: node_name
+    real(8) :: result_double(:)
+    type(Node), pointer, intent(in) :: ptr
+
+    integer :: node_type
+    logical :: found
+    type(Node), pointer :: temp_ptr
+
+    ! Get pointer to the node
+    call get_node(ptr, node_name, temp_ptr, node_type, found)
+
+    ! Leave if it was not found
+    if (.not. found) then 
+      message = "Node " // node_name // " not part of Node " // &
+                getNodeName(ptr) // "."
+      call fatal_error()
+    end if
+      
+    ! Extract value
+    if (node_type == ATTR_NODE) then
+      call extractDataAttribute(ptr, node_name, result_double)
+    else
+      call extractDataContent(temp_ptr, result_double)
+    end if
+    
+  end subroutine get_node_array_double
+
+!===============================================================================
 ! GET_NODE_VALUE_STRING
 !===============================================================================
 
   subroutine get_node_value_string(ptr, node_name, result_str)
 
     character(len=*), intent(in) :: node_name
-    character(len=MAX_LINE_LEN) :: result_str
+    character(len=*) :: result_str
     type(Node), pointer, intent(in) :: ptr
 
     integer :: node_type
@@ -214,6 +322,64 @@ contains
     end if
    
   end subroutine get_node_value_string
+
+!===============================================================================
+! GET_NODE_ARRAYSIZE_INTEGER
+!===============================================================================
+
+  function get_arraysize_integer(ptr, node_name) result(n)
+
+    character(len=*), intent(in) :: node_name
+    integer :: n
+    type(Node), pointer, intent(in) :: ptr
+
+    integer :: node_type
+    logical :: found
+    type(Node), pointer :: temp_ptr
+
+    ! Get pointer to the node
+    call get_node(ptr, node_name, temp_ptr, node_type, found)
+
+    ! Leave if it was not found
+    if (.not. found) then
+      message = "Node " // node_name // " not part of Node " // &
+                getNodeName(ptr) // "."
+      call fatal_error()
+    end if
+
+    ! Get the size
+    n = countrts(getTextContent(temp_ptr), 0)
+
+  end function get_arraysize_integer
+
+!===============================================================================
+! GET_NODE_ARRAYSIZE_DOUBLE
+!===============================================================================
+
+  function get_arraysize_double(ptr, node_name) result(n)
+
+    character(len=*), intent(in) :: node_name
+    integer :: n
+    type(Node), pointer, intent(in) :: ptr
+
+    integer :: node_type
+    logical :: found
+    type(Node), pointer :: temp_ptr
+
+    ! Get pointer to the node
+    call get_node(ptr, node_name, temp_ptr, node_type, found)
+
+    ! Leave if it was not found
+    if (.not. found) then
+      message = "Node " // node_name // " not part of Node " // &
+                getNodeName(ptr) // "."
+      call fatal_error()
+    end if
+
+    ! Get the size
+    n = countrts(getTextContent(temp_ptr), 0.0_8)
+
+  end function get_arraysize_double
 
 !===============================================================================
 ! GET_NODE

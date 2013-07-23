@@ -1166,8 +1166,6 @@ contains
 
   subroutine read_materials_xml
 
-    use xml_data_materials_t
-
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
     integer :: n             ! number of nuclides
@@ -1176,17 +1174,23 @@ contains
     integer :: index_nuclide ! index in nuclides
     integer :: index_sab     ! index in sab_tables
     real(8) :: val           ! value entered for density
+    real(8) :: temp_dble     ! temporary double prec. real
     logical :: file_exists   ! does materials.xml exist?
     logical :: sum_density   ! density is taken to be sum of nuclide densities
     character(12) :: name    ! name of isotope, e.g. 92235.03c
     character(12) :: alias   ! alias of nuclide, e.g. U-235.03c
     character(MAX_WORD_LEN) :: units    ! units on density
     character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
+    character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
     type(ListChar) :: list_names   ! temporary list of nuclide names
     type(ListReal) :: list_density ! temporary list of nuclide densities
     type(Material),    pointer :: mat => null()
-    type(nuclide_xml), pointer :: nuc => null()
-    type(sab_xml),     pointer :: sab => null()
+    type(Node), pointer :: doc => null()
+    type(Node), pointer :: node_mat => null()
+    type(Node), pointer :: node_dens => null()
+    type(Node), pointer :: node_nuc => null()
+    type(Node), pointer :: node_ele => null()
+    type(Node), pointer :: node_sab => null()
 
     ! Display output message
     message = "Reading materials XML file..."
@@ -1201,16 +1205,17 @@ contains
     end if
 
     ! Initialize default cross section variable
-    default_xs_ = ""
+    default_xs = ""
 
     ! Parse materials.xml file
-    call read_xml_file_materials_t(filename)
+    call open_xmldoc(doc, filename)
 
     ! Copy default cross section if present
-    default_xs = default_xs_
+    if (check_for_node(doc, "default_xs")) &
+      call get_node_value(doc, "default_xs", default_xs)
 
     ! Allocate cells array
-    n_materials = size(material_)
+    n_materials = get_number_nodes(doc, "material")
     allocate(materials(n_materials))
 
     ! Initialize count for number of nuclides/S(a,b) tables
@@ -1220,8 +1225,16 @@ contains
     do i = 1, n_materials
       mat => materials(i)
 
+      ! Get pointer to i-th material node
+      call get_node_ptr(doc, "material", node_mat, i)
+
       ! Copy material id
-      mat % id = material_(i) % id
+      if (check_for_node(node_mat, "id")) then
+        call get_node_value(node_mat, "id", mat % id)
+      else
+        message = "Must specify id of material in materials XML file"
+        call fatal_error()
+      end if
 
       ! Check to make sure 'id' hasn't been used
       if (material_dict % has_key(mat % id)) then
@@ -1239,9 +1252,18 @@ contains
       ! =======================================================================
       ! READ AND PARSE <density> TAG
 
+      ! Get pointer to density element
+      if (check_for_node(node_mat, "density")) then
+        call get_node_ptr(node_mat, "density", node_dens)
+      else
+        message = "Must specify density element in material " // &
+                  trim(to_str(mat % id))
+        call fatal_error()
+      end if
+
       ! Copy value and units
-      val   = material_(i) % density % value
-      units = material_(i) % density % units
+      call get_node_value(node_dens, "value", val)
+      call get_node_value(node_dens, "units", units)
 
       if (units == 'sum') then
         ! If the user gave the units as 'sum', then the total density of the
@@ -1271,7 +1293,7 @@ contains
         case ('atom/cm3', 'atom/cc')
           mat % density = 1.0e-24 * val
         case default
-          message = "Unkwown units '" // trim(material_(i) % density % units) &
+          message = "Unkwown units '" // trim(units) &
                // "' specified on material " // trim(to_str(mat % id))
           call fatal_error()
         end select
@@ -1281,101 +1303,112 @@ contains
       ! READ AND PARSE <nuclide> TAGS
 
       ! Check to ensure material has at least one nuclide
-      if (.not. associated(material_(i) % nuclides) .and. &
-           .not. associated(material_(i) % elements)) then
+      if (.not. check_for_node(node_mat, "nuclide") .and. &
+           .not. check_for_node(node_mat, "element")) then
         message = "No nuclides or natural elements specified on material " // &
              trim(to_str(mat % id))
         call fatal_error()
       end if
 
       ! Create list of nuclides based on those specified plus natural elements
-      INDIVIDUAL_NUCLIDES: do j = 1, size(material_(i) % nuclides)
+      INDIVIDUAL_NUCLIDES: do j = 1, get_number_nodes(node_mat, "nuclide")
         ! Combine nuclide identifier and cross section and copy into names
-        nuc => material_(i) % nuclides(j)
+        call get_node_ptr(node_mat, "nuclide", node_nuc, j)
 
         ! Check for empty name on nuclide
-        if (len_trim(nuc % name) == 0) then
+        if (.not.check_for_node(node_nuc, "name")) then
           message = "No name specified on nuclide in material " // &
                trim(to_str(mat % id))
           call fatal_error()
         end if
 
         ! Check for cross section
-        if (len_trim(nuc % xs) == 0) then
+        if (.not.check_for_node(node_nuc, "xs")) then
           if (default_xs == '') then
             message = "No cross section specified for nuclide in material " &
                  // trim(to_str(mat % id))
             call fatal_error()
           else
-            nuc % xs = default_xs
+            name = trim(default_xs)
           end if
         end if
 
         ! store full name
-        name = trim(nuc % name) // "." // trim(nuc % xs)
+        call get_node_value(node_nuc, "name", temp_str)
+        if (check_for_node(node_nuc, "xs")) &
+          call get_node_value(node_nuc, "xs", name)
+        name = trim(temp_str) // "." // trim(name)
 
         ! save name and density to list
         call list_names % append(name)
 
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
-        if (nuc % ao == ZERO .and. nuc % wo == ZERO) then
+        if (.not.check_for_node(node_nuc, "ao") .and. &
+            .not.check_for_node(node_nuc, "wo")) then
           message = "No atom or weight percent specified for nuclide " // &
                trim(name)
           call fatal_error()
-        elseif (nuc % ao /= ZERO .and. nuc % wo /= ZERO) then
+        elseif (check_for_node(node_nuc, "ao") .and. &
+                check_for_node(node_nuc, "wo")) then
           message = "Cannot specify both atom and weight percents for a &
                &nuclide: " // trim(name)
           call fatal_error()
         end if
 
         ! Copy atom/weight percents
-        if (nuc % ao /= ZERO) then
-          call list_density % append(nuc % ao)
+        if (check_for_node(node_nuc, "ao")) then
+          call get_node_value(node_nuc, "ao", temp_dble)
+          call list_density % append(temp_dble)
         else
-          call list_density % append(-nuc % wo)
+          call get_node_value(node_nuc, "wo", temp_dble)
+          call list_density % append(-temp_dble)
         end if
       end do INDIVIDUAL_NUCLIDES
 
       ! =======================================================================
       ! READ AND PARSE <element> TAGS
 
-      NATURAL_ELEMENTS: do j = 1, size(material_(i) % elements)
-        nuc => material_(i) % elements(j)
+      NATURAL_ELEMENTS: do j = 1, get_number_nodes(node_mat, "element")
+        call get_node_ptr(node_mat, "element", node_ele, j)
 
         ! Check for empty name on natural element
-        if (len_trim(nuc % name) == 0) then
+        if (.not.check_for_node(node_ele, "name")) then
           message = "No name specified on nuclide in material " // &
                trim(to_str(mat % id))
           call fatal_error()
         end if
+        call get_node_value(node_ele, "name", name)
 
         ! Check for cross section
-        if (len_trim(nuc % xs) == 0) then
+        if (.not.check_for_node(node_nuc, "xs")) then
           if (default_xs == '') then
             message = "No cross section specified for nuclide in material " &
                  // trim(to_str(mat % id))
             call fatal_error()
           else
-            nuc % xs = default_xs
+            temp_str = trim(default_xs)
           end if
         end if
 
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
-        if (nuc % ao == ZERO .and. nuc % wo == ZERO) then
-          message = "No atom or weight percent specified for nuclide " // &
+        if (.not.check_for_node(node_nuc, "ao") .and. &
+            .not.check_for_node(node_nuc, "wo")) then
+          message = "No atom or weight percent specified for element " // &
                trim(name)
           call fatal_error()
-        elseif (nuc % ao /= ZERO .and. nuc % wo /= ZERO) then
+        elseif (check_for_node(node_nuc, "ao") .and. &
+                check_for_node(node_nuc, "wo")) then
           message = "Cannot specify both atom and weight percents for a &
-               &nuclide: " // trim(name)
+               &element: " // trim(name)
           call fatal_error()
         end if
 
         ! Expand element into naturally-occurring isotopes
-        if (nuc % ao /= ZERO) then
-          call expand_natural_element(nuc % name, nuc % xs, nuc % ao, &
+        if (check_for_node(node_nuc, "ao")) then
+          call get_node_value(node_nuc, "ao", temp_dble)
+          call expand_natural_element(name, temp_str, temp_dble, &
                list_names, list_density)
         else
           message = "The ability to expand a natural element based on weight &
@@ -1452,7 +1485,7 @@ contains
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
 
-      n_sab = size(material_(i) % sab)
+      n_sab = get_number_nodes(node_mat, "sab")
       if (n_sab > 0) then
         ! Set number of S(a,b) tables
         mat % n_sab = n_sab
@@ -1467,10 +1500,18 @@ contains
 
         do j = 1, n_sab
           ! Get pointer to S(a,b) table
-          sab => material_(i) % sab(j)
+          call get_node_ptr(node_mat, "sab", node_sab, j)
 
           ! Determine name of S(a,b) table
-          name = trim(sab % name) // "." // trim(sab % xs)
+          if (.not.check_for_node(node_sab, "name") .or. &
+              .not.check_for_node(node_sab, "xs")) then
+            message = "Need to specify <name> and <xs> for S(a,b) table."
+            call fatal_error()
+          end if
+          call get_node_value(node_sab, "name", name)
+          call get_node_value(node_sab, "xs", temp_str)
+
+          name = trim(name) // "." // trim(temp_str)
           mat % sab_names(j) = name
 
           ! Check that this nuclide is listed in the cross_sections.xml file
@@ -1507,6 +1548,9 @@ contains
     ! Set total number of nuclides and S(a,b) tables
     n_nuclides_total = index_nuclide
     n_sab_tables     = index_sab
+
+    ! Close materials XML file
+    call close_xmldoc(doc)
 
   end subroutine read_materials_xml
 

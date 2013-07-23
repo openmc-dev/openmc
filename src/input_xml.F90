@@ -1164,7 +1164,7 @@ contains
 ! for errors and placing properly-formatted data in the right data structures
 !===============================================================================
 
-  subroutine read_materials_xml
+  subroutine read_materials_xml()
 
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides

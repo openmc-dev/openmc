@@ -11,6 +11,7 @@ module xml_interface
   public :: open_xmldoc
   public :: close_xmldoc
   public :: check_for_node
+  public :: get_number_nodes
   public :: get_node_ptr
   public :: get_node_value
   public :: get_node_array
@@ -94,16 +95,38 @@ contains
   end function check_for_node
 
 !===============================================================================
+! GET_NUMBER_NODES
+!===============================================================================
+
+  function get_number_nodes(ptr, node_name) result(n_nodes)
+
+    character(len=*), intent(in) :: node_name
+    integer :: n_nodes
+    type(Node), pointer, intent(in) :: ptr
+
+    type(NodeList), pointer :: elem_list
+
+    ! Check for a sub-element 
+    elem_list => getElementsByTagName(ptr, trim(node_name))
+
+    ! Get the length of the list
+    n_nodes = getLength(elem_list)
+
+  end function get_number_nodes
+
+!===============================================================================
 ! GET_NODE_PTR
 !===============================================================================
 
-  subroutine get_node_ptr(in_ptr, node_name, out_ptr, found)
+  subroutine get_node_ptr(in_ptr, node_name, out_ptr, idx, found)
 
     character(len=*), intent(in) :: node_name
+    integer, intent(in), optional :: idx
     logical, intent(out), optional :: found
     type(Node), pointer, intent(in) :: in_ptr
     type(Node), pointer, intent(out) :: out_ptr
 
+    integer :: idx_
     logical :: found_
     type(NodeList), pointer :: elem_list => null()
 
@@ -117,7 +140,9 @@ contains
     if (getLength(elem_list) == 0) return
 
     ! Point to the new element
-    out_ptr => item(elem_list, 0)
+    idx_ = 0
+    if (present(idx)) idx_ = idx - 1
+    out_ptr => item(elem_list, idx_)
     found_ = .true.
 
     ! Check to output found
@@ -148,7 +173,7 @@ contains
                 getNodeName(ptr) // "."
       call fatal_error()
     end if
-      
+
     ! Extract value
     if (node_type == ATTR_NODE) then
       call extractDataAttribute(ptr, node_name, result_int)

@@ -703,6 +703,9 @@ contains
     type(Node), pointer :: node_cell => null()
     type(Node), pointer :: node_surf => null()
     type(Node), pointer :: node_lat => null()
+    type(NodeList), pointer :: node_cell_list => null()
+    type(NodeList), pointer :: node_surf_list => null()
+    type(NodeList), pointer :: node_lat_list => null()
 
     ! Display output message
     message = "Reading geometry XML file..."
@@ -740,12 +743,15 @@ contains
       overlap_check_cnt = 0
     end if
 
+    ! Get pointer to list of XML <cell>
+    call get_node_list(doc, "cell", node_cell_list)
+
     n_universes = 0
     do i = 1, n_cells
       c => cells(i)
 
       ! Get pointer to i-th cell node
-      call get_node_ptr(doc, "cell", node_cell, i)
+      call get_node_item(node_cell_list, i, node_cell)
 
       ! Copy data into cells
       if (check_for_node(node_cell, "id")) then
@@ -918,11 +924,14 @@ contains
     ! Allocate cells array
     allocate(surfaces(n_surfaces))
 
+    ! Get pointer to list of XML <surface>
+    call get_node_list(doc, "surface", node_surf_list)
+
     do i = 1, n_surfaces
       s => surfaces(i)
 
       ! Get pointer to i-th surface node
-      call get_node_ptr(doc, "surface", node_surf, i)
+      call get_node_item(node_surf_list, i, node_surf)
 
       ! Copy data into cells
       if (check_for_node(node_surf, "id")) then
@@ -1040,11 +1049,14 @@ contains
     n_lattices = get_number_nodes(doc, "lattice")
     allocate(lattices(n_lattices))
 
+    ! Get pointer to list of XML <lattice>
+    call get_node_list(doc, "lattice", node_lat_list)
+
     do i = 1, n_lattices
       lat => lattices(i)
 
       ! Get pointer to i-th lattice
-      call get_node_ptr(doc, "lattice", node_lat, i)
+      call get_node_item(node_lat_list, i, node_lat)
 
       ! ID of lattice
       if (check_for_node(node_lat, "id")) then
@@ -1194,6 +1206,10 @@ contains
     type(Node), pointer :: node_nuc => null()
     type(Node), pointer :: node_ele => null()
     type(Node), pointer :: node_sab => null()
+    type(NodeList), pointer :: node_mat_list => null()
+    type(NodeList), pointer :: node_nuc_list => null()
+    type(NodeList), pointer :: node_ele_list => null()
+    type(NodeList), pointer :: node_sab_list => null()
 
     ! Display output message
     message = "Reading materials XML file..."
@@ -1225,11 +1241,14 @@ contains
     index_nuclide = 0
     index_sab = 0
 
+    ! Get pointer to list of XML <material>
+    call get_node_list(doc, "material", node_mat_list)
+
     do i = 1, n_materials
       mat => materials(i)
 
       ! Get pointer to i-th material node
-      call get_node_ptr(doc, "material", node_mat, i)
+      call get_node_item(node_mat_list, i, node_mat)
 
       ! Copy material id
       if (check_for_node(node_mat, "id")) then
@@ -1313,10 +1332,13 @@ contains
         call fatal_error()
       end if
 
+      ! Get pointer list of XML <nuclide>
+      call get_node_list(node_mat, "nuclide", node_nuc_list)
+
       ! Create list of nuclides based on those specified plus natural elements
       INDIVIDUAL_NUCLIDES: do j = 1, get_number_nodes(node_mat, "nuclide")
         ! Combine nuclide identifier and cross section and copy into names
-        call get_node_ptr(node_mat, "nuclide", node_nuc, j)
+        call get_node_item(node_nuc_list, j, node_nuc)
 
         ! Check for empty name on nuclide
         if (.not.check_for_node(node_nuc, "name")) then
@@ -1372,8 +1394,11 @@ contains
       ! =======================================================================
       ! READ AND PARSE <element> TAGS
 
+      ! Get pointer list of XML <element>
+      call get_node_list(node_mat, "element", node_ele_list)
+
       NATURAL_ELEMENTS: do j = 1, get_number_nodes(node_mat, "element")
-        call get_node_ptr(node_mat, "element", node_ele, j)
+        call get_node_item(node_ele_list, j, node_ele)
 
         ! Check for empty name on natural element
         if (.not.check_for_node(node_ele, "name")) then
@@ -1501,9 +1526,12 @@ contains
         ! Initialize i_sab_nuclides
         mat % i_sab_nuclides = NONE
 
+        ! Get pointer list to XML <sab>
+        call get_node_list(node_mat, "sab", node_sab_list)
+
         do j = 1, n_sab
           ! Get pointer to S(a,b) table
-          call get_node_ptr(node_mat, "sab", node_sab, j)
+          call get_node_item(node_sab_list, j, node_sab)
 
           ! Determine name of S(a,b) table
           if (.not.check_for_node(node_sab, "name") .or. &
@@ -1594,6 +1622,9 @@ contains
     type(Node), pointer :: node_mesh => null()
     type(Node), pointer :: node_tal => null()
     type(Node), pointer :: node_filt => null()
+    type(NodeList), pointer :: node_mesh_list => null()
+    type(NodeList), pointer :: node_tal_list => null()
+    type(NodeList), pointer :: node_filt_list => null()
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
@@ -1653,11 +1684,14 @@ contains
     ! ==========================================================================
     ! READ MESH DATA
 
+    ! Get pointer list to XML <mesh>
+    call get_node_list(doc, "mesh", node_mesh_list)
+
     do i = 1, n_user_meshes
       m => meshes(i)
 
       ! Get pointer to mesh node
-      call get_node_ptr(doc, "mesh", node_mesh, i)
+      call get_node_item(node_mesh_list, i, node_mesh)
 
       ! Copy mesh id
       if (check_for_node(node_mesh, "id")) then
@@ -1790,12 +1824,15 @@ contains
     ! ==========================================================================
     ! READ TALLY DATA
 
+    ! Get pointer list to XML <tally>
+    call get_node_list(doc, "tally", node_tal_list)
+
     READ_TALLIES: do i = 1, n_user_tallies
       ! Get pointer to tally
       t => tallies(i)
 
       ! Get pointer to tally xml node
-      call get_node_ptr(doc, "tally", node_tal, i)
+      call get_node_item(node_tal_list, i, node_tal)
 
       ! Set tally type to volume by default
       t % type = TALLY_VOLUME
@@ -1849,9 +1886,12 @@ contains
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
 
+        ! Get pointer list to XML <filter>
+        call get_node_list(node_tal, "filter", node_filt_list)
+
         READ_FILTERS: do j = 1, n_filters
           ! Get pointer to filter xml node
-          call get_node_ptr(node_tal, "filter", node_filt, j)
+          call get_node_item(node_filt_list, j, node_filt)
 
           ! Convert filter type to lower case
           temp_str = ''
@@ -2423,6 +2463,8 @@ contains
     type(Node), pointer :: node_plot => null()
     type(Node), pointer :: node_col => null()
     type(Node), pointer :: node_mask => null()
+    type(NodeList), pointer :: node_plot_list => null()
+    type(NodeList), pointer :: node_col_list => null()
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"
@@ -2443,11 +2485,14 @@ contains
     n_plots = get_number_nodes(doc, "plot")
     allocate(plots(n_plots))
 
+    ! Get list pointer to XML <plot>
+    call get_node_list(doc, "plot", node_plot_list)
+
     READ_PLOTS: do i = 1, n_plots
       pl => plots(i)
 
       ! Get pointer to plot XML node
-      call get_node_ptr(doc, "plot", node_plot, i)
+      call get_node_item(node_plot_list, i, node_plot)
 
       ! Copy data into plots
       if (check_for_node(node_plot, "id")) then
@@ -2619,11 +2664,13 @@ contains
           call warning()
         end if
       
+        ! Get the number of <col_spec> nodes and get a list of them
         n_cols = get_number_nodes(node_plot, "col_spec")
+        call get_node_list(node_plot, "col_spec", node_col_list)
         do j = 1, n_cols
 
           ! Get pointer to color spec XML node
-          call get_node_ptr(node_plot, "col_spec", node_col, j)
+          call get_node_item(node_col_list, j, node_col)
 
           ! Check and make sure 3 values are specified for RGB
           if (get_arraysize_double(node_col, "rgb") /= 3) then
@@ -2773,6 +2820,7 @@ contains
     type(XsListing), pointer :: listing => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_ace => null()
+    type(NodeList), pointer :: node_ace_list => null()
 
     ! Check if cross_sections.xml exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
@@ -2829,11 +2877,14 @@ contains
        allocate(xs_listings(n_listings))
     end if
 
+    ! Get node list of all <ace_table>
+    call get_node_list(doc, "ace_table", node_ace_list)
+
     do i = 1, n_listings
        listing => xs_listings(i)
 
        ! Get pointer to ace table XML node
-       call get_node_ptr(doc, "ace_table", node_ace, i)
+       call get_node_item(node_ace_list, i, node_ace)
 
        ! copy a number of attributes
        call get_node_value(node_ace, "name", listing % name)

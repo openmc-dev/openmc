@@ -8,11 +8,14 @@ module xml_interface
   implicit none
   private
   public :: Node
+  public :: NodeList
   public :: open_xmldoc
   public :: close_xmldoc
   public :: check_for_node
   public :: get_number_nodes
   public :: get_node_ptr
+  public :: get_node_list
+  public :: get_node_item
   public :: get_node_value
   public :: get_node_array
   public :: get_arraysize_integer
@@ -120,15 +123,13 @@ contains
 ! GET_NODE_PTR
 !===============================================================================
 
-  subroutine get_node_ptr(in_ptr, node_name, out_ptr, idx, found)
+  subroutine get_node_ptr(in_ptr, node_name, out_ptr, found)
 
     character(len=*), intent(in) :: node_name
-    integer, intent(in), optional :: idx
     logical, intent(out), optional :: found
     type(Node), pointer, intent(in) :: in_ptr
     type(Node), pointer, intent(out) :: out_ptr
 
-    integer :: idx_
     logical :: found_
     type(NodeList), pointer :: elem_list => null()
 
@@ -142,15 +143,43 @@ contains
     if (getLength(elem_list) == 0) return
 
     ! Point to the new element
-    idx_ = 0
-    if (present(idx)) idx_ = idx - 1
-    out_ptr => item(elem_list, idx_)
+    out_ptr => item(elem_list, 0)
     found_ = .true.
 
     ! Check to output found
     if (present(found)) found = found_
 
   end subroutine get_node_ptr
+
+!===============================================================================
+! GET_NODE_LIST
+!===============================================================================
+
+  subroutine get_node_list(in_ptr, node_name, out_ptr)
+
+    character(len=*), intent(in) :: node_name
+    type(Node), pointer, intent(in) :: in_ptr
+    type(NodeList), pointer, intent(out) :: out_ptr
+
+    ! Check for a sub-element 
+    out_ptr => getElementsByTagName(in_ptr, trim(node_name))
+
+  end subroutine get_node_list
+
+!===============================================================================
+! GET_NODE_ITEM
+!===============================================================================
+
+  subroutine get_node_item(in_ptr, idx, out_ptr)
+
+    integer, intent(in) :: idx
+    type(NodeList), pointer, intent(in) :: in_ptr
+    type(Node), pointer, intent(out) :: out_ptr
+
+    ! Check for a sub-element 
+    out_ptr => item(in_ptr, idx - 1)
+
+  end subroutine get_node_item
 
 !===============================================================================
 ! GET_NODE_VALUE_INTEGER

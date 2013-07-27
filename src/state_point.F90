@@ -94,6 +94,27 @@ contains
         call write_data(k_col_tra, "k_col_tra")
         call write_data(k_abs_tra, "k_abs_tra")
         call write_data(k_combined, "k_combined", length=2)
+
+        ! Write out CMFD info
+        if (cmfd_on) then
+          call write_data(1, "cmfd_on")
+          call write_data(cmfd % k_cmfd, "k_cmfd", length=current_batch, &
+               group="cmfd")
+          call write_data(cmfd % cmfd_src, "cmfd_src", &
+               length=(/cmfd % indices(4), cmfd % indices(1), &
+               cmfd % indices(2), cmfd % indices(3)/), &
+               group="cmfd")
+          if (entropy_on) call write_data(cmfd % entropy, "cmfd_entropy", &
+                            length=current_batch, group="cmfd")
+          call write_data(cmfd % balance, "cmfd_balance", &
+               length=current_batch, group="cmfd")
+          call write_data(cmfd % dom, "cmfd_dominance", &
+               length = current_batch, group="cmfd")
+          call write_data(cmfd % src_cmp, "cmfd_srccmp", &
+               length = current_batch, group="cmfd")
+        else
+          call write_data(0, "cmfd_on")
+        end if
       end if
 
       ! Write number of meshes
@@ -516,6 +537,28 @@ contains
 
       ! Take maximum of statepoint n_inactive and input n_inactive
       n_inactive = max(n_inactive, int_array(1))
+
+      ! Read in to see if CMFD was on
+      call read_data(int_array(1), "cmfd_on", option="collective")
+
+      ! Write out CMFD info
+      if (int_array(1) == 1) then
+        call read_data(cmfd % k_cmfd, "k_cmfd", length=restart_batch, &
+             group="cmfd", option="collective")
+        call read_data(cmfd % cmfd_src, "cmfd_src", &
+             length=(/cmfd % indices(4), cmfd % indices(1), &
+             cmfd % indices(2), cmfd % indices(3)/), &
+             group="cmfd", option="collective")
+        if (entropy_on) call read_data(cmfd % entropy, "cmfd_entropy", &
+                          length=restart_batch, group="cmfd", &
+                          option="collective")
+        call read_data(cmfd % balance, "cmfd_balance", &
+             length=restart_batch, group="cmfd", option="collective")
+        call read_data(cmfd % dom, "cmfd_dominance", &
+             length = restart_batch, group="cmfd", option="collective")
+        call read_data(cmfd % src_cmp, "cmfd_srccmp", &
+             length = restart_batch, group="cmfd", option="collective")
+      end if
     end if
 
     ! Read number of meshes

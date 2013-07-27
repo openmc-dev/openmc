@@ -23,12 +23,16 @@ module hdf5_interface
   integer(HSIZE_T) :: dims1(1)   ! dims type for 1-D array
   integer(HSIZE_T) :: dims2(2)   ! dims type for 2-D array
   integer(HSIZE_T) :: dims3(3)   ! dims type for 3-D array
+  integer(HSIZE_T) :: dims4(4)   ! dims type for 4-D array
   type(c_ptr)      :: f_ptr      ! pointer to data
 
   ! Generic HDF5 write procedure interface
   interface hdf5_write_data
     module procedure hdf5_write_double
     module procedure hdf5_write_double_1Darray
+    module procedure hdf5_write_double_2Darray
+    module procedure hdf5_write_double_3Darray
+    module procedure hdf5_write_double_4Darray
     module procedure hdf5_write_integer
     module procedure hdf5_write_integer_1Darray
     module procedure hdf5_write_long
@@ -39,6 +43,7 @@ module hdf5_interface
   interface hdf5_read_data
     module procedure hdf5_read_double
     module procedure hdf5_read_double_1Darray
+    module procedure hdf5_read_double_4Darray
     module procedure hdf5_read_integer
     module procedure hdf5_read_integer_1Darray
     module procedure hdf5_read_long
@@ -382,6 +387,28 @@ contains
   end subroutine hdf5_write_double_3Darray
 
 !===============================================================================
+! HDF5_WRITE_DOUBLE_4DARRAY writes double precision 4-D aray
+!===============================================================================
+
+  subroutine hdf5_write_double_4Darray(group, name, buffer, length)
+
+    integer,        intent(in) :: length(4) ! length of array dimensions
+    integer(HID_T), intent(in) :: group     ! name of group
+    character(*),   intent(in) :: name      ! name of data
+    real(8),        intent(in) :: buffer(length(1),length(2),& ! data
+                                         length(3),length(4))
+
+    ! Set rank and dimensions
+    hdf5_rank = 4
+    dims4 = length
+
+    ! Write data
+    call h5ltmake_dataset_double_f(group, name, hdf5_rank, dims4, &
+         buffer, hdf5_err)
+
+  end subroutine hdf5_write_double_4Darray
+
+!===============================================================================
 ! HDF5_WRITE_STRING writes string data
 !===============================================================================
 
@@ -551,6 +578,26 @@ contains
     call h5ltread_dataset_double_f(group, name, buffer, dims1, hdf5_err)
 
   end subroutine hdf5_read_double_1Darray
+
+!===============================================================================
+! HDF5_READ_DOUBLE_4DARRAY reads double precision 4-D array
+!===============================================================================
+
+  subroutine hdf5_read_double_4Darray(group, name, buffer, length)
+
+    integer(HID_T), intent(in)    :: group     ! name of group
+    integer,        intent(in)    :: length(:) ! length of array
+    character(*),   intent(in)    :: name      ! name of data
+    real(8),        intent(inout) :: buffer(length(1), length(2),& ! read data to here
+                                            length(3), length(4))
+
+    ! Set dimensions of data
+    dims4 = length
+
+    ! Read data
+    call h5ltread_dataset_double_f(group, name, buffer, dims4, hdf5_err)
+
+  end subroutine hdf5_read_double_4Darray
 
 !===============================================================================
 ! HDF5_READ_STRING reads string data

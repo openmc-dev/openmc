@@ -46,6 +46,9 @@ contains
         call fatal_error() 
       end if
 
+      ! Save k-effective
+      cmfd % k_cmfd(current_batch) = cmfd % keff
+
       ! check to perform adjoint on last batch
       if (current_batch == n_batches .and. cmfd_run_adjoint) then
         if (trim(cmfd_solver_type) == 'power') then

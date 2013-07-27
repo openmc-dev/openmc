@@ -240,8 +240,10 @@ contains
 
     end if
 
+#ifdef MPI
     ! Broadcast full source to all procs
     call MPI_BCAST(cmfd % cmfd_src, n, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
+#endif
 
   end subroutine calc_fission_source
 
@@ -330,9 +332,10 @@ contains
       end if
 
       ! Broadcast weight factors to all procs
+#ifdef MPI
       call MPI_BCAST(cmfd % weightfactors, ng*nx*ny*nz, MPI_REAL8, 0, &
            MPI_COMM_WORLD, mpi_err)
-
+#endif
    end if
 
     ! Begin loop over source bank

@@ -196,6 +196,7 @@ contains
     type(Vector)      :: res
     type(Matrix)      :: jac_prec
 
+# ifdef PETSC
     ! Set residual procedure
     call SNESSetFunction(self % snes, res % petsc_vec, jfnk_compute_residual, &
          ctx, petsc_err)
@@ -210,6 +211,7 @@ contains
     ! Set up Jacobian Lags
     call SNESSetLagJacobian(self % snes, -2, petsc_err)
     call SNESSetLagPreconditioner(self % snes, -1, petsc_err)
+#endif
 
   end subroutine jfnk_set_functions
 
@@ -231,7 +233,7 @@ contains
 !===============================================================================
 ! JFNK_COMPUTE_RESIDUAL buffer routine to user specifed residual routine
 !===============================================================================
-
+# ifdef PETSC
   subroutine jfnk_compute_residual(snes, x, res, ctx, ierr)
 
     SNES           :: snes
@@ -248,26 +250,22 @@ contains
     ! for the residual and x vectors here
 
     ! Need to point an OpenMC vector to PETSc vector
-#ifdef PETSC
     call VecGetArrayF90(x, xvec % val, ierr)
     call VecGetArrayF90(res, resvec % val, ierr)
-#endif
 
     ! Call user residual routine
     call ctx % res_proc_ptr(xvec, resvec)
 
     ! Need to restore the PETSc vector
-#ifdef PETSC
     call VecRestoreArrayF90(x, xvec % val, ierr)
     call VecRestoreArrayF90(res, resvec % val, ierr)
-#endif
 
   end subroutine jfnk_compute_residual
-
+#endif
 !===============================================================================
 ! JFNK_COMPUTE_JACOBIAN
 !===============================================================================
-
+#ifdef PETSC
   subroutine jfnk_compute_jacobian(snes, x, jac_mf, jac_prec, flag, ctx, &
              ierr)
 
@@ -285,23 +283,17 @@ contains
     ! matrix
 
     ! Need to point OpenMC vector to PETSc Vector
-#ifdef PETSC
     call VecGetArrayF90(x, xvec % val, ierr)
-#endif
 
     ! Evaluate user jacobian routine
     call ctx % jac_proc_ptr(xvec)
 
     ! Restore the PETSc vector
-#ifdef PETSC
     call VecRestoreArrayF90(x, xvec % val, ierr)
-#endif
 
-#ifdef PETSC
     call MatAssemblyBegin(jac_mf, MAT_FINAL_ASSEMBLY, petsc_err)
     call MatAssemblyEnd(jac_mf, MAT_FINAL_ASSEMBLY, petsc_err)
-#endif
 
   end subroutine jfnk_compute_jacobian
-
+#endif
 end module petsc_solver

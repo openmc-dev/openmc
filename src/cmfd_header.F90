@@ -80,6 +80,9 @@ module cmfd_header
     ! Dominance ratio
     real(8), allocatable :: dom(:)
 
+    ! List of CMFD k
+    real(8), allocatable :: k_cmfd(:)
+
   end type cmfd_type
 
 contains
@@ -136,6 +139,7 @@ contains
     if (.not. allocated(this % balance)) allocate(this % balance(n_batches))
     if (.not. allocated(this % src_cmp)) allocate(this % src_cmp(n_batches))
     if (.not. allocated(this % dom)) allocate(this % dom(n_batches))
+    if (.not. allocated(this % k_cmfd)) allocate(this % k_cmfd(n_batches))
 
     ! Set everthing to 0 except weight multiply factors if feedback isnt on
     this % flux          = ZERO
@@ -155,6 +159,7 @@ contains
     this % balance       = ZERO
     this % src_cmp       = ZERO
     this % dom           = ZERO
+    this % k_cmfd        = ZERO
     if (entropy_on) this % entropy = ZERO
 
   end subroutine allocate_cmfd
@@ -188,6 +193,7 @@ contains
     if (allocated(this % balance))       deallocate(this % balance)
     if (allocated(this % src_cmp))       deallocate(this % src_cmp)
     if (allocated(this % dom))           deallocate(this % dom)
+    if (allocated(this % k_cmfd))        deallocate(this % k_cmfd)
     if (allocated(this % entropy))       deallocate(this % entropy)
 
   end subroutine deallocate_cmfd

@@ -19,6 +19,7 @@ module output_interface
     module procedure write_double_1Darray
     module procedure write_double_2Darray
     module procedure write_double_3Darray
+    module procedure write_double_4Darray
     module procedure write_integer
     module procedure write_integer_1Darray
     module procedure write_integer_2Darray
@@ -31,6 +32,7 @@ module output_interface
   interface read_data
     module procedure read_double
     module procedure read_double_1Darray
+    module procedure read_double_4Darray
     module procedure read_integer
     module procedure read_integer_1Darray
     module procedure read_long
@@ -366,6 +368,71 @@ contains
 #endif
 
   end subroutine write_double_3Darray
+
+!===============================================================================
+! WRITE_DOUBLE_4DARRAY writes double precision 4-D array data
+!===============================================================================
+
+  subroutine write_double_4Darray(buffer, name, group, length)
+
+    integer,      intent(in)           :: length(4) ! length of each dimension
+    real(8),      intent(in)           :: buffer(length(1),length(2),&
+                                                 length(3),length(4))
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+
+    ! Write the data
+    call hdf5_write_double_4Darray(temp_group, name, buffer, length)
+
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#else
+    message = 'Double precision 4-D array writing not currently supported'
+    call warning()
+#endif
+
+  end subroutine write_double_4Darray
+
+!===============================================================================
+! READ_DOUBLE_4DARRAY reads double precision 4-D array data
+!===============================================================================
+
+  subroutine read_double_4Darray(buffer, name, group, length, option)
+
+    integer,      intent(in)           :: length(4) ! length of each dimension
+    real(8),      intent(inout)        :: buffer(length(1),length(2),&
+                                                 length(3),length(4))
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
+    character(*), intent(in), optional :: option    ! read option
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+
+    ! Write the data
+    call hdf5_read_double_4Darray(temp_group, name, buffer, length)
+
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#else
+    message = 'Double precision 4-D array reading not currently supported'
+    call warning()
+#endif
+
+  end subroutine read_double_4Darray
 
 !===============================================================================
 ! WRITE_INTEGER writes integer scalar data

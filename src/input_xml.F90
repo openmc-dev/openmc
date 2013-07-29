@@ -725,9 +725,11 @@ contains
     ! Parse geometry.xml file
     call open_xmldoc(doc, filename)
 
+    ! Get pointer to list of XML <cell>
+    call get_node_list(doc, "cell", node_cell_list)
+
     ! Get number of <cell> tags
-    n_cells = 0 
-    n_cells = get_number_nodes(doc, "cell")
+    n_cells = get_list_size(node_cell_list)
 
     ! Check for no cells
     if (n_cells == 0) then
@@ -743,15 +745,12 @@ contains
       overlap_check_cnt = 0
     end if
 
-    ! Get pointer to list of XML <cell>
-    call get_node_list(doc, "cell", node_cell_list)
-
     n_universes = 0
     do i = 1, n_cells
       c => cells(i)
 
       ! Get pointer to i-th cell node
-      call get_node_item(node_cell_list, i, node_cell)
+      call get_list_item(node_cell_list, i, node_cell)
 
       ! Copy data into cells
       if (check_for_node(node_cell, "id")) then
@@ -911,9 +910,11 @@ contains
     ! applied to a surface
     boundary_exists = .false.
 
+    ! get pointer to list of xml <surface>
+    call get_node_list(doc, "surface", node_surf_list)
+
     ! Get number of <surface> tags
-    n_surfaces = 0
-    n_surfaces = get_number_nodes(doc, "surface")
+    n_surfaces = get_list_size(node_surf_list)
 
     ! Check for no surfaces
     if (n_surfaces == 0) then
@@ -924,14 +925,11 @@ contains
     ! Allocate cells array
     allocate(surfaces(n_surfaces))
 
-    ! Get pointer to list of XML <surface>
-    call get_node_list(doc, "surface", node_surf_list)
-
     do i = 1, n_surfaces
       s => surfaces(i)
 
       ! Get pointer to i-th surface node
-      call get_node_item(node_surf_list, i, node_surf)
+      call get_list_item(node_surf_list, i, node_surf)
 
       ! Copy data into cells
       if (check_for_node(node_surf, "id")) then
@@ -1045,18 +1043,18 @@ contains
     ! ==========================================================================
     ! READ LATTICES FROM GEOMETRY.XML
 
-    ! Allocate lattices array
-    n_lattices = get_number_nodes(doc, "lattice")
-    allocate(lattices(n_lattices))
-
     ! Get pointer to list of XML <lattice>
     call get_node_list(doc, "lattice", node_lat_list)
+
+    ! Allocate lattices array
+    n_lattices = get_list_size(node_lat_list)
+    allocate(lattices(n_lattices))
 
     do i = 1, n_lattices
       lat => lattices(i)
 
       ! Get pointer to i-th lattice
-      call get_node_item(node_lat_list, i, node_lat)
+      call get_list_item(node_lat_list, i, node_lat)
 
       ! ID of lattice
       if (check_for_node(node_lat, "id")) then
@@ -1233,22 +1231,22 @@ contains
     if (check_for_node(doc, "default_xs")) &
       call get_node_value(doc, "default_xs", default_xs)
 
+    ! Get pointer to list of XML <material>
+    call get_node_list(doc, "material", node_mat_list)
+
     ! Allocate cells array
-    n_materials = get_number_nodes(doc, "material")
+    n_materials = get_list_size(node_mat_list)
     allocate(materials(n_materials))
 
     ! Initialize count for number of nuclides/S(a,b) tables
     index_nuclide = 0
     index_sab = 0
 
-    ! Get pointer to list of XML <material>
-    call get_node_list(doc, "material", node_mat_list)
-
     do i = 1, n_materials
       mat => materials(i)
 
       ! Get pointer to i-th material node
-      call get_node_item(node_mat_list, i, node_mat)
+      call get_list_item(node_mat_list, i, node_mat)
 
       ! Copy material id
       if (check_for_node(node_mat, "id")) then
@@ -1336,9 +1334,9 @@ contains
       call get_node_list(node_mat, "nuclide", node_nuc_list)
 
       ! Create list of nuclides based on those specified plus natural elements
-      INDIVIDUAL_NUCLIDES: do j = 1, get_number_nodes(node_mat, "nuclide")
+      INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
         ! Combine nuclide identifier and cross section and copy into names
-        call get_node_item(node_nuc_list, j, node_nuc)
+        call get_list_item(node_nuc_list, j, node_nuc)
 
         ! Check for empty name on nuclide
         if (.not.check_for_node(node_nuc, "name")) then
@@ -1397,8 +1395,8 @@ contains
       ! Get pointer list of XML <element>
       call get_node_list(node_mat, "element", node_ele_list)
 
-      NATURAL_ELEMENTS: do j = 1, get_number_nodes(node_mat, "element")
-        call get_node_item(node_ele_list, j, node_ele)
+      NATURAL_ELEMENTS: do j = 1, get_list_size(node_ele_list)
+        call get_list_item(node_ele_list, j, node_ele)
 
         ! Check for empty name on natural element
         if (.not.check_for_node(node_ele, "name")) then
@@ -1513,7 +1511,10 @@ contains
       ! =======================================================================
       ! READ AND PARSE <sab> TAG FOR S(a,b) DATA
 
-      n_sab = get_number_nodes(node_mat, "sab")
+      ! Get pointer list to XML <sab>
+      call get_node_list(node_mat, "sab", node_sab_list)
+
+      n_sab = get_list_size(node_sab_list)
       if (n_sab > 0) then
         ! Set number of S(a,b) tables
         mat % n_sab = n_sab
@@ -1526,12 +1527,9 @@ contains
         ! Initialize i_sab_nuclides
         mat % i_sab_nuclides = NONE
 
-        ! Get pointer list to XML <sab>
-        call get_node_list(node_mat, "sab", node_sab_list)
-
         do j = 1, n_sab
           ! Get pointer to S(a,b) table
-          call get_node_item(node_sab_list, j, node_sab)
+          call get_list_item(node_sab_list, j, node_sab)
 
           ! Determine name of S(a,b) table
           if (.not.check_for_node(node_sab, "name") .or. &
@@ -1644,28 +1642,28 @@ contains
     ! ==========================================================================
     ! DETERMINE SIZE OF ARRAYS AND ALLOCATE
 
+    ! Get pointer list to XML <mesh>
+    call get_node_list(doc, "mesh", node_mesh_list)
+
+    ! Get pointer list to XML <tally>
+    call get_node_list(doc, "tally", node_tal_list)
+
     ! Check for user meshes
-    if (.not.check_for_node(doc, "mesh")) then
-      n_user_meshes = 0
+    n_user_meshes = get_list_size(node_mesh_list)
+    if (cmfd_run) then
+      n_meshes = n_user_meshes + n_cmfd_meshes
     else
-      n_user_meshes = get_number_nodes(doc, "mesh")
-      if (cmfd_run) then
-        n_meshes = n_user_meshes + n_cmfd_meshes
-      else
-        n_meshes = n_user_meshes
-      end if
+      n_meshes = n_user_meshes
     end if
 
     ! Allocate mesh array
     if (n_meshes > 0) allocate(meshes(n_meshes))
 
     ! Check for user tallies
-    if (.not.check_for_node(doc, "tally")) then
-      n_user_tallies = 0
+    n_user_tallies = get_list_size(node_tal_list)
+    if (n_user_tallies == 0) then
       message = "No tallies present in tallies.xml file!"
       call warning()
-    else
-      n_user_tallies = get_number_nodes(doc, "tally")
     end if
 
     ! Allocate tally array
@@ -1684,14 +1682,11 @@ contains
     ! ==========================================================================
     ! READ MESH DATA
 
-    ! Get pointer list to XML <mesh>
-    call get_node_list(doc, "mesh", node_mesh_list)
-
     do i = 1, n_user_meshes
       m => meshes(i)
 
       ! Get pointer to mesh node
-      call get_node_item(node_mesh_list, i, node_mesh)
+      call get_list_item(node_mesh_list, i, node_mesh)
 
       ! Copy mesh id
       if (check_for_node(node_mesh, "id")) then
@@ -1824,15 +1819,12 @@ contains
     ! ==========================================================================
     ! READ TALLY DATA
 
-    ! Get pointer list to XML <tally>
-    call get_node_list(doc, "tally", node_tal_list)
-
     READ_TALLIES: do i = 1, n_user_tallies
       ! Get pointer to tally
       t => tallies(i)
 
       ! Get pointer to tally xml node
-      call get_node_item(node_tal_list, i, node_tal)
+      call get_list_item(node_tal_list, i, node_tal)
 
       ! Set tally type to volume by default
       t % type = TALLY_VOLUME
@@ -1872,26 +1864,25 @@ contains
       ! element followed by sub-elements <cell>, <mesh>, etc. This checks for
       ! the old format and if it is present, raises an error
 
-      if (get_number_nodes(node_tal, "filters") > 0) then
-        message = "Tally filters should be specified with multiple <filter> &
-             &elements. Did you forget to change your <filters> element?"
-        call fatal_error()
-      end if
+!     if (get_number_nodes(node_tal, "filters") > 0) then
+!       message = "Tally filters should be specified with multiple <filter> &
+!            &elements. Did you forget to change your <filters> element?"
+!       call fatal_error()
+!     end if
 
-      if (check_for_node(node_tal, "filter")) then
-        ! Determine number of filters
-        n_filters = get_number_nodes(node_tal, "filter")
+      ! Get pointer list to XML <filter> and get number of filters
+      call get_node_list(node_tal, "filter", node_filt_list)
+      n_filters = get_list_size(node_filt_list)
+
+      if (n_filters /= 0) then
 
         ! Allocate filters array
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
 
-        ! Get pointer list to XML <filter>
-        call get_node_list(node_tal, "filter", node_filt_list)
-
         READ_FILTERS: do j = 1, n_filters
           ! Get pointer to filter xml node
-          call get_node_item(node_filt_list, j, node_filt)
+          call get_list_item(node_filt_list, j, node_filt)
 
           ! Convert filter type to lower case
           temp_str = ''
@@ -2453,7 +2444,7 @@ contains
   subroutine read_plots_xml
 
     integer i, j
-    integer n_cols, col_id, n_comp
+    integer n_cols, col_id, n_comp, n_masks
     integer, allocatable :: iarray(:)
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
@@ -2465,6 +2456,7 @@ contains
     type(Node), pointer :: node_mask => null()
     type(NodeList), pointer :: node_plot_list => null()
     type(NodeList), pointer :: node_col_list => null()
+    type(NodeList), pointer :: node_mask_list => null()
 
     ! Check if plots.xml exists
     filename = trim(path_input) // "plots.xml"
@@ -2481,18 +2473,18 @@ contains
     ! Parse plots.xml file
     call open_xmldoc(doc, filename)
 
-    ! Allocate plots array
-    n_plots = get_number_nodes(doc, "plot")
-    allocate(plots(n_plots))
-
     ! Get list pointer to XML <plot>
     call get_node_list(doc, "plot", node_plot_list)
+
+    ! Allocate plots array
+    n_plots = get_list_size(node_plot_list)
+    allocate(plots(n_plots))
 
     READ_PLOTS: do i = 1, n_plots
       pl => plots(i)
 
       ! Get pointer to plot XML node
-      call get_node_item(node_plot_list, i, node_plot)
+      call get_list_item(node_plot_list, i, node_plot)
 
       ! Copy data into plots
       if (check_for_node(node_plot, "id")) then
@@ -2655,8 +2647,12 @@ contains
         call fatal_error()
       end select
 
+      ! Get the number of <col_spec> nodes and get a list of them
+      call get_node_list(node_plot, "col_spec", node_col_list)
+      n_cols = get_list_size(node_col_list)
+
       ! Copy user specified colors
-      if (check_for_node(node_plot, "col_spec")) then
+      if (n_cols /= 0) then
       
         if (pl % type == PLOT_TYPE_VOXEL) then
           message = "Color specifications ignored in voxel plot " // & 
@@ -2664,13 +2660,10 @@ contains
           call warning()
         end if
       
-        ! Get the number of <col_spec> nodes and get a list of them
-        n_cols = get_number_nodes(node_plot, "col_spec")
-        call get_node_list(node_plot, "col_spec", node_col_list)
         do j = 1, n_cols
 
           ! Get pointer to color spec XML node
-          call get_node_item(node_col_list, j, node_col)
+          call get_list_item(node_col_list, j, node_col)
 
           ! Check and make sure 3 values are specified for RGB
           if (get_arraysize_double(node_col, "rgb") /= 3) then
@@ -2716,7 +2709,9 @@ contains
       end if
 
       ! Deal with masks
-      if (check_for_node(node_plot, "mask")) then
+      call get_node_list(node_plot, "mask", node_mask_list)
+      n_masks = get_list_size(node_mask_list)
+      if (n_masks /= 0) then
       
         if (pl % type == PLOT_TYPE_VOXEL) then
           message = "Mask ignored in voxel plot " // & 
@@ -2724,16 +2719,15 @@ contains
           call warning()
         end if
       
-        select case(get_number_nodes(node_plot, "mask"))
+        select case(n_masks)
           case default
             message = "Mutliple masks" // &
                  " specified in plot " // trim(to_str(pl % id))
             call fatal_error()
-          case (0)
           case (1)
 
             ! Get pointer to mask
-            call get_node_ptr(node_plot, "mask", node_mask)
+            call get_list_item(node_mask_list, 1, node_mask)
 
             ! Determine how many components there are and allocate
             n_comp = 0
@@ -2868,23 +2862,23 @@ contains
       call get_node_value(doc, "entries", entries)
     end if
 
+    ! Get node list of all <ace_table>
+    call get_node_list(doc, "ace_table", node_ace_list)
+    n_listings = get_list_size(node_ace_list)
+
     ! Allocate xs_listings array
-    if (.not.check_for_node(doc, "ace_table")) then
+    if (n_listings == 0) then
        message = "No ACE table listings present in cross_sections.xml file!"
        call fatal_error()
     else
-       n_listings = get_number_nodes(doc, "ace_table")
        allocate(xs_listings(n_listings))
     end if
-
-    ! Get node list of all <ace_table>
-    call get_node_list(doc, "ace_table", node_ace_list)
 
     do i = 1, n_listings
        listing => xs_listings(i)
 
        ! Get pointer to ace table XML node
-       call get_node_item(node_ace_list, i, node_ace)
+       call get_list_item(node_ace_list, i, node_ace)
 
        ! copy a number of attributes
        call get_node_value(node_ace, "name", listing % name)

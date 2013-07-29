@@ -12,10 +12,10 @@ module xml_interface
   public :: open_xmldoc
   public :: close_xmldoc
   public :: check_for_node
-  public :: get_number_nodes
   public :: get_node_ptr
   public :: get_node_list
-  public :: get_node_item
+  public :: get_list_size
+  public :: get_list_item
   public :: get_node_value
   public :: get_node_array
   public :: get_arraysize_integer
@@ -41,7 +41,7 @@ module xml_interface
 contains
 
 !===============================================================================
-! OPEN_XMLDOC
+! OPEN_XMLDOC opens and parses an XML and returns a pointer to the document
 !===============================================================================
 
   subroutine open_xmldoc(ptr, filename)
@@ -55,7 +55,7 @@ contains
   end subroutine open_xmldoc
 
 !===============================================================================
-! CLOSE_XMLDOC
+! CLOSE_XMLDOC closes and destroys all memory associated with document
 !===============================================================================
 
   subroutine close_xmldoc(ptr)
@@ -67,7 +67,11 @@ contains
   end subroutine close_xmldoc
 
 !===============================================================================
-! CHECK_FOR_NODE
+! CHECK_FOR_NODE checks for an attribute or sub-element node with the given
+! node name. This should only be used for checking a single occurance of a
+! sub-element node. To check for sub-element nodes that repeat, use
+! get_node_list and get_list_size. This is to minimize number of calls
+! to getElementsByTagName.
 !===============================================================================
 
   function check_for_node(ptr, node_name) result(found)
@@ -100,27 +104,9 @@ contains
   end function check_for_node
 
 !===============================================================================
-! GET_NUMBER_NODES
-!===============================================================================
-
-  function get_number_nodes(ptr, node_name) result(n_nodes)
-
-    character(len=*), intent(in) :: node_name
-    integer :: n_nodes
-    type(Node), pointer, intent(in) :: ptr
-
-    type(NodeList), pointer :: elem_list
-
-    ! Check for a sub-element 
-    elem_list => getElementsByTagName(ptr, trim(node_name))
-
-    ! Get the length of the list
-    n_nodes = getLength(elem_list)
-
-  end function get_number_nodes
-
-!===============================================================================
-! GET_NODE_PTR
+! GET_NODE_PTR returns a Node pointer to an attribute or sub-element node.
+! Note, this should only be used for sub-element nodes that occur only once.
+! For repeated nodes, use get_node_list and then get_item_item.
 !===============================================================================
 
   subroutine get_node_ptr(in_ptr, node_name, out_ptr, found)
@@ -152,7 +138,7 @@ contains
   end subroutine get_node_ptr
 
 !===============================================================================
-! GET_NODE_LIST
+! GET_NODE_LIST is used to get a pointer to a list of sub-element nodes
 !===============================================================================
 
   subroutine get_node_list(in_ptr, node_name, out_ptr)
@@ -167,10 +153,24 @@ contains
   end subroutine get_node_list
 
 !===============================================================================
-! GET_NODE_ITEM
+! GET_LIST_SIZE is used to get the number of elements from a node list
 !===============================================================================
 
-  subroutine get_node_item(in_ptr, idx, out_ptr)
+  function get_list_size(in_ptr) result(n_size)
+
+    integer :: n_size
+    type(NodeList), pointer, intent(in) :: in_ptr
+
+    ! Get the size of the list
+    n_size = getLength(in_ptr)
+
+  end function get_list_size
+
+!===============================================================================
+! GET_LIST_ITEM is used to select a specific item from a node list
+!===============================================================================
+
+  subroutine get_list_item(in_ptr, idx, out_ptr)
 
     integer, intent(in) :: idx
     type(NodeList), pointer, intent(in) :: in_ptr
@@ -179,10 +179,10 @@ contains
     ! Check for a sub-element 
     out_ptr => item(in_ptr, idx - 1)
 
-  end subroutine get_node_item
+  end subroutine get_list_item
 
 !===============================================================================
-! GET_NODE_VALUE_INTEGER
+! GET_NODE_VALUE_INTEGER returns a integer value from an attribute or node
 !===============================================================================
 
   subroutine get_node_value_integer(ptr, node_name, result_int)
@@ -215,7 +215,7 @@ contains
   end subroutine get_node_value_integer
 
 !===============================================================================
-! GET_NODE_VALUE_LONG
+! GET_NODE_VALUE_LONG returns an 8-byte integer from attribute or node
 !===============================================================================
 
   subroutine get_node_value_long(ptr, node_name, result_long)
@@ -248,7 +248,7 @@ contains
   end subroutine get_node_value_long
 
 !===============================================================================
-! GET_NODE_VALUE_DOUBLE
+! GET_NODE_VALUE_DOUBLE returns a double precision real from attr. or node
 !===============================================================================
 
   subroutine get_node_value_double(ptr, node_name, result_double)
@@ -281,7 +281,7 @@ contains
   end subroutine get_node_value_double
 
 !===============================================================================
-! GET_NODE_ARRAY_INTEGER
+! GET_NODE_ARRAY_INTEGER returns a 1-D array of integers
 !===============================================================================
 
   subroutine get_node_array_integer(ptr, node_name, result_int)
@@ -314,7 +314,7 @@ contains
   end subroutine get_node_array_integer
 
 !===============================================================================
-! GET_NODE_ARRAY_DOUBLE
+! GET_NODE_ARRAY_DOUBLE returns a 1-D array of double precision reals
 !===============================================================================
 
   subroutine get_node_array_double(ptr, node_name, result_double)
@@ -347,7 +347,7 @@ contains
   end subroutine get_node_array_double
 
 !===============================================================================
-! GET_NODE_ARRAY_STRING
+! GET_NODE_ARRAY_STRING returns a 1-D array of strings
 !===============================================================================
 
   subroutine get_node_array_string(ptr, node_name, result_string)
@@ -380,7 +380,7 @@ contains
   end subroutine get_node_array_string
 
 !===============================================================================
-! GET_NODE_VALUE_STRING
+! GET_NODE_VALUE_STRING returns a single string from attr. or node
 !===============================================================================
 
   subroutine get_node_value_string(ptr, node_name, result_str)
@@ -413,7 +413,7 @@ contains
   end subroutine get_node_value_string
 
 !===============================================================================
-! GET_NODE_ARRAYSIZE_INTEGER
+! GET_NODE_ARRAYSIZE_INTEGER returns the size of the integer array
 !===============================================================================
 
   function get_arraysize_integer(ptr, node_name) result(n)
@@ -442,7 +442,7 @@ contains
   end function get_arraysize_integer
 
 !===============================================================================
-! GET_NODE_ARRAYSIZE_DOUBLE
+! GET_NODE_ARRAYSIZE_DOUBLE returns the size of double prec. real array
 !===============================================================================
 
   function get_arraysize_double(ptr, node_name) result(n)
@@ -471,7 +471,7 @@ contains
   end function get_arraysize_double
 
 !===============================================================================
-! GET_NODE_ARRAYSIZE_STRING
+! GET_NODE_ARRAYSIZE_STRING returns the size of string array
 !===============================================================================
 
   function get_arraysize_string(ptr, node_name) result(n)
@@ -500,7 +500,7 @@ contains
   end function get_arraysize_string
 
 !===============================================================================
-! GET_NODE
+! GET_NODE private routine that gets a pointer to a specific node
 !===============================================================================
 
   subroutine get_node(in_ptr, node_name, out_ptr, node_type, found)

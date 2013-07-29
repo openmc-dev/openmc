@@ -198,19 +198,26 @@ tally data, this option can significantly improve the parallel efficiency.
 --------------------
 
 The ``<output>`` element determines what output files should be written to disk
-during the run. This element has no attributes or sub-elements and should be set
-to a list of strings separated by spaces. Valid options are "summary",
-"cross-sections", and "tallies". For example, if you want the summary and cross
-sections summary file to be written, this element should be given as:
+during the run. The sub-elements are described below, where "true" will write
+out the file and "false" will not.
 
-  .. code-block:: xml
+  :cross_sections:
+    Writes out an ASCII summary file of the cross sections that were read in.
 
-      <output>summary cross_sections</output>
+    *Default*: false
 
-  .. note:: The tally results will be written to a binary/HDF5 state point file by
-            default.
+  :summary: 
+    Writes out an ASCII summary file describing all of the user input files that
+    were read in.
 
-  *Default*: "tallies"
+    *Default*: false
+
+  :tallies:
+    Write out an ASCII file of tally results.
+
+    *Default*: true
+
+  .. note:: The tally results will always be written to a binary/HDF5 state point file.
 
 ``<output_path>`` Element
 -------------------------

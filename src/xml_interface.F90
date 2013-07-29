@@ -49,8 +49,8 @@ contains
     character(len=*) :: filename
     type(Node), pointer :: ptr
 
-    ptr => parseFile(trim(filename))
-    ptr => getDocumentElement(ptr)
+    ptr => parseFile(trim(filename))  ! Pointer to the whole XML document
+    ptr => getDocumentElement(ptr)    ! Grabs root element of XML document
 
   end subroutine open_xmldoc
 
@@ -62,7 +62,8 @@ contains
 
     type(Node), pointer :: ptr
 
-    call destroy(ptr)
+    ptr => getParentNode(ptr)  ! Go from root element ptr to document ptr
+    call destroy(ptr)          ! Deallocates all nodes recursively
 
   end subroutine close_xmldoc
 

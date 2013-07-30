@@ -19,6 +19,7 @@ module output_interface
     module procedure write_double_1Darray
     module procedure write_double_2Darray
     module procedure write_double_3Darray
+    module procedure write_double_4Darray
     module procedure write_integer
     module procedure write_integer_1Darray
     module procedure write_integer_2Darray
@@ -31,6 +32,7 @@ module output_interface
   interface read_data
     module procedure read_double
     module procedure read_double_1Darray
+    module procedure read_double_4Darray
     module procedure read_integer
     module procedure read_integer_1Darray
     module procedure read_long
@@ -153,11 +155,21 @@ contains
 ! WRITE_DOUBLE writes double precision scalar data
 !===============================================================================
 
-  subroutine write_double(buffer, name, group)
+  subroutine write_double(buffer, name, group, collect)
 
-    real(8),      intent(in)           :: buffer ! data to write
-    character(*), intent(in)           :: name   ! name for data
-    character(*), intent(in), optional :: group  ! HDF5 group name
+    real(8),      intent(in)           :: buffer  ! data to write
+    character(*), intent(in)           :: name    ! name for data
+    character(*), intent(in), optional :: group   ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -166,14 +178,17 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
+# ifdef MPI
+    ! Write the data using parallel routine
+    call hdf5_write_double_parallel(temp_group, name, buffer, collect_)
+# else
     ! Write the data
     call hdf5_write_double(temp_group, name, buffer)
-
+# endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
-    call mpi_write_double(mpi_fh, buffer)
+    call mpi_write_double(mpi_fh, buffer, collect_)
 #else
     write(UNIT_OUTPUT) buffer
 #endif
@@ -184,12 +199,21 @@ contains
 ! READ_DOUBLE reads double precision scalar data
 !===============================================================================
 
-  subroutine read_double(buffer, name, group, option)
+  subroutine read_double(buffer, name, group, collect)
 
-    real(8),      intent(inout)        :: buffer ! read data to here 
-    character(*), intent(in)           :: name   ! name for data
-    character(*), intent(in), optional :: group  ! HDF5 group name
-    character(*), intent(in), optional :: option ! type of read
+    real(8),      intent(inout)        :: buffer  ! read data to here 
+    character(*), intent(in)           :: name    ! name for data
+    character(*), intent(in), optional :: group   ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O 
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -199,27 +223,16 @@ contains
       temp_group = hdf5_fh
     endif
 # ifdef MPI
-    ! Check for option for reading default is independent
-    if (present(option)) then
-      if (option == 'collective') then
-        call hdf5_parallel_read_double(temp_group, name, buffer, &
-             H5FD_MPIO_COLLECTIVE_F)
-      else
-        call hdf5_parallel_read_double(temp_group, name, buffer, &
-             H5FD_MPIO_INDEPENDENT_F)
-      end if
-    else
-      ! Standard read call
-      call hdf5_read_double(temp_group, name, buffer)
-    end if
+    ! Read the data using parallel routines 
+    call hdf5_read_double_parallel(temp_group, name, buffer, collect_)
 # else
-    ! Read the data serial
+    ! Read the data in serial
     call hdf5_read_double(temp_group, name, buffer)
 # endif
     ! Check if HDf5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
-    call mpi_read_double(mpi_fh, buffer)
+    call mpi_read_double(mpi_fh, buffer, collect_)
 #else
     read(UNIT_OUTPUT) buffer
 #endif
@@ -230,12 +243,22 @@ contains
 ! WRITE_DOUBLE_1DARRAY writes double presicions 1-D array data
 !===============================================================================
 
-  subroutine write_double_1Darray(buffer, name, group, length)
+  subroutine write_double_1Darray(buffer, name, group, length, collect)
 
     integer,      intent(in)           :: length    ! length of array to write
     real(8),      intent(in)           :: buffer(:) ! data to write
     character(*), intent(in)           :: name      ! name of data
     character(*), intent(in), optional :: group     ! HDF5 group name
+    logical,      intent(in), optional :: collect   ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -244,10 +267,13 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
-    ! Write the data
+# ifdef MPI
+    ! Write the data using parallel routine 
+    call hdf5_write_double_1Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
     call hdf5_write_double_1Darray(temp_group, name, buffer, length)
-
+# endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
@@ -262,13 +288,22 @@ contains
 ! READ_DOUBLE_1DARRAY reads double precision 1-D array data
 !===============================================================================
 
-  subroutine read_double_1Darray(buffer, name, group, length, option)
+  subroutine read_double_1Darray(buffer, name, group, length, collect)
 
     integer,        intent(in)           :: length    ! length of array to read
     real(8),        intent(inout)        :: buffer(:) ! read data to here
     character(*),   intent(in)           :: name      ! name of data
     character(*),   intent(in), optional :: group     ! HDF5 group name
-    character(*),   intent(in), optional :: option    ! read option
+    character(*),   intent(in), optional :: collect   ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -278,21 +313,11 @@ contains
       temp_group = hdf5_fh
     endif
 # ifdef MPI
-    ! Check for option for reading default is independent
-    if (present(option)) then
-      if (option == 'collective') then
-        call hdf5_parallel_read_double_1Darray(temp_group, name, buffer, &
-             length, H5FD_MPIO_COLLECTIVE_F)
-      else 
-        call hdf5_parallel_read_double_1Darray(temp_group, name, buffer, &
-             length, H5FD_MPIO_INDEPENDENT_F)
-      end if
-    else
-      ! Standard read call
-      call hdf5_read_double_1Darray(temp_group, name, buffer, length)
-    end if
+    ! Read the data using parallel routines
+    call hdf5_read_double_1Darray_parallel(temp_group, name, buffer, &
+         length, collect_)
 # else
-    ! Read the data serial
+    ! Read the data in serial
     call hdf5_read_double_1Darray(temp_group, name, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
@@ -309,105 +334,22 @@ contains
 ! WRITE_DOUBLE_2DARRAY writes double precision 2-D array data
 !===============================================================================
 
-  subroutine write_double_2Darray(buffer, name, group, length)
+  subroutine write_double_2Darray(buffer, name, group, length, collect)
 
     integer,      intent(in)           :: length(2) ! dimension of array
     real(8),      intent(in)           :: buffer(length(1),length(2)) ! the data
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
 
-#ifdef HDF5
-    ! Check if HDF5 group should be created/opened
-    if (present(group)) then
-      call hdf5_open_group(group)
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
     else
-      temp_group = hdf5_fh
-    endif
-
-    ! Write the data
-    call hdf5_write_double_2Darray(temp_group, name, buffer, length)
-
-    ! Check if HDF5 group should be closed
-    if (present(group)) call hdf5_close_group()
-#else
-    message = 'Double precision 2-D array writing not currently supported'
-    call warning()
-#endif
-
-  end subroutine write_double_2Darray
-
-!===============================================================================
-! WRITE_DOUBLE_3DARRAY writes double precision 3-D array data
-!===============================================================================
-
-  subroutine write_double_3Darray(buffer, name, group, length)
-
-    integer,      intent(in)           :: length(3) ! length of each dimension
-    real(8),      intent(in)           :: buffer(length(1),length(2),length(3))        
-    character(*), intent(in)           :: name ! name of data
-    character(*), intent(in), optional :: group ! HDF5 group name
-
-#ifdef HDF5
-    ! Check if HDF5 group should be created/opened
-    if (present(group)) then
-      call hdf5_open_group(group)
-    else
-      temp_group = hdf5_fh
-    endif
-
-    ! Write the data
-    call hdf5_write_double_3Darray(temp_group, name, buffer, length)
-
-    ! Check if HDF5 group should be closed
-    if (present(group)) call hdf5_close_group()
-#else
-    message = 'Double precision 3-D array writing not currently supported'
-    call warning()
-#endif
-
-  end subroutine write_double_3Darray
-
-!===============================================================================
-! WRITE_INTEGER writes integer scalar data
-!===============================================================================
-
-  subroutine write_integer(buffer, name, group)
-
-    integer,      intent(in)           :: buffer ! data to write
-    character(*), intent(in)           :: name   ! name of data
-    character(*), intent(in), optional :: group  ! HDF5 group name
-
-#ifdef HDF5
-    ! Check if HDF5 group should be created/opened
-    if (present(group)) then
-      call hdf5_open_group(group)
-    else
-      temp_group = hdf5_fh
-    endif
-
-    ! Write data
-    call hdf5_write_integer(temp_group, name, buffer)
-
-    ! Check if HDF5 group should be closed
-    if (present(group)) call hdf5_close_group()
-#elif MPI
-    call mpi_write_integer(mpi_fh, buffer)
-#else
-    write(UNIT_OUTPUT) buffer
-#endif
-
-  end subroutine write_integer
-
-!===============================================================================
-! READ_INTEGER reads integer scalar data
-!===============================================================================
-
-  subroutine read_integer(buffer, name, group, option)
-
-    integer,      intent(inout)        :: buffer ! read data to here
-    character(*), intent(in)           :: name   ! name of data
-    character(*), intent(in), optional :: group  ! HDF5 group name
-    character(*), intent(in), optional :: option ! read option
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -417,27 +359,335 @@ contains
       temp_group = hdf5_fh
     endif
 # ifdef MPI
-    ! Check for option for reading default is independent
-    if (present(option)) then
-      if (option == 'collective') then
-        call hdf5_parallel_read_integer(temp_group, name, buffer, &
-             H5FD_MPIO_COLLECTIVE_F)
-      else 
-        call hdf5_parallel_read_integer(temp_group, name, buffer, &
-             H5FD_MPIO_INDEPENDENT_F)
-      end if
-    else
-      ! Standard read call
-      call hdf5_read_integer(temp_group, name, buffer)
-    end if
+    ! Write the data using parallel routines
+    call hdf5_write_double_2Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
 # else
-    ! Read the data serial
-    call hdf5_read_integer(temp_group, name, buffer)
+    ! Write the data in serial
+    call hdf5_write_double_2Darray(temp_group, name, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
-    call mpi_read_integer(mpi_fh, buffer)
+    call mpi_write_double_2Darray(mpi_fh, buffer, length, collect_)
+#else
+    write(UNIT_OUTPUT) buffer(1:length(1),1:length(2))
+#endif
+
+  end subroutine write_double_2Darray
+
+!===============================================================================
+! READ_DOUBLE_2DARRAY reads double precision 2-D array data
+!===============================================================================
+
+  subroutine reads_double_2Darray(buffer, name, group, length, collect)
+
+    integer,      intent(in)           :: length(2) ! dimension of array
+    real(8),      intent(inout)        :: buffer(length(1),length(2)) ! the data
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+# ifdef MPI
+    ! Read the data using parallel routines
+    call hdf5_read_double_2Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
+    ! Read the data in serial
+    call hdf5_read_double_2Darray(temp_group, name, buffer, length)
+# endif
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_read_double_2Darray(mpi_fh, buffer, length, collect_)
+#else
+    read(UNIT_OUTPUT) buffer(1:length(1),1:length(2))
+#endif
+
+  end subroutine read_double_2Darray
+
+!===============================================================================
+! WRITE_DOUBLE_3DARRAY writes double precision 3-D array data
+!===============================================================================
+
+  subroutine write_double_3Darray(buffer, name, group, length, collect)
+
+    integer,      intent(in)           :: length(3) ! length of each dimension
+    real(8),      intent(in)           :: buffer(length(1),length(2),length(3))        
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+# ifdef MPI
+    ! Write the data using parallel routines
+    call hdf5_write_double_3Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
+    ! Write the data in serial
+    call hdf5_write_double_3Darray(temp_group, name, buffer, length)
+# endif
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_write_double_3Darray(mpi_fh, buffer, length, collect_)
+#else
+    write(UNIT_OUTPUT) buffer(1:length(1),1:length(2),1:length(3))
+#endif
+
+  end subroutine write_double_3Darray
+
+!===============================================================================
+! READ_DOUBLE_3DARRAY reads double precision 3-D array data
+!===============================================================================
+
+  subroutine read_double_3Darray(buffer, name, group, length, collect)
+
+    integer,      intent(in)           :: length(3) ! length of each dimension
+    real(8),      intent(inout)        :: buffer(length(1),length(2),length(3))        
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+# ifdef MPI
+    ! Read the data using parallel routines
+    call hdf5_read_double_3Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
+    ! Read the data in serial
+    call hdf5_read_double_3Darray(temp_group, name, buffer, length)
+# endif
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_read_double_3Darray(mpi_fh, buffer, length, collect_)
+#else
+    read(UNIT_OUTPUT) buffer(1:length(1),1:length(2),1:length(3))
+#endif
+
+  end subroutine read_double_3Darray
+
+!===============================================================================
+! WRITE_DOUBLE_4DARRAY writes double precision 4-D array data
+!===============================================================================
+
+  subroutine write_double_4Darray(buffer, name, group, length, collect)
+
+    integer,      intent(in)           :: length(4) ! length of each dimension
+    real(8),      intent(in)           :: buffer(length(1),length(2),&
+                                                 length(3),length(4))
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O 
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+# ifdef MPI
+    ! Write the data using parallel routines
+    call hdf5_write_double_4Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
+    ! Write the data in serial
+    call hdf5_write_double_4Darray(temp_group, name, buffer, length)
+# endif
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_write_double_4Darray(mpi_fh, buffer, length, collect_)
+#else
+    write(UNIT_OUTPUT) buffer(1:length(1),1:length(2),1:length(3), &
+                       1:length(4))
+#endif
+
+  end subroutine write_double_4Darray
+
+!===============================================================================
+! READ_DOUBLE_4DARRAY reads double precision 4-D array data
+!===============================================================================
+
+  subroutine read_double_4Darray(buffer, name, group, length, collect)
+
+    integer,      intent(in)           :: length(4) ! length of each dimension
+    real(8),      intent(inout)        :: buffer(length(1),length(2),&
+                                                 length(3),length(4))
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O 
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+# ifdef MPI
+    ! Read the data using parallel routines
+    call hdf5_read_double_4Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
+    ! Read the data in serial
+    call hdf5_read_double_4Darray(temp_group, name, buffer, length)
+# endif
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_read_double_4Darray(mpi_fh, buffer, length, collect_)
+#else
+    read(UNIT_OUTPUT) buffer(1:length(1),1:length(2),1:length(3), &
+                      1:length(4))
+#endif
+
+  end subroutine read_double_4Darray
+
+!===============================================================================
+! WRITE_INTEGER writes integer precision scalar data
+!===============================================================================
+
+  subroutine write_integer(buffer, name, group, collect)
+
+    integer,      intent(in)           :: buffer  ! data to write
+    character(*), intent(in)           :: name    ! name for data
+    character(*), intent(in), optional :: group   ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+# ifdef MPI
+    ! Write the data using parallel routine
+    call hdf5_write_integer_parallel(temp_group, name, buffer, collect_)
+# else
+    ! Write the data
+    call hdf5_write_integer(temp_group, name, buffer)
+# endif
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_write_integer(mpi_fh, buffer, collect_)
+#else
+    write(UNIT_OUTPUT) buffer
+#endif
+
+  end subroutine write_integer
+
+!===============================================================================
+! READ_INTEGER reads integer precision scalar data
+!===============================================================================
+
+  subroutine read_integer(buffer, name, group, collect)
+
+    integer,      intent(inout)        :: buffer  ! read data to here 
+    character(*), intent(in)           :: name    ! name for data
+    character(*), intent(in), optional :: group   ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O 
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+# ifdef MPI
+    ! Read the data using parallel routines 
+    call hdf5_read_integer_parallel(temp_group, name, buffer, collect_)
+# else
+    ! Read the data in serial
+    call hdf5_read_integer(temp_group, name, buffer)
+# endif
+    ! Check if HDf5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_read_integer(mpi_fh, buffer, collect_)
 #else
     read(UNIT_OUTPUT) buffer
 #endif
@@ -445,28 +695,40 @@ contains
   end subroutine read_integer
 
 !===============================================================================
-! WRITE_INTEGER_1DARRAY writes integer 1-D array data
+! WRITE_INTEGER_1DARRAY writes integer presicions 1-D array data
 !===============================================================================
 
-  subroutine write_integer_1Darray(buffer, name, group, length)
+  subroutine write_integer_1Darray(buffer, name, group, length, collect)
 
     integer,      intent(in)           :: length    ! length of array to write
     integer,      intent(in)           :: buffer(:) ! data to write
     character(*), intent(in)           :: name      ! name of data
     character(*), intent(in), optional :: group     ! HDF5 group name
+    logical,      intent(in), optional :: collect   ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
-
     ! Check if HDF5 group should be created/opened
     if (present(group)) then
       call hdf5_open_group(group)
     else
       temp_group = hdf5_fh
     endif
-
-    ! Write the data
+# ifdef MPI
+    ! Write the data using parallel routine 
+    call hdf5_write_integer_1Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
     call hdf5_write_integer_1Darray(temp_group, name, buffer, length)
-
+# endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
@@ -478,16 +740,25 @@ contains
   end subroutine write_integer_1Darray
 
 !===============================================================================
-! READ_INTEGER_1DARRAY reads integer 1-D array data
+! READ_INTEGER_1DARRAY reads integer precision 1-D array data
 !===============================================================================
 
-  subroutine read_integer_1Darray(buffer, name, group, length, option)
+  subroutine read_integer_1Darray(buffer, name, group, length, collect)
 
-    integer,      intent(in)           :: length    ! length of array to read
-    integer,      intent(inout)        :: buffer(:) ! read data to here
-    character(*), intent(in)           :: name      ! name of data
-    character(*), intent(in), optional :: group     ! HDF5 group name
-    character(*), intent(in), optional :: option    ! read option
+    integer,        intent(in)           :: length    ! length of array to read
+    integer,        intent(inout)        :: buffer(:) ! read data to here
+    character(*),   intent(in)           :: name      ! name of data
+    character(*),   intent(in), optional :: group     ! HDF5 group name
+    character(*),   intent(in), optional :: collect   ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -497,23 +768,14 @@ contains
       temp_group = hdf5_fh
     endif
 # ifdef MPI
-    ! Check for option for reading default is independent
-    if (present(option)) then
-      if (option == 'collective') then
-        call hdf5_parallel_read_integer_1Darray(temp_group, name, buffer, &
-             length, H5FD_MPIO_COLLECTIVE_F)
-      else 
-        call hdf5_parallel_read_integer_1Darray(temp_group, name, buffer, &
-             length, H5FD_MPIO_INDEPENDENT_F)
-      end if
-    else
-      ! Standard read call
-      call hdf5_read_integer_1Darray(temp_group, name, buffer, length)
-    end if
+    ! Read the data using parallel routines
+    call hdf5_read_integer_1Darray_parallel(temp_group, name, buffer, &
+         length, collect_)
 # else
-    ! Read the data serial
+    ! Read the data in serial
     call hdf5_read_integer_1Darray(temp_group, name, buffer, length)
 # endif
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
     call mpi_read_integer_1Darray(mpi_fh, buffer, length)
@@ -524,15 +786,25 @@ contains
   end subroutine read_integer_1Darray
 
 !===============================================================================
-! WRITE_INTEGER_2DARRAY writes integer 2-D array data
+! WRITE_INTEGER_2DARRAY writes integer precision 2-D array data
 !===============================================================================
 
-  subroutine write_integer_2Darray(buffer, name, group, length)
+  subroutine write_integer_2Darray(buffer, name, group, length, collect)
 
-    integer,      intent(in)           :: length(2) ! length of dimensions
-    integer,      intent(in)           :: buffer(length(1),length(2)) ! data
+    integer,      intent(in)           :: length(2) ! dimension of array
+    integer,      intent(in)           :: buffer(length(1),length(2)) ! the data
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -541,29 +813,44 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
-    ! Write the data
+# ifdef MPI
+    ! Write the data using parallel routines
+    call hdf5_write_integer_2Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
+    ! Write the data in serial
     call hdf5_write_integer_2Darray(temp_group, name, buffer, length)
-
+# endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_write_integer_2Darray(mpi_fh, buffer, length, collect_)
 #else
-    message = 'Integer 2-D array writing not currently supported'
-    call warning()
+    write(UNIT_OUTPUT) buffer(1:length(1),1:length(2))
 #endif
 
   end subroutine write_integer_2Darray
 
 !===============================================================================
-! WRITE_INTEGER_3DARRAY writes integer 3-D array data
+! READ_INTEGER_2DARRAY reads integer precision 2-D array data
 !===============================================================================
 
-  subroutine write_integer_3Darray(buffer, name, group, length)
+  subroutine reads_integer_2Darray(buffer, name, group, length, collect)
 
-    integer,      intent(in)           :: length(3) ! length of dimensions
-    integer,      intent(in)           :: buffer(length(1),length(2),length(3)) 
+    integer,      intent(in)           :: length(2) ! dimension of array
+    integer,      intent(inout)        :: buffer(length(1),length(2)) ! the data
     character(*), intent(in)           :: name ! name of data
     character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -572,28 +859,86 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
-    ! Write the data
-    call hdf5_write_integer_3Darray(temp_group, name, buffer, length)
-
+# ifdef MPI
+    ! Read the data using parallel routines
+    call hdf5_read_integer_2Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
+    ! Read the data in serial
+    call hdf5_read_integer_2Darray(temp_group, name, buffer, length)
+# endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_read_integer_2Darray(mpi_fh, buffer, length, collect_)
 #else
-    message = 'Integer 3-D array writing not currently supported'
-    call warning()
+    read(UNIT_OUTPUT) buffer(1:length(1),1:length(2))
+#endif
+
+  end subroutine read_integer_2Darray
+
+!===============================================================================
+! WRITE_INTEGER_3DARRAY writes integer precision 3-D array data
+!===============================================================================
+
+  subroutine write_integer_3Darray(buffer, name, group, length, collect)
+
+    integer,      intent(in)           :: length(3) ! length of each dimension
+    integer,      intent(in)           :: buffer(length(1),length(2),length(3))        
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+# ifdef MPI
+    ! Write the data using parallel routines
+    call hdf5_write_integer_3Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
+    ! Write the data in serial
+    call hdf5_write_integer_3Darray(temp_group, name, buffer, length)
+# endif
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_write_integer_3Darray(mpi_fh, buffer, length, collect_)
+#else
+    write(UNIT_OUTPUT) buffer(1:length(1),1:length(2),1:length(3))
 #endif
 
   end subroutine write_integer_3Darray
 
 !===============================================================================
-! WRITE_LONG writes long integer scalar data
+! READ_INTEGER_3DARRAY reads integer precision 3-D array data
 !===============================================================================
 
-  subroutine write_long(buffer, name, group)
+  subroutine read_integer_3Darray(buffer, name, group, length, collect)
 
-    integer(8),   intent(in)           :: buffer ! data to write
-    character(*), intent(in)           :: name   ! name of data
-    character(*), intent(in), optional :: group  ! HDF5 group name
+    integer,      intent(in)           :: length(3) ! length of each dimension
+    integer,      intent(inout)        :: buffer(length(1),length(2),length(3))        
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -602,14 +947,156 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
-    ! Write the data
-    call hdf5_write_long(temp_group, name, buffer, hdf5_integer8_t)
-
+# ifdef MPI
+    ! Read the data using parallel routines
+    call hdf5_read_integer_3Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
+    ! Read the data in serial
+    call hdf5_read_integer_3Darray(temp_group, name, buffer, length)
+# endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
-    call mpi_write_long(mpi_fh, buffer)
+    call mpi_read_integer_3Darray(mpi_fh, buffer, length, collect_)
+#else
+    read(UNIT_OUTPUT) buffer(1:length(1),1:length(2),1:length(3))
+#endif
+
+  end subroutine read_integer_3Darray
+
+!===============================================================================
+! WRITE_INTEGER_4DARRAY writes integer precision 4-D array data
+!===============================================================================
+
+  subroutine write_integer_4Darray(buffer, name, group, length, collect)
+
+    integer,      intent(in)           :: length(4) ! length of each dimension
+    integer,      intent(in)           :: buffer(length(1),length(2),&
+                                                 length(3),length(4))
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O 
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+# ifdef MPI
+    ! Write the data using parallel routines
+    call hdf5_write_integer_4Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
+    ! Write the data in serial
+    call hdf5_write_integer_4Darray(temp_group, name, buffer, length)
+# endif
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_write_integer_4Darray(mpi_fh, buffer, length, collect_)
+#else
+    write(UNIT_OUTPUT) buffer(1:length(1),1:length(2),1:length(3), &
+                       1:length(4))
+#endif
+
+  end subroutine write_integer_4Darray
+
+!===============================================================================
+! READ_INTEGER_4DARRAY reads integer precision 4-D array data
+!===============================================================================
+
+  subroutine read_integer_4Darray(buffer, name, group, length, collect)
+
+    integer,      intent(in)           :: length(4) ! length of each dimension
+    integer,      intent(inout)        :: buffer(length(1),length(2),&
+                                                 length(3),length(4))
+    character(*), intent(in)           :: name ! name of data
+    character(*), intent(in), optional :: group ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    logical :: collect_
+
+    ! Set up collective vs. independent I/O 
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+# ifdef MPI
+    ! Read the data using parallel routines
+    call hdf5_read_integer_4Darray_parallel(temp_group, name, buffer, length, &
+         collect_)
+# else
+    ! Read the data in serial
+    call hdf5_read_integer_4Darray(temp_group, name, buffer, length)
+# endif
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_read_integer_4Darray(mpi_fh, buffer, length, collect_)
+#else
+    read(UNIT_OUTPUT) buffer(1:length(1),1:length(2),1:length(3), &
+                      1:length(4))
+#endif
+
+  end subroutine read_integer_4Darray
+
+!===============================================================================
+! WRITE_LONG writes long integer scalar data
+!===============================================================================
+
+  subroutine write_long(buffer, name, group, collect)
+
+    integer(8),   intent(in)           :: buffer  ! data to write
+    character(*), intent(in)           :: name    ! name of data
+    character(*), intent(in), optional :: group   ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
+
+#ifdef HDF5
+    ! Check if HDF5 group should be created/opened
+    if (present(group)) then
+      call hdf5_open_group(group)
+    else
+      temp_group = hdf5_fh
+    endif
+# ifdef MPI
+    ! Write the data using parallel routine
+    call hdf5_write_long_parallel(temp_group, name, buffer, collect_)
+# else
+    ! Write the data
+    call hdf5_write_long(temp_group, name, buffer)
+# endif
+    ! Check if HDF5 group should be closed
+    if (present(group)) call hdf5_close_group()
+#elif MPI
+    call mpi_write_long(mpi_fh, buffer, collect_)
 #else
     write(UNIT_OUTPUT) buffer
 #endif
@@ -620,12 +1107,19 @@ contains
 ! READ_LONG reads long integer scalar data
 !===============================================================================
 
-  subroutine read_long(buffer, name, group, option)
+  subroutine read_long(buffer, name, group, collect)
 
-    integer(8),   intent(inout)        :: buffer ! read data to here
-    character(*), intent(in)           :: name   ! name of data
-    character(*), intent(in), optional :: group  ! HDF5 group name
-    character(*), intent(in), optional :: option ! read option
+    integer(8),   intent(inout)        :: buffer  ! data to write
+    character(*), intent(in)           :: name    ! name of data
+    character(*), intent(in), optional :: group   ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -635,29 +1129,18 @@ contains
       temp_group = hdf5_fh
     endif
 # ifdef MPI
-    ! Check for option for reading default is independent
-    if (present(option)) then
-      if (option == 'collective') then
-        call hdf5_parallel_read_long(temp_group, name, buffer, &
-             hdf5_integer8_t, H5FD_MPIO_COLLECTIVE_F)
-      else 
-        call hdf5_parallel_read_long(temp_group, name, buffer, &
-             hdf5_integer8_t, H5FD_MPIO_INDEPENDENT_F)
-      end if
-    else
-      ! Standard read call
-      call hdf5_read_long(temp_group, name, buffer, hdf5_integer8_t)
-    end if
+    ! Read the data using parallel routine
+    call hdf5_read_long_parallel(temp_group, name, buffer, collect_)
 # else
-    ! Read the data serial
-    call hdf5_read_long(temp_group, name, buffer, hdf5_integer8_t)
+    ! Read the data
+    call hdf5_read_long(temp_group, name, buffer)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
-    call mpi_read_long(mpi_fh, buffer)
+    call mpi_read_long(mpi_fh, buffer, collect_)
 #else
-    read(UNIT_OUTPUT) buffer
+    write(UNIT_OUTPUT) buffer
 #endif
 
   end subroutine read_long
@@ -666,17 +1149,25 @@ contains
 ! WRITE_STRING writes string data
 !===============================================================================
 
-  subroutine write_string(buffer, name, group)
+  subroutine write_string(buffer, name, group, collect)
 
-    character(*), intent(in)           :: buffer ! data to write
-    character(*), intent(in)           :: name   ! name of data
-    character(*), intent(in), optional :: group  ! HDF5 group name
+    character(*), intent(in)           :: buffer  ! data to write
+    character(*), intent(in)           :: name    ! name of data
+    character(*), intent(in), optional :: group   ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
 
-#ifndef HDF5
-# ifdef MPI
-    integer :: n ! length of string buffer to write
-# endif
-#endif
+    integer :: n
+    logical :: collect_
+
+    ! Get string length
+    n = len_trim(buffer)
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -685,18 +1176,17 @@ contains
     else
       temp_group = hdf5_fh
     endif
-
+# ifdef MPI
+    ! Write the data using parallel routine
+    call hdf5_write_string_parallel(temp_group, name, buffer, n, collect_)
+# else
     ! Write the data
-    call hdf5_write_string(temp_group, name, buffer, len(buffer))
-
-    ! Check if HDf5 group should be closed
+    call hdf5_write_string(temp_group, name, n, buffer)
+# endif
+    ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
-    ! Length of string buffer to write
-    n = len(buffer)
-
-    ! Write the data
-    call mpi_write_string(mpi_fh, buffer, n)
+    call mpi_write_string(mpi_fh, buffer, n, collect_)
 #else
     write(UNIT_OUTPUT) buffer
 #endif
@@ -707,17 +1197,25 @@ contains
 ! READ_STRING reads string data
 !===============================================================================
 
-  subroutine read_string(buffer, name, group, option)
+  subroutine read_string(buffer, name, group, collect)
 
-    character(*), intent(inout)        :: buffer ! read data to here
-    character(*), intent(in)           :: name   ! name of data
-    character(*), intent(in), optional :: group  ! HDF5 group name
-    character(*), intent(in), optional :: option ! read option
+    character(*), intent(in)           :: buffer  ! data to write
+    character(*), intent(inout)        :: name    ! name of data
+    character(*), intent(in), optional :: group   ! HDF5 group name
+    logical,      intent(in), optional :: collect ! collective I/O
 
-    integer :: n ! length of string to read to
+    integer :: n
+    logical :: collect_
 
-    ! Length of string buffer to read
-    n = len(buffer)
+    ! Get string length
+    n = len_trim(buffer)
+
+    ! Set up collective vs. independent I/O
+    if (present(collect)) then
+      collect_ = collect
+    else
+      collect_ = .true.
+    end if
 
 #ifdef HDF5
     ! Check if HDF5 group should be created/opened
@@ -727,31 +1225,18 @@ contains
       temp_group = hdf5_fh
     endif
 # ifdef MPI
-    ! Check for option for reading default is independent
-    if (present(option)) then
-      if (option == 'collective') then
-        call hdf5_parallel_read_string(temp_group, name, buffer, n, &
-             H5FD_MPIO_COLLECTIVE_F)
-      else 
-        call hdf5_parallel_read_string(temp_group, name, buffer, n, &
-             H5FD_MPIO_INDEPENDENT_F)
-      end if
-    else
-      ! Standard read call
-      call hdf5_read_string(temp_group, name, buffer)
-    end if
+    ! Read the data using parallel routine
+    call hdf5_read_string_parallel(temp_group, name, buffer, n, collect_)
 # else
-    ! Read the data serial
-    call hdf5_read_string(temp_group, name, buffer)
+    ! Read the data
+    call hdf5_read_string(temp_group, name, n, buffer)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group()
 #elif MPI
-
-    ! Read the data
-    call mpi_read_string(mpi_fh, buffer, n)
+    call mpi_read_string(mpi_fh, buffer, n, collect_)
 #else
-    read(UNIT_OUTPUT) buffer
+    write(UNIT_OUTPUT) buffer
 #endif
 
   end subroutine read_string

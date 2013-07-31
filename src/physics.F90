@@ -551,12 +551,12 @@ contains
     v_n = vel * p % coord0 % uvw
 
     ! Sample velocity of target nucleus
-!~     if (.not. micro_xs(i_nuclide) % use_ptable) then
-!~       call sample_target_velocity(nuc, v_t)
-!~     else
-!~       v_t = ZERO
-!~     end if
-    v_t = ZERO
+     if (.not. micro_xs(i_nuclide) % use_ptable) then
+       call sample_target_velocity(nuc, v_t)
+     else
+       v_t = ZERO
+     end if
+!~    v_t = ZERO
 
     ! Velocity of center-of-mass
     v_cm = (v_n + awr*v_t)/(awr + ONE)

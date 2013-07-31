@@ -1208,7 +1208,7 @@ contains
     logical :: collect_
 
     ! Get string length
-    n = len_trim(buffer)
+    n = len(buffer)
 
     ! Set up collective vs. independent I/O
     if (present(collect)) then

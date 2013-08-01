@@ -7,7 +7,7 @@ module hdf5_interface
   use, intrinsic :: ISO_C_BINDING
 
 #ifdef MPI
-  use mpi
+   use mpi, only: MPI_COMM_WORLD, MPI_INFO_NULL
 #endif
 
   implicit none
@@ -811,7 +811,7 @@ contains
 
     integer(HID_T), intent(in) :: group   ! name of group
     character(*),   intent(in) :: name    ! name of data
-    integer,        intent(in) :: buffer  ! data to write
+    integer,target, intent(in) :: buffer  ! data to write
     logical,        intent(in) :: collect ! collect I/O
 
     ! Set rank and dimensions
@@ -889,7 +889,7 @@ contains
     integer,        intent(in) :: length    ! length of array to write
     integer(HID_T), intent(in) :: group     ! name of group
     character(*),   intent(in) :: name      ! name of data
-    integer,        intent(in) :: buffer(:) ! data to write
+    integer,target, intent(in) :: buffer(length) ! data to write
     logical,        intent(in) :: collect   ! collect I/O
 
     ! Set rank and dimensions of data
@@ -933,7 +933,7 @@ contains
     integer,         intent(in)    :: length     ! length of array
     integer(HID_T),  intent(in)    :: group      ! name of group
     character(*),    intent(in)    :: name       ! name of data
-    integer, target, intent(inout) :: buffer(:)  ! read data to here
+    integer, target, intent(inout) :: buffer(length)  ! read data to here
     logical,         intent(in)    :: collect    ! collective I/O
 
     ! Create property list for independent or collective read
@@ -969,7 +969,7 @@ contains
     integer,        intent(in) :: length(2) ! length of array dimensions
     integer(HID_T), intent(in) :: group     ! name of group
     character(*),   intent(in) :: name      ! name of data
-    integer,        intent(in) :: buffer(length(1),length(2)) ! data to write
+    integer,target, intent(in) :: buffer(length(1),length(2)) ! data to write
     logical,        intent(in) :: collect ! collective I/O
 
     ! Set rank and dimensions
@@ -1013,7 +1013,7 @@ contains
     integer,        intent(in)    :: length(2) ! length of array dimensions
     integer(HID_T), intent(in)    :: group     ! name of group
     character(*),   intent(in)    :: name      ! name of data
-    integer,        intent(inout) :: buffer(length(1),length(2)) ! data to read
+    integer,target, intent(inout) :: buffer(length(1),length(2)) ! data to read
     logical,        intent(in)    :: collect ! collect I/O
 
     ! Create property list for independent or collective read
@@ -1049,7 +1049,7 @@ contains
     integer,        intent(in) :: length(3) ! length of array dimensions
     integer(HID_T), intent(in) :: group     ! name of group
     character(*),   intent(in) :: name      ! name of data
-    integer,        intent(in) :: buffer(length(1),length(2), &
+    integer,target, intent(in) :: buffer(length(1),length(2), &
                                          length(3)) ! data to write
     logical,        intent(in) :: collect ! collective I/O
 
@@ -1094,7 +1094,7 @@ contains
     integer,        intent(in)    :: length(3) ! length of array dimensions
     integer(HID_T), intent(in)    :: group     ! name of group
     character(*),   intent(in)    :: name      ! name of data
-    integer,        intent(inout) :: buffer(length(1),length(2), &
+    integer,target, intent(inout) :: buffer(length(1),length(2), &
                                             length(3)) ! data to read
     logical,        intent(in)    :: collect ! collective I/O
 
@@ -1131,7 +1131,7 @@ contains
     integer,        intent(in)    :: length(4) ! length of array dimensions
     integer(HID_T), intent(in)    :: group     ! name of group
     character(*),   intent(in)    :: name      ! name of data
-    integer,        intent(in)    :: buffer(length(1),length(2), &
+    integer,target, intent(in)    :: buffer(length(1),length(2), &
                                             length(3),length(4)) ! data to write
     logical,        intent(in)    :: collect ! collective I/O
 
@@ -1176,7 +1176,7 @@ contains
     integer,        intent(in)    :: length(4) ! length of array dimensions
     integer(HID_T), intent(in)    :: group     ! name of group
     character(*),   intent(in)    :: name      ! name of data
-    integer,        intent(inout) :: buffer(length(1),length(2), &
+    integer,target, intent(inout) :: buffer(length(1),length(2), &
                                             length(3),length(4)) ! data to read
     logical,        intent(in)    :: collect   ! collective I/O
 
@@ -1211,7 +1211,7 @@ contains
 
     integer(HID_T), intent(in) :: group   ! name of group
     character(*),   intent(in) :: name    ! name of data
-    real(8),        intent(in) :: buffer  ! data to write
+    real(8),target, intent(in) :: buffer  ! data to write
     logical,        intent(in) :: collect ! collect I/O
 
     ! Set rank and dimensions
@@ -1289,7 +1289,7 @@ contains
     integer,        intent(in) :: length    ! length of array to write
     integer(HID_T), intent(in) :: group     ! name of group
     character(*),   intent(in) :: name      ! name of data
-    real(8),        intent(in) :: buffer(:) ! data to write
+    real(8),target, intent(in) :: buffer(length) ! data to write
     logical,        intent(in) :: collect   ! collect I/O
 
     ! Set rank and dimensions of data
@@ -1333,7 +1333,7 @@ contains
     integer,         intent(in)    :: length    ! length of array
     integer(HID_T),  intent(in)    :: group     ! name of group
     character(*),    intent(in)    :: name      ! name of data
-    real(8),         intent(inout) :: buffer(:) ! read data to here
+    real(8),target,  intent(inout) :: buffer(length) ! read data to here
     logical,         intent(in)    :: collect   ! collective I/O
 
     ! Create property list for independent or collective read
@@ -1369,7 +1369,7 @@ contains
     integer,        intent(in) :: length(2) ! length of array dimensions
     integer(HID_T), intent(in) :: group     ! name of group
     character(*),   intent(in) :: name      ! name of data
-    real(8),        intent(in) :: buffer(length(1),length(2)) ! data to write
+    real(8),target, intent(in) :: buffer(length(1),length(2)) ! data to write
     logical,        intent(in) :: collect ! collective I/O
 
     ! Set rank and dimensions
@@ -1393,7 +1393,7 @@ contains
     call h5dcreate_f(group, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
 
     ! Write data
-    f_ptr = c_loc(buffer)
+    f_ptr = c_loc(buffer(1,1))
     call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
 
     ! Close all 
@@ -1413,7 +1413,7 @@ contains
     integer,        intent(in)    :: length(2) ! length of array dimensions
     integer(HID_T), intent(in)    :: group     ! name of group
     character(*),   intent(in)    :: name      ! name of data
-    real(8),        intent(inout) :: buffer(length(1),length(2)) ! data to read
+    real(8),target, intent(inout) :: buffer(length(1),length(2)) ! data to read
     logical,        intent(in)    :: collect ! collect I/O
 
     ! Create property list for independent or collective read
@@ -1449,7 +1449,7 @@ contains
     integer,        intent(in) :: length(3) ! length of array dimensions
     integer(HID_T), intent(in) :: group     ! name of group
     character(*),   intent(in) :: name      ! name of data
-    real(8),        intent(in) :: buffer(length(1),length(2), &
+    real(8),target, intent(in) :: buffer(length(1),length(2), &
                                          length(3)) ! data to write
     logical,        intent(in) :: collect ! collective I/O
 
@@ -1494,7 +1494,7 @@ contains
     integer,        intent(in)    :: length(3) ! length of array dimensions
     integer(HID_T), intent(in)    :: group     ! name of group
     character(*),   intent(in)    :: name      ! name of data
-    real(8),        intent(inout) :: buffer(length(1),length(2), &
+    real(8),target, intent(inout) :: buffer(length(1),length(2), &
                                             length(3)) ! data to read
     logical,        intent(in)    :: collect ! collective I/O
 
@@ -1531,7 +1531,7 @@ contains
     integer,        intent(in)    :: length(4) ! length of array dimensions
     integer(HID_T), intent(in)    :: group     ! name of group
     character(*),   intent(in)    :: name      ! name of data
-    real(8),        intent(in)    :: buffer(length(1),length(2), &
+    real(8),target, intent(in)    :: buffer(length(1),length(2), &
                                             length(3),length(4)) ! data to write
     logical,        intent(in)    :: collect ! collective I/O
 
@@ -1576,7 +1576,7 @@ contains
     integer,        intent(in)    :: length(4) ! length of array dimensions
     integer(HID_T), intent(in)    :: group     ! name of group
     character(*),   intent(in)    :: name      ! name of data
-    real(8),        intent(inout) :: buffer(length(1),length(2), &
+    real(8),target, intent(inout) :: buffer(length(1),length(2), &
                                             length(3),length(4)) ! data to read
     logical,        intent(in)    :: collect   ! collective I/O
 
@@ -1652,11 +1652,11 @@ contains
 
   subroutine hdf5_read_long_parallel(group, name, buffer, long_type, collect)
 
-    integer(HID_T), intent(in)  :: group     ! name of group
-    character(*),   intent(in)  :: name      ! name of data
-    integer(8),     intent(out) :: buffer    ! read data to here
-    integer(HID_T), intent(in)  :: long_type ! long integer type
-    logical,        intent(in)  :: collect   ! collective I/O
+    integer(HID_T),     intent(in)  :: group     ! name of group
+    character(*),       intent(in)  :: name      ! name of data
+    integer(8), target, intent(out) :: buffer    ! read data to here
+    integer(HID_T),     intent(in)  :: long_type ! long integer type
+    logical,            intent(in)  :: collect   ! collective I/O
 
     ! Create property list for independent or collective read
     call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)

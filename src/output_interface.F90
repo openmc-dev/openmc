@@ -1399,7 +1399,7 @@ contains
       call mpi_read_long(self % unit_fh, buffer, collect_)
     end if
 #else
-    write(self % unit_fh) buffer
+    read(self % unit_fh) buffer
 #endif
 
   end subroutine read_long
@@ -1510,7 +1510,7 @@ contains
       call mpi_read_string(self % unit_fh, buffer, n, collect_)
     end if
 #else
-    write(self % unit_fh) buffer
+    read(self % unit_fh) buffer
 #endif
 
   end subroutine read_string

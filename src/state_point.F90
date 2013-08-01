@@ -276,13 +276,10 @@ contains
         ! Create statepoint file 
         call sp % file_create(filename)
 
-#ifdef HDF5
-# ifdef MPI
       else
-        ! Reopen state point file in parallel 
+
+        ! Reopen state point file in parallel
         call sp % file_open(filename, 'w')
-# endif
-#endif
 
       end if
 
@@ -625,7 +622,7 @@ contains
            group="tallies/tally" // to_str(i))
 
     end do TALLY_METADATA
-print *, "HERE", rank
+
     ! Read tallies to master
     if (master) then
 
@@ -661,7 +658,7 @@ print *, "HERE", rank
         end do TALLY_RESULTS
       end if
     end if
-print *, "HERE1", rank
+
     ! Read source if in eigenvalue mode 
     if (run_mode == MODE_EIGENVALUE) then
 
@@ -692,15 +689,10 @@ print *, "HERE1", rank
       ! Write out source
       call sp % read_source_bank()
 
-      ! Close file
-      call sp % file_close()
-
-    else
-
-      ! Close file if not in eigenvalue mode
-      call sp % file_close()
-
     end if
+
+    ! Close file
+    call sp % file_close()
 
   end subroutine load_state_point
 

@@ -1444,7 +1444,7 @@ contains
     end if
 # else
     ! Write the data
-    call hdf5_write_string(self % hdf5_grp, name, n, buffer)
+    call hdf5_write_string(self % hdf5_grp, name, buffer, n)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
@@ -1499,7 +1499,7 @@ contains
       call hdf5_read_string_parallel(self % hdf5_grp, name, buffer, n, collect_)
     end if
 # else
-    call hdf5_read_string(self % hdf5_grp, name, n, buffer)
+    call hdf5_read_string(self % hdf5_grp, name, buffer, n)
 # endif
     ! Check if HDF5 group should be closed
     if (present(group)) call hdf5_close_group(self % hdf5_grp)

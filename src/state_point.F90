@@ -625,15 +625,15 @@ contains
            group="tallies/tally" // to_str(i))
 
     end do TALLY_METADATA
-
+print *, "HERE", rank
     ! Read tallies to master
     if (master) then
 
       ! Read number of realizations for global tallies
-      call sp % read_data(n_realizations, "n_realizations")
+      call sp % read_data(n_realizations, "n_realizations", collect=.false.)
 
       ! Read number of global tallies
-      call sp % read_data(int_array(1), "n_global_tallies")
+      call sp % read_data(int_array(1), "n_global_tallies", collect=.false.)
       if (int_array(1) /= N_GLOBAL_TALLIES) then
         message = "Number of global tallies does not match in state point."
         call fatal_error()
@@ -644,7 +644,7 @@ contains
            n1=N_GLOBAL_TALLIES, n2=1)
 
       ! Check if tally results are present
-      call sp % read_data(int_array(1), "tallies_present", group="tallies")
+      call sp % read_data(int_array(1), "tallies_present", group="tallies", collect=.false.)
 
       ! Read in sum and sum squared
       if (int_array(1) == 1) then
@@ -661,7 +661,7 @@ contains
         end do TALLY_RESULTS
       end if
     end if
-
+print *, "HERE1", rank
     ! Read source if in eigenvalue mode 
     if (run_mode == MODE_EIGENVALUE) then
 

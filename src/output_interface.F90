@@ -420,16 +420,16 @@ contains
     endif
 # ifdef MPI
     if (self % serial) then
-      call hdf5_read_double_1Darray(self % hdf5_fh, name, buffer, length)
+      call hdf5_read_double_1Darray(self % hdf5_grp, name, buffer, length)
     else
-      call hdf5_read_double_1Darray_parallel(self % hdf5_fh, name, buffer, &
+      call hdf5_read_double_1Darray_parallel(self % hdf5_grp, name, buffer, &
          length, collect_)
     end if
 # else
-    call hdf5_read_double_1Darray(self % hdf5_fh, name, buffer, length)
+    call hdf5_read_double_1Darray(self % hdf5_grp, name, buffer, length)
 # endif
     ! Check if HDF5 group should be closed
-    if (present(group)) call hdf5_close_group(self % hdf5_fh)
+    if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
       read(self % unit_fh) buffer(1:length)
@@ -1643,10 +1643,15 @@ contains
     ! Close ids
     call h5dclose_f(dset, hdf5_err)
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
+#elif MPI
+
+    ! Read tally result 
+    call MPI_FILE_READ(mpi_fh, buffer, n1*n2, MPI_TALLYRESULT, &
+         MPI_STATUS_IGNORE, mpiio_err)
 
 #else
 
-    ! Write out tally buffer
+    ! Read tally result
     do k = 1, n2
       do j = 1, n1
         read(self % unit_fh) buffer(j,k) % sum

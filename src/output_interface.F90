@@ -381,7 +381,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer(1:length)
     else
-      call mpi_write_double_1Darray(self % unit_fh, buffer, length)
+      call mpi_write_double_1Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
     write(self % unit_fh) buffer(1:length)
@@ -434,7 +434,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer(1:length)
     else
-      call mpi_read_double_1Darray(self % unit_fh, buffer, length)
+      call mpi_read_double_1Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
     read(self % unit_fh) buffer(1:length)
@@ -539,7 +539,7 @@ contains
 #elif MPI
     if (self % serial) then
       read(self % unit_fh) buffer(1:length(1),1:length(2))
-    then
+    else
       call mpi_read_double_2Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
@@ -914,7 +914,7 @@ contains
     if (self % serial) then
       write(self % unit_fh) buffer(1:length)
     else
-      call mpi_write_integer_1Darray(self % unit_fh, buffer, length)
+      call mpi_write_integer_1Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
     write(self % unit_fh) buffer(1:length)
@@ -968,7 +968,7 @@ contains
     if (self % serial) then
       read(self % unit_fh) buffer(1:length)
     else
-      call mpi_read_integer_1Darray(self % unit_fh, buffer, length)
+      call mpi_read_integer_1Darray(self % unit_fh, buffer, length, collect_)
     end if
 #else
     read(self % unit_fh) buffer(1:length)
@@ -1557,9 +1557,7 @@ contains
     class(BinaryOutput) :: self
 
 #ifndef HDF5
-# ifndef MPI
     integer :: j,k ! iteration counters
-# endif
 #endif
 
 #ifdef HDF5
@@ -1646,7 +1644,7 @@ contains
 #elif MPI
 
     ! Read tally result 
-    call MPI_FILE_READ(mpi_fh, buffer, n1*n2, MPI_TALLYRESULT, &
+    call MPI_FILE_READ(self % unit_fh, buffer, n1*n2, MPI_TALLYRESULT, &
          MPI_STATUS_IGNORE, mpiio_err)
 
 #else

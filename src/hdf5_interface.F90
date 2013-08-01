@@ -16,8 +16,6 @@ module hdf5_interface
   integer          :: hdf5_rank  ! rank of data
   integer(HID_T)   :: dset       ! data set handle
   integer(HID_T)   :: dspace     ! data or file space handle
-  integer(HID_T)   :: hdf5_fh    ! HDF5 file handle
-  integer(HID_T)   :: temp_group ! temporary HDF5 group handle
   integer(HID_T)   :: memspace   ! data space handle for individual procs
   integer(HID_T)   :: plist      ! property list handle
   integer(HSIZE_T) :: dims1(1)   ! dims type for 1-D array
@@ -199,9 +197,11 @@ contains
 ! HDF5_OPEN_GROUP creates/opens HDF5 group to temp_group
 !===============================================================================
 
-  subroutine hdf5_open_group(group)
+  subroutine hdf5_open_group(hdf5_fh, group, hdf5_grp)
 
-    character(*), intent(in) :: group ! name of group
+    character(*),   intent(in)    :: group    ! name of group
+    integer(HID_T), intent(in)    :: hdf5_fh  ! file handle of main output file
+    integer(HID_T), intent(inout) :: hdf5_grp ! handle for group
 
     logical :: status ! does the group exist
 
@@ -210,9 +210,9 @@ contains
 
     ! Either create or open group
     if (status) then
-      call h5gopen_f(hdf5_fh, trim(group), temp_group, hdf5_err)
+      call h5gopen_f(hdf5_fh, trim(group), hdf5_grp, hdf5_err)
     else
-      call h5gcreate_f(hdf5_fh, trim(group), temp_group, hdf5_err)
+      call h5gcreate_f(hdf5_fh, trim(group), hdf5_grp, hdf5_err)
     end if
 
   end subroutine hdf5_open_group
@@ -221,10 +221,12 @@ contains
 ! HDF5_CLOSE_GROUP closes HDF5 temp_group
 !===============================================================================
 
-  subroutine hdf5_close_group()
+  subroutine hdf5_close_group(hdf5_grp)
+
+    integer(HID_T), intent(inout) :: hdf5_grp
 
     ! Close the group
-    call h5gclose_f(temp_group, hdf5_err)
+    call h5gclose_f(hdf5_grp, hdf5_err)
 
   end subroutine hdf5_close_group
 
@@ -830,7 +832,7 @@ contains
     call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
 
     ! Create dataset
-    call h5dcreate_f(hdf5_fh, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
 
     ! Write data
     f_ptr = c_loc(buffer)
@@ -908,7 +910,7 @@ contains
     call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
 
     ! Create dataset
-    call h5dcreate_f(hdf5_fh, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
 
     ! Write data
     f_ptr = c_loc(buffer)
@@ -988,7 +990,7 @@ contains
     call h5screate_simple_f(hdf5_rank, dims2, dspace, hdf5_err)
 
     ! Create dataset
-    call h5dcreate_f(hdf5_fh, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
 
     ! Write data
     f_ptr = c_loc(buffer)
@@ -1069,7 +1071,7 @@ contains
     call h5screate_simple_f(hdf5_rank, dims3, dspace, hdf5_err)
 
     ! Create dataset
-    call h5dcreate_f(hdf5_fh, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
 
     ! Write data
     f_ptr = c_loc(buffer)
@@ -1151,7 +1153,7 @@ contains
     call h5screate_simple_f(hdf5_rank, dims4, dspace, hdf5_err)
 
     ! Create dataset
-    call h5dcreate_f(hdf5_fh, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_INTEGER, dspace, dset, hdf5_err)
 
     ! Write data
     f_ptr = c_loc(buffer)
@@ -1230,7 +1232,7 @@ contains
     call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
 
     ! Create dataset
-    call h5dcreate_f(hdf5_fh, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
 
     ! Write data
     f_ptr = c_loc(buffer)
@@ -1308,7 +1310,7 @@ contains
     call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
 
     ! Create dataset
-    call h5dcreate_f(hdf5_fh, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
 
     ! Write data
     f_ptr = c_loc(buffer)
@@ -1388,7 +1390,7 @@ contains
     call h5screate_simple_f(hdf5_rank, dims2, dspace, hdf5_err)
 
     ! Create dataset
-    call h5dcreate_f(hdf5_fh, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
 
     ! Write data
     f_ptr = c_loc(buffer)
@@ -1469,7 +1471,7 @@ contains
     call h5screate_simple_f(hdf5_rank, dims3, dspace, hdf5_err)
 
     ! Create dataset
-    call h5dcreate_f(hdf5_fh, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
 
     ! Write data
     f_ptr = c_loc(buffer)
@@ -1551,7 +1553,7 @@ contains
     call h5screate_simple_f(hdf5_rank, dims4, dspace, hdf5_err)
 
     ! Create dataset
-    call h5dcreate_f(hdf5_fh, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
+    call h5dcreate_f(group, name, H5T_NATIVE_DOUBLE, dspace, dset, hdf5_err)
 
     ! Write data
     f_ptr = c_loc(buffer)
@@ -1631,7 +1633,7 @@ contains
     call h5screate_simple_f(hdf5_rank, dims1, dspace, hdf5_err)
 
     ! Create dataset
-    call h5dcreate_f(hdf5_fh, name, long_type, dspace, dset, hdf5_err)
+    call h5dcreate_f(group, name, long_type, dspace, dset, hdf5_err)
 
     ! Write data
     f_ptr = c_loc(buffer)

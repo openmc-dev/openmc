@@ -5,7 +5,6 @@ module mpiio_interface
 
   implicit none
 
-  integer :: mpi_fh    ! MPI file handle
   integer :: mpiio_err ! MPI error code
 
   ! Generic HDF5 write procedure interface

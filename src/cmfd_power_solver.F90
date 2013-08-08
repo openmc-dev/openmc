@@ -19,13 +19,16 @@ module cmfd_power_solver
   real(8) :: stol = 1.e-8_8       ! tolerance on source
   real(8) :: norm_n               ! current norm of source vector
   real(8) :: norm_o               ! old norm of source vector
+  real(8) :: kerr                 ! error in keff
+  real(8) :: serr                 ! error in source
   logical :: adjoint_calc         ! run an adjoint calculation
   type(Matrix) :: loss            ! cmfd loss matrix
   type(Matrix) :: prod            ! cmfd prod matrix
   type(Vector) :: phi_n           ! new flux vector
   type(Vector) :: phi_o           ! old flux vector
-  type(Vector) :: S_n             ! new source vector
-  type(Vector) :: S_o             ! old flux vector
+  type(Vector) :: s_n             ! new source vector
+  type(Vector) :: s_o             ! old flux vector
+  type(Vector) :: serr_v          ! error in source
   type(Petsc_gmres) :: gmres      ! gmres solver
 
 contains
@@ -113,8 +116,9 @@ contains
     call phi_o % create(n)
 
     ! Set up source vectors
-    call S_n % create(n)
-    call S_o % create(n)
+    call s_n % create(n)
+    call s_o % create(n)
+    call serr_v % create(n)
 
     ! Set initial guess
     guess = ONE
@@ -136,8 +140,8 @@ contains
     call prod % setup_petsc()
     call phi_n % setup_petsc()
     call phi_o % setup_petsc()
-    call S_o % setup_petsc()
-    call S_n % setup_petsc()
+    call s_o % setup_petsc()
+    call s_n % setup_petsc()
 
     ! Set norms to 0
     norm_n = ZERO
@@ -181,22 +185,22 @@ contains
     do i = 1, 10000
 
       ! Compute source vector
-      call prod % vector_multiply(phi_o, S_o)
+      call prod % vector_multiply(phi_o, s_o)
 
       ! Normalize source vector
-      S_o % val = S_o % val / k_o
+      s_o % val = s_o % val / k_o
 
       ! Compute new flux vector
-      call gmres % solve(S_o, phi_n)
+      call gmres % solve(s_o, phi_n)
 
       ! Compute new source vector
-      call prod % vector_multiply(phi_n, S_n)
+      call prod % vector_multiply(phi_n, s_n)
 
       ! Compute new k-eigenvalue
-      k_n = sum(S_n % val) / sum(S_o % val)
+      k_n = sum(s_n % val) / sum(s_o % val)
 
       ! Renormalize the old source
-      S_o % val = S_o % val * k_o
+      s_o % val = s_o % val * k_o
 
       ! Check convergence
       call convergence(i)
@@ -219,14 +223,11 @@ contains
 
   subroutine convergence(iter)
 
-    use constants,  only: ONE
+    use constants,  only: ONE, TINY_BIT
     use global,     only: cmfd_power_monitor, master
     use, intrinsic :: ISO_FORTRAN_ENV
 
     integer     :: iter           ! iteration number
-
-    real(8)     :: kerr           ! error in keff
-    real(8)     :: serr           ! error in source
 
     ! Reset convergence flag
     iconv = .false.
@@ -235,7 +236,10 @@ contains
     kerr = abs(k_o - k_n)/k_n
 
     ! Calculate max error in source
-    serr = sqrt(ONE/dble(S_n % n) * sum(((S_n % val - S_o % val)/S_n % val)**2))
+    where (s_n % val > TINY_BIT)
+      serr_v % val = ((s_n % val - s_o % val)/s_n % val)**2
+    end where
+    serr = sqrt(ONE/dble(s_n % n) * sum(serr_v % val))
 
     ! Check for convergence
     if(kerr < ktol .and. serr < stol) iconv = .true.
@@ -315,13 +319,14 @@ contains
   subroutine finalize()
 
     ! Destroy all objects 
-    call gmres % destroy() 
-    call loss  % destroy() 
-    call prod  % destroy()
-    call phi_n % destroy()
-    call phi_o % destroy()
-    call S_n   % destroy()
-    call S_o   % destroy()
+    call gmres  % destroy() 
+    call loss   % destroy() 
+    call prod   % destroy()
+    call phi_n  % destroy()
+    call phi_o  % destroy()
+    call s_n    % destroy()
+    call s_o    % destroy()
+    call serr_v % destroy
 
   end subroutine finalize
 

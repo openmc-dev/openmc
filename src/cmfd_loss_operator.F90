@@ -410,7 +410,7 @@ contains
     if (cmfd_coremap) then
 
       ! Get indices from indexmap
-      g = mod(irow, ng) + 1
+      g = mod(irow-1, ng) + 1
       i = cmfd % indexmap((irow-1)/ng+1,1)
       j = cmfd % indexmap((irow-1)/ng+1,2)
       k = cmfd % indexmap((irow-1)/ng+1,3)

@@ -89,6 +89,9 @@ contains
       cmfd_tally_on = .true.
     end if
 
+    ! If this is a restart run and we are just replaying batches leave
+    if (restart_run .and. current_batch <= restart_batch) return
+
     ! Check to flush cmfd tallies for active batches, no more inactive flush
     if (cmfd_run .and. cmfd_act_flush == current_batch) then
       call cmfd_tally_reset()

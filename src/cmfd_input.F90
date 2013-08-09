@@ -136,7 +136,7 @@ contains
 
       ! Write to stdout that a core map overlay is active
       message = "Core Map Overlay Activated"
-      call write_message()
+      call write_message(10)
 
     end if
 

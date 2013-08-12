@@ -26,7 +26,7 @@ def test_results():
     assert compare
 
 def test_run_restart():
-    proc = Popen([pwd + '/../../src/openmc -s particle_10_638.binary'], 
+    proc = Popen([pwd + '/../../src/openmc -r particle_10_638.binary'], 
            stderr=PIPE, stdout=PIPE, shell=True)
     stdout, stderr = proc.communicate()
     assert stderr != ''

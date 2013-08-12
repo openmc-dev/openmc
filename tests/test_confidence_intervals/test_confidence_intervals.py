@@ -2,6 +2,7 @@
 
 import os
 from subprocess import Popen, STDOUT, PIPE
+import filecmp
 
 pwd = os.path.dirname(__file__)
 
@@ -20,6 +21,10 @@ def test_created_statepoint():
 
 def test_created_output():
     assert os.path.exists(pwd + '/tallies.out')
+
+def test_results():
+    os.system('python results.py')
+    assert filecmp.cmp('results_test.dat', 'results_true.dat')
 
 def teardown():
     output = [pwd + '/statepoint.10.binary', pwd + '/tallies.out']

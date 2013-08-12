@@ -27,5 +27,3 @@ for root, dirs, files in os.walk('.'):
 
   # Go back a directory
   os.chdir('..')
-
-  exit()

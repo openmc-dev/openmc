@@ -30,7 +30,8 @@ def test_results():
     assert compare
 
 def teardown():
-    output = [pwd + '/statepoint.10.binary', pwd + '/results_test.dat']
+    output = [pwd + '/statepoint.10.binary', pwd + '/tallies.out', 
+              pwd + '/results_test.dat']
     for f in output:
         if os.path.exists(f):
             os.remove(f)

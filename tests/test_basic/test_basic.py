@@ -21,10 +21,13 @@ def test_created_statepoint():
 
 def test_results():
     os.system('python results.py')
-    assert filecmp.cmp('results_test.dat', 'results_true.dat')
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+    if not compare:
+      os.system('cp results_test.dat results_error.dat')
+    assert compare
 
 def teardown():
-    output = [pwd + '/statepoint.10.binary']
+    output = [pwd + '/statepoint.10.binary', pwd + '/results_test.dat']
     for f in output:
         if os.path.exists(f):
             os.remove(f)

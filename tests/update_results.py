@@ -4,11 +4,24 @@ import os
 import sys
 from subprocess import Popen, STDOUT, PIPE
 
+# Check for arguments
+if len(sys.argv) > 1:
+    folders = []
+    for i in range(len(sys.argv)):
+        if i == 0: continue
+        folders.append((sys.argv[i],' ',' '))
+else:
+    folders = os.walk('.')
+
 # Loop around directories
-for root, dirs, files in os.walk('.'):
+for root, dirs, files in folders:
+
+  # Delete first two characters
+  if root[0:2] == './':
+    root = root[2:]
 
   # Don't continue if not prefixed by test
-  if root[2:6] != 'test':
+  if root[0:4] != 'test':
     continue
  
   # Go into that directory

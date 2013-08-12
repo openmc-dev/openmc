@@ -36,7 +36,7 @@ for root, dirs, files in folders:
   # Process results
   os.system('python results.py') 
   os.system('mv results_test.dat results_true.dat')
-  os.system('rm *.binary')
+  os.system('rm -f *.binary *.out')
 
   # Go back a directory
   os.chdir('..')

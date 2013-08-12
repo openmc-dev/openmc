@@ -12,10 +12,14 @@ sp = statepoint.StatePoint('statepoint.10.binary')
 sp.read_results()
 
 # extract tally results and convert to vector
-results = sp.tallies[0].results
-shape = results.shape
-size = (np.product(shape))
-results = np.reshape(results, size)
+results1 = sp.tallies[0].results
+shape1 = results1.shape
+size1 = (np.product(shape1))
+results1 = np.reshape(results1, size1)
+results2 = sp.tallies[1].results
+shape2 = results2.shape
+size2 = (np.product(shape2))
+results2 = np.reshape(results2, size2)
 
 # set up output string
 outstr = ''
@@ -25,8 +29,11 @@ outstr += 'k-combined:\n'
 outstr += "{0:10.8f} {1:10.8f}\n".format(sp.k_combined[0], sp.k_combined[1])
 
 # write out tally results
-outstr += 'tallies:\n'
-for item in results:
+outstr += 'tally 1:\n'
+for item in results1:
+  outstr += "{0:10.8f}\n".format(item)
+outstr += 'tally 2:\n'
+for item in results2:
   outstr += "{0:10.8f}\n".format(item)
 
 # write results to file

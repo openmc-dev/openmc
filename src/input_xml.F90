@@ -2691,7 +2691,7 @@ contains
 
             if (cell_dict % has_key(col_id)) then
               col_id = cell_dict % get_key(col_id)
-              call get_node_array(node_plot, "rgb", pl % colors(col_id) % rgb)
+              call get_node_array(node_col, "rgb", pl % colors(col_id) % rgb)
             else
               message = "Could not find cell " // trim(to_str(col_id)) // &
                    " specified in plot " // trim(to_str(pl % id))
@@ -2702,7 +2702,7 @@ contains
 
             if (material_dict % has_key(col_id)) then
               col_id = material_dict % get_key(col_id)
-              call get_node_array(node_plot, "rgb", pl % colors(col_id) % rgb)
+              call get_node_array(node_col, "rgb", pl % colors(col_id) % rgb)
             else
               message = "Could not find material " // trim(to_str(col_id)) // &
                    " specified in plot " // trim(to_str(pl % id))

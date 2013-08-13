@@ -1281,8 +1281,7 @@ contains
         call fatal_error()
       end if
 
-      ! Copy value and units
-      call get_node_value(node_dens, "value", val)
+      ! Copy units
       call get_node_value(node_dens, "units", units)
 
       if (units == 'sum') then
@@ -1317,6 +1316,9 @@ contains
                // "' specified on material " // trim(to_str(mat % id))
           call fatal_error()
         end select
+
+        ! Copy value
+        call get_node_value(node_dens, "value", val)
       end if
 
       ! =======================================================================

@@ -1281,6 +1281,9 @@ contains
         call fatal_error()
       end if
 
+      ! Initialize value to zero
+      val = ZERO
+
       ! Copy units
       call get_node_value(node_dens, "units", units)
 
@@ -1292,6 +1295,9 @@ contains
         sum_density = .true.
 
       else
+        ! Copy value
+        call get_node_value(node_dens, "value", val)
+
         ! Check for erroneous density
         sum_density = .false.
         if (val <= ZERO) then
@@ -1316,9 +1322,6 @@ contains
                // "' specified on material " // trim(to_str(mat % id))
           call fatal_error()
         end select
-
-        ! Copy value
-        call get_node_value(node_dens, "value", val)
       end if
 
       ! =======================================================================

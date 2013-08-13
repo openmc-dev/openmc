@@ -1412,7 +1412,7 @@ contains
         call get_node_value(node_ele, "name", name)
 
         ! Check for cross section
-        if (.not.check_for_node(node_nuc, "xs")) then
+        if (.not.check_for_node(node_ele, "xs")) then
           if (default_xs == '') then
             message = "No cross section specified for nuclide in material " &
                  // trim(to_str(mat % id))
@@ -1424,21 +1424,21 @@ contains
 
         ! Check if no atom/weight percents were specified or if both atom and
         ! weight percents were specified
-        if (.not.check_for_node(node_nuc, "ao") .and. &
-            .not.check_for_node(node_nuc, "wo")) then
+        if (.not.check_for_node(node_ele, "ao") .and. &
+            .not.check_for_node(node_ele, "wo")) then
           message = "No atom or weight percent specified for element " // &
                trim(name)
           call fatal_error()
-        elseif (check_for_node(node_nuc, "ao") .and. &
-                check_for_node(node_nuc, "wo")) then
+        elseif (check_for_node(node_ele, "ao") .and. &
+                check_for_node(node_ele, "wo")) then
           message = "Cannot specify both atom and weight percents for a &
                &element: " // trim(name)
           call fatal_error()
         end if
 
         ! Expand element into naturally-occurring isotopes
-        if (check_for_node(node_nuc, "ao")) then
-          call get_node_value(node_nuc, "ao", temp_dble)
+        if (check_for_node(node_ele, "ao")) then
+          call get_node_value(node_ele, "ao", temp_dble)
           call expand_natural_element(name, temp_str, temp_dble, &
                list_names, list_density)
         else

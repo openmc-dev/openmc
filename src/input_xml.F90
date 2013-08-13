@@ -1593,7 +1593,7 @@ contains
 ! for errors and placing properly-formatted data in the right data structures
 !===============================================================================
 
-  subroutine read_tallies_xml
+  subroutine read_tallies_xml()
 
     integer :: i             ! loop over user-specified tallies
     integer :: j             ! loop over words
@@ -2446,7 +2446,7 @@ contains
 ! READ_PLOTS_XML reads data from a plots.xml file
 !===============================================================================
 
-  subroutine read_plots_xml
+  subroutine read_plots_xml()
 
     integer i, j
     integer n_cols, col_id, n_comp, n_masks

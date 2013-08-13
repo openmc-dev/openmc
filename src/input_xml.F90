@@ -165,7 +165,7 @@ contains
       call get_node_ptr(doc, "fixed_source", node_mode)
 
       ! Check number of particles
-      if (.not.check_for_node(node_mode, "fixed_source")) then
+      if (.not.check_for_node(node_mode, "particles")) then
         message = "Need to specify number of particles per batch."
         call fatal_error()
       end if

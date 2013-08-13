@@ -2621,7 +2621,7 @@ contains
       end if
 
       ! Copy plot color type and initialize all colors randomly
-      temp_str = ''
+      temp_str = "cell"
       if (check_for_node(node_plot, "color")) &
         call get_node_value(node_plot, "color", temp_str)
       call lower_case(temp_str)

@@ -90,10 +90,10 @@ contains
     ! CROSS_SECTIONS environment variable
     if (run_mode /= MODE_PLOTTING) then
       if (.not. check_for_node(doc, "cross_sections") .and. &
-        run_mode /= MODE_PLOTTING) then
-        ! No cross_sections.xml file specified in settings.xml, check environment
-        ! variable
-              call get_environment_variable("CROSS_SECTIONS", env_variable)
+           run_mode /= MODE_PLOTTING) then
+        ! No cross_sections.xml file specified in settings.xml, check
+        ! environment variable
+        call get_environment_variable("CROSS_SECTIONS", env_variable)
         if (len_trim(env_variable) == 0) then
           message = "No cross_sections.xml file was specified in settings.xml &
                &or in the CROSS_SECTIONS environment variable."
@@ -116,7 +116,7 @@ contains
 
     ! Make sure that either eigenvalue or fixed source was specified
     if (.not.check_for_node(doc, "eigenvalue") .and. &
-        .not.check_for_node(doc, "fixed_source")) then
+         .not.check_for_node(doc, "fixed_source")) then
       message = "<eigenvalue> or <fixed_source> not specified."
       call fatal_error()
     end if
@@ -145,10 +145,10 @@ contains
       ! Copy batch and generation information
       call get_node_value(node_mode, "batches", n_batches)
       call get_node_value(node_mode, "inactive", n_inactive)
-      n_active      = n_batches - n_inactive
-      if (check_for_node(node_mode, "generations_per_batch")) &
-        call get_node_value(node_mode, "generations_per_batch", &
-             gen_per_batch)
+      n_active = n_batches - n_inactive
+      if (check_for_node(node_mode, "generations_per_batch")) then
+        call get_node_value(node_mode, "generations_per_batch", gen_per_batch)
+      end if
 
       ! Allocate array for batch keff and entropy
       allocate(k_generation(n_batches*gen_per_batch))
@@ -220,7 +220,7 @@ contains
 
     ! Verbosity
     if (check_for_node(doc, "verbosity")) &
-      call get_node_value(doc, "verbosity", verbosity)
+         call get_node_value(doc, "verbosity", verbosity)
 
     ! ==========================================================================
     ! EXTERNAL SOURCE
@@ -257,7 +257,7 @@ contains
         ! Check for type of spatial distribution
         type = ''
         if (check_for_node(node_dist, "type")) &
-          call get_node_value(node_dist, "type", type)
+             call get_node_value(node_dist, "type", type)
         call lower_case(type)
         select case (trim(type))
         case ('box')
@@ -307,7 +307,7 @@ contains
         ! Check for type of angular distribution
         type = ''
         if (check_for_node(node_dist, "type")) &
-          call get_node_value(node_dist, "type", type)
+             call get_node_value(node_dist, "type", type)
         call lower_case(type)
         select case (trim(type))
         case ('isotropic')
@@ -413,7 +413,7 @@ contains
       call get_node_value(doc, "survival_biasing", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-        survival_biasing = .true.
+           survival_biasing = .true.
     end if
 
     ! Probability tables
@@ -421,7 +421,7 @@ contains
       call get_node_value(doc, "ptables", temp_str)
       call lower_case(temp_str)
       if (trim(temp_str) == 'false' .or. trim(temp_str) == '0') &
-        urr_ptables_on = .false.
+           urr_ptables_on = .false.
     end if
 
     ! Cutoffs

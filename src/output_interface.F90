@@ -180,7 +180,7 @@ contains
       ! Check for read/write mode to open, default is read only
       if (mode == 'w') then
         open(UNIT=self % unit_fh, FILE=filename, ACTION='write', &
-             STATUS='old', ACCESS='stream')
+             STATUS='old', ACCESS='stream', POSITION='append')
       else
         open(UNIT=self % unit_fh, FILE=filename, ACTION='read', &
              STATUS='old', ACCESS='stream')
@@ -199,7 +199,7 @@ contains
     ! Check for read/write mode to open, default is read only
     if (mode == 'w') then
       open(UNIT=self % unit_fh, FILE=filename, ACTION='write', &
-           STATUS='old', ACCESS='stream')
+           STATUS='old', ACCESS='stream', POSITION='append')
     else
       open(UNIT=self % unit_fh, FILE=filename, ACTION='read', &
            STATUS='old', ACCESS='stream')

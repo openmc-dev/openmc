@@ -71,7 +71,7 @@ contains
     ! Determine access mode
     open_mode = MPI_MODE_RDONLY
     if (mode == 'w') then
-      open_mode = MPI_MODE_APPEND
+      open_mode = ior(MPI_MODE_APPEND, MPI_MODE_WRONLY)
     end if
 
     ! Create the file

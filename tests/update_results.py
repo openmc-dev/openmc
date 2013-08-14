@@ -2,7 +2,8 @@
 
 import os
 import sys
-from subprocess import Popen, STDOUT, PIPE
+from subprocess import Popen, call, STDOUT, PIPE
+from glob import glob
 
 class bcolors:
     HEADER = '\033[95m'
@@ -61,9 +62,10 @@ for root, dirs, files in folders:
     sys.stdout.write(bcolors.FAIL + "ERROR" + bcolors.ENDC + "\n")
 
   # Process results
-  os.system('python results.py') 
-  os.system('mv results_test.dat results_true.dat')
-  os.system('rm -f *.binary *.out')
+  call(['python', 'results.py'])
+  os.rename('results_test.dat', 'results_true.dat')
+  for path in glob("*.binary") + glob("*.out"):
+      os.remove(path)
 
   # Go back a directory
   os.chdir('..')

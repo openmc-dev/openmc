@@ -6,11 +6,10 @@ module particle_restart
   use constants
   use geometry_header, only: BASE_UNIVERSE
   use global
-  use particle_header, only: deallocate_coord
   use output,          only: write_message, print_particle
-  use physics,         only: transport
+  use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed
-  use source,          only: initialize_particle
+  use tracking,        only: transport
 
 #ifdef HDF5
   use hdf5_interface 
@@ -36,7 +35,9 @@ contains
 ! READ_HDF5_PARTICLE_RESTART
 !===============================================================================
 
-  subroutine read_hdf5_particle_restart()
+  subroutine read_hdf5_particle_restart(p)
+
+    type(Particle), intent(inout) :: p
 
     ! write meessage
     message = "Loading particle restart file " // trim(path_particle_restart) &
@@ -77,7 +78,9 @@ contains
 ! READ_BINARY_PARTICLE_RESTART
 !===============================================================================
 
-  subroutine read_binary_particle_restart()
+  subroutine read_binary_particle_restart(p)
+
+    type(Particle), intent(inout) :: p
 
     integer :: filetype
     integer :: revision
@@ -121,16 +124,16 @@ contains
   subroutine run_particle_restart()
 
     integer(8) :: particle_seed
+    type(Particle) :: p
 
     ! initialize the particle to be tracked
-    allocate(p)
-    call initialize_particle()
+    call p % initialize()
 
     ! read in the restart information
 #ifdef HDF5
-    call read_hdf5_particle_restart()
+    call read_hdf5_particle_restart(p)
 #else
-    call read_binary_particle_restart()
+    call read_binary_particle_restart(p)
 #endif
 
     ! set all tallies to 0 for now (just tracking errors)
@@ -142,10 +145,10 @@ contains
     call set_particle_seed(particle_seed)
 
     ! transport neutron
-    call transport()
+    call transport(p)
 
     ! write output if particle made it
-    call print_particle()
+    call print_particle(p)
 
   end subroutine run_particle_restart
 

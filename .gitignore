@@ -25,3 +25,6 @@ src/xml-fortran/xmlreader
 
 # Modules built from XML templates
 src/templates/*.f90
+
+# Test results error file
+results_error.dat

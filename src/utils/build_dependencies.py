@@ -9,9 +9,9 @@ for src in glob.iglob('*.F90'):
     module = src.strip('.F90')
     deps = set()
     d = re.findall(r'\n\s*use\s+(\w+)',
-                   open(src,'r').read())
+                   open(src, 'r').read())
     for name in d:
-        if name in ['mpi','hdf5','h5lt','fox_dom']:
+        if name in ['mpi', 'hdf5', 'h5lt', 'fox_dom']:
             continue
         deps.add(name)
     if deps:

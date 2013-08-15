@@ -344,7 +344,7 @@ contains
           i = i + 1
 
           ! Check what type of file this is
-          call sp % file_open(argv(i), 'r')
+          call sp % file_open(argv(i), 'r', serial = .false.)
           call sp % read_data(filetype, 'filetype')
           call sp % file_close()
 

@@ -55,7 +55,7 @@ contains
 
     if (master) then
       ! Create statepoint file 
-      call sp % file_create(filename, serial=.true.)
+      call sp % file_create(filename)
 
       ! Write file type
       call sp % write_data(FILETYPE_STATEPOINT, "filetype")
@@ -273,13 +273,13 @@ contains
         message = "Creating source file " // trim(filename) // "..."
         call write_message(1)
 
-        ! Create statepoint file 
-        call sp % file_create(filename)
+        ! Create source file 
+        call sp % file_create(filename, serial = .false.)
 
       else
 
         ! Reopen state point file in parallel
-        call sp % file_open(filename, 'w')
+        call sp % file_open(filename, 'w', serial = .false.)
 
       end if
 

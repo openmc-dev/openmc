@@ -4,6 +4,11 @@
 Publications
 ============
 
+- Paul K. Romano, Andrew R. Siegel, Benoit Forget, and Kord Smith, "Data
+  decomposition of Monte Carlo particle transport simulations via tally
+  servers," *J. Comput. Phys.*, **252**, 20--36
+  (2013). `<http://dx.doi.org/10.1016/j.jcp.2013.06.011>`_
+
 - Paul K. Romano, Bryan R. Herman, Nicholas E. Horelik, Benoit Forget, Kord
   Smith, and Andrew R. Siegel, "Progress and Status of the OpenMC Monte Carlo
   Code," *Proc. Int. Conf. Mathematics and Computational Methods Applied to

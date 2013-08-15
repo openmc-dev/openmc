@@ -88,10 +88,9 @@ contains
 ! FILE_CREATE creates a new file to write data to
 !===============================================================================
 
-  subroutine file_create(self, filename, serial, unit)
+  subroutine file_create(self, filename, serial)
 
     character(*),      intent(in) :: filename  ! name of file to be created
-    integer, optional, intent(in) :: unit      ! optional unit number
     logical, optional, intent(in) :: serial    ! processor rank to write from
     class(BinaryOutput) :: self
 
@@ -99,7 +98,7 @@ contains
     if (present(serial)) then
       self % serial = serial
     else
-      self % serial = .false.
+      self % serial = .true.
      end if
 
 #ifdef HDF5
@@ -114,26 +113,13 @@ contains
 # endif
 #elif MPI
     if (self % serial) then
-      ! Check for specified unit
-      if (present(unit)) then
-        self % unit_fh = unit
-      else
-        self % unit_fh = 100
-      end if
-      open(UNIT=self % unit_fh, FILE=filename, ACTION="write", &
+      open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
            STATUS='replace', ACCESS='stream')
     else
       call mpi_create_file(filename, self % unit_fh)
     end if
 #else
-    ! Check for specified unit
-    if (present(unit)) then
-      self % unit_fh = unit
-    else
-      self % unit_fh = 100
-    end if
-
-    open(UNIT=self % unit_fh, FILE=filename, ACTION="write", &
+    open(NEWUNIT=self % unit_fh, FILE=filename, ACTION="write", &
          STATUS='replace', ACCESS='stream')
 #endif
 
@@ -155,7 +141,7 @@ contains
     if (present(serial)) then
       self % serial = serial
     else
-      self % serial = .false.
+      self % serial = .true.
      end if
 
 #ifdef HDF5
@@ -170,38 +156,24 @@ contains
 # endif
 #elif MPI
     if (self % serial) then
-      ! Check for specified unit
-      if (present(unit)) then
-        self % unit_fh = unit
-      else
-        self % unit_fh = 100
-      end if
-
       ! Check for read/write mode to open, default is read only
       if (mode == 'w') then
-        open(UNIT=self % unit_fh, FILE=filename, ACTION='write', &
+        open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='write', &
              STATUS='old', ACCESS='stream', POSITION='append')
       else
-        open(UNIT=self % unit_fh, FILE=filename, ACTION='read', &
+        open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='read', &
              STATUS='old', ACCESS='stream')
       end if
     else
       call mpi_open_file(filename, self % unit_fh, mode)
     end if
 #else
-    ! Check for specified unit
-    if (present(unit)) then
-      self % unit_fh = unit
-    else
-      self % unit_fh = 100
-    end if
-
     ! Check for read/write mode to open, default is read only
     if (mode == 'w') then
-      open(UNIT=self % unit_fh, FILE=filename, ACTION='write', &
+      open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='write', &
            STATUS='old', ACCESS='stream', POSITION='append')
     else
-      open(UNIT=self % unit_fh, FILE=filename, ACTION='read', &
+      open(NEWUNIT=self % unit_fh, FILE=filename, ACTION='read', &
            STATUS='old', ACCESS='stream')
     end if
 #endif

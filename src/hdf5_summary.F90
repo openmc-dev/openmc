@@ -30,7 +30,7 @@ contains
     character(MAX_FILE_LEN) :: filename = "summary.h5"
 
     ! Create a new file using default properties.
-    call su % file_create(filename, serial=.true.)
+    call su % file_create(filename)
 
     ! Write header information
     call hdf5_write_header()

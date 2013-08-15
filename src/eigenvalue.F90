@@ -13,7 +13,7 @@ module eigenvalue
   use mesh_header,  only: StructuredMesh
   use output,       only: write_message, header, print_columns,              &
                           print_batch_keff, print_generation
-  use physics,      only: transport
+  use particle_header, only: Particle
   use random_lcg,   only: prn, set_particle_seed, prn_skip
   use search,       only: binary_search
   use source,       only: get_source_particle
@@ -21,6 +21,7 @@ module eigenvalue
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
                           reset_result
+  use tracking,     only: transport
 
   private
   public :: run_eigenvalue
@@ -37,10 +38,9 @@ contains
 
   subroutine run_eigenvalue()
 
-    if (master) call header("K EIGENVALUE SIMULATION", level=1)
+    type(Particle) :: p
 
-    ! Allocate particle
-    allocate(p)
+    if (master) call header("K EIGENVALUE SIMULATION", level=1)
 
     ! Display column titles
     if(master) call print_columns()
@@ -74,10 +74,10 @@ contains
         PARTICLE_LOOP: do current_work = 1, work
 
           ! grab source particle from bank
-          call get_source_particle(current_work)
+          call get_source_particle(p, current_work)
 
           ! transport particle
-          call transport()
+          call transport(p)
 
         end do PARTICLE_LOOP
 

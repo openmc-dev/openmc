@@ -91,10 +91,9 @@ contains
 ! ALLOCATE_CMFD allocates all data in of cmfd type
 !==============================================================================
 
-  subroutine allocate_cmfd(this, n_batches, entropy_on)
+  subroutine allocate_cmfd(this, n_batches)
 
     integer :: n_batches
-    logical :: entropy_on
     type(cmfd_type) :: this
 
     integer :: nx  ! number of mesh cells in x direction
@@ -135,7 +134,7 @@ contains
     if (.not. allocated(this % weightfactors)) allocate(this % weightfactors(ng,nx,ny,nz))
 
     ! Allocate batchwise parameters
-    if (.not. allocated(this % entropy) .and. entropy_on) allocate(this % entropy(n_batches))
+    if (.not. allocated(this % entropy)) allocate(this % entropy(n_batches))
     if (.not. allocated(this % balance)) allocate(this % balance(n_batches))
     if (.not. allocated(this % src_cmp)) allocate(this % src_cmp(n_batches))
     if (.not. allocated(this % dom)) allocate(this % dom(n_batches))
@@ -160,7 +159,7 @@ contains
     this % src_cmp       = ZERO
     this % dom           = ZERO
     this % k_cmfd        = ZERO
-    if (entropy_on) this % entropy = ZERO
+    this % entropy       = ZERO
 
   end subroutine allocate_cmfd
 

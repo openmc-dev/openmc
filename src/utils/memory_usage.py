@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 
-# This script reads a cross_sections.out file, adds up the memory usage for each
-# nuclide and S(a,b) table, and displays the total memory usage
+# This script reads a cross_sections.out file, adds up the memory usage for
+# each nuclide and S(a,b) table, and displays the total memory usage
 
 import sys
 import os

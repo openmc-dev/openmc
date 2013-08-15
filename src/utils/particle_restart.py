@@ -2,6 +2,7 @@
 
 import struct
 
+
 class Particle(object):
     def __init__(self, filename):
         if filename.endswith('.h5'):
@@ -38,9 +39,9 @@ class Particle(object):
         self.uvw = self._get_double(3, path='uvw')
 
     def _get_data(self, n, typeCode, size):
-        return list(struct.unpack('={0}{1}'.format(n,typeCode),
+        return list(struct.unpack('={0}{1}'.format(n, typeCode),
                                   self._f.read(n*size)))
-    
+
     def _get_int(self, n=1, path=None):
         if self._hdf5:
             return [int(v) for v in self._f[path].value]

@@ -1,6 +1,7 @@
 module particle_header
 
-  use constants, only: NEUTRON, ONE, NONE, ZERO
+  use constants,       only: NEUTRON, ONE, NONE, ZERO
+  use geometry_header, only: BASE_UNIVERSE
 
   implicit none
 
@@ -65,10 +66,6 @@ module particle_header
     integer    :: n_bank        ! number of fission sites banked
     real(8)    :: wgt_bank      ! weight of fission sites banked
 
-    ! Energy grid data
-    integer    :: index_grid    ! index on unionized energy grid
-    real(8)    :: interp        ! interpolation factor for energy grid
-
     ! Indices for various arrays
     integer    :: surface       ! index for surface particle is on
     integer    :: cell_born     ! index for cell particle was born in
@@ -78,6 +75,8 @@ module particle_header
     ! Statistical data
     integer    :: n_collision   ! # of collisions
 
+  contains
+    procedure :: initialize => initialize_particle
   end type Particle
 
 contains
@@ -101,5 +100,40 @@ contains
     end if
 
   end subroutine deallocate_coord
+
+!===============================================================================
+! INITIALIZE_PARTICLE sets default attributes for a particle from the source
+! bank
+!===============================================================================
+
+  subroutine initialize_particle(this)
+
+    class(Particle) :: this
+
+    ! Set particle to neutron that's alive
+    this % type  = NEUTRON
+    this % alive = .true.
+
+    ! clear attributes
+    this % surface       = NONE
+    this % cell_born     = NONE
+    this % material      = NONE
+    this % last_material = NONE
+    this % wgt           = ONE
+    this % last_wgt      = ONE
+    this % absorb_wgt    = ZERO
+    this % n_bank        = 0
+    this % wgt_bank      = ZERO
+    this % n_collision   = 0
+
+    ! remove any original coordinates
+    call deallocate_coord(this % coord0)
+
+    ! Set up base level coordinates
+    allocate(this % coord0)
+    this % coord0 % universe = BASE_UNIVERSE
+    this % coord             => this % coord0
+
+  end subroutine initialize_particle
 
 end module particle_header

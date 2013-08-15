@@ -9,7 +9,6 @@ module global
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
-  use particle_header,  only: Particle
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
@@ -22,11 +21,6 @@ module global
 
   implicit none
   save
-
-  ! ============================================================================
-  ! THE PARTICLE
-
-  type(Particle), pointer :: p => null()
 
   ! ============================================================================
   ! GEOMETRY-RELATED VARIABLES

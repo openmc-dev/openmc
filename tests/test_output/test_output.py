@@ -2,6 +2,7 @@
 
 import os
 from subprocess import Popen, STDOUT, PIPE
+import filecmp
 
 pwd = os.path.dirname(__file__)
 
@@ -24,9 +25,16 @@ def test_cross_sections_exists():
 def test_statepoint_exists():
     assert os.path.exists(pwd + '/statepoint.10.binary')
 
+def test_results():
+    os.system('python results.py')
+    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
+    if not compare:
+      os.rename('results_test.dat', 'results_error.dat')
+    assert compare
+
 def teardown():
     output = [pwd + i for i in ['/statepoint.10.binary', '/summary.out',
-                                '/cross_sections.out']]
+                                '/cross_sections.out', '/results_test.dat']]
     for f in output:
         if os.path.exists(f):
             os.remove(f)

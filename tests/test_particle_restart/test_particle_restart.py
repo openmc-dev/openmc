@@ -16,7 +16,7 @@ def test_run():
     assert stderr != ''
 
 def test_created_restart():
-    assert os.path.exists(pwd + '/particle_10_638.binary')
+    assert os.path.exists(pwd + '/particle_10_903.binary')
 
 def test_results():
     os.system('python results.py')
@@ -26,13 +26,13 @@ def test_results():
     assert compare
 
 def test_run_restart():
-    proc = Popen([pwd + '/../../src/openmc -r particle_10_638.binary'], 
+    proc = Popen([pwd + '/../../src/openmc -r particle_10_903.binary'], 
            stderr=PIPE, stdout=PIPE, shell=True)
     stdout, stderr = proc.communicate()
     assert stderr != ''
 
 def teardown():
-    output = [pwd + '/particle_10_638.binary', pwd + '/results_test.dat']
+    output = [pwd + '/particle_10_903.binary', pwd + '/results_test.dat']
     for f in output:
         if os.path.exists(f):
             os.remove(f)

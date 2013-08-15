@@ -10,7 +10,7 @@ module tally
                               mesh_intersects_2d, mesh_intersects_3d
   use mesh_header,      only: StructuredMesh
   use output,           only: header
-  use particle_header,  only: LocalCoord
+  use particle_header,  only: LocalCoord, Particle
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
@@ -32,7 +32,9 @@ contains
 ! triggered at every collision, not every event
 !===============================================================================
 
-  subroutine score_analog_tally()
+  subroutine score_analog_tally(p)
+
+    type(Particle), intent(in) :: p
 
     integer :: i
     integer :: i_tally
@@ -70,7 +72,7 @@ contains
       ! =======================================================================
       ! DETERMINE SCORING BIN COMBINATION
 
-      call get_scoring_bins(i_tally, found_bin)
+      call get_scoring_bins(p, i_tally, found_bin)
       if (.not. found_bin) cycle
 
       ! =======================================================================
@@ -285,7 +287,7 @@ contains
                 ! outgoing energy bins may have been scored to. The following
                 ! logic treats this special case and results to multiple bins
 
-                call score_fission_eout(t, score_index)
+                call score_fission_eout(p, t, score_index)
                 cycle SCORE_LOOP
 
               else
@@ -364,8 +366,9 @@ contains
 ! neutrons produced with different energies.
 !===============================================================================
 
-  subroutine score_fission_eout(t, i_score)
+  subroutine score_fission_eout(p, t, i_score)
 
+    type(Particle), intent(in) :: p
     type(TallyObject), pointer :: t
     integer, intent(in)        :: i_score ! index for score
 
@@ -424,9 +427,10 @@ contains
 ! that require post-collision information.
 !===============================================================================
 
-  subroutine score_tracklength_tally(distance)
+  subroutine score_tracklength_tally(p, distance)
 
-    real(8), intent(in) :: distance
+    type(Particle), intent(in) :: p
+    real(8),        intent(in) :: distance
 
     integer :: i
     integer :: i_tally
@@ -464,14 +468,14 @@ contains
       ! since multiple bins can be scored to with a single track
 
       if (t % find_filter(FILTER_MESH) > 0) then
-        call score_tl_on_mesh(i_tally, distance)
+        call score_tl_on_mesh(p, i_tally, distance)
         cycle
       end if
 
       ! =======================================================================
       ! DETERMINE SCORING BIN COMBINATION
 
-      call get_scoring_bins(i_tally, found_bin)
+      call get_scoring_bins(p, i_tally, found_bin)
       if (.not. found_bin) cycle
 
       ! =======================================================================
@@ -485,7 +489,7 @@ contains
       filter_index = sum((t % matching_bins - 1) * t % stride) + 1
 
       if (t % all_nuclides) then
-        call score_all_nuclides(i_tally, flux, filter_index)
+        call score_all_nuclides(p, i_tally, flux, filter_index)
       else
 
         NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
@@ -721,11 +725,12 @@ contains
 ! the user requests <nuclides>all</nuclides>.
 !===============================================================================
 
-  subroutine score_all_nuclides(i_tally, flux, filter_index)
+  subroutine score_all_nuclides(p, i_tally, flux, filter_index)
 
-    integer, intent(in) :: i_tally
-    real(8), intent(in) :: flux
-    integer, intent(in) :: filter_index
+    type(Particle), intent(in) :: p
+    integer,        intent(in) :: i_tally
+    real(8),        intent(in) :: flux
+    integer,        intent(in) :: filter_index
 
     integer :: i             ! loop index for nuclides in material
     integer :: j             ! loop index for scoring bin types
@@ -946,10 +951,11 @@ contains
 ! these tallies, it is possible to score to multiple mesh cells for each track.
 !===============================================================================
 
-  subroutine score_tl_on_mesh(i_tally, d_track)
+  subroutine score_tl_on_mesh(p, i_tally, d_track)
 
-    integer, intent(in) :: i_tally
-    real(8), intent(in) :: d_track
+    type(Particle), intent(in) :: p
+    integer,        intent(in) :: i_tally
+    real(8),        intent(in) :: d_track
 
     integer :: i                    ! loop index for filter/score bins
     integer :: j                    ! loop index for direction
@@ -1145,7 +1151,7 @@ contains
 
         if (t % all_nuclides) then
           ! Score reaction rates for each nuclide in material
-          call score_all_nuclides(i_tally, flux, filter_index)
+          call score_all_nuclides(p, i_tally, flux, filter_index)
 
         else
           NUCLIDE_BIN_LOOP: do b = 1, t % n_nuclide_bins
@@ -1260,10 +1266,11 @@ contains
 ! for a tally based on the particle's current attributes.
 !===============================================================================
 
-  subroutine get_scoring_bins(i_tally, found_bin)
+  subroutine get_scoring_bins(p, i_tally, found_bin)
 
-    integer, intent(in)     :: i_tally
-    logical, intent(out)    :: found_bin
+    type(Particle), intent(in)  :: p
+    integer,        intent(in)  :: i_tally
+    logical,        intent(out) :: found_bin
 
     integer :: i ! loop index for filters
     integer :: n ! number of bins for single filter
@@ -1370,7 +1377,9 @@ contains
 ! determining which mesh surfaces were crossed
 !===============================================================================
 
-  subroutine score_surface_current()
+  subroutine score_surface_current(p)
+
+    type(Particle), intent(in) :: p
 
     integer :: i
     integer :: i_tally

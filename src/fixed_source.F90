@@ -1,15 +1,15 @@
 module fixed_source
 
-  use constants,   only: ZERO
+  use constants,       only: ZERO
   use global
-  use output,      only: write_message, header
-  use physics,     only: transport
-  use random_lcg,  only: set_particle_seed
-  use source,      only: initialize_particle, sample_external_source, &
-                         copy_source_attributes
-  use state_point, only: write_state_point
-  use string,      only: to_str
-  use tally,       only: synchronize_tallies, setup_active_usertallies
+  use output,          only: write_message, header
+  use particle_header, only: Particle
+  use random_lcg,      only: set_particle_seed
+  use source,          only: sample_external_source, copy_source_attributes
+  use state_point,     only: write_state_point
+  use string,          only: to_str
+  use tally,           only: synchronize_tallies, setup_active_usertallies
+  use tracking,        only: transport
 
   type(Bank), pointer :: source_site => null()
 
@@ -17,12 +17,12 @@ contains
 
   subroutine run_fixedsource()
 
-    integer(8) :: i ! index over histories in single cycle
+    integer(8)     :: i ! index over histories in single cycle
+    type(Particle) :: p
 
     if (master) call header("FIXED SOURCE TRANSPORT SIMULATION", level=1)
 
     ! Allocate particle and dummy source site
-    allocate(p)
     allocate(source_site)
 
     ! Turn timer and tallies on
@@ -61,10 +61,10 @@ contains
         call set_particle_seed(p % id)
 
         ! grab source particle from bank
-        call sample_source_particle()
+        call sample_source_particle(p)
 
         ! transport particle
-        call transport()
+        call transport(p)
 
       end do PARTICLE_LOOP
 
@@ -120,16 +120,18 @@ contains
 ! SAMPLE_SOURCE_PARTICLE
 !===============================================================================
 
-  subroutine sample_source_particle()
+  subroutine sample_source_particle(p)
+
+    type(Particle), intent(inout) :: p
 
     ! Set particle
-    call initialize_particle()
+    call p % initialize()
 
     ! Sample the external source distribution
     call sample_external_source(source_site)
 
     ! Copy source attributes to the particle
-    call copy_source_attributes(source_site)
+    call copy_source_attributes(p, source_site)
 
   end subroutine sample_source_particle
 

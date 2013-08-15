@@ -90,6 +90,7 @@ cross_section.o: error.o
 cross_section.o: fission.o
 cross_section.o: global.o
 cross_section.o: material_header.o
+cross_section.o: particle_header.o
 cross_section.o: random_lcg.o
 cross_section.o: search.o
 
@@ -103,13 +104,14 @@ eigenvalue.o: math.o
 eigenvalue.o: mesh.o
 eigenvalue.o: mesh_header.o
 eigenvalue.o: output.o
-eigenvalue.o: physics.o
+eigenvalue.o: particle_header.o
 eigenvalue.o: random_lcg.o
 eigenvalue.o: search.o
 eigenvalue.o: source.o
 eigenvalue.o: state_point.o
 eigenvalue.o: string.o
 eigenvalue.o: tally.o
+eigenvalue.o: tracking.o
 
 endf.o: constants.o
 endf.o: string.o
@@ -137,12 +139,13 @@ fission.o: search.o
 fixed_source.o: constants.o
 fixed_source.o: global.o
 fixed_source.o: output.o
-fixed_source.o: physics.o
+fixed_source.o: particle_header.o
 fixed_source.o: random_lcg.o
 fixed_source.o: source.o
 fixed_source.o: state_point.o
 fixed_source.o: string.o
 fixed_source.o: tally.o
+fixed_source.o: tracking.o
 
 geometry.o: constants.o
 geometry.o: error.o
@@ -243,6 +246,7 @@ main.o: particle_restart.o
 main.o: plot.o
 
 math.o: constants.o
+math.o: random_lcg.o
 
 mesh.o: constants.o
 mesh.o: global.o
@@ -272,6 +276,7 @@ output_interface.o: mpiio_interface.o
 output_interface.o: tally_header.o
 
 particle_header.o: constants.o
+particle_header.o: geometry_header.o
 
 particle_restart.o: bank_header.o
 particle_restart.o: constants.o
@@ -280,13 +285,13 @@ particle_restart.o: global.o
 particle_restart.o: hdf5_interface.o
 particle_restart.o: output.o
 particle_restart.o: particle_header.o
-particle_restart.o: physics.o
 particle_restart.o: random_lcg.o
-particle_restart.o: source.o
+particle_restart.o: tracking.o
 
 particle_restart_write.o: bank_header.o
 particle_restart_write.o: global.o
 particle_restart_write.o: hdf5_interface.o
+particle_restart_write.o: particle_header.o
 particle_restart_write.o: string.o
 
 physics.o: ace_header.o
@@ -295,11 +300,10 @@ physics.o: cross_section.o
 physics.o: endf.o
 physics.o: error.o
 physics.o: fission.o
-physics.o: geometry.o
-physics.o: geometry_header.o
 physics.o: global.o
 physics.o: interpolation.o
 physics.o: material_header.o
+physics.o: math.o
 physics.o: mesh.o
 physics.o: output.o
 physics.o: particle_header.o
@@ -307,7 +311,6 @@ physics.o: particle_restart_write.o
 physics.o: random_lcg.o
 physics.o: search.o
 physics.o: string.o
-physics.o: tally.o
 
 plot.o: constants.o
 plot.o: error.o
@@ -318,7 +321,6 @@ plot.o: output.o
 plot.o: particle_header.o
 plot.o: plot_header.o
 plot.o: ppmlib.o
-plot.o: source.o
 plot.o: string.o
 
 plot_header.o: constants.o
@@ -336,9 +338,9 @@ source.o: constants.o
 source.o: error.o
 source.o: geometry_header.o
 source.o: global.o
+source.o: math.o
 source.o: output.o
 source.o: particle_header.o
-source.o: physics.o
 source.o: random_lcg.o
 source.o: string.o
 
@@ -374,3 +376,14 @@ tally_initialize.o: global.o
 tally_initialize.o: tally_header.o
 
 timer_header.o: constants.o
+
+tracking.o: cross_section.o
+tracking.o: error.o
+tracking.o: geometry.o
+tracking.o: geometry_header.o
+tracking.o: global.o
+tracking.o: output.o
+tracking.o: particle_header.o
+tracking.o: physics.o
+tracking.o: string.o
+tracking.o: tally.o

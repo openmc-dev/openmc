@@ -22,7 +22,7 @@ def test_results():
     os.system('python results.py')
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
-      os.system('cp results_test.dat results_error.dat')
+      os.rename('results_test.dat', 'results_error.dat')
     assert compare
 
 def test_run_restart():

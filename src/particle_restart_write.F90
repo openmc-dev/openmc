@@ -2,9 +2,10 @@ module particle_restart_write
 
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use bank_header,  only: Bank
+  use bank_header,     only: Bank
   use global
-  use string,       only: to_str
+  use particle_header, only: Particle
+  use string,          only: to_str
 
 #ifdef HDF5
   use hdf5_interface
@@ -24,16 +25,18 @@ contains
 ! WRITE_PARTICLE_RESTART
 !===============================================================================
 
-  subroutine write_particle_restart()
+  subroutine write_particle_restart(p)
+
+    type(Particle), intent(in) :: p
 
     ! Dont write another restart file if in particle restart mode
     if (run_mode == MODE_PARTICLE) return
 
     ! write out binary or HDF5 file
 #ifdef HDF5
-    call write_particle_restart_hdf5()
+    call write_particle_restart_hdf5(p)
 #else
-    call write_particle_restart_binary()
+    call write_particle_restart_binary(p)
 #endif
 
   end subroutine write_particle_restart
@@ -44,7 +47,9 @@ contains
 ! WRITE_PARTICLE_RESTART_HDF5
 !===============================================================================
 
-  subroutine write_particle_restart_hdf5()
+  subroutine write_particle_restart_hdf5(p)
+
+    type(Particle), intent(in) :: p
 
     character(MAX_FILE_LEN) :: filename
     type(Bank), pointer     :: src => null()
@@ -88,7 +93,9 @@ contains
 ! WRITE_PARTICLE_RESTART_BINARY
 !===============================================================================
 
-  subroutine write_particle_restart_binary()
+  subroutine write_particle_restart_binary(p)
+
+    type(Particle), intent(in) :: p
 
     character(MAX_FILE_LEN) :: filename
     type(Bank), pointer     :: src => null()

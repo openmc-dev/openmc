@@ -6,6 +6,7 @@ from xml.dom.minidom import getDOMImplementation
 
 types = {1: "neutron", 2: "dosimetry", 3: "thermal"}
 
+
 class Xsdata(object):
 
     def __init__(self, filename):
@@ -94,7 +95,7 @@ class XsdataTable(object):
                         continue
                     string = " ".join(self.alias)
                 else:
-                    string = "{0}".format(getattr(self,attribute))
+                    string = "{0}".format(getattr(self, attribute))
 
                 # Skip metastable and binary if 0
                 if attribute == "metastable" and self.metastable == 0:
@@ -109,7 +110,7 @@ class XsdataTable(object):
                 # node.appendChild(nodeAttr)
                 node.setAttribute(attribute, string)
         return node
-        
+
 
 if __name__ == '__main__':
     # Read command line arguments
@@ -121,25 +122,25 @@ if __name__ == '__main__':
     # Read xsdata and create XML document object
     xsdataObject = Xsdata(xsdataFile)
     doc = xsdataObject.to_xml()
-    
+
     # Reduce number of lines
     lines = doc.toprettyxml(indent='  ')
-    lines = lines.replace('<alias>\n      ','<alias>')
-    lines = lines.replace('\n    </alias>','</alias>')
-    lines = lines.replace('<zaid>\n      ','<zaid>')
-    lines = lines.replace('\n    </zaid>','</zaid>')
-    lines = lines.replace('<type>\n      ','<type>')
-    lines = lines.replace('\n    </type>','</type>')
-    lines = lines.replace('<awr>\n      ','<awr>')
-    lines = lines.replace('\n    </awr>','</awr>')
-    lines = lines.replace('<temperature>\n      ','<temperature>')
-    lines = lines.replace('\n    </temperature>','</temperature>')
-    lines = lines.replace('<path>\n      ','<path>')
-    lines = lines.replace('\n    </path>','</path>')
-    lines = lines.replace('<metastable>\n      ','<metastable>')
-    lines = lines.replace('\n    </metastable>','</metastable>')
-    lines = lines.replace('<binary>\n      ','<binary>')
-    lines = lines.replace('\n    </binary>','</binary>')
+    lines = lines.replace('<alias>\n      ', '<alias>')
+    lines = lines.replace('\n    </alias>', '</alias>')
+    lines = lines.replace('<zaid>\n      ', '<zaid>')
+    lines = lines.replace('\n    </zaid>', '</zaid>')
+    lines = lines.replace('<type>\n      ', '<type>')
+    lines = lines.replace('\n    </type>', '</type>')
+    lines = lines.replace('<awr>\n      ', '<awr>')
+    lines = lines.replace('\n    </awr>', '</awr>')
+    lines = lines.replace('<temperature>\n      ', '<temperature>')
+    lines = lines.replace('\n    </temperature>', '</temperature>')
+    lines = lines.replace('<path>\n      ', '<path>')
+    lines = lines.replace('\n    </path>', '</path>')
+    lines = lines.replace('<metastable>\n      ', '<metastable>')
+    lines = lines.replace('\n    </metastable>', '</metastable>')
+    lines = lines.replace('<binary>\n      ', '<binary>')
+    lines = lines.replace('\n    </binary>', '</binary>')
 
     # Write document in pretty XML to specified file
     f = open(xmlFile, 'w')

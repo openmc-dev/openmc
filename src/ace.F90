@@ -10,7 +10,7 @@ module ace
   use material_header,  only: Material
   use output,           only: write_message
   use set_header,       only: SetChar
-  use string,           only: str_to_int, str_to_real, lower_case, to_str
+  use string,           only: to_str
 
   implicit none
 

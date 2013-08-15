@@ -192,6 +192,23 @@ class StatePoint(object):
                 self.k_abs_tra = self._get_double(path='k_abs_tra')[0]
                 self.k_combined = self._get_double(2, path='k_combined')
 
+            # Read CMFD information
+            cmfd_present = self._get_int(path='cmfd_on')[0]
+            if cmfd_present == 1:
+                self.cmfd_indices = self._get_double(4, path='cmfd/indicies')
+                self.k_cmfd = self._get_double(self.current_batch,
+                                               path='cmfd/k_cmfd')
+                self.cmfd_src = self._get_double(np.product(self.cmfd_indices,
+                                                 path='cmfd/cmfd_src'))
+                self.cmfd_entropy = self._get_double(self.current_batch,
+                                                     path='cmfd/cmfd_entropy')
+                self.cmfd_balance = self._get_double(self.current_batch,
+                                                     path='cmfd/cmfd_balance')
+                self.cmfd_dominance = self._get_double(self.current_batch,
+                                                       path='cmfd/cmfd_dominance')
+                self.cmfd_srccmp = self._get_double(self.current_batch,
+                                                    path='cmfd/cmfd_srccmp')
+
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]
 

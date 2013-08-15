@@ -52,7 +52,7 @@ contains
     call time_cmfdsolve % reset()
 
     ! Allocate cmfd object
-    call allocate_cmfd(cmfd, n_batches, entropy_on)
+    call allocate_cmfd(cmfd, n_batches)
 
   end subroutine configure_cmfd
 

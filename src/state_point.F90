@@ -98,14 +98,15 @@ contains
         ! Write out CMFD info
         if (cmfd_on) then
           call write_data(1, "cmfd_on")
+          call write_data(cmfd % indices, "indicies", length=4, group="cmfd")
           call write_data(cmfd % k_cmfd, "k_cmfd", length=current_batch, &
                group="cmfd")
           call write_data(cmfd % cmfd_src, "cmfd_src", &
                length=(/cmfd % indices(4), cmfd % indices(1), &
                cmfd % indices(2), cmfd % indices(3)/), &
                group="cmfd")
-          if (entropy_on) call write_data(cmfd % entropy, "cmfd_entropy", &
-                            length=current_batch, group="cmfd")
+          call write_data(cmfd % entropy, "cmfd_entropy", &
+                          length=current_batch, group="cmfd")
           call write_data(cmfd % balance, "cmfd_balance", &
                length=current_batch, group="cmfd")
           call write_data(cmfd % dom, "cmfd_dominance", &
@@ -543,14 +544,16 @@ contains
 
       ! Write out CMFD info
       if (int_array(1) == 1) then
+        call read_data(cmfd % indices, "indicies", length=4, group="cmfd", &
+                       option="collective")
         call read_data(cmfd % k_cmfd, "k_cmfd", length=restart_batch, &
              group="cmfd", option="collective")
         call read_data(cmfd % cmfd_src, "cmfd_src", &
              length=(/cmfd % indices(4), cmfd % indices(1), &
              cmfd % indices(2), cmfd % indices(3)/), &
              group="cmfd", option="collective")
-        if (entropy_on) call read_data(cmfd % entropy, "cmfd_entropy", &
-                          length=restart_batch, group="cmfd", &
+        call read_data(cmfd % entropy, "cmfd_entropy", &
+                       length=restart_batch, group="cmfd", &
                           option="collective")
         call read_data(cmfd % balance, "cmfd_balance", &
              length=restart_batch, group="cmfd", option="collective")

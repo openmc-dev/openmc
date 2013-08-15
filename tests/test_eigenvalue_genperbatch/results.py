@@ -15,7 +15,7 @@ outstr = ''
  
 # write out k-combined
 outstr += 'k-combined:\n'
-outstr += "{0:10.8f} {1:10.8f}".format(sp.k_combined[0], sp.k_combined[1])
+outstr += "{0:10.8f} {1:10.8f}\n".format(sp.k_combined[0], sp.k_combined[1])
 
 # write results to file
 with open('results_test.dat','w') as fh:

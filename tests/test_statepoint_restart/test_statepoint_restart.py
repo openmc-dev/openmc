@@ -21,7 +21,7 @@ def test_results():
     os.system('python results.py')
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
-      os.system('cp results_test.dat results_error.dat')
+      os.rename('results_test.dat', 'results_error.dat')
     assert compare
 
 def test_restart_form1():
@@ -36,7 +36,7 @@ def test_results_form1():
     os.system('python results.py')
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
-      os.system('cp results_test.dat results_error.dat')
+      os.rename('results_test.dat', 'results_error.dat')
     assert compare
 
 def test_restart_form2():
@@ -51,7 +51,7 @@ def test_results_form2():
     os.system('python results.py')
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
-      os.system('cp results_test.dat results_error.dat')
+      os.rename('results_test.dat', 'results_error.dat')
     assert compare
 
 def teardown():

@@ -3,6 +3,7 @@
 import os
 from subprocess import Popen, STDOUT, PIPE
 import filecmp
+from nose_mpi import NoseMPI
 
 pwd = os.path.dirname(__file__)
 
@@ -11,7 +12,13 @@ def setup():
     os.chdir(pwd)
 
 def test_run():
-    proc = Popen([pwd + '/../../src/openmc'], stderr=STDOUT, stdout=PIPE)
+
+    openmc_path = pwd + '/../../src/openmc'
+    if int(NoseMPI.mpi_np) > 0:
+        proc = Popen([NoseMPI.mpi_exec, '-np', NoseMPI.mpi_np, openmc_path],
+               stderr=STDOUT, stdout=PIPE)
+    else:
+        proc = Popen([openmc_path], stderr=STDOUT, stdout=PIPE)
     returncode = proc.wait()
     print(proc.communicate()[0])
     assert returncode == 0

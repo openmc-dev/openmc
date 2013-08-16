@@ -7,7 +7,6 @@ module hdf5_summary
   use endf,            only: reaction_name
   use geometry_header, only: Cell, Surface, Universe, Lattice
   use global
-  use hdf5_interface,  only: hdf5_open_group, hdf5_close_group
   use material_header, only: Material
   use mesh_header,     only: StructuredMesh
   use output_interface
@@ -117,8 +116,8 @@ contains
     ! WRITE INFORMATION ON CELLS
 
     ! Create a cell group (nothing directly written in this group) then close
-    call hdf5_open_group(su % hdf5_fh, "geometry/cells", su % hdf5_grp)
-    call hdf5_close_group(su % hdf5_grp)
+    call su % open_group("geometry/cells")
+    call su % close_group()
 
     ! Write information on each cell
     CELL_LOOP: do i = 1, n_cells
@@ -164,8 +163,8 @@ contains
     ! WRITE INFORMATION ON SURFACES
 
     ! Create surfaces group (nothing directly written here) then close
-    call hdf5_open_group(su % hdf5_fh, "geometry/surfaces", su % hdf5_grp)
-    call hdf5_close_group(su % hdf5_grp)
+    call su % open_group("geometry/surfaces")
+    call su % close_group()
 
     ! Write information on each surface
     SURFACE_LOOP: do i = 1, n_surfaces
@@ -248,8 +247,8 @@ contains
     ! WRITE INFORMATION ON UNIVERSES
 
     ! Create universes group (nothing directly written here) then close
-    call hdf5_open_group(su % hdf5_fh, "geometry/universes", su % hdf5_grp)
-    call hdf5_close_group(su % hdf5_grp)
+    call su % open_group("geometry/universes")
+    call su % close_group()
 
     ! Write information on each universe
     UNIVERSE_LOOP: do i = 1, n_universes
@@ -267,8 +266,8 @@ contains
     ! WRITE INFORMATION ON LATTICES
 
     ! Create lattices group (nothing directly written here) then close
-    call hdf5_open_group(su % hdf5_fh, "geometry/lattices", su % hdf5_grp)
-    call hdf5_close_group(su % hdf5_grp)
+    call su % open_group("geometry/lattices")
+    call su % close_group()
 
     ! Write information on each lattice
     LATTICE_LOOP: do i = 1, n_lattices
@@ -574,9 +573,8 @@ contains
       ! WRITE INFORMATION ON EACH REACTION
 
       ! Create overall group for reactions and close it
-      call hdf5_open_group(su % hdf5_fh, "nuclides/" // trim(nuc % name) // &
-           "/reactions", su % hdf5_grp)
-      call hdf5_close_group(su % hdf5_grp)
+      call su % open_group("nuclides/" // trim(nuc % name) // "/reactions")
+      call su % close_group()
 
       RXN_LOOP: do j = 1, nuc % n_reaction
         ! Information on each reaction

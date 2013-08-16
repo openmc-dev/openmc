@@ -29,7 +29,8 @@ contains
     integer :: i_surface       ! index in surfaces array (with sign)
     logical :: specified_sense ! specified sense of surface in list
     logical :: actual_sense    ! sense of particle wrt surface
-    type(Surface), pointer :: s => null()
+    type(Surface), pointer, save :: s => null()
+!$omp threadprivate(s)
 
     SURFACE_LOOP: do i = 1, c % n_surfaces
       ! Lookup surface
@@ -76,9 +77,10 @@ contains
     integer :: i                       ! cell loop index on a level
     integer :: n                       ! number of cells to search on a level
     integer :: index_cell              ! index in cells array
-    type(Cell),       pointer :: c     ! pointer to cell
-    type(Universe),   pointer :: univ  ! universe to search in
-    type(LocalCoord), pointer :: coord ! particle coordinate to search on
+    type(Cell),       pointer, save :: c => null()     ! pointer to cell
+    type(Universe),   pointer, save :: univ => null()  ! universe to search in
+    type(LocalCoord), pointer, save :: coord => null() ! particle coordinate to search on
+!$omp threadprivate(c, univ, coord)
 
     coord => p % coord0
 
@@ -139,9 +141,10 @@ contains
     logical :: use_search_cells     ! use cells provided as argument
     logical :: outside_lattice      ! if particle is not inside lattice bounds
     logical :: lattice_edge         ! if particle is on a lattice edge
-    type(Cell),     pointer :: c    ! pointer to cell
-    type(Lattice),  pointer :: lat  ! pointer to lattice
-    type(Universe), pointer :: univ ! universe to search in
+    type(Cell),     pointer, save :: c => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ => null() ! universe to search in
+!$omp threadprivate(c, lat, univ)
 
     ! Remove coordinates for any lower levels
     call deallocate_coord(p % coord % next)
@@ -375,7 +378,8 @@ contains
     real(8) :: norm      ! "norm" of surface normal
     integer :: i_surface ! index in surfaces
     logical :: found     ! particle found in universe?
-    type(Surface),  pointer :: surf => null()
+    type(Surface), pointer, save :: surf => null()
+!$omp threadprivate(surf)
 
     i_surface = abs(p % surface)
     surf => surfaces(i_surface)
@@ -658,7 +662,8 @@ contains
     integer :: n_x, n_y, n_z ! size of lattice
     real(8) :: x0, y0, z0    ! half width of lattice element
     logical :: found         ! particle found in cell?
-    type(Lattice), pointer :: lat => null()
+    type(Lattice), pointer, save :: lat => null()
+!$omp threadprivate(lat)
 
     lat => lattices(p % coord % lattice)
 
@@ -787,11 +792,12 @@ contains
     real(8) :: a,b,c,k      ! quadratic equation coefficients
     real(8) :: quad         ! discriminant of quadratic equation
     logical :: on_surface   ! is particle on surface?
-    type(Cell),       pointer :: cl => null()
-    type(Surface),    pointer :: surf => null()
-    type(Lattice),    pointer :: lat => null()
-    type(LocalCoord), pointer :: coord => null()
-    type(LocalCoord), pointer :: final_coord => null()
+    type(Cell),       pointer, save :: cl => null()
+    type(Surface),    pointer, save :: surf => null()
+    type(Lattice),    pointer, save :: lat => null()
+    type(LocalCoord), pointer, save :: coord => null()
+    type(LocalCoord), pointer, save :: final_coord => null()
+!$omp threadprivate(cl, surf, lat, coord, final_coord)
 
     ! inialize distance to infinity (huge)
     dist = INFINITY
@@ -1562,6 +1568,7 @@ contains
 
     ! Increment number of lost particles
     p % alive = .false.
+!$omp atomic
     n_lost_particles = n_lost_particles + 1
 
     ! Abort the simulation if the maximum number of lost particles has been

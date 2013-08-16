@@ -159,6 +159,9 @@ module global
   ! Source and fission bank
   type(Bank), allocatable, target :: source_bank(:)
   type(Bank), allocatable, target :: fission_bank(:)
+#ifdef OPENMP
+  type(Bank), allocatable, target :: master_fission_bank(:)
+#endif
   integer(8) :: n_bank       ! # of sites in fission bank
   integer(8) :: bank_first   ! index of first particle in bank
   integer(8) :: bank_last    ! index of last particle in bank
@@ -204,6 +207,11 @@ module global
   integer :: mpi_err               ! MPI error code
   integer :: MPI_BANK              ! MPI datatype for fission bank
   integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
+
+#ifdef OPENMP
+  integer :: n_threads             ! number of OpenMP threads
+  integer :: thread_id             ! ID of a given thread
+#endif
 
   ! No reduction at end of batch
   logical :: reduce_tallies = .true.
@@ -374,6 +382,9 @@ module global
   logical :: output_summary = .false.
   logical :: output_xs      = .false.
   logical :: output_tallies = .true.
+
+!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, message, &
+!$omp&              trace, thread_id, current_work)
 
 contains
 

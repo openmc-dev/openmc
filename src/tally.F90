@@ -23,6 +23,7 @@ module tally
 
   ! Tally map positioning array
   integer :: position(N_FILTER_TYPES - 3) = 0
+!$omp threadprivate(position)
 
 contains
 
@@ -54,7 +55,8 @@ contains
     real(8) :: macro_total          ! material macro total xs
     real(8) :: macro_scatt          ! material macro scatt xs
     logical :: found_bin            ! scoring bin found?
-    type(TallyObject), pointer :: t => null()
+    type(TallyObject), pointer, save :: t => null()
+!$omp threadprivate(t)
 
     ! Copy particle's pre- and post-collision weight and angle
     last_wgt = p % last_wgt
@@ -200,6 +202,7 @@ contains
               ! get the score and tally it
               score = last_wgt * calc_pn(n, mu)
               
+!$omp atomic
               t % results(score_index, filter_index) % value = &
                 t % results(score_index, filter_index) % value + score
             end do
@@ -338,6 +341,7 @@ contains
           end select
 
           ! Add score to tally
+!$omp atomic
           t % results(score_index, filter_index) % value = &
                t % results(score_index, filter_index) % value + score
 
@@ -411,6 +415,7 @@ contains
       i_filter = sum((t % matching_bins - 1) * t % stride) + 1
 
       ! Add score to tally
+!$omp atomic
       t % results(i_score, i_filter) % value = &
            t % results(i_score, i_filter) % value + score
     end do
@@ -449,9 +454,10 @@ contains
     real(8) :: score                ! actual score (e.g., flux*xs)
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
     logical :: found_bin            ! scoring bin found?
-    type(TallyObject), pointer :: t => null()
-    type(Material),    pointer :: mat => null()
-    type(Reaction),    pointer :: rxn => null()
+    type(TallyObject), pointer, save :: t => null()
+    type(Material),    pointer, save :: mat => null()
+    type(Reaction),    pointer, save :: rxn => null()
+!$omp threadprivate(t, mat, rxn)
 
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
@@ -698,6 +704,7 @@ contains
             score_index = (k - 1)*t % n_score_bins + j
 
             ! Add score to tally
+!$omp atomic
             t % results(score_index, filter_index) % value = &
                  t % results(score_index, filter_index) % value + score
 
@@ -742,9 +749,10 @@ contains
     real(8) :: f             ! interpolation factor
     real(8) :: score         ! actual scoring tally value
     real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
-    type(TallyObject), pointer :: t => null()
-    type(Material),    pointer :: mat => null()
-    type(Reaction),    pointer :: rxn => null()
+    type(TallyObject), pointer, save :: t => null()
+    type(Material),    pointer, save :: mat => null()
+    type(Reaction),    pointer, save :: rxn => null()
+!$omp threadprivate(t, mat, rxn)
 
     ! Get pointer to tally
     t => tallies(i_tally)
@@ -840,6 +848,7 @@ contains
         score_index = (i_nuclide - 1)*t % n_score_bins + j
 
         ! Add score to tally
+!$omp atomic
         t % results(score_index, filter_index) % value = &
              t % results(score_index, filter_index) % value + score
 
@@ -938,6 +947,7 @@ contains
       score_index = n_nuclides_total*t % n_score_bins + j
 
       ! Add score to tally
+!$omp atomic
       t % results(score_index, filter_index) % value = &
            t % results(score_index, filter_index) % value + score
 
@@ -982,10 +992,11 @@ contains
     logical :: found_bin            ! was a scoring bin found?
     logical :: start_in_mesh        ! starting coordinates inside mesh?
     logical :: end_in_mesh          ! ending coordinates inside mesh?
-    type(TallyObject),    pointer :: t => null()
-    type(StructuredMesh), pointer :: m => null()
-    type(Material),       pointer :: mat => null()
-    type(LocalCoord),     pointer :: coord => null()
+    type(TallyObject),    pointer, save :: t => null()
+    type(StructuredMesh), pointer, save :: m => null()
+    type(Material),       pointer, save :: mat => null()
+    type(LocalCoord),     pointer, save :: coord => null()
+!$omp threadprivate(t, m, mat, coord)
 
     t => tallies(i_tally)
     t % matching_bins = 1
@@ -1245,6 +1256,7 @@ contains
               score_index = (b - 1)*t % n_score_bins + j
 
               ! Add score to tally
+!$omp atomic
               t % results(score_index, filter_index) % value = &
                    t % results(score_index, filter_index) % value + score
 
@@ -1275,9 +1287,10 @@ contains
     integer :: i ! loop index for filters
     integer :: n ! number of bins for single filter
     real(8) :: E ! particle energy
-    type(TallyObject),    pointer :: t => null()
-    type(StructuredMesh), pointer :: m => null()
-    type(LocalCoord),     pointer :: coord => null()
+    type(TallyObject),    pointer, save :: t => null()
+    type(StructuredMesh), pointer, save :: m => null()
+    type(LocalCoord),     pointer, save :: coord => null()
+!$omp threadprivate(t, m, coord)
 
     found_bin = .true.
     t => tallies(i_tally)
@@ -1403,8 +1416,9 @@ contains
     logical :: x_same               ! same starting/ending x index (i)
     logical :: y_same               ! same starting/ending y index (j)
     logical :: z_same               ! same starting/ending z index (k)
-    type(TallyObject),    pointer :: t => null()
-    type(StructuredMesh), pointer :: m => null()
+    type(TallyObject),    pointer, save :: t => null()
+    type(StructuredMesh), pointer, save :: m => null()
+!$omp threadprivate(t, m)
 
     TALLY_LOOP: do i = 1, active_current_tallies % size()
       ! Copy starting and ending location of particle
@@ -1475,6 +1489,7 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
             end if
@@ -1487,6 +1502,7 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
             end if
@@ -1503,6 +1519,7 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
             end if
@@ -1515,6 +1532,7 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
             end if
@@ -1531,6 +1549,7 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
             end if
@@ -1543,6 +1562,7 @@ contains
               t % matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
               filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+!$omp atomic
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
             end if
@@ -1667,6 +1687,7 @@ contains
           end if
 
           ! Add to surface current tally
+!$omp atomic
           t % results(1, filter_index) % value = &
                t % results(1, filter_index) % value + p % wgt
         end if

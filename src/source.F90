@@ -155,7 +155,8 @@ contains
     integer(8),     intent(in)    :: index_source
 
     integer(8) :: particle_seed  ! unique index for particle
-    type(Bank), pointer :: src => null()
+    type(Bank), pointer, save :: src => null()
+!$omp threadprivate(src)
 
     ! set defaults
     call p % initialize()

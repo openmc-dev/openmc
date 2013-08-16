@@ -15,6 +15,7 @@ module output_interface
   private
 
   type, public :: BinaryOutput
+    private
     ! Compilation specific data
 #ifdef HDF5
     integer(HID_T) :: hdf5_fh
@@ -48,38 +49,40 @@ module output_interface
                                     read_integer_4Darray, &
                                     read_long, &
                                     read_string
+    procedure :: write_double => write_double
+    procedure :: write_double_1Darray => write_double_1Darray
+    procedure :: write_double_2Darray => write_double_2Darray
+    procedure :: write_double_3Darray => write_double_3Darray
+    procedure :: write_double_4Darray => write_double_4Darray
+    procedure :: write_integer => write_integer
+    procedure :: write_integer_1Darray => write_integer_1Darray
+    procedure :: write_integer_2Darray => write_integer_2Darray
+    procedure :: write_integer_3Darray => write_integer_3Darray
+    procedure :: write_integer_4Darray => write_integer_4Darray
+    procedure :: write_long => write_long
+    procedure :: write_string => write_string
+    procedure :: read_double => read_double
+    procedure :: read_double_1Darray => read_double_1Darray
+    procedure :: read_double_2Darray => read_double_2Darray
+    procedure :: read_double_3Darray => read_double_3Darray
+    procedure :: read_double_4Darray => read_double_4Darray
+    procedure :: read_integer => read_integer
+    procedure :: read_integer_1Darray => read_integer_1Darray
+    procedure :: read_integer_2Darray => read_integer_2Darray
+    procedure :: read_integer_3Darray => read_integer_3Darray
+    procedure :: read_integer_4Darray => read_integer_4Darray
+    procedure :: read_long => read_long
+    procedure :: read_string => read_string
     procedure, public :: file_create => file_create
     procedure, public :: file_open => file_open
     procedure, public :: file_close => file_close
-    procedure, public :: write_double => write_double
-    procedure, public :: write_double_1Darray => write_double_1Darray
-    procedure, public :: write_double_2Darray => write_double_2Darray
-    procedure, public :: write_double_3Darray => write_double_3Darray
-    procedure, public :: write_double_4Darray => write_double_4Darray
-    procedure, public :: write_integer => write_integer
-    procedure, public :: write_integer_1Darray => write_integer_1Darray
-    procedure, public :: write_integer_2Darray => write_integer_2Darray
-    procedure, public :: write_integer_3Darray => write_integer_3Darray
-    procedure, public :: write_integer_4Darray => write_integer_4Darray
-    procedure, public :: write_long => write_long
-    procedure, public :: write_string => write_string
-    procedure, public :: read_double => read_double
-    procedure, public :: read_double_1Darray => read_double_1Darray
-    procedure, public :: read_double_2Darray => read_double_2Darray
-    procedure, public :: read_double_3Darray => read_double_3Darray
-    procedure, public :: read_double_4Darray => read_double_4Darray
-    procedure, public :: read_integer => read_integer
-    procedure, public :: read_integer_1Darray => read_integer_1Darray
-    procedure, public :: read_integer_2Darray => read_integer_2Darray
-    procedure, public :: read_integer_3Darray => read_integer_3Darray
-    procedure, public :: read_integer_4Darray => read_integer_4Darray
-    procedure, public :: read_long => read_long
-    procedure, public :: read_string => read_string
     procedure, public :: write_attribute_string => write_attribute_string
     procedure, public :: write_tally_result => write_tally_result
     procedure, public :: read_tally_result => read_tally_result
     procedure, public :: write_source_bank => write_source_bank
     procedure, public :: read_source_bank => read_source_bank
+    procedure, public :: open_group => open_group
+    procedure, public :: close_group => close_group
   end type BinaryOutput
 
 contains
@@ -205,6 +208,35 @@ contains
 #endif
 
   end subroutine file_close
+
+!===============================================================================
+! OPEN_GROUP call hdf5 routine to open a group within binary output context
+!===============================================================================
+
+  subroutine open_group(self, group)
+
+    character(*), intent(in) :: group ! HDF5 group name
+    class(BinaryOutput) :: self
+
+#ifdef HDF5
+    call hdf5_open_group(self % hdf5_fh, group, self % hdf5_grp)
+#endif
+
+  end subroutine open_group
+
+!===============================================================================
+! CLOSE_GROUP call hdf5 routine to close a group within binary output context
+!===============================================================================
+
+  subroutine close_group(self)
+
+    class(BinaryOutput) :: self
+
+#ifdef HDF5
+    call hdf5_close_group(self % hdf5_grp)
+#endif
+
+  end subroutine close_group
 
 !===============================================================================
 ! WRITE_DOUBLE writes double precision scalar data

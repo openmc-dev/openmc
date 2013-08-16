@@ -29,6 +29,7 @@ def test_gfortran_debug():
     returncode = run(['make','distclean'])
     returncode = run(['make', 'DEBUG=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-gfortran-dbg')
 
 def test_gfortran_profile():
     returncode = run(['make','distclean'])
@@ -39,31 +40,37 @@ def test_gfortran_optimize():
     returncode = run(['make','distclean'])
     returncode = run(['make', 'OPTIMIZE=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-gfortran-opt')
 
 def test_gfortran_mpi():
     returncode = run(['make','distclean'])
     returncode = run(['make', 'MPI=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-gfortran-mpi')
 
 def test_gfortran_hdf5():
     returncode = run(['make','distclean'])
     returncode = run(['make', 'HDF5=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-gfortran-hdf5')
 
 def test_gfortran_petsc():
     returncode = run(['make','distclean'])
     returncode = run(['make', 'MPI=yes', 'PETSC=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-gfortran-petsc')
 
 def test_gfortran_mpi_hdf5():
     returncode = run(['make','distclean'])
     returncode = run(['make', 'MPI=yes', 'HDF5=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-gfortran-phdf5')
 
 def test_gfortran_mpi_hdf5_petsc():
     returncode = run(['make','distclean'])
     returncode = run(['make', 'MPI=yes', 'HDF5=yes', 'PETSC=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-gfortran-phdf5-petsc')
 
 def test_intel():
     returncode = run(['make','distclean'])

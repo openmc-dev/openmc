@@ -556,7 +556,6 @@ contains
      else
        v_t = ZERO
      end if
-!~    v_t = ZERO
 
     ! Velocity of center-of-mass
     v_cm = (v_n + awr*v_t)/(awr + ONE)

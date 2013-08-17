@@ -97,6 +97,7 @@ module global
 
   type(StructuredMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
+  integer, allocatable :: matching_bins(:)
 
   ! Pointers for different tallies
   type(TallyObject), pointer :: user_tallies(:) => null()
@@ -384,7 +385,7 @@ module global
   logical :: output_tallies = .true.
 
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, message, &
-!$omp&              trace, thread_id, current_work)
+!$omp&              trace, thread_id, current_work, matching_bins)
 
 contains
 

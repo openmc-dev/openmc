@@ -135,6 +135,10 @@ MPI
   Enables parallel runs using the Message Passing Interface. The MPI_DIR
   variable should be set to the base directory of the MPI implementation.
 
+OPENMP
+  Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
+  being used must support OpenMP.
+
 HDF5
   Enables HDF5 output in addition to normal screen and text file output. The
   HDF5_DIR variable should be set to the base directory of the HDF5

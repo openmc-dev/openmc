@@ -408,8 +408,12 @@ contains
       end if
 
       ! Score to global leakage tally
-      if (tallies_on) global_tallies(LEAKAGE) % value = &
+      if (tallies_on) then
+!$omp critical
+        global_tallies(LEAKAGE) % value = &
            global_tallies(LEAKAGE) % value + p % wgt
+!$omp end critical
+      end if
 
       ! Display message
       if (verbosity >= 10 .or. trace) then

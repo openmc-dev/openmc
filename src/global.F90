@@ -112,6 +112,8 @@ module global
   type(SetInt) :: active_tracklength_tallies
   type(SetInt) :: active_current_tallies
   type(SetInt) :: active_tallies
+!$omp threadprivate(active_analog_tallies, active_tracklength_tallies, &
+!$omp&              active_current_tallies, active_tallies)
 
   ! Global tallies
   !   1) collision estimate of k-eff

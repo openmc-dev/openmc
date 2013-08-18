@@ -12,6 +12,7 @@ module fixed_source
   use tracking,        only: transport
 
   type(Bank), pointer :: source_site => null()
+!$omp threadprivate(source_site)
 
 contains
 
@@ -23,11 +24,15 @@ contains
     if (master) call header("FIXED SOURCE TRANSPORT SIMULATION", level=1)
 
     ! Allocate particle and dummy source site
+!$omp parallel
     allocate(source_site)
+!$omp end parallel
 
     ! Turn timer and tallies on
     tallies_on = .true.
+!$omp parallel
     call setup_active_usertallies()
+!$omp end parallel
     call time_active % start()
 
     ! ==========================================================================
@@ -47,6 +52,7 @@ contains
 
       ! =======================================================================
       ! LOOP OVER PARTICLES
+!$omp parallel do schedule(static) firstprivate(p)
       PARTICLE_LOOP: do i = 1, work
 
         ! Set unique particle ID
@@ -67,6 +73,7 @@ contains
         call transport(p)
 
       end do PARTICLE_LOOP
+!$omp end parallel do
 
       ! Accumulate time for transport
       call time_transport % stop()

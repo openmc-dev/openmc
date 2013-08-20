@@ -12,8 +12,8 @@ module matrix_header
     integer :: nnz      ! number of nonzeros in matrix
     integer :: n_count  ! counter for length of matrix
     integer :: nz_count ! counter for number of non zeros
-    integer, private, allocatable :: row(:) ! csr row vector
-    integer, private, allocatable :: col(:) ! column vector
+    integer, allocatable :: row(:) ! csr row vector
+    integer, allocatable :: col(:) ! column vector
     real(8), allocatable :: val(:) ! matrix value vector
 #  ifdef PETSC
     Mat :: petsc_mat

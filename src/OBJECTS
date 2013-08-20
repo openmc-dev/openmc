@@ -25,6 +25,7 @@ fixed_source.o \
 geometry.o \
 geometry_header.o \
 global.o \
+gmres_solver.o \
 hdf5_interface.o \
 hdf5_summary.o \
 initialize.o \
@@ -43,7 +44,6 @@ output_interface.o \
 particle_header.o \
 particle_restart.o \
 particle_restart_write.o \
-petsc_solver.o \
 physics.o \
 plot.o \
 plot_header.o \
@@ -51,6 +51,7 @@ ppmlib.o \
 random_lcg.o \
 search.o \
 set_header.o \
+solver_interface.o \
 source.o \
 source_header.o \
 state_point.o \

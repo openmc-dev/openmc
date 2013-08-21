@@ -7,7 +7,10 @@ sys.path.append('../../src/utils')
 import statepoint
 
 # read in statepoint file
-sp = statepoint.StatePoint('statepoint.10.binary')
+if len(sys.argv) > 1:
+  sp = statepoint.StatePoint(sys.argv[1])
+else:
+  sp = statepoint.StatePoint('statepoint.10.binary')
 sp.read_results()
 
 # set up output string

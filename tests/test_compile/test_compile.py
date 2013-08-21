@@ -72,50 +72,11 @@ def test_gfortran_mpi_hdf5_petsc():
     assert returncode == 0
     shutil.move('openmc', 'openmc-gfortran-phdf5-petsc')
 
-def test_intel():
+def test_gfortran_mpi_hdf5_petsc_optimize():
     returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel'])
+    returncode = run(['make', 'MPI=yes', 'HDF5=yes', 'PETSC=yes', 'OPTIMIZE=yes'])
     assert returncode == 0
-
-def test_intel_debug():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'DEBUG=yes'])
-    assert returncode == 0
-
-def test_intel_profile():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'PROFILE=yes'])
-    assert returncode == 0
-
-def test_intel_optimize():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'OPTIMIZE=yes'])
-    assert returncode == 0
-
-def test_intel_mpi():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'MPI=yes'])
-    assert returncode == 0
-
-def test_intel_hdf5():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'HDF5=yes'])
-    assert returncode == 0
-
-def test_intel_petsc():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'MPI=yes', 'PETSC=yes'])
-    assert returncode == 0
-
-def test_intel_mpi_hdf5():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'MPI=yes', 'HDF5=yes'])
-    assert returncode == 0
-
-def test_intel_mpi_hdf5_petsc():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'MPI=yes', 'HDF5=yes', 'PETSC=yes'])
-    assert returncode == 0
+    shutil.move('openmc', 'openmc-gfortran-phdf5-petsc-opt')
 
 def run(commands):
     proc = Popen(commands, stderr=STDOUT, stdout=PIPE)

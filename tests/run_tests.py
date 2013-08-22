@@ -177,6 +177,6 @@ else:
 
 sys.stdout.write('\ngfortran-MPI-PETSC-HDF5-OPTIMIZE tests...')
 if result_gfortran_phdf5_petsc_opt:
-    sys.stdout.write(BOLD + OK + '[OK]' + ENDC)
+    sys.stdout.write(BOLD + OK + '[OK]' + ENDC, '\n')
 else:
     sys.stdout.write(BOLD + FAIL + '[FAILED]' + ENDC + '\n')

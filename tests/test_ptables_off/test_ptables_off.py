@@ -37,7 +37,7 @@ def test_results():
     assert compare
 
 def teardown():
-    output = glob.glob(pwd + 'statepoint.10.*')
+    output = glob.glob(pwd + '/statepoint.10.*')
     output.append(pwd + '/results_test.dat')
     for f in output:
         if os.path.exists(f):

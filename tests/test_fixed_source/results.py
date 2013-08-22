@@ -26,7 +26,7 @@ outstr = ''
 # write out tally results
 outstr += 'tallies:\n'
 for item in results:
-  outstr += "{0:10.8f}\n".format(item)
+  outstr += "{0:12.6E}\n".format(item)
 
 # write results to file
 with open('results_test.dat','w') as fh:

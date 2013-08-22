@@ -33,18 +33,18 @@ outstr = ''
  
 # write out k-combined
 outstr += 'k-combined:\n'
-outstr += "{0:10.8f} {1:10.8f}\n".format(sp.k_combined[0], sp.k_combined[1])
+outstr += "{0:12.6E} {1:12.6E}\n".format(sp.k_combined[0], sp.k_combined[1])
 
 # write out tally results
 outstr += 'tally 1:\n'
 for item in results1:
-  outstr += "{0:10.8f}\n".format(item)
+  outstr += "{0:12.6E}\n".format(item)
 outstr += 'tally 2:\n'
 for item in results2:
-  outstr += "{0:10.8f}\n".format(item)
+  outstr += "{0:12.6E}\n".format(item)
 outstr += 'tally 3:\n'
 for item in results3:
-  outstr += "{0:10.8f}\n".format(item)
+  outstr += "{0:12.6E}\n".format(item)
 
 # write results to file
 with open('results_test.dat','w') as fh:

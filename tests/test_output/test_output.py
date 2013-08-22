@@ -24,7 +24,9 @@ def test_run():
     assert returncode == 0
 
 def test_summary_exists():
-    assert os.path.exists(pwd + '/summary.out')
+    summary = glob.glob(pwd + '/summary.*')
+    assert len(summary) == 1
+    assert summary[0].endswith('out') or summary[0].endswith('h5')
 
 def test_cross_sections_exists():
     assert os.path.exists(pwd + '/cross_sections.out')
@@ -43,7 +45,7 @@ def test_results():
     assert compare
 
 def teardown():
-    output = glob.glob(pwd + '/statepoint.10.*')
+    output = glob.glob(pwd + '/statepoint.10.*') + glob.glob(pwd + '/summary.*')
     output.append(pwd + '/summary.out')
     output.append(pwd + '/cross_sections.out')
     output.append(pwd + '/results_test.dat')

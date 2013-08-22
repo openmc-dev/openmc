@@ -48,7 +48,9 @@ def test_run_restart():
     assert stderr == ''
 
 def teardown():
-    output = glob.glob(pwd + '/particle_*.binary') + [pwd + '/results_test.dat']
+    output = glob.glob(pwd + '/statepoint.*') + \
+             glob.glob(pwd + '/particle_*') + \
+             [pwd + '/results_test.dat']
     for f in output:
         if os.path.exists(f):
             os.remove(f)

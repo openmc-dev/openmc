@@ -2,7 +2,7 @@
 
 import os
 import glob
-from subprocess import Popen, STDOUT, PIPE
+from subprocess import Popen, STDOUT, PIPE, call
 import filecmp
 from nose_mpi import NoseMPI
 import glob
@@ -42,7 +42,8 @@ def test_statepoints_exist():
     assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5')
 
 def test_results():
-    os.system('python results.py')
+    statepoint = glob.glob(pwd + '/statepoint.10.*')
+    call(['python', 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
       os.rename('results_test.dat', 'results_error.dat')

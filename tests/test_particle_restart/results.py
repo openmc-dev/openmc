@@ -7,7 +7,11 @@ sys.path.append('../../src/utils')
 import particle_restart as pr
 
 # read in particle restart file
-p = pr.Particle('particle_10_903.binary')
+if len(sys.argv) > 1:
+    p = pr.Particle(sys.argv[1])
+else:
+    p = pr.Particle('particle_10_903.binary')
+
 
 # set up output string
 outstr = ''

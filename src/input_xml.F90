@@ -1568,7 +1568,6 @@ contains
             mat % i_sab_tables(j) = index_sab
 
             call sab_dict % add_key(name, index_sab)
-            call sab_dict % add_key(alias, index_sab)
           else
             mat % i_sab_tables(j) = sab_dict % get_key(name)
           end if

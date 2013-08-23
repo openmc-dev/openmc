@@ -446,13 +446,19 @@ contains
       ! Now deallocate the tally array
       deallocate(tallies)
     end if
+    if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
 
     ! Deallocate energy grid
     if (allocated(e_grid)) deallocate(e_grid)
 
     ! Deallocate fission and source bank and entropy
+!$omp parallel
     if (allocated(fission_bank)) deallocate(fission_bank)
+!$omp end parallel
+#ifdef OPENMP
+    if (allocated(master_fission_bank)) deallocate(master_fission_bank)
+#endif
     if (allocated(source_bank)) deallocate(source_bank)
     if (allocated(entropy_p)) deallocate(entropy_p)
 

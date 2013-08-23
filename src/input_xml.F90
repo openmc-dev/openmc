@@ -2936,7 +2936,7 @@ contains
 
        ! create dictionary entry for both name and alias
        call xs_listing_dict % add_key(listing % name, i)
-       if (listing % alias /= '') then
+       if (check_for_node(node_ace, "alias")) then
          call xs_listing_dict % add_key(listing % alias, i)
        end if
     end do

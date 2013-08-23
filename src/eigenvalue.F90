@@ -102,6 +102,9 @@ contains
     ! END OF RUN WRAPUP
 
     if (master) call header("SIMULATION FINISHED", level=1)
+    
+    ! Clear particle
+    call p % clear()
 
   end subroutine run_eigenvalue
 

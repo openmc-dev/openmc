@@ -102,6 +102,12 @@ repository::
 
     git clone git://github.com/mit-crpg/openmc.git
 
+By default, the cloned repository will be set to the development branch. To
+switch to the source of the latest stable release, run the following commands::
+
+    cd openmc/src
+    git checkout master
+
 .. _GitHub: https://github.com/mit-crpg/openmc
 .. _git: http://git-scm.com
 .. _ssh: http://en.wikipedia.org/wiki/Secure_Shell

@@ -1544,7 +1544,6 @@ contains
           end if
           call get_node_value(node_sab, "name", name)
           call get_node_value(node_sab, "xs", temp_str)
-
           name = trim(name) // "." // trim(temp_str)
           mat % sab_names(j) = name
 
@@ -1559,14 +1558,12 @@ contains
           ! listing
           index_list = xs_listing_dict % get_key(name)
           name       = xs_listings(index_list) % name
-          alias      = xs_listings(index_list) % alias
 
           ! If this S(a,b) table hasn't been encountered yet, we need to add its
           ! name and alias to the sab_dict
           if (.not. sab_dict % has_key(name)) then
-            index_sab           = index_sab + 1
+            index_sab = index_sab + 1
             mat % i_sab_tables(j) = index_sab
-
             call sab_dict % add_key(name, index_sab)
           else
             mat % i_sab_tables(j) = sab_dict % get_key(name)

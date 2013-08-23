@@ -77,6 +77,7 @@ module particle_header
 
   contains
     procedure :: initialize => initialize_particle
+    procedure :: clear => clear_particle
   end type Particle
 
 contains
@@ -110,6 +111,9 @@ contains
 
     class(Particle) :: this
 
+    ! Clear coordinate lists
+    call this % clear()
+
     ! Set particle to neutron that's alive
     this % type  = NEUTRON
     this % alive = .true.
@@ -126,14 +130,27 @@ contains
     this % wgt_bank      = ZERO
     this % n_collision   = 0
 
-    ! remove any original coordinates
-    call deallocate_coord(this % coord0)
-
     ! Set up base level coordinates
     allocate(this % coord0)
     this % coord0 % universe = BASE_UNIVERSE
     this % coord             => this % coord0
 
   end subroutine initialize_particle
+
+!===============================================================================
+! CLEAR_PARTICLE
+!===============================================================================
+
+  subroutine clear_particle(this)
+
+    class(Particle) :: this
+
+    ! remove any coordinate levels
+    call deallocate_coord(this % coord0)
+
+    ! Make sure coord pointer is nullified
+    nullify(this % coord)
+
+  end subroutine clear_particle
 
 end module particle_header

@@ -417,6 +417,8 @@ contains
     integer, allocatable :: index_cell_in_univ(:) ! the index in the univ%cells
                                                   ! array for each universe
     type(ElemKeyValueII), pointer :: pair_list => null()
+    type(ElemKeyValueII), pointer :: current => null()
+    type(ElemKeyValueII), pointer :: next => null()
     type(Universe),       pointer :: univ => null()
     type(Cell),           pointer :: c => null()
 
@@ -428,11 +430,12 @@ contains
     ! cells_in_univ_dict, it's the id of the universe and the number of cells.
 
     pair_list => universe_dict % keys()
-    do while (associated(pair_list))
+    current => pair_list
+    do while (associated(current))
       ! find index of universe in universes array
-      i_univ = pair_list % value
+      i_univ = current % value
       univ => universes(i_univ)
-      univ % id = pair_list % key
+      univ % id = current % key
 
       ! check for lowest level universe
       if (univ % id == 0) BASE_UNIVERSE = i_univ
@@ -445,7 +448,9 @@ contains
       univ % n_cells = n_cells_in_univ
 
       ! move to next universe
-      pair_list => pair_list % next
+      next => current % next
+      deallocate(current)
+      current => next
     end do
 
     ! Also allocate a list for keeping track of where cells have been assigned

@@ -242,6 +242,9 @@ contains
     ! Commit derived type for tally scores
     call MPI_TYPE_COMMIT(MPI_TALLYRESULT, mpi_err)
 
+    ! Free temporary MPI type
+    call MPI_TYPE_FREE(temp_type, mpi_err)
+
   end subroutine initialize_mpi
 #endif
 

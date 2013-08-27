@@ -657,7 +657,6 @@ contains
     integer        :: data
 
     type(ListElemInt), pointer :: elem => null()
-    type(ListElemInt), pointer :: prev => null()
 
     elem => this % head
     do while (associated(elem))
@@ -669,12 +668,14 @@ contains
         if (associated(elem, this % head)) then
           this % head => elem % next
           if (associated(elem, this % tail)) nullify(this % tail)
+          if (associated(this % head)) nullify(this % head % prev)
           deallocate(elem)
         else if (associated(elem, this % tail)) then
-          this % tail => prev
+          this % tail => elem % prev
           deallocate(this % tail % next)
         else
-          prev % next => elem % next
+          elem % prev % next => elem % next
+          elem % next % prev => elem % prev
           deallocate(elem)
         end if
 
@@ -684,7 +685,6 @@ contains
       end if
 
       ! Advance pointers
-      prev => elem
       elem => elem % next
     end do
 
@@ -696,7 +696,6 @@ contains
     real(8)         :: data
 
     type(ListElemReal), pointer :: elem => null()
-    type(ListElemReal), pointer :: prev => null()
 
     elem => this % head
     do while (associated(elem))
@@ -708,12 +707,14 @@ contains
         if (associated(elem, this % head)) then
           this % head => elem % next
           if (associated(elem, this % tail)) nullify(this % tail)
+          if (associated(this % head)) nullify(this % head % prev)
           deallocate(elem)
         else if (associated(elem, this % tail)) then
-          this % tail => prev
+          this % tail => elem % prev
           deallocate(this % tail % next)
         else
-          prev % next => elem % next
+          elem % prev % next => elem % next
+          elem % next % prev => elem % prev
           deallocate(elem)
         end if
 
@@ -723,7 +724,6 @@ contains
       end if
 
       ! Advance pointers
-      prev => elem
       elem => elem % next
     end do
 
@@ -735,7 +735,6 @@ contains
     character(*)    :: data
 
     type(ListElemChar), pointer :: elem => null()
-    type(ListElemChar), pointer :: prev => null()
 
     elem => this % head
     do while (associated(elem))
@@ -747,12 +746,14 @@ contains
         if (associated(elem, this % head)) then
           this % head => elem % next
           if (associated(elem, this % tail)) nullify(this % tail)
+          if (associated(this % head)) nullify(this % head % prev)
           deallocate(elem)
         else if (associated(elem, this % tail)) then
-          this % tail => prev
+          this % tail => elem % prev
           deallocate(this % tail % next)
         else
-          prev % next => elem % next
+          elem % prev % next => elem % next
+          elem % next % prev => elem % prev
           deallocate(elem)
         end if
 
@@ -762,7 +763,6 @@ contains
       end if
 
       ! Advance pointers
-      prev => elem
       elem => elem % next
     end do
 

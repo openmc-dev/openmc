@@ -46,19 +46,25 @@ contains
     call init_data()
 
     ! Initialize solver
+#ifdef PETSC
     call jfnk % create()
+#endif
 
     ! Set up residual and jacobian routines
     jfnk_data % res_proc_ptr => compute_nonlinear_residual
     jfnk_data % jac_proc_ptr => build_jacobian_matrix
+#ifdef PETSC
     call jfnk % set_functions(jfnk_data, resvec, jac_prec)
+#endif
 
     ! Stop timer for build
     call time_cmfdbuild % stop()
 
     ! Solve the system
     call time_cmfdsolve % start()
+#ifdef PETSC
     call jfnk % solve(xvec)
+#endif
     call time_cmfdsolve % stop()
 
     ! Extracts results to cmfd object
@@ -378,7 +384,9 @@ contains
     call jac_prec % destroy()
     call xvec % destroy()
     call resvec % destroy()
-    call jfnk % destroy() 
+#ifdef PETSC
+    call jfnk % destroy()
+#endif
     nullify(jfnk_data % res_proc_ptr)
     nullify(jfnk_data % jac_proc_ptr)
 

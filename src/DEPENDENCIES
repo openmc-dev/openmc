@@ -327,7 +327,6 @@ set_header.o: list_header.o
 
 solver_interface.o: error.o
 solver_interface.o: global.o
-solver_interface.o: gmres_solver.o
 solver_interface.o: matrix_header.o
 solver_interface.o: vector_header.o
 

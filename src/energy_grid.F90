@@ -18,7 +18,6 @@ contains
   subroutine unionized_grid()
 
     integer :: i ! index in nuclides array
-    integer :: n_grid_ ! temporary size of unionized grid
     type(ListReal), pointer :: list => null()
     type(Nuclide),  pointer :: nuc => null()
 
@@ -28,11 +27,11 @@ contains
     ! Add grid points for each nuclide in the problem
     do i = 1, n_nuclides_total
       nuc => nuclides(i)
-      call add_grid_points(list, n_grid_, nuc % energy)
+      call add_grid_points(list, nuc % energy)
     end do
 
     ! Set size of unionized energy grid 
-    n_grid = n_grid_
+    n_grid = list % size() 
 
     ! create allocated array from linked list
     allocate(e_grid(n_grid))
@@ -54,10 +53,9 @@ contains
 ! of points already stored from previous arrays.
 !===============================================================================
 
-  subroutine add_grid_points(list, n_grid_, energy)
+  subroutine add_grid_points(list, energy)
 
     type(ListReal), pointer :: list
-    integer :: n_grid_
     real(8), intent(in) :: energy(:)
 
     integer :: i       ! index in energy array
@@ -75,7 +73,6 @@ contains
       do i = 1, n
         call list % append(energy(i))
       end do
-      n_grid_ = n
       return
     end if
 
@@ -87,11 +84,10 @@ contains
 
       ! If we've reached the end of the grid energy list, add the remaining
       ! energy points to the end
-      if (current > n_grid_) then
+      if (current > list % size()) then
         ! Finish remaining energies
         do while (i <= n)
           call list % append(energy(i))
-          n_grid_ = n_grid_ + 1
           i = i + 1
         end do
         exit
@@ -102,10 +98,9 @@ contains
         ! Insert new energy in this position
         call list % insert(current, E)
 
-        ! Advance index and increase grid size
+        ! Advance index in linked list and in new energy grid
         i = i + 1
         current = current + 1
-        n_grid_ = n_grid_ + 1
 
       elseif (E == list % get_item(current)) then
         ! Found the exact same energy, no need to store duplicates so just

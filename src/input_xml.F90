@@ -561,6 +561,10 @@ contains
     call lower_case(run_cmfd_)
     if (run_cmfd_ == 'true' .or. run_cmfd_ == '1') then
       cmfd_run = .true.
+#ifndef PETSC
+      message = 'CMFD is not available, recompile OpenMC with PETSc'
+      call fatal_error()
+#endif
     end if
 
   end subroutine read_settings_xml

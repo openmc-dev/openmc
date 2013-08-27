@@ -63,7 +63,9 @@ contains
     call time_cmfdbuild % start()
 
     ! Initialize solver
+#ifdef PETSC
     call gmres % create()
+#endif
 
     ! Initialize matrices and vectors
     call init_data(physical_adjoint)
@@ -73,7 +75,9 @@ contains
         call compute_adjoint()
 
     ! Set up krylov info
+#ifdef PETSC
     call gmres % set_oper(loss, loss)
+#endif
 
     ! Stop timer for build
     call time_cmfdbuild % stop()
@@ -196,7 +200,9 @@ contains
       s_o % val = s_o % val / k_o
 
       ! Compute new flux vector
+#ifdef PETSC
       call gmres % solve(s_o, phi_n)
+#endif
 
       ! Compute new source vector
       call prod % vector_multiply(phi_n, s_n)
@@ -324,7 +330,9 @@ contains
   subroutine finalize()
 
     ! Destroy all objects 
-    call gmres  % destroy() 
+#ifdef PETSC
+    call gmres  % destroy()
+#endif
     call loss   % destroy() 
     call prod   % destroy()
     call phi_n  % destroy()

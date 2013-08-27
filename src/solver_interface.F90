@@ -5,10 +5,6 @@ module solver_interface
   use matrix_header,  only: Matrix
   use vector_header,  only: Vector
 
-#ifndef PETSC
-  use gmres_solver,   only: ilut, pgmres
-#endif
-
   implicit none
   private
 
@@ -21,25 +17,6 @@ module solver_interface
 #ifdef PETSC
     KSP :: ksp
     PC  :: pc
-#else
-    integer :: im      ! iterations before restart
-    integer :: iout    ! unit number for printing gmres iters
-    integer :: maxits  ! maximum iterations
-    integer :: lfil    ! fill in parameter
-    integer :: iwk     ! size of MSR storage
-    integer, allocatable :: ju(:) ! row pointers for ILUT result
-    integer, allocatable :: jlu(:) ! MSR storage of j
-    integer, allocatable :: jr(:) ! temp work array
-    integer, allocatable :: jwu(:) ! temp work array
-    integer, allocatable :: jwl(:) ! temp work array
-    real(8) :: tol     ! gmres tolerance
-    real(8) :: droptol ! ILU drop tolerance
-    real(8), allocatable :: alu(:) ! MSR storage of ILU A
-    real(8), allocatable :: vv(:) ! GMRES work array
-    real(8), allocatable :: wu(:) ! temp work array
-    real(8), allocatable :: wl(:) ! temp work array
-    real(8), allocatable :: rhs(:) ! copy of rhs array
-    type(Matrix), pointer :: A ! coefficient matrix
 #endif
    contains
 #ifdef PETSC
@@ -47,11 +24,6 @@ module solver_interface
      procedure :: set_oper     => petsc_gmres_set_oper
      procedure :: destroy      => petsc_gmres_destroy
      procedure :: solve        => petsc_gmres_solve
-#else
-     procedure :: create       => gmres_create
-     procedure :: set_oper     => gmres_set_oper
-     procedure :: destroy      => gmres_destroy
-     procedure :: solve        => gmres_solve
 #endif
   end type GMRESSolver
 
@@ -76,11 +48,6 @@ module solver_interface
      procedure :: destroy       => petsc_jfnk_destroy
      procedure :: set_functions => petsc_jfnk_set_functions
      procedure :: solve         => petsc_jfnk_solve
-#else
-     procedure :: create        => jfnk_create
-     procedure :: destroy       => jfnk_destroy
-     procedure :: set_functions => jfnk_set_functions
-     procedure :: solve         => jfnk_solve
 #endif
   end type JFNKSolver
 
@@ -104,165 +71,7 @@ module solver_interface
 
 contains
 
-#ifndef PETSC
-!===============================================================================
-! GMRES_CREATE sets up a PETSc GMRES solver
-!===============================================================================
-
-  subroutine gmres_create(self)
-
-    class(GMRESSolver) :: self
-
-    ! Set up default values
-    self % im = 40
-    self % iout = 0
-    self % maxits = 1000
-    self % lfil = 0
-    self % tol = 1.e-10_8
-    self % droptol = 0.0_8
-
-  end subroutine gmres_create
-
-!===============================================================================
-! GMRES_SET_OPER sets the matrix opetors for the GMRES solver
-!===============================================================================
-
-  subroutine gmres_set_oper(self, prec_mat, mat_in)
-
-    class(GMRESSolver) :: self
-    type(Matrix)       :: prec_mat
-    type(Matrix), target :: mat_in
-
-    integer :: ierr
-
-    ! Set pointer to matrix
-    self % A => mat_in
-
-    ! Set up data
-    self % iwk = self % A % nnz + 1
-
-    ! Set up arrays
-    allocate(self % ju(self % A % n))
-    allocate(self % jlu(self % iwk))
-    allocate(self % alu(self % iwk))
-    allocate(self % jr(self % A % n))
-    allocate(self % jwu(self % A % n))
-    allocate(self % jwl(self % A % n))
-    allocate(self % vv(self % A % n * (self % im + 1)))
-    allocate(self % wu(self % A % n + 1))
-    allocate(self % wl(self % A % n))
-    allocate(self % rhs(self % A % n))
-
-    ! Perform ILU Preconditioning
-    call ilut(self % A % n, self % A % val, self % A % col, self % A % row, &
-              self % lfil, self % droptol, self % alu, self % jlu, self % ju, &
-              self % iwk, self % wu, self % wl, self % jr, self % jwl, &
-              self % jwu, ierr)
-
-  end subroutine gmres_set_oper
-
-!===============================================================================
-! GMRES_DESTROY frees all memory associated with the GMRES solver
-!===============================================================================
-
-  subroutine gmres_destroy(self)
-
-   class(GMRESSolver) :: self
-
-   ! Destroy all arrays associated with GMRES solver
-   deallocate(self % ju)
-   deallocate(self % jlu)
-   deallocate(self % alu)
-   deallocate(self % jr)
-   deallocate(self % jwu)
-   deallocate(self % jwl)
-   deallocate(self % vv)
-   deallocate(self % wu)
-   deallocate(self % wl)
-   deallocate(self % rhs)
-
-  end subroutine gmres_destroy
-
-!===============================================================================
-! GMRES_SOLVE solves the linear system
-!===============================================================================
-
-  subroutine gmres_solve(self, b, x)
-
-    class(GMRESSolver) :: self
-    type(Vector)       :: b
-    type(Vector)       :: x
-
-    integer :: ierr ! error code
-
-    ! Copy rhs
-    self % rhs = b % val
-
-    ! Perform GMRES calculation
-    call pgmres(self % A % n, self % im, self % rhs, x % val, self % vv, &
-                self % tol, self % maxits, self % iout, self % A % val, &
-                self % A % col, self % A % row, self % alu, self % jlu, &
-                self % ju, ierr)
-
-  end subroutine gmres_solve
-
-!===============================================================================
-! JFNK_CREATE sets up a JFNK solver using PETSc SNES
-!===============================================================================
-
-  subroutine jfnk_create(self)
-
-    class(JFNKSolver) :: self
-
-    message = 'JFNK cannot be used without PETSc.'
-    call fatal_error()
-
-  end subroutine jfnk_create
-
-!===============================================================================
-! JFNK_DESTROY frees all memory associated with JFNK solver
-!===============================================================================
-
-  subroutine jfnk_destroy(self)
-
-    class(JFNKSolver) :: self
-
-    message = 'JFNK cannot be used without PETSc.'
-    call fatal_error()
-
-  end subroutine jfnk_destroy
-
-!===============================================================================
-! JFNK_SET_FUNCTIONS sets user functions and matrix free objects
-!===============================================================================
-
-  subroutine jfnk_set_functions(self, ctx, res, jac_prec)
-
-    class(JFNKSolver) :: self
-    type(Jfnk_ctx)    :: ctx
-    type(Vector)      :: res
-    type(Matrix)      :: jac_prec
-
-    message = 'JFNK cannot be used without PETSc.'
-    call fatal_error()
-
-  end subroutine jfnk_set_functions
-
-!===============================================================================
-! JFNK_SOLVE solves the nonlinear system
-!===============================================================================
-
-  subroutine jfnk_solve(self, xvec)
-
-    class(JFNKSolver) :: self
-    type(Vector)      :: xvec
-
-    message = 'JFNK cannot be used without PETSc.'
-    call fatal_error()
-
-  end subroutine jfnk_solve
-
-#else
+#ifdef PETSC
 !===============================================================================
 ! PETSC_GMRES_CREATE sets up a PETSc GMRES solver
 !===============================================================================

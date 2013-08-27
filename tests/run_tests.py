@@ -76,7 +76,7 @@ if opts[0] != 'all':
             run_gfortran_phdf5 = True
         elif item == 'gfortran-petsc':
             run_gfortrani_petsc = True
-        elif item == 'gfortran-phdf5_petsc':
+        elif item == 'gfortran-phdf5-petsc':
             run_gfortran_phdf5_petsc = True
         elif item == 'gfortran-phdf5-petsc-opt':
             run_gfortran_phdf5_petsc_opt = True

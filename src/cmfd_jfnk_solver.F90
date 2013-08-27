@@ -4,7 +4,7 @@ module cmfd_jfnk_solver
   use cmfd_power_solver,   only: cmfd_power_execute
   use cmfd_prod_operator,  only: init_prod_matrix, build_prod_matrix
   use matrix_header,       only: Matrix
-  use petsc_solver,        only: Petsc_jfnk, Jfnk_ctx
+  use solver_interface,    only: JFNKSolver, Jfnk_ctx
   use vector_header,       only: Vector
 
   implicit none
@@ -16,7 +16,7 @@ module cmfd_jfnk_solver
   type(Matrix)     :: jac_prec     ! Jacobian preconditioner object
   type(Matrix)     :: loss         ! CMFD loss matrix
   type(Matrix)     :: prod         ! CMFD production matrix
-  type(Petsc_jfnk) :: jfnk         ! JFNK solver object
+  type(JFNKSolver) :: jfnk         ! JFNK solver object
   type(Vector)     :: resvec       ! JFNK residual vector
   type(Vector)     :: xvec         ! JFNK solution vector
 

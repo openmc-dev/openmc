@@ -52,7 +52,7 @@ cmfd_jfnk_solver.o: cmfd_prod_operator.o
 cmfd_jfnk_solver.o: constants.o
 cmfd_jfnk_solver.o: global.o
 cmfd_jfnk_solver.o: matrix_header.o
-cmfd_jfnk_solver.o: petsc_solver.o
+cmfd_jfnk_solver.o: solver_interface.o
 cmfd_jfnk_solver.o: vector_header.o
 
 cmfd_loss_operator.o: constants.o
@@ -64,7 +64,7 @@ cmfd_power_solver.o: cmfd_prod_operator.o
 cmfd_power_solver.o: constants.o
 cmfd_power_solver.o: global.o
 cmfd_power_solver.o: matrix_header.o
-cmfd_power_solver.o: petsc_solver.o
+cmfd_power_solver.o: solver_interface.o
 cmfd_power_solver.o: vector_header.o
 
 cmfd_prod_operator.o: constants.o
@@ -287,9 +287,6 @@ particle_restart_write.o: hdf5_interface.o
 particle_restart_write.o: particle_header.o
 particle_restart_write.o: string.o
 
-petsc_solver.o: matrix_header.o
-petsc_solver.o: vector_header.o
-
 physics.o: ace_header.o
 physics.o: constants.o
 physics.o: endf.o
@@ -327,6 +324,12 @@ search.o: global.o
 
 set_header.o: constants.o
 set_header.o: list_header.o
+
+solver_interface.o: error.o
+solver_interface.o: global.o
+solver_interface.o: gmres_solver.o
+solver_interface.o: matrix_header.o
+solver_interface.o: vector_header.o
 
 source.o: bank_header.o
 source.o: constants.o

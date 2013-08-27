@@ -5,7 +5,7 @@ module cmfd_power_solver
   use cmfd_loss_operator, only: init_loss_matrix, build_loss_matrix
   use cmfd_prod_operator, only: init_prod_matrix, build_prod_matrix
   use matrix_header,      only: Matrix
-  use petsc_solver,       only: Petsc_gmres
+  use solver_interface,   only: GMRESSolver
   use vector_header,      only: Vector
 
   implicit none
@@ -29,7 +29,7 @@ module cmfd_power_solver
   type(Vector) :: s_n             ! new source vector
   type(Vector) :: s_o             ! old flux vector
   type(Vector) :: serr_v          ! error in source
-  type(Petsc_gmres) :: gmres      ! gmres solver
+  type(GMRESSolver) :: gmres      ! gmres solver
 
 contains
 
@@ -98,6 +98,7 @@ contains
   subroutine init_data(adjoint)
 
     use constants, only: ONE, ZERO
+    use global,    only: cmfd_write_matrices
 
     logical :: adjoint
 
@@ -136,12 +137,16 @@ contains
     ! Setup petsc for everything
     call loss % assemble()
     call prod % assemble()
+#ifdef PETSC
     call loss % setup_petsc()
     call prod % setup_petsc()
     call phi_n % setup_petsc()
     call phi_o % setup_petsc()
     call s_o % setup_petsc()
     call s_n % setup_petsc()
+    if (cmfd_write_matrices) call loss % write_petsc_binary('loss.bin')
+    if (cmfd_write_matrices) call prod % write_petsc_binary('prod.bin')
+#endif
 
     ! Set norms to 0
     norm_n = ZERO

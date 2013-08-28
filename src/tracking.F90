@@ -157,6 +157,9 @@ contains
         p % n_bank   = 0
         p % wgt_bank = ZERO
 
+        ! Reset fission logical
+        p % fission = .false.
+
         ! Save coordinates for tallying purposes
         p % last_xyz = p % coord0 % xyz
 

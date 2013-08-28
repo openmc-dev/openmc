@@ -246,6 +246,9 @@ contains
     ! Commit derived type for tally scores
     call MPI_TYPE_COMMIT(MPI_TALLYRESULT, mpi_err)
 
+    ! Free temporary MPI type
+    call MPI_TYPE_FREE(temp_type, mpi_err)
+
   end subroutine initialize_mpi
 #endif
 
@@ -436,22 +439,22 @@ contains
     pair_list => universe_dict % keys()
     current => pair_list
     do while (associated(current))
-      ! find index of universe in universes array
+      ! Find index of universe in universes array
       i_univ = current % value
       univ => universes(i_univ)
       univ % id = current % key
 
-      ! check for lowest level universe
+      ! Check for lowest level universe
       if (univ % id == 0) BASE_UNIVERSE = i_univ
 
-      ! find cell count for this universe
+      ! Find cell count for this universe
       n_cells_in_univ = cells_in_univ_dict % get_key(univ % id)
 
-      ! allocate cell list for universe
+      ! Allocate cell list for universe
       allocate(univ % cells(n_cells_in_univ))
       univ % n_cells = n_cells_in_univ
 
-      ! move to next universe
+      ! Move to next universe
       next => current % next
       deallocate(current)
       current => next
@@ -466,16 +469,19 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
-      ! get pointer to corresponding universe
+      ! Get pointer to corresponding universe
       i_univ = universe_dict % get_key(c % universe)
       univ => universes(i_univ)
 
-      ! increment the index for the cells array within the Universe object and
+      ! Increment the index for the cells array within the Universe object and
       ! then store the index of the Cell object in that array
       index_cell_in_univ(i_univ) = index_cell_in_univ(i_univ) + 1
       univ % cells(index_cell_in_univ(i_univ)) = i
     end do
-    
+
+    ! Clear dictionary
+    call cells_in_univ_dict % clear()
+
   end subroutine prepare_universes
 
 !===============================================================================

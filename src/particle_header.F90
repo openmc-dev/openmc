@@ -58,7 +58,8 @@ module particle_header
     real(8)    :: absorb_wgt    ! weight absorbed for survival biasing
 
     ! What event last took place
-    integer    :: event         ! scatter, absorption, fission
+    logical    :: fission       ! did the particle cause implicit fission
+    integer    :: event         ! scatter, absorption
     integer    :: event_nuclide ! index in nuclides array
     integer    :: event_MT      ! reaction MT
 
@@ -129,6 +130,7 @@ contains
     this % n_bank        = 0
     this % wgt_bank      = ZERO
     this % n_collision   = 0
+    this % fission       = .false.
 
     ! Set up base level coordinates
     allocate(this % coord0)

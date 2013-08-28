@@ -2,7 +2,7 @@ module energy_grid
 
   use constants,        only: MAX_LINE_LEN
   use global
-  use list_header,      only: ListElemReal
+  use list_header,      only: ListReal
   use output,           only: write_message
 
 contains
@@ -18,9 +18,8 @@ contains
   subroutine unionized_grid()
 
     integer :: i ! index in nuclides array
-    type(ListElemReal), pointer :: list => null()
-    type(ListElemReal), pointer :: current => null()
-    type(Nuclide),      pointer :: nuc => null()
+    type(ListReal), pointer :: list => null()
+    type(Nuclide),  pointer :: nuc => null()
 
     message = "Creating unionized energy grid..."
     call write_message(5)
@@ -31,24 +30,18 @@ contains
       call add_grid_points(list, nuc % energy)
     end do
 
-    ! determine size of list
-    n_grid = 0
-    current => list
-    do while (associated(current))
-      n_grid = n_grid + 1
-      current => current % next
-    end do
+    ! Set size of unionized energy grid 
+    n_grid = list % size() 
 
     ! create allocated array from linked list
     allocate(e_grid(n_grid))
-    current => list
     do i = 1, n_grid
-      e_grid(i) = current % data
-      current => current % next
+      e_grid(i) = list % get_item(i)
     end do
 
     ! delete linked list and dictionary
-    ! call list_delete(list)
+    call list % clear()
+    deallocate(list)
 
     ! Set pointers to unionized energy grid for each nuclide
     call grid_pointers()
@@ -62,88 +55,63 @@ contains
 
   subroutine add_grid_points(list, energy)
 
-    type(ListElemReal), pointer :: list
+    type(ListReal), pointer :: list
     real(8), intent(in) :: energy(:)
 
-    integer :: i  ! index in energy array
-    integer :: n  ! size of energy array
-    real(8) :: E  ! actual energy value
-    type(ListElemReal), pointer :: current => null()
-    type(ListElemReal), pointer :: previous => null()
-    type(ListElemReal), pointer :: head => null()
-    type(ListElemReal), pointer :: tmp => null()
+    integer :: i       ! index in energy array
+    integer :: n       ! size of energy array
+    integer :: current ! current index 
+    real(8) :: E       ! actual energy value
 
     i = 1
     n = size(energy)
 
-    ! if the original list is empty, we need to allocate the first element and
+    ! If the original list is empty, we need to allocate the first element and
     ! store first energy point
     if (.not. associated(list)) then
       allocate(list)
-      current => list
       do i = 1, n
-        current % data = energy(i)
-        if (i == n) then
-          current % next => null()
-          return
-        end if
-        allocate(current % next)
-        current => current % next
+        call list % append(energy(i))
       end do
+      return
     end if
 
-    current => list
-    head => list
+    ! Set current index to beginning of the list 
+    current = 1
 
     do while (i <= n)
       E = energy(i)
 
       ! If we've reached the end of the grid energy list, add the remaining
       ! energy points to the end
-      if (.not. associated(current)) then
-        ! finish remaining energies
+      if (current > list % size()) then
+        ! Finish remaining energies
         do while (i <= n)
-          allocate(previous % next)
-          current => previous % next
-          current % data = energy(i)
-          previous => current
+          call list % append(energy(i))
           i = i + 1
         end do
-        current%next => null()
         exit
       end if
 
-      if (E < current % data) then
-        ! create new element and insert it in energy grid list
-        allocate(tmp)
-        tmp % data = E
-        tmp % next => current
-        if (associated(previous)) then
-          previous % next => tmp
-          previous => tmp
-        else
-          previous => tmp
-          head => previous
-        end if
-        nullify(tmp)
+      if (E < list % get_item(current)) then
 
-        ! advance index
+        ! Insert new energy in this position
+        call list % insert(current, E)
+
+        ! Advance index in linked list and in new energy grid
         i = i + 1
+        current = current + 1
 
-      elseif (E == current % data) then
-        ! found the exact same energy, no need to store duplicates so just
+      elseif (E == list % get_item(current)) then
+        ! Found the exact same energy, no need to store duplicates so just
         ! skip and move to next index
         i = i + 1
+        current = current + 1
       else
-        previous => current
-        current => current % next
+        current = current + 1
       end if
 
     end do
-
-    ! It's possible that an element was inserted at the front of the list, so we
-    ! need to move the list pointer back to the start of the list
-    list => head
 
   end subroutine add_grid_points
 

@@ -769,6 +769,7 @@ contains
 
     ! Bank source neutrons
     if (nu == 0 .or. n_bank == 3*work) return
+    p % fission = .true. ! Fission neutrons will be banked
     do i = int(n_bank,4) + 1, int(min(n_bank + nu, 3*work),4)
       ! Bank source neutrons by copying particle data
       fission_bank(i) % xyz = p % coord0 % xyz

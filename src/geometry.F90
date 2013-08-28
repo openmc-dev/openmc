@@ -1572,8 +1572,9 @@ contains
 
     ! Increment number of lost particles
     p % alive = .false.
-!$omp atomic
+!$omp critical
     n_lost_particles = n_lost_particles + 1
+!$omp end critical
 
     ! Abort the simulation if the maximum number of lost particles has been
     ! reached

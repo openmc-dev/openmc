@@ -258,7 +258,7 @@ contains
 
             else
               ! Skip any non-fission events
-              if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
+              if (.not. p % fission) cycle SCORE_LOOP
 
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for the
@@ -278,7 +278,7 @@ contains
 
             else
               ! Skip any non-fission events
-              if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
+              if (.not. p % fission) cycle SCORE_LOOP
 
               if (t % find_filter(FILTER_ENERGYOUT) > 0) then
                 ! Normally, we only need to make contributions to one scoring
@@ -314,7 +314,7 @@ contains
               
             else
               ! Skip any non-fission events
-              if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
+              if (.not. p % fission) cycle SCORE_LOOP
 
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for

@@ -23,17 +23,13 @@ def test_run():
     assert stderr != '' 
 
 def test_created_restart():
-    particle = glob.glob(pwd + '/particle_10_903.*')
-    assert len(particle) == 1
-    assert particle[0].endswith('binary') or \
-           particle[0].endswith('h5')
-    particle = glob.glob(pwd + '/particle_8_777.*')
+    particle = glob.glob(pwd + '/particle_10_394.*')
     assert len(particle) == 1
     assert particle[0].endswith('binary') or \
            particle[0].endswith('h5')
 
 def test_results():
-    particle = glob.glob(pwd + '/particle_10_903.*')
+    particle = glob.glob(pwd + '/particle_10_394.*')
     call(['python', 'results.py', particle[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')
     if not compare:
@@ -41,7 +37,7 @@ def test_results():
     assert compare
 
 def test_run_restart():
-    particle = glob.glob(pwd + '/particle_10_903.*')
+    particle = glob.glob(pwd + '/particle_10_394.*')
     proc = Popen([pwd + '/../../src/openmc -r ' + particle[0]],
            stderr=PIPE, stdout=PIPE, shell=True)
     stdout, stderr = proc.communicate()

@@ -389,6 +389,19 @@ contains
     if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)
 
+    ! Deallocate external source
+    if (allocated(external_source % params_space)) &
+         deallocate(external_source % params_space)
+    if (allocated(external_source % params_angle)) &
+         deallocate(external_source % params_angle)
+    if (allocated(external_source % params_energy)) &
+         deallocate(external_source % params_energy)
+
+    ! Deallocate k and entropy
+    if (allocated(k_generation)) deallocate(k_generation)
+    if (allocated(entropy)) deallocate(entropy)
+    if (allocated(entropy_p)) deallocate(entropy_p)
+
     ! Deallocate tally-related arrays
     if (allocated(meshes)) deallocate(meshes)
     if (allocated(tallies)) then
@@ -430,6 +443,9 @@ contains
     call nuclide_dict % clear()
     call sab_dict % clear()
     call xs_listing_dict % clear()
+
+    ! Clear statepoint batch set
+    call statepoint_batch % clear()
     
   end subroutine free_memory
 

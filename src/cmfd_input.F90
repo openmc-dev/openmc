@@ -228,6 +228,7 @@ contains
     call create_cmfd_tally(doc)
 
     ! set number of CMFD processors and report to user
+    n_procs_cmfd = 1
     if (check_for_node(doc, "n_cmfd_procs")) &
       call get_node_value(doc, "n_cmfd_procs", n_procs_cmfd)
     if (master) write(OUTPUT_UNIT,'(A,1X,I0,1X,A)') "CMFD Running on", &
@@ -376,6 +377,10 @@ contains
              &<lower_left> coordinates on a tally mesh."
         call fatal_error()
       end if
+
+      ! Set upper right coordinate and width
+      m % upper_right = rarray3(1:n)
+      m % width = (m % upper_right - m % lower_left) / real(m % dimension, 8)
     end if
 
     ! Set volume fraction

@@ -752,7 +752,7 @@ contains
     else
       ! count number of source sites in each ufs mesh cell
       call count_bank_sites(ufs_mesh, source_bank, source_frac, &
-           sites_outside=sites_outside)
+           sites_outside=sites_outside, size_bank=work)
 
       ! Check for sites outside of the mesh
       if (master .and. sites_outside) then

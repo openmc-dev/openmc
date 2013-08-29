@@ -746,7 +746,7 @@ contains
     end if
 
     ! Determine expected number of neutrons produced
-    nu_t = p % wgt / keff * weight * micro_xs(i_nuclide) % fission / &
+    nu_t = p % wgt / keff * weight * micro_xs(i_nuclide) % nu_fission / &
          micro_xs(i_nuclide) % total
 
     ! Sample number of neutrons produced
@@ -758,6 +758,7 @@ contains
 
     ! Bank source neutrons
     if (nu == 0 .or. n_bank == 3*work) return
+    p % fission = .true. ! Fission neutrons will be banked
     do i = int(n_bank,4) + 1, int(min(n_bank + nu, 3*work),4)
       ! Bank source neutrons by copying particle data
       fission_bank(i) % xyz = p % coord0 % xyz

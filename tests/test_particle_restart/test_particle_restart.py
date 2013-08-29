@@ -17,7 +17,7 @@ def test_run():
     assert stderr != ''
 
 def test_created_restart():
-    assert os.path.exists(pwd + '/particle_10_903.binary')
+    assert os.path.exists(pwd + '/particle_10_394.binary')
 
 def test_results():
     os.system('python results.py')
@@ -27,7 +27,7 @@ def test_results():
     assert compare
 
 def test_run_restart():
-    proc = Popen([pwd + '/../../src/openmc -r particle_10_903.binary'], 
+    proc = Popen([pwd + '/../../src/openmc -r particle_10_394.binary'], 
            stderr=PIPE, stdout=PIPE, shell=True)
     stdout, stderr = proc.communicate()
     assert stderr == ''

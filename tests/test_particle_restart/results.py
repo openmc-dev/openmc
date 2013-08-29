@@ -7,7 +7,7 @@ sys.path.append('../../src/utils')
 import particle_restart as pr
 
 # read in particle restart file
-p = pr.Particle('particle_10_903.binary')
+p = pr.Particle('particle_10_394.binary')
 
 # set up output string
 outstr = ''

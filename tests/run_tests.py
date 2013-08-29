@@ -64,6 +64,8 @@ if opts[0] != 'all':
             run_gfortran_phdf5_petsc = True
             run_gfortran_phdf5_petsc_opt = True
             break
+        elif item == 'gfortran':
+            run_gfortran = True
         elif item == 'gfortran-dbg':
             run_gfortran_dbg = True
         elif item == 'gfortran-opt':
@@ -100,7 +102,8 @@ if run_gfortran:
     sys.stdout.write('\n--------------\n')
     os.chdir(pwd)
     os.rename(pwd + '/../src/openmc-gfortran', pwd + '/../src/openmc')
-    result_gfortran = nose.run(argv=['run_tests.py','-v','--exclude','test_compile'])
+    result_gfortran = nose.run(argv=['run_tests.py','-v','--exclude','test_compile',
+                                     '--exclude', 'cmfd'])
     os.rename(pwd + '/../src/openmc', pwd + '/../src/openmc-gfortran')
     if not result_gfortran:
         sys.stdout.write('\nDid not pass gfortran tests\n')
@@ -112,7 +115,8 @@ if run_gfortran_dbg:
     sys.stdout.write('\n--------------\n')
     os.chdir(pwd)
     os.rename(pwd + '/../src/openmc-gfortran-dbg', pwd + '/../src/openmc')
-    result_gfortran_dbg = nose.run(argv=['run_tests.py','-v','--exclude','test_compile'])
+    result_gfortran_dbg = nose.run(argv=['run_tests.py','-v','--exclude','test_compile',
+                                         '--exclude', 'cmfd'])
     os.rename(pwd + '/../src/openmc', pwd + '/../src/openmc-gfortran-dbg')
     if not result_gfortran_dbg:
         sys.stdout.write('\nDid not pass gfortran-dbg tests\n')
@@ -124,7 +128,8 @@ if run_gfortran_opt:
     sys.stdout.write('\n--------------\n')
     os.chdir(pwd)
     os.rename(pwd + '/../src/openmc-gfortran-opt', pwd + '/../src/openmc')
-    result_gfortran_opt = nose.run(argv=['run_tests.py','-v','--exclude','test_compile'])
+    result_gfortran_opt = nose.run(argv=['run_tests.py','-v','--exclude','test_compile',
+                                         '--exclude', 'cmfd'])
     os.rename(pwd + '/../src/openmc', pwd + '/../src/openmc-gfortran-opt')
     if not result_gfortran_opt:
         sys.stdout.write('\nDid not pass gfortran-opt tests\n')
@@ -136,7 +141,8 @@ if run_gfortran_hdf5:
     sys.stdout.write('\n--------------\n')
     os.chdir(pwd)
     os.rename(pwd + '/../src/openmc-gfortran-hdf5', pwd + '/../src/openmc')
-    result_gfortran_hdf5 = nose.run(argv=['run_tests.py','-v','--exclude','test_compile'])
+    result_gfortran_hdf5 = nose.run(argv=['run_tests.py','-v','--exclude','test_compile',
+                                          '--exclude', 'cmfd'])
     os.rename(pwd + '/../src/openmc', pwd + '/../src/openmc-gfortran-hdf5')
     if not result_gfortran_hdf5:
         sys.stdout.write('\nDid not pass gfortran-hdf5 tests\n')
@@ -149,6 +155,7 @@ if run_gfortran_mpi:
     os.chdir(pwd)
     os.rename(pwd + '/../src/openmc-gfortran-mpi', pwd + '/../src/openmc')
     result_gfortran_mpi = nose.run(argv=['run_tests.py','-v','--exclude','test_compile',
+                          '--exclude', 'cmfd',
                           '--mpi-np','3','--mpi-exec',
                           '/opt/mpich/3.0.4-gnu/bin/mpiexec'])
     os.rename(pwd + '/../src/openmc', pwd + '/../src/openmc-gfortran-mpi')
@@ -163,6 +170,7 @@ if run_gfortran_phdf5:
     os.chdir(pwd)
     os.rename(pwd + '/../src/openmc-gfortran-phdf5', pwd + '/../src/openmc')
     result_gfortran_phdf5 = nose.run(argv=['run_tests.py','-v','--exclude','test_compile',
+                            '--exclude', 'cmfd',
                             '--mpi-np','3','--mpi-exec',
                             '/opt/mpich/3.0.4-gnu/bin/mpiexec'])
     os.rename(pwd + '/../src/openmc', pwd + '/../src/openmc-gfortran-phdf5')

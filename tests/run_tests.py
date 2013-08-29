@@ -7,6 +7,10 @@ import nose
 import glob
 from subprocess import call
 
+# get current working directory
+pwd = os.getcwd()
+sys.path.append(pwd)
+
 # setup color printing codes
 OK = '\033[92m'
 FAIL = '\033[91m'
@@ -24,9 +28,6 @@ run_gfortran_phdf5 = True
 run_gfortran_petsc = True
 run_gfortran_phdf5_petsc = True
 run_gfortran_phdf5_petsc_opt = True
-
-# get current working directory
-pwd = os.getcwd()
 
 # check for extra command line options
 opts = ['all'] # default is run everything

@@ -33,7 +33,10 @@ for adir in sorted(folders):
     os.putenv('PWD', pwd)
 
     # Print status to screen
-    sys.stdout.write(adir+'... ')
+    sys.stdout.write(adir)
+    sz = len(adir)
+    for i in range(35 - sz):
+        sys.stdout.write('.')
 
     # Run openmc
     proc = Popen(['../../src/openmc'], stderr=STDOUT, stdout=PIPE)
@@ -41,13 +44,14 @@ for adir in sorted(folders):
     if returncode == 0:
         sys.stdout.write(BOLD + OKGREEN + "[OK]" + ENDC + "\n")
     else:
-        sys.stdout.write(BOLD + FAIL + "[ERROR]" + ENDC + "\n")
+        sys.stdout.write(BOLD + FAIL + "[FAILED]" + ENDC + "\n")
 
     # Process results
-    call(['python', 'results.py'])
-    os.rename('results_test.dat', 'results_true.dat')
-    for path in glob("*.binary") + glob("*.out"):
-        os.remove(path)
+    if returncode == 0:
+        call(['python', 'results.py'])
+        os.rename('results_test.dat', 'results_true.dat')
+        for path in glob("*.binary") + glob("*.out"):
+            os.remove(path)
 
     # Go back a directory
     os.chdir('..')

@@ -58,7 +58,8 @@ module particle_header
     real(8)    :: absorb_wgt    ! weight absorbed for survival biasing
 
     ! What event last took place
-    integer    :: event         ! scatter, absorption, fission
+    logical    :: fission       ! did the particle cause implicit fission
+    integer    :: event         ! scatter, absorption
     integer    :: event_nuclide ! index in nuclides array
     integer    :: event_MT      ! reaction MT
 
@@ -77,6 +78,7 @@ module particle_header
 
   contains
     procedure :: initialize => initialize_particle
+    procedure :: clear => clear_particle
   end type Particle
 
 contains
@@ -110,6 +112,9 @@ contains
 
     class(Particle) :: this
 
+    ! Clear coordinate lists
+    call this % clear()
+
     ! Set particle to neutron that's alive
     this % type  = NEUTRON
     this % alive = .true.
@@ -125,9 +130,7 @@ contains
     this % n_bank        = 0
     this % wgt_bank      = ZERO
     this % n_collision   = 0
-
-    ! remove any original coordinates
-    call deallocate_coord(this % coord0)
+    this % fission       = .false.
 
     ! Set up base level coordinates
     allocate(this % coord0)
@@ -135,5 +138,21 @@ contains
     this % coord             => this % coord0
 
   end subroutine initialize_particle
+
+!===============================================================================
+! CLEAR_PARTICLE
+!===============================================================================
+
+  subroutine clear_particle(this)
+
+    class(Particle) :: this
+
+    ! remove any coordinate levels
+    call deallocate_coord(this % coord0)
+
+    ! Make sure coord pointer is nullified
+    nullify(this % coord)
+
+  end subroutine clear_particle
 
 end module particle_header

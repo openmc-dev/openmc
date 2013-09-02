@@ -69,7 +69,7 @@ sys.path.append(pwd)
 if len(sys.argv) > 1:
     flags = [i for i in sys.argv[1:] if i.startswith('-')]
     tests = [i for i in sys.argv[1:] if not i.startswith('-')]
-else:
+if not tests:
     flags = []
     tests = ['compile', 'gfortran', 'gfortran-dbg', 'gfortran-opt',
              'gfortran-hdf5', 'gfortran-mpi', 'gfortran-phdf5',

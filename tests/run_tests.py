@@ -66,15 +66,14 @@ pwd = os.getcwd()
 sys.path.append(pwd)
 
 # Set list of tests, either default or from command line
+flags = []
+tests = ['compile', 'gfortran', 'gfortran-dbg', 'gfortran-opt',
+         'gfortran-hdf5', 'gfortran-mpi', 'gfortran-phdf5',
+         'gfortran-petsc', 'gfortran-phdf5-petsc',
+         'gfortran-phdf5-petsc-opt']
 if len(sys.argv) > 1:
     flags = [i for i in sys.argv[1:] if i.startswith('-')]
     tests = [i for i in sys.argv[1:] if not i.startswith('-')]
-if not tests:
-    flags = []
-    tests = ['compile', 'gfortran', 'gfortran-dbg', 'gfortran-opt',
-             'gfortran-hdf5', 'gfortran-mpi', 'gfortran-phdf5',
-             'gfortran-petsc', 'gfortran-phdf5-petsc',
-             'gfortran-phdf5-petsc-opt']
 
 # Run tests
 results = []

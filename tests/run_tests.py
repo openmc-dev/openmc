@@ -12,6 +12,10 @@ from nose_mpi import NoseMPI
 
 
 def run_compile():
+    print('-'*17)
+    print('Compilation tests')
+    print('-'*17)
+
     # clean up all previous executables
     openmc_exe = glob.glob(pwd + '/../src/openmc*')
     for exe in openmc_exe:

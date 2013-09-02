@@ -947,7 +947,7 @@ contains
     call h5dget_space_f(dset, dspace, hdf5_err)
 
     ! Select hyperslab for this dataspace
-    offset(1) = bank_first - 1_8
+    offset(1) = work_index(rank)
     call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims1, hdf5_err)
 
     ! Set up the property list for parallel writing
@@ -1009,7 +1009,7 @@ contains
 
     ! Set the proper offset for source data on this processor
     call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
-    offset = offset + size_bank*maxwork*rank
+    offset = offset + size_bank*work_index(rank)
 
     ! Write all source sites
     call MPI_FILE_WRITE_AT(mpi_fh, offset, source_bank(1), work, MPI_BANK, &
@@ -1056,7 +1056,7 @@ contains
     call h5dget_space_f(dset, dspace, hdf5_err)
 
     ! Select hyperslab for this dataspace
-    offset(1) = bank_first - 1_8
+    offset(1) = work_index(rank)
     call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims1, hdf5_err)
 
     ! Set up the property list for parallel writing
@@ -1109,7 +1109,7 @@ contains
 
     ! Set the proper offset for source data on this processor
     call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
-    offset = offset + size_bank*maxwork*rank
+    offset = offset + size_bank*work_index(rank)
 
     ! Write all source sites
     call MPI_FILE_READ_AT(mpi_fh, offset, source_bank(1), work, MPI_BANK, &

@@ -18,7 +18,7 @@ def run_compile():
         os.remove(exe)
 
     # run compile test
-    result = nose.run(argv=['run_tests.py', '-v', 'test_compile'])
+    result = nose.run(argv=['run_tests.py', 'test_compile'] + flags)
     if not result:
         print('Did not pass compile tests.')
     results.append(('compile', result))
@@ -31,7 +31,7 @@ def run_suite(name=None, mpi=False, cmfd=True):
 
     # Set arguments list. Note that the first argument is a dummy argument (the
     # script name). It's not actually recursively calling run_tests.py
-    argv = ['run_tests.py', '--exclude', 'test_compile']
+    argv = ['run_tests.py', '--exclude', 'test_compile'] + flags
 
     # Add MPI plugin if set
     if mpi:
@@ -63,8 +63,10 @@ sys.path.append(pwd)
 
 # Set list of tests, either default or from command line
 if len(sys.argv) > 1:
-    tests = sys.argv[1:]
+    flags = [i for i in sys.argv[1:] if i.startswith('-')]
+    tests = [i for i in sys.argv[1:] if not i.startswith('-')]
 else:
+    flags = []
     tests = ['compile', 'gfortran', 'gfortran-dbg', 'gfortran-opt',
              'gfortran-hdf5', 'gfortran-mpi', 'gfortran-phdf5',
              'gfortran-petsc', 'gfortran-phdf5-petsc',

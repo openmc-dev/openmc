@@ -212,7 +212,7 @@ module global
   integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
 
 #ifdef OPENMP
-  integer :: n_threads             ! number of OpenMP threads
+  integer :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread
 #endif
 

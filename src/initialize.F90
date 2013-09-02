@@ -367,6 +367,23 @@ contains
         case ('-g', '-geometry-debug', '--geometry-debug')
           check_overlaps = .true.
 
+        case ('-t', '--threads')
+          ! Read number of threads
+          i = i + 1
+
+#ifdef OPENMP          
+          ! Read and set number of OpenMP threads
+          n_threads = str_to_int(argv(i))
+          if (n_threads < 1) then
+            message = "Invalid number of threads specified on command line."
+            call fatal_error()
+          end if
+          call omp_set_num_threads(n_threads)
+#else
+          message = "Ignoring number of threads specified on command line."
+          call warning()
+#endif
+
         case ('-?', '-help', '--help')
           call print_usage()
           stop

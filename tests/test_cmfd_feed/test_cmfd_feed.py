@@ -17,6 +17,8 @@ skipAll = False
 def setup():
     os.putenv('PWD', pwd)
     os.chdir(pwd)
+    global skipAll
+    skipAll = False
 
 def test_run():
     openmc_path = pwd + '/../../src/openmc'

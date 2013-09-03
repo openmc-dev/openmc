@@ -69,6 +69,7 @@ contains
     type(Node), pointer :: node_ufs     => null()
     type(Node), pointer :: node_sp      => null()
     type(Node), pointer :: node_output  => null()
+    type(Node), pointer :: node_verb    => null()
 
     ! Display output message
     message = "Reading settings XML file..."
@@ -219,8 +220,10 @@ contains
     end select
 
     ! Verbosity
-    if (check_for_node(doc, "verbosity")) &
-         call get_node_value(doc, "verbosity", verbosity)
+    if (check_for_node(doc, "verbosity")) then
+      call get_node_ptr(doc, "verbosity", node_verb)
+      call get_node_value(node_verb, "value", verbosity)
+    end if
 
     ! ==========================================================================
     ! EXTERNAL SOURCE

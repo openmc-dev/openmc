@@ -56,7 +56,7 @@ contains
 
     ! set up file name
     filename = trim(path_output) // 'particle_' // trim(to_str(current_batch)) &
-         // '_' // trim(to_str(current_work)) // '.h5'
+         // '_' // trim(to_str(p % id)) // '.h5'
 
     ! create hdf5 file
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, hdf5_particle_file, hdf5_err)
@@ -102,7 +102,7 @@ contains
 
     ! set up file name
     filename = trim(path_output) // 'particle_' // trim(to_str(current_batch)) &
-         // '_' // trim(to_str(current_work)) // '.binary'
+         // '_' // trim(to_str(p % id)) // '.binary'
 
     ! create hdf5 file
     open(UNIT=UNIT_PARTICLE, FILE=filename, STATUS='replace', &

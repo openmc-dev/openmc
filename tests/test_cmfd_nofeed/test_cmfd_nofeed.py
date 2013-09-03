@@ -3,10 +3,15 @@
 import os
 from subprocess import Popen, STDOUT, PIPE, call
 import filecmp
-from nose_mpi import NoseMPI
 import glob
 
+from nose.plugins.skip import SkipTest
+
+from nose_mpi import NoseMPI
+
 pwd = os.path.dirname(__file__)
+
+skipAll = False
 
 def setup():
     os.putenv('PWD', pwd)
@@ -20,18 +25,29 @@ def test_run():
     else:
         proc = Popen([openmc_path], stderr=STDOUT, stdout=PIPE)
     returncode = proc.wait()
-    print(proc.communicate()[0])
+    output = proc.communicate()[0]
+    print(output)
+    if 'CMFD is not available' in output:
+        global skipAll
+        skipAll = True
+        raise SkipTest
     assert returncode == 0
 
 def test_created_statepoint():
+    if skipAll:
+        raise SkipTest
     statepoint = glob.glob(pwd + '/statepoint.20.*')
     assert len(statepoint) == 1
     assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5')
 
 def test_output_exists():
+    if skipAll:
+        raise SkipTest
     assert os.path.exists(pwd + '/tallies.out')
 
 def test_results():
+    if skipAll:
+        raise SkipTest
     statepoint = glob.glob(pwd + '/statepoint.20.*')
     call(['python', 'results.py', statepoint[0]])
     compare = filecmp.cmp('results_test.dat', 'results_true.dat')

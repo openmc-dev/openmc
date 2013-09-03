@@ -28,7 +28,7 @@ def run_compile():
     results.append(('compile', result))
 
 
-def run_suite(name=None, mpi=False, cmfd=True):
+def run_suite(name=None, mpi=False):
     print('-'*(len(name) + 6))
     print(name + ' tests')
     print('-'*(len(name) + 6))
@@ -43,10 +43,6 @@ def run_suite(name=None, mpi=False, cmfd=True):
         argv += ['--mpi-np', '3', '--mpi-exec', mpiexec]
     else:
         plugins = None
-
-    # Exclude CMFD
-    if not cmfd:
-        argv += ['--exclude', 'cmfd']
 
     try:
         os.chdir(pwd)
@@ -81,11 +77,9 @@ for name in tests:
     if name == 'compile':
         run_compile()
     elif name in ['gfortran', 'gfortran-dbg', 'gfortran-opt', 'gfortran-hdf5']:
-        run_suite(name=name, cmfd=False)
-    elif name in ['gfortran-mpi', 'gfortran-phdf5']:
-        run_suite(name=name, mpi=True, cmfd=False)
-    elif name in ['gfortran-petsc', 'gfortran-phdf5-petsc',
-                  'gfortran-phdf5-petsc-opt']:
+        run_suite(name=name)
+    elif name in ['gfortran-mpi', 'gfortran-phdf5', 'gfortran-petsc', 
+                  'gfortran-phdf5-petsc', 'gfortran-phdf5-petsc-opt']:
         run_suite(name=name, mpi=True)
 
 # print out summary of results

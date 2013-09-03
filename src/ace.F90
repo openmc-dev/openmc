@@ -1178,8 +1178,14 @@ contains
     integer :: NMU    ! number of outgoing angles
     integer :: JXS4   ! location of elastic energy table
 
-    ! read secondary energy mode for inelastic scattering
+    ! read secondary energy mode for inelastic scattering and check
     table % secondary_mode = NXS(7)
+    if (table % secondary_mode /= SAB_SECONDARY_EQUAL .and. &
+         table % secondary_mode /= SAB_SECONDARY_SKEWED) then
+      message = "Unsupported secondary mode on S(a,b) table " // &
+           trim(adjustl(table % name)) // ": " // to_str(table % secondary_mode)
+      call fatal_error()
+    end if
 
     ! read number of inelastic energies and allocate arrays
     NE_in = int(XSS(JXS(1)))

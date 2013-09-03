@@ -17,7 +17,9 @@ contains
 ! stream.
 !===============================================================================
 
-  subroutine warning()
+  subroutine warning(force)
+
+    logical, optional :: force ! force write from proc other than master
 
     integer :: i_start   ! starting position
     integer :: i_end     ! ending position
@@ -26,7 +28,7 @@ contains
     integer :: indent    ! length of indentation
 
     ! Only allow master to print to screen
-    if (.not. master) return
+    if (.not. master .and. .not. present(force)) return
 
     ! Write warning at beginning
     write(ERROR_UNIT, fmt='(1X,A)', advance='no') 'WARNING: '

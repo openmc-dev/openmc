@@ -1557,7 +1557,7 @@ contains
     type(Particle), intent(inout) :: p
 
     ! Print warning and write lost particle file
-    call warning()
+    call warning(force = .true.)
     call write_particle_restart(p)
 
     ! Increment number of lost particles

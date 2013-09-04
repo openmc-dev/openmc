@@ -657,6 +657,7 @@ contains
 
         end do TALLY_RESULTS
       end if
+      call sp % file_close()
     end if
 
     ! Read source if in eigenvalue mode 
@@ -681,10 +682,12 @@ contains
         message = "Loading source file " // trim(filename) // "..."
         call write_message(1)
 
-        ! Open source file
-        call sp % file_open(filename, 'r')
-
+      else
+        filename = path_state_point
       end if
+
+      ! Open file that contains source
+      call sp % file_open(filename, 'r', serial = .false.)
 
       ! Write out source
       call sp % read_source_bank()

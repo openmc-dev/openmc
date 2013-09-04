@@ -295,7 +295,6 @@ contains
     integer :: ijk(3) ! spatial bin location
     integer :: e_bin ! energy bin of source particle
     integer :: n_groups ! number of energy groups
-    integer(8) :: size_bank ! size of source bank
     logical :: outside ! any source sites outside mesh
     logical :: in_mesh ! source site is inside mesh
     logical :: new_weights ! calcualte new weights
@@ -356,7 +355,7 @@ contains
    end if
 
     ! begin loop over source bank
-    do i = 1, int(size_bank, 4) 
+    do i = 1, int(work,4)
 
       ! determine spatial bin
       call get_mesh_indices(m, source_bank(i)%xyz, ijk, in_mesh)

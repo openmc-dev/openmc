@@ -31,7 +31,7 @@ contains
 
     ! Set up file name
     filename = trim(path_output) // 'particle_' // trim(to_str(current_batch)) &
-         // '_' // trim(to_str(current_work))
+         // '_' // trim(to_str(p % id))
 #ifdef HDF5
     filename = trim(filename) // '.h5'
 #else

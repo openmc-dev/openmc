@@ -1398,7 +1398,7 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      write(self % unit_fh) buffer
+      read(self % unit_fh) buffer
     else
       call mpi_read_long(self % unit_fh, buffer, collect_)
     end if
@@ -1509,7 +1509,7 @@ contains
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 #elif MPI
     if (self % serial) then
-      write(self % unit_fh) buffer
+      read(self % unit_fh) buffer
     else
       call mpi_read_string(self % unit_fh, buffer, n, collect_)
     end if
@@ -1621,9 +1621,7 @@ contains
     class(BinaryOutput) :: self
 
 #ifndef HDF5
-# ifndef MPI
     integer :: j,k ! iteration counters
-# endif
 #endif
 
 #ifdef HDF5
@@ -1645,11 +1643,6 @@ contains
     ! Close ids
     call h5dclose_f(dset, hdf5_err)
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
-#elif MPI
-
-    ! Read tally result 
-    call MPI_FILE_READ(self % unit_fh, buffer, n1*n2, MPI_TALLYRESULT, &
-         MPI_STATUS_IGNORE, mpiio_err)
 
 #else
 
@@ -1664,7 +1657,6 @@ contains
 #endif 
    
   end subroutine read_tally_result
-
 
 !===============================================================================
 ! WRITE_SOURCE_BANK writes OpenMC source_bank data

@@ -1848,20 +1848,21 @@ contains
 
 #elif MPI
 
-    ! Get current offset for master 
-    if (master) call MPI_FILE_GET_POSITION(self % unit_fh, offset, mpiio_err)
+    ! Go to the end of the file to set file pointer
+    offset = 0
+    call MPI_FILE_SEEK(self % unit_fh, offset, MPI_SEEK_END, &
+         mpiio_err)
 
-    ! Determine offset on master process and broadcast to all processors
-    call MPI_SIZEOF(offset, size_offset_kind, mpi_err)
-    select case (size_offset_kind)
-    case (4)
-      call MPI_BCAST(offset, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpi_err)
-    case (8)
-      call MPI_BCAST(offset, 1, MPI_INTEGER8, 0, MPI_COMM_WORLD, mpi_err)
-    end select
+    ! Get current offset (will be at EOF) 
+    call MPI_FILE_GET_POSITION(self % unit_fh, offset, mpiio_err)
+
+    ! Get the size of the source bank on all procs
+    call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
+
+    ! Calculate offset where the source bank will begin
+    offset = offset - n_particles*size_bank
 
     ! Set the proper offset for source data on this processor
-    call MPI_TYPE_SIZE(MPI_BANK, size_bank, mpi_err)
     offset = offset + size_bank*maxwork*rank
 
     ! Write all source sites

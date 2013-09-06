@@ -47,7 +47,7 @@ contains
         src => source_bank(i)
 
         ! initialize random number seed
-        id = bank_first + i - 1
+        id = work_index(rank) + i
         call set_particle_seed(id)
 
         ! sample external source distribution
@@ -165,7 +165,7 @@ contains
     call copy_source_attributes(p, src)
 
     ! set identifier for particle
-    p % id = bank_first + index_source - 1
+    p % id = work_index(rank) + index_source
 
     ! set random number seed
     particle_seed = (overall_gen - 1)*n_particles + p % id

@@ -14,7 +14,7 @@ module initialize
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot,       &
                               write_message
-  use output_interface, only: file_open, file_close, read_data
+  use output_interface
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use state_point,      only: load_state_point
@@ -306,6 +306,7 @@ contains
     integer :: filetype
     character(MAX_FILE_LEN) :: pwd      ! present working directory
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
+    type(BinaryOutput) :: sp
 
     ! Get working directory
     call GET_ENVIRONMENT_VARIABLE("PWD", pwd)
@@ -346,9 +347,9 @@ contains
           i = i + 1
 
           ! Check what type of file this is
-          call file_open(argv(i), 'parallel', 'r')
-          call read_data(filetype, 'filetype')
-          call file_close('parallel')
+          call sp % file_open(argv(i), 'r', serial = .false.)
+          call sp % read_data(filetype, 'filetype')
+          call sp % file_close()
 
           ! Set path and flag for type of run
           select case (filetype)

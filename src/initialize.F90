@@ -335,7 +335,7 @@ contains
           run_mode = MODE_PLOTTING
           check_overlaps = .true.
 
-        case ('-n', '-n_particles', '--n_particles')
+        case ('-n', '-particles', '--particles')
           ! Read number of particles per cycle
           i = i + 1
           n_particles = str_to_int(argv(i))
@@ -368,7 +368,7 @@ contains
         case ('-g', '-geometry-debug', '--geometry-debug')
           check_overlaps = .true.
 
-        case ('-t', '--threads')
+        case ('-s', '--threads')
           ! Read number of threads
           i = i + 1
 

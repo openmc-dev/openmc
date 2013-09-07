@@ -341,7 +341,7 @@ contains
   end subroutine read_double
 
 !===============================================================================
-! WRITE_DOUBLE_1DARRAY writes double presicions 1-D array data
+! WRITE_DOUBLE_1DARRAY writes double precision 1-D array data
 !===============================================================================
 
   subroutine write_double_1Darray(self, buffer, name, group, length, collect)
@@ -874,7 +874,7 @@ contains
   end subroutine read_integer
 
 !===============================================================================
-! WRITE_INTEGER_1DARRAY writes integer presicions 1-D array data
+! WRITE_INTEGER_1DARRAY writes integer precision 1-D array data
 !===============================================================================
 
   subroutine write_integer_1Darray(self, buffer, name, group, length, collect)

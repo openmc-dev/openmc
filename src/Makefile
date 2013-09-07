@@ -28,7 +28,7 @@ PETSC    = no
 MPI_DIR   = /opt/mpich/3.0.4-$(COMPILER)
 HDF5_DIR  = /opt/hdf5/1.8.11-$(COMPILER)
 PHDF5_DIR = /opt/phdf5/1.8.11-$(COMPILER)
-PETSC_DIR = /opt/petsc/3.3-p6-$(COMPILER)
+PETSC_DIR = /opt/petsc/3.4.2-$(COMPILER)
 
 #===============================================================================
 # Add git SHA-1 hash

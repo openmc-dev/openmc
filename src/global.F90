@@ -166,10 +166,8 @@ module global
   type(Bank), allocatable, target :: master_fission_bank(:)
 #endif
   integer(8) :: n_bank       ! # of sites in fission bank
-  integer(8) :: bank_first   ! index of first particle in bank
-  integer(8) :: bank_last    ! index of last particle in bank
   integer(8) :: work         ! number of particles per processor
-  integer(8) :: maxwork      ! maximum number of particles per processor
+  integer(8), allocatable :: work_index(:) ! starting index in source bank for each process
   integer(8) :: current_work ! index in source bank of current history simulated
 
   ! Temporary k-effective values
@@ -461,6 +459,9 @@ contains
 #endif
     if (allocated(source_bank)) deallocate(source_bank)
     if (allocated(entropy_p)) deallocate(entropy_p)
+
+    ! Deallocate array of work indices
+    if (allocated(work_index)) deallocate(work_index)
 
     ! Deallocate cmfd
     call deallocate_cmfd(cmfd)

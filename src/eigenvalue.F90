@@ -389,7 +389,7 @@ contains
       end if
 
       ! the last processor should not be sending sites to right
-      finish = bank_last
+      finish = work_index(rank + 1)
     end if
 
     call time_bank_sample % stop()
@@ -405,11 +405,11 @@ contains
     if (start < n_particles) then
       ! Determine the index of the processor which has the first part of the
       ! source_bank for the local processor
-      neighbor = start / maxwork
+      neighbor = binary_search(work_index, n_procs + 1, start) - 1
 
       SEND_SITES: do while (start < finish)
         ! Determine the number of sites to send
-        n = min((neighbor + 1)*maxwork, finish) - start
+        n = min(work_index(neighbor + 1), finish) - start
 
         ! Initiate an asynchronous send of source sites to the neighboring
         ! process
@@ -434,7 +434,7 @@ contains
     ! ==========================================================================
     ! RECEIVE BANK SITES FROM NEIGHBORS OR TEMPORARY BANK
 
-    start = bank_first - 1
+    start = work_index(rank)
     index_local = 1
 
     ! Determine what process has the source sites that will need to be stored at
@@ -446,13 +446,12 @@ contains
       neighbor = binary_search(bank_position, n_procs, start) - 1
     end if
 
-    RECV_SITES: do while (start < bank_last)
+    RECV_SITES: do while (start < work_index(rank + 1))
       ! Determine how many sites need to be received
       if (neighbor == n_procs - 1) then
-        n = min(n_particles, (rank+1)*maxwork) - start
+        n = work_index(rank + 1) - start
       else
-        n = min(bank_position(neighbor+2), min(n_particles, &
-             (rank+1)*maxwork)) - start
+        n = min(bank_position(neighbor + 2), work_index(rank + 1)) - start
       end if
 
       if (neighbor /= rank) then
@@ -763,7 +762,7 @@ contains
     else
       ! count number of source sites in each ufs mesh cell
       call count_bank_sites(ufs_mesh, source_bank, source_frac, &
-           sites_outside=sites_outside)
+           sites_outside=sites_outside, size_bank=work)
 
       ! Check for sites outside of the mesh
       if (master .and. sites_outside) then

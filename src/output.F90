@@ -167,10 +167,11 @@ contains
       write(OUTPUT_UNIT,*)
       write(OUTPUT_UNIT,*) 'Options:'
       write(OUTPUT_UNIT,*) '  -g, --geometry-debug   Run in geometry debugging mode'
+      write(OUTPUT_UNIT,*) '  -n, --particles        Number of particles per generation'
       write(OUTPUT_UNIT,*) '  -p, --plot             Run in plotting mode'
       write(OUTPUT_UNIT,*) '  -r, --restart          Restart a previous run from a state point'
       write(OUTPUT_UNIT,*) '                         or a particle restart file'
-      write(OUTPUT_UNIT,*) '  -t, --threads          Number of OpenMP threads'
+      write(OUTPUT_UNIT,*) '  -s, --threads          Number of OpenMP threads'
       write(OUTPUT_UNIT,*) '  -v, --version          Show version information'
       write(OUTPUT_UNIT,*) '  -?, --help             Show this message'
     end if

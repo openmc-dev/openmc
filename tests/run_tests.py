@@ -55,7 +55,11 @@ def run_suite(name=None, mpi=False):
         results.append((name, result))
 
 # set mpiexec path
-mpiexec = '/opt/mpich/3.0.4-gnu/bin/mpiexec'
+if os.environ.has_key('COMPILER'):
+    compiler = os.environ['COMPILER']
+else:
+    compiler = 'gnu'
+mpiexec = '/opt/mpich/3.0.4-{0}/bin/mpiexec'.format(compiler)
 
 # get current working directory
 pwd = os.getcwd()
@@ -63,23 +67,22 @@ sys.path.append(pwd)
 
 # Set list of tests, either default or from command line
 flags = []
-tests = ['compile', 'gfortran', 'gfortran-dbg', 'gfortran-opt',
-         'gfortran-hdf5', 'gfortran-mpi', 'gfortran-phdf5',
-         'gfortran-petsc', 'gfortran-phdf5-petsc',
-         'gfortran-phdf5-petsc-opt']
+tests = ['compile', 'normal', 'debug', 'optimize', 'hdf5', 'mpi', 'phdf5',
+         'petsc', 'phdf5-petsc', 'phdf5-petsc-optimize']
 if len(sys.argv) > 1:
     flags = [i for i in sys.argv[1:] if i.startswith('-')]
-    tests = [i for i in sys.argv[1:] if not i.startswith('-')]
+    tests_ = [i for i in sys.argv[1:] if not i.startswith('-')]
+    tests = tests_ if tests_ else tests
 
 # Run tests
 results = []
 for name in tests:
     if name == 'compile':
         run_compile()
-    elif name in ['gfortran', 'gfortran-dbg', 'gfortran-opt', 'gfortran-hdf5']:
+    elif name in ['normal', 'debug', 'optimize', 'hdf5']:
         run_suite(name=name)
-    elif name in ['gfortran-mpi', 'gfortran-phdf5', 'gfortran-petsc', 
-                  'gfortran-phdf5-petsc', 'gfortran-phdf5-petsc-opt']:
+    elif name in ['mpi', 'phdf5', 'petsc', 'phdf5-petsc',
+                  'phdf5-petsc-optimize']:
         run_suite(name=name, mpi=True)
 
 # print out summary of results

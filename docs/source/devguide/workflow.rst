@@ -33,18 +33,21 @@ review is required).
 Code Review Criteria
 --------------------
 
-In order to be consider suitable for for inclusion in the *develop* branch, the
+In order to be considered suitable for inclusion in the *develop* branch, the
 following criteria must be satisfied for all proposed changes:
 
+- Changes have a clear purpose and are useful.
 - Compiles under all conditions (MPI, OpenMP, HDF5, etc.).  This is checked as
   part of the test suite (see `test_compile.py`_).
 - Passes the regression suite.
+- If appropriate, test cases are added to regression suite.
 - No memory leaks (checked with valgrind_).
 - Conforms to the OpenMC `style guide`_.
 - No degradation of performance or greatly increased memory usage. This is not a
   hard rule -- in certain circumstances, a performance loss might be acceptable
   if there are compelling reasons.
 - New features/input are documented.
+- No unnecessary external software dependencies are introduced.
 
 Contributing
 ------------

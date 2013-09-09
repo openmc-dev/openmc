@@ -2,19 +2,19 @@ module vector_header
 
   use constants,  only: ZERO
 
+#ifdef PETSC
+  use petscvec
+#endif
+
   implicit none
   private
-
-# ifdef PETSC
-#  include <finclude/petsc.h90>
-# endif
 
   type, public :: Vector 
     integer :: n        ! number of rows/cols in matrix
     real(8), allocatable :: data(:) ! where vector data is stored
     real(8), pointer :: val(:) ! pointer to vector data
 #  ifdef PETSC
-    Vec :: petsc_vec
+    type(vec) :: petsc_vec
 #  endif
     logical :: petsc_active
    contains
@@ -113,7 +113,7 @@ contains
     class(Vector) :: self
 
 #ifdef PETSC
-    PetscViewer :: viewer
+    type(PetscViewer) :: viewer
 
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(filename), &
          FILE_MODE_WRITE, viewer, petsc_err)

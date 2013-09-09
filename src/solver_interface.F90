@@ -5,18 +5,19 @@ module solver_interface
   use matrix_header,  only: Matrix
   use vector_header,  only: Vector
 
+#ifdef PETSC
+  use petscksp
+  use petscsnes
+#endif
+
   implicit none
   private
-
-#ifdef PETSC
-#  include <finclude/petsc.h90>
-#endif
 
   ! GMRES solver type 
   type, public :: GMRESSolver 
 #ifdef PETSC
-    KSP :: ksp
-    PC  :: pc
+    type(ksp) :: ksp_
+    type(pc)  :: pc_
 #endif
    contains
 #ifdef PETSC
@@ -36,11 +37,11 @@ module solver_interface
   ! JFNK solver type 
   type, public :: JFNKSolver 
 #ifdef PETSC
-    KSP  :: ksp
-    PC   :: pc
-    SNES :: snes
-    Mat  :: jac_mf
-    SNESLineSearch :: ls
+    type(ksp)  :: ksp_
+    type(pc)   :: pc_
+    type(snes) :: snes_
+    type(mat)  :: jac_mf
+    integer    :: ls
 #endif
    contains
 #ifdef PETSC
@@ -84,14 +85,14 @@ contains
     real(8) :: rtol = 1.0e-10_8
     real(8) :: atol = 1.0e-10_8
 
-    call KSPCreate(PETSC_COMM_WORLD, self % ksp, petsc_err)
-    call KSPSetTolerances(self % ksp, rtol, atol, &
+    call KSPCreate(PETSC_COMM_WORLD, self % ksp_, petsc_err)
+    call KSPSetTolerances(self % ksp_, rtol, atol, &
          PETSC_DEFAULT_DOUBLE_PRECISION, PETSC_DEFAULT_INTEGER, petsc_err)
-    call KSPSetType(self % ksp, KSPGMRES, petsc_err)
-    call KSPSetInitialGuessNonzero(self % ksp, PETSC_TRUE, petsc_err)
-    call KSPGetPC(self % ksp, self % pc, petsc_err)
-    call PCFactorSetLevels(self % pc, ilu_levels, petsc_err)
-    call KSPSetFromOptions(self % ksp, petsc_err)
+    call KSPSetType(self % ksp_, 'gmres', petsc_err)
+    call KSPSetInitialGuessNonzero(self % ksp_, PETSC_TRUE, petsc_err)
+    call KSPGetPC(self % ksp_, self % pc_, petsc_err)
+    call PCFactorSetLevels(self % pc_, ilu_levels, petsc_err)
+    call KSPSetFromOptions(self % ksp_, petsc_err)
 
   end subroutine petsc_gmres_create
 
@@ -105,9 +106,9 @@ contains
     type(Matrix)       :: prec_mat
     type(Matrix)       :: mat_in
 
-    call KSPSetOperators(self % ksp, mat_in % petsc_mat, prec_mat % petsc_mat, &
+    call KSPSetOperators(self % ksp_, mat_in % petsc_mat, prec_mat % petsc_mat, &
          SAME_NONZERO_PATTERN, petsc_err)
-    call KSPSetUp(self % ksp, petsc_err) 
+    call KSPSetUp(self % ksp_, petsc_err) 
 
   end subroutine petsc_gmres_set_oper
 
@@ -119,7 +120,7 @@ contains
 
    class(GMRESSolver) :: self
 
-    call KSPDestroy(self % ksp, petsc_err)
+    call KSPDestroy(self % ksp_, petsc_err)
 
   end subroutine petsc_gmres_destroy
 
@@ -133,7 +134,7 @@ contains
     type(Vector)       :: b
     type(Vector)       :: x
 
-    call KSPSolve(self % ksp, b % petsc_vec, x % petsc_vec, petsc_err)
+    call KSPSolve(self % ksp_, b % petsc_vec, x % petsc_vec, petsc_err)
 
   end subroutine petsc_gmres_solve
 
@@ -149,23 +150,23 @@ contains
     call PetscOptionsSetValue("-snes_mf_operator", "TRUE", petsc_err)
 
     ! Create the SNES context
-    call SNESCreate(PETSC_COMM_WORLD, self % snes, petsc_err)
+    call SNESCreate(PETSC_COMM_WORLD, self % snes_, petsc_err)
 
     ! Set up the GMRES solver
-    call SNESGetKSP(self % snes, self % ksp, petsc_err)
-    call KSPSetType(self % ksp, KSPGMRES, petsc_err)    
+    call SNESGetKSP(self % snes_, self % ksp_, petsc_err)
+    call KSPSetType(self % ksp_, 'gmres', petsc_err)    
 
     ! Apply options
-    call SNESGetLineSearch(self % snes, self % ls, petsc_err)
-    call SNESLineSearchSetType(self % ls, SNESLINESEARCHBASIC, petsc_err)
-    call SNESSetFromOptions(self % snes, petsc_err)
+    call SNESGetLineSearch(self % snes_, self % ls, petsc_err)
+    call SNESLineSearchSetType(self % ls, 'basic', petsc_err)
+    call SNESSetFromOptions(self % snes_, petsc_err)
 
     ! Set up preconditioner
-    call KSPGetPC(self % ksp, self % pc, petsc_err)
-    call PCSetType(self % pc, PCILU, petsc_err)
-    call PCFactorSetLevels(self % pc, 5, petsc_err)
-    call PCSetFromOptions(self % pc, petsc_err)
-    call KSPSetFromOptions(self % ksp, petsc_err)
+    call KSPGetPC(self % ksp_, self % pc_, petsc_err)
+    call PCSetType(self % pc_, 'ilu', petsc_err)
+    call PCFactorSetLevels(self % pc_, 5, petsc_err)
+    call PCSetFromOptions(self % pc_, petsc_err)
+    call KSPSetFromOptions(self % ksp_, petsc_err)
 
   end subroutine petsc_jfnk_create
 
@@ -178,7 +179,7 @@ contains
     class(JFNKSolver) :: self
 
     call MatDestroy(self % jac_mf, petsc_err)
-    call SNESDestroy(self % snes, petsc_err)
+    call SNESDestroy(self % snes_, petsc_err)
 
   end subroutine petsc_jfnk_destroy
 
@@ -194,19 +195,19 @@ contains
     type(Matrix)      :: jac_prec
 
     ! Set residual procedure
-    call SNESSetFunction(self % snes, res % petsc_vec, &
+    call SNESSetFunction(self % snes_, res % petsc_vec, &
          petsc_jfnk_compute_residual, ctx, petsc_err)
 
     ! Create the matrix free jacobian
-    call MatCreateSNESMF(self % snes, self % jac_mf, petsc_err)
+    call MatCreateSNESMF(self % snes_, self % jac_mf, petsc_err)
 
     ! Set Jacobian procedure
-    call SNESSetJacobian(self % snes, self % jac_mf, jac_prec % petsc_mat, &
+    call SNESSetJacobian(self % snes_, self % jac_mf, jac_prec % petsc_mat, &
          petsc_jfnk_compute_jacobian, ctx, petsc_err)
 
     ! Set up Jacobian Lags
-    call SNESSetLagJacobian(self % snes, -2, petsc_err)
-    call SNESSetLagPreconditioner(self % snes, -1, petsc_err)
+    call SNESSetLagJacobian(self % snes_, -2, petsc_err)
+    call SNESSetLagPreconditioner(self % snes_, -1, petsc_err)
 
   end subroutine petsc_jfnk_set_functions
 
@@ -219,7 +220,7 @@ contains
     class(JFNKSolver) :: self
     type(Vector)      :: xvec
 
-    call SNESSolve(self % snes, PETSC_NULL_DOUBLE, xvec % petsc_vec, petsc_err)
+    call SNESSolve(self % snes_, PETSC_NULL_DOUBLE, xvec % petsc_vec, petsc_err)
 
   end subroutine petsc_jfnk_solve
 
@@ -227,11 +228,11 @@ contains
 ! PETSC_JFNK_COMPUTE_RESIDUAL buffer routine to user specifed residual routine
 !===============================================================================
 
-  subroutine petsc_jfnk_compute_residual(snes, x, res, ctx, ierr)
+  subroutine petsc_jfnk_compute_residual(snes_, x, res, ctx, ierr)
 
-    SNES           :: snes
-    Vec            :: x
-    Vec            :: res
+    type(snes)     :: snes_
+    type(vec)      :: x
+    type(vec)      :: res
     integer        :: ierr
     type(Jfnk_ctx) :: ctx
 
@@ -259,14 +260,14 @@ contains
 ! PETSC_JFNK_COMPUTE_JACOBIAN buffer routine to user specified jacobian routine
 !===============================================================================
 
-  subroutine petsc_jfnk_compute_jacobian(snes, x, jac_mf, jac_prec, flag, ctx, &
-             ierr)
+  subroutine petsc_jfnk_compute_jacobian(snes_, x, jac_mf, jac_prec, flag, &
+             ctx, ierr)
 
-    SNES           :: snes
-    Vec            :: x
-    Mat            :: jac_mf
-    Mat            :: jac_prec
-    MatStructure   :: flag 
+    type(snes)     :: snes_
+    type(vec)      :: x
+    type(mat)      :: jac_mf
+    type(mat)      :: jac_prec
+    integer        :: flag 
     type(Jfnk_ctx) :: ctx
     integer        :: ierr
 

@@ -1,11 +1,11 @@
 module matrix_header
 
+#ifdef PETSC
+  use petscmat
+#endif
+
   implicit none
   private
-
-# ifdef PETSC
-#  include <finclude/petsc.h90>
-# endif
 
   type, public :: Matrix
     integer :: n        ! number of rows/cols in matrix
@@ -16,7 +16,7 @@ module matrix_header
     integer, allocatable :: col(:) ! column vector
     real(8), allocatable :: val(:) ! matrix value vector
 #  ifdef PETSC
-    Mat :: petsc_mat
+    type(mat) :: petsc_mat
 #  endif
     logical :: petsc_active
    contains
@@ -296,7 +296,7 @@ contains
     class(Matrix) :: self
 
 #ifdef PETSC
-    PetscViewer :: viewer
+    type(PetscViewer) :: viewer
 
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(filename), &
          FILE_MODE_WRITE, viewer, petsc_err)

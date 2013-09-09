@@ -68,7 +68,7 @@ for item in sp.cmfd_balance:
   outstr += "{0:12.6E}\n".format(item)
 outstr += 'cmfd dominance ratio\n'
 for item in sp.cmfd_dominance:
-  outstr += "{0:12.6E}\n".format(item)
+  outstr += "{0:10.3E}\n".format(item)
 outstr += 'cmfd openmc source comparison\n'
 for item in sp.cmfd_srccmp:
   outstr += "{0:12.6E}\n".format(item)

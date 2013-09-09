@@ -41,12 +41,12 @@ GIT_SHA1 = $(shell git log -1 2>/dev/null | head -n 1 | awk '{print $$2}')
 
 ifeq ($(COMPILER),gnu)
   F90 = gfortran
-  F90FLAGS := -cpp -fbacktrace
+  F90FLAGS := -cpp -std=f2008 -fbacktrace
   LDFLAGS =
 
   # Debugging
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -Wall -pedantic -std=f2008 -fbounds-check \
+    F90FLAGS += -g -Wall -pedantic -fbounds-check \
                 -ffpe-trap=invalid,overflow,underflow
     LDFLAGS  += -g
   endif
@@ -69,12 +69,12 @@ endif
 
 ifeq ($(COMPILER),intel)
   F90 = ifort
-  F90FLAGS := -fpp -warn -assume byterecl -traceback
+  F90FLAGS := -fpp -std08 -assume byterecl -traceback
   LDFLAGS =
 
   # Debugging
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -ftrapuv -fp-stack-check -check all -fpe0
+    F90FLAGS += -g -warn -ftrapuv -fp-stack-check -check all -fpe0
     LDFLAGS  += -g
   endif
 

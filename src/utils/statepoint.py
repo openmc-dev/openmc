@@ -152,6 +152,8 @@ class StatePoint(object):
 
         # Read statepoint revision
         self.revision = self._get_int(path='revision')[0]
+        if self.revision != 10:
+          raise Exception('Statepoint Revision is not consistent.')
 
         # Read OpenMC version
         if self._hdf5:
@@ -186,28 +188,27 @@ class StatePoint(object):
                 self.current_batch*self.gen_per_batch, path='k_generation')
             self.entropy = self._get_double(
                 self.current_batch*self.gen_per_batch, path='entropy')
-            if self.revision >= 8:
-                self.k_col_abs = self._get_double(path='k_col_abs')[0]
-                self.k_col_tra = self._get_double(path='k_col_tra')[0]
-                self.k_abs_tra = self._get_double(path='k_abs_tra')[0]
-                self.k_combined = self._get_double(2, path='k_combined')
+            self.k_col_abs = self._get_double(path='k_col_abs')[0]
+            self.k_col_tra = self._get_double(path='k_col_tra')[0]
+            self.k_abs_tra = self._get_double(path='k_abs_tra')[0]
+            self.k_combined = self._get_double(2, path='k_combined')
 
             # Read CMFD information
             cmfd_present = self._get_int(path='cmfd_on')[0]
             if cmfd_present == 1:
-                self.cmfd_indices = self._get_double(4, path='cmfd/indicies')
+                self.cmfd_indices = self._get_int(4, path='cmfd/indicies')
                 self.k_cmfd = self._get_double(self.current_batch,
-                                               path='cmfd/k_cmfd')
-                self.cmfd_src = self._get_double(np.product(self.cmfd_indices,
-                                                 path='cmfd/cmfd_src'))
+                              path='cmfd/k_cmfd')
+                self.cmfd_src = self._get_double(np.product(self.cmfd_indices),
+                                path='cmfd/cmfd_src')
                 self.cmfd_entropy = self._get_double(self.current_batch,
-                                                     path='cmfd/cmfd_entropy')
+                                    path='cmfd/cmfd_entropy')
                 self.cmfd_balance = self._get_double(self.current_batch,
-                                                     path='cmfd/cmfd_balance')
+                                    path='cmfd/cmfd_balance')
                 self.cmfd_dominance = self._get_double(self.current_batch,
-                                                       path='cmfd/cmfd_dominance')
+                                      path='cmfd/cmfd_dominance')
                 self.cmfd_srccmp = self._get_double(self.current_batch,
-                                                    path='cmfd/cmfd_srccmp')
+                                   path='cmfd/cmfd_srccmp')
 
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]
@@ -596,6 +597,12 @@ class StatePoint(object):
             return [float(v) for v in self._f[path].value]
         else:
             return [float(v) for v in self._get_data(n, 'd', 8)]
+
+    def _get_double(self, n=1, path=None):
+        if self._hdf5:
+            return self._f[path].value
+        else:
+            return self._get_data(n, 'd', 8)
 
     def _get_string(self, n=1, path=None):
         if self._hdf5:

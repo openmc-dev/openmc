@@ -81,8 +81,8 @@ contains
 
   subroutine init_data()
 
-    use constants, only: ONE
-    use global,    only: cmfd, cmfd_adjoint_type
+    use constants, only: ZERO, ONE
+    use global,    only: cmfd, cmfd_adjoint_type, current_batch
 
     logical :: physical_adjoint
     integer :: n
@@ -141,6 +141,9 @@ contains
 
     ! Set up Jacobian for PETSc
     call jac_prec % setup_petsc()
+
+    ! Set dominance ratio to 0
+    cmfd % dom(current_batch) = ZERO
 
   end subroutine init_data
 

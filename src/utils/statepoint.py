@@ -199,8 +199,10 @@ class StatePoint(object):
                 self.cmfd_indices = self._get_int(4, path='cmfd/indicies')
                 self.k_cmfd = self._get_double(self.current_batch,
                               path='cmfd/k_cmfd')
-                self.cmfd_src = self._get_double(np.product(self.cmfd_indices),
+                self.cmfd_src = self._get_double_array(np.product(self.cmfd_indices),
                                 path='cmfd/cmfd_src')
+                self.cmfd_src = np.reshape(self.cmfd_src,
+                                tuple(self.cmfd_indices), order='F')
                 self.cmfd_entropy = self._get_double(self.current_batch,
                                     path='cmfd/cmfd_entropy')
                 self.cmfd_balance = self._get_double(self.current_batch,
@@ -598,7 +600,7 @@ class StatePoint(object):
         else:
             return [float(v) for v in self._get_data(n, 'd', 8)]
 
-    def _get_double(self, n=1, path=None):
+    def _get_double_array(self, n=1, path=None):
         if self._hdf5:
             return self._f[path].value
         else:

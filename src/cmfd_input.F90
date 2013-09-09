@@ -2,13 +2,13 @@ module cmfd_input
 
   use global
 
+#ifdef PETSC
+  use petscsys
+#endif
+
   implicit none
   private
   public :: configure_cmfd 
-
-# ifdef PETSC
-#  include <finclude/petsc.h90>
-# endif
 
 contains
 

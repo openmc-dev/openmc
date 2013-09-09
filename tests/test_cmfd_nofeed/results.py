@@ -53,6 +53,30 @@ outstr += 'tally 4:\n'
 for item in results4:
   outstr += "{0:12.6E}\n".format(item)
 
+# write out cmfd answers
+outstr += 'cmfd indices\n'
+for item in sp.cmfd_indices:
+  outstr += "{0:12.6E}\n".format(item)
+outstr += 'k cmfd\n'
+for item in sp.k_cmfd:
+  outstr += "{0:12.6E}\n".format(item)
+outstr += 'cmfd entropy\n'
+for item in sp.cmfd_entropy:
+  outstr += "{0:12.6E}\n".format(item)
+outstr += 'cmfd balance\n'
+for item in sp.cmfd_balance:
+  outstr += "{0:12.6E}\n".format(item)
+outstr += 'cmfd dominance ratio\n'
+for item in sp.cmfd_dominance:
+  outstr += "{0:12.6E}\n".format(item)
+outstr += 'cmfd openmc source comparison\n'
+for item in sp.cmfd_srccmp:
+  outstr += "{0:12.6E}\n".format(item)
+outstr += 'cmfd source\n'
+cmfdsrc = np.reshape(sp.cmfd_src, np.product(sp.cmfd_indices), order='F')
+for item in cmfdsrc:
+  outstr += "{0:12.6E}\n".format(item)
+
 # write results to file
 with open('results_test.dat','w') as fh:
     fh.write(outstr)

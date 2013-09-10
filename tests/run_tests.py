@@ -67,22 +67,63 @@ sys.path.append(pwd)
 
 # Set list of tests, either default or from command line
 flags = []
-tests = ['compile', 'normal', 'debug', 'optimize', 'hdf5', 'mpi', 'phdf5',
-         'petsc', 'phdf5-petsc', 'phdf5-petsc-optimize']
+tests = ['compile', 'normal', 'debug', 'optimize', 
+         'hdf5', 'hdf5-debug', 'hdf5-optimize',
+         'mpi', 'mpi-debug', 'mpi-optimize',
+         'phdf5', 'phdf5-debug', 'phdf5-optimize',
+         'petsc', 'petsc-debug', 'petsc-optimize',
+         'phdf5-petsc', 'phdf5-petsc-debug', 'phdf5-petsc-optimize']
 if len(sys.argv) > 1:
     flags = [i for i in sys.argv[1:] if i.startswith('-')]
     tests_ = [i for i in sys.argv[1:] if not i.startswith('-')]
-    tests = tests_ if tests_ else tests
+
+    # Check for special subsets of tests
+    tests__ = []
+    for i in tests_:
+
+        # All tests will run all the tests except for compile unless
+        # it is also specified on the command line. Note that specifying
+        # compile all-tests is the same as not specifying any args
+        if i == 'all-tests':
+            tests__ = tests
+            try:
+                idx = tests_.index('compile') # check for compile test
+            except ValueError:
+                del tests__[0]
+            finally:
+                break # don't need to check for anything else
+
+        # This checks for any subsets of tests. The string after
+        # all-XXXX will be used to search through all tests.
+        # Specifying XXXX=normal will run tests that don't contain
+        # debug or optimize substring.
+        if i.startswith('all-'):
+            suffix = i.split('all-')[1]
+            if suffix == 'normal':
+                for j in tests:
+                    if j.rfind('debug') == -1 and \
+                       j.rfind('optimize') == -1:
+                        tests__.append(j)
+            else:
+                for j in tests:
+                    if j.rfind(suffix) != -1:
+                        tests__.append(j)
+        else:
+            tests__.append(i) # append specific test (e.g., mpi-debug)
+    tests = tests__ if tests__ else tests
 
 # Run tests
 results = []
 for name in tests:
     if name == 'compile':
         run_compile()
-    elif name in ['normal', 'debug', 'optimize', 'hdf5']:
+    elif name in ['normal', 'debug', 'optimize', 
+                  'hdf5', 'hdf5-debug', 'hdf5-optimize']:
         run_suite(name=name)
-    elif name in ['mpi', 'phdf5', 'petsc', 'phdf5-petsc',
-                  'phdf5-petsc-optimize']:
+    elif name in ['mpi', 'mpi-debug', 'mpi-optimize',
+                  'phdf5', 'phdf5-debug', 'phdf5-optimize',
+                  'petsc', 'petsc-debug', 'petsc-optimize',
+                  'phdf5-petsc', 'phdf5-petsc-debug', 'phdf5-petsc-optimize']:
         run_suite(name=name, mpi=True)
 
 # print out summary of results

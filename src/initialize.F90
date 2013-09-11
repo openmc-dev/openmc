@@ -14,7 +14,7 @@ module initialize
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot,       &
                               write_message
-  use output_interface, only: file_open, file_close, read_data
+  use output_interface
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use state_point,      only: load_state_point
@@ -306,6 +306,7 @@ contains
     integer :: filetype
     character(MAX_FILE_LEN) :: pwd      ! present working directory
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
+    type(BinaryOutput) :: sp
 
     ! Get working directory
     call GET_ENVIRONMENT_VARIABLE("PWD", pwd)
@@ -346,9 +347,9 @@ contains
           i = i + 1
 
           ! Check what type of file this is
-          call file_open(argv(i), 'parallel', 'r')
-          call read_data(filetype, 'filetype')
-          call file_close('parallel')
+          call sp % file_open(argv(i), 'r', serial = .false.)
+          call sp % read_data(filetype, 'filetype')
+          call sp % file_close()
 
           ! Set path and flag for type of run
           select case (filetype)
@@ -754,15 +755,37 @@ contains
 
   subroutine calculate_work()
 
-    ! Determine maximum amount of particles to simulate on each processor
-    maxwork = ceiling(real(n_particles)/n_procs,8)
+    integer    :: i         ! loop index
+    integer    :: remainder ! Number of processors with one extra particle
+    integer(8) :: i_bank    ! Running count of number of particles
+    integer(8) :: min_work  ! Minimum number of particles on each proc
+    integer(8) :: work_i    ! Number of particles on rank i
 
-    ! ID's of first and last source particles
-    bank_first = rank*maxwork + 1
-    bank_last  = min((rank+1)*maxwork, n_particles)
+    allocate(work_index(0:n_procs))
 
-    ! number of particles for this processor
-    work = bank_last - bank_first + 1
+    ! Determine minimum amount of particles to simulate on each processor
+    min_work = n_particles/n_procs
+
+    ! Determine number of processors that have one extra particle
+    remainder = int(mod(n_particles, int(n_procs,8)), 4)
+
+    i_bank = 0
+    work_index(0) = 0
+    do i = 0, n_procs - 1
+      ! Number of particles for rank i
+      if (i < remainder) then
+        work_i = min_work + 1
+      else
+        work_i = min_work
+      end if
+
+      ! Set number of particles
+      if (rank == i) work = work_i
+
+      ! Set index into source bank for rank i
+      i_bank = i_bank + work_i
+      work_index(i+1) = i_bank
+    end do
 
   end subroutine calculate_work
 
@@ -775,7 +798,7 @@ contains
     integer    :: alloc_err  ! allocation error code
 
     ! Allocate source bank
-    allocate(source_bank(maxwork), STAT=alloc_err)
+    allocate(source_bank(work), STAT=alloc_err)
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then
@@ -784,7 +807,7 @@ contains
     end if
 
     ! Allocate fission bank
-    allocate(fission_bank(3*maxwork), STAT=alloc_err)
+    allocate(fission_bank(3*work), STAT=alloc_err)
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then

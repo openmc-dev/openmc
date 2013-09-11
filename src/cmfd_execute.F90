@@ -281,8 +281,7 @@ contains
     use constants,   only: ZERO, ONE
     use error,       only: warning, fatal_error
     use global,      only: n_particles, meshes, source_bank, work,             &
-                           n_user_meshes, message, cmfd, master, mpi_err,      &
-                           bank_first, bank_last
+                           n_user_meshes, message, cmfd, master, mpi_err
     use mesh_header, only: StructuredMesh
     use mesh,        only: count_bank_sites, get_mesh_indices
     use search,      only: binary_search
@@ -296,7 +295,6 @@ contains
     integer :: ijk(3) ! spatial bin location
     integer :: e_bin ! energy bin of source particle
     integer :: n_groups ! number of energy groups
-    integer(8) :: size_bank ! size of source bank
     logical :: outside ! any source sites outside mesh
     logical :: in_mesh ! source site is inside mesh
     logical :: new_weights ! calcualte new weights
@@ -311,9 +309,6 @@ contains
     ny = cmfd%indices(2)
     nz = cmfd%indices(3)
     ng = cmfd%indices(4)
-
-    ! compute size of source bank
-    size_bank = bank_last - bank_first + 1_8 
 
     ! allocate arrays in cmfd object (can take out later extend to multigroup)
     if (.not.allocated(cmfd%sourcecounts)) then 
@@ -337,7 +332,7 @@ contains
 
       ! count bank sites in mesh
       call count_bank_sites(m, source_bank, cmfd%sourcecounts, egrid, &
-           sites_outside=outside, size_bank = size_bank)
+           sites_outside=outside, size_bank=work)
 
       ! check for sites outside of the mesh
       if (master .and. outside) then
@@ -360,7 +355,7 @@ contains
    end if
 
     ! begin loop over source bank
-    do i = 1, int(size_bank, 4) 
+    do i = 1, int(work,4)
 
       ! determine spatial bin
       call get_mesh_indices(m, source_bank(i)%xyz, ijk, in_mesh)

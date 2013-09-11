@@ -50,12 +50,12 @@ contains
       PARTICLE_LOOP: do i = 1, work
 
         ! Set unique particle ID
-        p % id = (current_batch - 1)*n_particles + bank_first + i - 1
+        p % id = (current_batch - 1)*n_particles + work_index(rank) + i
 
         ! set particle trace
         trace = .false.
         if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
-             bank_first + i - 1 == trace_particle) trace = .true.
+             work_index(rank) + i == trace_particle) trace = .true.
 
         ! set random number seed
         call set_particle_seed(p % id)

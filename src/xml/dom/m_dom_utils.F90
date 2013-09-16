@@ -140,8 +140,11 @@ endif
       call normalizeDocument(startNode, ex)
       if (present(ex)) then
         ! Only possible error should be namespace error ...
-        if (getExceptionCode(ex)/=NAMESPACE_ERR) then
-          if (getFoX_checks().or.FoX_INTERNAL_ERROR<200) then
+        ! but we should avoid turning an error of 0 into 
+        ! an internal error!
+        if (inException(ex)) then
+          if (getExceptionCode(ex)/=NAMESPACE_ERR) then
+            if (getFoX_checks().or.FoX_INTERNAL_ERROR<200) then
   call throw_exception(FoX_INTERNAL_ERROR, "serialize", ex)
   if (present(ex)) then
     if (inException(ex)) then
@@ -150,8 +153,8 @@ endif
   endif
 endif
 
-        else
-          if (getFoX_checks().or.SERIALIZE_ERR<200) then
+          else
+            if (getFoX_checks().or.SERIALIZE_ERR<200) then
   call throw_exception(SERIALIZE_ERR, "serialize", ex)
   if (present(ex)) then
     if (inException(ex)) then
@@ -160,6 +163,7 @@ endif
   endif
 endif
 
+          endif
         endif
       endif
     else

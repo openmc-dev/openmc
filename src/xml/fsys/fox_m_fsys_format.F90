@@ -52,7 +52,7 @@ module fox_m_fsys_format
 
 #ifndef DUMMYLIB
   interface safestr
-! This is for internal use only - no check is made on the validity of 
+! This is for internal use only - no check is made on the validity of
 ! any fmt input.
     module procedure str_string, str_string_array, str_string_matrix, &
                      str_integer, str_integer_array, str_integer_matrix, &
@@ -111,13 +111,13 @@ contains
 
 #ifndef DUMMYLIB
   ! NB: The len generic module procedure is used in
-  !     many initialisation statments (to set the 
+  !     many initialisation statments (to set the
   !     length of the output string needed for the
   !     converted number). As of the Fortran 2008
   !     spec every specific function belonging to
   !     a generic used in this way must be defined
   !     in the module before use. This is enforced
-  !     by at least version 7.4.4 of the Cray 
+  !     by at least version 7.4.4 of the Cray
   !     Fortran compiler. Hence we put all the *_len
   !     functions here at the top of the file.
   pure function str_string_array_len(st) result(n)
@@ -143,7 +143,7 @@ contains
   pure function str_integer_len(i) result(n)
     integer, intent(in) :: i
     integer :: n
-    
+
     n = int(log10(real(max(abs(i),1)))) + 1 + dim(-i,0)/max(abs(i),1)
 
   end function str_integer_len
@@ -151,7 +151,7 @@ contains
   pure function str_integer_base_len(i, b) result(n)
     integer, intent(in) :: i, b
     integer :: n
-    
+
     n = int(log10(real(max(abs(i),1)))/log10(real(b))) &
       + 1 + dim(-i,0)/max(abs(i),1)
 
@@ -161,7 +161,7 @@ contains
     integer, intent(in) :: i
     character(len=*), intent(in) :: fmt
     integer :: n
-    
+
     select case (len(fmt))
     case(0)
       n = 0
@@ -179,7 +179,7 @@ contains
       elseif (verify(fmt(2:), digit)==0) then
         n = str_to_int_10(fmt(2:))
       else
-        n = 0 
+        n = 0
       endif
     end select
 
@@ -188,7 +188,7 @@ contains
   pure function str_integer_array_len(ia) result(n)
     integer, dimension(:), intent(in) :: ia
     integer :: n
-    
+
     integer :: j
 
     n = size(ia) - 1
@@ -203,7 +203,7 @@ contains
     integer, dimension(:), intent(in) :: ia
     character(len=*), intent(in) :: fmt
     integer :: n
-    
+
     integer :: j
 
     n = size(ia) - 1
@@ -250,7 +250,7 @@ contains
   pure function str_logical_len(l) result (n)
     logical, intent(in) :: l
     integer :: n
-    
+
     if (l) then
       n = 4
     else
@@ -292,17 +292,17 @@ contains
     else
       e = floor(log10(abs(x)))
     endif
-      
+
     if (x < 0.0_sp) then
       n = 1
     else
       n = 0
     endif
-      
+
     if (len(fmt) == 0) then
       sig = sig_sp
 
-      n = n + sig + 2 + len(e) 
+      n = n + sig + 2 + len(e)
       ! for the decimal point and the e
 
     elseif (fmt(1:1) == "s") then
@@ -314,9 +314,9 @@ contains
       sig = max(sig, 1)
       sig = min(sig, digits(1.0_sp))
 
-      if (sig > 1) n = n + 1 
+      if (sig > 1) n = n + 1
       ! for the decimal point
-      
+
       n = n + sig + 1 + len(e)
 
     elseif (fmt(1:1) == "r") then
@@ -376,7 +376,7 @@ contains
     do k = 1, size(xa)
       n = n + len(xa(k), fmt)
     enddo
-    
+
   end function str_real_sp_array_fmt_len
 
   pure function str_real_sp_matrix_fmt_len(xa, fmt) result(n)
@@ -420,17 +420,17 @@ contains
     else
       e = floor(log10(abs(x)))
     endif
-      
+
     if (x < 0.0_dp) then
       n = 1
     else
       n = 0
     endif
-      
+
     if (len(fmt) == 0) then
       sig = sig_dp
 
-      n = n + sig + 2 + len(e) 
+      n = n + sig + 2 + len(e)
       ! for the decimal point and the e
 
     elseif (fmt(1:1) == "s") then
@@ -442,9 +442,9 @@ contains
       sig = max(sig, 1)
       sig = min(sig, digits(1.0_dp))
 
-      if (sig > 1) n = n + 1 
+      if (sig > 1) n = n + 1
       ! for the decimal point
-      
+
       n = n + sig + 1 + len(e)
 
     elseif (fmt(1:1) == "r") then
@@ -490,7 +490,7 @@ contains
     do k = 1, size(xa)
       n = n + len(xa(k), "")
     enddo
-    
+
   end function str_real_dp_array_len
 
   pure function str_real_dp_array_fmt_len(xa, fmt) result(n)
@@ -504,7 +504,7 @@ contains
     do k = 1, size(xa)
       n = n + len(xa(k), fmt)
     enddo
-    
+
   end function str_real_dp_array_fmt_len
 
   pure function str_real_dp_matrix_fmt_len(xa, fmt) result(n)
@@ -558,7 +558,7 @@ contains
 
     n = size(ca) - 1
     do i = 1, size(ca)
-      n = n + len(ca(i), fmt) 
+      n = n + len(ca(i), fmt)
     enddo
   end function str_complex_sp_array_fmt_len
 
@@ -590,7 +590,7 @@ contains
 
     n = len(ca, "")
   end function str_complex_sp_matrix_len
-  
+
   pure function str_complex_dp_fmt_len(c, fmt) result(n)
     complex(dp), intent(in) :: c
     character(len=*), intent(in) :: fmt
@@ -644,7 +644,7 @@ contains
       enddo
     enddo
   end function str_complex_dp_matrix_fmt_len
-     
+
   pure function str_complex_dp_matrix_len(ca) result(n)
     complex(dp), dimension(:, :), intent(in) :: ca
     integer :: n
@@ -705,7 +705,7 @@ contains
     ! Error is flagged by returning -1
     character(len=*), intent(in) :: str
     integer :: n
-    
+
     character(len=len(str)) :: str_l
     integer :: max_power, i, j
 
@@ -739,7 +739,7 @@ contains
         endif
       enddo
     end function to_lower
-         
+
   end function str_to_int_16
 #endif
 
@@ -747,7 +747,7 @@ contains
     character(len=*), intent(in) :: st
 #ifdef DUMMYLIB
     character(len=1) :: s
-    s = " " 
+    s = " "
 #else
     character(len=len(st)) :: s
     s = st
@@ -762,10 +762,10 @@ contains
     s = " "
 #else
     character(len=str_string_array_len(st)) :: s
-    
+
     integer :: k, n
     character(len=1) :: d
-    
+
     if (present(delimiter)) then
       d = delimiter
     else
@@ -789,7 +789,7 @@ contains
     s = " "
 #else
     character(len=str_string_matrix_len(st)) :: s
-    
+
     integer :: j, k, n
     character(len=1) :: d
 
@@ -853,7 +853,7 @@ contains
 
     character :: f
     integer :: b, ii, j, k, n, ls
- 
+
     if (len(fmt)>0) then
       if (fmt(1:1)=="d") then
         f = 'd'
@@ -902,7 +902,7 @@ contains
 #ifdef DUMMYLIB
     character(len=1) :: s
 #else
-    character(len=len(ia, "d")) :: s
+    character(len=len(ia(:), "d")) :: s
 
     integer :: j, k, n
 
@@ -924,7 +924,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(ia, fmt)) :: s
+    character(len=len(ia(:), fmt)) :: s
 
     integer :: j, k, n
 
@@ -944,7 +944,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(ia, "d")) :: s
+    character(len=len(ia(:,:), "d")) :: s
 
     integer :: j, k, n
 
@@ -954,7 +954,7 @@ contains
       s(n:n+len(ia(j,1))) = " "//str(ia(j,1))
       n = n + len(ia(j,1)) + 1
     enddo
-    do k = 2, size(ia, 2) 
+    do k = 2, size(ia, 2)
       do j = 1, size(ia, 1)
         s(n:n+len(ia(j,k))) = " "//str(ia(j,k))
         n = n + len(ia(j,k)) + 1
@@ -971,7 +971,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(ia, fmt)) :: s
+    character(len=len(ia(:,:), fmt)) :: s
 
     integer :: j, k, n
 
@@ -981,7 +981,7 @@ contains
       s(n:n+len(ia(j,1), fmt)) = " "//str(ia(j,1), fmt)
       n = n + len(ia(j,1), fmt) + 1
     enddo
-    do k = 2, size(ia, 2) 
+    do k = 2, size(ia, 2)
       do j = 1, size(ia, 1)
         s(n:n+len(ia(j,k), fmt)) = " "//str(ia(j,k), fmt)
         n = n + len(ia(j,k), fmt) + 1
@@ -1000,7 +1000,7 @@ contains
 !    character(len=merge(4,5,l)) :: s
 ! And g95 (sep2007) cant resolve the generic here
     character(len=str_logical_len(l)) :: s
-    
+
     if (l) then
       s="true"
     else
@@ -1015,8 +1015,8 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(la)) :: s
-    
+    character(len=len(la(:))) :: s
+
     integer :: k, n
 
     n = 1
@@ -1044,7 +1044,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(la)) :: s
+    character(len=len(la(:,:))) :: s
 
     integer :: j, k, n
 
@@ -1079,12 +1079,12 @@ contains
     enddo
 #endif
   end function str_logical_matrix
-  
+
 #ifndef DUMMYLIB
   ! In order to convert real numbers to strings, we need to
-  ! perform an internal write - but how long will the 
+  ! perform an internal write - but how long will the
   ! resultant string be? We don't know & there is no way
-  ! to discover for an arbitrary format. Therefore, 
+  ! to discover for an arbitrary format. Therefore,
   ! (if we have the capability; f95 or better)
   ! we assume it will be less than 100 characters, write
   ! it to a string of that length, then remove leading &
@@ -1094,7 +1094,7 @@ contains
   ! If we are working with an F90-only compiler, then
   ! we cannot do this trick - the output string will
   ! always be 100 chars in length, though we will remove
-  ! leading whitespace. 
+  ! leading whitespace.
 
 
   ! The standard Fortran format functions do not give us
@@ -1104,7 +1104,7 @@ contains
   ! "r<integer>" which will produce output without an exponent,
   ! and <integer> digits after the decimal point.
   ! or
-  ! "s<integer>": which implies scientific notation, with an 
+  ! "s<integer>": which implies scientific notation, with an
   ! exponent, with <integer> significant figures.
   ! If the integer is absent, then the precision will be
   ! half of the number of significant figures available
@@ -1137,7 +1137,7 @@ contains
     real(sp) :: x_
 
     if (sig < 1) then
-      s ="" 
+      s =""
       return
     endif
 
@@ -1156,11 +1156,11 @@ contains
     enddo
     n = 1
     do k = sig - 2, 0, -1
-      ! This baroque way of taking int() ensures the optimizer 
+      ! This baroque way of taking int() ensures the optimizer
       ! stores it in j without keeping a different value in cache.
       j = iachar(digit(int(x_)+1:int(x_)+1)) - 48
       if (j==10) then
-        ! This can happen if, on the previous cycle, int(x_) in 
+        ! This can happen if, on the previous cycle, int(x_) in
         ! the line above gave a result approx. 1.0 less than
         ! expected.
         ! In this case we want to quit the cycle & just get 999... to the end
@@ -1351,8 +1351,8 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(xa)) :: s
-    
+    character(len=len(xa(:))) :: s
+
     integer :: j, k, n
 
     n = 1
@@ -1369,8 +1369,8 @@ contains
   pure function str_real_sp_array_fmt(xa, fmt) result(s)
     real(sp), dimension(:), intent(in) :: xa
     character(len=*), intent(in) :: fmt
-    character(len=len(xa, fmt)) :: s
-    
+    character(len=len(xa(:), fmt)) :: s
+
     integer :: j, k, n
 
     n = 1
@@ -1391,8 +1391,8 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(xa, fmt)) :: s
-    
+    character(len=len(xa(:), fmt)) :: s
+
     if (checkFmt(fmt)) then
       s = safestr(xa, fmt)
     else
@@ -1405,7 +1405,7 @@ contains
   pure function str_real_sp_matrix_fmt(xa, fmt) result(s)
     real(sp), dimension(:,:), intent(in) :: xa
     character(len=*), intent(in) :: fmt
-    character(len=len(xa,fmt)) :: s
+    character(len=len(xa(:,:),fmt)) :: s
 
     integer :: i, j, k, n
 
@@ -1435,7 +1435,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(xa,fmt)) :: s
+    character(len=len(xa(:,:),fmt)) :: s
 
     if (checkFmt(fmt)) then
       s = safestr(xa, fmt)
@@ -1451,12 +1451,12 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(xa)) :: s
+    character(len=len(xa(:,:))) :: s
 
     s = safestr(xa, "")
 #endif
   end function str_real_sp_matrix
-    
+
 #ifndef DUMMYLIB
   pure function real_dp_str(x, sig) result(s)
     real(dp), intent(in) :: x
@@ -1467,7 +1467,7 @@ contains
     real(dp) :: x_
 
     if (sig < 1) then
-      s ="" 
+      s =""
       return
     endif
 
@@ -1490,7 +1490,7 @@ contains
       ! stores it in j without keeping a different value in cache.
       j = iachar(digit(int(x_)+1:int(x_)+1)) - 48
       if (j==10) then
-        ! This can happen if, on the previous cycle, int(x_) in 
+        ! This can happen if, on the previous cycle, int(x_) in
         ! the line above gave a result almost exactly 1.0 less than
         ! expected - but FP arithmetic is not consistent.
         ! In this case we want to quit the cycle & just get 999... to the end
@@ -1682,8 +1682,8 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(xa)) :: s
-    
+    character(len=len(xa(:))) :: s
+
     integer :: j, k, n
 
     n = 1
@@ -1700,8 +1700,8 @@ contains
   pure function str_real_dp_array_fmt(xa, fmt) result(s)
     real(dp), dimension(:), intent(in) :: xa
     character(len=*), intent(in) :: fmt
-    character(len=len(xa, fmt)) :: s
-    
+    character(len=len(xa(:), fmt)) :: s
+
     integer :: j, k, n
 
     n = 1
@@ -1722,8 +1722,8 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(xa, fmt)) :: s
-    
+    character(len=len(xa(:), fmt)) :: s
+
     if (checkFmt(fmt)) then
       s = safestr(xa, fmt)
     else
@@ -1736,7 +1736,7 @@ contains
   function str_real_dp_matrix_fmt(xa, fmt) result(s)
     real(dp), dimension(:,:), intent(in) :: xa
     character(len=*), intent(in) :: fmt
-    character(len=len(xa,fmt)) :: s
+    character(len=len(xa(:,:),fmt)) :: s
 
     integer :: i, j, k, n
 
@@ -1766,7 +1766,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(xa,fmt)) :: s
+    character(len=len(xa(:,:),fmt)) :: s
 
     if (checkFmt(fmt)) then
       s = safestr(xa, fmt)
@@ -1782,7 +1782,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(xa)) :: s
+    character(len=len(xa(:,:))) :: s
 
     s = safestr(xa, "")
 #endif
@@ -1800,7 +1800,7 @@ contains
     s = " "
 #else
     character(len=len(c, fmt)) :: s
-    
+
     if (checkFmt(fmt)) then
       s = safestr(c, fmt)
     else
@@ -1814,7 +1814,7 @@ contains
     complex(sp), intent(in) :: c
     character(len=*), intent(in) :: fmt
     character(len=len(c, fmt)) :: s
-    
+
     real(sp) :: re, im
     integer :: i
     re = real(c)
@@ -1841,13 +1841,13 @@ contains
   pure function str_complex_sp_array_fmt(ca, fmt) result(s)
     complex(sp), dimension(:), intent(in) :: ca
     character(len=*), intent(in) :: fmt
-    character(len=len(ca, fmt)) :: s
+    character(len=len(ca(:), fmt)) :: s
 
     integer :: i, n
- 
+
     s(1:len(ca(1), fmt)) = safestr(ca(1), fmt)
     n = len(ca(1), fmt)+1
-    do i = 2, size(ca) 
+    do i = 2, size(ca)
       s(n:n+len(ca(i), fmt)) = " "//safestr(ca(i), fmt)
       n = n + len(ca(i), fmt)+1
     enddo
@@ -1861,7 +1861,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(ca, fmt)) :: s
+    character(len=len(ca(:), fmt)) :: s
 
     if (checkFmt(fmt)) then
       s = safestr(ca, fmt)
@@ -1877,7 +1877,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(ca)) :: s
+    character(len=len(ca(:))) :: s
 
     s = safestr(ca, "")
 #endif
@@ -1887,7 +1887,7 @@ contains
   pure function str_complex_sp_matrix_fmt(ca, fmt) result(s)
     complex(sp), dimension(:, :), intent(in) :: ca
     character(len=*), intent(in) :: fmt
-    character(len=len(ca, fmt)) :: s
+    character(len=len(ca(:,:), fmt)) :: s
 
     integer :: i, j, k, n
 
@@ -1917,7 +1917,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(ca, fmt)) :: s
+    character(len=len(ca(:,:), fmt)) :: s
 
     if (checkFmt(fmt)) then
       s = safestr(ca, fmt)
@@ -1933,7 +1933,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(ca)) :: s
+    character(len=len(ca(:,:))) :: s
 
     s = safestr(ca, "")
 #endif
@@ -1947,7 +1947,7 @@ contains
     s = " "
 #else
     character(len=len(c, fmt)) :: s
-    
+
     if (checkFmt(fmt)) then
       s = safestr(c, fmt)
     else
@@ -1961,7 +1961,7 @@ contains
     complex(dp), intent(in) :: c
     character(len=*), intent(in) :: fmt
     character(len=len(c, fmt)) :: s
-    
+
     real(dp) :: re, im
     integer :: i
     re = real(c)
@@ -1988,13 +1988,13 @@ contains
   pure function str_complex_dp_array_fmt(ca, fmt) result(s)
     complex(dp), dimension(:), intent(in) :: ca
     character(len=*), intent(in) :: fmt
-    character(len=len(ca, fmt)) :: s
+    character(len=len(ca(:), fmt)) :: s
 
     integer :: i, n
 
     s(1:len(ca(1), fmt)) = safestr(ca(1), fmt)
     n = len(ca(1), fmt)+1
-    do i = 2, size(ca) 
+    do i = 2, size(ca)
       s(n:n+len(ca(i), fmt)) = " "//safestr(ca(i), fmt)
       n = n + len(ca(i), fmt)+1
     enddo
@@ -2008,7 +2008,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(ca, fmt)) :: s
+    character(len=len(ca(:), fmt)) :: s
 
     if (checkFmt(fmt)) then
       s = safestr(ca, fmt)
@@ -2024,7 +2024,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(ca)) :: s
+    character(len=len(ca(:))) :: s
 
     s = safestr(ca, "")
 #endif
@@ -2034,7 +2034,7 @@ contains
   pure function str_complex_dp_matrix_fmt(ca, fmt) result(s)
     complex(dp), dimension(:, :), intent(in) :: ca
     character(len=*), intent(in) :: fmt
-    character(len=len(ca, fmt)) :: s
+    character(len=len(ca(:,:), fmt)) :: s
 
     integer :: i, j, k, n
 
@@ -2064,7 +2064,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(ca, fmt)) :: s
+    character(len=len(ca(:,:), fmt)) :: s
 
     if (checkFmt(fmt)) then
       s = safestr(ca, fmt)
@@ -2080,7 +2080,7 @@ contains
     character(len=1) :: s
     s = " "
 #else
-    character(len=len(ca)) :: s
+    character(len=len(ca(:,:))) :: s
 
     s = safestr(ca, "")
 #endif

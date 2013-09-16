@@ -750,13 +750,13 @@ endif
 
     select case(np%nodeType)
     case (ELEMENT_NODE, ATTRIBUTE_NODE, XPATH_NAMESPACE_NODE)
-      call destroyElementOrAttribute(np)
+      call destroyElementOrAttribute(np, ex)
     case (DOCUMENT_TYPE_NODE)
-      call destroyDocumentType(np)
+      call destroyDocumentType(np, ex)
     case (ENTITY_NODE, NOTATION_NODE)
-      call destroyEntityOrNotation(np)
+      call destroyEntityOrNotation(np, ex)
     case (DOCUMENT_NODE)
-      call destroyDocument(np)
+      call destroyDocument(np,ex)
     end select
     call destroyNodeContents(np)
     deallocate(np)
@@ -5846,8 +5846,7 @@ endif
     endif
 
 ! Switch off all GC - since this is GC!
-    call setGCstate(arg, .false.)
-
+    call setGCstate(arg, .false., ex)
     if (arg%nodeType/=DOCUMENT_NODE) then
       if (getFoX_checks().or.FoX_INVALID_NODE<200) then
   call throw_exception(FoX_INVALID_NODE, "destroyDocument", ex)
@@ -5874,9 +5873,12 @@ endif
     if (associated(arg%docExtras%hangingNodes%nodes)) deallocate(arg%docExtras%hangingNodes%nodes)
 
     call destroy_xml_doc_state(arg%docExtras%xds)
-    deallocate(arg%docExtras%xds)
-    deallocate(arg%docExtras%domConfig)
-    deallocate(arg%docExtras)
+    if (present(ex)) then
+      if (inException(ex)) return
+    endif
+    if (associated(arg%docExtras%xds))       deallocate(arg%docExtras%xds)
+    if (associated(arg%docExtras%domConfig)) deallocate(arg%docExtras%domConfig)
+    if (associated(arg%docExtras))           deallocate(arg%docExtras)
 
     call destroyAllNodesRecursively(arg, except=.true.)
 
@@ -8491,7 +8493,7 @@ endif
   endif
 endif
 
-    elseif (.not.associated(arg, getOwnerDocument(n))) then
+    elseif (.not.associated(getOwnerDocument(n), target=arg)) then
       if (getFoX_checks().or.WRONG_DOCUMENT_ERR<200) then
   call throw_exception(WRONG_DOCUMENT_ERR, "renameNode", ex)
   if (present(ex)) then

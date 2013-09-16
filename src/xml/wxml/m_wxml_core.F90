@@ -87,6 +87,9 @@ module m_wxml_core
     integer                   :: state_1 = -1
     integer                   :: state_2 = -1
     integer                   :: state_3 = -1
+    ! Holder for extra information for other writers. See
+    ! table with getter and setter below:
+    integer                   :: extended_data = 0
     logical                   :: minimize_overrun = .true.
     logical                   :: pretty_print = .false.
     logical                   :: canonical = .false.
@@ -128,6 +131,8 @@ module m_wxml_core
 
   public :: xmlf_SetPretty_print
   public :: xmlf_GetPretty_print
+  public :: xmlf_SetExtendedData
+  public :: xmlf_GetExtendedData
 
   interface xml_AddCharacters
     module procedure xml_AddCharacters_Ch
@@ -1652,6 +1657,30 @@ contains
     value = xf%pretty_print
 #endif
   end function xmlf_GetPretty_print
+
+! xf%extended data is an integer so that writers
+! can change there behaviour depending on some 
+! stored information. Currently only used for 
+! wcml 'validate' argument (which is intended to 
+! check some of the more troublesome aspects of
+! the CML schema
+  subroutine xmlf_SetExtendedData(xf, new_value)
+    type(xmlf_t), intent(inout) :: xf
+    integer, intent(in)         :: new_value
+#ifndef DUMMYLIB
+    xf%extended_data = new_value
+#endif
+  end subroutine xmlf_SetExtendedData
+
+  pure function xmlf_GetExtendedData(xf) result(value)
+    integer :: value
+    type(xmlf_t), intent(in) :: xf
+#ifdef DUMMYLIB
+    value = .false.
+#else
+    value = xf%extended_data
+#endif
+  end function xmlf_GetExtendedData
 
   pure function xmlf_name(xf) result(fn)
     type (xmlf_t), intent(in) :: xf

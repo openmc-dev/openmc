@@ -31,15 +31,19 @@ contains
   pure function str_vs(vs) result(s)
     character, dimension(:), intent(in) :: vs
     character(len=size(vs)) :: s
-#ifdef PGF90
-!PGI crashes on this use of transfer. Knob-ends.
     integer :: i
+    ! Note that we could use s = transfer(vs, s)
+    ! here and (in principle) this could be an O(1)
+    ! operation. However, this leakes memory on all
+    ! recent gfortrans and crashes on some versions of
+    ! PGF90. So the loop would need to be included with 
+    ! an #ifdef PGF90. In any case, the looping version
+    ! seems to be quickers (probably due to the character
+    ! copying being vectorized in the loop). See:
+    ! http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51175
     do i = 1, size(vs)
       s(i:i) = vs(i)
     enddo
-#else
-    s = transfer(vs, s)
-#endif
   end function str_vs
 
 

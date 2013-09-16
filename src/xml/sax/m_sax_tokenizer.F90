@@ -2,6 +2,8 @@ module m_sax_tokenizer
 
 #ifndef DUMMYLIB
   use fox_m_fsys_array_str, only: vs_str, str_vs, vs_str_alloc
+  use fox_m_fsys_varstr
+
   use m_common_charset, only: XML_WHITESPACE, &
     upperCase, isInitialNameChar
   use m_common_error, only: add_error, in_error
@@ -12,7 +14,7 @@ module m_sax_tokenizer
 
   use m_sax_reader, only: file_buffer_t, open_new_file, pop_buffer_stack, &
     push_chars, get_character, get_all_characters, &
-    parse_text_declaration
+    parse_text_declaration, add_error_position
   use m_sax_types ! everything, really
 #ifdef PGF90
   use fox_m_utils_uri, only: URI
@@ -39,8 +41,7 @@ contains
 
     xv = fx%xds%xml_version
 
-    if (associated(fx%token)) deallocate(fx%token)
-    fx%token => vs_str_alloc("")
+    call set_varstr_empty(fx%token)
     if (fx%nextTokenType/=TOK_NULL) then
       eof = .false.
       fx%tokenType = fx%nextTokenType
@@ -58,13 +59,9 @@ contains
       if (eof) then
         if (fx%state==ST_CHAR_IN_CONTENT) then
           if (phrase==1) then
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(fx%token)//"]")
-            deallocate(tempString)
+            call append_varstr(fx%token,']')
           elseif (phrase==2) then
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(fx%token)//"]]")
-            deallocate(tempString)
+            call append_varstr(fx%token,']]')
           endif
           fx%tokenType = TOK_CHAR
         endif
@@ -90,6 +87,7 @@ contains
               ws_discard = .false.
             else
               call add_error(fx%error_stack, "Unexpected character found outside content")
+              call add_error_position(fx%error_stack,fb)
             endif
           endif
         else
@@ -102,6 +100,7 @@ contains
             fx%tokenType = TOK_OPEN_TAG
           else
             call add_error(fx%error_stack, "Unexpected character after <")
+            call add_error_position(fx%error_stack,fb)
           endif
         endif
 
@@ -112,21 +111,20 @@ contains
           elseif (c=="[") then
             fx%tokenType = TOK_OPEN_SB
           elseif (verify(c,upperCase)==0) then
-            deallocate(fx%token)
-            fx%token => vs_str_alloc(c)
+            call varstr_str(fx%token,c)
           else
             call add_error(fx%error_stack, "Unexpected character after <!")
+            call add_error_position(fx%error_stack,fb)
           endif
         elseif (phrase==1) then
           if (c=="-") then
             fx%tokenType = TOK_OPEN_COMMENT
           else
             call add_error(fx%error_stack, "Unexpected character after <!-")
+            call add_error_position(fx%error_stack,fb)
           endif
         elseif (verify(c,XML_WHITESPACE)>0) then
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr(fx%token,c)
         else
           call push_chars(fb, c)
           fx%tokenType = TOK_NAME
@@ -135,9 +133,7 @@ contains
       case (ST_START_PI)
         ! grab until whitespace or ?
         if (verify(c, XML_WHITESPACE//"?")>0) then
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         else
           fx%tokenType = TOK_NAME
           if (c=="?") call push_chars(fb, c)
@@ -158,21 +154,16 @@ contains
             fx%nextTokenType = TOK_PI_END
           elseif (c=="?") then
             ! The last ? didn't mean anything, but this one might.
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//"?")
-            deallocate(tempString)
+            call append_varstr( fx%token, '?' )
           else
             phrase = 0
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//"?"//c)
-            deallocate(tempString)
+            call append_varstr( fx%token, '?' )
+            call append_varstr( fx%token, c )
           endif
         elseif (c=="?") then
           phrase = 1
         else
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         endif
 
       case (ST_START_COMMENT)
@@ -181,17 +172,14 @@ contains
           if (c=="-") then
             phrase = 1
           else
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+            call append_varstr( fx%token, c )
           endif
         case (1)
           if (c=="-") then
             phrase = 2
           else
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//"-"//c)
-          deallocate(tempString)
+            call append_varstr( fx%token, '-' )
+            call append_varstr( fx%token, c )
             phrase = 0
           endif
         case (2)
@@ -202,15 +190,14 @@ contains
           else
             call add_error(fx%error_stack, &
               "Expecting > after -- inside a comment.")
+            call add_error_position(fx%error_stack,fb)
           endif
         end select
 
       case (ST_START_TAG)
         ! grab until whitespace or /, >
         if (verify(c, XML_WHITESPACE//"/>")>0) then
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         else
           fx%tokenType = TOK_NAME
           if (c==">") then
@@ -225,22 +212,21 @@ contains
           if (verify(c, XML_WHITESPACE)==0) then
             call add_error(fx%error_stack, &
               "Whitespace not allowed around CDATA in section declaration")
+            call add_error_position(fx%error_stack,fb)
           else
-            deallocate(fx%token)
-            fx%token => vs_str_alloc(c)
+            call varstr_str(fx%token, c)
             ws_discard = .false.
           endif
         else
           if (verify(c, XML_WHITESPACE)==0) then
             call add_error(fx%error_stack, &
               "Whitespace not allowed around CDATA in section declaration")
+            call add_error_position(fx%error_stack,fb)
           elseif (c=="[") then
             fx%tokenType = TOK_NAME
             if (c=="[") fx%nextTokenType = TOK_OPEN_SB
           else
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//c)
-            deallocate(tempString)
+            call append_varstr( fx%token, c )
           endif
         endif
 
@@ -251,17 +237,14 @@ contains
           if (c=="]") then
             phrase = 1
           else
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//c)
-            deallocate(tempString)
+            call append_varstr( fx%token, c )
           endif
         case (1)
           if (c=="]") then
             phrase = 2
           else
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//"]"//c)
-            deallocate(tempString)
+            call append_varstr( fx%token, ']' )
+            call append_varstr( fx%token, c )
             phrase = 0
           endif
         case (2)
@@ -269,13 +252,10 @@ contains
             fx%tokenType = TOK_CHAR
             fx%nextTokenType = TOK_SECTION_END
           elseif (c=="]") then
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//"]")
-            deallocate(tempString)
+            call append_varstr( fx%token, ']' )
           else
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//"]]"//c)
-            deallocate(tempString)
+            call append_varstr( fx%token, ']]' )
+            call append_varstr( fx%token, c )
             phrase = 0
           endif
         end select
@@ -285,6 +265,7 @@ contains
           if (verify(c,XML_WHITESPACE//"/>")>0) then
             call add_error(fx%error_stack, &
               "Whitespace required inside tag")
+            call add_error_position(fx%error_stack,fb)
             exit
           endif
           ws_discard = .true.
@@ -297,8 +278,7 @@ contains
               phrase = 1
               ws_discard = .false.
             else
-              deallocate(fx%token)
-              fx%token => vs_str_alloc(c)
+              call varstr_str(fx%token,c)
               ws_discard = .false.
             endif
           endif
@@ -308,7 +288,8 @@ contains
               fx%tokenType = TOK_END_TAG_CLOSE
             else
               call add_error(fx%error_stack, &
-                "Unexpected character after / in element tag")
+                "Unexpected character after '/' ("//c//") in tag for element '"//str_varstr(fx%name)//"'")
+              call add_error_position(fx%error_stack,fb)
               exit
             endif
           else
@@ -322,9 +303,7 @@ contains
                 call push_chars(fb, c)
               endif
             else
-              tempString => fx%token
-              fx%token => vs_str_alloc(str_vs(tempString)//c)
-              deallocate(tempString)
+              call append_varstr( fx%token, c )
             endif
           endif
         endif
@@ -338,6 +317,7 @@ contains
             else
               call add_error(fx%error_stack, &
                 "Unexpected character in element tag, expected =")
+              call add_error_position(fx%error_stack,fb)
             endif
           endif
         endif
@@ -351,28 +331,23 @@ contains
               ws_discard = .false.
             else
               call add_error(fx%error_stack, "Expecting "" or '")
+              call add_error_position(fx%error_stack,fb)
             endif
           endif
         else
           if (c==q) then
             fx%tokenType = TOK_CHAR
           else
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//c)
-            deallocate(tempString)
+            call append_varstr( fx%token, c )
           endif
         endif
 
       case (ST_CHAR_IN_CONTENT)
         if (c=="<".or.c=="&") then
           if (phrase==1) then
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//"]")
-            deallocate(tempString)
+            call append_varstr( fx%token, ']' )
           elseif (phrase==2) then
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//"]]")
-            deallocate(tempString)
+            call append_varstr( fx%token, ']]' )
           endif
           fx%tokenType = TOK_CHAR
           if (c=="<") then
@@ -386,35 +361,28 @@ contains
           elseif (phrase==1) then
             phrase = 2
           else
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//"]")
-            deallocate(tempString)
+            call append_varstr( fx%token, ']' )
           endif
         elseif (c==">") then
           if (phrase==1) then
             phrase = 0
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//"]>")
-            deallocate(tempString)
+            call append_varstr( fx%token, ']>' )
           elseif (phrase==2) then
             call add_error(fx%error_stack, "]]> forbidden in character context")
+            call add_error_position(fx%error_stack,fb)
           else
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//">")
-            deallocate(tempString)
+            call append_varstr( fx%token, '>' )
           endif
         elseif (phrase==1) then
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//"]"//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, ']' )
+          call append_varstr( fx%token, c )
+          phrase = 0
         elseif (phrase==2) then
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//"]]"//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, ']]' )
+          call append_varstr( fx%token, c )
+          phrase = 0
         else
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         endif
 
       case (ST_TAG_IN_CONTENT)
@@ -426,6 +394,7 @@ contains
             fx%tokenType = TOK_ENTITY
           else
             call add_error(fx%error_stack, "Unexpected character found in content")
+            call add_error_position(fx%error_stack,fb)
           endif
         elseif (phrase==1) then
           if (c=="?") then
@@ -439,25 +408,23 @@ contains
             fx%tokenType = TOK_OPEN_TAG
           else
             call add_error(fx%error_stack, "Unexpected character after <")
+            call add_error_position(fx%error_stack,fb)
           endif
         endif
 
       case (ST_START_ENTITY)
         if (verify(c,XML_WHITESPACE//";")>0) then
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         elseif (c==";") then
           fx%tokenType = TOK_NAME
         else
           call add_error(fx%error_stack, "Entity reference must be terminated with a ;")
+          call add_error_position(fx%error_stack,fb)
         endif
 
       case (ST_CLOSING_TAG)
         if (verify(c,XML_WHITESPACE//">")>0) then
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         else
           fx%tokenType = TOK_NAME
           if (c==">") fx%nextTokenType = TOK_END_TAG
@@ -469,6 +436,7 @@ contains
             fx%tokenType = TOK_END_TAG
           else
             call add_error(fx%error_stack, "Unexpected character - expecting >")
+            call add_error_position(fx%error_stack,fb)
           endif
         endif
 
@@ -483,6 +451,7 @@ contains
             else
               call add_error(fx%error_stack, &
                 "Missing whitespace in doctype delcaration.")
+              call add_error_position(fx%error_stack,fb)
             endif
           else
             ws_discard = .true.
@@ -492,16 +461,14 @@ contains
           if (verify(c, XML_WHITESPACE)>0) then
             if (verify(c, "'""")==0) then
               q = c
-              deallocate(fx%token)
-              fx%token => vs_str_alloc("")
+              call set_varstr_empty(fx%token)
               ws_discard = .false.
             elseif (c=="[") then
               fx%tokenType = TOK_OPEN_SB
             elseif (c==">") then
               fx%tokenType = TOK_END_TAG
             else
-              deallocate(fx%token)
-              fx%token => vs_str_alloc(c)
+              call varstr_str(fx%token, c)
               ws_discard = .false.
             endif
           endif
@@ -515,9 +482,7 @@ contains
             call push_chars(fb, c)
             fx%tokenType = TOK_NAME
           else
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//c)
-            deallocate(tempString)
+            call append_varstr( fx%token, c )
           endif
         endif
 
@@ -526,13 +491,12 @@ contains
 
       case (ST_START_PE)
         if (verify(c,XML_WHITESPACE//";")>0) then
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         elseif (c==";") then
           fx%tokenType = TOK_NAME
         else
           call add_error(fx%error_stack, "Entity reference must be terminated with a ;")
+          call add_error_position(fx%error_stack,fb)
         endif
 
       end select
@@ -574,14 +538,14 @@ contains
         elseif (fx%inIntSubset) then
           call add_error(fx%error_stack, &
             "Parameter entity reference not permitted inside markup for internal subset")
+          call add_error_position(fx%error_stack,fb)
           return
         elseif (fx%state_dtd==ST_DTD_ATTLIST_CONTENTS &
           .or.fx%state_dtd==ST_DTD_ELEMENT_CONTENTS) then
-          if (.not.associated(fx%content)) then
+          if (is_varstr_null(fx%content)) then
             ! content will not always be empty here;
             ! if we have two PErefs bang next to each other.
-            fx%content => fx%token
-            fx%token => vs_str_alloc("")
+            call move_varstr_varstr(fx%token,fx%content)
           endif
           fx%tokenType = TOK_ENTITY
           return
@@ -617,6 +581,7 @@ contains
               ws_discard = .false.
             else
               call add_error(fx%error_stack, "Unexpected character found in document subset")
+              call add_error_position(fx%error_stack,fb)
             endif
           endif
         elseif (phrase==1) then
@@ -627,6 +592,7 @@ contains
               fx%tokenType = TOK_BANG_TAG
             else
               call add_error(fx%error_stack, "Unexpected character, expecting ! or ?")
+              call add_error_position(fx%error_stack,fb)
             endif
           elseif (q=="]") then
             if (c=="]") then
@@ -647,6 +613,7 @@ contains
             fx%tokenType = TOK_SECTION_END
           else
             call add_error(fx%error_stack, "Unexpected character, expecting >")
+            call add_error_position(fx%error_stack,fb)
           endif
         endif
 
@@ -658,21 +625,20 @@ contains
           elseif (c=="[") then
             fx%tokenType = TOK_OPEN_SB
           elseif (verify(c,upperCase)==0) then
-            deallocate(fx%token)
-            fx%token => vs_str_alloc(c)
+            call varstr_str(fx%token,c)
           else
             call add_error(fx%error_stack, "Unexpected character after <!")
+            call add_error_position(fx%error_stack,fb)
           endif
         elseif (phrase==1) then
           if (c=="-") then
             fx%tokenType = TOK_OPEN_COMMENT
           else
             call add_error(fx%error_stack, "Unexpected character after <!-")
+            call add_error_position(fx%error_stack,fb)
           endif
         elseif (verify(c,XML_WHITESPACE)>0) then
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         else
           call push_chars(fb, c)
           fx%tokenType = TOK_NAME
@@ -685,15 +651,12 @@ contains
         endif
         if (ws_discard) then
           if (verify(c, XML_WHITESPACE)/=0) then
-            deallocate(fx%token)
-            fx%token => vs_str_alloc(c)
+            call varstr_str(fx%token, c)
             ws_discard = .false.
           endif
         else
           if (verify(c, XML_WHITESPACE//"[")>0) then
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//c)
-            deallocate(tempString)
+            call append_varstr( fx%token, c )
           else
             fx%tokenType = TOK_NAME
             if (c=="[") fx%nextTokenType = TOK_OPEN_SB
@@ -705,6 +668,7 @@ contains
           if (c/="[") then
             call add_error(fx%error_stack, &
               "Unexpected token found, expecting [")
+            call add_error_position(fx%error_stack,fb)
           else
             fx%tokenType = TOK_OPEN_SB
           endif
@@ -737,9 +701,7 @@ contains
       case (ST_DTD_START_PI)
         ! grab until whitespace or ?
         if (verify(c, XML_WHITESPACE//"?")>0) then
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         else
           fx%tokenType = TOK_NAME
           if (c=="?") call push_chars(fb, c)
@@ -760,21 +722,16 @@ contains
             fx%nextTokenType = TOK_PI_END
           elseif (c=="?") then
             ! The last ? didn't mean anything, but this one might.
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//"?")
-            deallocate(tempString)
+            call append_varstr( fx%token, '?' )
           else
             phrase = 0
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//"?"//c)
-            deallocate(tempString)
+            call append_varstr( fx%token, '?' )
+            call append_varstr( fx%token, c )
           endif
         elseif (c=="?") then
           phrase = 1
         else
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         endif
 
       case (ST_DTD_START_COMMENT)
@@ -783,29 +740,25 @@ contains
           if (c=="-") then
             phrase = 1
           else
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+            call append_varstr( fx%token, c )
           endif
         case (1)
           if (c=="-") then
             phrase = 2
           else
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//"-"//c)
-          deallocate(tempString)
+            call append_varstr( fx%token, '-' )
+            call append_varstr( fx%token, c )
             phrase = 0
           endif
         case (2)
           if (c==">") then
             fx%tokenType = TOK_CHAR
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//c)
-            deallocate(tempString)
+            call append_varstr( fx%token, c )
             fx%nextTokenType = TOK_COMMENT_END
           else
             call add_error(fx%error_stack, &
               "Expecting > after -- inside a comment.")
+            call add_error_position(fx%error_stack,fb)
           endif
         end select
 
@@ -814,14 +767,11 @@ contains
         if (firstChar) ws_discard = .true.
         if (ws_discard) then
           if (verify(c,XML_WHITESPACE)>0) then
-            deallocate(fx%token)
-            fx%token => vs_str_alloc(c)
+            call varstr_str(fx%token, c)
             ws_discard = .false.
           endif
         elseif (verify(c,XML_WHITESPACE//">")>0) then
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         else
           if (c==">") then
             fx%nextTokenType = TOK_END_TAG
@@ -833,31 +783,24 @@ contains
         
       case (ST_DTD_ELEMENT_CONTENTS)
         if (c==">") then
-          if (associated(fx%content)) then
-            deallocate(fx%token)
-            fx%token => fx%content
-            fx%content => null()
+          if (.not.is_varstr_null(fx%content)) then
+            call move_varstr_varstr(fx%content,fx%token)
           endif
           fx%tokenType = TOK_DTD_CONTENTS
           fx%nextTokenType = TOK_END_TAG
         else
-          if (associated(fx%content)) then
-            deallocate(fx%token)
-            fx%token => vs_str_alloc(str_vs(fx%content)//c)
-            deallocate(fx%content)
+          if (.not.is_varstr_null(fx%content)) then
+            call move_varstr_varstr(fx%content,fx%token)
+            call append_varstr(fx%token, c)
           else
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//c)
-            deallocate(tempString)
+            call append_varstr(fx%token, c)
           endif
           if (c=="(") then
             fx%tokenType = TOK_OPEN_PAR
-            fx%content => fx%token
-            fx%token => vs_str_alloc("")
+            call move_varstr_varstr(fx%token,fx%content)
           elseif (c==")") then
             fx%tokenType = TOK_CLOSE_PAR
-            fx%content => fx%token
-            fx%token => vs_str_alloc("")
+            call move_varstr_varstr(fx%token,fx%content)
           endif
         endif
 
@@ -865,14 +808,11 @@ contains
         if (c==">") then
           fx%tokenType = TOK_DTD_CONTENTS
           fx%nextTokenType = TOK_END_TAG
-        elseif (associated(fx%content)) then
-          deallocate(fx%token)
-          fx%token => vs_str_alloc(str_vs(fx%content)//c)
-          deallocate(fx%content)
+        elseif (.not.is_varstr_null(fx%content)) then
+          call move_varstr_varstr(fx%content,fx%token)
+          call append_varstr(fx%token, c)
         else
-          tempString => fx%token
-          fx%token => vs_str_alloc(str_vs(tempString)//c)
-          deallocate(tempString)
+          call append_varstr( fx%token, c )
         endif
         if (c=="'".or.c=="""") then
           if (q==c) then
@@ -892,6 +832,7 @@ contains
               fx%tokenType = TOK_END_TAG
             else
               call add_error(fx%error_stack, "Missing whitespace in DTD.")
+              call add_error_position(fx%error_stack,fb)
             endif
           else
             ws_discard = .true.
@@ -900,14 +841,12 @@ contains
           if (verify(c, XML_WHITESPACE)>0) then
             if (verify(c, "'""")==0) then
               q = c
-              deallocate(fx%token)
-              fx%token => vs_str_alloc("")
+              call set_varstr_empty(fx%token)
               ws_discard = .false.
             elseif (c==">") then
               fx%tokenType = TOK_END_TAG
             else
-              deallocate(fx%token)
-              fx%token => vs_str_alloc(c)
+              call varstr_str( fx%token, c )
               ws_discard = .false.
             endif
           endif
@@ -922,9 +861,7 @@ contains
               call push_chars(fb, c)
             endif
           else
-            tempString => fx%token
-            fx%token => vs_str_alloc(str_vs(tempString)//c)
-            deallocate(tempString)
+            call append_varstr( fx%token, c )
           endif
         endif
 
@@ -934,9 +871,10 @@ contains
   end subroutine sax_tokenize
 
 
-  recursive function normalize_attribute_text(fx, s_in) result(s_out)
+  recursive function normalize_attribute_text(fx, s_in, fb) result(s_out)
     type(sax_parser_t), intent(inout) :: fx
     character, dimension(:), intent(in) :: s_in
+    type(file_buffer_t), intent(in)  :: fb
     character, dimension(:), pointer :: s_out
 
     character, dimension(:), pointer :: s_temp, s_temp2, s_ent, tempString
@@ -968,16 +906,19 @@ contains
         i = i + 1
         i2 = i2 + 1
       elseif (s_in(i)=='<') then
-        call add_error(fx%error_stack, "Illegal < found in attribute.")
+        call add_error(fx%error_stack, "Illegal '<' found in attribute.")
+        call add_error_position(fx%error_stack,fb)
         goto 100
         ! Then, expand <
       elseif (s_in(i)=='&') then
         j = index(str_vs(s_in(i+1:)), ';')
         if (j==0) then
-          call add_error(fx%error_stack, "Illegal & found in attribute")
+          call add_error(fx%error_stack, "Illegal '&' found in attribute")
+          call add_error_position(fx%error_stack,fb)
           goto 100
         elseif (j==1) then
           call add_error(fx%error_stack, "No entity reference found")
+          call add_error_position(fx%error_stack,fb)
           goto 100
         endif
         allocate(tempString(j-1))
@@ -996,6 +937,7 @@ contains
           ent => getEntityByName(fx%forbidden_ge_list, str_vs(tempString))
           if (associated(ent)) then
             call add_error(fx%error_stack, 'Recursive entity expansion')
+            call add_error_position(fx%error_stack,fb)
             goto 100
           else
             ent => getEntityByName(fx%xds%entityList, str_vs(tempString))
@@ -1003,11 +945,13 @@ contains
           if (associated(ent)) then
             if (ent%wfc.and.fx%xds%standalone) then
               call add_error(fx%error_stack, 'Externally declared entity referenced in standalone document')
+              call add_error_position(fx%error_stack,fb)
               goto 100
             endif
             !is it the right sort of entity?
             if (ent%external) then
               call add_error(fx%error_stack, "External entity forbidden in attribute")
+              call add_error_position(fx%error_stack,fb)
               goto 100
             endif
 #ifdef PGF90
@@ -1017,7 +961,7 @@ contains
 #endif
             ! Recursively expand entity, checking for errors.
             s_ent => normalize_attribute_text(fx, &
-              vs_str(expand_entity_text(fx%xds%entityList, str_vs(tempString))))
+              vs_str(expand_entity_text(fx%xds%entityList, str_vs(tempString))),fb)
             dummy = pop_entity_list(fx%forbidden_ge_list)
             if (in_error(fx%error_stack)) then
               goto 100
@@ -1037,11 +981,13 @@ contains
             i2 = i2 + j + 1
             if (.not.fx%skippedExternal.or.fx%xds%standalone) then
               call add_error(fx%error_stack, "Undeclared entity encountered in standalone document.")
+              call add_error_position(fx%error_stack,fb)
               goto 100
             endif
           endif
         else
           call add_error(fx%error_stack, "Illegal entity reference")
+          call add_error_position(fx%error_stack,fb)
           goto 100
         endif
         deallocate(tempString)
@@ -1090,10 +1036,12 @@ contains
       if (s_in(i)=='%') then
         j = index(str_vs(s_in(i+1:)), ';')
         if (j==0) then
-          call add_error(fx%error_stack, "Illegal % found in attribute")
+          call add_error(fx%error_stack, "Illegal '%' found in attribute")
+          call add_error_position(fx%error_stack,fb)
           goto 100
         elseif (j==1) then
           call add_error(fx%error_stack, "No entity reference found")
+          call add_error_position(fx%error_stack,fb)
           goto 100
         endif
         allocate(tempString(j-1))
@@ -1102,6 +1050,7 @@ contains
           ent => getEntityByName(fx%forbidden_pe_list, str_vs(tempString))
           if (associated(ent)) then
             call add_error(fx%error_stack, 'Recursive entity expansion')
+            call add_error_position(fx%error_stack,fb)
             goto 100
           endif
           ent => getEntityByName(fx%xds%peList, str_vs(tempString))
@@ -1109,9 +1058,11 @@ contains
             if (ent%wfc.and.fx%xds%standalone) then
               call add_error(fx%error_stack, &
                 "Externally declared entity used in standalone document")
+              call add_error_position(fx%error_stack,fb)
               goto 100
             elseif (str_vs(ent%notation)/="") then
               call add_error(fx%error_stack, "Unparsed entity reference forbidden in entity value")
+              call add_error_position(fx%error_stack,fb)
               goto 100
             endif
 #ifdef PGF90
@@ -1124,6 +1075,7 @@ contains
               call open_new_file(fb, ent%baseURI, iostat)
               if (iostat/=0) then
                 call add_error(fx%error_stack, "Unable to access external parameter entity")
+                call add_error_position(fx%error_stack,fb)
                 goto 100
               endif
               call parse_text_declaration(fb, fx%error_stack)
@@ -1156,11 +1108,13 @@ contains
             i2 = i2 + j + 1
             if (.not.fx%skippedExternal.or.fx%xds%standalone) then
               call add_error(fx%error_stack, "Reference to undeclared parameter entity encountered in standalone document.")
+              call add_error_position(fx%error_stack,fb)
               goto 100
             endif
           endif
         else
           call add_error(fx%error_stack, "Illegal parameter entity reference")
+          call add_error_position(fx%error_stack,fb)
           goto 100
         endif
         deallocate(tempString)

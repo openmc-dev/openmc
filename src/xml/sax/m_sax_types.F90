@@ -9,6 +9,8 @@ module m_sax_types
   use m_common_notations, only: notation_list
   use m_common_struct, only: xml_doc_state
 
+  use fox_m_fsys_varstr, only: varstr
+
   use m_sax_reader, only: file_buffer_t
 
   implicit none
@@ -124,16 +126,16 @@ module m_sax_types
     integer :: state_dtd = ST_DTD_SUBSET
     logical :: well_formed = .false.
     logical :: skippedExternal = .false.
-    character, dimension(:), pointer :: token => null()
-    character, dimension(:), pointer :: content => null()
+    type(varstr) :: token
+    type(varstr) :: content
     integer :: tokenType = TOK_NULL
     integer :: nextTokenType = TOK_NULL
-    character, dimension(:), pointer :: name => null()
-    character, dimension(:), pointer :: attname => null()
+    type(varstr) :: name
+    type(varstr) :: attname
     logical :: error = .false.
     type(error_stack) :: error_stack
     ! Aspects of document structure
-    character, dimension(:), pointer :: root_element => null()
+    type(varstr) :: root_element
     type(elstack_t) :: elstack
     type(dictionary_t) :: attributes
     type(namespacedictionary) :: nsdict
@@ -141,9 +143,9 @@ module m_sax_types
     type(entity_list) :: predefined_e_list
     type(entity_list) :: forbidden_pe_list
     type(entity_list) :: forbidden_ge_list
-    character(len=1), dimension(:), pointer :: PublicId => null()
-    character(len=1), dimension(:), pointer :: SystemId => null()
-    character(len=1), dimension(:), pointer :: Ndata => null()
+    type(varstr) :: PublicId
+    type(varstr) :: SystemId
+    type(varstr) :: Ndata
     logical :: inIntSubset = .false.
     logical :: spaceBeforeEntity = .false.
   end type sax_parser_t

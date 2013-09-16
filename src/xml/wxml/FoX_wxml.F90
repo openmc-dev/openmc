@@ -36,6 +36,8 @@ module FoX_wxml
 
   public :: xmlf_GetPretty_print
   public :: xmlf_SetPretty_print
+  public :: xmlf_GetExtendedData
+  public :: xmlf_SetExtendedData
 
   public :: xmlf_Name
   public :: xmlf_OpenTag

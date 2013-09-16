@@ -26,6 +26,7 @@ module m_sax_reader
   public :: file_buffer_t
   public :: line
   public :: column
+  public :: add_error_position
 
   public :: open_file
   public :: close_file
@@ -73,6 +74,7 @@ contains
       fileURI => parseURI(file)
       if (.not.associated(fileURI)) then
         call add_error(es, "Could not open file "//file//" - not a valid URI")
+        iostat=1
         return
       endif
       call open_new_file(fb, fileURI, iostat, lun)
@@ -169,7 +171,7 @@ contains
       call close_actual_file(fb%f(i))
     enddo
 
-    deallocate(fb%f)
+    if (associated(fb%f)) deallocate(fb%f)
 
   end subroutine close_file
 
@@ -397,6 +399,13 @@ contains
 
     p = (size(fb%f)==2)
   end function reading_first_entity
+  
+  subroutine add_error_position(stack, fb)
+    type(error_stack), intent(inout) :: stack
+    type(file_buffer_t), intent(in)  :: fb
+    call add_error(stack,"(Possibly near line="//line(fb)//" col="//column(fb)//")")
+  end subroutine add_error_position
+  
 #endif
 
 end module m_sax_reader

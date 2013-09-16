@@ -321,7 +321,7 @@ contains
     
     p = .true.
     i1 = index(path, "/")
-    if (i1==1) then
+    if (i1==1) then ! absolute path
       allocate(segments(1))
       segments(1)%s => vs_str_alloc("/")
     else
@@ -385,9 +385,10 @@ contains
   end function checkFragment
 #endif
 
-  function parseURI(URIstring) result(u)
-    character(len=*), intent(in) :: URIstring
+  function parseURI(inURIstring) result(u)
+    character(len=*), intent(in) :: inURIstring
     type(URI), pointer :: u
+    character(len=len_trim(inURIstring)) :: URIstring
 #ifndef DUMMYLIB
     character, pointer, dimension(:) :: scheme, authority, &
       userinfo, host, path, query, fragment
@@ -398,6 +399,7 @@ contains
 
 #endif
     u => null()
+    URIstring = trim(inURIString)
 #ifndef DUMMYLIB
 
     scheme => null()
@@ -410,6 +412,18 @@ contains
     query => null()
     fragment => null()
 
+    if (len(URIstring)>3) then
+      ! is this a M$ windoze absolute path ?    eg of the form "C:/path_segments"  
+      if ((scan(URIstring(1:1),alpha)>0).and.(URIstring(2:3)==':/') ) then
+        ! no point in attempting to decode as a uri, it contains only a windows path 
+        scheme => vs_str_alloc("file")
+        path => unEscape_alloc(URIstring)
+        allocate(segments(1))
+        segments(1)%s => vs_str_alloc("")
+        call produceResult
+        return
+      end if  
+    end if       
     i1 = index(URIstring, ":")
     if (i1>0) then 
       p = checkScheme(URIstring(:i1-1))
@@ -460,6 +474,13 @@ contains
       call cleanUp
       return
     endif
+    if (len(URIstring(i2:i3-1))>3) then
+      ! is this a M$ windoze absolute path with a unix root ?    eg of the form "/C:/path_segments"  
+      if ( (URIstring(i2:i2)=='/').and.(scan(URIstring(i2+1:i2+1),alpha)>0).and.(URIstring(i2+2:i2+3)==':/') ) then
+        ! ignore the root slash (which would otherwise make sense on most systems) to yield a representation in windows canonical form  
+        i2 = i2+1
+      end if  
+    end if       
     path => unEscape_alloc(URIstring(i2:i3-1))
 
     if (i3>len(URIstring)) then
@@ -522,7 +543,6 @@ contains
         u%host => host
         u%port = port
         u%path => path
-        u%segments => segments
         u%query => query
         u%fragment => fragment
         u%segments => segments

@@ -55,7 +55,7 @@ def run_suite(name=None, mpi=False):
         results.append((name, result))
 
 # set mpiexec path
-if os.environ.has_key('COMPILER'):
+if 'COMPILER' in os.environ:
     compiler = os.environ['COMPILER']
 else:
     compiler = 'gnu'
@@ -67,8 +67,9 @@ sys.path.append(pwd)
 
 # Set list of tests, either default or from command line
 flags = []
-tests = ['compile', 'normal', 'debug', 'optimize', 'hdf5', 'mpi', 'phdf5',
-         'petsc', 'phdf5-petsc', 'phdf5-petsc-optimize']
+tests = ['compile', 'normal', 'debug', 'optimize', 'mpi', 'omp', 'hdf5',
+         'petsc', 'mpi-omp', 'omp-hdf5', 'phdf5', 'phdf5-petsc',
+         'phdf5-petsc-optimize', 'omp-phdf5-petsc-optimize']
 if len(sys.argv) > 1:
     flags = [i for i in sys.argv[1:] if i.startswith('-')]
     tests_ = [i for i in sys.argv[1:] if not i.startswith('-')]
@@ -79,10 +80,10 @@ results = []
 for name in tests:
     if name == 'compile':
         run_compile()
-    elif name in ['normal', 'debug', 'optimize', 'hdf5']:
+    elif name in ['normal', 'debug', 'optimize', 'omp', 'hdf5', 'omp-hdf5']:
         run_suite(name=name)
-    elif name in ['mpi', 'phdf5', 'petsc', 'phdf5-petsc',
-                  'phdf5-petsc-optimize']:
+    elif name in ['mpi', 'mpi-omp' 'phdf5', 'petsc', 'phdf5-petsc',
+                  'phdf5-petsc-optimize', 'omp-phdf5-petsc-optimize']:
         run_suite(name=name, mpi=True)
 
 # print out summary of results

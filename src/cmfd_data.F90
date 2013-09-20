@@ -57,7 +57,8 @@ contains
                             FILTER_SURFACE, IN_RIGHT, OUT_RIGHT, IN_FRONT,      &
                             OUT_FRONT, IN_TOP, OUT_TOP, CMFD_NOACCEL, ZERO, ONE
     use error,        only: fatal_error
-    use global,       only: cmfd, message, n_cmfd_tallies, cmfd_tallies, meshes
+    use global,       only: cmfd, message, n_cmfd_tallies, cmfd_tallies, meshes,&
+                            matching_bins
     use mesh,         only: mesh_indices_to_bin
     use mesh_header,  only: StructuredMesh
     use tally_header, only: TallyObject
@@ -137,21 +138,21 @@ contains
               TALLY: if (ital == 1) then
 
                 ! reset all bins to 1
-                t % matching_bins = 1
+                matching_bins(1:t%n_filters) = 1
 
                 ! set ijk as mesh indices
                 ijk = (/ i, j, k /)
 
                 ! get bin number for mesh indices
-                t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m,ijk)
+                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m,ijk)
 
                 ! apply energy in filter
                 if (i_filter_ein > 0) then
-                  t % matching_bins(i_filter_ein) = ng - h + 1
+                  matching_bins(i_filter_ein) = ng - h + 1
                 end if
 
                 ! calculate score index from bins
-                score_index = sum((t % matching_bins - 1) * t%stride) + 1
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t%stride) + 1
 
                 ! get flux
                 flux = t % results(1,score_index) % sum
@@ -180,24 +181,24 @@ contains
                 INGROUP: do g = 1, ng
 
                   ! reset all bins to 1
-                  t % matching_bins = 1
+                  matching_bins(1:t%n_filters) = 1
 
                   ! set ijk as mesh indices
                   ijk = (/ i, j, k /)
 
                   ! get bin number for mesh indices
-                  t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m,ijk)
+                  matching_bins(i_filter_mesh) = mesh_indices_to_bin(m,ijk)
 
                   if (i_filter_ein > 0) then
                     ! apply energy in filter
-                    t % matching_bins(i_filter_ein) = ng - h + 1
+                    matching_bins(i_filter_ein) = ng - h + 1
 
                     ! set energy out bin
-                    t % matching_bins(i_filter_eout) = ng - g + 1
+                    matching_bins(i_filter_eout) = ng - g + 1
                   end if
 
                   ! calculate score index from bins
-                  score_index = sum((t % matching_bins - 1) * t%stride) + 1
+                  score_index = sum((matching_bins(1:t%n_filters) - 1) * t%stride) + 1
 
                   ! get scattering
                   cmfd % scattxs(h,g,i,j,k) = t % results(1,score_index) % sum /&
@@ -216,69 +217,69 @@ contains
               else if (ital == 3) then
 
                 ! initialize and filter for energy
-                t % matching_bins = 1
+                matching_bins(1:t%n_filters) = 1
                 if (i_filter_ein > 0) then
-                  t % matching_bins(i_filter_ein) = ng - h + 1
+                  matching_bins(i_filter_ein) = ng - h + 1
                 end if
 
                 ! left surface
-                t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
+                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i-1, j, k /) + 1, .true.)
-                t % matching_bins(i_filter_surf) = IN_RIGHT
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! outgoing
+                matching_bins(i_filter_surf) = IN_RIGHT
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(1,h,i,j,k) = t % results(1,score_index) % sum
-                t % matching_bins(i_filter_surf) = OUT_RIGHT
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! incoming
+                matching_bins(i_filter_surf) = OUT_RIGHT
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
                 cmfd % current(2,h,i,j,k) = t % results(1,score_index) % sum
 
                 ! right surface
-                t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
+                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k /) + 1, .true.)
-                t % matching_bins(i_filter_surf) = IN_RIGHT
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! incoming
+                matching_bins(i_filter_surf) = IN_RIGHT
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
                 cmfd % current(3,h,i,j,k) = t % results(1,score_index) % sum
-                t % matching_bins(i_filter_surf) = OUT_RIGHT
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! outgoing
+                matching_bins(i_filter_surf) = OUT_RIGHT
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(4,h,i,j,k) = t % results(1,score_index) % sum
 
                 ! back surface
-                t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
+                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j-1, k /) + 1, .true.)
-                t % matching_bins(i_filter_surf) = IN_FRONT
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! outgoing
+                matching_bins(i_filter_surf) = IN_FRONT
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(5,h,i,j,k) = t % results(1,score_index) % sum
-                t % matching_bins(i_filter_surf) = OUT_FRONT
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! incoming
+                matching_bins(i_filter_surf) = OUT_FRONT
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
                 cmfd % current(6,h,i,j,k) = t % results(1,score_index) % sum
 
                 ! front surface
-                t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
+                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k /) + 1, .true.)
-                t % matching_bins(i_filter_surf) = IN_FRONT
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! incoming
+                matching_bins(i_filter_surf) = IN_FRONT
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
                 cmfd % current(7,h,i,j,k) = t % results(1,score_index) % sum
-                t % matching_bins(i_filter_surf) = OUT_FRONT
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! outgoing
+                matching_bins(i_filter_surf) = OUT_FRONT
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(8,h,i,j,k) = t % results(1,score_index) % sum
 
                 ! bottom surface
-                t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
+                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k-1 /) + 1, .true.)
-                t % matching_bins(i_filter_surf) = IN_TOP
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! outgoing
+                matching_bins(i_filter_surf) = IN_TOP
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(9,h,i,j,k) = t % results(1,score_index) % sum
-                t % matching_bins(i_filter_surf) = OUT_TOP
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! incoming
+                matching_bins(i_filter_surf) = OUT_TOP
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
                 cmfd % current(10,h,i,j,k) = t % results(1,score_index) % sum
 
                 ! top surface
-                t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
+                matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k /) + 1, .true.)
-                t % matching_bins(i_filter_surf) = IN_TOP
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! incoming
+                matching_bins(i_filter_surf) = IN_TOP
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
                 cmfd % current(11,h,i,j,k) = t % results(1,score_index) % sum
-                t % matching_bins(i_filter_surf) = OUT_TOP
-                score_index = sum((t % matching_bins - 1) * t % stride) + 1 ! outgoing
+                matching_bins(i_filter_surf) = OUT_TOP
+                score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
                 cmfd % current(12,h,i,j,k) = t % results(1,score_index) % sum
 
               end if TALLY

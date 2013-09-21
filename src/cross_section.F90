@@ -14,6 +14,7 @@ module cross_section
   save
 
   integer :: union_grid_index
+!$omp threadprivate(union_grid_index)
 
 contains
 
@@ -32,7 +33,8 @@ contains
     integer :: j             ! index in mat % i_sab_nuclides
     real(8) :: atom_density  ! atom density of a nuclide
     logical :: check_sab     ! should we check for S(a,b) table?
-    type(Material),  pointer :: mat => null() ! current material
+    type(Material), pointer, save :: mat => null() ! current material
+!$omp threadprivate(mat)
 
     ! Set all material macroscopic cross sections to zero
     material_xs % total      = ZERO
@@ -139,7 +141,8 @@ contains
 
     integer :: i_grid ! index on nuclide energy grid
     real(8) :: f      ! interp factor on nuclide energy grid
-    type(Nuclide),   pointer :: nuc => null()
+    type(Nuclide), pointer, save :: nuc => null()
+!$omp threadprivate(nuc)
 
     ! Set pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -258,7 +261,8 @@ contains
     real(8) :: f         ! interp factor on S(a,b) energy grid
     real(8) :: inelastic ! S(a,b) inelastic cross section
     real(8) :: elastic   ! S(a,b) elastic cross section
-    type(SAlphaBeta), pointer :: sab => null()
+    type(SAlphaBeta), pointer, save :: sab => null()
+!$omp threadprivate(sab)
 
     ! Set flag that S(a,b) treatment should be used for scattering
     micro_xs(i_nuclide) % index_sab = i_sab
@@ -346,9 +350,10 @@ contains
     real(8) :: capture    ! (n,gamma) cross section
     real(8) :: fission    ! fission cross section
     real(8) :: inelastic  ! inelastic cross section
-    type(UrrData),  pointer :: urr => null()
-    type(Nuclide),  pointer :: nuc => null()
-    type(Reaction), pointer :: rxn => null()
+    type(UrrData),  pointer, save :: urr => null()
+    type(Nuclide),  pointer, save :: nuc => null()
+    type(Reaction), pointer, save :: rxn => null()
+!$omp threadprivate(urr, nuc, rxn)
 
     micro_xs(i_nuclide) % use_ptable = .true.
 

@@ -55,7 +55,7 @@ def run_suite(name=None, mpi=False):
         results.append((name, result))
 
 # set mpiexec path
-if os.environ.has_key('COMPILER'):
+if 'COMPILER' in os.environ:
     compiler = os.environ['COMPILER']
 else:
     compiler = 'gnu'
@@ -67,12 +67,12 @@ sys.path.append(pwd)
 
 # Set list of tests, either default or from command line
 flags = []
-tests = ['compile', 'normal', 'debug', 'optimize', 
-         'hdf5', 'hdf5-debug', 'hdf5-optimize',
-         'mpi', 'mpi-debug', 'mpi-optimize',
-         'phdf5', 'phdf5-debug', 'phdf5-optimize',
-         'petsc', 'petsc-debug', 'petsc-optimize',
-         'phdf5-petsc', 'phdf5-petsc-debug', 'phdf5-petsc-optimize']
+tests = ['compile', 'normal', 'debug', 'optimize',  'hdf5', 'hdf5-debug',
+         'hdf5-optimize', 'mpi', 'mpi-debug', 'mpi-optimize', 'omp',
+         'phdf5', 'phdf5-debug', 'phdf5-optimize',  'mpi-omp', 'omp-hdf5',
+         'petsc', 'petsc-debug', 'petsc-optimize', 'phdf5-petsc',
+         'phdf5-petsc-debug', 'phdf5-petsc-optimize',
+         'omp-phdf5-petsc-optimize']
 if len(sys.argv) > 1:
     flags = [i for i in sys.argv[1:] if i.startswith('-')]
     tests_ = [i for i in sys.argv[1:] if not i.startswith('-')]
@@ -117,13 +117,13 @@ results = []
 for name in tests:
     if name == 'compile':
         run_compile()
-    elif name in ['normal', 'debug', 'optimize', 
-                  'hdf5', 'hdf5-debug', 'hdf5-optimize']:
+    elif name in ['normal', 'debug', 'optimize', 'omp'
+                  'hdf5', 'hdf5-debug', 'hdf5-optimize', 'omp-hdf5']:
         run_suite(name=name)
-    elif name in ['mpi', 'mpi-debug', 'mpi-optimize',
-                  'phdf5', 'phdf5-debug', 'phdf5-optimize',
-                  'petsc', 'petsc-debug', 'petsc-optimize',
-                  'phdf5-petsc', 'phdf5-petsc-debug', 'phdf5-petsc-optimize']:
+    elif name in ['mpi', 'mpi-debug', 'mpi-optimize', 'mpi-omp', 'phdf5',
+                  'phdf5-debug', 'phdf5-optimize', 'petsc', 'petsc-debug',
+                  'petsc-optimize', 'phdf5-petsc', 'phdf5-petsc-debug',
+                  'phdf5-petsc-optimize', 'omp-phdf5-petsc-optimize']:
         run_suite(name=name, mpi=True)
 
 # print out summary of results

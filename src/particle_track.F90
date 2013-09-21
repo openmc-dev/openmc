@@ -5,7 +5,6 @@
 
 module particle_track
 
-  use constants
   use global
   use output_interface,  only: BinaryOutput
   use particle_header,   only: Particle

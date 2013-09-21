@@ -178,15 +178,15 @@ contains
          p % id == trace_particle) trace = .true.
 
     ! Set particle track.
-    write_track = .false.
+    p % write_track = .false.
     if (write_all_tracks) then
-      write_track = .true.
+      p % write_track = .true.
     else if (allocated(track_identifiers)) then
       do i=1, size(track_identifiers(1,:))
         if (current_batch == track_identifiers(1,i) .and. &
              &current_gen == track_identifiers(2,i) .and. &
              &p % id == track_identifiers(3,i)) then
-          write_track = .true.
+          p % write_track = .true.
           exit
         end if
       end do

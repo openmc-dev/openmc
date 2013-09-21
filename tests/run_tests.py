@@ -87,11 +87,11 @@ if len(sys.argv) > 1:
         if i == 'all-tests':
             tests__ = tests
             try:
-                idx = tests_.index('compile') # check for compile test
+                idx = tests_.index('compile')  # check for compile test
             except ValueError:
                 del tests__[0]
             finally:
-                break # don't need to check for anything else
+                break  # don't need to check for anything else
 
         # This checks for any subsets of tests. The string after
         # all-XXXX will be used to search through all tests.
@@ -109,7 +109,7 @@ if len(sys.argv) > 1:
                     if j.rfind(suffix) != -1:
                         tests__.append(j)
         else:
-            tests__.append(i) # append specific test (e.g., mpi-debug)
+            tests__.append(i)  # append specific test (e.g., mpi-debug)
     tests = tests__ if tests__ else tests
 
 # Run tests

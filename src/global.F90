@@ -277,7 +277,6 @@ module global
   integer(8) :: trace_particle
 
   ! Particle tracks
-  logical :: write_track = .false.
   logical :: write_all_tracks = .false.
   integer, allocatable :: track_identifiers(:,:)
 

@@ -67,14 +67,14 @@ contains
     micro_xs % last_E = ZERO
 
     ! Prepare to write out particle track.
-    if (write_track) then
+    if (p % write_track) then
       call initialize_particle_track()
     endif
 
     do while (p % alive)
 
       ! Write particle track.
-      if (write_track) call write_particle_track(p)
+      if (p % write_track) call write_particle_track(p)
 
       if (check_overlaps) call check_cell_overlap(p)
 
@@ -200,7 +200,7 @@ contains
     end do
 
     ! Finish particle track output.
-    if (write_track) then
+    if (p % write_track) then
       call write_particle_track(p)
       call finalize_particle_track(p)
     endif

@@ -372,9 +372,9 @@ output.o: plot_header.o
 output.o: string.o
 output.o: tally_header.o
 
-particle_track.o: constants.o
 particle_track.o: global.o
 particle_track.o: output_interface.o
+particle_track.o: particle_header.o
 particle_track.o: string.o
 
 physics.o: ace_header.o

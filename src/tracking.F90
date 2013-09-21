@@ -8,13 +8,13 @@ module tracking
   use global
   use output,          only: write_message
   use particle_header, only: LocalCoord, Particle
-  use particle_track,  only: initialize_particle_track, write_particle_track, &
-                             finalize_particle_track
   use physics,         only: collision
   use random_lcg,      only: prn
   use string,          only: to_str
   use tally,           only: score_analog_tally, score_tracklength_tally, &
                              score_surface_current
+  use track_output,    only: initialize_particle_track, write_particle_track, &
+                             finalize_particle_track
 
 contains
 

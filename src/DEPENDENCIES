@@ -310,7 +310,7 @@ tracking.o: geometry_header.o
 tracking.o: global.o
 tracking.o: output.o
 tracking.o: particle_header.o
-tracking.o: particle_track.o
+tracking.o: track_output.o
 tracking.o: physics.o
 tracking.o: random_lcg.o
 tracking.o: string.o
@@ -372,10 +372,10 @@ output.o: plot_header.o
 output.o: string.o
 output.o: tally_header.o
 
-particle_track.o: global.o
-particle_track.o: output_interface.o
-particle_track.o: particle_header.o
-particle_track.o: string.o
+track_output.o: global.o
+track_output.o: output_interface.o
+track_output.o: particle_header.o
+track_output.o: string.o
 
 physics.o: ace_header.o
 physics.o: constants.o

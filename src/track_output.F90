@@ -1,9 +1,9 @@
 !===============================================================================
-! PARTICLE_TRACK handles output of particle tracks (the paths taken by particles
+! TRACK_OUTPUT handles output of particle tracks (the paths taken by particles
 ! as they are transported through the geometry).
 !===============================================================================
 
-module particle_track
+module track_output
 
   use global
   use output_interface,  only: BinaryOutput
@@ -52,14 +52,7 @@ contains
 
 !===============================================================================
 ! FINALIZE_PARTICLE_TRACK writes the particle track array to disk.
-!
-! output_interface currently does not support writing 2D binary arrays so there
-! are two different versions of this subroutine; an HDF version which simply
-! writes the array and a binary version which flattens the array into a 1D shape
-! before writing.
 !===============================================================================
-
-#ifdef HDF5
 
   subroutine finalize_particle_track(p)
     type(Particle), intent(in)  :: p
@@ -67,37 +60,19 @@ contains
     character(MAX_FILE_LEN)  :: fname
     type(BinaryOutput)       :: binout
 
+#ifdef HDF5
     fname = trim(path_output) // 'track_' // trim(to_str(current_batch)) &
          // '_' // trim(to_str(current_gen)) // '_' // trim(to_str(p % id)) &
          // '.h5'
-    call file_create(fname)
-    call write_data(coords, 'coordinates', length=(/3, n_tracks/))
-    call file_close()
-    deallocate(coords)
-  end subroutine finalize_particle_track
-
 #else
-
-  subroutine finalize_particle_track(p)
-    type(Particle), intent(in)  :: p
-
-    character(MAX_FILE_LEN)  :: fname
-    type(BinaryOutput)       :: binout
-    integer                  :: i
-    real(8)                  :: flat_coords(3*n_tracks)
-
     fname = trim(path_output) // 'track_' // trim(to_str(current_batch)) &
          // '_' // trim(to_str(current_gen)) // '_' // trim(to_str(p % id)) &
          // '.binary'
+#endif
     call binout % file_create(fname)
-    do i=1, n_tracks
-      flat_coords(3*i-2 : 3*i) = coords(:,i)
-    end do
-    call binout % write_data(flat_coords, 'coordinates', length=3*n_tracks)
+    call binout % write_data(coords, 'coordinates', length=(/3, n_tracks/))
     call binout % file_close()
     deallocate(coords)
   end subroutine finalize_particle_track
 
-#endif
-
-end module particle_track
+end module track_output

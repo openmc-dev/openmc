@@ -10,7 +10,7 @@ module ace
   use material_header,  only: Material
   use output,           only: write_message
   use set_header,       only: SetChar
-  use string,           only: str_to_int, str_to_real, lower_case, to_str
+  use string,           only: to_str
 
   implicit none
 
@@ -1178,8 +1178,14 @@ contains
     integer :: NMU    ! number of outgoing angles
     integer :: JXS4   ! location of elastic energy table
 
-    ! read secondary energy mode for inelastic scattering
+    ! read secondary energy mode for inelastic scattering and check
     table % secondary_mode = NXS(7)
+    if (table % secondary_mode /= SAB_SECONDARY_EQUAL .and. &
+         table % secondary_mode /= SAB_SECONDARY_SKEWED) then
+      message = "Unsupported secondary mode on S(a,b) table " // &
+           trim(adjustl(table % name)) // ": " // to_str(table % secondary_mode)
+      call fatal_error()
+    end if
 
     ! read number of inelastic energies and allocate arrays
     NE_in = int(XSS(JXS(1)))

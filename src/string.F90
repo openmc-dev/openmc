@@ -322,49 +322,18 @@ contains
   end function str_to_int
 
 !===============================================================================
-! STR_TO_REAL converts an arbitrary string to a real(8). Generally this function
-! is intended for strings for which the exact format is not known. If the format
-! of the number is known a priori, the appropriate format descriptor should be
-! used in lieu of this routine because of the extra overhead.
-!
-! Arguments:
-!   string = character(*) containing number to convert
+! STR_TO_REAL converts an arbitrary string to a real(8)
 !===============================================================================
 
   function str_to_real(string) result(num)
 
     character(*), intent(in) :: string
-    real(8) :: num
+    real(8)                  :: num
 
-    integer      :: index_decimal  ! index of decimal point
-    integer      :: index_exponent ! index of exponent character
-    integer      :: w              ! total field width
-    integer      :: d              ! number of digits to right of decimal point
-    integer      :: ioError
-    character(8) :: fmt            ! format for reading string
-
-    ! Determine total field width
-    w = len_trim(string)
-
-    ! Determine number of digits to right of decimal point
-    index_decimal = index(string, '.')
-    index_exponent = max(index(string, 'd'), index(string, 'D'), &
-         index(string, 'e'), index(string, 'E'))
-    if (index_decimal > 0) then
-      if (index_exponent > 0) then
-        d = index_exponent - index_decimal - 1
-      else
-        d = w - index_decimal
-      end if
-    else
-      d = 0
-    end if
-
-    ! Create format specifier for reading string
-    write(fmt, '("(E",I2,".",I2,")")') w, d
+    integer :: ioError
 
     ! Read string
-    read(UNIT=string, FMT=fmt, IOSTAT=ioError) num
+    read(UNIT=string, FMT=*, IOSTAT=ioError) num
     if (ioError > 0) num = ERROR_REAL
 
   end function str_to_real

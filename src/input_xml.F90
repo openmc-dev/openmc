@@ -52,6 +52,7 @@ contains
     integer :: i ! loop index
     integer :: n
     integer :: coeffs_reqd
+    integer :: n_tracks
     logical :: file_exists
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
@@ -381,6 +382,22 @@ contains
       trace_batch    = trace_(1)
       trace_gen      = trace_(2)
       trace_particle = trace_(3)
+    end if
+
+    ! Particle tracks
+    if (associated(track_)) then
+      n_tracks = size(track_)
+      ! Make sure that there are three values per particle
+      if (mod(n_tracks, 3) /= 0) then
+        message = "Number of integers specified in 'track' is not divisible &
+             &by 3.  Please provide 3 integers per particle to be tracked."
+        call fatal_error()
+      end if
+      n_tracks = n_tracks/3
+      allocate(track_identifiers(3,n_tracks))
+      do i=1, n_tracks
+        track_identifiers(1:3,i) = track_(3*(i-1)+1 : 3*(i-1)+4)
+      end do
     end if
 
     ! Shannon Entropy mesh

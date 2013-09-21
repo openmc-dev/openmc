@@ -11,7 +11,7 @@ module output
   use math,            only: t_percentile
   use mesh_header,     only: StructuredMesh
   use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
-  use particle_header, only: LocalCoord
+  use particle_header, only: LocalCoord, Particle
   use plot_header
   use string,          only: upper_case, to_str
   use tally_header,    only: TallyObject
@@ -170,6 +170,7 @@ contains
       write(OUTPUT_UNIT,*) '  -p, --plot             Run in plotting mode'
       write(OUTPUT_UNIT,*) '  -r, --restart          Restart a previous run from a state point'
       write(OUTPUT_UNIT,*) '                         or a particle restart file'
+      write(OUTPUT_UNIT,*) '  -t, --track            Write tracks for all particles'
       write(OUTPUT_UNIT,*) '  -v, --version          Show version information'
       write(OUTPUT_UNIT,*) '  -?, --help             Show this message'
     end if
@@ -235,7 +236,9 @@ contains
 ! PRINT_PARTICLE displays the attributes of a particle
 !===============================================================================
 
-  subroutine print_particle()
+  subroutine print_particle(p)
+
+    type(Particle), intent(in) :: p
 
     integer :: i ! index for coordinate levels
     type(Cell),       pointer :: c => null()
@@ -301,8 +304,6 @@ contains
     ! Display weight, energy, grid index, and interpolation factor
     write(ou,*) '  Weight = ' // to_str(p % wgt)
     write(ou,*) '  Energy = ' // to_str(p % E)
-    write(ou,*) '  Energy grid index = ' // to_str(p % index_grid)
-    write(ou,*) '  Interpolation factor = ' // to_str(p % interp)
     write(ou,*)
 
   end subroutine print_particle

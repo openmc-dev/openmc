@@ -17,7 +17,9 @@ contains
 ! stream.
 !===============================================================================
 
-  subroutine warning()
+  subroutine warning(force)
+
+    logical, optional :: force ! force write from proc other than master
 
     integer :: i_start   ! starting position
     integer :: i_end     ! ending position
@@ -26,7 +28,7 @@ contains
     integer :: indent    ! length of indentation
 
     ! Only allow master to print to screen
-    if (.not. master) return
+    if (.not. master .and. .not. present(force)) return
 
     ! Write warning at beginning
     write(ERROR_UNIT, fmt='(1X,A)', advance='no') 'WARNING: '
@@ -139,9 +141,6 @@ contains
     if (current_batch > 0) then
       write(ERROR_UNIT,'(1X,A,I12) ') 'Batch:     ', current_batch
       write(ERROR_UNIT,'(1X,A,I12) ') 'Generation:', current_gen
-      write(ERROR_UNIT,'(1X,A,I12)')  'Particle:  ', p % id
-      write(ERROR_UNIT,'(1X,A,3ES12.4)') 'Location:  ', p % coord0 % xyz
-      write(ERROR_UNIT,'(1X,A,3ES12.4)') 'Direction: ', p % coord0 % uvw
       write(ERROR_UNIT,*)
     end if
 

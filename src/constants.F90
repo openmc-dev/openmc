@@ -256,8 +256,7 @@ module constants
        EVENT_SURFACE = -2, &
        EVENT_LATTICE = -1, &
        EVENT_SCATTER =  1, &
-       EVENT_ABSORB  =  2, &
-       EVENT_FISSION =  3 
+       EVENT_ABSORB  =  2
 
   ! Tally score type
   integer, parameter :: N_SCORE_TYPES = 14
@@ -366,6 +365,7 @@ module constants
   integer, parameter :: CMFD_BALANCE  = 15 ! unit # for writing cmfd balance file
   integer, parameter :: UNIT_PARTICLE = 16 ! unit # for writing particle restart
   integer, parameter :: UNIT_OUTPUT   = 17 ! unit # for writing output
+  integer, parameter :: UNIT_TRACK    = 18 ! unit # for writing particle tracks
 
   !=============================================================================
   ! CMFD CONSTANTS

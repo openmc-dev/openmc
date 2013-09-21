@@ -5,9 +5,9 @@ module source
   use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
   use global
+  use math,            only: maxwell_spectrum, watt_spectrum
   use output,          only: write_message
-  use particle_header, only: deallocate_coord
-  use physics,         only: maxwell_spectrum, watt_spectrum
+  use particle_header, only: Particle
   use random_lcg,      only: prn, set_particle_seed
   use string,          only: to_str
 
@@ -47,7 +47,7 @@ contains
         src => source_bank(i)
 
         ! initialize random number seed
-        id = bank_first + i - 1
+        id = work_index(rank) + i
         call set_particle_seed(id)
 
         ! sample external source distribution
@@ -149,22 +149,24 @@ contains
 ! GET_SOURCE_PARTICLE returns the next source particle 
 !===============================================================================
 
-  subroutine get_source_particle(index_source)
+  subroutine get_source_particle(p, index_source)
 
-    integer(8), intent(in) :: index_source
+    type(Particle), intent(inout) :: p
+    integer(8),     intent(in)    :: index_source
 
     integer(8) :: particle_seed  ! unique index for particle
+    integer :: i
     type(Bank), pointer :: src => null()
 
     ! set defaults
-    call initialize_particle()
+    call p % initialize()
 
     ! Copy attributes from source to particle
     src => source_bank(index_source)
-    call copy_source_attributes(src)
+    call copy_source_attributes(p, src)
 
     ! set identifier for particle
-    p % id = bank_first + index_source - 1
+    p % id = work_index(rank) + index_source
 
     ! set random number seed
     particle_seed = (overall_gen - 1)*n_particles + p % id
@@ -175,15 +177,31 @@ contains
     if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
          p % id == trace_particle) trace = .true.
 
+    ! Set particle track.
+    write_track = .false.
+    if (write_all_tracks) then
+      write_track = .true.
+    else if (allocated(track_identifiers)) then
+      do i=1, size(track_identifiers(1,:))
+        if (current_batch == track_identifiers(1,i) .and. &
+             &current_gen == track_identifiers(2,i) .and. &
+             &p % id == track_identifiers(3,i)) then
+          write_track = .true.
+          exit
+        end if
+      end do
+    end if
+
   end subroutine get_source_particle
 
 !===============================================================================
 ! COPY_SOURCE_ATTRIBUTES
 !===============================================================================
 
-  subroutine copy_source_attributes(src)
+  subroutine copy_source_attributes(p, src)
 
-    type(Bank), pointer :: src
+    type(Particle), intent(inout) :: p
+    type(Bank),     pointer       :: src
 
     ! copy attributes from source bank site
     p % wgt         = src % wgt
@@ -195,38 +213,5 @@ contains
     p % last_E      = src % E
 
   end subroutine copy_source_attributes
-
-!===============================================================================
-! INITIALIZE_PARTICLE sets default attributes for a particle from the source
-! bank
-!===============================================================================
-
-  subroutine initialize_particle()
-
-    ! Set particle to neutron that's alive
-    p % type  = NEUTRON
-    p % alive = .true.
-
-    ! clear attributes
-    p % surface       = NONE
-    p % cell_born     = NONE
-    p % material      = NONE
-    p % last_material = NONE
-    p % wgt           = ONE
-    p % last_wgt      = ONE
-    p % absorb_wgt    = ZERO
-    p % n_bank        = 0
-    p % wgt_bank      = ZERO
-    p % n_collision   = 0
-
-    ! remove any original coordinates
-    call deallocate_coord(p % coord0)
-
-    ! Set up base level coordinates
-    allocate(p % coord0)
-    p % coord0 % universe = BASE_UNIVERSE
-    p % coord             => p % coord0
-
-  end subroutine initialize_particle
 
 end module source

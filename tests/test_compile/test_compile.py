@@ -15,100 +15,73 @@ import shutil
 
 pwd = os.path.dirname(__file__)
 
+if os.environ.has_key('COMPILER'):
+    compiler = 'COMPILER=' + os.environ['COMPILER']
+else:
+    compiler = 'COMPILER=gnu'
+
 def setup():
     # Change to source directory
     os.chdir(pwd + '/../../src')
 
-def test_gfortran():
+def test_normal():
     returncode = run(['make','distclean'])
-    returncode = run(['make'])
+    returncode = run(['make', compiler])
     assert returncode == 0
-    shutil.move('openmc', 'openmc-gfortran')
+    shutil.move('openmc', 'openmc-normal')
 
-def test_gfortran_debug():
+def test_debug():
     returncode = run(['make','distclean'])
-    returncode = run(['make', 'DEBUG=yes'])
+    returncode = run(['make', compiler, 'DEBUG=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-debug')
 
-def test_gfortran_profile():
+def test_profile():
     returncode = run(['make','distclean'])
-    returncode = run(['make', 'PROFILE=yes'])
-    assert returncode == 0
-
-def test_gfortran_optimize():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'OPTIMIZE=yes'])
+    returncode = run(['make', compiler, 'PROFILE=yes'])
     assert returncode == 0
 
-def test_gfortran_mpi():
+def test_optimize():
     returncode = run(['make','distclean'])
-    returncode = run(['make', 'MPI=yes'])
+    returncode = run(['make', compiler, 'OPTIMIZE=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-optimize')
 
-def test_gfortran_hdf5():
+def test_mpi():
     returncode = run(['make','distclean'])
-    returncode = run(['make', 'HDF5=yes'])
+    returncode = run(['make', compiler, 'MPI=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-mpi')
 
-def test_gfortran_petsc():
+def test_hdf5():
     returncode = run(['make','distclean'])
-    returncode = run(['make', 'MPI=yes', 'PETSC=yes'])
+    returncode = run(['make', compiler, 'HDF5=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-hdf5')
 
-def test_gfortran_mpi_hdf5():
+def test_petsc():
     returncode = run(['make','distclean'])
-    returncode = run(['make', 'MPI=yes', 'HDF5=yes'])
+    returncode = run(['make', compiler, 'MPI=yes', 'PETSC=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-petsc')
 
-def test_gfortran_mpi_hdf5_petsc():
+def test_mpi_hdf5():
     returncode = run(['make','distclean'])
-    returncode = run(['make', 'MPI=yes', 'HDF5=yes', 'PETSC=yes'])
+    returncode = run(['make', compiler, 'MPI=yes', 'HDF5=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-phdf5')
 
-def test_intel():
+def test_mpi_hdf5_petsc():
     returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel'])
+    returncode = run(['make', compiler, 'MPI=yes', 'HDF5=yes', 'PETSC=yes'])
     assert returncode == 0
+    shutil.move('openmc', 'openmc-phdf5-petsc')
 
-def test_intel_debug():
+def test_mpi_hdf5_petsc_optimize():
     returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'DEBUG=yes'])
+    returncode = run(['make', compiler, 'MPI=yes', 'HDF5=yes', 'PETSC=yes', 'OPTIMIZE=yes'])
     assert returncode == 0
-
-def test_intel_profile():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'PROFILE=yes'])
-    assert returncode == 0
-
-def test_intel_optimize():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'OPTIMIZE=yes'])
-    assert returncode == 0
-
-def test_intel_mpi():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'MPI=yes'])
-    assert returncode == 0
-
-def test_intel_hdf5():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'HDF5=yes'])
-    assert returncode == 0
-
-def test_intel_petsc():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'MPI=yes', 'PETSC=yes'])
-    assert returncode == 0
-
-def test_intel_mpi_hdf5():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'MPI=yes', 'HDF5=yes'])
-    assert returncode == 0
-
-def test_intel_mpi_hdf5_petsc():
-    returncode = run(['make','distclean'])
-    returncode = run(['make', 'COMPILER=intel', 'MPI=yes', 'HDF5=yes', 'PETSC=yes'])
-    assert returncode == 0
+    shutil.move('openmc', 'openmc-phdf5-petsc-optimize')
 
 def run(commands):
     proc = Popen(commands, stderr=STDOUT, stdout=PIPE)
@@ -118,4 +91,4 @@ def run(commands):
 
 def teardown(commands):
     returncode = run(['make','distclean'])
-    shutil.copy('openmc-gfortran','openmc')
+    shutil.copy('openmc-normal','openmc')

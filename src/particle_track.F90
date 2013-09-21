@@ -7,7 +7,8 @@ module particle_track
 
   use constants
   use global
-  use output_interface,  only: file_create, file_close, write_data
+  use output_interface,  only: BinaryOutput
+  use particle_header,   only: Particle
   use string,            only: to_str
 
   implicit none
@@ -30,7 +31,9 @@ contains
 ! WRITE_PARTICLE_TRACK copies particle position to an array.
 !===============================================================================
 
-  subroutine write_particle_track()
+  subroutine write_particle_track(p)
+    type(Particle), intent(in)  :: p
+
     real(8)  :: old_coords(3, n_tracks)
 
     ! Save the coordinates gathered in previous calls.
@@ -59,34 +62,40 @@ contains
 
 #ifdef HDF5
 
-  subroutine finalize_particle_track()
+  subroutine finalize_particle_track(p)
+    type(Particle), intent(in)  :: p
+
     character(MAX_FILE_LEN)  :: fname
+    type(BinaryOutput)       :: binout
 
     fname = trim(path_output) // 'track_' // trim(to_str(current_batch)) &
          // '_' // trim(to_str(current_gen)) // '_' // trim(to_str(p % id)) &
          // '.h5'
-    call file_create(fname, 'serial')
+    call file_create(fname)
     call write_data(coords, 'coordinates', length=(/3, n_tracks/))
-    call file_close('serial')
+    call file_close()
     deallocate(coords)
   end subroutine finalize_particle_track
 
 #else
 
-  subroutine finalize_particle_track()
+  subroutine finalize_particle_track(p)
+    type(Particle), intent(in)  :: p
+
     character(MAX_FILE_LEN)  :: fname
+    type(BinaryOutput)       :: binout
     integer                  :: i
     real(8)                  :: flat_coords(3*n_tracks)
 
     fname = trim(path_output) // 'track_' // trim(to_str(current_batch)) &
          // '_' // trim(to_str(current_gen)) // '_' // trim(to_str(p % id)) &
          // '.binary'
-    call file_create(fname, 'serial')
+    call binout % file_create(fname)
     do i=1, n_tracks
       flat_coords(3*i-2 : 3*i) = coords(:,i)
     end do
-    call write_data(flat_coords, 'coordinates', length=3*n_tracks)
-    call file_close('serial')
+    call binout % write_data(flat_coords, 'coordinates', length=3*n_tracks)
+    call binout % file_close()
     deallocate(coords)
   end subroutine finalize_particle_track
 

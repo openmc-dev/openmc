@@ -9,7 +9,6 @@ module global
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
-  use particle_header,  only: Particle
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
@@ -26,11 +25,6 @@ module global
 
   implicit none
   save
-
-  ! ============================================================================
-  ! THE PARTICLE
-
-  type(Particle), pointer :: p => null()
 
   ! ============================================================================
   ! GEOMETRY-RELATED VARIABLES
@@ -166,10 +160,8 @@ module global
   type(Bank), allocatable, target :: source_bank(:)
   type(Bank), allocatable, target :: fission_bank(:)
   integer(8) :: n_bank       ! # of sites in fission bank
-  integer(8) :: bank_first   ! index of first particle in bank
-  integer(8) :: bank_last    ! index of last particle in bank
   integer(8) :: work         ! number of particles per processor
-  integer(8) :: maxwork      ! maximum number of particles per processor
+  integer(8), allocatable :: work_index(:) ! starting index in source bank for each process
   integer(8) :: current_work ! index in source bank of current history simulated
 
   ! Temporary k-effective values
@@ -420,6 +412,19 @@ contains
     if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)
 
+    ! Deallocate external source
+    if (allocated(external_source % params_space)) &
+         deallocate(external_source % params_space)
+    if (allocated(external_source % params_angle)) &
+         deallocate(external_source % params_angle)
+    if (allocated(external_source % params_energy)) &
+         deallocate(external_source % params_energy)
+
+    ! Deallocate k and entropy
+    if (allocated(k_generation)) deallocate(k_generation)
+    if (allocated(entropy)) deallocate(entropy)
+    if (allocated(entropy_p)) deallocate(entropy_p)
+
     ! Deallocate tally-related arrays
     if (allocated(meshes)) deallocate(meshes)
     if (allocated(tallies)) then
@@ -439,6 +444,9 @@ contains
     if (allocated(fission_bank)) deallocate(fission_bank)
     if (allocated(source_bank)) deallocate(source_bank)
     if (allocated(entropy_p)) deallocate(entropy_p)
+
+    ! Deallocate array of work indices
+    if (allocated(work_index)) deallocate(work_index)
 
     ! Deallocate cmfd
     call deallocate_cmfd(cmfd)
@@ -464,6 +472,9 @@ contains
     call nuclide_dict % clear()
     call sab_dict % clear()
     call xs_listing_dict % clear()
+
+    ! Clear statepoint batch set
+    call statepoint_batch % clear()
     
   end subroutine free_memory
 

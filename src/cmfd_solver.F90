@@ -29,6 +29,16 @@ module cmfd_solver
   type(Vector) :: s_o             ! old flux vector
   type(Vector) :: serr_v          ! error in source
 
+  ! CMFD linear solver interface
+  procedure(linsolve), pointer :: cmfd_linsolver => null()
+  abstract interface
+    subroutine linsolve(b, x)
+      import :: Vector
+      type(Vector) :: b
+      type(Vector) :: x
+    end subroutine linsolve 
+  end interface
+
 contains
 
 !===============================================================================
@@ -90,7 +100,8 @@ contains
   subroutine init_data(adjoint)
 
     use constants, only: ONE, ZERO
-    use global,    only: cmfd_write_matrices
+    use error,     only: fatal_error
+    use global,    only: cmfd, cmfd_write_matrices, message 
 
     logical :: adjoint
 
@@ -135,6 +146,18 @@ contains
     ! Set norms to 0
     norm_n = ZERO
     norm_o = ZERO
+
+    ! Set up solver
+    select case(cmfd % indices(4))
+      case(1)
+        cmfd_linsolver => cmfd_linsolver_1g
+      case(2)
+        cmfd_linsolver => cmfd_linsolver_2g
+      case default
+        message = 'Must use PETSc for more than 2 groups'
+        call fatal_error()
+    end select
+    
 
   end subroutine init_data
 
@@ -245,10 +268,109 @@ contains
   end subroutine convergence
 
 !===============================================================================
-! CMFD_LINSOLVER solves the CMFD linear system
+! CMFD_LINSOLVER_1g solves the CMFD linear system
 !===============================================================================
 
-  subroutine cmfd_linsolver(b, x)
+  subroutine cmfd_linsolver_1g(b, x)
+
+    use constants,  only: ONE, ZERO
+    use global,     only: cmfd, cmfd_spectral
+
+    type(Vector) :: b ! right hand side vector
+    type(Vector) :: x ! unknown vector
+
+    integer :: g ! group index
+    integer :: i ! loop counter for x 
+    integer :: j ! loop counter for y
+    integer :: k ! loop counter for z
+    integer :: n  ! total size of vector
+    integer :: nx ! maximum dimension in x direction
+    integer :: ny ! maximum dimension in y direction
+    integer :: nz ! maximum dimension in z direction
+    integer :: ng ! number of energy groups
+    integer :: igs   ! Gauss-Seidel iteration counter
+    integer :: irb   ! Red/Black iteration switch
+    integer :: irow  ! row iteration
+    integer :: icol  ! iteration counter over columns
+    integer :: didx  ! index for diagonal component
+    logical :: found ! did we find col
+    real(8) :: tmp1 ! temporary sum g1
+    real(8) :: x1 ! new g1 value of x
+    real(8) :: err ! error in convergence of solution
+    real(8) :: tol ! tolerance on final error
+    real(8) :: w ! overrelaxation parameter
+    type(Vector) :: tmpx ! temporary solution vector
+
+    ! Set tolerance and overrelaxation parameter
+    tol = 1.e-10_8
+    w = ONE
+
+    ! Dimensions
+    ng = 1
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    n = loss % n
+
+    ! Perform Gauss Seidel iterations
+    GS: do igs = 1, 10000
+
+      ! Copy over x vector
+      call  tmpx % copy(x) 
+
+      ! Perform red/black gs iterations
+      REDBLACK: do irb = 0,1
+
+        ! Begin loop around matrix rows
+        ROWS: do irow = 1, n
+
+          ! Get spatial location
+          call  matrix_to_indices(irow, g, i, j, k, ng, nx, ny, nz)
+
+          ! Filter out black cells (even)
+          if (mod(i+j+k,2) == irb) cycle
+
+          ! Get the index of the diagonals for both rows
+          call loss % search_indices(irow, irow, didx, found)
+
+          ! Perform temporary sums, first do left of diag block, then right of diag block
+          tmp1 = ZERO
+          do icol = loss % get_row(irow), didx - 1
+            tmp1 = tmp1 + loss % val(icol)*x % val(loss % get_col(icol))
+          end do
+          do icol = didx + 1, loss % get_row(irow + 1) - 1
+            tmp1 = tmp1 + loss % val(icol)*x % val(loss % get_col(icol))
+          end do
+
+          ! Solve for new x
+          x1 = (b % val(irow) - tmp1)/loss % val(didx)
+
+          ! Perform overrelaxation
+          x % val(irow) = (ONE - w)*x % val(irow) + w*x1
+
+        end do ROWS
+
+      end do REDBLACK
+
+      ! Check convergence
+      err = sqrt(sum(((tmpx % val - x % val)/tmpx % val)**2)/n)
+!print *, igs, err, w
+      if (err < tol) exit
+
+      ! Calculation new overrelaxation parameter
+      w = ONE/(ONE - 0.25_8*cmfd_spectral*w)
+
+    end do GS
+
+    call tmpx % destroy()
+
+  end subroutine cmfd_linsolver_1g
+
+!===============================================================================
+! CMFD_LINSOLVER_2G solves the CMFD linear system
+!===============================================================================
+
+  subroutine cmfd_linsolver_2g(b, x)
 
     use constants,  only: ONE, ZERO
     use global,     only: cmfd, cmfd_spectral
@@ -370,7 +492,7 @@ contains
 
       ! Check convergence
       err = sqrt(sum(((tmpx % val - x % val)/tmpx % val)**2)/n)
-! print *, igs, err, w
+!print *, igs, err, w
       if (err < tol) exit
 
       ! Calculation new overrelaxation parameter
@@ -380,7 +502,7 @@ contains
 
     call tmpx % destroy()
 
-  end subroutine cmfd_linsolver
+  end subroutine cmfd_linsolver_2g
 
 !===============================================================================
 ! EXTRACT_RESULTS takes results and puts them in CMFD global data object

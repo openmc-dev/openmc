@@ -199,8 +199,9 @@ contains
       cmfd_display = ''
     end if
 
-    ! Read in spectral radius estimate
+    ! Read in spectral radius estimate and G-S tolerance
     cmfd_spectral = spectral_
+    cmfd_gs_tol = gs_tol_
 
     ! Create tally objects
     call create_cmfd_tally()

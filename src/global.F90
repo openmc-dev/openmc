@@ -355,8 +355,9 @@ module global
   ! CMFD display info
   character(len=25) :: cmfd_display
 
-  ! Estimate of spectral radius of CMFD matrices
+  ! Estimate of spectral radius of CMFD matrices and G-S tolerance
   real(8) :: cmfd_spectral = ZERO
+  real(8) :: cmfd_gs_tol = 1.e-10_8
 
   ! Information about state points to be written
   integer :: n_state_points = 0

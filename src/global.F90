@@ -356,7 +356,7 @@ module global
   character(len=25) :: cmfd_display
 
   ! Estimate of spectral radius of CMFD matrices
-  real(8) :: cmfd_spectral = ONE
+  real(8) :: cmfd_spectral = ZERO
 
   ! Information about state points to be written
   integer :: n_state_points = 0

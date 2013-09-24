@@ -30,5 +30,6 @@
   <variable name="inactive_flush_" tag="inactive_flush" type="integer"       default="9999"                />
   <variable name="num_flushes_"    tag="num_flushes"    type="integer"       default="1"                   />
   <variable name="display_"        tag="display"        type="word"          default="''" length="25"      />
+  <variable name="spectral_"       tag="spectral"       type="double"        default="1.5"                 />
 
 </template>

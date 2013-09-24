@@ -251,7 +251,7 @@ contains
   subroutine cmfd_linsolver(b, x)
 
     use constants,  only: ONE, ZERO
-    use global,     only: cmfd
+    use global,     only: cmfd, cmfd_spectral
 
     type(Vector) :: b ! right hand side vector
     type(Vector) :: x ! unknown vector
@@ -282,12 +282,16 @@ contains
     real(8) :: d22 ! inverse component 2,2
     real(8) :: tmp1 ! temporary sum g1
     real(8) :: tmp2 ! temporary sum g2
+    real(8) :: x1 ! new g1 value of x
+    real(8) :: x2 ! new g2 value of x
     real(8) :: err ! error in convergence of solution
     real(8) :: tol ! tolerance on final error
+    real(8) :: w ! overrelaxation parameter
     type(Vector) :: tmpx ! temporary solution vector
 
-    ! Set tolerance
+    ! Set tolerance and overrelaxation parameter
     tol = 1.e-10_8
+    w = ONE
 
     ! Dimensions
     ng = 2
@@ -356,8 +360,12 @@ contains
               tmp2 = b % val(matidx + 1) - tmp2
 
               ! Solve for new x
-              x % val(matidx) = d11*tmp1 + d12*tmp2
-              x % val(matidx + 1) = d21*tmp1 + d22*tmp2
+              x1 = d11*tmp1 + d12*tmp2
+              x2 = d21*tmp1 + d22*tmp2
+
+              ! Perform overrelaxation
+              x % val(matidx) = (ONE - w)*x % val(matidx) + w*x1
+              x % val(matidx + 1) = (ONE - w)*x % val(matidx + 1) + w*x2
 
             end do XLOOP
 
@@ -369,7 +377,11 @@ contains
 
       ! Check convergence
       err = sqrt(sum(((tmpx % val - x % val)/tmpx % val)**2)/n)
+print *, igs, err, w
       if (err < tol) exit
+
+      ! Calculation new overrelaxation parameter
+      w = ONE/(ONE - 0.25_8*cmfd_spectral*w)
 
     end do GS
 

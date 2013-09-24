@@ -199,6 +199,9 @@ contains
       cmfd_display = ''
     end if
 
+    ! Read in spectral radius estimate
+    cmfd_spectral = spectral_
+
     ! Create tally objects
     call create_cmfd_tally()
 

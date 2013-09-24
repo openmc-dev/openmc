@@ -274,7 +274,7 @@ contains
   subroutine cmfd_linsolver_1g(b, x)
 
     use constants,  only: ONE, ZERO
-    use global,     only: cmfd, cmfd_spectral
+    use global,     only: cmfd, cmfd_spectral, cmfd_gs_tol
 
     type(Vector) :: b ! right hand side vector
     type(Vector) :: x ! unknown vector
@@ -302,7 +302,7 @@ contains
     type(Vector) :: tmpx ! temporary solution vector
 
     ! Set tolerance and overrelaxation parameter
-    tol = 1.e-10_8
+    tol = cmfd_gs_tol 
     w = ONE
 
     ! Dimensions

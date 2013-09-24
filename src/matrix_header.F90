@@ -20,17 +20,19 @@ module matrix_header
 #  endif
     logical :: petsc_active
    contains
-     procedure :: create       => matrix_create
-     procedure :: destroy      => matrix_destroy
-     procedure :: add_value    => matrix_add_value
-     procedure :: new_row      => matrix_new_row
-     procedure :: assemble     => matrix_assemble
-     procedure :: get_row      => matrix_get_row
-     procedure :: get_col      => matrix_get_col
+     procedure :: create             => matrix_create
+     procedure :: destroy            => matrix_destroy
+     procedure :: add_value          => matrix_add_value
+     procedure :: new_row            => matrix_new_row
+     procedure :: assemble           => matrix_assemble
+     procedure :: get_row            => matrix_get_row
+     procedure :: get_col            => matrix_get_col
      procedure :: setup_petsc        => matrix_setup_petsc
      procedure :: write_petsc_binary => matrix_write_petsc_binary
      procedure :: transpose          => matrix_transpose
      procedure :: vector_multiply    => matrix_vector_multiply
+     procedure :: search_indices     => matrix_search_indices
+     procedure :: write              => matrix_write
   end type matrix
 
   integer :: petsc_err
@@ -354,5 +356,58 @@ contains
     end do ROWS
 
   end subroutine matrix_vector_multiply
+
+!===============================================================================
+! MATRIX_SEARCH_INDICES searches for an index in column corresponding to a row 
+!===============================================================================
+
+  subroutine matrix_search_indices(self, row, col, idx, found)
+
+    class(Matrix) :: self
+    integer :: row
+    integer :: col
+    integer :: idx
+    logical :: found
+
+    integer :: j
+
+    found = .false.
+
+    COLS: do j = self % get_row(row), self % get_row(row + 1) - 1
+
+      if (self % get_col(j) == col) then
+        idx = j
+        found = .true.
+        exit
+      end if
+
+    end do COLS
+
+  end subroutine matrix_search_indices
+
+!===============================================================================
+! MATRIX_WRITE writes a matrix to file
+!===============================================================================
+
+  subroutine matrix_write(self, filename)
+
+    character(*) :: filename
+    class(Matrix) :: self
+
+    integer :: unit_
+    integer :: i
+    integer :: j
+
+    open(newunit=unit_, file=filename)
+
+    do i = 1, self % n
+      do j = self % get_row(i), self % get_row(i + 1) - 1
+        write(unit_,*) i, self % get_col(j), self % val(j)
+      end do
+    end do
+
+    close(unit_)
+
+  end subroutine matrix_write
 
 end module matrix_header

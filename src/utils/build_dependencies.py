@@ -12,7 +12,7 @@ for src in glob.iglob('*.F90'):
                    open(src, 'r').read())
     for name in d:
         if name in ['mpi', 'hdf5', 'h5lt', 'petscsys', 'petscmat', 'petscksp',
-                    'petscsnes', 'petscvec']:
+                    'petscsnes', 'petscvec', 'omp_lib']:
             continue
         if name.startswith('xml_data_'):
             name = name.replace('xml_data_', 'templates/')

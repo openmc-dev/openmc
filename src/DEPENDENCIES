@@ -24,6 +24,7 @@ cmfd_data.o: tally_header.o
 cmfd_execute.o: cmfd_data.o
 cmfd_execute.o: cmfd_jfnk_solver.o
 cmfd_execute.o: cmfd_power_solver.o
+cmfd_execute.o: cmfd_solver.o
 cmfd_execute.o: constants.o
 cmfd_execute.o: error.o
 cmfd_execute.o: global.o
@@ -75,6 +76,13 @@ cmfd_slepc_solver.o: cmfd_loss_operator.o
 cmfd_slepc_solver.o: cmfd_prod_operator.o
 cmfd_slepc_solver.o: constants.o
 cmfd_slepc_solver.o: global.o
+
+cmfd_solver.o: cmfd_loss_operator.o
+cmfd_solver.o: cmfd_prod_operator.o
+cmfd_solver.o: constants.o
+cmfd_solver.o: global.o
+cmfd_solver.o: matrix_header.o
+cmfd_solver.o: vector_header.o
 
 cross_section.o: ace_header.o
 cross_section.o: constants.o

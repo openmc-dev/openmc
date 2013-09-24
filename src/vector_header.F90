@@ -23,6 +23,7 @@ module vector_header
      procedure :: add_value    => vector_add_value
      procedure :: setup_petsc  => vector_setup_petsc
      procedure :: write_petsc_binary => vector_write_petsc_binary
+     procedure :: copy         => vector_copy
   end type Vector
 
   integer :: petsc_err
@@ -122,5 +123,29 @@ contains
 #endif
 
   end subroutine vector_write_petsc_binary
+
+!===============================================================================
+! VECTOR_COPY allocates a separate vector and copies
+!===============================================================================
+
+  subroutine vector_copy(self, vectocopy)
+
+    class(Vector), target :: self
+    type(Vector) :: vectocopy
+
+    ! Preallocate vector
+    if (.not.allocated(self % data)) allocate(self % data(vectocopy % n))
+    self % val => self % data(1:vectocopy % n)
+
+    ! Set n
+    self % n = vectocopy % n
+
+    ! Copy values 
+    self % val = vectocopy % val
+
+    ! Petsc is default not active
+    self % petsc_active = .false.
+
+  end subroutine vector_copy
 
 end module vector_header

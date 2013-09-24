@@ -256,6 +256,7 @@ contains
     type(Vector) :: b ! right hand side vector
     type(Vector) :: x ! unknown vector
 
+    integer :: g ! group index
     integer :: i ! loop counter for x 
     integer :: j ! loop counter for y
     integer :: k ! loop counter for z
@@ -264,11 +265,11 @@ contains
     integer :: ny ! maximum dimension in y direction
     integer :: nz ! maximum dimension in z direction
     integer :: ng ! number of energy groups
-    integer :: matidx ! matrix index of row
     integer :: d1idx ! index of row "1" diagonal
     integer :: d2idx ! index of row "2" diagonal
     integer :: igs   ! Gauss-Seidel iteration counter
     integer :: irb   ! Red/Black iteration switch
+    integer :: irow  ! row iteration
     integer :: icol  ! iteration counter over columns
     logical :: found ! did we find col
     real(8) :: m11 ! block diagonal component 1,1
@@ -298,7 +299,7 @@ contains
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
-    n = ng*nx*ny*nz
+    n = loss % n
 
     ! Perform Gauss Seidel iterations
     GS: do igs = 1, 10000
@@ -309,75 +310,67 @@ contains
       ! Perform red/black gs iterations
       REDBLACK: do irb = 0,1
 
-        ZLOOP: do k = 1, nz
+        ! Begin loop around matrix rows
+        ROWS: do irow = 1, n, 2
 
-          YLOOP: do j = 1, ny
+          ! Get spatial location
+          call  matrix_to_indices(irow, g, i, j, k, ng, nx, ny, nz)
 
-            XLOOP: do i = 1, nx
+          ! Filter out black cells (even)
+          if (mod(i+j+k,2) == irb) cycle
 
-              ! Filter out black cells (even)
-              if (mod(i+j+k,2) == irb) cycle
+          ! Get the index of the diagonals for both rows
+          call loss % search_indices(irow, irow, d1idx, found)
+          call loss % search_indices(irow + 1, irow + 1, d2idx, found)
 
-              ! Get starting row in matrix for this block
-              call indices_to_matrix(1, i, j, k, matidx, ng, nx, ny)
+          ! Get block diagonal
+          m11 = loss % val(d1idx) ! group 1 diagonal
+          m12 = loss % val(d1idx + 1) ! group 1 right of diagonal (sorted by col)
+          m21 = loss % val(d2idx - 1) ! group 2 left of diagonal (sorted by col)
+          m22 = loss % val(d2idx) ! group 2 diagonal
 
-              ! Get the index of the diagonals for both rows
-              call loss % search_indices(matidx, matidx, d1idx, found)
+          ! Analytically invert the diagonal
+          dm = m11*m22 - m12*m21
+          d11 = m22/dm
+          d12 = -m12/dm
+          d21 = -m21/dm
+          d22 = m11/dm
 
-              call loss % search_indices(matidx + 1, matidx + 1, d2idx, found)
+          ! Perform temporary sums, first do left of diag block, then right of diag block
+          tmp1 = ZERO
+          tmp2 = ZERO
+          do icol = loss % get_row(irow), d1idx - 1
+            tmp1 = tmp1 + loss % val(icol)*x % val(loss % get_col(icol))
+          end do
+          do icol = loss % get_row(irow + 1), d2idx - 2
+            tmp2 = tmp2 + loss % val(icol)*x % val(loss % get_col(icol))
+          end do
+          do icol = d1idx + 2, loss % get_row(irow + 1) - 1
+            tmp1 = tmp1 + loss % val(icol)*x % val(loss % get_col(icol))
+          end do
+          do icol = d2idx + 1, loss % get_row(irow + 2) - 1
+            tmp2 = tmp2 + loss % val(icol)*x % val(loss % get_col(icol))
+          end do
 
-              ! Get block diagonal
-              m11 = loss % val(d1idx) ! group 1 diagonal
-              m12 = loss % val(d1idx + 1) ! group 1 right of diagonal (sorted by col)
-              m21 = loss % val(d2idx - 1) ! group 2 left of diagonal (sorted by col)
-              m22 = loss % val(d2idx) ! group 2 diagonal
+          ! Adjust with RHS vector
+          tmp1 = b % val(irow) - tmp1
+          tmp2 = b % val(irow + 1) - tmp2
 
-              ! Analytically invert the diagonal
-              dm = m11*m22 - m12*m21
-              d11 = m22/dm
-              d12 = -m12/dm
-              d21 = -m21/dm
-              d22 = m11/dm
+          ! Solve for new x
+          x1 = d11*tmp1 + d12*tmp2
+          x2 = d21*tmp1 + d22*tmp2
 
-              ! Perform temporary sums, first do left of diag block, then right of diag block
-              tmp1 = ZERO
-              tmp2 = ZERO
-              do icol = loss % get_row(matidx), d1idx - 1
-                tmp1 = tmp1 + loss % val(icol)*x % val(loss % get_col(icol))
-              end do
-              do icol = loss % get_row(matidx + 1), d2idx - 2
-                tmp2 = tmp2 + loss % val(icol)*x % val(loss % get_col(icol))
-              end do
-              do icol = d1idx + 2, loss % get_row(matidx + 1) - 1
-                tmp1 = tmp1 + loss % val(icol)*x % val(loss % get_col(icol))
-              end do
-              do icol = d2idx + 1, loss % get_row(matidx + 2) - 1
-                tmp2 = tmp2 + loss % val(icol)*x % val(loss % get_col(icol))
-              end do
+          ! Perform overrelaxation
+          x % val(irow) = (ONE - w)*x % val(irow) + w*x1
+          x % val(irow + 1) = (ONE - w)*x % val(irow + 1) + w*x2
 
-              ! Adjust with RHS vector
-              tmp1 = b % val(matidx) - tmp1
-              tmp2 = b % val(matidx + 1) - tmp2
-
-              ! Solve for new x
-              x1 = d11*tmp1 + d12*tmp2
-              x2 = d21*tmp1 + d22*tmp2
-
-              ! Perform overrelaxation
-              x % val(matidx) = (ONE - w)*x % val(matidx) + w*x1
-              x % val(matidx + 1) = (ONE - w)*x % val(matidx + 1) + w*x2
-
-            end do XLOOP
-
-          end do YLOOP
-
-        end do ZLOOP
+        end do ROWS
 
       end do REDBLACK
 
       ! Check convergence
       err = sqrt(sum(((tmpx % val - x % val)/tmpx % val)**2)/n)
-print *, igs, err, w
+! print *, igs, err, w
       if (err < tol) exit
 
       ! Calculation new overrelaxation parameter
@@ -477,6 +470,45 @@ print *, igs, err, w
     end if
 
   end subroutine indices_to_matrix
+
+!===============================================================================
+! MATRIX_TO_INDICES converts a matrix index to spatial and group indicies
+!===============================================================================
+
+  subroutine matrix_to_indices(irow, g, i, j, k, ng, nx, ny, nz)
+
+    use global,  only: cmfd, cmfd_coremap
+
+    integer :: i     ! iteration counter for x
+    integer :: j     ! iteration counter for y
+    integer :: k     ! iteration counter for z
+    integer :: g     ! iteration counter for groups
+    integer :: irow  ! iteration counter over row (0 reference)
+    integer :: nx    ! maximum number of x cells
+    integer :: ny    ! maximum number of y cells
+    integer :: nz    ! maximum number of z cells
+    integer :: ng    ! maximum number of groups
+
+    ! Check for core map
+    if (cmfd_coremap) then
+
+      ! Get indices from indexmap
+      g = mod(irow-1, ng) + 1
+      i = cmfd % indexmap((irow-1)/ng+1,1)
+      j = cmfd % indexmap((irow-1)/ng+1,2)
+      k = cmfd % indexmap((irow-1)/ng+1,3)
+
+    else
+
+      ! Compute indices
+      g = mod(irow-1, ng) + 1
+      i = mod(irow-1, ng*nx)/ng + 1
+      j = mod(irow-1, ng*nx*ny)/(ng*nx)+ 1
+      k = mod(irow-1, ng*nx*ny*nz)/(ng*nx*ny) + 1
+
+    end if
+
+  end subroutine matrix_to_indices
 
 !===============================================================================
 ! FINALIZE frees all memory associated with power iteration

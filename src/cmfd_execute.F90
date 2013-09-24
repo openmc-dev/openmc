@@ -22,6 +22,7 @@ contains
     use cmfd_data,              only: set_up_cmfd
     use cmfd_power_solver,      only: cmfd_power_execute
     use cmfd_jfnk_solver,       only: cmfd_jfnk_execute
+    use cmfd_solver,            only: cmfd_solver_execute
     use error,                  only: warning, fatal_error 
 
     ! CMFD single processor on master
@@ -37,6 +38,7 @@ contains
       call process_cmfd_options()
 
       ! Call solver
+#ifdef PETSC
       if (trim(cmfd_solver_type) == 'power') then
         call cmfd_power_execute()
       elseif (trim(cmfd_solver_type) == 'jfnk') then
@@ -45,6 +47,9 @@ contains
         message = 'solver type became invalid after input processing'
         call fatal_error() 
       end if
+#else
+      call cmfd_solver_execute()
+#endif
 
       ! Save k-effective
       cmfd % k_cmfd(current_batch) = cmfd % keff

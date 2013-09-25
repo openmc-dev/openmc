@@ -74,7 +74,8 @@ contains
 
     integer :: i_nuclide    ! index in nuclides array
     integer :: i_reaction   ! index in nuc % reactions array
-    type(Nuclide),  pointer :: nuc => null()
+    type(Nuclide), pointer, save :: nuc => null()
+!$omp threadprivate(nuc)
 
     i_nuclide = sample_nuclide(p, 'total  ')
 
@@ -129,7 +130,8 @@ contains
     real(8) :: cutoff
     real(8) :: atom_density ! atom density of nuclide in atom/b-cm
     real(8) :: sigma        ! microscopic total xs for nuclide
-    type(Material), pointer :: mat => null()
+    type(Material), pointer, save :: mat => null()
+!$omp threadprivate(mat)
 
     ! Get pointer to current material
     mat => materials(p % material)
@@ -191,8 +193,9 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide),  pointer :: nuc => null()
-    type(Reaction), pointer :: rxn => null()
+    type(Nuclide),  pointer, save :: nuc => null()
+    type(Reaction), pointer, save :: rxn => null()
+!$omp threadprivate(nuc, rxn)
 
     ! Get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -251,18 +254,22 @@ contains
       p % last_wgt = p % wgt
 
       ! Score implicit absorption estimate of keff
+!$omp critical
       global_tallies(K_ABSORPTION) % value = &
            global_tallies(K_ABSORPTION) % value + p % absorb_wgt * &
            micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
+!$omp end critical
 
     else
       ! See if disappearance reaction happens
       if (micro_xs(i_nuclide) % absorption > &
            prn() * micro_xs(i_nuclide) % total) then
         ! Score absorption estimate of keff
+!$omp critical
         global_tallies(K_ABSORPTION) % value = &
              global_tallies(K_ABSORPTION) % value + p % wgt * &
              micro_xs(i_nuclide) % nu_fission / micro_xs(i_nuclide) % absorption
+!$omp end critical
 
         p % alive = .false.
         p % event = EVENT_ABSORB
@@ -306,8 +313,9 @@ contains
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
-    type(Nuclide),  pointer :: nuc => null()
-    type(Reaction), pointer :: rxn => null()
+    type(Nuclide),  pointer, save :: nuc => null()
+    type(Reaction), pointer, save :: rxn => null()
+!$omp threadprivate(nuc, rxn)
 
     ! Get pointer to nuclide and grid index/interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -410,7 +418,8 @@ contains
     real(8) :: v_cm(3)   ! velocity of center-of-mass
     real(8) :: v_t(3)    ! velocity of target nucleus
     real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
-    type(Nuclide), pointer :: nuc => null()
+    type(Nuclide), pointer, save :: nuc => null()
+!$omp threadprivate(nuc)
 
     ! get pointer to nuclide
     nuc => nuclides(i_nuclide)
@@ -487,7 +496,8 @@ contains
     real(8) :: mu_ijk       ! outgoing cosine k for E_in(i) and E_out(j)
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
     real(8) :: prob         ! probability for sampling Bragg edge
-    type(SAlphaBeta), pointer :: sab => null()
+    type(SAlphaBeta), pointer, save :: sab => null()
+!$omp threadprivate(sab)
 
     ! Get pointer to S(a,b) table
     sab => sab_tables(i_sab)
@@ -715,8 +725,9 @@ contains
     real(8) :: phi          ! fission neutron azimuthal angle
     real(8) :: weight       ! weight adjustment for ufs method
     logical :: in_mesh      ! source site in ufs mesh?
-    type(Nuclide),    pointer :: nuc => null()
-    type(Reaction),   pointer :: rxn => null()
+    type(Nuclide),  pointer, save :: nuc => null()
+    type(Reaction), pointer, save :: rxn => null()
+!$omp threadprivate(nuc, rxn)
 
     ! Get pointers
     nuc => nuclides(i_nuclide)
@@ -816,7 +827,8 @@ contains
     real(8) :: xi           ! random number
     real(8) :: yield        ! delayed neutron precursor yield
     real(8) :: prob         ! cumulative probability
-    type(DistEnergy), pointer :: edist => null()
+    type(DistEnergy), pointer, save :: edist => null()
+!$omp threadprivate(edist)
 
     ! Determine total nu
     nu_t = nu_total(nuc, E)

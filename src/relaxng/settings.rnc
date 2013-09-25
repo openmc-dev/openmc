@@ -101,6 +101,8 @@ element settings {
 
   element survival_biasing { xsd:boolean }? &
 
+  element threads { xsd:positiveInteger }? &
+
   element trace { list { xsd:positiveInteger+ } }? &
 
   element verbosity { xsd:positiveInteger }? &

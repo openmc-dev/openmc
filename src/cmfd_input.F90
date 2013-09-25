@@ -202,6 +202,7 @@ contains
     ! Read in spectral radius estimate and G-S tolerance
     cmfd_spectral = spectral_
     cmfd_gs_tol = gs_tol_
+    if (shift_ /= ZERO) cmfd_shift = shift_
 
     ! Create tally objects
     call create_cmfd_tally()

@@ -14,6 +14,9 @@ module cmfd_solver
   logical :: iconv                ! did the problem converged
   real(8) :: k_n                  ! new k-eigenvalue
   real(8) :: k_o                  ! old k-eigenvalue
+  real(8) :: k_s                  ! shift of eigenvalue
+  real(8) :: k_ln                 ! new shifted eigenvalue
+  real(8) :: k_lo                 ! old shifted eigenvalue
   real(8) :: ktol = 1.e-8_8       ! tolerance on keff
   real(8) :: stol = 1.e-8_8       ! tolerance on source
   real(8) :: norm_n               ! current norm of source vector
@@ -32,10 +35,13 @@ module cmfd_solver
   ! CMFD linear solver interface
   procedure(linsolve), pointer :: cmfd_linsolver => null()
   abstract interface
-    subroutine linsolve(b, x)
+    subroutine linsolve(A, b, x, i)
+      import :: Matrix
       import :: Vector
+      type(Matrix) :: A
       type(Vector) :: b
       type(Vector) :: x
+      integer      :: i
     end subroutine linsolve 
   end interface
 
@@ -101,12 +107,13 @@ contains
 
     use constants, only: ONE, ZERO
     use error,     only: fatal_error
-    use global,    only: cmfd, cmfd_write_matrices, message 
+    use global,    only: cmfd, cmfd_write_matrices, message, cmfd_shift, keff
 
     logical :: adjoint
 
     integer :: n      ! problem size
     real(8) :: guess  ! initial guess
+    real(8) :: dw     ! eigenvalue shift
 
     ! Set up matrices
     call init_loss_matrix(loss)
@@ -128,8 +135,12 @@ contains
     guess = ONE
     phi_n % val = guess
     phi_o % val = guess
-    k_n = guess
-    k_o = guess
+    k_n = keff 
+    k_o = k_n
+    dw = cmfd_shift
+    k_s = k_o + dw
+    k_ln = ONE/(ONE/k_n - ONE/k_s)
+    k_lo = k_ln
 
     ! Fill in loss matrix
     call build_loss_matrix(loss, adjoint=adjoint) 
@@ -188,10 +199,19 @@ contains
 
   subroutine execute_power_iter()
 
+    use constants,  only: ONE
+
     integer :: i ! iteration counter
+    integer :: innerits ! # of inner iterations
+    integer :: totalits ! total number of inners
+    type(Matrix) :: Ms
 
     ! Reset convergence flag
     iconv = .false.
+
+    ! Perform shift
+    call wielandt_shift(Ms)
+    totalits = 0
 
     ! Begin power iteration
     do i = 1, 10000
@@ -200,22 +220,26 @@ contains
       call prod % vector_multiply(phi_o, s_o)
 
       ! Normalize source vector
-      s_o % val = s_o % val / k_o
+      s_o % val = s_o % val / k_lo
 
       ! Compute new flux vector
-      call cmfd_linsolver(s_o, phi_n)
+      call cmfd_linsolver(Ms, s_o, phi_n, innerits)
 
       ! Compute new source vector
       call prod % vector_multiply(phi_n, s_n)
 
-      ! Compute new k-eigenvalue
-      k_n = sum(s_n % val) / sum(s_o % val)
+      ! Compute new shifted eigenvalue
+      k_ln = sum(s_n % val) / sum(s_o % val)
+
+      ! Compute new eigenvalue
+      k_n = ONE/(ONE/k_ln + ONE/k_s)
 
       ! Renormalize the old source
-      s_o % val = s_o % val * k_o
+      s_o % val = s_o % val * k_lo
 
       ! Check convergence
-      call convergence(i)
+      call convergence(i, innerits)
+      totalits = totalits + innerits
 
       ! Break loop if converged
       if (iconv) exit
@@ -223,23 +247,58 @@ contains
       ! Record old values
       phi_o % val = phi_n % val
       k_o = k_n
+      k_lo = k_ln
       norm_o = norm_n
-
+read*
     end do
+print *, 'TOTAL INNER:', totalits
+      ! Destroy shifted matrix
+      call Ms % destroy()
 
   end subroutine execute_power_iter 
+
+!===============================================================================
+! WIELANDT SHIFT
+!===============================================================================
+
+  subroutine wielandt_shift(Ms)
+
+    use constants,  only: ONE
+
+    type(Matrix) :: Ms
+
+    integer :: irow ! row counter
+    integer :: icol ! col counter
+    integer :: jcol ! current col index in prod matrix
+
+    ! copy loss matrix
+    call Ms % copy(loss)
+
+    ! perform subtraction
+    jcol = 1
+    ROWS: do irow = 1, Ms % n
+      COLS: do icol = Ms % get_row(irow), Ms % get_row(irow + 1) - 1
+        if (Ms % get_col(icol) == prod % get_col(jcol)) then
+          Ms % val(icol) = Ms % val(icol) - ONE/k_s*prod % val(jcol)
+          jcol = jcol + 1
+        end if
+      end do COLS
+    end do ROWS
+
+  end subroutine wielandt_shift
 
 !===============================================================================
 ! CONVERGENCE checks the convergence of the CMFD problem
 !===============================================================================
 
-  subroutine convergence(iter)
+  subroutine convergence(iter, innerits)
 
     use constants,  only: ONE, TINY_BIT
     use global,     only: cmfd_power_monitor, master
     use, intrinsic :: ISO_FORTRAN_ENV
 
-    integer     :: iter           ! iteration number
+    integer :: iter     ! outer iteration number
+    integer :: innerits ! inner iteration nubmer
 
     ! Reset convergence flag
     iconv = .false.
@@ -262,7 +321,8 @@ contains
     ! Print out to user
     if (cmfd_power_monitor .and. master) then
       write(OUTPUT_UNIT,FMT='(I0,":",T10,"k-eff: ",F0.8,T30,"k-error: ", &
-           &1PE12.5,T55, "src-error: ",1PE12.5)') iter, k_n, kerr, serr
+           &1PE12.5,T55, "src-error: ",1PE12.5,T80,I0)') iter, k_n, kerr, &
+            serr, innerits
     end if
 
   end subroutine convergence
@@ -271,13 +331,15 @@ contains
 ! CMFD_LINSOLVER_1g solves the CMFD linear system
 !===============================================================================
 
-  subroutine cmfd_linsolver_1g(b, x)
+  subroutine cmfd_linsolver_1g(A, b, x, its)
 
     use constants,  only: ONE, ZERO
     use global,     only: cmfd, cmfd_spectral, cmfd_gs_tol
 
+    type(Matrix) :: A ! coefficient matrix
     type(Vector) :: b ! right hand side vector
     type(Vector) :: x ! unknown vector
+    integer      :: its ! number of inner iterations
 
     integer :: g ! group index
     integer :: i ! loop counter for x 
@@ -310,7 +372,7 @@ contains
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
-    n = loss % n
+    n = A % n
 
     ! Perform Gauss Seidel iterations
     GS: do igs = 1, 10000
@@ -331,19 +393,19 @@ contains
           if (mod(i+j+k,2) == irb) cycle
 
           ! Get the index of the diagonals for both rows
-          call loss % search_indices(irow, irow, didx, found)
+          call A % search_indices(irow, irow, didx, found)
 
           ! Perform temporary sums, first do left of diag block, then right of diag block
           tmp1 = ZERO
-          do icol = loss % get_row(irow), didx - 1
-            tmp1 = tmp1 + loss % val(icol)*x % val(loss % get_col(icol))
+          do icol = A % get_row(irow), didx - 1
+            tmp1 = tmp1 + A % val(icol)*x % val(A % get_col(icol))
           end do
-          do icol = didx + 1, loss % get_row(irow + 1) - 1
-            tmp1 = tmp1 + loss % val(icol)*x % val(loss % get_col(icol))
+          do icol = didx + 1, A % get_row(irow + 1) - 1
+            tmp1 = tmp1 + A % val(icol)*x % val(A % get_col(icol))
           end do
 
           ! Solve for new x
-          x1 = (b % val(irow) - tmp1)/loss % val(didx)
+          x1 = (b % val(irow) - tmp1)/A % val(didx)
 
           ! Perform overrelaxation
           x % val(irow) = (ONE - w)*x % val(irow) + w*x1
@@ -354,6 +416,7 @@ contains
 
       ! Check convergence
       err = sqrt(sum(((tmpx % val - x % val)/tmpx % val)**2)/n)
+      its = igs
 !print *, igs, err, w
       if (err < tol) exit
 
@@ -370,13 +433,15 @@ contains
 ! CMFD_LINSOLVER_2G solves the CMFD linear system
 !===============================================================================
 
-  subroutine cmfd_linsolver_2g(b, x)
+  subroutine cmfd_linsolver_2g(A, b, x, its)
 
     use constants,  only: ONE, ZERO
     use global,     only: cmfd, cmfd_spectral
 
+    type(Matrix) :: A ! coefficient matrix
     type(Vector) :: b ! right hand side vector
     type(Vector) :: x ! unknown vector
+    integer      :: its ! number of inner iterations
 
     integer :: g ! group index
     integer :: i ! loop counter for x 
@@ -421,7 +486,7 @@ contains
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
-    n = loss % n
+    n = A % n
 
     ! Perform Gauss Seidel iterations
     GS: do igs = 1, 10000
@@ -442,14 +507,14 @@ contains
           if (mod(i+j+k,2) == irb) cycle
 
           ! Get the index of the diagonals for both rows
-          call loss % search_indices(irow, irow, d1idx, found)
-          call loss % search_indices(irow + 1, irow + 1, d2idx, found)
+          call A % search_indices(irow, irow, d1idx, found)
+          call A % search_indices(irow + 1, irow + 1, d2idx, found)
 
           ! Get block diagonal
-          m11 = loss % val(d1idx) ! group 1 diagonal
-          m12 = loss % val(d1idx + 1) ! group 1 right of diagonal (sorted by col)
-          m21 = loss % val(d2idx - 1) ! group 2 left of diagonal (sorted by col)
-          m22 = loss % val(d2idx) ! group 2 diagonal
+          m11 = A % val(d1idx) ! group 1 diagonal
+          m12 = A % val(d1idx + 1) ! group 1 right of diagonal (sorted by col)
+          m21 = A % val(d2idx - 1) ! group 2 left of diagonal (sorted by col)
+          m22 = A % val(d2idx) ! group 2 diagonal
 
           ! Analytically invert the diagonal
           dm = m11*m22 - m12*m21
@@ -461,17 +526,17 @@ contains
           ! Perform temporary sums, first do left of diag block, then right of diag block
           tmp1 = ZERO
           tmp2 = ZERO
-          do icol = loss % get_row(irow), d1idx - 1
-            tmp1 = tmp1 + loss % val(icol)*x % val(loss % get_col(icol))
+          do icol = A % get_row(irow), d1idx - 1
+            tmp1 = tmp1 + A % val(icol)*x % val(A % get_col(icol))
           end do
-          do icol = loss % get_row(irow + 1), d2idx - 2
-            tmp2 = tmp2 + loss % val(icol)*x % val(loss % get_col(icol))
+          do icol = A % get_row(irow + 1), d2idx - 2
+            tmp2 = tmp2 + A % val(icol)*x % val(A % get_col(icol))
           end do
-          do icol = d1idx + 2, loss % get_row(irow + 1) - 1
-            tmp1 = tmp1 + loss % val(icol)*x % val(loss % get_col(icol))
+          do icol = d1idx + 2, A % get_row(irow + 1) - 1
+            tmp1 = tmp1 + A % val(icol)*x % val(A % get_col(icol))
           end do
-          do icol = d2idx + 1, loss % get_row(irow + 2) - 1
-            tmp2 = tmp2 + loss % val(icol)*x % val(loss % get_col(icol))
+          do icol = d2idx + 1, A % get_row(irow + 2) - 1
+            tmp2 = tmp2 + A % val(icol)*x % val(A % get_col(icol))
           end do
 
           ! Adjust with RHS vector
@@ -492,7 +557,9 @@ contains
 
       ! Check convergence
       err = sqrt(sum(((tmpx % val - x % val)/tmpx % val)**2)/n)
+      its = igs
 !print *, igs, err, w
+!read *
       if (err < tol) exit
 
       ! Calculation new overrelaxation parameter

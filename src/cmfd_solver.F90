@@ -207,7 +207,6 @@ contains
     real(8) :: atoli ! absolute minimum tolerance
     real(8) :: rtoli ! relative tolerance based on source conv
     real(8) :: toli ! the current tolerance of inners
-    type(Matrix) :: Ms
 
     ! Reset convergence flag
     iconv = .false.
@@ -218,7 +217,7 @@ contains
     toli = rtoli*100._8
 
     ! Perform shift
-    call wielandt_shift(Ms)
+    call wielandt_shift()
     totalits = 0
 
     ! Begin power iteration
@@ -231,7 +230,7 @@ contains
       s_o % val = s_o % val / k_lo
 
       ! Compute new flux vector
-      call cmfd_linsolver(Ms, s_o, phi_n, toli, innerits)
+      call cmfd_linsolver(loss, s_o, phi_n, toli, innerits)
 
       ! Compute new source vector
       call prod % vector_multiply(phi_n, s_n)
@@ -263,34 +262,26 @@ contains
 
     end do
 
-      ! Destroy shifted matrix
-      call Ms % destroy()
-
   end subroutine execute_power_iter 
 
 !===============================================================================
 ! WIELANDT SHIFT
 !===============================================================================
 
-  subroutine wielandt_shift(Ms)
+  subroutine wielandt_shift()
 
     use constants,  only: ONE
-
-    type(Matrix) :: Ms
 
     integer :: irow ! row counter
     integer :: icol ! col counter
     integer :: jcol ! current col index in prod matrix
 
-    ! copy loss matrix
-    call Ms % copy(loss)
-
     ! perform subtraction
     jcol = 1
-    ROWS: do irow = 1, Ms % n
-      COLS: do icol = Ms % get_row(irow), Ms % get_row(irow + 1) - 1
-        if (Ms % get_col(icol) == prod % get_col(jcol)) then
-          Ms % val(icol) = Ms % val(icol) - ONE/k_s*prod % val(jcol)
+    ROWS: do irow = 1, loss % n
+      COLS: do icol = loss % get_row(irow), loss % get_row(irow + 1) - 1
+        if (loss % get_col(icol) == prod % get_col(jcol)) then
+          loss % val(icol) = loss % val(icol) - ONE/k_s*prod % val(jcol)
           jcol = jcol + 1
         end if
       end do COLS

@@ -39,6 +39,7 @@ contains
   subroutine run_eigenvalue()
 
     type(Particle) :: p
+    integer        :: i_work
 
     if (master) call header("K EIGENVALUE SIMULATION", level=1)
 
@@ -71,7 +72,9 @@ contains
 
         ! ====================================================================
         ! LOOP OVER PARTICLES
-        PARTICLE_LOOP: do current_work = 1, work
+!$omp parallel do schedule(static) firstprivate(p)
+        PARTICLE_LOOP: do i_work = 1, work
+          current_work = i_work
 
           ! grab source particle from bank
           call get_source_particle(p, current_work)
@@ -80,6 +83,7 @@ contains
           call transport(p)
 
         end do PARTICLE_LOOP
+!$omp end parallel do
 
         ! Accumulate time for transport
         call time_transport % stop()
@@ -126,7 +130,9 @@ contains
       tallies_on = .true.
 
       ! Add user tallies to active tallies list
+!$omp parallel
       call setup_active_usertallies()
+!$omp end parallel
     end if
 
     ! check CMFD initialize batch
@@ -159,6 +165,11 @@ contains
 !===============================================================================
 
   subroutine finalize_generation()
+
+#ifdef OPENMP
+    ! Join the fission bank from each thread into one global fission bank
+    call join_bank_from_threads()
+#endif
 
     ! Distribute fission bank across processors evenly
     call time_bank % start()
@@ -378,7 +389,7 @@ contains
       end if
 
       ! the last processor should not be sending sites to right
-      finish = bank_last
+      finish = work_index(rank + 1)
     end if
 
     call time_bank_sample % stop()
@@ -394,11 +405,11 @@ contains
     if (start < n_particles) then
       ! Determine the index of the processor which has the first part of the
       ! source_bank for the local processor
-      neighbor = start / maxwork
+      neighbor = binary_search(work_index, n_procs + 1, start) - 1
 
       SEND_SITES: do while (start < finish)
         ! Determine the number of sites to send
-        n = min((neighbor + 1)*maxwork, finish) - start
+        n = min(work_index(neighbor + 1), finish) - start
 
         ! Initiate an asynchronous send of source sites to the neighboring
         ! process
@@ -423,7 +434,7 @@ contains
     ! ==========================================================================
     ! RECEIVE BANK SITES FROM NEIGHBORS OR TEMPORARY BANK
 
-    start = bank_first - 1
+    start = work_index(rank)
     index_local = 1
 
     ! Determine what process has the source sites that will need to be stored at
@@ -435,13 +446,12 @@ contains
       neighbor = binary_search(bank_position, n_procs, start) - 1
     end if
 
-    RECV_SITES: do while (start < bank_last)
+    RECV_SITES: do while (start < work_index(rank + 1))
       ! Determine how many sites need to be received
       if (neighbor == n_procs - 1) then
-        n = min(n_particles, (rank+1)*maxwork) - start
+        n = work_index(rank + 1) - start
       else
-        n = min(bank_position(neighbor+2), min(n_particles, &
-             (rank+1)*maxwork)) - start
+        n = min(bank_position(neighbor + 2), work_index(rank + 1)) - start
       end if
 
       if (neighbor /= rank) then
@@ -810,5 +820,46 @@ contains
     end if
 
   end subroutine replay_batch_history
+
+#ifdef OPENMP
+!===============================================================================
+! JOIN_BANK_FROM_THREADS
+!===============================================================================
+
+  subroutine join_bank_from_threads()
+
+    integer :: total ! total number of fission bank sites
+    integer :: i     ! loop index for threads
+
+    ! Initialize the total number of fission bank sites
+    total = 0
+
+!$omp parallel
+
+    ! Copy thread fission bank sites to one shared copy
+!$omp do ordered schedule(static)
+    do i = 1, n_threads
+!$omp ordered
+       master_fission_bank(total+1:total+n_bank) = fission_bank(1:n_bank)
+       total = total + n_bank
+!$omp end ordered
+    end do
+!$omp end do
+
+    ! Make sure all threads have made it to this point
+!$omp barrier
+
+    ! Now copy the shared fission bank sites back to the master thread's copy.
+    if (thread_id == 0) then
+       n_bank = total
+       fission_bank(1:n_bank) = master_fission_bank(1:n_bank)
+    else
+       n_bank = 0
+    end if
+
+!$omp end parallel
+
+  end subroutine join_bank_from_threads
+#endif
 
 end module eigenvalue

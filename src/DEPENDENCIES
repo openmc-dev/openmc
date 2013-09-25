@@ -167,7 +167,6 @@ global.o: geometry_header.o
 global.o: hdf5_interface.o
 global.o: material_header.o
 global.o: mesh_header.o
-global.o: particle_header.o
 global.o: plot_header.o
 global.o: set_header.o
 global.o: source_header.o
@@ -198,6 +197,7 @@ initialize.o: global.o
 initialize.o: hdf5_interface.o
 initialize.o: hdf5_summary.o
 initialize.o: input_xml.o
+initialize.o: omp_lib.o
 initialize.o: output.o
 initialize.o: output_interface.o
 initialize.o: random_lcg.o
@@ -278,21 +278,20 @@ particle_restart.o: bank_header.o
 particle_restart.o: constants.o
 particle_restart.o: geometry_header.o
 particle_restart.o: global.o
-particle_restart.o: hdf5_interface.o
 particle_restart.o: output.o
+particle_restart.o: output_interface.o
 particle_restart.o: particle_header.o
 particle_restart.o: random_lcg.o
 particle_restart.o: tracking.o
 
 particle_restart_write.o: bank_header.o
 particle_restart_write.o: global.o
-particle_restart_write.o: hdf5_interface.o
+particle_restart_write.o: output_interface.o
 particle_restart_write.o: particle_header.o
 particle_restart_write.o: string.o
 
 physics.o: ace_header.o
 physics.o: constants.o
-physics.o: cross_section.o
 physics.o: endf.o
 physics.o: error.o
 physics.o: fission.o
@@ -381,9 +380,11 @@ tracking.o: global.o
 tracking.o: output.o
 tracking.o: particle_header.o
 tracking.o: physics.o
+tracking.o: random_lcg.o
 tracking.o: string.o
 tracking.o: tally.o
 
 xml_interface.o: constants.o
 xml_interface.o: error.o
 xml_interface.o: global.o
+

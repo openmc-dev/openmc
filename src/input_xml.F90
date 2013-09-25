@@ -225,6 +225,23 @@ contains
       call get_node_value(node_verb, "value", verbosity)
     end if
 
+    ! Number of OpenMP threads
+    if (threads_ /= NONE) then
+#ifdef OPENMP
+      if (n_threads == NONE) then
+        n_threads = threads_
+        if (n_threads < 1) then
+          message = "Invalid number of threads: " // to_str(n_threads)
+          call fatal_error()
+        end if
+        call omp_set_num_threads(n_threads)
+      end if
+#else
+      message = "Ignoring number of threads."
+      call warning()
+#endif
+    end if
+
     ! ==========================================================================
     ! EXTERNAL SOURCE
 

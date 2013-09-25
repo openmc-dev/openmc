@@ -141,6 +141,10 @@ MPI
   Enables parallel runs using the Message Passing Interface. The MPI_DIR
   variable should be set to the base directory of the MPI implementation.
 
+OPENMP
+  Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
+  being used must support OpenMP.
+
 HDF5
   Enables HDF5 output in addition to normal screen and text file output. The
   HDF5_DIR variable should be set to the base directory of the HDF5
@@ -325,6 +329,20 @@ Alternatively, you could run from any directory:
 
 Note that in the latter case, any output files will be placed in the present
 working directory which may be different from ``/home/username/somemodel``.
+
+Command-Line Flags
+------------------
+
+OpenMC accepts the following command line flags:
+
+-g, --geometry-debug   Run in geometry debugging mode, where cell overlaps are
+                       checked for after each move of a particle
+-n, --particles N      Use *N* particles per generation or batch
+-p, --plot             Run in plotting mode
+-r, --restart file     Restart a previous run from a state point or a particle
+                       restart file
+-s, --threads N        Run with *N* OpenMP threads
+-v, --version          Show version information
 
 -----------------------------------------------------
 Configuring Input Validation with GNU Emacs nXML mode

@@ -14,6 +14,7 @@ DEBUG    = no
 PROFILE  = no
 OPTIMIZE = no
 MPI      = no
+OPENMP   = no
 HDF5     = no
 PETSC    = no
 
@@ -176,6 +177,25 @@ else
   endif
 endif
 
+# OpenMP for shared-memory parallelism
+
+ifeq ($(OPENMP),yes)
+  ifeq ($(COMPILER),intel)
+    F90FLAGS += -openmp -DOPENMP
+    LDFLAGS += -openmp
+  endif
+
+  ifeq ($(COMPILER),gnu)
+    F90FLAGS += -fopenmp -DOPENMP
+    LDFLAGS += -fopenmp
+  endif
+
+  ifeq ($(COMPILER),ibm)
+    F90FLAGS += -qsmp=omp -WF,-DOPENMP
+    LDFLAGS += -qsmp=omp
+  endif
+endif
+
 # PETSC for CMFD functionality
 
 ifeq ($(PETSC),yes)
@@ -222,7 +242,7 @@ endif
 
 all: xml $(program)
 xml:
-	cd xml; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)"
+	cd xml; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)" LDFLAGS="$(LDFLAGS)"
 $(program): $(objects)
 	$(F90) $(objects) $(xml_lib) $(LDFLAGS) -o $@
 install:

@@ -15,6 +15,8 @@ module random_lcg
   integer(8) :: prn_stride ! stride between particles
   real(8)    :: prn_norm   ! 2^(-M)
 
+!$omp threadprivate(prn_seed)
+
   public :: prn
   public :: initialize_prng
   public :: set_particle_seed

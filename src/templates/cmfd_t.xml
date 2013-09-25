@@ -32,5 +32,6 @@
   <variable name="display_"        tag="display"        type="word"          default="''" length="25"      />
   <variable name="spectral_"       tag="spectral"       type="double"        default="0.0"                 />
   <variable name="gs_tol_"         tag="gs_tol"         type="double"        default="1.e-10"              />
+  <variable name="shift_"          tag="shift"          type="double"        default="0.0"                 />
 
 </template>

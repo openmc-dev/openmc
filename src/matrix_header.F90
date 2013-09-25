@@ -33,6 +33,7 @@ module matrix_header
      procedure :: vector_multiply    => matrix_vector_multiply
      procedure :: search_indices     => matrix_search_indices
      procedure :: write              => matrix_write
+     procedure :: copy               => matrix_copy
   end type matrix
 
   integer :: petsc_err
@@ -409,5 +410,35 @@ contains
     close(unit_)
 
   end subroutine matrix_write
+
+!===============================================================================
+! MATRIX_COPY copies a matrix
+!===============================================================================
+
+  subroutine matrix_copy(self, mattocopy)
+
+    class(Matrix) :: self
+    type(Matrix)  :: mattocopy
+
+    ! Set n and nnz
+    self % n_count = mattocopy % n_count
+    self % nz_count = mattocopy % nz_count
+    self % n = mattocopy % n
+    self % nnz = mattocopy % nnz
+
+    ! Allocate vectors
+    if (.not.allocated(self % row)) allocate(self % row(self % n + 1))
+    if (.not.allocated(self % col)) allocate(self % col(self % nnz))
+    if (.not.allocated(self % val)) allocate(self % val(self % nnz))
+
+    ! Set PETSc active to false
+    self % petsc_active = .false.
+
+    ! Copy over data
+    self % row = mattocopy % row
+    self % col = mattocopy % col
+    self % val = mattocopy % val
+
+  end subroutine matrix_copy
 
 end module matrix_header

@@ -226,10 +226,10 @@ contains
     end if
 
     ! Number of OpenMP threads
-    if (threads_ /= NONE) then
+    if (check_for_node(doc, "threads")) then
 #ifdef OPENMP
       if (n_threads == NONE) then
-        n_threads = threads_
+        call get_node_value(doc, "threads", n_threads)
         if (n_threads < 1) then
           message = "Invalid number of threads: " // to_str(n_threads)
           call fatal_error()

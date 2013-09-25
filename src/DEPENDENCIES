@@ -197,7 +197,6 @@ initialize.o: global.o
 initialize.o: hdf5_interface.o
 initialize.o: hdf5_summary.o
 initialize.o: input_xml.o
-initialize.o: omp_lib.o
 initialize.o: output.o
 initialize.o: output_interface.o
 initialize.o: random_lcg.o

@@ -17,12 +17,12 @@ module cmfd_solver
   real(8) :: k_s                  ! shift of eigenvalue
   real(8) :: k_ln                 ! new shifted eigenvalue
   real(8) :: k_lo                 ! old shifted eigenvalue
-  real(8) :: ktol = 1.e-8_8       ! tolerance on keff
-  real(8) :: stol = 1.e-8_8       ! tolerance on source
   real(8) :: norm_n               ! current norm of source vector
   real(8) :: norm_o               ! old norm of source vector
   real(8) :: kerr                 ! error in keff
   real(8) :: serr                 ! error in source
+  real(8) :: ktol                 ! tolerance on keff
+  real(8) :: stol                 ! tolerance on source
   logical :: adjoint_calc         ! run an adjoint calculation
   type(Matrix) :: loss            ! cmfd loss matrix
   type(Matrix) :: prod            ! cmfd prod matrix
@@ -35,12 +35,13 @@ module cmfd_solver
   ! CMFD linear solver interface
   procedure(linsolve), pointer :: cmfd_linsolver => null()
   abstract interface
-    subroutine linsolve(A, b, x, i)
+    subroutine linsolve(A, b, x, tol, i)
       import :: Matrix
       import :: Vector
       type(Matrix) :: A
       type(Vector) :: b
       type(Vector) :: x
+      real(8)      :: tol
       integer      :: i
     end subroutine linsolve 
   end interface
@@ -51,19 +52,13 @@ contains
 ! CMFD_SOLVER_EXECUTE sets up and runs power iteration solver for CMFD
 !===============================================================================
 
-  subroutine cmfd_solver_execute(k_tol, s_tol, adjoint)
+  subroutine cmfd_solver_execute(adjoint)
 
     use global,  only: cmfd_adjoint_type, time_cmfdbuild, time_cmfdsolve
 
-    real(8), optional :: k_tol    ! tolerance on keff
-    real(8), optional :: s_tol    ! tolerance on source
     logical, optional :: adjoint  ! adjoint calc
 
     logical :: physical_adjoint = .false.
-
-    ! Set tolerances if present
-    if (present(k_tol)) ktol = k_tol
-    if (present(s_tol)) stol = s_tol
 
     ! Check for adjoint execution
     adjoint_calc = .false.
@@ -107,7 +102,8 @@ contains
 
     use constants, only: ONE, ZERO
     use error,     only: fatal_error
-    use global,    only: cmfd, cmfd_write_matrices, message, cmfd_shift, keff
+    use global,    only: cmfd, cmfd_write_matrices, message, cmfd_shift, keff, &
+                         cmfd_ktol, cmfd_stol
 
     logical :: adjoint
 
@@ -167,8 +163,11 @@ contains
       case default
         message = 'Must use PETSc for more than 2 groups'
         call fatal_error()
-    end select
-    
+    end select    
+
+    ! Set tolerances
+    ktol = cmfd_ktol
+    stol = cmfd_stol
 
   end subroutine init_data
 
@@ -200,14 +199,23 @@ contains
   subroutine execute_power_iter()
 
     use constants,  only: ONE
+    use global,     only: cmfd_atoli, cmfd_rtoli
 
     integer :: i ! iteration counter
     integer :: innerits ! # of inner iterations
     integer :: totalits ! total number of inners
+    real(8) :: atoli ! absolute minimum tolerance
+    real(8) :: rtoli ! relative tolerance based on source conv
+    real(8) :: toli ! the current tolerance of inners
     type(Matrix) :: Ms
 
     ! Reset convergence flag
     iconv = .false.
+
+    ! Set up tolerances
+    atoli = cmfd_atoli 
+    rtoli = cmfd_rtoli
+    toli = rtoli*100._8
 
     ! Perform shift
     call wielandt_shift(Ms)
@@ -223,7 +231,7 @@ contains
       s_o % val = s_o % val / k_lo
 
       ! Compute new flux vector
-      call cmfd_linsolver(Ms, s_o, phi_n, innerits)
+      call cmfd_linsolver(Ms, s_o, phi_n, toli, innerits)
 
       ! Compute new source vector
       call prod % vector_multiply(phi_n, s_n)
@@ -249,9 +257,12 @@ contains
       k_o = k_n
       k_lo = k_ln
       norm_o = norm_n
-read*
+
+      ! Get new tolerance for inners
+      toli = max(atoli, rtoli*serr)
+
     end do
-print *, 'TOTAL INNER:', totalits
+
       ! Destroy shifted matrix
       call Ms % destroy()
 
@@ -331,14 +342,15 @@ print *, 'TOTAL INNER:', totalits
 ! CMFD_LINSOLVER_1g solves the CMFD linear system
 !===============================================================================
 
-  subroutine cmfd_linsolver_1g(A, b, x, its)
+  subroutine cmfd_linsolver_1g(A, b, x, tol, its)
 
     use constants,  only: ONE, ZERO
-    use global,     only: cmfd, cmfd_spectral, cmfd_gs_tol
+    use global,     only: cmfd, cmfd_spectral
 
     type(Matrix) :: A ! coefficient matrix
     type(Vector) :: b ! right hand side vector
     type(Vector) :: x ! unknown vector
+    real(8)      :: tol ! tolerance on final error
     integer      :: its ! number of inner iterations
 
     integer :: g ! group index
@@ -359,12 +371,10 @@ print *, 'TOTAL INNER:', totalits
     real(8) :: tmp1 ! temporary sum g1
     real(8) :: x1 ! new g1 value of x
     real(8) :: err ! error in convergence of solution
-    real(8) :: tol ! tolerance on final error
     real(8) :: w ! overrelaxation parameter
     type(Vector) :: tmpx ! temporary solution vector
 
-    ! Set tolerance and overrelaxation parameter
-    tol = cmfd_gs_tol 
+    ! Set overrelaxation parameter
     w = ONE
 
     ! Dimensions
@@ -433,7 +443,7 @@ print *, 'TOTAL INNER:', totalits
 ! CMFD_LINSOLVER_2G solves the CMFD linear system
 !===============================================================================
 
-  subroutine cmfd_linsolver_2g(A, b, x, its)
+  subroutine cmfd_linsolver_2g(A, b, x, tol, its)
 
     use constants,  only: ONE, ZERO
     use global,     only: cmfd, cmfd_spectral
@@ -441,6 +451,7 @@ print *, 'TOTAL INNER:', totalits
     type(Matrix) :: A ! coefficient matrix
     type(Vector) :: b ! right hand side vector
     type(Vector) :: x ! unknown vector
+    real(8)      :: tol ! tolerance on final error
     integer      :: its ! number of inner iterations
 
     integer :: g ! group index
@@ -473,12 +484,10 @@ print *, 'TOTAL INNER:', totalits
     real(8) :: x1 ! new g1 value of x
     real(8) :: x2 ! new g2 value of x
     real(8) :: err ! error in convergence of solution
-    real(8) :: tol ! tolerance on final error
     real(8) :: w ! overrelaxation parameter
     type(Vector) :: tmpx ! temporary solution vector
 
     ! Set tolerance and overrelaxation parameter
-    tol = 1.e-10_8
     w = ONE
 
     ! Dimensions

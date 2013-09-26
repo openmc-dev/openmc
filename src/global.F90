@@ -97,6 +97,7 @@ module global
 
   type(StructuredMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
+  integer, allocatable :: matching_bins(:)
 
   ! Pointers for different tallies
   type(TallyObject), pointer :: user_tallies(:) => null()
@@ -111,6 +112,8 @@ module global
   type(SetInt) :: active_tracklength_tallies
   type(SetInt) :: active_current_tallies
   type(SetInt) :: active_tallies
+!$omp threadprivate(active_analog_tallies, active_tracklength_tallies, &
+!$omp&              active_current_tallies, active_tallies)
 
   ! Global tallies
   !   1) collision estimate of k-eff
@@ -159,6 +162,9 @@ module global
   ! Source and fission bank
   type(Bank), allocatable, target :: source_bank(:)
   type(Bank), allocatable, target :: fission_bank(:)
+#ifdef OPENMP
+  type(Bank), allocatable, target :: master_fission_bank(:)
+#endif
   integer(8) :: n_bank       ! # of sites in fission bank
   integer(8) :: work         ! number of particles per processor
   integer(8), allocatable :: work_index(:) ! starting index in source bank for each process
@@ -202,6 +208,11 @@ module global
   integer :: mpi_err               ! MPI error code
   integer :: MPI_BANK              ! MPI datatype for fission bank
   integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
+
+#ifdef OPENMP
+  integer :: n_threads = NONE      ! number of OpenMP threads
+  integer :: thread_id             ! ID of a given thread
+#endif
 
   ! No reduction at end of batch
   logical :: reduce_tallies = .true.
@@ -373,6 +384,9 @@ module global
   logical :: output_xs      = .false.
   logical :: output_tallies = .true.
 
+!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, message, &
+!$omp&              trace, thread_id, current_work, matching_bins)
+
 contains
 
 !===============================================================================
@@ -430,13 +444,19 @@ contains
       ! Now deallocate the tally array
       deallocate(tallies)
     end if
+    if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
 
     ! Deallocate energy grid
     if (allocated(e_grid)) deallocate(e_grid)
 
     ! Deallocate fission and source bank and entropy
+!$omp parallel
     if (allocated(fission_bank)) deallocate(fission_bank)
+!$omp end parallel
+#ifdef OPENMP
+    if (allocated(master_fission_bank)) deallocate(master_fission_bank)
+#endif
     if (allocated(source_bank)) deallocate(source_bank)
     if (allocated(entropy_p)) deallocate(entropy_p)
 

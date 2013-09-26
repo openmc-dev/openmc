@@ -21,6 +21,8 @@ module random_lcg
   real(8)    :: prn_norm   ! 2^(-M)
   integer    :: stream     ! current RNG stream
 
+!$omp threadprivate(prn_seed)
+
   public :: prn
   public :: initialize_prng
   public :: set_particle_seed

@@ -51,7 +51,9 @@ contains
     ! allocate arrays for ACE table storage and cross section cache
     allocate(nuclides(n_nuclides_total))
     allocate(sab_tables(n_sab_tables))
+!$omp parallel
     allocate(micro_xs(n_nuclides_total))
+!$omp end parallel
 
     ! ==========================================================================
     ! READ ALL ACE CROSS SECTION TABLES

@@ -2039,10 +2039,6 @@ contains
             end if
           case ('nu-fission')
             t % score_bins(j) = SCORE_NU_FISSION
-            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
-            end if
           case ('kappa-fission')
             t % score_bins(j) = SCORE_KAPPA_FISSION
           case ('current')

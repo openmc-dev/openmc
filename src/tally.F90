@@ -1,6 +1,6 @@
 module tally
 
-  use ace_header,       only: Reaction
+  use ace_header,       only: Reaction, Nuclide
   use constants
   use error,            only: fatal_error
   use global
@@ -11,7 +11,8 @@ module tally
   use mesh_header,      only: StructuredMesh
   use output,           only: header
   use particle_header,  only: LocalCoord, Particle
-  use physics,          only: sample_nuclide, scatter
+  use physics,          only: sample_nuclide, scatter, sample_fission, &
+                              sample_fission_energy
   use random_lcg,       only: prn_set_stream, prn, STREAM_TRACKING, &
                               STREAM_TALLIES
   use search,           only: binary_search
@@ -456,6 +457,7 @@ contains
     integer :: score_bin            ! scoring type, e.g. SCORE_FLUX
     integer :: score_index          ! scoring bin index
     integer :: i_nuclide_rxn        ! sampled nuclide for fake reaction
+    integer :: i_reaction           ! reaction index
     real(8) :: f                    ! interpolation factor
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: score                ! actual score (e.g., flux*xs)
@@ -464,6 +466,7 @@ contains
     type(TallyObject), pointer, save :: t => null()
     type(Material),    pointer, save :: mat => null()
     type(Reaction),    pointer, save :: rxn => null()
+    type(Nuclide),     pointer, save :: nuc => null()
     type(Particle) :: p_fake
 !$omp threadprivate(t, mat, rxn)
 
@@ -685,6 +688,41 @@ contains
               case (SCORE_NU_FISSION)
                 ! Nu-fission cross section is pre-calculated
                 score = material_xs % nu_fission * flux
+
+                ! Check for energy out filter
+                if (t % find_filter(FILTER_ENERGYOUT) > 0 .and. &
+                    score > ZERO) then ! checks if nuclide is fissionable
+                 
+                  ! Set up fake particle
+                  call p_fake % initialize()
+                  p_fake % wgt = ONE
+                  p_fake % E = p % E
+                  p_fake % last_E = p % E
+                  p_fake % coord0 % uvw = p % coord0 % uvw
+                  p_fake % coord0 % xyz = p % coord0 % xyz
+                  p_fake % material = p % material
+
+                  ! Sample nuclide until fissionable one is found
+                  FIND_FISSION: do
+                    i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
+                    nuc => nuclides(i_nuclide_rxn)
+                    if (nuc % fissionable) exit FIND_FISSION
+                  end do FIND_FISSION
+
+                  ! Sample a fake fission
+                  call sample_fission(i_nuclide_rxn, i_reaction)
+
+                  ! Set up pointers and get fission energy
+                  rxn => nuc % reactions(i_reaction)
+                  p_fake % E = sample_fission_energy(nuc, rxn, p_fake % last_E)
+
+                  ! Score with energy out filter
+                  call score_tl_eout(p_fake, t, score, score_index)
+
+                  ! Clear particle
+                  call p_fake % clear()
+                  cycle SCORE_LOOP
+                end if
 
               case (SCORE_KAPPA_FISSION)
                 score = material_xs % kappa_fission * flux
@@ -1078,6 +1116,7 @@ contains
     integer :: score_index          ! scoring bin index
     integer :: i_filter_mesh        ! index of mesh filter in filters array
     integer :: i_nuclide_rxn        ! sampled nuclide for fake reaction
+    integer :: i_reaction           ! sampled reaction 
     real(8) :: atom_density         ! density of individual nuclide in atom/b-cm
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: score                ! actual score (e.g., flux*xs)
@@ -1094,6 +1133,8 @@ contains
     type(StructuredMesh), pointer, save :: m => null()
     type(Material),       pointer, save :: mat => null()
     type(LocalCoord),     pointer, save :: coord => null()
+    type(Reaction),       pointer, save :: rxn => null()
+    type(Nuclide),        pointer, save :: nuc => null()
     type(Particle) :: p_fake
 !$omp threadprivate(t, m, mat, coord)
 
@@ -1168,6 +1209,20 @@ contains
              p % surface, i_tally)
 
       case (FILTER_ENERGYIN)
+        ! determine incoming energy bin
+        k = t % filters(i) % n_bins
+
+        ! check if energy of the particle is within energy bins
+        if (p % E < t % filters(i) % real_bins(1) .or. &
+             p % E > t % filters(i) % real_bins(k + 1)) then
+          matching_bins(i) = NO_BIN_FOUND
+        else
+          ! search to find incoming energy bin
+          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+               k + 1, p % E)
+        end if
+
+      case (FILTER_ENERGYOUT)
         ! determine incoming energy bin
         k = t % filters(i) % n_bins
 
@@ -1374,6 +1429,41 @@ contains
                   score = material_xs % fission * flux
                 case (SCORE_NU_FISSION)
                   score = material_xs % nu_fission * flux
+
+                  ! Check for energy out filter
+                  if (t % find_filter(FILTER_ENERGYOUT) > 0 .and. &
+                      score > ZERO) then
+                 
+                    ! Set up fake particle
+                    call p_fake % initialize()
+                    p_fake % wgt = ONE
+                    p_fake % E = p % E
+                    p_fake % last_E = p % E
+                    p_fake % coord0 % uvw = p % coord0 % uvw
+                    p_fake % coord0 % xyz = p % coord0 % xyz
+                    p_fake % material = p % material
+
+                    ! Sample nuclide until fissionable one is found
+                    FIND_FISSION: do
+                      i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
+                      nuc => nuclides(i_nuclide_rxn)
+                      if (nuc % fissionable) exit FIND_FISSION
+                    end do FIND_FISSION
+
+                    ! Sample a fake fission
+                    call sample_fission(i_nuclide_rxn, i_reaction)
+
+                    ! Set up pointers and get fission energy
+                    rxn => nuc % reactions(i_reaction)
+                    p_fake % E = sample_fission_energy(nuc, rxn, p_fake % last_E)
+
+                    ! Score with energy out filter
+                    call score_tl_eout(p_fake, t, score, score_index)
+
+                    ! Clear particle
+                    call p_fake % clear()
+                    cycle SCORE_LOOP
+                  end if
                 case (SCORE_KAPPA_FISSION)
                   score = material_xs % kappa_fission * flux
                 case (SCORE_EVENTS)

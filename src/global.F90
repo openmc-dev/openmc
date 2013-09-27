@@ -357,7 +357,7 @@ module global
 
   ! Estimate of spectral radius of CMFD matrices and tolerances
   real(8) :: cmfd_spectral = ZERO
-  real(8) :: cmfd_shift = INFINITY
+  real(8) :: cmfd_shift = 1.e6
   real(8) :: cmfd_ktol = 1.e-8_8
   real(8) :: cmfd_stol = 1.e-8_8
   real(8) :: cmfd_atoli = 1.e-10_8

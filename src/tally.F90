@@ -677,6 +677,34 @@ contains
                 ! Clean up particle
                 call p_fake % clear()
 
+              case (SCORE_SCATTER_N)
+                ! Get scattering cross section
+                score = (material_xs % total - material_xs % absorption) * flux
+
+                ! Set up fake particle
+                call p_fake % initialize()
+                p_fake % wgt = ONE
+                p_fake % E = p % E
+                p_fake % last_E = p % E
+                p_fake % coord0 % uvw = p % coord0 % uvw
+                p_fake % coord0 % xyz = p % coord0 % xyz
+                p_fake % material = p % material
+
+                ! Sample nuclide
+                i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
+
+                ! Perform sampling of a scattering reaction
+                call scatter(p_fake, i_nuclide_rxn)
+
+                if (t % scatt_order(j) == 1) then
+                  score = score * p_fake % mu ! avoid function call overhead
+                else
+                  score = score * calc_pn(t % scatt_order(j), p_fake % mu)
+                endif
+
+                ! Clean up particle
+                call p_fake % clear()
+
               case (SCORE_ABSORPTION)
                 ! Absorption cross section is pre-calculated
                 score = material_xs % absorption * flux
@@ -1419,6 +1447,34 @@ contains
                     call p_fake % clear()
                     cycle SCORE_LOOP
                   end if
+
+                  ! Clean up particle
+                  call p_fake % clear()
+
+                case (SCORE_SCATTER_N)
+                  ! Get scattering cross section
+                  score = (material_xs % total - material_xs % absorption) * flux
+
+                  ! Set up fake particle
+                  call p_fake % initialize()
+                  p_fake % wgt = ONE
+                  p_fake % E = p % E
+                  p_fake % last_E = p % E
+                  p_fake % coord0 % uvw = p % coord0 % uvw
+                  p_fake % coord0 % xyz = p % coord0 % xyz
+                  p_fake % material = p % material
+
+                  ! Sample nuclide
+                  i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
+
+                  ! Perform sampling of a scattering reaction
+                  call scatter(p_fake, i_nuclide_rxn)
+
+                  if (t % scatt_order(j) == 1) then
+                    score = score * p_fake % mu ! avoid function call overhead
+                  else
+                    score = score * calc_pn(t % scatt_order(j), p_fake % mu)
+                  endif
 
                   ! Clean up particle
                   call p_fake % clear()

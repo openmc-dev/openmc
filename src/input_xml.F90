@@ -1988,8 +1988,6 @@ contains
               t % score_bins(j) = SCORE_SCATTER
             else
               t % score_bins(j) = SCORE_SCATTER_N
-              ! Set tally estimator to analog
-              t % estimator = ESTIMATOR_ANALOG
             end if
             t % scatt_order(j) = n_order
             

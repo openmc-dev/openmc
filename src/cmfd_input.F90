@@ -69,6 +69,7 @@ contains
     use, intrinsic :: ISO_FORTRAN_ENV
 
     integer :: ng                       ! number of energy groups
+    integer :: estimator                ! tally estimator
     logical :: file_exists              ! does cmfd.xml exist?
     character(MAX_LINE_LEN) :: filename ! name of input file
 
@@ -207,8 +208,22 @@ contains
     cmfd_atoli = atoli_
     cmfd_rtoli = rtoli_
 
+    ! Read in tally estimator
+    estimator = ESTIMATOR_TRACKLENGTH
+    if (len_trim(estimator_) > 0) then
+      select case(estimator_)
+      case ('analog')
+        estimator = ESTIMATOR_ANALOG
+      case ('tracklength', 'track-length', 'pathlength', 'path-length')
+        estimator = ESTIMATOR_TRACKLENGTH
+      case default
+        message = "Invalid estimator for CMFD: " // trim(estimator_)
+        call fatal_error()
+       end select
+    end if
+
     ! Create tally objects
-    call create_cmfd_tally()
+    call create_cmfd_tally(estimator)
 
   end subroutine read_cmfd_xml
 
@@ -221,7 +236,7 @@ contains
 !   3: Surface current
 !===============================================================================
 
-  subroutine create_cmfd_tally()
+  subroutine create_cmfd_tally(estimator)
 
     use error,            only: fatal_error, warning
     use mesh_header,      only: StructuredMesh
@@ -230,6 +245,8 @@ contains
     use tally_header,     only: TallyObject, TallyFilter
     use tally_initialize, only: add_tallies
     use xml_data_cmfd_t
+
+    integer, intent(in) :: estimator ! tally estimator
 
     integer :: i           ! loop counter
     integer :: n           ! size of arrays in mesh specification
@@ -396,8 +413,8 @@ contains
         ! Set label
         t % label = "CMFD flux, total, scatter-1"
 
-        ! Set tally estimator to analog
-        t % estimator = ESTIMATOR_ANALOG
+        ! Set tally estimator
+        t % estimator = estimator 
 
         ! Set tally type to volume
         t % type = TALLY_VOLUME
@@ -428,7 +445,7 @@ contains
         t % label = "CMFD neutron production"
 
         ! Set tally estimator to analog
-        t % estimator = ESTIMATOR_ANALOG
+        t % estimator = estimator
 
         ! Set tally type to volume
         t % type = TALLY_VOLUME

@@ -36,5 +36,6 @@
   <variable name="stol_"           tag="stol"           type="double"        default="1.e-8"               />
   <variable name="atoli_"          tag="atoli"          type="double"        default="1.e-10"              />
   <variable name="rtoli_"          tag="rtoli"          type="double"        default="1.e-5"               />
+  <variable name="estimator_"      tag="estimator"      type="word"          default="''" length="12"      />
 
 </template>

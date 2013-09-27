@@ -280,7 +280,8 @@ contains
     jcol = 1
     ROWS: do irow = 1, loss % n
       COLS: do icol = loss % get_row(irow), loss % get_row(irow + 1) - 1
-        if (loss % get_col(icol) == prod % get_col(jcol)) then
+        if (loss % get_col(icol) == prod % get_col(jcol) .and. &
+            jcol < prod % get_row(irow + 1)) then
           loss % val(icol) = loss % val(icol) - ONE/k_s*prod % val(jcol)
           jcol = jcol + 1
         end if

@@ -1294,6 +1294,9 @@ contains
               ! determine what type of score bin
               score_bin = t % score_bins(j)
 
+              ! Determine scoring bin index
+              score_index = (b - 1)*t % n_score_bins + j
+
               if (i_nuclide > 0) then
                 ! Determine macroscopic nuclide cross section 
                 select case(score_bin)
@@ -1381,9 +1384,6 @@ contains
                   call fatal_error()
                 end select
               end if
-
-              ! Determine scoring bin index
-              score_index = (b - 1)*t % n_score_bins + j
 
               ! Add score to tally
 !$omp critical

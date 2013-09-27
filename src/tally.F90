@@ -11,6 +11,9 @@ module tally
   use mesh_header,      only: StructuredMesh
   use output,           only: header
   use particle_header,  only: LocalCoord, Particle
+  use physics,          only: sample_nuclide, scatter
+  use random_lcg,       only: prn_set_stream, prn, STREAM_TRACKING, &
+                              STREAM_TALLIES
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
@@ -452,6 +455,7 @@ contains
     integer :: i_energy             ! index in nuclide energy grid
     integer :: score_bin            ! scoring type, e.g. SCORE_FLUX
     integer :: score_index          ! scoring bin index
+    integer :: i_nuclide_rxn        ! sampled nuclide for fake reaction
     real(8) :: f                    ! interpolation factor
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: score                ! actual score (e.g., flux*xs)
@@ -460,7 +464,11 @@ contains
     type(TallyObject), pointer, save :: t => null()
     type(Material),    pointer, save :: mat => null()
     type(Reaction),    pointer, save :: rxn => null()
+    type(Particle) :: p_fake
 !$omp threadprivate(t, mat, rxn)
+
+    ! Switch rng stream to tallies
+    call prn_set_stream(STREAM_TALLIES)
 
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
@@ -529,6 +537,9 @@ contains
           SCORE_LOOP: do j = 1, t % n_score_bins
             ! determine what type of score bin
             score_bin = t % score_bins(j)
+
+            ! Determine scoring bin index
+            score_index = (k - 1)*t % n_score_bins + j
 
             if (i_nuclide > 0) then
               ! ================================================================
@@ -631,6 +642,38 @@ contains
                 ! Scattering cross section is pre-calculated
                 score = (material_xs % total - material_xs % absorption) * flux
 
+              case (SCORE_NU_SCATTER)
+                ! Get scattering cross section
+                score = (material_xs % total - material_xs % absorption) * flux
+
+                ! Set up fake particle
+                call p_fake % initialize()
+                p_fake % wgt = ONE
+                p_fake % E = p % E
+                p_fake % last_E = p % E
+                p_fake % coord0 % uvw = p % coord0 % uvw
+                p_fake % coord0 % xyz = p % coord0 % xyz
+                p_fake % material = p % material
+
+                ! Sample nuclide
+                i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
+
+                ! Perform sampling of a scattering reaction
+                call scatter(p_fake, i_nuclide_rxn)
+
+                ! Adjust score
+                score = p_fake % wgt * score
+
+                ! Check for energy out filter
+                if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+                  call score_tl_eout(p_fake, t, score, score_index)
+                  call p_fake % clear()
+                  cycle SCORE_LOOP
+                end if
+
+                ! Clean up particle
+                call p_fake % clear()
+
               case (SCORE_ABSORPTION)
                 ! Absorption cross section is pre-calculated
                 score = material_xs % absorption * flux
@@ -704,7 +747,7 @@ contains
             end if
 
             ! Determine scoring bin index
-            score_index = (k - 1)*t % n_score_bins + j
+!           score_index = (k - 1)*t % n_score_bins + j
 
             ! Add score to tally
 !$omp critical
@@ -729,7 +772,55 @@ contains
     ! Reset tally map positioning
     position = 0
 
+    ! Change back rng stream to transport
+    call prn_set_stream(STREAM_TRACKING)
+
   end subroutine score_tracklength_tally
+
+!===============================================================================
+! SCORE_TL_EOUT
+!===============================================================================
+
+  subroutine score_tl_eout(p, t, score, i_score)
+
+    type(Particle), intent(in) :: p
+    type(TallyObject), pointer :: t
+    real(8), intent(in)        :: score 
+    integer, intent(in)        :: i_score ! index for score
+
+    integer :: i             ! index of outgoing energy filter
+    integer :: n             ! number of energies on filter
+    integer :: k             ! loop index for bank sites
+    integer :: bin_energyout ! original outgoing energy bin
+    integer :: i_filter      ! index for matching filter bin combination
+
+    ! Save original outgoing energy bin and score index
+    i = t % find_filter(FILTER_ENERGYOUT)
+    bin_energyout = matching_bins(i)
+
+    ! Get number of energies on filter
+    n = size(t % filters(i) % real_bins)
+
+    ! Check if outgoing energy is within specified range on filter
+    if (p % E < t % filters(i) % real_bins(1) .or. &
+        p % E > t % filters(i) % real_bins(n)) return 
+
+    ! Change outgoing energy bin
+    matching_bins(i) = binary_search(t % filters(i) % real_bins, n, p % E)
+
+    ! Determine scoring index
+    i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+
+    ! Add score to tally
+!$omp critical
+    t % results(i_score, i_filter) % value = &
+         t % results(i_score, i_filter) % value + score
+!$omp end critical
+
+    ! reset outgoing energy bin and score index
+    matching_bins(i) = bin_energyout
+
+  end subroutine score_tl_eout
 
 !===============================================================================
 ! SCORE_ALL_NUCLIDES tallies individual nuclide reaction rates specifically when
@@ -986,6 +1077,7 @@ contains
     integer :: i_nuclide            ! index in nuclides array
     integer :: score_index          ! scoring bin index
     integer :: i_filter_mesh        ! index of mesh filter in filters array
+    integer :: i_nuclide_rxn        ! sampled nuclide for fake reaction
     real(8) :: atom_density         ! density of individual nuclide in atom/b-cm
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: score                ! actual score (e.g., flux*xs)
@@ -1002,6 +1094,7 @@ contains
     type(StructuredMesh), pointer, save :: m => null()
     type(Material),       pointer, save :: mat => null()
     type(LocalCoord),     pointer, save :: coord => null()
+    type(Particle) :: p_fake
 !$omp threadprivate(t, m, mat, coord)
 
     t => tallies(i_tally)
@@ -1241,6 +1334,37 @@ contains
                   score = material_xs % total * flux
                 case (SCORE_SCATTER)
                   score = (material_xs % total - material_xs % absorption) * flux
+                case (SCORE_NU_SCATTER)
+                  score = (material_xs % total - material_xs % absorption) * flux
+
+                  ! Set up fake particle
+                  call p_fake % initialize()
+                  p_fake % wgt = ONE
+                  p_fake % E = p % E
+                  p_fake % last_E = p % E
+                  p_fake % coord0 % uvw = (/ONE,ZERO,ZERO/)
+                  p_fake % coord0 % xyz = p % coord0 % xyz
+                  p_fake % material = p % material
+
+                  ! Sample nuclide
+                  i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
+
+                  ! Perform sampling of a scattering reaction
+                  call scatter(p_fake, i_nuclide_rxn)
+
+                  ! Adjust score
+                  score = p_fake % wgt * score
+
+                  ! Check for energy out filter
+                  if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+                    call score_tl_eout(p_fake, t, score, score_index)
+                    call p_fake % clear()
+                    cycle SCORE_LOOP
+                  end if
+
+                  ! Clean up particle
+                  call p_fake % clear()
+
                 case (SCORE_ABSORPTION)
                   score = material_xs % absorption * flux
                 case (SCORE_FISSION)

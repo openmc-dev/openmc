@@ -1764,7 +1764,7 @@ contains
             end do
 
             ! Set to analog estimator
-            t % estimator = ESTIMATOR_ANALOG
+!           t % estimator = ESTIMATOR_ANALOG
 
           case default
             ! Specified tally filter is invalid, raise error
@@ -1982,7 +1982,7 @@ contains
             t % score_bins(j) = SCORE_NU_SCATTER
 
             ! Set tally estimator to analog
-            t % estimator = ESTIMATOR_ANALOG
+!           t % estimator = ESTIMATOR_ANALOG
           case ('scatter-n')
             if (n_order == 0) then
               t % score_bins(j) = SCORE_SCATTER

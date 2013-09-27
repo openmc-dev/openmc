@@ -80,6 +80,7 @@ cmfd_slepc_solver.o: global.o
 cmfd_solver.o: cmfd_loss_operator.o
 cmfd_solver.o: cmfd_prod_operator.o
 cmfd_solver.o: constants.o
+cmfd_solver.o: error.o
 cmfd_solver.o: global.o
 cmfd_solver.o: matrix_header.o
 cmfd_solver.o: vector_header.o
@@ -370,6 +371,8 @@ tally.o: mesh.o
 tally.o: mesh_header.o
 tally.o: output.o
 tally.o: particle_header.o
+tally.o: physics.o
+tally.o: random_lcg.o
 tally.o: search.o
 tally.o: string.o
 tally.o: tally_header.o

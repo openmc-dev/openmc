@@ -659,7 +659,7 @@ contains
                 p_fake % material = p % material
 
                 ! Sample nuclide
-                i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
+                i_nuclide_rxn = sample_nuclide(p_fake, 'scatter')
 
                 ! Perform sampling of a scattering reaction
                 call scatter(p_fake, i_nuclide_rxn)
@@ -691,7 +691,7 @@ contains
                 p_fake % material = p % material
 
                 ! Sample nuclide
-                i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
+                i_nuclide_rxn = sample_nuclide(p_fake, 'scatter')
 
                 ! Perform sampling of a scattering reaction
                 call scatter(p_fake, i_nuclide_rxn)
@@ -731,16 +731,13 @@ contains
                   p_fake % material = p % material
 
                   ! Sample nuclide until fissionable one is found
-                  FIND_FISSION: do
-                    i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
-                    nuc => nuclides(i_nuclide_rxn)
-                    if (nuc % fissionable) exit FIND_FISSION
-                  end do FIND_FISSION
+                  i_nuclide_rxn = sample_nuclide(p_fake, 'fission')
 
                   ! Sample a fake fission
                   call sample_fission(i_nuclide_rxn, i_reaction)
 
                   ! Set up pointers and get fission energy
+                  nuc => nuclides(i_nuclide_rxn)
                   rxn => nuc % reactions(i_reaction)
                   p_fake % E = sample_fission_energy(nuc, rxn, p_fake % last_E)
 
@@ -1433,7 +1430,7 @@ contains
                   p_fake % material = p % material
 
                   ! Sample nuclide
-                  i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
+                  i_nuclide_rxn = sample_nuclide(p_fake, 'scatter')
 
                   ! Perform sampling of a scattering reaction
                   call scatter(p_fake, i_nuclide_rxn)
@@ -1465,7 +1462,7 @@ contains
                   p_fake % material = p % material
 
                   ! Sample nuclide
-                  i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
+                  i_nuclide_rxn = sample_nuclide(p_fake, 'scatter')
 
                   ! Perform sampling of a scattering reaction
                   call scatter(p_fake, i_nuclide_rxn)
@@ -1500,16 +1497,13 @@ contains
                     p_fake % material = p % material
 
                     ! Sample nuclide until fissionable one is found
-                    FIND_FISSION: do
-                      i_nuclide_rxn = sample_nuclide(p_fake, 'total  ')
-                      nuc => nuclides(i_nuclide_rxn)
-                      if (nuc % fissionable) exit FIND_FISSION
-                    end do FIND_FISSION
+                    i_nuclide_rxn = sample_nuclide(p_fake, 'fission')
 
                     ! Sample a fake fission
                     call sample_fission(i_nuclide_rxn, i_reaction)
 
                     ! Set up pointers and get fission energy
+                    nuc => nuclides(i_nuclide_rxn)
                     rxn => nuc % reactions(i_reaction)
                     p_fake % E = sample_fission_energy(nuc, rxn, p_fake % last_E)
 

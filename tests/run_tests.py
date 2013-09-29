@@ -112,6 +112,8 @@ if len(sys.argv) > 1:
             else:
                 for j in tests:
                     if j.rfind(suffix) != -1:
+                        if suffix == 'omp' and j == 'compile':
+                            continue
                         tests__.append(j)
         else:
             tests__.append(i)  # append specific test (e.g., mpi-debug)

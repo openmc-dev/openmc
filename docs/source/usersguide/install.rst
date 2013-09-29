@@ -71,12 +71,14 @@ Prerequisites
       To compile with support for HDF5_ output (highly recommended), you will
       need to have HDF5 installed on your computer. The installed version will
       need to have been compiled with the same compiler you intend to compile
-      OpenMC with. HDF5_ must be built with parallel I/O features. An example
-      of configuring HDF5_ is listed below::
+      OpenMC with. HDF5_ must be built with parallel I/O features if you intend
+      to use HDF5_ with MPI. An example of configuring HDF5_ is listed below::
 
            FC=/opt/mpich/3.0.4-gnu/bin/mpif90 CC=/opt/mpich/3.0.4-gnu/bin/mpicc \
            ./configure --prefix=/opt/hdf5/1.8.11-gnu --enable-fortran \
                        --enable-fortran2003 --enable-parallel
+
+      You may omit '--enable-parallel' if you want to compile HDF5_ in serial.
 
     * PETSc_ for CMFD acceleration
 

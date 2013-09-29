@@ -228,7 +228,7 @@ contains
     integer :: ng          ! number of energy groups (default 1)
     integer :: n_filters   ! number of filters
     integer :: i_filter_mesh ! index for mesh filter
-    character(MAX_LINE_LEN) :: filename
+    character(MAX_LINE_LEN) :: filename ! name of cmfd file
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(TallyFilter) :: filters(N_FILTER_TYPES) ! temporary filters

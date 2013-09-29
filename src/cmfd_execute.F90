@@ -254,7 +254,7 @@ contains
   end subroutine calc_fission_source
 
 !===============================================================================
-! CMFD_REWEIGHT
+! CMFD_REWEIGHT performs weighting of particles in the source bank
 !===============================================================================
 
   subroutine cmfd_reweight(new_weights)
@@ -271,17 +271,18 @@ contains
     use mpi
 #endif
 
-    integer :: nx                      ! maximum number of cells in x direction
-    integer :: ny                      ! maximum number of cells in y direction
-    integer :: nz                      ! maximum number of cells in z direction
-    integer :: ng                      ! maximum number of energy groups
-    integer :: i                       ! iteration counter
-    integer :: ijk(3)                  ! spatial bin location
-    integer :: e_bin                   ! energy bin of source particle
-    integer :: n_groups                ! number of energy groups
-    logical :: outside                 ! any source sites outside mesh
-    logical :: in_mesh                 ! source site is inside mesh
-    logical :: new_weights             ! calcualte new weights
+    logical, intent(in) :: new_weights ! calcualte new weights
+
+    integer :: nx       ! maximum number of cells in x direction
+    integer :: ny       ! maximum number of cells in y direction
+    integer :: nz       ! maximum number of cells in z direction
+    integer :: ng       ! maximum number of energy groups
+    integer :: i        ! iteration counter
+    integer :: ijk(3)   ! spatial bin location
+    integer :: e_bin    ! energy bin of source particle
+    integer :: n_groups ! number of energy groups
+    logical :: outside  ! any source sites outside mesh
+    logical :: in_mesh  ! source site is inside mesh
 
     type(StructuredMesh), pointer :: m ! point to mesh
     real(8), allocatable :: egrid(:)   ! energy grid
@@ -389,13 +390,13 @@ contains
     use global, only: cmfd, cmfd_coremap
 
     integer :: matidx ! the index location in matrix
-    integer :: i      ! current x index
-    integer :: j      ! current y index
-    integer :: k      ! current z index
-    integer :: g      ! current group index
-    integer :: nx     ! maximum number of cells in x direction
-    integer :: ny     ! maximum number of cells in y direction
-    integer :: ng     ! maximum number of energy groups
+    integer, intent(in) :: i  ! current x index
+    integer, intent(in) :: j  ! current y index
+    integer, intent(in) :: k  ! current z index
+    integer, intent(in) :: g  ! current group index
+    integer, intent(in) :: nx ! maximum number of cells in x direction
+    integer, intent(in) :: ny ! maximum number of cells in y direction
+    integer, intent(in) :: ng ! maximum number of energy groups
 
     ! Check if coremap is used
     if (cmfd_coremap) then
@@ -413,7 +414,7 @@ contains
   end function get_matrix_idx
 
 !===============================================================================
-! CMFD_TALLY_RESET
+! CMFD_TALLY_RESET resets all cmfd tallies
 !===============================================================================
 
   subroutine cmfd_tally_reset()

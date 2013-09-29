@@ -16,7 +16,7 @@ contains
 
   subroutine init_loss_matrix(loss_matrix)
 
-    type(Matrix) :: loss_matrix ! cmfd loss matrix
+    type(Matrix), intent(inout) :: loss_matrix ! cmfd loss matrix
 
     integer :: nx   ! maximum number of x cells
     integer :: ny   ! maximum number of y cells
@@ -68,12 +68,12 @@ contains
 
   function preallocate_loss_matrix(nx, ny, nz, ng, n) result(nnz)
 
-    integer, intent(in)    :: nx   ! maximum number of x cells
-    integer, intent(in)    :: ny   ! maximum number of y cells
-    integer, intent(in)    :: nz   ! maximum number of z cells
-    integer, intent(in)    :: ng   ! maximum number of groups
-    integer, intent(in)    :: n    ! total length of matrix
-    integer                :: nnz  ! number of nonzeros
+    integer, intent(in) :: nx  ! maximum number of x cells
+    integer, intent(in) :: ny  ! maximum number of y cells
+    integer, intent(in) :: nz  ! maximum number of z cells
+    integer, intent(in) :: ng  ! maximum number of groups
+    integer, intent(in) :: n   ! total length of matrix
+    integer             :: nnz ! number of nonzeros
 
     integer :: i             ! iteration counter for x
     integer :: j             ! iteration counter for y
@@ -181,39 +181,39 @@ contains
 
   subroutine build_loss_matrix(loss_matrix, adjoint)
 
-    type(Matrix) :: loss_matrix     ! cmfd loss matrix
-    logical, optional :: adjoint    ! set up the adjoint
+    type(Matrix), intent(inout)   :: loss_matrix ! cmfd loss matrix
+    logical, intent(in), optional :: adjoint     ! set up the adjoint
 
-    integer :: nxyz(3,2)            ! single vector containing bound. locations
-    integer :: i                    ! iteration counter for x
-    integer :: j                    ! iteration counter for y
-    integer :: k                    ! iteration counter for z
-    integer :: g                    ! iteration counter for groups
-    integer :: l                    ! iteration counter for leakages
-    integer :: h                    ! energy group when doing scattering
-    integer :: nx                   ! maximum number of x cells
-    integer :: ny                   ! maximum number of y cells
-    integer :: nz                   ! maximum number of z cells
-    integer :: ng                   ! maximum number of groups
-    integer :: neig_mat_idx         ! matrix index of neighbor cell
-    integer :: scatt_mat_idx        ! matrix index for h-->g scattering terms
-    integer :: bound(6)             ! vector for comparing when looking for bound
-    integer :: xyz_idx              ! index for determining if x,y or z leakage
-    integer :: dir_idx              ! index for determining - or + face of cell
-    integer :: neig_idx(3)          ! spatial indices of neighbour
-    integer :: shift_idx            ! parameter to shift index by +1 or -1
-    integer :: irow                 ! iteration counter over row
-    logical :: adjoint_calc         ! is this a physical adjoint calculation?
-    real(8) :: totxs                ! total macro cross section
-    real(8) :: scattxsgg            ! scattering macro cross section g-->g
-    real(8) :: scattxshg            ! scattering macro cross section h-->g
-    real(8) :: dtilde(6)            ! finite difference coupling parameter
-    real(8) :: dhat(6)              ! nonlinear coupling parameter
-    real(8) :: hxyz(3)              ! cell lengths in each direction
-    real(8) :: jn                   ! direction dependent leakage coeff to neig
-    real(8) :: jo(6)                ! leakage coeff in front of cell flux
-    real(8) :: jnet                 ! net leakage from jo
-    real(8) :: val                  ! temporary variable before saving to 
+    integer :: nxyz(3,2)     ! single vector containing bound. locations
+    integer :: i             ! iteration counter for x
+    integer :: j             ! iteration counter for y
+    integer :: k             ! iteration counter for z
+    integer :: g             ! iteration counter for groups
+    integer :: l             ! iteration counter for leakages
+    integer :: h             ! energy group when doing scattering
+    integer :: nx            ! maximum number of x cells
+    integer :: ny            ! maximum number of y cells
+    integer :: nz            ! maximum number of z cells
+    integer :: ng            ! maximum number of groups
+    integer :: neig_mat_idx  ! matrix index of neighbor cell
+    integer :: scatt_mat_idx ! matrix index for h-->g scattering terms
+    integer :: bound(6)      ! vector for comparing when looking for bound
+    integer :: xyz_idx       ! index for determining if x,y or z leakage
+    integer :: dir_idx       ! index for determining - or + face of cell
+    integer :: neig_idx(3)   ! spatial indices of neighbour
+    integer :: shift_idx     ! parameter to shift index by +1 or -1
+    integer :: irow          ! iteration counter over row
+    logical :: adjoint_calc  ! is this a physical adjoint calculation?
+    real(8) :: totxs         ! total macro cross section
+    real(8) :: scattxsgg     ! scattering macro cross section g-->g
+    real(8) :: scattxshg     ! scattering macro cross section h-->g
+    real(8) :: dtilde(6)     ! finite difference coupling parameter
+    real(8) :: dhat(6)       ! nonlinear coupling parameter
+    real(8) :: hxyz(3)       ! cell lengths in each direction
+    real(8) :: jn            ! direction dependent leakage coeff to neig
+    real(8) :: jo(6)         ! leakage coeff in front of cell flux
+    real(8) :: jnet          ! net leakage from jo
+    real(8) :: val           ! temporary variable before saving to 
 
     ! Check for adjoint
     adjoint_calc = .false.
@@ -366,14 +366,14 @@ contains
 
   subroutine indices_to_matrix(g, i, j, k, matidx, ng, nx, ny)
 
-    integer :: matidx ! the index location in matrix
-    integer :: i      ! current x index
-    integer :: j      ! current y index
-    integer :: k      ! current z index
-    integer :: g      ! current group index
-    integer :: nx     ! maximum number of x cells
-    integer :: ny     ! maximum number of y cells
-    integer :: ng     ! maximum number of groups
+    integer, intent(out) :: matidx ! the index location in matrix
+    integer, intent(in)  :: i      ! current x index
+    integer, intent(in)  :: j      ! current y index
+    integer, intent(in)  :: k      ! current z index
+    integer, intent(in)  :: g      ! current group index
+    integer, intent(in)  :: nx     ! maximum number of x cells
+    integer, intent(in)  :: ny     ! maximum number of y cells
+    integer, intent(in)  :: ng     ! maximum number of groups
 
     ! Check if coremap is used
     if (cmfd_coremap) then
@@ -396,15 +396,15 @@ contains
 
   subroutine matrix_to_indices(irow, g, i, j, k, ng, nx, ny, nz)
 
-    integer :: i     ! iteration counter for x
-    integer :: j     ! iteration counter for y
-    integer :: k     ! iteration counter for z
-    integer :: g     ! iteration counter for groups
-    integer :: irow  ! iteration counter over row (0 reference)
-    integer :: nx    ! maximum number of x cells
-    integer :: ny    ! maximum number of y cells
-    integer :: nz    ! maximum number of z cells
-    integer :: ng    ! maximum number of groups
+    integer, intent(out) :: i     ! iteration counter for x
+    integer, intent(out) :: j     ! iteration counter for y
+    integer, intent(out) :: k     ! iteration counter for z
+    integer, intent(out) :: g     ! iteration counter for groups
+    integer, intent(in)  :: irow  ! iteration counter over row (0 reference)
+    integer, intent(in)  :: nx    ! maximum number of x cells
+    integer, intent(in)  :: ny    ! maximum number of y cells
+    integer, intent(in)  :: nz    ! maximum number of z cells
+    integer, intent(in)  :: ng    ! maximum number of groups
 
     ! Check for core map
     if (cmfd_coremap) then

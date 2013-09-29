@@ -35,7 +35,7 @@ contains
 
     ! Split up procs
 # ifdef PETSC 
-    call MPI_COMM_SPLIT(MPI_COMM_WORLD,color,0,new_comm,mpi_err)
+    call MPI_COMM_SPLIT(MPI_COMM_WORLD, color, 0, new_comm, mpi_err)
 # endif
 
     ! assign to PETSc
@@ -43,7 +43,7 @@ contains
     PETSC_COMM_WORLD = new_comm
 
     ! Initialize PETSc on all procs
-    call PetscInitialize(PETSC_NULL_CHARACTER,mpi_err)
+    call PetscInitialize(PETSC_NULL_CHARACTER, mpi_err)
 # endif
 
     ! Initialize timers

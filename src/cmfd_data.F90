@@ -767,15 +767,15 @@ contains
     use global,     only: cmfd, cmfd_hold_weights
 
     real(8) :: get_reflector_albedo ! reflector albedo
-    integer :: i                    ! iteration counter for x
-    integer :: j                    ! iteration counter for y
-    integer :: k                    ! iteration counter for z
-    integer :: g                    ! iteration counter for groups
-    integer :: l                    ! iteration counter for leakages
+    integer, intent(in) :: i ! iteration counter for x
+    integer, intent(in) :: j ! iteration counter for y
+    integer, intent(in) :: k ! iteration counter for z
+    integer, intent(in) :: g ! iteration counter for groups
+    integer, intent(in) :: l ! iteration counter for leakages
 
-    integer :: shift_idx            ! parameter to shift index by +1 or -1
-    real(8) :: current(12)          ! partial currents for all faces of mesh cell            
-    real(8) :: albedo               ! the albedo
+    integer :: shift_idx   ! parameter to shift index by +1 or -1
+    real(8) :: current(12) ! partial currents for all faces of mesh cell            
+    real(8) :: albedo      ! the albedo
 
     ! Get partial currents from object
     current = cmfd%current(:,g,i,j,k)
@@ -798,7 +798,7 @@ contains
   end function get_reflector_albedo
 
 !===============================================================================
-! FIX_NEUTRON_BALANCE
+! FIX_NEUTRON_BALANCE is a method to adjust parameters to have perfect balance
 !===============================================================================
 
   subroutine fix_neutron_balance()

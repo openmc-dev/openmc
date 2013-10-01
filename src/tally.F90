@@ -2135,7 +2135,7 @@ contains
     real(8) :: f        ! interp factor on nuclide energy grid
     real(8) :: one_f    ! (ONE - f)
     type(Nuclide), pointer :: nuc ! Working nuclide
-    real(8) :: norm
+    ! real(8) :: norm
     
     nuc => nuclides(i_nuclide)
 
@@ -2150,23 +2150,21 @@ contains
     
     ! Add the contribution from the lower score
     if (nuc % int_scatt(i_grid) % gmin /= 0) then
-      norm = ONE / sum(nuc % int_scatt(i_grid) % outgoing(1, :))
       do g = nuc % int_scatt(i_grid) % gmin, nuc % int_scatt(i_grid) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
-          nuc % int_scatt(i_grid) % outgoing(:, g) * one_f * norm
+          nuc % int_scatt(i_grid) % outgoing(:, g) * one_f
       end do
     end if
     
     ! Now add the contribution from the higher score
     if (nuc % int_scatt(i_grid + 1) % gmin /= 0) then
-      norm = ONE / sum(nuc % int_scatt(i_grid + 1) % outgoing(1, :))
       do g = nuc % int_scatt(i_grid + 1) % gmin, nuc % int_scatt(i_grid + 1) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
-          nuc % int_scatt(i_grid + 1) % outgoing(:, g) * f * norm
+          nuc % int_scatt(i_grid + 1) % outgoing(:, g) * f
       end do
     end if
     

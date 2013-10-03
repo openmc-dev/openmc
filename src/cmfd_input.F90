@@ -152,6 +152,21 @@ contains
     call lower_case(downscatter_)
     if (downscatter_ == 'true' .or. downscatter_ == '1') &
          cmfd_downscatter = .true.
+    if (cmfd_downscatter .and. ng /= 2) then
+        message = 'Only 2-group CMFD can have effective downscatter'
+        call warning()
+        cmfd_fix_balance = .false.
+    end if
+
+    ! Set fix neutron balance logical 
+    call lower_case(downscatter_)
+    if (fix_balance_ == 'true' .or. fix_balance_ == '1') &
+         cmfd_fix_balance = .true.
+    if (cmfd_fix_balance .and. ng - 1 /= 2) then
+        message = 'Only 2-group CMFD can fix balance'
+        call warning()
+        cmfd_fix_balance = .false.
+    end if
 
     ! Set the solver type (default power from XML)
     cmfd_solver_type = solver_(1:10)

@@ -22,7 +22,8 @@ contains
 
     use cmfd_header,         only: allocate_cmfd
     use constants,           only: CMFD_NOACCEL
-    use global,              only: cmfd, cmfd_coremap, cmfd_downscatter
+    use global,              only: cmfd, cmfd_coremap, cmfd_downscatter, &
+                                   cmfd_fix_balance
 
     ! Check for core map and set it up
     if ((cmfd_coremap) .and. (cmfd%mat_dim == CMFD_NOACCEL)) call set_coremap()
@@ -32,6 +33,9 @@ contains
 
     ! Compute effective downscatter cross section
     if (cmfd_downscatter) call compute_effective_downscatter()
+
+    ! Compute perfect balance
+    if (cmfd_fix_balance) call fix_neutron_balance()
 
     ! Check neutron balance
     call neutron_balance()
@@ -804,8 +808,8 @@ contains
   subroutine fix_neutron_balance()
 
     use constants,  only: ONE, ZERO, CMFD_NOACCEL
-    use global,     only: cmfd, keff
-    use, intrinsic :: ISO_FORTRAN_ENV
+    use global,     only: cmfd, keff, message
+    use output,     only: write_message 
 
     integer :: nx         ! number of mesh cells in x direction
     integer :: ny         ! number of mesh cells in y direction
@@ -832,6 +836,16 @@ contains
     real(8) :: siga1      ! group 1 abs xs
     real(8) :: siga2      ! group 2 abs xs
     real(8) :: sigs12_eff ! effective downscatter xs
+    real(8) :: a          ! matrix (1,1) element for balance
+    real(8) :: b          ! matrix (1,2) element for balance
+    real(8) :: c          ! matrix (2,1) element for balance
+    real(8) :: d          ! matrix (2,2) element for balance
+    real(8) :: r1         ! right hand side element 1
+    real(8) :: r2         ! right hand side element 2
+    real(8) :: det        ! determinant of balance matrix
+
+    message = 'Correcting neutron balance'
+    call write_message()
 
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
@@ -869,7 +883,6 @@ contains
                  ((cmfd % current(4*l-2,2,i,j,k) - &
                  cmfd % current(4*l-3,2,i,j,k)))
 
-
           end do LEAK
 
           ! Extract cross sections and flux from object
@@ -886,24 +899,20 @@ contains
           nsigf12 = cmfd % nfissxs(1,2,i,j,k)
           nsigf22 = cmfd % nfissxs(2,2,i,j,k)
 
-          ! Check for no fission into group 2
-          if (.not.(nsigf12 < 1e-6_8 .and. nsigf22 < 1e-6_8)) then
-            write(OUTPUT_UNIT,'(A,1PE11.4,1X,1PE11.4)') 'Fission in G=2', &
-                  nsigf12,nsigf22
-          end if
-
           ! Compute absorption xs
           siga1 = sigt1 - sigs11 - sigs12
           siga2 = sigt2 - sigs22 - sigs21
 
-          ! Compute effective downscatter xs
-          sigs12_eff = (ONE/keff*nsigf11*flux1 - leak1 - siga1*flux1 &
-               - ONE/keff*nsigf21/siga2*leak2 ) / ( flux1*(ONE &
-               - ONE/keff*nsigf21/siga2))
-
-          ! Redefine flux 2
-          flux2 = (sigs12_eff*flux1 - leak2)/siga2
-          cmfd % flux(2,i,j,k) = flux2
+          ! Create matrix and solve for effective downscatter and thermal flux
+          a = flux1
+          b = -ONE/keff*nsigf21
+          c = flux1
+          d = -siga2 + ONE/keff*nsigf22
+          det = a*d - b*c
+          r1 = ONE/keff*nsigf11*flux1 - siga1*flux1 - leak1
+          r2 = leak2 - ONE/keff*nsigf12*flux1
+          sigs12_eff = ONE/det*(d*r1 - b*r2)
+          flux2 = ONE/det*(a*r2 - c*r1)
  
           ! Recompute total cross sections (use effective and no upscattering)
           sigt1 = siga1 + sigs11 + sigs12_eff
@@ -918,6 +927,9 @@ contains
 
           ! Zero out upscatter cross section
           cmfd % scattxs(2,1,i,j,k) = ZERO 
+
+          ! Record thermal flux
+          cmfd % flux(2,i,j,k) = flux2
 
         end do XLOOP
 
@@ -934,7 +946,8 @@ contains
   subroutine compute_effective_downscatter()
 
     use constants, only: ZERO, CMFD_NOACCEL
-    use global,    only: cmfd, cmfd_downscatter
+    use global,    only: cmfd, cmfd_downscatter, message
+    use output,    only: write_message
 
     integer :: nx                ! number of mesh cells in x direction
     integer :: ny                ! number of mesh cells in y direction
@@ -954,6 +967,9 @@ contains
     real(8) :: siga1             ! group 1 abs xs
     real(8) :: siga2             ! group 2 abs xs
     real(8) :: sigs12_eff        ! effective downscatter xs
+
+    message = 'Computing effective downscatter xs'
+    call write_message()
 
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)

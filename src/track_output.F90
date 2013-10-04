@@ -33,18 +33,13 @@ contains
   subroutine write_particle_track(p)
     type(Particle), intent(in)  :: p
 
-    real(8)  :: old_coords(3, n_tracks)
-
-    ! Save the coordinates gathered in previous calls.
-    old_coords = coords
+    real(8), allocatable  :: new_coords(:, :)
 
     ! Add another column to coords.
     n_tracks = n_tracks + 1
-    deallocate(coords)
-    allocate(coords(3, n_tracks))
-
-    ! Put the old coordinates back into the array.
-    coords(:, 1:n_tracks-1) = old_coords
+    allocate(new_coords(3, n_tracks))
+    new_coords(:, 1:n_tracks-1) = coords
+    call move_alloc(FROM=new_coords, TO=coords)
 
     ! Write current coordinates into the newest column.
     coords(:, n_tracks) = p % coord0 % xyz

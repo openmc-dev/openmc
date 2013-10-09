@@ -79,7 +79,8 @@ tests = ['compile', 'normal', 'debug', 'optimize',
          'phdf5-omp', 'phdf5-omp-debug', 'phdf5-omp-optimize',
          'petsc', 'petsc-debug', 'petsc-optimize',
          'phdf5-petsc', 'phdf5-petsc-debug', 'phdf5-petsc-optimize',
-         'omp-phdf5-petsc', 'omp-phdf5-petsc-debug', 'omp-phdf5-petsc-optimize']
+         'omp-phdf5-petsc', 'omp-phdf5-petsc-debug',
+         'omp-phdf5-petsc-optimize']
 if len(sys.argv) > 1:
     flags = [i for i in sys.argv[1:] if i.startswith('-')]
     tests_ = [i for i in sys.argv[1:] if not i.startswith('-')]
@@ -138,7 +139,7 @@ for name in tests:
                   'petsc', 'petsc-debug', 'petsc-optimize',
                   'phdf5-petsc', 'phdf5-petsc-debug', 'phdf5-petsc-optimize',
                   'omp-phdf5-petsc', 'omp-phdf5-petsc-debug',
-                   'omp-phdf5-petsc-optimize']:
+                  'omp-phdf5-petsc-optimize']:
         run_suite(name=name, mpi=True)
 
 # print out summary of results

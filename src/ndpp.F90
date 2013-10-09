@@ -228,6 +228,9 @@ contains
 
     ! Store the number of groups
     integrated_scatt_groups = size(energy_bins_) - 1
+    ! Store the group boundaries
+    allocate(integrated_energy_bins(size(energy_bins_)))
+    integrated_energy_bins = energy_bins_
     
     ! Store the order as the maximum requested in tallies
     if (scatt_type_ == SCATT_TYPE_LEGENDRE) then

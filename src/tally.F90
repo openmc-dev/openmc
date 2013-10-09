@@ -2135,7 +2135,10 @@ contains
     real(8) :: f        ! interp factor on nuclide energy grid
     real(8) :: one_f    ! (ONE - f)
     type(Nuclide), pointer :: nuc ! Working nuclide
-    ! real(8) :: norm
+    real(8) :: Eup      ! E of next point up in nuc % energy grid
+    real(8) :: Ein      ! incoming energy
+    integer :: gin      ! incoming energy group index
+    integer :: gmin, gmax ! Min and max group bounds of NDPP data
     
     nuc => nuclides(i_nuclide)
 
@@ -2143,14 +2146,27 @@ contains
 ! and calculation of interpolation factor, f, here.
     
     i_grid = micro_xs(i_nuclide) % index_grid
+
+    ! find energy of i_grid + 1
+    Eup = nuc % energy(i_grid + 1)
+    Ein = micro_xs(i_nuclide) % last_E
+    if (Ein >= integrated_energy_bins(integrated_scatt_groups)) then
+      gin = integrated_scatt_groups - 1
+    else if (Ein <= integrated_energy_bins(1)) then
+      gin = 1
+    else
+      gin = binary_search(integrated_energy_bins, integrated_scatt_groups, Ein)
+    end if
+
     f = micro_xs(i_nuclide) % interp_factor
-    
     one_f = (ONE - f) * wgt
     f = f * wgt
     
     ! Add the contribution from the lower score
     if (nuc % int_scatt(i_grid) % gmin /= 0) then
-      do g = nuc % int_scatt(i_grid) % gmin, nuc % int_scatt(i_grid) % gmax
+      gmin = nuc % int_scatt(i_grid) % gmin
+      gmax = nuc % int_scatt(i_grid) % gmax
+      do g = gmin, gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
@@ -2160,7 +2176,13 @@ contains
     
     ! Now add the contribution from the higher score
     if (nuc % int_scatt(i_grid + 1) % gmin /= 0) then
-      do g = nuc % int_scatt(i_grid + 1) % gmin, nuc % int_scatt(i_grid + 1) % gmax
+      gmin = nuc % int_scatt(i_grid + 1) % gmin
+      if (Eup > integrated_energy_bins(gin + 1)) then
+        gmax = gin
+      else
+        gmax = nuc % int_scatt(i_grid + 1) % gmax
+      end if
+      do g = gmin, gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
@@ -2193,6 +2215,10 @@ contains
     real(8) :: one_f    ! (ONE - f) * sigS
     real(8) :: sigS     ! scattering cross-section (tot - abs)
     type(Nuclide), pointer :: nuc ! The working nuclide
+    real(8) :: Eup      ! E of next point up in nuc % energy grid
+    real(8) :: Ein      ! incoming energy
+    integer :: gin      ! incoming energy group index
+    integer :: gmin, gmax ! Min and max group bounds of NDPP data
     
     nuc => nuclides(i_nuclide)
 
@@ -2200,15 +2226,28 @@ contains
 ! and calculation of interpolation factor, f, here.
     
     i_grid = micro_xs(i_nuclide) % index_grid
+    sigS   = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
+
+    ! find energy of i_grid + 1
+    Eup = nuc % energy(i_grid + 1)
+    Ein = micro_xs(i_nuclide) % last_E
+    if (Ein >= integrated_energy_bins(integrated_scatt_groups)) then
+      gin = integrated_scatt_groups - 1
+    else if (Ein <= integrated_energy_bins(1)) then
+      gin = 1
+    else
+      gin = binary_search(integrated_energy_bins, integrated_scatt_groups, Ein)
+    end if
+
     f = micro_xs(i_nuclide) % interp_factor
-    
-    sigS = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
     one_f = (ONE - f) * sigS * N_flux
     f = f * sigS * N_flux
     
     ! Add the contribution from the lower score
     if (nuc % int_scatt(i_grid) % gmin /= 0) then
-      do g = nuc % int_scatt(i_grid) % gmin, nuc % int_scatt(i_grid) % gmax
+      gmin = nuc % int_scatt(i_grid) % gmin
+      gmax = nuc % int_scatt(i_grid) % gmax
+      do g = gmin, gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
@@ -2218,7 +2257,13 @@ contains
     
     ! Now add the contribution from the higher score
     if (nuc % int_scatt(i_grid + 1) % gmin /= 0) then
-      do g = nuc % int_scatt(i_grid + 1) % gmin, nuc % int_scatt(i_grid + 1) % gmax
+      gmin = nuc % int_scatt(i_grid + 1) % gmin
+      if (Eup > integrated_energy_bins(gin + 1)) then
+        gmax = gin
+      else
+        gmax = nuc % int_scatt(i_grid + 1) % gmax
+      end if
+      do g = gmin, gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &

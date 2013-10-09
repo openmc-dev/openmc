@@ -156,6 +156,9 @@ module global
   ! Total number of energy groups and data order in the pre-integrated scattering library
   integer        :: integrated_scatt_groups
   integer        :: integrated_scatt_order
+
+  ! Energy group structure of NDPP library
+  real(8), allocatable :: integrated_energy_bins(:)
   
   ! File which stores ndpp library data.
   character(MAX_FILE_LEN) :: integrated_scatt_lib
@@ -477,6 +480,9 @@ contains
     call sab_dict % clear()
     call xs_listing_dict % clear()
     call ndpp_listing_dict % clear()
+
+    ! Deallocate integrated_energy_bins
+    deallocate(integrated_energy_bins)
     
   end subroutine free_memory
 

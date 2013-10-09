@@ -51,6 +51,7 @@ def run_suite(name=None, mpi=False):
         os.rename(pwd + '/../src/openmc', pwd + '/../src/openmc-' + name)
     except OSError:
         result = False
+        print('No OpenMC executable found for ' + name + ' tests')
     if not result:
         print('Did not pass ' + name + ' tests')
     results.append((name, result))

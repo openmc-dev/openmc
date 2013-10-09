@@ -22,7 +22,7 @@ def run_compile():
         os.remove(exe)
 
     # run compile test
-    result = nose.run(argv=['run_tests.py', 'test_compile'] + flags)
+    result = nose.run(argv=['nosetests', 'test_compile'] + flags)
     if not result:
         print('Did not pass compile tests.')
     results.append(('compile', result))
@@ -35,7 +35,7 @@ def run_suite(name=None, mpi=False):
 
     # Set arguments list. Note that the first argument is a dummy argument (the
     # script name). It's not actually recursively calling run_tests.py
-    argv = ['run_tests.py', '--exclude', 'test_compile'] + flags
+    argv = ['nosetests', '--exclude', 'test_compile'] + flags
 
     # Add MPI plugin if set
     if mpi:
@@ -48,11 +48,12 @@ def run_suite(name=None, mpi=False):
         os.chdir(pwd)
         os.rename(pwd + '/../src/openmc-' + name, pwd + '/../src/openmc')
         result = nose.run(argv=argv, addplugins=plugins)
-    finally:
         os.rename(pwd + '/../src/openmc', pwd + '/../src/openmc-' + name)
-        if not result:
-            print('Did not pass ' + name + ' tests')
-        results.append((name, result))
+    except OSError:
+        result = False
+    if not result:
+        print('Did not pass ' + name + ' tests')
+    results.append((name, result))
 
 # set mpiexec path
 if 'COMPILER' in os.environ:

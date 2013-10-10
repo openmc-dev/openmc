@@ -56,8 +56,8 @@ module solver_interface
   abstract interface
     subroutine res_interface(x, res)
       import :: Vector
-      type(Vector), intent(in)  :: x   ! solution vector
-      type(Vector), intent(out) :: res ! residual vector
+      type(Vector), intent(in)    :: x   ! solution vector
+      type(Vector), intent(inout) :: res ! residual vector
     end subroutine res_interface
 
     subroutine jac_interface(x)

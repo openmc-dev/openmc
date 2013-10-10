@@ -267,8 +267,8 @@ contains
 
     use global,       only: cmfd_write_matrices
 
-    type(Vector), intent(in)  :: x   ! solution vector
-    type(Vector), intent(out) :: res ! residual vector
+    type(Vector), intent(in)    :: x   ! solution vector
+    type(Vector), intent(inout) :: res ! residual vector
 
     character(len=25) :: filename
     integer           :: n

@@ -42,7 +42,7 @@ def main():
     # Check input file extensions.
     for fname in args.input:
         if not (fname.endswith('.h5') or fname.endswith('.binary')):
-            raise ValueError("Input file names must either end iwth '.h5' or"
+            raise ValueError("Input file names must either end with '.h5' or"
                              "'.binary'.")
     
     # Make sure that the output filename ends with '.pvtp'.

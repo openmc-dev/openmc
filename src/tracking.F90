@@ -34,7 +34,8 @@ contains
     real(8) :: d_collision     ! sampled distance to collision
     real(8) :: distance        ! distance particle travels
     logical :: found_cell      ! found cell which particle is in?
-    type(LocalCoord), pointer :: coord => null()
+    type(LocalCoord), pointer, save :: coord => null()
+!$omp threadprivate(coord)
 
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
@@ -61,7 +62,9 @@ contains
     n_event = 0
 
     ! Add paricle's starting weight to count for normalizing tallies later
+!$omp critical
     total_weight = total_weight + p % wgt
+!$omp end critical
 
     ! Force calculation of cross-sections by setting last energy to zero 
     micro_xs % last_E = ZERO
@@ -109,9 +112,11 @@ contains
            call score_tracklength_tally(p, distance)
 
       ! Score track-length estimate of k-eff
+!$omp critical
       global_tallies(K_TRACKLENGTH) % value = &
            global_tallies(K_TRACKLENGTH) % value + p % wgt * distance * &
            material_xs % nu_fission
+!$omp end critical
 
       if (d_collision > d_boundary) then
         ! ====================================================================
@@ -135,9 +140,11 @@ contains
         ! PARTICLE HAS COLLISION
 
         ! Score collision estimate of keff
+!$omp critical
         global_tallies(K_COLLISION) % value = &
              global_tallies(K_COLLISION) % value + p % wgt * &
              material_xs % nu_fission / material_xs % total
+!$omp end critical
 
         ! score surface current tallies -- this has to be done before the collision
         ! since the direction of the particle will change and we need to use the

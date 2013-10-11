@@ -74,6 +74,7 @@ contains
     cross_sections_ = ''
     output_path_ = ''
     verbosity_ = 0
+    threads_ = NONE
     energy_grid_ = 'union'
     seed_ = 0_8
     source_ % file = ''
@@ -207,6 +208,23 @@ contains
 
     ! Verbosity
     if (verbosity_ > 0) verbosity = verbosity_
+
+    ! Number of OpenMP threads
+    if (threads_ /= NONE) then
+#ifdef OPENMP
+      if (n_threads == NONE) then
+        n_threads = threads_
+        if (n_threads < 1) then
+          message = "Invalid number of threads: " // to_str(n_threads)
+          call fatal_error()
+        end if
+        call omp_set_num_threads(n_threads)
+      end if
+#else
+      message = "Ignoring number of threads."
+      call warning()
+#endif
+    end if
 
     ! ==========================================================================
     ! EXTERNAL SOURCE

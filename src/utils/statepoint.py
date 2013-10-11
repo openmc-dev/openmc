@@ -309,7 +309,8 @@ class StatePoint(object):
                 if self._hdf5:
                     path = 'tallies/tally{0}/results'.format(i+1)
                     data = self._f[path].value
-                    t.results = np.dstack((data['sum'], data['sum_sq']))
+                    t.results = np.column_stack((data['sum'], data['sum_sq']))
+                    t.results.shape = (t.total_filter_bins, t.total_score_bins, 2)
                 else:
                     t.results = np.array(self._get_double(2*n))
                     t.results.shape = (t.total_filter_bins, t.total_score_bins, 2)

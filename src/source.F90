@@ -156,7 +156,7 @@ contains
 
     integer(8) :: particle_seed  ! unique index for particle
     integer :: i
-    type(Bank), pointer :: src => null()
+    type(Bank), pointer, save :: src => null()
 
     ! set defaults
     call p % initialize()

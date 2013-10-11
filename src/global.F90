@@ -287,6 +287,10 @@ module global
   integer    :: trace_gen
   integer(8) :: trace_particle
 
+  ! Particle tracks
+  logical :: write_all_tracks = .false.
+  integer, allocatable :: track_identifiers(:,:)
+
   ! Particle restart run
   logical :: particle_restart_run = .false.
 
@@ -471,6 +475,9 @@ contains
     call active_tracklength_tallies % clear()
     call active_current_tallies % clear()
     call active_tallies % clear()
+
+    ! Deallocate track_identifiers
+    if (allocated(track_identifiers)) deallocate(track_identifiers)
     
     ! Deallocate dictionaries
     call cell_dict % clear()

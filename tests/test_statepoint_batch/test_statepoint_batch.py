@@ -19,8 +19,8 @@ def test_run():
                stderr=STDOUT, stdout=PIPE)
     else:
         proc = Popen([openmc_path], stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
     print(proc.communicate()[0])
+    returncode = proc.returncode
     assert returncode == 0
 
 def test_statepoints_exist():

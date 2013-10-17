@@ -482,7 +482,7 @@ contains
     call ndpp_listing_dict % clear()
 
     ! Deallocate integrated_energy_bins
-    if allocated(integrated_energy_bins) then
+    if (allocated(integrated_energy_bins)) then
       deallocate(integrated_energy_bins)
     end if
     

@@ -18,12 +18,12 @@ cmfd_data.o: error.o
 cmfd_data.o: global.o
 cmfd_data.o: mesh.o
 cmfd_data.o: mesh_header.o
+cmfd_data.o: string.o
 cmfd_data.o: tally_header.o
 
 cmfd_execute.o: cmfd_data.o
-cmfd_execute.o: cmfd_message_passing.o
+cmfd_execute.o: cmfd_jfnk_solver.o
 cmfd_execute.o: cmfd_power_solver.o
-cmfd_execute.o: cmfd_snes_solver.o
 cmfd_execute.o: constants.o
 cmfd_execute.o: error.o
 cmfd_execute.o: global.o
@@ -35,7 +35,7 @@ cmfd_execute.o: tally.o
 
 cmfd_header.o: constants.o
 
-cmfd_input.o: cmfd_message_passing.o
+cmfd_input.o: cmfd_header.o
 cmfd_input.o: constants.o
 cmfd_input.o: error.o
 cmfd_input.o: global.o
@@ -47,43 +47,35 @@ cmfd_input.o: tally_header.o
 cmfd_input.o: tally_initialize.o
 cmfd_input.o: xml_interface.o
 
-cmfd_jacobian_operator.o: cmfd_loss_operator.o
-cmfd_jacobian_operator.o: cmfd_prod_operator.o
-cmfd_jacobian_operator.o: constants.o
-cmfd_jacobian_operator.o: global.o
+cmfd_jfnk_solver.o: cmfd_loss_operator.o
+cmfd_jfnk_solver.o: cmfd_power_solver.o
+cmfd_jfnk_solver.o: cmfd_prod_operator.o
+cmfd_jfnk_solver.o: constants.o
+cmfd_jfnk_solver.o: global.o
+cmfd_jfnk_solver.o: matrix_header.o
+cmfd_jfnk_solver.o: solver_interface.o
+cmfd_jfnk_solver.o: vector_header.o
 
 cmfd_loss_operator.o: constants.o
 cmfd_loss_operator.o: global.o
-
-cmfd_message_passing.o: cmfd_header.o
-cmfd_message_passing.o: global.o
-
-cmfd_output.o: cmfd_data.o
-cmfd_output.o: cmfd_header.o
-cmfd_output.o: constants.o
-cmfd_output.o: global.o
+cmfd_loss_operator.o: matrix_header.o
 
 cmfd_power_solver.o: cmfd_loss_operator.o
 cmfd_power_solver.o: cmfd_prod_operator.o
 cmfd_power_solver.o: constants.o
 cmfd_power_solver.o: global.o
-cmfd_power_solver.o: string.o
+cmfd_power_solver.o: matrix_header.o
+cmfd_power_solver.o: solver_interface.o
+cmfd_power_solver.o: vector_header.o
 
 cmfd_prod_operator.o: constants.o
 cmfd_prod_operator.o: global.o
+cmfd_prod_operator.o: matrix_header.o
 
 cmfd_slepc_solver.o: cmfd_loss_operator.o
 cmfd_slepc_solver.o: cmfd_prod_operator.o
 cmfd_slepc_solver.o: constants.o
 cmfd_slepc_solver.o: global.o
-
-cmfd_snes_solver.o: cmfd_jacobian_operator.o
-cmfd_snes_solver.o: cmfd_loss_operator.o
-cmfd_snes_solver.o: cmfd_power_solver.o
-cmfd_snes_solver.o: cmfd_prod_operator.o
-cmfd_snes_solver.o: constants.o
-cmfd_snes_solver.o: global.o
-cmfd_snes_solver.o: string.o
 
 cross_section.o: ace_header.o
 cross_section.o: constants.o
@@ -124,7 +116,6 @@ energy_grid.o: output.o
 
 error.o: global.o
 
-finalize.o: cmfd_output.o
 finalize.o: global.o
 finalize.o: hdf5_interface.o
 finalize.o: output.o
@@ -243,6 +234,9 @@ main.o: plot.o
 math.o: constants.o
 math.o: random_lcg.o
 
+matrix_header.o: constants.o
+matrix_header.o: vector_header.o
+
 mesh.o: constants.o
 mesh.o: global.o
 mesh.o: mesh_header.o
@@ -327,6 +321,11 @@ search.o: global.o
 set_header.o: constants.o
 set_header.o: list_header.o
 
+solver_interface.o: error.o
+solver_interface.o: global.o
+solver_interface.o: matrix_header.o
+solver_interface.o: vector_header.o
+
 source.o: bank_header.o
 source.o: constants.o
 source.o: error.o
@@ -382,6 +381,8 @@ tracking.o: physics.o
 tracking.o: random_lcg.o
 tracking.o: string.o
 tracking.o: tally.o
+
+vector_header.o: constants.o
 
 xml_interface.o: constants.o
 xml_interface.o: error.o

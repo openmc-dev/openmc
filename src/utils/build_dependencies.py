@@ -11,7 +11,8 @@ for src in glob.iglob('*.F90'):
     d = re.findall(r'\n\s*use\s+(\w+)',
                    open(src, 'r').read())
     for name in d:
-        if name in ['mpi', 'hdf5', 'h5lt', 'fox_dom']:
+        if name in ['mpi', 'hdf5', 'h5lt', 'petscsys', 'petscmat', 'petscksp',
+                    'petscsnes', 'petscvec', 'omp_lib', 'fox_dom']:
             continue
         deps.add(name)
     if deps:

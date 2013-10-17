@@ -1,5 +1,11 @@
 module cmfd_input
 
+  use global
+
+#ifdef PETSC
+  use petscsys
+#endif
+
   implicit none
   private
   public :: configure_cmfd 
@@ -7,22 +13,46 @@ module cmfd_input
 contains
 
 !===============================================================================
-! CONFIGURE_CMFD
+! CONFIGURE_CMFD initializes PETSc and CMFD parameters
 !===============================================================================
 
   subroutine configure_cmfd()
 
-# ifdef PETSC
-    use cmfd_message_passing,   only: petsc_init_mpi
-# endif
+    use cmfd_header,  only: allocate_cmfd
 
-    ! read in cmfd input file
+    integer :: new_comm ! new mpi communicator
+    integer :: color    ! color group of processor
+
+    ! Read in cmfd input file
     call read_cmfd_xml()
 
-    ! initialize petsc on mpi
-# ifdef PETSC
-    call petsc_init_mpi()
+    ! Assign color
+    if (master) then
+      color = 1
+    else
+      color = 2
+    end if
+
+    ! Split up procs
+# ifdef PETSC 
+    call MPI_COMM_SPLIT(MPI_COMM_WORLD, color, 0, new_comm, mpi_err)
 # endif
+
+    ! assign to PETSc
+# ifdef PETSC
+    PETSC_COMM_WORLD = new_comm
+
+    ! Initialize PETSc on all procs
+    call PetscInitialize(PETSC_NULL_CHARACTER, mpi_err)
+# endif
+
+    ! Initialize timers
+    call time_cmfd % reset()
+    call time_cmfdbuild % reset()
+    call time_cmfdsolve % reset()
+
+    ! Allocate cmfd object
+    call allocate_cmfd(cmfd, n_batches)
 
   end subroutine configure_cmfd
 
@@ -32,18 +62,17 @@ contains
 
   subroutine read_cmfd_xml()
     
-    use error,   only: fatal_error
-    use global
+    use error,   only: fatal_error, warning
     use output,  only: write_message
     use string,  only: lower_case
     use xml_data_cmfd_t
     use, intrinsic :: ISO_FORTRAN_ENV
 
-    integer :: ng
-    logical :: file_exists ! does cmfd.xml exist?
-    character(MAX_LINE_LEN) :: filename
+    integer :: ng                       ! number of energy groups
+    logical :: file_exists              ! does cmfd.xml exist?
+    character(MAX_LINE_LEN) :: filename ! name of input file
 
-    ! read cmfd infput file
+    ! Read cmfd input file
     filename = trim(path_input) // "cmfd.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
@@ -55,79 +84,78 @@ contains
       return
     else
 
-      ! tell user
+      ! Tell user
       message = "Reading CMFD XML file..."
       call write_message(5)
 
     end if
 
-    ! parse cmfd.xml file
+    ! Parse cmfd.xml file
     call read_xml_file_cmfd_t(filename)
 
-    ! set spatial dimensions in cmfd object
-    cmfd % indices(1:3) = mesh_ % dimension(1:3) ! sets spatial dimensions
+    ! Set spatial dimensions in cmfd object (structed Cartesian mesh)
+    cmfd % indices(1:3) = mesh_ % dimension(1:3)
 
-    ! get number of energy groups
+    ! Get number of energy groups or set to 1 group default
     if (associated(mesh_ % energy)) then
       ng = size(mesh_ % energy)
-      if(.not.allocated(cmfd%egrid)) allocate(cmfd%egrid(ng))
-      cmfd%egrid = mesh_ % energy 
+      if(.not.allocated(cmfd % egrid)) allocate(cmfd % egrid(ng))
+      cmfd % egrid = mesh_ % energy 
       cmfd % indices(4) = ng - 1 ! sets energy group dimension
     else
-      if(.not.allocated(cmfd%egrid)) allocate(cmfd%egrid(2))
-      cmfd%egrid = (/0.0_8,20.0_8/)
+      if(.not.allocated(cmfd % egrid)) allocate(cmfd % egrid(2))
+      cmfd % egrid = (/0.0_8,20.0_8/)
       cmfd % indices(4) = 1 ! one energy group
     end if
     
-    ! set global albedo
+    ! Set global albedo, these can be overwritten by coremap
     if (associated(mesh_ % albedo)) then
       cmfd % albedo = mesh_ % albedo
     else
       cmfd % albedo = (/1.0, 1.0, 1.0, 1.0, 1.0, 1.0/)
     end if
 
-    ! get acceleration map
+    ! Get core map overlay for a subset mesh for CMFD 
     if (associated(mesh_ % map)) then
+
+      ! Allocate a core map with appropriate dimensions
       allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2), &
            cmfd % indices(3)))
+
+      ! Check and make sure it is of correct size
       if (size(mesh_ % map) /= product(cmfd % indices(1:3))) then
-        message = 'FATAL==>CMFD coremap not to correct dimensions'
+        message = 'CMFD coremap not to correct dimensions'
         call fatal_error() 
       end if
-      cmfd % coremap = reshape(mesh_ % map,(cmfd % indices(1:3)))
-      cmfd_coremap = .true.
-   end if
 
-    ! check for core map activation by printing note
-    if (cmfd_coremap .and. master) then
+      ! Reshape core map vector into (x,y,z) array
+      cmfd % coremap = reshape(mesh_ % map,(cmfd % indices(1:3)))
+
+      ! Indicate to cmfd that a core map overlay is active
+      cmfd_coremap = .true.
+
+      ! Write to stdout that a core map overlay is active
       message = "Core Map Overlay Activated"
-      call write_message()
+      call write_message(10)
+
     end if
 
-    ! check for normalization constant
+    ! Get normalization constant for source (default is 1.0 from XML) 
     cmfd % norm = norm_
 
-    ! set feedback logical
+    ! Set feedback logical
     call lower_case(feedback_)
     if (feedback_ == 'true' .or. feedback_ == '1') cmfd_feedback = .true.
 
-    ! set balance logical
-    ! call lower_case(balance_)
-    ! if (balance_ == 'true' .or. balance == '1') cmfd_balance = .true.
+    ! Set downscatter logical
+    call lower_case(downscatter_)
+    if (downscatter_ == 'true' .or. downscatter_ == '1') &
+         cmfd_downscatter = .true.
 
-    ! set downscatter logical
-    ! call lower_case(downscatter_)
-    ! if (downscatter_ == 'true' .or. downscatter == '1') &
-    !      cmfd_downscatter = downscatter_
-
-    ! set 2 group fix
-    call lower_case(run_2grp_)
-    if (run_2grp_ == 'true' .or. run_2grp_ == '1') cmfd_run_2grp = .true.
-
-    ! set the solver type
+    ! Set the solver type (default power from XML)
     cmfd_solver_type = solver_(1:10)
 
-    ! set monitoring 
+    ! Set convergence monitoring 
     call lower_case(snes_monitor_)
     call lower_case(ksp_monitor_)
     call lower_case(power_monitor_)
@@ -138,46 +166,41 @@ contains
     if (power_monitor_ == 'true' .or. power_monitor_ == '1') &
          cmfd_power_monitor = .true.
 
-    ! output logicals
-    call lower_case(write_balance_)
+    ! Output logicals
     call lower_case(write_matrices_)
-    ! call lower_case(write_hdf5_)
-    if (write_balance_ == 'true' .or. write_balance_ == '1') &
-         cmfd_write_balance = .true.
     if (write_matrices_ == 'true' .or. write_matrices_ == '1') &
          cmfd_write_matrices = .true.
-    ! if (write_hdf5_ == 'true' .or. write_hdf5_ == '1') &
-    !      cmfd_write_hdf5 = .true.
 
-    ! run an adjoint calc
+    ! Run an adjoint calc
     call lower_case(run_adjoint_)
     if (run_adjoint_ == 'true' .or. run_adjoint_ == '1') &
          cmfd_run_adjoint = .true.
 
-    ! batch to begin cmfd
+    ! Batch to begin cmfd (default is 1 from XML)
     cmfd_begin = begin_
 
-    ! tally during inactive batches
+    ! Tally during inactive batches (by default we will always tally from 1)
     call lower_case(inactive_)
     if (inactive_ == 'false' .or. inactive_ == '0') cmfd_tally_on = .false.
 
-    ! inactive batch flush window
-    cmfd_inact_flush(1) = inactive_flush_
-    cmfd_inact_flush(2) = num_flushes_
+    ! Inactive batch flush window
+    cmfd_inact_flush(1) = inactive_flush_ ! the interval of batches
+    cmfd_inact_flush(2) = num_flushes_    ! number of times to do this
 
-    ! last flush before active batches
+    ! Last flush before active batches
     cmfd_act_flush = active_flush_
 
-    ! tolerance on keff
-    cmfd_keff_tol = keff_tol_
-    
-    ! create tally objects
-    call create_cmfd_tally()
+    ! Get display
+    cmfd_display = display_
+    if (trim(cmfd_display) == 'dominance' .and. &
+        trim(cmfd_solver_type) /= 'power') then
+      message = 'Dominance Ratio only aviable with power iteration solver'
+      call warning()
+      cmfd_display = ''
+    end if
 
-    ! set number of CMFD processors and report to user
-    n_procs_cmfd = n_cmfd_procs_ 
-    if (master) write(OUTPUT_UNIT,'(A,1X,I0,1X,A)') "CMFD Running on", &
-       n_procs_cmfd," processors."
+    ! Create tally objects
+    call create_cmfd_tally()
 
   end subroutine read_cmfd_xml
 
@@ -193,7 +216,6 @@ contains
   subroutine create_cmfd_tally()
 
     use error,            only: fatal_error, warning
-    use global
     use mesh_header,      only: StructuredMesh
     use string
     use tally,            only: setup_active_cmfdtallies
@@ -206,27 +228,27 @@ contains
     integer :: ng          ! number of energy groups (default 1)
     integer :: n_filters   ! number of filters
     integer :: i_filter_mesh ! index for mesh filter
-    character(MAX_LINE_LEN) :: filename
+    character(MAX_LINE_LEN) :: filename ! name of cmfd file
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(TallyFilter) :: filters(N_FILTER_TYPES) ! temporary filters
 
-    ! parse cmfd.xml file
+    ! Parse cmfd.xml file
      filename = trim(path_input) // "cmfd.xml"
      call read_xml_file_cmfd_t(filename)
 
-    ! set global variables if they are 0 (this can happen if there is no tally
+    ! Set global variables if they are 0 (this can happen if there is no tally
     ! file)
     if (n_meshes == 0) n_meshes = n_user_meshes + n_cmfd_meshes
 
-    ! allocate mesh
+    ! Allocate mesh
     if (.not. allocated(meshes)) allocate(meshes(n_meshes))
     m => meshes(n_user_meshes+1)
 
-    ! set mesh id
+    ! Set mesh id
     m % id = n_user_meshes + 1 
 
-    ! set mesh type to rectangular
+    ! Set mesh type to rectangular
     m % type = LATTICE_RECT
 
     ! Determine number of dimensions for mesh
@@ -321,20 +343,20 @@ contains
     ! Add mesh to dictionary
     call mesh_dict % add_key(m % id, n_user_meshes + 1)
 
-    ! allocate tallies
+    ! Allocate tallies
     call add_tallies("cmfd", n_cmfd_tallies)
 
-    ! begin loop around tallies
+    ! Begin loop around tallies
     do i = 1, n_cmfd_tallies
 
-      ! point t to tally variable
+      ! Point t to tally variable
       t => cmfd_tallies(i)
 
-      ! set reset property
+      ! Set reset property
       call lower_case(reset_)
       if (reset_ == 'true' .or. reset_ == '1') t % reset = .true.
 
-      ! set up mesh filter
+      ! Set up mesh filter
       n_filters = 1
       filters(n_filters) % type = FILTER_MESH
       filters(n_filters) % n_bins = product(m % dimension)
@@ -342,7 +364,7 @@ contains
       filters(n_filters) % int_bins(1) = n_user_meshes + 1
       t % find_filter(FILTER_MESH) = n_filters
 
-      ! read and set incoming energy mesh filter
+      ! Read and set incoming energy mesh filter
       if (associated(mesh_ % energy)) then
         n_filters = n_filters + 1
         filters(n_filters) % type = FILTER_ENERGYIN
@@ -353,40 +375,40 @@ contains
         t % find_filter(FILTER_ENERGYIN) = n_filters
       end if
 
-      ! set number of nucilde bins
+      ! Set number of nucilde bins
       allocate(t % nuclide_bins(1))
       t % nuclide_bins(1) = -1
       t % n_nuclide_bins = 1
 
-      ! record tally id which is equivalent to loop number
+      ! Record tally id which is equivalent to loop number
       t % id = i_cmfd_tallies + i
 
       if (i == 1) then
 
-        ! set label
+        ! Set label
         t % label = "CMFD flux, total, scatter-1"
 
-        ! set tally estimator to analog
+        ! Set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
 
-        ! set tally type to volume
+        ! Set tally type to volume
         t % type = TALLY_VOLUME
 
-        ! allocate and set filters
+        ! Allocate and set filters
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
         t % filters = filters(1:n_filters)
 
-        ! allocate scoring bins 
+        ! Allocate scoring bins 
         allocate(t % score_bins(3))
         t % n_score_bins = 3
         t % n_user_score_bins = 3
 
-        ! allocate scattering order data
+        ! Allocate scattering order data
         allocate(t % scatt_order(3))
         t % scatt_order = 0
         
-        ! set macro_bins
+        ! Set macro_bins
         t % score_bins(1)  = SCORE_FLUX
         t % score_bins(2)  = SCORE_TOTAL
         t % score_bins(3)  = SCORE_SCATTER_N
@@ -394,16 +416,16 @@ contains
 
       else if (i == 2) then
 
-        ! set label
+        ! Set label
         t % label = "CMFD neutron production"
 
-        ! set tally estimator to analog
+        ! Set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
 
-        ! set tally type to volume
+        ! Set tally type to volume
         t % type = TALLY_VOLUME
 
-        ! read and set outgoing energy mesh filter
+        ! Read and set outgoing energy mesh filter
         if (associated(mesh_ % energy)) then
           n_filters = n_filters + 1
           filters(n_filters) % type = FILTER_ENERGYOUT
@@ -414,34 +436,34 @@ contains
           t % find_filter(FILTER_ENERGYOUT) = n_filters
         end if
 
-        ! allocate and set filters
+        ! Allocate and set filters
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
         t % filters = filters(1:n_filters)
 
-        ! deallocate filters bins array
+        ! Deallocate filters bins array
         if (associated(mesh_ % energy)) &
              deallocate(filters(n_filters) % real_bins)
 
-        ! allocate macro reactions
+        ! Allocate macro reactions
         allocate(t % score_bins(2))
         t % n_score_bins = 2
         t % n_user_score_bins = 2
 
-        ! allocate scattering order data
+        ! Allocate scattering order data
         allocate(t % scatt_order(2))
         t % scatt_order = 0
 
-        ! set macro_bins
+        ! Set macro_bins
         t % score_bins(1) = SCORE_NU_SCATTER
         t % score_bins(2) = SCORE_NU_FISSION
 
       else if (i == 3) then
 
-        ! set label
+        ! Set label
         t % label = "CMFD surface currents"
 
-        ! set tally estimator to analog
+        ! Set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
 
         ! Add extra filter for surface
@@ -458,40 +480,41 @@ contains
         end if
         t % find_filter(FILTER_SURFACE) = n_filters
 
-        ! allocate and set filters
+        ! Allocate and set filters
         t % n_filters = n_filters
         allocate(t % filters(n_filters))
         t % filters = filters(1:n_filters)
 
-        ! deallocate filters bins array
+        ! Deallocate filters bins array
         deallocate(filters(n_filters) % int_bins)
 
-        ! allocate macro reactions
+        ! Allocate macro reactions
         allocate(t % score_bins(1))
         t % n_score_bins = 1
         t % n_user_score_bins = 1
 
-        ! allocate scattering order data
+        ! Allocate scattering order data
         allocate(t % scatt_order(1))
         t % scatt_order = 0
 
-        ! set macro bins
+        ! Set macro bins
         t % score_bins(1) = SCORE_CURRENT
         t % type = TALLY_SURFACE_CURRENT
 
-        ! we need to increase the dimension by one since we also need
+        ! We need to increase the dimension by one since we also need
         ! currents coming into and out of the boundary mesh cells.
         i_filter_mesh = t % find_filter(FILTER_MESH)
         t % filters(i_filter_mesh) % n_bins = product(m % dimension + 1)
 
       end if
 
-      ! deallocate filter bins
+      ! Deallocate filter bins
       deallocate(filters(1) % int_bins)
       if (associated(mesh_ % energy)) deallocate(filters(2) % real_bins)
 
     end do
 
+    ! Put cmfd tallies into active tally array and turn tallies on
     call setup_active_cmfdtallies()
     tallies_on = .true.
 

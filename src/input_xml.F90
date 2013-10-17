@@ -575,15 +575,13 @@ contains
       end do
     end if
 
-    ! check for cmfd run
+    ! Check for cmfd run
     call lower_case(run_cmfd_)
     if (run_cmfd_ == 'true' .or. run_cmfd_ == '1') then
       cmfd_run = .true.
 #ifndef PETSC
-      if (master) then
-        message = 'CMFD is not available, compile OpenMC with PETSc'
-        call fatal_error()
-      end if
+      message = 'CMFD is not available, recompile OpenMC with PETSc'
+      call fatal_error()
 #endif
     end if
 

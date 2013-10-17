@@ -20,6 +20,10 @@ module state_point
   use output_interface
   use tally_header,       only: TallyObject
 
+#ifdef MPI
+  use mpi
+#endif
+
   implicit none
 
   type(BinaryOutput) :: sp ! statepoint/source output file
@@ -96,6 +100,28 @@ contains
         call sp % write_data(k_col_tra, "k_col_tra")
         call sp % write_data(k_abs_tra, "k_abs_tra")
         call sp % write_data(k_combined, "k_combined", length=2)
+
+        ! Write out CMFD info
+        if (cmfd_on) then
+          call sp % write_data(1, "cmfd_on")
+          call sp % write_data(cmfd % indices, "indicies", length=4, group="cmfd")
+          call sp % write_data(cmfd % k_cmfd, "k_cmfd", length=current_batch, &
+               group="cmfd")
+          call sp % write_data(cmfd % cmfd_src, "cmfd_src", &
+               length=(/cmfd % indices(4), cmfd % indices(1), &
+               cmfd % indices(2), cmfd % indices(3)/), &
+               group="cmfd")
+          call sp % write_data(cmfd % entropy, "cmfd_entropy", &
+                          length=current_batch, group="cmfd")
+          call sp % write_data(cmfd % balance, "cmfd_balance", &
+               length=current_batch, group="cmfd")
+          call sp % write_data(cmfd % dom, "cmfd_dominance", &
+               length = current_batch, group="cmfd")
+          call sp % write_data(cmfd % src_cmp, "cmfd_srccmp", &
+               length = current_batch, group="cmfd")
+        else
+          call sp % write_data(0, "cmfd_on")
+        end if
       end if
 
       ! Write number of meshes
@@ -507,6 +533,28 @@ contains
 
       ! Take maximum of statepoint n_inactive and input n_inactive
       n_inactive = max(n_inactive, int_array(1))
+
+      ! Read in to see if CMFD was on
+      call sp % read_data(int_array(1), "cmfd_on")
+
+      ! Write out CMFD info
+      if (int_array(1) == 1) then
+        call sp % read_data(cmfd % indices, "indicies", length=4, group="cmfd")
+        call sp % read_data(cmfd % k_cmfd, "k_cmfd", length=restart_batch, &
+             group="cmfd")
+        call sp % read_data(cmfd % cmfd_src, "cmfd_src", &
+             length=(/cmfd % indices(4), cmfd % indices(1), &
+             cmfd % indices(2), cmfd % indices(3)/), &
+             group="cmfd")
+        call sp % read_data(cmfd % entropy, "cmfd_entropy", &
+                       length=restart_batch, group="cmfd")
+        call sp % read_data(cmfd % balance, "cmfd_balance", &
+             length=restart_batch, group="cmfd")
+        call sp % read_data(cmfd % dom, "cmfd_dominance", &
+             length = restart_batch, group="cmfd")
+        call sp % read_data(cmfd % src_cmp, "cmfd_srccmp", &
+             length = restart_batch, group="cmfd")
+      end if
     end if
 
     ! Read number of meshes

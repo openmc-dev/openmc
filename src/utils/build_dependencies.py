@@ -11,7 +11,8 @@ for src in glob.iglob('*.F90'):
     d = re.findall(r'\n\s*use\s+(\w+)',
                    open(src, 'r').read())
     for name in d:
-        if name in ['mpi', 'hdf5', 'h5lt']:
+        if name in ['mpi', 'hdf5', 'h5lt', 'petscsys', 'petscmat', 'petscksp',
+                    'petscsnes', 'petscvec']:
             continue
         if name.startswith('xml_data_'):
             name = name.replace('xml_data_', 'templates/')
@@ -20,7 +21,7 @@ for src in glob.iglob('*.F90'):
         dependencies[module] = sorted(list(deps))
 
 
-for module in dependencies.keys():
+for module in sorted(dependencies.keys()):
     for dep in dependencies[module]:
         print("{0}.o: {1}.o".format(module, dep))
     print('')

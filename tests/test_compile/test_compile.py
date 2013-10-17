@@ -273,8 +273,8 @@ def test_mpi_omp_hdf5_petsc_optimize():
 
 def run(commands):
     proc = Popen(commands, stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
     print(proc.communicate()[0])
+    returncode = proc.returncode
     return returncode
 
 

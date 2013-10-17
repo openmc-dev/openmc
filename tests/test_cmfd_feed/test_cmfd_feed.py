@@ -29,9 +29,9 @@ def test_run():
                      stderr=STDOUT, stdout=PIPE)
     else:
         proc = Popen([openmc_path], stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
     output = proc.communicate()[0]
     print(output)
+    returncode = proc.returncode
     if 'CMFD is not available' in output:
         global skipAll
         skipAll = True

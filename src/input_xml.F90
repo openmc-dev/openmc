@@ -560,8 +560,10 @@ contains
         end do
       else
         ! If neither were specified, write state point at last batch
-        n_source_points = 1
-        call sourcepoint_batch % add(n_batches)
+        n_source_points = n_state_points
+        do i = 1, n_state_points
+          call sourcepoint_batch % add(statepoint_batch % get_item(i))
+        end do
       end if
 
       ! Check if the user has specified to write binary source file

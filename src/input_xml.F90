@@ -530,19 +530,58 @@ contains
         n_state_points = 1
         call statepoint_batch % add(n_batches)
       end if
-
-      ! Check if the user has specified to write binary source file
-      call lower_case(state_point_(1) % source_separate)
-      call lower_case(state_point_(1) % source_write)
-      if (state_point_(1) % source_separate == 'true' .or. &
-           state_point_(1) % source_separate == '1') source_separate = .true.
-      if (state_point_(1) % source_write == 'false' .or. &
-           state_point_(1) % source_write == '0') source_write = .false.
     else
       ! If no <state_point> tag was present, by default write state point at
       ! last batch only
       n_state_points = 1
       call statepoint_batch % add(n_batches)
+    end if
+
+    ! Check if the user has specified to write state points
+    if (size(source_point_) > 0) then
+      ! Determine number of batches at which to store state points
+      if (associated(state_point_(1) % batches)) then
+        n_source_points = size(source_point_(1) % batches)
+      else
+        n_source_points = 0
+      end if
+
+      if (n_source_points > 0) then
+        ! User gave specific batches to write state points
+        do i = 1, n_source_points
+          call sourcepoint_batch % add(source_point_(1) % batches(i))
+        end do
+
+      elseif (source_point_(1) % interval /= 0) then
+        ! User gave an interval for writing state points
+        n_source_points = n_batches / source_point_(1) % interval
+        do i = 1, n_source_points
+          call sourcepoint_batch % add(source_point_(1) % interval * i)
+        end do
+      else
+        ! If neither were specified, write state point at last batch
+        n_source_points = 1
+        call sourcepoint_batch % add(n_batches)
+      end if
+
+      ! Check if the user has specified to write binary source file
+      call lower_case(source_point_(1) % source_separate)
+      call lower_case(source_point_(1) % source_write)
+      call lower_case(source_point_(1) % overwrite_latest)
+      if (source_point_(1) % source_separate == 'true' .or. &
+           source_point_(1) % source_separate == '1') source_separate = .true.
+      if (source_point_(1) % source_write == 'false' .or. &
+           source_point_(1) % source_write == '0') source_write = .false.
+      if (source_point_(1) % overwrite_latest == 'true' .or. &
+           source_point_(1) % overwrite_latest == '1') source_latest = .true.
+    else
+      ! If no <source_point> tag was present, by default we keep source bank in
+      ! statepoint file and write it out at statepoints intervals 
+      source_separate = .false.
+      n_source_points = n_state_points
+      do i = 1, n_state_points
+        call sourcepoint_batch % add(statepoint_batch % get_item(i))
+      end do
     end if
 
     ! Check if the user has specified to not reduce tallies at the end of every

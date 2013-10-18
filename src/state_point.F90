@@ -793,9 +793,9 @@ contains
       else
 
 #ifdef MPI
-      ! Reopen statepoint file in parallel, but only if MPI
+      ! Open file determined form initialization in parallel, but only if MPI
       ! We will compute the position where the source begins
-      call sp % file_open(path_state_point, 'r', serial = .false.)
+      call sp % file_open(path_source_point, 'r', serial = .false.)
 #endif
 
       end if

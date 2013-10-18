@@ -363,7 +363,43 @@ contains
           case (FILETYPE_PARTICLE_RESTART)
             path_particle_restart = argv(i)
             particle_restart_run = .true.
+          case default
+            message = "Unrecognized file after restart flag."
+            call fatal_error()
           end select
+
+          ! If its a restart run check for additional source file
+          if (restart_run) then
+
+            ! Increment arg
+            i = i + 1
+
+            ! Check if it has extension we can read
+            if ((ends_with(argv(i), '.binary') .or. &
+                 ends_with(argv(i), '.h5'))) then
+
+              ! Check file type is a source file
+              call sp % file_open(argv(i), 'r', serial = .false.)
+              call sp % read_data(filetype, 'filetype')
+              call sp % file_close()
+              if (filetype /= FILETYPE_SOURCE) then
+                message = "Second file after restart flag must be a source file"
+                call fatal_error()
+              end if
+
+              ! It is a source file
+              path_source_point = argv(i)
+
+            else
+
+              ! Source is in statepoint file
+              path_source_point = path_state_point
+
+              ! Set argument back
+              i = i - 1
+
+            end if
+          end if
 
         case ('-g', '-geometry-debug', '--geometry-debug')
           check_overlaps = .true.

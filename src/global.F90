@@ -189,6 +189,7 @@ module global
   ! Write source at end of simulation
   logical :: source_separate = .false.
   logical :: source_write = .true.
+  logical :: source_latest = .false.
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
@@ -358,6 +359,10 @@ module global
   ! Information about state points to be written
   integer :: n_state_points = 0
   type(SetInt) :: statepoint_batch
+
+  ! Information about source points to be written
+  integer :: n_source_points = 0
+  type(SetInt) :: sourcepoint_batch
 
   ! Various output options
   logical :: output_summary = .false.

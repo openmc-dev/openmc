@@ -280,14 +280,42 @@ contains
 
     end if
 
-    ! Check for eigenvalue calculation
-    if (run_mode == MODE_EIGENVALUE .and. source_write) then
+  end subroutine write_state_point
 
-      ! Check for writing source out separately
+!===============================================================================
+! WRITE_SOURCE_POINT
+!===============================================================================
+
+  subroutine write_source_point()
+
+    type(BinaryOutput) :: sp
+    character(MAX_FILE_LEN) :: filename
+
+    ! Check to write out source for a specified batch
+    if (sourcepoint_batch % contains(current_batch)) then
+
+      ! Create or open up file
       if (source_separate) then
 
-        ! Set filename for source
-        filename = trim(path_output) // 'source.' // &
+        ! Set filename
+        filename = trim(path_output) // 'source.' // trim(to_str(current_batch))
+#ifdef HDF5
+        filename = trim(filename) // '.h5'
+#else
+        filename = trim(filename) // '.binary'
+#endif
+
+        ! Write message for new file creation
+        message = "Creating source file " // trim(filename) // "..."
+        call write_message()
+
+        ! Create separate source file
+        call sp % file_create(filename, serial = .false.)
+
+      else
+
+        ! Set filename for state point
+        filename = trim(path_output) // 'statepoint.' // &
                    trim(to_str(current_batch))
 #ifdef HDF5
         filename = trim(filename) // '.h5'
@@ -295,16 +323,7 @@ contains
         filename = trim(filename) // '.binary'
 #endif
 
-        ! Write message
-        message = "Creating source file " // trim(filename) // "..."
-        call write_message(1)
-
-        ! Create source file 
-        call sp % file_create(filename, serial = .false.)
-
-      else
-
-        ! Reopen state point file in parallel
+        ! Reopen statepoint file in parallel
         call sp % file_open(filename, 'w', serial = .false.)
 
       end if
@@ -317,7 +336,33 @@ contains
 
     end if
 
-  end subroutine write_state_point
+    ! Also check to write source separately in overwritten file
+    if (source_latest) then
+
+      ! Set filename
+      filename = trim(path_output) // 'source'
+#ifdef HDF5
+      filename = trim(filename) // '.h5'
+#else
+      filename = trim(filename) // '.binary'
+#endif
+
+      ! Write message for new file creation
+      message = "Creating source file " // trim(filename) // "..."
+      call write_message()
+
+      ! Always create this file because it will be overwritten
+      call sp % file_create(filename, serial = .false.)
+
+      ! Write out source
+      call sp % write_source_bank()
+
+      ! Close file
+      call sp % file_close()
+
+    end if
+
+  end subroutine write_source_point
 
 !===============================================================================
 ! WRITE_TALLY_RESULTS_NR

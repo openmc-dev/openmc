@@ -312,6 +312,9 @@ contains
         ! Create separate source file
         call sp % file_create(filename, serial = .false.)
 
+        ! Write file type
+        call sp % write_data(FILETYPE_SOURCE, "filetype")
+
       else
 
         ! Set filename for state point
@@ -353,6 +356,9 @@ contains
 
       ! Always create this file because it will be overwritten
       call sp % file_create(filename, serial = .false.)
+
+      ! Write file type
+      call sp % write_data(FILETYPE_SOURCE, "filetype")
 
       ! Write out source
       call sp % write_source_bank()

@@ -369,7 +369,7 @@ contains
           end select
 
           ! If its a restart run check for additional source file
-          if (restart_run) then
+          if (restart_run .and. i + 1 <= argc) then
 
             ! Increment arg
             i = i + 1

@@ -307,7 +307,7 @@ contains
 
         ! Write message for new file creation
         message = "Creating source file " // trim(filename) // "..."
-        call write_message()
+        call write_message(1)
 
         ! Create separate source file
         call sp % file_create(filename, serial = .false.)
@@ -352,7 +352,7 @@ contains
 
       ! Write message for new file creation
       message = "Creating source file " // trim(filename) // "..."
-      call write_message()
+      call write_message(1)
 
       ! Always create this file because it will be overwritten
       call sp % file_create(filename, serial = .false.)

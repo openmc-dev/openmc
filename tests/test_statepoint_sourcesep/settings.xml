@@ -5,7 +5,7 @@
   <source_point source_separate="true" />
 
   <eigenvalue>
-    <batches>15</batches>
+    <batches>10</batches>
     <inactive>5</inactive>
     <particles>1000</particles>
   </eigenvalue>

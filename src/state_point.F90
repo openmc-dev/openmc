@@ -783,6 +783,9 @@ contains
         ! Open source file 
         call sp % file_open(filename, 'r', serial = .false.)
 
+        ! Read file type
+        call sp % read_data(int_array(1), "filetype")
+
       end if
 
       ! Write out source

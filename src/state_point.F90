@@ -474,7 +474,7 @@ contains
     call write_message(1)
 
     ! Open file for reading
-    call sp % file_open(path_state_point, 'r')
+    call sp % file_open(path_state_point, 'r', serial = .false.)
 
     ! Read filetype
     call sp % read_data(int_array(1), "filetype")
@@ -705,13 +705,6 @@ contains
 
         end do TALLY_RESULTS
       end if
-
-#ifdef MPI
-      ! If using MPI, file needs to be closed and reopened in parallel
-      ! If serial, we cannot close the file or we will lose our file position
-      call sp % file_close()
-# endif
-
     end if
 
     ! Read source if in eigenvalue mode 
@@ -738,14 +731,6 @@ contains
 
         ! Open source file 
         call sp % file_open(filename, 'r', serial = .false.)
-
-      else
-
-#ifdef MPI
-      ! Reopen statepoint file in parallel, but only if MPI
-      ! We will compute the position where the source begins
-      call sp % file_open(path_state_point, 'r', serial = .false.)
-#endif
 
       end if
 

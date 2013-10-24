@@ -575,13 +575,15 @@ contains
       end do
     end if
 
-    ! Check for cmfd run
+    ! check for cmfd run
     call lower_case(run_cmfd_)
     if (run_cmfd_ == 'true' .or. run_cmfd_ == '1') then
       cmfd_run = .true.
 #ifndef PETSC
-      message = 'CMFD is not available, recompile OpenMC with PETSc'
-      call fatal_error()
+      if (master) then
+        message = 'CMFD is not available, compile OpenMC with PETSc'
+        call fatal_error()
+      end if
 #endif
     end if
 
@@ -981,6 +983,7 @@ contains
         n_z = 1
       end if
       allocate(lat % universes(n_x, n_y, n_z))
+      allocate(lat % offset(n_x, n_y, n_z))
 
       ! Check that number of universes matches size
       if (size(lattice_(i) % universes) /= n_x*n_y*n_z) then

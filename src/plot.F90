@@ -2,8 +2,8 @@ module plot
 
   use constants
   use error,           only: fatal_error
-  use geometry,        only: find_cell, check_cell_overlap
-  use geometry_header, only: Cell, BASE_UNIVERSE
+  use geometry
+  use geometry_header
   use global
   use output,          only: write_message
   use particle_header, only: deallocate_coord, Particle
@@ -109,8 +109,15 @@ contains
     real(8) :: in_pixel
     real(8) :: out_pixel
     real(8) :: xyz(3)
+    logical :: found_cell
+    integer :: cellid
     type(Image) :: img
     type(Particle) :: p
+    type(Universe), pointer :: univ => null()
+
+
+    cellid = -1
+
 
     ! Initialize and allocate space for image
     call init_image(img)
@@ -148,6 +155,11 @@ contains
     p % coord % uvw = (/ 0.5, 0.5, 0.5 /)
     p % coord % universe = BASE_UNIVERSE
 
+    univ => universes(BASE_UNIVERSE)
+    call deallocate_coord(p % coord % next)
+    
+    call calc_offsets(univ,cellid)
+    call print_all(univ)
     do y = 1, img % height
       do x = 1, img % width
 
@@ -284,4 +296,454 @@ contains
 
   end subroutine create_3d_dump
 
+!===============================================================================
+! CALC_OFFSETS calculates and stores the offsets in all cells
+!===============================================================================
+
+  recursive subroutine calc_offsets(univ, cellid)
+
+    type(Universe), intent(in) :: univ
+    integer, intent(in) :: cellid
+
+    integer :: i                    ! index over cells
+    integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: n_x, n_y, n_z        ! size of lattice
+    integer :: n                    ! number of cells to search
+    integer :: prevoffset           ! total offset for the previous cell
+    integer :: tempoffset           ! total offset for a given cell
+    integer :: index_cell           ! index in cells array
+    integer :: index_univ           ! index to next universe in universes array
+    real(8) :: xyz(3)               ! temporary location
+    real(8) :: upper_right(3)       ! lattice upper_right
+    type(Cell),     pointer :: c => null()    ! pointer to cell
+    type(Lattice),  pointer :: lat => null()  ! pointer to lattice
+    type(Universe), pointer :: univ_next => null() ! next universe to loop through
+
+    n = univ % n_cells
+    
+    print *, 'Uni ', univ % id , ' has ', n , ' cells'
+    
+    do i = 1, n
+    
+      
+      index_cell = univ % cells(i)
+
+      ! get pointer to cell
+      c => cells(index_cell)
+      tempoffset = 0
+      call count_target_cell(c,cellid,tempoffset)
+           
+      
+      if (i /= 1) then
+      
+        prevoffset = c % offset
+      
+      else
+      
+        prevoffset = 0
+        c % offset = 0
+        
+      end if
+       
+      if (i /= n) then
+      
+        c => cells(index_cell + 1)
+        c % offset = prevoffset + tempoffset
+        c => cells(index_cell)
+        
+        print *, 'Cell ', c % id , ' has offset ' , c % offset
+      
+      else 
+        
+        print *, 'Cell ', c % id , ' has offset ' , c % offset
+      
+      end if
+      
+      
+      
+      !print *, 'Cell ', c % id
+      
+      if (c % type == CELL_NORMAL) then
+        ! ====================================================================
+        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+
+      elseif (c % type == CELL_FILL) then
+        ! ====================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+        univ_next => universes(c % fill)
+        call calc_offsets(univ_next,cellid)
+
+      elseif (c % type == CELL_LATTICE) then
+        ! ====================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+        ! Set current lattice
+        lat => lattices(c % fill)
+        print *, 'Lattice ', lat % id
+
+
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        else
+          n_z = 1
+        end if
+        print *, 'Dimensions:',n_x,',',n_y,',',n_z
+        ! Loop over lattice coordinates
+        do i_x = 1, n_x
+          do i_y = 1, n_y
+            do i_z = 1, n_z
+
+              univ_next => universes(lat % universes(i_x,i_y,i_z))
+              
+              tempoffset = 0
+              if (i_x == 1 .AND. i_y == 1 .AND. i_z == 1) then
+           
+                lat % offset(1,1,1) = 0
+                prevoffset = 0
+                call count_target_univ(univ_next,cellid,tempoffset)
+
+              else
+              
+                prevoffset = lat % offset(i_x,i_y,i_z)
+                call count_target_univ(univ_next,cellid,tempoffset)
+               
+              end if
+              
+
+              if (i_z + 1 <= n_z) then
+                lat % offset(i_x,i_y,i_z+1) = tempoffset + prevoffset              
+              elseif (i_y + 1 <= n_y) then
+                lat % offset(i_x,i_y+1,1) = tempoffset + prevoffset              
+              elseif (i_x + 1 <= n_x) then
+                lat % offset(i_x+1,1,1) = tempoffset + prevoffset
+              end if
+              
+              
+              print *, 'Lat',lat % id,' (',i_x,',',i_y,',',i_z,') has offset ' , lat % offset(i_x,i_y,i_z)
+!              call calc_offsets(univ_next,cellid)
+
+            end do
+          end do
+        end do
+
+      end if
+    end do
+    
+    return
+    
+  end subroutine calc_offsets
+  
+!===============================================================================
+! COUNT_TARGET_CELL recursively totals the numbers of occurances of a given cell id
+! beginning with the cell given. Using -1 for the cell id will total all 
+! normal cells.
+!===============================================================================
+
+  recursive subroutine count_target_cell(c, cellid, kount)
+
+    type(Cell), intent(in) :: c
+    integer, intent(in) :: cellid
+    integer, intent(inout) :: kount
+
+    integer :: i                    ! index over cells
+    integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: n_x, n_y, n_z        ! size of lattice
+    integer :: n                    ! number of cells to search
+    integer :: index_cell           ! index in cells array
+    integer :: index_univ           ! index to next universe in universes array
+    real(8) :: xyz(3)               ! temporary location
+    real(8) :: upper_right(3)       ! lattice upper_right
+    type(Cell),     pointer, save :: c_next => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+
+    if (c % type == CELL_NORMAL) then
+      ! ====================================================================
+      ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+      if (cellid == c % id .OR. cellid == -1) then
+        kount = kount + 1
+      endif
+
+    elseif (c % type == CELL_FILL) then
+      ! ====================================================================
+      ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+      univ_next => universes(c % fill)
+      
+      n = univ_next % n_cells
+
+      !print *, 'Uni ', univ % id , ' has ', n , ' cells'
+      
+      do i = 1, n
+      
+        index_cell = univ_next % cells(i)
+
+        ! get pointer to cell
+        c_next => cells(index_cell)
+        !print *, 'Cell ', c % id
+        
+        call count_target_cell(c_next, cellid, kount)
+        
+      end do
+
+    elseif (c % type == CELL_LATTICE) then
+      ! ====================================================================
+      ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+      ! Set current lattice
+      lat => lattices(c % fill)
+
+
+      n_x = lat % dimension(1)
+      n_y = lat % dimension(2)
+      if (lat % n_dimension == 3) then
+        n_z = lat % dimension(3)
+      else
+        n_z = 1
+      end if
+      
+      ! Loop over lattice coordinates
+      do i_x = 1, n_x
+        do i_y = 1, n_y
+          do i_z = 1, n_z
+
+           ! print *, 'Lattice (',i_x,',',i_y,',',i_z,')'
+!              index_univ = universe_dict % get_key()
+            univ_next => universes(lat % universes(i_x,i_y,i_z))
+            
+            n = univ_next % n_cells
+    
+            !print *, 'Uni ', univ % id , ' has ', n , ' cells'
+            
+            do i = 1, n
+            
+              index_cell = univ_next % cells(i)
+
+              ! get pointer to cell
+              c_next => cells(index_cell)
+              !print *, 'Cell ', c % id
+              
+              call count_target_cell(c_next, cellid, kount)
+              
+            end do
+            
+
+          end do
+        end do
+      end do
+
+    end if
+    
+  end subroutine count_target_cell
+
+!===============================================================================
+! COUNT_TARGET_UNIV recursively totals the numbers of occurances of a given cell id
+! beginning with the universe given. Using -1 for the cell id will total all 
+! normal cells.
+!===============================================================================
+
+  recursive subroutine count_target_univ(univ, cellid, kount)
+
+    type(Universe), intent(in) :: univ
+    integer, intent(in) :: cellid
+    integer, intent(inout) :: kount
+
+    integer :: i                    ! index over cells
+    integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: n_x, n_y, n_z        ! size of lattice
+    integer :: n                    ! number of cells to search
+    integer :: index_cell           ! index in cells array
+    integer :: index_univ           ! index to next universe in universes array
+    real(8) :: xyz(3)               ! temporary location
+    real(8) :: upper_right(3)       ! lattice upper_right
+    type(Cell),     pointer, save :: c => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+
+    n = univ % n_cells
+    
+    do i = 1, n
+    
+      
+      index_cell = univ % cells(i)
+
+      ! get pointer to cell
+      c => cells(index_cell)
+      
+      !print *, 'Cell ', c % id
+      
+      if (c % type == CELL_NORMAL) then
+        ! ====================================================================
+        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+        if (cellid == c % id .OR. cellid == -1) then
+          kount = kount + 1
+        endif
+        
+      elseif (c % type == CELL_FILL) then
+        ! ====================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+        univ_next => universes(c % fill)
+        call count_target_univ(univ_next,cellid,kount)
+
+      elseif (c % type == CELL_LATTICE) then
+        ! ====================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+        ! Set current lattice
+        lat => lattices(c % fill)
+        
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        else
+          n_z = 1
+        end if
+        
+        ! Loop over lattice coordinates
+        do i_x = 1, n_x
+          do i_y = 1, n_y
+            do i_z = 1, n_z
+
+              univ_next => universes(lat % universes(i_x,i_y,i_z))
+              call count_target_univ(univ_next,cellid,kount)
+
+            end do
+          end do
+        end do
+
+      end if
+    end do
+             
+  end subroutine count_target_univ
+  
+!===============================================================================
+! 
+!===============================================================================
+
+  recursive subroutine populate_cell_list(univ, celllist, ind, cellid)
+
+    type(Universe), intent(in) :: univ
+    integer, intent(inout) :: celllist(:)
+    integer, intent(inout) :: ind
+    integer, intent(inout) :: cellid
+
+    integer :: i                    ! index over cells
+    integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: n_x, n_y, n_z        ! size of lattice
+    integer :: n                    ! number of cells to search
+    integer :: index_cell           ! index in cells array
+    integer :: index_univ           ! index to next universe in universes array
+    real(8) :: xyz(3)               ! temporary location
+    real(8) :: upper_right(3)       ! lattice upper_right
+    type(Cell),     pointer, save :: c => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+
+    n = univ % n_cells
+    
+    do i = 1, n
+    
+      
+      index_cell = univ % cells(i)
+
+      ! get pointer to cell
+      c => cells(index_cell)
+      
+      !print *, 'Cell ', c % id
+      
+      if (c % type == CELL_NORMAL) then
+        ! ====================================================================
+        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+        if (cellid == c % id .OR. cellid == -1) then
+          print  *,'c%id:',c%id
+          print  *,'ind:',ind
+          celllist(ind) = c % id
+          ind = ind + 1          
+        endif
+        
+      elseif (c % type == CELL_FILL) then
+        ! ====================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+        univ_next => universes(c % fill)
+        call populate_cell_list(univ_next,celllist,ind,cellid)
+
+      elseif (c % type == CELL_LATTICE) then
+        ! ====================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+        ! Set current lattice
+        lat => lattices(c % fill)
+        
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        else
+          n_z = 1
+        end if
+        
+        ! Loop over lattice coordinates
+        do i_x = 1, n_x
+          do i_y = 1, n_y
+            do i_z = 1, n_z
+
+              univ_next => universes(lat % universes(i_x,i_y,i_z))
+              call populate_cell_list(univ_next,celllist,ind,cellid)
+
+            end do
+          end do
+        end do
+
+      end if
+    end do
+             
+  end subroutine populate_cell_list
+
+!===============================================================================
+! PRINT_ALL prints the tally array index and coordinate chain for 
+! every normal cell.
+!===============================================================================
+
+  subroutine print_all(univ)
+
+    type(Universe), intent(in) :: univ
+
+    integer :: i                     ! index over cells
+    integer :: i_x, i_y, i_z         ! indices in lattice
+    integer :: n_x, n_y, n_z         ! size of lattice
+    integer :: n                     ! number of cells to search
+    integer :: index_cell            ! index in cells array
+    integer :: index_univ            ! index to next universe in universes array
+    integer :: kount                 ! number of normal cells in the system
+    integer :: cellid                ! cellid to use. will be set to -1 to signal all cells
+    integer, allocatable :: celllist(:) ! vector of normal cells in system
+    real(8) :: xyz(3)                ! temporary location
+    real(8) :: upper_right(3)        ! lattice upper_right
+    type(Cell),     pointer, save :: c => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+
+
+    cellid = -1
+    i = 1
+    call count_target_univ(univ, cellid, kount)
+    allocate(celllist(kount))
+    call populate_cell_list(univ,celllist,i,cellid)
+    print *,kount
+    do i = 1, kount
+    
+      !print  *,celllist(i)
+      
+    end do
+             
+  deallocate(celllist)
+  end subroutine print_all
+
+  
 end module plot

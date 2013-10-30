@@ -2141,9 +2141,15 @@ contains
     
     Ein = micro_xs(i_nuclide) % last_E
     i_grid = micro_xs(i_nuclide) % index_grid
-    i_grid = binary_search(nuc % int_scatt_Ein(i_grid: &
-                           i_grid + integrated_scatt_groups), &
-                           integrated_scatt_groups, Ein) + i_grid - 1
+    if (i_grid + integrated_scatt_groups <= size(nuc % int_scatt_Ein)) then
+      i_grid = binary_search(nuc % int_scatt_Ein(i_grid: &
+                             i_grid + integrated_scatt_groups), &
+                             integrated_scatt_groups, Ein) + i_grid - 1
+    else     
+      i_grid = binary_search(nuc % int_scatt_Ein(i_grid:), &
+                             size(nuc % int_scatt_Ein) - i_grid + 1, Ein) + &
+               i_grid - 1
+    end if
 
     f = micro_xs(i_nuclide) % interp_factor
     one_f = (ONE - f) * wgt
@@ -2203,9 +2209,15 @@ contains
     ! Find the grid index of integrated scattering data to look for
     Ein = micro_xs(i_nuclide) % last_E
     i_grid = micro_xs(i_nuclide) % index_grid
-    i_grid = binary_search(nuc % int_scatt_Ein(i_grid: &
-                           i_grid + integrated_scatt_groups), &
-                           integrated_scatt_groups, Ein) + i_grid - 1
+    if (i_grid + integrated_scatt_groups <= size(nuc % int_scatt_Ein)) then
+      i_grid = binary_search(nuc % int_scatt_Ein(i_grid: &
+                             i_grid + integrated_scatt_groups), &
+                             integrated_scatt_groups, Ein) + i_grid - 1
+    else
+      i_grid = binary_search(nuc % int_scatt_Ein(i_grid:), &
+                             size(nuc % int_scatt_Ein) - i_grid + 1, Ein) + &
+               i_grid - 1
+    end if
     
     ! Get our sigS
     sigS   = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption

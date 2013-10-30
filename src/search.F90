@@ -31,7 +31,7 @@ contains
     L = 1
     R = n
 
-    if (val < array(L) .or. val > array(R)) then
+    if (val < array(L) .or. val > array(R)) then   
       message = "Value outside of array during binary search"
       call fatal_error()
     end if

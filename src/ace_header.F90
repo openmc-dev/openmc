@@ -125,6 +125,7 @@ module ace_header
     
     ! Microscopic integrated scattering data for use only with
     ! integrated scattering tallies
+    real(8), allocatable :: int_scatt_Ein(:)       ! Incoming energy grid
     type(GrpTransfer), allocatable :: int_scatt(:) ! Dimension is incoming energy
 
     ! Fission information
@@ -387,6 +388,10 @@ module ace_header
         deallocate(this % urr_data)
       end if
       
+      if (allocated(this % int_scatt_Ein)) then
+        deallocate(this % int_scatt_Ein)
+      end if
+
       if (allocated(this % int_scatt)) then
         do i = 1, size(this % int_scatt)
           call this % int_scatt(i) % clear()

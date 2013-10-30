@@ -2135,27 +2135,20 @@ contains
     real(8) :: f        ! interp factor on nuclide energy grid
     real(8) :: one_f    ! (ONE - f)
     type(Nuclide), pointer :: nuc ! Working nuclide
-    real(8) :: Eup      ! E of next point up in nuc % energy grid
     real(8) :: Ein      ! incoming energy
-    integer :: gin      ! incoming energy group index
-    integer :: gmin, gmax ! Min and max group bounds of NDPP data
     
     nuc => nuclides(i_nuclide)
-
-!!! If we get a new energy grid, then we will need to add our own binary search
-! and calculation of interpolation factor, f, here.
     
-    i_grid = micro_xs(i_nuclide) % index_grid
-
-    ! find energy of i_grid + 1
-    Eup = nuc % energy(i_grid + 1)
     Ein = micro_xs(i_nuclide) % last_E
-    if (Ein >= integrated_energy_bins(integrated_scatt_groups)) then
-      gin = integrated_scatt_groups - 1
-    else if (Ein <= integrated_energy_bins(1)) then
-      gin = 1
-    else
-      gin = binary_search(integrated_energy_bins, integrated_scatt_groups, Ein)
+    i_grid = micro_xs(i_nuclide) % index_grid
+    if (i_grid + integrated_scatt_groups <= size(nuc % int_scatt_Ein)) then
+      i_grid = binary_search(nuc % int_scatt_Ein(i_grid: &
+                             i_grid + integrated_scatt_groups), &
+                             integrated_scatt_groups, Ein) + i_grid - 1
+    else     
+      i_grid = binary_search(nuc % int_scatt_Ein(i_grid:), &
+                             size(nuc % int_scatt_Ein) - i_grid + 1, Ein) + &
+               i_grid - 1
     end if
 
     f = micro_xs(i_nuclide) % interp_factor
@@ -2164,9 +2157,8 @@ contains
     
     ! Add the contribution from the lower score
     if (nuc % int_scatt(i_grid) % gmin /= 0) then
-      gmin = nuc % int_scatt(i_grid) % gmin
-      gmax = nuc % int_scatt(i_grid) % gmax
-      do g = gmin, gmax
+      do g = nuc % int_scatt(i_grid) % gmin, &
+             nuc % int_scatt(i_grid) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
@@ -2176,13 +2168,8 @@ contains
     
     ! Now add the contribution from the higher score
     if (nuc % int_scatt(i_grid + 1) % gmin /= 0) then
-      gmin = nuc % int_scatt(i_grid + 1) % gmin
-      if (Eup > integrated_energy_bins(gin + 1)) then
-        gmax = gin
-      else
-        gmax = nuc % int_scatt(i_grid + 1) % gmax
-      end if
-      do g = gmin, gmax
+      do g = nuc % int_scatt(i_grid + 1) % gmin, &
+             nuc % int_scatt(i_grid + 1) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
@@ -2215,29 +2202,25 @@ contains
     real(8) :: one_f    ! (ONE - f) * sigS
     real(8) :: sigS     ! scattering cross-section (tot - abs)
     type(Nuclide), pointer :: nuc ! The working nuclide
-    real(8) :: Eup      ! E of next point up in nuc % energy grid
     real(8) :: Ein      ! incoming energy
-    integer :: gin      ! incoming energy group index
-    integer :: gmin, gmax ! Min and max group bounds of NDPP data
     
     nuc => nuclides(i_nuclide)
 
-!!! If we get a new energy grid, then we will need to add our own binary search
-! and calculation of interpolation factor, f, here.
-    
-    i_grid = micro_xs(i_nuclide) % index_grid
-    sigS   = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
-
-    ! find energy of i_grid + 1
-    Eup = nuc % energy(i_grid + 1)
+    ! Find the grid index of integrated scattering data to look for
     Ein = micro_xs(i_nuclide) % last_E
-    if (Ein >= integrated_energy_bins(integrated_scatt_groups)) then
-      gin = integrated_scatt_groups - 1
-    else if (Ein <= integrated_energy_bins(1)) then
-      gin = 1
+    i_grid = micro_xs(i_nuclide) % index_grid
+    if (i_grid + integrated_scatt_groups <= size(nuc % int_scatt_Ein)) then
+      i_grid = binary_search(nuc % int_scatt_Ein(i_grid: &
+                             i_grid + integrated_scatt_groups), &
+                             integrated_scatt_groups, Ein) + i_grid - 1
     else
-      gin = binary_search(integrated_energy_bins, integrated_scatt_groups, Ein)
+      i_grid = binary_search(nuc % int_scatt_Ein(i_grid:), &
+                             size(nuc % int_scatt_Ein) - i_grid + 1, Ein) + &
+               i_grid - 1
     end if
+    
+    ! Get our sigS
+    sigS   = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
 
     f = micro_xs(i_nuclide) % interp_factor
     one_f = (ONE - f) * sigS * N_flux
@@ -2245,9 +2228,8 @@ contains
     
     ! Add the contribution from the lower score
     if (nuc % int_scatt(i_grid) % gmin /= 0) then
-      gmin = nuc % int_scatt(i_grid) % gmin
-      gmax = nuc % int_scatt(i_grid) % gmax
-      do g = gmin, gmax
+      do g = nuc % int_scatt(i_grid) % gmin, &
+             nuc % int_scatt(i_grid) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
@@ -2257,13 +2239,8 @@ contains
     
     ! Now add the contribution from the higher score
     if (nuc % int_scatt(i_grid + 1) % gmin /= 0) then
-      gmin = nuc % int_scatt(i_grid + 1) % gmin
-      if (Eup > integrated_energy_bins(gin + 1)) then
-        gmax = gin
-      else
-        gmax = nuc % int_scatt(i_grid + 1) % gmax
-      end if
-      do g = gmin, gmax
+      do g = nuc % int_scatt(i_grid + 1) % gmin, &
+             nuc % int_scatt(i_grid + 1) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &

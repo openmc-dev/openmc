@@ -395,11 +395,11 @@ contains
       ! Move to \sigma_{s,g'->g,l}(E_{in}) data
       ! Get Ein information
       read(UNIT=in, FMT=*) NEin
-      allocate(Ein(NEin))
-      read(UNIT=in, FMT=*) Ein
-      !!! Right now the Ein information is the same as in nuc % energy, so
-      !!! as for now we do nothing with Ein.
-      
+      allocate(nuc % int_scatt_Ein(NEin))
+      do iE = 1, NEin
+        read(UNIT=in, FMT=*) nuc % int_scatt_Ein(iE)
+      end do
+
       ! Get the moments themselves
       allocate(nuc % int_scatt(NEin))
       do iE = 1, NEin
@@ -466,10 +466,10 @@ contains
       ! Move to \sigma_{s,g'->g,l}(E_{in}) data
       ! Get Ein information
       read(UNIT=in) NEin
-      allocate(Ein(NEin))
-      read(UNIT=in) Ein
-      !!! Right now the Ein information is the same as in nuc % energy, so
-      !!! as for now we do nothing with Ein.
+      allocate(nuc % int_scatt_Ein(NEin))
+      do iE = 1, NEin
+        read(UNIT=in) nuc % int_scatt_Ein(iE)
+      end do  
       
       ! Get the moments themselves
       allocate(nuc % int_scatt(NEin))

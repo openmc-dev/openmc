@@ -324,7 +324,6 @@ contains
     print *, 'Uni ', univ % id , ' has ', n , ' cells'
     
     do i = 1, n
-    
       
       index_cell = univ % cells(i)
 
@@ -421,19 +420,19 @@ contains
                 lat % offset(i_x+1,1,1) = tempoffset + prevoffset
               end if
               
-              
+              print *, 'i:',i
               print *, 'Lat',lat % id,' (',i_x,',',i_y,',',i_z,') has offset ' , lat % offset(i_x,i_y,i_z)
-!              call calc_offsets(univ_next,cellid)
-
+              print *, 'Precall Lat',lat % id
+              call calc_offsets(univ_next,cellid)
+              print *, 'Postcall Lat',lat % id
+              !print *, 'Lat',lat % id,' (',i_x,',',i_y,',',i_z,') p2 has offset ' , lat % offset(i_x,i_y,i_z)
             end do
           end do
         end do
 
       end if
     end do
-    
-    return
-    
+        
   end subroutine calc_offsets
   
 !===============================================================================
@@ -660,8 +659,8 @@ contains
         ! ====================================================================
         ! AT LOWEST UNIVERSE, TERMINATE SEARCH
         if (cellid == c % id .OR. cellid == -1) then
-          print  *,'c%id:',c%id
-          print  *,'ind:',ind
+          !print  *,'c%id:',c%id
+          !print  *,'ind:',ind
           celllist(ind) = c % id
           ind = ind + 1          
         endif

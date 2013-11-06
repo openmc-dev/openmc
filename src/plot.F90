@@ -322,7 +322,7 @@ contains
 
     n = univ % n_cells
     
-    !print *, 'Uni ', univ % id , ' has ', n , ' cells'
+    print *, 'Uni ', univ % id , ' has ', n , ' cells'
     
     do i = 1, n
       
@@ -351,11 +351,11 @@ contains
         c % offset = prevoffset + tempoffset
         c => cells(index_cell)
         
-        !print *, 'Cell ', c % id , ' has offset ' , c % offset
+        print *, 'Cell ', c % id , ' has offset ' , c % offset
       
       else 
         
-        !print *, 'Cell ', c % id , ' has offset ' , c % offset
+        print *, 'Cell ', c % id , ' has offset ' , c % offset
       
       end if           
       
@@ -420,7 +420,7 @@ contains
               end if
               
               !print *, 'i:',i
-              !print *, 'Lat',lat % id,' (',i_x,',',i_y,',',i_z,') has offset ' , lat % offset(i_x,i_y,i_z)
+              print *, 'Lat',lat % id,' (',i_x,',',i_y,',',i_z,') has offset ' , lat % offset(i_x,i_y,i_z)
               !print *, 'Precall Lat',lat % id
               call calc_offsets(univ_next,cellid)
               c => cells(index_cell)
@@ -745,7 +745,7 @@ contains
                 elseif (i_y + 1 <= n_y) then
                   latoffset = lat % offset(i_x,i_y+1,1)
                   univ_next => universes(lat % universes(i_x,i_y+1,1))
-                elseif (i_x + 1 > n_x) then
+                elseif (i_x + 1 <= n_x) then
                   latoffset = lat % offset(i_x+1,1,1)
                   univ_next => universes(lat % universes(i_x+1,1,1))
                 end if

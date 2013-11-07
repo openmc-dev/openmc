@@ -1196,12 +1196,8 @@ with "false".
 ``<mesh>`` Element
 ------------------
 
-If a structured mesh is desired as a filter for a tally, it must be specified in
-a separate element with the tag name ``<mesh>``. This element has the following
+The CMFD mesh is a structured Cartesian mesh. This element has the following
 attributes/sub-elements:
-
-  :type:
-    The type of structured mesh. Only "rectangular" is currently supported.
 
   :lower_left:
     The lower-left corner of the structured mesh. If only two coordinate are

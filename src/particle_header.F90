@@ -76,6 +76,9 @@ module particle_header
     ! Statistical data
     integer    :: n_collision   ! # of collisions
 
+    ! Track output
+    logical    :: write_track
+
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle

@@ -405,6 +405,15 @@ integers: the batch number, generation number, and particle number.
 
   *Default*: None
 
+.. _track:
+
+``<track>`` Element
+-------------------
+
+The ``<track>`` element specifies particles for which OpenMC will output binary files describing particle position at every step of its transport. This element should be followed by triplets of integers.  Each triplet describes one particle.  The integers in each triplet specify the batch number, generation number, and particle number, respectively.
+
+  *Default*: None
+
 ``<uniform_fs>`` Element
 ------------------------
 

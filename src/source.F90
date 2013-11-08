@@ -155,6 +155,7 @@ contains
     integer(8),     intent(in)    :: index_source
 
     integer(8) :: particle_seed  ! unique index for particle
+    integer :: i
     type(Bank), pointer, save :: src => null()
 !$omp threadprivate(src)
 
@@ -176,6 +177,21 @@ contains
     trace = .false.
     if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
          p % id == trace_particle) trace = .true.
+
+    ! Set particle track.
+    p % write_track = .false.
+    if (write_all_tracks) then
+      p % write_track = .true.
+    else if (allocated(track_identifiers)) then
+      do i=1, size(track_identifiers(1,:))
+        if (current_batch == track_identifiers(1,i) .and. &
+             &current_gen == track_identifiers(2,i) .and. &
+             &p % id == track_identifiers(3,i)) then
+          p % write_track = .true.
+          exit
+        end if
+      end do
+    end if
 
   end subroutine get_source_particle
 

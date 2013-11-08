@@ -56,6 +56,7 @@ contains
     integer :: temp_int_array3(3)
     integer, allocatable :: temp_int_array(:)
     integer(8) :: temp_long
+    integer :: n_tracks
     logical :: file_exists
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
@@ -457,6 +458,24 @@ contains
       trace_batch    = temp_int_array3(1)
       trace_gen      = temp_int_array3(2)
       trace_particle = int(temp_int_array3(3), 8)
+    end if
+
+    ! Particle tracks
+    if (check_for_node(doc, "track")) then
+      ! Make sure that there are three values per particle
+      n_tracks = get_arraysize_integer(doc, "track")
+      if (mod(n_tracks, 3) /= 0) then
+        message = "Number of integers specified in 'track' is not divisible &
+             &by 3.  Please provide 3 integers per particle to be tracked."
+        call fatal_error()
+      end if
+
+      ! Allocate space and get list of tracks
+      allocate(temp_int_array(n_tracks))
+      call get_node_array(doc, "track", temp_int_array)
+
+      ! Reshape into track_identifiers -- note automatic array allocation
+      track_identifiers = reshape(temp_int_array, [3, n_tracks/3])
     end if
 
     ! Shannon Entropy mesh

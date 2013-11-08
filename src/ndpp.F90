@@ -327,7 +327,6 @@ contains
     integer       :: gmin, gmax    ! Min and max possible group transfers
     real(8)       :: thin_tol      ! Thinning tolerance used in lib, discarded
     integer       :: NEin, iE      ! Number of incoming energies and the index
-    real(8), allocatable :: Ein(:) ! Incoming energies
     real(8), allocatable :: temp_outgoing(:,:) ! Temporary storage of scatt data
     
     ! determine path, record length, and location of table

@@ -374,6 +374,11 @@ tally_initialize.o: tally_header.o
 
 timer_header.o: constants.o
 
+track_output.o: global.o
+track_output.o: output_interface.o
+track_output.o: particle_header.o
+track_output.o: string.o
+
 tracking.o: cross_section.o
 tracking.o: error.o
 tracking.o: geometry.o
@@ -385,6 +390,6 @@ tracking.o: physics.o
 tracking.o: random_lcg.o
 tracking.o: string.o
 tracking.o: tally.o
+tracking.o: track_output.o
 
 vector_header.o: constants.o
-

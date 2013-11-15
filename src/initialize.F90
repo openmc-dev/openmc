@@ -48,6 +48,7 @@ contains
 
   subroutine initialize_run()
   
+    integer :: i
     integer :: cellid
     type(Universe), pointer :: univ => null()
 
@@ -96,8 +97,13 @@ contains
     ! Set up the base mapping scheme    
     cellid = -1
     univ => universes(BASE_UNIVERSE)
-    call calc_offsets(univ,cellid)
-    call print_all(univ)
+    do i = 1, n_cells
+      !print *,''
+      !print *,"i:",i
+      !print *,"cells(i)%id:",cells(i)%id
+      call calc_offsets(i,univ,cells(i) % id)
+      !call print_all(i,univ)
+    end do
 
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
@@ -869,8 +875,9 @@ contains
 ! CALC_OFFSETS calculates and stores the offsets in all cells
 !===============================================================================
 
-  recursive subroutine calc_offsets(univ, cellid)
+  recursive subroutine calc_offsets(i_vec, univ, cellid)
 
+    integer, intent(in) :: i_vec
     type(Universe), intent(in) :: univ
     integer, intent(in) :: cellid
 
@@ -890,7 +897,7 @@ contains
 
     n = univ % n_cells
     
-    print *, 'Uni ', univ % id , ' has ', n , ' cells'
+    !print *, 'Uni ', univ % id , ' has ', n , ' cells'
     
     do i = 1, n
       
@@ -904,7 +911,7 @@ contains
       
       if (i /= 1) then
       
-        prevoffset = c % offset
+        prevoffset = c % offset(i_vec)
       
       else
       
@@ -916,14 +923,14 @@ contains
       if (i /= n) then
       
         c => cells(index_cell + 1)
-        c % offset = prevoffset + tempoffset
+        c % offset(i_vec) = prevoffset + tempoffset
         c => cells(index_cell)
         
-        print *, 'Cell ', c % id , ' has offset ' , c % offset
+        !print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
       
       else 
         
-        print *, 'Cell ', c % id , ' has offset ' , c % offset
+        !print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
       
       end if           
       
@@ -938,7 +945,8 @@ contains
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
         univ_next => universes(c % fill)
-        call calc_offsets(univ_next,cellid)
+        call calc_offsets(i_vec,univ_next,cellid)
+        c => cells(index_cell)
 
       elseif (c % type == CELL_LATTICE) then
         ! ====================================================================
@@ -967,34 +975,34 @@ contains
               tempoffset = 0
               if (i_x == 1 .AND. i_y == 1 .AND. i_z == 1) then
            
-                lat % offset(1,1,1) = 0
+                lat % offset(i_vec,1,1,1) = 0
                 prevoffset = 0
                 call count_target_univ(univ_next,cellid,tempoffset)
 
               else
               
-                prevoffset = lat % offset(i_x,i_y,i_z)
+                prevoffset = lat % offset(i_vec,i_x,i_y,i_z)
                 call count_target_univ(univ_next,cellid,tempoffset)
                
               end if
               
 
               if (i_z + 1 <= n_z) then
-                lat % offset(i_x,i_y,i_z+1) = tempoffset + prevoffset              
+                lat % offset(i_vec,i_x,i_y,i_z+1) = tempoffset + prevoffset              
               elseif (i_y + 1 <= n_y) then
-                lat % offset(i_x,i_y+1,1) = tempoffset + prevoffset              
+                lat % offset(i_vec,i_x,i_y+1,1) = tempoffset + prevoffset              
               elseif (i_x + 1 <= n_x) then
-                lat % offset(i_x+1,1,1) = tempoffset + prevoffset
+                lat % offset(i_vec,i_x+1,1,1) = tempoffset + prevoffset
               end if
               
               !print *, 'i:',i
-              print *, 'Lat',lat % id,' (',i_x,',',i_y,',',i_z,') has offset ' , lat % offset(i_x,i_y,i_z)
+              !print *, 'Lat',lat % id,' (',i_x,',',i_y,',',i_z,') has offset ' , lat % offset(i_vec,i_x,i_y,i_z)
               !print *, 'Precall Lat',lat % id
-              call calc_offsets(univ_next,cellid)
+              call calc_offsets(i_vec,univ_next,cellid)
               c => cells(index_cell)
               lat => lattices(c % fill)
               !print *, 'Postcall Lat',lat % id
-              !print *, 'Lat',lat % id,' (',i_x,',',i_y,',',i_z,') p2 has offset ' , lat % offset(i_x,i_y,i_z)
+              !print *, 'Lat',lat % id,' (',i_x,',',i_y,',',i_z,') p2 has offset ' , lat % offset(i_vec,i_x,i_y,i_z)
             end do
           end do
         end do
@@ -1193,11 +1201,13 @@ contains
   end subroutine count_target_univ
   
 !===============================================================================
-! 
+! FIND_OFFSET will locate a path to a cell for a given cell. Only tested for the
+! case where the map is created for cellid = -1
 !===============================================================================
 
-  recursive subroutine find_offset(univ, goal, offset)
+  recursive subroutine find_offset(i_vec, univ, goal, offset)
 
+    integer, intent(in) :: i_vec
     type(Universe), pointer, intent(in) :: univ
     integer, intent(in) :: goal
     integer, intent(inout) :: offset
@@ -1238,13 +1248,12 @@ contains
         c => cells(index_cell)
         !print *, 'inside if __ C:',c % id
         
-        !print *, 'c%off+off:',(c % offset + offset)
-        if (goal >= c % offset + offset) then
+        !print *, 'c%off+off:',(c % offset(i_vec) + offset)
+        if (goal >= c % offset(i_vec) + offset) then
           !print *,'cycled'
           cycle
         end if       
       end if
-      
       
       ! get pointer to THIS cell because we
       ! know that the target is in this cell
@@ -1254,7 +1263,7 @@ contains
       
       ! if we got here, we are going into this cell
       ! update the current offset
-      offset = c % offset + offset
+      offset = c % offset(i_vec) + offset
       
       ! write to the geometry stack
       write (*,"(A2,I5)",advance="no") "->",c%id
@@ -1275,7 +1284,7 @@ contains
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
         univ_next => universes(c % fill)
-        call find_offset(univ, goal, offset)
+        call find_offset(i_vec,univ, goal, offset)
         if (goal == offset) then
           return          
         endif
@@ -1308,13 +1317,13 @@ contains
                 univ_next => universes(lat % universes(i_x,i_y,i_z))                          
               else
                 if (i_z + 1 <= n_z) then
-                  latoffset = lat % offset(i_x,i_y,i_z+1)
+                  latoffset = lat % offset(i_vec,i_x,i_y,i_z+1)
                   univ_next => universes(lat % universes(i_x,i_y,i_z+1))              
                 elseif (i_y + 1 <= n_y) then
-                  latoffset = lat % offset(i_x,i_y+1,1)
+                  latoffset = lat % offset(i_vec,i_x,i_y+1,1)
                   univ_next => universes(lat % universes(i_x,i_y+1,1))
                 elseif (i_x + 1 <= n_x) then
-                  latoffset = lat % offset(i_x+1,1,1)
+                  latoffset = lat % offset(i_vec,i_x+1,1,1)
                   univ_next => universes(lat % universes(i_x+1,1,1))
                 end if
                 
@@ -1324,10 +1333,10 @@ contains
                 
               end if
               ! target is at this lattice position
-              offset = offset + lat % offset(i_x,i_y,i_z)
+              offset = offset + lat % offset(i_vec,i_x,i_y,i_z)
               !print *,'lat offset:',latoffset  
               write (*,"(A1,3I3,A1)",advance="no") "(",i_x,i_y,i_z,")"
-              call find_offset(univ_next, goal, offset)
+              call find_offset(i_vec,univ_next, goal, offset)
               return
               
             end do
@@ -1344,8 +1353,9 @@ contains
 ! every normal cell.
 !===============================================================================
 
-  subroutine print_all(univ)
+  subroutine print_all(i_vec,univ)
 
+    integer, intent(in) :: i_vec
     type(Universe), pointer, intent(in) :: univ
     
     integer :: i                    ! index over cells
@@ -1359,14 +1369,12 @@ contains
     cellid = -1
     call count_target_univ(univ,cellid,maxoffset)
     n = univ % n_cells
-    !print *,'targets:',maxoffset
-    !maxoffset = 3
     do i = 0, maxoffset-1
       offset = 0
       print *, ''
       print *, ''
       !print *, 'target', i
-      call find_offset(univ,i,offset)            
+      call find_offset(i_vec,univ,i,offset)            
     end do
         
   end subroutine print_all

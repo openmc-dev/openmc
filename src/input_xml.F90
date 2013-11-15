@@ -4,8 +4,9 @@ module input_xml
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use error,            only: fatal_error, warning
-  use geometry_header,  only: Cell, Surface, Lattice
+  use geometry_header,  only: Cell, Surface, Lattice, BASE_UNIVERSE
   use global
+  use initialize,       only: count_target_univ
   use list_header,      only: ListChar, ListReal
   use mesh_header,      only: StructuredMesh
   use output,           only: write_message
@@ -711,7 +712,7 @@ contains
       c % n_surfaces = n
       allocate(c % surfaces(n))
       c % surfaces = cell_(i) % surfaces
-
+      allocate(c % offset(n_cells))
       ! Rotation matrix
       if (associated(cell_(i) % rotation)) then
         ! Rotations can only be applied to cells that are being filled with
@@ -983,7 +984,7 @@ contains
         n_z = 1
       end if
       allocate(lat % universes(n_x, n_y, n_z))
-      allocate(lat % offset(n_x, n_y, n_z))
+      allocate(lat % offset(n_cells,n_x, n_y, n_z))
 
       ! Check that number of universes matches size
       if (size(lattice_(i) % universes) /= n_x*n_y*n_z) then
@@ -1399,6 +1400,7 @@ contains
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(TallyFilter), allocatable :: filters(:) ! temporary filters
+    type(Universe), pointer :: univ
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
@@ -1633,6 +1635,32 @@ contains
 
           ! Determine type of filter
           select case (tally_(i) % filter(j) % type)
+          
+
+          case ('distribcell')
+
+            ! Set type of filter
+            t % filters(j) % type = FILTER_DISTRIBCELL
+            
+            ! Allocate and store bins
+            allocate(t % filters(j) % int_bins(n_words))
+            do k = 1, n_words
+              t % filters(j) % int_bins(k) = int(str_to_int(&
+                   tally_(i) % filter(j) % bins(k)),4)
+            end do
+            
+            ! Determine the number of occurrences of the listed cells
+            print *, "n_words: ",n_words
+            
+            l = 0
+            do k = 1, n_words
+              univ => universes(BASE_UNIVERSE)
+              ! sum the number of occurrences of all cells requested
+              call count_target_univ(univ,t % filters(j) % int_bins(k),l)
+              ! Set number of bins           
+            end do
+            t % filters(j) % n_bins = l 
+          
           case ('cell')
             ! Set type of filter
             t % filters(j) % type = FILTER_CELL

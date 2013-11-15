@@ -398,6 +398,15 @@ integers: the batch number, generation number, and particle number.
 
   *Default*: None
 
+.. _track:
+
+``<track>`` Element
+-------------------
+
+The ``<track>`` element specifies particles for which OpenMC will output binary files describing particle position at every step of its transport. This element should be followed by triplets of integers.  Each triplet describes one particle.  The integers in each triplet specify the batch number, generation number, and particle number, respectively.
+
+  *Default*: None
+
 ``<uniform_fs>`` Element
 ------------------------
 
@@ -1139,6 +1148,22 @@ The ``<begin>`` element controls what batch CMFD calculations should begin.
 
   *Default*: 1
 
+``<display>`` Element
+---------------------
+
+The ``<display>`` element sets one additional CMFD output column. Options are:
+
+* "balance" - prints the RMS [%] of the resdiual from the neutron balance equation
+  on CMFD tallies.
+* "dominance" - prints the estimated dominance ratio from the CMFD iterations.
+  **This will only work for power iteration eigensolver**.
+* "entropy" - prints the *entropy* of the CMFD predicted fission source.
+  **Can only be used if OpenMC entropy is active as well**.
+* "source" - prints the RMS [%] between the OpenMC fission source and CMFD
+  fission source.
+
+  *Default*: None
+
 ``<feedback>`` Element
 ----------------------
 
@@ -1158,14 +1183,14 @@ with "true" and off with "false"
 
   *Default*: true
 
-``<keff_tol>`` Element
-----------------------
+``<inactive_flush>`` Element
+----------------------------
 
-The ``<keff_tol>`` element specifies acceptance criteria of a CMFD eigenvalue.
-If the CMFD eigenvalue and OpenMC batch eigenvalue are within this tolerance, 
-CMFD is allowed to modify source neutron weights. 
+The ``<inactive_flush>`` element controls when CMFD tallies are reset during
+inactive batches. The integer set here is the interval at which this reset
+occurs. The amout of resets is controlled with the ``<num_flushes>`` element.
 
-  *Default*: 0.005
+  *Defualt*: 9999
 
 ``<ksp_monitor>`` Element
 -------------------------
@@ -1180,12 +1205,8 @@ with "false".
 ``<mesh>`` Element
 ------------------
 
-If a structured mesh is desired as a filter for a tally, it must be specified in
-a separate element with the tag name ``<mesh>``. This element has the following
+The CMFD mesh is a structured Cartesian mesh. This element has the following
 attributes/sub-elements:
-
-  :type:
-    The type of structured mesh. Only "rectangular" is currently supported.
 
   :lower_left:
     The lower-left corner of the structured mesh. If only two coordinate are
@@ -1249,14 +1270,13 @@ not impact the calculation.
 
   *Default*: 1.0
 
-``<n_procs_cmfd>`` Element
---------------------------
+``<num_flushes>`` Element
+-------------------------
 
-The ``<n_procs_cmfd>`` element is used to set the number of processors used 
-for CMFD calculation. It should be less than or equal to the number of 
-processors used during OpenMC. 
+The ``<num_flushes>`` element controls the number of CMFD tally resets that
+occur during inactive CMFD batches.
 
-  *Default*: 1
+  *Default*: 9999
 
 ``<power_monitor>`` Element
 ---------------------------
@@ -1264,26 +1284,33 @@ processors used during OpenMC.
 The ``<power_monitor>`` element is used to view the convergence of power iteration. 
 This option can be turned on with "true" and turned off with "false".
 
+  *Default*: false
+
+``<run_adjoint>`` Element
+-------------------------
+
+The ``<run_adjoint>`` element can be turned on with "true" to have an adjoint
+calculation be performed on the last batch when CMFD is active.
 
   *Default*: false
 
-``<write_balance>`` Element
----------------------------
+``<snes_monitor>`` Element
+--------------------------
 
-The ``<write_balance>`` element is used to view the balance of OpenMC tally
-residuals for every coarse mesh region and energy group. This option can be 
-turned on with "true" and off with "false". 
+The ``<snes_monitor>`` element is used to view the convergence of the nonlinear SNES
+function in PETSc. This option can be turned on with "true" and turned off with "false".
 
-
-  *Default*: false
-
-``<write_hdf5>`` Element
-------------------------
-
-The ``<write_hdf5>`` element can be turned on with "true" to get an 
-HDF5 output file of CMFD results. 
 
   *Default*: false
+
+``<solver>`` Element
+--------------------
+
+The ``<solver>`` element controls whether the CMFD eigenproblem is solved with
+standard power iteration or nonlinear Jacobian-free Newton Krylov (JFNK). 
+By setting "power", power iteration is used and by setting "jfnk", JFNK is used.
+
+  *Default*: power
 
 ``<write_matrices>`` Element
 ----------------------------

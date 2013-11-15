@@ -19,8 +19,8 @@ def test_run():
                stderr=STDOUT, stdout=PIPE)
     else:
         proc = Popen([openmc_path], stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
     print(proc.communicate()[0])
+    returncode = proc.returncode
     assert returncode == 0
 
 def test_created_statepoint():
@@ -45,8 +45,8 @@ def test_restart_form1():
                stderr=STDOUT, stdout=PIPE)
     else:
         proc = Popen([openmc_path, '-r', statepoint[0]], stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
     print(proc.communicate()[0])
+    returncode = proc.returncode
     assert returncode == 0
 
 def test_created_statepoint_form1():
@@ -72,8 +72,8 @@ def test_restart_form2():
     else:
         proc = Popen([openmc_path, '--restart', statepoint[0]], 
                      stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
     print(proc.communicate()[0])
+    returncode = proc.returncode
     assert returncode == 0
 
 def test_created_statepoint_form2():
@@ -94,8 +94,8 @@ def test_restart_serial():
     openmc_path = pwd + '/../../src/openmc'
     proc = Popen([openmc_path, '--restart', statepoint[0]], 
                  stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
     print(proc.communicate()[0])
+    returncode = proc.returncode
     assert returncode == 0
 
 def test_created_statepoint_serial():

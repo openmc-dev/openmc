@@ -44,7 +44,7 @@ contains
     if (master) call header("K EIGENVALUE SIMULATION", level=1)
 
     ! Display column titles
-    call print_columns()
+    if(master) call print_columns()
 
     ! Turn on inactive timer
     call time_inactive % start()

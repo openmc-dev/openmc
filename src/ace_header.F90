@@ -214,8 +214,9 @@ module ace_header
     real(8) :: kappa_fission   ! microscopic energy-released from fission
 
     ! Information for S(a,b) use
-    integer :: index_sab   ! index in sab_tables (zero means no table)
-    real(8) :: elastic_sab ! microscopic elastic scattering on S(a,b) table
+    integer :: index_sab          ! index in sab_tables (zero means no table)
+    integer :: last_index_sab = 0 ! index in sab_tables last used by this nuclide
+    real(8) :: elastic_sab        ! microscopic elastic scattering on S(a,b) table
 
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?

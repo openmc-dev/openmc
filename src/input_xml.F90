@@ -52,6 +52,7 @@ contains
     integer :: i ! loop index
     integer :: n
     integer :: coeffs_reqd
+    integer :: n_tracks
     logical :: file_exists
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
@@ -401,6 +402,22 @@ contains
       trace_particle = trace_(3)
     end if
 
+    ! Particle tracks
+    if (associated(track_)) then
+      n_tracks = size(track_)
+      ! Make sure that there are three values per particle
+      if (mod(n_tracks, 3) /= 0) then
+        message = "Number of integers specified in 'track' is not divisible &
+             &by 3.  Please provide 3 integers per particle to be tracked."
+        call fatal_error()
+      end if
+      n_tracks = n_tracks/3
+      allocate(track_identifiers(3,n_tracks))
+      do i=1, n_tracks
+        track_identifiers(1:3,i) = track_(3*(i-1)+1 : 3*(i-1)+3)
+      end do
+    end if
+
     ! Shannon Entropy mesh
     if (size(entropy_) > 0) then
       ! Check to make sure enough values were supplied
@@ -575,15 +592,13 @@ contains
       end do
     end if
 
-    ! check for cmfd run
+    ! Check for cmfd run
     call lower_case(run_cmfd_)
     if (run_cmfd_ == 'true' .or. run_cmfd_ == '1') then
       cmfd_run = .true.
 #ifndef PETSC
-      if (master) then
-        message = 'CMFD is not available, compile OpenMC with PETSc'
-        call fatal_error()
-      end if
+      message = 'CMFD is not available, recompile OpenMC with PETSc'
+      call fatal_error()
 #endif
     end if
 

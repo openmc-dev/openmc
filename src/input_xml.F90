@@ -414,7 +414,7 @@ contains
       n_tracks = n_tracks/3
       allocate(track_identifiers(3,n_tracks))
       do i=1, n_tracks
-        track_identifiers(1:3,i) = track_(3*(i-1)+1 : 3*(i-1)+4)
+        track_identifiers(1:3,i) = track_(3*(i-1)+1 : 3*(i-1)+3)
       end do
     end if
 

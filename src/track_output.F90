@@ -14,6 +14,7 @@ module track_output
 
   integer, private                  :: n_tracks     ! total number of tracks
   real(8), private, allocatable     :: coords(:,:)  ! track coordinates
+!$omp threadprivate(n_tracks, coords)
 
 contains
 

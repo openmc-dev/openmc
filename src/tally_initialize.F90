@@ -111,7 +111,7 @@ contains
 
         if (type == FILTER_CELL .or. type == FILTER_SURFACE .or. &
              type == FILTER_MATERIAL .or. type == FILTER_UNIVERSE .or. &
-             type == FILTER_CELLBORN) then
+             type == FILTER_CELLBORN .or. type == FILTER_DISTRIBCELL) then
 
           ! Add map elements
           BIN_LOOP: do k = 1, t % filters(j) % n_bins

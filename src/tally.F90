@@ -1335,6 +1335,12 @@ contains
         end do
         nullify(coord)
 
+      case (FILTER_DISTRIBCELL)
+        ! determine next distribcell bin
+        matching_bins(i) = get_next_bin(FILTER_DISTRIBCELL, &
+             p % cell_born, i_tally)
+
+
       case (FILTER_CELLBORN)
         ! determine next cellborn bin
         matching_bins(i) = get_next_bin(FILTER_CELLBORN, &

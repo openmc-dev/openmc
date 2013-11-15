@@ -598,9 +598,9 @@ contains
 
     use xml_data_geometry_t
 
-    integer :: i, j, k, m
+    integer :: i, j, k, m, i_x, i_a, input_index
     integer :: n
-    integer :: n_x, n_y, n_z
+    integer :: n_x, n_y, n_z, n_rings
     integer :: universe_num
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
@@ -945,9 +945,11 @@ contains
 
       ! Read number of lattice cells in each dimension
       n = size(lattice_(i) % dimension)
-      if (n /= 2 .and. n /= 3) then
-        message = "Lattice must be two or three dimensions."
+      if (lat % type == LATTICE_RECT .and. n /= 2 .and. n /= 3) then
+        message = "Rectangular lattice must be two or three dimensions."
         call fatal_error()
+      else if (lat % type == LATTICE_HEX .and. n /= 1 .and. n/= 2) then
+        message = "Hexagonal lattice must be one or two dimension(s)."
       end if
 
       lat % n_dimension = n
@@ -955,14 +957,27 @@ contains
       lat % dimension = lattice_(i) % dimension
 
       ! Read lattice lower-left location
-      if (size(lattice_(i) % dimension) /= size(lattice_(i) % lower_left)) then
-        message = "Number of entries on <lower_left> must be the same as &
-             &the number of entries on <dimension>."
-        call fatal_error()
-      end if
+      if (lat % type == LATTICE_RECT) then
+        if (size(lattice_(i) % dimension) /= size(lattice_(i) % lower_left)) &
+             &then
+          message = "Number of entries on <lower_left> must be the same as &
+               &the number of entries on <dimension>."
+          call fatal_error()
+        end if
 
-      allocate(lat % lower_left(n))
-      lat % lower_left = lattice_(i) % lower_left
+        allocate(lat % lower_left(n))
+        lat % lower_left = lattice_(i) % lower_left
+      else
+        if (size(lattice_(i) % dimension)&
+             &/= size(lattice_(i) % lower_left) - 1) then
+          message = "Number of entries on <lower_left> must be one greater &
+               &than the number of entries on <dimension>."
+          call fatal_error()
+        end if
+
+        allocate(lat % lower_left(n+1))
+        lat % lower_left = lattice_(i) % lower_left
+      end if
 
       ! Read lattice widths
       if (size(lattice_(i) % width) /= size(lattice_(i) % lower_left)) then
@@ -975,31 +990,135 @@ contains
       lat % width = lattice_(i) % width
 
       ! Copy number of dimensions
-      n_x = lat % dimension(1)
-      n_y = lat % dimension(2)
-      if (lat % n_dimension == 3) then
-        n_z = lat % dimension(3)
+      if (lat % type == LATTICE_RECT) then
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        else
+          n_z = 1
+        end if
+        allocate(lat % universes(n_x, n_y, n_z))
       else
-        n_z = 1
+        n_rings = lat % dimension(1)
+        if (lat % n_dimension == 2) then
+          n_z = lat % dimension(2)
+        else
+          n_z = 1
+        end if
+        allocate(lat % universes(2*n_rings - 1, 2*n_rings - 1, n_z))
       end if
-      allocate(lat % universes(n_x, n_y, n_z))
 
       ! Check that number of universes matches size
-      if (size(lattice_(i) % universes) /= n_x*n_y*n_z) then
-        message = "Number of universes on <universes> does not match size of &
-             &lattice " // trim(to_str(lat % id)) // "."
-        call fatal_error()
+      if (lat % type == LATTICE_RECT) then
+        if (size(lattice_(i) % universes) /= n_x*n_y*n_z) then
+          message = "Number of universes on <universes> does not match size of &
+               &lattice " // trim(to_str(lat % id)) // "."
+          call fatal_error()
+        end if
+      else
+        if (size(lattice_(i) % universes) &
+             & /= (3*n_rings**2 - 3*n_rings + 1)*n_z) then
+          message = "Number of universes on <universes> does not match size of &
+               &lattice " // trim(to_str(lat % id)) // "."
+          call fatal_error()
+        end if
       end if
 
       ! Read universes
-      do m = 1, n_z
-        do k = 0, n_y - 1
-          do j = 1, n_x
-            lat % universes(j, n_y - k, m) = lattice_(i) % &
-                 universes(j + n_x*k + n_x*n_y*(m-1))
+      if (lat % type == LATTICE_RECT) then
+        do m = 1, n_z
+          do k = 0, n_y - 1
+            do j = 1, n_x
+              lat % universes(j, n_y - k, m) = lattice_(i) % &
+                   universes(j + n_x*k + n_x*n_y*(m-1))
+            end do
           end do
         end do
-      end do
+      else
+        ! TODO: The index walk in the k loops can be made a little more
+        ! efficient.  They currently sometimes change index values and then
+        ! change them again before use.
+
+        ! Universes in hexagonal lattices are stored in a manner that represents
+        ! a skewed coordinate system: (x, alpha) rather than (x, y).  There is
+        ! no obvious, direct relationship between the order of universes in the
+        ! input and the order that they will be stored in the skewed array so
+        ! the following code walks a set of index values across the skewed array
+        ! in a manner that matches the input order.  Note that i_x = 0, i_a = 0
+        ! corresponds to the center of the hexagonal lattice.
+
+        input_index = 1
+        do m = 1, n_z
+          ! Initialize lattice indecies.
+          i_x = 1
+          i_a = n_rings - 1
+
+          ! Map upper triangular region of hexagonal lattice.
+          do k = 1, n_rings-1
+            ! Walk index to lower-left neighbor of last row start.
+            i_x = i_x - 1
+            do j = 1, k
+              ! Place universe in array. 
+              lat % universes(i_x + n_rings - 1, i_a + n_rings - 1, m) = &
+                   lattice_(i) % universes(input_index)
+              ! Walk index to closest non-adjacent right neighbor.
+              i_x = i_x + 2
+              i_a = i_a - 1
+              ! Increment XML array index.
+              input_index = input_index + 1
+            end do
+            ! Return lattice index to start of current row.
+            i_x = i_x - 2*(k+2)
+            i_a = i_a + k+2
+          end do
+
+          ! Map middle square region of hexagonal lattice.
+          do k = 1, 2*n_rings - 1
+            if (mod(k, 2) == 1) then
+              ! Walk index to lower-left neighbor of last row start.
+              i_x = i_x - 1
+            else
+              ! Walk index to lower-right neighbor of last row start
+              i_x = i_x + 1
+              i_a = i_a - 1
+            end if
+            do j = 1, n_rings - mod(k-1, 2)
+              ! Place universe in array. 
+              lat % universes(i_x + n_rings - 1, i_a + n_rings - 1, m) = &
+                   lattice_(i) % universes(input_index)
+              ! Walk index to closest non-adjacent right neighbor.
+              i_x = i_x + 2
+              i_a = i_a - 1
+              ! Increment XML array index.
+              input_index = input_index + 1
+            end do
+            ! Return lattice index to start of current row.
+            i_x = i_x - 2*(n_rings - mod(k-1, 2))
+            i_a = i_a + n_rings - mod(k-1, 2)
+          end do
+
+          ! Map lower triangular region of hexagonal lattice.
+          do k = 1, n_rings-1
+            ! Walk index to lower-right neighbor of last row start.
+            i_x = i_x + 1
+            i_a = i_a - 1
+            do j = 1, n_rings - k
+              ! Place universe in array. 
+              lat % universes(i_x + n_rings - 1, i_a + n_rings - 1, m) = &
+                   lattice_(i) % universes(input_index)
+              ! Walk index to closest non-adjacent right neighbor.
+              i_x = i_x + 2
+              i_a = i_a - 1
+              ! Increment XML array index.
+              input_index = input_index + 1
+            end do
+            ! Return lattice index to start of current row.
+            i_x = i_x - 2*(n_rings - k)
+            i_a = i_a + n_rings - k
+          end do
+        end do
+      end if
 
       ! Read material for area outside lattice
       mid = lattice_(i) % outside
@@ -1049,6 +1168,7 @@ contains
     message = "Reading materials XML file..."
     call write_message(5)
 
+    write(*, *) 'Got Here! 1'
     ! Check is materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
@@ -1057,12 +1177,15 @@ contains
       call fatal_error()
     end if
 
+    write(*, *) 'Got Here! 2'
     ! Initialize default cross section variable
     default_xs_ = ""
 
+    write(*, *) 'Got Here! 3'
     ! Parse materials.xml file
     call read_xml_file_materials_t(filename)
 
+    write(*, *) 'Got Here! 4'
     ! Copy default cross section if present
     default_xs = default_xs_
 

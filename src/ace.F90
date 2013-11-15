@@ -244,6 +244,14 @@ contains
       ! Read first line of header
       read(UNIT=in, FMT='(A10,2G12.0,1X,A10)') name, awr, kT, date_
 
+      ! Check that correct xs was found -- if cross_sections.xml is broken, the
+      ! location of the table may be wrong
+      if(adjustl(name) /= adjustl(listing % name)) then
+        message = "XS listing entry " // trim(listing % name) // " did not &
+             &match ACE data, " // trim(name) // " found instead."
+        call fatal_error()
+      end if
+
       ! Read more header and NXS and JXS
       read(UNIT=in, FMT=100) comment, mat, & 
            (zaids(i), awrs(i), i=1,16), NXS, JXS

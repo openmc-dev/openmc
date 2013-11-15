@@ -8,10 +8,10 @@ module constants
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 5
-  integer, parameter :: VERSION_RELEASE = 2
+  integer, parameter :: VERSION_RELEASE = 3
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 9
+  integer, parameter :: REVISION_STATEPOINT       = 10
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
 
   ! Binary file types
@@ -362,9 +362,8 @@ module constants
   integer, parameter :: UNIT_TALLY    = 12 ! unit # for writing tally file
   integer, parameter :: UNIT_PLOT     = 13 ! unit # for writing plot file
   integer, parameter :: UNIT_XS       = 14 ! unit # for writing xs summary file
-  integer, parameter :: CMFD_BALANCE  = 15 ! unit # for writing cmfd balance file
-  integer, parameter :: UNIT_PARTICLE = 16 ! unit # for writing particle restart
-  integer, parameter :: UNIT_OUTPUT   = 17 ! unit # for writing output
+  integer, parameter :: UNIT_PARTICLE = 15 ! unit # for writing particle restart
+  integer, parameter :: UNIT_OUTPUT   = 16 ! unit # for writing output
 
   !=============================================================================
   ! CMFD CONSTANTS

@@ -172,6 +172,7 @@ contains
       write(OUTPUT_UNIT,*) '  -r, --restart          Restart a previous run from a state point'
       write(OUTPUT_UNIT,*) '                         or a particle restart file'
       write(OUTPUT_UNIT,*) '  -s, --threads          Number of OpenMP threads'
+      write(OUTPUT_UNIT,*) '  -t, --track            Write tracks for all particles'
       write(OUTPUT_UNIT,*) '  -v, --version          Show version information'
       write(OUTPUT_UNIT,*) '  -?, --help             Show this message'
     end if
@@ -1223,37 +1224,40 @@ contains
 
   subroutine print_columns()
 
-    if (entropy_on) then
-      if (cmfd_run) then
-        message = " Bat./Gen.      k       Entropy         Average k          CMFD k    CMFD Ent"
-        call write_message(1)
-        message = " =========   ========   ========   ====================   ========   ========"
-        call write_message(1)
-      else
-        message = " Bat./Gen.      k       Entropy         Average k"
-        call write_message(1)
-        message = " =========   ========   ========   ===================="
-        call write_message(1)
-      end if
-    else
-      if (cmfd_run) then
-        message = " Bat./Gen.      k            Average k          CMFD k"
-        call write_message(1)
-        message = " =========   ========   ====================   ========"
-        call write_message(1)
-      else
-        message = " Bat./Gen.      k            Average k"
-        call write_message(1)
-        message = " =========   ========   ===================="
-        call write_message(1)
-      end if
+    write(UNIT=ou, FMT='(2X,A9,3X)', ADVANCE='NO') "Bat./Gen."
+    write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "   k    "
+    if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "Entropy "
+    write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "     Average k      "
+    if (cmfd_run) then
+      write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') " CMFD k "
+      select case(trim(cmfd_display))
+        case('entropy')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "CMFD Ent"
+        case('balance')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "RMS Bal "
+        case('source')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "RMS Src "
+        case('dominance')
+          write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "Dom Rat "
+      end select
     end if
+    write(UNIT=ou, FMT=*)
+    
+    write(UNIT=ou, FMT='(2X,A9,3X)', ADVANCE='NO') "========="
+    write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
+    if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
+    write(UNIT=ou, FMT='(A20,3X)', ADVANCE='NO') "===================="
+    if (cmfd_run) then
+      write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
+      if (cmfd_display /= '') &
+        write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
+    end if
+    write(UNIT=ou, FMT=*)
 
   end subroutine print_columns
 
 !===============================================================================
-! PRINT_GENERATION displays information for a generation of neutrons. For now,
-! if the user has entropy on, it will print out the entropy
+! PRINT_GENERATION displays information for a generation of neutrons.
 !===============================================================================
 
   subroutine print_generation()
@@ -1303,14 +1307,25 @@ contains
       write(UNIT=OUTPUT_UNIT, FMT='(23X)', ADVANCE='NO')
     end if
 
-
-    ! write out cmfd keff if it is active
-    if (cmfd_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         cmfd % keff 
-
-    ! write out cmfd entopy
-    if (cmfd_on .and. entropy_on) write(UNIT=OUTPUT_UNIT, &
-         FMT='(3X, F8.5)', ADVANCE='NO') cmfd % entropy
+    ! write out cmfd keff if it is active and other display info
+    if (cmfd_on) then
+      write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+         cmfd % k_cmfd(current_batch) 
+      select case(trim(cmfd_display))
+        case('entropy')
+          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+            cmfd % entropy(current_batch)
+        case('balance')
+          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+            cmfd % balance(current_batch)
+        case('source')
+          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+            cmfd % src_cmp(current_batch)
+        case('dominance')
+          write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
+            cmfd % dom(current_batch)
+      end select
+    end if
 
     ! next line
     write(UNIT=OUTPUT_UNIT, FMT=*)
@@ -1405,13 +1420,17 @@ contains
     write(ou,100) "Total time in simulation", time_inactive % elapsed + &
          time_active % elapsed
     write(ou,100) "  Time in transport only", time_transport % elapsed
-    if(cmfd_run) write(ou,100) "Total CMFD time", time_cmfd % elapsed
     write(ou,100) "  Time in inactive batches", time_inactive % elapsed
     write(ou,100) "  Time in active batches", time_active % elapsed
     write(ou,100) "  Time synchronizing fission bank", time_bank % elapsed
     write(ou,100) "    Sampling source sites", time_bank_sample % elapsed
     write(ou,100) "    SEND/RECV source sites", time_bank_sendrecv % elapsed
     write(ou,100) "  Time accumulating tallies", time_tallies % elapsed
+    if (cmfd_run) write(ou,100) "  Time in CMFD", time_cmfd % elapsed
+    if (cmfd_run) write(ou,100) "    Building matrices", &
+                  time_cmfdbuild % elapsed
+    if (cmfd_run) write(ou,100) "    Solving matrices", &
+                  time_cmfdsolve % elapsed
     write(ou,100) "Total time for finalization", time_finalize % elapsed
     write(ou,100) "Total time elapsed", time_total % elapsed
 

@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Release Notes for OpenMC 0.4.4 &mdash; OpenMC Documentation</title>
+    <title>Release Notes for OpenMC 0.5.3 &mdash; OpenMC Documentation</title>
     
     <link rel="stylesheet" href="../_static/haiku.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -29,8 +29,8 @@
     <script type="text/javascript" src="../_static/theme_extras.js"></script>
     <link rel="top" title="OpenMC Documentation" href="../index.html" />
     <link rel="up" title="Release Notes" href="index.html" />
-    <link rel="next" title="Release Notes for OpenMC 0.4.3" href="notes_0.4.3.html" />
-    <link rel="prev" title="Release Notes for OpenMC 0.5.0" href="notes_0.5.0.html" /> 
+    <link rel="next" title="Release Notes for OpenMC 0.5.2" href="notes_0.5.2.html" />
+    <link rel="prev" title="Release Notes" href="index.html" /> 
   </head>
   <body>
       <div class="header">
@@ -41,19 +41,19 @@
       <div class="topnav">
       
         <p>
-        «&#160;&#160;<a href="notes_0.5.0.html">Release Notes for OpenMC 0.5.0</a>
+        «&#160;&#160;<a href="index.html">Release Notes</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="notes_0.4.3.html">Release Notes for OpenMC 0.4.3</a>&#160;&#160;»
+        <a href="notes_0.5.2.html">Release Notes for OpenMC 0.5.2</a>&#160;&#160;»
         </p>
 
       </div>
       <div class="content">
         
         
-  <div class="section" id="release-notes-for-openmc-0-4-4">
-<span id="notes-0-4-4"></span><h1>Release Notes for OpenMC 0.4.4<a class="headerlink" href="#release-notes-for-openmc-0-4-4" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="release-notes-for-openmc-0-5-3">
+<span id="notes-0-5-3"></span><h1>Release Notes for OpenMC 0.5.3<a class="headerlink" href="#release-notes-for-openmc-0-5-3" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="system-requirements">
 <h2>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h2>
 <p>There are no special requirements for running the OpenMC code. As of this
@@ -64,26 +64,30 @@ the problem at hand (mostly on the number of nuclides in the problem).</p>
 <div class="section" id="new-features">
 <h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Ability to write state points when using &lt;no_reduce&gt;.</li>
-<li>Real-time XML validation in GNU Emacs with RELAX NG schemata.</li>
-<li>Writing state points every n batches with &lt;state_point interval=&#8221;...&#8221; /&gt;</li>
-<li>Suppress creation of summary.out and cross_sections.out by default with option
-to turn them on with &lt;output&gt; tag in settings.xml file.</li>
-<li>Ability to create HDF5 state points.</li>
-<li>Binary source file is now part of state point file by default.</li>
-<li>Enhanced state point usage and added state point Python scripts.</li>
-<li>Turning confidence intervals on affects k-effective.</li>
-<li>Option to specify &lt;upper_right&gt; for tally meshes.</li>
+<li>Output interface enhanced to allow multiple files handles to be opened</li>
+<li>Particle restart file linked to output interface</li>
+<li>Particle restarts and state point restarts are both identified with the -r
+command line flag.</li>
+<li>Particle instance no longer global, passed to all physics routines</li>
+<li>Physics routines refactored to rely less on global memory, more arguments
+passed in</li>
+<li>CMFD routines refactored and now can compute dominance ratio on the fly</li>
+<li>PETSc 3.4.2 or higher must be used and compiled with fortran datatype support</li>
+<li>Memory leaks fixed except for ones from xml-fortran package</li>
+<li>Test suite enhanced to test output with different compiler options</li>
+<li>Description of OpenMC development workflow added</li>
+<li>OpenMP shared-memory parallelism added</li>
+<li>Special run mode &#8211;tallies removed.</li>
 </ul>
 </div>
 <div class="section" id="bug-fixes">
 <h2>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/4654ee">4654ee</a>: Fixed plotting with void cells.</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/7ee461">7ee461</a>: Fixed bug with multi-line input using type=&#8217;word&#8217;.</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/792eb3">792eb3</a>: Fixed degrees of freedom for confidence intervals.</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/7fd617">7fd617</a>: Fixed bug with restart runs in parallel.</li>
-<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/dc4a8f">dc4a8f</a>: Fixed bug with fixed source restart runs.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/2b1e8a">2b1e8a</a>: Normalize direction vector after reflecting particle.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/5853d2">5853d2</a>: Set blank default for cross section listing alias.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/e178c7">e178c7</a>: Fix infinite loop with words greater than 80 characters in write_message.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/c18a6e">c18a6e</a>: Check for valid secondary mode on S(a,b) tables.</li>
+<li><a class="reference external" href="https://github.com/mit-crpg/openmc/commit/82c456">82c456</a>: Fix bug where last process could have zero particles.</li>
 </ul>
 </div>
 </div>
@@ -93,11 +97,11 @@ to turn them on with &lt;output&gt; tag in settings.xml file.</li>
       <div class="bottomnav">
       
         <p>
-        «&#160;&#160;<a href="notes_0.5.0.html">Release Notes for OpenMC 0.5.0</a>
+        «&#160;&#160;<a href="index.html">Release Notes</a>
         &#160;&#160;::&#160;&#160;
         <a class="uplink" href="../index.html">Contents</a>
         &#160;&#160;::&#160;&#160;
-        <a href="notes_0.4.3.html">Release Notes for OpenMC 0.4.3</a>&#160;&#160;»
+        <a href="notes_0.5.2.html">Release Notes for OpenMC 0.5.2</a>&#160;&#160;»
         </p>
 
       </div>

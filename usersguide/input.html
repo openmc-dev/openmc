@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.2',
+        VERSION:     '0.5.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -447,16 +447,29 @@ survival biasing, otherwise known as implicit capture or absorption.</p>
 <blockquote>
 <div><em>Default</em>: false</div></blockquote>
 </div>
+<div class="section" id="threads-element">
+<span id="trace"></span><h3>3.2.17. <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> Element<a class="headerlink" href="#threads-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> element indicates the number of OpenMP threads to be used for
+a simulation. It has no attributes and accepts a positive integer value.</p>
+<blockquote>
+<div><em>Default</em>: None (Determined by environment variable <span class="target" id="index-1"></span><tt class="xref std std-envvar docutils literal"><span class="pre">OMP_NUM_THREADS</span></tt>)</div></blockquote>
+</div>
 <div class="section" id="trace-element">
-<span id="trace"></span><h3>3.2.17. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.18. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element<a class="headerlink" href="#trace-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> element can be used to print out detailed information about a
 single particle during a simulation. This element should be followed by three
 integers: the batch number, generation number, and particle number.</p>
 <blockquote>
 <div><em>Default</em>: None</div></blockquote>
 </div>
+<div class="section" id="track-element">
+<span id="track"></span><h3>3.2.19. <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> Element<a class="headerlink" href="#track-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> element specifies particles for which OpenMC will output binary files describing particle position at every step of its transport. This element should be followed by triplets of integers.  Each triplet describes one particle.  The integers in each triplet specify the batch number, generation number, and particle number, respectively.</p>
+<blockquote>
+<div><em>Default</em>: None</div></blockquote>
+</div>
 <div class="section" id="uniform-fs-element">
-<h3>3.2.18. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.20. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element<a class="headerlink" href="#uniform-fs-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> element describes a mesh that is used for re-weighting
 source sites at every generation based on the uniform fission site methodology
 described in Kelly et al., &#8220;MC21 Analysis of the Nuclear Energy Agency Monte
@@ -485,7 +498,7 @@ problem. It has the following attributes/sub-elements:</p>
 </div></blockquote>
 </div>
 <div class="section" id="verbosity-element">
-<h3>3.2.19. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.2.21. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element<a class="headerlink" href="#verbosity-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> element tells the code how much information to display to
 the standard output. A higher verbosity corresponds to more information being
 displayed. This element takes the following attributes:</p>
@@ -697,9 +710,10 @@ specified.</p>
 <div class="section" id="lattice-element">
 <h3>3.3.3. <tt class="docutils literal"><span class="pre">&lt;lattice&gt;</span></tt> Element<a class="headerlink" href="#lattice-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;lattice&gt;</span></tt> can be used to represent repeating structures (e.g. fuel pins
-in an assembly) or other geometry which naturally fits into a two-dimensional
-structured mesh. Each cell within the lattice is filled with a specified
-universe. A <tt class="docutils literal"><span class="pre">&lt;lattice&gt;</span></tt> accepts the following attributes or sub-elements:</p>
+in an assembly) or other geometry which naturally fits into a two- or
+three-dimensional structured mesh. Each cell within the lattice is filled with a
+specified universe. A <tt class="docutils literal"><span class="pre">&lt;lattice&gt;</span></tt> accepts the following attributes or
+sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -713,16 +727,17 @@ accepted option is &#8220;rectangular&#8221;.</p>
 <p><em>Default</em>: rectangular</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">Two integers representing the number of lattice cells in the x- and y-
-directions, respectively.</p>
+<tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">Two or three integers representing the number of lattice cells in the x- and
+y- (and z-) directions, respectively.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The coordinates of the lower-left corner of the lattice.</p>
+<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The coordinates of the lower-left corner of the lattice. If the lattice is
+two-dimensional, only the x- and y-coordinates are specified.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body"><p class="first">The width of the lattice cell in the x- and y- directions.</p>
+<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body"><p class="first">The width of the lattice cell in the x- and y- (and z-) directions.</p>
 <p><em>Default</em>: None</p>
 </td>
 </tr>
@@ -1232,8 +1247,27 @@ without bias.</p>
 <blockquote>
 <div><em>Default</em>: 1</div></blockquote>
 </div>
+<div class="section" id="display-element">
+<h3>3.7.3. <tt class="docutils literal"><span class="pre">&lt;display&gt;</span></tt> Element<a class="headerlink" href="#display-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;display&gt;</span></tt> element sets one additional CMFD output column. Options are:</p>
+<ul>
+<li><p class="first">&#8220;balance&#8221; - prints the RMS [%] of the resdiual from the neutron balance equation
+on CMFD tallies.</p>
+</li>
+<li><p class="first">&#8220;dominance&#8221; - prints the estimated dominance ratio from the CMFD iterations.
+<strong>This will only work for power iteration eigensolver</strong>.</p>
+</li>
+<li><p class="first">&#8220;entropy&#8221; - prints the <em>entropy</em> of the CMFD predicted fission source.
+<strong>Can only be used if OpenMC entropy is active as well</strong>.</p>
+</li>
+<li><p class="first">&#8220;source&#8221; - prints the RMS [%] between the OpenMC fission source and CMFD
+fission source.</p>
+<p><em>Default</em>: None</p>
+</li>
+</ul>
+</div>
 <div class="section" id="feedback-element">
-<h3>3.7.3. <tt class="docutils literal"><span class="pre">&lt;feedback&gt;</span></tt> Element<a class="headerlink" href="#feedback-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.4. <tt class="docutils literal"><span class="pre">&lt;feedback&gt;</span></tt> Element<a class="headerlink" href="#feedback-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;feedback&gt;</span></tt> element controls whether or not the CMFD diffusion result is
 used to adjust the weight of fission source neutrons on the next OpenMC batch.
 It can be turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
@@ -1241,7 +1275,7 @@ It can be turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p
 <div><em>Default</em>: false</div></blockquote>
 </div>
 <div class="section" id="inactive-element">
-<h3>3.7.4. <tt class="docutils literal"><span class="pre">&lt;inactive&gt;</span></tt> Element<a class="headerlink" href="#inactive-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.5. <tt class="docutils literal"><span class="pre">&lt;inactive&gt;</span></tt> Element<a class="headerlink" href="#inactive-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;inactive&gt;</span></tt> element controls if cmfd tallies should be accumulated
 during inactive batches. For some applications, CMFD tallies may not be
 needed until the start of active batches. This option can be turned on
@@ -1249,16 +1283,16 @@ with &#8220;true&#8221; and off with &#8220;false&#8221;</p>
 <blockquote>
 <div><em>Default</em>: true</div></blockquote>
 </div>
-<div class="section" id="keff-tol-element">
-<h3>3.7.5. <tt class="docutils literal"><span class="pre">&lt;keff_tol&gt;</span></tt> Element<a class="headerlink" href="#keff-tol-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;keff_tol&gt;</span></tt> element specifies acceptance criteria of a CMFD eigenvalue.
-If the CMFD eigenvalue and OpenMC batch eigenvalue are within this tolerance,
-CMFD is allowed to modify source neutron weights.</p>
+<div class="section" id="inactive-flush-element">
+<h3>3.7.6. <tt class="docutils literal"><span class="pre">&lt;inactive_flush&gt;</span></tt> Element<a class="headerlink" href="#inactive-flush-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;inactive_flush&gt;</span></tt> element controls when CMFD tallies are reset during
+inactive batches. The integer set here is the interval at which this reset
+occurs. The amout of resets is controlled with the <tt class="docutils literal"><span class="pre">&lt;num_flushes&gt;</span></tt> element.</p>
 <blockquote>
-<div><em>Default</em>: 0.005</div></blockquote>
+<div><em>Defualt</em>: 9999</div></blockquote>
 </div>
 <div class="section" id="ksp-monitor-element">
-<h3>3.7.6. <tt class="docutils literal"><span class="pre">&lt;ksp_monitor&gt;</span></tt> Element<a class="headerlink" href="#ksp-monitor-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.7. <tt class="docutils literal"><span class="pre">&lt;ksp_monitor&gt;</span></tt> Element<a class="headerlink" href="#ksp-monitor-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;ksp_monitor&gt;</span></tt> element is used to view the convergence of linear GMRES
 iterations in PETSc. This option can be turned on with &#8220;true&#8221; and turned off
 with &#8220;false&#8221;.</p>
@@ -1266,44 +1300,40 @@ with &#8220;false&#8221;.</p>
 <div><em>Default</em>: false</div></blockquote>
 </div>
 <div class="section" id="id2">
-<h3>3.7.7. <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt> Element<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
-<p>If a structured mesh is desired as a filter for a tally, it must be specified in
-a separate element with the tag name <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt>. This element has the following
+<h3>3.7.8. <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt> Element<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>The CMFD mesh is a structured Cartesian mesh. This element has the following
 attributes/sub-elements:</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">type:</th><td class="field-body"><p class="first">The type of structured mesh. Only &#8220;rectangular&#8221; is currently supported.</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The lower-left corner of the structured mesh. If only two coordinate are
+<tr class="field-odd field"><th class="field-name">lower_left:</th><td class="field-body"><p class="first">The lower-left corner of the structured mesh. If only two coordinate are
 given, it is assumed that the mesh is an x-y mesh.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The upper-right corner of the structrued mesh. If only two coordinate are
+<tr class="field-even field"><th class="field-name">upper_right:</th><td class="field-body"><p class="first">The upper-right corner of the structrued mesh. If only two coordinate are
 given, it is assumed that the mesh is an x-y mesh.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in each direction.</p>
+<tr class="field-odd field"><th class="field-name">dimension:</th><td class="field-body"><p class="first">The number of mesh cells in each direction.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">width:</th><td class="field-body"><p class="first">The width of mesh cells in each direction.</p>
+<tr class="field-even field"><th class="field-name">width:</th><td class="field-body"><p class="first">The width of mesh cells in each direction.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">energy:</th><td class="field-body"><p class="first">Energy bins [in MeV], listed in ascending order (e.g. 0.0 0.625e-7 20.0)
+<tr class="field-odd field"><th class="field-name">energy:</th><td class="field-body"><p class="first">Energy bins [in MeV], listed in ascending order (e.g. 0.0 0.625e-7 20.0)
 for CMFD tallies and acceleration. If no energy bins are listed, OpenMC
 automatically assumes a one energy group calculation over the entire
 energy range.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">albedo:</th><td class="field-body"><p class="first">Surface ratio of incoming to outgoing partial currents on global boundary
+<tr class="field-even field"><th class="field-name">albedo:</th><td class="field-body"><p class="first">Surface ratio of incoming to outgoing partial currents on global boundary
 conditions. They are listed in the following order: -x +x -y +y -z +z.</p>
 <p><em>Default</em>: 1.0 1.0 1.0 1.0 1.0 1.0</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">map:</th><td class="field-body"><p class="first">An optional acceleration map can be specified to overlay on the coarse
+<tr class="field-odd field"><th class="field-name">map:</th><td class="field-body"><p class="first">An optional acceleration map can be specified to overlay on the coarse
 mesh spatial grid. If this option is used a <tt class="docutils literal"><span class="pre">1</span></tt> is used for a
 non-accelerated region and a <tt class="docutils literal"><span class="pre">2</span></tt> is used for an accelerated region.
 For a simple 4x4 coarse mesh with a 2x2 fuel lattice surrounded by
@@ -1331,7 +1361,7 @@ of two of these will yield the third.</p>
 </div></blockquote>
 </div>
 <div class="section" id="norm-element">
-<h3>3.7.8. <tt class="docutils literal"><span class="pre">&lt;norm&gt;</span></tt> Element<a class="headerlink" href="#norm-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.9. <tt class="docutils literal"><span class="pre">&lt;norm&gt;</span></tt> Element<a class="headerlink" href="#norm-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;norm&gt;</span></tt> element is used to normalize the CMFD fission source distribution
 to a particular value. For example, if a fission source is calculated for a
 17 x 17 lattice of pins, the fission source may be normalized to the number of
@@ -1341,38 +1371,44 @@ not impact the calculation.</p>
 <blockquote>
 <div><em>Default</em>: 1.0</div></blockquote>
 </div>
-<div class="section" id="n-procs-cmfd-element">
-<h3>3.7.9. <tt class="docutils literal"><span class="pre">&lt;n_procs_cmfd&gt;</span></tt> Element<a class="headerlink" href="#n-procs-cmfd-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;n_procs_cmfd&gt;</span></tt> element is used to set the number of processors used
-for CMFD calculation. It should be less than or equal to the number of
-processors used during OpenMC.</p>
+<div class="section" id="num-flushes-element">
+<h3>3.7.10. <tt class="docutils literal"><span class="pre">&lt;num_flushes&gt;</span></tt> Element<a class="headerlink" href="#num-flushes-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;num_flushes&gt;</span></tt> element controls the number of CMFD tally resets that
+occur during inactive CMFD batches.</p>
 <blockquote>
-<div><em>Default</em>: 1</div></blockquote>
+<div><em>Default</em>: 9999</div></blockquote>
 </div>
 <div class="section" id="power-monitor-element">
-<h3>3.7.10. <tt class="docutils literal"><span class="pre">&lt;power_monitor&gt;</span></tt> Element<a class="headerlink" href="#power-monitor-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.11. <tt class="docutils literal"><span class="pre">&lt;power_monitor&gt;</span></tt> Element<a class="headerlink" href="#power-monitor-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;power_monitor&gt;</span></tt> element is used to view the convergence of power iteration.
 This option can be turned on with &#8220;true&#8221; and turned off with &#8220;false&#8221;.</p>
 <blockquote>
 <div><em>Default</em>: false</div></blockquote>
 </div>
-<div class="section" id="write-balance-element">
-<h3>3.7.11. <tt class="docutils literal"><span class="pre">&lt;write_balance&gt;</span></tt> Element<a class="headerlink" href="#write-balance-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;write_balance&gt;</span></tt> element is used to view the balance of OpenMC tally
-residuals for every coarse mesh region and energy group. This option can be
-turned on with &#8220;true&#8221; and off with &#8220;false&#8221;.</p>
+<div class="section" id="run-adjoint-element">
+<h3>3.7.12. <tt class="docutils literal"><span class="pre">&lt;run_adjoint&gt;</span></tt> Element<a class="headerlink" href="#run-adjoint-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;run_adjoint&gt;</span></tt> element can be turned on with &#8220;true&#8221; to have an adjoint
+calculation be performed on the last batch when CMFD is active.</p>
 <blockquote>
 <div><em>Default</em>: false</div></blockquote>
 </div>
-<div class="section" id="write-hdf5-element">
-<h3>3.7.12. <tt class="docutils literal"><span class="pre">&lt;write_hdf5&gt;</span></tt> Element<a class="headerlink" href="#write-hdf5-element" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">&lt;write_hdf5&gt;</span></tt> element can be turned on with &#8220;true&#8221; to get an
-HDF5 output file of CMFD results.</p>
+<div class="section" id="snes-monitor-element">
+<h3>3.7.13. <tt class="docutils literal"><span class="pre">&lt;snes_monitor&gt;</span></tt> Element<a class="headerlink" href="#snes-monitor-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;snes_monitor&gt;</span></tt> element is used to view the convergence of the nonlinear SNES
+function in PETSc. This option can be turned on with &#8220;true&#8221; and turned off with &#8220;false&#8221;.</p>
 <blockquote>
 <div><em>Default</em>: false</div></blockquote>
+</div>
+<div class="section" id="solver-element">
+<h3>3.7.14. <tt class="docutils literal"><span class="pre">&lt;solver&gt;</span></tt> Element<a class="headerlink" href="#solver-element" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">&lt;solver&gt;</span></tt> element controls whether the CMFD eigenproblem is solved with
+standard power iteration or nonlinear Jacobian-free Newton Krylov (JFNK).
+By setting &#8220;power&#8221;, power iteration is used and by setting &#8220;jfnk&#8221;, JFNK is used.</p>
+<blockquote>
+<div><em>Default</em>: power</div></blockquote>
 </div>
 <div class="section" id="write-matrices-element">
-<h3>3.7.13. <tt class="docutils literal"><span class="pre">&lt;write_matrices&gt;</span></tt> Element<a class="headerlink" href="#write-matrices-element" title="Permalink to this headline">¶</a></h3>
+<h3>3.7.15. <tt class="docutils literal"><span class="pre">&lt;write_matrices&gt;</span></tt> Element<a class="headerlink" href="#write-matrices-element" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">&lt;write_matrices&gt;</span></tt> element is used to view the PETSc sparse matrices
 created when solving CMFD equations. These binary output files can be imported
 into MATLAB using PETSc-MATLAB utilities. This option can be

@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.2',
+        VERSION:     '0.5.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -111,12 +111,26 @@ sudo apt-get install openmpi1.6-bin libopenmpi1.6-dev</pre>
 <p>To compile with support for <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> output (highly recommended), you will
 need to have HDF5 installed on your computer. The installed version will
 need to have been compiled with the same compiler you intend to compile
-OpenMC with.</p>
+OpenMC with. <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> must be built with parallel I/O features if you intend
+to use <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> with MPI. An example of configuring <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> is listed below:</p>
+<div class="highlight-python"><pre>FC=/opt/mpich/3.0.4-gnu/bin/mpif90 CC=/opt/mpich/3.0.4-gnu/bin/mpicc \
+./configure --prefix=/opt/hdf5/1.8.11-gnu --enable-fortran \
+            --enable-fortran2003 --enable-parallel</pre>
+</div>
+<p>You may omit &#8216;&#8211;enable-parallel&#8217; if you want to compile <a class="reference external" href="http://www.hdfgroup.org/HDF5/">HDF5</a> in serial.</p>
 </li>
 <li><p class="first"><a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> for CMFD acceleration</p>
-<p>To enable CMFD acceleration, you will need to have <a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> installed on
-your computer. The installed version will need to have been compiled with
-the same compiler you intend to compile OpenMC with.</p>
+<p>To enable CMFD acceleration, you will need to have <a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> (3.4.2 or higher)
+installed on your computer. The installed version will need to have been
+compiled with the same compiler you intend to compile OpenMC with. OpenMC
+requires <a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> to be configured with Fortran datatypes. An example of
+configuring <a class="reference external" href="http://www.mcs.anl.gov/petsc/">PETSc</a> is listed below:</p>
+<div class="highlight-python"><pre>./configure --prefix=/opt/petsc/3.4.2-gnu --download-f-blas-lapack \
+            --with-mpi-dir=/opt/mpich/3.0.4-gnu/ --with-shared-libraries=0 \
+            --with-fortran-datatypes</pre>
+</div>
+<p>The BLAS/LAPACK library is not required to be downloaded and can be linked
+explicitly (e.g., Intel MLK library).</p>
 </li>
 <li><p class="first"><a class="reference external" href="http://git-scm.com">git</a> version control software for obtaining source code</p>
 </li>
@@ -134,6 +148,11 @@ with GitHub since this involves setting up <a class="reference external" href="h
 setup, the following command will download the full source code from the GitHub
 repository:</p>
 <div class="highlight-python"><pre>git clone git://github.com/mit-crpg/openmc.git</pre>
+</div>
+<p>By default, the cloned repository will be set to the development branch. To
+switch to the source of the latest stable release, run the following commands:</p>
+<div class="highlight-python"><pre>cd openmc/src
+git checkout master</pre>
 </div>
 </div>
 <div class="section" id="build-configuration">
@@ -159,6 +178,9 @@ Intel Fortran, this compiles with -O3.</dd>
 <dt>MPI</dt>
 <dd>Enables parallel runs using the Message Passing Interface. The MPI_DIR
 variable should be set to the base directory of the MPI implementation.</dd>
+<dt>OPENMP</dt>
+<dd>Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
+being used must support OpenMP.</dd>
 <dt>HDF5</dt>
 <dd>Enables HDF5 output in addition to normal screen and text file output. The
 HDF5_DIR variable should be set to the base directory of the HDF5
@@ -314,6 +336,43 @@ openmc
 </div>
 <p>Note that in the latter case, any output files will be placed in the present
 working directory which may be different from <tt class="docutils literal"><span class="pre">/home/username/somemodel</span></tt>.</p>
+<div class="section" id="command-line-flags">
+<h3>2.4.1. Command-Line Flags<a class="headerlink" href="#command-line-flags" title="Permalink to this headline">¶</a></h3>
+<p>OpenMC accepts the following command line flags:</p>
+<table class="docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-g</span>, <span class="option">--geometry-debug</span></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>Run in geometry debugging mode, where cell overlaps are
+checked for after each move of a particle</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-n</span>, <span class="option">--particles <var>N</var></span></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>Use <em>N</em> particles per generation or batch</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-p</span>, <span class="option">--plot</span></kbd></td>
+<td>Run in plotting mode</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-r</span>, <span class="option">--restart <var>file</var></span></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>Restart a previous run from a state point or a particle
+restart file</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-s</span>, <span class="option">--threads <var>N</var></span></kbd></td>
+</tr>
+<tr><td>&nbsp;</td><td>Run with <em>N</em> OpenMP threads</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-t</span>, <span class="option">--track</span></kbd></td>
+<td>Write tracks for all particles</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-v</span>, <span class="option">--version</span></kbd></td>
+<td>Show version information</td></tr>
+</tbody>
+</table>
+</div>
 </div>
 <div class="section" id="configuring-input-validation-with-gnu-emacs-nxml-mode">
 <h2>2.5. Configuring Input Validation with GNU Emacs nXML mode<a class="headerlink" href="#configuring-input-validation-with-gnu-emacs-nxml-mode" title="Permalink to this headline">¶</a></h2>

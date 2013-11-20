@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.2',
+        VERSION:     '0.5.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -379,6 +379,37 @@ file. Note that the data contained in the output from
 <tt class="docutils literal"><span class="pre">StatePoint.extract_result</span></tt> is already in a Numpy array that can be reshaped
 and dumped to MATLAB in one step.</p>
 </div>
+</div>
+<div class="section" id="particle-track-visualization">
+<h2>4.3. Particle Track Visualization<a class="headerlink" href="#particle-track-visualization" title="Permalink to this headline">¶</a></h2>
+<img alt="../_images/Tracks.png" src="../_images/Tracks.png" style="height: 200px;" />
+<p>OpenMC can dump particle tracks—the position of particles as they are
+transported through the geometry.  There are two ways to make OpenMC output
+tracks: all particle tracks through a commandline argument or specific particle
+tracks through settings.xml.</p>
+<p>Running OpenMC with the argument &#8220;-t&#8221;, &#8220;-track&#8221;, or &#8220;&#8211;track&#8221; will cause a track
+file to be created for every particle transported in the code.</p>
+<p>The settings.xml file can dictate that specific particle tracks are output.
+These particles are specified withen a &#8216;&#8217;track&#8217;&#8217; element.  The &#8216;&#8217;track&#8217;&#8217; element
+should contain triplets of integers specifying the batch, generation, and
+particle numbers, respectively.  For example, to output the tracks for particles
+3 and 4 of batch 1 and generation 2 the settings.xml file should contain:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;track&gt;</span>
+  1 2 3
+  1 2 4
+<span class="nt">&lt;/track&gt;</span>
+</pre></div>
+</div>
+<p>After running OpenMC, the directory should contain a file of the form
+&#8220;track_(batch #)_(generation #)_(particle #).(binary or h5)&#8221; for each particle
+tracked.  These track files can be converted into VTK poly data files with the
+&#8220;track.py&#8221; utility.  The usage of track.py is of the form &#8220;track.py [-o OUT] IN&#8221;
+where OUT is the optional output filename and IN is one or more filenames
+describing track files.  The default output name is &#8220;track.pvtp&#8221;.  A common
+usage of track.py is &#8220;track.py track*.binary&#8221; which will use the data from all
+binary track files in the directory to write a &#8220;track.pvtp&#8221; VTK output file.
+The .pvtp file can then be read and plotted by 3d visualization programs such as
+Paraview.</p>
 </div>
 </div>
 

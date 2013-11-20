@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.2',
+        VERSION:     '0.5.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -75,13 +75,13 @@ using copious amounts of comments.</p>
 unit. Writing to standard output or standard error should be handled by the
 <tt class="docutils literal"><span class="pre">write_message</span></tt> subroutine or functionality in the error module.</p>
 </div>
-<div class="section" id="subroutines-and-functions">
-<h2>2.2. Subroutines and Functions<a class="headerlink" href="#subroutines-and-functions" title="Permalink to this headline">¶</a></h2>
-<p>Above each subroutine/function, include a comment block giving a brief
-description of what the subroutine or function does.</p>
-<p>Arguments to subroutines/functions should be explicitly specified as intent(in),
-intent(out), or intent(inout).</p>
-<p>Include a comment describing what each argument to a subroutine/function is.</p>
+<div class="section" id="procedures">
+<h2>2.2. Procedures<a class="headerlink" href="#procedures" title="Permalink to this headline">¶</a></h2>
+<p>Above each procedure, include a comment block giving a brief description of what
+the procedure does.</p>
+<p>Nonpointer dummy arguments to procedures should be explicitly specified as
+intent(in), intent(out), or intent(inout).</p>
+<p>Include a comment describing what each argument to a procedure is.</p>
 </div>
 <div class="section" id="variables">
 <h2>2.3. Variables<a class="headerlink" href="#variables" title="Permalink to this headline">¶</a></h2>
@@ -143,9 +143,10 @@ value of f90-continuation-indent in Emacs.</p>
 </div>
 <div class="section" id="whitespace-in-expressions">
 <h2>2.6. Whitespace in Expressions<a class="headerlink" href="#whitespace-in-expressions" title="Permalink to this headline">¶</a></h2>
+<p>Use a single space between arguments to procedures.</p>
 <p>Avoid extraneous whitespace in the following situations:</p>
 <ul>
-<li><p class="first">In subroutine/function calls:</p>
+<li><p class="first">In procedure calls:</p>
 <div class="highlight-python"><pre>Yes: call somesub(x, y(2), z)
 No:  call somesub( x, y( 2 ), z )</pre>
 </div>

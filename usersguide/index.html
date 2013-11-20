@@ -17,7 +17,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.5.2',
+        VERSION:     '0.5.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -79,7 +79,10 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 <li class="toctree-l3"><a class="reference internal" href="install.html#using-cross-sections-from-serpent">2.3.3. Using Cross Sections from Serpent</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="install.html#running-openmc">2.4. Running OpenMC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#running-openmc">2.4. Running OpenMC</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="install.html#command-line-flags">2.4.1. Command-Line Flags</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="install.html#configuring-input-validation-with-gnu-emacs-nxml-mode">2.5. Configuring Input Validation with GNU Emacs nXML mode</a></li>
 </ul>
 </li>
@@ -102,9 +105,11 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 <li class="toctree-l3"><a class="reference internal" href="input.html#source-element">3.2.14. <tt class="docutils literal"><span class="pre">&lt;source&gt;</span></tt> Element</a></li>
 <li class="toctree-l3"><a class="reference internal" href="input.html#state-point-element">3.2.15. <tt class="docutils literal"><span class="pre">&lt;state_point&gt;</span></tt> Element</a></li>
 <li class="toctree-l3"><a class="reference internal" href="input.html#survival-biasing-element">3.2.16. <tt class="docutils literal"><span class="pre">&lt;survival_biasing&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#trace-element">3.2.17. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#uniform-fs-element">3.2.18. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#verbosity-element">3.2.19. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#threads-element">3.2.17. <tt class="docutils literal"><span class="pre">&lt;threads&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#trace-element">3.2.18. <tt class="docutils literal"><span class="pre">&lt;trace&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#track-element">3.2.19. <tt class="docutils literal"><span class="pre">&lt;track&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#uniform-fs-element">3.2.20. <tt class="docutils literal"><span class="pre">&lt;uniform_fs&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#verbosity-element">3.2.21. <tt class="docutils literal"><span class="pre">&lt;verbosity&gt;</span></tt> Element</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="input.html#geometry-specification-geometry-xml">3.3. Geometry Specification &#8211; geometry.xml</a><ul>
@@ -131,17 +136,19 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 <li class="toctree-l2"><a class="reference internal" href="input.html#cmfd-specification-cmfd-xml">3.7. CMFD Specification &#8211; cmfd.xml</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="input.html#active-flush-element">3.7.1. <tt class="docutils literal"><span class="pre">&lt;active_flush&gt;</span></tt> Element</a></li>
 <li class="toctree-l3"><a class="reference internal" href="input.html#begin-element">3.7.2. <tt class="docutils literal"><span class="pre">&lt;begin&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#feedback-element">3.7.3. <tt class="docutils literal"><span class="pre">&lt;feedback&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#inactive-element">3.7.4. <tt class="docutils literal"><span class="pre">&lt;inactive&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#keff-tol-element">3.7.5. <tt class="docutils literal"><span class="pre">&lt;keff_tol&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#ksp-monitor-element">3.7.6. <tt class="docutils literal"><span class="pre">&lt;ksp_monitor&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#id2">3.7.7. <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#norm-element">3.7.8. <tt class="docutils literal"><span class="pre">&lt;norm&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#n-procs-cmfd-element">3.7.9. <tt class="docutils literal"><span class="pre">&lt;n_procs_cmfd&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#power-monitor-element">3.7.10. <tt class="docutils literal"><span class="pre">&lt;power_monitor&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#write-balance-element">3.7.11. <tt class="docutils literal"><span class="pre">&lt;write_balance&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#write-hdf5-element">3.7.12. <tt class="docutils literal"><span class="pre">&lt;write_hdf5&gt;</span></tt> Element</a></li>
-<li class="toctree-l3"><a class="reference internal" href="input.html#write-matrices-element">3.7.13. <tt class="docutils literal"><span class="pre">&lt;write_matrices&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#display-element">3.7.3. <tt class="docutils literal"><span class="pre">&lt;display&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#feedback-element">3.7.4. <tt class="docutils literal"><span class="pre">&lt;feedback&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#inactive-element">3.7.5. <tt class="docutils literal"><span class="pre">&lt;inactive&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#inactive-flush-element">3.7.6. <tt class="docutils literal"><span class="pre">&lt;inactive_flush&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#ksp-monitor-element">3.7.7. <tt class="docutils literal"><span class="pre">&lt;ksp_monitor&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#id2">3.7.8. <tt class="docutils literal"><span class="pre">&lt;mesh&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#norm-element">3.7.9. <tt class="docutils literal"><span class="pre">&lt;norm&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#num-flushes-element">3.7.10. <tt class="docutils literal"><span class="pre">&lt;num_flushes&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#power-monitor-element">3.7.11. <tt class="docutils literal"><span class="pre">&lt;power_monitor&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#run-adjoint-element">3.7.12. <tt class="docutils literal"><span class="pre">&lt;run_adjoint&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#snes-monitor-element">3.7.13. <tt class="docutils literal"><span class="pre">&lt;snes_monitor&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#solver-element">3.7.14. <tt class="docutils literal"><span class="pre">&lt;solver&gt;</span></tt> Element</a></li>
+<li class="toctree-l3"><a class="reference internal" href="input.html#write-matrices-element">3.7.15. <tt class="docutils literal"><span class="pre">&lt;write_matrices&gt;</span></tt> Element</a></li>
 </ul>
 </li>
 </ul>
@@ -159,6 +166,7 @@ essential aspects of using OpenMC to perform neutronic simulations.</p>
 <li class="toctree-l3"><a class="reference internal" href="processing.html#getting-data-into-matlab">4.2.4. Getting Data into MATLAB</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="processing.html#particle-track-visualization">4.3. Particle Track Visualization</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="troubleshoot.html">5. Troubleshooting</a><ul>

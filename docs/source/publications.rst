@@ -25,7 +25,7 @@ Publications
   Reaction Rate Kernel Density Estimators in OpenMC," *Trans. Am. Nucl. Soc.*,
   **109**, 683-686 (2013).
 
-- Paul K. Romano, Benoit Forget, Kord Smith, and Andrew Siegel, "On the user of
+- Paul K. Romano, Benoit Forget, Kord Smith, and Andrew Siegel, "On the use of
   tally servers in Monte Carlo simulations of light-water reactors,"
   *Proc. Joint International Conference on Supercomputing in Nuclear
   Applications and Monte Carlo*, Paris, France, Oct. 27--31 (2013).

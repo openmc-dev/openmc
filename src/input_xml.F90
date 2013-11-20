@@ -4,9 +4,9 @@ module input_xml
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use error,            only: fatal_error, warning
+  use geometry,         only: count_target_univ
   use geometry_header,  only: Cell, Surface, Lattice, BASE_UNIVERSE
   use global
-  use initialize,       only: count_target_univ
   use list_header,      only: ListChar, ListReal
   use mesh_header,      only: StructuredMesh
   use output,           only: write_message
@@ -1650,7 +1650,7 @@ contains
             end do
             
             ! Determine the number of occurrences of the listed cells
-            print *, "n_words: ",n_words
+            print *, "n_words: ", n_words
             
             l = 0
             do k = 1, n_words

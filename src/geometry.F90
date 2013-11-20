@@ -8,7 +8,6 @@ module geometry
   use particle_header,        only: LocalCoord, deallocate_coord, Particle
   use particle_restart_write, only: write_particle_restart
   use string,                 only: to_str
-  use tally,                  only: score_surface_current
 
   implicit none
      
@@ -353,305 +352,6 @@ contains
     found = .false.
 
   end subroutine find_cell
-
-!===============================================================================
-! CROSS_SURFACE handles all surface crossings, whether the particle leaks out of
-! the geometry, is reflected, or crosses into a new lattice or cell
-!===============================================================================
-
-  subroutine cross_surface(p, last_cell)
-
-    type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: last_cell  ! last cell particle was in
-
-    real(8) :: x         ! x-x0 for sphere
-    real(8) :: y         ! y-y0 for sphere
-    real(8) :: z         ! z-z0 for sphere
-    real(8) :: R         ! radius of sphere
-    real(8) :: u         ! x-component of direction
-    real(8) :: v         ! y-component of direction
-    real(8) :: w         ! z-component of direction
-    real(8) :: n1        ! x-component of surface normal
-    real(8) :: n2        ! y-component of surface normal
-    real(8) :: n3        ! z-component of surface normal
-    real(8) :: dot_prod  ! dot product of direction and normal
-    real(8) :: norm      ! "norm" of surface normal
-    integer :: i_surface ! index in surfaces
-    logical :: found     ! particle found in universe?
-    type(Surface), pointer, save :: surf => null()
-!$omp threadprivate(surf)
-
-    i_surface = abs(p % surface)
-    surf => surfaces(i_surface)
-    if (verbosity >= 10 .or. trace) then
-      message = "    Crossing surface " // trim(to_str(surf % id))
-      call write_message()
-    end if
-
-    if (surf % bc == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
-      ! =======================================================================
-      ! PARTICLE LEAKS OUT OF PROBLEM
-
-      ! Kill particle
-      p % alive = .false.
-
-      ! Score any surface current tallies -- note that the particle is moved
-      ! forward slightly so that if the mesh boundary is on the surface, it is
-      ! still processed
-
-      if (active_current_tallies % size() > 0) then
-        ! TODO: Find a better solution to score surface currents than
-        ! physically moving the particle forward slightly
-
-        p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
-        call score_surface_current(p)
-      end if
-
-      ! Score to global leakage tally
-      if (tallies_on) then
-!$omp critical
-        global_tallies(LEAKAGE) % value = &
-           global_tallies(LEAKAGE) % value + p % wgt
-!$omp end critical
-      end if
-
-      ! Display message
-      if (verbosity >= 10 .or. trace) then
-        message = "    Leaked out of surface " // trim(to_str(surf % id))
-        call write_message()
-      end if
-      return
-
-    elseif (surf % bc == BC_REFLECT .and. (run_mode /= MODE_PLOTTING)) then
-      ! =======================================================================
-      ! PARTICLE REFLECTS FROM SURFACE
-
-      ! Do not handle reflective boundary conditions on lower universes
-      if (.not. associated(p % coord, p % coord0)) then
-        message = "Cannot reflect particle " // trim(to_str(p % id)) // &
-             " off surface in a lower universe."
-        call handle_lost_particle(p)
-        return
-      end if
-
-      ! Score surface currents since reflection causes the direction of the
-      ! particle to change -- artificially move the particle slightly back in
-      ! case the surface crossing in coincident with a mesh boundary
-
-      if (active_current_tallies % size() > 0) then
-        p % coord0 % xyz = p % coord0 % xyz - TINY_BIT * p % coord0 % uvw
-        call score_surface_current(p)
-        p % coord0 % xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
-      end if
-
-      ! Copy particle's direction cosines
-      u = p % coord0 % uvw(1)
-      v = p % coord0 % uvw(2)
-      w = p % coord0 % uvw(3)
-
-      select case (surf%type)
-      case (SURF_PX)
-        u = -u
-
-      case (SURF_PY)
-        v = -v
-
-      case (SURF_PZ)
-        w = -w
-
-      case (SURF_PLANE)
-        ! Find surface coefficients and norm of vector normal to surface
-        n1 = surf % coeffs(1)
-        n2 = surf % coeffs(2)
-        n3 = surf % coeffs(3)
-        norm = n1*n1 + n2*n2 + n3*n3
-        dot_prod = u*n1 + v*n2 + w*n3
-
-        ! Reflect direction according to normal
-        u = u - 2*dot_prod*n1/norm
-        v = v - 2*dot_prod*n2/norm
-        w = w - 2*dot_prod*n3/norm
-
-      case (SURF_CYL_X)
-        ! Find y-y0, z-z0 and dot product of direction and surface normal
-        y = p % coord0 % xyz(2) - surf % coeffs(1)
-        z = p % coord0 % xyz(3) - surf % coeffs(2)
-        R = surf % coeffs(3)
-        dot_prod = v*y + w*z
-
-        ! Reflect direction according to normal
-        v = v - 2*dot_prod*y/(R*R)
-        w = w - 2*dot_prod*z/(R*R)
-
-      case (SURF_CYL_Y)
-        ! Find x-x0, z-z0 and dot product of direction and surface normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        z = p % coord0 % xyz(3) - surf % coeffs(2)
-        R = surf % coeffs(3)
-        dot_prod = u*x + w*z
-
-        ! Reflect direction according to normal
-        u = u - 2*dot_prod*x/(R*R)
-        w = w - 2*dot_prod*z/(R*R)
-
-      case (SURF_CYL_Z)
-        ! Find x-x0, y-y0 and dot product of direction and surface normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        y = p % coord0 % xyz(2) - surf % coeffs(2)
-        R = surf % coeffs(3)
-        dot_prod = u*x + v*y
-
-        ! Reflect direction according to normal
-        u = u - 2*dot_prod*x/(R*R)
-        v = v - 2*dot_prod*y/(R*R)
-
-      case (SURF_SPHERE)
-        ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
-        ! normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        y = p % coord0 % xyz(2) - surf % coeffs(2)
-        z = p % coord0 % xyz(3) - surf % coeffs(3)
-        R = surf % coeffs(4)
-        dot_prod = u*x + v*y + w*z
-
-        ! Reflect direction according to normal
-        u = u - 2*dot_prod*x/(R*R)
-        v = v - 2*dot_prod*y/(R*R)
-        w = w - 2*dot_prod*z/(R*R)
-
-      case (SURF_CONE_X)
-        ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
-        ! normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        y = p % coord0 % xyz(2) - surf % coeffs(2)
-        z = p % coord0 % xyz(3) - surf % coeffs(3)
-        R = surf % coeffs(4)
-        dot_prod = (v*y + w*z - R*u*x)/((R + ONE)*R*x*x)
-
-        ! Reflect direction according to normal
-        u = u + 2*dot_prod*R*x
-        v = v - 2*dot_prod*y
-        w = w - 2*dot_prod*z
-
-      case (SURF_CONE_Y)
-        ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
-        ! normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        y = p % coord0 % xyz(2) - surf % coeffs(2)
-        z = p % coord0 % xyz(3) - surf % coeffs(3)
-        R = surf % coeffs(4)
-        dot_prod = (u*x + w*z - R*v*y)/((R + ONE)*R*y*y)
-
-        ! Reflect direction according to normal
-        u = u - 2*dot_prod*x
-        v = v + 2*dot_prod*R*y
-        w = w - 2*dot_prod*z
-
-      case (SURF_CONE_Z)
-        ! Find x-x0, y-y0, z-z0 and dot product of direction and surface
-        ! normal
-        x = p % coord0 % xyz(1) - surf % coeffs(1)
-        y = p % coord0 % xyz(2) - surf % coeffs(2)
-        z = p % coord0 % xyz(3) - surf % coeffs(3)
-        R = surf % coeffs(4)
-        dot_prod = (u*x + v*y - R*w*z)/((R + ONE)*R*z*z)
-
-        ! Reflect direction according to normal
-        u = u - 2*dot_prod*x
-        v = v - 2*dot_prod*y
-        w = w + 2*dot_prod*R*z
-
-      case default
-        message = "Reflection not supported for surface " // &
-             trim(to_str(surf % id))
-        call fatal_error()
-      end select
-
-      ! Set new particle direction
-      norm = sqrt(u*u + v*v + w*w)
-      p % coord0 % uvw = [u, v, w] / norm
-
-      ! Reassign particle's cell and surface
-      p % coord0 % cell = last_cell
-      p % surface = -p % surface
-
-      ! If a reflective surface is coincident with a lattice or universe
-      ! boundary, it is necessary to redetermine the particle's coordinates in
-      ! the lower universes.
-
-      if (associated(p % coord0 % next)) then
-        call deallocate_coord(p % coord0 % next)
-        call find_cell(p, found)
-        if (.not. found) then
-          message = "Couldn't find particle after reflecting from surface."
-          call handle_lost_particle(p)
-          return
-        end if
-      end if
-
-      ! Set previous coordinate going slightly past surface crossing
-      p % last_xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
-
-      ! Diagnostic message
-      if (verbosity >= 10 .or. trace) then
-        message = "    Reflected from surface " // trim(to_str(surf%id))
-        call write_message()
-      end if
-      return
-    end if
-
-    ! ==========================================================================
-    ! SEARCH NEIGHBOR LISTS FOR NEXT CELL
-
-    if (p % surface > 0 .and. allocated(surf % neighbor_pos)) then
-      ! If coming from negative side of surface, search all the neighboring
-      ! cells on the positive side
-
-      call find_cell(p, found, surf % neighbor_pos)
-      if (found) return
-
-    elseif (p % surface < 0  .and. allocated(surf % neighbor_neg)) then
-      ! If coming from positive side of surface, search all the neighboring
-      ! cells on the negative side
-
-      call find_cell(p, found, surf % neighbor_neg)
-      if (found) return
-
-    end if
-
-    ! ==========================================================================
-    ! COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
-
-    ! Remove lower coordinate levels and assignment of surface
-    p % surface = NONE
-    p % coord => p % coord0
-    call deallocate_coord(p % coord % next)
-    call find_cell(p, found)
-
-    if (run_mode /= MODE_PLOTTING .and. (.not. found)) then
-      ! If a cell is still not found, there are two possible causes: 1) there is
-      ! a void in the model, and 2) the particle hit a surface at a tangent. If
-      ! the particle is really traveling tangent to a surface, if we move it
-      ! forward a tiny bit it should fix the problem.
-
-      p % coord => p % coord0
-      call deallocate_coord(p % coord % next)
-      p % coord % xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
-      call find_cell(p, found)
-
-      ! Couldn't find next cell anywhere! This probably means there is an actual
-      ! undefined region in the geometry.
-
-      if (.not. found) then
-        message = "After particle " // trim(to_str(p % id)) // " crossed surface " &
-             // trim(to_str(surfaces(i_surface) % id)) // " it could not be &
-             &located in any cell and it did not leak."
-        call handle_lost_particle(p)
-        return
-      end if
-    end if
-       
-  end subroutine cross_surface
 
 !===============================================================================
 ! CROSS_LATTICE moves a particle into a new lattice element
@@ -1584,5 +1284,584 @@ contains
     end if
 
   end subroutine handle_lost_particle
+
+  !===============================================================================
+! DISTRIBCELL_OFFSET determines what cell a source particle is in within a 
+! particular universe. If the base universe is passed, the particle should be 
+! found as long as it's within the geometry. Found particles will have their 
+! offset returned for a given distribcell filter. 
+!===============================================================================
+
+  recursive subroutine distribcell_offset(p, search_cells, found, offset)
+
+    type(Particle), intent(inout) :: p
+    integer,        intent(in)    :: search_cells(:) ! The list of cells from the filter, should be the user's inputted list
+    logical,        intent(inout) :: found
+    integer,        intent(inout) :: offset
+
+    integer :: i                    ! index over cells
+    integer :: j                    ! index over cells in filter
+    integer :: k                    ! cell_dict key
+    integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: n_x, n_y, n_z        ! size of lattice
+    integer :: n                    ! number of cells to search
+    integer :: m                    ! number of cells to search in filter
+    integer :: index_cell           ! index in cells array
+    real(8) :: xyz(3)               ! temporary location
+    real(8) :: upper_right(3)       ! lattice upper_right
+    logical :: outside_lattice      ! if particle is not inside lattice bounds
+    logical :: lattice_edge         ! if particle is on a lattice edge
+    type(Cell),     pointer, save :: c => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ => null() ! universe to search in
+!$omp threadprivate(c, lat, univ)
+
+    ! Remove coordinates for any lower levels
+    call deallocate_coord(p % coord % next)
+
+    ! set size of list to search
+    m = size(search_cells)
+    
+    univ => universes(p % coord % universe)
+    n = univ % n_cells
+    
+    do i = 1, n
+      ! select cells based on whether we are searching a universe or a provided
+      ! list of cells (this would be for lists of neighbor cells)
+      index_cell = univ % cells(i)
+      
+      ! get pointer to cell
+      c => cells(index_cell)
+
+      if (simple_cell_contains(c, p)) then
+        ! Set cell on this level
+        p % coord % cell = index_cell
+        
+        ! Show cell information on trace
+        if (verbosity >= 10 .or. trace) then
+          message = "    Entering cell " // trim(to_str(c % id))
+          call write_message()
+        end if
+
+        ! add all the relevant offsets and check if this is one of the cells we plan to tally
+        do j = 1, m
+          ! need to know what index the cell is in the master array
+          offset = offset + c % offset(cell_dict % get_key(search_cells(j)))
+          k = cell_dict % get_key(search_cells(j))
+          if (c % id == cells(k) % id) then
+            found = .true.
+          end if
+        end do
+        
+        if (found) then
+          return
+        end if
+        
+        if (c % type == CELL_NORMAL) then
+          ! ====================================================================
+          ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+
+          ! set material
+          p % last_material = p % material
+          p % material = c % material
+
+        elseif (c % type == CELL_FILL) then
+          ! ====================================================================
+          ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+          ! Create new level of coordinates
+          allocate(p % coord % next)
+          p % coord % next % xyz = p % coord % xyz
+          p % coord % next % uvw = p % coord % uvw
+
+          ! Move particle to next level and set universe
+          p % coord => p % coord % next
+          p % coord % universe = c % fill
+
+          ! Apply translation
+          if (allocated(c % translation)) then
+            p % coord % xyz = p % coord % xyz - c % translation
+          end if
+
+          ! Apply rotation
+          if (allocated(c % rotation)) then
+            p % coord % xyz = matmul(c % rotation, p % coord % xyz)
+            p % coord % uvw = matmul(c % rotation, p % coord % uvw)
+            p % coord % rotated = .true.
+          end if
+
+          call distribcell_offset(p, search_cells, found, offset)
+          if (.not. found) exit
+
+        elseif (c % type == CELL_LATTICE) then
+          ! ====================================================================
+          ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+          ! Set current lattice
+          lat => lattices(c % fill)
+
+          outside_lattice = .false.
+          lattice_edge = .false.
+
+          ! determine lattice index based on position
+          xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
+          i_x = ceiling((xyz(1) - lat % lower_left(1))/lat % width(1))
+          i_y = ceiling((xyz(2) - lat % lower_left(2))/lat % width(2))
+          n_x = lat % dimension(1)
+          n_y = lat % dimension(2)
+          if (lat % n_dimension == 3) then
+            i_z = ceiling((xyz(3) - lat % lower_left(3))/lat % width(3))
+            n_z = lat % dimension(3)
+          else
+            i_z = 1
+            n_z = 1
+          end if
+
+          ! Check if lattice coordinates are within bounds
+          if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
+               i_z < 1 .or. i_z > n_z) then
+
+            ! Check for when particle is on lattice edge
+            upper_right(1) = lat % lower_left(1) + &
+                             lat % width(1) * dble(lat % dimension(1))
+            upper_right(2) = lat % lower_left(2) + &
+                             lat % width(2) * dble(lat % dimension(2))
+            if ( abs(xyz(1) - lat % lower_left(1)) < FP_COINCIDENT .or. &
+                 abs(xyz(2) - lat % lower_left(2)) < FP_COINCIDENT .or. &
+                 abs(upper_right(1) - xyz(1)) < FP_COINCIDENT .or. &
+                 abs(upper_right(2) - xyz(2)) < FP_COINCIDENT) then
+              lattice_edge = .true.
+            end if
+            if (lat % n_dimension == 3) then
+              upper_right(3) = lat % lower_left(3) + &
+                               lat % width(3) * dble(lat % dimension(3))
+              if (abs(xyz(3) - lat % lower_left(3)) < FP_COINCIDENT .or. &
+                  abs(upper_right(3) - xyz(3)) < FP_COINCIDENT) then
+                lattice_edge = .true.
+              end if
+            end if
+            
+            if (lattice_edge) then
+              
+              ! In this case the neutron is leaving the lattice, so we move it
+              ! out, remove all lower coordinate levels and then search from
+              ! universe 0.
+            
+              p % coord => p % coord0
+              call deallocate_coord(p % coord % next)
+
+              ! Reset surface and advance particle a tiny bit
+              p % surface = NONE
+              p % coord % xyz = xyz
+
+            else
+
+              ! We're outside the lattice, so treat this as a normal cell with
+              ! the material specified for the outside
+
+              outside_lattice = .true.
+              p % last_material = p % material
+              p % material = c % material
+
+              ! We'll still make a new coordinate for the particle, as 
+              ! distance_to_boundary will still need to track through lattice
+              ! widths even though there's nothing in them but this material
+
+            end if
+
+          end if
+
+          if (.not. lattice_edge) then
+
+            ! Create new level of coordinates
+            allocate(p % coord % next)
+
+            ! adjust local position of particle
+            p % coord % next % xyz(1) = p % coord % xyz(1) - &
+                 (lat % lower_left(1) + (i_x - 0.5_8)*lat % width(1))
+            p % coord % next % xyz(2) = p % coord % xyz(2) - &
+                 (lat % lower_left(2) + (i_y - 0.5_8)*lat % width(2))
+            if (lat % n_dimension == 3) then
+              p % coord % next % xyz(3) = p % coord % xyz(3) - &
+                 (lat % lower_left(3) + (i_z - 0.5_8)*lat % width(3))
+            else
+              p % coord % next % xyz(3) = p % coord % xyz(3)
+            end if
+            p % coord % next % uvw = p % coord % uvw
+
+            ! set particle lattice indices
+            p % coord % next% lattice   = c % fill
+            p % coord % next% lattice_x = i_x
+            p % coord % next% lattice_y = i_y
+            p % coord % next% lattice_z = i_z
+            if (.not. outside_lattice) then
+              p % coord % next % universe = lat % universes(i_x,i_y,i_z)
+            else
+
+              ! Set universe as the same for subsequent calls to distribcell_offset
+              p % coord % next % universe = p % coord % universe
+
+              ! Set coord cell for calls to distance_to_boundary
+              p % coord % next % cell = index_cell
+
+            end if
+
+            ! Move particle to next level
+            p % coord => p % coord % next
+
+          end if
+
+          if (.not. outside_lattice) then
+            
+            ! add all the relevant offsets and check if this is one of the cells we plan to tally
+            do j = 1, m
+              ! need to know what index the cell is in the master array
+              k = cell_dict % get_key(search_cells(j))
+              offset = offset + lat % offset(k,i_x,i_y,i_z)
+            end do
+  
+            call distribcell_offset(p, search_cells, found, offset)
+            if (.not. found) exit
+  
+          end if
+
+        end if
+
+      end if
+    end do
+
+    found = .false.
+
+  end subroutine distribcell_offset
+  
+  !===============================================================================
+! CALC_OFFSETS calculates and stores the offsets in all cells
+!===============================================================================
+
+  recursive subroutine calc_offsets(i_vec, univ, cellid)
+
+    integer, intent(in) :: i_vec
+    type(Universe), intent(in) :: univ
+    integer, intent(in) :: cellid
+
+    integer :: i                    ! index over cells
+    integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: n_x, n_y, n_z        ! size of lattice
+    integer :: n                    ! number of cells to search
+    integer :: prevoffset           ! total offset for the previous cell
+    integer :: tempoffset           ! total offset for a given cell
+    integer :: index_cell           ! index in cells array
+    integer :: index_univ           ! index to next universe in universes array
+    real(8) :: xyz(3)               ! temporary location
+    real(8) :: upper_right(3)       ! lattice upper_right
+    type(Cell),     pointer :: c => null()    ! pointer to cell
+    type(Lattice),  pointer :: lat => null()  ! pointer to lattice
+    type(Universe), pointer :: univ_next => null() ! next universe to loop through
+
+    n = univ % n_cells
+    
+    !print *, 'Uni ', univ % id , ' has ', n , ' cells'
+    
+    do i = 1, n
+      
+      index_cell = univ % cells(i)
+
+      ! get pointer to cell
+      c => cells(index_cell)
+      tempoffset = 0
+      call count_target_cell(c,cellid,tempoffset)
+      
+      
+      if (i /= 1) then
+      
+        prevoffset = c % offset(i_vec)
+      
+      else
+      
+        prevoffset = 0
+        c % offset = 0
+        
+      end if
+       
+      if (i /= n) then
+      
+        c => cells(index_cell + 1)
+        c % offset(i_vec) = prevoffset + tempoffset
+        c => cells(index_cell)
+        
+        !print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
+      
+      else 
+        
+        !print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
+      
+      end if           
+      
+      !print *, 'Cell ', c % id
+      
+      if (c % type == CELL_NORMAL) then
+        ! ====================================================================
+        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+
+      elseif (c % type == CELL_FILL) then
+        ! ====================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+        univ_next => universes(c % fill)
+        call calc_offsets(i_vec,univ_next,cellid)
+        c => cells(index_cell)
+
+      elseif (c % type == CELL_LATTICE) then
+        ! ====================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+        ! Set current lattice
+        lat => lattices(c % fill)
+        !print *, 'Lattice ', lat % id
+
+
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        else
+          n_z = 1
+        end if
+        !print *, 'Dimensions:',n_x,',',n_y,',',n_z
+        ! Loop over lattice coordinates
+        do i_x = 1, n_x
+          do i_y = 1, n_y
+            do i_z = 1, n_z
+
+              univ_next => universes(lat % universes(i_x,i_y,i_z))
+              
+              tempoffset = 0
+              if (i_x == 1 .AND. i_y == 1 .AND. i_z == 1) then
+           
+                lat % offset(i_vec,1,1,1) = 0
+                prevoffset = 0
+                call count_target_univ(univ_next,cellid,tempoffset)
+
+              else
+              
+                prevoffset = lat % offset(i_vec,i_x,i_y,i_z)
+                call count_target_univ(univ_next,cellid,tempoffset)
+               
+              end if
+              
+
+              if (i_z + 1 <= n_z) then
+                lat % offset(i_vec,i_x,i_y,i_z+1) = tempoffset + prevoffset              
+              elseif (i_y + 1 <= n_y) then
+                lat % offset(i_vec,i_x,i_y+1,1) = tempoffset + prevoffset              
+              elseif (i_x + 1 <= n_x) then
+                lat % offset(i_vec,i_x+1,1,1) = tempoffset + prevoffset
+              end if
+              
+              !print *, 'i:',i
+              !print *, 'Lat',lat % id,' (',i_x,',',i_y,',',i_z,') has offset ' , lat % offset(i_vec,i_x,i_y,i_z)
+              !print *, 'Precall Lat',lat % id
+              call calc_offsets(i_vec,univ_next,cellid)
+              c => cells(index_cell)
+              lat => lattices(c % fill)
+              !print *, 'Postcall Lat',lat % id
+              !print *, 'Lat',lat % id,' (',i_x,',',i_y,',',i_z,') p2 has offset ' , lat % offset(i_vec,i_x,i_y,i_z)
+            end do
+          end do
+        end do
+
+      end if
+    end do
+    
+    return
+        
+  end subroutine calc_offsets
+  
+!===============================================================================
+! COUNT_TARGET_CELL recursively totals the numbers of occurances of a given cell id
+! beginning with the cell given. Using -1 for the cell id will total all 
+! normal cells.
+!===============================================================================
+
+  recursive subroutine count_target_cell(c, cellid, kount)
+
+    type(Cell), intent(in) :: c
+    integer, intent(in) :: cellid
+    integer, intent(inout) :: kount
+
+    integer :: i                    ! index over cells
+    integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: n_x, n_y, n_z        ! size of lattice
+    integer :: n                    ! number of cells to search
+    integer :: index_cell           ! index in cells array
+    integer :: index_univ           ! index to next universe in universes array
+    real(8) :: xyz(3)               ! temporary location
+    real(8) :: upper_right(3)       ! lattice upper_right
+    type(Cell),     pointer, save :: c_next => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+
+    if (c % type == CELL_NORMAL) then
+      ! ====================================================================
+      ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+      if (cellid == c % id .OR. cellid == -1) then
+        kount = kount + 1
+      endif
+
+    elseif (c % type == CELL_FILL) then
+      ! ====================================================================
+      ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+      univ_next => universes(c % fill)
+      
+      n = univ_next % n_cells
+
+      !print *, 'Uni ', univ % id , ' has ', n , ' cells'
+      
+      do i = 1, n
+      
+        index_cell = univ_next % cells(i)
+
+        ! get pointer to cell
+        c_next => cells(index_cell)
+        !print *, 'Cell ', c % id
+        
+        call count_target_cell(c_next, cellid, kount)
+        
+      end do
+
+    elseif (c % type == CELL_LATTICE) then
+      ! ====================================================================
+      ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+      ! Set current lattice
+      lat => lattices(c % fill)
+
+      n_x = lat % dimension(1)
+      n_y = lat % dimension(2)
+      if (lat % n_dimension == 3) then
+        n_z = lat % dimension(3)
+      else
+        n_z = 1
+      end if
+      
+      ! Loop over lattice coordinates
+      do i_x = 1, n_x
+        do i_y = 1, n_y
+          do i_z = 1, n_z
+
+           ! print *, 'Lattice (',i_x,',',i_y,',',i_z,')'
+!              index_univ = universe_dict % get_key()
+            univ_next => universes(lat % universes(i_x,i_y,i_z))
+            
+            n = univ_next % n_cells
+    
+            !print *, 'Uni ', univ % id , ' has ', n , ' cells'
+            
+            do i = 1, n
+            
+              index_cell = univ_next % cells(i)
+
+              ! get pointer to cell
+              c_next => cells(index_cell)
+              !print *, 'Cell ', c % id
+              
+              call count_target_cell(c_next, cellid, kount)
+              lat => lattices(c % fill)
+              
+            end do
+            
+
+          end do
+        end do
+      end do
+
+    end if
+    
+  end subroutine count_target_cell
+
+!===============================================================================
+! COUNT_TARGET_UNIV recursively totals the numbers of occurances of a given cell id
+! beginning with the universe given. Using -1 for the cell id will total all 
+! normal cells.
+!===============================================================================
+
+  recursive subroutine count_target_univ(univ, cellid, kount)
+
+    type(Universe), intent(in) :: univ
+    integer, intent(in) :: cellid
+    integer, intent(inout) :: kount
+
+    integer :: i                    ! index over cells
+    integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: n_x, n_y, n_z        ! size of lattice
+    integer :: n                    ! number of cells to search
+    integer :: index_cell           ! index in cells array
+    integer :: index_univ           ! index to next universe in universes array
+    real(8) :: xyz(3)               ! temporary location
+    real(8) :: upper_right(3)       ! lattice upper_right
+    type(Cell),     pointer, save :: c => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+
+    n = univ % n_cells
+    
+    do i = 1, n
+    
+      index_cell = univ % cells(i)
+
+      ! get pointer to cell
+      c => cells(index_cell)
+      
+      !print *, 'Cell ', c % id
+      
+      if (c % type == CELL_NORMAL) then
+        ! ====================================================================
+        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+        if (cellid == c % id .OR. cellid == -1) then
+          kount = kount + 1
+        endif
+        
+      elseif (c % type == CELL_FILL) then
+        ! ====================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+        univ_next => universes(c % fill)
+        call count_target_univ(univ_next,cellid,kount)
+
+      elseif (c % type == CELL_LATTICE) then
+        ! ====================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+        ! Set current lattice
+        lat => lattices(c % fill)
+        
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        else
+          n_z = 1
+        end if
+        
+        ! Loop over lattice coordinates
+        do i_x = 1, n_x
+          do i_y = 1, n_y
+            do i_z = 1, n_z
+
+              univ_next => universes(lat % universes(i_x,i_y,i_z))
+              call count_target_univ(univ_next,cellid,kount)
+              c => cells(index_cell)
+              lat => lattices(c % fill)
+              
+            end do
+          end do
+        end do
+
+      end if
+    end do
+             
+  end subroutine count_target_univ
+
 
 end module geometry

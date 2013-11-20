@@ -46,6 +46,11 @@ cmfd_input.o: tally_header.o
 cmfd_input.o: tally_initialize.o
 cmfd_input.o: templates/cmfd_t.o
 
+cmfd_jacobian_operator.o: cmfd_loss_operator.o
+cmfd_jacobian_operator.o: cmfd_prod_operator.o
+cmfd_jacobian_operator.o: constants.o
+cmfd_jacobian_operator.o: global.o
+
 cmfd_jfnk_solver.o: cmfd_loss_operator.o
 cmfd_jfnk_solver.o: cmfd_power_solver.o
 cmfd_jfnk_solver.o: cmfd_prod_operator.o
@@ -58,6 +63,14 @@ cmfd_jfnk_solver.o: vector_header.o
 cmfd_loss_operator.o: constants.o
 cmfd_loss_operator.o: global.o
 cmfd_loss_operator.o: matrix_header.o
+
+cmfd_message_passing.o: cmfd_header.o
+cmfd_message_passing.o: global.o
+
+cmfd_output.o: cmfd_data.o
+cmfd_output.o: cmfd_header.o
+cmfd_output.o: constants.o
+cmfd_output.o: global.o
 
 cmfd_power_solver.o: cmfd_loss_operator.o
 cmfd_power_solver.o: cmfd_prod_operator.o
@@ -75,6 +88,14 @@ cmfd_slepc_solver.o: cmfd_loss_operator.o
 cmfd_slepc_solver.o: cmfd_prod_operator.o
 cmfd_slepc_solver.o: constants.o
 cmfd_slepc_solver.o: global.o
+
+cmfd_snes_solver.o: cmfd_jacobian_operator.o
+cmfd_snes_solver.o: cmfd_loss_operator.o
+cmfd_snes_solver.o: cmfd_power_solver.o
+cmfd_snes_solver.o: cmfd_prod_operator.o
+cmfd_snes_solver.o: constants.o
+cmfd_snes_solver.o: global.o
+cmfd_snes_solver.o: string.o
 
 cross_section.o: ace_header.o
 cross_section.o: constants.o
@@ -146,7 +167,6 @@ geometry.o: output.o
 geometry.o: particle_header.o
 geometry.o: particle_restart_write.o
 geometry.o: string.o
-geometry.o: tally.o
 
 global.o: ace_header.o
 global.o: bank_header.o
@@ -200,6 +220,7 @@ input_xml.o: cmfd_input.o
 input_xml.o: constants.o
 input_xml.o: dict_header.o
 input_xml.o: error.o
+input_xml.o: geometry.o
 input_xml.o: geometry_header.o
 input_xml.o: global.o
 input_xml.o: list_header.o
@@ -356,6 +377,7 @@ string.o: global.o
 tally.o: ace_header.o
 tally.o: constants.o
 tally.o: error.o
+tally.o: geometry.o
 tally.o: global.o
 tally.o: math.o
 tally.o: mesh.o
@@ -379,6 +401,7 @@ tracking.o: error.o
 tracking.o: geometry.o
 tracking.o: geometry_header.o
 tracking.o: global.o
+tracking.o: mesh.o
 tracking.o: output.o
 tracking.o: particle_header.o
 tracking.o: physics.o

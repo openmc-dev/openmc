@@ -14,6 +14,7 @@ module track_output
 
   integer, private                  :: n_tracks     ! total number of tracks
   real(8), private, allocatable     :: coords(:,:)  ! track coordinates
+!$omp threadprivate(n_tracks, coords)
 
 contains
 
@@ -23,7 +24,6 @@ contains
 
   subroutine initialize_particle_track()
     n_tracks = 0
-    allocate(coords(1,1))
   end subroutine initialize_particle_track
 
 !===============================================================================
@@ -33,13 +33,17 @@ contains
   subroutine write_particle_track(p)
     type(Particle), intent(in)  :: p
 
-    real(8), allocatable  :: new_coords(:, :)
+    real(8), allocatable :: new_coords(:, :)
 
-    ! Add another column to coords.
+    ! Add another column to coords
     n_tracks = n_tracks + 1
-    allocate(new_coords(3, n_tracks))
-    new_coords(:, 1:n_tracks-1) = coords
-    call move_alloc(FROM=new_coords, TO=coords)
+    if (allocated(coords)) then
+      allocate(new_coords(3, n_tracks))
+      new_coords(:, 1:n_tracks-1) = coords
+      call move_alloc(FROM=new_coords, TO=coords)
+    else
+      allocate(coords(3,1))
+    end if
 
     ! Write current coordinates into the newest column.
     coords(:, n_tracks) = p % coord0 % xyz

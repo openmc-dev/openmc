@@ -112,5 +112,18 @@ element settings {
       attribute lower_left { list { xsd:double+ } }) &
     (element upper_right { list { xsd:double+ } } | 
       attribute upper_right { list { xsd:double+ } })
+  }? &
+
+  element resonance_scattering {
+      (element method { xsd:positiveInteger } |
+        attribute method { xsd:positiveInteger }) &
+      (element scatterer { xsd:positiveInteger } |
+        attribute scatterer { xsd:positiveInteger }) &
+      (element xs_label { xsd:positiveInteger } |
+        attribute xs_label { xsd:positiveInteger }) &
+      (element xs_label_0K { xsd:positiveInteger } |
+        attribute xs_label_0K { xsd:positiveInteger }) &
+      (element E_min { xsd:double } | attribute E_min { xsd:double }) &
+      (element E_max { xsd:double } | attribute E_max { xsd:double })
   }?
 }

@@ -77,7 +77,7 @@ module particle_header
     integer    :: n_collision   ! # of collisions
 
     ! Track output
-    logical    :: write_track
+    logical    :: write_track = .false.
 
   contains
     procedure :: initialize => initialize_particle

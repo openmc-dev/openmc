@@ -26,8 +26,10 @@ contains
     integer :: nnz  ! number of nonzeros in matrix
     integer :: n_i  ! number of interior cells
     integer :: n_c  ! number of corner cells
-    integer :: n_s  ! number side cells
+    integer :: n_s  ! number of side cells
+    integer :: n_e  ! number of edge cells
     integer :: nz_c ! number of non-zero corner cells
+    integer :: nz_e ! number of non-zero edge cells
     integer :: nz_s ! number of non-zero side cells
     integer :: nz_i ! number of non-zero interior cells
 
@@ -48,13 +50,16 @@ contains
     if (cmfd_coremap) then
       nnz = preallocate_loss_matrix(nx, ny, nz, ng, n)
     else ! structured Cartesian grid
-      n_c  = 4                   ! define # of corners
-      n_s  = 2*(nx + ny) - 8     ! define # of sides
-      n_i  = nx*ny - (n_c + n_S) ! define # of interiors  
-      nz_c = ng*n_c*(3 + ng - 1) ! define # nonzero corners
-      nz_s = ng*n_s*(4 + ng - 1) ! define # nonzero sides
-      nz_i = ng*n_i*(5 + ng - 1) ! define # nonzero interiors
-      nnz  = nz_c + nz_s + nz_i
+      n_c  = 8                   ! define # of corners
+      n_e  = 4*(nx - 2) + 4*(ny - 2) + 4*(nz - 2) ! define # of edges
+      n_s  = 2*(nx - 2)*(ny - 2) + 2*(nx - 2)*(nz - 2) &
+           + 2*(ny - 2)*(nz - 2) ! define # of sides
+      n_i  = nx*ny*nz - (n_c + n_e + n_s) ! define # of interiors  
+      nz_c = ng*n_c*(4 + ng - 1) ! define # nonzero corners
+      nz_e = ng*n_e*(5 + ng - 1) ! define # nonzero edges
+      nz_s = ng*n_s*(6 + ng - 1) ! define # nonzero sides
+      nz_i = ng*n_i*(7 + ng - 1) ! define # nonzero interiors
+      nnz  = nz_c + nz_e + nz_s + nz_i
     end if
 
     ! Configure loss matrix

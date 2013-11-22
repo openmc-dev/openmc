@@ -1,7 +1,7 @@
 module global
 
   use ace_header,       only: Nuclide, SAlphaBeta, xsListing, NuclideMicroXS, &
-                              MaterialMacroXS
+                              MaterialMacroXS, Nuclide_0K
   use bank_header,      only: Bank
   use cmfd_header
   use constants
@@ -61,6 +61,7 @@ module global
 
   ! Cross section arrays
   type(Nuclide),    allocatable, target :: nuclides(:)    ! Nuclide cross-sections
+  type(Nuclide_0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
   type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings 
 
@@ -68,9 +69,10 @@ module global
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
   type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 
-  integer :: n_nuclides_total ! Number of nuclide cross section tables
-  integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
-  integer :: n_listings       ! Number of listings in cross_sections.xml
+  integer :: n_nuclides_total    ! Number of nuclide cross section tables
+  integer :: n_nuclides_0K_total ! Number of 0K nuclide cross section tables
+  integer :: n_sab_tables        ! Number of S(a,b) thermal scattering tables
+  integer :: n_listings          ! Number of listings in cross_sections.xml
 
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict
@@ -400,6 +402,14 @@ contains
         call nuclides(i) % clear()
       end do
       deallocate(nuclides)
+    end if
+    ! Deallocate 0K cross section data, listings
+    if (allocated(nuclides_0K)) then
+    ! First call the clear routines
+      do i = 1, size(nuclides_0K)
+        call nuclides_0K(i) % clear()
+      end do
+      deallocate(nuclides_0K)
     end if
     if (allocated(sab_tables)) deallocate(sab_tables)
     if (allocated(xs_listings)) deallocate(xs_listings)

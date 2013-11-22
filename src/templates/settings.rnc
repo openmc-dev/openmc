@@ -115,14 +115,14 @@ element settings {
   }? &
 
   element resonance_scattering {
-      (element method { xsd:positiveInteger } |
-        attribute method { xsd:positiveInteger }) &
-      (element scatterer { xsd:positiveInteger } |
-        attribute scatterer { xsd:positiveInteger }) &
-      (element xs_label { xsd:positiveInteger } |
-        attribute xs_label { xsd:positiveInteger }) &
-      (element xs_label_0K { xsd:positiveInteger } |
-        attribute xs_label_0K { xsd:positiveInteger }) &
+      (element method { xsd:string { maxLength = "16" } } |
+        attribute method { xsd:string { maxLength = "16" } }) &
+      (element scatterer { list { xsd:string { maxLength = "12" }+ } } |
+        attribute scatterer { list { xsd:string { maxLength = "12" }+ } }) &
+      (element xs_label { list { xsd:string { maxLength = "12" }+ } } |
+        attribute xs_label { list { xsd:string { maxLength = "12" }+ } }) &
+      (element xs_label_0K { list { xsd:string { maxLength = "12" }+ } } |
+        attribute xs_label_0K { list { xsd:string { maxLength = "12" }+ } }) &
       (element E_min { xsd:double } | attribute E_min { xsd:double }) &
       (element E_max { xsd:double } | attribute E_max { xsd:double })
   }?

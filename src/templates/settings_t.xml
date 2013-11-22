@@ -43,10 +43,10 @@
   </typedef>
 
   <typedef name="resonance_scattering_xml">
-    <component name="method" type="word" length="25" default="''" />
-    <component name="scatterer" type="word" length="25" default="''" />
-    <component name="xs_label" type="word" length="25" default="''" />
-    <component name="xs_label_0K" type="word" length="25" default="''" />
+    <component name="method" type="word" length="16" default="''" />
+    <component name="scatterer" type="word-array" length="12" default="''" />
+    <component name="xs_label" type="word-array" length="12" default="''" />
+    <component name="xs_label_0K" type="word-array" length="12" default="''" />
     <component name="E_min" type="double" default="4.0e-6" />
     <component name="E_max" type="double" default="210.0e-6" />
   </typedef>

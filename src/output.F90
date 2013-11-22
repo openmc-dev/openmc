@@ -697,6 +697,18 @@ contains
     end select
 
     ! Write any cells bins if present
+    j = t % find_filter(FILTER_DISTRIBCELL)
+    if (j > 0) then
+      string = ""
+      do i = 1, t % filters(j) % n_bins
+        id = t % filters(j) % int_bins(i)
+        c => cells(id)
+        string = trim(string) // ' ' // trim(to_str(c % id))
+      end do
+      write(unit_, *) '    Cell Bins:' // trim(string)
+    end if
+
+    ! Write any cells bins if present
     j = t % find_filter(FILTER_CELL)
     if (j > 0) then
       string = ""
@@ -1592,14 +1604,15 @@ contains
     if (n_tallies == 0) return
 
     ! Initialize names for tally filter types
-    filter_name(FILTER_UNIVERSE)  = "Universe"
-    filter_name(FILTER_MATERIAL)  = "Material"
-    filter_name(FILTER_CELL)      = "Cell"
-    filter_name(FILTER_CELLBORN)  = "Birth Cell"
-    filter_name(FILTER_SURFACE)   = "Surface"
-    filter_name(FILTER_MESH)      = "Mesh"
-    filter_name(FILTER_ENERGYIN)  = "Incoming Energy"
-    filter_name(FILTER_ENERGYOUT) = "Outgoing Energy"
+    filter_name(FILTER_UNIVERSE)    = "Universe"
+    filter_name(FILTER_MATERIAL)    = "Material"
+    filter_name(FILTER_DISTRIBCELL) = "Distributed Cell"
+    filter_name(FILTER_CELL)        = "Cell"
+    filter_name(FILTER_CELLBORN)    = "Birth Cell"
+    filter_name(FILTER_SURFACE)     = "Surface"
+    filter_name(FILTER_MESH)        = "Mesh"
+    filter_name(FILTER_ENERGYIN)    = "Incoming Energy"
+    filter_name(FILTER_ENERGYOUT)   = "Outgoing Energy"
 
     ! Initialize names for scores
     score_names(abs(SCORE_FLUX))          = "Flux"

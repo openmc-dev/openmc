@@ -4,7 +4,6 @@ module input_xml
   use constants
   use dict_header,      only: DictIntInt, ElemKeyValueCI
   use error,            only: fatal_error, warning
-  use geometry,         only: count_target_univ
   use geometry_header,  only: Cell, Surface, Lattice, BASE_UNIVERSE
   use global
   use list_header,      only: ListChar, ListReal
@@ -712,7 +711,7 @@ contains
       c % n_surfaces = n
       allocate(c % surfaces(n))
       c % surfaces = cell_(i) % surfaces
-      allocate(c % offset(n_cells))
+      allocate(c % offset(n_cells+1))
       ! Rotation matrix
       if (associated(cell_(i) % rotation)) then
         ! Rotations can only be applied to cells that are being filled with
@@ -984,7 +983,7 @@ contains
         n_z = 1
       end if
       allocate(lat % universes(n_x, n_y, n_z))
-      allocate(lat % offset(n_cells,n_x, n_y, n_z))
+      allocate(lat % offset(n_cells+1,n_x, n_y, n_z))
 
       ! Check that number of universes matches size
       if (size(lattice_(i) % universes) /= n_x*n_y*n_z) then
@@ -1400,7 +1399,6 @@ contains
     type(TallyObject),    pointer :: t => null()
     type(StructuredMesh), pointer :: m => null()
     type(TallyFilter), allocatable :: filters(:) ! temporary filters
-    type(Universe), pointer :: univ
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
@@ -1649,18 +1647,6 @@ contains
                    tally_(i) % filter(j) % bins(k)),4)
             end do
             
-            ! Determine the number of occurrences of the listed cells
-            print *, "n_words: ", n_words
-            
-            l = 0
-            do k = 1, n_words
-              univ => universes(BASE_UNIVERSE)
-              ! sum the number of occurrences of all cells requested
-              call count_target_univ(univ,t % filters(j) % int_bins(k),l)
-              ! Set number of bins           
-            end do
-            t % filters(j) % n_bins = l 
-          
           case ('cell')
             ! Set type of filter
             t % filters(j) % type = FILTER_CELL

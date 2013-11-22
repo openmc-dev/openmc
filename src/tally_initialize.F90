@@ -92,11 +92,11 @@ contains
     allocate(tally_maps(N_FILTER_TYPES - 3))
 
     ! allocate list of items for each different filter type
-    allocate(tally_maps(FILTER_UNIVERSE) % items(n_universes))
-    allocate(tally_maps(FILTER_MATERIAL) % items(n_materials))
-    allocate(tally_maps(FILTER_CELL)     % items(n_cells))
-    allocate(tally_maps(FILTER_CELLBORN) % items(n_cells))
-    allocate(tally_maps(FILTER_SURFACE)  % items(n_surfaces))
+    allocate(tally_maps(FILTER_UNIVERSE)    % items(n_universes))
+    allocate(tally_maps(FILTER_MATERIAL)    % items(n_materials))
+    allocate(tally_maps(FILTER_CELL)        % items(n_cells))
+    allocate(tally_maps(FILTER_CELLBORN)    % items(n_cells))
+    allocate(tally_maps(FILTER_SURFACE)     % items(n_surfaces))
 
     TALLY_LOOP: do i = 1, n_tallies
       ! Get pointer to tally
@@ -111,7 +111,7 @@ contains
 
         if (type == FILTER_CELL .or. type == FILTER_SURFACE .or. &
              type == FILTER_MATERIAL .or. type == FILTER_UNIVERSE .or. &
-             type == FILTER_CELLBORN .or. type == FILTER_DISTRIBCELL) then
+             type == FILTER_CELLBORN) then
 
           ! Add map elements
           BIN_LOOP: do k = 1, t % filters(j) % n_bins

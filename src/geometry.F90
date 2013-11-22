@@ -1346,8 +1346,8 @@ contains
         ! add all the relevant offsets and check if this is one of the cells we plan to tally
         do j = 1, m
           ! need to know what index the cell is in the master array
-          offset = offset + c % offset(cell_dict % get_key(search_cells(j)))
           k = cell_dict % get_key(search_cells(j))
+          offset = offset + c % offset(k)
           if (c % id == cells(k) % id) then
             found = .true.
           end if
@@ -1597,7 +1597,7 @@ contains
       
       end if           
       
-      !print *, 'Cell ', c % id
+      !print *, 'Cell type', c % type
       
       if (c % type == CELL_NORMAL) then
         ! ====================================================================
@@ -1701,6 +1701,10 @@ contains
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
 
+
+    !print *, 'Cell ', c % id
+    
+    
     if (c % type == CELL_NORMAL) then
       ! ====================================================================
       ! AT LOWEST UNIVERSE, TERMINATE SEARCH
@@ -1716,10 +1720,11 @@ contains
       
       n = univ_next % n_cells
 
-      !print *, 'Uni ', univ % id , ' has ', n , ' cells'
+      !print *, 'Uni ', univ_next % id , ' has ', n , ' cells'
+      
       
       do i = 1, n
-      
+        !print *,'i:',i
         index_cell = univ_next % cells(i)
 
         ! get pointer to cell
@@ -1727,6 +1732,7 @@ contains
         !print *, 'Cell ', c % id
         
         call count_target_cell(c_next, cellid, kount)
+        univ_next => universes(c % fill)
         
       end do
 
@@ -1750,13 +1756,13 @@ contains
         do i_y = 1, n_y
           do i_z = 1, n_z
 
-           ! print *, 'Lattice (',i_x,',',i_y,',',i_z,')'
+            !print *, 'Lattice (',i_x,',',i_y,',',i_z,')'
 !              index_univ = universe_dict % get_key()
             univ_next => universes(lat % universes(i_x,i_y,i_z))
             
             n = univ_next % n_cells
     
-            !print *, 'Uni ', univ % id , ' has ', n , ' cells'
+            !print *, 'Uni ', univ_next % id , ' has ', n , ' cells'
             
             do i = 1, n
             
@@ -1805,8 +1811,10 @@ contains
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
 
     n = univ % n_cells
-    
+    !print *, 'univ:', univ % id
     do i = 1, n
+
+      !print *, 'n_cells:', n
     
       index_cell = univ % cells(i)
 
@@ -1814,6 +1822,9 @@ contains
       c => cells(index_cell)
       
       !print *, 'Cell ', c % id
+      
+      
+      !print *, 'Cell Type', c % type
       
       if (c % type == CELL_NORMAL) then
         ! ====================================================================
@@ -1826,8 +1837,10 @@ contains
         ! ====================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
+        !print *, 'Fill Cell '
         univ_next => universes(c % fill)
         call count_target_univ(univ_next,cellid,kount)
+        c => cells(index_cell)
 
       elseif (c % type == CELL_LATTICE) then
         ! ====================================================================
@@ -1848,7 +1861,7 @@ contains
         do i_x = 1, n_x
           do i_y = 1, n_y
             do i_z = 1, n_z
-
+              !print *, 'Lattice (',i_x,',',i_y,',',i_z,')'
               univ_next => universes(lat % universes(i_x,i_y,i_z))
               call count_target_univ(univ_next,cellid,kount)
               c => cells(index_cell)

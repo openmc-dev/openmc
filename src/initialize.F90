@@ -94,17 +94,9 @@ contains
     ! Use dictionaries to redefine index pointers
     call adjust_indices()
 
-    ! Set up the base mapping scheme    
-    cellid = -1
-    univ => universes(BASE_UNIVERSE)
-    do i = 1, n_cells
-      !print *,''
-      !print *,"i:",i
-      !print *,"cells(i)%id:",cells(i)%id
-      call calc_offsets(i,univ,cells(i) % id)
-      !call print_all(i,univ)
-    end do
-
+    ! Initialize distribcell_filters
+    call prepare_distribcell()
+    
     ! After reading input and basic geometry setup is complete, build lists of
     ! neighboring cells for efficient tracking
     call neighbor_lists()
@@ -905,7 +897,7 @@ contains
     end if
     
     !print *, 'Univ',univ % id
-    !print *, 'cell',n
+   ! print *, 'cell',n
     !print *,'offset',offset
     do i = 1, n
     
@@ -930,32 +922,39 @@ contains
       ! know that the target is in this cell
       index_cell = univ % cells(i)
       c => cells(index_cell)
-      !print *, 'Cell',c % id
+      !print *, 'Cell:',c % id
       
       ! if we got here, we are going into this cell
       ! update the current offset
       offset = c % offset(i_vec) + offset
+      !print *, 'offset:',offset
       
       ! write to the geometry stack
       write (*,"(A2,I5)",advance="no") "->",c%id
+      !print *, 'Cell2:',c % id
       
       if (c % type == CELL_NORMAL) then
+        !print *, "Normal Cell"
+      
+        if (goal == offset) then
+            !print *, "TARGET FOUND"
+            write (*,"(A9,I6)",advance="yes") " offset: ",goal
+            return
+            
+        endif
         ! ====================================================================
         ! AT LOWEST UNIVERSE, TERMINATE SEARCH
         !print *,'cellid:',c%id
-        if (goal == offset) then
-          !print *, "TARGET FOUND"
-          write (*,"(A9,I6)",advance="yes") " offset: ",goal
-          return
-          
-        endif
+        
         
       elseif (c % type == CELL_FILL) then
+          !print *, "Fill Cell"
         ! ====================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
         univ_next => universes(c % fill)
-        call find_offset(i_vec,univ, goal, offset)
+        !print *, 'Univ',univ % id
+        call find_offset(i_vec,univ_next, goal, offset)
         if (goal == offset) then
           return          
         endif
@@ -1049,6 +1048,69 @@ contains
     end do
         
   end subroutine print_all
+
+!===============================================================================
+! PREPARE_DISTRIBCELL initializes any distribcell filters present and sets the
+! offsets for the cells
+!===============================================================================
+
+  subroutine prepare_distribcell()
   
+    integer :: i         ! loop over tallies
+    integer :: j         ! loop over filters
+    integer :: k         ! loop over bins
+    integer :: l         ! cell instance counter
+    integer :: n_filters ! number of filters
+    integer :: n_words   ! number of bins in filter
+    type(TallyObject),    pointer :: t => null()
+    type(Universe),       pointer :: univ
+  
+    do i = 1, n_tallies
+  
+      ! Get pointer to tally
+      t => tallies(i)
+      n_filters = t % n_filters
+   
+      do j = 1, n_filters
+   
+        ! Determine type of filter
+        if (t % filters(j) % type == FILTER_DISTRIBCELL) then
+          
+          ! Initialize distribcell_filters
+          
+          ! Determine number of cells to distribute
+          n_words = size(t % filters(j) % int_bins)
+          !print *, "n_words: ", n_words
+          
+          ! Determine the number of occurrences of the listed cells
+          l = 0
+          univ => universes(BASE_UNIVERSE)
+          do k = 1, n_words
+            ! sum the number of occurrences of all cells requested
+            !print *,'Int Bins / k:', t % filters(j) % int_bins(k), k
+            call count_target_univ(univ,t % filters(j) % int_bins(k),l)
+            !print *,'l:',l
+          end do
+          ! Set number of bins           
+          t % filters(j) % n_bins = l 
+          !print *, "Number of Occurrances for this filter:",l
+        end if
+    
+      end do
+    end do
+    
+  ! Set up the base mapping scheme    
+  univ => universes(BASE_UNIVERSE)
+  do i = 1, n_cells
+    !print *,''
+    !print *,"i:",i
+    !print *,"cells(i)%id:",cells(i)%id
+    call calc_offsets(i,univ,cells(i) % id)
+  end do
+  call calc_offsets(n_cells+1,univ,-1)
+  !print *,'Printing Offset List:'
+  !call print_all(i,univ)
+  
+end subroutine prepare_distribcell
 
 end module initialize

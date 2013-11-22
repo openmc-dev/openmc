@@ -108,6 +108,9 @@ module ace_header
     real(8), allocatable :: absorption(:) ! absorption (MT > 100)
     real(8), allocatable :: heating(:)    ! heating
 
+    ! Resonance scattering info
+    logical :: resonant ! is nuclide to be treated as a resonant scatterer?
+
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
     logical :: has_partial_fission ! nuclide has partial fission reactions?

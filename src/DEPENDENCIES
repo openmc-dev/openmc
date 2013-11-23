@@ -158,6 +158,7 @@ global.o: hdf5_interface.o
 global.o: material_header.o
 global.o: mesh_header.o
 global.o: plot_header.o
+global.o: res_scat_header.o
 global.o: set_header.o
 global.o: source_header.o
 global.o: tally_header.o
@@ -289,6 +290,7 @@ particle_restart_write.o: string.o
 
 physics.o: ace_header.o
 physics.o: constants.o
+physics.o: cross_section.o
 physics.o: endf.o
 physics.o: error.o
 physics.o: fission.o

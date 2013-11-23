@@ -602,6 +602,16 @@ contains
 #endif
     end if
 
+    ! set up resonance scattering treatment
+    call lower_case(resonance_scattering_ % method(1))
+    if (resonance_scattering_ % method(1) /= '') then
+       treat_res_scat = .true.
+       n_res_scatterers_total = size(resonance_scattering_ % scatterer)
+       do i = 1, n_res_scatterers_total
+         
+       end do
+    end if
+
   end subroutine read_settings_xml
 
 !===============================================================================

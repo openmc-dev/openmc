@@ -1,7 +1,7 @@
 module global
 
   use ace_header,       only: Nuclide, SAlphaBeta, xsListing, NuclideMicroXS, &
-                              MaterialMacroXS
+                              MaterialMacroXS, ResScatterer
   use bank_header,      only: Bank
   use cmfd_header
   use constants
@@ -11,7 +11,6 @@ module global
   use mesh_header,      only: StructuredMesh
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
-  use res_scat_header,  only: ResScatterer
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use timer_header,     only: Timer

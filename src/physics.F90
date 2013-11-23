@@ -1,6 +1,6 @@
 module physics
 
-  use ace_header,             only: Nuclide, Reaction, DistEnergy
+  use ace_header,             only: Nuclide, Reaction, DistEnergy, ResScatterer
   use constants
   use cross_section,         only: elastic_0K_xs
   use endf,                   only: reaction_name
@@ -15,7 +15,6 @@ module physics
   use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart
   use random_lcg,             only: prn
-  use res_scat_header,        only: ResScatterer
   use search,                 only: binary_search
   use string,                 only: to_str
 

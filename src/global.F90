@@ -1,7 +1,7 @@
 module global
 
   use ace_header,       only: Nuclide, SAlphaBeta, xsListing, NuclideMicroXS, &
-                              MaterialMacroXS, Nuclide_0K
+                              MaterialMacroXS
   use bank_header,      only: Bank
   use cmfd_header
   use constants
@@ -11,6 +11,7 @@ module global
   use mesh_header,      only: StructuredMesh
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
+  use res_scat_header,  only: ResScatterer
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use timer_header,     only: Timer
@@ -61,7 +62,6 @@ module global
 
   ! Cross section arrays
   type(Nuclide),    allocatable, target :: nuclides(:)    ! Nuclide cross-sections
-  type(Nuclide_0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
   type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings 
 
@@ -70,7 +70,6 @@ module global
   type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 
   integer :: n_nuclides_total    ! Number of nuclide cross section tables
-  integer :: n_nuclides_0K_total ! Number of 0K nuclide cross section tables
   integer :: n_sab_tables        ! Number of S(a,b) thermal scattering tables
   integer :: n_listings          ! Number of listings in cross_sections.xml
 
@@ -369,7 +368,19 @@ module global
   logical :: output_summary = .false.
   logical :: output_xs      = .false.
   logical :: output_tallies = .true.
+  
+  ! ============================================================================
+  ! RESONANCE SCATTERING VARIABLES 
 
+  ! Is resonance scattering treated?
+  logical :: treat_res_scat = .false.
+
+  ! Number of resonant scatterers
+  integer :: n_res_scatterers_total
+
+  ! Main object
+  type(ResScatterer), allocatable, target :: res_scatterers(:)
+ 
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, message, &
 !$omp&              trace, thread_id, current_work, matching_bins)
 
@@ -403,17 +414,19 @@ contains
       end do
       deallocate(nuclides)
     end if
-    ! Deallocate 0K cross section data, listings
-    if (allocated(nuclides_0K)) then
-    ! First call the clear routines
-      do i = 1, size(nuclides_0K)
-        call nuclides_0K(i) % clear()
-      end do
-      deallocate(nuclides_0K)
-    end if
+
     if (allocated(sab_tables)) deallocate(sab_tables)
     if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)
+
+    ! Deallocate resonance scattering data
+    if (allocated(res_scatterers)) then
+    ! First call the clear routines
+      do i = 1, size(res_scatterers)
+        call res_scatterers(i) % clear()
+      end do
+      deallocate(res_scatterers)
+    end if
 
     ! Deallocate external source
     if (allocated(external_source % params_space)) &

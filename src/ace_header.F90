@@ -110,6 +110,7 @@ module ace_header
 
     ! Resonance scattering info
     logical :: resonant ! is nuclide to be treated as a resonant scatterer?
+    integer :: i_0K     ! index into 0K nuclides (resonant scatterers)
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -145,40 +146,6 @@ module ace_header
     contains
       procedure :: clear => nuclide_clear ! Deallocates Nuclide
   end type Nuclide
-
-!===============================================================================
-! NUCLIDE_0K contains all the data for an ACE-format continuous-energy cross
-! section that is required for treatment of resonance scattering. The ACE format
-! (A Compact ENDF format) is used in MCNP and several other Monte Carlo codes.
-!===============================================================================
-
-  type Nuclide_0K
-    character(10) :: name    ! name of nuclide, e.g. 92235.03c
-    integer       :: zaid    ! Z and A identifier, e.g. 92235
-    integer       :: listing ! index in xs_listings
-    real(8)       :: awr     ! weight of nucleus in neutron masses
-    real(8)       :: kT      ! temperature in MeV (k*T)
-
-    ! Energy grid information
-    integer :: n_grid                     ! # of nuclide grid points
-    integer, allocatable :: grid_index(:) ! pointers to union grid
-    real(8), allocatable :: energy(:)     ! energy values corresponding to xs
-    
-    ! CDF of neutron velocity x cross section
-    real(8), allocatable :: xs_cdf(:)
-
-    ! Microscopic elastic cross section
-    real(8), allocatable :: elastic(:)    ! elastic scattering
-
-    ! Unresolved resonance data
-    logical                :: urr_present
-    integer                :: urr_inelastic
-    type(UrrData), pointer :: urr_data => null()
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => nuclide_clear ! Deallocates Nuclide
-  end type Nuclide_0K
 
 !===============================================================================
 ! SALPHABETA contains S(a,b) data for thermal neutron scattering, typically off
@@ -397,28 +364,5 @@ module ace_header
       end if
       
     end subroutine nuclide_clear    
-
-!===============================================================================
-! NUCLIDE_0K_CLEAR resets and deallocates data in Nuclide_0K.
-!===============================================================================    
-  
-    subroutine nuclide_0K_clear(this)
-      
-      class(Nuclide_0K), intent(inout) :: this ! The Nuclide object to clear
-      
-      integer :: i ! Loop counter
-      
-      if (allocated(this % grid_index)) &
-           deallocate(this % grid_index)
-      
-      if (allocated(this % energy)) &
-           deallocate(this % elastic, this % xs_cdf)
-      
-      if (associated(this % urr_data)) then
-        call this % urr_data % clear()
-        deallocate(this % urr_data)
-      end if
-            
-    end subroutine nuclide_0K_clear    
 
 end module ace_header

@@ -515,14 +515,14 @@ contains
 
   subroutine adjust_indices()
 
-    integer :: i             ! index for various purposes
-    integer :: j             ! index for various purposes
-    integer :: k             ! loop index for lattices
-    integer :: m             ! loop index for lattices
-    integer :: mid, lid      ! material and lattice IDs
-    integer :: n_x, n_y, n_z ! size of lattice
-    integer :: i_array       ! index in surfaces/materials array 
-    integer :: id            ! user-specified id
+    integer :: i                      ! index for various purposes
+    integer :: j                      ! index for various purposes
+    integer :: k                      ! loop index for lattices
+    integer :: m                      ! loop index for lattices
+    integer :: mid, lid               ! material and lattice IDs
+    integer :: n_x, n_y, n_z, n_rings ! size of lattice
+    integer :: i_array                ! index in surfaces/materials array 
+    integer :: id                     ! user-specified id
     type(Cell),        pointer :: c => null()
     type(Lattice),     pointer :: lat => null()
     type(TallyObject), pointer :: t => null()
@@ -606,28 +606,60 @@ contains
 
     do i = 1, n_lattices
       lat => lattices(i)
-      n_x = lat % dimension(1)
-      n_y = lat % dimension(2)
-      if (lat % n_dimension == 3) then
-        n_z = lat % dimension(3)
-      else
-        n_z = 1
-      end if
 
-      do m = 1, n_z
-        do k = 1, n_y
-          do j = 1, n_x
-            id = lat % universes(j,k,m)
-            if (universe_dict % has_key(id)) then
-              lat % universes(j,k,m) = universe_dict % get_key(id)
-            else
-              message = "Invalid universe number " // trim(to_str(id)) &
-                   // " specified on lattice " // trim(to_str(lat % id))
-              call fatal_error()
-            end if
+      if (lat % type == LATTICE_RECT) then
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        else
+          n_z = 1
+        end if
+
+        do m = 1, n_z
+          do k = 1, n_y
+            do j = 1, n_x
+              id = lat % universes(j,k,m)
+              if (universe_dict % has_key(id)) then
+                lat % universes(j,k,m) = universe_dict % get_key(id)
+              else
+                message = "Invalid universe number " // trim(to_str(id)) &
+                     // " specified on lattice " // trim(to_str(lat % id))
+                call fatal_error()
+              end if
+            end do
           end do
         end do
-      end do
+
+      else
+        n_rings = lat % dimension(1)
+        if (lat % n_dimension == 2) then
+          n_z = lat % dimension(2)
+        else
+          n_z = 1
+        end if
+
+        do m = 1, n_z
+          do k = 1, 2*n_rings - 1
+            do j = 1, 2*n_rings - 1
+              if (j + k < n_rings + 1) then
+                cycle
+              else if (j + k > 3*n_rings - 1) then
+                cycle
+              end if
+              id = lat % universes(j, k, m)
+              if (universe_dict % has_key(id)) then
+                lat % universes(j, k, m) = universe_dict % get_key(id)
+              else
+                message = "Invalid universe number " // trim(to_str(id)) &
+                     // " specified on lattice " // trim(to_str(lat % id))
+                call fatal_error()
+              end if
+            end do
+          end do
+        end do
+
+      end if
 
     end do
 

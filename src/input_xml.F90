@@ -1051,6 +1051,13 @@ contains
           end do
         end do
       else
+        do m = 1, n_z
+          do k = 1, 2*n_rings - 1
+            do j = 1, 2*n_rings - 1
+              lat % universes(j, k, m) = -1
+            end do
+          end do
+        end do
         ! TODO: The index walk in the k loops can be made a little more
         ! efficient.  They currently sometimes change index values and then
         ! change them again before use.
@@ -1074,8 +1081,8 @@ contains
             ! Walk index to lower-left neighbor of last row start.
             i_x = i_x - 1
             do j = 1, k
-              ! Place universe in array. 
-              lat % universes(i_x + n_rings - 1, i_a + n_rings - 1, m) = &
+              ! Place universe in array.
+              lat % universes(i_x + n_rings, i_a + n_rings, m) = &
                    lattice_(i) % universes(input_index)
               ! Walk index to closest non-adjacent right neighbor.
               i_x = i_x + 2
@@ -1084,8 +1091,8 @@ contains
               input_index = input_index + 1
             end do
             ! Return lattice index to start of current row.
-            i_x = i_x - 2*(k+2)
-            i_a = i_a + k+2
+            i_x = i_x - 2*k
+            i_a = i_a + k
           end do
 
           ! Map middle square region of hexagonal lattice.
@@ -1099,9 +1106,9 @@ contains
               i_a = i_a - 1
             end if
             do j = 1, n_rings - mod(k-1, 2)
-              ! Place universe in array. 
-              lat % universes(i_x + n_rings - 1, i_a + n_rings - 1, m) = &
-                   lattice_(i) % universes(input_index)
+              ! Place universe in array.
+              lat % universes(i_x + n_rings, i_a + n_rings, m) = &
+                   &lattice_(i) % universes(input_index)
               ! Walk index to closest non-adjacent right neighbor.
               i_x = i_x + 2
               i_a = i_a - 1
@@ -1119,8 +1126,8 @@ contains
             i_x = i_x + 1
             i_a = i_a - 1
             do j = 1, n_rings - k
-              ! Place universe in array. 
-              lat % universes(i_x + n_rings - 1, i_a + n_rings - 1, m) = &
+              ! Place universe in array.
+              lat % universes(i_x + n_rings, i_a + n_rings, m) = &
                    lattice_(i) % universes(input_index)
               ! Walk index to closest non-adjacent right neighbor.
               i_x = i_x + 2
@@ -1133,6 +1140,7 @@ contains
             i_a = i_a + n_rings - k
           end do
         end do
+!        write(*, *) lat % universes
       end if
 
       ! Read material for area outside lattice
@@ -1183,7 +1191,6 @@ contains
     message = "Reading materials XML file..."
     call write_message(5)
 
-    write(*, *) 'Got Here! 1'
     ! Check is materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
@@ -1192,15 +1199,12 @@ contains
       call fatal_error()
     end if
 
-    write(*, *) 'Got Here! 2'
     ! Initialize default cross section variable
     default_xs_ = ""
 
-    write(*, *) 'Got Here! 3'
     ! Parse materials.xml file
     call read_xml_file_materials_t(filename)
 
-    write(*, *) 'Got Here! 4'
     ! Copy default cross section if present
     default_xs = default_xs_
 

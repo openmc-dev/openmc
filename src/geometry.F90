@@ -131,16 +131,18 @@ contains
     logical,        intent(inout) :: found
     integer,        optional      :: search_cells(:)
 
-    integer :: i                    ! index over cells
-    integer :: i_x, i_y, i_z        ! indices in lattice
-    integer :: n_x, n_y, n_z        ! size of lattice
-    integer :: n                    ! number of cells to search
-    integer :: index_cell           ! index in cells array
-    real(8) :: xyz(3)               ! temporary location
-    real(8) :: upper_right(3)       ! lattice upper_right
-    logical :: use_search_cells     ! use cells provided as argument
-    logical :: outside_lattice      ! if particle is not inside lattice bounds
-    logical :: lattice_edge         ! if particle is on a lattice edge
+    integer :: i                       ! index over cells
+    integer :: i_x, i_y, i_z, i_a      ! indices in lattice
+    integer :: n_x, n_y, n_z, n_rings  ! size of lattice
+    integer :: n                       ! number of cells to search
+    integer :: index_cell              ! index in cells array
+    real(8) :: xyz(3)                  ! temporary location
+    real(8) :: x_rem, y_rem            ! location remainder
+    real(8) :: a, b, a_rem, b_rem      ! skewed location and remander
+    real(8) :: upper_right(3)          ! lattice upper_right
+    logical :: use_search_cells        ! use cells provided as argument
+    logical :: outside_lattice         ! if particle not inside lattice bounds
+    logical :: lattice_edge            ! if particle is on a lattice edge
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ => null() ! universe to search in
@@ -230,70 +232,186 @@ contains
           lattice_edge = .false.
 
           ! determine lattice index based on position
-          xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
-          i_x = ceiling((xyz(1) - lat % lower_left(1))/lat % width(1))
-          i_y = ceiling((xyz(2) - lat % lower_left(2))/lat % width(2))
-          n_x = lat % dimension(1)
-          n_y = lat % dimension(2)
-          if (lat % n_dimension == 3) then
-            i_z = ceiling((xyz(3) - lat % lower_left(3))/lat % width(3))
-            n_z = lat % dimension(3)
+          if (lat % type == LATTICE_RECT) then
+            xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
+            i_x = ceiling((xyz(1) - lat % lower_left(1))/lat % width(1))
+            i_y = ceiling((xyz(2) - lat % lower_left(2))/lat % width(2))
+            n_x = lat % dimension(1)
+            n_y = lat % dimension(2)
+            if (lat % n_dimension == 3) then
+              i_z = ceiling((xyz(3) - lat % lower_left(3))/lat % width(3))
+              n_z = lat % dimension(3)
+            else
+              i_z = 1
+              n_z = 1
+            end if
+
           else
-            i_z = 1
-            n_z = 1
+            ! Lattice is hexagonal.
+            ! Convert coordinates into skewed bases.  The (x, a) basis is used
+            ! to find the index of the particle coordinates to within 4 cells.
+            ! The (b, y) basis is used to pick the right cell from the set of 4.
+            xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
+            a = xyz(2) - sqrt(3.0) * xyz(1)
+            i_x = floor(xyz(1) / (sqrt(3.0) * lat % width(1)))
+            x_rem = mod(xyz(1), sqrt(3.0) * lat % width(1))
+            i_a = floor(a / (2.0 * lat % width(1)))
+            a_rem = mod(a, 2.0 * lat % width(1))
+            y_rem = a_rem + x_rem/sqrt(3.0)
+            b_rem = y_rem/2.0 + sqrt(3.0)*x_rem/2.0
+            n_rings = lat % dimension(1)
+
+            ! Fix indexing based on (b, y) remainder values.
+            if (y_rem < lat % width(1)) then
+              if (b_rem > lat % width(1)) then
+                i_x = i_x + 1
+              end if
+            else if (y_rem < 2 * lat % width(1)) then
+              if (y_rem > b_rem) then
+                i_a = i_a + 1
+              else
+                i_x = i_x + 1
+              end if
+            else
+              if (b_rem < 2 * lat % width(1)) then
+                i_a = i_a + 1
+              else
+                i_x = i_x + 1
+                i_a = i_a + 1
+              end if
+            end if
+
+            ! Add offset to indecies (the center cell is (i_x, i_a) = (0, 0) but
+            ! the array is offset so that the indecies never go below 1).
+            i_x = i_x + n_rings
+            i_a = i_a + n_rings
+
+            ! Index z direction.
+            if (lat % n_dimension == 2) then
+              i_z = ceiling((xyz(3) - lat % lower_left(3)) / lat % width(2))
+              n_z = lat % dimension(2)
+            else
+              i_z = 1
+              n_z = 1
+            end if
+
           end if
 
           ! Check if lattice coordinates are within bounds
-          if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
-               i_z < 1 .or. i_z > n_z) then
+          if (lat % type == LATTICE_RECT) then
+            if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
+                 i_z < 1 .or. i_z > n_z) then
 
-            ! Check for when particle is on lattice edge
-            upper_right(1) = lat % lower_left(1) + &
-                             lat % width(1) * dble(lat % dimension(1))
-            upper_right(2) = lat % lower_left(2) + &
-                             lat % width(2) * dble(lat % dimension(2))
-            if ( abs(xyz(1) - lat % lower_left(1)) < FP_COINCIDENT .or. &
-                 abs(xyz(2) - lat % lower_left(2)) < FP_COINCIDENT .or. &
-                 abs(upper_right(1) - xyz(1)) < FP_COINCIDENT .or. &
-                 abs(upper_right(2) - xyz(2)) < FP_COINCIDENT) then
-              lattice_edge = .true.
-            end if
-            if (lat % n_dimension == 3) then
-              upper_right(3) = lat % lower_left(3) + &
-                               lat % width(3) * dble(lat % dimension(3))
-              if (abs(xyz(3) - lat % lower_left(3)) < FP_COINCIDENT .or. &
-                  abs(upper_right(3) - xyz(3)) < FP_COINCIDENT) then
+              ! Check for when particle is on lattice edge
+              upper_right(1) = lat % lower_left(1) + &
+                               lat % width(1) * dble(lat % dimension(1))
+              upper_right(2) = lat % lower_left(2) + &
+                               lat % width(2) * dble(lat % dimension(2))
+              if ( abs(xyz(1) - lat % lower_left(1)) < FP_COINCIDENT .or. &
+                   abs(xyz(2) - lat % lower_left(2)) < FP_COINCIDENT .or. &
+                   abs(upper_right(1) - xyz(1)) < FP_COINCIDENT .or. &
+                   abs(upper_right(2) - xyz(2)) < FP_COINCIDENT) then
                 lattice_edge = .true.
               end if
-            end if
+              if (lat % n_dimension == 3) then
+                upper_right(3) = lat % lower_left(3) + &
+                                 lat % width(3) * dble(lat % dimension(3))
+                if (abs(xyz(3) - lat % lower_left(3)) < FP_COINCIDENT .or. &
+                    abs(upper_right(3) - xyz(3)) < FP_COINCIDENT) then
+                  lattice_edge = .true.
+                end if
+              end if
             
-            if (lattice_edge) then
+              if (lattice_edge) then
               
-              ! In this case the neutron is leaving the lattice, so we move it
-              ! out, remove all lower coordinate levels and then search from
-              ! universe 0.
+                ! In this case the neutron is leaving the lattice, so we move it
+                ! out, remove all lower coordinate levels and then search from
+                ! universe 0.
             
-              p % coord => p % coord0
-              call deallocate_coord(p % coord % next)
+                p % coord => p % coord0
+                call deallocate_coord(p % coord % next)
 
-              ! Reset surface and advance particle a tiny bit
-              p % surface = NONE
-              p % coord % xyz = xyz
+                ! Reset surface and advance particle a tiny bit
+                p % surface = NONE
+                p % coord % xyz = xyz
 
-            else
+              else
 
-              ! We're outside the lattice, so treat this as a normal cell with
-              ! the material specified for the outside
+                ! We're outside the lattice, so treat this as a normal cell with
+                ! the material specified for the outside
 
-              outside_lattice = .true.
-              p % last_material = p % material
-              p % material = c % material
+                outside_lattice = .true.
+                p % last_material = p % material
+                p % material = c % material
 
-              ! We'll still make a new coordinate for the particle, as 
-              ! distance_to_boundary will still need to track through lattice
-              ! widths even though there's nothing in them but this material
+                ! We'll still make a new coordinate for the particle, as 
+                ! distance_to_boundary will still need to track through lattice
+                ! widths even though there's nothing in them but this material
+
+              end if
 
             end if
+
+          else
+            ! Lattice is hexagonal.
+            if (i_x < 1 .or. i_x > 2*n_rings - 1  &
+                 &.or. i_a < 1 .or. i_a > 2*n_rings - 1 &
+                 &.or. i_x + i_j < n_rings + 1 &
+                 &.or. i_x + i_j > 3*n_rings - 1 &
+                 &.or. i_z < 1 .or. i_z > n_z) then
+
+              ! Check for when particle is on lattice edge
+
+
+              upper_right(1) = lat % lower_left(1) + &
+                               lat % width(1) * dble(lat % dimension(1))
+              upper_right(2) = lat % lower_left(2) + &
+                               lat % width(2) * dble(lat % dimension(2))
+              if ( abs(xyz(1) - lat % lower_left(1)) < FP_COINCIDENT .or. &
+                   abs(xyz(2) - lat % lower_left(2)) < FP_COINCIDENT .or. &
+                   abs(upper_right(1) - xyz(1)) < FP_COINCIDENT .or. &
+                   abs(upper_right(2) - xyz(2)) < FP_COINCIDENT) then
+                lattice_edge = .true.
+              end if
+              if (lat % n_dimension == 3) then
+                upper_right(3) = lat % lower_left(3) + &
+                                 lat % width(3) * dble(lat % dimension(3))
+                if (abs(xyz(3) - lat % lower_left(3)) < FP_COINCIDENT .or. &
+                    abs(upper_right(3) - xyz(3)) < FP_COINCIDENT) then
+                  lattice_edge = .true.
+                end if
+              end if
+            
+              if (lattice_edge) then
+              
+                ! In this case the neutron is leaving the lattice, so we move it
+                ! out, remove all lower coordinate levels and then search from
+                ! universe 0.
+            
+                p % coord => p % coord0
+                call deallocate_coord(p % coord % next)
+
+                ! Reset surface and advance particle a tiny bit
+                p % surface = NONE
+                p % coord % xyz = xyz
+
+              else
+
+                ! We're outside the lattice, so treat this as a normal cell with
+                ! the material specified for the outside
+
+                outside_lattice = .true.
+                p % last_material = p % material
+                p % material = c % material
+
+                ! We'll still make a new coordinate for the particle, as 
+                ! distance_to_boundary will still need to track through lattice
+                ! widths even though there's nothing in them but this material
+
+              end if
+
+            end if
+
 
           end if
 

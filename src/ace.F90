@@ -35,6 +35,8 @@ contains
     integer :: i            ! index in materials array
     integer :: j            ! index over nuclides in material
     integer :: k            ! index over S(a,b) tables in material
+    integer :: l            ! index over 0K nuclides
+    integer :: index_res_scatterers ! index into res_scatterers
     integer :: i_listing    ! index in xs_listings array
     integer :: i_nuclide    ! index in nuclides
     integer :: i_sab        ! index in sab_tables
@@ -58,6 +60,8 @@ contains
     ! ==========================================================================
     ! READ ALL ACE CROSS SECTION TABLES
 
+    index_res_scatterers = 0
+
     ! Loop over all files
     MATERIAL_LOOP: do i = 1, n_materials
       mat => materials(i)
@@ -70,6 +74,15 @@ contains
           i_nuclide = nuclide_dict % get_key(name)
           name  = xs_listings(i_listing) % name
           alias = xs_listings(i_listing) % alias
+
+          ! check if nuclide's a resonant scatterer
+          do l = 1, n_res_scatterers_total
+            if (name == res_scatterers(l) % name) then
+              nuclides(i_nuclide) % resonant = .true.
+              index_res_scatterers = index_res_scatterers + 1
+              nuclides(i_nuclide) % i_0k = index_res_scatterers
+            end if
+          end do
 
           ! Keep track of what listing is associated with this nuclide
           nuc => nuclides(i_nuclide)
@@ -170,6 +183,26 @@ contains
     
     ! Avoid some valgrind leak errors
     call already_read % clear()
+
+    ! check if nuclide's a resonant scatterer                                                                        
+    do l = 1, n_res_scatterers_total
+      name = res_scatterers(l) % scatterer
+      i_listing = xs_listing_dict % get_key(name)
+      name  = xs_listings(i_listing) % name
+      alias = xs_listings(i_listing) % alias
+
+          nuc => nuclides(i_nuclide)
+          nuc % listing = i_listing
+
+          ! Read the ACE table into the appropriate entry on the nuclides                                                  
+          ! array                                                                                                          
+          call read_ace_table(i_nuclide, i_listing)
+
+          ! Add name and alias to dictionary                                                                               
+          call already_read % add(name)
+          call already_read % add(alias)
+        end if
+    end do
     
   end subroutine read_xs
 
@@ -343,6 +376,177 @@ contains
     if(associated(sab)) nullify(sab)
 
   end subroutine read_ace_table
+
+!===============================================================================
+! READ_0K_ACE_TABLE reads a single cross section table in either ASCII or binary
+! format. This routine reads the header data for each table and then calls
+! appropriate subroutines to parse the actual data.
+!===============================================================================
+
+  subroutine read_0K_ace_table(i_table, i_listing)
+
+    integer, intent(in) :: i_table   ! index in nuclides/sab_tables
+    integer, intent(in) :: i_listing ! index in xs_listings
+
+    integer       :: i             ! loop index for XSS records
+    integer       :: j, j1, j2     ! indices in XSS
+    integer       :: record_length ! Fortran record length
+    integer       :: location      ! location of ACE table
+    integer       :: entries       ! number of entries on each record
+    integer       :: length        ! length of ACE table
+    integer       :: in = 7        ! file unit
+    integer       :: zaids(16)     ! list of ZAIDs (only used for S(a,b))
+    integer       :: filetype      ! filetype (ASCII or BINARY)
+    real(8)       :: kT            ! temperature of table
+    real(8)       :: awrs(16)      ! list of atomic weight ratios (not used)
+    real(8)       :: awr           ! atomic weight ratio for table
+    logical       :: file_exists   ! does ACE library exist?
+    character(7)  :: readable      ! is ACE library readable?
+    character(10) :: name          ! name of ACE table
+    character(10) :: date_         ! date ACE library was processed
+    character(10) :: mat           ! material identifier
+    character(70) :: comment       ! comment for ACE table
+    character(MAX_FILE_LEN) :: filename ! path to ACE cross section library
+    type(Nuclide),   pointer :: nuc => null()
+    type(SAlphaBeta), pointer :: sab => null()
+    type(XsListing), pointer :: listing => null()
+
+    ! determine path, record length, and location of table
+    listing => xs_listings(i_listing)
+    filename      = listing % path
+    record_length = listing % recl
+    location      = listing % location
+    entries       = listing % entries
+    filetype      = listing % filetype
+
+    ! Check if ACE library exists and is readable
+    inquire(FILE=filename, EXIST=file_exists, READ=readable)
+    if (.not. file_exists) then
+      message = "ACE library '" // trim(filename) // "' does not exist!"
+      call fatal_error()
+    elseif (readable(1:3) == 'NO') then
+      message = "ACE library '" // trim(filename) // "' is not readable! &
+           &Change file permissions with chmod command."
+      call fatal_error()
+    end if
+
+    ! display message
+    message = "Loading ACE cross section table: " // listing % name
+    call write_message(6)
+
+    if (filetype == ASCII) then
+      ! =======================================================================
+      ! READ ACE TABLE IN ASCII FORMAT
+
+      ! Find location of table
+      open(UNIT=in, FILE=filename, STATUS='old', ACTION='read')
+      rewind(UNIT=in)
+      do i = 1, location - 1
+        read(UNIT=in, FMT=*)
+      end do
+
+      ! Read first line of header
+      read(UNIT=in, FMT='(A10,2G12.0,1X,A10)') name, awr, kT, date_
+
+      ! Check that correct xs was found -- if cross_sections.xml is broken, the
+      ! location of the table may be wrong
+      if(adjustl(name) /= adjustl(listing % name)) then
+        message = "XS listing entry " // trim(listing % name) // " did not &
+             &match ACE data, " // trim(name) // " found instead."
+        call fatal_error()
+      end if
+
+      ! Read more header and NXS and JXS
+      read(UNIT=in, FMT=100) comment, mat, & 
+           (zaids(i), awrs(i), i=1,16), NXS, JXS
+100   format(A70,A10/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/&
+           ,8I9/8I9/8I9/8I9/8I9/8I9)
+
+      ! determine table length
+      length = NXS(1)
+      allocate(XSS(length))
+
+      ! Read XSS array
+      read(UNIT=in, FMT='(4G20.0)') XSS
+
+      ! Close ACE file
+      close(UNIT=in)
+
+    elseif (filetype == BINARY) then
+      ! =======================================================================
+      ! READ ACE TABLE IN BINARY FORMAT
+
+      ! Open ACE file
+      open(UNIT=in, FILE=filename, STATUS='old', ACTION='read', &
+           ACCESS='direct', RECL=record_length)
+
+      ! Read all header information
+      read(UNIT=in, REC=location) name, awr, kT, date_, & 
+           comment, mat, (zaids(i), awrs(i), i=1,16), NXS, JXS
+
+      ! determine table length
+      length = NXS(1)
+      allocate(XSS(length))
+
+      ! Read remaining records with XSS
+      do i = 1, (length + entries - 1)/entries
+        j1 = 1 + (i-1)*entries
+        j2 = min(length, j1 + entries - 1)
+        read(UNIT=IN, REC=location + i) (XSS(j), j=j1,j2)
+      end do
+
+      ! Close ACE file
+      close(UNIT=in)
+    end if
+
+    ! ==========================================================================
+    ! PARSE DATA BASED ON NXS, JXS, AND XSS ARRAYS
+
+    select case(listing % type)
+    case (ACE_NEUTRON)
+      nuc => nuclides(i_table)
+      nuc % name = name
+      nuc % awr  = awr
+      nuc % kT   = kT
+      nuc % zaid = NXS(2)
+
+      ! read all blocks
+      call read_esz(nuc)
+      call read_nu_data(nuc)
+      call read_reactions(nuc)
+      call read_angular_dist(nuc)
+      call read_energy_dist(nuc)
+      call read_unr_res(nuc)
+
+      ! Currently subcritical fixed source calculations are not allowed. Thus,
+      ! if any fissionable material is found in a fixed source calculation,
+      ! abort the run.
+      if (run_mode == MODE_FIXEDSOURCE .and. nuc % fissionable) then
+        message = "Cannot have fissionable material in a fixed source run."
+        call fatal_error()
+      end if
+
+      ! for fissionable nuclides, precalculate microscopic nu-fission cross
+      ! sections so that we don't need to call the nu_total function during
+      ! cross section lookups
+
+      if (nuc % fissionable) call generate_nu_fission(nuc)
+
+    case (ACE_THERMAL)
+      sab => sab_tables(i_table)
+      sab % name = name
+      sab % awr  = awr
+      sab % kT   = kT
+      sab % zaid = zaids(1)
+
+      call read_thermal_data(sab)
+    end select
+
+    deallocate(XSS)
+    if(associated(nuc)) nullify(nuc)
+    if(associated(sab)) nullify(sab)
+
+  end subroutine read_0K_ace_table
 
 !===============================================================================
 ! READ_ESZ - reads through the ESZ block. This block contains the energy grid,

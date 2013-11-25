@@ -153,36 +153,37 @@ module ace_header
 
   type :: ResScatterer
 
-    character(10) :: name    ! name of nuclide, e.g. 92235.03c                                          
-    integer       :: zaid    ! Z and A identifier, e.g. 92235                                           
-    integer       :: listing ! index in xs_listings                                                     
-    real(8)       :: awr     ! weight of nucleus in neutron masses                                      
-    real(8)       :: kT      ! temperature in MeV (k*T)                                                 
+    character(10) :: name    ! name of nuclide, e.g. 92235.70c
+    character(10) :: name_0K ! name of 0K nuclide, e.g. 92235.00c
+!    integer       :: zaid    ! Z and A identifier, e.g. 92235
+!    integer       :: listing ! index in xs_listings
+!    real(8)       :: awr     ! weight of nucleus in neutron masses
+!    real(8)       :: kT      ! temperature in MeV (k*T)
 
-    ! Energy grid information                                                                           
-    integer :: n_grid
-    integer, allocatable :: grid_index(:) ! pointers to union grid                                      
-    real(8), allocatable :: energy(:)     ! energy values corresponding to xs                           
+    ! Energy grid information
+!    integer :: n_grid
+!    integer, allocatable :: grid_index(:) ! pointers to union grid
+!    real(8), allocatable :: energy(:)     ! energy values corresponding to xs
 
-    ! CDF of neutron velocity x cross section                                                           
-    real(8), allocatable :: xs_cdf(:)
+    ! CDF of neutron velocity x cross section
+!    real(8), allocatable :: xs_cdf(:)
 
-    ! Microscopic elastic cross section                                                                 
-    real(8), allocatable :: elastic(:)
+    ! Microscopic elastic cross section
+!    real(8), allocatable :: elastic(:)
 
-    ! lower cutoff energy for resonance scattering                                                      
+    ! lower cutoff energy for resonance scattering
     real(8) :: E_min
 
-    ! upper cutoff energy for resonance scattering                                                      
+    ! upper cutoff energy for resonance scattering
     real(8) :: E_max
 
-    ! target velocity sampling scheme                                                                   
+    ! target velocity sampling scheme
     character(16) :: scheme
-
-    ! Type-Bound procedures                                                                             
-    contains
-      procedure :: clear => res_scatterer_clear ! Deallocates resonant scatterer                        
-
+    
+    ! Type-Bound procedures
+  contains
+    procedure :: clear => res_scatterer_clear ! Deallocates resonant scatterer                        
+    
   end type ResScatterer
 
 !===============================================================================

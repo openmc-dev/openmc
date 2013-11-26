@@ -1,7 +1,7 @@
 module global
 
   use ace_header,       only: Nuclide, SAlphaBeta, xsListing, NuclideMicroXS, &
-                              MaterialMacroXS, ResScatterer
+                              MaterialMacroXS
   use bank_header,      only: Bank
   use cmfd_header
   use constants
@@ -368,18 +368,6 @@ module global
   logical :: output_xs      = .false.
   logical :: output_tallies = .true.
   
-  ! ============================================================================
-  ! RESONANCE SCATTERING VARIABLES 
-
-  ! Is resonance scattering treated?
-  logical :: treat_res_scat = .false.
-
-  ! Number of resonant scatterers
-  integer :: n_res_scatterers_total
-
-  ! Main object
-  type(ResScatterer), allocatable, target :: res_scatterers(:)
- 
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, message, &
 !$omp&              trace, thread_id, current_work, matching_bins)
 

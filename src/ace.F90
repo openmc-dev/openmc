@@ -35,11 +35,9 @@ contains
     integer :: i            ! index in materials array
     integer :: j            ! index over nuclides in material
     integer :: k            ! index over S(a,b) tables in material
-    integer :: l            ! index over res_scatterers
     integer :: i_listing    ! index in xs_listings array
     integer :: i_nuclide    ! index in nuclides
     integer :: i_sab        ! index in sab_tables
-    integer :: i_res_scat = 0 ! index in res_scatterers
     integer :: m            ! position for sorting
     integer :: temp_nuclide ! temporary value for sorting
     integer :: temp_table   ! temporary value for sorting
@@ -66,7 +64,7 @@ contains
 
       NUCLIDE_LOOP: do j = 1, mat % n_nuclides
         name = mat % names(j)
-
+        print*, name
         if (.not. already_read % contains(name)) then
           i_listing = xs_listing_dict % get_key(name)
           i_nuclide = nuclide_dict % get_key(name)
@@ -76,15 +74,6 @@ contains
           ! Keep track of what listing is associated with this nuclide
           nuc => nuclides(i_nuclide)
           nuc % listing = i_listing
-
-          do l = 1, n_res_scatterers_total
-            if (name == res_scatterers(l) % name) then
-              i_res_scat = i_res_scat + 1
-              nuclides(i_nuclide) % resonant = .true.
-              nuclides(i_nuclide) % i_0K = i_res_scat
-              exit
-            end if
-          end do
 
           ! Read the ACE table into the appropriate entry on the nuclides
           ! array

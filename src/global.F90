@@ -406,15 +406,6 @@ contains
     if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)
 
-    ! Deallocate resonance scattering data
-    if (allocated(res_scatterers)) then
-    ! First call the clear routines
-      do i = 1, size(res_scatterers)
-        call res_scatterers(i) % clear()
-      end do
-      deallocate(res_scatterers)
-    end if
-
     ! Deallocate external source
     if (allocated(external_source % params_space)) &
          deallocate(external_source % params_space)

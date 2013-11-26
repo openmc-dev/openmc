@@ -1,8 +1,8 @@
 module physics
 
-  use ace_header,             only: Nuclide, Reaction, DistEnergy, ResScatterer
+  use ace_header,             only: Nuclide, Reaction, DistEnergy
   use constants
-  use cross_section,         only: elastic_0K_xs
+  use cross_section,          only: elastic_0K_xs
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning
   use fission,                only: nu_total, nu_delayed
@@ -638,7 +638,6 @@ contains
   subroutine sample_target_velocity(nuc, v_target, E, uvw, v_neut, wgt, xs_eff)
 
     type(Nuclide),      pointer :: nuc    ! target nuclide at temperature
-    type(ResScatterer), pointer :: nuc_0K => null() ! (resonant) target nuclide at 0K
 
     real(8), intent(out)        :: v_target(3)
     real(8), intent(in)         :: v_neut(3)
@@ -664,7 +663,7 @@ contains
 
     logical :: reject      ! resample if true
 
-    nuc_0K => res_scatterers(nuc % i_0K)
+    character(80) :: sampling_scheme
 
     ! Determine equilibrium temperature in MeV
     kT = nuc % kT
@@ -672,25 +671,30 @@ contains
     ! Check if nuclide is a resonant scatterer and which sampling scheme
     ! to use based on neutron energy
     if (nuc % resonant) then
-      if (E > nuc_0K % E_max) then
+      print*, 'aaaaaaaaaa'
+      sampling_scheme = nuc % scheme
+      sampling_scheme = trim(sampling_scheme)
+      if (E > nuc % E_max) then
         v_target = ZERO
         return
-      else if (E < nuc_0K % E_min) then
-        nuc_0K % scheme = 'cxs'
+      else if (E < nuc % E_min) then
+        sampling_scheme = 'cxs'
+        sampling_scheme = trim(sampling_scheme)
       end if
     else
       if (E >= FREE_GAS_THRESHOLD * kT .and. nuc % awr > ONE) then
         v_target = ZERO
         return
       else
-        nuc_0K % scheme = 'cxs'
+        sampling_scheme = 'cxs'
+        sampling_scheme = trim(sampling_scheme)
       end if
     end if
 
     ! reject unless criteria are satisfied
     reject = .true.
     
-    select case (nuc_0K % scheme)
+    select case (sampling_scheme)
     case ('cxs')
       ! calculate beta, alpha
       beta_vn = sqrt(nuc%awr * E / kT)
@@ -784,10 +788,10 @@ contains
       ! determine velocity vector of target nucleus based on neutron's velocity
       ! and the sampled angle between them
       v_target = vt * rotate_angle(uvw, mu)
-      
+
       ! adjust particle weight
       E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
-      xs_0K = elastic_0K_xs(E_rel, nuc_0K, nuc % i_0K)
+      xs_0K = elastic_0K_xs(E_rel, nuc)
       wcf = xs_0K / xs_eff
       wgt = wcf * wgt
       

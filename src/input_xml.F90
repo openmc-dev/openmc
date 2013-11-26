@@ -602,21 +602,6 @@ contains
 #endif
     end if
 
-    ! set up resonance scattering treatment
-    call lower_case(resonance_scattering_ % method(1))
-    if (resonance_scattering_ % method(1) /= '') then
-       treat_res_scat = .true.
-       n_res_scatterers_total = size(resonance_scattering_ % scatterer)
-       allocate(res_scatterers(n_res_scatterers_total))
-       do i = 1, n_res_scatterers_total
-         res_scatterers(i) % name    = trim(resonance_scattering_ % xs_label(i))
-         res_scatterers(i) % name_0K = trim(resonance_scattering_ % xs_0K_label(i))
-         res_scatterers(i) % scheme  = trim(resonance_scattering_ % method(i))
-         res_scatterers(i) % E_min   = resonance_scattering_ % E_min(i)
-         res_scatterers(i) % E_max   = resonance_scattering_ % E_max(i)
-       end do
-    end if
-
   end subroutine read_settings_xml
 
 !===============================================================================
@@ -1223,6 +1208,7 @@ contains
         else
           call list_density % append(-nuc % wo)
         end if
+
       end do INDIVIDUAL_NUCLIDES
 
       ! =======================================================================

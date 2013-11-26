@@ -109,8 +109,13 @@ module ace_header
     real(8), allocatable :: heating(:)    ! heating
 
     ! Resonance scattering info
-    logical :: resonant ! is nuclide to be treated as a resonant scatterer?
-    integer :: i_0K     ! index into 0K nuclides (resonant scatterers)
+    logical              :: resonant = .false. ! resonant scatterer?
+    character(10)        :: name_0K ! name of 0K nuclide, e.g. 92235.00c
+    character(16)        :: scheme ! target velocity sampling scheme
+    real(8), allocatable :: xs_cdf(:) ! CDF of v_rel times cross section
+    real(8), allocatable :: elastic_0K(:) ! Microscopic elastic cross section
+    real(8)              :: E_min ! lower cutoff energy for res scattering
+    real(8)              :: E_max ! upper cutoff energy for res scattering
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -146,46 +151,7 @@ module ace_header
     contains
       procedure :: clear => nuclide_clear ! Deallocates Nuclide
   end type Nuclide
-
-!===============================================================================
-! RESSCATTERER contains all the data for a resonance scattering nuclide at 0K
-!===============================================================================
-
-  type :: ResScatterer
-
-    character(10) :: name    ! name of nuclide, e.g. 92235.70c
-    character(10) :: name_0K ! name of 0K nuclide, e.g. 92235.00c
-!    integer       :: zaid    ! Z and A identifier, e.g. 92235
-!    integer       :: listing ! index in xs_listings
-!    real(8)       :: awr     ! weight of nucleus in neutron masses
-!    real(8)       :: kT      ! temperature in MeV (k*T)
-
-    ! Energy grid information
-!    integer :: n_grid
-!    integer, allocatable :: grid_index(:) ! pointers to union grid
-!    real(8), allocatable :: energy(:)     ! energy values corresponding to xs
-
-    ! CDF of neutron velocity x cross section
-!    real(8), allocatable :: xs_cdf(:)
-
-    ! Microscopic elastic cross section
-!    real(8), allocatable :: elastic(:)
-
-    ! lower cutoff energy for resonance scattering
-    real(8) :: E_min
-
-    ! upper cutoff energy for resonance scattering
-    real(8) :: E_max
-
-    ! target velocity sampling scheme
-    character(16) :: scheme
     
-    ! Type-Bound procedures
-  contains
-    procedure :: clear => res_scatterer_clear ! Deallocates resonant scatterer                        
-    
-  end type ResScatterer
-
 !===============================================================================
 ! SALPHABETA contains S(a,b) data for thermal neutron scattering, typically off
 ! of light isotopes such as water, graphite, Be, etc
@@ -363,8 +329,9 @@ module ace_header
            deallocate(this % grid_index)
       
       if (allocated(this % energy)) &
-           deallocate(this % total, this % elastic, this % fission,  &
-          this % nu_fission, this % absorption)
+           deallocate(this % total, this % elastic, this % fission, &
+          this % nu_fission, this % absorption, &
+          this % elastic_0K, this % xs_cdf)
       if (allocated(this % heating)) &
            deallocate(this % heating)
       
@@ -403,23 +370,5 @@ module ace_header
       end if
       
     end subroutine nuclide_clear    
-
-!===============================================================================                        
-! RES_SCATTERER_CLEAR resets and deallocates data in ResScatterer.                                      
-!===============================================================================                        
-
-  subroutine res_scatterer_clear(this)
-
-    class(ResScatterer), intent(inout) :: this ! the ResScatterer object to clear                       
-
-    integer :: i ! Loop counter                                                                         
-
-    if (allocated(this % grid_index)) &
-      deallocate(this % grid_index)
-
-    if (allocated(this % energy)) &
-      deallocate(this % elastic, this % xs_cdf, this % energy)
-
-  end subroutine res_scatterer_clear
 
 end module ace_header

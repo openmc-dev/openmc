@@ -468,6 +468,7 @@ contains
 
     ! if particle's energy is outside of energy grid range, set to first or last
     ! index. Otherwise, do a binary search through the union energy grid.
+
     if (E < e_grid(1)) then
       union_grid_index = 1
     elseif (E > e_grid(n_grid)) then
@@ -488,42 +489,42 @@ contains
     type(Nuclide), pointer :: nuc    ! target nuclide at temperature
     integer                :: i_grid ! index on nuclide energy grid
     real(8)                :: f ! interp factor on nuclide energy grid
-    real(8), intent(in)    :: E ! trial energy
+    real(8), intent(inout)    :: E ! trial energy
     real(8)                :: xs_out
 
     ! Determine index on nuclide energy grid
     select case (grid_method)
-      case (GRID_UNION)
-        ! If we're using the unionized grid with pointers, finding the index on
-        ! the nuclide energy grid is as simple as looking up the pointer
-       
-        call find_energy_index(E)
-        i_grid = nuc % grid_index(union_grid_index)
-        
-      case (GRID_NUCLIDE)
-        ! If we're not using the unionized grid, we have to do a binary search on
-        ! the nuclide energy grid in order to determine which points to
-        ! interpolate between
-        
-        if (E < nuc % energy(1)) then
-          i_grid = 1
-        elseif (E > nuc % energy(nuc % n_grid)) then
-          i_grid = nuc % n_grid - 1
-        else
-          i_grid = binary_search(nuc % energy, nuc % n_grid, E)
-        end if
-  
-      end select
-
-      ! check for rare case where two energy points are the same
-      if (nuc % energy(i_grid) == nuc % energy(i_grid+1)) i_grid = i_grid + 1
+    case (GRID_UNION)
+      ! If we're using the unionized grid with pointers, finding the index on
+      ! the nuclide energy grid is as simple as looking up the pointer
       
-      ! calculate interpolation factor
-      f = (E - nuc%energy(i_grid))/(nuc%energy(i_grid+1) - nuc%energy(i_grid))
+      call find_energy_index(E)
+      i_grid = nuc % grid_index_0K(union_grid_index)
       
-      ! Calculate microscopic nuclide elastic cross section
-      xs_out = (ONE - f) * nuc % elastic(i_grid) + f * nuc % elastic(i_grid+1)
+    case (GRID_NUCLIDE)
+      ! If we're not using the unionized grid, we have to do a binary search on
+      ! the nuclide energy grid in order to determine which points to
+      ! interpolate between
 
-    end function elastic_0K_xs
+      if (E < nuc % energy(1)) then
+        i_grid = 1
+      elseif (E > nuc % energy(nuc % n_grid)) then
+        i_grid = nuc % n_grid - 1
+      else
+        i_grid = binary_search(nuc % energy, nuc % n_grid, E)
+      end if
+      
+    end select
+
+    ! check for rare case where two energy points are the same
+    if (nuc % energy_0K(i_grid) == nuc % energy_0K(i_grid+1)) i_grid = i_grid + 1
+    
+    ! calculate interpolation factor
+    f = (E - nuc%energy_0K(i_grid))/(nuc%energy_0K(i_grid+1) - nuc%energy_0K(i_grid))
+    
+    ! Calculate microscopic nuclide elastic cross section
+    xs_out = (ONE - f) * nuc % elastic_0K(i_grid) + f * nuc % elastic_0K(i_grid+1)
+
+  end function elastic_0K_xs
 
 end module cross_section

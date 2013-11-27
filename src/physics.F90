@@ -655,7 +655,6 @@ contains
     real(8) :: beta_vt     ! beta * speed of target
     real(8) :: beta_vt_sq  ! (beta * speed of target)^2
     real(8) :: vt          ! speed of target
-!    real(8) :: E_old       ! tmp storage of current energy
     real(8) :: E_rel       ! trial relative energy
     real(8) :: xs_0K       ! 0K xs at E_rel
     real(8) :: xs_eff      ! effective elastic xs at temperature T
@@ -671,7 +670,6 @@ contains
     ! Check if nuclide is a resonant scatterer and which sampling scheme
     ! to use based on neutron energy
     if (nuc % resonant) then
-      print*, 'aaaaaaaaaa'
       sampling_scheme = nuc % scheme
       sampling_scheme = trim(sampling_scheme)
       if (E > nuc % E_max) then
@@ -794,6 +792,9 @@ contains
       xs_0K = elastic_0K_xs(E_rel, nuc)
       wcf = xs_0K / xs_eff
       wgt = wcf * wgt
+      if (wgt < ZERO) then
+!        print*, wgt, wcf, xs_0K, xs_eff
+      end if
       
     case default
       message = "Not a recognized resonance scattering treatment!"

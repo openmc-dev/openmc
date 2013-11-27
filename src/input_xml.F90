@@ -602,6 +602,21 @@ contains
 #endif
     end if
 
+    ! Resonance scattering parameters
+    if (lbound(resonance_scattering_ % scatterer, 1) > 0) then
+      treat_res_scat = .true.
+      n_res_scatterers_total = size(resonance_scattering_ % scatterer)
+      allocate(nuclides_0K(n_res_scatterers_total))
+      do i = 1, n_res_scatterers_total
+        nuclides_0K(i) % nuclide = trim(resonance_scattering_ % scatterer(i))
+        nuclides_0K(i) % scheme  = trim(resonance_scattering_ % method(i))
+        nuclides_0K(i) % name    = trim(resonance_scattering_ % xs_label(i))
+        nuclides_0K(i) % name_0K = trim(resonance_scattering_ % xs_label_0K(i))
+        nuclides_0K(i) % E_min   = resonance_scattering_ % E_min(i)
+        nuclides_0K(i) % E_max   = resonance_scattering_ % E_max(i)
+      end do
+    end if
+
   end subroutine read_settings_xml
 
 !===============================================================================
@@ -1301,7 +1316,7 @@ contains
         else
           mat % nuclide(j) = nuclide_dict % get_key(name)
         end if
-
+        
         ! Copy name and atom/weight percent
         mat % names(j) = name
         mat % atom_density(j) = list_density % get_item(j)

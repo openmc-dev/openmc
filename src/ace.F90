@@ -35,6 +35,7 @@ contains
     integer :: i            ! index in materials array
     integer :: j            ! index over nuclides in material
     integer :: k            ! index over S(a,b) tables in material
+    integer :: n            ! index over resonant scatterers
     integer :: i_listing    ! index in xs_listings array
     integer :: i_nuclide    ! index in nuclides
     integer :: i_sab        ! index in sab_tables
@@ -64,7 +65,7 @@ contains
 
       NUCLIDE_LOOP: do j = 1, mat % n_nuclides
         name = mat % names(j)
-        print*, name
+
         if (.not. already_read % contains(name)) then
           i_listing = xs_listing_dict % get_key(name)
           i_nuclide = nuclide_dict % get_key(name)
@@ -78,6 +79,25 @@ contains
           ! Read the ACE table into the appropriate entry on the nuclides
           ! array
           call read_ace_table(i_nuclide, i_listing)
+
+          if (treat_res_scat) then
+            do n = 1, n_res_scatterers_total
+              if (name == nuclides_0K(n) % name) then
+                nuclides(i_nuclide) % resonant = .true.
+                nuclides(i_nuclide) % name_0K = nuclides_0K(n) % name_0K
+                nuclides(i_nuclide) % name_0K = trim(nuclides(i_nuclide) % name_0K)
+                nuclides(i_nuclide) % scheme = nuclides_0K(n) % scheme
+                nuclides(i_nuclide) % scheme = trim(nuclides(i_nuclide) % scheme)
+                nuclides(i_nuclide) % E_min = nuclides_0K(n) % E_min
+                nuclides(i_nuclide) % E_max = nuclides_0K(n) % E_max
+                if (.not. already_read % contains(nuclides(i_nuclide) % name_0K)) then
+                  i_listing = xs_listing_dict % get_key(nuclides(i_nuclide) % name_0K)
+                  call read_ace_table(i_nuclide, i_listing)
+                end if
+                exit
+              end if
+            end do
+          end if
 
           ! Add name and alias to dictionary
           call already_read % add(name)
@@ -206,6 +226,7 @@ contains
     type(Nuclide),   pointer :: nuc => null()
     type(SAlphaBeta), pointer :: sab => null()
     type(XsListing), pointer :: listing => null()
+    type(SetChar) :: already_read
 
     ! determine path, record length, and location of table
     listing => xs_listings(i_listing)
@@ -301,18 +322,22 @@ contains
     select case(listing % type)
     case (ACE_NEUTRON)
       nuc => nuclides(i_table)
-      nuc % name = name
-      nuc % awr  = awr
-      nuc % kT   = kT
-      nuc % zaid = NXS(2)
+      if (trim(adjustl(name)) /= nuc % name_0K) then
+        nuc % name = name
+        nuc % awr  = awr
+        nuc % kT   = kT
+        nuc % zaid = NXS(2)
+      end if
 
       ! read all blocks
       call read_esz(nuc)
-      call read_nu_data(nuc)
-      call read_reactions(nuc)
-      call read_angular_dist(nuc)
-      call read_energy_dist(nuc)
-      call read_unr_res(nuc)
+      if (.not. allocated(nuc % energy_0K)) then
+        call read_nu_data(nuc)
+        call read_reactions(nuc)
+        call read_angular_dist(nuc)
+        call read_energy_dist(nuc)
+        call read_unr_res(nuc)
+      end if
 
       ! Currently subcritical fixed source calculations are not allowed. Thus,
       ! if any fissionable material is found in a fixed source calculation,
@@ -326,7 +351,9 @@ contains
       ! sections so that we don't need to call the nu_total function during
       ! cross section lookups
 
-      if (nuc % fissionable) call generate_nu_fission(nuc)
+      if (nuc % fissionable .and. .not. allocated(nuc % energy_0K)) then
+        call generate_nu_fission(nuc)
+      end if
 
     case (ACE_THERMAL)
       sab => sab_tables(i_table)
@@ -357,35 +384,58 @@ contains
 
     ! determine number of energy points
     NE = NXS(3)
-    nuc % n_grid = NE
 
     ! allocate storage for energy grid and cross section arrays
-    allocate(nuc % energy(NE))
-    allocate(nuc % total(NE))
-    allocate(nuc % elastic(NE))
-    allocate(nuc % fission(NE))
-    allocate(nuc % nu_fission(NE))
-    allocate(nuc % absorption(NE))
+    if (allocated(nuc % energy)) then
+      nuc % n_grid_0K = NE
+      allocate(nuc % energy_0K(NE))
+      allocate(nuc % elastic_0K(NE))
 
-    ! initialize cross sections
-    nuc % total      = ZERO
-    nuc % elastic    = ZERO
-    nuc % fission    = ZERO
-    nuc % nu_fission = ZERO
-    nuc % absorption = ZERO
+      nuc % elastic_0K = ZERO
 
-    ! Read data from XSS -- only the energy grid, elastic scattering and heating
-    ! cross section values are actually read from here. The total and absorption
-    ! cross sections are reconstructed from the partial reaction data.
+      ! Read data from XSS -- only the energy grid, elastic scattering and heating
+      ! cross section values are actually read from here. The total and absorption
+      ! cross sections are reconstructed from the partial reaction data.
 
-    XSS_index = 1
-    nuc % energy = get_real(NE)
+      XSS_index = 1
+      nuc % energy_0K = get_real(NE)
 
-    ! Skip total and absorption
-    XSS_index = XSS_index + 2*NE
+      ! Skip total and absorption
+      XSS_index = XSS_index + 2*NE
+      
+      ! Continue reading elastic scattering and heating
+      nuc % elastic_0K = get_real(NE)
 
-    ! Continue reading elastic scattering and heating
-    nuc % elastic = get_real(NE)
+    else
+      nuc % n_grid = NE
+      allocate(nuc % energy(NE))
+      allocate(nuc % total(NE))
+      allocate(nuc % elastic(NE))
+      allocate(nuc % fission(NE))
+      allocate(nuc % nu_fission(NE))
+      allocate(nuc % absorption(NE))
+
+      ! initialize cross sections
+      nuc % total      = ZERO
+      nuc % elastic    = ZERO
+      nuc % fission    = ZERO
+      nuc % nu_fission = ZERO
+      nuc % absorption = ZERO
+
+      ! Read data from XSS -- only the energy grid, elastic scattering and heating
+      ! cross section values are actually read from here. The total and absorption
+      ! cross sections are reconstructed from the partial reaction data.
+      
+      XSS_index = 1
+      nuc % energy = get_real(NE)
+      
+      ! Skip total and absorption
+      XSS_index = XSS_index + 2*NE
+      
+      ! Continue reading elastic scattering and heating
+      nuc % elastic = get_real(NE)
+
+    end if
 
   end subroutine read_esz
 

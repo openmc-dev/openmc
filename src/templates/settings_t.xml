@@ -43,12 +43,12 @@
   </typedef>
 
   <typedef name="resonance_scattering_xml">
-    <component name="method" type="word-array" length="16" default="''" />
-    <component name="scatterer" type="word-array" length="12" default="''" />
-    <component name="xs_label" type="word-array" length="12" default="''" />
-    <component name="xs_label_0K" type="word-array" length="12" default="''" />
-    <component name="E_min" type="double-array" default="4.0e-6" />
-    <component name="E_max" type="double-array" default="210.0e-6" />
+    <component name="method" type="word-array" length="16" />
+    <component name="scatterer" type="word-array" length="12" />
+    <component name="xs_label" type="word-array" length="12" />
+    <component name="xs_label_0K" type="word-array" length="12" />
+    <component name="E_min" type="double-array" />
+    <component name="E_max" type="double-array" />
   </typedef>
 
   <variable name="confidence_intervals_" tag="confidence_intervals" type="word" length="5" />

@@ -28,6 +28,7 @@ contains
     do i = 1, n_nuclides_total
       nuc => nuclides(i)
       call add_grid_points(list, nuc % energy)
+      if (nuc % resonant) call add_grid_points(list, nuc % energy_0K)
     end do
 
     ! Set size of unionized energy grid 
@@ -132,10 +133,10 @@ contains
     do i = 1, n_nuclides_total
       nuc => nuclides(i)
       allocate(nuc % grid_index(n_grid))
-
+      
       index_e = 1
       energy = nuc % energy(index_e)
-
+      
       do j = 1, n_grid
         union_energy = e_grid(j)
         if (union_energy >= energy .and. index_e < nuc % n_grid) then
@@ -144,6 +145,23 @@ contains
         end if
         nuc % grid_index(j) = index_e - 1
       end do
+
+      if (nuc % resonant) then
+        allocate(nuc % grid_index_0K(n_grid))
+        
+        index_e = 1
+        energy = nuc % energy_0K(index_e)
+        
+        do j = 1, n_grid
+          union_energy = e_grid(j)
+          if (union_energy >= energy .and. index_e < nuc % n_grid_0K) then
+            index_e = index_e + 1
+            energy = nuc % energy_0K(index_e)
+          end if
+          nuc % grid_index_0K(j) = index_e - 1
+        end do
+      end if
+
     end do
 
   end subroutine grid_pointers

@@ -112,8 +112,11 @@ module ace_header
     logical              :: resonant = .false. ! resonant scatterer?
     character(10)        :: name_0K ! name of 0K nuclide, e.g. 92235.00c
     character(16)        :: scheme ! target velocity sampling scheme
-    real(8), allocatable :: xs_cdf(:) ! CDF of v_rel times cross section
+    integer :: n_grid_0K
+    real(8), allocatable :: grid_index_0K(:) ! pointers to union grid
+    real(8), allocatable :: energy_0K(:)  ! energy grid for 0K xs
     real(8), allocatable :: elastic_0K(:) ! Microscopic elastic cross section
+    real(8), allocatable :: xs_cdf(:) ! CDF of v_rel times cross section
     real(8)              :: E_min ! lower cutoff energy for res scattering
     real(8)              :: E_max ! upper cutoff energy for res scattering
 
@@ -151,7 +154,23 @@ module ace_header
     contains
       procedure :: clear => nuclide_clear ! Deallocates Nuclide
   end type Nuclide
-    
+
+!===============================================================================
+! NUCLIDE_0K contains all 0K cross section data and other parameters needed to
+! treat resonance scattering
+!===============================================================================
+
+  type Nuclide0K
+
+    character(10) :: nuclide ! name of nuclide, e.g. U-238
+    character(16) :: scheme  ! target velocity sampling scheme
+    character(10) :: name    ! name of nuclide, e.g. 92235.03c
+    character(10) :: name_0K ! name of 0K nuclide, e.g. 92235.00c
+    real(8)       :: E_min   ! lower cutoff energy for res scattering
+    real(8)       :: E_max   ! upper cutoff energy for res scattering
+
+  end type Nuclide0K
+
 !===============================================================================
 ! SALPHABETA contains S(a,b) data for thermal neutron scattering, typically off
 ! of light isotopes such as water, graphite, Be, etc
@@ -328,10 +347,16 @@ module ace_header
       if (allocated(this % grid_index)) &
            deallocate(this % grid_index)
       
+      if (allocated(this % grid_index_0K)) &
+           deallocate(this % grid_index_0K)
+
       if (allocated(this % energy)) &
            deallocate(this % total, this % elastic, this % fission, &
-          this % nu_fission, this % absorption, &
-          this % elastic_0K, this % xs_cdf)
+          this % nu_fission, this % absorption)
+
+      if (allocated(this % energy_0K)) &
+           deallocate(this % elastic_0K, this % xs_cdf)
+
       if (allocated(this % heating)) &
            deallocate(this % heating)
       

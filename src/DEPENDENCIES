@@ -36,6 +36,7 @@ cmfd_execute.o: tally.o
 cmfd_header.o: constants.o
 
 cmfd_input.o: cmfd_header.o
+cmfd_input.o: constants.o
 cmfd_input.o: error.o
 cmfd_input.o: global.o
 cmfd_input.o: mesh_header.o
@@ -44,7 +45,7 @@ cmfd_input.o: string.o
 cmfd_input.o: tally.o
 cmfd_input.o: tally_header.o
 cmfd_input.o: tally_initialize.o
-cmfd_input.o: templates/cmfd_t.o
+cmfd_input.o: xml_interface.o
 
 cmfd_jfnk_solver.o: cmfd_loss_operator.o
 cmfd_jfnk_solver.o: cmfd_power_solver.o
@@ -210,12 +211,7 @@ input_xml.o: random_lcg.o
 input_xml.o: string.o
 input_xml.o: tally_header.o
 input_xml.o: tally_initialize.o
-input_xml.o: templates/cross_sections_t.o
-input_xml.o: templates/geometry_t.o
-input_xml.o: templates/materials_t.o
-input_xml.o: templates/plots_t.o
-input_xml.o: templates/settings_t.o
-input_xml.o: templates/tallies_t.o
+input_xml.o: xml_interface.o
 
 interpolation.o: constants.o
 interpolation.o: endf_header.o
@@ -393,3 +389,7 @@ tracking.o: tally.o
 tracking.o: track_output.o
 
 vector_header.o: constants.o
+
+xml_interface.o: constants.o
+xml_interface.o: error.o
+xml_interface.o: global.o

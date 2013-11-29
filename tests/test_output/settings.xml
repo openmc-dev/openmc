@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <settings>
 
-  <output>summary cross_sections</output>
+  <output summary="true" cross_sections="true" />
 
   <eigenvalue>
     <batches>10</batches>

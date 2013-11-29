@@ -16,7 +16,7 @@ option(optimize "Turn on all compiler optimization flags"        OFF)
 # MPI for distributed-memory parallelism
 #===============================================================================
 
-if($ENV{FC} MATCHES "mpi*")
+if($ENV{FC} MATCHES "mpi.*")
   find_package(MPI REQUIRED)
   add_definitions(-DMPI)
   include_directories(BEFORE "${MPI_Fortran_INCLUDE_PATH}")

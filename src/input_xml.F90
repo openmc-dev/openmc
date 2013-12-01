@@ -1140,7 +1140,6 @@ contains
             i_a = i_a + n_rings - k
           end do
         end do
-!        write(*, *) lat % universes
       end if
 
       ! Read material for area outside lattice

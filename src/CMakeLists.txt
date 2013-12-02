@@ -11,6 +11,11 @@ option(hdf5     "Enable HDF5 binary output"                      OFF)
 option(petsc    "Enable PETSC for use in CMFD acceleration"      OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
+option(verbose  "Create verbose Makefiles"                       OFF)
+
+if (verbose)
+  set(CMAKE_VERBOSE_MAKEFILE on)
+endif()
 
 #===============================================================================
 # MPI for distributed-memory parallelism

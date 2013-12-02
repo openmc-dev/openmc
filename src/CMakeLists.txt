@@ -135,7 +135,7 @@ if(petsc)
   find_library(libpetsc petsc $ENV{PETSC_DIR}/lib)
   message("-- Using PETSC: ${libpetsc}")
   add_definitions(-DPETSC)
-  set(f90flags  "-I$ENV{PETSC_DIR}/include ${f90flags}")
+  include_directories($ENV{PETSC_DIR}/include)
   set(libraries "${PETSC_PACKAGE_LIBS};${libpetsc};${libraries}")
 endif()
 

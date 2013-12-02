@@ -198,19 +198,26 @@ tally data, this option can significantly improve the parallel efficiency.
 --------------------
 
 The ``<output>`` element determines what output files should be written to disk
-during the run. This element has no attributes or sub-elements and should be set
-to a list of strings separated by spaces. Valid options are "summary",
-"cross-sections", and "tallies". For example, if you want the summary and cross
-sections summary file to be written, this element should be given as:
+during the run. The sub-elements are described below, where "true" will write
+out the file and "false" will not.
 
-  .. code-block:: xml
+  :cross_sections:
+    Writes out an ASCII summary file of the cross sections that were read in.
 
-      <output>summary cross_sections</output>
+    *Default*: false
 
-  .. note:: The tally results will be written to a binary/HDF5 state point file by
-            default.
+  :summary: 
+    Writes out an ASCII summary file describing all of the user input files that
+    were read in.
 
-  *Default*: "tallies"
+    *Default*: false
+
+  :tallies:
+    Write out an ASCII file of tally results.
+
+    *Default*: true
+
+  .. note:: The tally results will always be written to a binary/HDF5 state point file.
 
 ``<output_path>`` Element
 -------------------------
@@ -645,9 +652,10 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
 ---------------------
 
 The ``<lattice>`` can be used to represent repeating structures (e.g. fuel pins
-in an assembly) or other geometry which naturally fits into a two-dimensional
-structured mesh. Each cell within the lattice is filled with a specified
-universe. A ``<lattice>`` accepts the following attributes or sub-elements:
+in an assembly) or other geometry which naturally fits into a two- or
+three-dimensional structured mesh. Each cell within the lattice is filled with a
+specified universe. A ``<lattice>`` accepts the following attributes or
+sub-elements:
 
   :id:
     A unique integer that can be used to identify the surface.
@@ -659,18 +667,19 @@ universe. A ``<lattice>`` accepts the following attributes or sub-elements:
     *Default*: rectangular
 
   :dimension:
-    Two integers representing the number of lattice cells in the x- and y-
-    directions, respectively.
+    Two or three integers representing the number of lattice cells in the x- and
+    y- (and z-) directions, respectively.
 
     *Default*: None
 
   :lower_left:
-    The coordinates of the lower-left corner of the lattice.
+    The coordinates of the lower-left corner of the lattice. If the lattice is
+    two-dimensional, only the x- and y-coordinates are specified.
 
     *Default*: None
 
   :width:
-    The width of the lattice cell in the x- and y- directions.
+    The width of the lattice cell in the x- and y- (and z-) directions.
 
     *Default*: None
 

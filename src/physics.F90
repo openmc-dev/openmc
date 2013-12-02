@@ -824,13 +824,13 @@ contains
       E = E_low
       call find_energy_index(E)
       ! nuclide energy grid index
-      i_E_low = nuc % grid_index(union_grid_index)
+      i_E_low = nuc % grid_index_0K(union_grid_index)
       
       ! find index and calculate 0K xs at upper energy bound
       E = E_up
       call find_energy_index(E)
       ! nuclide energy grid index
-      i_E_up = nuc % grid_index(union_grid_index)
+      i_E_up = nuc % grid_index_0K(union_grid_index)
       
       ! reset particle energy to incident value
       ! (it was only changed to calculate 0K xs at different energies)
@@ -894,6 +894,7 @@ contains
         ! Perform rejection sampling on vt and mu
         if (prn() < accept_prob) then
           vt = sqrt(beta_vt_sq * kT / awr)
+
           v_target = vt * rotate_angle(uvw, mu)
           
           E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
@@ -902,9 +903,7 @@ contains
           
           R_dbrc = xs_0K / xs_max
           
-          if (prn() < R_dbrc) then
-            reject = .false.
-          end if
+          if (prn() < R_dbrc) reject = .false.
         end if
 
         if (.not. reject) exit

@@ -124,6 +124,15 @@ endif()
 # PETSc for CMFD functionality
 #===============================================================================
 
+if(petsc)
+  find_package(PETSc REQUIRED HINTS $ENV{PETSC_DIR}/conf)
+  find_library(libpetsc petsc $ENV{PETSC_DIR}/lib)
+  message("-- Using PETSC: ${libpetsc}")
+  add_definitions(-DPETSC)
+  set(f90flags  "-I$ENV{PETSC_DIR}/include ${f90flags}")
+  set(libraries "${PETSC_PACKAGE_LIBS};${libpetsc};${libraries}")
+endif()
+
 #===============================================================================
 # FoX Fortran XML Library
 #===============================================================================

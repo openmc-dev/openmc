@@ -141,4 +141,5 @@ add_executable(${program} ${source})
 target_link_libraries(${program} ${libraries} fox)
 set_target_properties(${program} PROPERTIES
   COMPILE_FLAGS "${f90flags}"
-  COMPILE_DEFINITIONS "${definitions}")
+  COMPILE_DEFINITIONS "${definitions}"
+  LINK_FLAGS "${ldflags}")

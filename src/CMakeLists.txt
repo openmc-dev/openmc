@@ -7,7 +7,6 @@ project(openmc Fortran)
 
 option(openmp   "Enable shared-memory parallelism with OpenMP"   OFF)
 option(profile  "Compile with profiling flags"                   OFF)
-option(hdf5     "Enable HDF5 binary output"                      OFF)
 option(petsc    "Enable PETSC for use in CMFD acceleration"      OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
@@ -18,15 +17,18 @@ if (verbose)
 endif()
 
 #===============================================================================
-# MPI for distributed-memory parallelism
+# MPI for distributed-memory parallelism / HDF5 for binary output
 #===============================================================================
 
 if($ENV{FC} MATCHES "mpi.*")
-  find_package(MPI REQUIRED)
+  message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DMPI)
-  include_directories(BEFORE "${MPI_Fortran_INCLUDE_PATH}")
-  set(f90flags  ${MPI_Fortran_COMPILE_FLAGS} ${f90flags})
-  set(libraries ${MPI_Fortran_LIBRARIES} ${libraries})
+elseif($ENV{FC} MATCHES "h5fc$")
+  message("-- Detected HDF5 wrapper: $ENV{FC}")
+  add_definitions(-DHDF5)
+elseif($ENV{FC} MATCHES "h5pfc$")
+  message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
+  add_definitions(-DMPI -DHDF5)
 endif()
 
 #===============================================================================
@@ -116,17 +118,6 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Cray")
     set(ldflags   "-g")
   endif()
 
-endif()
-
-#===============================================================================
-# HDF5 for binary output
-#===============================================================================
-
-if(hdf5)
-  find_package(HDF5 COMPONENTS Fortran Fortran_HL REQUIRED)
-  add_definitions(-DHDF5)
-  include_directories(BEFORE ${HDF5_INCLUDE_DIRS})
-  set(libraries ${HDF5_LIBRARIES} ${HDF5_Fortran_LIBRARIES} ${HDF5_Fortran_HL_LIBRARIES} ${libraries})
 endif()
 
 #===============================================================================

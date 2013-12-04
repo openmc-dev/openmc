@@ -1346,8 +1346,14 @@ contains
         ! add all the relevant offsets and check if this is one of the cells we plan to tally
         do j = 1, m
           ! need to know what index the cell is in the master array
-          k = cell_dict % get_key(search_cells(j))
+          k = search_cells(j) + 1
           offset = offset + c % offset(k)
+          !print *,'search_cells(j):',search_cells(j)
+          !print *,'c%id:',c%id
+          !print *,'offset:',offset
+          !print *,'c%offset:',c%offset
+          !print *,'k:',k
+          !print *,'cells%id:',cells(k)%id
           if (c % id == cells(k) % id) then
             found = .true.
           end if
@@ -1516,7 +1522,7 @@ contains
             ! add all the relevant offsets and check if this is one of the cells we plan to tally
             do j = 1, m
               ! need to know what index the cell is in the master array
-              k = cell_dict % get_key(search_cells(j))
+              k = search_cells(j) + 1
               offset = offset + lat % offset(k,i_x,i_y,i_z)
             end do
   
@@ -1529,8 +1535,6 @@ contains
 
       end if
     end do
-
-    found = .false.
 
   end subroutine distribcell_offset
   
@@ -1560,7 +1564,7 @@ contains
 
     n = univ % n_cells
     
-    !print *, 'Uni ', univ % id , ' has ', n , ' cells'
+!    print *, 'Uni ', univ % id , ' has ', n , ' cells'
     
     do i = 1, n
       
@@ -1589,11 +1593,11 @@ contains
         c % offset(i_vec) = prevoffset + tempoffset
         c => cells(index_cell)
         
-        !print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
+!        print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
       
       else 
         
-        !print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
+!        print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
       
       end if           
       
@@ -1708,7 +1712,7 @@ contains
     if (c % type == CELL_NORMAL) then
       ! ====================================================================
       ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-      if (cellid == c % id .OR. cellid == -1) then
+      if (cellid == cell_dict % get_key(c % id) .OR. cellid == -1) then
         kount = kount + 1
       endif
 
@@ -1829,7 +1833,9 @@ contains
       if (c % type == CELL_NORMAL) then
         ! ====================================================================
         ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-        if (cellid == c % id .OR. cellid == -1) then
+        !print *,'cellid:',cellid
+        !print *,'cell_dict % get_key(c%id:',cell_dict % get_key(c%id)
+        if (cellid == cell_dict % get_key(c % id) .OR. cellid == -1) then
           kount = kount + 1
         endif
         

@@ -13,7 +13,7 @@ module initialize
                               cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot,       &
-                              write_message
+                              write_message, find_offset
   use output_interface
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
@@ -644,6 +644,20 @@ contains
       FILTER_LOOP: do j = 1, t % n_filters
 
         select case (t % filters(j) % type)
+        case (FILTER_DISTRIBCELL)
+          do k = 1, size(t % filters(j) % int_bins)
+            id = t % filters(j) % int_bins(k)
+            if (cell_dict % has_key(id)) then
+              print *,'t % filters(j) % int_bins(k):',t % filters(j) % int_bins(k)
+              t % filters(j) % int_bins(k) = cell_dict % get_key(id)        
+              print *,'t % filters(j) % int_bins(k):',t % filters(j) % int_bins(k)
+            else
+              message = "Could not find cell " // trim(to_str(id)) // &
+                   " specified on tally " // trim(to_str(t % id))
+              call fatal_error()
+            end if
+
+          end do
         case (FILTER_CELL, FILTER_CELLBORN)
 
           do k = 1, t % filters(j) % n_bins
@@ -863,160 +877,6 @@ contains
 
   end subroutine allocate_banks
   
-!===============================================================================
-! FIND_OFFSET will locate a path to a cell for a given cell. Only tested for the
-! case where the map is created for cellid = -1
-!===============================================================================
-
-  recursive subroutine find_offset(i_vec, univ, goal, offset)
-
-    integer, intent(in) :: i_vec
-    type(Universe), pointer, intent(in) :: univ
-    integer, intent(in) :: goal
-    integer, intent(inout) :: offset
-    
-    integer :: i                    ! index over cells
-    integer :: i_x, i_y, i_z        ! indices in lattice
-    integer :: n_x, n_y, n_z        ! size of lattice
-    integer :: n                    ! number of cells to search
-    integer :: index_cell           ! index in cells array
-    integer :: index_univ           ! index to next universe in universes array
-    integer :: latoffset            ! offset from lattice
-    real(8) :: xyz(3)               ! temporary location
-    real(8) :: upper_right(3)       ! lattice upper_right
-    type(Cell),     pointer, save :: c => null()    ! pointer to cell
-    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
-    type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
-
-    n = univ % n_cells
-    ! write to the geometry stack
-    if (univ%id == 0) then
-      write (*,"(I1)",advance="no") univ%id
-    else
-      write (*,"(A2,I5)",advance="no") "->",univ%id
-    end if
-    
-    !print *, 'Univ',univ % id
-   ! print *, 'cell',n
-    !print *,'offset',offset
-    do i = 1, n
-    
-      ! if not at end of array
-      if (i /= n) then
-      
-        ! get cell index of NEXT cell
-        index_cell = univ % cells(i+1)
-        !print *, 'cell_index:' ,index_cell
-        ! get pointer to cell
-        c => cells(index_cell)
-        !print *, 'inside if __ C:',c % id
-        
-        !print *, 'c%off+off:',(c % offset(i_vec) + offset)
-        if (goal >= c % offset(i_vec) + offset) then
-          !print *,'cycled'
-          cycle
-        end if       
-      end if
-      
-      ! get pointer to THIS cell because we
-      ! know that the target is in this cell
-      index_cell = univ % cells(i)
-      c => cells(index_cell)
-      !print *, 'Cell:',c % id
-      
-      ! if we got here, we are going into this cell
-      ! update the current offset
-      offset = c % offset(i_vec) + offset
-      !print *, 'offset:',offset
-      
-      ! write to the geometry stack
-      write (*,"(A2,I5)",advance="no") "->",c%id
-      !print *, 'Cell2:',c % id
-      
-      if (c % type == CELL_NORMAL) then
-        !print *, "Normal Cell"
-      
-        if (goal == offset) then
-            !print *, "TARGET FOUND"
-            write (*,"(A9,I6)",advance="yes") " offset: ",goal
-            return
-            
-        endif
-        ! ====================================================================
-        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-        !print *,'cellid:',c%id
-        
-        
-      elseif (c % type == CELL_FILL) then
-          !print *, "Fill Cell"
-        ! ====================================================================
-        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-
-        univ_next => universes(c % fill)
-        !print *, 'Univ',univ % id
-        call find_offset(i_vec,univ_next, goal, offset)
-        if (goal == offset) then
-          return          
-        endif
-
-      elseif (c % type == CELL_LATTICE) then
-        ! ====================================================================
-        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-
-        ! Set current lattice
-        lat => lattices(c % fill)
-        
-        !print *, 'Lat:' ,lat%id
-        ! write to the geometry stack
-        write (*,"(A2,I5)",advance="no") "->",lat%id
-  
-        n_x = lat % dimension(1)
-        n_y = lat % dimension(2)
-        if (lat % n_dimension == 3) then
-          n_z = lat % dimension(3)
-        else
-          n_z = 1
-        end if
-        
-        ! Loop over lattice coordinates
-        do i_x = 1, n_x
-          do i_y = 1, n_y
-            do i_z = 1, n_z
-            
-              if (i_z == n_z .AND. i_y == n_y .AND. i_x == n_x) then
-                univ_next => universes(lat % universes(i_x,i_y,i_z))                          
-              else
-                if (i_z + 1 <= n_z) then
-                  latoffset = lat % offset(i_vec,i_x,i_y,i_z+1)
-                  univ_next => universes(lat % universes(i_x,i_y,i_z+1))              
-                elseif (i_y + 1 <= n_y) then
-                  latoffset = lat % offset(i_vec,i_x,i_y+1,1)
-                  univ_next => universes(lat % universes(i_x,i_y+1,1))
-                elseif (i_x + 1 <= n_x) then
-                  latoffset = lat % offset(i_vec,i_x+1,1,1)
-                  univ_next => universes(lat % universes(i_x+1,1,1))
-                end if
-                
-                if (goal >= latoffset + offset) then
-                  cycle
-                end if      
-                
-              end if
-              ! target is at this lattice position
-              offset = offset + lat % offset(i_vec,i_x,i_y,i_z)
-              !print *,'lat offset:',latoffset  
-              write (*,"(A1,3I3,A1)",advance="no") "(",i_x,i_y,i_z,")"
-              call find_offset(i_vec,univ_next, goal, offset)
-              return
-              
-            end do
-          end do
-        end do
-
-      end if
-    end do
-                  
-  end subroutine find_offset
 
 !===============================================================================
 ! PRINT_ALL prints the tally array index and coordinate chain for 
@@ -1025,7 +885,7 @@ contains
 
   subroutine print_all(i_vec,univ)
 
-    integer, intent(in) :: i_vec
+    integer, intent(in) :: i_vec(:)
     type(Universe), pointer, intent(in) :: univ
     
     integer :: i                    ! index over cells
@@ -1033,6 +893,7 @@ contains
     integer :: cellid               ! cellid to search for
     integer :: offset               ! variable used for find_offset
     integer :: n                    ! number of cells in universe 'n'
+    character(100) :: path          ! path to target
 
     maxoffset = 0
     ! all cells
@@ -1040,11 +901,12 @@ contains
     call count_target_univ(univ,cellid,maxoffset)
     n = univ % n_cells
     do i = 0, maxoffset-1
+      path = ''
       offset = 0
       print *, ''
       print *, ''
       !print *, 'target', i
-      call find_offset(i_vec,univ,i,offset)            
+      call find_offset(i_vec,univ,i,offset,path)            
     end do
         
   end subroutine print_all
@@ -1062,6 +924,7 @@ contains
     integer :: l         ! cell instance counter
     integer :: n_filters ! number of filters
     integer :: n_words   ! number of bins in filter
+    integer, allocatable :: int_bins_temp(:)
     type(TallyObject),    pointer :: t => null()
     type(Universe),       pointer :: univ
   
@@ -1093,6 +956,22 @@ contains
           end do
           ! Set number of bins           
           t % filters(j) % n_bins = l 
+          print *,'t % filters(j) % n_bins:',t % filters(j) % n_bins
+!          allocate(int_bins_temp(size(t % filters(j) % int_bins)))
+!          do k = 1, size(t % filters(j) % int_bins)
+!          
+!            int_bins_temp(k) = t % filters(j) % int_bins(k)
+!          
+!          end do
+!          ! this does not account for using multiple cells for the same filter
+!          deallocate(t % filters(j) % int_bins)
+!          allocate(t % filters(j) % int_bins(l))
+!          do k = 1, l
+!          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!            t % filters(j) % int_bins(k) = int_bins_temp(1)
+!          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!          end do
+          
           !print *, "Number of Occurrances for this filter:",l
         end if
     
@@ -1105,11 +984,17 @@ contains
     !print *,''
     !print *,"i:",i
     !print *,"cells(i)%id:",cells(i)%id
-    call calc_offsets(i,univ,cells(i) % id)
+    call calc_offsets(i,univ,cell_dict % get_key(cells(i) % id))
   end do
   call calc_offsets(n_cells+1,univ,-1)
   !print *,'Printing Offset List:'
-  !call print_all(i,univ)
+!  deallocate(int_bins_temp)
+  allocate(int_bins_temp(n_cells))
+  print *,'n_cells:',n_cells
+  do i = 1, n_cells
+    int_bins_temp(i) = i
+  end do
+  call print_all(int_bins_temp,univ)
   
 end subroutine prepare_distribcell
 

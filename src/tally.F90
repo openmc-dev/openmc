@@ -11,7 +11,7 @@ module tally
                               mesh_intersects_2d, mesh_intersects_3d
   use mesh_header,      only: StructuredMesh
   use output,           only: header
-  use particle_header,  only: LocalCoord, Particle
+  use particle_header,  only: LocalCoord, Particle, deallocate_coord
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
@@ -1619,6 +1619,7 @@ contains
     integer :: j ! secondary loop index
     integer :: n ! number of bins for single filter
     logical :: found ! found a matching bin for distribcell
+    logical :: found2
     integer :: offset ! offset for distribcell
     real(8) :: E ! particle energy
     type(Particle)  :: p_fake ! fake particle for distrib cell
@@ -1674,20 +1675,50 @@ contains
         ! If it is, set BASE_UNIVERSE as the starting point, then enter a subroutine to determine the offset of this bin
         ! Progress through the geometry, checking which cell/univ/lattice the particle is in
         ! If it is in a given cell/univ/lattice, sum the offsets for all cells in the filter and enter that cell/univ/lattice
-        ! Quit once we have gone no deeper
-        p_fake = p
-        p_fake % coord => p_fake % coord0
-        call distribcell_offset(p_fake, t % filters(i) % int_bins, found, offset)
-        if (found) then
-          matching_bins(i) = offset
-        else 
-          matching_bins(i) = NO_BIN_FOUND
-        end if
+        ! Quit once we can go no deeper
         
-        ! What happens if a particle is in two cells of interest simulataneously?
-        matching_bins(i) = get_next_bin(FILTER_DISTRIBCELL, &
-             p % cell_born, i_tally)
+        !p_fake = p
+        !call deallocate_coord(p_fake % coord0 % next)
+        !p_fake % coord => p_fake % coord0
+        !offset = 0
+        !found = .false.
+        !found2 = .false.
+        !    print *,'p % coord0 % cell:',p % coord0 % cell
+        !do j = 1, size(t % filters(i) % int_bins)
+        !  if (t % filters(i) % int_bins(j) == p % coord0 % cell) then
+        !    found2 = .true.
+        !  end if
+        !end do
+        !call distribcell_offset(p_fake, t % filters(i) % int_bins, found, offset)
+        coord => p % coord0
+        offset = 0
+        matching_bins(i) = NO_BIN_FOUND
+        
+        do while(associated(coord))
+        
+          do j = 1, size(t % filters(i) % int_bins)
+            print *,'cells(coord % cell):',cells(coord % cell) % offset(t % filters(i) % int_bins(j))
+            offset = offset + cells(coord % cell) % offset(t % filters(i) % int_bins(j))
+          end do
+          do j = 1, size(t % filters(i) % int_bins)
+            print  *,'cell_dict % get_key (p % coord0 % cell):',cell_dict % get_key (p % coord0 % cell)
+            print *,'t % filters(i) % int_bins(j):',t % filters(i) % int_bins(j)
+            if (cell_dict % get_key (p % coord0 % cell) == t % filters(i) % int_bins(j)) then
+              matching_bins(i) = offset + 1
+              exit
+            end if
+          end do
+          if (matching_bins(i) /= NO_BIN_FOUND) exit
+          coord => coord % next
 
+        end do
+        nullify(coord)
+
+        if (matching_bins(i) /= NO_BIN_FOUND) then
+          print *,'matching_bins offset:',matching_bins(i)
+        else 
+          print *,"NO_BIN_FOUND"
+        end if
 
       case (FILTER_CELLBORN)
         ! determine next cellborn bin

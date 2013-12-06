@@ -158,3 +158,20 @@ set_target_properties(${program} PROPERTIES
   COMPILE_FLAGS "${f90flags}"
   COMPILE_DEFINITIONS "${definitions}"
   LINK_FLAGS "${ldflags}")
+
+#===============================================================================
+# Install executable, scripts, manpage, license
+#===============================================================================
+
+install(TARGETS ${program} RUNTIME DESTINATION bin)
+install(PROGRAMS utils/statepoint_cmp.py
+  DESTINATION bin
+  RENAME statepoint_cmp)
+install(PROGRAMS utils/statepoint_histogram.py
+  DESTINATION bin
+  RENAME statepoint_histogram)
+install(PROGRAMS utils/statepoint_meshplot.py
+  DESTINATION bin
+  RENAME statepoint_meshplot)
+install(FILES ../man/man1/openmc.1 DESTINATION share/man/man1)
+install(FILES ../LICENSE DESTINATION "share/doc/${program}/copyright")

@@ -75,7 +75,7 @@ contains
     real(8) :: a          ! Arbitrary parameter 'a'
     real(8) :: b          ! Arbitrary parameter 'b'
     logical :: found      ! Does the source particle exist within geometry?
-    type(Particle) :: p         ! Temporary particle for using find_cell
+    type(Particle) :: p   ! Temporary particle for using find_cell
 
     ! Set weight to one by default
     site % wgt = ONE

@@ -468,7 +468,6 @@ contains
 
     ! if particle's energy is outside of energy grid range, set to first or last
     ! index. Otherwise, do a binary search through the union energy grid.
-
     if (E < e_grid(1)) then
       union_grid_index = 1
     elseif (E > e_grid(n_grid)) then
@@ -480,11 +479,11 @@ contains
   end subroutine find_energy_index
 
 !===============================================================================
-! ELASTIC_0K_XS determines the microscopic 0K elastic cross section for a
-! nuclide of a given index in the nuclides array at the energy of the particle
+! CALCULATE_0K_ELASTIC_XS determines the microscopic 0K elastic cross section
+! for a given nuclide at the trial relative energy used in resonance scattering
 !===============================================================================
 
-  function elastic_0K_xs(E, nuc) result(xs_out)
+  function calculate_0K_elastic_xs(E, nuc) result(xs_out)
 
     type(Nuclide), pointer :: nuc    ! target nuclide at temperature
     integer                :: i_grid ! index on nuclide energy grid
@@ -525,6 +524,6 @@ contains
     ! Calculate microscopic nuclide elastic cross section
     xs_out = (ONE - f) * nuc % elastic_0K(i_grid) + f * nuc % elastic_0K(i_grid+1)
 
-  end function elastic_0K_xs
+  end function calculate_0K_elastic_xs
 
 end module cross_section

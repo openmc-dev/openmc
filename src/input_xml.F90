@@ -1457,7 +1457,6 @@ contains
           call get_node_value(node_nuc, "wo", temp_dble)
           call list_density % append(-temp_dble)
         end if
-
       end do INDIVIDUAL_NUCLIDES
 
       ! =======================================================================
@@ -1557,7 +1556,7 @@ contains
         else
           mat % nuclide(j) = nuclide_dict % get_key(name)
         end if
-        
+
         ! Copy name and atom/weight percent
         mat % names(j) = name
         mat % atom_density(j) = list_density % get_item(j)

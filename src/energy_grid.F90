@@ -133,10 +133,10 @@ contains
     do i = 1, n_nuclides_total
       nuc => nuclides(i)
       allocate(nuc % grid_index(n_grid))
-      
+
       index_e = 1
       energy = nuc % energy(index_e)
-      
+
       do j = 1, n_grid
         union_energy = e_grid(j)
         if (union_energy >= energy .and. index_e < nuc % n_grid) then

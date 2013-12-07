@@ -2,7 +2,7 @@ module physics
 
   use ace_header,             only: Nuclide, Reaction, DistEnergy
   use constants
-  use cross_section,          only: elastic_0K_xs, find_energy_index, &
+  use cross_section,          only: calculate_0K_elastic_xs, find_energy_index, &
                                     union_grid_index
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning
@@ -435,7 +435,8 @@ contains
 
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
-      call sample_target_velocity(nuc, v_t, E, uvw, v_n, wgt, micro_xs(i_nuclide) % elastic)
+      call sample_target_velocity(nuc, v_t, E, uvw, v_n, wgt, &
+        & micro_xs(i_nuclide) % elastic)
     else
       v_t = ZERO
     end if
@@ -628,9 +629,8 @@ contains
   end subroutine sab_scatter
 
 !===============================================================================
-! SAMPLE_TARGET_VELOCITY samples the target velocity based on the free gas
-! scattering formulation used by most Monte Carlo codes. Excellent documentation
-! for this method can be found in FRA-TM-123. Methods for correctly accounting
+! SAMPLE_TARGET_VELOCITY samples the target velocity. The constant cross section
+! free gas model is the default method. Methods for correctly accounting
 ! for the energy dependence of cross sections in treating resonance elastic
 ! scattering such as the DBRC, WCM, and a new, accelerated scheme are also
 ! implemented here.
@@ -638,15 +638,151 @@ contains
 
   subroutine sample_target_velocity(nuc, v_target, E, uvw, v_neut, wgt, xs_eff)
 
-    type(Nuclide),      pointer :: nuc    ! target nuclide at temperature
+    type(Nuclide), pointer :: nuc ! target nuclide at temperature
 
-    real(8), intent(out)        :: v_target(3)
-    real(8), intent(in)         :: v_neut(3)
-    real(8), intent(inout)      :: E
-    real(8), intent(in)         :: uvw(3)
-    real(8), intent(inout)      :: wgt
+    real(8), intent(out)   :: v_target(3) ! target velocity
+    real(8), intent(in)    :: v_neut(3)   ! neutron velocity
+    real(8), intent(in)    :: E           ! particle energy
+    real(8), intent(in)    :: uvw(3)      ! direction cosines
+    real(8), intent(inout) :: wgt         ! particle weight
+
+    real(8) :: awr    ! target/neutron mass ratio
+    real(8) :: kT     ! equilibrium temperature of target in MeV
+    real(8) :: E_rel  ! trial relative energy
+    real(8) :: xs_0K  ! 0K xs at E_rel
+    real(8) :: xs_eff ! effective elastic xs at temperature T
+    real(8) :: wcf    ! weight correction factor
+    real(8) :: E_red  ! reduced energy (same as used by Cullen in SIGMA1)
+    real(8) :: E_low  ! lowest practical relative energy
+    real(8) :: E_up   ! highest practical relative energy
+    real(8) :: xs_max ! max 0K xs over practical relative energies
+    real(8) :: xs_low ! 0K xs at lowest practical relative energy
+    real(8) :: xs_up  ! 0K xs at highest practical relative energy
+    real(8) :: m      ! slope for interpolation
+    real(8) :: R_dbrc ! DBRC rejection criterion
+
+    integer :: i_E_low ! 0K index to lowest practical relative energy
+    integer :: i_E_up  ! 0K index to highest practical relative energy
+
+    logical :: reject ! resample if true
+
+    character(80) :: sampling_scheme ! method of target velocity sampling
+
+    kT = nuc % kT
+    awr = nuc % awr
+
+    ! Check if nuclide is a resonant scatterer
+    if (nuc % resonant) then
+
+      ! sampling scheme to use
+      sampling_scheme = nuc % scheme
+      sampling_scheme = trim(sampling_scheme)
+
+      ! upper resonance scattering energy bound (target is at rest above this E)
+      if (E > nuc % E_max) then
+        v_target = ZERO
+        return
+
+      ! lower resonance scattering energy bound (should be no resonances below)
+      else if (E < nuc % E_min) then
+        sampling_scheme = 'cxs'
+        sampling_scheme = trim(sampling_scheme)
+      end if
+
+    ! Otherwise, use free gas model  
+    else
+      if (E >= FREE_GAS_THRESHOLD * kT .and. awr > ONE) then
+        v_target = ZERO
+        return
+      else
+        sampling_scheme = 'cxs'
+        sampling_scheme = trim(sampling_scheme)
+      end if
+    end if
+
+    ! Use appropriate target velocity sampling method
+    select case (sampling_scheme)
+
+    case ('cxs')
+
+      ! sample target velocity with the constant cross section (cxs) approx.
+      call sample_cxs_target_velocity(nuc, v_target, E, uvw)
+      
+    case ('wcm')
+
+      ! sample target velocity with the constant cross section (cxs) approx.
+      call sample_cxs_target_velocity(nuc, v_target, E, uvw)
+
+      ! Adjust weight as prescribed by the weight correction method (wcm)
+      E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
+      xs_0K = calculate_0K_elastic_xs(E_rel, nuc)
+      wcf = xs_0K / xs_eff
+      wgt = wcf * wgt
+
+    case ('dbrc')
+      E_red = sqrt((awr * E) / kT)
+      E_low = (((E_red - 4.0_8)**2) * kT) / awr
+      E_up  = (((E_red + 4.0_8)**2) * kT) / awr
+      
+      ! find lower and upper energy bound indices
+      call find_energy_index(E_low)
+      i_E_low = nuc % grid_index_0K(union_grid_index)
+      call find_energy_index(E_up)
+      i_E_up = nuc % grid_index_0K(union_grid_index)
+      
+      ! interpolate xs since we're not exactly at the energy indices
+      xs_low = nuc % elastic_0K(i_E_low)
+      m = (nuc % elastic_0K(i_E_low + 1) - xs_low) &
+        & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+      xs_low = xs_low + m * (E_low - nuc % energy_0K(i_E_low))
+      xs_up = nuc % elastic_0K(i_E_up)
+      m = (nuc % elastic_0K(i_E_up + 1) - xs_up) &
+       & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
+      xs_up = xs_up + m * (E_up - nuc % energy_0K(i_E_up))
+      
+      ! get max 0K xs value over range of practical relative energies
+      xs_max = max(xs_low, &
+        & maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up - 1)), xs_up)
+
+      reject = .true.
+
+      ! sample target velocities until one is accepted by the DBRC
+      do
+
+        ! sample target velocity with the constant cross section (cxs) approx.
+        call sample_cxs_target_velocity(nuc, v_target, E, uvw)
+
+        ! perform Doppler broadening rejection correction (dbrc)
+        E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
+        xs_0K = calculate_0K_elastic_xs(E_rel, nuc)
+        R_dbrc = xs_0K / xs_max
+        if (prn() < R_dbrc) reject = .false.
+        if (.not. reject) exit
+      end do
+
+    case default
+      message = "Not a recognized resonance scattering treatment!"
+      call fatal_error()
+    end select
+    
+  end subroutine sample_target_velocity
+
+!===============================================================================
+! SAMPLE_CXS_TARGET_VELOCITY samples a target velocity based on the free gas
+! scattering formulation, used by most Monte Carlo codes, in which cross section
+! is assumed to be constant in energy. Excellent documentation for this method
+! can be found in FRA-TM-123.
+!===============================================================================
+
+  subroutine sample_cxs_target_velocity(nuc, v_target, E, uvw)
+
+    type(Nuclide),  pointer :: nuc ! target nuclide at temperature
+    real(8), intent(out)    :: v_target(3)
+    real(8), intent(in)     :: E
+    real(8), intent(in)     :: uvw(3)
 
     real(8) :: kT          ! equilibrium temperature of target in MeV
+    real(8) :: awr         ! target/neutron mass ratio
     real(8) :: alpha       ! probability of sampling f2 over f1
     real(8) :: mu          ! cosine of angle between neutron and target vel
     real(8) :: r1, r2      ! pseudo-random numbers
@@ -656,265 +792,56 @@ contains
     real(8) :: beta_vt     ! beta * speed of target
     real(8) :: beta_vt_sq  ! (beta * speed of target)^2
     real(8) :: vt          ! speed of target
-    real(8) :: E_rel       ! trial relative energy
-    real(8) :: xs_0K       ! 0K xs at E_rel
-    real(8) :: xs_eff      ! effective elastic xs at temperature T
-    real(8) :: wcf         ! weight correction factor
-    real(8) :: E_red       ! reduced energy
-    real(8) :: E_low       ! lowest practical relative energy
-    real(8) :: E_up        ! highest practical relative energy
-    real(8) :: E_old       ! tmp storage of current energy
-    real(8) :: awr         ! target/neutron mass ratio
-    integer :: i_E_low     ! 0K index to lowest practical relative energy
-    integer :: i_E_up      ! 0K index to highest practical relative energy
-    real(8) :: xs_max      ! max 0K xs over practical relative energies
-    real(8) :: xs_low      ! 0K xs at lowest practical relative energy
-    real(8) :: xs_up       ! 0K xs at highest practical relative energy
-    real(8) :: m           ! slope for interpolation
-    real(8) :: R_dbrc      ! DBRC rejection criterion
 
-    logical :: reject      ! resample if true
-
-    character(80) :: sampling_scheme
-
-    ! Determine equilibrium temperature in MeV
     kT = nuc % kT
     awr = nuc % awr
 
-    ! Check if nuclide is a resonant scatterer and which sampling scheme
-    ! to use based on neutron energy
-    if (nuc % resonant) then
-      sampling_scheme = nuc % scheme
-      sampling_scheme = trim(sampling_scheme)
-      if (E > nuc % E_max) then
-        v_target = ZERO
-        return
-      else if (E < nuc % E_min) then
-        sampling_scheme = 'cxs'
-        sampling_scheme = trim(sampling_scheme)
-      end if
-    else
-      if (E >= FREE_GAS_THRESHOLD * kT .and. nuc % awr > ONE) then
-        v_target = ZERO
-        return
+    beta_vn = sqrt(awr * E / kT)
+    alpha = ONE/(ONE + sqrt(pi)*beta_vn/TWO)
+    
+    do
+      ! Sample two random numbers
+      r1 = prn()
+      r2 = prn()
+      
+      if (prn() < alpha) then
+        ! With probability alpha, we sample the distribution p(y) =
+        ! y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
+        ! Carlo sampler
+        
+        beta_vt_sq = -log(r1*r2)
+        
       else
-        sampling_scheme = 'cxs'
-        sampling_scheme = trim(sampling_scheme)
+        ! With probability 1-alpha, we sample the distribution p(y) = y^2 *
+        ! e^(-y^2). This can be done with sampling scheme C61 from the Monte
+        ! Carlo sampler
+        
+        c = cos(PI/TWO * prn())
+        beta_vt_sq = -log(r1) - log(r2)*c*c
       end if
-    end if
-
-    ! reject unless criteria are satisfied
-    reject = .true.
+      
+      ! Determine beta * vt
+      beta_vt = sqrt(beta_vt_sq)
+      
+      ! Sample cosine of angle between neutron and target velocity
+      mu = TWO*prn() - ONE
+      
+      ! Determine rejection probability
+      accept_prob = sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
+        /(beta_vn + beta_vt)
+      
+      ! Perform rejection sampling on vt and mu
+      if (prn() < accept_prob) exit
+    end do
     
-    select case (sampling_scheme)
-    case ('cxs')
-      ! calculate beta, alpha
-      beta_vn = sqrt(nuc%awr * E / kT)
-      alpha = ONE/(ONE + sqrt(pi)*beta_vn/TWO)
-      
-      do
-        ! Sample two random numbers
-        r1 = prn()
-        r2 = prn()
-        
-        if (prn() < alpha) then
-          ! With probability alpha, we sample the distribution p(y) =
-          ! y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
-          ! Carlo sampler
-          
-          beta_vt_sq = -log(r1*r2)
-          
-        else
-          ! With probability 1-alpha, we sample the distribution p(y) = y^2 *
-          ! e^(-y^2). This can be done with sampling scheme C61 from the Monte
-          ! Carlo sampler
-          
-          c = cos(PI/TWO * prn())
-          beta_vt_sq = -log(r1) - log(r2)*c*c
-        end if
-        
-        ! Determine beta * vt
-        beta_vt = sqrt(beta_vt_sq)
-        
-        ! Sample cosine of angle between neutron and target velocity
-        mu = TWO*prn() - ONE
-        
-        ! Determine rejection probability
-        accept_prob = sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
-          /(beta_vn + beta_vt)
-        
-        ! Perform rejection sampling on vt and mu
-        if (prn() < accept_prob) exit
-      end do
-      
-      ! determine speed of target nucleus
-      vt = sqrt(beta_vt_sq*kT/nuc % awr)
-      
-      ! determine velocity vector of target nucleus based on neutron's velocity
-      ! and the sampled angle between them
-      v_target = vt * rotate_angle(uvw, mu)
-      
-    case ('wcm')
-      ! calculate beta, alpha
-      beta_vn = sqrt(nuc%awr * E / kT)
-      alpha = ONE/(ONE + sqrt(pi)*beta_vn/TWO)
-      
-      do
-        ! Sample two random numbers
-        r1 = prn()
-        r2 = prn()
-        
-        if (prn() < alpha) then
-          ! With probability alpha, we sample the distribution p(y) =
-          ! y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
-          ! Carlo sampler
-          
-          beta_vt_sq = -log(r1*r2)
-          
-        else
-          ! With probability 1-alpha, we sample the distribution p(y) = y^2 *
-          ! e^(-y^2). This can be done with sampling scheme C61 from the Monte
-          ! Carlo sampler
-          
-          c = cos(PI/TWO * prn())
-          beta_vt_sq = -log(r1) - log(r2)*c*c
-        end if
-        
-        ! Determine beta * vt
-        beta_vt = sqrt(beta_vt_sq)
-        
-        ! Sample cosine of angle between neutron and target velocity
-        mu = TWO*prn() - ONE
-        
-        ! Determine rejection probability
-        accept_prob = sqrt(beta_vn*beta_vn + beta_vt_sq - 2*beta_vn*beta_vt*mu) &
-          /(beta_vn + beta_vt)
-        
-        ! Perform rejection sampling on vt and mu
-        if (prn() < accept_prob) exit
-      end do
-      
-      ! determine speed of target nucleus
-      vt = sqrt(beta_vt_sq*kT/nuc % awr)
-      
-      ! determine velocity vector of target nucleus based on neutron's velocity
-      ! and the sampled angle between them
-      v_target = vt * rotate_angle(uvw, mu)
-
-      ! adjust particle weight
-      E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
-      xs_0K = elastic_0K_xs(E_rel, nuc)
-      wcf = xs_0K / xs_eff
-      wgt = wcf * wgt
-
-    case ('dbrc')
-      ! reduced neutron energy
-      E_red = sqrt((awr * E) / kT)
-      
-      ! lower limit for range that max xs is determined over
-      E_low = (((E_red - 4.0_8)**2) * kT) / awr
-      
-      ! upper limit for range that max xs is determined over
-      E_up  = (((E_red + 4.0_8)**2) * kT) / awr
-      
-      ! incident neutron energy
-      E_old = E
-      
-      ! find index and calculate 0K xs at lower energy bound
-      E = E_low
-      call find_energy_index(E)
-      ! nuclide energy grid index
-      i_E_low = nuc % grid_index_0K(union_grid_index)
-      
-      ! find index and calculate 0K xs at upper energy bound
-      E = E_up
-      call find_energy_index(E)
-      ! nuclide energy grid index
-      i_E_up = nuc % grid_index_0K(union_grid_index)
-      
-      ! reset particle energy to incident value
-      ! (it was only changed to calculate 0K xs at different energies)
-      E = E_old
-      
-      ! xs at lower bounding index
-      xs_low = nuc % elastic_0K(i_E_low)
-      
-      ! slope
-      m = (nuc % elastic_0K(i_E_low + 1) - xs_low) &
-        & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
-      
-      ! actual lower bound 0K xs
-      xs_low = xs_low + m * (E_low - nuc % energy_0K(i_E_low))
-      
-      ! xs at upper bounding index
-      xs_up = nuc % elastic_0K(i_E_up)
-      
-      ! slope
-      m = (nuc % elastic_0K(i_E_up + 1) - xs_up) &
-       & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
-      
-      ! actual upper bound 0K xs
-      xs_up = xs_up + m * (E_up - nuc % energy_0K(i_E_up))
-      
-      ! get max 0K xs value
-      xs_max = max(xs_low, maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up - 1)), xs_up)
-      
-      ! calculate beta
-      beta_vn = sqrt(awr * E / kT)
-      alpha = ONE / (ONE + sqrt(pi) * beta_vn / TWO)
-      
-      do
-        ! Sample two random numbers
-        r1 = prn()
-        r2 = prn()
-        
-        if (prn() < alpha) then
-          ! With probability alpha, we sample the distribution p(y) =
-          ! y*e^(-y). This can be done with sampling scheme C45 frmo the Monte
-          ! Carlo sampler
-          beta_vt_sq = -log(r1 * r2)
-        else
-          ! With probability 1-alpha, we sample the distribution p(y) = y^2 *
-          ! e^(-y^2). This can be done with sampling scheme C61 from the Monte
-          ! Carlo sampler
-          c = cos(PI / TWO * prn())
-          beta_vt_sq = -log(r1) - log(r2) * c**2
-        end if
-
-        ! Determine beta * vt
-        beta_vt = sqrt(beta_vt_sq)
-        
-        ! Sample cosine of angle between neutron and target velocity
-        mu = TWO * prn() - ONE
-        
-        ! Determine rejection probability
-        accept_prob = sqrt(beta_vn * beta_vn + beta_vt_sq - 2 * beta_vn * beta_vt * mu) &
-          / (beta_vn + beta_vt)
-
-        ! Perform rejection sampling on vt and mu
-        if (prn() < accept_prob) then
-          vt = sqrt(beta_vt_sq * kT / awr)
-
-          v_target = vt * rotate_angle(uvw, mu)
-          
-          E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
-          
-          xs_0K = elastic_0K_xs(E_rel, nuc)
-          
-          R_dbrc = xs_0K / xs_max
-          
-          if (prn() < R_dbrc) reject = .false.
-        end if
-
-        if (.not. reject) exit
-      end do
-      
-    case default
-      message = "Not a recognized resonance scattering treatment!"
-      call fatal_error()
-    end select
+    ! determine speed of target nucleus
+    vt = sqrt(beta_vt_sq*kT/awr)
     
-  end subroutine sample_target_velocity
+    ! determine velocity vector of target nucleus based on neutron's velocity
+    ! and the sampled angle between them
+    v_target = vt * rotate_angle(uvw, mu)
+
+  end subroutine sample_cxs_target_velocity
 
 !===============================================================================
 ! CREATE_FISSION_SITES determines the average total, prompt, and delayed

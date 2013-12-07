@@ -13,7 +13,7 @@ COMPILER = gnu
 DEBUG    = no
 PROFILE  = no
 OPTIMIZE = no
-MPI      = yes
+MPI      = no
 OPENMP   = no
 HDF5     = no
 PETSC    = no
@@ -22,7 +22,7 @@ PETSC    = no
 # External Library Paths
 #===============================================================================
 
-MPI_DIR   = /opt/mpich/3.0.2-$(COMPILER)
+MPI_DIR   = /opt/mpich/3.0.4-$(COMPILER)
 HDF5_DIR  = /opt/hdf5/1.8.11-$(COMPILER)
 PHDF5_DIR = /opt/phdf5/1.8.11-$(COMPILER)
 PETSC_DIR = /opt/petsc/3.4.2-$(COMPILER)

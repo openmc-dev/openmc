@@ -80,18 +80,23 @@ contains
           ! array
           call read_ace_table(i_nuclide, i_listing)
 
+          ! 0K resonant scatterer information, if treating resonance scattering
           if (treat_res_scat) then
             do n = 1, n_res_scatterers_total
               if (name == nuclides_0K(n) % name) then
                 nuclides(i_nuclide) % resonant = .true.
                 nuclides(i_nuclide) % name_0K = nuclides_0K(n) % name_0K
-                nuclides(i_nuclide) % name_0K = trim(nuclides(i_nuclide) % name_0K)
+                nuclides(i_nuclide) % name_0K = trim(nuclides(i_nuclide) % &
+                  & name_0K)
                 nuclides(i_nuclide) % scheme = nuclides_0K(n) % scheme
-                nuclides(i_nuclide) % scheme = trim(nuclides(i_nuclide) % scheme)
+                nuclides(i_nuclide) % scheme = trim(nuclides(i_nuclide) % &
+                  & scheme)
                 nuclides(i_nuclide) % E_min = nuclides_0K(n) % E_min
                 nuclides(i_nuclide) % E_max = nuclides_0K(n) % E_max
-                if (.not. already_read % contains(nuclides(i_nuclide) % name_0K)) then
-                  i_listing = xs_listing_dict % get_key(nuclides(i_nuclide) % name_0K)
+                if (.not. already_read % contains(nuclides(i_nuclide) % & 
+                  & name_0K)) then
+                  i_listing = xs_listing_dict % get_key(nuclides(i_nuclide) % &
+                    & name_0K)
                   call read_ace_table(i_nuclide, i_listing)
                 end if
                 exit
@@ -226,7 +231,6 @@ contains
     type(Nuclide),   pointer :: nuc => null()
     type(SAlphaBeta), pointer :: sab => null()
     type(XsListing), pointer :: listing => null()
-    type(SetChar) :: already_read
 
     ! determine path, record length, and location of table
     listing => xs_listings(i_listing)
@@ -321,6 +325,8 @@ contains
 
     select case(listing % type)
     case (ACE_NEUTRON)
+
+      ! only read in a resonant scatterers info once
       nuc => nuclides(i_table)
       if (trim(adjustl(name)) /= nuc % name_0K) then
         nuc % name = name
@@ -331,6 +337,8 @@ contains
 
       ! read all blocks
       call read_esz(nuc)
+
+      ! don't read unnecessary 0K data for resonant scatterers
       if (.not. allocated(nuc % energy_0K)) then
         call read_nu_data(nuc)
         call read_reactions(nuc)
@@ -349,7 +357,8 @@ contains
 
       ! for fissionable nuclides, precalculate microscopic nu-fission cross
       ! sections so that we don't need to call the nu_total function during
-      ! cross section lookups
+      ! cross section lookups (except if we're dealing w/ 0K data for resonant
+      ! scatterers)
 
       if (nuc % fissionable .and. .not. allocated(nuc % energy_0K)) then
         call generate_nu_fission(nuc)
@@ -386,17 +395,13 @@ contains
     NE = NXS(3)
 
     ! allocate storage for energy grid and cross section arrays
+
+    ! read in 0K data if we've already read in non-0K data
     if (allocated(nuc % energy)) then
       nuc % n_grid_0K = NE
       allocate(nuc % energy_0K(NE))
       allocate(nuc % elastic_0K(NE))
-
       nuc % elastic_0K = ZERO
-
-      ! Read data from XSS -- only the energy grid, elastic scattering and heating
-      ! cross section values are actually read from here. The total and absorption
-      ! cross sections are reconstructed from the partial reaction data.
-
       XSS_index = 1
       nuc % energy_0K = get_real(NE)
 
@@ -406,7 +411,7 @@ contains
       ! Continue reading elastic scattering and heating
       nuc % elastic_0K = get_real(NE)
 
-    else
+    else ! read in non-0K data
       nuc % n_grid = NE
       allocate(nuc % energy(NE))
       allocate(nuc % total(NE))

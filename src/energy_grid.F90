@@ -28,6 +28,8 @@ contains
     do i = 1, n_nuclides_total
       nuc => nuclides(i)
       call add_grid_points(list, nuc % energy)
+
+      ! add 0K points to the grid
       if (nuc % resonant) call add_grid_points(list, nuc % energy_0K)
     end do
 
@@ -146,6 +148,7 @@ contains
         nuc % grid_index(j) = index_e - 1
       end do
 
+      ! set pointers for 0K energy grid to the unionized grid
       if (nuc % resonant) then
         allocate(nuc % grid_index_0K(n_grid))
         

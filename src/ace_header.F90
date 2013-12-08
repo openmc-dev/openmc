@@ -156,18 +156,18 @@ module ace_header
   end type Nuclide
 
 !===============================================================================
-! NUCLIDE_0K contains all 0K cross section data and other parameters needed to
-! treat resonance scattering
+! NUCLIDE_0K temporarily contains all 0K cross section data and other parameters
+! needed to treat resonance scattering before transferring them to NUCLIDE
 !===============================================================================
 
   type Nuclide0K
 
-    character(10) :: nuclide ! name of nuclide, e.g. U-238
-    character(16) :: scheme  ! target velocity sampling scheme
-    character(10) :: name    ! name of nuclide, e.g. 92235.03c
-    character(10) :: name_0K ! name of 0K nuclide, e.g. 92235.00c
-    real(8)       :: E_min   ! lower cutoff energy for res scattering
-    real(8)       :: E_max   ! upper cutoff energy for res scattering
+    character(10) :: nuclide            ! name of nuclide, e.g. U-238
+    character(16) :: scheme = 'dbrc'    ! target velocity sampling scheme
+    character(10) :: name               ! name of nuclide, e.g. 92235.03c
+    character(10) :: name_0K            ! name of 0K nuclide, e.g. 92235.00c
+    real(8)       :: E_min = 0.1e-6     ! lower cutoff energy for res scattering
+    real(8)       :: E_max = 1000.0e-6  ! upper cutoff energy for res scattering
 
   end type Nuclide0K
 

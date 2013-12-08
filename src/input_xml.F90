@@ -61,17 +61,19 @@ contains
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
-    type(Node), pointer :: doc           => null()
-    type(Node), pointer :: node_mode     => null()
-    type(Node), pointer :: node_source   => null()
-    type(Node), pointer :: node_dist     => null()
-    type(Node), pointer :: node_cutoff   => null()
-    type(Node), pointer :: node_entropy  => null()
-    type(Node), pointer :: node_ufs      => null()
-    type(Node), pointer :: node_sp       => null()
-    type(Node), pointer :: node_output   => null()
-    type(Node), pointer :: node_verb     => null()
-    type(Node), pointer :: node_res_scat => null()
+    type(Node), pointer :: doc            => null()
+    type(Node), pointer :: node_mode      => null()
+    type(Node), pointer :: node_source    => null()
+    type(Node), pointer :: node_dist      => null()
+    type(Node), pointer :: node_cutoff    => null()
+    type(Node), pointer :: node_entropy   => null()
+    type(Node), pointer :: node_ufs       => null()
+    type(Node), pointer :: node_sp        => null()
+    type(Node), pointer :: node_output    => null()
+    type(Node), pointer :: node_verb      => null()
+    type(Node), pointer :: node_res_scat  => null()
+    type(Node), pointer :: node_scatterer => null()
+    type(NodeList), pointer :: node_scat_list => null()
 
     ! Display output message
     message = "Reading settings XML file..."
@@ -712,26 +714,72 @@ contains
 
     ! Resonance scattering parameters
     if (check_for_node(doc, "resonance_scattering")) then
-      ! Get pointer to output node
       call get_node_ptr(doc, "resonance_scattering", node_res_scat)
-      ! Check if any resonant scatterers specified
-      if (get_arraysize_string(node_res_scat, "scatterer") >= 1) then
+      call get_node_list(node_res_scat, "scatterer", node_scat_list)
+
+      ! check that a nuclide is specified
+      if (get_list_size(node_scat_list) >= 1) then
         treat_res_scat = .true.
-        n_res_scatterers_total = get_arraysize_string(node_res_scat, "scatterer")
+        n_res_scatterers_total = get_list_size(node_scat_list)
+
+        ! store 0K info for resonant scatterers
         allocate(nuclides_0K(n_res_scatterers_total))
-        call get_node_array(node_res_scat, "scatterer", nuclides_0K % nuclide)
-        call get_node_array(node_res_scat, "method", nuclides_0K % scheme)
-        call get_node_array(node_res_scat, "xs_label", nuclides_0K % name)
-        call get_node_array(node_res_scat, "xs_label_0K", nuclides_0K % name_0K)
-        call get_node_array(node_res_scat, "E_min", nuclides_0K % E_min)
-        call get_node_array(node_res_scat, "E_max", nuclides_0K % E_max)
+        do i = 1, n_res_scatterers_total
+          call get_list_item(node_scat_list, i, node_scatterer)
+
+          ! check to make sure a nuclide is specified
+          if (.not. check_for_node(node_scatterer, "nuclide")) then
+            message = "No nuclide specified for scatterer " // trim(to_str(i)) &
+             // " in settings.xml file!"
+            call fatal_error()
+          end if
+          call get_node_value(node_scatterer, "nuclide", &
+            nuclides_0K(i) % nuclide)
+
+          if (check_for_node(node_scatterer, "method")) then
+            call get_node_value(node_scatterer, "method", &
+              nuclides_0K(i) % scheme)
+          end if
+
+          ! check to make sure xs name for which method is applied is given
+          if (.not. check_for_node(node_scatterer, "xs_label")) then
+            message = "Must specify the temperature dependent name of " // '' &
+             //"scatterer " // trim(to_str(i)) // " given in cross_sections.xml"
+            call fatal_error()
+          end if
+          call get_node_value(node_scatterer, "xs_label", &
+            nuclides_0K(i) % name)
+
+          ! check to make sure 0K xs name for which method is applied is given
+          if (.not. check_for_node(node_scatterer, "xs_label_0K")) then
+            message = "Must specify the 0K name of " // '' &
+              //"scatterer "// trim(to_str(i)) // " given in cross_sections.xml"
+            call fatal_error()
+          end if
+          call get_node_value(node_scatterer, "xs_label_0K", &
+            nuclides_0K(i) % name_0K)
+
+          if (check_for_node(node_scatterer, "E_min")) then
+            call get_node_value(node_scatterer, "E_min", &
+              nuclides_0K(i) % E_min)
+          end if
+
+          if (check_for_node(node_scatterer, "E_max")) then
+            call get_node_value(node_scatterer, "E_max", &
+              nuclides_0K(i) % E_max)
+          end if
+
+          nuclides_0K(i) % nuclide = trim(nuclides_0K(i) % nuclide)
+          nuclides_0K(i) % scheme  = trim(nuclides_0K(i) % scheme)
+          call lower_case(nuclides_0K(i) % scheme)
+          nuclides_0K(i) % name    = trim(nuclides_0K(i) % name)
+          nuclides_0K(i) % name_0K = trim(nuclides_0K(i) % name_0K)
+        end do
+      else
+        message = "No resonant scatterers are specified within the " // "" &
+          // "resonance_scattering element in settings.xml"
+        call fatal_error()
       end if
-      do i = 1, n_res_scatterers_total
-        nuclides_0K(i) % nuclide = trim(nuclides_0K(i) % nuclide)
-        nuclides_0K(i) % scheme  = trim(nuclides_0K(i) % scheme)
-        nuclides_0K(i) % name    = trim(nuclides_0K(i) % name)
-        nuclides_0K(i) % name_0K = trim(nuclides_0K(i) % name_0K)
-      end do
     end if
 
     ! Close settings XML file
@@ -1245,7 +1293,6 @@ contains
 
     integer :: i             ! loop index for materials
     integer :: j             ! loop index for nuclides
-    integer :: k             ! loop index for resonant scatterers
     integer :: n             ! number of nuclides
     integer :: n_sab         ! number of sab tables for a material
     integer :: index_list    ! index in xs_listings array
@@ -3000,6 +3047,15 @@ contains
        if (check_for_node(node_ace, "alias")) then
          call xs_listing_dict % add_key(listing % alias, i)
        end if
+    end do
+
+    ! Check that 0K nuclides are listed in the cross_sections.xml file
+    do i = 1, n_res_scatterers_total
+      if (.not. xs_listing_dict % has_key(trim(nuclides_0K(i) % name_0K))) then
+        message = "Could not find nuclide " // trim(nuclides_0K(i) % name_0K) // &
+          " in cross_sections.xml file!"
+        call fatal_error()
+      end if
     end do
 
     ! Close cross sections XML file

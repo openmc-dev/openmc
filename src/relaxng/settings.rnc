@@ -119,17 +119,19 @@ element settings {
   }? &
 
   element resonance_scattering {
-      (element method { list { xsd:string { maxLength = "16" }+ } |
-        attribute method { list { xsd:string { maxLength = "16" }+ }) &
-      (element scatterer { list { xsd:string { maxLength = "12" }+ } } |
-        attribute scatterer { list { xsd:string { maxLength = "12" }+ } }) &
-      (element xs_label { list { xsd:string { maxLength = "12" }+ } } |
-        attribute xs_label { list { xsd:string { maxLength = "12" }+ } }) &
-      (element xs_label_0K { list { xsd:string { maxLength = "12" }+ } } |
-        attribute xs_label_0K { list { xsd:string { maxLength = "12" }+ } }) &
-      (element E_min { list { xsd:double+ } } |
-        attribute E_min { list { xsd:double+ } }) &
-      (element E_max { list { xsd:double+ } } |
-        attribute E_max { list { xsd:double+ } })
+    element scatterer {
+      (element nuclide { xsd:string { maxLength = "12" } } |
+        attribute nuclide { xsd:string { maxLength = "12" }  }) &
+      (element method { xsd:string { maxLength = "16" } } |
+        attribute method { xsd:string { maxLength = "16" }  }) &
+      (element xs_label { xsd:string { maxLength = "12" } } |
+        attribute xs_label { xsd:string { maxLength = "12" } }) &
+      (element xs_label_0K { xsd:string { maxLength = "12" } } |
+        attribute xs_label_0K { xsd:string { maxLength = "12" } }) &
+      (element E_min { xsd:double } |
+        attribute E_min { xsd:double }) &
+      (element E_max { xsd:double } |
+        attribute E_max { xsd:double })?
+    }*
   }?
 }

@@ -487,9 +487,9 @@ contains
 
     type(Nuclide), pointer :: nuc    ! target nuclide at temperature
     integer                :: i_grid ! index on nuclide energy grid
-    real(8)                :: f ! interp factor on nuclide energy grid
-    real(8), intent(inout)    :: E ! trial energy
-    real(8)                :: xs_out
+    real(8)                :: f      ! interp factor on nuclide energy grid
+    real(8), intent(inout) :: E      ! trial energy
+    real(8)                :: xs_out ! 0K xs at trial energy
 
     ! Determine index on nuclide energy grid
     select case (grid_method)

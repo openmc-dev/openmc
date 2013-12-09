@@ -76,6 +76,7 @@ contains
     real(8) :: b          ! Arbitrary parameter 'b'
     logical :: found      ! Does the source particle exist within geometry?
     type(Particle) :: p   ! Temporary particle for using find_cell
+    integer, save :: num_resamples = 0 ! Number of resamples encountered
 
     ! Set weight to one by default
     site % wgt = ONE
@@ -99,7 +100,14 @@ contains
 
         ! Now search to see if location exists in geometry
         call find_cell(p, found)
-
+        if (.not. found) then
+          num_resamples = num_resamples + 1
+          if (num_resamples == MAX_EXTSRC_RESAMPLES) then
+            message = "Maximum number of external source spatial resamples &
+                      &reached!"
+            call fatal_error()
+          end if
+        end if
       end do
 
     case (SRC_SPACE_POINT)

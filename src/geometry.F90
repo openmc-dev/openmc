@@ -1328,6 +1328,11 @@ contains
     do i = 1, n
       ! select cells based on whether we are searching a universe or a provided
       ! list of cells (this would be for lists of neighbor cells)
+      !print *,'loop i:',i
+      !print *,'loop n:',n
+      !print *,'loop univ%id:',univ%id
+      !print *,'loop size(univ%cells):',size(univ%cells)
+      !print *,'loop univ%cells(i):',univ%cells(i)
       index_cell = univ % cells(i)
       
       ! get pointer to cell
@@ -1346,30 +1351,27 @@ contains
         ! add all the relevant offsets and check if this is one of the cells we plan to tally
         do j = 1, m
           ! need to know what index the cell is in the master array
-          k = search_cells(j) + 1
+          k = search_cells(j)
           offset = offset + c % offset(k)
           !print *,'search_cells(j):',search_cells(j)
+          !print *,'k:',k
           !print *,'c%id:',c%id
           !print *,'offset:',offset
           !print *,'c%offset:',c%offset
-          !print *,'k:',k
           !print *,'cells%id:',cells(k)%id
           if (c % id == cells(k) % id) then
             found = .true.
           end if
         end do
         
-        if (found) then
-          return
-        end if
+        if (found) exit
         
         if (c % type == CELL_NORMAL) then
           ! ====================================================================
           ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-
-          ! set material
-          p % last_material = p % material
-          p % material = c % material
+          if (c % id == 201) then
+            !print *,'found:',c%id
+          end if
 
         elseif (c % type == CELL_FILL) then
           ! ====================================================================
@@ -1396,8 +1398,17 @@ contains
             p % coord % rotated = .true.
           end if
 
+      !print *,'pre i:',i
+      !print *,'pre n:',n
+      !print *,'pre univ%id:',univ%id
+      !print *,'pre size(univ%cells):',size(univ%cells)
+      !print *,'pre univ%cells(i):',univ%cells(i)
           call distribcell_offset(p, search_cells, found, offset)
-          if (.not. found) exit
+      !print *,'post i:',i
+      !print *,'post n:',n
+      !print *,'post univ%id:',univ%id
+      !print *,'post size(univ%cells):',size(univ%cells)
+      !print *,'post univ%cells(i):',univ%cells(i)
 
         elseif (c % type == CELL_LATTICE) then
           ! ====================================================================
@@ -1459,6 +1470,7 @@ contains
               ! Reset surface and advance particle a tiny bit
               p % surface = NONE
               p % coord % xyz = xyz
+              call distribcell_offset(p, search_cells, found, offset)
 
             else
 
@@ -1522,17 +1534,25 @@ contains
             ! add all the relevant offsets and check if this is one of the cells we plan to tally
             do j = 1, m
               ! need to know what index the cell is in the master array
-              k = search_cells(j) + 1
+              k = search_cells(j)
               offset = offset + lat % offset(k,i_x,i_y,i_z)
+              !print *,'search_cells(j):',search_cells(j)
+              !print *,'k:',k
+              !print *,'c%id:',c%id
+              !print *,'lat%id:',lat%id
+              !print *,'offset:',offset
+              !print *,'i_x:',i_x
+              !print *,'i_y:',i_y
+              !print *,'lat % offset(k,i_x,i_y,i_z):',lat % offset(k,i_x,i_y,i_z)
             end do
   
             call distribcell_offset(p, search_cells, found, offset)
-            if (.not. found) exit
   
           end if
 
         end if
 
+        exit
       end if
     end do
 

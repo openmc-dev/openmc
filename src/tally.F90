@@ -1677,48 +1677,44 @@ contains
         ! If it is in a given cell/univ/lattice, sum the offsets for all cells in the filter and enter that cell/univ/lattice
         ! Quit once we can go no deeper
         
-        !p_fake = p
-        !call deallocate_coord(p_fake % coord0 % next)
-        !p_fake % coord => p_fake % coord0
-        !offset = 0
-        !found = .false.
-        !found2 = .false.
-        !    print *,'p % coord0 % cell:',p % coord0 % cell
-        !do j = 1, size(t % filters(i) % int_bins)
-        !  if (t % filters(i) % int_bins(j) == p % coord0 % cell) then
-        !    found2 = .true.
-        !  end if
-        !end do
-        !call distribcell_offset(p_fake, t % filters(i) % int_bins, found, offset)
-        coord => p % coord0
+        p_fake = p
+        p_fake % coord => p_fake % coord0
         offset = 0
+        found = .false.
         matching_bins(i) = NO_BIN_FOUND
-        
-        do while(associated(coord))
-        
-          do j = 1, size(t % filters(i) % int_bins)
-            print *,'cells(coord % cell):',cells(coord % cell) % offset(t % filters(i) % int_bins(j))
-            offset = offset + cells(coord % cell) % offset(t % filters(i) % int_bins(j))
-          end do
-          do j = 1, size(t % filters(i) % int_bins)
-            print  *,'cell_dict % get_key (p % coord0 % cell):',cell_dict % get_key (p % coord0 % cell)
-            print *,'t % filters(i) % int_bins(j):',t % filters(i) % int_bins(j)
-            if (cell_dict % get_key (p % coord0 % cell) == t % filters(i) % int_bins(j)) then
-              matching_bins(i) = offset + 1
-              exit
-            end if
-          end do
-          if (matching_bins(i) /= NO_BIN_FOUND) exit
-          coord => coord % next
-
-        end do
-        nullify(coord)
-
-        if (matching_bins(i) /= NO_BIN_FOUND) then
-          print *,'matching_bins offset:',matching_bins(i)
-        else 
-          print *,"NO_BIN_FOUND"
+        !print *,'NEW CALL'
+        call distribcell_offset(p_fake, t % filters(i) % int_bins, found, offset)
+        if (found) then
+          matching_bins(i) = offset + 1
         end if
+        !coord => p % coord0
+        !offset = 0
+        
+        !do while(associated(coord))
+        
+        !  do j = 1, size(t % filters(i) % int_bins)
+        !    print *,'cells(coord % cell):',cells(coord % cell) % offset(t % filters(i) % int_bins(j))
+        !    offset = offset + cells(coord % cell) % offset(t % filters(i) % int_bins(j))
+        !  end do
+        !  do j = 1, size(t % filters(i) % int_bins)
+        !    print  *,'cell_dict % get_key (p % coord0 % cell):',cell_dict % get_key (p % coord0 % cell)
+        !    print *,'t % filters(i) % int_bins(j):',t % filters(i) % int_bins(j)
+        !    if (cell_dict % get_key (p % coord0 % cell) == t % filters(i) % int_bins(j)) then
+        !      matching_bins(i) = offset + 1
+        !      exit
+        !    end if
+        !  end do
+        !  if (matching_bins(i) /= NO_BIN_FOUND) exit
+        !  coord => coord % next
+
+        !end do
+        !nullify(coord)
+
+        !if (matching_bins(i) /= NO_BIN_FOUND) then
+        !  print *,'matching_bins offset:',matching_bins(i)
+        !else 
+        !  print *,"NO_BIN_FOUND"
+        !end if
 
       case (FILTER_CELLBORN)
         ! determine next cellborn bin

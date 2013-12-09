@@ -161,16 +161,16 @@ contains
           mat % i_sab_tables(m)   = temp_table
         end do SORT_SAB
       end if
-      
+
       ! Deallocate temporary arrays for names of nuclides and S(a,b) tables
       if (allocated(mat % names)) deallocate(mat % names)
       if (allocated(mat % sab_names)) deallocate(mat % sab_names)
 
     end do MATERIAL_LOOP2
-    
+
     ! Avoid some valgrind leak errors
     call already_read % clear()
-    
+
   end subroutine read_xs
 
 !===============================================================================
@@ -253,7 +253,7 @@ contains
       end if
 
       ! Read more header and NXS and JXS
-      read(UNIT=in, FMT=100) comment, mat, & 
+      read(UNIT=in, FMT=100) comment, mat, &
            (zaids(i), awrs(i), i=1,16), NXS, JXS
 100   format(A70,A10/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/&
            ,8I9/8I9/8I9/8I9/8I9/8I9)
@@ -277,7 +277,7 @@ contains
            ACCESS='direct', RECL=record_length)
 
       ! Read all header information
-      read(UNIT=in, REC=location) name, awr, kT, date_, & 
+      read(UNIT=in, REC=location) name, awr, kT, date_, &
            comment, mat, (zaids(i), awrs(i), i=1,16), NXS, JXS
 
       ! determine table length
@@ -406,7 +406,7 @@ contains
     integer :: LNU    ! type of nu data (polynomial or tabular)
     integer :: NC     ! number of polynomial coefficients
     integer :: NR     ! number of interpolation regions
-    integer :: NE     ! number of energies 
+    integer :: NE     ! number of energies
     integer :: NPCR   ! number of delayed neutron precursor groups
     integer :: LED    ! location of energy distribution locators
     integer :: LDIS   ! location of all energy distributions
@@ -809,7 +809,7 @@ contains
 
     LED  = JXS(10)
 
-    ! Loop over all reactions 
+    ! Loop over all reactions
     do i = 1, NXS(5)
       rxn => nuc % reactions(i+1) ! skip over elastic scattering
       rxn % has_energy_dist = .true.
@@ -840,7 +840,7 @@ contains
 
     integer :: LDIS   ! location of all energy distributions
     integer :: LNW    ! location of next energy distribution if multiple
-    integer :: LAW    ! secondary energy distribution law   
+    integer :: LAW    ! secondary energy distribution law
     integer :: NR     ! number of interpolation regions
     integer :: NE     ! number of incoming energies
     integer :: IDAT   ! location of first energy distribution for given MT
@@ -934,6 +934,7 @@ contains
     integer :: NEa   ! number of energies for Watt 'a'
     integer :: NRb   ! number of interpolation regions for Watt 'b'
     integer :: NEb   ! number of energies for Watt 'b'
+    real(8), allocatable :: L(:)  ! locations of distributions for each Ein
 
     ! initialize length
     length = 0
@@ -958,6 +959,22 @@ contains
       ! Continuous tabular distribution
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      ! Before progressing, check to see if data set uses L(I) values
+      ! in a way inconsistent with the current form of the ACE Format Guide
+      ! (MCNP5 Manual, Vol 3)
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      do i = 1,NE
+        ! Now check to see if L(i) is equal to any other entries
+        ! If so, then we must exit
+        if (count(L == L(i)) > 1) then
+          message = "Invalid usage of L(I) in ACE data; &
+                    &Consider using more recent data set."
+          call fatal_error()
+        end if
+      end do
+      deallocate(L)
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
         ! determine length
@@ -1000,6 +1017,22 @@ contains
       ! Kalbach-Mann correlated scattering
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      ! Before progressing, check to see if data set uses L(I) values
+      ! in a way inconsistent with the current form of the ACE Format Guide
+      ! (MCNP5 Manual, Vol 3)
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      do i = 1,NE
+        ! Now check to see if L(i) is equal to any other entries
+        ! If so, then we must exit
+        if (count(L == L(i)) > 1) then
+          message = "Invalid usage of L(I) in ACE data; &
+                    &Consider using more recent data set."
+          call fatal_error()
+        end if
+      end do
+      deallocate(L)
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
         NP = int(XSS(lc + length + 2))
@@ -1014,6 +1047,22 @@ contains
       ! Correlated energy and angle distribution
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      ! Before progressing, check to see if data set uses L(I) values
+      ! in a way inconsistent with the current form of the ACE Format Guide
+      ! (MCNP5 Manual, Vol 3)
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      do i = 1,NE
+        ! Now check to see if L(i) is equal to any other entries
+        ! If so, then we must exit
+        if (count(L == L(i)) > 1) then
+          message = "Invalid usage of L(I) in ACE data; &
+                    &Consider using more recent data set."
+          call fatal_error()
+        end if
+      end do
+      deallocate(L)
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
         ! outgoing energy distribution
@@ -1046,6 +1095,22 @@ contains
       ! Laboratory energy-angle law
       NR  = int(XSS(lc + 1))
       NE  = int(XSS(lc + 2 + 2*NR))
+      ! Before progressing, check to see if data set uses L(I) values
+      ! in a way inconsistent with the current form of the ACE Format Guide
+      ! (MCNP5 Manual, Vol 3)
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      do i = 1,NE
+        ! Now check to see if L(i) is equal to any other entries
+        ! If so, then we must exit
+        if (count(L == L(i)) > 1) then
+          message = "Invalid usage of L(I) in ACE data; &
+                    &Consider using more recent data set."
+          call fatal_error()
+        end if
+      end do
+      deallocate(L)
+      ! Continue with finding data length
       NMU = int(XSS(lc + 4 + 2*NR + 2*NE))
       length = 4 + 2*(NR + NE + NMU)
 
@@ -1188,7 +1253,7 @@ contains
     integer :: NMU    ! number of outgoing angles
     integer :: JXS4   ! location of elastic energy table
 
-    ! read secondary energy mode for inelastic scattering and check
+    ! read secondary energy mode for inelastic scattering
     table % secondary_mode = NXS(7)
     if (table % secondary_mode /= SAB_SECONDARY_EQUAL .and. &
          table % secondary_mode /= SAB_SECONDARY_SKEWED) then

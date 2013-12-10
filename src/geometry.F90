@@ -252,7 +252,6 @@ contains
             ! to find the index of the particle coordinates to within 4 cells.
             ! The (b, y) basis is used to pick the right cell from the set of 4.
             xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
-            !write(*, *) 'xyz = ', xyz
             a = xyz(2) - xyz(1) / sqrt(3.0)
             i_x = floor(xyz(1) / (sqrt(3.0) * lat % width(1)))
             x_rem = modulo(xyz(1), sqrt(3.0) * lat % width(1))
@@ -261,7 +260,6 @@ contains
             y_rem = a_rem + x_rem/sqrt(3.0)
             b_rem = y_rem/2.0 + sqrt(3.0)*x_rem/2.0
             n_rings = lat % dimension(1)
-            !write(*, *) 'x_rem =', y_rem
 
             ! Add offset to indecies (the center cell is (i_x, i_a) = (0, 0) but
             ! the array is offset so that the indecies never go below 1).
@@ -870,10 +868,10 @@ contains
 ! CROSS_LATTICE moves a particle into a new lattice element
 !===============================================================================
 
-  subroutine cross_lattice(p, lattice_crossed)
+  subroutine cross_lattice(p, lattice_translation)
 
     type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: lattice_crossed
+    integer,        intent(in)    :: lattice_translation(3)
 
     integer :: i_x, i_y, i_z ! indices in lattice
     integer :: n_x, n_y, n_z ! size of lattice
@@ -897,38 +895,16 @@ contains
       y0 = lat % width(2) * 0.5_8
       if (lat % n_dimension == 3) z0 = lat % width(3) * 0.5_8
 
-      select case (lattice_crossed)
-      case (LATTICE_LEFT)
-        ! Move particle to left element
-        p % coord % lattice_x = p % coord % lattice_x - 1
-        p % coord % xyz(1) = x0
+      ! Move particle to correct cell and adjust coordinates.
+      p % coord % lattice_x = p % coord % lattice_x + lattice_translation(1)
+      p % coord % xyz(1) = -1 * lattice_translation(1) * x0
+      p % coord % lattice_y = p % coord % lattice_y + lattice_translation(2)
+      p % coord % xyz(2) = -1 * lattice_translation(2) * y0
+      if (lat % n_dimension == 3) then
+        p % coord % lattice_y = p % coord % lattice_z + lattice_translation(3)
+        p % coord % xyz(3) = -1 * lattice_translation(3) * z0
+      end if
 
-      case (LATTICE_RIGHT)
-        ! Move particle to right element
-        p % coord % lattice_x = p % coord % lattice_x + 1
-        p % coord % xyz(1) = -x0
-
-      case (LATTICE_BACK)
-        ! Move particle to bottom element
-        p % coord % lattice_y = p % coord % lattice_y - 1
-        p % coord % xyz(2) = y0
-
-      case (LATTICE_FRONT)
-        ! Move particle to top element
-        p % coord % lattice_y = p % coord % lattice_y + 1
-        p % coord % xyz(2) = -y0
-
-      case (LATTICE_BOTTOM)
-        ! Move particle to bottom element
-        p % coord % lattice_z = p % coord % lattice_z - 1
-        p % coord % xyz(3) = z0
-
-      case (LATTICE_TOP)
-        ! Move particle to top element
-        p % coord % lattice_z = p % coord % lattice_z + 1
-        p % coord % xyz(3) = -z0
-
-      end select
     elseif (lat % type == LATTICE_HEX) then
       ! TODO: Add hex lattice support
     end if
@@ -991,12 +967,12 @@ contains
 ! that has a parent cell, also include the surfaces of the edge of the universe.
 !===============================================================================
 
-  subroutine distance_to_boundary(p, dist, surface_crossed, lattice_crossed)
+  subroutine distance_to_boundary(p, dist, surface_crossed, lattice_translation)
 
     type(Particle), intent(inout) :: p
     real(8),        intent(out)   :: dist
     integer,        intent(out)   :: surface_crossed
-    integer,        intent(out)   :: lattice_crossed
+    integer,        intent(out)   :: lattice_translation(3)
 
     integer :: i            ! index for surface in cell
     integer :: index_surf   ! index in surfaces array (with sign)
@@ -1018,7 +994,7 @@ contains
 
     ! inialize distance to infinity (huge)
     dist = INFINITY
-    lattice_crossed = NONE
+    lattice_translation = (/0, 0, 0/)
     nullify(final_coord)
 
     ! Get pointer to top-level coordinates
@@ -1456,7 +1432,7 @@ contains
           if (abs(d - dist)/dist >= FP_PRECISION) then
             dist = d
             surface_crossed = -cl % surfaces(i)
-            lattice_crossed = NONE
+            lattice_translation = (/0, 0, 0/)
             final_coord => coord
           end if
         end if
@@ -1498,9 +1474,9 @@ contains
             if (abs(d - dist)/dist >= FP_REL_PRECISION) then
               dist = d
               if (u > 0) then
-                lattice_crossed = LATTICE_RIGHT
+                lattice_translation = (/ 1, 0, 0 /)
               else
-                lattice_crossed = LATTICE_LEFT
+                lattice_translation = (/ -1, 0, 0 /)
               end if
               final_coord => coord
             end if
@@ -1519,9 +1495,9 @@ contains
             if (abs(d - dist)/dist >= FP_REL_PRECISION) then
               dist = d
               if (v > 0) then
-                lattice_crossed = LATTICE_FRONT
+                lattice_translation = (/ 0, 1, 0 /)
               else
-                lattice_crossed = LATTICE_BACK
+                lattice_translation = (/ 0, -1, 0 /)
               end if
               final_coord => coord
             end if
@@ -1543,9 +1519,9 @@ contains
               if (abs(d - dist)/dist >= FP_REL_PRECISION) then
                 dist = d
                 if (w > 0) then
-                  lattice_crossed = LATTICE_TOP
+                  lattice_translation = (/ 0, 0, 1 /)
                 else
-                  lattice_crossed = LATTICE_BOTTOM
+                  lattice_translation = (/ 0, 0, -1 /)
                 end if
                 final_coord => coord
               end if
@@ -1553,7 +1529,77 @@ contains
           end if
 
         elseif (lat % type == LATTICE_HEX) then
-          ! TODO: Add hex lattice support
+!          ! Copy local coordinates.
+!          x = coord % xyz(1)
+!          y = coord % xyz(2)
+!          z = coord % xyz(3)
+!
+!          ! Compute skewed coordinates and velocities.
+!          b = y/2.0 + sqrt(3.0)*x/2.0
+!          v_b = v/2.0 - sqrt(3.0)*u/2.0
+!
+!          ! Upper right and lower left sides.
+!          edge = sign(lat % width(1), v_b)
+!          if (abs(b - edge) < FP_PRECISION) then
+!            d = INFINITY
+!          else if (v_b == ZERO) then
+!            d = INFINITY
+!          else
+!            d = (edge - b)/v_b
+!
+!          if (d < dist) then
+!            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+!              dist = d
+!              if (v_b > 0) then
+!                lattice_translation = (/1, 0, 0/)
+!              else
+!                lattice_translation = (/-1, 0, 0/)
+!              end if
+!              final_coord => coord
+!            end if
+!          end if
+!
+!          ! Lower right and upper left sides.
+!          edge = sign(lat % width(1), v_b)
+!          if (abs(b - edge) < FP_PRECISION) then
+!            d = INFINITY
+!          else if (v_b == ZERO) then
+!            d = INFINITY
+!          else
+!            d = (edge - b)/v_b
+!
+!          if (d < dist) then
+!            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+!              dist = d
+!              if (v_b > 0) then
+!                lattice_translation = (/1, 0, 0/)
+!              else
+!                lattice_translation = (/-1, 0, 0/)
+!              end if
+!              final_coord => coord
+!            end if
+!
+!          ! Upper and lower sides.
+!          edge = sign(lat % width(1), v)
+!          if (abs(y - edge) < FP_PRECISION) then
+!            d = INFINITY
+!          else if (v == ZERO) then
+!            d = INFINITY
+!          else
+!            d = (edge - y)/v
+!
+!          if (d < dist) then
+!            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+!              dist = d
+!              if (v > 0) then
+!                lattice_translation = (/0, 1, 0/)
+!              else
+!                lattice_translation = (/0, -1, 0/)
+!              end if
+!              final_coord => coord
+!            end if
+!          end if
+!          ! Top and bottom sides.
         end if
       end if
 

@@ -89,10 +89,16 @@ contains
       else
         d_collision = -log(prn()) / material_xs % total
       end if
-
+      !if (p%id == 140) then
+      !print *,'d_boundary:',d_boundary
+      !print *,'d_collision:',d_collision
+      !end if
+      
       ! Select smaller of the two distances
       distance = min(d_boundary, d_collision)
-
+      !if (p%id == 140) then
+      !print *,distance
+      !end if
       ! Advance particle
       coord => p % coord0
       do while (associated(coord))
@@ -165,6 +171,7 @@ contains
 
         ! Save coordinates for tallying purposes
         p % last_xyz = p % coord0 % xyz
+        p % track_xyz = p % coord0 % xyz
 
         ! Set last material to none since cross sections will need to be
         ! re-evaluated
@@ -438,6 +445,7 @@ contains
 
       ! Set previous coordinate going slightly past surface crossing
       p % last_xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
+      p % track_xyz = p % last_xyz
 
       ! Diagnostic message
       if (verbosity >= 10 .or. trace) then
@@ -446,7 +454,8 @@ contains
       end if
       return
     end if
-
+    
+    p % track_xyz = p % coord0 % xyz + TINY_BIT * p % coord0 % uvw
     ! ==========================================================================
     ! SEARCH NEIGHBOR LISTS FOR NEXT CELL
 

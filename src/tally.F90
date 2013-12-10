@@ -3,7 +3,8 @@ module tally
   use ace_header,       only: Reaction
   use constants
   use error,            only: fatal_error
-  use geometry,         only: distribcell_offset
+  use geometry,         only: distribcell_offset, simple_cell_contains
+  use geometry_header
   use global
   use math,             only: t_percentile, calc_pn
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
@@ -75,7 +76,7 @@ contains
       ! =======================================================================
       ! DETERMINE SCORING BIN COMBINATION
 
-      call get_scoring_bins(p, i_tally, found_bin)
+      call get_scoring_bins(p, i_tally, found_bin, .true.)
       if (.not. found_bin) cycle
 
       ! =======================================================================
@@ -342,6 +343,11 @@ contains
 
           end select
 
+              print *,'t % id:', t%id
+              print *,'score:', score
+              print *,'p%id:',p%id
+              print *,'p%last_xyz:',p%last_xyz
+              print *,'p%coord0%xyz:',p%coord0%xyz
           ! Add score to tally
 !$omp critical
           t % results(score_index, filter_index) % value = &
@@ -761,7 +767,7 @@ contains
 
   subroutine score_tracklength_tally(p, distance)
 
-    type(Particle), intent(in) :: p
+    type(Particle), intent(inout) :: p
     real(8),        intent(in) :: distance
 
     integer :: i
@@ -784,6 +790,8 @@ contains
     type(TallyObject), pointer, save :: t => null()
     type(Material),    pointer, save :: mat => null()
     type(Reaction),    pointer, save :: rxn => null()
+    type(Cell), pointer ,save :: c => null()
+    
 !$omp threadprivate(t, mat, rxn)
 
     ! Determine track-length estimate of flux
@@ -1030,6 +1038,14 @@ contains
             ! Determine scoring bin index
             score_index = (k - 1)*t % n_score_bins + j
 
+              print *,'scoring tracklength tally'
+              print *,'t % id:', t%id
+              print *,'score:', score
+              print *,'p%id:',p%id
+              print *,'p%coord0%xyz:',p%coord0%xyz
+              print *,'p%coord%xyz:',p%coord%xyz
+              print *,'p%last_xyz:',p%last_xyz
+              
             ! Add score to tally
 !$omp critical
             t % results(score_index, filter_index) % value = &
@@ -1609,11 +1625,12 @@ contains
 ! for a tally based on the particle's current attributes.
 !===============================================================================
 
-  subroutine get_scoring_bins(p, i_tally, found_bin)
+  subroutine get_scoring_bins(p, i_tally, found_bin, analog)
 
     type(Particle), intent(in)  :: p
     integer,        intent(in)  :: i_tally
     logical,        intent(out) :: found_bin
+    logical, optional, intent(in) :: analog
 
     integer :: i ! loop index for filters
     integer :: j ! secondary loop index
@@ -1676,9 +1693,14 @@ contains
         ! Progress through the geometry, checking which cell/univ/lattice the particle is in
         ! If it is in a given cell/univ/lattice, sum the offsets for all cells in the filter and enter that cell/univ/lattice
         ! Quit once we can go no deeper
-        
-        p_fake = p
-        p_fake % coord => p_fake % coord0
+  
+        if (present(analog) .and. analog) then
+          p_fake % coord => p_fake % coord0    
+        else 
+          call p_fake % initialize()
+          p_fake % coord % xyz = p % track_xyz 
+          p_fake % coord % uvw = p % coord % uvw    
+        end if 
         offset = 0
         found = .false.
         matching_bins(i) = NO_BIN_FOUND

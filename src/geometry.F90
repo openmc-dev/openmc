@@ -171,7 +171,11 @@ contains
 
       ! get pointer to cell
       c => cells(index_cell)
-
+        !if (p%id == 140) then
+        !print *,'FIND_CELL c%id:',c%id
+        !print *,'p%coord0%xyz:',p%coord0%xyz
+        !print *,'p%coord%xyz:',p%coord%xyz
+        !end if
       if (simple_cell_contains(c, p)) then
         ! Set cell on this level
         p % coord % cell = index_cell
@@ -502,7 +506,9 @@ contains
     type(LocalCoord), pointer, save :: coord => null()
     type(LocalCoord), pointer, save :: final_coord => null()
 !$omp threadprivate(cl, surf, lat, coord, final_coord)
-
+    !if (p%id == 140) then
+    !print *,'Entered'
+    !end if
     ! inialize distance to infinity (huge)
     dist = INFINITY
     lattice_crossed = NONE
@@ -1328,22 +1334,28 @@ contains
     do i = 1, n
       ! select cells based on whether we are searching a universe or a provided
       ! list of cells (this would be for lists of neighbor cells)
-      !print *,'loop i:',i
-      !print *,'loop n:',n
-      !print *,'loop univ%id:',univ%id
-      !print *,'loop size(univ%cells):',size(univ%cells)
-      !print *,'loop univ%cells(i):',univ%cells(i)
+      if (p%id == 153) then
+      print *,'loop i:',i
+      print *,'loop n:',n
+      print *,'loop univ%id:',univ%id
+      print *,'loop size(univ%cells):',size(univ%cells)
+      print *,'loop univ%cells(i):',univ%cells(i)
+      end if
       index_cell = univ % cells(i)
       
       ! get pointer to cell
       c => cells(index_cell)
-
+      if (p%id == 153) then
+        print *,'c%id:',c%id
+        print *,'p%coord0%xyz:',p%coord0%xyz
+        print *,'p%coord%xyz:',p%coord%xyz
+      end if
       if (simple_cell_contains(c, p)) then
         ! Set cell on this level
         p % coord % cell = index_cell
         
-        ! Show cell information on trace
-        if (verbosity >= 10 .or. trace) then
+        
+        if (p%id == 153) then
           message = "    Entering cell " // trim(to_str(c % id))
           call write_message()
         end if
@@ -1361,6 +1373,9 @@ contains
           !print *,'cells%id:',cells(k)%id
           if (c % id == cells(k) % id) then
             found = .true.
+        if (p%id == 153) then
+           print *,'FOUND!'
+           endif
           end if
         end do
         
@@ -1398,18 +1413,19 @@ contains
             p % coord % rotated = .true.
           end if
 
-      !print *,'pre i:',i
-      !print *,'pre n:',n
-      !print *,'pre univ%id:',univ%id
-      !print *,'pre size(univ%cells):',size(univ%cells)
-      !print *,'pre univ%cells(i):',univ%cells(i)
+      if (p%id == 153) then
+      print *,'pre i:',i
+      print *,'pre n:',n
+      print *,'pre univ%id:',univ%id
+      print *,'pre size(univ%cells):',size(univ%cells)
+      print *,'pre univ%cells(i):',univ%cells(i)
+      end if
           call distribcell_offset(p, search_cells, found, offset)
       !print *,'post i:',i
       !print *,'post n:',n
       !print *,'post univ%id:',univ%id
       !print *,'post size(univ%cells):',size(univ%cells)
       !print *,'post univ%cells(i):',univ%cells(i)
-
         elseif (c % type == CELL_LATTICE) then
           ! ====================================================================
           ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
@@ -1470,6 +1486,7 @@ contains
               ! Reset surface and advance particle a tiny bit
               p % surface = NONE
               p % coord % xyz = xyz
+              print *,'UNEXPECTED CALL FOR LATTICE_EDGE'
               call distribcell_offset(p, search_cells, found, offset)
 
             else
@@ -1536,14 +1553,17 @@ contains
               ! need to know what index the cell is in the master array
               k = search_cells(j)
               offset = offset + lat % offset(k,i_x,i_y,i_z)
-              !print *,'search_cells(j):',search_cells(j)
-              !print *,'k:',k
-              !print *,'c%id:',c%id
-              !print *,'lat%id:',lat%id
-              !print *,'offset:',offset
-              !print *,'i_x:',i_x
-              !print *,'i_y:',i_y
-              !print *,'lat % offset(k,i_x,i_y,i_z):',lat % offset(k,i_x,i_y,i_z)
+              
+             if (p%id == 153) then
+              print *,'search_cells(j):',search_cells(j)
+              print *,'k:',k
+              print *,'c%id:',c%id
+              print *,'lat%id:',lat%id
+              print *,'offset:',offset
+              print *,'i_x:',i_x
+              print *,'i_y:',i_y
+              print *,'lat % offset(k,i_x,i_y,i_z):',lat % offset(k,i_x,i_y,i_z)
+              end if
             end do
   
             call distribcell_offset(p, search_cells, found, offset)

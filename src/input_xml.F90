@@ -635,8 +635,8 @@ contains
       if (check_for_node(node_sp, "source_write")) then
         call get_node_value(node_sp, "source_write", temp_str)
         call lower_case(temp_str)
-        if (trim(temp_str) == 'true' .or. &
-             trim(temp_str) == '1') source_separate = .true.
+        if (trim(temp_str) == 'false' .or. &
+             trim(temp_str) == '0') source_write = .false.
       end if
     else
       ! If no <state_point> tag was present, by default write state point at

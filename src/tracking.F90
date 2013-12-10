@@ -26,14 +26,14 @@ contains
 
     type(Particle), intent(inout) :: p
 
-    integer :: surface_crossed ! surface which particle is on
-    integer :: lattice_crossed ! lattice boundary which particle crossed
-    integer :: last_cell       ! most recent cell particle was in
-    integer :: n_event         ! number of collisions/crossings
-    real(8) :: d_boundary      ! distance to nearest boundary
-    real(8) :: d_collision     ! sampled distance to collision
-    real(8) :: distance        ! distance particle travels
-    logical :: found_cell      ! found cell which particle is in?
+    integer :: surface_crossed        ! surface which particle is on
+    integer :: lattice_translation(3) ! in-lattice translation vector
+    integer :: last_cell              ! most recent cell particle was in
+    integer :: n_event                ! number of collisions/crossings
+    real(8) :: d_boundary             ! distance to nearest boundary
+    real(8) :: d_collision            ! sampled distance to collision
+    real(8) :: distance               ! distance particle travels
+    logical :: found_cell             ! found cell which particle is in?
     type(LocalCoord), pointer, save :: coord => null()
 !$omp threadprivate(coord)
 
@@ -88,7 +88,8 @@ contains
       if (p % material /= p % last_material) call calculate_xs(p)
 
       ! Find the distance to the nearest boundary
-      call distance_to_boundary(p, d_boundary, surface_crossed, lattice_crossed)
+      call distance_to_boundary(p, d_boundary, surface_crossed, &
+           &lattice_translation)
 
       ! Sample a distance to collision
       if (material_xs % total == ZERO) then
@@ -124,10 +125,10 @@ contains
 
         last_cell = p % coord % cell
         p % coord % cell = NONE
-        if (lattice_crossed /= NONE) then
+        if (any(lattice_translation /= (/0, 0, 0/))) then
           ! Particle crosses lattice boundary
           p % surface = NONE
-          call cross_lattice(p, lattice_crossed)
+          call cross_lattice(p, lattice_translation)
           p % event = EVENT_LATTICE
         else
           ! Particle crosses surface

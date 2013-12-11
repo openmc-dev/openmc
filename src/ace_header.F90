@@ -16,7 +16,7 @@ module ace_header
     integer, allocatable :: type(:)     ! type of distribution
     integer, allocatable :: location(:) ! location of each table
     real(8), allocatable :: data(:)     ! angular distribution data
-    
+
     ! Type-Bound procedures
     contains
       procedure :: clear => distangle_clear ! Deallocates DistAngle
@@ -35,7 +35,7 @@ module ace_header
     ! For reactions that may have multiple energy distributions such as (n.2n),
     ! this pointer allows multiple laws to be stored
     type(DistEnergy), pointer :: next => null()
-    
+
     ! Type-Bound procedures
     contains
       procedure :: clear => distenergy_clear ! Deallocates DistEnergy
@@ -57,7 +57,7 @@ module ace_header
     logical :: has_energy_dist         ! Energy distribution present?
     type(DistAngle)           :: adist ! Secondary angular distribution
     type(DistEnergy), pointer :: edist => null() ! Secondary energy distribution
-    
+
     ! Type-Bound procedures
     contains
       procedure :: clear => reaction_clear ! Deallocates Reaction
@@ -76,7 +76,7 @@ module ace_header
     logical :: multiply_smooth ! multiply by smooth cross section?
     real(8), allocatable :: energy(:)   ! incident energies
     real(8), allocatable :: prob(:,:,:) ! actual probabibility tables
-    
+
     ! Type-Bound procedures
     contains
       procedure :: clear => urrdata_clear ! Deallocates UrrData
@@ -84,14 +84,14 @@ module ace_header
 
 !===============================================================================
 ! GRPTRANSFER contains probability tables for the unresolved resonance range.
-!===============================================================================  
+!===============================================================================
 
   type GrpTransfer
     integer :: gmin = 0                 ! Minimum possible outgoing group
     integer :: gmax = 0                 ! Maximum possible outgoing group
     real(8), allocatable :: outgoing(:,:) ! Outgoing transfer probabilities
                                           ! Dimension of (moments, gmin:gmax)
-    
+
     ! Type-Bound procedures
     contains
       procedure :: clear => grptransfer_clear ! Deallocates UrrData
@@ -122,11 +122,11 @@ module ace_header
     real(8), allocatable :: nu_fission(:) ! neutron production
     real(8), allocatable :: absorption(:) ! absorption (MT > 100)
     real(8), allocatable :: heating(:)    ! heating
-    
+
     ! Microscopic integrated scattering data for use only with
     ! integrated scattering tallies
     real(8), allocatable :: int_scatt_Ein(:)       ! Incoming energy grid
-    type(GrpTransfer), allocatable :: int_scatt(:) ! Dimension is incoming energy
+    type(GrpTransfer), allocatable :: int_scatt(:) ! Dimension is number of Ein
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -157,7 +157,7 @@ module ace_header
     ! Reactions
     integer :: n_reaction ! # of reactions
     type(Reaction), pointer :: reactions(:) => null()
-    
+
     ! Type-Bound procedures
     contains
       procedure :: clear => nuclide_clear ! Deallocates Nuclide
@@ -167,7 +167,7 @@ module ace_header
 ! SALPHABETA contains S(a,b) data for thermal neutron scattering, typically off
 ! of light isotopes such as water, graphite, Be, etc
 !===============================================================================
-     
+
   type SAlphaBeta
     character(10) :: name ! name of table, e.g. lwtr.10t
     integer       :: zaid ! Z and A identifier, e.g. 6012 for Carbon-12
@@ -184,7 +184,7 @@ module ace_header
     integer :: n_inelastic_mu    ! # of outgoing angles for inelastic
     integer :: secondary_mode    ! secondary mode (equal/skewed)
     real(8), allocatable :: inelastic_e_in(:)
-    real(8), allocatable :: inelastic_sigma(:) 
+    real(8), allocatable :: inelastic_sigma(:)
     real(8), allocatable :: inelastic_e_out(:,:)
     real(8), allocatable :: inelastic_mu(:,:,:)
 
@@ -195,6 +195,11 @@ module ace_header
     real(8), allocatable :: elastic_e_in(:)
     real(8), allocatable :: elastic_P(:)
     real(8), allocatable :: elastic_mu(:,:)
+
+    ! Microscopic integrated scattering data for use only with
+    ! integrated scattering tallies
+    real(8), allocatable :: int_scatt_Ein(:)       ! Incoming energy grid
+    type(GrpTransfer), allocatable :: int_scatt(:) ! Dimension is number of Ein
   end type SAlphaBeta
 
 !===============================================================================
@@ -239,7 +244,7 @@ module ace_header
 
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
-    
+
   end type NuclideMicroXS
 
 !===============================================================================
@@ -254,140 +259,140 @@ module ace_header
     real(8) :: fission       ! macroscopic fission xs
     real(8) :: nu_fission    ! macroscopic production xs
     real(8) :: kappa_fission ! macroscopic energy-released from fission
-    
+
   end type MaterialMacroXS
 
   contains
 
 !===============================================================================
 ! DISTANGLE_CLEAR resets and deallocates data in Reaction.
-!===============================================================================    
-  
+!===============================================================================
+
     subroutine distangle_clear(this)
-      
+
       class(DistAngle), intent(inout) :: this ! The DistAngle object to clear
-      
+
       if (allocated(this % energy)) &
            deallocate(this % energy, this % type, this % location, this % data)
-      
-    end subroutine distangle_clear    
+
+    end subroutine distangle_clear
 
 !===============================================================================
 ! DISTENERGY_CLEAR resets and deallocates data in DistEnergy.
-!===============================================================================    
-  
+!===============================================================================
+
     recursive subroutine distenergy_clear(this)
-      
+
       class(DistEnergy), intent(inout) :: this ! The DistEnergy object to clear
-      
+
       ! Clear p_valid
       call this % p_valid % clear()
-      
+
       if (allocated(this % data)) &
            deallocate(this % data)
-        
+
       if (associated(this % next)) then
         ! recursively clear this item
         call this % next % clear()
         deallocate(this % next)
       end if
-      
+
     end subroutine distenergy_clear
-    
+
 !===============================================================================
 ! REACTION_CLEAR resets and deallocates data in Reaction.
-!===============================================================================    
-  
+!===============================================================================
+
     subroutine reaction_clear(this)
-      
+
       class(Reaction), intent(inout) :: this ! The Reaction object to clear
-      
+
       if (allocated(this % sigma)) &
            deallocate(this % sigma)
-      
+
       if (associated(this % edist)) then
         call this % edist % clear()
         deallocate(this % edist)
       end if
-        
+
       call this % adist % clear()
-      
-    end subroutine reaction_clear    
-    
+
+    end subroutine reaction_clear
+
 !===============================================================================
 ! URRDATA_CLEAR resets and deallocates data in Reaction.
-!===============================================================================    
-  
+!===============================================================================
+
     subroutine urrdata_clear(this)
-      
+
       class(UrrData), intent(inout) :: this ! The UrrData object to clear
-      
+
       if (allocated(this % energy)) &
            deallocate(this % energy, this % prob)
-      
-    end subroutine urrdata_clear   
-    
+
+    end subroutine urrdata_clear
+
 !===============================================================================
 ! GRPTRANSFER_CLEAR resets and deallocates data in Reaction.
-!===============================================================================    
-  
+!===============================================================================
+
     subroutine grptransfer_clear(this)
-      
+
       class(GrpTransfer), intent(inout) :: this ! GrpTransfer object to clear
-      
+
       if (allocated(this % outgoing)) &
         deallocate(this % outgoing)
       this % gmin = 0
-      this % gmax = 0         
-      
-    end subroutine grptransfer_clear   
+      this % gmax = 0
+
+    end subroutine grptransfer_clear
 
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide.
-!===============================================================================    
-  
+!===============================================================================
+
     subroutine nuclide_clear(this)
-      
+
       class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
-      
+
       integer :: i ! Loop counter
-      
+
       if (allocated(this % grid_index)) &
            deallocate(this % grid_index)
-      
+
       if (allocated(this % energy)) &
            deallocate(this % total, this % elastic, this % fission,  &
           this % nu_fission, this % absorption)
       if (allocated(this % heating)) &
            deallocate(this % heating)
-      
+
       if (allocated(this % index_fission)) &
            deallocate(this % index_fission)
-        
+
       if (allocated(this % nu_t_data)) &
            deallocate(this % nu_t_data)
-        
+
       if (allocated(this % nu_p_data)) &
            deallocate(this % nu_p_data)
-        
+
       if (allocated(this % nu_d_data)) &
            deallocate(this % nu_d_data)
-        
+
       if (allocated(this % nu_d_precursor_data)) &
            deallocate(this % nu_d_precursor_data)
-        
+
       if (associated(this % nu_d_edist)) then
         do i = 1, size(this % nu_d_edist)
           call this % nu_d_edist(i) % clear()
         end do
         deallocate(this % nu_d_edist)
       end if
-      
+
       if (associated(this % urr_data)) then
         call this % urr_data % clear()
         deallocate(this % urr_data)
       end if
-      
+
       if (allocated(this % int_scatt_Ein)) then
         deallocate(this % int_scatt_Ein)
       end if
@@ -398,14 +403,14 @@ module ace_header
         end do
         deallocate(this % int_scatt)
       end if
-      
+
       if (associated(this % reactions)) then
         do i = 1, size(this % reactions)
           call this % reactions(i) % clear()
         end do
         deallocate(this % reactions)
       end if
-      
-    end subroutine nuclide_clear    
+
+    end subroutine nuclide_clear
 
 end module ace_header

@@ -226,7 +226,7 @@ contains
                 call tally_analog_int_pn(p % event_nuclide, score_index, &
                   filter_index - &
                   t % matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                  t % scatt_order(j), last_wgt, p % E, t % results)
+                  t % scatt_order(j), last_wgt, p % last_E, t % results)
                 end if
             end if
 
@@ -2148,15 +2148,25 @@ contains
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
       int_scatt => sab % int_scatt
       int_scatt_Ein => sab % int_scatt_Ein
-      ! Find the grid index of integrated scattering data to look for
-      i_grid = binary_search(int_scatt_Ein, size(int_scatt_Ein), Ein)
+      ! Find the grid index and interpolant of integrated scattering data
+      if (Ein <= int_scatt_Ein(1)) then
+        i_grid = 1
+        f = ZERO
+      else if (Ein >= int_scatt_Ein(size(int_scatt_Ein))) then
+        i_grid = size(int_scatt_Ein)
+        f = ONE
+      else
+        i_grid = binary_search(int_scatt_Ein, size(int_scatt_Ein), Ein)
+        f = (Ein - int_scatt_Ein(i_grid)) / &
+          (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
+      end if
     else
       ! Normal scattering (non-S(a,b))
       ! Set up pointers
       nuc => nuclides(i_nuclide)
       int_scatt => nuc % int_scatt
       int_scatt_Ein => nuc % int_scatt_Ein
-      ! Find the grid index of integrated scattering data to look for
+      ! Find the grid index and interpolant of integrated scattering data
       i_grid = micro_xs(i_nuclide) % index_grid
       if (i_grid + integrated_scatt_groups <= size(int_scatt_Ein)) then
         i_grid = binary_search(int_scatt_Ein(i_grid: &
@@ -2167,11 +2177,11 @@ contains
                                size(int_scatt_Ein) - i_grid + 1, Ein) + &
                  i_grid - 1
       end if
+      f = (Ein - int_scatt_Ein(i_grid)) / &
+          (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
     end if
 
-    ! Set up interpolation factor, and perform some FLOP-reducing multiplication
-    f = (Ein - int_scatt_Ein(i_grid)) / &
-      (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
+    ! Perform some FLOP-reducing multiplication
     one_f = (ONE - f) * wgt
     f = f * wgt
 
@@ -2235,8 +2245,19 @@ contains
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
       int_scatt => sab % int_scatt
       int_scatt_Ein => sab % int_scatt_Ein
-      ! Find the grid index of integrated scattering data to look for
-      i_grid = binary_search(int_scatt_Ein, size(int_scatt_Ein), Ein)
+      ! Find the grid index and interpolant of integrated scattering data
+      if (Ein <= int_scatt_Ein(1)) then
+        i_grid = 1
+        f = ZERO
+      else if (Ein >= int_scatt_Ein(size(int_scatt_Ein))) then
+        i_grid = size(int_scatt_Ein)
+        f = ONE
+      else
+        i_grid = binary_search(int_scatt_Ein, size(int_scatt_Ein), Ein)
+        f = (Ein - int_scatt_Ein(i_grid)) / &
+          (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
+      end if
+      ! Get our sigS
       sigS = micro_xs(i_nuclide) % elastic
     else
       ! Normal scattering (non-S(a,b))
@@ -2244,7 +2265,7 @@ contains
       nuc => nuclides(i_nuclide)
       int_scatt => nuc % int_scatt
       int_scatt_Ein => nuc % int_scatt_Ein
-      ! Find the grid index of integrated scattering data to look for
+      ! Find the grid index and interpolant of integrated scattering data
       i_grid = micro_xs(i_nuclide) % index_grid
       if (i_grid + integrated_scatt_groups <= size(int_scatt_Ein)) then
         i_grid = binary_search(int_scatt_Ein(i_grid: &
@@ -2255,13 +2276,13 @@ contains
                                size(int_scatt_Ein) - i_grid + 1, Ein) + &
                  i_grid - 1
       end if
+      f = (Ein - int_scatt_Ein(i_grid)) / &
+          (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
       ! Get our sigS
-      sigS   = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
+      sigS = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
     end if
 
-    ! Set up interpolation factor, and perform some FLOP-reducing multiplication
-    f = (Ein - int_scatt_Ein(i_grid)) / &
-      (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
+    ! Perform some FLOP-reducing multiplication
     one_f = (ONE - f) * sigS * N_flux
     f = f * sigS * N_flux
 

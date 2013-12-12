@@ -1,6 +1,6 @@
 module tally
 
-  use ace_header,       only: Reaction
+  use ace_header,       only: Reaction, GrpTransfer
   use constants
   use error,            only: fatal_error
   use global
@@ -39,7 +39,7 @@ contains
     integer :: j                    ! loop index for scoring bins
     integer :: k                    ! loop index for nuclide bins
     integer :: n                    ! loop index for scattering order
-    integer :: l                    ! scoring bin loop index, allowing for changing 
+    integer :: l                    ! scoring bin loop index, allowing for changing
                                     ! position during the loop
     integer :: filter_index         ! single index for single bin
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
@@ -82,7 +82,7 @@ contains
 
       ! Determine scoring index for this filter combination
       filter_index = sum((t % matching_bins - 1) * t % stride) + 1
-      
+
       ! Check for nuclide bins
       k = 0
       NUCLIDE_LOOP: do while (k < t % n_nuclide_bins)
@@ -160,7 +160,7 @@ contains
 
             score = last_wgt
 
-          case (SCORE_NU_SCATTER) 
+          case (SCORE_NU_SCATTER)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
 
@@ -169,7 +169,7 @@ contains
             ! reaction with neutrons in the exit channel
 
             score = wgt
-            
+
           case (SCORE_SCATTER_N)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -193,14 +193,14 @@ contains
                 score_index = score_index + 1
                 ! get the score and tally it
                 score = last_wgt * calc_pn(n, mu)
-                
+
                 t % results(score_index, filter_index) % value = &
                   t % results(score_index, filter_index) % value + score
               end do
             end if
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP
-          
+
           case (SCORE_INTSCATT_PN)
             ! Skip any event where the particle didn't scatter
             if (p % event == EVENT_SCATTER) then
@@ -216,7 +216,7 @@ contains
                   score_index = score_index + 1
                   ! get the score and tally it
                   score = last_wgt * calc_pn(n, mu)
-                  
+
                   t % results(score_index, filter_index) % value = &
                     t % results(score_index, filter_index) % value + score
                 end do
@@ -226,13 +226,13 @@ contains
                 call tally_analog_int_pn(p % event_nuclide, score_index, &
                   filter_index - &
                   t % matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                  t % scatt_order(j), last_wgt, t % results)
+                  t % scatt_order(j), last_wgt, p % E, t % results)
                 end if
             end if
-            
+
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP
-          
+
           case (SCORE_TRANSPORT)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -328,7 +328,7 @@ contains
 
               end if
             end if
-          
+
           case (SCORE_KAPPA_FISSION)
             if (survival_biasing) then
               ! No fission events occur if survival biasing is on -- need to
@@ -338,7 +338,7 @@ contains
               score = p % absorb_wgt * &
                       micro_xs(p % event_nuclide) % kappa_fission / &
                       micro_xs(p % event_nuclide) % absorption
-              
+
             else
               ! Skip any non-fission events
               if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
@@ -346,7 +346,7 @@ contains
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for
               ! the fission energy production rate
-              
+
               n = nuclides(p % event_nuclide) % index_fission(1)
               score = last_wgt * &
                 nuclides(p % event_nuclide) % reactions(n) % Q_value
@@ -548,7 +548,7 @@ contains
             j = j + 1
             ! determine what type of score bin
             score_bin = t % score_bins(j)
-            
+
             ! Determine scoring bin index
             score_index = (k - 1)*t % n_score_bins + j
 
@@ -571,13 +571,13 @@ contains
                 score = (micro_xs(i_nuclide) % total - &
                      micro_xs(i_nuclide) % absorption) * &
                      atom_density * flux
-              
+
               case (SCORE_INTSCATT_PN)
                 call tally_micro_int_pn(i_nuclide, score_index, filter_index, &
-                  t % scatt_order(j), atom_density * flux, t % results)
+                  t % scatt_order(j), atom_density * flux, p % E, t % results)
                 j = j + t % scatt_order(j)
                 cycle SCORE_LOOP
-              
+
               case (SCORE_ABSORPTION)
                 ! Absorption cross section is pre-calculated
                 score = micro_xs(i_nuclide) % absorption * &
@@ -662,11 +662,11 @@ contains
               case (SCORE_INTSCATT_PN)
                 mat => materials(p % material)
                 call tally_macro_int_pn(mat, score_index, filter_index, &
-                  t % scatt_order(j), flux, t % results)
-                
+                  t % scatt_order(j), flux, p % E, t % results)
+
                 j = j + t % scatt_order(j)
                 cycle SCORE_LOOP
-              
+
               case (SCORE_ABSORPTION)
                 ! Absorption cross section is pre-calculated
                 score = material_xs % absorption * flux
@@ -701,7 +701,7 @@ contains
                   do l = 1, mat % n_nuclides
                     ! Get atom density
                     atom_density = mat % atom_density(l)
-                    
+
                     ! Get index in nuclides array
                     i_nuc = mat % nuclide(l)
 
@@ -816,7 +816,7 @@ contains
         ! is in the nuclides array
         score_index = (i_nuclide - 1)*t % n_score_bins + j
 
-        ! Determine macroscopic nuclide cross section 
+        ! Determine macroscopic nuclide cross section
         select case(score_bin)
         case (SCORE_FLUX)
           score = flux
@@ -827,14 +827,14 @@ contains
         case (SCORE_SCATTER)
           score = (micro_xs(i_nuclide) % total - &
                micro_xs(i_nuclide) % absorption) * atom_density * flux
-        
-        case (SCORE_INTSCATT_PN)          
+
+        case (SCORE_INTSCATT_PN)
           call tally_micro_int_pn(i_nuclide, score_index, filter_index, &
-            t % scatt_order(j), atom_density * flux, t % results)
-          
+            t % scatt_order(j), atom_density * flux, p % E, t % results)
+
           j = j + t % scatt_order(j)
           cycle SCORE_LOOP
-        
+
         case (SCORE_ABSORPTION)
           score = micro_xs(i_nuclide) % absorption * atom_density * flux
 
@@ -855,7 +855,7 @@ contains
           ! sections that are used often (e.g. n2n, ngamma, etc. for depletion),
           ! it might make sense to optimize this section or pre-calculate cross
           ! sections
-          
+
           if (score_bin > 1) then
             ! Set default score
             score = ZERO
@@ -912,7 +912,7 @@ contains
       ! is in the nuclides array
       score_index = n_nuclides_total*t % n_score_bins + j
 
-      ! Determine macroscopic material cross section 
+      ! Determine macroscopic material cross section
       select case(score_bin)
       case (SCORE_FLUX)
         score = flux
@@ -926,11 +926,11 @@ contains
       case (SCORE_INTSCATT_PN)
         mat => materials(p % material)
         call tally_macro_int_pn(mat, score_index, filter_index, &
-          t % scatt_order(j), flux, t % results)
-        
+          t % scatt_order(j), flux, p % E, t % results)
+
         j = j + t % scatt_order(j)
         cycle MATERIAL_SCORE_LOOP
-      
+
       case (SCORE_ABSORPTION)
         score = material_xs % absorption * flux
 
@@ -950,7 +950,7 @@ contains
         ! Any other cross section has to be calculated on-the-fly. This is
         ! somewhat costly since it requires a loop over each nuclide in a
         ! material and each reaction in the nuclide
-        
+
         if (score_bin > 1) then
           ! Set default score
           score = ZERO
@@ -1246,12 +1246,12 @@ contains
               j = j + 1
               ! determine what type of score bin
               score_bin = t % score_bins(j)
-              
+
               ! Determine scoring bin index
               score_index = (b - 1)*t % n_score_bins + j
 
               if (i_nuclide > 0) then
-                ! Determine macroscopic nuclide cross section 
+                ! Determine macroscopic nuclide cross section
                 select case(score_bin)
                 case (SCORE_FLUX)
                   score = flux
@@ -1265,8 +1265,8 @@ contains
                 case (SCORE_INTSCATT_PN)
                   call tally_micro_int_pn(i_nuclide, score_index, &
                     filter_index, t % scatt_order(j), atom_density * flux, &
-                    t % results)
-                  
+                    p % E, t % results)
+
                   j = j + t % scatt_order(j)
                   cycle SCORE_LOOP
                 case (SCORE_ABSORPTION)
@@ -1289,7 +1289,7 @@ contains
                 end select
 
               else
-                ! Determine macroscopic material cross section 
+                ! Determine macroscopic material cross section
                 select case(score_bin)
                 case (SCORE_FLUX)
                   score = flux
@@ -1300,8 +1300,8 @@ contains
                 case (SCORE_INTSCATT_PN)
                   mat => materials(p % material)
                   call tally_macro_int_pn(mat, score_index, filter_index, &
-                    t % scatt_order(j), flux, t % results)
-                  
+                    t % scatt_order(j), flux, p % E, t % results)
+
                   j = j + t % scatt_order(j)
                   cycle SCORE_LOOP
                 case (SCORE_ABSORPTION)
@@ -1436,7 +1436,7 @@ contains
             t % matching_bins(i) = binary_search(t % filters(i) % real_bins, &
                  n + 1, p % E)
           end if
-          
+
         else
           ! Set to the first outgoing energy bin, specifically for the case
           ! of int-scatt-pn (with no effect on the cases)
@@ -2115,166 +2115,206 @@ contains
 
 !===============================================================================
 ! TALLY_ANALOG_INT_PN determines the scattering moments which were
-! previously calculated with a pre-processor such as NDPP for analog 
+! previously calculated with a pre-processor such as NDPP for analog
 ! tallies
 !===============================================================================
 
   subroutine tally_analog_int_pn(i_nuclide, score_index, filter_index, t_order, &
-    wgt, results)
-    
-    integer, intent(in)    :: i_nuclide        ! index into nuclides array
-    integer, intent(in)    :: score_index ! dim = 1 starting index in results
-    integer, intent(in)    :: filter_index     ! dim = 2 starting index (incoming E filter)
-    integer, intent(in)    :: t_order          ! # of scattering orders to tally
-    real(8), intent(in)    :: wgt              ! particle weight
+    wgt, Ein, results)
+
+    integer, intent(in) :: i_nuclide        ! index into nuclides array
+    integer, intent(in) :: score_index      ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index     ! dim = 2 starting index (incoming E filter)
+    integer, intent(in) :: t_order          ! # of scattering orders to tally
+    real(8), intent(in) :: wgt              ! particle weight
+    real(8), intent(in) :: Ein              ! Incoming energy
     type(TallyResult), intent(inout) :: results(:,:)     ! Tally results storage
-    
+
     integer :: g        ! outgoing energy group index
     integer :: g_filter ! outgoing energy group index
     integer :: i_grid   ! index on nuclide energy grid
     real(8) :: f        ! interp factor on nuclide energy grid
     real(8) :: one_f    ! (ONE - f)
-    type(Nuclide), pointer :: nuc ! Working nuclide
-    real(8) :: Ein      ! incoming energy
-    
-    nuc => nuclides(i_nuclide)
-    
-    Ein = micro_xs(i_nuclide) % last_E
-    i_grid = micro_xs(i_nuclide) % index_grid
-    if (i_grid + integrated_scatt_groups <= size(nuc % int_scatt_Ein)) then
-      i_grid = binary_search(nuc % int_scatt_Ein(i_grid: &
-                             i_grid + integrated_scatt_groups), &
-                             integrated_scatt_groups, Ein) + i_grid - 1
-    else     
-      i_grid = binary_search(nuc % int_scatt_Ein(i_grid:), &
-                             size(nuc % int_scatt_Ein) - i_grid + 1, Ein) + &
-               i_grid - 1
+    type(Nuclide), pointer     :: nuc ! Working nuclide
+    type(SAlphaBeta), pointer  :: sab ! The working s(a,b) table
+    type(GrpTransfer), pointer :: int_scatt(:) => null() ! data to tally
+    real(8), pointer :: int_scatt_Ein(:) => null() ! Energy grid of data to tally
+
+    ! Find if this nuclide is in the range for S(a,b) treatment
+    ! cross_section % calculate_sab_xs(...) would have figured this out
+    ! for us already, by placing i_sab in micro_xs(i) % index_sab
+    if (micro_xs(i_nuclide) % index_sab /= 0) then
+      ! We have a collision in the S(a,b) range
+      sab => sab_tables(micro_xs(i_nuclide) % index_sab)
+      int_scatt => sab % int_scatt
+      int_scatt_Ein => sab % int_scatt_Ein
+      ! Find the grid index of integrated scattering data to look for
+      i_grid = binary_search(int_scatt_Ein, size(int_scatt_Ein), Ein)
+    else
+      ! Normal scattering (non-S(a,b))
+      ! Set up pointers
+      nuc => nuclides(i_nuclide)
+      int_scatt => nuc % int_scatt
+      int_scatt_Ein => nuc % int_scatt_Ein
+      ! Find the grid index of integrated scattering data to look for
+      i_grid = micro_xs(i_nuclide) % index_grid
+      if (i_grid + integrated_scatt_groups <= size(int_scatt_Ein)) then
+        i_grid = binary_search(int_scatt_Ein(i_grid: &
+                               i_grid + integrated_scatt_groups), &
+                               integrated_scatt_groups, Ein) + i_grid - 1
+      else
+        i_grid = binary_search(int_scatt_Ein(i_grid:), &
+                               size(int_scatt_Ein) - i_grid + 1, Ein) + &
+                 i_grid - 1
+      end if
     end if
 
-    f = micro_xs(i_nuclide) % interp_factor
+    ! Set up interpolation factor, and perform some FLOP-reducing multiplication
+    f = (Ein - int_scatt_Ein(i_grid)) / &
+      (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
     one_f = (ONE - f) * wgt
     f = f * wgt
-    
+
     ! Add the contribution from the lower score
-    if (nuc % int_scatt(i_grid) % gmin /= 0) then
-      do g = nuc % int_scatt(i_grid) % gmin, &
-             nuc % int_scatt(i_grid) % gmax
+    if (int_scatt(i_grid) % gmin /= 0) then
+      do g = int_scatt(i_grid) % gmin, &
+             int_scatt(i_grid) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
-          nuc % int_scatt(i_grid) % outgoing(:, g) * one_f
+          int_scatt(i_grid) % outgoing(:, g) * one_f
       end do
     end if
-    
+
     ! Now add the contribution from the higher score
-    if (nuc % int_scatt(i_grid + 1) % gmin /= 0) then
-      do g = nuc % int_scatt(i_grid + 1) % gmin, &
-             nuc % int_scatt(i_grid + 1) % gmax
+    if (int_scatt(i_grid + 1) % gmin /= 0) then
+      do g = int_scatt(i_grid + 1) % gmin, &
+             int_scatt(i_grid + 1) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
-          nuc % int_scatt(i_grid + 1) % outgoing(:, g) * f
+          int_scatt(i_grid + 1) % outgoing(:, g) * f
       end do
     end if
-    
+
   end subroutine tally_analog_int_pn
 
 !===============================================================================
 ! TALLY_MICRO_INT_PN determines the microscopic scattering moments which were
-! previously calculated with a pre-processor such as NDPP for tracklength 
+! previously calculated with a pre-processor such as NDPP for tracklength
 ! tallies
 !===============================================================================
 
   subroutine tally_micro_int_pn(i_nuclide, score_index, filter_index, t_order, &
-    N_flux, results)
-    
-    integer, intent(in)    :: i_nuclide        ! index into nuclides array
-    integer, intent(in)    :: score_index      ! dim = 1 starting index in results
-    integer, intent(in)    :: filter_index     ! dim = 2 starting index (incoming E filter)
-    integer, intent(in)    :: t_order          ! # of scattering orders to tally
-    real(8), intent(in)    :: N_flux           ! atom_density * flux
+    N_flux, Ein, results)
+
+    integer, intent(in) :: i_nuclide        ! index into nuclides array
+    integer, intent(in) :: score_index      ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index     ! dim = 2 starting index (incoming E filter)
+    integer, intent(in) :: t_order          ! # of scattering orders to tally
+    real(8), intent(in) :: N_flux           ! atom_density * flux
+    real(8), intent(in) :: Ein              ! Incoming energy
     type(TallyResult), intent(inout) :: results(:,:)     ! Tally results storage
-    
+
     integer :: g        ! outgoing energy group index
     integer :: g_filter ! outgoing energy group index
     integer :: i_grid   ! index on nuclide energy grid
     real(8) :: f        ! interp factor on nuclide energy grid
     real(8) :: one_f    ! (ONE - f) * sigS
     real(8) :: sigS     ! scattering cross-section (tot - abs)
-    type(Nuclide), pointer :: nuc ! The working nuclide
-    real(8) :: Ein      ! incoming energy
-    
-    nuc => nuclides(i_nuclide)
+    type(Nuclide), pointer     :: nuc ! The working nuclide
+    type(SAlphaBeta), pointer  :: sab ! The working s(a,b) table
+    type(GrpTransfer), pointer :: int_scatt(:) => null() ! data to tally
+    real(8), pointer :: int_scatt_Ein(:) => null() ! Energy grid of data to tally
 
-    ! Find the grid index of integrated scattering data to look for
-    Ein = micro_xs(i_nuclide) % last_E
-    i_grid = micro_xs(i_nuclide) % index_grid
-    if (i_grid + integrated_scatt_groups <= size(nuc % int_scatt_Ein)) then
-      i_grid = binary_search(nuc % int_scatt_Ein(i_grid: &
-                             i_grid + integrated_scatt_groups), &
-                             integrated_scatt_groups, Ein) + i_grid - 1
+    ! Find if this nuclide is in the range for S(a,b) treatment
+    ! cross_section % calculate_sab_xs(...) would have figured this out
+    ! for us already, by placing i_sab in micro_xs(i) % index_sab
+    if (micro_xs(i_nuclide) % index_sab /= 0) then
+      ! We have a collision in the S(a,b) range
+      sab => sab_tables(micro_xs(i_nuclide) % index_sab)
+      int_scatt => sab % int_scatt
+      int_scatt_Ein => sab % int_scatt_Ein
+      ! Find the grid index of integrated scattering data to look for
+      i_grid = binary_search(int_scatt_Ein, size(int_scatt_Ein), Ein)
+      sigS = micro_xs(i_nuclide) % elastic
     else
-      i_grid = binary_search(nuc % int_scatt_Ein(i_grid:), &
-                             size(nuc % int_scatt_Ein) - i_grid + 1, Ein) + &
-               i_grid - 1
+      ! Normal scattering (non-S(a,b))
+      ! Set up pointers
+      nuc => nuclides(i_nuclide)
+      int_scatt => nuc % int_scatt
+      int_scatt_Ein => nuc % int_scatt_Ein
+      ! Find the grid index of integrated scattering data to look for
+      i_grid = micro_xs(i_nuclide) % index_grid
+      if (i_grid + integrated_scatt_groups <= size(int_scatt_Ein)) then
+        i_grid = binary_search(int_scatt_Ein(i_grid: &
+                               i_grid + integrated_scatt_groups), &
+                               integrated_scatt_groups, Ein) + i_grid - 1
+      else
+        i_grid = binary_search(int_scatt_Ein(i_grid:), &
+                               size(int_scatt_Ein) - i_grid + 1, Ein) + &
+                 i_grid - 1
+      end if
+      ! Get our sigS
+      sigS   = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
     end if
-    
-    ! Get our sigS
-    sigS   = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
 
-    f = micro_xs(i_nuclide) % interp_factor
+    ! Set up interpolation factor, and perform some FLOP-reducing multiplication
+    f = (Ein - int_scatt_Ein(i_grid)) / &
+      (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
     one_f = (ONE - f) * sigS * N_flux
     f = f * sigS * N_flux
-    
+
     ! Add the contribution from the lower score
-    if (nuc % int_scatt(i_grid) % gmin /= 0) then
-      do g = nuc % int_scatt(i_grid) % gmin, &
-             nuc % int_scatt(i_grid) % gmax
+    if (int_scatt(i_grid) % gmin /= 0) then
+      do g = int_scatt(i_grid) % gmin, &
+             int_scatt(i_grid) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
-          nuc % int_scatt(i_grid) % outgoing(:, g) * one_f
+          int_scatt(i_grid) % outgoing(:, g) * one_f
       end do
     end if
-    
+
     ! Now add the contribution from the higher score
-    if (nuc % int_scatt(i_grid + 1) % gmin /= 0) then
-      do g = nuc % int_scatt(i_grid + 1) % gmin, &
-             nuc % int_scatt(i_grid + 1) % gmax
+    if (int_scatt(i_grid + 1) % gmin /= 0) then
+      do g = int_scatt(i_grid + 1) % gmin, &
+             int_scatt(i_grid + 1) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
-          nuc % int_scatt(i_grid + 1) % outgoing(:, g) * f
+          int_scatt(i_grid + 1) % outgoing(:, g) * f
       end do
     end if
-   
+
   end subroutine tally_micro_int_pn
-  
+
 !===============================================================================
 ! TALLY_MACRO_INT_PN determines the macroscopic scattering moments which were
-! previously calculated with a pre-processor such as NDPP for tracklength 
+! previously calculated with a pre-processor such as NDPP for tracklength
 ! tallies
 !===============================================================================
 
   subroutine tally_macro_int_pn(mat, score_index, filter_index, t_order, flux, &
-    results)
-    
+    Ein, results)
+
     type(Material), pointer, intent(in) :: mat ! Working material
-    integer, intent(in)    :: score_index      ! dim = 1 starting index in results
-    integer, intent(in)    :: filter_index     ! dim = 2 starting index (incoming E filter)
-    integer, intent(in)    :: t_order          ! # of scattering orders to tally
-    real(8), intent(in)    :: flux             ! flux
+    integer, intent(in) :: score_index      ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index     ! dim = 2 starting index (incoming E filter)
+    integer, intent(in) :: t_order          ! # of scattering orders to tally
+    real(8), intent(in) :: flux             ! flux
+    real(8), intent(in) :: Ein              ! Incoming energy
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
-    
+
     integer :: i      ! index in nuclide list of materials
     integer :: i_nuclide ! index in nuclides array of our working nuclide
     real(8) :: N_flux ! atom_density * flux
-    
+
     do i = 1, mat % n_nuclides
       i_nuclide = mat % nuclide(i)
       N_flux = mat % atom_density(i) * flux
       call tally_micro_int_pn(i_nuclide, score_index, filter_index, t_order, &
-        N_flux, results)
+        N_flux, Ein, results)
     end do
   end subroutine tally_macro_int_pn
 

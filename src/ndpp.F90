@@ -92,8 +92,7 @@ contains
     inquire(FILE=integrated_scatt_lib, EXIST=file_exists)
     if (.not. file_exists) then
        ! Could not find ndpp_lib.xml file
-       message = "NDPP XML file '" // trim(integrated_scatt_lib) // &
-            "' does not exist!"
+       message = "NDPP XML file provided in ndpp.xml does not exist!"
        call fatal_error()
     end if
 
@@ -156,12 +155,7 @@ contains
 
     ! Check the tallies to ensure that the energy group structure, scattering
     ! order requested are valid (i.e., groups match, orders are less than in
-    ! the library), and check set all tallies with tracklength estimators and
-    ! int-scatter-pn scores to analog so that S(a,b) will be handled.
-    !!! It would be nice if this loop checked to see if tallies with nuclide
-    ! material, and energyin filters had anything to do with S(a,b) before we set them to
-    ! analog. Mesh, cell, universe, ..., are out of luck since its quite a bit more
-    ! difficult to guarantee there will not be s(a,b) scattering in these tallies
+    ! the library).
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)
       j = 0
@@ -214,19 +208,6 @@ contains
               message = "NDPP Library group structure does not match that " // &
                         "requested in tally!"
               call fatal_error()
-            end if
-
-            ! Check to see if the model has S(a,b) data.
-            if (n_sab_tables > 0) then
-              ! If it does, we can't use tracklength estimators yet with
-              ! int-scatter-pn.  So set the estimator for this tally to analog.
-              if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-                t % estimator = ESTIMATOR_ANALOG
-                message = "Setting the estimator of Tally " // &
-                          trim(adjustl(to_str(i))) // " to analog due to the" // &
-                          " presence of S(a,b) tables."
-                call warning()
-              end if
             end if
 
             exit SCORE_LOOP ! we found what we want!
@@ -407,7 +388,7 @@ contains
         chi_present, thin_tol
       ! Finally, mu_bins, which we can also discard (since we are only doing
       ! Legendre tallying)
-      read(UNIT=in, FMT=*)
+      read(UNIT=in, FMT=*) mu_bins
 
       ! set scatt_order to the right number for allocating the outgoing array
       if (scatt_type == SCATT_TYPE_LEGENDRE) scatt_order = scatt_order + 1
@@ -457,7 +438,7 @@ contains
           sab % int_scatt(iE) % gmax = gmax
         end if
 
-        if ((gmin > ZERO) .and. (gmax > ZERO)) then
+        if ((gmin > 0) .and. (gmax > 0)) then
           ! Then we can allocate the space. Do it to integrated_scatt_order
           ! since this is the largest order requested in the tallies.
           ! Since we only need to store up to the maximum, we also need to have
@@ -549,7 +530,7 @@ contains
           sab % int_scatt(iE) % gmax = gmax
         end if
 
-        if ((gmin > ZERO) .and. (gmax > ZERO)) then
+        if ((gmin > 0) .and. (gmax > 0)) then
           ! Then we can allocate the space. Do it to integrated_scatt_order
           ! since this is the largest order requested in the tallies.
           ! Since we only need to store up to the maximum, we also need to have

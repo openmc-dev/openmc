@@ -140,9 +140,9 @@ contains
         ! search through the list of nuclides for one which has a matching zaid
         sab => sab_tables(mat % i_sab_tables(k))
 
-        ! Loop through nuclides and find  match
+        ! Loop through nuclides and find match
         FIND_NUCLIDE: do j = 1, mat % n_nuclides
-          if (nuclides(mat % nuclide(j)) % zaid == sab % zaid) then
+          if (any(sab % zaid == nuclides(mat % nuclide(j)) % zaid)) then
             mat % i_sab_nuclides(k) = j
             exit FIND_NUCLIDE
           end if
@@ -186,16 +186,16 @@ contains
           mat % i_sab_tables(m)   = temp_table
         end do SORT_SAB
       end if
-      
+
       ! Deallocate temporary arrays for names of nuclides and S(a,b) tables
       if (allocated(mat % names)) deallocate(mat % names)
       if (allocated(mat % sab_names)) deallocate(mat % sab_names)
 
     end do MATERIAL_LOOP2
-    
+
     ! Avoid some valgrind leak errors
     call already_read % clear()
-    
+
   end subroutine read_xs
 
 !===============================================================================
@@ -278,7 +278,7 @@ contains
       end if
 
       ! Read more header and NXS and JXS
-      read(UNIT=in, FMT=100) comment, mat, & 
+      read(UNIT=in, FMT=100) comment, mat, &
            (zaids(i), awrs(i), i=1,16), NXS, JXS
 100   format(A70,A10/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/4(I7,F11.0)/&
            ,8I9/8I9/8I9/8I9/8I9/8I9)
@@ -302,7 +302,7 @@ contains
            ACCESS='direct', RECL=record_length)
 
       ! Read all header information
-      read(UNIT=in, REC=location) name, awr, kT, date_, & 
+      read(UNIT=in, REC=location) name, awr, kT, date_, &
            comment, mat, (zaids(i), awrs(i), i=1,16), NXS, JXS
 
       ! determine table length
@@ -369,7 +369,15 @@ contains
       sab % name = name
       sab % awr  = awr
       sab % kT   = kT
-      sab % zaid = zaids(1)
+      ! Find sab % n_zaid
+      do i = 1, 16
+        if (zaids(i) == 0) then
+          sab % n_zaid = i - 1
+          exit
+        end if
+      end do
+      allocate(sab % zaid(sab % n_zaid))
+      sab % zaid = zaids(1: sab % n_zaid)
 
       call read_thermal_data(sab)
     end select
@@ -461,7 +469,7 @@ contains
     integer :: LNU    ! type of nu data (polynomial or tabular)
     integer :: NC     ! number of polynomial coefficients
     integer :: NR     ! number of interpolation regions
-    integer :: NE     ! number of energies 
+    integer :: NE     ! number of energies
     integer :: NPCR   ! number of delayed neutron precursor groups
     integer :: LED    ! location of energy distribution locators
     integer :: LDIS   ! location of all energy distributions
@@ -864,7 +872,7 @@ contains
 
     LED  = JXS(10)
 
-    ! Loop over all reactions 
+    ! Loop over all reactions
     do i = 1, NXS(5)
       rxn => nuc % reactions(i+1) ! skip over elastic scattering
       rxn % has_energy_dist = .true.
@@ -895,7 +903,7 @@ contains
 
     integer :: LDIS   ! location of all energy distributions
     integer :: LNW    ! location of next energy distribution if multiple
-    integer :: LAW    ! secondary energy distribution law   
+    integer :: LAW    ! secondary energy distribution law
     integer :: NR     ! number of interpolation regions
     integer :: NE     ! number of incoming energies
     integer :: IDAT   ! location of first energy distribution for given MT

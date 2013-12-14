@@ -1035,6 +1035,8 @@ contains
 
     integer :: size_sab ! memory used by S(a,b) table
     integer :: unit_    ! unit to write to
+    integer :: i ! Loop counter for parsing through sab % zaid
+    integer :: char_count ! Counter for the number of characters on a line
 
     ! set default unit for writing information
     if (present(unit)) then
@@ -1045,7 +1047,29 @@ contains
 
     ! Basic S(a,b) table information
     write(unit_,*) 'S(a,b) Table ' // trim(sab % name)
-    write(unit_,*) '  zaid = ' // trim(to_str(sab % zaid))
+    write(unit_,'(A)',advance="no") ' zaids = '
+    ! Initialize the counter based on the above string
+    char_count = 11
+    do i = 1, sab % n_zaid
+      ! Deal with a line thats too long
+      if (char_count >= 73) then ! 73 = 80 - (5 ZAID chars + 1 space + 1 comma)
+        ! End the line
+        write(unit_,*) ""
+        ! Add 11 leading blanks
+        write(unit_,'(A)', advance="no") " "
+        ! reset the counter to 11
+        char_count = 11
+      end if
+			if (i < sab % n_zaid) then
+        ! Include a comma
+        write(unit_,'(A)',advance="no") trim(to_str(sab % zaid(i))) // ", "
+        char_count = char_count + len(trim(to_str(sab % zaid(i)))) + 2
+      else
+        ! Don't include a comma, since we are all done
+        write(unit_,'(A)',advance="no") trim(to_str(sab % zaid(i)))
+      end if
+		end do
+		write(unit_,*) "" ! Move to next line
     write(unit_,*) '  awr = ' // trim(to_str(sab % awr))
     write(unit_,*) '  kT = ' // trim(to_str(sab % kT))
 

@@ -155,7 +155,8 @@ module constants
   ! Secondary energy mode for S(a,b) inelastic scattering
   integer, parameter :: &
        SAB_SECONDARY_EQUAL  = 0, & ! Equally-likely outgoing energy bins
-       SAB_SECONDARY_SKEWED = 1    ! Skewed outgoing energy bins
+       SAB_SECONDARY_SKEWED = 1, & ! Skewed outgoing energy bins
+       SAB_SECONDARY_CONT   = 2    ! Continuous, linear-linear interpolation
 
   ! Elastic mode for S(a,b) elastic scattering
   integer, parameter :: &

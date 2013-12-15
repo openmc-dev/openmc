@@ -698,7 +698,7 @@ contains
           E = E_1 + (E - E_i1_1) * (E_J - E_1) / (E_i1_J - E_i1_1)
         end if
 
-        ! Find correlated angular distribution for closest outgoing energy bin
+        ! Find angular distribution for closest outgoing energy bin
         if (r1 - c_j < c_j1 - r1) then
           j = j
         else
@@ -708,12 +708,9 @@ contains
         ! Sample outgoing cosine bin
         k = 1 + int(prn() * sab % n_inelastic_mu)
 
-        ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
-        mu_ijk  = sab % inelastic_data(i) % mu(k, j)
-        mu_i1jk = sab % inelastic_data(i) % mu(k, j)
-
-        ! Cosine of angle between incoming and outgoing neutron
-        mu = (ONE - f) * mu_ijk + f * mu_i1jk
+        ! Will use mu from the randomly chosen incoming and closest outgoing
+        ! energy bins
+        mu = sab % inelastic_data(l) % mu(k, j)
 
       else
         message = "Invalid secondary energy mode on S(a,b) table " // &

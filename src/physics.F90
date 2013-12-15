@@ -71,7 +71,7 @@ contains
     ! Add paricle's starting weight to count for normalizing tallies later
     total_weight = total_weight + p % wgt
 
-    ! Force calculation of cross-sections by setting last energy to zero 
+    ! Force calculation of cross-sections by setting last energy to zero
     micro_xs % last_E = ZERO
 
     do while (p % alive)
@@ -207,7 +207,7 @@ contains
     if (verbosity >= 10 .or. trace) then
       message = "    " // trim(reaction_name(p % event_MT)) // " with " // &
            trim(adjustl(nuclides(p % event_nuclide) % name)) // &
-           ". Energy = " // trim(to_str(p % E * 1e6_8)) // " eV." 
+           ". Energy = " // trim(to_str(p % E * 1e6_8)) // " eV."
       call write_message()
     end if
 
@@ -388,7 +388,7 @@ contains
 
           ! add to cumulative probability
           if (nuc % has_partial_fission) then
-            prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) & 
+            prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
                  + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
           else
             prob = prob + micro_xs(i_nuclide) % fission
@@ -503,7 +503,7 @@ contains
         if (i_grid < rxn % threshold) cycle
 
         ! add to cumulative probability
-        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) & 
+        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
              + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
       end do
 
@@ -616,7 +616,7 @@ contains
     integer :: k            ! outgoing cosine bin
     integer :: n_energy_out ! number of outgoing energy bins
     real(8) :: f            ! interpolation factor
-    real(8) :: r            ! used for skewed sampling
+    real(8) :: r            ! used for skewed sampling & continuous
     real(8) :: E            ! outgoing energy
     real(8) :: E_ij         ! outgoing energy j for E_in(i)
     real(8) :: E_i1j        ! outgoing energy j for E_in(i+1)
@@ -625,7 +625,17 @@ contains
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
     real(8) :: prob         ! probability for sampling Bragg edge
     real(8) :: u, v, w      ! directional cosines
-    type(SAlphaBeta), pointer :: sab => null()
+    type(SAlphaBeta), pointer, save :: sab => null()
+    ! Following are needed only for SAB_SECONDARY_CONT scattering
+    integer :: l              ! sampled incoming E bin (is i or i + 1)
+    real(8) :: E_i_1, E_i_J   ! endpoints on outgoing grid i
+    real(8) :: E_i1_1, E_i1_J ! endpoints on outgoing grid i+1
+    real(8) :: E_1, E_J       ! endpoints interpolated between i and i+1
+    real(8) :: E_l_j, E_l_j1  ! adjacent E on outgoing grid l
+    real(8) :: p_l_j, p_l_j1  ! adjacent p on outgoing grid l
+    real(8) :: c_j, c_j1      ! cumulative probability
+    real(8) :: frac           ! interpolation factor on outgoing energy
+    real(8) :: r1             ! RNG for outgoing energy
 
     ! Get pointer to S(a,b) table
     sab => sab_tables(i_sab)
@@ -641,7 +651,7 @@ contains
         f = ZERO
       else
         i = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
-        f = (p%E - sab%elastic_e_in(i)) / & 
+        f = (p%E - sab%elastic_e_in(i)) / &
              (sab%elastic_e_in(i+1) - sab%elastic_e_in(i))
       end if
 
@@ -683,8 +693,7 @@ contains
       E = p % E
 
     else
-      ! Determine number of outgoing energy and angle bins
-      n_energy_out = sab % n_inelastic_e_out
+      ! Perform inelastic calculations
 
       ! Get index and interpolation factor for inelastic grid
       if (p%E < sab % inelastic_e_in(1)) then
@@ -692,66 +701,150 @@ contains
         f = ZERO
       else
         i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
-        f = (p%E - sab%inelastic_e_in(i)) / & 
+        f = (p%E - sab%inelastic_e_in(i)) / &
              (sab%inelastic_e_in(i+1) - sab%inelastic_e_in(i))
       end if
 
       ! Now that we have an incoming energy bin, we need to determine the
       ! outgoing energy bin. This will depend on the "secondary energy
       ! mode". If the mode is 0, then the outgoing energy bin is chosen from a
-      ! set of equally-likely bins. However, if the mode is 1, then the first
+      ! set of equally-likely bins. If the mode is 1, then the first
       ! two and last two bins are skewed to have lower probabilities than the
       ! other bins (0.1 for the first and last bins and 0.4 for the second and
-      ! second to last bins, relative to a normal bin probability of 1)
+      ! second to last bins, relative to a normal bin probability of 1).
+      ! Finally, if the mode is 2, then a continuous distribution (with
+      ! accompanying PDF and CDF is utilized)
 
-      if (sab % secondary_mode == SAB_SECONDARY_EQUAL) then
-        ! All bins equally likely
-        j = 1 + int(prn() * n_energy_out)
-      elseif (sab % secondary_mode == SAB_SECONDARY_SKEWED) then
-        r = prn() * (n_energy_out - 3)
-        if (r > ONE) then
-          ! equally likely N-4 middle bins
-          j = int(r) + 2
-        elseif (r > 0.6) then
-          ! second to last bin has relative probability of 0.4
-          j = n_energy_out - 1
-        elseif (r > 0.5) then
-          ! last bin has relative probability of 0.1
-          j = n_energy_out
-        elseif (r > 0.1) then
-          ! second bin has relative probability of 0.4
-          j = 2
-        else
-          ! first bin has relative probability of 0.1
-          j = 1
+      if ((sab % secondary_mode == SAB_SECONDARY_EQUAL) .or. &
+          (sab % secondary_mode == SAB_SECONDARY_SKEWED)) then
+        if (sab % secondary_mode == SAB_SECONDARY_EQUAL) then
+          ! All bins equally likely
+
+          j = 1 + int(prn() * sab % n_inelastic_e_out)
+        elseif (sab % secondary_mode == SAB_SECONDARY_SKEWED) then
+          ! Distribution skewed away from edge points
+
+          ! Determine number of outgoing energy and angle bins
+          n_energy_out = sab % n_inelastic_e_out
+
+          r = prn() * (n_energy_out - 3)
+          if (r > ONE) then
+            ! equally likely N-4 middle bins
+            j = int(r) + 2
+          elseif (r > 0.6) then
+            ! second to last bin has relative probability of 0.4
+            j = n_energy_out - 1
+          elseif (r > 0.5) then
+            ! last bin has relative probability of 0.1
+            j = n_energy_out
+          elseif (r > 0.1) then
+            ! second bin has relative probability of 0.4
+            j = 2
+          else
+            ! first bin has relative probability of 0.1
+            j = 1
+          end if
         end if
+
+        ! Determine outgoing energy corresponding to E_in(i) and E_in(i+1)
+        E_ij  = sab % inelastic_e_out(j,i)
+        E_i1j = sab % inelastic_e_out(j,i+1)
+
+        ! Outgoing energy
+        E = (1 - f)*E_ij + f*E_i1j
+
+        ! Sample outgoing cosine bin
+        k = 1 + int(prn() * sab % n_inelastic_mu)
+
+        ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
+        mu_ijk  = sab % inelastic_mu(k,j,i)
+        mu_i1jk = sab % inelastic_mu(k,j,i+1)
+
+        ! Cosine of angle between incoming and outgoing neutron
+        mu = (1 - f)*mu_ijk + f*mu_i1jk
+
+      else if (sab % secondary_mode == SAB_SECONDARY_CONT) then
+        ! Continuous secondary energy - this is to be similar to
+        ! Law 61 interpolation on outgoing energy
+
+        ! Sample between ith and (i+1)th bin
+        r = prn()
+        if (f > r) then
+          l = i + 1
+        else
+          l = i
+        end if
+
+        ! Determine endpoints on grid i
+        n_energy_out = sab % inelastic_data(i) % n_e_out
+        E_i_1 = sab % inelastic_data(i) % e_out(1)
+        E_i_J = sab % inelastic_data(i) % e_out(n_energy_out)
+
+        ! Determine endpoints on grid i + 1
+        n_energy_out = sab % inelastic_data(i + 1) % n_e_out
+        E_i1_1 = sab % inelastic_data(i + 1) % e_out(1)
+        E_i1_J = sab % inelastic_data(i + 1) % e_out(n_energy_out)
+
+        E_1 = E_i_1 + f * (E_i1_1 - E_i_1)
+        E_J = E_i_J + f * (E_i1_J - E_i_J)
+
+        ! Determine outgoing energy bin
+        ! (First reset n_energy_out to the right value)
+        n_energy_out = sab % inelastic_data(l) % n_e_out
+        r1 = prn()
+        c_j = sab % inelastic_data(l) % e_out_cdf(1)
+        do j = 1, n_energy_out - 1
+          c_j1 = sab % inelastic_data(l) % e_out_cdf(j + 1)
+          if (r1 < c_j1) exit
+          c_j = c_j1
+        end do
+
+        ! check to make sure k is <= n_energy_out - 1
+        j = min(j, n_energy_out - 1)
+
+        ! Get the data to interpolate between
+        E_l_j = sab % inelastic_data(l) % e_out(j)
+        p_l_j = sab % inelastic_data(l) % e_out_pdf(j)
+
+        ! Next part assumes linear-linear interpolation in standard
+        E_l_j1 = sab % inelastic_data(l) % e_out(j + 1)
+        p_l_j1 = sab % inelastic_data(l) % e_out_pdf(j + 1)
+
+        ! Find secondary energy (variable E)
+        frac = (p_l_j1 - p_l_j) / (E_l_j1 - E_l_j)
+        if (frac == ZERO) then
+          E = E_l_j + (r1 - c_j) / p_l_j
+        else
+          E = E_l_j + (sqrt(max(ZERO, p_l_j * p_l_j + &
+                       TWO * frac * (r1 - c_j))) - p_l_j) / frac
+        end if
+
+        ! Now interpolate between incident energy bins i and i + 1
+        if (l == i) then
+          E = E_1 + (E - E_i_1) * (E_J - E_1) / (E_i_J - E_i_1)
+        else
+          E = E_1 + (E - E_i1_1) * (E_J - E_1) / (E_i1_J - E_i1_1)
+        end if
+
+        ! Find angular distribution for closest outgoing energy bin
+        if (r1 - c_j < c_j1 - r1) then
+          j = j
+        else
+          j = j + 1
+        end if
+
+        ! Sample outgoing cosine bin
+        k = 1 + int(prn() * sab % n_inelastic_mu)
+
+        ! Will use mu from the randomly chosen incoming and closest outgoing
+        ! energy bins
+        mu = sab % inelastic_data(l) % mu(k, j)
+
       else
         message = "Invalid secondary energy mode on S(a,b) table " // &
              trim(sab % name)
-      end if
-
-      ! Determine outgoing energy corresponding to E_in(i) and E_in(i+1)
-      E_ij  = sab % inelastic_e_out(j,i)
-      E_i1j = sab % inelastic_e_out(j,i+1)
-
-      ! Outgoing energy
-      E = (1 - f)*E_ij + f*E_i1j
-
-      ! Sample outgoing cosine bin
-      k = 1 + int(prn() * sab % n_inelastic_mu)
-
-      ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
-      mu_ijk  = sab % inelastic_mu(k,j,i)
-      mu_i1jk = sab % inelastic_mu(k,j,i+1)
-
-      ! Cosine of angle between incoming and outgoing neutron
-      mu = (1 - f)*mu_ijk + f*mu_i1jk
-    end if
-
-    ! copy directional cosines
-    u = p % coord0 % uvw(1)
-    v = p % coord0 % uvw(2)
-    w = p % coord0 % uvw(3)
+      end if  ! (inelastic secondary energy treatment)
+    end if  ! (elastic or inelastic)
 
     ! change direction of particle
     call rotate_angle(u, v, w, mu)
@@ -776,7 +869,7 @@ contains
     type(Nuclide),  pointer :: nuc
     real(8), intent(out)    :: v_target(3)
 
-    real(8) :: u, v, w     ! direction of target 
+    real(8) :: u, v, w     ! direction of target
     real(8) :: kT          ! equilibrium temperature of target in MeV
     real(8) :: alpha       ! probability of sampling f2 over f1
     real(8) :: mu          ! cosine of angle between neutron and target vel
@@ -931,7 +1024,7 @@ contains
       ! Need to use the weight before survival biasing
       nu_t = (p % wgt + p % absorb_wgt) * micro_xs(i_nuclide) % fission / &
            (keff * micro_xs(i_nuclide) % total) * nu_t * weight
-    else 
+    else
       nu_t = p % wgt / keff * nu_t * weight
     end if
     if (prn() > nu_t - int(nu_t)) then
@@ -1107,7 +1200,7 @@ contains
       E_cm = E
 
       ! determine outgoing energy in lab
-      E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) & 
+      E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) &
            / ((A+ONE)*(A+ONE))
 
       ! determine outgoing angle in lab
@@ -1182,7 +1275,7 @@ contains
       r = ONE
     else
       i = binary_search(rxn % adist % energy, n, E)
-      r = (E - rxn % adist % energy(i)) / & 
+      r = (E - rxn % adist % energy(i)) / &
            (rxn % adist % energy(i+1) - rxn % adist % energy(i))
     end if
 
@@ -1312,7 +1405,7 @@ contains
     end if
 
   end subroutine rotate_angle
-    
+
 !===============================================================================
 ! SAMPLE_ENERGY samples an outgoing energy distribution, either for a secondary
 ! neutron from a collision or for a prompt/delayed fission neutron
@@ -1468,7 +1561,7 @@ contains
       ! =======================================================================
       ! CONTINUOUS TABULAR DISTRIBUTION
 
-      ! read number of interpolation regions and incoming energies 
+      ! read number of interpolation regions and incoming energies
       NR  = int(edist % data(1))
       NE  = int(edist % data(2 + 2*NR))
       if (NR == 1) then
@@ -1494,7 +1587,7 @@ contains
         r = ONE
       else
         i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-        r = (E_in - edist%data(lc+i)) / & 
+        r = (E_in - edist%data(lc+i)) / &
              (edist%data(lc+i+1) - edist%data(lc+i))
       end if
 
@@ -1598,7 +1691,7 @@ contains
       ! =======================================================================
       ! MAXWELL FISSION SPECTRUM
 
-      ! read number of interpolation regions and incoming energies 
+      ! read number of interpolation regions and incoming energies
       NR = int(edist % data(1))
       NE = int(edist % data(2 + 2*NR))
 
@@ -1630,7 +1723,7 @@ contains
       ! =======================================================================
       ! EVAPORATION SPECTRUM
 
-      ! read number of interpolation regions and incoming energies 
+      ! read number of interpolation regions and incoming energies
       NR = int(edist % data(1))
       NE = int(edist % data(2 + 2*NR))
 
@@ -1711,7 +1804,7 @@ contains
         call fatal_error()
       end if
 
-      ! read number of interpolation regions and incoming energies 
+      ! read number of interpolation regions and incoming energies
       NR = int(edist % data(1))
       NE = int(edist % data(2 + 2*NR))
       if (NR > 0) then
@@ -1733,7 +1826,7 @@ contains
         r = ONE
       else
         i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-        r = (E_in - edist%data(lc+i)) / & 
+        r = (E_in - edist%data(lc+i)) / &
              (edist%data(lc+i+1) - edist%data(lc+i))
       end if
 
@@ -1864,7 +1957,7 @@ contains
         call fatal_error()
       end if
 
-      ! read number of interpolation regions and incoming energies 
+      ! read number of interpolation regions and incoming energies
       NR = int(edist % data(1))
       NE = int(edist % data(2 + 2*NR))
       if (NR > 0) then
@@ -1886,7 +1979,7 @@ contains
         r = ONE
       else
         i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-        r = (E_in - edist%data(lc+i)) / & 
+        r = (E_in - edist%data(lc+i)) / &
              (edist%data(lc+i+1) - edist%data(lc+i))
       end if
 

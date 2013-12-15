@@ -47,7 +47,7 @@ contains
     if (verbosity >= 10 .or. trace) then
       message = "    " // trim(reaction_name(p % event_MT)) // " with " // &
            trim(adjustl(nuclides(p % event_nuclide) % name)) // &
-           ". Energy = " // trim(to_str(p % E * 1e6_8)) // " eV." 
+           ". Energy = " // trim(to_str(p % E * 1e6_8)) // " eV."
       call write_message()
     end if
 
@@ -158,7 +158,7 @@ contains
         call fatal_error()
       end if
 
-      ! Find atom density 
+      ! Find atom density
       i_nuclide    = mat % nuclide(i)
       atom_density = mat % atom_density(i)
 
@@ -209,7 +209,7 @@ contains
       i_reaction = nuc % index_fission(1)
       return
     end if
-    
+
     ! Get grid index and interpolatoin factor and sample fission cdf
     i_grid = micro_xs(i_nuclide) % index_grid
     f      = micro_xs(i_nuclide) % interp_factor
@@ -226,7 +226,7 @@ contains
       if (i_grid < rxn % threshold) cycle
 
       ! add to cumulative probability
-      prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) & 
+      prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
            + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
 
       ! Create fission bank sites if fission occus
@@ -382,7 +382,7 @@ contains
         if (i_grid < rxn % threshold) cycle
 
         ! add to cumulative probability
-        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) & 
+        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
              + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
       end do
 
@@ -513,7 +513,7 @@ contains
         f = ZERO
       else
         i = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, E)
-        f = (E - sab%elastic_e_in(i)) / & 
+        f = (E - sab%elastic_e_in(i)) / &
              (sab%elastic_e_in(i+1) - sab%elastic_e_in(i))
       end if
 
@@ -563,7 +563,7 @@ contains
         f = ZERO
       else
         i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, E)
-        f = (E - sab%inelastic_e_in(i)) / & 
+        f = (E - sab%inelastic_e_in(i)) / &
              (sab%inelastic_e_in(i+1) - sab%inelastic_e_in(i))
       end if
 
@@ -974,7 +974,7 @@ contains
       E_cm = E
 
       ! determine outgoing energy in lab
-      E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) & 
+      E = E_cm + (E_in + TWO * mu * (A+ONE) * sqrt(E_in * E_cm)) &
            / ((A+ONE)*(A+ONE))
 
       ! determine outgoing angle in lab
@@ -1037,7 +1037,7 @@ contains
       r = ONE
     else
       i = binary_search(rxn % adist % energy, n, E)
-      r = (E - rxn % adist % energy(i)) / & 
+      r = (E - rxn % adist % energy(i)) / &
            (rxn % adist % energy(i+1) - rxn % adist % energy(i))
     end if
 
@@ -1166,7 +1166,7 @@ contains
     end if
 
   end function rotate_angle
-    
+
 !===============================================================================
 ! SAMPLE_ENERGY samples an outgoing energy distribution, either for a secondary
 ! neutron from a collision or for a prompt/delayed fission neutron
@@ -1322,7 +1322,7 @@ contains
       ! =======================================================================
       ! CONTINUOUS TABULAR DISTRIBUTION
 
-      ! read number of interpolation regions and incoming energies 
+      ! read number of interpolation regions and incoming energies
       NR  = int(edist % data(1))
       NE  = int(edist % data(2 + 2*NR))
       if (NR == 1) then
@@ -1348,7 +1348,7 @@ contains
         r = ONE
       else
         i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-        r = (E_in - edist%data(lc+i)) / & 
+        r = (E_in - edist%data(lc+i)) / &
              (edist%data(lc+i+1) - edist%data(lc+i))
       end if
 
@@ -1452,7 +1452,7 @@ contains
       ! =======================================================================
       ! MAXWELL FISSION SPECTRUM
 
-      ! read number of interpolation regions and incoming energies 
+      ! read number of interpolation regions and incoming energies
       NR = int(edist % data(1))
       NE = int(edist % data(2 + 2*NR))
 
@@ -1484,7 +1484,7 @@ contains
       ! =======================================================================
       ! EVAPORATION SPECTRUM
 
-      ! read number of interpolation regions and incoming energies 
+      ! read number of interpolation regions and incoming energies
       NR = int(edist % data(1))
       NE = int(edist % data(2 + 2*NR))
 
@@ -1565,7 +1565,7 @@ contains
         call fatal_error()
       end if
 
-      ! read number of interpolation regions and incoming energies 
+      ! read number of interpolation regions and incoming energies
       NR = int(edist % data(1))
       NE = int(edist % data(2 + 2*NR))
       if (NR > 0) then
@@ -1587,7 +1587,7 @@ contains
         r = ONE
       else
         i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-        r = (E_in - edist%data(lc+i)) / & 
+        r = (E_in - edist%data(lc+i)) / &
              (edist%data(lc+i+1) - edist%data(lc+i))
       end if
 
@@ -1714,11 +1714,11 @@ contains
 
       if (.not. present(mu_out)) then
         ! call write_particle_restart()
-        message = "Law 44 called without giving mu_out as argument."
+        message = "Law 61 called without giving mu_out as argument."
         call fatal_error()
       end if
 
-      ! read number of interpolation regions and incoming energies 
+      ! read number of interpolation regions and incoming energies
       NR = int(edist % data(1))
       NE = int(edist % data(2 + 2*NR))
       if (NR > 0) then
@@ -1740,7 +1740,7 @@ contains
         r = ONE
       else
         i = binary_search(edist % data(lc+1:lc+NE), NE, E_in)
-        r = (E_in - edist%data(lc+i)) / & 
+        r = (E_in - edist%data(lc+i)) / &
              (edist%data(lc+i+1) - edist%data(lc+i))
       end if
 

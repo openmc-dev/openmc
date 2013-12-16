@@ -343,11 +343,11 @@ contains
 
           end select
 
-              print *,'t % id:', t%id
-              print *,'score:', score
-              print *,'p%id:',p%id
-              print *,'p%last_xyz:',p%last_xyz
-              print *,'p%coord0%xyz:',p%coord0%xyz
+              !print *,'t % id:', t%id
+              !print *,'score:', score
+              !print *,'p%id:',p%id
+              !print *,'p%last_xyz:',p%last_xyz
+              !print *,'p%coord0%xyz:',p%coord0%xyz
           ! Add score to tally
 !$omp critical
           t % results(score_index, filter_index) % value = &
@@ -1038,13 +1038,13 @@ contains
             ! Determine scoring bin index
             score_index = (k - 1)*t % n_score_bins + j
 
-              print *,'scoring tracklength tally'
-              print *,'t % id:', t%id
-              print *,'score:', score
-              print *,'p%id:',p%id
-              print *,'p%coord0%xyz:',p%coord0%xyz
-              print *,'p%coord%xyz:',p%coord%xyz
-              print *,'p%last_xyz:',p%last_xyz
+              !print *,'scoring tracklength tally'
+              !print *,'t % id:', t%id
+              !print *,'score:', score
+              !print *,'p%id:',p%id
+              !print *,'p%coord0%xyz:',p%coord0%xyz
+              !print *,'p%coord%xyz:',p%coord%xyz
+              !print *,'p%last_xyz:',p%last_xyz
               
             ! Add score to tally
 !$omp critical

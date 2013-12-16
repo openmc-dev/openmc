@@ -846,6 +846,11 @@ contains
       end if  ! (inelastic secondary energy treatment)
     end if  ! (elastic or inelastic)
 
+    ! copy directional cosines
+    u = p % coord0 % uvw(1)
+    v = p % coord0 % uvw(2)
+    w = p % coord0 % uvw(3)
+
     ! change direction of particle
     call rotate_angle(u, v, w, mu)
     p % coord0 % uvw = (/ u, v, w /)

@@ -78,7 +78,7 @@ Prerequisites
            ./configure --prefix=/opt/hdf5/1.8.11-gnu --enable-fortran \
                        --enable-fortran2003 --enable-parallel
 
-      You may omit '--enable-parallel' if you want to compile HDF5_ in serial.
+      You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
 
     * PETSc_ for CMFD acceleration
 
@@ -93,7 +93,7 @@ Prerequisites
                        --with-fortran-datatypes
 
       The BLAS/LAPACK library is not required to be downloaded and can be linked
-      explicitly (e.g., Intel MLK library).
+      explicitly (e.g., Intel MKL library).
 
     * git_ version control software for obtaining source code
 

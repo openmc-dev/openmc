@@ -71,7 +71,7 @@ class Xsdir(object):
             # Handle continuation lines
             while words[-1] == '+':
                 extraWords = self.f.readline().split()
-                words = words + extraWords
+                words = words[:-1] + extraWords
             assert len(words) >= 7
 
             # Create XsdirTable object and add to line

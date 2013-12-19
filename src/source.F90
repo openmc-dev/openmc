@@ -97,6 +97,7 @@ contains
 
         ! Fill p with needed data
         p % coord0 % xyz = site % xyz
+        p % coord0 % uvw = [ ONE, ZERO, ZERO ]
 
         ! Now search to see if location exists in geometry
         call find_cell(p, found)

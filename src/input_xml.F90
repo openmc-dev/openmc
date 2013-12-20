@@ -2938,7 +2938,19 @@ contains
        end if
 
        ! set filetype, record length, and number of entries
-       listing % filetype = filetype
+       if (check_for_node(node_ace, "filetype")) then
+         temp_str = ''
+         call get_node_value(node_ace, "filetype", temp_str)
+         if (temp_str == 'ascii') then
+           listing % filetype = ASCII
+         else if (temp_str == 'binary') then
+           listing % filetype = BINARY
+         end if
+       else
+         listing % filetype = filetype
+       end if
+
+       ! Set record length and entries for binary files
        if (filetype == BINARY) then
          listing % recl     = recl
          listing % entries  = entries

@@ -1193,7 +1193,7 @@ contains
     integer :: NE_out ! number of outgoing energies
     integer :: NMU    ! number of outgoing angles
     integer :: JXS4   ! location of elastic energy table
-    real(8), allocatable :: LOCC(:) ! Location of inelastic data
+    integer(8), allocatable :: LOCC(:) ! Location of inelastic data
 
     ! read secondary energy mode for inelastic scattering
     table % secondary_mode = NXS(7)
@@ -1250,10 +1250,10 @@ contains
       end do
     else if (table % secondary_mode == SAB_SECONDARY_CONT) then
       ! Get the location pointers to each Ein's DistEnergySAB data
-      LOCC = get_real(NE_in)
+      LOCC = get_int(NE_in)
       ! Get the number of outgoing energies and allocate space accordingly
       do i = 1, NE_in
-        NE_out = XSS(XSS_index + i - 1)
+        NE_out = int(XSS(XSS_index + i - 1))
         table % inelastic_data(i) % n_e_out = NE_out
         allocate(table % inelastic_data(i) % e_out (NE_out))
         allocate(table % inelastic_data(i) % e_out_pdf (NE_out))

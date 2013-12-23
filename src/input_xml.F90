@@ -474,7 +474,8 @@ contains
       allocate(temp_int_array(n_tracks))
       call get_node_array(doc, "track", temp_int_array)
 
-      ! Reshape into track_identifiers -- note automatic array allocation
+      ! Reshape into track_identifiers
+      allocate(track_identifiers(3, n_tracks/3))
       track_identifiers = reshape(temp_int_array, [3, n_tracks/3])
     end if
 

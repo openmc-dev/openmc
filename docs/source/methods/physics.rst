@@ -1363,10 +1363,10 @@ Equi-Probable Outgoing Energies
 
 If the thermal data was processed with :math:`iwt = 1` in NJOY, then the
 outgoing energy spectra is represented in the ACE data as a set of discrete and
-equiprobable outgoing energies.  The procedure to determine the outgoing
-energy and angle is as such. First, the interpolation factor is determined from
+equiprobable outgoing energies.  The procedure to determine the outgoing energy
+and angle is as such. First, the interpolation factor is determined from
 equation :eq:`sab-interpolation-factor`.  Then, an outgoing energy bin is
-sampled from ths uniform distribution and then interpolated between values
+sampled from a uniform distribution and then interpolated between values
 corresponding to neighboring incoming energies:
 
 .. math::

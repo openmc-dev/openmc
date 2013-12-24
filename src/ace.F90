@@ -398,6 +398,7 @@ contains
     type(Nuclide), pointer :: nuc
 
     integer :: NE ! number of energy points for total and elastic cross sections
+    integer :: i  ! index in 0K elastic xs array for this nuclide
 
     ! determine number of energy points
     NE = NXS(3)
@@ -418,6 +419,12 @@ contains
       
       ! Continue reading elastic scattering and heating
       nuc % elastic_0K = get_real(NE)
+
+      ! Negative cross sections result in a CDF that is not monotonically
+      ! increasing. Set all negative xs values to ZERO.
+      do i = 1, nuc % n_grid_0K
+        if (nuc % elastic_0K(i) < ZERO) nuc % elastic_0K(i) = ZERO
+      end do
 
     else ! read in non-0K data
       nuc % n_grid = NE

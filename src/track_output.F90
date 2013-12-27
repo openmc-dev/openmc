@@ -56,6 +56,7 @@ contains
   subroutine finalize_particle_track(p)
     type(Particle), intent(in)  :: p
 
+    integer                  :: length(2)
     character(MAX_FILE_LEN)  :: fname
     type(BinaryOutput)       :: binout
 
@@ -69,7 +70,8 @@ contains
          // '.binary'
 #endif
     call binout % file_create(fname)
-    call binout % write_data(coords, 'coordinates', length=(/3, n_tracks/))
+    length = [3, n_tracks]
+    call binout % write_data(coords, 'coordinates', length=length)
     call binout % file_close()
     deallocate(coords)
   end subroutine finalize_particle_track

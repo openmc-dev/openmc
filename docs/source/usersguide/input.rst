@@ -909,11 +909,11 @@ The ``<tally>`` element accepts the following sub-elements:
       0 and 10. As an example, tallying up to the 2\ :sup:`nd` \ scattering
       moment would be specified as ``<scores> scatter-P2 </scores>``.
 
-    :int-scatter-PN:
+    :ndpp-scatter-PN:
       Tally all of the scattering moments from order 0 to N, where N is the
       Legendre expansion order, but using NDPP libraries instead of analog
       tallying.  Note that the ``<ndpp_library>`` element must be provided
-      in the ``tallies.xml`` file if an ``int-scatter-PN`` score is to be used.
+      in the ``tallies.xml`` file if an ``ndpp-scatter-PN`` score is to be used.
     
     :absorption:
       Total absorption rate. This accounts for all reactions which do not
@@ -991,7 +991,7 @@ tallies. This element should be followed by "true" or "false".
 ``<ndpp_library>`` Element
 --------------------------
 
-In cases where an ``<int-scatter-PN>`` score is requested in any tally,
+In cases where an ``<ndpp-scatter-PN>`` score is requested in any tally,
 the user must provide the location of the ``ndpp_lib.xml`` file produced
 by the NDPP program.  This tag stores the relative or absolute location
 of the ``ndpp_lib.xml`` file to use. 

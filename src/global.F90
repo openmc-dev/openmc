@@ -240,8 +240,6 @@ module global
   type(Timer) :: time_total         ! timer for total run
   type(Timer) :: time_initialize    ! timer for initialization
   type(Timer) :: time_read_xs       ! timer for reading cross sections
-  type(Timer) :: time_read_ndpp     ! timer for reading ndpp 
-                                    ! scattering data produced by ndpp
   type(Timer) :: time_unionize      ! timer for unionizing energy grid
   type(Timer) :: time_bank          ! timer for fission bank synchronization
   type(Timer) :: time_bank_sample   ! timer for fission bank sampling

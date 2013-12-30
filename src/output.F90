@@ -842,11 +842,11 @@ contains
           string = trim(string) // pn_string
         end do
         j = j + n - 1
-      case (SCORE_INTSCATT_PN)
-        pn_string = ' int-scatter'
+      case (SCORE_NDPPSCATT_PN)
+        pn_string = ' ndpp-scatter'
         string = trim(string) // pn_string
         do n = 1, t % scatt_order(j)
-          pn_string = ' int-scatter-' // trim(to_str(n))
+          pn_string = ' ndpp-scatter-' // trim(to_str(n))
           string = trim(string) // pn_string
         end do
         j = j + n - 1
@@ -1652,7 +1652,7 @@ contains
     score_names(abs(SCORE_NU_SCATTER))    = "Scattering Production Rate"
     score_names(abs(SCORE_SCATTER_N))     = ""
     score_names(abs(SCORE_SCATTER_PN))    = ""
-    score_names(abs(SCORE_INTSCATT_PN))   = ""
+    score_names(abs(SCORE_NDPPSCATT_PN))  = ""
     score_names(abs(SCORE_TRANSPORT))     = "Transport Rate"
     score_names(abs(SCORE_N_1N))          = "(n,1n) Rate"
     score_names(abs(SCORE_ABSORPTION))    = "Absorption Rate"
@@ -1813,7 +1813,7 @@ contains
                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
               end do
               k = k + n_order - 1
-            else if (t % score_bins(k) == SCORE_INTSCATT_PN) then
+            else if (t % score_bins(k) == SCORE_NDPPSCATT_PN) then
               score_name = "Scattering Rate"
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
                 repeat(" ", indent), score_name, &

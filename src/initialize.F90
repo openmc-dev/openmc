@@ -103,14 +103,11 @@ contains
       ! Read ACE-format cross sections
       call time_read_xs % start()
       call read_xs()
-      call time_read_xs % stop()
-      
-      if (integrated_scatt) then
+      if (ndpp_scatt) then
         ! Read NDPP-format integrated scattering data
-        call time_read_ndpp % start()
         call read_ndpp_data()
-        call time_read_ndpp % stop()
       end if
+      call time_read_xs % stop()
 
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_UNION) then

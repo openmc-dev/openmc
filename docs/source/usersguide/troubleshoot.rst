@@ -19,25 +19,6 @@ you are using a compiler that does not support type-bound procedures from
 Fortran 2003. This affects any version of gfortran prior to 4.6. Downloading and
 installing the latest gfortran_ compiler should resolve this problem.
 
-Fatal Error: Wrong module version '4' (expected '9') for file 'xml_data_cmfd_t.mod' opened at (1)
-*************************************************************************************************
-
-The `.mod` modules files that are created by gfortran are versioned and
-sometimes are usually not backwards compatible. If gfortran is upgraded and the
-modules files for xml-fortran source files are not deleted, this error may
-occur. To fix this, clear out all module and object files with :program:`make
-distclean` and then recompiling.
-
-Fatal Error: File 'xml_data_cmfd_t.mod' opened at (1) is not a GFORTRAN module file
-***********************************************************************************
-
-When OpenMC compiles, the first thing it needs to do is compile source in the
-xml-fortran subdirectory. If you compiled everything with a compiler other than
-gfortran, performed a :program:`make clean`, and then tried to :program:`make`
-with gfortran, the xml-fortran modules would have been compiled with a different
-compiler. To fix this, try clearing out all module and object files with
-:program:`make distclean` and then recompiling.
-
 gfortran: unrecognized option '-cpp'
 ************************************
 

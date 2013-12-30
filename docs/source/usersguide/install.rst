@@ -71,13 +71,29 @@ Prerequisites
       To compile with support for HDF5_ output (highly recommended), you will
       need to have HDF5 installed on your computer. The installed version will
       need to have been compiled with the same compiler you intend to compile
-      OpenMC with.
+      OpenMC with. HDF5_ must be built with parallel I/O features if you intend
+      to use HDF5_ with MPI. An example of configuring HDF5_ is listed below::
+
+           FC=/opt/mpich/3.0.4-gnu/bin/mpif90 CC=/opt/mpich/3.0.4-gnu/bin/mpicc \
+           ./configure --prefix=/opt/hdf5/1.8.11-gnu --enable-fortran \
+                       --enable-fortran2003 --enable-parallel
+
+      You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
 
     * PETSc_ for CMFD acceleration
 
-      To enable CMFD acceleration, you will need to have PETSc_ installed on
-      your computer. The installed version will need to have been compiled with
-      the same compiler you intend to compile OpenMC with.
+      To enable CMFD acceleration, you will need to have PETSc_ (3.4.2 or higher)
+      installed on your computer. The installed version will need to have been
+      compiled with the same compiler you intend to compile OpenMC with. OpenMC
+      requires PETSc_ to be configured with Fortran datatypes. An example of
+      configuring PETSc_ is listed below::
+
+           ./configure --prefix=/opt/petsc/3.4.2-gnu --download-f-blas-lapack \
+                       --with-mpi-dir=/opt/mpich/3.0.4-gnu/ --with-shared-libraries=0 \
+                       --with-fortran-datatypes
+
+      The BLAS/LAPACK library is not required to be downloaded and can be linked
+      explicitly (e.g., Intel MKL library).
 
     * git_ version control software for obtaining source code
 
@@ -101,6 +117,12 @@ setup, the following command will download the full source code from the GitHub
 repository::
 
     git clone git://github.com/mit-crpg/openmc.git
+
+By default, the cloned repository will be set to the development branch. To
+switch to the source of the latest stable release, run the following commands::
+
+    cd openmc/src
+    git checkout master
 
 .. _GitHub: https://github.com/mit-crpg/openmc
 .. _git: http://git-scm.com
@@ -134,6 +156,10 @@ OPTIMIZE
 MPI
   Enables parallel runs using the Message Passing Interface. The MPI_DIR
   variable should be set to the base directory of the MPI implementation.
+
+OPENMP
+  Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
+  being used must support OpenMP.
 
 HDF5
   Enables HDF5 output in addition to normal screen and text file output. The
@@ -319,6 +345,21 @@ Alternatively, you could run from any directory:
 
 Note that in the latter case, any output files will be placed in the present
 working directory which may be different from ``/home/username/somemodel``.
+
+Command-Line Flags
+------------------
+
+OpenMC accepts the following command line flags:
+
+-g, --geometry-debug   Run in geometry debugging mode, where cell overlaps are
+                       checked for after each move of a particle
+-n, --particles N      Use *N* particles per generation or batch
+-p, --plot             Run in plotting mode
+-r, --restart file     Restart a previous run from a state point or a particle
+                       restart file
+-s, --threads N        Run with *N* OpenMP threads
+-t, --track            Write tracks for all particles
+-v, --version          Show version information
 
 -----------------------------------------------------
 Configuring Input Validation with GNU Emacs nXML mode

@@ -8,10 +8,10 @@ module constants
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
   integer, parameter :: VERSION_MINOR   = 5
-  integer, parameter :: VERSION_RELEASE = 2
+  integer, parameter :: VERSION_RELEASE = 3
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 9
+  integer, parameter :: REVISION_STATEPOINT       = 10
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
 
   ! Binary file types
@@ -44,8 +44,7 @@ module constants
   integer, parameter :: MAX_SAMPLE = 100000
   
   ! Minimum energy before killing a neutron
-  real(8), parameter :: MIN_ENERGY = 1.0e-100_8
-!~   real(8), parameter :: MIN_ENERGY = 1.0e-11_8
+  real(8), parameter :: MIN_ENERGY = 1.0e-11_8
 
   ! Maximum number of words in a single line, length of line, and length of
   ! single word
@@ -53,6 +52,10 @@ module constants
   integer, parameter :: MAX_LINE_LEN = 250
   integer, parameter :: MAX_WORD_LEN = 150
   integer, parameter :: MAX_FILE_LEN = 255
+
+  ! Maximum number of external source spatial resamples to encounter before an
+  ! error is thrown.
+  integer, parameter :: MAX_EXTSRC_RESAMPLES = 10000
 
   ! ============================================================================
   ! PHYSICAL CONSTANTS
@@ -262,8 +265,7 @@ module constants
        EVENT_SURFACE = -2, &
        EVENT_LATTICE = -1, &
        EVENT_SCATTER =  1, &
-       EVENT_ABSORB  =  2, &
-       EVENT_FISSION =  3 
+       EVENT_ABSORB  =  2
 
   ! Tally score type
   integer, parameter :: N_SCORE_TYPES = 15
@@ -274,7 +276,7 @@ module constants
        SCORE_NU_SCATTER    = -4,  & ! scattering production rate
        SCORE_SCATTER_N     = -5,  & ! arbitrary scattering moment
        SCORE_SCATTER_PN    = -6,  & ! system for scoring 0th through nth moment
-       SCORE_INTSCATT_PN   = -7,  & ! pre-integrated version of score_scatter_pn
+       SCORE_NDPPSCATT_PN   = -7,  & ! pre-integrated version of score_scatter_pn
        SCORE_TRANSPORT     = -8,  & ! transport reaction rate
        SCORE_N_1N          = -9,  & ! (n,1n) rate
        SCORE_ABSORPTION    = -10, & ! absorption rate
@@ -287,7 +289,7 @@ module constants
   ! Maximum scattering order supported
   integer, parameter :: SCATT_ORDER_MAX = 10
   character(len=*), parameter :: SCATT_ORDER_MAX_PNSTR    = "scatter-p10"
-  character(len=*), parameter :: SCATT_ORDER_MAX_INTPNSTR = "int-scatter-p10"
+  character(len=*), parameter :: SCATT_ORDER_MAX_NDPPPNSTR = "ndpp-scatter-p10"
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1
@@ -377,9 +379,8 @@ module constants
   integer, parameter :: UNIT_TALLY    = 12 ! unit # for writing tally file
   integer, parameter :: UNIT_PLOT     = 13 ! unit # for writing plot file
   integer, parameter :: UNIT_XS       = 14 ! unit # for writing xs summary file
-  integer, parameter :: CMFD_BALANCE  = 15 ! unit # for writing cmfd balance file
-  integer, parameter :: UNIT_PARTICLE = 16 ! unit # for writing particle restart
-  integer, parameter :: UNIT_OUTPUT   = 17 ! unit # for writing output
+  integer, parameter :: UNIT_PARTICLE = 15 ! unit # for writing particle restart
+  integer, parameter :: UNIT_OUTPUT   = 16 ! unit # for writing output
 
   !=============================================================================
   ! CMFD CONSTANTS

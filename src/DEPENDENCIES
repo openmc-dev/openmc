@@ -18,12 +18,12 @@ cmfd_data.o: error.o
 cmfd_data.o: global.o
 cmfd_data.o: mesh.o
 cmfd_data.o: mesh_header.o
+cmfd_data.o: string.o
 cmfd_data.o: tally_header.o
 
 cmfd_execute.o: cmfd_data.o
-cmfd_execute.o: cmfd_message_passing.o
+cmfd_execute.o: cmfd_jfnk_solver.o
 cmfd_execute.o: cmfd_power_solver.o
-cmfd_execute.o: cmfd_snes_solver.o
 cmfd_execute.o: constants.o
 cmfd_execute.o: error.o
 cmfd_execute.o: global.o
@@ -35,7 +35,8 @@ cmfd_execute.o: tally.o
 
 cmfd_header.o: constants.o
 
-cmfd_input.o: cmfd_message_passing.o
+cmfd_input.o: cmfd_header.o
+cmfd_input.o: constants.o
 cmfd_input.o: error.o
 cmfd_input.o: global.o
 cmfd_input.o: mesh_header.o
@@ -44,45 +45,37 @@ cmfd_input.o: string.o
 cmfd_input.o: tally.o
 cmfd_input.o: tally_header.o
 cmfd_input.o: tally_initialize.o
-cmfd_input.o: templates/cmfd_t.o
+cmfd_input.o: xml_interface.o
 
-cmfd_jacobian_operator.o: cmfd_loss_operator.o
-cmfd_jacobian_operator.o: cmfd_prod_operator.o
-cmfd_jacobian_operator.o: constants.o
-cmfd_jacobian_operator.o: global.o
+cmfd_jfnk_solver.o: cmfd_loss_operator.o
+cmfd_jfnk_solver.o: cmfd_power_solver.o
+cmfd_jfnk_solver.o: cmfd_prod_operator.o
+cmfd_jfnk_solver.o: constants.o
+cmfd_jfnk_solver.o: global.o
+cmfd_jfnk_solver.o: matrix_header.o
+cmfd_jfnk_solver.o: solver_interface.o
+cmfd_jfnk_solver.o: vector_header.o
 
 cmfd_loss_operator.o: constants.o
 cmfd_loss_operator.o: global.o
-
-cmfd_message_passing.o: cmfd_header.o
-cmfd_message_passing.o: global.o
-
-cmfd_output.o: cmfd_data.o
-cmfd_output.o: cmfd_header.o
-cmfd_output.o: constants.o
-cmfd_output.o: global.o
+cmfd_loss_operator.o: matrix_header.o
 
 cmfd_power_solver.o: cmfd_loss_operator.o
 cmfd_power_solver.o: cmfd_prod_operator.o
 cmfd_power_solver.o: constants.o
 cmfd_power_solver.o: global.o
-cmfd_power_solver.o: string.o
+cmfd_power_solver.o: matrix_header.o
+cmfd_power_solver.o: solver_interface.o
+cmfd_power_solver.o: vector_header.o
 
 cmfd_prod_operator.o: constants.o
 cmfd_prod_operator.o: global.o
+cmfd_prod_operator.o: matrix_header.o
 
 cmfd_slepc_solver.o: cmfd_loss_operator.o
 cmfd_slepc_solver.o: cmfd_prod_operator.o
 cmfd_slepc_solver.o: constants.o
 cmfd_slepc_solver.o: global.o
-
-cmfd_snes_solver.o: cmfd_jacobian_operator.o
-cmfd_snes_solver.o: cmfd_loss_operator.o
-cmfd_snes_solver.o: cmfd_power_solver.o
-cmfd_snes_solver.o: cmfd_prod_operator.o
-cmfd_snes_solver.o: constants.o
-cmfd_snes_solver.o: global.o
-cmfd_snes_solver.o: string.o
 
 cross_section.o: ace_header.o
 cross_section.o: constants.o
@@ -90,6 +83,7 @@ cross_section.o: error.o
 cross_section.o: fission.o
 cross_section.o: global.o
 cross_section.o: material_header.o
+cross_section.o: particle_header.o
 cross_section.o: random_lcg.o
 cross_section.o: search.o
 
@@ -103,13 +97,14 @@ eigenvalue.o: math.o
 eigenvalue.o: mesh.o
 eigenvalue.o: mesh_header.o
 eigenvalue.o: output.o
-eigenvalue.o: physics.o
+eigenvalue.o: particle_header.o
 eigenvalue.o: random_lcg.o
 eigenvalue.o: search.o
 eigenvalue.o: source.o
 eigenvalue.o: state_point.o
 eigenvalue.o: string.o
 eigenvalue.o: tally.o
+eigenvalue.o: tracking.o
 
 endf.o: constants.o
 endf.o: string.o
@@ -121,7 +116,6 @@ energy_grid.o: output.o
 
 error.o: global.o
 
-finalize.o: cmfd_output.o
 finalize.o: global.o
 finalize.o: hdf5_interface.o
 finalize.o: output.o
@@ -137,12 +131,13 @@ fission.o: search.o
 fixed_source.o: constants.o
 fixed_source.o: global.o
 fixed_source.o: output.o
-fixed_source.o: physics.o
+fixed_source.o: particle_header.o
 fixed_source.o: random_lcg.o
 fixed_source.o: source.o
 fixed_source.o: state_point.o
 fixed_source.o: string.o
 fixed_source.o: tally.o
+fixed_source.o: tracking.o
 
 geometry.o: constants.o
 geometry.o: error.o
@@ -163,7 +158,6 @@ global.o: geometry_header.o
 global.o: hdf5_interface.o
 global.o: material_header.o
 global.o: mesh_header.o
-global.o: particle_header.o
 global.o: plot_header.o
 global.o: set_header.o
 global.o: source_header.o
@@ -177,8 +171,8 @@ hdf5_summary.o: geometry_header.o
 hdf5_summary.o: global.o
 hdf5_summary.o: material_header.o
 hdf5_summary.o: mesh_header.o
-hdf5_summary.o: output_interface.o
 hdf5_summary.o: output.o
+hdf5_summary.o: output_interface.o
 hdf5_summary.o: string.o
 hdf5_summary.o: tally_header.o
 
@@ -194,9 +188,8 @@ initialize.o: global.o
 initialize.o: hdf5_interface.o
 initialize.o: hdf5_summary.o
 initialize.o: input_xml.o
-initialize.o: ndpp.o
-initialize.o: output_interface.o
 initialize.o: output.o
+initialize.o: output_interface.o
 initialize.o: random_lcg.o
 initialize.o: source.o
 initialize.o: state_point.o
@@ -218,12 +211,7 @@ input_xml.o: random_lcg.o
 input_xml.o: string.o
 input_xml.o: tally_header.o
 input_xml.o: tally_initialize.o
-input_xml.o: templates/cross_sections_t.o
-input_xml.o: templates/geometry_t.o
-input_xml.o: templates/materials_t.o
-input_xml.o: templates/plots_t.o
-input_xml.o: templates/settings_t.o
-input_xml.o: templates/tallies_t.o
+input_xml.o: xml_interface.o
 
 interpolation.o: constants.o
 interpolation.o: endf_header.o
@@ -244,6 +232,10 @@ main.o: particle_restart.o
 main.o: plot.o
 
 math.o: constants.o
+math.o: random_lcg.o
+
+matrix_header.o: constants.o
+matrix_header.o: vector_header.o
 
 mesh.o: constants.o
 mesh.o: global.o
@@ -281,34 +273,33 @@ output_interface.o: mpiio_interface.o
 output_interface.o: tally_header.o
 
 particle_header.o: constants.o
+particle_header.o: geometry_header.o
 
 particle_restart.o: bank_header.o
 particle_restart.o: constants.o
 particle_restart.o: geometry_header.o
 particle_restart.o: global.o
-particle_restart.o: hdf5_interface.o
 particle_restart.o: output.o
+particle_restart.o: output_interface.o
 particle_restart.o: particle_header.o
-particle_restart.o: physics.o
 particle_restart.o: random_lcg.o
-particle_restart.o: source.o
+particle_restart.o: tracking.o
 
 particle_restart_write.o: bank_header.o
 particle_restart_write.o: global.o
-particle_restart_write.o: hdf5_interface.o
+particle_restart_write.o: output_interface.o
+particle_restart_write.o: particle_header.o
 particle_restart_write.o: string.o
 
 physics.o: ace_header.o
 physics.o: constants.o
-physics.o: cross_section.o
 physics.o: endf.o
 physics.o: error.o
 physics.o: fission.o
-physics.o: geometry.o
-physics.o: geometry_header.o
 physics.o: global.o
 physics.o: interpolation.o
 physics.o: material_header.o
+physics.o: math.o
 physics.o: mesh.o
 physics.o: output.o
 physics.o: particle_header.o
@@ -316,7 +307,6 @@ physics.o: particle_restart_write.o
 physics.o: random_lcg.o
 physics.o: search.o
 physics.o: string.o
-physics.o: tally.o
 
 plot.o: constants.o
 plot.o: error.o
@@ -327,7 +317,6 @@ plot.o: output.o
 plot.o: particle_header.o
 plot.o: plot_header.o
 plot.o: ppmlib.o
-plot.o: source.o
 plot.o: string.o
 
 plot_header.o: constants.o
@@ -340,14 +329,20 @@ search.o: global.o
 set_header.o: constants.o
 set_header.o: list_header.o
 
+solver_interface.o: error.o
+solver_interface.o: global.o
+solver_interface.o: matrix_header.o
+solver_interface.o: vector_header.o
+
 source.o: bank_header.o
 source.o: constants.o
 source.o: error.o
+source.o: geometry.o
 source.o: geometry_header.o
 source.o: global.o
+source.o: math.o
 source.o: output.o
 source.o: particle_header.o
-source.o: physics.o
 source.o: random_lcg.o
 source.o: string.o
 
@@ -383,3 +378,27 @@ tally_initialize.o: global.o
 tally_initialize.o: tally_header.o
 
 timer_header.o: constants.o
+
+track_output.o: global.o
+track_output.o: output_interface.o
+track_output.o: particle_header.o
+track_output.o: string.o
+
+tracking.o: cross_section.o
+tracking.o: error.o
+tracking.o: geometry.o
+tracking.o: geometry_header.o
+tracking.o: global.o
+tracking.o: output.o
+tracking.o: particle_header.o
+tracking.o: physics.o
+tracking.o: random_lcg.o
+tracking.o: string.o
+tracking.o: tally.o
+tracking.o: track_output.o
+
+vector_header.o: constants.o
+
+xml_interface.o: constants.o
+xml_interface.o: error.o
+xml_interface.o: global.o

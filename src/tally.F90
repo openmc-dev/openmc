@@ -10,7 +10,7 @@ module tally
                               mesh_intersects_2d, mesh_intersects_3d
   use mesh_header,      only: StructuredMesh
   use output,           only: header
-  use particle_header,  only: LocalCoord
+  use particle_header,  only: LocalCoord, Particle
   use search,           only: binary_search
   use string,           only: to_str
   use tally_header,     only: TallyResult, TallyMapItem, TallyMapElement
@@ -23,6 +23,7 @@ module tally
 
   ! Tally map positioning array
   integer :: position(N_FILTER_TYPES - 3) = 0
+!$omp threadprivate(position)
 
 contains
 
@@ -32,7 +33,9 @@ contains
 ! triggered at every collision, not every event
 !===============================================================================
 
-  subroutine score_analog_tally()
+  subroutine score_analog_tally(p)
+
+    type(Particle), intent(in) :: p
 
     integer :: i
     integer :: i_tally
@@ -52,7 +55,8 @@ contains
     real(8) :: macro_total          ! material macro total xs
     real(8) :: macro_scatt          ! material macro scatt xs
     logical :: found_bin            ! scoring bin found?
-    type(TallyObject), pointer :: t => null()
+    type(TallyObject), pointer, save :: t => null()
+!$omp threadprivate(t)
 
     ! Copy particle's pre- and post-collision weight and angle
     last_wgt = p % last_wgt
@@ -70,7 +74,7 @@ contains
       ! =======================================================================
       ! DETERMINE SCORING BIN COMBINATION
 
-      call get_scoring_bins(i_tally, found_bin)
+      call get_scoring_bins(p, i_tally, found_bin)
       if (.not. found_bin) cycle
 
       ! =======================================================================
@@ -81,7 +85,7 @@ contains
       ! be accumulating the tally values
 
       ! Determine scoring index for this filter combination
-      filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+      filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
 
       ! Check for nuclide bins
       k = 0
@@ -194,19 +198,21 @@ contains
                 ! get the score and tally it
                 score = last_wgt * calc_pn(n, mu)
 
+!$omp critical
                 t % results(score_index, filter_index) % value = &
                   t % results(score_index, filter_index) % value + score
+!$omp end critical
               end do
             end if
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP
 
-          case (SCORE_INTSCATT_PN)
+          case (SCORE_NDPPSCATT_PN)
             ! Skip any event where the particle didn't scatter
             if (p % event == EVENT_SCATTER) then
               ! For the case of analog intscatt_pn tallying, filter_index needs
               ! to be adjusted to point to the first energyout filter
-              call tally_analog_int_pn(p % event_nuclide, score_index, &
+              call tally_analog_ndpp_pn(p % event_nuclide, score_index, &
                 filter_index - &
                 t % matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                 t % scatt_order(j), last_wgt, p % last_E, t % results)
@@ -267,7 +273,7 @@ contains
 
             else
               ! Skip any non-fission events
-              if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
+              if (.not. p % fission) cycle SCORE_LOOP
 
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for the
@@ -287,7 +293,7 @@ contains
 
             else
               ! Skip any non-fission events
-              if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
+              if (.not. p % fission) cycle SCORE_LOOP
 
               if (t % find_filter(FILTER_ENERGYOUT) > 0) then
                 ! Normally, we only need to make contributions to one scoring
@@ -296,7 +302,7 @@ contains
                 ! outgoing energy bins may have been scored to. The following
                 ! logic treats this special case and results to multiple bins
 
-                call score_fission_eout(t, score_index)
+                call score_fission_eout(p, t, score_index)
                 cycle SCORE_LOOP
 
               else
@@ -323,7 +329,7 @@ contains
 
             else
               ! Skip any non-fission events
-              if (p % event /= EVENT_FISSION) cycle SCORE_LOOP
+              if (.not. p % fission) cycle SCORE_LOOP
 
               ! All fission events will contribute, so again we can use
               ! particle's weight entering the collision as the estimate for
@@ -347,8 +353,10 @@ contains
           end select
 
           ! Add score to tally
+!$omp critical
           t % results(score_index, filter_index) % value = &
                t % results(score_index, filter_index) % value + score
+!$omp end critical
 
         end do SCORE_LOOP
 
@@ -375,8 +383,9 @@ contains
 ! neutrons produced with different energies.
 !===============================================================================
 
-  subroutine score_fission_eout(t, i_score)
+  subroutine score_fission_eout(p, t, i_score)
 
+    type(Particle), intent(in) :: p
     type(TallyObject), pointer :: t
     integer, intent(in)        :: i_score ! index for score
 
@@ -390,7 +399,7 @@ contains
 
     ! save original outgoing energy bin and score index
     i = t % find_filter(FILTER_ENERGYOUT)
-    bin_energyout = t % matching_bins(i)
+    bin_energyout = matching_bins(i)
 
     ! Get number of energies on filter
     n = size(t % filters(i) % real_bins)
@@ -413,18 +422,20 @@ contains
            E_out > t % filters(i) % real_bins(n)) cycle
 
       ! change outgoing energy bin
-      t % matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
+      matching_bins(i) = binary_search(t % filters(i) % real_bins, n, E_out)
 
       ! determine scoring index
-      i_filter = sum((t % matching_bins - 1) * t % stride) + 1
+      i_filter = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
 
       ! Add score to tally
+!$omp critical
       t % results(i_score, i_filter) % value = &
            t % results(i_score, i_filter) % value + score
+!$omp end critical
     end do
 
     ! reset outgoing energy bin and score index
-    t % matching_bins(i) = bin_energyout
+    matching_bins(i) = bin_energyout
 
   end subroutine score_fission_eout
 
@@ -435,9 +446,10 @@ contains
 ! that require post-collision information.
 !===============================================================================
 
-  subroutine score_tracklength_tally(distance)
+  subroutine score_tracklength_tally(p, distance)
 
-    real(8), intent(in) :: distance
+    type(Particle), intent(in) :: p
+    real(8),        intent(in) :: distance
 
     integer :: i
     integer :: i_tally
@@ -457,9 +469,10 @@ contains
     real(8) :: score                ! actual score (e.g., flux*xs)
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
     logical :: found_bin            ! scoring bin found?
-    type(TallyObject), pointer :: t => null()
-    type(Material),    pointer :: mat => null()
-    type(Reaction),    pointer :: rxn => null()
+    type(TallyObject), pointer, save :: t => null()
+    type(Material),    pointer, save :: mat => null()
+    type(Reaction),    pointer, save :: rxn => null()
+!$omp threadprivate(t, mat, rxn)
 
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
@@ -476,14 +489,14 @@ contains
       ! since multiple bins can be scored to with a single track
 
       if (t % find_filter(FILTER_MESH) > 0) then
-        call score_tl_on_mesh(i_tally, distance)
+        call score_tl_on_mesh(p, i_tally, distance)
         cycle
       end if
 
       ! =======================================================================
       ! DETERMINE SCORING BIN COMBINATION
 
-      call get_scoring_bins(i_tally, found_bin)
+      call get_scoring_bins(p, i_tally, found_bin)
       if (.not. found_bin) cycle
 
       ! =======================================================================
@@ -494,10 +507,10 @@ contains
       ! be accumulating the tally values
 
       ! Determine scoring index for this filter combination
-      filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+      filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
 
       if (t % all_nuclides) then
-        call score_all_nuclides(i_tally, flux, filter_index)
+        call score_all_nuclides(p, i_tally, flux, filter_index)
       else
 
         NUCLIDE_BIN_LOOP: do k = 1, t % n_nuclide_bins
@@ -554,8 +567,8 @@ contains
                      micro_xs(i_nuclide) % absorption) * &
                      atom_density * flux
 
-              case (SCORE_INTSCATT_PN)
-                call tally_micro_int_pn(i_nuclide, score_index, filter_index, &
+              case (SCORE_NDPPSCATT_PN)
+                call tally_micro_ndpp_pn(i_nuclide, score_index, filter_index, &
                   t % scatt_order(j), atom_density * flux, p % E, t % results)
                 j = j + t % scatt_order(j)
                 cycle SCORE_LOOP
@@ -641,9 +654,9 @@ contains
                 ! Scattering cross section is pre-calculated
                 score = (material_xs % total - material_xs % absorption) * flux
 
-              case (SCORE_INTSCATT_PN)
+              case (SCORE_NDPPSCATT_PN)
                 mat => materials(p % material)
-                call tally_macro_int_pn(mat, score_index, filter_index, &
+                call tally_macro_ndpp_pn(mat, score_index, filter_index, &
                   t % scatt_order(j), flux, p % E, t % results)
 
                 j = j + t % scatt_order(j)
@@ -722,8 +735,10 @@ contains
             end if
 
             ! Add score to tally
+!$omp critical
             t % results(score_index, filter_index) % value = &
                  t % results(score_index, filter_index) % value + score
+!$omp end critical
 
           end do SCORE_LOOP
 
@@ -749,11 +764,12 @@ contains
 ! the user requests <nuclides>all</nuclides>.
 !===============================================================================
 
-  subroutine score_all_nuclides(i_tally, flux, filter_index)
+  subroutine score_all_nuclides(p, i_tally, flux, filter_index)
 
-    integer, intent(in) :: i_tally
-    real(8), intent(in) :: flux
-    integer, intent(in) :: filter_index
+    type(Particle), intent(in) :: p
+    integer,        intent(in) :: i_tally
+    real(8),        intent(in) :: flux
+    integer,        intent(in) :: filter_index
 
     integer :: i             ! loop index for nuclides in material
     integer :: j             ! loop index for scoring bin types
@@ -766,9 +782,10 @@ contains
     real(8) :: f             ! interpolation factor
     real(8) :: score         ! actual scoring tally value
     real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
-    type(TallyObject), pointer :: t => null()
-    type(Material),    pointer :: mat => null()
-    type(Reaction),    pointer :: rxn => null()
+    type(TallyObject), pointer, save :: t => null()
+    type(Material),    pointer, save :: mat => null()
+    type(Reaction),    pointer, save :: rxn => null()
+!$omp threadprivate(t, mat, rxn)
 
     ! Get pointer to tally
     t => tallies(i_tally)
@@ -810,8 +827,8 @@ contains
           score = (micro_xs(i_nuclide) % total - &
                micro_xs(i_nuclide) % absorption) * atom_density * flux
 
-        case (SCORE_INTSCATT_PN)
-          call tally_micro_int_pn(i_nuclide, score_index, filter_index, &
+        case (SCORE_NDPPSCATT_PN)
+          call tally_micro_ndpp_pn(i_nuclide, score_index, filter_index, &
             t % scatt_order(j), atom_density * flux, p % E, t % results)
 
           j = j + t % scatt_order(j)
@@ -873,8 +890,10 @@ contains
         end select
 
         ! Add score to tally
+!$omp critical
         t % results(score_index, filter_index) % value = &
              t % results(score_index, filter_index) % value + score
+!$omp end critical
 
       end do SCORE_LOOP
 
@@ -905,9 +924,9 @@ contains
       case (SCORE_SCATTER)
         score = (material_xs % total - material_xs % absorption) * flux
 
-      case (SCORE_INTSCATT_PN)
+      case (SCORE_NDPPSCATT_PN)
         mat => materials(p % material)
-        call tally_macro_int_pn(mat, score_index, filter_index, &
+        call tally_macro_ndpp_pn(mat, score_index, filter_index, &
           t % scatt_order(j), flux, p % E, t % results)
 
         j = j + t % scatt_order(j)
@@ -981,8 +1000,10 @@ contains
       end select
 
       ! Add score to tally
+!$omp critical
       t % results(score_index, filter_index) % value = &
            t % results(score_index, filter_index) % value + score
+!$omp end critical
 
     end do MATERIAL_SCORE_LOOP
 
@@ -994,10 +1015,11 @@ contains
 ! these tallies, it is possible to score to multiple mesh cells for each track.
 !===============================================================================
 
-  subroutine score_tl_on_mesh(i_tally, d_track)
+  subroutine score_tl_on_mesh(p, i_tally, d_track)
 
-    integer, intent(in) :: i_tally
-    real(8), intent(in) :: d_track
+    type(Particle), intent(in) :: p
+    integer,        intent(in) :: i_tally
+    real(8),        intent(in) :: d_track
 
     integer :: i                    ! loop index for filter/score bins
     integer :: j                    ! loop index for direction
@@ -1025,13 +1047,14 @@ contains
     logical :: found_bin            ! was a scoring bin found?
     logical :: start_in_mesh        ! starting coordinates inside mesh?
     logical :: end_in_mesh          ! ending coordinates inside mesh?
-    type(TallyObject),    pointer :: t => null()
-    type(StructuredMesh), pointer :: m => null()
-    type(Material),       pointer :: mat => null()
-    type(LocalCoord),     pointer :: coord => null()
+    type(TallyObject),    pointer, save :: t => null()
+    type(StructuredMesh), pointer, save :: m => null()
+    type(Material),       pointer, save :: mat => null()
+    type(LocalCoord),     pointer, save :: coord => null()
+!$omp threadprivate(t, m, mat, coord)
 
     t => tallies(i_tally)
-    t % matching_bins = 1
+    matching_bins(1:t%n_filters) = 1
 
     ! ==========================================================================
     ! CHECK IF THIS TRACK INTERSECTS THE MESH
@@ -1071,11 +1094,11 @@ contains
       case (FILTER_UNIVERSE)
         ! determine next universe bin
         ! TODO: Account for multiple universes when performing this filter
-        t % matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
+        matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
              p % coord % universe, i_tally)
 
       case (FILTER_MATERIAL)
-        t % matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
+        matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
              p % material, i_tally)
 
       case (FILTER_CELL)
@@ -1083,21 +1106,21 @@ contains
         coord => p % coord0
         do while(associated(coord))
           position(FILTER_CELL) = 0
-          t % matching_bins(i) = get_next_bin(FILTER_CELL, &
+          matching_bins(i) = get_next_bin(FILTER_CELL, &
                coord % cell, i_tally)
-          if (t % matching_bins(i) /= NO_BIN_FOUND) exit
+          if (matching_bins(i) /= NO_BIN_FOUND) exit
           coord => coord % next
         end do
         nullify(coord)
 
       case (FILTER_CELLBORN)
         ! determine next cellborn bin
-        t % matching_bins(i) = get_next_bin(FILTER_CELLBORN, &
+        matching_bins(i) = get_next_bin(FILTER_CELLBORN, &
              p % cell_born, i_tally)
 
       case (FILTER_SURFACE)
         ! determine next surface bin
-        t % matching_bins(i) = get_next_bin(FILTER_SURFACE, &
+        matching_bins(i) = get_next_bin(FILTER_SURFACE, &
              p % surface, i_tally)
 
       case (FILTER_ENERGYIN)
@@ -1107,17 +1130,17 @@ contains
         ! check if energy of the particle is within energy bins
         if (p % E < t % filters(i) % real_bins(1) .or. &
              p % E > t % filters(i) % real_bins(k + 1)) then
-          t % matching_bins(i) = NO_BIN_FOUND
+          matching_bins(i) = NO_BIN_FOUND
         else
           ! search to find incoming energy bin
-          t % matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
                k + 1, p % E)
         end if
 
       end select
 
       ! Check if no matching bin was found
-      if (t % matching_bins(i) == NO_BIN_FOUND) return
+      if (matching_bins(i) == NO_BIN_FOUND) return
 
     end do FILTER_LOOP
 
@@ -1187,14 +1210,14 @@ contains
         flux = p % wgt * distance
 
         ! Determine mesh bin
-        t % matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, ijk_cross)
+        matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, ijk_cross)
 
         ! Determining scoring index
-        filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+        filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
 
         if (t % all_nuclides) then
           ! Score reaction rates for each nuclide in material
-          call score_all_nuclides(i_tally, flux, filter_index)
+          call score_all_nuclides(p, i_tally, flux, filter_index)
 
         else
           NUCLIDE_BIN_LOOP: do b = 1, t % n_nuclide_bins
@@ -1244,8 +1267,8 @@ contains
                   score = (micro_xs(i_nuclide) % total - &
                        micro_xs(i_nuclide) % absorption) * &
                        atom_density * flux
-                case (SCORE_INTSCATT_PN)
-                  call tally_micro_int_pn(i_nuclide, score_index, &
+                case (SCORE_NDPPSCATT_PN)
+                  call tally_micro_ndpp_pn(i_nuclide, score_index, &
                     filter_index, t % scatt_order(j), atom_density * flux, &
                     p % E, t % results)
 
@@ -1271,7 +1294,7 @@ contains
                 end select
 
               else
-                ! Determine macroscopic material cross section
+                ! Determine macroscopic material cross section 
                 select case(score_bin)
                 case (SCORE_FLUX)
                   score = flux
@@ -1279,9 +1302,9 @@ contains
                   score = material_xs % total * flux
                 case (SCORE_SCATTER)
                   score = (material_xs % total - material_xs % absorption) * flux
-                case (SCORE_INTSCATT_PN)
+                case (SCORE_NDPPSCATT_PN)
                   mat => materials(p % material)
-                  call tally_macro_int_pn(mat, score_index, filter_index, &
+                  call tally_macro_ndpp_pn(mat, score_index, filter_index, &
                     t % scatt_order(j), flux, p % E, t % results)
 
                   j = j + t % scatt_order(j)
@@ -1304,8 +1327,10 @@ contains
               end if
 
               ! Add score to tally
+!$omp critical
               t % results(score_index, filter_index) % value = &
                    t % results(score_index, filter_index) % value + score
+!$omp end critical
 
             end do SCORE_LOOP
 
@@ -1325,21 +1350,23 @@ contains
 ! for a tally based on the particle's current attributes.
 !===============================================================================
 
-  subroutine get_scoring_bins(i_tally, found_bin)
+  subroutine get_scoring_bins(p, i_tally, found_bin)
 
-    integer, intent(in)     :: i_tally
-    logical, intent(out)    :: found_bin
+    type(Particle), intent(in)  :: p
+    integer,        intent(in)  :: i_tally
+    logical,        intent(out) :: found_bin
 
     integer :: i ! loop index for filters
     integer :: n ! number of bins for single filter
     real(8) :: E ! particle energy
-    type(TallyObject),    pointer :: t => null()
-    type(StructuredMesh), pointer :: m => null()
-    type(LocalCoord),     pointer :: coord => null()
+    type(TallyObject),    pointer, save :: t => null()
+    type(StructuredMesh), pointer, save :: m => null()
+    type(LocalCoord),     pointer, save :: coord => null()
+!$omp threadprivate(t, m, coord)
 
     found_bin = .true.
     t => tallies(i_tally)
-    t % matching_bins = 1
+    matching_bins(1:t%n_filters) = 1
 
     FILTER_LOOP: do i = 1, t % n_filters
 
@@ -1349,16 +1376,16 @@ contains
         m => meshes(t % filters(i) % int_bins(1))
 
         ! Determine if we're in the mesh first
-        call get_mesh_bin(m, p % coord0 % xyz, t % matching_bins(i))
+        call get_mesh_bin(m, p % coord0 % xyz, matching_bins(i))
 
       case (FILTER_UNIVERSE)
         ! determine next universe bin
         ! TODO: Account for multiple universes when performing this filter
-        t % matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
+        matching_bins(i) = get_next_bin(FILTER_UNIVERSE, &
              p % coord % universe, i_tally)
 
       case (FILTER_MATERIAL)
-        t % matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
+        matching_bins(i) = get_next_bin(FILTER_MATERIAL, &
              p % material, i_tally)
 
       case (FILTER_CELL)
@@ -1366,21 +1393,21 @@ contains
         coord => p % coord0
         do while(associated(coord))
           position(FILTER_CELL) = 0
-          t % matching_bins(i) = get_next_bin(FILTER_CELL, &
+          matching_bins(i) = get_next_bin(FILTER_CELL, &
                coord % cell, i_tally)
-          if (t % matching_bins(i) /= NO_BIN_FOUND) exit
+          if (matching_bins(i) /= NO_BIN_FOUND) exit
           coord => coord % next
         end do
         nullify(coord)
 
       case (FILTER_CELLBORN)
         ! determine next cellborn bin
-        t % matching_bins(i) = get_next_bin(FILTER_CELLBORN, &
+        matching_bins(i) = get_next_bin(FILTER_CELLBORN, &
              p % cell_born, i_tally)
 
       case (FILTER_SURFACE)
         ! determine next surface bin
-        t % matching_bins(i) = get_next_bin(FILTER_SURFACE, &
+        matching_bins(i) = get_next_bin(FILTER_SURFACE, &
              p % surface, i_tally)
 
       case (FILTER_ENERGYIN)
@@ -1397,38 +1424,31 @@ contains
         ! check if energy of the particle is within energy bins
         if (E < t % filters(i) % real_bins(1) .or. &
              E > t % filters(i) % real_bins(n + 1)) then
-          t % matching_bins(i) = NO_BIN_FOUND
+          matching_bins(i) = NO_BIN_FOUND
         else
           ! search to find incoming energy bin
-          t % matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
                n + 1, E)
         end if
 
       case (FILTER_ENERGYOUT)
-        if (t % estimator /= ESTIMATOR_TRACKLENGTH) then
-          ! determine outgoing energy bin
-          n = t % filters(i) % n_bins
+        ! determine outgoing energy bin
+        n = t % filters(i) % n_bins
 
-          ! check if energy of the particle is within energy bins
-          if (p % E < t % filters(i) % real_bins(1) .or. &
-               p % E > t % filters(i) % real_bins(n + 1)) then
-            t % matching_bins(i) = NO_BIN_FOUND
-          else
-            ! search to find incoming energy bin
-            t % matching_bins(i) = binary_search(t % filters(i) % real_bins, &
-                 n + 1, p % E)
-          end if
-
+        ! check if energy of the particle is within energy bins
+        if (p % E < t % filters(i) % real_bins(1) .or. &
+             p % E > t % filters(i) % real_bins(n + 1)) then
+          matching_bins(i) = NO_BIN_FOUND
         else
-          ! Set to the first outgoing energy bin, specifically for the case
-          ! of int-scatt-pn (with no effect on the cases)
-          t % matching_bins(i) = 1
+          ! search to find incoming energy bin
+          matching_bins(i) = binary_search(t % filters(i) % real_bins, &
+               n + 1, p % E)
         end if
 
       end select
 
       ! If the current filter didn't match, exit this subroutine
-      if (t % matching_bins(i) == NO_BIN_FOUND) then
+      if (matching_bins(i) == NO_BIN_FOUND) then
         found_bin = .false.
         return
       end if
@@ -1442,7 +1462,9 @@ contains
 ! determining which mesh surfaces were crossed
 !===============================================================================
 
-  subroutine score_surface_current()
+  subroutine score_surface_current(p)
+
+    type(Particle), intent(in) :: p
 
     integer :: i
     integer :: i_tally
@@ -1466,8 +1488,9 @@ contains
     logical :: x_same               ! same starting/ending x index (i)
     logical :: y_same               ! same starting/ending y index (j)
     logical :: z_same               ! same starting/ending z index (k)
-    type(TallyObject),    pointer :: t => null()
-    type(StructuredMesh), pointer :: m => null()
+    type(TallyObject),    pointer, save :: t => null()
+    type(StructuredMesh), pointer, save :: m => null()
+!$omp threadprivate(t, m)
 
     TALLY_LOOP: do i = 1, active_current_tallies % size()
       ! Copy starting and ending location of particle
@@ -1517,7 +1540,7 @@ contains
         end if
 
         ! search to find incoming energy bin
-        t % matching_bins(j) = binary_search(t % filters(j) % real_bins, &
+        matching_bins(j) = binary_search(t % filters(j) % real_bins, &
              n + 1, p % E)
       end if
 
@@ -1534,24 +1557,28 @@ contains
           do j = ijk0(3), ijk1(3) - 1
             ijk0(3) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = OUT_TOP
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = OUT_TOP
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
+!$omp end critical
             end if
           end do
         else
           do j = ijk0(3) - 1, ijk1(3), -1
             ijk0(3) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = IN_TOP
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = IN_TOP
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
+!$omp end critical
             end if
           end do
         end if
@@ -1562,24 +1589,28 @@ contains
           do j = ijk0(2), ijk1(2) - 1
             ijk0(2) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = OUT_FRONT
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = OUT_FRONT
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
+!$omp end critical
             end if
           end do
         else
           do j = ijk0(2) - 1, ijk1(2), -1
             ijk0(2) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = IN_FRONT
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = IN_FRONT
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
+!$omp end critical
             end if
           end do
         end if
@@ -1590,24 +1621,28 @@ contains
           do j = ijk0(1), ijk1(1) - 1
             ijk0(1) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = OUT_RIGHT
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = OUT_RIGHT
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
+!$omp end critical
             end if
           end do
         else
           do j = ijk0(1) - 1, ijk1(1), -1
             ijk0(1) = j
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = IN_RIGHT
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = IN_RIGHT
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
-              filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+              filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
+!$omp critical
               t % results(1, filter_index) % value = &
                    t % results(1, filter_index) % value + p % wgt
+!$omp end critical
             end if
           end do
         end if
@@ -1628,7 +1663,7 @@ contains
 
       do k = 1, n_cross
         ! Reset scoring bin index
-        t % matching_bins(i_filter_surf) = 0
+        matching_bins(i_filter_surf) = 0
 
         ! Calculate distance to each bounding surface. We need to treat
         ! special case where the cosine of the angle is zero since this would
@@ -1655,8 +1690,8 @@ contains
             ! Crossing into right mesh cell -- this is treated as outgoing
             ! current from (i,j,k)
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = OUT_RIGHT
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = OUT_RIGHT
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
             end if
             ijk0(1) = ijk0(1) + 1
@@ -1667,8 +1702,8 @@ contains
             ijk0(1) = ijk0(1) - 1
             xyz_cross(1) = xyz_cross(1) - m % width(1)
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = IN_RIGHT
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = IN_RIGHT
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
             end if
           end if
@@ -1677,8 +1712,8 @@ contains
             ! Crossing into front mesh cell -- this is treated as outgoing
             ! current in (i,j,k)
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = OUT_FRONT
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = OUT_FRONT
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
             end if
             ijk0(2) = ijk0(2) + 1
@@ -1689,8 +1724,8 @@ contains
             ijk0(2) = ijk0(2) - 1
             xyz_cross(2) = xyz_cross(2) - m % width(2)
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = IN_FRONT
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = IN_FRONT
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
             end if
           end if
@@ -1699,8 +1734,8 @@ contains
             ! Crossing into top mesh cell -- this is treated as outgoing
             ! current in (i,j,k)
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = OUT_TOP
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = OUT_TOP
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
             end if
             ijk0(3) = ijk0(3) + 1
@@ -1711,16 +1746,16 @@ contains
             ijk0(3) = ijk0(3) - 1
             xyz_cross(3) = xyz_cross(3) - m % width(3)
             if (all(ijk0 >= 0) .and. all(ijk0 <= m % dimension)) then
-              t % matching_bins(i_filter_surf) = IN_TOP
-              t % matching_bins(i_filter_mesh) = &
+              matching_bins(i_filter_surf) = IN_TOP
+              matching_bins(i_filter_mesh) = &
                    mesh_indices_to_bin(m, ijk0 + 1, .true.)
             end if
           end if
         end if
 
         ! Determine scoring index
-        if (t % matching_bins(i_filter_surf) > 0) then
-          filter_index = sum((t % matching_bins - 1) * t % stride) + 1
+        if (matching_bins(i_filter_surf) > 0) then
+          filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
 
           ! Check for errors
           if (filter_index <= 0 .or. filter_index > &
@@ -1730,8 +1765,10 @@ contains
           end if
 
           ! Add to surface current tally
+!$omp critical
           t % results(1, filter_index) % value = &
                t % results(1, filter_index) % value + p % wgt
+!$omp end critical
         end if
 
         ! Calculate new coordinates
@@ -2096,12 +2133,12 @@ contains
   end subroutine setup_active_cmfdtallies
 
 !===============================================================================
-! TALLY_ANALOG_INT_PN determines the scattering moments which were
+! TALLY_ANALOG_NDPP_PN determines the scattering moments which were
 ! previously calculated with a pre-processor such as NDPP for analog
 ! tallies
 !===============================================================================
 
-  subroutine tally_analog_int_pn(i_nuclide, score_index, filter_index, t_order, &
+  subroutine tally_analog_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
     wgt, Ein, results)
 
     integer, intent(in) :: i_nuclide        ! index into nuclides array
@@ -2119,8 +2156,8 @@ contains
     real(8) :: one_f    ! (ONE - f)
     type(Nuclide), pointer     :: nuc ! Working nuclide
     type(SAlphaBeta), pointer  :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer :: int_scatt(:) => null() ! data to tally
-    real(8), pointer :: int_scatt_Ein(:) => null() ! Energy grid of data to tally
+    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
+    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -2128,39 +2165,39 @@ contains
     if (micro_xs(i_nuclide) % index_sab /= 0) then
       ! We have a collision in the S(a,b) range
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
-      int_scatt => sab % int_scatt
-      int_scatt_Ein => sab % int_scatt_Ein
-      ! Find the grid index and interpolant of integrated scattering data
-      if (Ein <= int_scatt_Ein(1)) then
+      ndpp_scatt => sab % ndpp_scatt
+      ndpp_scatt_Ein => sab % ndpp_scatt_Ein
+      ! Find the grid index and interpolant of ndpp scattering data
+      if (Ein <= ndpp_scatt_Ein(1)) then
         i_grid = 1
         f = ZERO
-      else if (Ein >= int_scatt_Ein(size(int_scatt_Ein))) then
-        i_grid = size(int_scatt_Ein)
+      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
+        i_grid = size(ndpp_scatt_Ein)
         f = ONE
       else
-        i_grid = binary_search(int_scatt_Ein, size(int_scatt_Ein), Ein)
-        f = (Ein - int_scatt_Ein(i_grid)) / &
-          (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
+        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
+        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       end if
     else
       ! Normal scattering (non-S(a,b))
       ! Set up pointers
       nuc => nuclides(i_nuclide)
-      int_scatt => nuc % int_scatt
-      int_scatt_Ein => nuc % int_scatt_Ein
-      ! Find the grid index and interpolant of integrated scattering data
+      ndpp_scatt => nuc % ndpp_scatt
+      ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
+      ! Find the grid index and interpolant of ndpp scattering data
       i_grid = micro_xs(i_nuclide) % index_grid
-      if (i_grid + integrated_scatt_groups <= size(int_scatt_Ein)) then
-        i_grid = binary_search(int_scatt_Ein(i_grid: &
-                               i_grid + integrated_scatt_groups), &
-                               integrated_scatt_groups, Ein) + i_grid - 1
+      if (i_grid + ndpp_groups <= size(ndpp_scatt_Ein)) then
+        i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
+                               i_grid + ndpp_groups), &
+                               ndpp_groups, Ein) + i_grid - 1
       else
-        i_grid = binary_search(int_scatt_Ein(i_grid:), &
-                               size(int_scatt_Ein) - i_grid + 1, Ein) + &
+        i_grid = binary_search(ndpp_scatt_Ein(i_grid:), &
+                               size(ndpp_scatt_Ein) - i_grid + 1, Ein) + &
                  i_grid - 1
       end if
-      f = (Ein - int_scatt_Ein(i_grid)) / &
-          (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
+      f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
     end if
 
     ! Perform some FLOP-reducing calculations once instead of at every inner
@@ -2168,36 +2205,38 @@ contains
     f = f * wgt
 
     ! Add the contribution from the lower score
-    if (int_scatt(i_grid) % gmin /= 0) then
-      do g = int_scatt(i_grid) % gmin, &
-             int_scatt(i_grid) % gmax
+    if (ndpp_scatt(i_grid) % gmin /= 0) then
+      do g = ndpp_scatt(i_grid) % gmin, &
+             ndpp_scatt(i_grid) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
-          int_scatt(i_grid) % outgoing(:, g) * one_f
+          ndpp_scatt(i_grid) % outgoing(:, g) * one_f
       end do
     end if
 
     ! Now add the contribution from the higher score
-    if (int_scatt(i_grid + 1) % gmin /= 0) then
-      do g = int_scatt(i_grid + 1) % gmin, &
-             int_scatt(i_grid + 1) % gmax
+    if (ndpp_scatt(i_grid + 1) % gmin /= 0) then
+      do g = ndpp_scatt(i_grid + 1) % gmin, &
+             ndpp_scatt(i_grid + 1) % gmax
         g_filter = filter_index + g - 1
+!$omp critical
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
-          int_scatt(i_grid + 1) % outgoing(:, g) * f
+          ndpp_scatt(i_grid + 1) % outgoing(:, g) * f
+!$omp end critical
       end do
     end if
 
-  end subroutine tally_analog_int_pn
+  end subroutine tally_analog_ndpp_pn
 
 !===============================================================================
-! TALLY_MICRO_INT_PN determines the microscopic scattering moments which were
+! TALLY_MICRO_NDPP_PN determines the microscopic scattering moments which were
 ! previously calculated with a pre-processor such as NDPP for tracklength
 ! tallies
 !===============================================================================
 
-  subroutine tally_micro_int_pn(i_nuclide, score_index, filter_index, t_order, &
+  subroutine tally_micro_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
     N_flux, Ein, results)
 
     integer, intent(in) :: i_nuclide        ! index into nuclides array
@@ -2216,8 +2255,8 @@ contains
     real(8) :: sigS     ! scattering cross-section (tot - abs)
     type(Nuclide), pointer     :: nuc ! The working nuclide
     type(SAlphaBeta), pointer  :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer :: int_scatt(:) => null() ! data to tally
-    real(8), pointer :: int_scatt_Ein(:) => null() ! Energy grid of data to tally
+    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
+    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -2225,19 +2264,19 @@ contains
     if (micro_xs(i_nuclide) % index_sab /= 0) then
       ! We have a collision in the S(a,b) range
       sab => sab_tables(micro_xs(i_nuclide) % index_sab)
-      int_scatt => sab % int_scatt
-      int_scatt_Ein => sab % int_scatt_Ein
-      ! Find the grid index and interpolant of integrated scattering data
-      if (Ein <= int_scatt_Ein(1)) then
+      ndpp_scatt => sab % ndpp_scatt
+      ndpp_scatt_Ein => sab % ndpp_scatt_Ein
+      ! Find the grid index and interpolant of ndpp scattering data
+      if (Ein <= ndpp_scatt_Ein(1)) then
         i_grid = 1
         f = ZERO
-      else if (Ein >= int_scatt_Ein(size(int_scatt_Ein))) then
-        i_grid = size(int_scatt_Ein)
+      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
+        i_grid = size(ndpp_scatt_Ein)
         f = ONE
       else
-        i_grid = binary_search(int_scatt_Ein, size(int_scatt_Ein), Ein)
-        f = (Ein - int_scatt_Ein(i_grid)) / &
-          (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
+        i_grid = binary_search(ndpp_scatt_Ein, size(ndpp_scatt_Ein), Ein)
+        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       end if
       ! Get our sigS
       sigS = micro_xs(i_nuclide) % elastic
@@ -2245,21 +2284,21 @@ contains
       ! Normal scattering (non-S(a,b))
       ! Set up pointers
       nuc => nuclides(i_nuclide)
-      int_scatt => nuc % int_scatt
-      int_scatt_Ein => nuc % int_scatt_Ein
-      ! Find the grid index and interpolant of integrated scattering data
+      ndpp_scatt => nuc % ndpp_scatt
+      ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
+      ! Find the grid index and interpolant of ndpp scattering data
       i_grid = micro_xs(i_nuclide) % index_grid
-      if (i_grid + integrated_scatt_groups <= size(int_scatt_Ein)) then
-        i_grid = binary_search(int_scatt_Ein(i_grid: &
-                               i_grid + integrated_scatt_groups), &
-                               integrated_scatt_groups, Ein) + i_grid - 1
+      if (i_grid + ndpp_groups <= size(ndpp_scatt_Ein)) then
+        i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
+                               i_grid + ndpp_groups), &
+                               ndpp_groups, Ein) + i_grid - 1
       else
-        i_grid = binary_search(int_scatt_Ein(i_grid:), &
-                               size(int_scatt_Ein) - i_grid + 1, Ein) + &
+        i_grid = binary_search(ndpp_scatt_Ein(i_grid:), &
+                               size(ndpp_scatt_Ein) - i_grid + 1, Ein) + &
                  i_grid - 1
       end if
-      f = (Ein - int_scatt_Ein(i_grid)) / &
-          (int_scatt_Ein(i_grid + 1) - int_scatt_Ein(i_grid))
+      f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       ! Get our sigS
       sigS = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
     end if
@@ -2269,36 +2308,38 @@ contains
     f = f * sigS * N_flux
 
     ! Add the contribution from the lower score
-    if (int_scatt(i_grid) % gmin /= 0) then
-      do g = int_scatt(i_grid) % gmin, &
-             int_scatt(i_grid) % gmax
+    if (ndpp_scatt(i_grid) % gmin /= 0) then
+      do g = ndpp_scatt(i_grid) % gmin, &
+             ndpp_scatt(i_grid) % gmax
         g_filter = filter_index + g - 1
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
-          int_scatt(i_grid) % outgoing(:, g) * one_f
+          ndpp_scatt(i_grid) % outgoing(:, g) * one_f
       end do
     end if
 
     ! Now add the contribution from the higher score
-    if (int_scatt(i_grid + 1) % gmin /= 0) then
-      do g = int_scatt(i_grid + 1) % gmin, &
-             int_scatt(i_grid + 1) % gmax
+    if (ndpp_scatt(i_grid + 1) % gmin /= 0) then
+      do g = ndpp_scatt(i_grid + 1) % gmin, &
+             ndpp_scatt(i_grid + 1) % gmax
         g_filter = filter_index + g - 1
+!$omp critical
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
-          int_scatt(i_grid + 1) % outgoing(:, g) * f
+          ndpp_scatt(i_grid + 1) % outgoing(:, g) * f
+!$omp end critical
       end do
     end if
 
-  end subroutine tally_micro_int_pn
+  end subroutine tally_micro_ndpp_pn
 
 !===============================================================================
-! TALLY_MACRO_INT_PN determines the macroscopic scattering moments which were
+! TALLY_MACRO_NDPP_PN determines the macroscopic scattering moments which were
 ! previously calculated with a pre-processor such as NDPP for tracklength
 ! tallies
 !===============================================================================
 
-  subroutine tally_macro_int_pn(mat, score_index, filter_index, t_order, flux, &
+  subroutine tally_macro_ndpp_pn(mat, score_index, filter_index, t_order, flux, &
     Ein, results)
 
     type(Material), pointer, intent(in) :: mat ! Working material
@@ -2316,9 +2357,9 @@ contains
     do i = 1, mat % n_nuclides
       i_nuclide = mat % nuclide(i)
       N_flux = mat % atom_density(i) * flux
-      call tally_micro_int_pn(i_nuclide, score_index, filter_index, t_order, &
+      call tally_micro_ndpp_pn(i_nuclide, score_index, filter_index, t_order, &
         N_flux, Ein, results)
     end do
-  end subroutine tally_macro_int_pn
+  end subroutine tally_macro_ndpp_pn
 
 end module tally

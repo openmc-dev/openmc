@@ -9,16 +9,11 @@ module global
   use geometry_header,  only: Cell, Universe, Lattice, Surface
   use material_header,  only: Material
   use mesh_header,      only: StructuredMesh
-  use particle_header,  only: Particle
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use source_header,    only: ExtSource
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use timer_header,     only: Timer
-
-#ifdef MPI
-  use mpi
-#endif
 
 #ifdef HDF5
   use hdf5_interface,  only: HID_T
@@ -26,11 +21,6 @@ module global
 
   implicit none
   save
-
-  ! ============================================================================
-  ! THE PARTICLE
-
-  type(Particle), pointer :: p => null()
 
   ! ============================================================================
   ! GEOMETRY-RELATED VARIABLES
@@ -75,8 +65,8 @@ module global
   type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings 
 
   ! Cross section caches
-  type(NuclideMicroXS), allocatable, target :: micro_xs(:)  ! Cache for each nuclide
-  type(MaterialMacroXS), target             :: material_xs  ! Cache for current material
+  type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
+  type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 
   integer :: n_nuclides_total ! Number of nuclide cross section tables
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
@@ -86,7 +76,7 @@ module global
   type(DictCharInt) :: nuclide_dict
   type(DictCharInt) :: sab_dict
   type(DictCharInt) :: xs_listing_dict
-  
+
   ! Unionized energy grid
   integer :: grid_method ! how to treat the energy grid
   integer :: n_grid      ! number of points on unionized grid
@@ -103,6 +93,7 @@ module global
 
   type(StructuredMesh), allocatable, target :: meshes(:)
   type(TallyObject),    allocatable, target :: tallies(:)
+  integer, allocatable :: matching_bins(:)
 
   ! Pointers for different tallies
   type(TallyObject), pointer :: user_tallies(:) => null()
@@ -117,6 +108,8 @@ module global
   type(SetInt) :: active_tracklength_tallies
   type(SetInt) :: active_current_tallies
   type(SetInt) :: active_tallies
+!$omp threadprivate(active_analog_tallies, active_tracklength_tallies, &
+!$omp&              active_current_tallies, active_tallies)
 
   ! Global tallies
   !   1) collision estimate of k-eff
@@ -151,17 +144,17 @@ module global
   ! NDPP PREPROCESSED TALLY VARIABLES
   
   ! Flag to indicate need to store pre-integrated scattering library
-  logical        :: integrated_scatt = .false.
+  logical        :: ndpp_scatt = .false.
   
   ! Total number of energy groups and data order in the pre-integrated scattering library
-  integer        :: integrated_scatt_groups
-  integer        :: integrated_scatt_order
+  integer        :: ndpp_groups
+  integer        :: ndpp_scatt_order
 
   ! Energy group structure of NDPP library
-  real(8), allocatable :: integrated_energy_bins(:)
+  real(8), allocatable :: ndpp_energy_bins(:)
   
   ! File which stores ndpp library data.
-  character(MAX_FILE_LEN) :: integrated_scatt_lib
+  character(MAX_FILE_LEN) :: ndpp_lib
   
   ! ndpp_lib.xml preprocessed data listings and associated data.
   type(XsListing),  allocatable, target :: ndpp_listings(:) 
@@ -186,11 +179,12 @@ module global
   ! Source and fission bank
   type(Bank), allocatable, target :: source_bank(:)
   type(Bank), allocatable, target :: fission_bank(:)
+#ifdef OPENMP
+  type(Bank), allocatable, target :: master_fission_bank(:)
+#endif
   integer(8) :: n_bank       ! # of sites in fission bank
-  integer(8) :: bank_first   ! index of first particle in bank
-  integer(8) :: bank_last    ! index of last particle in bank
   integer(8) :: work         ! number of particles per processor
-  integer(8) :: maxwork      ! maximum number of particles per processor
+  integer(8), allocatable :: work_index(:) ! starting index in source bank for each process
   integer(8) :: current_work ! index in source bank of current history simulated
 
   ! Temporary k-effective values
@@ -232,6 +226,11 @@ module global
   integer :: MPI_BANK              ! MPI datatype for fission bank
   integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
 
+#ifdef OPENMP
+  integer :: n_threads = NONE      ! number of OpenMP threads
+  integer :: thread_id             ! ID of a given thread
+#endif
+
   ! No reduction at end of batch
   logical :: reduce_tallies = .true.
 
@@ -241,7 +240,7 @@ module global
   type(Timer) :: time_total         ! timer for total run
   type(Timer) :: time_initialize    ! timer for initialization
   type(Timer) :: time_read_xs       ! timer for reading cross sections
-  type(Timer) :: time_read_ndpp     ! timer for reading integrated 
+  type(Timer) :: time_read_ndpp     ! timer for reading ndpp 
                                     ! scattering data produced by ndpp
   type(Timer) :: time_unionize      ! timer for unionizing energy grid
   type(Timer) :: time_bank          ! timer for fission bank synchronization
@@ -307,6 +306,10 @@ module global
   integer    :: trace_gen
   integer(8) :: trace_particle
 
+  ! Particle tracks
+  logical :: write_all_tracks = .false.
+  integer, allocatable :: track_identifiers(:,:)
+
   ! Particle restart run
   logical :: particle_restart_run = .false.
 
@@ -320,80 +323,64 @@ module global
   logical :: cmfd_run = .false.
  
   ! Timing objects
-  type(Timer) :: time_cmfd   ! timer for whole cmfd calculation
-  type(Timer) :: time_solver ! timer for solver 
+  type(Timer) :: time_cmfd      ! timer for whole cmfd calculation
+  type(Timer) :: time_cmfdbuild ! timer for matrix build
+  type(Timer) :: time_cmfdsolve ! timer for solver 
 
-  ! Flag for CMFD only
-  logical :: cmfd_only = .false.
-
-  ! Flag for coremap accelerator
+  ! Flag for active core map
   logical :: cmfd_coremap = .false.
 
-  ! number of processors for cmfd
-  integer :: n_procs_cmfd
-
-  ! reset dhats to zero
+  ! Flag to reset dhats to zero
   logical :: dhat_reset = .false.
 
-  ! activate neutronic feedback
+  ! Flag to activate neutronic feedback via source weights
   logical :: cmfd_feedback = .false.
 
-  ! activate auto-balance of tallies (2grp only)
-! logical :: cmfd_balance = .false.
+  ! User-defined tally information
+  integer :: n_cmfd_meshes  = 1 ! # of structured meshes
+  integer :: n_cmfd_tallies = 3 ! # of user-defined tallies
 
-  ! calculate effective downscatter
-! logical :: cmfd_downscatter = .false.
-
-  ! user-defined tally information
-  integer :: n_cmfd_meshes              = 1 ! # of structured meshes
-  integer :: n_cmfd_tallies             = 3 ! # of user-defined tallies
-
-  ! overwrite with 2grp xs
-  logical :: cmfd_run_2grp = .false.
-
-  ! hold cmfd weight adjustment factors
+  ! Flag to hold cmfd weight adjustment factors
   logical :: cmfd_hold_weights = .false.
 
-  ! eigenvalue solver type
+  ! Eigenvalue solver type
   character(len=10) :: cmfd_solver_type = 'power'
 
-  ! adjoint method type
+  ! Adjoint method type
   character(len=10) :: cmfd_adjoint_type = 'physical'
 
-  ! number of incomplete ilu factorization levels
+  ! Number of incomplete ilu factorization levels
   integer :: cmfd_ilu_levels = 1
 
-  ! batch to begin cmfd
+  ! Batch to begin cmfd
   integer :: cmfd_begin = 1
 
-  ! when and how long to flush cmfd tallies during inactive batches
+  ! When and how long to flush cmfd tallies during inactive batches
   integer :: cmfd_inact_flush(2) = (/9999,1/)
 
-  ! batch to last flush before active batches
+  ! Batch to last flush before active batches
   integer :: cmfd_act_flush = 0
 
-  ! compute effective downscatter cross section
+  ! Compute effective downscatter cross section
   logical :: cmfd_downscatter = .false.
 
-  ! convergence monitoring
+  ! Convergence monitoring
   logical :: cmfd_snes_monitor  = .false.
   logical :: cmfd_ksp_monitor   = .false.
   logical :: cmfd_power_monitor = .false.
 
-  ! cmfd output
-  logical :: cmfd_write_balance  = .false.
+  ! Cmfd output
   logical :: cmfd_write_matrices = .false.
-  logical :: cmfd_write_hdf5     = .false.
 
-  ! run an adjoint calculation (last batch only)
+  ! Run an adjoint calculation (last batch only)
   logical :: cmfd_run_adjoint = .false.
 
-  ! cmfd run logicals
+  ! CMFD run logicals
   logical :: cmfd_on             = .false.
   logical :: cmfd_tally_on       = .true. 
 
-  ! tolerance on keff to run cmfd
-  real(8) :: cmfd_keff_tol = 0.005_8
+  ! CMFD display info
+  character(len=25) :: cmfd_display
 
   ! Information about state points to be written
   integer :: n_state_points = 0
@@ -403,6 +390,9 @@ module global
   logical :: output_summary = .false.
   logical :: output_xs      = .false.
   logical :: output_tallies = .true.
+
+!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, message, &
+!$omp&              trace, thread_id, current_work, matching_bins)
 
 contains
 
@@ -438,6 +428,19 @@ contains
     if (allocated(xs_listings)) deallocate(xs_listings)
     if (allocated(micro_xs)) deallocate(micro_xs)
 
+    ! Deallocate external source
+    if (allocated(external_source % params_space)) &
+         deallocate(external_source % params_space)
+    if (allocated(external_source % params_angle)) &
+         deallocate(external_source % params_angle)
+    if (allocated(external_source % params_energy)) &
+         deallocate(external_source % params_energy)
+
+    ! Deallocate k and entropy
+    if (allocated(k_generation)) deallocate(k_generation)
+    if (allocated(entropy)) deallocate(entropy)
+    if (allocated(entropy_p)) deallocate(entropy_p)
+
     ! Deallocate tally-related arrays
     if (allocated(meshes)) deallocate(meshes)
     if (allocated(tallies)) then
@@ -448,17 +451,26 @@ contains
       ! Now deallocate the tally array
       deallocate(tallies)
     end if
+    if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(tally_maps)) deallocate(tally_maps)
 
     ! Deallocate energy grid
     if (allocated(e_grid)) deallocate(e_grid)
 
     ! Deallocate fission and source bank and entropy
+!$omp parallel
     if (allocated(fission_bank)) deallocate(fission_bank)
+!$omp end parallel
+#ifdef OPENMP
+    if (allocated(master_fission_bank)) deallocate(master_fission_bank)
+#endif
     if (allocated(source_bank)) deallocate(source_bank)
     if (allocated(entropy_p)) deallocate(entropy_p)
 
-    ! Deallocate cmfd
+    ! Deallocate array of work indices
+    if (allocated(work_index)) deallocate(work_index)
+
+    ! Deallocate CMFD
     call deallocate_cmfd(cmfd)
 
     ! Deallocate tally node lists
@@ -466,6 +478,9 @@ contains
     call active_tracklength_tallies % clear()
     call active_current_tallies % clear()
     call active_tallies % clear()
+
+    ! Deallocate track_identifiers
+    if (allocated(track_identifiers)) deallocate(track_identifiers)
     
     ! Deallocate dictionaries
     call cell_dict % clear()
@@ -481,10 +496,13 @@ contains
     call xs_listing_dict % clear()
     call ndpp_listing_dict % clear()
 
-    ! Deallocate integrated_energy_bins
-    if (allocated(integrated_energy_bins)) then
-      deallocate(integrated_energy_bins)
+    ! Deallocate ndpp_energy_bins
+    if (allocated(ndpp_energy_bins)) then
+      deallocate(ndpp_energy_bins)
     end if
+
+    ! Clear statepoint batch set
+    call statepoint_batch % clear()
     
   end subroutine free_memory
 

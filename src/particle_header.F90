@@ -1,6 +1,7 @@
 module particle_header
 
-  use constants, only: NEUTRON, ONE, NONE, ZERO
+  use constants,       only: NEUTRON, ONE, NONE, ZERO
+  use geometry_header, only: BASE_UNIVERSE
 
   implicit none
 
@@ -57,17 +58,14 @@ module particle_header
     real(8)    :: absorb_wgt    ! weight absorbed for survival biasing
 
     ! What event last took place
-    integer    :: event         ! scatter, absorption, fission
+    logical    :: fission       ! did the particle cause implicit fission
+    integer    :: event         ! scatter, absorption
     integer    :: event_nuclide ! index in nuclides array
     integer    :: event_MT      ! reaction MT
 
     ! Post-collision physical data
     integer    :: n_bank        ! number of fission sites banked
     real(8)    :: wgt_bank      ! weight of fission sites banked
-
-    ! Energy grid data
-    integer    :: index_grid    ! index on unionized energy grid
-    real(8)    :: interp        ! interpolation factor for energy grid
 
     ! Indices for various arrays
     integer    :: surface       ! index for surface particle is on
@@ -78,6 +76,12 @@ module particle_header
     ! Statistical data
     integer    :: n_collision   ! # of collisions
 
+    ! Track output
+    logical    :: write_track = .false.
+
+  contains
+    procedure :: initialize => initialize_particle
+    procedure :: clear => clear_particle
   end type Particle
 
 contains
@@ -101,5 +105,57 @@ contains
     end if
 
   end subroutine deallocate_coord
+
+!===============================================================================
+! INITIALIZE_PARTICLE sets default attributes for a particle from the source
+! bank
+!===============================================================================
+
+  subroutine initialize_particle(this)
+
+    class(Particle) :: this
+
+    ! Clear coordinate lists
+    call this % clear()
+
+    ! Set particle to neutron that's alive
+    this % type  = NEUTRON
+    this % alive = .true.
+
+    ! clear attributes
+    this % surface       = NONE
+    this % cell_born     = NONE
+    this % material      = NONE
+    this % last_material = NONE
+    this % wgt           = ONE
+    this % last_wgt      = ONE
+    this % absorb_wgt    = ZERO
+    this % n_bank        = 0
+    this % wgt_bank      = ZERO
+    this % n_collision   = 0
+    this % fission       = .false.
+
+    ! Set up base level coordinates
+    allocate(this % coord0)
+    this % coord0 % universe = BASE_UNIVERSE
+    this % coord             => this % coord0
+
+  end subroutine initialize_particle
+
+!===============================================================================
+! CLEAR_PARTICLE
+!===============================================================================
+
+  subroutine clear_particle(this)
+
+    class(Particle) :: this
+
+    ! remove any coordinate levels
+    call deallocate_coord(this % coord0)
+
+    ! Make sure coord pointer is nullified
+    nullify(this % coord)
+
+  end subroutine clear_particle
 
 end module particle_header

@@ -123,10 +123,10 @@ module ace_header
     real(8), allocatable :: absorption(:) ! absorption (MT > 100)
     real(8), allocatable :: heating(:)    ! heating
 
-    ! Microscopic integrated scattering data for use only with
+    ! Microscopic NDPP scattering data for use only with
     ! integrated scattering tallies
-    real(8), allocatable :: int_scatt_Ein(:)       ! Incoming energy grid
-    type(GrpTransfer), allocatable :: int_scatt(:) ! Dimension is number of Ein
+    real(8), allocatable :: ndpp_scatt_Ein(:)       ! Incoming energy grid
+    type(GrpTransfer), allocatable :: ndpp_scatt(:) ! Dimension is number of Ein
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -217,10 +217,10 @@ module ace_header
     real(8), allocatable :: elastic_P(:)
     real(8), allocatable :: elastic_mu(:,:)
 
-    ! Microscopic integrated scattering data for use only with
+    ! Microscopic NDPP scattering data for use only with
     ! integrated scattering tallies
-    real(8), allocatable :: int_scatt_Ein(:)       ! Incoming energy grid
-    type(GrpTransfer), allocatable :: int_scatt(:) ! Dimension is number of Ein
+    real(8), allocatable :: ndpp_scatt_Ein(:)       ! Incoming energy grid
+    type(GrpTransfer), allocatable :: ndpp_scatt(:) ! Dimension is number of Ein
   end type SAlphaBeta
 
 !===============================================================================
@@ -260,8 +260,9 @@ module ace_header
     real(8) :: kappa_fission   ! microscopic energy-released from fission
 
     ! Information for S(a,b) use
-    integer :: index_sab   ! index in sab_tables (zero means no table)
-    real(8) :: elastic_sab ! microscopic elastic scattering on S(a,b) table
+    integer :: index_sab          ! index in sab_tables (zero means no table)
+    integer :: last_index_sab = 0 ! index in sab_tables last used by this nuclide
+    real(8) :: elastic_sab        ! microscopic elastic scattering on S(a,b) table
 
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
@@ -373,7 +374,7 @@ module ace_header
 !===============================================================================
 
     subroutine nuclide_clear(this)
-
+      
       class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
 
       integer :: i ! Loop counter
@@ -392,37 +393,37 @@ module ace_header
 
       if (allocated(this % nu_t_data)) &
            deallocate(this % nu_t_data)
-
+        
       if (allocated(this % nu_p_data)) &
            deallocate(this % nu_p_data)
-
+        
       if (allocated(this % nu_d_data)) &
            deallocate(this % nu_d_data)
-
+        
       if (allocated(this % nu_d_precursor_data)) &
            deallocate(this % nu_d_precursor_data)
-
+        
       if (associated(this % nu_d_edist)) then
         do i = 1, size(this % nu_d_edist)
           call this % nu_d_edist(i) % clear()
         end do
         deallocate(this % nu_d_edist)
       end if
-
+      
       if (associated(this % urr_data)) then
         call this % urr_data % clear()
         deallocate(this % urr_data)
       end if
 
-      if (allocated(this % int_scatt_Ein)) then
-        deallocate(this % int_scatt_Ein)
+      if (allocated(this % ndpp_scatt_Ein)) then
+        deallocate(this % ndpp_scatt_Ein)
       end if
 
-      if (allocated(this % int_scatt)) then
-        do i = 1, size(this % int_scatt)
-          call this % int_scatt(i) % clear()
+      if (allocated(this % ndpp_scatt)) then
+        do i = 1, size(this % ndpp_scatt)
+          call this % ndpp_scatt(i) % clear()
         end do
-        deallocate(this % int_scatt)
+        deallocate(this % ndpp_scatt)
       end if
 
       if (associated(this % reactions)) then

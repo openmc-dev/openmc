@@ -15,7 +15,7 @@ module initialize
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot,       &
                               write_message
-  use output_interface, only: file_open, file_close, read_data
+  use output_interface
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use state_point,      only: load_state_point
@@ -25,6 +25,10 @@ module initialize
 
 #ifdef MPI
   use mpi
+#endif
+
+#ifdef OPENMP
+  use omp_lib
 #endif
 
 #ifdef HDF5
@@ -250,6 +254,9 @@ contains
     ! Commit derived type for tally scores
     call MPI_TYPE_COMMIT(MPI_TALLYRESULT, mpi_err)
 
+    ! Free temporary MPI type
+    call MPI_TYPE_FREE(temp_type, mpi_err)
+
   end subroutine initialize_mpi
 #endif
 
@@ -311,6 +318,7 @@ contains
     integer :: filetype
     character(MAX_FILE_LEN) :: pwd      ! present working directory
     character(MAX_WORD_LEN), allocatable :: argv(:) ! command line arguments
+    type(BinaryOutput) :: sp
 
     ! Get working directory
     call GET_ENVIRONMENT_VARIABLE("PWD", pwd)
@@ -335,7 +343,7 @@ contains
           run_mode = MODE_PLOTTING
           check_overlaps = .true.
 
-        case ('-n', '-n_particles', '--n_particles')
+        case ('-n', '-particles', '--particles')
           ! Read number of particles per cycle
           i = i + 1
           n_particles = str_to_int(argv(i))
@@ -351,9 +359,9 @@ contains
           i = i + 1
 
           ! Check what type of file this is
-          call file_open(argv(i), 'parallel', 'r')
-          call read_data(filetype, 'filetype')
-          call file_close('parallel')
+          call sp % file_open(argv(i), 'r', serial = .false.)
+          call sp % read_data(filetype, 'filetype')
+          call sp % file_close()
 
           ! Set path and flag for type of run
           select case (filetype)
@@ -368,6 +376,23 @@ contains
         case ('-g', '-geometry-debug', '--geometry-debug')
           check_overlaps = .true.
 
+        case ('-s', '--threads')
+          ! Read number of threads
+          i = i + 1
+
+#ifdef OPENMP          
+          ! Read and set number of OpenMP threads
+          n_threads = str_to_int(argv(i))
+          if (n_threads < 1) then
+            message = "Invalid number of threads specified on command line."
+            call fatal_error()
+          end if
+          call omp_set_num_threads(n_threads)
+#else
+          message = "Ignoring number of threads specified on command line."
+          call warning()
+#endif
+
         case ('-?', '-help', '--help')
           call print_usage()
           stop
@@ -376,6 +401,9 @@ contains
           stop
         case ('-eps_tol', '-ksp_gmres_restart')
           ! Handle options that would be based to PETSC
+          i = i + 1
+        case ('-t', '-track', '--track')
+          write_all_tracks = .true.
           i = i + 1
         case default
           message = "Unknown command line option: " // argv(i)
@@ -425,6 +453,8 @@ contains
     integer, allocatable :: index_cell_in_univ(:) ! the index in the univ%cells
                                                   ! array for each universe
     type(ElemKeyValueII), pointer :: pair_list => null()
+    type(ElemKeyValueII), pointer :: current => null()
+    type(ElemKeyValueII), pointer :: next => null()
     type(Universe),       pointer :: univ => null()
     type(Cell),           pointer :: c => null()
 
@@ -436,24 +466,27 @@ contains
     ! cells_in_univ_dict, it's the id of the universe and the number of cells.
 
     pair_list => universe_dict % keys()
-    do while (associated(pair_list))
-      ! find index of universe in universes array
-      i_univ = pair_list % value
+    current => pair_list
+    do while (associated(current))
+      ! Find index of universe in universes array
+      i_univ = current % value
       univ => universes(i_univ)
-      univ % id = pair_list % key
+      univ % id = current % key
 
-      ! check for lowest level universe
+      ! Check for lowest level universe
       if (univ % id == 0) BASE_UNIVERSE = i_univ
 
-      ! find cell count for this universe
+      ! Find cell count for this universe
       n_cells_in_univ = cells_in_univ_dict % get_key(univ % id)
 
-      ! allocate cell list for universe
+      ! Allocate cell list for universe
       allocate(univ % cells(n_cells_in_univ))
       univ % n_cells = n_cells_in_univ
 
-      ! move to next universe
-      pair_list => pair_list % next
+      ! Move to next universe
+      next => current % next
+      deallocate(current)
+      current => next
     end do
 
     ! Also allocate a list for keeping track of where cells have been assigned
@@ -465,16 +498,19 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
-      ! get pointer to corresponding universe
+      ! Get pointer to corresponding universe
       i_univ = universe_dict % get_key(c % universe)
       univ => universes(i_univ)
 
-      ! increment the index for the cells array within the Universe object and
+      ! Increment the index for the cells array within the Universe object and
       ! then store the index of the Cell object in that array
       index_cell_in_univ(i_univ) = index_cell_in_univ(i_univ) + 1
       univ % cells(index_cell_in_univ(i_univ)) = i
     end do
-    
+
+    ! Clear dictionary
+    call cells_in_univ_dict % clear()
+
   end subroutine prepare_universes
 
 !===============================================================================
@@ -751,15 +787,37 @@ contains
 
   subroutine calculate_work()
 
-    ! Determine maximum amount of particles to simulate on each processor
-    maxwork = ceiling(real(n_particles)/n_procs,8)
+    integer    :: i         ! loop index
+    integer    :: remainder ! Number of processors with one extra particle
+    integer(8) :: i_bank    ! Running count of number of particles
+    integer(8) :: min_work  ! Minimum number of particles on each proc
+    integer(8) :: work_i    ! Number of particles on rank i
 
-    ! ID's of first and last source particles
-    bank_first = rank*maxwork + 1
-    bank_last  = min((rank+1)*maxwork, n_particles)
+    allocate(work_index(0:n_procs))
 
-    ! number of particles for this processor
-    work = bank_last - bank_first + 1
+    ! Determine minimum amount of particles to simulate on each processor
+    min_work = n_particles/n_procs
+
+    ! Determine number of processors that have one extra particle
+    remainder = int(mod(n_particles, int(n_procs,8)), 4)
+
+    i_bank = 0
+    work_index(0) = 0
+    do i = 0, n_procs - 1
+      ! Number of particles for rank i
+      if (i < remainder) then
+        work_i = min_work + 1
+      else
+        work_i = min_work
+      end if
+
+      ! Set number of particles
+      if (rank == i) work = work_i
+
+      ! Set index into source bank for rank i
+      i_bank = i_bank + work_i
+      work_index(i+1) = i_bank
+    end do
 
   end subroutine calculate_work
 
@@ -769,10 +827,10 @@ contains
 
   subroutine allocate_banks()
 
-    integer    :: alloc_err  ! allocation error code
+    integer :: alloc_err  ! allocation error code
 
     ! Allocate source bank
-    allocate(source_bank(maxwork), STAT=alloc_err)
+    allocate(source_bank(work), STAT=alloc_err)
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then
@@ -780,8 +838,26 @@ contains
       call fatal_error()
     end if
 
-    ! Allocate fission bank
-    allocate(fission_bank(3*maxwork), STAT=alloc_err)
+#ifdef OPENMP
+    ! If OpenMP is being used, each thread needs its own private fission
+    ! bank. Since the private fission banks need to be combined at the end of a
+    ! generation, there is also a 'master_fission_bank' that is used to collect
+    ! the sites from each thread.
+
+!$omp parallel
+    n_threads = omp_get_num_threads()
+    thread_id = omp_get_thread_num()
+
+    if (thread_id == 0) then
+       allocate(fission_bank(3*work))
+    else
+       allocate(fission_bank(3*work/n_threads))
+    end if
+!$omp end parallel
+    allocate(master_fission_bank(3*work), STAT=alloc_err)
+#else
+    allocate(fission_bank(3*work), STAT=alloc_err)
+#endif
 
     ! Check for allocation errors 
     if (alloc_err /= 0) then

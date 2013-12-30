@@ -7,6 +7,7 @@ module ndpp
   use global
   use output,           only: write_message
   use string,           only: ends_with, lower_case, starts_with, to_str
+  use xml_interface
 
   implicit none
 
@@ -126,8 +127,7 @@ contains
        filetype = ASCII
     elseif (trim(temp_str) == 'binary') then
        filetype = BINARY
-    elseif (trim(temp_str) == 'hdf5')
-    elseif (len_trim(temp_str) == 0) then
+    elseif (trim(temp_str) == 'hdf5') then
        filetype = H5
     else
        message = "Unknown filetype in " // trim(ndpp_lib) // &
@@ -157,7 +157,7 @@ contains
     order = 0
     if (check_for_node(doc, "scatt_order")) &
       call get_node_value(doc, "scatt_order", order)
-    if (order > orderMAX) then
+    if (order > SCATT_ORDER_MAX) then
       message = "Invalid scattering order of " // trim(to_str(order)) // &
                 " requested."
       call fatal_error()
@@ -165,7 +165,7 @@ contains
 
     ! Get the energy bin structure
     if (check_for_node(doc, "energy_bins")) then
-      ndpp_groups = get_arraysize(doc, "energy_bins")
+      ndpp_groups = get_arraysize_double(doc, "energy_bins")
       allocate(ndpp_energy_bins(ndpp_groups))
       ndpp_groups = ndpp_groups - 1
       call get_node_array(doc, "energy_bins", ndpp_energy_bins)
@@ -196,7 +196,7 @@ contains
           case (SCORE_SCATTER_PN)
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP ! Skip the others which will only waste cycles
-          case (SCORE_INTSCATT_PN)
+          case (SCORE_NDPPSCATT_PN)
             ! We found the correct score, get comparing!
             ! First check the scattering order
             if (order < t % scatt_order(j)) then
@@ -310,7 +310,7 @@ contains
        end if
 
        ! determine metastable state
-       if (ndpp_tables_(i) % metastable == 0) then
+       if (.not.check_for_node(node_ndpp, "metastable")) then
           listing % metastable = .false.
        else
           listing % metastable = .true.

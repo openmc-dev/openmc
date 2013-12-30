@@ -188,6 +188,7 @@ initialize.o: global.o
 initialize.o: hdf5_interface.o
 initialize.o: hdf5_summary.o
 initialize.o: input_xml.o
+initialize.o: ndpp.o
 initialize.o: output.o
 initialize.o: output_interface.o
 initialize.o: random_lcg.o
@@ -250,6 +251,7 @@ ndpp.o: error.o
 ndpp.o: global.o
 ndpp.o: output.o
 ndpp.o: string.o
+ndpp.o: xml_interface.o
 
 output.o: ace_header.o
 output.o: constants.o

@@ -25,158 +25,6 @@ module physics
 contains
 
 !===============================================================================
-! TRANSPORT encompasses the main logic for moving a particle through geometry.
-!===============================================================================
-
-  subroutine transport()
-
-    integer :: surface_crossed ! surface which particle is on
-    integer :: lattice_crossed ! lattice boundary which particle crossed
-    integer :: last_cell       ! most recent cell particle was in
-    integer :: n_event         ! number of collisions/crossings
-    real(8) :: d_boundary      ! distance to nearest boundary
-    real(8) :: d_collision     ! sampled distance to collision
-    real(8) :: distance        ! distance particle travels
-    logical :: found_cell      ! found cell which particle is in?
-    type(LocalCoord), pointer :: coord => null()
-
-    ! Display message if high verbosity or trace is on
-    if (verbosity >= 9 .or. trace) then
-      message = "Simulating Particle " // trim(to_str(p % id))
-      call write_message()
-    end if
-
-    ! If the cell hasn't been determined based on the particle's location,
-    ! initiate a search for the current cell
-    if (p % coord % cell == NONE) then
-      call find_cell(found_cell)
-
-      ! Particle couldn't be located
-      if (.not. found_cell) then
-        message = "Could not locate particle " // trim(to_str(p % id))
-        call fatal_error()
-      end if
-
-      ! set birth cell attribute
-      p % cell_born = p % coord % cell
-    end if
-
-    ! Initialize number of events to zero
-    n_event = 0
-
-    ! Add paricle's starting weight to count for normalizing tallies later
-    total_weight = total_weight + p % wgt
-
-    ! Force calculation of cross-sections by setting last energy to zero 
-    micro_xs % last_E = ZERO
-
-    do while (p % alive)
-
-      if (check_overlaps) call check_cell_overlap()
-
-      ! Calculate microscopic and macroscopic cross sections -- note: if the
-      ! material is the same as the last material and the energy of the
-      ! particle hasn't changed, we don't need to lookup cross sections again.
-
-      if (p % material /= p % last_material) call calculate_xs()
-
-      ! Find the distance to the nearest boundary
-      call distance_to_boundary(d_boundary, surface_crossed, lattice_crossed)
-
-      ! Sample a distance to collision
-      if (material_xs % total == ZERO) then
-        d_collision = INFINITY
-      else
-        d_collision = -log(prn()) / material_xs % total
-      end if
-
-      ! Select smaller of the two distances
-      distance = min(d_boundary, d_collision)
-
-      ! Advance particle
-      coord => p % coord0
-      do while (associated(coord))
-        coord % xyz = coord % xyz + distance * coord % uvw
-        coord => coord % next
-      end do
-
-      ! Score track-length tallies
-      if (active_tracklength_tallies % size() > 0) &
-           call score_tracklength_tally(distance)
-
-      ! Score track-length estimate of k-eff
-      global_tallies(K_TRACKLENGTH) % value = &
-           global_tallies(K_TRACKLENGTH) % value + p % wgt * distance * &
-           material_xs % nu_fission
-
-      if (d_collision > d_boundary) then
-        ! ====================================================================
-        ! PARTICLE CROSSES SURFACE
-
-        last_cell = p % coord % cell
-        p % coord % cell = NONE
-        if (lattice_crossed /= NONE) then
-          ! Particle crosses lattice boundary
-          p % surface = NONE
-          call cross_lattice(lattice_crossed)
-          p % event = EVENT_LATTICE
-        else
-          ! Particle crosses surface
-          p % surface = surface_crossed
-          call cross_surface(last_cell)
-          p % event = EVENT_SURFACE
-        end if
-      else
-        ! ====================================================================
-        ! PARTICLE HAS COLLISION
-
-        ! Score collision estimate of keff
-        global_tallies(K_COLLISION) % value = &
-             global_tallies(K_COLLISION) % value + p % wgt * &
-             material_xs % nu_fission / material_xs % total
-
-        p % surface = NONE
-        call collision()
-
-        ! Save coordinates for tallying purposes
-        p % last_xyz = p % coord0 % xyz
-
-        ! Set last material to none since cross sections will need to be
-        ! re-evaluated
-        p % last_material = NONE
-
-        ! Set all uvws to base level -- right now, after a collision, only the
-        ! base level uvws are changed
-        coord => p % coord0
-        do while(associated(coord % next))
-          if (coord % next % rotated) then
-            ! If next level is rotated, apply rotation matrix
-            coord % next % uvw = matmul(cells(coord % cell) % &
-                 rotation, coord % uvw)
-          else
-            ! Otherwise, copy this level's direction
-            coord % next % uvw = coord % uvw
-          end if
-
-          ! Advance coordinate level
-          coord => coord % next
-        end do
-      end if
-
-      ! If particle has too many events, display warning and kill it
-      n_event = n_event + 1
-      if (n_event == MAX_EVENTS) then
-        message = "Particle " // trim(to_str(p%id)) // " underwent maximum &
-             &number of events."
-        call warning()
-        p % alive = .false.
-      end if
-
-    end do
-
-  end subroutine transport
-
-!===============================================================================
 ! COLLISION samples a nuclide and reaction and then calls the appropriate
 ! routine for that reaction
 !===============================================================================
@@ -204,7 +52,7 @@ contains
     end if
 
     ! check for very low energy
-    if (p % E < 1.0e-100_8) then
+    if (p % E < MIN_ENERGY) then
       p % alive = .false.
       message = "Killing neutron with extremely low energy"
       call warning()
@@ -455,13 +303,7 @@ contains
 ! SCATTER
 !===============================================================================
 
-          ! add to cumulative probability
-          if (nuc % has_partial_fission) then
-            prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) & 
-                 + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
-          else
-            prob = prob + micro_xs(i_nuclide) % fission
-          end if
+  subroutine scatter(p, i_nuclide)
 
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: i_nuclide
@@ -590,7 +432,7 @@ contains
 
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
-      call sample_target_velocity(nuc, v_t)
+      call sample_target_velocity(nuc, v_t, E, uvw)
     else
       v_t = ZERO
     end if
@@ -648,15 +490,25 @@ contains
     integer :: k            ! outgoing cosine bin
     integer :: n_energy_out ! number of outgoing energy bins
     real(8) :: f            ! interpolation factor
-    real(8) :: r            ! used for skewed sampling
-    real(8) :: E            ! outgoing energy
+    real(8) :: r            ! used for skewed sampling & continuous
     real(8) :: E_ij         ! outgoing energy j for E_in(i)
     real(8) :: E_i1j        ! outgoing energy j for E_in(i+1)
     real(8) :: mu_ijk       ! outgoing cosine k for E_in(i) and E_out(j)
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
     real(8) :: prob         ! probability for sampling Bragg edge
-    real(8) :: u, v, w      ! directional cosines
-    type(SAlphaBeta), pointer :: sab => null()
+    type(SAlphaBeta), pointer, save :: sab => null()
+    ! Following are needed only for SAB_SECONDARY_CONT scattering
+    integer :: l              ! sampled incoming E bin (is i or i + 1)
+    real(8) :: E_i_1, E_i_J   ! endpoints on outgoing grid i
+    real(8) :: E_i1_1, E_i1_J ! endpoints on outgoing grid i+1
+    real(8) :: E_1, E_J       ! endpoints interpolated between i and i+1
+    real(8) :: E_l_j, E_l_j1  ! adjacent E on outgoing grid l
+    real(8) :: p_l_j, p_l_j1  ! adjacent p on outgoing grid l
+    real(8) :: c_j, c_j1      ! cumulative probability
+    real(8) :: frac           ! interpolation factor on outgoing energy
+    real(8) :: r1             ! RNG for outgoing energy
+
+!$omp threadprivate(sab)
 
     ! Get pointer to S(a,b) table
     sab => sab_tables(i_sab)
@@ -671,8 +523,8 @@ contains
         i = 1
         f = ZERO
       else
-        i = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, p%E)
-        f = (p%E - sab%elastic_e_in(i)) / & 
+        i = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, E)
+        f = (E - sab%elastic_e_in(i)) / &
              (sab%elastic_e_in(i+1) - sab%elastic_e_in(i))
       end if
 
@@ -720,8 +572,8 @@ contains
         i = 1
         f = ZERO
       else
-        i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, p%E)
-        f = (p%E - sab%inelastic_e_in(i)) / & 
+        i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, E)
+        f = (E - sab%inelastic_e_in(i)) / &
              (sab%inelastic_e_in(i+1) - sab%inelastic_e_in(i))
       end if
 
@@ -884,7 +736,6 @@ contains
     real(8), intent(in)     :: E
     real(8), intent(in)     :: uvw(3)
 
-    real(8) :: u, v, w     ! direction of target 
     real(8) :: kT          ! equilibrium temperature of target in MeV
     real(8) :: alpha       ! probability of sampling f2 over f1
     real(8) :: mu          ! cosine of angle between neutron and target vel
@@ -1009,13 +860,6 @@ contains
          micro_xs(i_nuclide) % total
 
     ! Sample number of neutrons produced
-    if (survival_biasing) then
-      ! Need to use the weight before survival biasing
-      nu_t = (p % wgt + p % absorb_wgt) * micro_xs(i_nuclide) % fission / &
-           (keff * micro_xs(i_nuclide) % total) * nu_t * weight
-    else 
-      nu_t = p % wgt / keff * nu_t * weight
-    end if
     if (prn() > nu_t - int(nu_t)) then
       nu = int(nu_t)
     else
@@ -1420,8 +1264,8 @@ contains
       uvw(3) = mu*w0 + a*(v0*w0*cosphi - u0*sinphi)/b
     end if
 
-  end subroutine rotate_angle
-    
+  end function rotate_angle
+
 !===============================================================================
 ! SAMPLE_ENERGY samples an outgoing energy distribution, either for a secondary
 ! neutron from a collision or for a prompt/delayed fission neutron

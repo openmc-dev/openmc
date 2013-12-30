@@ -214,7 +214,7 @@ contains
               ! to be adjusted to point to the first energyout filter
               call tally_analog_ndpp_pn(p % event_nuclide, score_index, &
                 filter_index - &
-                t % matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+                matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                 t % scatt_order(j), last_wgt, p % last_E, t % results)
             end if
 
@@ -1294,7 +1294,7 @@ contains
                 end select
 
               else
-                ! Determine macroscopic material cross section 
+                ! Determine macroscopic material cross section
                 select case(score_bin)
                 case (SCORE_FLUX)
                   score = flux

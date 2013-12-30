@@ -39,10 +39,10 @@ contains
       if (i_listing == DICT_NULL) then
         ! Could not find ndpp_lib.xml file
         message = trim(nuc % name) // " does not exist in NDPP XML file: '" // &
-                  trim(integrated_scatt_lib) // "'!"
+                  trim(ndpp_lib) // "'!"
         call fatal_error()
       end if
-      ! read_ndpp_table will populate nuclide % int_scatt and also check that
+      ! read_ndpp_table will populate nuclide % ndpp_scatt and also check that
       ! the temperatures match
       ndpp_listing => ndpp_listings(i_listing)
       call read_ndpp_table(ndpp_listing, NUC=nuc)
@@ -54,10 +54,10 @@ contains
       if (i_listing == DICT_NULL) then
         ! Could not find ndpp_lib.xml file
         message = trim(nuc % name) // " does not exist in NDPP XML file: '" // &
-                  trim(integrated_scatt_lib) // "'!"
+                  trim(ndpp_lib) // "'!"
         call fatal_error()
       end if
-      ! read_ndpp_table will populate nuclide % int_scatt and also check that
+      ! read_ndpp_table will populate nuclide % ndpp_scatt and also check that
       ! the temperatures match
       ndpp_listing => ndpp_listings(i_listing)
       call read_ndpp_table(ndpp_listing, SAB=sab)
@@ -72,85 +72,116 @@ contains
 
   subroutine read_ndpp_xml()
 
-    use xml_data_ndpp_lib_t
-
     integer :: i, j, k     ! loop indices
+    logical :: file_exists ! does ndpp_lib.xml exist?
     integer :: filetype    ! default file type
-    integer :: recl        ! default record length
-    integer :: entries     ! default number of entries
-    logical :: file_exists ! does cross_sections.xml exist?
+    integer :: recl = 0    ! default record length
+    integer :: entries = 0 ! default number of entries
+    logical :: chi_present ! is chi data present?
     character(MAX_WORD_LEN)  :: directory   ! directory with cross sections
+    character(MAX_LINE_LEN)  :: temp_str
     type(TallyObject), pointer :: t => null()
     integer :: i_filter    ! Index of filter which contains energyin or energyout
     ! We can use the same XSListing type for our ndpp data since the NDPP
     ! data is a subset of whats in cross_sections.xml
     type(XsListing), pointer :: listing => null()
+    integer :: scatt_type  ! type of scattering distribution (legendre/tabular)
+    integer :: order       ! ndpp_lib.xml's scattering order
     integer :: max_tally_order = 0
+    type(Node), pointer :: doc => null()
+    type(Node), pointer :: node_ndpp => null()
+    type(NodeList), pointer :: node_ndpp_list => null()
 
 
-    ! Check if cross_sections.xml exists
-    inquire(FILE=integrated_scatt_lib, EXIST=file_exists)
+    ! Check if ndpp_lib.xml exists
+    inquire(FILE=ndpp_lib, EXIST=file_exists)
     if (.not. file_exists) then
        ! Could not find ndpp_lib.xml file
-       message = "NDPP XML file provided in ndpp.xml does not exist!"
+       message = "NDPP Library XML file '" // trim(ndpp_lib) // &
+                 "' does not exist!"
        call fatal_error()
     end if
 
     message = "Reading NDPP Library XML file..."
     call write_message(5)
 
-    ! Initialize variables that may go unused
-    directory_ = ""
-    filetype_ = ""
-    record_length_ = 0
-    entries_ = 0
+    ! Parse ndpp_lib.xml file
+    call open_xmldoc(doc, ndpp_lib)
 
-    ! Parse cross_sections.xml file
-    call read_xml_file_ndpp_lib_t(integrated_scatt_lib)
-
-    if (len_trim(directory_) > 0) then
+    if (check_for_node(doc, "directory")) then
        ! Copy directory information if present
-       directory = trim(directory_)
+       call get_node_value(doc, "directory", directory)
     else
-       ! If no directory is listed in the NDPP xml, by default select the
-       ! directory in which the NDPP xml file resides
-       i = index(path_cross_sections, "/", BACK=.true.)
-       directory = integrated_scatt_lib(1:i)
+       ! If no directory is listed in ndpp_lib.xml, by default select the
+       ! directory in which the ndpp_lib.xml file resides
+       i = index(ndpp_lib, "/", BACK=.true.)
+       directory = ndpp_lib(1:i)
     end if
 
     ! determine whether binary, ascii, or hdf5
-    call lower_case(filetype_)
-    if (filetype_ == 'ascii') then
+    temp_str = ''
+    if (check_for_node(doc, "filetype")) &
+      call get_node_value(doc, "filetype", temp_str)
+    if (trim(temp_str) == 'ascii') then
        filetype = ASCII
-    elseif (filetype_ == 'binary') then
+    elseif (trim(temp_str) == 'binary') then
        filetype = BINARY
-    elseif (filetype_ == 'hdf5') then
+    elseif (trim(temp_str) == 'hdf5')
+    elseif (len_trim(temp_str) == 0) then
        filetype = H5
     else
-       message = "Unknown filetype in " // trim(integrated_scatt_lib) // &
-        ": " // trim(filetype_)
+       message = "Unknown filetype in " // trim(ndpp_lib) // &
+        ": " // trim(temp_str)
        call fatal_error()
     end if
 
     ! copy default record length and entries for binary files
-    recl = record_length_
-    entries = entries_
+    if (filetype == BINARY) then
+      call get_node_value(doc, "record_length", recl)
+      call get_node_value(doc, "entries", entries)
+    end if
 
     ! Test metadata to ensure this library matches the problem definition
     ! First test to see if we have a legendre scattering type and not tabular
     !!! (This will be removed at an undefined data when OpenMC supports
     !!! tabular scattering distributions as opposed to Legendres.
-    if (scatt_type_ /= SCATT_TYPE_LEGENDRE) then
+    if (check_for_node(doc, "scatt_type")) &
+      call get_node_value(doc, "scatt_type", scatt_type)
+    if (scatt_type /= SCATT_TYPE_LEGENDRE) then
       message = "Invalid Scattering Type represented in NDPP data. Rerun " // &
                 "NDPP with the Legendre scattering type set."
       call fatal_error()
     end if
 
     ! Test to ensure the scattering order is less than the maximum
-    if (scatt_order_ > SCATT_ORDER_MAX) then
-      message = "Invalid scattering order of " // trim(to_str(scatt_order_)) // &
+    order = 0
+    if (check_for_node(doc, "scatt_order")) &
+      call get_node_value(doc, "scatt_order", order)
+    if (order > orderMAX) then
+      message = "Invalid scattering order of " // trim(to_str(order)) // &
                 " requested."
       call fatal_error()
+    end if
+
+    ! Get the energy bin structure
+    if (check_for_node(doc, "energy_bins")) then
+      ndpp_groups = get_arraysize(doc, "energy_bins")
+      allocate(ndpp_energy_bins(ndpp_groups))
+      ndpp_groups = ndpp_groups - 1
+      call get_node_array(doc, "energy_bins", ndpp_energy_bins)
+    end if
+
+    ! Get if chi is present
+    temp_str = ""
+    if (check_for_node(doc, "chi_present")) then
+      call get_node_value(doc, "chi_present", temp_str)
+      if (trim(temp_str) == 'true') then
+        chi_present = .true.
+      else
+        chi_present = .false.
+      end if
+    else
+      chi_present = .false.
     end if
 
     ! Check the tallies to ensure that the energy group structure, scattering
@@ -168,16 +199,16 @@ contains
           case (SCORE_INTSCATT_PN)
             ! We found the correct score, get comparing!
             ! First check the scattering order
-            if (scatt_order_ < t % scatt_order(j)) then
+            if (order < t % scatt_order(j)) then
               message = "Invalid scattering order of " // &
-                        trim(to_str(scatt_order_)) // " requested. Order " // &
+                        trim(to_str(order)) // " requested. Order " // &
                         "requested is larger than provided in the library (" // &
-                        trim(to_str(scatt_order_)) // ")!"
+                        trim(to_str(order)) // ")!"
               call fatal_error()
             end if
             ! Find the maximum scattering order requested
             if (t % scatt_order(j) > max_tally_order) &
-              max_tally_order = t  % scatt_order(j)
+              max_tally_order = t % scatt_order(j)
 
             ! Compare the energyin and energyout filters of this tally to the
             ! energy_bins_ metadata of the NDPP library.
@@ -186,25 +217,25 @@ contains
             ! We have already checked to ensure some energyin filter exists,
             ! reducing the cases to check. First we check the size, so that we
             ! can use the Fortran intrinsic ALL to check the actual values
-            if (t % filters(i_filter) % n_bins /= size(energy_bins_) - 1) then
+            if (t % filters(i_filter) % n_bins /= ndpp_groups) then
               message = "Number of groups in NDPP Library do not match that " // &
                         "requested in tally!"
               call fatal_error()
             end if
             ! Now we can check the actual group boundaries.
-            if (all(t % filters(i_filter) % real_bins /= energy_bins_)) then
+            if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
               message = "NDPP Library group structure does not match that " // &
                         "requested in tally!"
               call fatal_error()
             end if
             ! Repeat the same steps as above, but this time for the energyout filter
             i_filter = t % find_filter(FILTER_ENERGYOUT)
-            if (t % filters(i_filter) % n_bins /= size(energy_bins_) - 1) then
+            if (t % filters(i_filter) % n_bins /= ndpp_groups) then
               message = "Number of groups in NDPP Library do not match that " // &
                         "requested in tally!"
               call fatal_error()
             end if
-            if (all(t % filters(i_filter) % real_bins /= energy_bins_)) then
+            if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
               message = "NDPP Library group structure does not match that " // &
                         "requested in tally!"
               call fatal_error()
@@ -215,39 +246,42 @@ contains
       end do SCORE_LOOP
     end do TALLY_LOOP
 
-    ! Store the number of groups
-    integrated_scatt_groups = size(energy_bins_) - 1
-    ! Store the group boundaries
-    allocate(integrated_energy_bins(size(energy_bins_)))
-    integrated_energy_bins = energy_bins_
-
     ! Store the order as the maximum requested in tallies
-    if (scatt_type_ == SCATT_TYPE_LEGENDRE) then
-      integrated_scatt_order = max_tally_order + 1
-    else if (scatt_type_ == SCATT_TYPE_TABULAR) then
+    if (scatt_type == SCATT_TYPE_LEGENDRE) then
+      ndpp_scatt_order = max_tally_order + 1
+    else if (scatt_type == SCATT_TYPE_TABULAR) then
       ! This one uses scatt_order since there technically is no maximum here
-      integrated_scatt_order = scatt_order_
+      ndpp_scatt_order = order
     end if
 
+    ! Get node list of all <ndpp_table> entries
+    call get_node_list(doc, "ndpp_table", node_ndpp_list)
+    n_listings = get_list_size(node_ndpp_list)
+
     ! Allocate ndpp_listings array
-    if (.not. associated(ndpp_tables_)) then
+    if (n_listings == 0) then
        message = "No NDPP table listings present in ndpp_lib.xml file!"
        call fatal_error()
     else
-       n_listings = size(ndpp_tables_)
        allocate(ndpp_listings(n_listings))
     end if
 
     do i = 1, n_listings
        listing => ndpp_listings(i)
 
+
+       ! Get pointer to ace table XML node
+       call get_list_item(node_ndpp_list, i, node_ndpp)
+
        ! copy a number of attributes
-       listing % name       = trim(ndpp_tables_(i) % name)
-       listing % alias      = trim(ndpp_tables_(i) % alias)
-       listing % zaid       = ndpp_tables_(i) % zaid
-       listing % awr        = ndpp_tables_(i) % awr
-       listing % kT         = ndpp_tables_(i) % temperature
-       listing % location   = ndpp_tables_(i) % location
+       call get_node_value(node_ndpp, "name", listing % name)
+       if (check_for_node(node_ndpp, "alias")) &
+         call get_node_value(node_ndpp, "alias", listing % alias)
+       call get_node_value(node_ndpp, "zaid", listing % zaid)
+       call get_node_value(node_ndpp, "awr", listing % awr)
+       if (check_for_node(node_ndpp, "temperature")) &
+         call get_node_value(node_ndpp, "temperature", listing % kT)
+       call get_node_value(node_ndpp, "location", listing % location)
 
        ! determine type of cross section
        if (ends_with(listing % name, 'c')) then
@@ -257,9 +291,23 @@ contains
        end if
 
        ! set filetype, record length, and number of entries
-       listing % filetype = filetype
-       listing % recl     = recl
-       listing % entries  = entries
+       if (check_for_node(node_ndpp, "filetype")) then
+         temp_str = ''
+         call get_node_value(node_ndpp, "filetype", temp_str)
+         if (temp_str == 'ascii') then
+           listing % filetype = ASCII
+         else if (temp_str == 'binary') then
+           listing % filetype = BINARY
+         end if
+       else
+         listing % filetype = filetype
+       end if
+
+       ! Set record length and entries for binary files
+       if (filetype == BINARY) then
+         listing % recl     = recl
+         listing % entries  = entries
+       end if
 
        ! determine metastable state
        if (ndpp_tables_(i) % metastable == 0) then
@@ -268,29 +316,40 @@ contains
           listing % metastable = .true.
        end if
 
-       ! determine path of cross section table
-       if (starts_with(ndpp_tables_(i) % path, '/')) then
-          listing % path = ndpp_tables_(i) % path
+       ! determine path of ndpp data table
+       if (check_for_node(node_ndpp, "path")) then
+         call get_node_value(node_ndpp, "path", temp_str)
+       else
+         message = "Path missing for isotope " // listing % name
+         call fatal_error()
+       end if
+
+       if (starts_with(temp_str, '/')) then
+          listing % path = trim(temp_str)
        else
           if (ends_with(directory,'/')) then
-             listing % path = trim(directory) // trim(ndpp_tables_(i) % path)
+             listing % path = trim(directory) // trim(temp_str)
           else
-             listing % path = trim(directory) // '/' // &
-              trim(ndpp_tables_(i) % path)
+             listing % path = trim(directory) // '/' // trim(temp_str)
           end if
        end if
 
        ! create dictionary entry for both name and alias
        call ndpp_listing_dict % add_key(listing % name, i)
-       call ndpp_listing_dict % add_key(listing % alias, i)
+       if (check_for_node(node_ndpp, "alias")) then
+         call ndpp_listing_dict % add_key(listing % alias, i)
+       end if
     end do
+
+    ! Close ndpp_lib XML file
+    call close_xmldoc(doc)
 
   end subroutine read_ndpp_xml
 
 !===============================================================================
 ! READ_NDPP_TABLE reads information from a pre-processed nuclear data file
 ! as generated by the NDPP program.  The result of this subroutine is that the
-! Nuclide % int_scatt (or SAlphaBeta % int_scatt) array will be allocated and
+! Nuclide % ndpp_scatt (or SAlphaBeta % ndpp_scatt) array will be allocated and
 ! filled with the corresponding pre-processed scattering (and TODO: Chi) data
 ! from NDPP. Versions of this routine exist for.  These are currently written
 ! with lots of branching statements throughout to maximize the number of
@@ -413,17 +472,17 @@ contains
       ! Get Ein information
       read(UNIT=in, FMT=*) NEin
       if (is_nuc) then
-        allocate(nuc % int_scatt_Ein(NEin))
+        allocate(nuc % ndpp_scatt_Ein(NEin))
         do iE = 1, NEin
-          read(UNIT=in, FMT=*) nuc % int_scatt_Ein(iE)
+          read(UNIT=in, FMT=*) nuc % ndpp_scatt_Ein(iE)
         end do
-        allocate(nuc % int_scatt(NEin))
+        allocate(nuc % ndpp_scatt(NEin))
       else
-        allocate(sab % int_scatt_Ein(NEin))
+        allocate(sab % ndpp_scatt_Ein(NEin))
         do iE = 1, NEin
-          read(UNIT=in, FMT=*) sab % int_scatt_Ein(iE)
+          read(UNIT=in, FMT=*) sab % ndpp_scatt_Ein(iE)
         end do
-        allocate(sab % int_scatt(NEin))
+        allocate(sab % ndpp_scatt(NEin))
       end if
 
       ! Get the moments themselves
@@ -431,34 +490,34 @@ contains
         ! get gmin and gmax
         read(UNIT=in, FMT=*) gmin, gmax
         if (is_nuc) then
-          nuc % int_scatt(iE) % gmin = gmin
-          nuc % int_scatt(iE) % gmax = gmax
+          nuc % ndpp_scatt(iE) % gmin = gmin
+          nuc % ndpp_scatt(iE) % gmax = gmax
         else
-          sab % int_scatt(iE) % gmin = gmin
-          sab % int_scatt(iE) % gmax = gmax
+          sab % ndpp_scatt(iE) % gmin = gmin
+          sab % ndpp_scatt(iE) % gmax = gmax
         end if
 
         if ((gmin > 0) .and. (gmax > 0)) then
-          ! Then we can allocate the space. Do it to integrated_scatt_order
+          ! Then we can allocate the space. Do it to ndpp_scatt_order
           ! since this is the largest order requested in the tallies.
           ! Since we only need to store up to the maximum, we also need to have
           ! an array for reading the file which we can later truncate to fit
-          ! in to nuc/sab % int_scatt(iE) % outgoing.
+          ! in to nuc/sab % ndpp_scatt(iE) % outgoing.
           allocate(temp_outgoing(scatt_order, gmin : gmax))
 
           ! Now we have a space to store the data, get it.
           read(UNIT=in, FMT=*) temp_outgoing
-          ! And copy in to nuc/sab % int_scatt
+          ! And copy in to nuc/sab % ndpp_scatt
           if (is_nuc) then
-            allocate(nuc % int_scatt(iE) % outgoing(integrated_scatt_order, &
+            allocate(nuc % ndpp_scatt(iE) % outgoing(ndpp_scatt_order, &
               gmin : gmax))
-            nuc % int_scatt(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : integrated_scatt_order, gmin : gmax)
+            nuc % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
+              temp_outgoing(1 : ndpp_scatt_order, gmin : gmax)
           else
-            allocate(sab % int_scatt(iE) % outgoing(integrated_scatt_order, &
+            allocate(sab % ndpp_scatt(iE) % outgoing(ndpp_scatt_order, &
               gmin : gmax))
-            sab % int_scatt(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : integrated_scatt_order, gmin : gmax)
+            sab % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
+              temp_outgoing(1 : ndpp_scatt_order, gmin : gmax)
           end if
           deallocate(temp_outgoing)
         end if
@@ -504,17 +563,17 @@ contains
       ! Get Ein information
       read(UNIT=in) NEin
       if (is_nuc) then
-        allocate(nuc % int_scatt_Ein(NEin))
+        allocate(nuc % ndpp_scatt_Ein(NEin))
         do iE = 1, NEin
-          read(UNIT=in) nuc % int_scatt_Ein(iE)
+          read(UNIT=in) nuc % ndpp_scatt_Ein(iE)
         end do
-        allocate(nuc % int_scatt(NEin))
+        allocate(nuc % ndpp_scatt(NEin))
       else
-        allocate(sab % int_scatt_Ein(NEin))
+        allocate(sab % ndpp_scatt_Ein(NEin))
         do iE = 1, NEin
-          read(UNIT=in) sab % int_scatt_Ein(iE)
+          read(UNIT=in) sab % ndpp_scatt_Ein(iE)
         end do
-        allocate(sab % int_scatt(NEin))
+        allocate(sab % ndpp_scatt(NEin))
       end if
 
       ! Get the moments themselves
@@ -523,34 +582,34 @@ contains
         ! get gmin and gmax
         read(UNIT=in) gmin, gmax
         if (is_nuc) then
-          nuc % int_scatt(iE) % gmin = gmin
-          nuc % int_scatt(iE) % gmax = gmax
+          nuc % ndpp_scatt(iE) % gmin = gmin
+          nuc % ndpp_scatt(iE) % gmax = gmax
         else
-          sab % int_scatt(iE) % gmin = gmin
-          sab % int_scatt(iE) % gmax = gmax
+          sab % ndpp_scatt(iE) % gmin = gmin
+          sab % ndpp_scatt(iE) % gmax = gmax
         end if
 
         if ((gmin > 0) .and. (gmax > 0)) then
-          ! Then we can allocate the space. Do it to integrated_scatt_order
+          ! Then we can allocate the space. Do it to ndpp_scatt_order
           ! since this is the largest order requested in the tallies.
           ! Since we only need to store up to the maximum, we also need to have
           ! an array for reading the file which we can later truncate to fit
-          ! in to nuc/sab % int_scatt(iE) % outgoing.
+          ! in to nuc/sab % ndpp_scatt(iE) % outgoing.
           allocate(temp_outgoing(scatt_order, gmin : gmax))
 
           ! Now we have a space to store the data, get it.
           read(UNIT=in) temp_outgoing
-          ! And copy in to nuc/sab % int_scatt
+          ! And copy in to nuc/sab % ndpp_scatt
           if (is_nuc) then
-            allocate(nuc % int_scatt(iE) % outgoing(integrated_scatt_order, &
+            allocate(nuc % ndpp_scatt(iE) % outgoing(ndpp_scatt_order, &
               gmin : gmax))
-            nuc % int_scatt(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : integrated_scatt_order, gmin : gmax)
+            nuc % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
+              temp_outgoing(1 : ndpp_scatt_order, gmin : gmax)
           else
-            allocate(sab % int_scatt(iE) % outgoing(integrated_scatt_order, &
+            allocate(sab % ndpp_scatt(iE) % outgoing(ndpp_scatt_order, &
               gmin : gmax))
-            sab % int_scatt(iE) % outgoing(:, gmin : gmax) = &
-              temp_outgoing(1 : integrated_scatt_order, gmin : gmax)
+            sab % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
+              temp_outgoing(1 : ndpp_scatt_order, gmin : gmax)
           end if
           deallocate(temp_outgoing)
         end if

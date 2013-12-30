@@ -128,7 +128,7 @@ for i_batch in range(len(files)):
                 i_score = 0
                 while i_score < len(t.scores):
                     if ((t.scores[i_score] == 'scatter-pn') or \
-                        (t.scores[i_score] == 'int-scatter-pn')):
+                        (t.scores[i_score] == 'ndpp-scatter-pn')):
                         order = t.scatt_order[i_score]
                         for i_s in xrange(order + 1):  
                             scoreType[i_batch][i_tally][i_filter][i_nuclide][i_score] = \

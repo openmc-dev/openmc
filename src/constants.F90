@@ -20,7 +20,7 @@ module constants
        FILETYPE_PARTICLE_RESTART = -2
 
   ! ============================================================================
-  ! ADJUSTABLE PARAMETERS 
+  ! ADJUSTABLE PARAMETERS
 
   ! NOTE: This is the only section of the constants module that should ever be
   ! adjusted. Modifying constants in other sections may cause the code to fail.
@@ -42,9 +42,9 @@ module constants
   ! Maximum number of collisions/crossings
   integer, parameter :: MAX_EVENTS = 10000
   integer, parameter :: MAX_SAMPLE = 100000
-  
+
   ! Minimum energy before killing a neutron
-  real(8), parameter :: MIN_ENERGY = 1.0e-11_8
+  real(8), parameter :: MIN_ENERGY = 1.0e-100_8
 
   ! Maximum number of words in a single line, length of line, and length of
   ! single word
@@ -117,9 +117,9 @@ module constants
 
   ! Surface types
   integer, parameter ::  &
-       SURF_PX     =  1, & ! Plane parallel to x-plane 
-       SURF_PY     =  2, & ! Plane parallel to y-plane 
-       SURF_PZ     =  3, & ! Plane parallel to z-plane 
+       SURF_PX     =  1, & ! Plane parallel to x-plane
+       SURF_PY     =  2, & ! Plane parallel to y-plane
+       SURF_PZ     =  3, & ! Plane parallel to z-plane
        SURF_PLANE  =  4, & ! Arbitrary plane
        SURF_CYL_X  =  5, & ! Cylinder along x-axis
        SURF_CYL_Y  =  6, & ! Cylinder along y-axis
@@ -150,7 +150,7 @@ module constants
        ELECTRON = 3
 
   ! Angular distribution type
-  integer, parameter :: & 
+  integer, parameter :: &
        ANGLE_ISOTROPIC = 1, & ! Isotropic angular distribution
        ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins
        ANGLE_TABULAR   = 3    ! Tabular angular distribution
@@ -285,7 +285,7 @@ module constants
        SCORE_KAPPA_FISSION = -13, & ! fission energy production rate
        SCORE_CURRENT       = -14, & ! partial current
        SCORE_EVENTS        = -15    ! number of events
-       
+
   ! Maximum scattering order supported
   integer, parameter :: SCATT_ORDER_MAX = 10
   character(len=*), parameter :: SCATT_ORDER_MAX_PNSTR    = "scatter-p10"
@@ -322,7 +322,7 @@ module constants
        K_ABSORPTION  = 2, &
        K_TRACKLENGTH = 3, &
        LEAKAGE       = 4
-       
+
   ! ============================================================================
   ! NDPP-BASED TALLY-RELATED CONSTANTS
   integer, parameter ::           &
@@ -339,7 +339,7 @@ module constants
 
   ! Source angular distribution types
   integer, parameter :: &
-       SRC_ANGLE_ISOTROPIC = 1, & ! Isotropic angular 
+       SRC_ANGLE_ISOTROPIC = 1, & ! Isotropic angular
        SRC_ANGLE_MONO      = 2, & ! Monodirectional source
        SRC_ANGLE_TABULAR   = 3    ! Tabular distribution
 
@@ -349,7 +349,7 @@ module constants
        SRC_ENERGY_MAXWELL = 2, & ! Maxwell fission spectrum
        SRC_ENERGY_WATT    = 3, & ! Watt fission spectrum
        SRC_ENERGY_TABULAR = 4    ! Tabular distribution
-       
+
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
 

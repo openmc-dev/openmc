@@ -1712,6 +1712,13 @@ contains
       call add_tallies("user", n_user_tallies)
     end if
 
+    ! Check for <ndpp_library> setting
+    if (check_for_node(doc, "ndpp_library")) then
+      call get_node_value(doc, "ndpp_library", ndpp_lib)
+    else
+      ndpp_lib = './ndpp_lib.xml'
+    end if
+
     ! Check for <assume_separate> setting
     if (check_for_node(doc, "assume_separate")) then
       call get_node_value(doc, "assume_separate", temp_str)

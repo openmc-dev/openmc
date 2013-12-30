@@ -76,8 +76,6 @@ contains
     integer :: i, j, k     ! loop indices
     logical :: file_exists ! does ndpp_lib.xml exist?
     integer :: filetype    ! default file type
-    integer :: recl = 0    ! default record length
-    integer :: entries = 0 ! default number of entries
     logical :: chi_present ! is chi data present?
     character(MAX_WORD_LEN)  :: directory   ! directory with cross sections
     character(MAX_LINE_LEN)  :: temp_str
@@ -133,12 +131,6 @@ contains
        message = "Unknown filetype in " // trim(ndpp_lib) // &
         ": " // trim(temp_str)
        call fatal_error()
-    end if
-
-    ! copy default record length and entries for binary files
-    if (filetype == BINARY) then
-      call get_node_value(doc, "record_length", recl)
-      call get_node_value(doc, "entries", entries)
     end if
 
     ! Test metadata to ensure this library matches the problem definition
@@ -201,7 +193,7 @@ contains
             ! First check the scattering order
             if (order < t % scatt_order(j)) then
               message = "Invalid scattering order of " // &
-                        trim(to_str(order)) // " requested. Order " // &
+                        trim(to_str(t % scatt_order(j))) // " requested. Order " // &
                         "requested is larger than provided in the library (" // &
                         trim(to_str(order)) // ")!"
               call fatal_error()
@@ -301,12 +293,6 @@ contains
          end if
        else
          listing % filetype = filetype
-       end if
-
-       ! Set record length and entries for binary files
-       if (filetype == BINARY) then
-         listing % recl     = recl
-         listing % entries  = entries
        end if
 
        ! determine metastable state

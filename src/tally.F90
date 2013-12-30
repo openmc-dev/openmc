@@ -568,7 +568,8 @@ contains
                      atom_density * flux
 
               case (SCORE_NDPPSCATT_PN)
-                call tally_micro_ndpp_pn(i_nuclide, score_index, filter_index, &
+                call tally_micro_ndpp_pn(i_nuclide, score_index, filter_index - &
+                  matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                   t % scatt_order(j), atom_density * flux, p % E, t % results)
                 j = j + t % scatt_order(j)
                 cycle SCORE_LOOP
@@ -656,7 +657,8 @@ contains
 
               case (SCORE_NDPPSCATT_PN)
                 mat => materials(p % material)
-                call tally_macro_ndpp_pn(mat, score_index, filter_index, &
+                call tally_macro_ndpp_pn(mat, score_index, filter_index - &
+                  matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                   t % scatt_order(j), flux, p % E, t % results)
 
                 j = j + t % scatt_order(j)
@@ -828,7 +830,8 @@ contains
                micro_xs(i_nuclide) % absorption) * atom_density * flux
 
         case (SCORE_NDPPSCATT_PN)
-          call tally_micro_ndpp_pn(i_nuclide, score_index, filter_index, &
+          call tally_micro_ndpp_pn(i_nuclide, score_index, filter_index - &
+            matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
             t % scatt_order(j), atom_density * flux, p % E, t % results)
 
           j = j + t % scatt_order(j)
@@ -926,7 +929,8 @@ contains
 
       case (SCORE_NDPPSCATT_PN)
         mat => materials(p % material)
-        call tally_macro_ndpp_pn(mat, score_index, filter_index, &
+        call tally_macro_ndpp_pn(mat, score_index, filter_index - &
+          matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
           t % scatt_order(j), flux, p % E, t % results)
 
         j = j + t % scatt_order(j)
@@ -1269,7 +1273,9 @@ contains
                        atom_density * flux
                 case (SCORE_NDPPSCATT_PN)
                   call tally_micro_ndpp_pn(i_nuclide, score_index, &
-                    filter_index, t % scatt_order(j), atom_density * flux, &
+                    filter_index - &
+                    matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+                    t % scatt_order(j), atom_density * flux, &
                     p % E, t % results)
 
                   j = j + t % scatt_order(j)
@@ -1304,7 +1310,8 @@ contains
                   score = (material_xs % total - material_xs % absorption) * flux
                 case (SCORE_NDPPSCATT_PN)
                   mat => materials(p % material)
-                  call tally_macro_ndpp_pn(mat, score_index, filter_index, &
+                  call tally_macro_ndpp_pn(mat, score_index, filter_index - &
+                    matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % scatt_order(j), flux, p % E, t % results)
 
                   j = j + t % scatt_order(j)
@@ -2154,10 +2161,11 @@ contains
     integer :: i_grid   ! index on nuclide energy grid
     real(8) :: f        ! interp factor on nuclide energy grid
     real(8) :: one_f    ! (ONE - f)
-    type(Nuclide), pointer     :: nuc ! Working nuclide
-    type(SAlphaBeta), pointer  :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
-    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
+    type(Nuclide), pointer, save     :: nuc ! Working nuclide
+    type(SAlphaBeta), pointer, save  :: sab ! The working s(a,b) table
+    type(GrpTransfer), pointer, save :: ndpp_scatt(:) => null() ! data to tally
+    real(8), pointer, save :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
+!$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -2209,9 +2217,11 @@ contains
       do g = ndpp_scatt(i_grid) % gmin, &
              ndpp_scatt(i_grid) % gmax
         g_filter = filter_index + g - 1
+!$omp critical
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
           ndpp_scatt(i_grid) % outgoing(:, g) * one_f
+!$omp end critical
       end do
     end if
 
@@ -2253,10 +2263,11 @@ contains
     real(8) :: f        ! interp factor on nuclide energy grid
     real(8) :: one_f    ! (ONE - f) * sigS
     real(8) :: sigS     ! scattering cross-section (tot - abs)
-    type(Nuclide), pointer     :: nuc ! The working nuclide
-    type(SAlphaBeta), pointer  :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
-    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
+    type(Nuclide), pointer, save     :: nuc ! Working nuclide
+    type(SAlphaBeta), pointer, save  :: sab ! The working s(a,b) table
+    type(GrpTransfer), pointer, save :: ndpp_scatt(:) => null() ! data to tally
+    real(8), pointer, save :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
+!$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -2312,9 +2323,11 @@ contains
       do g = ndpp_scatt(i_grid) % gmin, &
              ndpp_scatt(i_grid) % gmax
         g_filter = filter_index + g - 1
+!$omp critical
         results(score_index : score_index + t_order, g_filter) % value = &
           results(score_index : score_index + t_order, g_filter) % value + &
           ndpp_scatt(i_grid) % outgoing(:, g) * one_f
+!$omp end critical
       end do
     end if
 

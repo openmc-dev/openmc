@@ -276,7 +276,7 @@ module constants
        SCORE_NU_SCATTER    = -4,  & ! scattering production rate
        SCORE_SCATTER_N     = -5,  & ! arbitrary scattering moment
        SCORE_SCATTER_PN    = -6,  & ! system for scoring 0th through nth moment
-       SCORE_NDPPSCATT_PN   = -7,  & ! pre-integrated version of score_scatter_pn
+       SCORE_NDPPSCATT_PN  = -7,  & ! pre-integrated version of score_scatter_pn
        SCORE_TRANSPORT     = -8,  & ! transport reaction rate
        SCORE_N_1N          = -9,  & ! (n,1n) rate
        SCORE_ABSORPTION    = -10, & ! absorption rate

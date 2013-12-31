@@ -2322,7 +2322,7 @@ contains
 
           case ('scatter-pn')
             t % estimator = ESTIMATOR_ANALOG
-            ! Setup P0:Pn
+            ! Setup P0:Pn order and type info
             t % score_bins(j : j + n_order) = SCORE_SCATTER_PN
             t % scatt_order(j : j + n_order) = n_order
             j = j + n_order
@@ -2355,10 +2355,12 @@ contains
             ! library
             ndpp_scatt = .true.
 
-            ! Setup P0:Pn
-            t % score_bins(j : j + n_order) = SCORE_NDPPSCATT_PN
-            t % scatt_order(j : j + n_order) = n_order
-            j = j + n_order
+            ! Allow to use tracklength estimator
+            t % estimator = ESTIMATOR_TRACKLENGTH
+
+            ! Setup order and type
+            t % score_bins(j) = SCORE_NDPPSCATT_N
+            t % scatt_order(j) = n_order
 
           case ('ndpp-scatter-pn')
             if (t % find_filter(FILTER_ENERGYIN) == 0) then
@@ -2388,9 +2390,13 @@ contains
             ! library
             ndpp_scatt = .true.
 
-            ! Setup P0:Pn
-            t % score_bins(j) = SCORE_NDPPSCATT_N
-            t % scatt_order(j) = n_order
+            ! Allow to use tracklength estimator
+            t % estimator = ESTIMATOR_TRACKLENGTH
+
+            ! Setup P0:Pn order and type info
+            t % score_bins(j : j + n_order) = SCORE_NDPPSCATT_PN
+            t % scatt_order(j : j + n_order) = n_order
+            j = j + n_order
 
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT

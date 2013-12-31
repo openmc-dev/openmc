@@ -2216,8 +2216,6 @@ contains
     integer :: i_grid   ! index on nuclide energy grid
     real(8) :: f        ! interp factor on nuclide energy grid
     real(8) :: one_f    ! (ONE - f)
-    integer :: i_score  ! index of score dimension of results
-    integer :: l        ! legendre moment index
     type(Nuclide), pointer, save     :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save  :: sab ! The working s(a,b) table
     type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
@@ -2306,7 +2304,6 @@ contains
         results(score_index, g_filter) % value = &
           results(score_index, g_filter) % value + &
           ndpp_scatt(i_grid + 1) % outgoing(t_order + 1, g) * f
-        end do
       end do
     end if
 
@@ -2496,4 +2493,3 @@ contains
   end subroutine tally_macro_ndpp_pn
 
 end module tally
-; this method applies to ndpp-scatter-n tally types

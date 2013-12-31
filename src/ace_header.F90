@@ -87,8 +87,6 @@ module ace_header
 !===============================================================================
 
   type GrpTransfer
-    integer :: gmin = 0                 ! Minimum possible outgoing group
-    integer :: gmax = 0                 ! Maximum possible outgoing group
     real(8), allocatable :: outgoing(:,:) ! Outgoing transfer probabilities
                                           ! Dimension of (moments, gmin:gmax)
 
@@ -364,8 +362,6 @@ module ace_header
 
       if (allocated(this % outgoing)) &
         deallocate(this % outgoing)
-      this % gmin = 0
-      this % gmax = 0
 
     end subroutine grptransfer_clear
 
@@ -374,7 +370,7 @@ module ace_header
 !===============================================================================
 
     subroutine nuclide_clear(this)
-      
+
       class(Nuclide), intent(inout) :: this ! The Nuclide object to clear
 
       integer :: i ! Loop counter
@@ -393,23 +389,23 @@ module ace_header
 
       if (allocated(this % nu_t_data)) &
            deallocate(this % nu_t_data)
-        
+
       if (allocated(this % nu_p_data)) &
            deallocate(this % nu_p_data)
-        
+
       if (allocated(this % nu_d_data)) &
            deallocate(this % nu_d_data)
-        
+
       if (allocated(this % nu_d_precursor_data)) &
            deallocate(this % nu_d_precursor_data)
-        
+
       if (associated(this % nu_d_edist)) then
         do i = 1, size(this % nu_d_edist)
           call this % nu_d_edist(i) % clear()
         end do
         deallocate(this % nu_d_edist)
       end if
-      
+
       if (associated(this % urr_data)) then
         call this % urr_data % clear()
         deallocate(this % urr_data)

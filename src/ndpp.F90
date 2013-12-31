@@ -475,13 +475,6 @@ contains
       do iE = 1, NEin
         ! get gmin and gmax
         read(UNIT=in, FMT=*) gmin, gmax
-        if (is_nuc) then
-          nuc % ndpp_scatt(iE) % gmin = gmin
-          nuc % ndpp_scatt(iE) % gmax = gmax
-        else
-          sab % ndpp_scatt(iE) % gmin = gmin
-          sab % ndpp_scatt(iE) % gmax = gmax
-        end if
 
         if ((gmin > 0) .and. (gmax > 0)) then
           ! Then we can allocate the space. Do it to ndpp_scatt_order
@@ -567,13 +560,6 @@ contains
       do iE = 1, NEin
         ! get gmin and gmax
         read(UNIT=in) gmin, gmax
-        if (is_nuc) then
-          nuc % ndpp_scatt(iE) % gmin = gmin
-          nuc % ndpp_scatt(iE) % gmax = gmax
-        else
-          sab % ndpp_scatt(iE) % gmin = gmin
-          sab % ndpp_scatt(iE) % gmax = gmax
-        end if
 
         if ((gmin > 0) .and. (gmax > 0)) then
           ! Then we can allocate the space. Do it to ndpp_scatt_order

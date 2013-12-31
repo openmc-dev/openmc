@@ -89,10 +89,6 @@ module ace_header
   type GrpTransfer
     real(8), allocatable :: outgoing(:,:) ! Outgoing transfer probabilities
                                           ! Dimension of (moments, gmin:gmax)
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => grptransfer_clear ! Deallocates UrrData
   end type GrpTransfer
 
 !===============================================================================
@@ -353,19 +349,6 @@ module ace_header
     end subroutine urrdata_clear
 
 !===============================================================================
-! GRPTRANSFER_CLEAR resets and deallocates data in Reaction.
-!===============================================================================
-
-    subroutine grptransfer_clear(this)
-
-      class(GrpTransfer), intent(inout) :: this ! GrpTransfer object to clear
-
-      if (allocated(this % outgoing)) &
-        deallocate(this % outgoing)
-
-    end subroutine grptransfer_clear
-
-!===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide.
 !===============================================================================
 
@@ -416,9 +399,6 @@ module ace_header
       end if
 
       if (allocated(this % ndpp_scatt)) then
-        do i = 1, size(this % ndpp_scatt)
-          call this % ndpp_scatt(i) % clear()
-        end do
         deallocate(this % ndpp_scatt)
       end if
 

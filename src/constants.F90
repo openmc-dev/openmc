@@ -268,7 +268,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 15
+  integer, parameter :: N_SCORE_TYPES = 16
   integer, parameter :: &
        SCORE_FLUX          = -1,  & ! flux
        SCORE_TOTAL         = -2,  & ! total reaction rate
@@ -276,15 +276,16 @@ module constants
        SCORE_NU_SCATTER    = -4,  & ! scattering production rate
        SCORE_SCATTER_N     = -5,  & ! arbitrary scattering moment
        SCORE_SCATTER_PN    = -6,  & ! system for scoring 0th through nth moment
-       SCORE_NDPPSCATT_PN  = -7,  & ! pre-integrated version of score_scatter_pn
-       SCORE_TRANSPORT     = -8,  & ! transport reaction rate
-       SCORE_N_1N          = -9,  & ! (n,1n) rate
-       SCORE_ABSORPTION    = -10, & ! absorption rate
-       SCORE_FISSION       = -11, & ! fission rate
-       SCORE_NU_FISSION    = -12, & ! neutron production rate
-       SCORE_KAPPA_FISSION = -13, & ! fission energy production rate
-       SCORE_CURRENT       = -14, & ! partial current
-       SCORE_EVENTS        = -15    ! number of events
+       SCORE_NDPPSCATT_N   = -7,  & ! pre-integrated version of score_scatter_n
+       SCORE_NDPPSCATT_PN  = -8,  & ! pre-integrated version of score_scatter_pn
+       SCORE_TRANSPORT     = -9,  & ! transport reaction rate
+       SCORE_N_1N          = -10, & ! (n,1n) rate
+       SCORE_ABSORPTION    = -11, & ! absorption rate
+       SCORE_FISSION       = -12, & ! fission rate
+       SCORE_NU_FISSION    = -13, & ! neutron production rate
+       SCORE_KAPPA_FISSION = -14, & ! fission energy production rate
+       SCORE_CURRENT       = -15, & ! partial current
+       SCORE_EVENTS        = -16    ! number of events
 
   ! Maximum scattering order supported
   integer, parameter :: SCATT_ORDER_MAX = 10

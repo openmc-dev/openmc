@@ -2164,6 +2164,8 @@ contains
     integer :: i_grid   ! index on nuclide energy grid
     real(8) :: f        ! interp factor on nuclide energy grid
     real(8) :: one_f    ! (ONE - f)
+    integer :: i_score  ! index of score dimension of results
+    integer :: l        ! legendre moment index
     type(Nuclide), pointer, save     :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save  :: sab ! The working s(a,b) table
     type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
@@ -2232,28 +2234,32 @@ contains
     end if
 
     ! Add the contribution from the lower score
-    if (ndpp_scatt(i_grid) % gmin /= 0) then
-      do g = ndpp_scatt(i_grid) % gmin, &
-             ndpp_scatt(i_grid) % gmax
+    if (allocated(ndpp_scatt(i_grid) % outgoing)) then
+      do g = lbound(ndpp_scatt(i_grid) % outgoing, dim=2), &
+             ubound(ndpp_scatt(i_grid) % outgoing, dim=2)
         g_filter = filter_index + g - 1
-!$omp critical
-        results(score_index : score_index + t_order, g_filter) % value = &
-          results(score_index : score_index + t_order, g_filter) % value + &
-          ndpp_scatt(i_grid) % outgoing(:, g) * one_f
-!$omp end critical
+        do l = 1, t_order + 1
+        i_score = score_index + l - 1
+!$omp atomic
+          results(i_score, g_filter) % value = &
+            results(i_score, g_filter) % value + &
+            ndpp_scatt(i_grid) % outgoing(l, g) * one_f
+        end do
       end do
     end if
 
     ! Now add the contribution from the higher score
-    if (ndpp_scatt(i_grid + 1) % gmin /= 0) then
-      do g = ndpp_scatt(i_grid + 1) % gmin, &
-             ndpp_scatt(i_grid + 1) % gmax
+    if (allocated(ndpp_scatt(i_grid + 1) % outgoing)) then
+      do g = lbound(ndpp_scatt(i_grid + 1) % outgoing, dim=2), &
+             ubound(ndpp_scatt(i_grid + 1) % outgoing, dim=2)
         g_filter = filter_index + g - 1
-!$omp critical
-        results(score_index : score_index + t_order, g_filter) % value = &
-          results(score_index : score_index + t_order, g_filter) % value + &
-          ndpp_scatt(i_grid + 1) % outgoing(:, g) * f
-!$omp end critical
+        do l = 1, t_order + 1
+        i_score = score_index + l - 1
+!$omp atomic
+          results(i_score, g_filter) % value = &
+            results(i_score, g_filter) % value + &
+            ndpp_scatt(i_grid + 1) % outgoing(l, g) * one_f
+        end do
       end do
     end if
 

@@ -207,13 +207,24 @@ contains
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP
 
+          case (SCORE_NDPPSCATT_N)
+            ! Skip any event where the particle didn't scatter
+            if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
+
+            ! For the case of analog intscatt_pn tallying, filter_index needs
+            ! to be adjusted to point to the first energyout filter
+            call tally_ndpp_n(p % event_nuclide, score_index, filter_index - &
+              matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+              t % scatt_order(j), last_wgt, .true., p % last_E, t % results)
+
+            cycle SCORE_LOOP
+
           case (SCORE_NDPPSCATT_PN)
             ! Skip any event where the particle didn't scatter
             if (p % event == EVENT_SCATTER) then
               ! For the case of analog intscatt_pn tallying, filter_index needs
               ! to be adjusted to point to the first energyout filter
-              call tally_ndpp_pn(p % event_nuclide, score_index, &
-                filter_index - &
+              call tally_ndpp_pn(p % event_nuclide, score_index, filter_index - &
                 matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                 t % scatt_order(j), last_wgt, .true., p % last_E, t % results)
             end if
@@ -567,6 +578,13 @@ contains
                      micro_xs(i_nuclide) % absorption) * &
                      atom_density * flux
 
+              case (SCORE_NDPPSCATT_N)
+                call tally_ndpp_n(i_nuclide, score_index, filter_index - &
+                  matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+                  t % scatt_order(j), atom_density * flux, .false., &
+                  p % E, t % results)
+                cycle SCORE_LOOP
+
               case (SCORE_NDPPSCATT_PN)
                 call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
@@ -655,6 +673,14 @@ contains
               case (SCORE_SCATTER)
                 ! Scattering cross section is pre-calculated
                 score = (material_xs % total - material_xs % absorption) * flux
+
+              case (SCORE_NDPPSCATT_N)
+                mat => materials(p % material)
+                call tally_macro_ndpp_n(mat, score_index, filter_index - &
+                  matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+                  t % scatt_order(j), flux, p % E, t % results)
+
+                cycle SCORE_LOOP
 
               case (SCORE_NDPPSCATT_PN)
                 mat => materials(p % material)
@@ -830,6 +856,14 @@ contains
           score = (micro_xs(i_nuclide) % total - &
                micro_xs(i_nuclide) % absorption) * atom_density * flux
 
+        case (SCORE_NDPPSCATT_N)
+          call tally_ndpp_n(i_nuclide, score_index, filter_index - &
+            matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+            t % scatt_order(j), atom_density * flux, .false., p % E, &
+            t % results)
+
+          cycle SCORE_LOOP
+
         case (SCORE_NDPPSCATT_PN)
           call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
             matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
@@ -928,6 +962,14 @@ contains
 
       case (SCORE_SCATTER)
         score = (material_xs % total - material_xs % absorption) * flux
+
+      case (SCORE_NDPPSCATT_N)
+        mat => materials(p % material)
+        call tally_macro_ndpp_n(mat, score_index, filter_index - &
+          matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+          t % scatt_order(j), flux, p % E, t % results)
+
+        cycle MATERIAL_SCORE_LOOP
 
       case (SCORE_NDPPSCATT_PN)
         mat => materials(p % material)
@@ -1273,13 +1315,17 @@ contains
                   score = (micro_xs(i_nuclide) % total - &
                        micro_xs(i_nuclide) % absorption) * &
                        atom_density * flux
-                case (SCORE_NDPPSCATT_PN)
-                  call tally_ndpp_pn(i_nuclide, score_index, &
-                    filter_index - &
+                case (SCORE_NDPPSCATT_N)
+                  call tally_ndpp_n(i_nuclide, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % scatt_order(j), atom_density * flux, .false., &
                     p % E, t % results)
-
+                  cycle SCORE_LOOP
+                case (SCORE_NDPPSCATT_PN)
+                  call tally_ndpp_pn(i_nuclide, score_index, filter_index - &
+                    matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+                    t % scatt_order(j), atom_density * flux, .false., &
+                    p % E, t % results)
                   j = j + t % scatt_order(j)
                   cycle SCORE_LOOP
                 case (SCORE_ABSORPTION)
@@ -1310,12 +1356,17 @@ contains
                   score = material_xs % total * flux
                 case (SCORE_SCATTER)
                   score = (material_xs % total - material_xs % absorption) * flux
+                case (SCORE_NDPPSCATT_N)
+                  mat => materials(p % material)
+                  call tally_macro_ndpp_n(mat, score_index, filter_index - &
+                    matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+                    t % scatt_order(j), flux, p % E, t % results)
+                  cycle SCORE_LOOP
                 case (SCORE_NDPPSCATT_PN)
                   mat => materials(p % material)
                   call tally_macro_ndpp_pn(mat, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % scatt_order(j), flux, p % E, t % results)
-
                   j = j + t % scatt_order(j)
                   cycle SCORE_LOOP
                 case (SCORE_ABSORPTION)

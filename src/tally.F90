@@ -2258,7 +2258,7 @@ contains
 !$omp atomic
           results(i_score, g_filter) % value = &
             results(i_score, g_filter) % value + &
-            ndpp_scatt(i_grid + 1) % outgoing(l, g) * one_f
+            ndpp_scatt(i_grid + 1) % outgoing(l, g) * f
         end do
       end do
     end if

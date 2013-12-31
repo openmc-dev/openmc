@@ -2163,8 +2163,8 @@ contains
     real(8) :: one_f    ! (ONE - f)
     type(Nuclide), pointer, save     :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save  :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer, save :: ndpp_scatt(:) => null() ! data to tally
-    real(8), pointer, save :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
+    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
+    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
 !$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
@@ -2265,8 +2265,8 @@ contains
     real(8) :: sigS     ! scattering cross-section (tot - abs)
     type(Nuclide), pointer, save     :: nuc ! Working nuclide
     type(SAlphaBeta), pointer, save  :: sab ! The working s(a,b) table
-    type(GrpTransfer), pointer, save :: ndpp_scatt(:) => null() ! data to tally
-    real(8), pointer, save :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
+    type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
+    real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
 !$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
@@ -2313,7 +2313,6 @@ contains
       ! Get our sigS
       sigS = micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption
     end if
-
     ! Perform some FLOP-reducing multiplication
     one_f = (ONE - f) * sigS * N_flux
     f = f * sigS * N_flux

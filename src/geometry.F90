@@ -896,13 +896,17 @@ contains
       if (lat % n_dimension == 3) z0 = lat % width(3) * 0.5_8
 
       ! Move particle to correct cell and adjust coordinates.
-      p % coord % lattice_x = p % coord % lattice_x + lattice_translation(1)
-      p % coord % xyz(1) = -1 * lattice_translation(1) * x0
-      p % coord % lattice_y = p % coord % lattice_y + lattice_translation(2)
-      p % coord % xyz(2) = -1 * lattice_translation(2) * y0
-      if (lat % n_dimension == 3) then
-        p % coord % lattice_y = p % coord % lattice_z + lattice_translation(3)
-        p % coord % xyz(3) = -1 * lattice_translation(3) * z0
+      if (lattice_translation(1) /= 0) then
+        p % coord % xyz(1) = -lattice_translation(1) * x0
+        p % coord % lattice_x = p % coord % lattice_x + lattice_translation(1)
+      end if
+      if (lattice_translation(2) /= 0) then
+        p % coord % xyz(2) = -lattice_translation(2) * y0
+        p % coord % lattice_y = p % coord % lattice_y + lattice_translation(2)
+      end if
+      if (lat % n_dimension == 3 .and. lattice_translation(3) /= 0) then
+        p % coord % lattice_z = p % coord % lattice_z + lattice_translation(3)
+        p % coord % xyz(3) = -lattice_translation(3) * z0
       end if
 
     elseif (lat % type == LATTICE_HEX) then

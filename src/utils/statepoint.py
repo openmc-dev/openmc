@@ -396,7 +396,7 @@ class StatePoint(object):
 
             # Calculate standard deviation
             if s != 0.0:
-                self.global_tallies[i,1] = t_value*sqrt((s2/n - s*s)/(n-1))
+                self.global_tallies[i,1] = t_value*np.sqrt((s2/n - s*s)/(n-1))
 
         # Regular tallies
         for t in self.tallies:
@@ -411,7 +411,7 @@ class StatePoint(object):
 
                     # Calculate standard deviation
                     if s != 0.0:
-                        t.results[i,j,1] = t_value*sqrt((s2/n - s*s)/(n-1))
+                        t.results[i,j,1] = t_value*np.sqrt((s2/n - s*s)/(n-1))
 
     def get_value(self, tally_index, spec_list, score_index):
         """Returns a tally score given a list of filters to satisfy.

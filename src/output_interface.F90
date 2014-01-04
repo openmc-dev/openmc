@@ -1644,6 +1644,12 @@ contains
     call h5dclose_f(dset, hdf5_err)
     if (present(group)) call hdf5_close_group(self % hdf5_grp)
 
+# elif MPI
+
+    ! Write out tally buffer
+    call MPI_FILE_READ(self % unit_fh, buffer, n1*n2, MPI_TALLYRESULT, &
+         MPI_STATUS_IGNORE, mpiio_err)
+
 #else
 
     ! Read tally result

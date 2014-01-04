@@ -4,10 +4,6 @@
 Release Notes for OpenMC 0.5.3
 ==============================
 
-.. note::
-    These release notes are for an upcoming release of OpenMC and are still
-    subject to change.
-
 -------------------
 System Requirements
 -------------------
@@ -21,12 +17,20 @@ the problem at hand (mostly on the number of nuclides in the problem).
 New Features
 ------------
 
-- Special run mode --tallies removed.
+- Output interface enhanced to allow multiple files handles to be opened
+- Particle restart file linked to output interface
 - Particle restarts and state point restarts are both identified with the -r
   command line flag.
-- New regression test suite.
-- All memory leaks fixed.
-- Shared-memory parallelism with OpenMP.
+- Particle instance no longer global, passed to all physics routines
+- Physics routines refactored to rely less on global memory, more arguments
+  passed in
+- CMFD routines refactored and now can compute dominance ratio on the fly
+- PETSc 3.4.2 or higher must be used and compiled with fortran datatype support
+- Memory leaks fixed except for ones from xml-fortran package
+- Test suite enhanced to test output with different compiler options
+- Description of OpenMC development workflow added
+- OpenMP shared-memory parallelism added
+- Special run mode --tallies removed.
 
 ---------
 Bug Fixes
@@ -35,7 +39,7 @@ Bug Fixes
 - 2b1e8a_: Normalize direction vector after reflecting particle.
 - 5853d2_: Set blank default for cross section listing alias.
 - e178c7_: Fix infinite loop with words greater than 80 characters in write_message.
-- c18a6e_: Chcek for valid secondary mode on S(a,b) tables.
+- c18a6e_: Check for valid secondary mode on S(a,b) tables.
 - 82c456_: Fix bug where last process could have zero particles.
 
 .. _2b1e8a: https://github.com/mit-crpg/openmc/commit/2b1e8a

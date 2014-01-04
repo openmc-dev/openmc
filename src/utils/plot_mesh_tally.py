@@ -16,123 +16,161 @@ from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as Naviga
 import numpy as np
 
 class AppForm(QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, argv, parent=None):
         QMainWindow.__init__(self, parent)
 
         # Read data from source or leakage fraction file
-        self.get_file_data()
-        self.main_frame = QWidget() 
-        self.setCentralWidget(self.main_frame)
-       
-        # Create the Figure, Canvas, and Axes
-        self.dpi = 100
-        self.fig = Figure((5.0, 15.0), dpi=self.dpi)
-        self.canvas = FigureCanvas(self.fig)
-        self.canvas.setParent(self.main_frame)
-        self.axes = self.fig.add_subplot(111)
-        
-        # Create the navigation toolbar, tied to the canvas
-        self.mpl_toolbar = NavigationToolbar(self.canvas, self.main_frame)
+        self.all_good = False
+        while not self.all_good:
+            if len(argv) > 1:
+                cl_file = str(argv[1])
+            else:
+                cl_file = None
+            self.get_file_data(cl_file)
+            # Check that there are any mesh tallies at all
+            if len(self.tally_ids) != 0:
+                self.all_good = True
+            else:
+                # if there are not, the user will be given the choice to choose
+                # another file (but only if using interactive chooser)
+                if cl_file is None:
+                    choice = QMessageBox.critical(None, "Invalid StatePoint File",
+                                                  "File Does Not Contain Mesh " +
+                                                  "Tallies!" +
+                                                  "\nSelect Another File Or Quit",
+                                                  QMessageBox.Retry,
+                                                  QMessageBox.Abort)
+                    if choice == QMessageBox.Abort:
+                        self.all_good = False
+                        break
+                else:
+                    print("Invalid StatePoint File; File Does Not Contain " +
+                          "Mesh Tallies!")
+                    self.all_good = False
+                    break
 
-        # Grid layout at bottom
-        self.grid = QGridLayout()
 
-        # Overall layout
-        self.vbox = QVBoxLayout()
-        self.vbox.addWidget(self.canvas)
-        self.vbox.addWidget(self.mpl_toolbar)
-        self.vbox.addLayout(self.grid)
-        self.main_frame.setLayout(self.vbox)
+        if self.all_good:
+            # Set maximum colorbar value by maximum tally data value
+            self.maxvalue = self.datafile.tallies[0].results.max()
 
-        # Tally selections
-        label_tally = QLabel("Tally:")
-        self.tally = QComboBox()
-        self.tally.addItems([(str(i + 1)) for i in range(self.n_tallies)])
-        self.connect(self.tally, SIGNAL('activated(int)'),
-                     self._update)
-        self.connect(self.tally, SIGNAL('activated(int)'),
-                     self.populate_boxes)
-        self.connect(self.tally, SIGNAL('activated(int)'),
-                     self.on_draw)
+            self.main_frame = QWidget()
+            self.setCentralWidget(self.main_frame)
 
-        # Planar basis
-        label_basis = QLabel("Basis:")
-        self.basis = QComboBox()
-        self.basis.addItems(['xy', 'yz', 'xz'])
+            # Create the Figure, Canvas, and Axes
+            self.dpi = 100
+            self.fig = Figure((5.0, 15.0), dpi=self.dpi)
+            self.canvas = FigureCanvas(self.fig)
+            self.canvas.setParent(self.main_frame)
+            self.axes = self.fig.add_subplot(111)
 
-        # Update window when 'Basis' selection is changed
-        self.connect(self.basis, SIGNAL('activated(int)'),
-                     self._update)
-        self.connect(self.basis, SIGNAL('activated(int)'),
-                     self.populate_boxes)
-        self.connect(self.basis, SIGNAL('activated(int)'),
-                     self.on_draw)
+            # Create the navigation toolbar, tied to the canvas
+            self.mpl_toolbar = NavigationToolbar(self.canvas, self.main_frame)
 
-        # Axial level within selected basis
-        label_axial_level = QLabel("Axial Level:")
-        self.axial_level = QComboBox()
-        self.connect(self.axial_level, SIGNAL('activated(int)'),
-                     self.on_draw)
-                     
-        # Add Option to plot mean or uncertainty
-        label_mean = QLabel("Mean or Uncertainty:")
-        self.mean = QComboBox()
-        self.mean.addItems(['Mean','Absolute Uncertainty', 
-                            'Relative Uncertainty'])
-        
-        # Update window when mean selection is changed
-        self.connect(self.mean, SIGNAL('activated(int)'),
-                     self.on_draw)
-        
+            # Grid layout at bottom
+            self.grid = QGridLayout()
 
-        self.label_filters = QLabel("Filter options:")
+            # Overall layout
+            self.vbox = QVBoxLayout()
+            self.vbox.addWidget(self.canvas)
+            self.vbox.addWidget(self.mpl_toolbar)
+            self.vbox.addLayout(self.grid)
+            self.main_frame.setLayout(self.vbox)
 
-        # Labels for all possible filters
-        self.labels = {'cell': 'Cell: ', 'cellborn': 'Cell born: ',
-                       'surface': 'Surface: ', 'material': 'Material',
-                       'universe': 'Universe: ', 'energyin': 'Energy in: ',
-                       'energyout': 'Energy out: '}
-
-        # Empty reusable labels
-        self.qlabels = {}
-        for j in range(8):
-            self.nextLabel = QLabel
-            self.qlabels[j] = self.nextLabel
-
-        # Reusable comboboxes labelled with filter names
-        self.boxes = {}
-        for key in self.labels.keys():
-            self.nextBox = QComboBox()
-            self.connect(self.nextBox, SIGNAL('activated(int)'),
+            # Tally selections
+            label_tally = QLabel("Tally:")
+            self.tally = QComboBox()
+            # Only show options for the tallies with meshes
+            self.tally.addItems([str(i + 1) for i in self.tally_ids])
+            self.connect(self.tally, SIGNAL('activated(int)'),
+                         self._update)
+            self.connect(self.tally, SIGNAL('activated(int)'),
+                         self.populate_boxes)
+            self.connect(self.tally, SIGNAL('activated(int)'),
                          self.on_draw)
-            self.boxes[key] = self.nextBox
 
-        # Combobox to select among scores
-        self.score_label = QLabel("Score:")
-        self.scoreBox = QComboBox()
-        for item in self.tally_scores[0]:
-            self.scoreBox.addItems(str(item))
-        self.connect(self.scoreBox, SIGNAL('activated(int)'),
-                     self.on_draw)
+            # Planar basis
+            label_basis = QLabel("Basis:")
+            self.basis = QComboBox()
+            self.basis.addItems(['xy', 'yz', 'xz'])
 
-        # Fill layout
-        self.grid.addWidget(label_tally, 0, 0)
-        self.grid.addWidget(self.tally, 0, 1)
-        self.grid.addWidget(label_basis, 1, 0)
-        self.grid.addWidget(self.basis, 1, 1)
-        self.grid.addWidget(label_axial_level, 2, 0)
-        self.grid.addWidget(self.axial_level, 2, 1)
-        self.grid.addWidget(label_mean, 3, 0)
-        self.grid.addWidget(self.mean, 3, 1)
-        self.grid.addWidget(self.label_filters, 4, 0)
+            # Update window when 'Basis' selection is changed
+            self.connect(self.basis, SIGNAL('activated(int)'),
+                         self._update)
+            self.connect(self.basis, SIGNAL('activated(int)'),
+                         self.populate_boxes)
+            self.connect(self.basis, SIGNAL('activated(int)'),
+                         self.on_draw)
 
-        self._update()
-        self.populate_boxes() 
-        self.on_draw()
+            # Axial level within selected basis
+            label_axial_level = QLabel("Axial Level:")
+            self.axial_level = QComboBox()
+            self.connect(self.axial_level, SIGNAL('activated(int)'),
+                         self.on_draw)
 
-    def get_file_data(self):
+            # Add Option to plot mean or uncertainty
+            label_mean = QLabel("Mean or Uncertainty:")
+            self.mean = QComboBox()
+            self.mean.addItems(['Mean','Absolute Uncertainty',
+                                'Relative Uncertainty'])
+
+            # Update window when mean selection is changed
+            self.connect(self.mean, SIGNAL('activated(int)'),
+                         self.on_draw)
+
+
+            self.label_filters = QLabel("Filter options:")
+
+            # Labels for all possible filters
+            self.labels = {'cell': 'Cell: ', 'cellborn': 'Cell born: ',
+                           'surface': 'Surface: ', 'material': 'Material',
+                           'universe': 'Universe: ', 'energyin': 'Energy in: ',
+                           'energyout': 'Energy out: '}
+
+            # Empty reusable labels
+            self.qlabels = {}
+            for j in range(8):
+                self.nextLabel = QLabel
+                self.qlabels[j] = self.nextLabel
+
+            # Reusable comboboxes labelled with filter names
+            self.boxes = {}
+            for key in self.labels.keys():
+                self.nextBox = QComboBox()
+                self.connect(self.nextBox, SIGNAL('activated(int)'),
+                             self.on_draw)
+                self.boxes[key] = self.nextBox
+
+            # Combobox to select among scores
+            self.score_label = QLabel("Score:")
+            self.scoreBox = QComboBox()
+            for item in self.tally_scores[0]:
+                self.scoreBox.addItems(str(item))
+            self.connect(self.scoreBox, SIGNAL('activated(int)'),
+                         self.on_draw)
+
+            # Fill layout
+            self.grid.addWidget(label_tally, 0, 0)
+            self.grid.addWidget(self.tally, 0, 1)
+            self.grid.addWidget(label_basis, 1, 0)
+            self.grid.addWidget(self.basis, 1, 1)
+            self.grid.addWidget(label_axial_level, 2, 0)
+            self.grid.addWidget(self.axial_level, 2, 1)
+            self.grid.addWidget(label_mean, 3, 0)
+            self.grid.addWidget(self.mean, 3, 1)
+            self.grid.addWidget(self.label_filters, 4, 0)
+
+            self._update()
+            self.populate_boxes()
+            self.on_draw()
+
+    def get_file_data(self, cl_file=None):
         # Get data file name from "open file" browser
-        filename = QFileDialog.getOpenFileName(self, 'Select statepoint file', '.')
+        if cl_file is None:
+            filename = QFileDialog.getOpenFileName(self,
+                                                   'Select statepoint file', '.')
+        else:
+            filename = cl_file
 
         # Create StatePoint object and read in data
         self.datafile = StatePoint(str(filename))
@@ -141,32 +179,31 @@ class AppForm(QMainWindow):
 
         self.setWindowTitle('Core Map Tool : ' + str(self.datafile.path))
 
-        # Set maximum colorbar value by maximum tally data value
-        self.maxvalue = self.datafile.tallies[0].results.max()
-
         self.labelList = []
 
         # Read mesh dimensions
-#        for mesh in self.datafile.meshes:
-#            self.nx, self.ny, self.nz = mesh.dimension
+        # for mesh in self.datafile.meshes:
+        #  self.nx, self.ny, self.nz = mesh.dimension
 
-        # Read filter types from statepoint file
+        # Find which tallies have meshes so the rest can be ignored,
+        # and for these tallies read the filter and score types
+        self.tally_ids = []
         self.n_tallies = len(self.datafile.tallies)
         self.tally_list = []
-        for tally in self.datafile.tallies:
-            self.filter_types = []
-            for f in tally.filters:
-                self.filter_types.append(f)
-            self.tally_list.append(self.filter_types)
-
-        # Read score types from statepoint file
         self.tally_scores = []
-        for tally in self.datafile.tallies:
-            self.score_types = []
-            for s in tally.scores:
-                self.score_types.append(s)
-            self.tally_scores.append(self.score_types)
-#        print 'self.tally_scores = ', self.tally_scores
+        for itally, tally in enumerate(self.datafile.tallies):
+            if 'mesh' in tally.filters:
+                # Then we have a good tally, store the ID, filters and
+                # scores
+                self.tally_ids.append(itally)
+                self.filter_types = []
+                for f in tally.filters:
+                    self.filter_types.append(f)
+                self.tally_list.append(self.filter_types)
+                self.score_types = []
+                for s in tally.scores:
+                    self.score_types.append(s)
+                self.tally_scores.append(self.score_types)
 
     def on_draw(self):
         """ Redraws the figure
@@ -178,70 +215,73 @@ class AppForm(QMainWindow):
         axial_level = self.axial_level.currentIndex() + 1
         is_mean = self.mean.currentIndex()
 
+        # get current tally index
+        tally_id = self.tally_ids[self.tally.currentIndex()]
+
         # Create spec_list
         spec_list = []
-        for tally in self.datafile.tallies[self.tally.currentIndex()].filters.values():
+        for tally in self.datafile.tallies[tally_id].filters.values():
             if tally.type == 'mesh':
                 continue
             index = self.boxes[tally.type].currentIndex()
             spec_list.append((tally.type, index))
-        
+
         # Take is_mean and convert it to an index of the score
         score_loc = is_mean
         if score_loc > 1:
             score_loc = 1
-        
+
         if self.basis.currentText() == 'xy':
             matrix = np.zeros((self.nx, self.ny))
             for i in range(self.nx):
                 for j in range(self.ny):
-                    matrix[i,j] = self.datafile.get_value(self.tally.currentIndex(), 
-                        spec_list + [('mesh', (i, j, axial_level))], 
+                    matrix[i,j] = self.datafile.get_value(tally_id,
+                        spec_list + [('mesh', (i + 1, j + 1, axial_level))],
                         self.scoreBox.currentIndex())[score_loc]
                     # Calculate relative uncertainty from absolute, if
                     # requested
                     if is_mean == 2:
                         # Take care to handle zero means when normalizing
-                        mean_val = self.datafile.get_value(self.tally.currentIndex(), 
-                            spec_list + [('mesh', (i, j, axial_level))], 
+                        mean_val = self.datafile.get_value(tally_id,
+                            spec_list + [('mesh', (i + 1, j + 1, axial_level))],
                             self.scoreBox.currentIndex())[0]
                         if mean_val > 0.0:
                             matrix[i,j] = matrix[i,j] / mean_val
                         else:
                             matrix[i,j] = 0.0
-                        
+
         elif self.basis.currentText() == 'yz':
             matrix = np.zeros((self.ny, self.nz))
             for i in range(self.ny):
                 for j in range(self.nz):
-                    matrix[i,j] = self.datafile.get_value(self.tally.currentIndex(), 
-                        spec_list + [('mesh', (axial_level, i, j))], 
+                    matrix[i,j] = self.datafile.get_value(tally_id,
+                        spec_list + [('mesh', (axial_level, i + 1, j + 1))],
                         self.scoreBox.currentIndex())[score_loc]
                     # Calculate relative uncertainty from absolute, if
                     # requested
                     if is_mean == 2:
                         # Take care to handle zero means when normalizing
-                        mean_val = self.datafile.get_value(self.tally.currentIndex(), 
-                            spec_list + [('mesh', (axial_level, i, j))], 
+                        mean_val = self.datafile.get_value(tally_id,
+                            spec_list + [('mesh', (axial_level, i + 1, j + 1))],
                             self.scoreBox.currentIndex())[0]
                         if mean_val > 0.0:
                             matrix[i,j] = matrix[i,j] / mean_val
                         else:
                             matrix[i,j] = 0.0
-                   
+
         else:
             matrix = np.zeros((self.nx, self.nz))
             for i in range(self.nx):
                 for j in range(self.nz):
-                    matrix[i,j] = self.datafile.get_value(self.tally.currentIndex(), 
-                        spec_list + [('mesh', (i, axial_level, j))], 
+                    matrix[i,j] = self.datafile.get_value(tally_id,
+                        spec_list + [('mesh', (i + 1, axial_level, j + 1))],
                         self.scoreBox.currentIndex())[score_loc]
                     # Calculate relative uncertainty from absolute, if
                     # requested
                     if is_mean == 2:
                         # Take care to handle zero means when normalizing
-                        mean_val = self.datafile.get_value(self.tally.currentIndex(), 
-                            spec_list + [('mesh', (i, axial_level, j))], 
+                        mean_val = self.datafile.get_value(tally_id,
+                            spec_list + [('mesh', (i + 1, axial_level, j + 1))],
                             self.scoreBox.currentIndex())[0]
                         if mean_val > 0.0:
                             matrix[i,j] = matrix[i,j] / mean_val
@@ -255,8 +295,8 @@ class AppForm(QMainWindow):
 
         # Make figure, set up color bar
         self.axes = self.fig.add_subplot(111)
-        cax = self.axes.imshow(matrix.transpose(), vmin=0.0, vmax=matrix.max(), 
-          interpolation="nearest")
+        cax = self.axes.imshow(matrix.transpose(), vmin=0.0, vmax=matrix.max(),
+          interpolation="nearest", origin='lower')
         self.fig.colorbar(cax)
 
         self.axes.set_xticks([])
@@ -271,9 +311,11 @@ class AppForm(QMainWindow):
         '''
 #        print 'Calling _update...'
 
+        # get current tally index
+        tally_id = self.tally_ids[self.tally.currentIndex()]
+
         self.mesh = self.datafile.meshes[
-          self.datafile.tallies[
-          self.tally.currentIndex()].filters['mesh'].bins[0] - 1]
+          self.datafile.tallies[tally_id].filters['mesh'].bins[0] - 1]
 
         self.nx, self.ny, self.nz = self.mesh.dimension
 
@@ -289,8 +331,7 @@ class AppForm(QMainWindow):
             self.axial_level.addItems([str(i+1) for i in range(self.ny)])
 
         # Determine maximum value from current tally data set
-        self.maxvalue = self.datafile.tallies[
-          self.tally.currentIndex()].results.max()
+        self.maxvalue = self.datafile.tallies[tally_id].results.max()
 #        print self.maxvalue
 
         # Clear and hide old filter labels
@@ -307,6 +348,9 @@ class AppForm(QMainWindow):
     def populate_boxes(self):
 #        print 'Calling populate_boxes...'
 
+        # get current tally index
+        tally_id = self.tally_ids[self.tally.currentIndex()]
+
         n = 5
         labels = {'cell': 'Cell : ',
                        'cellborn': 'Cell born: ',
@@ -317,8 +361,7 @@ class AppForm(QMainWindow):
         # For each filter in newly-selected tally, name a label and fill the
         # relevant combobox with options
         for element in self.tally_list[self.tally.currentIndex()]:
-            nextFilter = self.datafile.tallies[
-              self.tally.currentIndex()].filters[element]
+            nextFilter = self.datafile.tallies[tally_id].filters[element]
             if element == 'mesh':
                 continue
 
@@ -337,7 +380,7 @@ class AppForm(QMainWindow):
 
             elif element == 'energyin' or element == 'energyout':
                 for i in range(nextFilter.length):
-                    text = (str(nextFilter.bins[i]) + ' to ' + 
+                    text = (str(nextFilter.bins[i]) + ' to ' +
                       str(nextFilter.bins[i+1]))
                     combobox.addItem(text)
 
@@ -351,9 +394,10 @@ class AppForm(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    form = AppForm()
-    form.show()
-    app.exec_()
+    form = AppForm(app.arguments())
+    if form.all_good:
+        form.show()
+        app.exec_()
 
 
 if __name__ == "__main__":

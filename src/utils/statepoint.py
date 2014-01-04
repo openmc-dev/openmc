@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 
 import struct
-from math import sqrt
 from collections import OrderedDict
 
 import numpy as np

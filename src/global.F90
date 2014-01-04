@@ -15,10 +15,6 @@ module global
   use tally_header,     only: TallyObject, TallyMap, TallyResult
   use timer_header,     only: Timer
 
-#ifdef MPI
-  use mpi
-#endif
-
 #ifdef HDF5
   use hdf5_interface,  only: HID_T
 #endif
@@ -287,6 +283,10 @@ module global
   integer    :: trace_gen
   integer(8) :: trace_particle
 
+  ! Particle tracks
+  logical :: write_all_tracks = .false.
+  integer, allocatable :: track_identifiers(:,:)
+
   ! Particle restart run
   logical :: particle_restart_run = .false.
 
@@ -300,80 +300,64 @@ module global
   logical :: cmfd_run = .false.
  
   ! Timing objects
-  type(Timer) :: time_cmfd   ! timer for whole cmfd calculation
-  type(Timer) :: time_solver ! timer for solver 
+  type(Timer) :: time_cmfd      ! timer for whole cmfd calculation
+  type(Timer) :: time_cmfdbuild ! timer for matrix build
+  type(Timer) :: time_cmfdsolve ! timer for solver 
 
-  ! Flag for CMFD only
-  logical :: cmfd_only = .false.
-
-  ! Flag for coremap accelerator
+  ! Flag for active core map
   logical :: cmfd_coremap = .false.
 
-  ! number of processors for cmfd
-  integer :: n_procs_cmfd
-
-  ! reset dhats to zero
+  ! Flag to reset dhats to zero
   logical :: dhat_reset = .false.
 
-  ! activate neutronic feedback
+  ! Flag to activate neutronic feedback via source weights
   logical :: cmfd_feedback = .false.
 
-  ! activate auto-balance of tallies (2grp only)
-! logical :: cmfd_balance = .false.
+  ! User-defined tally information
+  integer :: n_cmfd_meshes  = 1 ! # of structured meshes
+  integer :: n_cmfd_tallies = 3 ! # of user-defined tallies
 
-  ! calculate effective downscatter
-! logical :: cmfd_downscatter = .false.
-
-  ! user-defined tally information
-  integer :: n_cmfd_meshes              = 1 ! # of structured meshes
-  integer :: n_cmfd_tallies             = 3 ! # of user-defined tallies
-
-  ! overwrite with 2grp xs
-  logical :: cmfd_run_2grp = .false.
-
-  ! hold cmfd weight adjustment factors
+  ! Flag to hold cmfd weight adjustment factors
   logical :: cmfd_hold_weights = .false.
 
-  ! eigenvalue solver type
+  ! Eigenvalue solver type
   character(len=10) :: cmfd_solver_type = 'power'
 
-  ! adjoint method type
+  ! Adjoint method type
   character(len=10) :: cmfd_adjoint_type = 'physical'
 
-  ! number of incomplete ilu factorization levels
+  ! Number of incomplete ilu factorization levels
   integer :: cmfd_ilu_levels = 1
 
-  ! batch to begin cmfd
+  ! Batch to begin cmfd
   integer :: cmfd_begin = 1
 
-  ! when and how long to flush cmfd tallies during inactive batches
+  ! When and how long to flush cmfd tallies during inactive batches
   integer :: cmfd_inact_flush(2) = (/9999,1/)
 
-  ! batch to last flush before active batches
+  ! Batch to last flush before active batches
   integer :: cmfd_act_flush = 0
 
-  ! compute effective downscatter cross section
+  ! Compute effective downscatter cross section
   logical :: cmfd_downscatter = .false.
 
-  ! convergence monitoring
+  ! Convergence monitoring
   logical :: cmfd_snes_monitor  = .false.
   logical :: cmfd_ksp_monitor   = .false.
   logical :: cmfd_power_monitor = .false.
 
-  ! cmfd output
-  logical :: cmfd_write_balance  = .false.
+  ! Cmfd output
   logical :: cmfd_write_matrices = .false.
-  logical :: cmfd_write_hdf5     = .false.
 
-  ! run an adjoint calculation (last batch only)
+  ! Run an adjoint calculation (last batch only)
   logical :: cmfd_run_adjoint = .false.
 
-  ! cmfd run logicals
+  ! CMFD run logicals
   logical :: cmfd_on             = .false.
   logical :: cmfd_tally_on       = .true. 
 
-  ! tolerance on keff to run cmfd
-  real(8) :: cmfd_keff_tol = 0.005_8
+  ! CMFD display info
+  character(len=25) :: cmfd_display
 
   ! Information about state points to be written
   integer :: n_state_points = 0
@@ -463,7 +447,7 @@ contains
     ! Deallocate array of work indices
     if (allocated(work_index)) deallocate(work_index)
 
-    ! Deallocate cmfd
+    ! Deallocate CMFD
     call deallocate_cmfd(cmfd)
 
     ! Deallocate tally node lists
@@ -471,6 +455,9 @@ contains
     call active_tracklength_tallies % clear()
     call active_current_tallies % clear()
     call active_tallies % clear()
+
+    ! Deallocate track_identifiers
+    if (allocated(track_identifiers)) deallocate(track_identifiers)
     
     ! Deallocate dictionaries
     call cell_dict % clear()

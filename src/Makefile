@@ -3,10 +3,7 @@ prefix = /usr/local
 
 source = $(wildcard *.F90)
 objects = $(source:.F90=.o)
-templates = $(wildcard templates/*.o)
-xml_fort = xml-fortran/xmlparse.o \
-           xml-fortran/read_xml_primitives.o \
-           xml-fortran/write_xml_primitives.o
+xml_lib = -Lxml/lib -lxml
 
 #===============================================================================
 # User Options
@@ -42,12 +39,12 @@ GIT_SHA1 = $(shell git log -1 2>/dev/null | head -n 1 | awk '{print $$2}')
 
 ifeq ($(COMPILER),gnu)
   F90 = gfortran
-  F90FLAGS := -cpp -fbacktrace
+  F90FLAGS := -cpp -std=f2008 -fbacktrace
   LDFLAGS =
 
   # Debugging
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -Wall -pedantic -std=f2008 -fbounds-check \
+    F90FLAGS += -g -Wall -pedantic -fbounds-check \
                 -ffpe-trap=invalid,overflow,underflow
     LDFLAGS  += -g
   endif
@@ -70,12 +67,12 @@ endif
 
 ifeq ($(COMPILER),intel)
   F90 = ifort
-  F90FLAGS := -fpp -warn -assume byterecl -traceback
+  F90FLAGS := -fpp -std08 -assume byterecl -traceback
   LDFLAGS =
 
   # Debugging
   ifeq ($(DEBUG),yes)
-    F90FLAGS += -g -ftrapuv -fp-stack-check -check all -fpe0
+    F90FLAGS += -g -warn -ftrapuv -fp-stack-check -check all -fpe0
     LDFLAGS  += -g
   endif
 
@@ -243,12 +240,11 @@ endif
 # Targets
 #===============================================================================
 
-all: xml-fortran $(program)
-xml-fortran:
-	cd xml-fortran; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)" LDFLAGS="$(LDFLAGS)"
-	cd templates; make F90=$(F90) F90FLAGS="$(F90FLAGS)" LDFLAGS="$(LDFLAGS)"
+all: xml $(program)
+xml:
+	cd xml; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)" LDFLAGS="$(LDFLAGS)"
 $(program): $(objects)
-	$(F90) $(objects) $(templates) $(xml_fort) $(LDFLAGS) -o $@
+	$(F90) $(objects) $(xml_lib) $(LDFLAGS) -o $@
 install:
 	@install -D $(program) $(DESTDIR)$(prefix)/bin/$(program)
 	@install -D utils/statepoint_cmp.py $(DESTDIR)$(prefix)/bin/statepoint_cmp
@@ -264,8 +260,7 @@ uninstall:
 	@rm $(DESTDIR)$(prefix)/share/man/man1/openmc.1
 	@rm $(DESTDIR)$(prefix)/share/doc/$(program)/copyright
 distclean: clean
-	cd xml-fortran; make clean
-	cd templates; make clean
+	cd xml; make clean
 clean:
 	@rm -f *.o *.mod $(program)
 neat:
@@ -275,10 +270,11 @@ neat:
 # Rules
 #===============================================================================
 
-.PHONY: all xml-fortran install uninstall clean neat distclean 
+.SUFFIXES: .F90 .o
+.PHONY: all xml install uninstall clean neat distclean 
 
 %.o: %.F90
-	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Itemplates -c $<
+	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml/include -c $<
 
 #===============================================================================
 # Dependencies

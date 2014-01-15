@@ -31,7 +31,7 @@ contains
 
   subroutine title()
 
-#ifdef OPENMP
+#ifdef _OPENMP
     use omp_lib
 #endif
 
@@ -69,7 +69,7 @@ contains
          trim(to_str(n_procs))
 #endif
 
-#ifdef OPENMP
+#ifdef _OPENMP
     ! Write number of OpenMP threads
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"OpenMP Threads:",1X,A)') &
          trim(to_str(omp_get_max_threads()))

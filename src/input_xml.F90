@@ -228,7 +228,7 @@ contains
 
     ! Number of OpenMP threads
     if (check_for_node(doc, "threads")) then
-#ifdef OPENMP
+#ifdef _OPENMP
       if (n_threads == NONE) then
         call get_node_value(doc, "threads", n_threads)
         if (n_threads < 1) then

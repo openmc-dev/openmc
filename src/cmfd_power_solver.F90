@@ -102,7 +102,9 @@ contains
   subroutine init_data(adjoint)
 
     use constants, only: ONE, ZERO
+#ifdef PETSC
     use global,    only: cmfd_write_matrices
+#endif
 
     logical, intent(in) :: adjoint ! adjoint calcualtion
 

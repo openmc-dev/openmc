@@ -464,6 +464,7 @@ contains
     character(19)           :: current_time
     integer                 :: i
     integer                 :: j
+    integer                 :: length(4)
     integer                 :: int_array(3)
     integer, allocatable    :: temp_array(:)
     real(8)                 :: real_array(3) 
@@ -542,10 +543,9 @@ contains
         call sp % read_data(cmfd % indices, "indicies", length=4, group="cmfd")
         call sp % read_data(cmfd % k_cmfd, "k_cmfd", length=restart_batch, &
              group="cmfd")
+        length = cmfd % indices([4,1,2,3])
         call sp % read_data(cmfd % cmfd_src, "cmfd_src", &
-             length=(/cmfd % indices(4), cmfd % indices(1), &
-             cmfd % indices(2), cmfd % indices(3)/), &
-             group="cmfd")
+             length=length, group="cmfd")
         call sp % read_data(cmfd % entropy, "cmfd_entropy", &
                        length=restart_batch, group="cmfd")
         call sp % read_data(cmfd % balance, "cmfd_balance", &

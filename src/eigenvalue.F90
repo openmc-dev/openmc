@@ -166,7 +166,7 @@ contains
 
   subroutine finalize_generation()
 
-#ifdef OPENMP
+#ifdef _OPENMP
     ! Join the fission bank from each thread into one global fission bank
     call join_bank_from_threads()
 #endif
@@ -821,7 +821,7 @@ contains
 
   end subroutine replay_batch_history
 
-#ifdef OPENMP
+#ifdef _OPENMP
 !===============================================================================
 ! JOIN_BANK_FROM_THREADS
 !===============================================================================

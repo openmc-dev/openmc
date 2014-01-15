@@ -181,17 +181,17 @@ endif
 
 ifeq ($(OPENMP),yes)
   ifeq ($(COMPILER),intel)
-    F90FLAGS += -openmp -DOPENMP
+    F90FLAGS += -openmp
     LDFLAGS += -openmp
   endif
 
   ifeq ($(COMPILER),gnu)
-    F90FLAGS += -fopenmp -DOPENMP
+    F90FLAGS += -fopenmp
     LDFLAGS += -fopenmp
   endif
 
   ifeq ($(COMPILER),ibm)
-    F90FLAGS += -qsmp=omp -WF,-DOPENMP
+    F90FLAGS += -qsmp=omp
     LDFLAGS += -qsmp=omp
   endif
 endif

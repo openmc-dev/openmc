@@ -836,8 +836,9 @@ contains
     ! generation, there is also a 'master_fission_bank' that is used to collect
     ! the sites from each thread.
 
+    n_threads = omp_get_max_threads()
+
 !$omp parallel
-    n_threads = omp_get_num_threads()
     thread_id = omp_get_thread_num()
 
     if (thread_id == 0) then

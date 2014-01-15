@@ -38,7 +38,7 @@ running OpenMC with the -plot or -p command-line option (See
 Plotting in 2D
 --------------
 
-.. image:: ../../img/atr.png
+.. image:: ../_images/atr.png
    :height: 200px
 
 After running OpenMC to obtain PPM files, images should be saved to another
@@ -58,7 +58,7 @@ Ubuntu: ``sudo apt-get install imagemagick``).  Images are then converted like:
 Plotting in 3D
 --------------
 
-.. image:: ../../img/3dgeomplot.png
+.. image:: ../_images/3dgeomplot.png
    :height: 200px
 
 The binary VOXEL files output by OpenMC can not be viewed directly by any
@@ -162,7 +162,7 @@ tasks will be described here in the following sections.
 Plotting in 2D
 --------------
 
-.. image:: ../../img/plotmeshtally.png
+.. image:: ../_images/plotmeshtally.png
    :height: 200px
 
 For simple viewing of 2D slices of a mesh plot, the utility plot_mesh_tally.py
@@ -170,7 +170,7 @@ is provided.  This utility provides an interactive GUI to explore and plot
 mesh tallies for any scores and filter bins.  It requires statepoint.py, as well
 as `PyQt <http://www.riverbankcomputing.com/software/pyqt>`_.
 
-.. image:: ../../img/fluxplot.png
+.. image:: ../_images/fluxplot.png
    :height: 200px
 
 Alternatively, the user can write their own Python script to manipulate the data
@@ -249,7 +249,7 @@ two heatmaps in the previous figure.
 Plotting in 3D
 --------------
 
-.. image:: ../../img/3dcore.png
+.. image:: ../_images/3dcore.png
    :height: 200px
 
 As with 3D plots of the geometry, meshtally data needs to be put into a standard
@@ -357,7 +357,7 @@ and dumped to MATLAB in one step.
 Particle Track Visualization
 ----------------------------
 
-.. image:: ../../img/Tracks.png
+.. image:: ../_images/Tracks.png
    :height: 200px
 
 OpenMC can dump particle tracks—the position of particles as they are

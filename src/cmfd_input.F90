@@ -20,7 +20,9 @@ contains
 
     use cmfd_header,  only: allocate_cmfd
 
+#ifdef PETSC
     integer :: new_comm ! new mpi communicator
+#endif
     integer :: color    ! color group of processor
 
     ! Read in cmfd input file
@@ -34,17 +36,17 @@ contains
     end if
 
     ! Split up procs
-# ifdef PETSC 
+#ifdef PETSC
     call MPI_COMM_SPLIT(MPI_COMM_WORLD, color, 0, new_comm, mpi_err)
-# endif
+#endif
 
     ! assign to PETSc
-# ifdef PETSC
+#ifdef PETSC
     PETSC_COMM_WORLD = new_comm
 
     ! Initialize PETSc on all procs
     call PetscInitialize(PETSC_NULL_CHARACTER, mpi_err)
-# endif
+#endif
 
     ! Initialize timers
     call time_cmfd % reset()
@@ -575,7 +577,9 @@ contains
     end do
 
     ! Put cmfd tallies into active tally array and turn tallies on
+!$omp parallel
     call setup_active_cmfdtallies()
+!$omp end parallel
     tallies_on = .true.
 
   end subroutine create_cmfd_tally

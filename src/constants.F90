@@ -20,7 +20,7 @@ module constants
        FILETYPE_PARTICLE_RESTART = -2
 
   ! ============================================================================
-  ! ADJUSTABLE PARAMETERS 
+  ! ADJUSTABLE PARAMETERS
 
   ! NOTE: This is the only section of the constants module that should ever be
   ! adjusted. Modifying constants in other sections may cause the code to fail.
@@ -49,6 +49,10 @@ module constants
   integer, parameter :: MAX_LINE_LEN = 250
   integer, parameter :: MAX_WORD_LEN = 150
   integer, parameter :: MAX_FILE_LEN = 255
+
+  ! Maximum number of external source spatial resamples to encounter before an
+  ! error is thrown.
+  integer, parameter :: MAX_EXTSRC_RESAMPLES = 10000
 
   ! ============================================================================
   ! PHYSICAL CONSTANTS
@@ -110,9 +114,9 @@ module constants
 
   ! Surface types
   integer, parameter ::  &
-       SURF_PX     =  1, & ! Plane parallel to x-plane 
-       SURF_PY     =  2, & ! Plane parallel to y-plane 
-       SURF_PZ     =  3, & ! Plane parallel to z-plane 
+       SURF_PX     =  1, & ! Plane parallel to x-plane
+       SURF_PY     =  2, & ! Plane parallel to y-plane
+       SURF_PZ     =  3, & ! Plane parallel to z-plane
        SURF_PLANE  =  4, & ! Arbitrary plane
        SURF_CYL_X  =  5, & ! Cylinder along x-axis
        SURF_CYL_Y  =  6, & ! Cylinder along y-axis
@@ -143,7 +147,7 @@ module constants
        ELECTRON = 3
 
   ! Angular distribution type
-  integer, parameter :: & 
+  integer, parameter :: &
        ANGLE_ISOTROPIC = 1, & ! Isotropic angular distribution
        ANGLE_32_EQUI   = 2, & ! 32 equiprobable bins
        ANGLE_TABULAR   = 3    ! Tabular angular distribution
@@ -151,7 +155,8 @@ module constants
   ! Secondary energy mode for S(a,b) inelastic scattering
   integer, parameter :: &
        SAB_SECONDARY_EQUAL  = 0, & ! Equally-likely outgoing energy bins
-       SAB_SECONDARY_SKEWED = 1    ! Skewed outgoing energy bins
+       SAB_SECONDARY_SKEWED = 1, & ! Skewed outgoing energy bins
+       SAB_SECONDARY_CONT   = 2    ! Continuous, linear-linear interpolation
 
   ! Elastic mode for S(a,b) elastic scattering
   integer, parameter :: &
@@ -275,7 +280,7 @@ module constants
        SCORE_KAPPA_FISSION = -12, & ! fission energy production rate
        SCORE_CURRENT       = -13, & ! partial current
        SCORE_EVENTS        = -14    ! number of events
-       
+
   ! Maximum scattering order supported
   integer, parameter :: SCATT_ORDER_MAX = 10
   character(len=*), parameter :: SCATT_ORDER_MAX_PNSTR = "scatter-p10"
@@ -322,7 +327,7 @@ module constants
 
   ! Source angular distribution types
   integer, parameter :: &
-       SRC_ANGLE_ISOTROPIC = 1, & ! Isotropic angular 
+       SRC_ANGLE_ISOTROPIC = 1, & ! Isotropic angular
        SRC_ANGLE_MONO      = 2, & ! Monodirectional source
        SRC_ANGLE_TABULAR   = 3    ! Tabular distribution
 
@@ -332,7 +337,7 @@ module constants
        SRC_ENERGY_MAXWELL = 2, & ! Maxwell fission spectrum
        SRC_ENERGY_WATT    = 3, & ! Watt fission spectrum
        SRC_ENERGY_TABULAR = 4    ! Tabular distribution
-       
+
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
 

@@ -577,7 +577,9 @@ contains
     end do
 
     ! Put cmfd tallies into active tally array and turn tallies on
+!$omp parallel
     call setup_active_cmfdtallies()
+!$omp end parallel
     tallies_on = .true.
 
   end subroutine create_cmfd_tally

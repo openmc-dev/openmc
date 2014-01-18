@@ -31,7 +31,7 @@ contains
 
   subroutine title()
 
-#ifdef OPENMP
+#ifdef _OPENMP
     use omp_lib
 #endif
 
@@ -50,7 +50,7 @@ contains
 
     ! Write version information
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     Copyright:      2011-2013 Massachusetts Institute of Technology'
+         '     Copyright:      2011-2014 Massachusetts Institute of Technology'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
          '     License:        http://mit-crpg.github.io/openmc/license.html'
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",8X,I1,".",I1,".",I1)') &
@@ -69,7 +69,7 @@ contains
          trim(to_str(n_procs))
 #endif
 
-#ifdef OPENMP
+#ifdef _OPENMP
     ! Write number of OpenMP threads
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"OpenMP Threads:",1X,A)') &
          trim(to_str(omp_get_max_threads()))

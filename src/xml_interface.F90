@@ -72,7 +72,7 @@ contains
 ! node name. This should only be used for checking a single occurance of a
 ! sub-element node. To check for sub-element nodes that repeat, use
 ! get_node_list and get_list_size. This is to minimize number of calls
-! to getElementsByTagName.
+! to getChildrenByTagName.
 !===============================================================================
 
   function check_for_node(ptr, node_name) result(found)
@@ -94,7 +94,7 @@ contains
     if (associated(temp_ptr)) return
 
     ! Check for a sub-element 
-    elem_list => getElementsByTagName(ptr, trim(node_name))
+    elem_list => getChildrenByTagName(ptr, trim(node_name))
 
     ! Get the length of the list
     if (getLength(elem_list) == 0) then
@@ -124,7 +124,7 @@ contains
     found_ = .false.
 
     ! Check for a sub-element 
-    elem_list => getElementsByTagName(in_ptr, trim(node_name))
+    elem_list => getChildrenByTagName(in_ptr, trim(node_name))
 
     ! Get the length of the list
     if (getLength(elem_list) == 0) return
@@ -149,7 +149,7 @@ contains
     type(NodeList), pointer, intent(out) :: out_ptr
 
     ! Check for a sub-element 
-    out_ptr => getElementsByTagName(in_ptr, trim(node_name))
+    out_ptr => getChildrenByTagName(in_ptr, trim(node_name))
 
   end subroutine get_node_list
 
@@ -525,7 +525,7 @@ contains
     if (associated(out_ptr)) return
 
     ! Check for a sub-element 
-    elem_list => getElementsByTagName(in_ptr, trim(node_name))
+    elem_list => getChildrenByTagName(in_ptr, trim(node_name))
 
     ! Get the length of the list
     if (getLength(elem_list) == 0) then

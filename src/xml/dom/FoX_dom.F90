@@ -74,6 +74,7 @@ module FoX_dom
   public :: createAttribute
   public :: createEntityReference
   public :: getElementsByTagName
+  public :: getChildrenByTagName
   public :: getElementById
 
   public :: importNode

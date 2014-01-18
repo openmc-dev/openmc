@@ -31,6 +31,10 @@ contains
 
   subroutine title()
 
+#ifdef _OPENMP
+    use omp_lib
+#endif
+
     write(UNIT=OUTPUT_UNIT, FMT='(/11(A/))') &
          '       .d88888b.                             888b     d888  .d8888b.', &
          '      d88P" "Y88b                            8888b   d8888 d88P  Y88b', &
@@ -46,23 +50,29 @@ contains
 
     ! Write version information
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     Copyright:     2011-2013 Massachusetts Institute of Technology'
+         '     Copyright:      2011-2014 Massachusetts Institute of Technology'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '     License:       http://mit-crpg.github.io/openmc/license.html'
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",7X,I1,".",I1,".",I1)') &
+         '     License:        http://mit-crpg.github.io/openmc/license.html'
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",8X,I1,".",I1,".",I1)') &
          VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Git SHA1:",6X,A)') GIT_SHA1
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Git SHA1:",7X,A)') GIT_SHA1
 #endif
 
     ! Write the date and time
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",5X,A)') &
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"Date/Time:",6X,A)') &
          time_stamp()
 
 #ifdef MPI
     ! Write number of processors
-    write(UNIT=OUTPUT_UNIT, FMT='(6X,"MPI Processes:",1X,A)') &
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"MPI Processes:",2X,A)') &
          trim(to_str(n_procs))
+#endif
+
+#ifdef _OPENMP
+    ! Write number of OpenMP threads
+    write(UNIT=OUTPUT_UNIT, FMT='(6X,"OpenMP Threads:",1X,A)') &
+         trim(to_str(omp_get_max_threads()))
 #endif
 
   end subroutine title
@@ -126,7 +136,7 @@ contains
     ! print header based on level
     select case (header_level)
     case (1)
-      write(UNIT=unit_, FMT='(/3(1X,A/))') repeat('=', 75), & 
+      write(UNIT=unit_, FMT='(/3(1X,A/))') repeat('=', 75), &
            repeat('=', n) // '>     ' // trim(line) // '     <' // &
            repeat('=', m), repeat('=', 75)
     case (2)
@@ -180,7 +190,7 @@ contains
   end subroutine print_usage
 
 !===============================================================================
-! WRITE_MESSAGE displays an informational message to the log file and the 
+! WRITE_MESSAGE displays an informational message to the log file and the
 ! standard output stream.
 !===============================================================================
 
@@ -215,7 +225,7 @@ contains
           ! Determine last space in current line
           last_space = index(message(i_start+1:i_start+line_wrap), &
                ' ', BACK=.true.)
-          if (last_space == 0) then 
+          if (last_space == 0) then
             i_end = min(length + 1, i_start+line_wrap) - 1
             write(ou, fmt='(1X,A)') message(i_start+1:i_end)
           else
@@ -1028,8 +1038,10 @@ contains
     type(SAlphaBeta), pointer :: sab
     integer,         optional :: unit
 
-    integer :: size_sab ! memory used by S(a,b) table
-    integer :: unit_    ! unit to write to
+    integer :: size_sab   ! memory used by S(a,b) table
+    integer :: unit_      ! unit to write to
+    integer :: i          ! Loop counter for parsing through sab % zaid
+    integer :: char_count ! Counter for the number of characters on a line
 
     ! set default unit for writing information
     if (present(unit)) then
@@ -1040,7 +1052,30 @@ contains
 
     ! Basic S(a,b) table information
     write(unit_,*) 'S(a,b) Table ' // trim(sab % name)
-    write(unit_,*) '  zaid = ' // trim(to_str(sab % zaid))
+    write(unit_,'(A)',advance="no") '   zaids = '
+    ! Initialize the counter based on the above string
+    char_count = 11
+    do i = 1, sab % n_zaid
+      ! Deal with a line thats too long
+      if (char_count >= 73) then  ! 73 = 80 - (5 ZAID chars + 1 space + 1 comma)
+        ! End the line
+        write(unit_,*) ""
+        ! Add 11 leading blanks
+        write(unit_,'(A)', advance="no") "           "
+        ! reset the counter to 11
+        char_count = 11
+      end if
+      if (i < sab % n_zaid) then
+        ! Include a comma
+        write(unit_,'(A)',advance="no") trim(to_str(sab % zaid(i))) // ", "
+        char_count = char_count + len(trim(to_str(sab % zaid(i)))) + 2
+      else
+        ! Don't include a comma, since we are all done
+        write(unit_,'(A)',advance="no") trim(to_str(sab % zaid(i)))
+      end if
+
+    end do
+    write(unit_,*) "" ! Move to next line
     write(unit_,*) '  awr = ' // trim(to_str(sab % awr))
     write(unit_,*) '  kT = ' // trim(to_str(sab % kT))
 
@@ -1242,7 +1277,7 @@ contains
       end select
     end if
     write(UNIT=ou, FMT=*)
-    
+
     write(UNIT=ou, FMT='(2X,A9,3X)', ADVANCE='NO') "========="
     write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
     if (entropy_on) write(UNIT=ou, FMT='(A8,3X)', ADVANCE='NO') "========"
@@ -1272,7 +1307,7 @@ contains
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
          entropy(overall_gen)
 
-    if (overall_gen - n_inactive*gen_per_batch > 1) then 
+    if (overall_gen - n_inactive*gen_per_batch > 1) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
            keff, keff_std
     end if
@@ -1300,7 +1335,7 @@ contains
          entropy(current_batch*gen_per_batch)
 
     ! write out accumulated k-effective if after first active batch
-    if (overall_gen - n_inactive*gen_per_batch > 1) then 
+    if (overall_gen - n_inactive*gen_per_batch > 1) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
            keff, keff_std
     else
@@ -1310,7 +1345,7 @@ contains
     ! write out cmfd keff if it is active and other display info
     if (cmfd_on) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         cmfd % k_cmfd(current_batch) 
+         cmfd % k_cmfd(current_batch)
       select case(trim(cmfd_display))
         case('entropy')
           write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
@@ -1349,7 +1384,7 @@ contains
 
       ! Plot id
       write(ou,100) "Plot ID:", trim(to_str(pl % id))
-      
+
       ! Plot type
       if (pl % type == PLOT_TYPE_SLICE) then
         write(ou,100) "Plot Type:", "Slice"
@@ -1387,7 +1422,7 @@ contains
              trim(to_str(pl % pixels(2)))
       else if (pl % type == PLOT_TYPE_VOXEL) then
         write(ou,100) "Voxels:", trim(to_str(pl % pixels(1))) // " " // &
-             trim(to_str(pl % pixels(2))) // " " // trim(to_str(pl % pixels(3))) 
+             trim(to_str(pl % pixels(2))) // " " // trim(to_str(pl % pixels(3)))
       end if
 
       write(ou,*)
@@ -1539,7 +1574,7 @@ contains
 
     write(ou,100) 'Cell ID','No. Overlap Checks'
 
-    do i = 1, n_cells    
+    do i = 1, n_cells
       write(ou,101) cells(i) % id, overlap_check_cnt(i)
       if (overlap_check_cnt(i) < 10) num_sparse = num_sparse + 1
     end do
@@ -1573,7 +1608,7 @@ contains
     integer :: k            ! loop index for scoring bins
     integer :: n            ! loop index for nuclides
     integer :: l            ! loop index for user scores
-    integer :: type         ! type of tally filter        
+    integer :: type         ! type of tally filter
     integer :: indent       ! number of spaces to preceed output
     integer :: filter_index ! index in results array for filters
     integer :: score_index  ! scoring bin index
@@ -1749,13 +1784,13 @@ contains
                 score_name = 'P' // trim(to_str(t % scatt_order(k))) // &
                   ' Scattering Moment'
               end if
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                 repeat(" ", indent), score_name, &
                 to_str(t % results(score_index,filter_index) % sum), &
                 trim(to_str(t % results(score_index,filter_index) % sum_sq))
             else if (t % score_bins(k) == SCORE_SCATTER_PN) then
               score_name = "Scattering Rate"
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                 repeat(" ", indent), score_name, &
                 to_str(t % results(score_index,filter_index) % sum), &
                 trim(to_str(t % results(score_index,filter_index) % sum_sq))
@@ -1763,7 +1798,7 @@ contains
                 score_index = score_index + 1
                 score_name = 'P' // trim(to_str(n_order)) // &
                   ' Scattering Moment'
-                write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+                write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                   repeat(" ", indent), score_name, &
                   to_str(t % results(score_index,filter_index) % sum), &
                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
@@ -1775,7 +1810,7 @@ contains
               else
                 score_name = score_names(abs(t % score_bins(k)))
               end if
-              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') & 
+              write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                 repeat(" ", indent), score_name, &
                 to_str(t % results(score_index,filter_index) % sum), &
                 trim(to_str(t % results(score_index,filter_index) % sum_sq))
@@ -1813,8 +1848,8 @@ contains
     integer :: i_filter_ein         ! index for incoming energy filter
     integer :: i_filter_surf        ! index for surface filter
     integer :: n                    ! number of incoming energy bins
-    integer :: len1                 ! length of string 
-    integer :: len2                 ! length of string 
+    integer :: len1                 ! length of string
+    integer :: len2                 ! length of string
     integer :: filter_index         ! index in results array for filters
     logical :: print_ebin           ! should incoming energy bin be displayed?
     character(MAX_LINE_LEN) :: string
@@ -1864,14 +1899,14 @@ contains
                  mesh_indices_to_bin(m, (/ i-1, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Outgoing Current to Left", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Incoming Current from Left", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1881,14 +1916,14 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Incoming Current from Right", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_RIGHT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Outgoing Current to Right", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1898,14 +1933,14 @@ contains
                  mesh_indices_to_bin(m, (/ i, j-1, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Outgoing Current to Back", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Incoming Current from Back", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1915,14 +1950,14 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Incoming Current from Front", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_FRONT
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Outgoing Current to Front", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1932,14 +1967,14 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k-1 /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Outgoing Current to Bottom", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Incoming Current from Bottom", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
@@ -1949,14 +1984,14 @@ contains
                  mesh_indices_to_bin(m, (/ i, j, k /) + 1, .true.)
             matching_bins(i_filter_surf) = IN_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Incoming Current from Top", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))
 
             matching_bins(i_filter_surf) = OUT_TOP
             filter_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1
-            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') & 
+            write(UNIT=UNIT_TALLY, FMT='(5X,A,T35,A,"+/- ",A)') &
                  "Outgoing Current to Top", &
                  to_str(t % results(1,filter_index) % sum), &
                  trim(to_str(t % results(1,filter_index) % sum_sq))

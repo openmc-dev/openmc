@@ -228,7 +228,7 @@ contains
 
     ! Number of OpenMP threads
     if (check_for_node(doc, "threads")) then
-#ifdef OPENMP
+#ifdef _OPENMP
       if (n_threads == NONE) then
         call get_node_value(doc, "threads", n_threads)
         if (n_threads < 1) then
@@ -474,7 +474,8 @@ contains
       allocate(temp_int_array(n_tracks))
       call get_node_array(doc, "track", temp_int_array)
 
-      ! Reshape into track_identifiers -- note automatic array allocation
+      ! Reshape into track_identifiers
+      allocate(track_identifiers(3, n_tracks/3))
       track_identifiers = reshape(temp_int_array, [3, n_tracks/3])
     end if
 
@@ -635,8 +636,8 @@ contains
       if (check_for_node(node_sp, "source_write")) then
         call get_node_value(node_sp, "source_write", temp_str)
         call lower_case(temp_str)
-        if (trim(temp_str) == 'true' .or. &
-             trim(temp_str) == '1') source_separate = .true.
+        if (trim(temp_str) == 'false' .or. &
+             trim(temp_str) == '0') source_write = .false.
       end if
     else
       ! If no <state_point> tag was present, by default write state point at
@@ -2938,7 +2939,19 @@ contains
        end if
 
        ! set filetype, record length, and number of entries
-       listing % filetype = filetype
+       if (check_for_node(node_ace, "filetype")) then
+         temp_str = ''
+         call get_node_value(node_ace, "filetype", temp_str)
+         if (temp_str == 'ascii') then
+           listing % filetype = ASCII
+         else if (temp_str == 'binary') then
+           listing % filetype = BINARY
+         end if
+       else
+         listing % filetype = filetype
+       end if
+
+       ! Set record length and entries for binary files
        if (filetype == BINARY) then
          listing % recl     = recl
          listing % entries  = entries

@@ -329,6 +329,7 @@ solver_interface.o: vector_header.o
 source.o: bank_header.o
 source.o: constants.o
 source.o: error.o
+source.o: geometry.o
 source.o: geometry_header.o
 source.o: global.o
 source.o: math.o

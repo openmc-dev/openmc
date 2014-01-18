@@ -115,9 +115,9 @@ contains
         ! search through the list of nuclides for one which has a matching zaid
         sab => sab_tables(mat % i_sab_tables(k))
 
-        ! Loop through nuclides and find  match
+        ! Loop through nuclides and find match
         FIND_NUCLIDE: do j = 1, mat % n_nuclides
-          if (nuclides(mat % nuclide(j)) % zaid == sab % zaid) then
+          if (any(sab % zaid == nuclides(mat % nuclide(j)) % zaid)) then
             mat % i_sab_nuclides(k) = j
             exit FIND_NUCLIDE
           end if
@@ -333,7 +333,15 @@ contains
       sab % name = name
       sab % awr  = awr
       sab % kT   = kT
-      sab % zaid = zaids(1)
+      ! Find sab % n_zaid
+      do i = 1, 16
+        if (zaids(i) == 0) then
+          sab % n_zaid = i - 1
+          exit
+        end if
+      end do
+      allocate(sab % zaid(sab % n_zaid))
+      sab % zaid = zaids(1: sab % n_zaid)
 
       call read_thermal_data(sab)
     end select
@@ -1252,15 +1260,10 @@ contains
     integer :: NE_out ! number of outgoing energies
     integer :: NMU    ! number of outgoing angles
     integer :: JXS4   ! location of elastic energy table
+    integer(8), allocatable :: LOCC(:) ! Location of inelastic data
 
     ! read secondary energy mode for inelastic scattering
     table % secondary_mode = NXS(7)
-    if (table % secondary_mode /= SAB_SECONDARY_EQUAL .and. &
-         table % secondary_mode /= SAB_SECONDARY_SKEWED) then
-      message = "Unsupported secondary mode on S(a,b) table " // &
-           trim(adjustl(table % name)) // ": " // to_str(table % secondary_mode)
-      call fatal_error()
-    end if
 
     ! read number of inelastic energies and allocate arrays
     NE_in = int(XSS(JXS(1)))
@@ -1278,29 +1281,67 @@ contains
 
     ! allocate space for outgoing energy/angle for inelastic
     ! scattering
-    NE_out = NXS(4)
-    NMU = NXS(3) + 1
-    table % n_inelastic_e_out = NE_out
-    table % n_inelastic_mu = NMU
-    allocate(table % inelastic_e_out(NE_out, NE_in))
-    allocate(table % inelastic_mu(NMU, NE_out, NE_in))
+    if (table % secondary_mode == SAB_SECONDARY_EQUAL .or. &
+         table % secondary_mode == SAB_SECONDARY_SKEWED) then
+      NMU = NXS(3) + 1
+      table % n_inelastic_mu = NMU
+      NE_out = NXS(4)
+      table % n_inelastic_e_out = NE_out
+      allocate(table % inelastic_e_out(NE_out, NE_in))
+      allocate(table % inelastic_mu(NMU, NE_out, NE_in))
+    else if (table % secondary_mode == SAB_SECONDARY_CONT) then
+      NMU = NXS(3) - 1
+      table % n_inelastic_mu = NMU
+      allocate(table % inelastic_data(NE_in))
+      allocate(LOCC(NE_in))
+      ! NE_out will be determined later
+    end if
 
     ! read outgoing energy/angle distribution for inelastic scattering
-    lc = JXS(3) - 1
-    do i = 1, NE_in
-      do j = 1, NE_out
-        ! read outgoing energy
-        table % inelastic_e_out(j,i) = XSS(lc + 1)
+    if (table % secondary_mode == SAB_SECONDARY_EQUAL .or. &
+         table % secondary_mode == SAB_SECONDARY_SKEWED) then
+      lc = JXS(3) - 1
+      do i = 1, NE_in
+        do j = 1, NE_out
+          ! read outgoing energy
+          table % inelastic_e_out(j,i) = XSS(lc + 1)
 
-        ! read outgoing angles for this outgoing energy
-        do k = 1, NMU
-          table % inelastic_mu(k,j,i) = XSS(lc + 1 + k)
+          ! read outgoing angles for this outgoing energy
+          do k = 1, NMU
+            table % inelastic_mu(k,j,i) = XSS(lc + 1 + k)
+          end do
+
+          ! advance pointer
+          lc = lc + 1 + NMU
         end do
-
-        ! advance pointer
-        lc = lc + 1 + NMU
       end do
-    end do
+    else if (table % secondary_mode == SAB_SECONDARY_CONT) then
+      ! Get the location pointers to each Ein's DistEnergySAB data
+      LOCC = get_int(NE_in)
+      ! Get the number of outgoing energies and allocate space accordingly
+      do i = 1, NE_in
+        NE_out = int(XSS(XSS_index + i - 1))
+        table % inelastic_data(i) % n_e_out = NE_out
+        allocate(table % inelastic_data(i) % e_out (NE_out))
+        allocate(table % inelastic_data(i) % e_out_pdf (NE_out))
+        allocate(table % inelastic_data(i) % e_out_cdf (NE_out))
+        allocate(table % inelastic_data(i) % mu (NMU, NE_out))
+      end do
+
+      ! Now we can fill the inelastic_data(i) attributes
+      do i = 1, NE_in
+        XSS_index = LOCC(i)
+        NE_out = table % inelastic_data(i) % n_e_out
+        do j = 1, NE_out
+          table % inelastic_data(i) % e_out(j) = XSS(XSS_index + 1)
+          table % inelastic_data(i) % e_out_pdf(j) = XSS(XSS_index + 2)
+          table % inelastic_data(i) % e_out_cdf(j) = XSS(XSS_index + 3)
+          table % inelastic_data(i) % mu(:, j) = &
+            XSS(XSS_index + 4: XSS_index + 4 + NMU - 1)
+          XSS_index = XSS_index + 4 + NMU - 1
+        end do
+      end do
+    end if
 
     ! read number of elastic energies and allocate arrays
     JXS4 = JXS(4)

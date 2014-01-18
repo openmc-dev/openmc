@@ -181,17 +181,17 @@ endif
 
 ifeq ($(OPENMP),yes)
   ifeq ($(COMPILER),intel)
-    F90FLAGS += -openmp -DOPENMP
+    F90FLAGS += -openmp
     LDFLAGS += -openmp
   endif
 
   ifeq ($(COMPILER),gnu)
-    F90FLAGS += -fopenmp -DOPENMP
+    F90FLAGS += -fopenmp
     LDFLAGS += -fopenmp
   endif
 
   ifeq ($(COMPILER),ibm)
-    F90FLAGS += -qsmp=omp -WF,-DOPENMP
+    F90FLAGS += -qsmp=omp
     LDFLAGS += -qsmp=omp
   endif
 endif
@@ -218,7 +218,7 @@ endif
 
 ifeq ($(MACHINE),bluegene)
   F90 = /bgsys/drivers/ppcfloor/comm/xl/bin/mpixlf2003
-  F90FLAGS = -WF,-DNO_F2008,-DMPI -O3
+  F90FLAGS = -WF,-DNO_F2008,-DMPI,-DRESTRICTED_ASSOCIATED_BUG -O3
   LDFLAGS = -lmpich.cnkf90
 endif
 
@@ -233,7 +233,7 @@ endif
 
 ifeq ($(MACHINE),bluegeneq)
   F90 = mpixlf2003
-  F90FLAGS = -WF,-DNO_F2008,-DMPI -O5
+  F90FLAGS = -WF,-DNO_F2008,-DMPI,-DRESTRICTED_ASSOCIATED_BUG -O5
 endif
 
 #===============================================================================

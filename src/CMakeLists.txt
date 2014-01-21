@@ -173,3 +173,10 @@ install(PROGRAMS utils/statepoint_meshplot.py
   RENAME statepoint_meshplot)
 install(FILES ../man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES ../LICENSE DESTINATION "share/doc/${program}/copyright")
+
+find_package(PythonInterp)
+if(PYTHONINTERP_FOUND)
+  install(CODE "execute_process(
+                  COMMAND ${PYTHON_EXECUTABLE} setup.py install --user
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/utils)")
+endif()

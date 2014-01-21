@@ -6,5 +6,7 @@ clean:
 	make -s -C build clean
 distclean:
 	rm -fr build
+install:
+	make -s -C build install
 
-.PHONY: all clean distclean
+.PHONY: all clean distclean install

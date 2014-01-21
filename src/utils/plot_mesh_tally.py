@@ -5,8 +5,8 @@
 import os
 import sys
 
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
-from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg as NavigationToolbar
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,6 +21,7 @@ import tkFileDialog
 import tkFont
 import tkMessageBox
 import ttk
+
 
 class MeshPlotter(tk.Frame):
     def __init__(self, parent, filename):
@@ -54,11 +55,11 @@ class MeshPlotter(tk.Frame):
         # Create the Figure and Canvas
         self.dpi = 100
         self.fig = Figure((5.0, 5.0), dpi=self.dpi)
-        self.canvas = FigureCanvas(self.fig, master=figureFrame)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=figureFrame)
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
         # Create the navigation toolbar, tied to the canvas
-        self.mpl_toolbar = NavigationToolbar(self.canvas, figureFrame)
+        self.mpl_toolbar = NavigationToolbar2TkAgg(self.canvas, figureFrame)
         self.mpl_toolbar.update()
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
@@ -96,7 +97,7 @@ class MeshPlotter(tk.Frame):
         labelMean = tk.Label(self.selectFrame, text='Mean/Uncertainty:')
         labelMean.grid(row=3, column=0, sticky=tk.W)
         self.meanBox = ttk.Combobox(self.selectFrame, state='readonly')
-        self.meanBox['values'] = ('Mean', 'Absolute uncertainty', 
+        self.meanBox['values'] = ('Mean', 'Absolute uncertainty',
                                   'Relative uncertainty')
         self.meanBox.current(0)
         self.meanBox.grid(row=3, column=1, sticky=tk.W+tk.E)
@@ -124,7 +125,8 @@ class MeshPlotter(tk.Frame):
         selectedTally = self.datafile.tallies[tally_id]
 
         # Get mesh for selected tally
-        self.mesh = self.datafile.meshes[selectedTally.filters['mesh'].bins[0] - 1]
+        self.mesh = self.datafile.meshes[
+            selectedTally.filters['mesh'].bins[0] - 1]
 
         # Get mesh dimensions
         self.nx, self.ny, self.nz = self.mesh.dimension
@@ -146,7 +148,7 @@ class MeshPlotter(tk.Frame):
             return
 
         # Update scores
-        self.scoreBox['values'] = selectedTally.scores # self.tally_scores[self.tallyBox.current()]
+        self.scoreBox['values'] = selectedTally.scores
         self.scoreBox.current(0)
 
         # Remove any filter labels/comboboxes that exist
@@ -209,7 +211,7 @@ class MeshPlotter(tk.Frame):
             matrix = np.zeros((self.nx, self.ny))
             for i in range(self.nx):
                 for j in range(self.ny):
-                    matrix[i,j] = self.datafile.get_value(tally_id,
+                    matrix[i, j] = self.datafile.get_value(tally_id,
                         spec_list + [('mesh', (i + 1, j + 1, axial_level))],
                         self.scoreBox.current())[score_loc]
                     # Calculate relative uncertainty from absolute, if requested
@@ -219,15 +221,15 @@ class MeshPlotter(tk.Frame):
                             spec_list + [('mesh', (i + 1, j + 1, axial_level))],
                             self.scoreBox.current())[0]
                         if mean_val > 0.0:
-                            matrix[i,j] = matrix[i,j] / mean_val
+                            matrix[i, j] = matrix[i, j] / mean_val
                         else:
-                            matrix[i,j] = 0.0
+                            matrix[i, j] = 0.0
 
         elif text == 'yz':
             matrix = np.zeros((self.ny, self.nz))
             for i in range(self.ny):
                 for j in range(self.nz):
-                    matrix[i,j] = self.datafile.get_value(tally_id,
+                    matrix[i, j] = self.datafile.get_value(tally_id,
                         spec_list + [('mesh', (axial_level, i + 1, j + 1))],
                         self.scoreBox.current())[score_loc]
                     # Calculate relative uncertainty from absolute, if requested
@@ -237,15 +239,15 @@ class MeshPlotter(tk.Frame):
                             spec_list + [('mesh', (axial_level, i + 1, j + 1))],
                             self.scoreBox.current())[0]
                         if mean_val > 0.0:
-                            matrix[i,j] = matrix[i,j] / mean_val
+                            matrix[i, j] = matrix[i, j] / mean_val
                         else:
-                            matrix[i,j] = 0.0
+                            matrix[i, j] = 0.0
 
         else:
             matrix = np.zeros((self.nx, self.nz))
             for i in range(self.nx):
                 for j in range(self.nz):
-                    matrix[i,j] = self.datafile.get_value(tally_id,
+                    matrix[i, j] = self.datafile.get_value(tally_id,
                         spec_list + [('mesh', (i + 1, axial_level, j + 1))],
                         self.scoreBox.current())[score_loc]
                     # Calculate relative uncertainty from absolute, if requested
@@ -255,10 +257,9 @@ class MeshPlotter(tk.Frame):
                             spec_list + [('mesh', (i + 1, axial_level, j + 1))],
                             self.scoreBox.current())[0]
                         if mean_val > 0.0:
-                            matrix[i,j] = matrix[i,j] / mean_val
+                            matrix[i, j] = matrix[i, j] / mean_val
                         else:
-                            matrix[i,j] = 0.0
-
+                            matrix[i, j] = 0.0
 
         # Clear the figure
         self.fig.clear()
@@ -275,7 +276,7 @@ class MeshPlotter(tk.Frame):
 
         # Draw canvas
         self.canvas.draw()
-    
+
     def get_file_data(self, filename):
         # Create StatePoint object and read in data
         self.datafile = StatePoint(filename)
@@ -292,7 +293,7 @@ class MeshPlotter(tk.Frame):
             tkMessageBox.showerror("Invalid StatePoint File",
                                    "File does not contain mesh tallies!")
             sys.exit(1)
-        
+
 
 if __name__ == '__main__':
     # Hide root window

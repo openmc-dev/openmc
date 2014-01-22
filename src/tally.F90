@@ -2259,10 +2259,10 @@ contains
       ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
       ! Find the grid index and interpolant of ndpp scattering data
       i_grid = micro_xs(i_nuclide) % index_grid
-      if (i_grid + ndpp_groups <= size(ndpp_scatt_Ein)) then
+      if (i_grid + ndpp_groups + 1<= size(ndpp_scatt_Ein)) then
         i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
-                               i_grid + ndpp_groups), &
-                               ndpp_groups, Ein) + i_grid - 1
+                               i_grid + ndpp_groups + 1), &
+                               ndpp_groups + 2, Ein) + i_grid - 1
       else
         i_grid = binary_search(ndpp_scatt_Ein(i_grid:), &
                                size(ndpp_scatt_Ein) - i_grid + 1, Ein) + &
@@ -2407,10 +2407,10 @@ contains
       ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
       ! Find the grid index and interpolant of ndpp scattering data
       i_grid = micro_xs(i_nuclide) % index_grid
-      if (i_grid + ndpp_groups <= size(ndpp_scatt_Ein)) then
+      if (i_grid + ndpp_groups + 1<= size(ndpp_scatt_Ein)) then
         i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
-                               i_grid + ndpp_groups), &
-                               ndpp_groups, Ein) + i_grid - 1
+                               i_grid + ndpp_groups + 1), &
+                               ndpp_groups + 2, Ein) + i_grid - 1
       else
         i_grid = binary_search(ndpp_scatt_Ein(i_grid:), &
                                size(ndpp_scatt_Ein) - i_grid + 1, Ein) + &

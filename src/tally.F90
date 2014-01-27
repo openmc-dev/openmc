@@ -2259,7 +2259,7 @@ contains
       ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
       ! Find the grid index and interpolant of ndpp scattering data
       i_grid = micro_xs(i_nuclide) % index_grid
-      if (i_grid + ndpp_groups + 1<= size(ndpp_scatt_Ein)) then
+      if (i_grid + ndpp_groups + 1 <= size(ndpp_scatt_Ein)) then
         i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
                                i_grid + ndpp_groups + 1), &
                                ndpp_groups + 2, Ein) + i_grid - 1
@@ -2407,7 +2407,13 @@ contains
       ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
       ! Find the grid index and interpolant of ndpp scattering data
       i_grid = micro_xs(i_nuclide) % index_grid
-      if (i_grid + ndpp_groups + 1<= size(ndpp_scatt_Ein)) then
+      if (Ein <= ndpp_scatt_Ein(1)) then
+        i_grid = 1
+        f = ZERO
+      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
+        i_grid = size(ndpp_scatt_Ein)
+        f = ONE
+      else if (i_grid + ndpp_groups + 1 <= size(ndpp_scatt_Ein)) then
         i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
                                i_grid + ndpp_groups + 1), &
                                ndpp_groups + 2, Ein) + i_grid - 1

@@ -48,8 +48,8 @@ Publications
 
 - Andrew R. Siegel, Kord Smith, Paul K. Romano, Benoit Forget, and Kyle Felker,
   "Multi-core performance studies of a Monte Carlo neutron transport code,"
-  *Int. J. High Perform. Comput. Appl.*
-  (2013). `<http://dx.doi.org/10.1177/1094342013492179>`_
+  *Int. J. High Perform. Comput. Appl.*, **28** (1), 87--96
+  (2014). `<http://dx.doi.org/10.1177/1094342013492179>`_
 
 - Paul K. Romano, Andrew R. Siegel, Benoit Forget, and Kord Smith, "Data
   decomposition of Monte Carlo particle transport simulations via tally

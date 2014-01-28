@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 
 import struct
-from math import sqrt
 from collections import OrderedDict
 
 import numpy as np
@@ -10,10 +9,10 @@ import scipy.stats
 filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
                 5: 'surface', 6: 'mesh', 7: 'energyin', 8: 'energyout'}
 
-score_types = {-1: 'flux', 
+score_types = {-1: 'flux',
                 -2: 'total',
                 -3: 'scatter',
-                -4: 'nu-scatter', 
+                -4: 'nu-scatter',
                 -5: 'scatter-n',
                 -6: 'scatter-pn',
                 -7: 'transport',
@@ -276,7 +275,7 @@ class StatePoint(object):
                     f.bins = self._get_int(path=base+'bins')
                 else:
                     f.bins = self._get_int(f.length, path=base+'bins')
-            
+
             base = 'tallies/tally' + str(i+1) + '/'
 
             # Read nuclide bins
@@ -379,7 +378,7 @@ class StatePoint(object):
         Calculates the sample mean and standard deviation of the mean for each
         tally bin.
         """
-        
+
         # Determine number of realizations
         n = self.n_realizations
 
@@ -387,14 +386,14 @@ class StatePoint(object):
         for i in range(len(self.global_tallies)):
             # Get sum and sum of squares
             s, s2 = self.global_tallies[i]
-                    
+
             # Calculate sample mean and replace value
             s /= n
             self.global_tallies[i,0] = s
 
             # Calculate standard deviation
             if s != 0.0:
-                self.global_tallies[i,1] = t_value*sqrt((s2/n - s*s)/(n-1))
+                self.global_tallies[i,1] = t_value*np.sqrt((s2/n - s*s)/(n-1))
 
         # Regular tallies
         for t in self.tallies:
@@ -402,14 +401,14 @@ class StatePoint(object):
                 for j in range(t.results.shape[1]):
                     # Get sum and sum of squares
                     s, s2 = t.results[i,j]
-                    
+
                     # Calculate sample mean and replace value
                     s /= n
                     t.results[i,j,0] = s
 
                     # Calculate standard deviation
                     if s != 0.0:
-                        t.results[i,j,1] = t_value*sqrt((s2/n - s*s)/(n-1))
+                        t.results[i,j,1] = t_value*np.sqrt((s2/n - s*s)/(n-1))
 
     def get_value(self, tally_index, spec_list, score_index):
         """Returns a tally score given a list of filters to satisfy.
@@ -458,7 +457,7 @@ class StatePoint(object):
                 filter_index += value*t.filters[f_type].stride
             else:
                 filter_index += f_index*t.filters[f_type].stride
-        
+
         # Return the desired result from Tally.results. This could be the sum and
         # sum of squares, or it could be mean and stdev if self.generate_stdev()
         # has been called already.
@@ -531,7 +530,7 @@ class StatePoint(object):
         for i in range(n_filters):
 
             # compute indices for filter combination
-            filters[:,n_filters - i - 1] = np.floor((np.arange(n_bins) % 
+            filters[:,n_filters - i - 1] = np.floor((np.arange(n_bins) %
                    np.prod(filtmax[0:i+2]))/(np.prod(filtmax[0:i+1]))) + 1
 
             # append in dictionary bin with filter
@@ -544,14 +543,14 @@ class StatePoint(object):
                 dims.reverse()
                 dims = np.asarray(dims)
                 if score_str == 'current':
-                    dims += 1 
-                meshmax[1:4] = dims 
+                    dims += 1
+                meshmax[1:4] = dims
                 mesh_bins = np.zeros((n_bins,3))
-                mesh_bins[:,2] = np.floor(((filters[:,n_filters - i - 1] - 1) % 
+                mesh_bins[:,2] = np.floor(((filters[:,n_filters - i - 1] - 1) %
                             np.prod(meshmax[0:2]))/(np.prod(meshmax[0:1]))) + 1
-                mesh_bins[:,1] = np.floor(((filters[:,n_filters - i - 1] - 1) % 
+                mesh_bins[:,1] = np.floor(((filters[:,n_filters - i - 1] - 1) %
                             np.prod(meshmax[0:3]))/(np.prod(meshmax[0:2]))) + 1
-                mesh_bins[:,0] = np.floor(((filters[:,n_filters - i - 1] - 1) % 
+                mesh_bins[:,0] = np.floor(((filters[:,n_filters - i - 1] - 1) %
                             np.prod(meshmax[0:4]))/(np.prod(meshmax[0:3]))) + 1
                 data.update({'mesh':zip(mesh_bins[:,0],mesh_bins[:,1],
                             mesh_bins[:,2])})
@@ -576,7 +575,7 @@ class StatePoint(object):
     def _get_data(self, n, typeCode, size):
         return list(struct.unpack('={0}{1}'.format(n,typeCode),
                                   self._f.read(n*size)))
-    
+
     def _get_int(self, n=1, path=None):
         if self._hdf5:
             return [int(v) for v in self._f[path].value]

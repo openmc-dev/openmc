@@ -80,7 +80,7 @@ dashed box would need to be stored on a per-nuclide basis, and the union grid
 would need to be stored once. This method is also referred to as *double
 indexing* and is available as an option in Serpent (see paper by Leppanen_).
 
-.. figure:: ../../img/uniongrid.svg
+.. figure:: ../_images/uniongrid.*
     :width: 600px
     :align: center
     :figclass: align-center

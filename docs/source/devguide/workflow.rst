@@ -60,7 +60,7 @@ features and bug fixes. The general steps for contributing are as follows:
    repository with the same name under your personal account. As such, you can
    commit to it as you please without disrupting other developers.
 
-   .. image:: ../../img/fork.png
+   .. image:: ../_images/fork.png
 
 2. Clone your fork of OpenMC and create a branch that branches off of *develop*:
 
@@ -77,7 +77,7 @@ features and bug fixes. The general steps for contributing are as follows:
 4. Issue a pull request from GitHub and select the *develop* branch of
    mit-crpg/openmc as the target.
 
-   .. image:: ../../img/pullrequest.png
+   .. image:: ../_images/pullrequest.png
 
    At a minimum, you should describe what the changes you've made are and why
    you are making them. If the changes are related to an oustanding issue, make

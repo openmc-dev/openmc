@@ -158,7 +158,7 @@ module global
   ! Source and fission bank
   type(Bank), allocatable, target :: source_bank(:)
   type(Bank), allocatable, target :: fission_bank(:)
-#ifdef OPENMP
+#ifdef _OPENMP
   type(Bank), allocatable, target :: master_fission_bank(:)
 #endif
   integer(8) :: n_bank       ! # of sites in fission bank
@@ -205,7 +205,7 @@ module global
   integer :: MPI_BANK              ! MPI datatype for fission bank
   integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
 
-#ifdef OPENMP
+#ifdef _OPENMP
   integer :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread
 #endif
@@ -438,7 +438,7 @@ contains
 !$omp parallel
     if (allocated(fission_bank)) deallocate(fission_bank)
 !$omp end parallel
-#ifdef OPENMP
+#ifdef _OPENMP
     if (allocated(master_fission_bank)) deallocate(master_fission_bank)
 #endif
     if (allocated(source_bank)) deallocate(source_bank)

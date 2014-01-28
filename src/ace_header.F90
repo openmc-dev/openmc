@@ -32,7 +32,7 @@ module ace_header
     type(Tab1) :: p_valid             ! probability of law validity
     real(8), allocatable :: data(:)   ! energy distribution data
 
-    ! For reactions that may have multiple energy distributions such as (n.2n),
+    ! For reactions that may have multiple energy distributions such as (n,2n),
     ! this pointer allows multiple laws to be stored
     type(DistEnergy), pointer :: next => null()
 
@@ -144,6 +144,20 @@ module ace_header
   end type Nuclide
 
 !===============================================================================
+! DISTENERGYSAB contains the secondary energy/angle distributions for inelastic
+! thermal scattering collisions which utilize a continuous secondary energy
+! representation.
+!===============================================================================
+
+  type DistEnergySab
+    integer              :: n_e_out
+    real(8), allocatable :: e_out(:)
+    real(8), allocatable :: e_out_pdf(:)
+    real(8), allocatable :: e_out_cdf(:)
+    real(8), allocatable :: mu(:,:)
+  end type DistEnergySab
+
+!===============================================================================
 ! SALPHABETA contains S(a,b) data for thermal neutron scattering, typically off
 ! of light isotopes such as water, graphite, Be, etc
 !===============================================================================
@@ -163,11 +177,17 @@ module ace_header
     integer :: n_inelastic_e_in  ! # of incoming E for inelastic
     integer :: n_inelastic_e_out ! # of outgoing E for inelastic
     integer :: n_inelastic_mu    ! # of outgoing angles for inelastic
-    integer :: secondary_mode    ! secondary mode (equal/skewed)
+    integer :: secondary_mode    ! secondary mode (equal/skewed/continuous)
     real(8), allocatable :: inelastic_e_in(:)
     real(8), allocatable :: inelastic_sigma(:)
+    ! The following are used only if secondary_mode is 0 or 1
     real(8), allocatable :: inelastic_e_out(:,:)
     real(8), allocatable :: inelastic_mu(:,:,:)
+    ! The following is used only if secondary_mode is 3
+    ! The different implementation is necessary because the continuous
+    ! representation has a variable number of outgoing energy points for each
+    ! incoming energy
+    type(DistEnergySab), allocatable :: inelastic_data(:) ! One for each Ein
 
     ! Elastic scattering data
     integer :: elastic_mode   ! elastic mode (discrete/exact)

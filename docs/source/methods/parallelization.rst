@@ -65,7 +65,7 @@ in the case of an eigenvalue calculation). This idea is illustrated in
 
 .. _figure-master-slave:
 
-.. figure:: ../../img/master-slave.png
+.. figure:: ../_images/master-slave.png
     :align: center
     :figclass: align-center
 
@@ -122,7 +122,7 @@ needed. This concept is illustrated in :ref:`Figure 2
 
 .. _figure-nearest-neighbor:
 
-.. figure:: ../../img/nearest-neighbor.png
+.. figure:: ../_images/nearest-neighbor.png
     :align: center
     :figclass: align-center
 
@@ -203,7 +203,7 @@ communicated between adjacent nodes.
 
 .. _figure-neighbor-example:
 
-.. figure:: ../../img/nearest-neighbor-example.png
+.. figure:: ../_images/nearest-neighbor-example.png
     :align: center
     :figclass: align-center
 

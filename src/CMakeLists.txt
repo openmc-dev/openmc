@@ -138,6 +138,24 @@ if(petsc)
 endif()
 
 #===============================================================================
+# git SHA1 hash
+#===============================================================================
+
+execute_process(COMMAND git log -1
+                COMMAND head -n 1
+                COMMAND cut -c8-
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                RESULT_VARIABLE GIT_SHA1_SUCCESS
+                OUTPUT_VARIABLE GIT_SHA1
+                ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+if(GIT_SHA1_SUCCESS EQUAL 0)
+  file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/git_sha1.h
+    "#define GIT_SHA1 \"${GIT_SHA1}\"")
+else()
+  file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/git_sha1.h "")
+endif()
+  
+#===============================================================================
 # FoX Fortran XML Library
 #===============================================================================
 
@@ -154,7 +172,6 @@ add_executable(${program} ${source})
 target_link_libraries(${program} ${libraries} fox)
 set_target_properties(${program} PROPERTIES
   COMPILE_FLAGS "${f90flags}"
-  COMPILE_DEFINITIONS "${definitions}"
   LINK_FLAGS "${ldflags}")
 
 #===============================================================================

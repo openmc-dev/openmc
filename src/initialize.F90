@@ -26,7 +26,7 @@ module initialize
   use mpi
 #endif
 
-#ifdef OPENMP
+#ifdef _OPENMP
   use omp_lib
 #endif
 
@@ -372,7 +372,7 @@ contains
           ! Read number of threads
           i = i + 1
 
-#ifdef OPENMP          
+#ifdef _OPENMP          
           ! Read and set number of OpenMP threads
           n_threads = str_to_int(argv(i))
           if (n_threads < 1) then
@@ -393,6 +393,9 @@ contains
           stop
         case ('-eps_tol', '-ksp_gmres_restart')
           ! Handle options that would be based to PETSC
+          i = i + 1
+        case ('-t', '-track', '--track')
+          write_all_tracks = .true.
           i = i + 1
         case default
           message = "Unknown command line option: " // argv(i)
@@ -827,14 +830,15 @@ contains
       call fatal_error()
     end if
 
-#ifdef OPENMP
+#ifdef _OPENMP
     ! If OpenMP is being used, each thread needs its own private fission
     ! bank. Since the private fission banks need to be combined at the end of a
     ! generation, there is also a 'master_fission_bank' that is used to collect
     ! the sites from each thread.
 
+    n_threads = omp_get_max_threads()
+
 !$omp parallel
-    n_threads = omp_get_num_threads()
     thread_id = omp_get_thread_num()
 
     if (thread_id == 0) then

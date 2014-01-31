@@ -93,8 +93,8 @@ contains
 
   subroutine allocate_cmfd(this, n_batches)
 
-    integer :: n_batches
-    type(cmfd_type) :: this
+    integer, intent(in)            :: n_batches ! number of batches in calc
+    type(cmfd_type), intent(inout) :: this      ! cmfd instance
 
     integer :: nx  ! number of mesh cells in x direction
     integer :: ny  ! number of mesh cells in y direction
@@ -169,7 +169,7 @@ contains
 
   subroutine deallocate_cmfd(this)
 
-    type(cmfd_type) :: this
+    type(cmfd_type), intent(inout) :: this ! cmfd instance
 
     if (allocated(this % egrid))         deallocate(this % egrid)
     if (allocated(this % totalxs))       deallocate(this % totalxs)

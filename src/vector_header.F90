@@ -14,9 +14,9 @@ module vector_header
     real(8), allocatable :: data(:) ! where vector data is stored
     real(8), pointer :: val(:) ! pointer to vector data
 #  ifdef PETSC
-    type(vec) :: petsc_vec
+    type(vec) :: petsc_vec ! PETSc vector
 #  endif
-    logical :: petsc_active
+    logical :: petsc_active ! Logical if PETSc is being used
    contains
      procedure :: create       => vector_create
      procedure :: destroy      => vector_destroy
@@ -26,7 +26,7 @@ module vector_header
      procedure :: copy         => vector_copy
   end type Vector
 
-  integer :: petsc_err
+  integer :: petsc_err ! petsc error code
 
 contains
 
@@ -36,8 +36,8 @@ contains
 
   subroutine vector_create(self, n)
 
-    integer       :: n
-    class(Vector), target :: self
+    integer, intent(in)                    :: n    ! size of vector
+    class(Vector), intent(inout), target   :: self ! vector instance
 
     ! Preallocate vector
     if (.not.allocated(self % data)) allocate(self % data(n))
@@ -60,7 +60,7 @@ contains
 
   subroutine vector_destroy(self)
 
-    class(Vector) :: self
+    class(Vector), intent(inout) :: self ! vector instance
 
 #ifdef PETSC
     if (self % petsc_active) call VecDestroy(self % petsc_vec, petsc_err)
@@ -77,9 +77,9 @@ contains
 
   subroutine vector_add_value(self, idx, val)
 
-    integer       :: idx
-    real(8)       :: val
-    class(Vector) :: self
+    integer, intent(in)          :: idx  ! index location in vector
+    real(8), intent(in)          :: val  ! value to add
+    class(Vector), intent(inout) :: self ! vector instance
 
     self % val(idx) = val
 
@@ -91,7 +91,7 @@ contains
 
   subroutine vector_setup_petsc(self)
 
-    class(Vector) :: self
+    class(Vector), intent(inout) :: self ! vector instance
 
     ! Link to PETSc 
 #ifdef PETSC
@@ -110,11 +110,11 @@ contains
 
   subroutine vector_write_petsc_binary(self, filename)
 
-    character(*) :: filename
-    class(Vector) :: self
+    character(*), intent(in)  :: filename ! name of file to write to
+    class(Vector), intent(in) :: self     ! vector instance
 
 #ifdef PETSC
-    type(PetscViewer) :: viewer
+    type(PetscViewer) :: viewer ! PETSc viewer instance
 
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(filename), &
          FILE_MODE_WRITE, viewer, petsc_err)

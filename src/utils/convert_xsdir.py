@@ -35,8 +35,12 @@ class Xsdir(object):
         words = line.split()
         if words:
             if words[0].lower().startswith('datapath'):
-                index = line.index('=')
-                self.datapath = line[index+1:].strip()
+                if '=' in words[0]:
+                    index = line.index('=')
+                    self.datapath = line[index+1:].strip()
+                else:
+                    if len(line.strip()) > 8:
+                        self.datapath = line[8:].strip()
             else:
                 self.f.seek(0)
 
@@ -71,7 +75,7 @@ class Xsdir(object):
             # Handle continuation lines
             while words[-1] == '+':
                 extraWords = self.f.readline().split()
-                words = words + extraWords
+                words = words[:-1] + extraWords
             assert len(words) >= 7
 
             # Create XsdirTable object and add to line

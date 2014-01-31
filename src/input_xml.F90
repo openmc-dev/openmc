@@ -56,6 +56,7 @@ contains
     integer :: temp_int_array3(3)
     integer, allocatable :: temp_int_array(:)
     integer(8) :: temp_long
+    integer :: n_tracks
     logical :: file_exists
     logical :: check
     character(MAX_FILE_LEN) :: env_variable
@@ -228,7 +229,7 @@ contains
 
     ! Number of OpenMP threads
     if (check_for_node(doc, "threads")) then
-#ifdef OPENMP
+#ifdef _OPENMP
       if (n_threads == NONE) then
         call get_node_value(doc, "threads", n_threads)
         if (n_threads < 1) then
@@ -458,6 +459,25 @@ contains
       trace_batch    = temp_int_array3(1)
       trace_gen      = temp_int_array3(2)
       trace_particle = int(temp_int_array3(3), 8)
+    end if
+
+    ! Particle tracks
+    if (check_for_node(doc, "track")) then
+      ! Make sure that there are three values per particle
+      n_tracks = get_arraysize_integer(doc, "track")
+      if (mod(n_tracks, 3) /= 0) then
+        message = "Number of integers specified in 'track' is not divisible &
+             &by 3.  Please provide 3 integers per particle to be tracked."
+        call fatal_error()
+      end if
+
+      ! Allocate space and get list of tracks
+      allocate(temp_int_array(n_tracks))
+      call get_node_array(doc, "track", temp_int_array)
+
+      ! Reshape into track_identifiers
+      allocate(track_identifiers(3, n_tracks/3))
+      track_identifiers = reshape(temp_int_array, [3, n_tracks/3])
     end if
 
     ! Shannon Entropy mesh
@@ -2986,7 +3006,19 @@ contains
        end if
 
        ! set filetype, record length, and number of entries
-       listing % filetype = filetype
+       if (check_for_node(node_ace, "filetype")) then
+         temp_str = ''
+         call get_node_value(node_ace, "filetype", temp_str)
+         if (temp_str == 'ascii') then
+           listing % filetype = ASCII
+         else if (temp_str == 'binary') then
+           listing % filetype = BINARY
+         end if
+       else
+         listing % filetype = filetype
+       end if
+
+       ! Set record length and entries for binary files
        if (filetype == BINARY) then
          listing % recl     = recl
          listing % entries  = entries

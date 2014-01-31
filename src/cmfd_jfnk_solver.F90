@@ -30,7 +30,7 @@ contains
 
     use global,  only: time_cmfdbuild, time_cmfdsolve
 
-    logical, optional :: adjoint ! adjoint calculation
+    logical, intent(in), optional :: adjoint ! adjoint calculation
 
     ! Check for adjoint
     adjoint_calc = .false.
@@ -84,8 +84,8 @@ contains
     use constants, only: ZERO, ONE
     use global,    only: cmfd, cmfd_adjoint_type, current_batch
 
-    logical :: physical_adjoint
-    integer :: n
+    logical :: physical_adjoint ! physical adjoing calculation logical
+    integer :: n ! size of matrices
 
     ! Set up all matrices
     call init_loss_matrix(loss)
@@ -153,8 +153,8 @@ contains
 
   subroutine init_jacobian_matrix()
 
-    integer :: nnz
-    integer :: n
+    integer :: nnz ! number of nonzeros in matrix
+    integer :: n   ! dimension of matrix
 
     ! Get length of matrix and number of nonzeros total in loss matrix
     nnz = loss % nnz
@@ -179,7 +179,7 @@ contains
 
     use constants,  only: ONE
 
-    type(Vector) :: x
+    type(Vector), intent(in) :: x ! solution vector
 
     integer      :: i      ! loop counter for jacobian rows
     integer      :: jjac   ! loop counter for jacobian cols
@@ -267,8 +267,8 @@ contains
 
     use global,       only: cmfd_write_matrices
 
-    type(Vector) :: x
-    type(Vector) :: res
+    type(Vector), intent(in)    :: x   ! solution vector
+    type(Vector), intent(inout) :: res ! residual vector
 
     character(len=25) :: filename
     integer           :: n

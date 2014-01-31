@@ -16,7 +16,7 @@ contains
 
   subroutine init_prod_matrix(prod_matrix)
 
-    type(Matrix) :: prod_matrix
+    type(Matrix), intent(inout) :: prod_matrix ! production matrix
 
     integer :: nx   ! maximum number of x cells
     integer :: ny   ! maximum number of y cells
@@ -50,8 +50,8 @@ contains
 
   subroutine build_prod_matrix(prod_matrix, adjoint)
 
-    type(Matrix) :: prod_matrix
-    logical, optional :: adjoint
+    type(Matrix), intent(inout)   :: prod_matrix ! production matrix
+    logical, intent(in), optional :: adjoint     ! adjoint calculation logical
 
     integer :: i                  ! iteration counter for x
     integer :: j                  ! iteration counter for y
@@ -135,14 +135,14 @@ contains
 
   subroutine indices_to_matrix(g, i, j, k, matidx, ng, nx, ny)
 
-    integer :: matidx ! the index location in matrix
-    integer :: i      ! current x index
-    integer :: j      ! current y index
-    integer :: k      ! current z index
-    integer :: g      ! current group index
-    integer :: nx     ! maximum number of x cells
-    integer :: ny     ! maximum number of y cells
-    integer :: ng     ! maximum number of groups
+    integer, intent(out) :: matidx ! the index location in matrix
+    integer, intent(in)  :: i      ! current x index
+    integer, intent(in)  :: j      ! current y index
+    integer, intent(in)  :: k      ! current z index
+    integer, intent(in)  :: g      ! current group index
+    integer, intent(in)  :: nx     ! maximum number of x cells
+    integer, intent(in)  :: ny     ! maximum number of y cells
+    integer, intent(in)  :: ng     ! maximum number of groups
 
     ! check if coremap is used
     if (cmfd_coremap) then
@@ -165,15 +165,15 @@ contains
 
   subroutine matrix_to_indices(irow, g, i, j, k, ng, nx, ny, nz)
 
-    integer :: i     ! iteration counter for x
-    integer :: j     ! iteration counter for y
-    integer :: k     ! iteration counter for z
-    integer :: g     ! iteration counter for groups
-    integer :: irow  ! iteration counter over row (0 reference)
-    integer :: nx    ! maximum number of x cells
-    integer :: ny    ! maximum number of y cells
-    integer :: nz    ! maximum number of z cells
-    integer :: ng    ! maximum number of groups
+    integer, intent(out) :: i    ! iteration counter for x
+    integer, intent(out) :: j    ! iteration counter for y
+    integer, intent(out) :: k    ! iteration counter for z
+    integer, intent(out) :: g    ! iteration counter for groups
+    integer, intent(in)  :: irow ! iteration counter over row (0 reference)
+    integer, intent(in)  :: nx   ! maximum number of x cells
+    integer, intent(in)  :: ny   ! maximum number of y cells
+    integer, intent(in)  :: nz   ! maximum number of z cells
+    integer, intent(in)  :: ng   ! maximum number of groups
 
     ! check for core map
     if (cmfd_coremap) then

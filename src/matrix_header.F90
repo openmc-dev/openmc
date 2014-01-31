@@ -46,9 +46,9 @@ contains
 
   subroutine matrix_create(self, n, nnz)
 
-    integer       :: n
-    integer       :: nnz
-    class(Matrix) :: self
+    integer, intent(in) :: n             ! dimension of matrix
+    integer, intent(in) :: nnz           ! number of nonzeros
+    class(Matrix), intent(inout) :: self ! matrix instance
 
     ! Preallocate vectors
     if (.not.allocated(self % row)) allocate(self % row(n+1))
@@ -74,7 +74,7 @@ contains
 
   subroutine matrix_destroy(self)
 
-    class(Matrix) :: self
+    class(Matrix), intent(inout) :: self ! matrix instance
 
 #ifdef PETSC
     if (self % petsc_active) call MatDestroy(self % petsc_mat, petsc_err)
@@ -92,9 +92,9 @@ contains
 
   subroutine matrix_add_value(self, col, val)
 
-    integer       :: col
-    real(8)       :: val
-    class(Matrix) :: self
+    integer, intent(in) :: col           ! col location in matrix
+    real(8), intent(in) :: val           ! value to store in matrix
+    class(Matrix), intent(inout) :: self ! matrix instance
 
     ! Record the data
     self % col(self % nz_count) = col
@@ -115,7 +115,7 @@ contains
 
   subroutine matrix_new_row(self)
 
-    class(Matrix) :: self
+    class(Matrix), intent(inout) :: self ! matrix instance
 
     ! Record the current number of nonzeros
     self % row(self % n_count) = self % nz_count
@@ -135,7 +135,7 @@ contains
 
   subroutine matrix_assemble(self)
 
-    class(Matrix) :: self
+    class(Matrix), intent(inout) :: self ! matrix instance
 
     integer :: i
     integer :: first
@@ -161,12 +161,12 @@ contains
 
   recursive subroutine sort_csr(col, val, first, last)
 
-    integer :: col(:)
-    integer :: first
-    integer :: last
-    real(8) :: val(:)
+    integer :: col(:) ! column vector to sort
+    integer :: first  ! first value in sort
+    integer :: last   ! last value in sort
+    real(8) :: val(:) ! value vector to be sorted like columns
 
-    integer :: mid
+    integer :: mid ! midpoint value
 
     if (first < last) then
       call split(col, val, first, last, mid)
@@ -182,18 +182,18 @@ contains
 
   subroutine split(col, val, low, high, mid)
 
-    integer :: col(:)
-    integer :: low
-    integer :: high
-    integer :: mid
-    real(8) :: val(:)
+    integer :: col(:) ! column vector to sort
+    integer :: low    ! low index to sort
+    integer :: high   ! high index to sort
+    integer :: mid    ! middle of sort
+    real(8) :: val(:) ! value vector to be sorted like columns
 
-    integer :: left
-    integer :: right
-    integer :: iswap
-    integer :: pivot
-    real(8) :: rswap
-    real(8) :: val0
+    integer :: left  ! contains left value in sort
+    integer :: right ! contains right value in sort
+    integer :: iswap ! temporary interger swap
+    integer :: pivot ! pivotting variable for columns
+    real(8) :: rswap ! temporary real swap
+    real(8) :: val0  ! pivot for value vector
 
     left = low
     right = high
@@ -235,14 +235,14 @@ contains
   end subroutine split
 
 !===============================================================================
-! MATRIX_GET_ROW
+! MATRIX_GET_ROW is a method to get row and checks for PETSc C indexing use
 !===============================================================================
 
   function matrix_get_row(self, i) result(row)
 
-    class(Matrix) :: self
-    integer       :: i
-    integer       :: row
+    class(Matrix), intent(in) :: self ! matrix instance
+    integer, intent(in)       :: i    ! row to get
+    integer                   :: row  ! index in col where row begins
 
     row = self % row(i)
 
@@ -251,14 +251,14 @@ contains
   end function matrix_get_row
 
 !===============================================================================
-! MATRIX_GET_COL
+! MATRIX_GET_COL is a method to get column and checks for PETSc C index use
 !===============================================================================
 
   function matrix_get_col(self, i) result(col)
 
-    class(Matrix) :: self
-    integer       :: i
-    integer       :: col
+    class(Matrix), intent(in) :: self ! matrix instance
+    integer, intent(in)       :: i    ! index from row vector
+    integer                   :: col  ! the actual column
 
     col = self % col(i)
 
@@ -272,7 +272,7 @@ contains
 
   subroutine matrix_setup_petsc(self)
 
-    class(Matrix) :: self
+    class(Matrix), intent(inout) :: self ! matrix instance
 
     ! change indices to c notation
     self % row = self % row - 1
@@ -295,11 +295,11 @@ contains
 
   subroutine matrix_write_petsc_binary(self, filename)
 
-    character(*) :: filename
-    class(Matrix) :: self
+    character(*), intent(in)  :: filename ! file name to write to
+    class(Matrix), intent(in) :: self     ! matrix instance
 
 #ifdef PETSC
-    type(PetscViewer) :: viewer
+    type(PetscViewer) :: viewer ! a petsc viewer instance
 
     call PetscViewerBinaryOpen(PETSC_COMM_WORLD, trim(filename), &
          FILE_MODE_WRITE, viewer, petsc_err)
@@ -315,7 +315,7 @@ contains
 
   subroutine matrix_transpose(self)
 
-    class(Matrix) :: self
+    class(Matrix), intent(inout) :: self ! matrix instance
 
 #ifdef PETSC
     call MatTranspose(self % petsc_mat, MAT_REUSE_MATRIX, self % petsc_mat, &
@@ -333,12 +333,12 @@ contains
     use constants,      only: ZERO
     use vector_header,  only: Vector
 
-    class(Matrix) :: self
-    type(Vector)  :: vec_in
-    type(Vector)  :: vec_out
+    class(Matrix), intent(in)   :: self    ! matrix instance
+    type(Vector), intent(in)    :: vec_in  ! vector to multiply matrix against
+    type(Vector), intent(inout) :: vec_out ! resulting vector
 
-    integer :: i
-    integer :: j
+    integer :: i ! row iteration counter
+    integer :: j ! column iteration counter
 
     ! Begin loop around rows
     ROWS: do i = 1, self % n

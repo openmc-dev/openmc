@@ -1,4 +1,5 @@
 # Compiled objects and modules
+*.a
 *.o
 *.mod
 *.log
@@ -18,6 +19,7 @@ src/openmc
 
 # Documentation builds
 docs/build
+docs/source/_images/*.pdf
 
 # xml-fortran reader
 src/xml-fortran/xmlreader

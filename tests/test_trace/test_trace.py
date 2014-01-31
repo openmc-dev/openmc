@@ -19,9 +19,9 @@ def test_run():
                stderr=STDOUT, stdout=PIPE)
     else:
         proc = Popen([openmc_path], stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
     stdout = proc.communicate()[0]
     print(stdout)
+    returncode = proc.returncode
     assert returncode == 0
     assert stdout.find('Simulating Particle 453') != -1
 

@@ -41,11 +41,11 @@ contains
 
     use global,  only: cmfd_adjoint_type, time_cmfdbuild, time_cmfdsolve
 
-    real(8), optional :: k_tol    ! tolerance on keff
-    real(8), optional :: s_tol    ! tolerance on source
-    logical, optional :: adjoint  ! adjoint calc
+    real(8), intent(in), optional :: k_tol    ! tolerance on keff
+    real(8), intent(in), optional :: s_tol    ! tolerance on source
+    logical, intent(in), optional :: adjoint  ! adjoint calc
 
-    logical :: physical_adjoint = .false.
+    logical :: physical_adjoint = .false. ! physical adjoint default false
 
     ! Set tolerances if present
     if (present(k_tol)) ktol = k_tol
@@ -102,9 +102,11 @@ contains
   subroutine init_data(adjoint)
 
     use constants, only: ONE, ZERO
+#ifdef PETSC
     use global,    only: cmfd_write_matrices
+#endif
 
-    logical :: adjoint
+    logical, intent(in) :: adjoint ! adjoint calcualtion
 
     integer :: n      ! problem size
     real(8) :: guess  ! initial guess
@@ -238,7 +240,7 @@ contains
     use global,     only: cmfd_power_monitor, master
     use, intrinsic :: ISO_FORTRAN_ENV
 
-    integer     :: iter           ! iteration number
+    integer, intent(in) :: iter ! iteration number
 
     ! Reset convergence flag
     iconv = .false.

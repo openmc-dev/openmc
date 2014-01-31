@@ -16,8 +16,8 @@ module solver_interface
   ! GMRES solver type 
   type, public :: GMRESSolver 
 #ifdef PETSC
-    type(ksp) :: ksp_
-    type(pc)  :: pc_
+    type(ksp) :: ksp_ ! Krylov linear solver instance
+    type(pc)  :: pc_  ! Preconditioner instance
 #endif
    contains
 #ifdef PETSC
@@ -37,11 +37,11 @@ module solver_interface
   ! JFNK solver type 
   type, public :: JFNKSolver 
 #ifdef PETSC
-    type(ksp)  :: ksp_
-    type(pc)   :: pc_
-    type(snes) :: snes_
-    type(mat)  :: jac_mf
-    integer    :: ls
+    type(ksp)  :: ksp_   ! Krylov linear solver instance
+    type(pc)   :: pc_    ! Preconditioner instance
+    type(snes) :: snes_  ! Nonlinear solver instance
+    type(mat)  :: jac_mf ! Matrix free jacobian instance
+    integer    :: ls     ! Line search instance
 #endif
    contains
 #ifdef PETSC
@@ -56,13 +56,13 @@ module solver_interface
   abstract interface
     subroutine res_interface(x, res)
       import :: Vector
-      type(Vector) :: x
-      type(Vector) :: res
+      type(Vector), intent(in)    :: x   ! solution vector
+      type(Vector), intent(inout) :: res ! residual vector
     end subroutine res_interface
 
     subroutine jac_interface(x)
       import :: Vector
-      type(Vector) :: x
+      type(Vector), intent(in) :: x ! solution vector
     end subroutine jac_interface
   end interface
 
@@ -79,7 +79,7 @@ contains
 
   subroutine petsc_gmres_create(self)
 
-    class(GMRESSolver) :: self
+    class(GMRESSolver), intent(inout) :: self ! GMRES solver instance
 
     integer :: ilu_levels = 5
     real(8) :: rtol = 1.0e-10_8
@@ -102,9 +102,9 @@ contains
 
   subroutine petsc_gmres_set_oper(self, prec_mat, mat_in)
 
-    class(GMRESSolver) :: self
-    type(Matrix)       :: prec_mat
-    type(Matrix)       :: mat_in
+    class(GMRESSolver), intent(inout) :: self     ! GMRES solver instanace
+    type(Matrix), intent(inout)       :: prec_mat ! preconditioner matrix
+    type(Matrix), intent(inout)       :: mat_in   ! coefficient matrix
 
     call KSPSetOperators(self % ksp_, mat_in % petsc_mat, prec_mat % petsc_mat, &
          SAME_NONZERO_PATTERN, petsc_err)
@@ -118,7 +118,7 @@ contains
 
   subroutine petsc_gmres_destroy(self)
 
-   class(GMRESSolver) :: self
+   class(GMRESSolver), intent(inout) :: self ! GMRES solver instance
 
     call KSPDestroy(self % ksp_, petsc_err)
 
@@ -130,9 +130,9 @@ contains
 
   subroutine petsc_gmres_solve(self, b, x)
 
-    class(GMRESSolver) :: self
-    type(Vector)       :: b
-    type(Vector)       :: x
+    class(GMRESSolver), intent(inout) :: self ! GMRES solver instance
+    type(Vector), intent(inout)       :: b    ! right hand side vector
+    type(Vector), intent(inout)       :: x    ! solution vector
 
     call KSPSolve(self % ksp_, b % petsc_vec, x % petsc_vec, petsc_err)
 
@@ -144,7 +144,7 @@ contains
 
   subroutine petsc_jfnk_create(self)
 
-    class(JFNKSolver) :: self
+    class(JFNKSolver), intent(inout) :: self ! JFNK solver instance
 
     ! Turn on mf_operator option for matrix free jacobian
     call PetscOptionsSetValue("-snes_mf_operator", "TRUE", petsc_err)
@@ -176,7 +176,7 @@ contains
 
   subroutine petsc_jfnk_destroy(self)
 
-    class(JFNKSolver) :: self
+    class(JFNKSolver), intent(inout) :: self ! JFNK solver instance
 
     call MatDestroy(self % jac_mf, petsc_err)
     call SNESDestroy(self % snes_, petsc_err)
@@ -189,10 +189,10 @@ contains
 
   subroutine petsc_jfnk_set_functions(self, ctx, res, jac_prec)
 
-    class(JFNKSolver) :: self
-    type(Jfnk_ctx)    :: ctx
-    type(Vector)      :: res
-    type(Matrix)      :: jac_prec
+    class(JFNKSolver), intent(inout) :: self     ! JFNK solver instance
+    type(Jfnk_ctx),    intent(inout) :: ctx      ! JFNK context instance
+    type(Vector),      intent(inout) :: res      ! residual vector
+    type(Matrix),      intent(inout) :: jac_prec ! preconditioner matrix
 
     ! Set residual procedure
     call SNESSetFunction(self % snes_, res % petsc_vec, &
@@ -217,8 +217,8 @@ contains
 
   subroutine petsc_jfnk_solve(self, xvec)
 
-    class(JFNKSolver) :: self
-    type(Vector)      :: xvec
+    class(JFNKSolver), intent(inout) :: self ! JFNK instance
+    type(Vector), intent(inout)      :: xvec ! solution vector
 
     call SNESSolve(self % snes_, PETSC_NULL_DOUBLE, xvec % petsc_vec, petsc_err)
 
@@ -230,14 +230,14 @@ contains
 
   subroutine petsc_jfnk_compute_residual(snes_, x, res, ctx, ierr)
 
-    type(snes)     :: snes_
-    type(vec)      :: x
-    type(vec)      :: res
-    integer        :: ierr
-    type(Jfnk_ctx) :: ctx
+    type(snes), intent(inout)     :: snes_ ! PETSc SNES object
+    type(vec), intent(inout)      :: x     ! PETSc solution vector
+    type(vec), intent(inout)      :: res   ! PETSc residual vector
+    integer, intent(inout)        :: ierr  ! error code
+    type(Jfnk_ctx), intent(inout) :: ctx ! JFNK context instance
 
-    type(Vector) :: xvec
-    type(Vector) :: resvec
+    type(Vector) :: xvec   ! solution vector
+    type(Vector) :: resvec ! residual vector
 
     ! We need to use the x and res that come from PETSc because the pointer
     ! location changes and therefore we can not use module variables
@@ -263,15 +263,15 @@ contains
   subroutine petsc_jfnk_compute_jacobian(snes_, x, jac_mf, jac_prec, flag, &
              ctx, ierr)
 
-    type(snes)     :: snes_
-    type(vec)      :: x
-    type(mat)      :: jac_mf
-    type(mat)      :: jac_prec
-    integer        :: flag 
-    type(Jfnk_ctx) :: ctx
-    integer        :: ierr
+    type(snes), intent(inout)     :: snes_     ! PETSc snes instance
+    type(vec), intent(inout)      :: x         ! PETSc solution vector
+    type(mat), intent(inout)      :: jac_mf    ! PETSc matrix free jacobian
+    type(mat), intent(inout)      :: jac_prec  ! PETSc matrix jacobian precond.
+    integer, intent(inout)        :: flag      ! unused madatory flag
+    type(Jfnk_ctx), intent(inout) :: ctx       ! JFNK context instance
+    integer, intent(inout)        :: ierr      ! error code
 
-    type(Vector) :: xvec
+    type(Vector) :: xvec ! solution vector
 
     ! Again, we use the vector that comes from Petsc to build the Jacobian
     ! matrix

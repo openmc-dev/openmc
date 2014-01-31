@@ -464,6 +464,7 @@ contains
     character(19)           :: current_time
     integer                 :: i
     integer                 :: j
+    integer                 :: length(4)
     integer                 :: int_array(3)
     integer, allocatable    :: temp_array(:)
     real(8)                 :: real_array(3) 
@@ -474,7 +475,7 @@ contains
     call write_message(1)
 
     ! Open file for reading
-    call sp % file_open(path_state_point, 'r')
+    call sp % file_open(path_state_point, 'r', serial = .false.)
 
     ! Read filetype
     call sp % read_data(int_array(1), "filetype")
@@ -542,10 +543,9 @@ contains
         call sp % read_data(cmfd % indices, "indicies", length=4, group="cmfd")
         call sp % read_data(cmfd % k_cmfd, "k_cmfd", length=restart_batch, &
              group="cmfd")
+        length = cmfd % indices([4,1,2,3])
         call sp % read_data(cmfd % cmfd_src, "cmfd_src", &
-             length=(/cmfd % indices(4), cmfd % indices(1), &
-             cmfd % indices(2), cmfd % indices(3)/), &
-             group="cmfd")
+             length=length, group="cmfd")
         call sp % read_data(cmfd % entropy, "cmfd_entropy", &
                        length=restart_batch, group="cmfd")
         call sp % read_data(cmfd % balance, "cmfd_balance", &
@@ -705,13 +705,6 @@ contains
 
         end do TALLY_RESULTS
       end if
-
-#ifdef MPI
-      ! If using MPI, file needs to be closed and reopened in parallel
-      ! If serial, we cannot close the file or we will lose our file position
-      call sp % file_close()
-# endif
-
     end if
 
     ! Read source if in eigenvalue mode 
@@ -738,14 +731,6 @@ contains
 
         ! Open source file 
         call sp % file_open(filename, 'r', serial = .false.)
-
-      else
-
-#ifdef MPI
-      ! Reopen statepoint file in parallel, but only if MPI
-      ! We will compute the position where the source begins
-      call sp % file_open(path_state_point, 'r', serial = .false.)
-#endif
 
       end if
 

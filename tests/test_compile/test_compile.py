@@ -81,6 +81,20 @@ def test_omp():
     shutil.move('openmc', 'openmc-omp')
 
 
+def test_omp_debug():
+    returncode = run(['make', 'distclean'])
+    returncode = run(['make', compiler, 'OPENMP=yes', 'DEBUG=yes'])
+    assert returncode == 0
+    shutil.move('openmc', 'openmc-omp-debug')
+
+
+def test_omp_optimize():
+    returncode = run(['make', 'distclean'])
+    returncode = run(['make', compiler, 'OPENMP=yes', 'OPTIMIZE=yes'])
+    assert returncode == 0
+    shutil.move('openmc', 'openmc-omp-optimize')
+
+
 def test_hdf5():
     returncode = run(['make', 'distclean'])
     returncode = run(['make', compiler, 'HDF5=yes'])
@@ -100,6 +114,27 @@ def test_hdf5_optimize():
     returncode = run(['make', compiler, 'HDF5=yes', 'OPTIMIZE=yes'])
     assert returncode == 0
     shutil.move('openmc', 'openmc-hdf5-optimize')
+
+
+def test_omp_hdf5():
+    returncode = run(['make', 'distclean'])
+    returncode = run(['make', compiler, 'OPENMP=yes', 'HDF5=yes'])
+    assert returncode == 0
+    shutil.move('openmc', 'openmc-omp-hdf5')
+
+
+def test_omp_hdf5_debug():
+    returncode = run(['make', 'distclean'])
+    returncode = run(['make', compiler, 'OPENMP=yes', 'HDF5=yes', 'DEBUG=yes'])
+    assert returncode == 0
+    shutil.move('openmc', 'openmc-omp-hdf5-debug')
+
+
+def test_omp_hdf5_optimize():
+    returncode = run(['make', 'distclean'])
+    returncode = run(['make', compiler, 'OPENMP=yes', 'HDF5=yes', 'OPTIMIZE=yes'])
+    assert returncode == 0
+    shutil.move('openmc', 'openmc-omp-hdf5-optimize')
 
 
 def test_petsc():
@@ -131,11 +166,18 @@ def test_mpi_omp():
     shutil.move('openmc', 'openmc-mpi-omp')
 
 
-def test_omp_hdf5():
+def test_mpi_omp_debug():
     returncode = run(['make', 'distclean'])
-    returncode = run(['make', compiler, 'MPI=yes', 'OPENMP=yes', 'HDF5=yes'])
+    returncode = run(['make', compiler, 'MPI=yes', 'OPENMP=yes', 'DEBUG=yes'])
     assert returncode == 0
-    shutil.move('openmc', 'openmc-omp-hdf5')
+    shutil.move('openmc', 'openmc-mpi-omp-debug')
+
+
+def test_mpi_omp_optimize():
+    returncode = run(['make', 'distclean'])
+    returncode = run(['make', compiler, 'MPI=yes', 'OPENMP=yes', 'OPTIMIZE=yes'])
+    assert returncode == 0
+    shutil.move('openmc', 'openmc-mpi-omp-optimize')
 
 
 def test_mpi_hdf5():
@@ -157,6 +199,29 @@ def test_mpi_hdf5_optimize():
     returncode = run(['make', compiler, 'MPI=yes', 'HDF5=yes', 'OPTIMIZE=yes'])
     assert returncode == 0
     shutil.move('openmc', 'openmc-phdf5-optimize')
+
+
+def test_mpi_omp_hdf5():
+    returncode = run(['make', 'distclean'])
+    returncode = run(['make', compiler, 'MPI=yes', 'OPENMP=yes', 'HDF5=yes'])
+    assert returncode == 0
+    shutil.move('openmc', 'openmc-phdf5-omp')
+
+
+def test_mpi_omp_hdf5_debug():
+    returncode = run(['make', 'distclean'])
+    returncode = run(['make', compiler, 'MPI=yes', 'OPENMP=yes', 'HDF5=yes',
+                      'DEBUG=yes'])
+    assert returncode == 0
+    shutil.move('openmc', 'openmc-phdf5-omp-debug')
+
+
+def test_mpi_omp_hdf5_optimize():
+    returncode = run(['make', 'distclean'])
+    returncode = run(['make', compiler, 'MPI=yes', 'OPENMP=yes', 'HDF5=yes',
+                      'OPTIMIZE=yes'])
+    assert returncode == 0
+    shutil.move('openmc', 'openmc-phdf5-omp-optimize')
 
 
 def test_mpi_hdf5_petsc():
@@ -182,6 +247,22 @@ def test_mpi_hdf5_petsc_optimize():
     shutil.move('openmc', 'openmc-phdf5-petsc-optimize')
 
 
+def test_mpi_omp_hdf5_petsc():
+    returncode = run(['make', 'distclean'])
+    returncode = run(['make', compiler, 'MPI=yes', 'OMP=yes', 'HDF5=yes',
+                      'PETSC=yes'])
+    assert returncode == 0
+    shutil.move('openmc', 'openmc-omp-phdf5-petsc')
+
+
+def test_mpi_omp_hdf5_petsc_debug():
+    returncode = run(['make', 'distclean'])
+    returncode = run(['make', compiler, 'MPI=yes', 'OMP=yes', 'HDF5=yes',
+                      'PETSC=yes', 'DEBUG=yes'])
+    assert returncode == 0
+    shutil.move('openmc', 'openmc-omp-phdf5-petsc-debug')
+
+
 def test_mpi_omp_hdf5_petsc_optimize():
     returncode = run(['make', 'distclean'])
     returncode = run(['make', compiler, 'MPI=yes', 'OMP=yes', 'HDF5=yes',
@@ -192,8 +273,8 @@ def test_mpi_omp_hdf5_petsc_optimize():
 
 def run(commands):
     proc = Popen(commands, stderr=STDOUT, stdout=PIPE)
-    returncode = proc.wait()
     print(proc.communicate()[0])
+    returncode = proc.returncode
     return returncode
 
 

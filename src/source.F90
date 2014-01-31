@@ -40,6 +40,9 @@ contains
       ! Read the source from a binary file instead of sampling from some
       ! assumed source distribution
 
+      message = 'Reading source file from ' // trim(path_source) // '...'
+      call write_message(6)
+
       ! Open the binary file
       call sp % file_open(path_source, 'r', serial = .false.)
 

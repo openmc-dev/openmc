@@ -3,6 +3,7 @@ module source
   use bank_header,     only: Bank
   use constants
   use error,           only: fatal_error
+  use geometry,        only: find_cell
   use geometry_header, only: BASE_UNIVERSE
   use global
   use math,            only: maxwell_spectrum, watt_spectrum
@@ -73,6 +74,9 @@ contains
     real(8) :: p_max(3)   ! maximum coordinates of source
     real(8) :: a          ! Arbitrary parameter 'a'
     real(8) :: b          ! Arbitrary parameter 'b'
+    logical :: found      ! Does the source particle exist within geometry?
+    type(Particle) :: p   ! Temporary particle for using find_cell
+    integer, save :: num_resamples = 0 ! Number of resamples encountered
 
     ! Set weight to one by default
     site % wgt = ONE
@@ -80,11 +84,32 @@ contains
     ! Sample position
     select case (external_source % type_space)
     case (SRC_SPACE_BOX)
-      ! Coordinates sampled uniformly over a box
-      p_min = external_source % params_space(1:3)
-      p_max = external_source % params_space(4:6)
-      r = (/ (prn(), i = 1,3) /)
-      site % xyz = p_min + r*(p_max - p_min)
+      ! Set particle defaults
+      call p % initialize()
+      ! Repeat sampling source location until a good site has been found
+      found = .false.
+      do while (.not.found)
+        ! Coordinates sampled uniformly over a box
+        p_min = external_source % params_space(1:3)
+        p_max = external_source % params_space(4:6)
+        r = (/ (prn(), i = 1,3) /)
+        site % xyz = p_min + r*(p_max - p_min)
+
+        ! Fill p with needed data
+        p % coord0 % xyz = site % xyz
+        p % coord0 % uvw = [ ONE, ZERO, ZERO ]
+
+        ! Now search to see if location exists in geometry
+        call find_cell(p, found)
+        if (.not. found) then
+          num_resamples = num_resamples + 1
+          if (num_resamples == MAX_EXTSRC_RESAMPLES) then
+            message = "Maximum number of external source spatial resamples &
+                      &reached!"
+            call fatal_error()
+          end if
+        end if
+      end do
 
     case (SRC_SPACE_POINT)
       ! Point source
@@ -146,7 +171,7 @@ contains
   end subroutine sample_external_source
 
 !===============================================================================
-! GET_SOURCE_PARTICLE returns the next source particle 
+! GET_SOURCE_PARTICLE returns the next source particle
 !===============================================================================
 
   subroutine get_source_particle(p, index_source)
@@ -155,6 +180,7 @@ contains
     integer(8),     intent(in)    :: index_source
 
     integer(8) :: particle_seed  ! unique index for particle
+    integer :: i
     type(Bank), pointer, save :: src => null()
 !$omp threadprivate(src)
 
@@ -176,6 +202,21 @@ contains
     trace = .false.
     if (current_batch == trace_batch .and. current_gen == trace_gen .and. &
          p % id == trace_particle) trace = .true.
+
+    ! Set particle track.
+    p % write_track = .false.
+    if (write_all_tracks) then
+      p % write_track = .true.
+    else if (allocated(track_identifiers)) then
+      do i=1, size(track_identifiers(1,:))
+        if (current_batch == track_identifiers(1,i) .and. &
+             &current_gen == track_identifiers(2,i) .and. &
+             &p % id == track_identifiers(3,i)) then
+          p % write_track = .true.
+          exit
+        end if
+      end do
+    end if
 
   end subroutine get_source_particle
 

@@ -44,9 +44,11 @@
   <surface id="33" type="z-cylinder" coeffs="0 0 5.995" />
 
 
-  <!-- Beryllium Reflector -->
+  <!-- Bottom Beryllium Reflector -->
   <cell id="1"  material="2" surfaces=" 1  -2 -30" />
-  <cell id="2"  material="2" surfaces="28 -29 -30" />
+
+  <!-- Top ZrH Reflector -->
+  <cell id="2"  material="7" surfaces="28 -29 -30" />
 
   <!-- Duralumin base and top -->
   <cell id="3"  material="4" surfaces=" 2  -4 -30  31" />

@@ -76,6 +76,7 @@ contains
     integer :: i, j, k     ! loop indices
     logical :: file_exists ! does ndpp_lib.xml exist?
     integer :: filetype    ! default file type
+    logical :: nuscatter   ! is nuscatter data present?
     logical :: chi_present ! is chi data present?
     character(MAX_WORD_LEN)  :: directory   ! directory with cross sections
     character(MAX_LINE_LEN)  :: temp_str
@@ -161,6 +162,19 @@ contains
       allocate(ndpp_energy_bins(ndpp_groups))
       ndpp_groups = ndpp_groups - 1
       call get_node_array(doc, "energy_bins", ndpp_energy_bins)
+    end if
+
+    ! Get if nuscatter is present
+    temp_str = ""
+    if (check_for_node(doc, "nu_scatter")) then
+      call get_node_value(doc, "nu_scatter", temp_str)
+      if (trim(temp_str) == 'true') then
+        nuscatter = .true.
+      else
+        nuscatter = .false.
+      end if
+    else
+      nuscatter = .false.
     end if
 
     ! Get if chi is present
@@ -407,6 +421,7 @@ contains
     integer       :: mu_bins       ! NUmber of angular points used
     integer       :: scatt_type    ! Type of scattering data, discarded
     integer       :: scatt_order   ! Order of scattering data
+    integer       :: nuscatter     ! Flag as to if nuscatter data is present
     integer       :: chi_present   ! Flag as to if chi data is present
     integer       :: gmin, gmax    ! Min and max possible group transfers
     real(8)       :: thin_tol      ! Thinning tolerance used in lib, discarded
@@ -472,13 +487,11 @@ contains
       ! the right data set)
       allocate(energy_bins(NG + 1))
       read(UNIT=in, FMT=*) energy_bins
-      ! The next line is scatt_type, scatt_order, chi_present, thin_tol, which
-      ! we already have. discard.
-      read(UNIT=in, FMT='(I20,I20,I20,1PE20.12)') scatt_type, scatt_order, &
-        chi_present, thin_tol
-      ! Finally, mu_bins, which we can also discard (since we are only doing
-      ! Legendre tallying)
-      read(UNIT=in, FMT=*) mu_bins
+      ! The next line is scatt_type, scatt_order, nuscatter, chi_present
+      read(UNIT=in, FMT='(I20,I20,I20,I20)') scatt_type, scatt_order, &
+        nuscatter, chi_present
+      ! Finally, mu_bins, thin_tol
+      read(UNIT=in, FMT='(I20,1PE20.12)') mu_bins, thin_tol
 
       ! set scatt_order to the right number for allocating the outgoing array
       if (scatt_type == SCATT_TYPE_LEGENDRE) scatt_order = scatt_order + 1
@@ -568,7 +581,7 @@ contains
       ! the right data set), and the other meta information
       allocate(energy_bins(NG + 1))
       read(UNIT=in) energy_bins, scatt_type, scatt_order, &
-        chi_present, thin_tol, mu_bins
+        nuscatter, chi_present, mu_bins, thin_tol
 
       ! set scatt_order to the right number for allocating the outgoing array
       if (scatt_type == SCATT_TYPE_LEGENDRE) scatt_order = scatt_order + 1

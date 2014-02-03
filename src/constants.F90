@@ -276,8 +276,8 @@ module constants
        SCORE_NU_SCATTER       = -4,  & ! scattering production rate
        SCORE_SCATTER_N        = -5,  & ! arbitrary scattering moment
        SCORE_SCATTER_PN       = -6,  & ! system for scoring 0th through nth moment
-       SCORE_NDPP_SCATT_N      = -7,  & ! pre-integrated version of score_scatter_n
-       SCORE_NDPP_SCATT_PN     = -8,  & ! pre-integrated version of score_scatter_pn
+       SCORE_NDPP_SCATT_N     = -7,  & ! pre-integrated version of score_scatter_n
+       SCORE_NDPP_SCATT_PN    = -8,  & ! pre-integrated version of score_scatter_pn
        SCORE_NDPP_NU_SCATT_N  = -9,  & ! pre-integrated version of score_nu_scatter_n
        SCORE_NDPP_NU_SCATT_PN = -10, & ! pre-integrated version of score_nu_scatter_pn
        SCORE_TRANSPORT        = -11, & ! transport reaction rate
@@ -291,8 +291,10 @@ module constants
 
   ! Maximum scattering order supported
   integer, parameter :: SCATT_ORDER_MAX = 10
-  character(len=*), parameter :: SCATT_ORDER_MAX_PNSTR    = "scatter-p10"
+  character(len=*), parameter :: SCATT_ORDER_MAX_PNSTR     = "scatter-p10"
   character(len=*), parameter :: SCATT_ORDER_MAX_NDPPPNSTR = "ndpp-scatter-p10"
+  character(len=*), parameter :: NU_SCATT_ORDER_MAX_PNSTR     = "nu-scatter-p10"
+  character(len=*), parameter :: NU_SCATT_ORDER_MAX_NDPPPNSTR = "ndpp-nu-scatter-p10"
 
   ! Tally map bin finding
   integer, parameter :: NO_BIN_FOUND = -1

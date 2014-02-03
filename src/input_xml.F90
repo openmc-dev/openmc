@@ -2347,7 +2347,7 @@ contains
               (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
               message = "Energy and Energyout filter types must be the last " // &
                         "declared (and in that order) in any tally with an " // &
-                        "ndpp-scatter-pn score!"
+                        "ndpp-scatter-n score!"
               call fatal_error()
             end if
 
@@ -2397,6 +2397,78 @@ contains
             t % score_bins(j : j + n_order) = SCORE_NDPP_SCATT_PN
             t % scatt_order(j : j + n_order) = n_order
             j = j + n_order
+
+          case ('ndpp-nu-scatter-n')
+            if (t % find_filter(FILTER_ENERGYIN) == 0) then
+              message = "Cannot tally NDPP Nu-Scatter without an " // &
+                        "incoming energy filter."
+              call fatal_error()
+            end if
+            if (t % find_filter(FILTER_ENERGYOUT) == 0) then
+              message = "Cannot tally NDPP Nu-Scatter without an " // &
+                        "outgoing energy filter."
+              call fatal_error()
+            end if
+
+            ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
+            ! last two declared by the user, and in that order too. This
+            ! guarantees that the stride is the lowest, and therefore most
+            ! efficient for ndpp-scatter-pn.
+            if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
+              (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
+              message = "Energy and Energyout filter types must be the last " // &
+                        "declared (and in that order) in any tally with an " // &
+                        "ndpp-nu-scatter-n score!"
+              call fatal_error()
+            end if
+
+            ! Set flag to read and allocate storage for advanced scattering
+            ! library
+            ndpp_scatt = .true.
+
+            ! Allow to use tracklength estimator
+            t % estimator = ESTIMATOR_TRACKLENGTH
+
+            ! Setup order and type
+            t % score_bins(j) = SCORE_NDPP_NU_SCATT_N
+            t % scatt_order(j) = n_order
+
+          case ('ndpp-nu-scatter-pn')
+            if (t % find_filter(FILTER_ENERGYIN) == 0) then
+              message = "Cannot tally NDPP Scatter without an " // &
+                        "incoming energy filter."
+              call fatal_error()
+            end if
+            if (t % find_filter(FILTER_ENERGYOUT) == 0) then
+              message = "Cannot tally NDPP Scatter without an " // &
+                        "outgoing energy filter."
+              call fatal_error()
+            end if
+
+            ! Check to ensure that the ENERGYIN and ENERGYOUT filters are the
+            ! last two declared by the user, and in that order too. This
+            ! guarantees that the stride is the lowest, and therefore most
+            ! efficient for ndpp-scatter-pn.
+            if ((t % find_filter(FILTER_ENERGYOUT) /= t % n_filters) .or. &
+              (t % find_filter(FILTER_ENERGYIN) /= (t % n_filters - 1))) then
+              message = "Energy and Energyout filter types must be the last " // &
+                        "declared (and in that order) in any tally with an " // &
+                        "ndpp-nu-scatter-pn score!"
+              call fatal_error()
+            end if
+
+            ! Set flag to read and allocate storage for advanced scattering
+            ! library
+            ndpp_scatt = .true.
+
+            ! Allow to use tracklength estimator
+            t % estimator = ESTIMATOR_TRACKLENGTH
+
+            ! Setup P0:Pn order and type info
+            t % score_bins(j : j + n_order) = SCORE_NDPP_NU_SCATT_PN
+            t % scatt_order(j : j + n_order) = n_order
+            j = j + n_order
+
 
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT

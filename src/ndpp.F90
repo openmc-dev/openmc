@@ -88,6 +88,7 @@ contains
     integer :: scatt_type  ! type of scattering distribution (legendre/tabular)
     integer :: order       ! ndpp_lib.xml's scattering order
     integer :: max_tally_order = 0
+    integer :: max_tally_order_nu = 0
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_ndpp => null()
     type(NodeList), pointer :: node_ndpp_list => null()
@@ -166,8 +167,8 @@ contains
 
     ! Get if nuscatter is present
     temp_str = ""
-    if (check_for_node(doc, "nu_scatter")) then
-      call get_node_value(doc, "nu_scatter", temp_str)
+    if (check_for_node(doc, "nuscatter")) then
+      call get_node_value(doc, "nuscatter", temp_str)
       if (trim(temp_str) == 'true') then
         nuscatter = .true.
       else
@@ -192,7 +193,7 @@ contains
 
     ! Check the tallies to ensure that the energy group structure, scattering
     ! order requested are valid (i.e., groups match, orders are less than in
-    ! the library).
+    ! the library)
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)
       j = 0
@@ -202,7 +203,7 @@ contains
           case (SCORE_SCATTER_PN)
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP ! Skip the others to save cycles
-          case (SCORE_NDPPSCATT_N)
+          case (SCORE_NDPP_SCATT_N)
             ! We found the correct score, get comparing!
             ! First check the scattering order
             if (order < t % scatt_order(j)) then
@@ -246,7 +247,7 @@ contains
                         "requested in tally!"
               call fatal_error()
             end if
-          case (SCORE_NDPPSCATT_PN)
+          case (SCORE_NDPP_SCATT_PN)
             ! We found the correct score, get comparing!
             ! First check the scattering order
             if (order < t % scatt_order(j)) then
@@ -303,6 +304,14 @@ contains
     else if (scatt_type == SCATT_TYPE_TABULAR) then
       ! This one uses scatt_order since there technically is no maximum here
       ndpp_scatt_order = order
+    end if
+
+    ! Store the order as the maximum requested in tallies
+    if (scatt_type == SCATT_TYPE_LEGENDRE) then
+      ndpp_nuscatt_order = max_tally_order_nu + 1
+    else if (scatt_type == SCATT_TYPE_TABULAR) then
+      ! This one uses scatt_order since there technically is no maximum here
+      ndpp_nuscatt_order = order
     end if
 
     ! Get node list of all <ndpp_table> entries
@@ -559,6 +568,33 @@ contains
           deallocate(temp_outgoing)
         end if
       end do
+
+      ! Repeat for nuscatter, if provided
+      if (is_nuc .and. nuscatter == 1) then
+        allocate(nuc % ndpp_nuscatt(NEin))
+        do iE = 1, NEin
+          ! get gmin and gmax
+          read(UNIT=in, FMT=*) gmin, gmax
+
+          if ((gmin > 0) .and. (gmax > 0)) then
+            ! Then we can allocate the space. Do it to ndpp_scatt_order
+            ! since this is the largest order requested in the tallies.
+            ! Since we only need to store up to the maximum, we also need to have
+            ! an array for reading the file which we can later truncate to fit
+            ! in to nuc/sab % ndpp_scatt(iE) % outgoing.
+            allocate(temp_outgoing(scatt_order, gmin : gmax))
+
+            ! Now we have a space to store the data, get it.
+            read(UNIT=in, FMT=*) temp_outgoing
+            allocate(nuc % ndpp_nuscatt(iE) % outgoing(ndpp_nuscatt_order, &
+              gmin : gmax))
+            nuc % ndpp_nuscatt(iE) % outgoing(:, gmin : gmax) = &
+              temp_outgoing(1 : ndpp_nuscatt_order, gmin : gmax)
+            deallocate(temp_outgoing)
+          end if
+        end do
+      end if
+
       close(UNIT=in)
 
     else if (listing % filetype == BINARY) then
@@ -614,7 +650,6 @@ contains
       end if
 
       ! Get the moments themselves
-
       do iE = 1, NEin
         ! get gmin and gmax
         read(UNIT=in) gmin, gmax
@@ -644,6 +679,34 @@ contains
           deallocate(temp_outgoing)
         end if
       end do
+
+      ! Repeat for nu-scatter, if needed
+      if (is_nuc .and. nuscatter == 1) then
+        allocate(nuc % ndpp_nuscatt(NEin))
+        do iE = 1, NEin
+          ! get gmin and gmax
+          read(UNIT=in) gmin, gmax
+
+          if ((gmin > 0) .and. (gmax > 0)) then
+            ! Then we can allocate the space. Do it to ndpp_scatt_order
+            ! since this is the largest order requested in the tallies.
+            ! Since we only need to store up to the maximum, we also need to have
+            ! an array for reading the file which we can later truncate to fit
+            ! in to nuc/sab % ndpp_scatt(iE) % outgoing.
+            allocate(temp_outgoing(scatt_order, gmin : gmax))
+
+            ! Now we have a space to store the data, get it.
+            read(UNIT=in) temp_outgoing
+            ! And copy in to nuc % ndpp_nuscatt
+            allocate(nuc % ndpp_scatt(iE) % outgoing(ndpp_nuscatt_order, &
+              gmin : gmax))
+            nuc % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
+              temp_outgoing(1 : ndpp_nuscatt_order, gmin : gmax)
+            deallocate(temp_outgoing)
+          end if
+        end do
+      end if
+
       close(UNIT=in)
 
     else if (listing % filetype == H5) then

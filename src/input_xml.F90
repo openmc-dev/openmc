@@ -2359,7 +2359,7 @@ contains
             t % estimator = ESTIMATOR_TRACKLENGTH
 
             ! Setup order and type
-            t % score_bins(j) = SCORE_NDPPSCATT_N
+            t % score_bins(j) = SCORE_NDPP_SCATT_N
             t % scatt_order(j) = n_order
 
           case ('ndpp-scatter-pn')
@@ -2394,7 +2394,7 @@ contains
             t % estimator = ESTIMATOR_TRACKLENGTH
 
             ! Setup P0:Pn order and type info
-            t % score_bins(j : j + n_order) = SCORE_NDPPSCATT_PN
+            t % score_bins(j : j + n_order) = SCORE_NDPP_SCATT_PN
             t % scatt_order(j : j + n_order) = n_order
             j = j + n_order
 

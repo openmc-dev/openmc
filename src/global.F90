@@ -62,7 +62,7 @@ module global
   ! Cross section arrays
   type(Nuclide),    allocatable, target :: nuclides(:)    ! Nuclide cross-sections
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
-  type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings 
+  type(XsListing),  allocatable, target :: xs_listings(:) ! cross_sections.xml listings
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
@@ -139,25 +139,26 @@ module global
 
   ! Use confidence intervals for results instead of standard deviations
   logical :: confidence_intervals = .false.
-  
+
   ! ============================================================================
   ! NDPP PREPROCESSED TALLY VARIABLES
-  
+
   ! Flag to indicate need to store pre-integrated scattering library
   logical        :: ndpp_scatt = .false.
-  
+
   ! Total number of energy groups and data order in the pre-integrated scattering library
   integer        :: ndpp_groups
   integer        :: ndpp_scatt_order
+  integer        :: ndpp_nuscatt_order
 
   ! Energy group structure of NDPP library
   real(8), allocatable :: ndpp_energy_bins(:)
-  
+
   ! File which stores ndpp library data.
   character(MAX_FILE_LEN) :: ndpp_lib
-  
+
   ! ndpp_lib.xml preprocessed data listings and associated data.
-  type(XsListing),  allocatable, target :: ndpp_listings(:) 
+  type(XsListing),  allocatable, target :: ndpp_listings(:)
   type(DictCharInt)                     :: ndpp_listing_dict
   integer                               :: n_ndpp_listings
 
@@ -312,18 +313,18 @@ module global
   logical :: particle_restart_run = .false.
 
   ! ============================================================================
-  ! CMFD VARIABLES 
+  ! CMFD VARIABLES
 
   ! Main object
   type(cmfd_type) :: cmfd
 
   ! Is CMFD active
   logical :: cmfd_run = .false.
- 
+
   ! Timing objects
   type(Timer) :: time_cmfd      ! timer for whole cmfd calculation
   type(Timer) :: time_cmfdbuild ! timer for matrix build
-  type(Timer) :: time_cmfdsolve ! timer for solver 
+  type(Timer) :: time_cmfdsolve ! timer for solver
 
   ! Flag for active core map
   logical :: cmfd_coremap = .false.
@@ -375,7 +376,7 @@ module global
 
   ! CMFD run logicals
   logical :: cmfd_on             = .false.
-  logical :: cmfd_tally_on       = .true. 
+  logical :: cmfd_tally_on       = .true.
 
   ! CMFD display info
   character(len=25) :: cmfd_display
@@ -395,14 +396,14 @@ module global
 contains
 
 !===============================================================================
-! FREE_MEMORY deallocates and clears  all global allocatable arrays in the 
+! FREE_MEMORY deallocates and clears  all global allocatable arrays in the
 ! program
 !===============================================================================
 
   subroutine free_memory()
-    
+
     integer :: i ! Loop Index
-    
+
     ! Deallocate cells, surfaces, materials
     if (allocated(cells)) deallocate(cells)
     if (allocated(universes)) deallocate(universes)
@@ -479,7 +480,7 @@ contains
 
     ! Deallocate track_identifiers
     if (allocated(track_identifiers)) deallocate(track_identifiers)
-    
+
     ! Deallocate dictionaries
     call cell_dict % clear()
     call universe_dict % clear()
@@ -501,7 +502,7 @@ contains
 
     ! Clear statepoint batch set
     call statepoint_batch % clear()
-    
+
   end subroutine free_memory
 
 end module global

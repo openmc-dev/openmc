@@ -118,9 +118,10 @@ module ace_header
     real(8), allocatable :: heating(:)    ! heating
 
     ! Microscopic NDPP scattering data for use only with
-    ! integrated scattering tallies
-    real(8), allocatable :: ndpp_scatt_Ein(:)       ! Incoming energy grid
-    type(GrpTransfer), allocatable :: ndpp_scatt(:) ! Dimension is number of Ein
+    ! integrated scattering tallies (scatter and nu-scatter)
+    real(8), allocatable :: ndpp_scatt_Ein(:)         ! Incoming energy grid
+    type(GrpTransfer), allocatable :: ndpp_scatt(:)   ! Dimension is # of Ein
+    type(GrpTransfer), allocatable :: ndpp_nuscatt(:) ! Dimension is # of Ein
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?
@@ -213,8 +214,8 @@ module ace_header
 
     ! Microscopic NDPP scattering data for use only with
     ! integrated scattering tallies
-    real(8), allocatable :: ndpp_scatt_Ein(:)       ! Incoming energy grid
-    type(GrpTransfer), allocatable :: ndpp_scatt(:) ! Dimension is number of Ein
+    real(8), allocatable :: ndpp_scatt_Ein(:)         ! Incoming energy grid
+    type(GrpTransfer), allocatable :: ndpp_scatt(:)   ! Dimension is # of Ein
   end type SAlphaBeta
 
 !===============================================================================

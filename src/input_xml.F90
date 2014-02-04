@@ -2206,8 +2206,9 @@ contains
           ! Find if scores(j) is of the form 'scatter-p'
           ! If so, get the number and do a select case on that.
           score_name = trim(sarray(j))
-          if ((starts_with(score_name,'scatter-p')) .or. &
-            (starts_with(score_name,'ndpp-scatter-p'))) then
+          if (((starts_with(score_name,'scatter-p')) .or. &
+            (starts_with(score_name,'ndpp-scatter-p'))) .or. &
+            starts_with(score_name,'ndpp-nu-scatter-p')) then
             n_order_pos = scan(score_name,'0123456789')
             n_order = int(str_to_int( &
               score_name(n_order_pos:(len_trim(score_name)))),4)
@@ -2223,6 +2224,8 @@ contains
                 sarray(j) = SCATT_ORDER_MAX_PNSTR
               else if (starts_with(score_name,'ndpp-scatter-p')) then
                 sarray(j) = SCATT_ORDER_MAX_NDPPPNSTR
+              else if (starts_with(score_name,'ndpp-nu-scatter-p')) then
+                sarray(j) = NU_SCATT_ORDER_MAX_NDPPPNSTR
               end if
             end if
             n_new = n_new + n_order
@@ -2241,8 +2244,9 @@ contains
           ! then strip off the n, and store it as an integer to be used later
           ! Peform the select case on this modified (number removed) string
           score_name = sarray(l)
-          if ((starts_with(score_name,'scatter-p')) .or. &
-            (starts_with(score_name,'ndpp-scatter-p'))) then
+          if (((starts_with(score_name,'scatter-p')) .or. &
+            (starts_with(score_name,'ndpp-scatter-p'))) .or. &
+            starts_with(score_name,'ndpp-nu-scatter-p')) then
             n_order_pos = scan(score_name,'0123456789')
             n_order = int(str_to_int( &
               score_name(n_order_pos:(len_trim(score_name)))),4)
@@ -2259,9 +2263,12 @@ contains
               score_name = "scatter-pn"
             else if (starts_with(score_name,'ndpp-scatter-p')) then
               score_name = "ndpp-scatter-pn"
+            else if (starts_with(score_name,'ndpp-nu-scatter-p')) then
+              score_name = "ndpp-nu-scatter-pn"
             end if
-          else if ((starts_with(score_name,'scatter-'))  .or. &
-            (starts_with(score_name,'ndpp-scatter-'))) then
+          else if (((starts_with(score_name,'scatter-'))  .or. &
+            (starts_with(score_name,'ndpp-scatter-'))) .or. &
+            starts_with(score_name,'ndpp-nu-scatter-')) then
             n_order_pos = scan(score_name,'0123456789')
             n_order = int(str_to_int( &
               score_name(n_order_pos:(len_trim(score_name)))),4)
@@ -2278,6 +2285,8 @@ contains
               score_name = "scatter-n"
             else if (starts_with(score_name,'ndpp-scatter-')) then
               score_name = "ndpp-scatter-n"
+            else if (starts_with(score_name,'ndpp-nu-scatter-')) then
+              score_name = "ndpp-nu-scatter-n"
             end if
           end if
 

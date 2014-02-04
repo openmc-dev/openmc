@@ -293,7 +293,6 @@ module constants
   integer, parameter :: SCATT_ORDER_MAX = 10
   character(len=*), parameter :: SCATT_ORDER_MAX_PNSTR     = "scatter-p10"
   character(len=*), parameter :: SCATT_ORDER_MAX_NDPPPNSTR = "ndpp-scatter-p10"
-  character(len=*), parameter :: NU_SCATT_ORDER_MAX_PNSTR     = "nu-scatter-p10"
   character(len=*), parameter :: NU_SCATT_ORDER_MAX_NDPPPNSTR = "ndpp-nu-scatter-p10"
 
   ! Tally map bin finding

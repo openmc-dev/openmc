@@ -783,15 +783,15 @@ contains
             ! since this is the largest order requested in the tallies.
             ! Since we only need to store up to the maximum, we also need to have
             ! an array for reading the file which we can later truncate to fit
-            ! in to nuc/sab % ndpp_scatt(iE) % outgoing.
+            ! in to nuc/sab % ndpp_nuscatt(iE) % outgoing.
             allocate(temp_outgoing(scatt_order, gmin : gmax))
 
             ! Now we have a space to store the data, get it.
             read(UNIT=in) temp_outgoing
             ! And copy in to nuc % ndpp_nuscatt
-            allocate(nuc % ndpp_scatt(iE) % outgoing(ndpp_nuscatt_order, &
+            allocate(nuc % ndpp_nuscatt(iE) % outgoing(ndpp_nuscatt_order, &
               gmin : gmax))
-            nuc % ndpp_scatt(iE) % outgoing(:, gmin : gmax) = &
+            nuc % ndpp_nuscatt(iE) % outgoing(:, gmin : gmax) = &
               temp_outgoing(1 : ndpp_nuscatt_order, gmin : gmax)
             deallocate(temp_outgoing)
           end if

@@ -1837,7 +1837,7 @@ contains
                 score_name = "Scattering Production Rate"
               else
                 score_name = 'P' // trim(to_str(t % scatt_order(k))) // &
-                  ' Scattering Production Rate Moment'
+                  ' Scattering Production Rate'
               end if
             else if (t % score_bins(k) == SCORE_NDPP_NU_SCATT_PN) then
               score_name = "Scattering Production Rate"
@@ -1848,7 +1848,7 @@ contains
               do n_order = 1, t % scatt_order(k)
                 score_index = score_index + 1
                 score_name = 'P' // trim(to_str(n_order)) // &
-                  ' Scattering Production Rate Moment'
+                  ' Scattering Production Rate'
                 write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                   repeat(" ", indent), score_name, &
                   to_str(t % results(score_index,filter_index) % sum), &

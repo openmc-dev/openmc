@@ -385,6 +385,19 @@ contains
 
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP ! Skip the others to save cycles
+          CASE (SCORE_NDPP_CHI)
+            ! Check that the group structure matches
+            i_filter = t % find_filter(FILTER_ENERGYOUT)
+            if (t % filters(i_filter) % n_bins /= ndpp_groups) then
+              message = "Number of groups in NDPP Library do not match that " // &
+                        "requested in tally!"
+              call fatal_error()
+            end if
+            if (all(t % filters(i_filter) % real_bins /= ndpp_energy_bins)) then
+              message = "NDPP Library group structure does not match that " // &
+                        "requested in tally!"
+              call fatal_error()
+            end if
         end select
       end do SCORE_LOOP
     end do TALLY_LOOP
@@ -524,6 +537,7 @@ contains
     integer       :: nuscatter     ! Flag as to if nuscatter data is present
     integer       :: chi_present   ! Flag as to if chi data is present
     integer       :: gmin, gmax    ! Min and max possible group transfers
+    integer       :: g             ! Group index
     real(8)       :: thin_tol      ! Thinning tolerance used in lib, discarded
     integer       :: NEin, iE      ! Number of incoming energies and the index
     real(8), allocatable :: temp_outgoing(:,:) ! Temporary storage of scatt data
@@ -596,23 +610,7 @@ contains
       ! set scatt_order to the right number for allocating the outgoing array
       if (scatt_type == SCATT_TYPE_LEGENDRE) scatt_order = scatt_order + 1
 
-      ! Now we get to the meat of the data.
-      ! Start with \chi(E_{in}) data
-      if (chi_present == 1) then
-        if (.not. is_nuc) then
-          message = "NDPP library '" // trim(filename) // "' should NOT &
-                    &contain chi data since it is an S(a,b) table!"
-          call fatal_error()
-        else
-          !!! TBI
-        end if
-      else if (chi_present /= 0) then
-        message = "NDPP library '" // trim(filename) // "' contains an invalid &
-                  & value of chi_present!"
-        call fatal_error()
-      end if
-
-      ! Move to \sigma_{s,g'->g,l}(E_{in}) data
+      ! Start with \sigma_{s,g'->g,l}(E_{in}) data
       ! Get Ein information
       read(UNIT=in, FMT=*) NEin
       if (is_nuc) then
@@ -686,6 +684,33 @@ contains
         end do
       end if
 
+      ! Get \Total chi(E_{in}) data
+      if (nuc % fissionable .and. (chi_present == 1) .and. (ndpp_chi)) then
+        if (.not. is_nuc) then
+          message = "NDPP library '" // trim(filename) // "' should NOT &
+                    &contain chi data since it is an S(a,b) table!"
+          call fatal_error()
+        else
+          ! Get Ein grid
+          read(UNIT=in, FMT=*) NEin
+          allocate(nuc % ndpp_chi_Ein(NEin))
+          do iE = 1, NEin
+            read(UNIT=in, FMT=*) nuc % ndpp_chi_Ein(iE)
+          end do
+          ! Get chi values
+          allocate(nuc % ndpp_chi(size(energy_bins) - 1, NEin))
+          do iE = 1, NEin
+            do g = 1, size(energy_bins) - 1
+              read(UNIT=in, FMT=*) nuc % ndpp_chi(g, iE)
+            end do
+          end do
+        end if
+      else if (chi_present /= 0 .and. chi_present /= 1) then
+        message = "NDPP library '" // trim(filename) // "' contains an invalid &
+                  & value of chi_present!"
+        call fatal_error()
+      end if
+
       close(UNIT=in)
 
     else if (listing % filetype == BINARY) then
@@ -713,17 +738,7 @@ contains
       ! set scatt_order to the right number for allocating the outgoing array
       if (scatt_type == SCATT_TYPE_LEGENDRE) scatt_order = scatt_order + 1
 
-      ! Now we get to the meat of the data.
-      ! Start with \chi(E_{in}) data
-      if (chi_present == 1) then
-        !!! TBI
-      else if (chi_present /= 0) then
-        message = "NDPP library '" // trim(filename) // "' contains an invalid &
-                  & value of chi_present!"
-        call fatal_error()
-      end if
-
-      ! Move to \sigma_{s,g'->g,l}(E_{in}) data
+      ! Get \sigma_{s,g'->g,l}(E_{in}) data
       ! Get Ein information
       read(UNIT=in) NEin
       if (is_nuc) then
@@ -796,6 +811,33 @@ contains
             deallocate(temp_outgoing)
           end if
         end do
+      end if
+
+      if (nuc % fissionable .and. (chi_present == 1) .and. (ndpp_chi)) then
+        if (.not. is_nuc) then
+          message = "NDPP library '" // trim(filename) // "' should NOT &
+                    &contain chi data since it is an S(a,b) table!"
+          call fatal_error()
+        else
+          ! Get Ein grid
+          read(UNIT=in) NEin
+          allocate(nuc % ndpp_chi_Ein(NEin))
+          do iE = 1, NEin
+            read(UNIT=in) nuc % ndpp_chi_Ein(iE)
+          end do
+          ! Get chi values
+          allocate(nuc % ndpp_chi(size(energy_bins) - 1, NEin))
+          do iE = 1, NEin
+            do g = 1, size(energy_bins) - 1
+              read(UNIT=in) nuc % ndpp_chi(g, iE)
+            end do
+          end do
+        end if
+
+      else if (chi_present /= 0 .and. chi_present /= 1) then
+        message = "NDPP library '" // trim(filename) // "' contains an invalid &
+                  & value of chi_present!"
+        call fatal_error()
       end if
 
       close(UNIT=in)

@@ -143,8 +143,9 @@ module global
   ! ============================================================================
   ! NDPP PREPROCESSED TALLY VARIABLES
 
-  ! Flag to indicate need to store pre-integrated scattering library
+  ! Flag to indicate need to store pre-processed data library
   logical        :: ndpp_scatt = .false.
+  logical        :: ndpp_chi   = .false.
 
   ! Total number of energy groups and data order in the pre-integrated scattering library
   integer        :: ndpp_groups

@@ -257,6 +257,32 @@ contains
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP
 
+          case (SCORE_NDPP_CHI)
+            if (survival_biasing) then
+              ! No fission events occur if survival biasing is on -- need to
+              ! calculate fraction of absorptions that would have resulted in
+              ! fission
+
+              score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission / &
+                   micro_xs(p % event_nuclide) % absorption
+
+            else
+              ! Skip any non-fission events
+              if (.not. p % fission) cycle SCORE_LOOP
+
+              ! All fission events will contribute, so again we can use
+              ! particle's weight entering the collision as the estimate for the
+              ! fission reaction rate
+              score = last_wgt
+
+            end if
+
+            call tally_ndpp_chi(p % event_nuclide, score_index, filter_index - &
+              matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, score, &
+              .true., p % last_E, t % results)
+
+            cycle SCORE_LOOP
+
           case (SCORE_TRANSPORT)
             ! Skip any event where the particle didn't scatter
             if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -633,6 +659,13 @@ contains
                 j = j + t % scatt_order(j)
                 cycle SCORE_LOOP
 
+              case (SCORE_NDPP_CHI)
+                call tally_ndpp_chi(i_nuclide, score_index, filter_index - &
+                  matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+                  atom_density * flux, .false., p % E, t % results)
+
+                cycle SCORE_LOOP
+
               case (SCORE_ABSORPTION)
                 ! Absorption cross section is pre-calculated
                 score = micro_xs(i_nuclide) % absorption * &
@@ -746,6 +779,14 @@ contains
                   t % scatt_order(j), flux, p % E, t % results, .true.)
 
                 j = j + t % scatt_order(j)
+                cycle SCORE_LOOP
+
+              case (SCORE_NDPP_CHI)
+                mat => materials(p % material)
+                call tally_macro_ndpp_chi(mat, score_index, filter_index - &
+                  matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, flux, &
+                  p % E, t % results)
+
                 cycle SCORE_LOOP
 
               case (SCORE_ABSORPTION)
@@ -947,6 +988,13 @@ contains
           j = j + t % scatt_order(j)
           cycle SCORE_LOOP
 
+        case (SCORE_NDPP_CHI)
+          call tally_ndpp_chi(i_nuclide, score_index, filter_index - &
+            matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+            atom_density * flux, .false., p % E, t % results)
+
+          cycle SCORE_LOOP
+
         case (SCORE_ABSORPTION)
           score = micro_xs(i_nuclide) % absorption * atom_density * flux
 
@@ -1069,6 +1117,14 @@ contains
           t % scatt_order(j), flux, p % E, t % results, .true.)
 
         j = j + t % scatt_order(j)
+        cycle MATERIAL_SCORE_LOOP
+
+      case (SCORE_NDPP_CHI)
+        mat => materials(p % material)
+        call tally_macro_ndpp_chi(mat, score_index, filter_index - &
+          matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, flux, &
+          p % E, t % results)
+
         cycle MATERIAL_SCORE_LOOP
 
       case (SCORE_ABSORPTION)
@@ -1432,6 +1488,13 @@ contains
                     p % E, t % results, .true.)
                   j = j + t % scatt_order(j)
                   cycle SCORE_LOOP
+                case (SCORE_NDPP_CHI)
+                  call tally_ndpp_chi(i_nuclide, score_index, &
+                    filter_index - &
+                    matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
+                    atom_density * flux, .false., p % E, t % results)
+
+                  cycle SCORE_LOOP
                 case (SCORE_ABSORPTION)
                   score = micro_xs(i_nuclide) % absorption * &
                        atom_density * flux
@@ -1485,6 +1548,13 @@ contains
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
                     t % scatt_order(j), flux, p % E, t % results, .true.)
                   j = j + t % scatt_order(j)
+                  cycle SCORE_LOOP
+                case (SCORE_NDPP_CHI)
+                  mat => materials(p % material)
+                  call tally_macro_ndpp_chi(mat, score_index, filter_index - &
+                    matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, flux, &
+                    p % E, t % results)
+
                   cycle SCORE_LOOP
                 case (SCORE_ABSORPTION)
                   score = material_xs % absorption * flux
@@ -2311,8 +2381,8 @@ contains
 
 !===============================================================================
 ! TALLY_NDPP_N determines the scattering moments which were
-! previously calculated with a pre-processor such as NDPP for analog
-! tallies; this can be used for analog and tracklength estimators;
+! previously calculated with a pre-processor such as NDPP;
+! this can be used for analog and tracklength estimators;
 ! this method applies to ndpp-scatter-n tally types
 !===============================================================================
 
@@ -2385,17 +2455,25 @@ contains
       ndpp_scatt_Ein => nuc % ndpp_scatt_Ein
       ! Find the grid index and interpolant of ndpp scattering data
       i_grid = micro_xs(i_nuclide) % index_grid
-      if (i_grid + ndpp_groups + 1 <= size(ndpp_scatt_Ein)) then
+      if (Ein <= ndpp_scatt_Ein(1)) then
+        i_grid = 1
+        f = ZERO
+      else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
+        i_grid = size(ndpp_scatt_Ein)
+        f = ONE
+      else if (i_grid + ndpp_groups + 1 <= size(ndpp_scatt_Ein)) then
         i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
                                i_grid + ndpp_groups + 1), &
                                ndpp_groups + 2, Ein) + i_grid - 1
+        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       else
         i_grid = binary_search(ndpp_scatt_Ein(i_grid:), &
                                size(ndpp_scatt_Ein) - i_grid + 1, Ein) + &
                  i_grid - 1
-      end if
-      f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
           (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
+      end if
 
       ! Calculate 1-f, and apply mult
       one_f = (ONE - f) * mult
@@ -2437,8 +2515,8 @@ contains
 
 !===============================================================================
 ! TALLY_MACRO_NDPP_N determines the macroscopic scattering moments which were
-! previously calculated with a pre-processor such as NDPP for tracklength
-! tallies; this method applies to ndpp-scatter-n tally types
+! previously calculated with a pre-processor such as NDPP;
+! this method applies to ndpp-scatter-n tally types
 !===============================================================================
 
   subroutine tally_macro_ndpp_n(mat, score_index, filter_index, t_order, flux, &
@@ -2476,8 +2554,8 @@ contains
 
 !===============================================================================
 ! TALLY_NDPP_PN determines the scattering moments which were
-! previously calculated with a pre-processor such as NDPP for analog
-! tallies; this can be used for analog and tracklength estimators;
+! previously calculated with a pre-processor such as NDPP;
+! this can be used for analog and tracklength estimators;
 ! this method applies to ndpp-scatter-n tally types
 !===============================================================================
 
@@ -2505,7 +2583,7 @@ contains
     type(SAlphaBeta), pointer, save  :: sab ! The working s(a,b) table
     type(GrpTransfer), pointer :: ndpp_scatt(:) => null() ! data to tally
     real(8), pointer :: ndpp_scatt_Ein(:) => null() ! Energy grid of data to tally
-!$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
+    !$omp threadprivate(nuc,sab,ndpp_scatt,ndpp_scatt_Ein)
 
     ! Find if this nuclide is in the range for S(a,b) treatment
     ! cross_section % calculate_sab_xs(...) would have figured this out
@@ -2562,13 +2640,15 @@ contains
         i_grid = binary_search(ndpp_scatt_Ein(i_grid: &
                                i_grid + ndpp_groups + 1), &
                                ndpp_groups + 2, Ein) + i_grid - 1
+        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+          (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
       else
         i_grid = binary_search(ndpp_scatt_Ein(i_grid:), &
                                size(ndpp_scatt_Ein) - i_grid + 1, Ein) + &
                  i_grid - 1
-      end if
-      f = (Ein - ndpp_scatt_Ein(i_grid)) / &
+        f = (Ein - ndpp_scatt_Ein(i_grid)) / &
           (ndpp_scatt_Ein(i_grid + 1) - ndpp_scatt_Ein(i_grid))
+      end if
 
       ! Calculate 1-f, and apply mult
       one_f = (ONE - f) * mult
@@ -2589,7 +2669,7 @@ contains
         g_filter = filter_index + g - 1
         do l = 1, t_order + 1
         i_score = score_index + l - 1
-!$omp atomic
+          !$omp atomic
           results(i_score, g_filter) % value = &
             results(i_score, g_filter) % value + &
             ndpp_scatt(i_grid) % outgoing(l, g) * one_f
@@ -2604,7 +2684,7 @@ contains
         g_filter = filter_index + g - 1
         do l = 1, t_order + 1
         i_score = score_index + l - 1
-!$omp atomic
+          !$omp atomic
           results(i_score, g_filter) % value = &
             results(i_score, g_filter) % value + &
             ndpp_scatt(i_grid + 1) % outgoing(l, g) * f
@@ -2616,8 +2696,8 @@ contains
 
 !===============================================================================
 ! TALLY_MACRO_NDPP_PN determines the macroscopic scattering moments which were
-! previously calculated with a pre-processor such as NDPP for tracklength
-! tallies; this method applies to ndpp-scatter-pn tally types
+! previously calculated with a pre-processor such as NDPP;
+! this method applies to ndpp-scatter-pn tally types
 !===============================================================================
 
   subroutine tally_macro_ndpp_pn(mat, score_index, filter_index, t_order, flux, &
@@ -2653,5 +2733,100 @@ contains
     end if
 
   end subroutine tally_macro_ndpp_pn
+
+!===============================================================================
+! TALLY_NDPP_CHI determines the fission spectra which were
+! previously calculated with a pre-processor such as NDPP;
+! this can be used for analog and tracklength estimators;
+! this method applies to ndpp-scatter-chi tally types
+!===============================================================================
+
+  subroutine tally_ndpp_chi(i_nuclide, score_index, filter_index, mult, &
+                            is_analog, Ein, results)
+
+    integer, intent(in) :: i_nuclide        ! index into nuclides array
+    integer, intent(in) :: score_index      ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index     ! dim = 2 starting index (incoming E filter)
+    real(8), intent(in) :: mult             ! wgt or wgt * atom_density * flux
+    logical, intent(in) :: is_analog        ! Is this an analog or TL event?
+    real(8), intent(in) :: Ein              ! Incoming energy
+    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
+
+    integer :: g        ! outgoing energy group index
+    integer :: g_filter ! outgoing energy group index
+    integer :: i_grid   ! index on nuclide energy grid
+    real(8) :: f        ! interp factor on nuclide energy grid
+    real(8) :: one_f    ! (ONE - f)
+    type(Nuclide), pointer, save :: nuc ! Working nuclide
+    !$omp threadprivate(nuc)
+
+    ! Set up pointers
+    nuc => nuclides(i_nuclide)
+
+    if (.not. nuc % fissionable) then
+      return
+    end if
+
+    ! Find the grid index and interpolant of ndpp scattering data
+    if (Ein <= nuc % ndpp_chi_Ein(1)) then
+      i_grid = 1
+      f = ZERO
+    else if (Ein >= nuc % ndpp_chi_Ein(size(nuc % ndpp_chi_Ein))) then
+      i_grid = size(nuc % ndpp_chi_Ein)
+      f = ONE
+    else
+      i_grid = binary_search(nuc % ndpp_chi_Ein, size(nuc % ndpp_chi_Ein), Ein)
+      f = (Ein - nuc % ndpp_chi_Ein(i_grid)) / &
+        (nuc % ndpp_chi_Ein(i_grid + 1) - nuc % ndpp_chi_Ein(i_grid))
+    end if
+
+    ! Calculate 1-f, and apply mult
+    one_f = (ONE - f) * mult
+    f = f * mult
+    if (.not. is_analog) then
+      f = f * micro_xs(i_nuclide) % fission
+      one_f = one_f * micro_xs(i_nuclide) % fission
+    end if
+
+    ! Add the contribution from NDPP data (with interpolation)
+    do g = 1, ubound(nuc % ndpp_chi, dim=1)
+      g_filter = filter_index + g - 1
+      !$omp atomic
+      results(score_index, g_filter) % value = &
+        results(score_index, g_filter) % value + &
+        nuc % ndpp_chi(g, i_grid) * one_f + &
+        nuc % ndpp_chi(g, i_grid + 1) * f
+    end do
+
+  end subroutine tally_ndpp_chi
+
+!===============================================================================
+! TALLY_MACRO_NDPP_CHI determines the material-wise Chi spectra which were
+! previously calculated with a pre-processor such as NDPP;
+! this method applies to ndpp-scatter-pn tally types
+!===============================================================================
+
+  subroutine tally_macro_ndpp_chi(mat, score_index, filter_index, flux, Ein, &
+                                  results)
+
+    type(Material), pointer, intent(in) :: mat ! Working material
+    integer, intent(in) :: score_index      ! dim = 1 starting index in results
+    integer, intent(in) :: filter_index     ! dim = 2 starting index (incoming E filter)
+    real(8), intent(in) :: flux             ! flux
+    real(8), intent(in) :: Ein              ! Incoming energy
+    type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
+
+    integer :: i      ! index in nuclide list of materials
+    integer :: i_nuclide ! index in nuclides array of our working nuclide
+    real(8) :: N_flux ! atom_density * flux
+
+    do i = 1, mat % n_nuclides
+      i_nuclide = mat % nuclide(i)
+      N_flux = mat % atom_density(i) * flux
+      call tally_ndpp_chi(i_nuclide, score_index, filter_index, N_flux, &
+        .false., Ein, results)
+    end do
+
+  end subroutine tally_macro_ndpp_chi
 
 end module tally

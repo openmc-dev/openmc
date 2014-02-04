@@ -2478,6 +2478,18 @@ contains
             t % scatt_order(j : j + n_order) = n_order
             j = j + n_order
 
+          case('ndpp-chi')
+            t % score_bins(j) = SCORE_NDPP_CHI
+            ndpp_chi = .true.
+
+            if (t % find_filter(FILTER_ENERGYOUT) == 0) then
+              message = "Cannot tally NDPP Chi without an " // &
+                        "outgoing energy filter."
+              call fatal_error()
+            end if
+
+            ! Allow to use tracklength estimator
+            t % estimator = ESTIMATOR_TRACKLENGTH
 
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT

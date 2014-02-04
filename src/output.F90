@@ -842,11 +842,25 @@ contains
           string = trim(string) // pn_string
         end do
         j = j + n - 1
+      case (SCORE_NDPP_SCATT_N)
+        pn_string = ' ndpp-scatter-' // trim(to_str(t % scatt_order(j)))
+        string = trim(string) // pn_string
       case (SCORE_NDPP_SCATT_PN)
         pn_string = ' ndpp-scatter'
         string = trim(string) // pn_string
         do n = 1, t % scatt_order(j)
           pn_string = ' ndpp-scatter-' // trim(to_str(n))
+          string = trim(string) // pn_string
+        end do
+        j = j + n - 1
+      case (SCORE_NDPP_NU_SCATT_N)
+        pn_string = ' ndpp-nu-scatter-' // trim(to_str(t % scatt_order(j)))
+        string = trim(string) // pn_string
+      case (SCORE_NDPP_NU_SCATT_PN)
+        pn_string = ' ndpp-nu-scatter'
+        string = trim(string) // pn_string
+        do n = 1, t % scatt_order(j)
+          pn_string = ' ndpp-nu-scatter-' // trim(to_str(n))
           string = trim(string) // pn_string
         end do
         j = j + n - 1
@@ -1652,7 +1666,10 @@ contains
     score_names(abs(SCORE_NU_SCATTER))    = "Scattering Production Rate"
     score_names(abs(SCORE_SCATTER_N))     = ""
     score_names(abs(SCORE_SCATTER_PN))    = ""
-    score_names(abs(SCORE_NDPP_SCATT_PN))  = ""
+    score_names(abs(SCORE_NDPP_SCATT_N))  = ""
+    score_names(abs(SCORE_NDPP_SCATT_PN)) = ""
+    score_names(abs(SCORE_NDPP_NU_SCATT_N))  = ""
+    score_names(abs(SCORE_NDPP_NU_SCATT_PN)) = ""
     score_names(abs(SCORE_TRANSPORT))     = "Transport Rate"
     score_names(abs(SCORE_N_1N))          = "(n,1n) Rate"
     score_names(abs(SCORE_ABSORPTION))    = "Absorption Rate"
@@ -1786,7 +1803,8 @@ contains
           do l = 1, t % n_user_score_bins
             k = k + 1
             score_index = score_index + 1
-            if (t % score_bins(k) == SCORE_SCATTER_N) then
+            if ((t % score_bins(k) == SCORE_SCATTER_N) .or. &
+                (t % score_bins(k) == SCORE_NDPP_SCATT_N)) then
               if (t % scatt_order(k) == 0) then
                 score_name = "Scattering Rate"
               else
@@ -1797,7 +1815,8 @@ contains
                 repeat(" ", indent), score_name, &
                 to_str(t % results(score_index,filter_index) % sum), &
                 trim(to_str(t % results(score_index,filter_index) % sum_sq))
-            else if (t % score_bins(k) == SCORE_SCATTER_PN) then
+            else if ((t % score_bins(k) == SCORE_SCATTER_PN) .or. &
+                     (t % score_bins(k) == SCORE_NDPP_SCATT_PN)) then
               score_name = "Scattering Rate"
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                 repeat(" ", indent), score_name, &
@@ -1813,8 +1832,15 @@ contains
                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
               end do
               k = k + n_order - 1
-            else if (t % score_bins(k) == SCORE_NDPP_SCATT_PN) then
-              score_name = "Scattering Rate"
+            else if (t % score_bins(k) == SCORE_NDPP_NU_SCATT_N) then
+              if (t % scatt_order(k) == 0) then
+                score_name = "Scattering Production Rate"
+              else
+                score_name = 'P' // trim(to_str(t % scatt_order(k))) // &
+                  ' Scattering Production Rate Moment'
+              end if
+            else if (t % score_bins(k) == SCORE_NDPP_NU_SCATT_PN) then
+              score_name = "Scattering Production Rate"
               write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                 repeat(" ", indent), score_name, &
                 to_str(t % results(score_index,filter_index) % sum), &
@@ -1822,7 +1848,7 @@ contains
               do n_order = 1, t % scatt_order(k)
                 score_index = score_index + 1
                 score_name = 'P' // trim(to_str(n_order)) // &
-                  ' Scattering Moment'
+                  ' Scattering Production Rate Moment'
                 write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A,"+/- ",A)') &
                   repeat(" ", indent), score_name, &
                   to_str(t % results(score_index,filter_index) % sum), &

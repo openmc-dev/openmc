@@ -973,13 +973,22 @@ The ``<tally>`` element accepts the following sub-elements:
       This score can be used with either an ``analog`` or ``tracklength``
       estimator.
 
+      .. note:: This is an experimental score type and has not been fully
+                qualified.
+
     :ndpp-chi-p:
       The fission neutron energy spectra of only prompt neutrons. This score
       can be used with either an ``analog`` or ``tracklength`` estimator.
 
+      .. note:: This is an experimental score type and has not been fully
+                qualified.
+
     :ndpp-chi-d:
       The fission neutron energy spectra of only delayed neutrons.  This score
       can be used with either an ``analog`` or ``tracklength`` estimator.
+
+      .. note:: This is an experimental score type and has not been fully
+                qualified.
 
     :current:
       Partial currents on the boundaries of each cell in a mesh.  This score

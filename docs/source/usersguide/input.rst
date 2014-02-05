@@ -877,61 +877,86 @@ The ``<tally>`` element accepts the following sub-elements:
   :scores:
     A space-separated list of the desired responses to be accumulated. Accepted
     options are "flux", "total", "scatter", "nu-scatter", "scatter-N",
-    "scatter-PN", "absorption", "fission", "nu-fission", "kappa-fission",
-    "current", and "events". These corresponding to the following physical
-    quantities.
+    "scatter-PN", "ndpp-scatter-N", "ndpp-scatter-PN", "ndpp-nu-nuscatter-N",
+    "ndpp-scatter-PN", "absorption", "fission", "nu-fission", "kappa-fission",
+    "ndpp-chi", "ndpp-chi-p", "ndpp-chi-d", "current", and "events". These
+    corresponding to the following physical quantities.
 
     :flux:
-      Total flux
+      Total flux.  This score can be used with either an ``analog`` or
+      ``tracklength`` estimator.
 
     :total:
-      Total reaction rate
+      Total reaction rate.  This score can be used with either an ``analog``
+      or ``tracklength`` estimator.
 
     :scatter:
       Total scattering rate. Can also be identified with the ``scatter-0``
-      response type.
+      response type.  This score can be used with either an ``analog`` or
+      ``tracklength`` estimator.
 
     :nu-scatter:
       Total production of neutrons due to scattering. This accounts for
       multiplicity from (n,2n), (n,3n), and (n,4n) reactions and should be
-      slightly higher than the scattering rate.
+      slightly higher than the scattering rate.  This score can only be
+      used with the ``analog`` estimator.
 
     :scatter-N:
       Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre
       expansion order.  N must be between 0 and 10. As an example, tallying the
       2\ :sup:`nd` \ scattering moment would be specified as ``<scores>
-      scatter-2 </scores>``.
+      scatter-2 </scores>``.  This score can only be used with the ``analog``
+      estimator.
 
     :scatter-PN:
       Tally all of the scattering moments from order 0 to N, where N is the
       Legendre expansion order.  That is, ``scatter-P1`` is equivalent to
       requesting tallies of ``scatter-0`` and ``scatter-1``.  N must be between
       0 and 10. As an example, tallying up to the 2\ :sup:`nd` \ scattering
-      moment would be specified as ``<scores> scatter-P2 </scores>``.
+      moment would be specified as ``<scores> scatter-P2 </scores>``.  This
+      score can only be used with the ``analog`` estimator.
 
     :ndpp-scatter-N:
       Tally the N\ :sup:`th` \ scattering moment, where N is the Legendre
       expansion order.  N must be between 0 and 10, but using NDPP libraries instead of analog
       tallying.  Note that the ``<ndpp_library>`` element must be provided
       in the ``tallies.xml`` file if an ``ndpp-scatter-N`` score is to be used.
-      This is analogous to the ``scatter-N`` type.
+      This is analogous to the ``scatter-N`` type.  This score can be
+      used with either an ``analog`` or ``tracklength`` estimator.
 
     :ndpp-scatter-PN:
       Tally all of the scattering moments from order 0 to N, where N is the
       Legendre expansion order, but using NDPP libraries instead of analog
       tallying.  Note that the ``<ndpp_library>`` element must be provided
       in the ``tallies.xml`` file if an ``ndpp-scatter-PN`` score is to be used.
-      This is analogous to the ``scatter-PN`` type.
+      This is analogous to the ``scatter-PN`` type.  This score can be
+      used with either an ``analog`` or ``tracklength`` estimator.
+
+    :ndpp-nu-scatter-N:
+      This score is similar to the ``ndpp-scatter-N`` score except the tallied
+      scattering matrix represents the total production of neutrons due to
+      scattering as it does in the ``nu-scatter`` score.  This score can be
+      used with either an ``analog`` or ``tracklength`` estimator.
+
+    :ndpp-nu-scatter-PN:
+      This score is similar to the ``ndpp-scatter-PN`` score except the tallied
+      scattering matrix represents the total production of neutrons due to
+      scattering as it does in the ``nu-scatter`` score.  This score can be
+      used with either an ``analog`` or ``tracklength`` estimator.
 
     :absorption:
       Total absorption rate. This accounts for all reactions which do not
-      produce secondary neutrons.
+      produce secondary neutrons.  This score can be used with either an
+      ``analog`` or ``tracklength`` estimator.
 
     :fission:
-      Total fission rate
+      Total fission rate.  This score can be used with either an ``analog`` or
+      ``tracklength`` estimator.
 
     :nu-fission:
-      Total production of neutrons due to fission
+      Total production of neutrons due to fission.  This score can always be
+      used with an ``analog`` estimator, but can only be used with a
+      ``tracklength`` estimator if no ``energyout`` filter is specified.
 
     :kappa-fission:
       The recoverable energy production rate due to fission. The recoverable
@@ -940,18 +965,30 @@ The ``<tally>`` element accepts the following sub-elements:
       total energies, and the total energy released by the delayed :math:`\beta`
       particles. The neutrino energy does not contribute to this response. The
       prompt and delayed :math:`\gamma`-rays are assumed to deposit their energy
-      locally.
+      locally.  The energy units reported from this score are in MeV.  This
+      score can be used with either an ``analog`` or ``tracklength`` estimator.
+
+    :ndpp-chi:
+      The fission neutron energy spectra of both prompt and delayed neutrons.
+      This score can be used with either an ``analog`` or ``tracklength``
+      estimator.
+
+    :ndpp-chi-p:
+      The fission neutron energy spectra of only prompt neutrons. This score
+      can be used with either an ``analog`` or ``tracklength`` estimator.
+
+    :ndpp-chi-d:
+      The fission neutron energy spectra of only delayed neutrons.  This score
+      can be used with either an ``analog`` or ``tracklength`` estimator.
 
     :current:
-      Partial currents on the boundaries of each cell in a mesh.
-
-      .. note::
-          This score can only be used if a mesh filter has been
-          specified. Furthermore, it may not be used in conjunction with any
-          other score.
+      Partial currents on the boundaries of each cell in a mesh.  This score
+      can only be used if a mesh filter has been specified. Furthermore, it may
+      not be used in conjunction with any other score.  This score can be used
+      with either an ``analog`` or ``tracklength`` estimator.
 
     :events:
-      Number of scoring events
+      Number of scoring events.
 
 ``<mesh>`` Element
 ------------------

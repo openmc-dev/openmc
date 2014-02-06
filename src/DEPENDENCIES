@@ -250,6 +250,7 @@ ndpp.o: dict_header.o
 ndpp.o: error.o
 ndpp.o: global.o
 ndpp.o: output.o
+ndpp.o: search.o
 ndpp.o: string.o
 ndpp.o: xml_interface.o
 

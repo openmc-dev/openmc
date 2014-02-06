@@ -122,9 +122,13 @@ module ace_header
     real(8), allocatable :: ndpp_scatt_Ein(:)         ! Incoming energy grid
     type(GrpTransfer), allocatable :: ndpp_scatt(:)   ! Dimension is # of Ein
     type(GrpTransfer), allocatable :: ndpp_nuscatt(:) ! Dimension is # of Ein
-    real(8), allocatable :: ndpp_chi_Ein(:)         ! Ein grid for chi
+    real(8), allocatable :: ndpp_chi_Ein(:)         ! Ein grid for total chi
     real(8), allocatable :: ndpp_chi(:,:)           ! Data grid for ndpp chi data
                                                     ! dimensions of chi: (g, Ein)
+    real(8), allocatable :: ndpp_chi_p_Ein(:)       ! Same for prompt
+    real(8), allocatable :: ndpp_chi_p(:,:)
+    real(8), allocatable :: ndpp_chi_d_Ein(:)       ! Same for delayed
+    real(8), allocatable :: ndpp_chi_d(:,:)
 
     ! Fission information
     logical :: fissionable         ! nuclide is fissionable?

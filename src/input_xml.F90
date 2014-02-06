@@ -2491,6 +2491,32 @@ contains
             ! Allow to use tracklength estimator
             t % estimator = ESTIMATOR_TRACKLENGTH
 
+          case('ndpp-chi-p')
+            t % score_bins(j) = SCORE_NDPP_CHI_P
+            ndpp_chi_P = .true.
+
+            if (t % find_filter(FILTER_ENERGYOUT) == 0) then
+              message = "Cannot tally NDPP Chi-P without an " // &
+                        "outgoing energy filter."
+              call fatal_error()
+            end if
+
+            ! Allow to use tracklength estimator
+            t % estimator = ESTIMATOR_TRACKLENGTH
+
+          case('ndpp-chi-d')
+            t % score_bins(j) = SCORE_NDPP_CHI_D
+            ndpp_chi_d = .true.
+
+            if (t % find_filter(FILTER_ENERGYOUT) == 0) then
+              message = "Cannot tally NDPP Chi-D without an " // &
+                        "outgoing energy filter."
+              call fatal_error()
+            end if
+
+            ! Allow to use tracklength estimator
+            t % estimator = ESTIMATOR_TRACKLENGTH
+
           case('transport')
             t % score_bins(j) = SCORE_TRANSPORT
 

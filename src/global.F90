@@ -146,6 +146,8 @@ module global
   ! Flag to indicate need to store pre-processed data library
   logical        :: ndpp_scatt = .false.
   logical        :: ndpp_chi   = .false.
+  logical        :: ndpp_chi_p = .false.
+  logical        :: ndpp_chi_d = .false.
 
   ! Total number of energy groups and data order in the pre-integrated scattering library
   integer        :: ndpp_groups

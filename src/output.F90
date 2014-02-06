@@ -866,6 +866,10 @@ contains
         j = j + n - 1
       case (SCORE_NDPP_CHI)
         string = trim(string) // ' ndpp-chi'
+      case (SCORE_NDPP_CHI_P)
+        string = trim(string) // ' ndpp-chi-p'
+      case (SCORE_NDPP_CHI_D)
+        string = trim(string) // ' ndpp-chi-d'
       case (SCORE_TRANSPORT)
         string = trim(string) // ' transport'
       case (SCORE_N_1N)
@@ -1672,7 +1676,9 @@ contains
     score_names(abs(SCORE_NDPP_SCATT_PN)) = ""
     score_names(abs(SCORE_NDPP_NU_SCATT_N))  = ""
     score_names(abs(SCORE_NDPP_NU_SCATT_PN)) = ""
-    score_names(abs(SCORE_NDPP_CHI))      = "Fission Production Rate"
+    score_names(abs(SCORE_NDPP_CHI))      = "Total Fission Prod. Rate"
+    score_names(abs(SCORE_NDPP_CHI_P))    = "Prompt Fission Prod. Rate"
+    score_names(abs(SCORE_NDPP_CHI_D))    = "Delayed Fission Prod. Rate"
     score_names(abs(SCORE_TRANSPORT))     = "Transport Rate"
     score_names(abs(SCORE_N_1N))          = "(n,1n) Rate"
     score_names(abs(SCORE_ABSORPTION))    = "Absorption Rate"

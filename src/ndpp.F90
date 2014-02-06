@@ -6,6 +6,7 @@ module ndpp
   use error,            only: fatal_error, warning
   use global
   use output,           only: write_message
+  use search
   use string,           only: ends_with, lower_case, starts_with, to_str
   use xml_interface
 
@@ -43,7 +44,7 @@ contains
                   trim(ndpp_lib) // "'!"
         call fatal_error()
       end if
-      ! read_ndpp_table will populate nuclide % ndpp_scatt and also check that
+      ! read_ndpp_table will read the NDPP data and also check that
       ! the temperatures match
       ndpp_listing => ndpp_listings(i_listing)
       call read_ndpp_table(ndpp_listing, NUC=nuc)
@@ -58,7 +59,7 @@ contains
                   trim(ndpp_lib) // "'!"
         call fatal_error()
       end if
-      ! read_ndpp_table will populate nuclide % ndpp_scatt and also check that
+      ! read_ndpp_table will read the NDPP data and also check that
       ! the temperatures match
       ndpp_listing => ndpp_listings(i_listing)
       call read_ndpp_table(ndpp_listing, SAB=sab)
@@ -432,8 +433,6 @@ contains
 
     do i = 1, n_listings
        listing => ndpp_listings(i)
-
-
        ! Get pointer to ace table XML node
        call get_list_item(node_ndpp_list, i, node_ndpp)
 
@@ -684,13 +683,10 @@ contains
         end do
       end if
 
-      ! Get \Total chi(E_{in}) data
-      if (nuc % fissionable .and. (chi_present == 1) .and. (ndpp_chi)) then
-        if (.not. is_nuc) then
-          message = "NDPP library '" // trim(filename) // "' should NOT &
-                    &contain chi data since it is an S(a,b) table!"
-          call fatal_error()
-        else
+      ! Get chi(E_{in}) data
+      if (is_nuc .and. chi_present == 1) then
+        if (nuc % fissionable) then
+          ! For Total
           ! Get Ein grid
           read(UNIT=in, FMT=*) NEin
           allocate(nuc % ndpp_chi_Ein(NEin))
@@ -704,11 +700,37 @@ contains
               read(UNIT=in, FMT=*) nuc % ndpp_chi(g, iE)
             end do
           end do
+
+          ! For Prompt
+          ! Get Ein grid
+          read(UNIT=in, FMT=*) NEin
+          allocate(nuc % ndpp_chi_p_Ein(NEin))
+          do iE = 1, NEin
+            read(UNIT=in, FMT=*) nuc % ndpp_chi_p_Ein(iE)
+          end do
+          ! Get chi values
+          allocate(nuc % ndpp_chi_p(size(energy_bins) - 1, NEin))
+          do iE = 1, NEin
+            do g = 1, size(energy_bins) - 1
+              read(UNIT=in, FMT=*) nuc % ndpp_chi_p(g, iE)
+            end do
+          end do
+
+          ! For Delayed
+          ! Get Ein grid
+          read(UNIT=in, FMT=*) NEin
+          allocate(nuc % ndpp_chi_d_Ein(NEin))
+          do iE = 1, NEin
+            read(UNIT=in, FMT=*) nuc % ndpp_chi_d_Ein(iE)
+          end do
+          ! Get chi values
+          allocate(nuc % ndpp_chi_d(size(energy_bins) - 1, NEin))
+          do iE = 1, NEin
+            do g = 1, size(energy_bins) - 1
+              read(UNIT=in, FMT=*) nuc % ndpp_chi_d(g, iE)
+            end do
+          end do
         end if
-      else if (chi_present /= 0 .and. chi_present /= 1) then
-        message = "NDPP library '" // trim(filename) // "' contains an invalid &
-                  & value of chi_present!"
-        call fatal_error()
       end if
 
       close(UNIT=in)
@@ -813,12 +835,9 @@ contains
         end do
       end if
 
-      if (nuc % fissionable .and. (chi_present == 1) .and. (ndpp_chi)) then
-        if (.not. is_nuc) then
-          message = "NDPP library '" // trim(filename) // "' should NOT &
-                    &contain chi data since it is an S(a,b) table!"
-          call fatal_error()
-        else
+      if (is_nuc .and. chi_present == 1) then
+        if (nuc % fissionable) then
+          ! For Total:
           ! Get Ein grid
           read(UNIT=in) NEin
           allocate(nuc % ndpp_chi_Ein(NEin))
@@ -832,12 +851,37 @@ contains
               read(UNIT=in) nuc % ndpp_chi(g, iE)
             end do
           end do
-        end if
 
-      else if (chi_present /= 0 .and. chi_present /= 1) then
-        message = "NDPP library '" // trim(filename) // "' contains an invalid &
-                  & value of chi_present!"
-        call fatal_error()
+          ! For Prompt:
+          ! Get Ein grid
+          read(UNIT=in) NEin
+          allocate(nuc % ndpp_chi_p_Ein(NEin))
+          do iE = 1, NEin
+            read(UNIT=in) nuc % ndpp_chi_p_Ein(iE)
+          end do
+          ! Get chi values
+          allocate(nuc % ndpp_chi_p(size(energy_bins) - 1, NEin))
+          do iE = 1, NEin
+            do g = 1, size(energy_bins) - 1
+              read(UNIT=in) nuc % ndpp_chi_p(g, iE)
+            end do
+          end do
+
+          ! For Delayed:
+          ! Get Ein grid
+          read(UNIT=in) NEin
+          allocate(nuc % ndpp_chi_d_Ein(NEin))
+          do iE = 1, NEin
+            read(UNIT=in) nuc % ndpp_chi_d_Ein(iE)
+          end do
+          ! Get chi values
+          allocate(nuc % ndpp_chi_d(size(energy_bins) - 1, NEin))
+          do iE = 1, NEin
+            do g = 1, size(energy_bins) - 1
+              read(UNIT=in) nuc % ndpp_chi_d(g, iE)
+            end do
+          end do
+        end if
       end if
 
       close(UNIT=in)
@@ -848,6 +892,112 @@ contains
       !!! TBI
     end if ! No error handling needed; read_ndpp_xml() already checked filetype
 
+    ! Finally, the above code read in all chi data even if it wasn't necessary
+    ! Go back and deallocate as needed
+    if (is_nuc) then
+      if (.not. ndpp_chi) then
+        if (allocated(nuc % ndpp_chi_Ein)) then
+          deallocate(nuc % ndpp_chi_Ein)
+          deallocate(nuc % ndpp_chi)
+        end if
+      end if
+      if (.not. ndpp_chi_p) then
+        if (allocated(nuc % ndpp_chi_p_Ein)) then
+          deallocate(nuc % ndpp_chi_p_Ein)
+          deallocate(nuc % ndpp_chi_p)
+        end if
+      end if
+      if (.not. ndpp_chi_d) then
+        if (allocated(nuc % ndpp_chi_d_Ein)) then
+          deallocate(nuc % ndpp_chi_d_Ein)
+          deallocate(nuc % ndpp_chi_d)
+        end if
+      end if
+    end if
+
   end subroutine read_ndpp_table
+
+!===============================================================================
+! CONDENSE_GROUPS sums a fine-group data set in to coarse group results
+! according to the group structures given.  This change is done in place.
+!===============================================================================
+
+  subroutine condense_groups(fine, coarse, values)
+    real(8), allocatable, intent(in) :: fine(:)   ! The fine mesh to start with
+    real(8), allocatable, intent(in) :: coarse(:) ! The coarse mesh to end with
+    real(8), allocatable, intent(inout) :: values(:) ! The original (and final) result
+
+    integer :: fmin, fmax ! Group bounds of fine group
+    integer :: f, c       ! fine group and coarse group index
+    integer :: flo, fhi   ! Iteration bounds of fine groups for current coarse group
+    integer, allocatable :: fbounds(:) ! Iteration bounds of fine grps for each coarse group
+    integer :: Nf, Nc     ! Number of fine and coarse groups
+    real(8), allocatable :: temp_values(:)
+
+    Nf = size(fine)
+    Nc = size(coarse)
+    allocate(fbounds(Nc))
+    fmin = lbound(values, dim=1)
+    fmax = ubound(values, dim=1)
+    allocate(temp_values(Nc - 1))
+
+    ! Find the values of fbounds
+    do c = 1, Nc
+      do f = 1, Nf
+        if (approx_eq(fine(f), coarse(c), 1E-6_8)) then
+          exit
+        end if
+      end do
+      if (f > Nf) then
+        message = 'Error in comparing fine and coarse groups!'
+        call fatal_error()
+      else
+        fbounds(c) = f
+      end if
+    end do
+
+    ! Now we just go through values summing results according to fbounds
+    do c = 1, Nc - 1
+      temp_values(c) = ZERO
+      do f = max(fbounds(c), fmin), min(fbounds(c + 1) - 1, fmax)
+        temp_values(c) = temp_values(c) + values(f)
+      end do
+    end do
+
+    ! Now lets reallocate values accordingly
+    deallocate(values)
+    allocate(values(Nc - 1))
+    values = temp_values
+    deallocate(temp_values)
+  end subroutine condense_groups
+
+!===============================================================================
+! APPROX_EQ takes two real parameters, and compares them using relative error to
+! the given relative epsilon.  True is returned if they are close `enough' and
+! False is returned otherwise.
+!===============================================================================
+  pure function approx_eq(val1, val2, eps) result(test)
+    real(8), intent(in) :: val1
+    real(8), intent(in) :: val2
+    real(8), intent(in) :: eps
+    logical             :: test
+    real(8)             :: relErr
+
+    if (val1 == val2) then
+      test = .true.
+    else
+      if (abs(val2) > abs(val1)) then
+        relErr = abs((val1 - val2) / val2)
+      else
+        relErr = abs((val1 - val2) / val1)
+      end if
+
+      if (relErr <= eps) then
+        test = .true.
+      else
+        test = .false.
+      end if
+    end if
+  end function approx_eq
 
 end module ndpp

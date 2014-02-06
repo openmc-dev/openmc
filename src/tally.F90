@@ -257,7 +257,7 @@ contains
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP
 
-          case (SCORE_NDPP_CHI)
+          case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
             if (survival_biasing) then
               ! No fission events occur if survival biasing is on -- need to
               ! calculate fraction of absorptions that would have resulted in
@@ -279,7 +279,7 @@ contains
 
             call tally_ndpp_chi(p % event_nuclide, score_index, filter_index - &
               matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, score, &
-              .true., p % last_E, t % results)
+              .true., p % last_E, score_bin, t % results)
 
             cycle SCORE_LOOP
 
@@ -659,10 +659,10 @@ contains
                 j = j + t % scatt_order(j)
                 cycle SCORE_LOOP
 
-              case (SCORE_NDPP_CHI)
+              case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
                 call tally_ndpp_chi(i_nuclide, score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                  atom_density * flux, .false., p % E, t % results)
+                  atom_density * flux, .false., p % E, score_bin, t % results)
 
                 cycle SCORE_LOOP
 
@@ -781,11 +781,11 @@ contains
                 j = j + t % scatt_order(j)
                 cycle SCORE_LOOP
 
-              case (SCORE_NDPP_CHI)
+              case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
                 mat => materials(p % material)
                 call tally_macro_ndpp_chi(mat, score_index, filter_index - &
                   matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, flux, &
-                  p % E, t % results)
+                  p % E, score_bin, t % results)
 
                 cycle SCORE_LOOP
 
@@ -988,10 +988,10 @@ contains
           j = j + t % scatt_order(j)
           cycle SCORE_LOOP
 
-        case (SCORE_NDPP_CHI)
+        case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
           call tally_ndpp_chi(i_nuclide, score_index, filter_index - &
             matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-            atom_density * flux, .false., p % E, t % results)
+            atom_density * flux, .false., p % E, score_bin, t % results)
 
           cycle SCORE_LOOP
 
@@ -1119,11 +1119,11 @@ contains
         j = j + t % scatt_order(j)
         cycle MATERIAL_SCORE_LOOP
 
-      case (SCORE_NDPP_CHI)
+      case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
         mat => materials(p % material)
         call tally_macro_ndpp_chi(mat, score_index, filter_index - &
           matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, flux, &
-          p % E, t % results)
+          p % E, score_bin, t % results)
 
         cycle MATERIAL_SCORE_LOOP
 
@@ -1488,11 +1488,11 @@ contains
                     p % E, t % results, .true.)
                   j = j + t % scatt_order(j)
                   cycle SCORE_LOOP
-                case (SCORE_NDPP_CHI)
+                case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
                   call tally_ndpp_chi(i_nuclide, score_index, &
                     filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, &
-                    atom_density * flux, .false., p % E, t % results)
+                    atom_density * flux, .false., p % E, score_bin, t % results)
 
                   cycle SCORE_LOOP
                 case (SCORE_ABSORPTION)
@@ -1549,11 +1549,11 @@ contains
                     t % scatt_order(j), flux, p % E, t % results, .true.)
                   j = j + t % scatt_order(j)
                   cycle SCORE_LOOP
-                case (SCORE_NDPP_CHI)
+                case (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
                   mat => materials(p % material)
                   call tally_macro_ndpp_chi(mat, score_index, filter_index - &
                     matching_bins(t % find_filter(FILTER_ENERGYOUT)) + 1, flux, &
-                    p % E, t % results)
+                    p % E, score_bin, t % results)
 
                   cycle SCORE_LOOP
                 case (SCORE_ABSORPTION)
@@ -2742,7 +2742,7 @@ contains
 !===============================================================================
 
   subroutine tally_ndpp_chi(i_nuclide, score_index, filter_index, mult, &
-                            is_analog, Ein, results)
+                            is_analog, Ein, score_type, results)
 
     integer, intent(in) :: i_nuclide        ! index into nuclides array
     integer, intent(in) :: score_index      ! dim = 1 starting index in results
@@ -2750,6 +2750,7 @@ contains
     real(8), intent(in) :: mult             ! wgt or wgt * atom_density * flux
     logical, intent(in) :: is_analog        ! Is this an analog or TL event?
     real(8), intent(in) :: Ein              ! Incoming energy
+    integer, intent(in) :: score_type       ! Type of Chi score we are using
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
 
     integer :: g        ! outgoing energy group index
@@ -2757,27 +2758,39 @@ contains
     integer :: i_grid   ! index on nuclide energy grid
     real(8) :: f        ! interp factor on nuclide energy grid
     real(8) :: one_f    ! (ONE - f)
-    type(Nuclide), pointer, save :: nuc ! Working nuclide
-    !$omp threadprivate(nuc)
+    type(Nuclide), pointer, save :: nuc  ! Working nuclide
+    real(8), pointer, save :: chi_Ein(:) ! Working Ein grid
+    real(8), pointer, save :: chi(:,:)   ! Working chi data
+    !$omp threadprivate(nuc, chi_Ein, chi)
 
     ! Set up pointers
     nuc => nuclides(i_nuclide)
+    if (score_type == SCORE_NDPP_CHI) then
+      chi_Ein => nuc % ndpp_chi_Ein
+      chi => nuc % ndpp_chi
+    else if (score_type == SCORE_NDPP_CHI_P) then
+      chi_Ein => nuc % ndpp_chi_P_Ein
+      chi => nuc % ndpp_chi_p
+    else if (score_type == SCORE_NDPP_CHI_D) then
+      chi_Ein => nuc % ndpp_chi_d_Ein
+      chi => nuc % ndpp_chi_d
+    end if
 
     if (.not. nuc % fissionable) then
       return
     end if
 
     ! Find the grid index and interpolant of ndpp scattering data
-    if (Ein <= nuc % ndpp_chi_Ein(1)) then
+    if (Ein <= chi_Ein(1)) then
       i_grid = 1
       f = ZERO
-    else if (Ein >= nuc % ndpp_chi_Ein(size(nuc % ndpp_chi_Ein))) then
-      i_grid = size(nuc % ndpp_chi_Ein)
+    else if (Ein >= chi_Ein(size(chi_Ein))) then
+      i_grid = size(chi_Ein)
       f = ONE
     else
-      i_grid = binary_search(nuc % ndpp_chi_Ein, size(nuc % ndpp_chi_Ein), Ein)
-      f = (Ein - nuc % ndpp_chi_Ein(i_grid)) / &
-        (nuc % ndpp_chi_Ein(i_grid + 1) - nuc % ndpp_chi_Ein(i_grid))
+      i_grid = binary_search(chi_Ein, size(chi_Ein), Ein)
+      f = (Ein - chi_Ein(i_grid)) / &
+        (chi_Ein(i_grid + 1) - chi_Ein(i_grid))
     end if
 
     ! Calculate 1-f, and apply mult
@@ -2789,13 +2802,13 @@ contains
     end if
 
     ! Add the contribution from NDPP data (with interpolation)
-    do g = 1, ubound(nuc % ndpp_chi, dim=1)
+    do g = 1, ubound(chi, dim=1)
       g_filter = filter_index + g - 1
       !$omp atomic
       results(score_index, g_filter) % value = &
         results(score_index, g_filter) % value + &
-        nuc % ndpp_chi(g, i_grid) * one_f + &
-        nuc % ndpp_chi(g, i_grid + 1) * f
+        chi(g, i_grid) * one_f + &
+        chi(g, i_grid + 1) * f
     end do
 
   end subroutine tally_ndpp_chi
@@ -2807,13 +2820,14 @@ contains
 !===============================================================================
 
   subroutine tally_macro_ndpp_chi(mat, score_index, filter_index, flux, Ein, &
-                                  results)
+                                  score_type, results)
 
     type(Material), pointer, intent(in) :: mat ! Working material
     integer, intent(in) :: score_index      ! dim = 1 starting index in results
     integer, intent(in) :: filter_index     ! dim = 2 starting index (incoming E filter)
     real(8), intent(in) :: flux             ! flux
     real(8), intent(in) :: Ein              ! Incoming energy
+    integer, intent(in) :: score_type       ! Type of Chi score we are using
     type(TallyResult), intent(inout) :: results(:,:) ! Tally results storage
 
     integer :: i      ! index in nuclide list of materials
@@ -2824,7 +2838,7 @@ contains
       i_nuclide = mat % nuclide(i)
       N_flux = mat % atom_density(i) * flux
       call tally_ndpp_chi(i_nuclide, score_index, filter_index, N_flux, &
-        .false., Ein, results)
+        .false., Ein, score_type, results)
     end do
 
   end subroutine tally_macro_ndpp_chi

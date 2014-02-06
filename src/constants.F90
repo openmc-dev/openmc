@@ -268,7 +268,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 19
+  integer, parameter :: N_SCORE_TYPES = 21
   integer, parameter :: &
        SCORE_FLUX             = -1,  & ! flux
        SCORE_TOTAL            = -2,  & ! total reaction rate
@@ -280,15 +280,17 @@ module constants
        SCORE_NDPP_SCATT_PN    = -8,  & ! pre-integrated version of score_scatter_pn
        SCORE_NDPP_NU_SCATT_N  = -9,  & ! pre-integrated version of score_nu_scatter_n
        SCORE_NDPP_NU_SCATT_PN = -10, & ! pre-integrated version of score_nu_scatter_pn
-       SCORE_NDPP_CHI         = -11,  & ! pre-integrated version of score_scatter_n
-       SCORE_TRANSPORT        = -12, & ! transport reaction rate
-       SCORE_N_1N             = -13, & ! (n,1n) rate
-       SCORE_ABSORPTION       = -14, & ! absorption rate
-       SCORE_FISSION          = -15, & ! fission rate
-       SCORE_NU_FISSION       = -16, & ! neutron production rate
-       SCORE_KAPPA_FISSION    = -17, & ! fission energy production rate
-       SCORE_CURRENT          = -18, & ! partial current
-       SCORE_EVENTS           = -19    ! number of events
+       SCORE_NDPP_CHI         = -11, & ! pre-integrated total fission spectra
+       SCORE_NDPP_CHI_P       = -12, & ! pre-integrated prompt fission spectra
+       SCORE_NDPP_CHI_D       = -13, & ! pre-integrated delayed fission spectra
+       SCORE_TRANSPORT        = -14, & ! transport reaction rate
+       SCORE_N_1N             = -15, & ! (n,1n) rate
+       SCORE_ABSORPTION       = -16, & ! absorption rate
+       SCORE_FISSION          = -17, & ! fission rate
+       SCORE_NU_FISSION       = -18, & ! neutron production rate
+       SCORE_KAPPA_FISSION    = -19, & ! fission energy production rate
+       SCORE_CURRENT          = -20, & ! partial current
+       SCORE_EVENTS           = -21    ! number of events
 
   ! Maximum scattering order supported
   integer, parameter :: SCATT_ORDER_MAX = 10

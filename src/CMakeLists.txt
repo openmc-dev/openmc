@@ -131,10 +131,25 @@ endif()
 if(petsc)
   find_package(PETSc REQUIRED HINTS $ENV{PETSC_DIR}/conf)
   find_library(libpetsc petsc $ENV{PETSC_DIR}/lib)
+
+  # If libfblas wasn't found, search the PETSc lib directory
+  if(PETSC_FBLAS_LIB STREQUAL "PETSC_FBLAS_LIB-NOTFOUND")
+    find_library(PETSC_FBLAS_LIB fblas $ENV{PETSC_DIR}/lib)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_FBLAS_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_FBLAS_LIB})
+  endif()
+
+  # If libflapack wasn't found, search the PETSc lib directory
+  if(PETSC_FLAPACK_LIB STREQUAL "PETSC_FLAPACK_LIB-NOTFOUND")
+    find_library(PETSC_FLAPACK_LIB flapack $ENV{PETSC_DIR}/lib)
+    list(REMOVE_ITEM PETSC_PACKAGE_LIBS PETSC_FLAPACK_LIB-NOTFOUND)
+    list(INSERT PETSC_PACKAGE_LIBS 0 ${PETSC_FLAPACK_LIB})
+  endif()
+
   message("-- Using PETSC: ${libpetsc}")
   add_definitions(-DPETSC)
   include_directories($ENV{PETSC_DIR}/include)
-  set(libraries "${PETSC_PACKAGE_LIBS};${libpetsc};${libraries}")
+  set(libraries "${libpetsc};${PETSC_PACKAGE_LIBS};${libraries}")
 endif()
 
 #===============================================================================

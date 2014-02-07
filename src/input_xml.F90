@@ -2505,6 +2505,8 @@ contains
             t % estimator = ESTIMATOR_TRACKLENGTH
 
           case('ndpp-chi-d')
+            message = "ndpp-chi-d tally score not yet enabled!"
+            call fatal_error()
             t % score_bins(j) = SCORE_NDPP_CHI_D
             ndpp_chi_d = .true.
 

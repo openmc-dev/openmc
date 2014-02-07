@@ -94,7 +94,6 @@ contains
     type(Node), pointer :: node_ndpp => null()
     type(NodeList), pointer :: node_ndpp_list => null()
 
-
     ! Check if ndpp_lib.xml exists
     inquire(FILE=ndpp_lib, EXIST=file_exists)
     if (.not. file_exists) then
@@ -540,7 +539,8 @@ contains
     real(8)       :: thin_tol      ! Thinning tolerance used in lib, discarded
     integer       :: NEin, iE      ! Number of incoming energies and the index
     real(8), allocatable :: temp_outgoing(:,:) ! Temporary storage of scatt data
-    logical       :: is_nuc         ! Is our data a nuc or an sab?
+    logical       :: is_nuc        ! Is our data a nuc or an sab?
+    integer       :: NP            ! Number of precursors groups
 
     ! Set is_nuc based on optional params
     if ((present(nuc)) .and. (present(sab))) then
@@ -686,14 +686,14 @@ contains
       ! Get chi(E_{in}) data
       if (is_nuc .and. chi_present == 1) then
         if (nuc % fissionable) then
-          ! For Total
-          ! Get Ein grid
-          read(UNIT=in, FMT=*) NEin
+          ! Get Ein grid and number of precursors
+          read(UNIT=in, FMT=*) NEin, NP
           allocate(nuc % ndpp_chi_Ein(NEin))
           do iE = 1, NEin
             read(UNIT=in, FMT=*) nuc % ndpp_chi_Ein(iE)
           end do
-          ! Get chi values
+
+          ! Get Chi-Total
           allocate(nuc % ndpp_chi(size(energy_bins) - 1, NEin))
           do iE = 1, NEin
             do g = 1, size(energy_bins) - 1
@@ -701,14 +701,7 @@ contains
             end do
           end do
 
-          ! For Prompt
-          ! Get Ein grid
-          read(UNIT=in, FMT=*) NEin
-          allocate(nuc % ndpp_chi_p_Ein(NEin))
-          do iE = 1, NEin
-            read(UNIT=in, FMT=*) nuc % ndpp_chi_p_Ein(iE)
-          end do
-          ! Get chi values
+          ! Get Chi-Prompt
           allocate(nuc % ndpp_chi_p(size(energy_bins) - 1, NEin))
           do iE = 1, NEin
             do g = 1, size(energy_bins) - 1
@@ -716,18 +709,13 @@ contains
             end do
           end do
 
-          ! For Delayed
-          ! Get Ein grid
-          read(UNIT=in, FMT=*) NEin
-          allocate(nuc % ndpp_chi_d_Ein(NEin))
-          do iE = 1, NEin
-            read(UNIT=in, FMT=*) nuc % ndpp_chi_d_Ein(iE)
-          end do
-          ! Get chi values
-          allocate(nuc % ndpp_chi_d(size(energy_bins) - 1, NEin))
-          do iE = 1, NEin
-            do g = 1, size(energy_bins) - 1
-              read(UNIT=in, FMT=*) nuc % ndpp_chi_d(g, iE)
+          ! Get Chi-Delayed
+          allocate(nuc % ndpp_chi_d(NP, size(energy_bins) - 1, NEin))
+          do i = 1, NP
+            do iE = 1, NEin
+              do g = 1, size(energy_bins) - 1
+                read(UNIT=in, FMT=*) nuc % ndpp_chi_d(i, g, iE)
+              end do
             end do
           end do
         end if
@@ -837,14 +825,14 @@ contains
 
       if (is_nuc .and. chi_present == 1) then
         if (nuc % fissionable) then
-          ! For Total:
-          ! Get Ein grid
-          read(UNIT=in) NEin
+          ! Get Ein grid and Number of Precursors
+          read(UNIT=in) NEin, NP
           allocate(nuc % ndpp_chi_Ein(NEin))
           do iE = 1, NEin
             read(UNIT=in) nuc % ndpp_chi_Ein(iE)
           end do
-          ! Get chi values
+
+          ! Get Chi-Total
           allocate(nuc % ndpp_chi(size(energy_bins) - 1, NEin))
           do iE = 1, NEin
             do g = 1, size(energy_bins) - 1
@@ -852,14 +840,7 @@ contains
             end do
           end do
 
-          ! For Prompt:
-          ! Get Ein grid
-          read(UNIT=in) NEin
-          allocate(nuc % ndpp_chi_p_Ein(NEin))
-          do iE = 1, NEin
-            read(UNIT=in) nuc % ndpp_chi_p_Ein(iE)
-          end do
-          ! Get chi values
+          ! Get Chi-Prompt
           allocate(nuc % ndpp_chi_p(size(energy_bins) - 1, NEin))
           do iE = 1, NEin
             do g = 1, size(energy_bins) - 1
@@ -867,18 +848,13 @@ contains
             end do
           end do
 
-          ! For Delayed:
-          ! Get Ein grid
-          read(UNIT=in) NEin
-          allocate(nuc % ndpp_chi_d_Ein(NEin))
-          do iE = 1, NEin
-            read(UNIT=in) nuc % ndpp_chi_d_Ein(iE)
-          end do
-          ! Get chi values
-          allocate(nuc % ndpp_chi_d(size(energy_bins) - 1, NEin))
-          do iE = 1, NEin
-            do g = 1, size(energy_bins) - 1
-              read(UNIT=in) nuc % ndpp_chi_d(g, iE)
+          ! Get Chi-Delayed
+          allocate(nuc % ndpp_chi_d(NP, size(energy_bins) - 1, NEin))
+          do i = 1, NP
+            do iE = 1, NEin
+              do g = 1, size(energy_bins) - 1
+                read(UNIT=in) nuc % ndpp_chi_d(i, g, iE)
+              end do
             end do
           end do
         end if
@@ -896,21 +872,23 @@ contains
     ! Go back and deallocate as needed
     if (is_nuc) then
       if (.not. ndpp_chi) then
-        if (allocated(nuc % ndpp_chi_Ein)) then
-          deallocate(nuc % ndpp_chi_Ein)
+        if (allocated(nuc % ndpp_chi)) then
           deallocate(nuc % ndpp_chi)
         end if
       end if
       if (.not. ndpp_chi_p) then
-        if (allocated(nuc % ndpp_chi_p_Ein)) then
-          deallocate(nuc % ndpp_chi_p_Ein)
+        if (allocated(nuc % ndpp_chi_p)) then
           deallocate(nuc % ndpp_chi_p)
         end if
       end if
       if (.not. ndpp_chi_d) then
-        if (allocated(nuc % ndpp_chi_d_Ein)) then
-          deallocate(nuc % ndpp_chi_d_Ein)
+        if (allocated(nuc % ndpp_chi_d)) then
           deallocate(nuc % ndpp_chi_d)
+        end if
+      end if
+      if ((.not. ndpp_chi) .and. (.not. ndpp_chi_p) .and. (.not. ndpp_chi_d)) then
+        if (allocated(nuc % ndpp_chi_Ein)) then
+          deallocate(nuc % ndpp_chi_Ein)
         end if
       end if
     end if

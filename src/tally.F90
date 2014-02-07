@@ -2765,15 +2765,15 @@ contains
 
     ! Set up pointers
     nuc => nuclides(i_nuclide)
+    chi_Ein => nuc % ndpp_chi_Ein
     if (score_type == SCORE_NDPP_CHI) then
-      chi_Ein => nuc % ndpp_chi_Ein
       chi => nuc % ndpp_chi
     else if (score_type == SCORE_NDPP_CHI_P) then
-      chi_Ein => nuc % ndpp_chi_P_Ein
       chi => nuc % ndpp_chi_p
     else if (score_type == SCORE_NDPP_CHI_D) then
-      chi_Ein => nuc % ndpp_chi_d_Ein
-      chi => nuc % ndpp_chi_d
+      message = "OpenMC does not yet support Chi-Delayed Tallying!"
+      call fatal_error()
+      !chi => nuc % ndpp_chi_d
     end if
 
     if (.not. nuc % fissionable) then

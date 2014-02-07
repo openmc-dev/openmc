@@ -385,7 +385,7 @@ contains
 
             j = j + t % scatt_order(j)
             cycle SCORE_LOOP ! Skip the others to save cycles
-          CASE (SCORE_NDPP_CHI)
+          CASE (SCORE_NDPP_CHI, SCORE_NDPP_CHI_P, SCORE_NDPP_CHI_D)
             ! Check that the group structure matches
             i_filter = t % find_filter(FILTER_ENERGYOUT)
             if (t % filters(i_filter) % n_bins /= ndpp_groups) then

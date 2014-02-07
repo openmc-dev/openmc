@@ -13,6 +13,7 @@ COMPILER = gnu
 DEBUG    = no
 PROFILE  = no
 OPTIMIZE = no
+NATIVE   = no
 MPI      = no
 OPENMP   = no
 HDF5     = no
@@ -59,6 +60,11 @@ ifeq ($(COMPILER),gnu)
   ifeq ($(OPTIMIZE),yes)
     F90FLAGS += -O3
   endif
+
+  # Native machine compilarion
+  ifeq ($(NATIVE), yes)
+  	F90FLAGS += -march=native -mtune=native
+  endif
 endif
 
 #===============================================================================
@@ -85,6 +91,11 @@ ifeq ($(COMPILER),intel)
   # Optimization
   ifeq ($(OPTIMIZE),yes)
     F90FLAGS += -O3
+  endif
+
+  # Native machine compilarion
+  ifeq ($(NATIVE), yes)
+  	F90FLAGS += -xHost -march=native -mtune=native
   endif
 endif
 
@@ -271,7 +282,7 @@ neat:
 #===============================================================================
 
 .SUFFIXES: .F90 .o
-.PHONY: all xml install uninstall clean neat distclean 
+.PHONY: all xml install uninstall clean neat distclean
 
 %.o: %.F90
 	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml/include -c $<

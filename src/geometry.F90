@@ -132,13 +132,14 @@ contains
     integer,        optional      :: search_cells(:)
 
     integer :: i                       ! index over cells
-    integer :: i_x, i_y, i_z, i_a      ! indices in lattice
+    integer :: i_x, i_y, i_z, i_alpha  ! indices in lattice
     integer :: n_x, n_y, n_z, n_rings  ! size of lattice
     integer :: n                       ! number of cells to search
     integer :: index_cell              ! index in cells array
     real(8) :: xyz(3)                  ! temporary location
-    real(8) :: x_rem, y_rem            ! location remainder
-    real(8) :: a, b, a_rem, b_rem      ! skewed location and remander
+    real(8) :: x_rem, y_rem            ! location remainders
+    real(8) :: alpha, alpha_rem        ! skewed location and remainder
+    real(8) :: beta, beta_rem          ! skewed location and remainder
     real(8) :: upper_right(3)          ! lattice upper_right
     logical :: use_search_cells        ! use cells provided as argument
     logical :: outside_lattice         ! if particle not inside lattice bounds
@@ -248,88 +249,90 @@ contains
 
           else
             ! Lattice is hexagonal.
-            ! Convert coordinates into skewed bases.  The (x, a) basis is used
-            ! to find the index of the particle coordinates to within 4 cells.
-            ! The (b, y) basis is used to pick the right cell from the set of 4.
+            ! Convert coordinates into skewed bases.  The (x, alpha) basis is
+            ! used to find the index of the particle coordinates to within 4
+            ! cells.  The (b, y) basis is used to pick the correct cell from the
+            ! set of 4.
             xyz = p % coord % xyz + TINY_BIT * p % coord % uvw
-            a = xyz(2) - xyz(1) / sqrt(3.0)
+            alpha = xyz(2) - xyz(1) / sqrt(3.0)
             i_x = floor(xyz(1) / (sqrt(3.0) * lat % width(1)))
             x_rem = modulo(xyz(1), sqrt(3.0) * lat % width(1))
-            i_a = floor(a / (2.0 * lat % width(1)))
-            a_rem = modulo(a, 2.0 * lat % width(1))
-            y_rem = a_rem + x_rem/sqrt(3.0)
-            b_rem = y_rem/2.0 + sqrt(3.0)*x_rem/2.0
+            i_alpha = floor(alpha / (2.0 * lat % width(1)))
+            alpha_rem = modulo(alpha, 2.0 * lat % width(1))
+            y_rem = alpha_rem + x_rem/sqrt(3.0)
+            beta_rem = y_rem/2.0 + sqrt(3.0)*x_rem/2.0
             n_rings = lat % dimension(1)
 
-            ! Add offset to indecies (the center cell is (i_x, i_a) = (0, 0) but
-            ! the array is offset so that the indecies never go below 1).
+            ! Add offset to indecies (the center cell is (i_x, i_alpha) = (0, 0)
+            ! but the array is offset so that the indecies never go below 1).
             i_x = i_x + n_rings
-            i_a = i_a + n_rings
+            i_alpha = i_alpha + n_rings
 
             ! Check for when particle is on lattice edge.
-            ! Check (i_x, i_a)-(i_x + 1, i_a) border.
-            if (valid_hex_lat_index(lat, i_x, i_a, 1) &
-                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_a, 1)) then
+            ! Check (i_x, i_alpha)-(i_x + 1, i_alpha) border.
+            if (valid_hex_lat_index(lat, i_x, i_alpha, 1) &
+                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_alpha, 1)) then
               if (y_rem < lat % width(1) + FP_COINCIDENT &
-                   &.and. abs(b_rem - lat % width(1)) < FP_COINCIDENT) then
+                   &.and. abs(beta_rem - lat % width(1)) < FP_COINCIDENT) then
                 lattice_edge = .true.
               end if
             end if
 
-            ! Check (i_x, i_a)-(i_x, i_a + 1) border.
-            if (valid_hex_lat_index(lat, i_x, i_a, 1) &
-                 &.neqv. valid_hex_lat_index(lat, i_x, i_a + 1, 1)) then
+            ! Check (i_x, i_alpha)-(i_x, i_alpha + 1) border.
+            if (valid_hex_lat_index(lat, i_x, i_alpha, 1) &
+                 &.neqv. valid_hex_lat_index(lat, i_x, i_alpha + 1, 1)) then
               if (abs(y_rem - lat % width(1)) < FP_COINCIDENT &
-                   &.and. b_rem < lat % width(1) + FP_COINCIDENT) then
+                   &.and. beta_rem < lat % width(1) + FP_COINCIDENT) then
                 lattice_edge = .true.
               end if
             end if
 
-            ! Check (i_x, i_a + 1)-(i_x + 1, i_a) border.
-            if (valid_hex_lat_index(lat, i_x, i_a + 1, 1) &
-                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_a, 1)) then
+            ! Check (i_x, i_alpha + 1)-(i_x + 1, i_alpha) border.
+            if (valid_hex_lat_index(lat, i_x, i_alpha + 1, 1) &
+                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_alpha, 1)) then
               if (y_rem > lat % width(1) - FP_COINCIDENT &
                    &.and. y_rem < 2 * lat % width(1) + FP_COINCIDENT &
-                   &.and. abs(y_rem - b_rem) < FP_COINCIDENT) then
+                   &.and. abs(y_rem - beta_rem) < FP_COINCIDENT) then
                 lattice_edge = .true.
               end if
             end if
 
-            ! Check (i_x, i_a + 1)-(i_x + 1, i_a + 1) border.
-            if (valid_hex_lat_index(lat, i_x, i_a + 1, 1) &
-                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_a + 1, 1)) then
+            ! Check (i_x, i_alpha + 1)-(i_x + 1, i_alpha + 1) border.
+            if (valid_hex_lat_index(lat, i_x, i_alpha + 1, 1) &
+                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_alpha + 1, 1)) then
               if (y_rem > 2 * lat % width(1) - FP_COINCIDENT &
-                   &.and. abs(b_rem - 2 * lat % width(1)) < FP_COINCIDENT) then
+                   &.and. abs(beta_rem - 2 * lat % width(1)) < FP_COINCIDENT) &
+                   &then
                 lattice_edge = .true.
               end if
             end if
 
-            ! Check (i_x + 1, i_a)-(i_x + 1, i_a + 1) border.
-            if (valid_hex_lat_index(lat, i_x + 1, i_a, 1) &
-                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_a + 1, 1)) then
+            ! Check (i_x + 1, i_alpha)-(i_x + 1, i_alpha + 1) border.
+            if (valid_hex_lat_index(lat, i_x + 1, i_alpha, 1) &
+                 &.neqv. valid_hex_lat_index(lat, i_x + 1, i_alpha + 1, 1)) then
               if (abs(y_rem - 2 * lat % width(1)) < FP_COINCIDENT &
-                   &.and. b_rem > 2 * lat % width(1) - FP_COINCIDENT) then
+                   &.and. beta_rem > 2 * lat % width(1) - FP_COINCIDENT) then
                 lattice_edge = .true.
               end if
             end if
 
-            ! Fix indexing based on (b, y) remainder values.
+            ! Fix indexing based on (beta, y) remainder values.
             if (y_rem < lat % width(1)) then
-              if (b_rem > lat % width(1)) then
+              if (beta_rem > lat % width(1)) then
                 i_x = i_x + 1
               end if
             else if (y_rem < 2 * lat % width(1)) then
-              if (y_rem > b_rem) then
-                i_a = i_a + 1
+              if (y_rem > beta_rem) then
+                i_alpha = i_alpha + 1
               else
                 i_x = i_x + 1
               end if
             else
-              if (b_rem < 2 * lat % width(1)) then
-                i_a = i_a + 1
+              if (beta_rem < 2 * lat % width(1)) then
+                i_alpha = i_alpha + 1
               else
                 i_x = i_x + 1
-                i_a = i_a + 1
+                i_alpha = i_alpha + 1
               end if
             end if
 
@@ -401,7 +404,7 @@ contains
 
           else
             ! Lattice is hexagonal.  Check for when particle is on lattice edge.
-            if (.not. valid_hex_lat_index(lat, i_x, i_a, i_z)) then
+            if (.not. valid_hex_lat_index(lat, i_x, i_alpha, i_z)) then
 
               ! Lattice edge checking for the x-y plane happened when the xyz
               ! was indexed.  Now check the z axis.
@@ -490,7 +493,7 @@ contains
                    &+ sqrt(3.0) * (i_x - n_rings) * lat % width(1))
               p % coord % next % xyz(2) = p % coord % xyz(2) - &
                    &(lat % lower_left(2) &
-                   &+ 2 * (i_a - n_rings) * lat % width(1) &
+                   &+ 2 * (i_alpha - n_rings) * lat % width(1) &
                    &+ (i_x - n_rings) * lat % width(1))
               if (lat % n_dimension == 3) then
                 p % coord % next % xyz(3) = p % coord % xyz(3) - &
@@ -503,10 +506,10 @@ contains
               ! set particle lattice indices
               p % coord % next% lattice   = c % fill
               p % coord % next% lattice_x = i_x
-              p % coord % next% lattice_y = i_a
+              p % coord % next% lattice_y = i_alpha
               p % coord % next% lattice_z = i_z
               if (.not. outside_lattice) then
-                p % coord % next % universe = lat % universes(i_x,i_a,i_z)
+                p % coord % next % universe = lat % universes(i_x, i_alpha, i_z)
               else
 
                 ! Set universe as the same for subsequent calls to find_cell
@@ -873,10 +876,12 @@ contains
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: lattice_translation(3)
 
-    integer :: i_x, i_y, i_z ! indices in lattice
-    integer :: n_x, n_y, n_z ! size of lattice
-    real(8) :: x0, y0, z0    ! half width of lattice element
-    logical :: found         ! particle found in cell?
+    integer :: i_x, i_y, i_z  ! indices in lattice
+    integer :: n_x, n_y, n_z  ! size of lattice
+    real(8) :: x0, y0, z0     ! half width of lattice element
+    real(8) :: half_pitch     ! half pitch of a hexagonal lattice
+    logical :: out_of_lattice ! particle still in lattice?
+    logical :: found          ! particle found in cell?
     type(Lattice), pointer, save :: lat => null()
 !$omp threadprivate(lat)
 
@@ -905,27 +910,53 @@ contains
         p % coord % lattice_y = p % coord % lattice_y + lattice_translation(2)
       end if
       if (lat % n_dimension == 3 .and. lattice_translation(3) /= 0) then
-        p % coord % lattice_z = p % coord % lattice_z + lattice_translation(3)
         p % coord % xyz(3) = -lattice_translation(3) * z0
+        p % coord % lattice_z = p % coord % lattice_z + lattice_translation(3)
       end if
 
     elseif (lat % type == LATTICE_HEX) then
-      ! TODO: Add hex lattice support
+      half_pitch = lat % width(1)
+      if (lat % n_dimension == 2) z0 = lat % width(2) * 0.5_8
+
+      ! Move particle to correct cell and adjust coordinates.
+      if (lattice_translation(1) /= 0) then
+        p % coord % xyz(1) = p % coord % xyz(1) - lattice_translation(1) &
+            &* half_pitch * sqrt(3.0)
+        p % coord % xyz(2) = p % coord % xyz(2) - lattice_translation(1) &
+            &* half_pitch
+        p % coord % lattice_x = p % coord % lattice_x + lattice_translation(1)
+      end if
+      if (lattice_translation(2) /= 0) then
+        p % coord % xyz(2) = p % coord % xyz(2) - lattice_translation(2) &
+            &* half_pitch * 2
+        p % coord % lattice_y = p % coord % lattice_y + lattice_translation(2)
+      end if
+      if (lat % n_dimension == 2 .and. lattice_translation(3) /= 0) then
+        p % coord % xyz(3) = -lattice_translation(3) * z0
+        p % coord % lattice_z = p % coord % lattice_z + lattice_translation(3)
+      end if
     end if
 
     ! Check to make sure still in lattice
+    out_of_lattice = .false.
     i_x = p % coord % lattice_x
     i_y = p % coord % lattice_y
     i_z = p % coord % lattice_z
-    n_x = lat % dimension(1)
-    n_y = lat % dimension(2)
-    if (lat % n_dimension == 3) then
-      n_z = lat % dimension(3)
-    else
-      n_z = 1
+    if (lat % type == LATTICE_RECT) then
+      n_x = lat % dimension(1)
+      n_y = lat % dimension(2)
+      if (lat % n_dimension == 3) then
+        n_z = lat % dimension(3)
+      else
+        n_z = 1
+      end if
+      if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
+           i_z < 1 .or. i_z > n_z) out_of_lattice = .true.
+    else if (lat % type == LATTICE_HEX) then
+      if (.not. valid_hex_lat_index(lat, i_x, i_y, i_z)) out_of_lattice = .true.
     end if
-    if (i_x < 1 .or. i_x > n_x .or. i_y < 1 .or. i_y > n_y .or. &
-         i_z < 1 .or. i_z > n_z) then
+
+    if (out_of_lattice) then
       call deallocate_coord(p % coord0 % next)
       p % coord => p % coord0
 
@@ -944,9 +975,9 @@ contains
       ! Find cell in next lattice element
       call find_cell(p, found)
       if (.not. found) then
-        ! In some circumstances, a particle crossing the corner of a cell may not
-        ! be able to be found in the next universe. In this scenario we cut off
-        ! all lower-level coordinates and search from universe zero
+        ! In some circumstances, a particle crossing the corner of a cell may
+        ! not be able to be found in the next universe. In this scenario we cut
+        ! off all lower-level coordinates and search from universe zero
 
         ! Remove lower coordinates
         call deallocate_coord(p % coord0 % next)
@@ -978,17 +1009,22 @@ contains
     integer,        intent(out)   :: surface_crossed
     integer,        intent(out)   :: lattice_translation(3)
 
-    integer :: i            ! index for surface in cell
-    integer :: index_surf   ! index in surfaces array (with sign)
-    real(8) :: x,y,z        ! particle coordinates
-    real(8) :: u,v,w        ! particle directions
-    real(8) :: d            ! evaluated distance
-    real(8) :: x0,y0,z0     ! coefficients for surface
-    real(8) :: r            ! radius for quadratic surfaces
-    real(8) :: tmp          ! dot product of surface normal with direction
-    real(8) :: a,b,c,k      ! quadratic equation coefficients
-    real(8) :: quad         ! discriminant of quadratic equation
-    logical :: on_surface   ! is particle on surface?
+    integer :: i                 ! index for surface in cell
+    integer :: index_surf        ! index in surfaces array (with sign)
+    real(8) :: x,y,z             ! particle coordinates
+    real(8) :: alpha, beta, gama ! skewed particle coordiantes
+    real(8) :: u,v,w             ! particle directions
+    real(8) :: alpha_dir         ! skewed particle direction
+    real(8) :: beta_dir          ! skewed particle direction
+    real(8) :: gama_dir          ! skewed particle direction
+    real(8) :: edge              ! distance to oncoming edge
+    real(8) :: d                 ! evaluated distance
+    real(8) :: x0,y0,z0          ! coefficients for surface
+    real(8) :: r                 ! radius for quadratic surfaces
+    real(8) :: tmp               ! dot product of surface normal with direction
+    real(8) :: a,b,c,k           ! quadratic equation coefficients
+    real(8) :: quad              ! discriminant of quadratic equation
+    logical :: on_surface        ! is particle on surface?
     type(Cell),       pointer, save :: cl => null()
     type(Surface),    pointer, save :: surf => null()
     type(Lattice),    pointer, save :: lat => null()
@@ -1533,77 +1569,107 @@ contains
           end if
 
         elseif (lat % type == LATTICE_HEX) then
-!          ! Copy local coordinates.
-!          x = coord % xyz(1)
-!          y = coord % xyz(2)
-!          z = coord % xyz(3)
-!
-!          ! Compute skewed coordinates and velocities.
-!          b = y/2.0 + sqrt(3.0)*x/2.0
-!          v_b = v/2.0 - sqrt(3.0)*u/2.0
-!
-!          ! Upper right and lower left sides.
-!          edge = sign(lat % width(1), v_b)
-!          if (abs(b - edge) < FP_PRECISION) then
-!            d = INFINITY
-!          else if (v_b == ZERO) then
-!            d = INFINITY
-!          else
-!            d = (edge - b)/v_b
-!
-!          if (d < dist) then
-!            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
-!              dist = d
-!              if (v_b > 0) then
-!                lattice_translation = (/1, 0, 0/)
-!              else
-!                lattice_translation = (/-1, 0, 0/)
-!              end if
-!              final_coord => coord
-!            end if
-!          end if
-!
-!          ! Lower right and upper left sides.
-!          edge = sign(lat % width(1), v_b)
-!          if (abs(b - edge) < FP_PRECISION) then
-!            d = INFINITY
-!          else if (v_b == ZERO) then
-!            d = INFINITY
-!          else
-!            d = (edge - b)/v_b
-!
-!          if (d < dist) then
-!            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
-!              dist = d
-!              if (v_b > 0) then
-!                lattice_translation = (/1, 0, 0/)
-!              else
-!                lattice_translation = (/-1, 0, 0/)
-!              end if
-!              final_coord => coord
-!            end if
-!
-!          ! Upper and lower sides.
-!          edge = sign(lat % width(1), v)
-!          if (abs(y - edge) < FP_PRECISION) then
-!            d = INFINITY
-!          else if (v == ZERO) then
-!            d = INFINITY
-!          else
-!            d = (edge - y)/v
-!
-!          if (d < dist) then
-!            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
-!              dist = d
-!              if (v > 0) then
-!                lattice_translation = (/0, 1, 0/)
-!              else
-!                lattice_translation = (/0, -1, 0/)
-!              end if
-!              final_coord => coord
-!            end if
-!          end if
-!          ! Top and bottom sides.
+          ! Copy local coordinates.
+          x = coord % xyz(1)
+          y = coord % xyz(2)
+          z = coord % xyz(3)
+
+          ! Compute skewed coordinates and velocities.
+          beta = y/2.0 + sqrt(3.0)*x/2.0
+          beta_dir = v/2.0 + sqrt(3.0)*u/2.0
+          gama = -y/2.0 + sqrt(3.0)*x/2.0
+          gama_dir = -v/2.0 + sqrt(3.0)*u/2.0
+
+          ! Upper right and lower left sides.
+          edge = sign(lat % width(1), beta_dir)  ! Oncoming edge
+          if (abs(beta - edge) < FP_PRECISION) then
+            d = INFINITY
+          else if (beta_dir == ZERO) then
+            d = INFINITY
+          else
+            d = (edge - beta)/beta_dir
+          end if
+
+          if (d < dist) then
+            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+              dist = d
+              if (beta_dir > 0) then
+                lattice_translation = (/1, 0, 0/)
+              else
+                lattice_translation = (/-1, 0, 0/)
+              end if
+              final_coord => coord
+            end if
+          end if
+
+          ! Lower right and upper left sides.
+          edge = sign(lat % width(1), gama_dir)  ! Oncoming edge
+          if (abs(gama - edge) < FP_PRECISION) then
+            d = INFINITY
+          else if (gama_dir == ZERO) then
+            d = INFINITY
+          else
+            d = (edge - gama)/gama_dir
+          end if
+
+          if (d < dist) then
+            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+              dist = d
+              if (gama_dir > 0) then
+                lattice_translation = (/1, -1, 0/)
+              else
+                lattice_translation = (/-1, 1, 0/)
+              end if
+              final_coord => coord
+            end if
+          end if
+
+          ! Upper and lower sides.
+          edge = sign(lat % width(1), v)  ! Oncoming edge
+          if (abs(y - edge) < FP_PRECISION) then
+            d = INFINITY
+          else if (v == ZERO) then
+            d = INFINITY
+          else
+            d = (edge - y)/v
+          end if
+
+          if (d < dist) then
+            if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+              dist = d
+              if (v > 0) then
+                lattice_translation = (/0, 1, 0/)
+              else
+                lattice_translation = (/0, -1, 0/)
+              end if
+              final_coord => coord
+            end if
+          end if
+
+          ! Top and bottom sides.
+          if (lat % n_dimension == 2) then
+            z0 = sign(lat % width(3) * 0.5_8, w)
+
+            if (abs(z - z0) < FP_PRECISION) then
+              d = INFINITY
+            elseif (w == ZERO) then
+              d = INFINITY
+            else
+              d = (z0 - z)/w
+            end if
+
+            if (d < dist) then
+              if (abs(d - dist)/dist >= FP_REL_PRECISION) then
+                dist = d
+                if (w > 0) then
+                  lattice_translation = (/ 0, 0, 1 /)
+                else
+                  lattice_translation = (/ 0, 0, -1 /)
+                end if
+                final_coord => coord
+              end if
+            end if
+          end if
         end if
       end if
 

@@ -2793,12 +2793,12 @@ contains
         (chi_Ein(i_grid + 1) - chi_Ein(i_grid))
     end if
 
-    ! Calculate 1-f, and apply mult
-    one_f = (ONE - f) * mult
-    f = f * mult
-    if (.not. is_analog) then
-      f = f * micro_xs(i_nuclide) % fission
-      one_f = one_f * micro_xs(i_nuclide) % fission
+    ! Calculate 1-f, apply mult, and weight by nu-fission
+    one_f = (ONE - f) * mult * micro_xs(i_nuclide) % nu_fission
+    f = f * mult * micro_xs(i_nuclide) % nu_fission
+    if (.not. is_analog) then  ! Weight only by nu
+      f = f / micro_xs(i_nuclide) % fission
+      one_f = one_f / micro_xs(i_nuclide) % fission
     end if
 
     ! Add the contribution from NDPP data (with interpolation)

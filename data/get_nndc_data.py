@@ -2,7 +2,8 @@
 
 from __future__ import print_function
 import os
-import os.path
+import shutil
+import subprocess
 import tarfile
 import urllib2
 
@@ -31,6 +32,7 @@ for f in files:
     if os.path.exists(f):
         if os.path.getsize(f) == file_size:
             print('Skipping ' + f)
+            filesComplete.append(f)
             continue
         else:
             overwrite = raw_input('Overwrite {0}? ([y]/n) '.format(f))
@@ -58,10 +60,13 @@ for f in files:
         continue
 
     # Extract files
+    suffix = f[f.rindex('-') + 1:].rstrip('.tar.gz')
     with tarfile.open(f, 'r') as tgz:
-        tgz.extractall(path='nndc')
+        print('Extracting {0}...'.format(f))
+        tgz.extractall(path='nndc/' + suffix)
 
-    # Give xsdir a unique name
-    xsdir = 'nndc/xsdir'
-    if os.path.exists(xsdir):
-        os.rename(xsdir, xsdir + '_' + f.strip('.tar.gz'))
+# ==============================================================================
+# COPY CROSS_SECTIONS.XML
+
+print('Copying cross_sections_nndc.xml...')
+shutil.copyfile('cross_sections_nndc.xml', 'nndc/cross_sections.xml')

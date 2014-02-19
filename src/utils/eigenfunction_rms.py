@@ -1,11 +1,13 @@
-#!/usr/bin/python2
-# Filename: eigenfunction_rms.py
+#!/usr/bin/env python
 
-# import packages
-import statepoint
-import numpy as np
+from __future__ import print_function
+
 import os
 import sys
+
+import numpy as np
+
+import statepoint
 
 def main(tally_id, score_id, batch_start, batch_end, name):
 

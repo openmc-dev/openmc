@@ -6,7 +6,11 @@ import shutil
 import subprocess
 import sys
 import tarfile
-import urllib2
+
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
 
 baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',
@@ -23,7 +27,7 @@ filesComplete = []
 for f in files:
     # Establish connection to URL
     url = baseUrl + f
-    req = urllib2.urlopen(url)
+    req = urlopen(url)
 
     # Get file size from header
     file_size = int(req.info().getheaders('Content-Length')[0])
@@ -36,7 +40,10 @@ for f in files:
             filesComplete.append(f)
             continue
         else:
-            overwrite = raw_input('Overwrite {0}? ([y]/n) '.format(f))
+            if sys.version_info[0] < 3:
+                overwrite = raw_input('Overwrite {0}? ([y]/n) '.format(f))
+            else:
+                overwrite = input('Overwrite {0}? ([y]/n) '.format(f))
             if overwrite.lower().startswith('n'):
                 continue
 

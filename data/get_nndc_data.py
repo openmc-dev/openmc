@@ -4,6 +4,7 @@ from __future__ import print_function
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
 import urllib2
 
@@ -70,3 +71,19 @@ for f in files:
 
 print('Copying cross_sections_nndc.xml...')
 shutil.copyfile('cross_sections_nndc.xml', 'nndc/cross_sections.xml')
+
+# ==============================================================================
+# PROMPT USER TO DELETE .TAR.GZ FILES
+
+# Ask user to delete
+if sys.version_info[0] < 3:
+    response = raw_input('Delete *.tar.gz files? ([y]/n) ')
+else:
+    response = input('Delete *.tar.gz files? ([y]/n) ')
+
+# Delete files if requested
+if not response or response.lower().startswith('y'):
+    for f in files:
+        if os.path.exists(f):
+            print('Removing {0}...'.format(f))
+            os.remove(f)

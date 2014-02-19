@@ -1,4 +1,6 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
+
+from __future__ import print_function
 
 import sys
 import os
@@ -36,7 +38,7 @@ for sourceFile in source:
         commentChar = '!'
     elif ending == 'F90':
         commentChar = '!'
-    
+
     for line in open(sourceFile, 'r'):
         line = line.strip()
         if line.startswith(commentChar):

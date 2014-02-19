@@ -1,4 +1,6 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
+
+from __future__ import print_function
 
 import glob
 import re
@@ -17,7 +19,6 @@ for src in glob.iglob('*.F90'):
         deps.add(name)
     if deps:
         dependencies[module] = sorted(list(deps))
-
 
 for module in sorted(dependencies.keys()):
     for dep in dependencies[module]:

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 # This program takes OpenMC statepoint binary files and creates a variety of
 # outputs from them which should provide the user with an idea of the
@@ -15,6 +15,7 @@
 # fileType, printxs, showImg, and savetoCSV.  See the options block for more 
 # information.
 
+from __future__ import print_function
 from math import sqrt, pow
 from glob import glob
 

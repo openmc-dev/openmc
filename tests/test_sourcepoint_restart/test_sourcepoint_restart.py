@@ -126,7 +126,7 @@ def test_results_serial():
 
 def teardown():
     output = glob.glob(pwd + '/statepoint.7.*')
-    output += glob.glob(pwd + '/sourcepoint.7.*')
+    output += glob.glob(pwd + '/source.7.*')
     output.append(pwd + '/results_test.dat')
     for f in output:
         if os.path.exists(f):

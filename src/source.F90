@@ -29,7 +29,7 @@ contains
 
     integer(8) :: i          ! loop index over bank sites
     integer(8) :: id         ! particle id
-    integer(8) :: itmp       ! temporary integer
+    integer(4) :: itmp       ! temporary integer
     type(Bank), pointer :: src => null() ! source bank site
     type(BinaryOutput) :: sp ! statepoint/source binary file
 

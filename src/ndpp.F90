@@ -55,7 +55,7 @@ contains
       i_listing = ndpp_listing_dict % get_key(adjustl(trim(sab % name)))
       if (i_listing == DICT_NULL) then
         ! Could not find ndpp_lib.xml file
-        message = trim(nuc % name) // " does not exist in NDPP XML file: '" // &
+        message = trim(sab % name) // " does not exist in NDPP XML file: '" // &
                   trim(ndpp_lib) // "'!"
         call fatal_error()
       end if

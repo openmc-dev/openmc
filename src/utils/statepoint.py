@@ -7,8 +7,9 @@ from collections import OrderedDict
 import numpy as np
 import scipy.stats
 
-filter_types = {1: 'universe', 2: 'material', 3: 'cell', 4: 'cellborn',
-                5: 'surface', 6: 'mesh', 7: 'energyin', 8: 'energyout'}
+filter_types = {1: 'universe', 2: 'material', 3: 'cell', 
+                4: 'cellborn', 5: 'surface', 6: 'mesh', 
+                7: 'energyin', 8: 'energyout', 9: 'distribcell'}
 
 score_types = {-1: 'flux', 
                 -2: 'total',
@@ -122,6 +123,48 @@ class SourceSite(object):
     def __repr__(self):
         return "<SourceSite: xyz={0} at E={1}>".format(self.xyz, self.E)
 
+class Geometry_Data(object):
+    def __init__(self):
+        self.univ = []
+        self.cell = []
+        self.lat  = []
+        self.n_cells = 0
+        self.n_lattices = 0
+        self.n_universes = 0
+
+    """ This method will take a path from the base universe to some final target 
+     and will return the corresponding location in the results array.
+     Arguments:
+     path -> A list of IDs that form the path to the target. It should begin with 0
+     for the base universe, and should cover every universe, cell, and lattice passed through.
+     For the case of the lattice, a tuple should be provided to indicate which coordinates
+     in the lattice should be entered.
+    """
+    def _get_offset(self, path, n_filter):
+        raise NotImplementedError()
+
+class Universe(object):
+    def __init__(self, ID, cells):
+        self.ID = ID
+        self.cells = cells
+
+class Cell(object):
+    def __init__(self, ID, userID, filltype, offset):
+        self.ID = ID
+        self.userID = userID
+        self.filltype = filltype
+        self.offset = offset
+        self.material = -1
+
+    def _set_material(self, material):
+        self.material = material
+
+class Lattice(object):
+    def __init__(self, ID, fill, offset, dim):
+        self.ID = ID
+        self.fill = fill
+        self.offset = offset
+        self.dim = dim
 
 class StatePoint(object):
     def __init__(self, filename):
@@ -211,6 +254,56 @@ class StatePoint(object):
                                       path='cmfd/cmfd_dominance')
                 self.cmfd_srccmp = self._get_double(self.current_batch,
                                    path='cmfd/cmfd_srccmp')
+
+
+        # Read geometry information
+        self.geom = Geometry_Data()
+        self.geom.n_cells = self._get_int(path='geometry/n_cells')[0]
+        self.geom.n_lattices = self._get_int(path='geometry/n_lattices')[0]
+        self.geom.n_universes = self._get_int(path='geometry/n_universes')[0]
+
+        univList = self._get_int(path='geometry/universe_ids')
+        latticeList = self._get_int(path='geometry/lattice_ids')
+        cellList = self._get_int(path='geometry/cell_ids') # OpenMC IDs
+        cellKeys = self._get_int(path='geometry/cell_keys') # User Inputs
+
+        # Build list of universes
+        base = 'geometry/universes/universe '
+        for i in range(self.geom.n_universes):
+          self.geom.univ.append(Universe(univList[i],self._get_int(path=base + str(univList[i])+'/cells')))
+
+        # Build list of lattices
+        base = 'geometry/lattices/lattice '
+        for i in range(self.geom.n_lattices):
+          dim = self._get_int(path=base + str(latticeList[i])+'/dimension')
+          path = path=base + str(latticeList[i])+'/offset'
+          data = self._f[path].value
+          offset = data    
+          path = path=base + str(latticeList[i])+'/universes'
+          data = self._f[path].value
+          fill = data
+          self.geom.lat.append(Lattice(latticeList[i],fill, offset, dim))
+
+        #print(self.geom.lat[0].ID)
+        #print(self.geom.lat[0].fill)
+        #print(self.geom.lat[0].offset)
+        #print(self.geom.lat[0].dim)
+
+        # Build list of cells
+        base = 'geometry/cells/cell '
+        for i in range(self.geom.n_cells):
+          offset = self._get_int(path=base + str(cellKeys[i])+'/offset')
+          filltype = self._get_string(path=base + str(cellKeys[i])+'/fill_type')
+          self.geom.cell.append(Cell(cellList[i],cellKeys[i],filltype,offset))
+          if filltype == "['normal']":
+            material = self._get_int(path=base + str(cellKeys[i])+'/material')[0]
+            self.geom.cell[-1]._set_material(material)
+          #print(self.geom.cell[-1].ID)
+          #print(self.geom.cell[-1].userID)
+          #print(self.geom.cell[-1].filltype)
+          #print(self.geom.cell[-1].offset)
+          #print(self.geom.cell[-1].material)
+
 
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]

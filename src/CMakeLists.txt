@@ -212,3 +212,19 @@ if(PYTHONINTERP_FOUND)
                   COMMAND ${PYTHON_EXECUTABLE} setup.py install --user
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/utils)")
 endif()
+
+#===============================================================================
+# Regression tests
+#===============================================================================
+
+enable_testing()
+
+set(TESTS test_basic test_confidence_intervals)
+
+foreach(test ${TESTS})
+
+  add_test(NAME ${test} 
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../tests/${test}
+    COMMAND ${PYTHON_EXECUTABLE} ${test}.py --exe $<TARGET_FILE:openmc>)
+
+endforeach(test)

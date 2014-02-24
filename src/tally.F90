@@ -220,7 +220,7 @@ contains
 
             ! Score total rate - p1 scatter rate Note estimator needs to be
             ! adjusted since tallying is only occuring when a scatter has
-            ! happend. Effectively this means multiplying the estimator by
+            ! happened. Effectively this means multiplying the estimator by
             ! total/scatter macro
             score = (macro_total - mu*macro_scatt)*(ONE/macro_scatt)
 
@@ -281,11 +281,24 @@ contains
               ! calculate fraction of absorptions that would have resulted in
               ! nu-fission
 
-              if (micro_xs(p % event_nuclide) % absorption > ZERO) then
-                score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
-                     nu_fission / micro_xs(p % event_nuclide) % absorption
+              if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+                ! Normally, we only need to make contributions to one scoring
+                ! bin. However, in the case of fission, since multiple fission
+                ! neutrons were emitted with different energies, multiple
+                ! outgoing energy bins may have been scored to. The following
+                ! logic treats this special case and results to multiple bins
+
+                call score_fission_eout(p, t, score_index)
+                cycle SCORE_LOOP
+
               else
-                score = ZERO
+
+                if (micro_xs(p % event_nuclide) % absorption > ZERO) then
+                  score = p % absorb_wgt * micro_xs(p % event_nuclide) % &
+                       nu_fission / micro_xs(p % event_nuclide) % absorption
+                else
+                  score = ZERO
+                end if
               end if
 
             else
@@ -395,7 +408,7 @@ contains
     integer :: k             ! loop index for bank sites
     integer :: bin_energyout ! original outgoing energy bin
     integer :: i_filter      ! index for matching filter bin combination
-    real(8) :: score         ! actualy score
+    real(8) :: score         ! actual score
     real(8) :: E_out         ! energy of fission bank site
 
     ! save original outgoing energy bin and score index

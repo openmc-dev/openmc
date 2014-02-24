@@ -98,7 +98,11 @@ contains
     ! If survival biasing is being used, the following subroutine adjusts the
     ! weight of the particle. Otherwise, it checks to see if absorption occurs
 
-    call absorption(p, i_nuclide)
+    if (micro_xs(i_nuclide) % absorption > ZERO) then
+      call absorption(p, i_nuclide)
+    else
+      p % absorb_wgt = ZERO
+    end if
     if (.not. p % alive) return
 
     ! Play russian roulette if survival biasing is turned on

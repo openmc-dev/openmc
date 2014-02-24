@@ -26,15 +26,20 @@ endif()
 # MPI for distributed-memory parallelism / HDF5 for binary output
 #===============================================================================
 
+set(MPI_ENABLED FALSE)
 if($ENV{FC} MATCHES "mpi.*")
   message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DMPI)
+  set(MPI_ENABLED TRUE)
+  get_filename_component(MPI_DIR $ENV{FC} PATH) 
 elseif($ENV{FC} MATCHES "h5fc$")
   message("-- Detected HDF5 wrapper: $ENV{FC}")
   add_definitions(-DHDF5)
 elseif($ENV{FC} MATCHES "h5pfc$")
   message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
   add_definitions(-DMPI -DHDF5)
+  set(MPI_ENABLED TRUE)
+  get_filename_component(MPI_DIR $ENV{FC} PATH) 
 endif()
 
 #===============================================================================
@@ -217,14 +222,31 @@ endif()
 # Regression tests
 #===============================================================================
 
+# This allows mpi test to work
 enable_testing()
 
+# Get a list of all the tests to run
 set(TESTS test_basic test_confidence_intervals)
 
+# Loop through all the tests
 foreach(test ${TESTS})
 
-  add_test(NAME ${test} 
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../tests/${test}
-    COMMAND ${PYTHON_EXECUTABLE} ${test}.py --exe $<TARGET_FILE:openmc>)
+  # Check serial/parallel
+  if (${MPI_ENABLED})
+
+    # Preform a parallel test
+    add_test(NAME ${test} 
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../tests/${test}
+      COMMAND ${PYTHON_EXECUTABLE} ${test}.py --exe $<TARGET_FILE:openmc>
+      --mpi_exec ${MPI_DIR}/mpiexec)
+
+  else(${MPI_ENABLED})
+
+    # Perform a serial test
+    add_test(NAME ${test} 
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../tests/${test}
+      COMMAND ${PYTHON_EXECUTABLE} ${test}.py --exe $<TARGET_FILE:openmc>)
+
+  endif(${MPI_ENABLED})
 
 endforeach(test)

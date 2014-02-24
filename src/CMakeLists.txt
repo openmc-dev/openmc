@@ -227,6 +227,7 @@ enable_testing()
 
 # Get a list of all the tests to run
 set(TESTS test_basic test_confidence_intervals)
+#file(GLOB TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*)
 
 # Loop through all the tests
 foreach(test ${TESTS})

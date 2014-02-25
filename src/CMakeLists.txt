@@ -133,7 +133,9 @@ endif()
 # PETSc for CMFD functionality
 #===============================================================================
 
+set (PETSC_ENABLED FALSE)
 if(petsc)
+  set(PETSC_ENABLED TRUE)
   find_package(PETSc REQUIRED HINTS $ENV{PETSC_DIR}/conf)
   find_library(libpetsc petsc $ENV{PETSC_DIR}/lib)
 
@@ -226,27 +228,38 @@ endif()
 enable_testing()
 
 # Get a list of all the tests to run
-set(TESTS test_basic test_confidence_intervals)
-#file(GLOB TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*)
+file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*.py)
+
+# Check to see if PETSC is compiled for CMFD tests
+if (${PETSC_ENABLED} EQUAL FALSE)
+  file(GLOB_RECURSE CMFD_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_cmfd*.py)
+  foreach(cmfd_test in ${CMFD_TESTS})
+    list(REMOVE_ITEM TESTS ${cmfd_test})
+  endforeach(cmfd_test)
+endif(${PETSC_ENABLED} EQUAL FALSE)
 
 # Loop through all the tests
 foreach(test ${TESTS})
+
+  # Get test information
+  get_filename_component(TEST_NAME ${test} NAME)
+  get_filename_component(TEST_PATH ${test} PATH) 
 
   # Check serial/parallel
   if (${MPI_ENABLED})
 
     # Preform a parallel test
-    add_test(NAME ${test} 
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../tests/${test}
-      COMMAND ${PYTHON_EXECUTABLE} ${test}.py --exe $<TARGET_FILE:openmc>
+    add_test(NAME ${TEST_NAME} 
+      WORKING_DIRECTORY ${TEST_PATH} 
+      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
       --mpi_exec ${MPI_DIR}/mpiexec)
 
   else(${MPI_ENABLED})
 
     # Perform a serial test
-    add_test(NAME ${test} 
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../tests/${test}
-      COMMAND ${PYTHON_EXECUTABLE} ${test}.py --exe $<TARGET_FILE:openmc>)
+    add_test(NAME ${TEST_NAME} 
+      WORKING_DIRECTORY ${TEST_PATH}
+      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
 
   endif(${MPI_ENABLED})
 

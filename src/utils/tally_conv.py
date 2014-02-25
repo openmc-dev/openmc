@@ -40,6 +40,7 @@ showImg = False
 # Save to CSV for use in more advanced plotting programs like GNUPlot, MathGL
 savetoCSV = True
 
+usehdf5 = True
 ##################################### END USER OPTIONS
 
 ## Find if tallies.xml exists.
@@ -51,18 +52,22 @@ savetoCSV = True
 #    tallyData = None
 
 # Find all statepoints in this directory.
-files = glob('./statepoint.*.binary')
+if usehdf5:
+  ext = '.h5'
+else:
+  ext = '.binary'
+files = glob('./statepoint.*'+ext)
 fileNums = []
 begin = 13
 # Arrange the file list in increasing batch order
 for i in range(len(files)):
-    end = files[i].find(".binary")
+    end = files[i].find(ext)
     fileNums.append(int(files[i][begin:end]))
 fileNums.sort()
 # Re-make filenames
 files = []
 for i in range(len(fileNums)):
-    files.append("./statepoint." + str(fileNums[i]) + ".binary")
+    files.append("./statepoint." + str(fileNums[i]) + ext)
 
 # Initialize arrays as needed
 mean = [None for x in range(len(files))]
@@ -371,4 +376,3 @@ if savetoCSV:
             
             f.write(lineText + "\n")
     
-   

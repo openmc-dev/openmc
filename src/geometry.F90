@@ -1336,7 +1336,7 @@ contains
         ! Set cell on this level
         p % coord % cell = index_cell
         
-        if (c % id == goal) then
+        if (cell_dict % get_key(c % id) == goal) then
           found = .True.
         end if
         

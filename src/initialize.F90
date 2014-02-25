@@ -48,10 +48,6 @@ contains
 
   subroutine initialize_run()
   
-    integer :: i
-    integer :: cellid
-    type(Universe), pointer :: univ => null()
-
     ! Start total and initialization timer
     call time_total % start()
     call time_initialize % start()
@@ -876,39 +872,6 @@ contains
     end if
 
   end subroutine allocate_banks
-  
-
-!===============================================================================
-! PRINT_ALL prints the tally array index and coordinate chain for 
-! every normal cell.
-!===============================================================================
-
-  subroutine print_all(i_vec,univ)
-
-    integer, intent(in) :: i_vec(:)
-    type(Universe), pointer, intent(in) :: univ
-    
-    integer :: i                    ! index over cells
-    integer :: maxoffset            ! total number of normal cell instances
-    integer :: cellid               ! cellid to search for
-    integer :: offset               ! variable used for find_offset
-    integer :: n                    ! number of cells in universe 'n'
-    character(100) :: path          ! path to target
-
-    maxoffset = 0
-    ! all cells
-    cellid = -1
-    call count_target_univ(univ,cellid,maxoffset)
-    print *,'MAXOFFSET:',maxoffset
-    n = univ % n_cells
-    do i = 0, maxoffset-1
-      path = ''
-      offset = 0
-      !print *, 'target', i
-      !call find_offset(i_vec,univ,i,offset,path)            
-    end do
-        
-  end subroutine print_all
 
 !===============================================================================
 ! PREPARE_DISTRIBCELL initializes any distribcell filters present and sets the
@@ -922,7 +885,6 @@ contains
     integer :: n_words   ! number of bins in filter
     integer :: extra     ! number of extra filters to add
     integer :: n_filt    ! number of filters originally in tally
-    integer, allocatable :: int_bins_temp(:)
     integer, allocatable :: univ_list(:)
     type(TallyObject),    pointer :: t => null()
     type(TallyFilter),    allocatable :: filters(:)   ! Filter data (type/bins)
@@ -1028,13 +990,6 @@ contains
     call calc_offsets(univ_list(i),i,univ)
 
   end do
-  
-  allocate(int_bins_temp(n_cells))
-  print *,'n_cells:',n_cells
-  do i = 1, n_cells
-    int_bins_temp(i) = i
-  end do
-  call print_all(int_bins_temp,univ)
   
 end subroutine prepare_distribcell
 

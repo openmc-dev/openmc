@@ -2077,13 +2077,11 @@ contains
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
 
     n = univ % n_cells
-    print *,"GOAL:",goal
+    
     ! write to the geometry stack
     if (univ%id == 0) then
-      print *,'univ%id:',univ%id
       path = trim(path) // to_str(univ%id)
     else
-      print *,'univ%id:',univ%id
       path = trim(path) // "->" // to_str(univ%id)
     end if
     
@@ -2095,12 +2093,9 @@ contains
       ! get pointer to cell
       c => cells(index_cell)
       
-      print *,"c%id:",c%id
-      
       ! If the cell ID matches the goal and the offset matches final, we're done
       if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
         ! write to the geometry stack
-        print *,"Found target"
         path = trim(path) // "->" // to_str(c%id)
         return
       end if

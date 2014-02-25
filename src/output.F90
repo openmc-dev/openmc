@@ -2142,7 +2142,7 @@ contains
       ! get pointer to THIS cell because we
       ! know that the target is in this cell
       index_cell = univ % cells(i)
-      !print *,'Enter cell:',c%id
+      print *,'Enter cell:',c%id
       c => cells(index_cell)
       path = trim(path) // "->" // to_str(c%id)
       
@@ -2185,14 +2185,13 @@ contains
           n_z = 1
         end if
         ! Loop over lattice coordinates
-        !print *,"lat%offset:",lat%offset(ind,:,:,:)
+        print *,"lat%offset:",lat%offset(ind,:,:,:)
         do i_x = 1, n_x
           do i_y = 1, n_y
             do i_z = 1, n_z
               if (i_z == n_z .AND. i_y == n_y .AND. i_x == n_x) then
                 univ_next => universes(lat % universes(i_x,i_y,i_z))                          
               else
-
                 if (i_z + 1 <= n_z) then
                   latoffset = lat % offset(ind,i_x,i_y,i_z+1)
 
@@ -2203,15 +2202,15 @@ contains
                   latoffset = lat % offset(ind,i_x+1,1,1)
 
                 end if
-                !print *,"final:",final
-                !print *,"latoffset+offset:",latoffset+offset
-                !print *,"latoffset:",latoffset
+                print *,"final:",final
+                print *,"latoffset+offset:",latoffset+offset
+                print *,"latoffset:",latoffset
                 if (final >= latoffset + offset) then
                   cycle
                 end if      
                 
               end if
-              if (latoffset == offset) then
+              if (latoffset == offset .and. (i_x /= n_x .or. i_y /= n_y .or. i_z /= n_z)) then
                 cycle
               end if
               

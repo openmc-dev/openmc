@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import os
+import sys
 from subprocess import call 
 from collections import OrderedDict
 
@@ -57,16 +58,30 @@ class Test(object):
         os.environ['FC'] = self.fc
         rc = call(self.cmake)
         if rc != 0:
-            self.sucess = False
+            self.success = False
+
+    def run_make(self):
+        if not self.success:
+            return
+        rc = call(['make','-j', '-s','-C','build'])
+        if rc != 0:
+            self.success = False
+
+    def run_ctests(self):
+        if not self.success:
+            return
+        rc = call(['make','test','-C','build'])
+        if rc != 0:
+            self.success = False
 
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
              hdf5=False, petsc=False):
     tests.update({name:Test(debug, optimize, mpi, openmp, hdf5, petsc)})
 
 # List of tests
-add_test('normal')
-add_test('debug', debug=True)
-add_test('optimize', optimize=True)
+add_test('basic-normal')
+add_test('basic-debug', debug=True)
+add_test('basic-optimize', optimize=True)
 add_test('omp-normal', openmp=True)
 add_test('omp-debug', openmp=True, debug=True)
 add_test('omp-optimize', openmp=True, optimize=True)
@@ -98,9 +113,75 @@ add_test('omp-phdf5-petsc-normal', openmp=True, mpi=True, hdf5=True, petsc=True)
 add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, debug=True)
 add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
 
-# Call tests
+# Change to source directory and clean it up
 os.chdir('../src')
 call(['make','distclean'])
+
+# Process command line arguments
+if len(sys.argv) > 1:
+    flags = [i for i in sys.argv[1:] if i.startswith('-')]
+    tests_ = [i for i in sys.argv[1:] if not i.startswith('-')]
+
+    # Check for special subsets of tests
+    tests__ = []
+    for i in tests_:
+
+        # This checks for any subsets of tests. The string after
+        # all-XXXX will be used to search through all tests.
+        if i.startswith('all-'):
+            suffix = i.split('all-')[1]
+            for j in tests:
+                if j.rfind(suffix) != -1:
+                    try:
+                        tests__.index(j)
+                    except ValueError:
+                        tests__.append(j)
+
+        # Test name specified on command line
+        else:
+            try:
+                tests__.index(i)
+            except ValueError:
+                tests__.append(i)  # append specific test (e.g., mpi-debug)
+
+    # Delete items of dictionary that are not in tests__
+    for key in iter(tests):
+        try:
+            tests__.index(key)
+        except ValueError:
+            del tests[key]
+
+# Begin testing
 for test in iter(tests):
+    print('-'*(len(test) + 6))
+    print(test + ' tests')
+    print('-'*(len(test) + 6))
+
+
+    # Run CMAKE to configure build
     tests[test].run_cmake()
+
+    # Build OpenMC
+    tests[test].run_make()
+
+    # Run tests
+    tests[test].run_ctests()
+
+    # Clean up build
     call(['make','distclean'])
+
+# Print out summary of results
+print('\n' + '='*54)
+print('Summary of Compilation Option Testing:\n')
+
+OK = '\033[92m'
+FAIL = '\033[91m'
+ENDC = '\033[0m'
+BOLD = '\033[1m'
+
+for test in iter(tests):
+    print(test + '.'*(50 - len(test)), end='')
+    if tests[test].success:
+        print(BOLD + OK + '[OK]' + ENDC)
+    else:
+        print(BOLD + FAIL + '[FAILED]' + ENDC)

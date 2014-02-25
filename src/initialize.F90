@@ -1022,7 +1022,7 @@ contains
   
   call allocate_offsets()
   
-  call calc_offsets(n_cells+1,univ,-1)
+  call calc_offsets()
   
   allocate(int_bins_temp(n_cells))
   print *,'n_cells:',n_cells
@@ -1118,7 +1118,8 @@ end subroutine prepare_distribcell
       end if
     
     end do
-        
+    
+    print *,"A TOTAL OF: ",maps," MAPS WILL BE REQUIRED."    
   end subroutine allocate_offsets
 
 end module initialize

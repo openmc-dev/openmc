@@ -1642,12 +1642,9 @@ contains
             
             ! Allocate and store bins
             allocate(t % filters(j) % int_bins(n_words))
-            print *,"N_WORDS:",n_words
             do k = 1, n_words
               t % filters(j) % int_bins(k) = int(str_to_int(&
-                   tally_(i) % filter(j) % bins(k)),4)
-                   print *,int(str_to_int(&
-                   tally_(i) % filter(j) % bins(k)),4)
+                   tally_(i) % filter(j) % bins(k)),4)                   
             end do
             
           case ('cell')

@@ -6,7 +6,7 @@ module initialize
   use dict_header,      only: DictIntInt, ElemKeyValueII
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
-  use geometry,         only: neighbor_lists, count_target_univ, calc_offsets
+  use geometry,         only: neighbor_lists, count_instance, calc_offsets
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
@@ -914,44 +914,46 @@ contains
         
       end do
       
-      print *,"Adding: ",extra," extra filters to tally ",i
       
-      ! Allocate space for new filters      
-      allocate(filters(extra + t % n_filters))
-      ! Move old filters into the new array
-      call move_alloc(t % filters, filters)
+      if (extra > 0) then
       
-      ! Update the filter array with the new filters
-      t % n_filters = t % n_filters + extra
-      
-      k = n_filt + 1
-      do j = 1, n_filt
-   
-        if (filters(j) % type == FILTER_DISTRIBCELL) then
-          
-          n_words = size(filters(j) % int_bins)
-          
-          do l = 2, n_words
-            
-            ! Move int_bin(l) from filter j to filter k
-            filters(k) % type = FILTER_DISTRIBCELL
-            allocate(filters(k) % int_bins(1))
-            filters(k) % int_bins(1) = filters(j) % int_bins(l)
-          
-          end do
-          
-          ! Once all excess int_bins have been moved, shrink this filter
-          l = filters(j) % int_bins(1)
-          deallocate(filters(j) % int_bins)
-          allocate(filters(j) % int_bins(1))
-          filters(j) % int_bins(1) = l
-          
-        end if
+        ! Allocate space for new filters      
+        allocate(filters(extra + t % n_filters))
+        ! Move old filters into the new array
+        filters(1:n_filt) = t % filters
         
-      end do
+        ! Update the filter array with the new filters
+        t % n_filters = t % n_filters + extra
+        
+        k = n_filt + 1
+        do j = 1, n_filt
+     
+          if (filters(j) % type == FILTER_DISTRIBCELL) then
+            
+            n_words = size(filters(j) % int_bins)
+            
+            do l = 2, n_words
+              ! Move int_bin(l) from filter j to filter k            
+              filters(k) % type = FILTER_DISTRIBCELL
+              allocate(filters(k) % int_bins(1))
+              filters(k) % int_bins(1) = filters(j) % int_bins(l)
+              k = k + 1
+            end do
+            
+            ! Once all excess int_bins have been moved, shrink this filter
+            l = filters(j) % int_bins(1)
+            deallocate(filters(j) % int_bins)
+            allocate(filters(j) % int_bins(1))
+            filters(j) % int_bins(1) = l
+            
+          end if
+          
+        end do
       
       ! Move the tally filter array back into the real tally object
       call move_alloc(filters,t % filters)
+        
+      end if
       
       ! Now it's time to finally initialize the filters now
       ! that the tally filters array has been updated
@@ -964,15 +966,11 @@ contains
           l = 0
           univ => universes(BASE_UNIVERSE)
 
-          do k = 1, n_words
+          ! sum the number of occurrences of all cells requested
+          call count_instance(univ,t % filters(j) % int_bins(1),l)
 
-            ! sum the number of occurrences of all cells requested
-            call count_target_univ(univ,t % filters(j) % int_bins(k),l)
-
-          end do
-          ! Set number of bins           
+          ! Set number of bins      
           t % filters(j) % n_bins = l 
-          print *,'t % filters(j) % n_bins:',t % filters(j) % n_bins
 
         end if
     
@@ -1030,7 +1028,6 @@ end subroutine prepare_distribcell
           if (cell_list % has_key(tf % int_bins(1))) then
           
           else
-            print *,"ADDING KEY:",tf % int_bins(1)
             call cell_list % add_key(tf % int_bins(1),0)
           end if
         
@@ -1048,7 +1045,6 @@ end subroutine prepare_distribcell
       do j = 1, u % n_cells
       
         if (cell_list % has_key(u % cells(j))) then
-          print *,"FOUND A MATCH ON CELL:", u % cells(j)
           maps = maps + 1
           cycle
         end if
@@ -1085,7 +1081,6 @@ end subroutine prepare_distribcell
                   ! If this filter points to the cell we just found, set the 
                   ! offset index
                   if (tf % int_bins(1) == u % cells(j)) then
-                    print *,"Setting the offset of tf: ",m," to ",k
                     tf % offset = k
                   end if
                 
@@ -1126,7 +1121,6 @@ end subroutine prepare_distribcell
     
     end do
         
-    print *,"A TOTAL OF: ",maps," MAPS WILL BE REQUIRED."  
   end subroutine allocate_offsets
 
 end module initialize

@@ -1595,7 +1595,7 @@ contains
               end if   
               
               call count_target_univ(univ_next,goal,tempoffset)
-
+              
               call calc_offsets(goal,ind,univ_next)
               c => cells(index_cell)
               lat => lattices(c % fill)
@@ -1612,14 +1612,14 @@ contains
   end subroutine calc_offsets
   
 !===============================================================================
-! COUNT_TARGET_CELL recursively totals the numbers of occurances of a given cell id
-! beginning with the cell given. 
+! COUNT_TARGET_CELL recursively totals the numbers of occurances of a given 
+! universe ID beginning with the cell given. 
 !===============================================================================
 
   recursive subroutine count_target_cell(c, goal, kount)
 
     type(Cell), intent(in) :: c     ! cell to search through
-    integer, intent(in) :: goal   ! target universe ID
+    integer, intent(in) :: goal     ! target universe ID
     integer, intent(inout) :: kount ! number of times the target was found
 
     integer :: i                    ! index over cells
@@ -1718,8 +1718,8 @@ contains
   end subroutine count_target_cell
 
 !===============================================================================
-! COUNT_TARGET_UNIV recursively totals the numbers of occurances of a given cell id
-! beginning with the universe given.
+! COUNT_TARGET_UNIV recursively totals the numbers of occurances of a given
+! universe ID beginning with the universe given.
 !===============================================================================
 
   recursive subroutine count_target_univ(univ, goal, kount)
@@ -1810,6 +1810,87 @@ contains
     end do
              
   end subroutine count_target_univ
+  
+!===============================================================================
+! COUNT_INSTANCE recursively totals the numbers of occurances of a given cell id
+! beginning with the universe given.
+!===============================================================================
+
+  recursive subroutine count_instance(univ, goal, kount)
+
+    type(Universe), intent(in) :: univ  ! universe to search through
+    integer, intent(in) :: goal         ! target cell ID
+    integer, intent(inout) :: kount     ! number of times target located
+
+    integer :: i                    ! index over cells
+    integer :: i_x, i_y, i_z        ! indices in lattice
+    integer :: n_x, n_y, n_z        ! size of lattice
+    integer :: n                    ! number of cells to search
+    integer :: index_cell           ! index in cells array
+    integer :: index_univ           ! index to next universe in universes array
+    real(8) :: xyz(3)               ! temporary location
+    real(8) :: upper_right(3)       ! lattice upper_right
+    type(Cell),     pointer, save :: c => null()    ! pointer to cell
+    type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
+    type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+
+    n = univ % n_cells
+      
+    do i = 1, n
+    
+      index_cell = univ % cells(i)
+
+      ! get pointer to cell
+      c => cells(index_cell)
+      if (cell_dict % get_key(c % id) == goal) then
+        kount = kount + 1
+      end if
+      if (c % type == CELL_NORMAL) then
+        ! ====================================================================
+        ! AT LOWEST UNIVERSE, TERMINATE SEARCH
+               
+      elseif (c % type == CELL_FILL) then
+        ! ====================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+
+        univ_next => universes(c % fill)
+        
+        call count_instance(univ_next,goal,kount)
+        c => cells(index_cell)
+
+      elseif (c % type == CELL_LATTICE) then
+        ! ====================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+
+        ! Set current lattice
+        lat => lattices(c % fill)
+        
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        else
+          n_z = 1
+        end if
+        
+        ! Loop over lattice coordinates
+        do i_x = 1, n_x
+          do i_y = 1, n_y
+            do i_z = 1, n_z            
+              
+              univ_next => universes(lat % universes(i_x,i_y,i_z))
+              call count_instance(univ_next,goal,kount)
+              c => cells(index_cell)
+              lat => lattices(c % fill)
+              
+            end do
+          end do
+        end do
+
+      end if
+    end do
+             
+  end subroutine count_instance
 
 
 end module geometry

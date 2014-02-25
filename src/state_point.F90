@@ -19,6 +19,7 @@ module state_point
   use string,             only: to_str
   use output_interface
   use tally_header,       only: TallyObject
+  use dict_header,        only: ElemKeyValueII
 
 #ifdef MPI
   use mpi
@@ -41,12 +42,15 @@ contains
     integer                    :: i, j, k, m
     integer                    :: n_x, n_y, n_z
     integer, allocatable       :: temp_array(:)
+    integer, allocatable       :: temp_array2(:)
     integer, allocatable       :: lattice_universes(:,:,:)
     type(Cell),     pointer    :: c => null()
     type(Surface),  pointer    :: s => null()
     type(Universe), pointer    :: u => null()
     type(Lattice),  pointer    :: lat => null()
     type(TallyObject), pointer :: t => null()
+    type(ElemKeyValueII), pointer :: current => null()
+    type(ElemKeyValueII), pointer :: next => null()
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
@@ -241,6 +245,47 @@ contains
       call sp % write_data(n_universes, "n_universes", group="geometry")
       call sp % write_data(n_lattices, "n_lattices", group="geometry")
 
+      ! Print list of lattice IDs
+      allocate(temp_array(n_lattices))
+      do i = 1, n_lattices        
+        lat => lattices(i)
+        temp_array(i) = lat % id
+      end do
+      call sp % write_data(temp_array, "lattice_ids", &
+           group="geometry", length=n_lattices)
+      deallocate(temp_array)
+
+      ! Print list of universe IDs
+      allocate(temp_array(n_universes))
+      do i = 1, n_universes        
+        u => universes(i)
+        temp_array(i) = u % id
+      end do
+      call sp % write_data(temp_array, "universe_ids", &
+           group="geometry", length=n_universes)
+      deallocate(temp_array)
+
+      ! Print list of cell keys-> IDs
+      current  => cell_dict % keys()
+      i = 1
+      allocate(temp_array(n_cells))
+      allocate(temp_array2(n_cells))
+      do while (associated(current))
+        temp_array(i) = current % key
+        temp_array2(i) = current % value
+        ! Move to next universe
+        next => current % next
+        deallocate(current)
+        current => next
+        i = i + 1
+      end do
+      call sp % write_data(temp_array, "cell_keys", &
+           group="geometry", length=n_cells)
+      call sp % write_data(temp_array2, "cell_ids", &
+           group="geometry", length=n_cells)
+      deallocate(temp_array)
+      deallocate(temp_array2)
+
       ! ==========================================================================
       ! WRITE INFORMATION ON CELLS
 
@@ -281,12 +326,6 @@ contains
           call sp % write_data(lattices(c % fill) % id, "lattice", &
                group="geometry/cells/cell " // trim(to_str(c % id))) 
         end select
-
-        ! Write list of bounding surfaces
-        if (c % n_surfaces > 0) then
-          call sp % write_data(c % surfaces, "surfaces", length= c % n_surfaces, &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
-        end if
 
       end do CELL_LOOP
 

@@ -231,12 +231,12 @@ enable_testing()
 file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*.py)
 
 # Check to see if PETSC is compiled for CMFD tests
-if (${PETSC_ENABLED} EQUAL FALSE)
+if (NOT ${PETSC_ENABLED})
   file(GLOB_RECURSE CMFD_TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_cmfd*.py)
   foreach(cmfd_test in ${CMFD_TESTS})
     list(REMOVE_ITEM TESTS ${cmfd_test})
   endforeach(cmfd_test)
-endif(${PETSC_ENABLED} EQUAL FALSE)
+endif(NOT ${PETSC_ENABLED})
 
 # Loop through all the tests
 foreach(test ${TESTS})

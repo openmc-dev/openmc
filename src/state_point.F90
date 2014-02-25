@@ -296,7 +296,6 @@ contains
       ! Write information on each cell
       CELL_LOOP: do i = 1, n_cells
         c => cells(i)
-        print *,"cells(i):",i
         ! Write universe for this cell
         call sp % write_data(universes(c % universe) % id, "universe", &
              group="geometry/cells/cell " // trim(to_str(c % id)))

@@ -2023,7 +2023,8 @@ contains
       univ => universes(BASE_UNIVERSE)
       offset = 0
       print *,'t % filters(i_filter) % int_bins:',t % filters(i_filter) % int_bins
-      call find_offset(t % filters(i_filter) % int_bins, univ, bin-1, offset,label)
+      call find_offset(t % filters(i_filter) % offset, t % filters(i_filter) % int_bins(1), &
+              univ, bin-1, offset,label)
       print *,label
     case (FILTER_SURFACE)
       i = t % filters(i_filter) % int_bins(bin)
@@ -2047,21 +2048,20 @@ contains
 
   end function get_label
   
-  !===============================================================================
-! FIND_OFFSET will locate a path to a cell for a given cell. Only tested for the
-! case where the map is created for cellid = -1
+!===============================================================================
+! FIND_OFFSET will locate a path to a cell with a given offset.
 !===============================================================================
 
-  recursive subroutine find_offset(i_vec, univ, goal, offset, path)
+  recursive subroutine find_offset(ind, goal, univ, final, offset, path)
 
-    integer, intent(in) :: i_vec(:)               ! indices in the offset vector
+    integer, intent(in) :: ind                    ! index of the filter in the offset vector
+    integer, intent(in) :: goal                   ! The target cell ID
     type(Universe), pointer, intent(in) :: univ   ! universe to begin searching from
-    integer, intent(in) :: goal                   ! target offset
+    integer, intent(in) :: final                  ! target offset
     integer, intent(inout) :: offset              ! current offset, should start at 0
-    character(100) :: path                         ! path to offset
+    character(100) :: path                        ! path to offset
     
-    integer :: i                    ! index over cells
-    integer :: j                    ! index over i_vec
+    integer :: i,j                  ! index over cells
     integer :: i_x, i_y, i_z        ! indices in lattice
     integer :: n_x, n_y, n_z        ! size of lattice
     integer :: n                    ! number of cells to search
@@ -2077,38 +2077,69 @@ contains
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
 
     n = univ % n_cells
+    print *,"GOAL:",goal
     ! write to the geometry stack
     if (univ%id == 0) then
-      !write (*,"(I1)",advance="no") univ%id
+      print *,'univ%id:',univ%id
       path = trim(path) // to_str(univ%id)
     else
-      !write (*,"(A2,I5)",advance="no") "->",univ%id
+      print *,'univ%id:',univ%id
       path = trim(path) // "->" // to_str(univ%id)
     end if
     
-    !print *, 'Univ',univ % id
-   ! print *, 'cell',n
-    !print *,'offset',offset
+    ! Look through all cells in this universe
+    ! Just check if the final target is right here
+    do i = 1, n
+      ! get cell index
+      index_cell = univ % cells(i)        
+      ! get pointer to cell
+      c => cells(index_cell)
+      
+      print *,"c%id:",c%id
+      
+      ! If the cell ID matches the goal and the offset matches final, we're done
+      if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
+        ! write to the geometry stack
+        print *,"Found target"
+        path = trim(path) // "->" // to_str(c%id)
+        return
+      end if
+      
+    end do
+    
+    ! Loop over all cells
+    ! Find the fill cell or lattice cell that we need to enter
     do i = 1, n
     
-      ! if not at end of array
-      if (i /= n) then
+      ! get cell index
+      index_cell = univ % cells(i)        
+      ! get pointer to cell
+      c => cells(index_cell)
       
-        ! get cell index of NEXT cell
-        index_cell = univ % cells(i+1)
-        !print *, 'cell_index:' ,index_cell
-        ! get pointer to cell
-        c => cells(index_cell)
-!        print *, 'inside if __ C:',c % id
+      if (c % type == CELL_NORMAL) then
+        cycle
+      end if
         
-!        print *, 'c%off+off:',(c % offset(i_vec) + offset)
-        temp_offset = 0
-        do j = 1, size(i_vec)
-          temp_offset = temp_offset + c % offset(i_vec(j))
+      ! If we got here, we still think the target is in this universe
+      ! or further down, but it's not this exact cell. 
+      ! Compare offset to next cell to see if we should enter this cell  
+      if (i /= n) then
+
+        do j = i+1, n 
+          ! get cell index to NEXT cell
+          index_cell = univ % cells(j)        
+          ! get pointer to cell
+          c => cells(index_cell)
+          if (c % type == CELL_NORMAL) then
+            cycle
+          end if
+        
         end do
-                
-        if (goal >= temp_offset + offset) then
-          !print *,'cycled'
+        
+        temp_offset = temp_offset + c % offset(ind)
+        ! If the final offset is in the range of offset - temp_offset+offset
+        ! then the goal is in this cell         
+        if (final >= temp_offset + offset) then
           cycle
         end if       
       end if
@@ -2116,54 +2147,30 @@ contains
       ! get pointer to THIS cell because we
       ! know that the target is in this cell
       index_cell = univ % cells(i)
+      !print *,'Enter cell:',c%id
       c => cells(index_cell)
-      !print *, 'Cell:',c % id
-      
-      ! if we got here, we are going into this cell
-      ! update the current offset
-      temp_offset = 0
-      do j = 1, size(i_vec)
-        offset = c % offset(i_vec(j)) + offset
-      end do
-      
-      !print *, 'offset:',offset
-      
-      ! write to the geometry stack
       path = trim(path) // "->" // to_str(c%id)
-      !print *, 'Cell2:',c % id
       
-      if (c % type == CELL_NORMAL) then
-        !print *, "Normal Cell"
-      
-        if (goal == offset) then
-          do j = 1, size(i_vec)
-!            print *,'c%id:',c%id
-!            print *,'j:',j
-!            print *,'i_vec(j):',i_vec(j)
-!            print *,'cells(i_vec(j)) % id:',cells(i_vec(j)) % id
-            if (c % id == cells(i_vec(j)) % id) then
-!              print *,'Found.'
-              found = .true.
-            end if
-          end do
-          if (found) then
-            return          
-          end if
-        endif
+      if (c % type == CELL_NORMAL) then      
         ! ====================================================================
         ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-        !print *,'cellid:',c%id
+        ! NOTE: THIS SHOULD NOT HAPPEN
+        print *,'Unexpected end of search with normal cell:',c%id
+        return
         
         
       elseif (c % type == CELL_FILL) then
-          !print *, "Fill Cell"
         ! ====================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
+        ! if we got here, we are going into this cell
+        ! update the current offset
+        offset = c % offset(ind) + offset
+        
         univ_next => universes(c % fill)
-        !print *, 'Univ',univ % id
-        call find_offset(i_vec,univ_next, goal, offset, path)
-
+        call find_offset(ind, goal, univ, final, offset, path)
+        return
+        
       elseif (c % type == CELL_LATTICE) then
         ! ====================================================================
         ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
@@ -2183,39 +2190,28 @@ contains
           n_z = 1
         end if
         ! Loop over lattice coordinates
+        !print *,"lat%offset:",lat%offset(ind,:,:,:)
         do i_x = 1, n_x
           do i_y = 1, n_y
             do i_z = 1, n_z
-!              print *,'i_vec:',i_vec
-!              print *,'(',i_x,',',i_y,',',i_z,')'
               if (i_z == n_z .AND. i_y == n_y .AND. i_x == n_x) then
                 univ_next => universes(lat % universes(i_x,i_y,i_z))                          
               else
-                latoffset = 0
+
                 if (i_z + 1 <= n_z) then
-                  do j = 1, size(i_vec)
-                    latoffset = latoffset + lat % offset(i_vec(j),i_x,i_y,i_z+1)
-                  end do
-!                  univ_next => universes(lat % universes(i_x,i_y,i_z+1))         
-!                  print *,'going(',i_x,',',i_y,',',i_z+1,')'     
+                  latoffset = lat % offset(ind,i_x,i_y,i_z+1)
+
                 elseif (i_y + 1 <= n_y) then
-                  do j = 1, size(i_vec)
-                    latoffset = latoffset + lat % offset(i_vec(j),i_x,i_y+1,1)
-                  end do
-!                  univ_next => universes(lat % universes(i_x,i_y+1,1))
-!                  print *,'going(',i_x,',',i_y+1,',1)'     
+                  latoffset = lat % offset(ind,i_x,i_y+1,1)
+
                 elseif (i_x + 1 <= n_x) then
-                  do j = 1, size(i_vec)
-                    latoffset = latoffset + lat % offset(i_vec(j),i_x+1,1,1)
-                  end do
-!                  univ_next => universes(lat % universes(i_x+1,1,1))
-!                  print *,'going(',i_x+1,',1,1)'     
+                  latoffset = lat % offset(ind,i_x+1,1,1)
+
                 end if
-!              print *,'lat%offset:',lat % offset(4,:,:,:)
-!              print *,'latoffset:',latoffset
-!              print *,'offset:',offset
-!              print *,'goal:',goal
-                if (goal >= latoffset + offset) then
+                !print *,"final:",final
+                !print *,"latoffset+offset:",latoffset+offset
+                !print *,"latoffset:",latoffset
+                if (final >= latoffset + offset) then
                   cycle
                 end if      
                 
@@ -2223,16 +2219,16 @@ contains
               if (latoffset == offset) then
                 cycle
               end if
+              
               ! target is at this lattice position
-              latoffset = 0
-              do j = 1, size(i_vec)
-                latoffset = latoffset + lat % offset(i_vec(j),i_x,i_y,i_z)
-              end do
+              latoffset = lat % offset(ind,i_x,i_y,i_z)
               offset = offset + latoffset
-              !print *,'lat offset:',latoffset  
+              
               univ_next => universes(lat % universes(i_x,i_y,i_z))  
               path = trim(path) // "(" // trim(to_str(i_x)) // "," // trim(to_str(i_y)) // "," // trim(to_str(i_z)) // ")"
-              call find_offset(i_vec,univ_next, goal, offset, path)
+              
+              call find_offset(ind, goal, univ_next, final, offset, path)
+              
               return
               
             end do

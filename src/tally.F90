@@ -1705,7 +1705,7 @@ contains
         found = .false.
         matching_bins(i) = NO_BIN_FOUND
         !print *,'NEW CALL'
-        call distribcell_offset(p_fake, t % filters(i) % int_bins, found, offset)
+        call distribcell_offset(p_fake, t % filters(i) % int_bins(1), t % filters(i) % offset, found, offset)
         if (found) then
           matching_bins(i) = offset + 1
         end if

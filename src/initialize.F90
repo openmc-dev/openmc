@@ -923,6 +923,7 @@ contains
     integer :: extra     ! number of extra filters to add
     integer :: n_filt    ! number of filters originally in tally
     integer, allocatable :: int_bins_temp(:)
+    integer, allocatable :: univ_list(:)
     type(TallyObject),    pointer :: t => null()
     type(TallyFilter),    allocatable :: filters(:)   ! Filter data (type/bins)
     type(Universe),       pointer :: univ
@@ -1020,9 +1021,13 @@ contains
   ! Set up the base mapping scheme    
   univ => universes(BASE_UNIVERSE)
   
-  call allocate_offsets()
+  call allocate_offsets(univ_list)
   
-  call calc_offsets()
+  do i = 1, size(univ_list)
+
+    call calc_offsets(univ_list(i),i,univ)
+
+  end do
   
   allocate(int_bins_temp(n_cells))
   print *,'n_cells:',n_cells
@@ -1039,9 +1044,10 @@ end subroutine prepare_distribcell
 ! ALLOCATE_OFFSETS determines the number of maps needed and allocates req memory
 !===============================================================================
 
-  recursive subroutine allocate_offsets()
+  recursive subroutine allocate_offsets(univ_list)
 
-    integer :: i,j 
+    integer, intent(out), allocatable :: univ_list(:)
+    integer :: i,j,k,l,m
     integer :: maps   
     type(DictIntInt) :: cell_list
     
@@ -1097,6 +1103,52 @@ end subroutine prepare_distribcell
     
     end do
     
+    
+    ! Build the list of unique universes
+    allocate(univ_list(maps))    
+    k = 1
+    do i = 1, n_universes
+    
+      u => universes(i)
+      
+      do j = 1, u % n_cells
+      
+        if (cell_list % has_key(u % cells(j))) then
+          
+            ! Loop over all tallies    
+            do l = 1, n_tallies
+            
+              t => tallies(l)
+              
+              do m = 1, t % n_filters
+              
+                tf => t % filters(m)
+                
+                ! Loop over only distribcell filters
+                if (tf % type == 9) then
+                  
+                  ! If this filter points to the cell we just found, set the 
+                  ! offset index
+                  if (tf % int_bins(1) == u % cells(j)) then
+                    print *,"Setting the offset of tf: ",m," to ",k
+                    tf % offset = k
+                  end if
+                
+                end if 
+                
+              end do
+            
+            end do          
+          
+          univ_list(k) = u % id
+          k = k + 1
+          cycle
+        end if          
+          
+      end do
+    
+    end do
+    
     ! Allocate the offset array on all fill cells and lattices
     
     do i = 1, n_lattices
@@ -1118,8 +1170,8 @@ end subroutine prepare_distribcell
       end if
     
     end do
-    
-    print *,"A TOTAL OF: ",maps," MAPS WILL BE REQUIRED."    
+        
+    print *,"A TOTAL OF: ",maps," MAPS WILL BE REQUIRED."  
   end subroutine allocate_offsets
 
 end module initialize

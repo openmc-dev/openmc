@@ -27,6 +27,7 @@ class Test(object):
         self.hdf5 = hdf5
         self.petsc = petsc
         self.success = True
+        self.msg = None
         self.setup_cmake()
 
     def setup_cmake(self):
@@ -59,6 +60,7 @@ class Test(object):
         rc = call(self.cmake)
         if rc != 0:
             self.success = False
+            self.msg = 'Failed on cmake.'
 
     def run_make(self):
         if not self.success:
@@ -66,6 +68,7 @@ class Test(object):
         rc = call(['make','-j', '-s','-C','build'])
         if rc != 0:
             self.success = False
+            self.msg = 'Failed on make.'
 
     def run_ctests(self):
         if not self.success:
@@ -73,6 +76,7 @@ class Test(object):
         rc = call(['make','test','-C','build'])
         if rc != 0:
             self.success = False
+            self.msg = 'Failed on testing.'
 
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
              hdf5=False, petsc=False):
@@ -185,3 +189,4 @@ for test in iter(tests):
         print(BOLD + OK + '[OK]' + ENDC)
     else:
         print(BOLD + FAIL + '[FAILED]' + ENDC)
+        print(' '*len(test)+tests[test].msg)

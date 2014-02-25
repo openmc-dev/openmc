@@ -55,6 +55,8 @@ class Test(object):
         if self.petsc:
             self.cmake.append('-Dpetsc=on')
             os.environ['PETSC_DIR'] = PETSC_DIR
+        if self.mpi:
+            os.environ['MPI_DIR'] = MPI_DIR
 
     def run_cmake(self):
         os.environ['FC'] = self.fc

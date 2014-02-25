@@ -1559,7 +1559,7 @@ contains
 
   end subroutine distribcell_offset
   
-  !===============================================================================
+!===============================================================================
 ! CALC_OFFSETS calculates and stores the offsets in all cells
 !===============================================================================
 
@@ -1613,13 +1613,14 @@ contains
         c => cells(index_cell + 1)
         c % offset(i_vec) = prevoffset + tempoffset
         c => cells(index_cell)
-        
-!        print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
+        !if (cellid == -1) then
+        !print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
+        !endif
       
       else 
-        
-!        print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
-      
+        !if (cellid == -1) then
+        !print *, 'Cell ', c % id , ' has offset ' , c % offset(i_vec)
+        !endif
       end if           
       
       !print *, 'Cell type', c % type
@@ -1799,7 +1800,7 @@ contains
               
               call count_target_cell(c_next, cellid, kount)
               lat => lattices(c % fill)
-              
+              univ_next => universes(lat % universes(i_x,i_y,i_z))
             end do
             
 

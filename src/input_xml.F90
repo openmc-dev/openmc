@@ -711,7 +711,6 @@ contains
       c % n_surfaces = n
       allocate(c % surfaces(n))
       c % surfaces = cell_(i) % surfaces
-      allocate(c % offset(n_cells+1))
       ! Rotation matrix
       if (associated(cell_(i) % rotation)) then
         ! Rotations can only be applied to cells that are being filled with
@@ -983,7 +982,6 @@ contains
         n_z = 1
       end if
       allocate(lat % universes(n_x, n_y, n_z))
-      allocate(lat % offset(n_cells+1,n_x, n_y, n_z))
 
       ! Check that number of universes matches size
       if (size(lattice_(i) % universes) /= n_x*n_y*n_z) then
@@ -1640,10 +1638,15 @@ contains
             ! Set type of filter
             t % filters(j) % type = FILTER_DISTRIBCELL
             
+            ! Going to add new filters to this tally if n_words > 1
+            
             ! Allocate and store bins
             allocate(t % filters(j) % int_bins(n_words))
+            print *,"N_WORDS:",n_words
             do k = 1, n_words
               t % filters(j) % int_bins(k) = int(str_to_int(&
+                   tally_(i) % filter(j) % bins(k)),4)
+                   print *,int(str_to_int(&
                    tally_(i) % filter(j) % bins(k)),4)
             end do
             

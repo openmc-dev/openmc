@@ -19,7 +19,7 @@ module initialize
   use source,           only: initialize_source
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
-  use tally_header,     only: TallyObject, TallyResult
+  use tally_header,     only: TallyObject, TallyResult, TallyFilter
   use tally_initialize, only: configure_tallies
 
 #ifdef MPI
@@ -899,14 +899,13 @@ contains
     ! all cells
     cellid = -1
     call count_target_univ(univ,cellid,maxoffset)
+    print *,'MAXOFFSET:',maxoffset
     n = univ % n_cells
     do i = 0, maxoffset-1
       path = ''
       offset = 0
-      print *, ''
-      print *, ''
       !print *, 'target', i
-      call find_offset(i_vec,univ,i,offset,path)            
+      !call find_offset(i_vec,univ,i,offset,path)            
     end do
         
   end subroutine print_all
@@ -918,77 +917,113 @@ contains
 
   subroutine prepare_distribcell()
   
-    integer :: i         ! loop over tallies
-    integer :: j         ! loop over filters
-    integer :: k         ! loop over bins
+    integer :: i,j,k     ! loop counters
     integer :: l         ! cell instance counter
-    integer :: n_filters ! number of filters
     integer :: n_words   ! number of bins in filter
+    integer :: extra     ! number of extra filters to add
+    integer :: n_filt    ! number of filters originally in tally
     integer, allocatable :: int_bins_temp(:)
     type(TallyObject),    pointer :: t => null()
+    type(TallyFilter),    allocatable :: filters(:)   ! Filter data (type/bins)
     type(Universe),       pointer :: univ
   
+  
+    ! Loop over tallies    
     do i = 1, n_tallies
+    
+      extra = 0
   
       ! Get pointer to tally
-      t => tallies(i)
-      n_filters = t % n_filters
+      t => tallies(i)      
    
-      do j = 1, n_filters
+      n_filt = t % n_filters
+      
+      ! Loop over the filters      
+      ! This loop, we will be determining how many additional filters
+      ! need to be added to this tally
+      
+      do j = 1, t % n_filters
    
         ! Determine type of filter
         if (t % filters(j) % type == FILTER_DISTRIBCELL) then
+          extra = extra + size(t % filters(j) % int_bins) - 1
+        end if
+        
+      end do
+      
+      print *,"Adding: ",extra," extra filters to tally ",i
+      
+      ! Allocate space for new filters      
+      allocate(filters(extra + t % n_filters))
+      ! Move old filters into the new array
+      call move_alloc(t % filters, filters)
+      
+      ! Update the filter array with the new filters
+      t % n_filters = t % n_filters + extra
+      
+      k = n_filt + 1
+      do j = 1, n_filt
+   
+        if (filters(j) % type == FILTER_DISTRIBCELL) then
           
-          ! Initialize distribcell_filters
+          n_words = size(filters(j) % int_bins)
           
-          ! Determine number of cells to distribute
-          n_words = size(t % filters(j) % int_bins)
-          !print *, "n_words: ", n_words
+          do l = 2, n_words
+            
+            ! Move int_bin(l) from filter j to filter k
+            filters(k) % type = FILTER_DISTRIBCELL
+            allocate(filters(k) % int_bins(1))
+            filters(k) % int_bins(1) = filters(j) % int_bins(l)
           
+          end do
+          
+          ! Once all excess int_bins have been moved, shrink this filter
+          l = filters(j) % int_bins(1)
+          deallocate(filters(j) % int_bins)
+          allocate(filters(j) % int_bins(1))
+          filters(j) % int_bins(1) = l
+          
+        end if
+        
+      end do
+      
+      ! Move the tally filter array back into the real tally object
+      call move_alloc(filters,t % filters)
+      
+      ! Now it's time to finally initialize the filters now
+      ! that the tally filters array has been updated
+      
+      do j = 1, t % n_filters
+        ! Determine type of filter
+        if (t % filters(j) % type == FILTER_DISTRIBCELL) then
+        
           ! Determine the number of occurrences of the listed cells
           l = 0
           univ => universes(BASE_UNIVERSE)
+
           do k = 1, n_words
+
             ! sum the number of occurrences of all cells requested
-            !print *,'Int Bins / k:', t % filters(j) % int_bins(k), k
             call count_target_univ(univ,t % filters(j) % int_bins(k),l)
-            !print *,'l:',l
+
           end do
           ! Set number of bins           
           t % filters(j) % n_bins = l 
           print *,'t % filters(j) % n_bins:',t % filters(j) % n_bins
-!          allocate(int_bins_temp(size(t % filters(j) % int_bins)))
-!          do k = 1, size(t % filters(j) % int_bins)
-!          
-!            int_bins_temp(k) = t % filters(j) % int_bins(k)
-!          
-!          end do
-!          ! this does not account for using multiple cells for the same filter
-!          deallocate(t % filters(j) % int_bins)
-!          allocate(t % filters(j) % int_bins(l))
-!          do k = 1, l
-!          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!            t % filters(j) % int_bins(k) = int_bins_temp(1)
-!          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!          end do
-          
-          !print *, "Number of Occurrances for this filter:",l
+
         end if
     
       end do
+      
     end do
     
   ! Set up the base mapping scheme    
   univ => universes(BASE_UNIVERSE)
-  do i = 1, n_cells
-    !print *,''
-    !print *,"i:",i
-    !print *,"cells(i)%id:",cells(i)%id
-    call calc_offsets(i,univ,cell_dict % get_key(cells(i) % id))
-  end do
+  
+  call allocate_offsets()
+  
   call calc_offsets(n_cells+1,univ,-1)
-  !print *,'Printing Offset List:'
-!  deallocate(int_bins_temp)
+  
   allocate(int_bins_temp(n_cells))
   print *,'n_cells:',n_cells
   do i = 1, n_cells
@@ -997,5 +1032,93 @@ contains
   call print_all(int_bins_temp,univ)
   
 end subroutine prepare_distribcell
+
+
+  
+!===============================================================================
+! ALLOCATE_OFFSETS determines the number of maps needed and allocates req memory
+!===============================================================================
+
+  recursive subroutine allocate_offsets()
+
+    integer :: i,j 
+    integer :: maps   
+    type(DictIntInt) :: cell_list
+    
+    type(Cell),        pointer :: c => null()         ! pointer to cell
+    type(Lattice),     pointer :: lat => null()       ! pointer to lattice
+    type(Universe),    pointer :: u => null()         ! pointer to universe
+    type(TallyObject), pointer :: t => null()         ! pointer to tally
+    type(TallyFilter), pointer :: tf => null()        ! pointer to filter
+    
+    ! Begin gathering list of cells in distribcell tallies
+    maps = 0
+    
+    ! Loop over all tallies    
+    do i = 1, n_tallies
+    
+      t => tallies(i)
+      
+      do j = 1, t % n_filters
+      
+        tf => t % filters(j)
+        
+        ! Loop over only distribcell filters
+        if (tf % type == 9) then
+        
+          if (cell_list % has_key(tf % int_bins(1))) then
+          
+          else
+            print *,"ADDING KEY:",tf % int_bins(1)
+            call cell_list % add_key(tf % int_bins(1),0)
+          end if
+        
+        end if 
+        
+      end do
+    
+    end do
+    
+    ! Determine the number of unique universes containing these cells
+    do i = 1, n_universes
+    
+      u => universes(i)
+      
+      do j = 1, u % n_cells
+      
+        if (cell_list % has_key(u % cells(j))) then
+          print *,"FOUND A MATCH ON CELL:", u % cells(j)
+          maps = maps + 1
+          cycle
+        end if
+          
+          
+      end do
+    
+    end do
+    
+    ! Allocate the offset array on all fill cells and lattices
+    
+    do i = 1, n_lattices
+    
+      lat => lattices(i)
+      if (lat % n_dimension == 3) then
+        allocate(lat % offset(maps,lat%dimension(1),lat%dimension(2),lat%dimension(3)))
+      else
+        allocate(lat % offset(maps,lat%dimension(1),lat%dimension(2),1))
+      end if
+    
+    end do
+    
+    do i = 1, n_cells
+    
+      c => cells(i)
+      if (c % material == NONE) then
+        allocate(c % offset(maps))
+      end if
+    
+    end do
+        
+  end subroutine allocate_offsets
 
 end module initialize

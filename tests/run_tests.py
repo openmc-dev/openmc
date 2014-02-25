@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import os
 import sys
+import shutil
 from subprocess import call 
 from collections import OrderedDict
 
@@ -32,7 +33,7 @@ class Test(object):
 
     def setup_cmake(self):
         # Default cmake
-        self.cmake = ['cmake','-H.','-Bbuild']
+        self.cmake = ['cmake','-H../src','-Bbuild']
 
         # Check for MPI/HDF5
         if self.mpi and not self.hdf5:
@@ -117,10 +118,6 @@ add_test('omp-phdf5-petsc-normal', openmp=True, mpi=True, hdf5=True, petsc=True)
 add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, debug=True)
 add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
 
-# Change to source directory and clean it up
-os.chdir('../src')
-call(['make','distclean'])
-
 # Process command line arguments
 if len(sys.argv) > 1:
     flags = [i for i in sys.argv[1:] if i.startswith('-')]
@@ -156,6 +153,7 @@ if len(sys.argv) > 1:
             del tests[key]
 
 # Begin testing
+call(['rm','-rf','build'])
 for test in iter(tests):
     print('-'*(len(test) + 6))
     print(test + ' tests')
@@ -171,8 +169,13 @@ for test in iter(tests):
     # Run tests
     tests[test].run_ctests()
 
+    # Copy test log file if failed
+    if tests[test].msg == 'Failed on testing.':
+        shutil.copy('build/Testing/Temporary/LastTest.log',
+                    'LastTest_{0}.log'.format(test))
+
     # Clean up build
-    call(['make','distclean'])
+    call(['rm','-rf','build'])
 
 # Print out summary of results
 print('\n' + '='*54)

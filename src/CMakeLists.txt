@@ -31,7 +31,6 @@ if($ENV{FC} MATCHES "mpi.*")
   message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DMPI)
   set(MPI_ENABLED TRUE)
-  get_filename_component(MPI_DIR $ENV{FC} PATH) 
 elseif($ENV{FC} MATCHES "h5fc$")
   message("-- Detected HDF5 wrapper: $ENV{FC}")
   add_definitions(-DHDF5)
@@ -39,7 +38,6 @@ elseif($ENV{FC} MATCHES "h5pfc$")
   message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
   add_definitions(-DMPI -DHDF5)
   set(MPI_ENABLED TRUE)
-  get_filename_component(MPI_DIR $ENV{FC} PATH) 
 endif()
 
 #===============================================================================
@@ -252,7 +250,7 @@ foreach(test ${TESTS})
     add_test(NAME ${TEST_NAME} 
       WORKING_DIRECTORY ${TEST_PATH} 
       COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
-      --mpi_exec ${MPI_DIR}/mpiexec)
+      --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
 
   else(${MPI_ENABLED})
 

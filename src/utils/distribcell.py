@@ -76,7 +76,10 @@ scoreType = [None for x in range(len(files))]
 active_batches = [None for x in range(len(files))]
 
 
-path = [0,1,(5,1,1,1),2,201]
+path1 = [0,1,(5,1,1,1),2,201]
+path2 = [0,1,(5,2,1,1),2,201]
+path3 = [0,1,(5,1,2,1),2,201]
+path4 = [0,1,(5,2,2,1),2,201]
 
 
 for i_batch in range(len(files)):
@@ -86,6 +89,16 @@ for i_batch in range(len(files)):
     
     # Create StatePoint object
     sp = StatePoint(batch_filename)
-    sp.geom._print_all()
-    sp.geom._get_offset(path,1)
+    # sp.geom._print_all()
+    sp.geom._get_offset(path1,1)
+    sp.geom._get_offset(path2,1)
+    sp.geom._get_offset(path3,1)
+    sp.geom._get_offset(path4,1)
+
+    sp.read_results()
+
+    print sp.get_value(0,[('distribcell',path1)],0)
+    print sp.get_value(0,[('distribcell',path2)],0)
+    print sp.get_value(0,[('distribcell',path3)],0)
+    print sp.get_value(0,[('distribcell',path4)],0)
     

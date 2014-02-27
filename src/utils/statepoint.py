@@ -104,7 +104,7 @@ class Filter(object):
     def __init__(self):
         self.type = 0
         self.bins = []
-        self.offset = 0
+        self.offset = -1
 
     def __repr__(self):
         return "<Filter: {0}>".format(self.type)
@@ -200,7 +200,7 @@ class Geometry_Data(object):
                   if (i[1] > j.dim[0] or i[1] < 1 or 
                       i[2] > j.dim[1] or i[2] < 1 or
                       i[3] > j.dim[2] or i[3] < 1):
-                    raise Exception("Bad lattice index specified for lattice:",i[0])             
+                    raise Exception("Bad lattice index specified for lattice:",i[0])        
                   offset += j.offset[filter_offset-1,i[1]-1,i[2]-1,i[3]-1]
                   prev = i[0]
                   prevtype = 'L'
@@ -250,8 +250,7 @@ class Geometry_Data(object):
                     raise Exception("Lattice: ",prev," does not contain universe ",i,".")
                 # Found a lattice that matched and contains this universe
                 prevtype = 'U'
-                prev = i
-        print "Calculated offset:",offset    
+                prev = i   
         return offset
 
 class Universe(object):
@@ -485,7 +484,7 @@ class StatePoint(object):
                 f.type = filter_types[self._get_int(path=base+'type')[0]]
 
                 # Get offset of filter
-                f.offset = filter_types[self._get_int(path=base+'offset')[0]]
+                f.offset = self._get_int(path=base+'offset')[0]
 
                 # Add to filter dictionary
                 t.filters[f.type] = f
@@ -649,6 +648,7 @@ class StatePoint(object):
             tuple with three integers specifying the mesh indices.
 
             Example: [('cell', 1), ('mesh', (14,17,20)), ('energyin', 2)]
+            Example: [('distribcell', path)]
 
         score_index : int
             Index corresponding to score for tally, i.e. the second index in
@@ -679,6 +679,10 @@ class StatePoint(object):
                          (f_index[1] - 1)*nz +
                          (f_index[2] - 1))
                 filter_index += value*t.filters[f_type].stride
+            elif f_type == 'distribcell':
+                filter_offset = t.filters['distribcell'].offset-1
+                value = self.geom._get_offset(f_index, filter_offset)
+                filter_index += value*t.filters[f_type].stride          
             else:
                 filter_index += f_index*t.filters[f_type].stride
         

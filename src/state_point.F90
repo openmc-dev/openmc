@@ -205,6 +205,10 @@ contains
             call sp % write_data(t % filters(j) % int_bins, "bins", &
                  group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
                  length=size(t % filters(j) % int_bins))
+
+          ! Write offset for this filter
+          call sp % write_data(t % filters(j) % offset, "offset", &
+               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
           end if
 
         end do FILTER_LOOP

@@ -153,7 +153,8 @@ class Geometry_Data(object):
         for i in self.lat:
           print 'Lattice:',i.ID
           print '--Fill:',i.fill
-          print '--Offset:',i.offset
+          print '--Offset Dimensions:',i.offset.shape
+          print '--Offset:',np.squeeze(i.offset)
           print '--Dimenisions:',i.dim
 
     """ This method will take a path from the base universe to some final target 
@@ -185,9 +186,9 @@ class Geometry_Data(object):
               raise Exception("First element in path was not 0.")
 
           else:
-            print 'prev:',prev,'(',prevtype,')'
+            #print 'prev:',prev,'(',prevtype,')'
             if isinstance(i,tuple):
-              print "Found tuple:",i
+              #print "Found tuple:",i
               if len(i) != 4:
                 raise Exception("Tuple ",i," does not have exactly 4 elements.")
               if i[0] != self.cell[prev-1].fill:
@@ -200,7 +201,7 @@ class Geometry_Data(object):
                       i[2] > j.dim[1] or i[2] < 1 or
                       i[3] > j.dim[2] or i[3] < 1):
                     raise Exception("Bad lattice index specified for lattice:",i[0])             
-                  offset += j.offset[filter_offset,i[1],i[2],i[3]]
+                  offset += j.offset[filter_offset-1,i[1]-1,i[2]-1,i[3]-1]
                   prev = i[0]
                   prevtype = 'L'
                   break
@@ -209,17 +210,22 @@ class Geometry_Data(object):
                 raise Exception("Could not find lattice data for ID:",i[0])             
             
             else:
-              print "Found non-tuple:",i
+              #print "Found non-tuple:",i
               # Expect universe or cell or lattice (as final target)
               if prevtype == 'U':
                 # Last construct was a universe
                 # Need to set j to be the OpenMC ID of the cell, as that is what the universes store
-                j = i
-                print "This universe contains:",self.univ[prev].cells
-                if j not in self.univ[prev].cells:
-                  raise Exception("Requested cell: "+i+" from universe: "+prev+" was not found.")
-                # Get OpenMC index of cell
-                index = self.univ[prev].cells.index(i)
+                for c in self.cell:
+                  if i == c.userID:
+                    jTrue = c.ID
+                l = 0
+                for u in self.univ:
+                  if u.ID == prev:                    
+                    break
+                  l += 1
+                #print "This universe contains:",self.univ[l].cells
+                if jTrue not in self.univ[l].cells:
+                  raise Exception("Requested cell: ",i,"(",jTrue,") from universe: ",prev," was not found.")
                 # Get key index
                 #prev = self.cellList.index(index)
                 prev = i
@@ -236,6 +242,15 @@ class Geometry_Data(object):
                 # If lattice and because not tuple, we expect this to be the last thing
                 # So update offset
                 #TODO
+              elif prevtype == 'L':
+                # Last construct was a lattice 
+                # Double check that this universe is contained by that lattice
+                for j in self.lat:
+                  if (j.ID == prev and j.fill != i).any():
+                    raise Exception("Lattice: ",prev," does not contain universe ",i,".")
+                # Found a lattice that matched and contains this universe
+                prevtype = 'U'
+                prev = i
         print "Calculated offset:",offset    
         return offset
 

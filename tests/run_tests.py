@@ -6,6 +6,7 @@ import os
 import sys
 import nose
 import glob
+import shutil
 from subprocess import call
 
 from nose_mpi import NoseMPI
@@ -46,9 +47,8 @@ def run_suite(name=None, mpi=False):
 
     try:
         os.chdir(pwd)
-        os.rename(pwd + '/../src/openmc-' + name, pwd + '/../src/openmc')
+        shutil.copyfile(pwd + '/../src/openmc-' + name, pwd + '/../src/openmc')
         result = nose.run(argv=argv, addplugins=plugins)
-        os.rename(pwd + '/../src/openmc', pwd + '/../src/openmc-' + name)
     except OSError:
         result = False
         print('No OpenMC executable found for ' + name + ' tests')

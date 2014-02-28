@@ -11,6 +11,7 @@ module initialize
   use global
   use input_xml,        only: read_input_xml, read_cross_sections_xml,         &
                               cells_in_univ_dict, read_plots_xml
+  use material_header,  only: Material
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot,       &
                               write_message
@@ -106,6 +107,9 @@ contains
 
       ! Create linked lists for multiple instances of the same nuclide
       call same_nuclide_list()
+
+      ! Check for fissionable material
+      call check_mat_fission()
 
       ! Construct unionized energy grid from cross-sections
       if (grid_method == GRID_UNION) then
@@ -896,5 +900,37 @@ contains
     end if
 
   end subroutine allocate_banks
+
+!===============================================================================
+! CHECK_MAT_FISSION checks material for fissionable nuclides
+!===============================================================================
+
+  subroutine check_mat_fission()
+
+    integer :: i ! Material index counter
+    integer :: j ! Nuclide index counter
+    type(Material), pointer :: m => null()
+
+    ! Loop around material
+    MAT: do i = 1, n_materials
+
+      ! Get material
+      m => materials(i)
+      m % fissionable = .false.
+
+      ! Loop around nuclides in material
+      NUC: do j = 1, m % n_nuclides
+
+        ! Check for fission in nuclide
+        if (nuclides(m % nuclide(j)) % fissionable) then
+          m % fissionable = .true.
+          exit NUC
+        end if
+
+      end do NUC
+
+    end do MAT
+
+  end subroutine check_mat_fission
 
 end module initialize

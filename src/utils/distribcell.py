@@ -81,6 +81,7 @@ path2 = [0,1,(5,2,1,1),2,201]
 path3 = [0,1,(5,1,2,1),2,201]
 path4 = [0,1,(5,2,2,1),2,201]
 
+print "Found the following files:",files
 
 for i_batch in range(len(files)):
     
@@ -90,15 +91,45 @@ for i_batch in range(len(files)):
     # Create StatePoint object
     sp = StatePoint(batch_filename)
     # sp.geom._print_all()
-    sp.geom._get_offset(path1,1)
-    sp.geom._get_offset(path2,1)
-    sp.geom._get_offset(path3,1)
-    sp.geom._get_offset(path4,1)
+#    sp.geom._get_offset(path1,1)
+#    sp.geom._get_offset(path2,1)
+#    sp.geom._get_offset(path3,1)
+#    sp.geom._get_offset(path4,1)
 
     sp.read_results()
 
-    print sp.get_value(0,[('distribcell',path1)],0)
-    print sp.get_value(0,[('distribcell',path2)],0)
-    print sp.get_value(0,[('distribcell',path3)],0)
-    print sp.get_value(0,[('distribcell',path4)],0)
+#    print sp.get_value(0,[('distribcell',path1)],0)
+#    print sp.get_value(0,[('distribcell',path2)],0)
+#    print sp.get_value(0,[('distribcell',path3)],0)
+#    print sp.get_value(0,[('distribcell',path4)],0)
     
+    print sp.get_value(0,[('cell',0)],0)
+    print sp.get_value(1,[('distribcell',0)],0)
+    print sp.get_value(2,[('cell',0)],0)
+    sum = [0,0]
+    for i in range(241):
+      #print i
+      sum[0] += sp.get_value(3,[('distribcell',i)],0)[0]
+      sum[1] += sp.get_value(3,[('distribcell',i)],0)[1]
+    print sum
+    print sp.get_value(4,[('cell',0)],0)
+    sum = [0,0]
+    for i in range(63624):
+      #print i
+      sum[0] += sp.get_value(5,[('distribcell',i)],0)[0]
+      sum[1] += sp.get_value(5,[('distribcell',i)],0)[1]
+    print sum
+    print sp.get_value(6,[('cell',0)],0)
+    sum = [0,0]
+    for i in range(241):
+      #print i
+      sum[0] += sp.get_value(7,[('distribcell',i)],0)[0]
+      sum[1] += sp.get_value(7,[('distribcell',i)],0)[1]
+    print sum
+    print sp.get_value(8,[('cell',0)],0)
+    sum = [0,0]
+    for i in range(63624):
+      #print i
+      sum[0] += sp.get_value(9,[('distribcell',i)],0)[0]
+      sum[1] += sp.get_value(9,[('distribcell',i)],0)[1]
+    print sum

@@ -186,7 +186,6 @@ class Geometry_Data(object):
               raise Exception("First element in path was not 0.")
 
           else:
-            #print 'prev:',prev,'(',prevtype,')'
             if isinstance(i,tuple):
               #print "Found tuple:",i
               if len(i) != 4:
@@ -210,7 +209,6 @@ class Geometry_Data(object):
                 raise Exception("Could not find lattice data for ID:",i[0])             
             
             else:
-              #print "Found non-tuple:",i
               # Expect universe or cell or lattice (as final target)
               if prevtype == 'U':
                 # Last construct was a universe
@@ -227,21 +225,28 @@ class Geometry_Data(object):
                 if jTrue not in self.univ[l].cells:
                   raise Exception("Requested cell: ",i,"(",jTrue,") from universe: ",prev," was not found.")
                 # Get key index
-                #prev = self.cellList.index(index)
                 prev = i
                 prevtype = 'C'
-              elif prevtype == 'C':
-                pass
+              elif prevtype == 'C':                
                 # Last construct was a cell 
                 # Check if the previous cell was a normal cell
                 # Throw Exception if it was, there's no deeper cells
-                #TODO
+                for c in self.cell:
+                  if (prev == c.userID && c.filltype == "['normal']").any():
+                    raise Exception("Cell ",c.userID," is normal cell, cannot contain any lower levels.")
                 # Else check if fill or lattice
                 # If fill, just go to that universe
-                #TODO
-                # If lattice and because not tuple, we expect this to be the last thing
-                # So update offset
-                #TODO
+                for c in self.cell:
+                  if prev == c.userID:
+                    if c.filltype == "['fill_cell']":
+                      if c.fill != i[0]:
+                        raise Exception("Fill Cell ", c.userID, " does not contain universe ",i[0],".")
+                      prevtype = 'U'
+                      prev = i[0]      
+                      offset += c.offset[filter_offset-1]                      
+                    elif c.filltype == "['lattice']":
+                      prev = i[0]
+                      prevtype = 'L'    
               elif prevtype == 'L':
                 # Last construct was a lattice 
                 # Double check that this universe is contained by that lattice
@@ -648,7 +653,7 @@ class StatePoint(object):
             tuple with three integers specifying the mesh indices.
 
             Example: [('cell', 1), ('mesh', (14,17,20)), ('energyin', 2)]
-            Example: [('distribcell', path)]
+            Example: [('distribcell', path)] or 
 
         score_index : int
             Index corresponding to score for tally, i.e. the second index in
@@ -680,9 +685,12 @@ class StatePoint(object):
                          (f_index[2] - 1))
                 filter_index += value*t.filters[f_type].stride
             elif f_type == 'distribcell':
-                filter_offset = t.filters['distribcell'].offset-1
-                value = self.geom._get_offset(f_index, filter_offset)
-                filter_index += value*t.filters[f_type].stride          
+                if type(f_index) != int:
+                    filter_offset = t.filters['distribcell'].offset-1
+                    value = self.geom._get_offset(f_index, filter_offset)
+                    filter_index += value*t.filters[f_type].stride          
+                else:
+                    filter_index += f_index*t.filters[f_type].stride
             else:
                 filter_index += f_index*t.filters[f_type].stride
         

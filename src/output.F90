@@ -1684,15 +1684,11 @@ contains
       print_bin: do
         find_bin: do
           ! Check for no filters
-          print *,'t%n_filters:',t%n_filters
           if (t % n_filters == 0) exit find_bin
 
           ! Increment bin combination
-          print *,'matching_bins(j):',matching_bins(j)
           matching_bins(j) = matching_bins(j) + 1
-          print *,'matching_bins(j):',matching_bins(j)
-          print *,'t % filters(j) % n_bins:',t % filters(j) % n_bins
-
+          
           ! =================================================================
           ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
 
@@ -1723,7 +1719,6 @@ contains
 
         ! Print filter information
         if (t % n_filters > 0) then
-        print *,'t%results:',t%results
           type = t % filters(j) % type
           write(UNIT=UNIT_TALLY, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                trim(filter_name(type)), trim(get_label(t, j))
@@ -2022,10 +2017,8 @@ contains
       label = ''
       univ => universes(BASE_UNIVERSE)
       offset = 0
-      print *,'t % filters(i_filter) % int_bins:',t % filters(i_filter) % int_bins
       call find_offset(t % filters(i_filter) % offset, t % filters(i_filter) % int_bins(1), &
               univ, bin-1, offset,label)
-      print *,label
     case (FILTER_SURFACE)
       i = t % filters(i_filter) % int_bins(bin)
       label = to_str(surfaces(i) % id)
@@ -2084,7 +2077,7 @@ contains
     else
       path = trim(path) // "->" // to_str(univ%id)
     end if
-    
+    !print *,path
     ! Look through all cells in this universe
     ! Just check if the final target is right here
     do i = 1, n
@@ -2097,6 +2090,7 @@ contains
       if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
         ! write to the geometry stack
         path = trim(path) // "->" // to_str(c%id)
+        print *,'found target.'
         return
       end if
       
@@ -2111,9 +2105,11 @@ contains
       ! get pointer to cell
       c => cells(index_cell)
       
+      !print *,"c%type:",c%type
       if (c % type == CELL_NORMAL) then
         cycle
       end if
+      !print *,"c%type:",c%type
         
       ! If we got here, we still think the target is in this universe
       ! or further down, but it's not this exact cell. 
@@ -2125,13 +2121,21 @@ contains
           index_cell = univ % cells(j)        
           ! get pointer to cell
           c => cells(index_cell)
+          ! no offsets for normal cells, so skip
           if (c % type == CELL_NORMAL) then
             cycle
           end if
-        
+          ! found a fill cell
+          if (c % type == CELL_FILL) then
+            print *,'found a fill cell:',c%id
+            exit     
+          end if   
         end do
-        
-        temp_offset = temp_offset + c % offset(ind)
+        ! well, maybe we found a fill cell
+        if (c % type == CELL_NORMAL) then
+          cycle
+        end if
+        temp_offset = c % offset(ind)
         ! If the final offset is in the range of offset - temp_offset+offset
         ! then the goal is in this cell         
         if (final >= temp_offset + offset) then
@@ -2142,7 +2146,7 @@ contains
       ! get pointer to THIS cell because we
       ! know that the target is in this cell
       index_cell = univ % cells(i)
-      print *,'Enter cell:',c%id
+      !print *,'Enter cell:',c%id
       c => cells(index_cell)
       path = trim(path) // "->" // to_str(c%id)
       
@@ -2185,7 +2189,7 @@ contains
           n_z = 1
         end if
         ! Loop over lattice coordinates
-        print *,"lat%offset:",lat%offset(ind,:,:,:)
+        !print *,"lat%offset:",lat%offset(ind,:,:,:)
         do i_x = 1, n_x
           do i_y = 1, n_y
             do i_z = 1, n_z
@@ -2202,9 +2206,9 @@ contains
                   latoffset = lat % offset(ind,i_x+1,1,1)
 
                 end if
-                print *,"final:",final
-                print *,"latoffset+offset:",latoffset+offset
-                print *,"latoffset:",latoffset
+                !print *,"final:",final
+                !print *,"latoffset+offset:",latoffset+offset
+                !print *,"latoffset:",latoffset
                 if (final >= latoffset + offset) then
                   cycle
                 end if      

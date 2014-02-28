@@ -1332,7 +1332,12 @@ contains
       
       ! get pointer to cell
       c => cells(index_cell)
+      print *,"c%id:",c%id
       if (simple_cell_contains(c, p)) then
+        print *,"YES:",c%id
+        if (c%id == 60) then
+          print *,p % last_xyz
+        end if
         ! Set cell on this level
         p % coord % cell = index_cell
         
@@ -1374,7 +1379,7 @@ contains
             p % coord % rotated = .true.
           end if
 
-        call distribcell_offset(p, goal, ind, found, offset)
+          call distribcell_offset(p, goal, ind, found, offset)
         
         elseif (c % type == CELL_LATTICE) then
           ! ====================================================================

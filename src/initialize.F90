@@ -644,9 +644,7 @@ contains
           do k = 1, size(t % filters(j) % int_bins)
             id = t % filters(j) % int_bins(k)
             if (cell_dict % has_key(id)) then
-              print *,'t % filters(j) % int_bins(k):',t % filters(j) % int_bins(k)
               t % filters(j) % int_bins(k) = cell_dict % get_key(id)        
-              print *,'t % filters(j) % int_bins(k):',t % filters(j) % int_bins(k)
             else
               message = "Could not find cell " // trim(to_str(id)) // &
                    " specified on tally " // trim(to_str(t % id))

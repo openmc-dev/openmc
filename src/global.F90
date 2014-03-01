@@ -299,6 +299,9 @@ module global
   ! Particle restart run
   logical :: particle_restart_run = .false.
 
+  ! Write out initial source
+  logical :: write_initial_source = .false.
+
   ! ============================================================================
   ! CMFD VARIABLES 
 

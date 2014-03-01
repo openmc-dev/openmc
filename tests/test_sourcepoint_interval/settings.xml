@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <settings>
 
-  <state_point batches="10" />
-  <source_point source_separate="true" />
+  <state_point interval="2"/>
+  <source_point interval="4"/>
 
   <eigenvalue>
     <batches>10</batches>

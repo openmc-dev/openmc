@@ -189,6 +189,7 @@ module global
   ! Write source at end of simulation
   logical :: source_separate = .false.
   logical :: source_write = .true.
+  logical :: source_latest = .false.
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
@@ -260,6 +261,7 @@ module global
   character(MAX_FILE_LEN) :: path_cross_sections   ! Path to cross_sections.xml
   character(MAX_FILE_LEN) :: path_source = ''      ! Path to binary source
   character(MAX_FILE_LEN) :: path_state_point      ! Path to binary state point
+  character(MAX_FILE_LEN) :: path_source_point     ! Path to binary source point
   character(MAX_FILE_LEN) :: path_particle_restart ! Path to particle restart
   character(MAX_FILE_LEN) :: path_output = ''      ! Path to output directory
 
@@ -371,6 +373,10 @@ module global
   ! Information about state points to be written
   integer :: n_state_points = 0
   type(SetInt) :: statepoint_batch
+
+  ! Information about source points to be written
+  integer :: n_source_points = 0
+  type(SetInt) :: sourcepoint_batch
 
   ! Various output options
   logical :: output_summary = .false.

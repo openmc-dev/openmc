@@ -17,7 +17,8 @@ module constants
   ! Binary file types
   integer, parameter :: &
        FILETYPE_STATEPOINT       = -1, &
-       FILETYPE_PARTICLE_RESTART = -2
+       FILETYPE_PARTICLE_RESTART = -2, &
+       FILETYPE_SOURCE           = -3
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS

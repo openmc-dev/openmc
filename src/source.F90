@@ -27,6 +27,7 @@ contains
 
   subroutine initialize_source()
 
+    character(MAX_FILE_LEN) :: filename
     integer(8) :: i          ! loop index over bank sites
     integer(8) :: id         ! particle id
     integer(4) :: itmp       ! temporary integer
@@ -74,6 +75,16 @@ contains
         ! sample external source distribution
         call sample_external_source(src)
       end do
+    end if
+
+    ! Write out initial source
+    if (write_initial_source) then
+      message = 'Writing out initial source guess...'
+      call write_message(1)
+      filename = 'initial_source.h5'
+      call sp % file_create(filename, serial = .false.)
+      call sp % write_source_bank()
+      call sp % file_close()
     end if
 
   end subroutine initialize_source

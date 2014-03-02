@@ -347,11 +347,9 @@ module global
   ! Batch to begin cmfd
   integer :: cmfd_begin = 1
 
-  ! When and how long to flush cmfd tallies during inactive batches
-  integer :: cmfd_inact_flush(2) = (/9999,1/)
-
-  ! Batch to last flush before active batches
-  integer :: cmfd_act_flush = 0
+  ! Tally reset list
+  integer :: n_cmfd_resets
+  type(SetInt) :: cmfd_reset
 
   ! Compute effective downscatter cross section
   logical :: cmfd_downscatter = .false.

@@ -68,6 +68,7 @@ contains
 
     integer :: ng
     integer, allocatable :: iarray(:)
+    integer, allocatable :: int_array(:)
     logical :: file_exists ! does cmfd.xml exist?
     logical :: found
     character(MAX_LINE_LEN) :: filename
@@ -216,15 +217,20 @@ contains
         cmfd_tally_on = .false.
     end if
 
-    ! Inactive batch flush window
-    if (check_for_node(doc, "inactive_flush")) &
-      call get_node_value(doc, "inactive_flush", cmfd_inact_flush(1))
-    if (check_for_node(doc, "num_flushes")) &
-      call get_node_value(doc, "num_flushes", cmfd_inact_flush(2))
-
-    ! Last flush before active batches
-    if (check_for_node(doc, "active_flush")) &
-      call get_node_value(doc, "active_flush", cmfd_act_flush)
+    ! Check for cmfd tally resets
+    if (check_for_node(doc, "tally_reset")) then
+      n_cmfd_resets = get_arraysize_integer(doc, "tally_reset")
+    else
+      n_cmfd_resets = 0
+    end if
+    if (n_cmfd_resets > 0) then
+      allocate(int_array(n_cmfd_resets))
+      call get_node_array(doc, "tally_reset", int_array)
+      do i = 1, n_cmfd_resets
+        call cmfd_reset % add(int_array(i))
+      end do
+      deallocate(int_array)
+    end if
 
     ! Get display
     if (check_for_node(doc, "display")) &

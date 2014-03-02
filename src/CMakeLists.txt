@@ -17,6 +17,7 @@ option(petsc    "Enable PETSC for use in CMFD acceleration"      OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(verbose  "Create verbose Makefiles"                       OFF)
+option(cmfd_debug "Compile with cmfd debug flags"                OFF)
 
 if (verbose)
   set(CMAKE_VERBOSE_MAKEFILE on)
@@ -168,6 +169,15 @@ if(GIT_SHA1_SUCCESS EQUAL 0)
     "#define GIT_SHA1 \"${GIT_SHA1}\"")
 else()
   file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/git_sha1.h "")
+endif()
+
+#===============================================================================
+# CMFD debug flags
+#===============================================================================
+
+if (cmfd_debug)
+  message("-- CMFD Debug flags on")
+  add_definitions(-DCMFD_DEBUG)
 endif()
   
 #===============================================================================

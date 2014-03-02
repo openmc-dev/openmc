@@ -454,6 +454,7 @@ contains
 
       ! Find cell in next lattice element
       call find_cell(p, found)
+      p % track_xyz = p % coord0 % xyz
       if (.not. found) then
         ! In some circumstances, a particle crossing the corner of a cell may not
         ! be able to be found in the next universe. In this scenario we cut off
@@ -1332,12 +1333,7 @@ contains
       
       ! get pointer to cell
       c => cells(index_cell)
-      print *,"c%id:",c%id
       if (simple_cell_contains(c, p)) then
-        print *,"YES:",c%id
-        if (c%id == 60) then
-          print *,p % last_xyz
-        end if
         ! Set cell on this level
         p % coord % cell = index_cell
         

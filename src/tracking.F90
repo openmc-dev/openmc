@@ -89,16 +89,9 @@ contains
       else
         d_collision = -log(prn()) / material_xs % total
       end if
-      !if (p%id == 140) then
-      !print *,'d_boundary:',d_boundary
-      !print *,'d_collision:',d_collision
-      !end if
       
       ! Select smaller of the two distances
       distance = min(d_boundary, d_collision)
-      !if (p%id == 140) then
-      !print *,distance
-      !end if
       ! Advance particle
       coord => p % coord0
       do while (associated(coord))

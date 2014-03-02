@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 
+from sys import exit
 import struct
 from math import sqrt
 from collections import OrderedDict
@@ -174,7 +175,8 @@ class Geometry_Data(object):
         offset = 0
         # Verify path length at least 2. 1 for base universe, 1 so it could end in a cell
         if len(path) < 2:
-          raise Exception("len(path) < 2. It cannot meet all requirements.")
+          error = "ERROR: len(path) < 2. It cannot meet all requirements."
+          exit(error)
         # Iterate over path
         for i in path:
 
@@ -183,15 +185,18 @@ class Geometry_Data(object):
             prev = i
             prevtype = 'U'
             if prev != 0:
-              raise Exception("First element in path was not 0.")
+              error = "ERROR: First element in path was not 0."
+              exit(error)
 
           else:
             if isinstance(i,tuple):
-              #print "Found tuple:",i
+              print "Found tuple:",i
               if len(i) != 4:
-                raise Exception("Tuple ",i," does not have exactly 4 elements.")
+                error = "ERROR: Tuple " + str(i) + " does not have exactly 4 elements."
+                exit(error)
               if i[0] != self.cell[prev-1].fill:
-                raise Exception("Previous cell did not contain this lattice.")
+                error = "ERROR: Previous cell did not contain lattice " + str(i[0]) + "."
+                exit(error)
 
               # Find the lattice in the lattice list
               for j in self.lat:
@@ -199,16 +204,22 @@ class Geometry_Data(object):
                   if (i[1] > j.dim[0] or i[1] < 1 or 
                       i[2] > j.dim[1] or i[2] < 1 or
                       i[3] > j.dim[2] or i[3] < 1):
-                    raise Exception("Bad lattice index specified for lattice:",i[0])        
-                  offset += j.offset[filter_offset-1,i[1]-1,i[2]-1,i[3]-1]
+                    error = "Bad lattice index specified for lattice "+str(i[0])+"."
+                    exit(error)
+#                  offset += j.offset[filter_offset-1,i[1]-1,i[2]-1,i[3]-1]
+                  offset += j.offset[i[3]-1,i[2]-1,i[1]-1,filter_offset-1]
+                  print j.offset[i[3]-1,i[2]-1,i[1]-1]
+                  print "offset at lattice is:",offset
                   prev = i[0]
                   prevtype = 'L'
                   break
               else:
                 # Couldn't find the lattice - Not good 
-                raise Exception("Could not find lattice data for ID:",i[0])             
+                    error = "ERROR: Could not find lattice data for ID " + str(i[0]) + "."
+                    exit(error)             
             
             else:
+              print "Found non-tuple:",i
               # Expect universe or cell or lattice (as final target)
               if prevtype == 'U':
                 # Last construct was a universe
@@ -223,7 +234,8 @@ class Geometry_Data(object):
                   l += 1
                 #print "This universe contains:",self.univ[l].cells
                 if jTrue not in self.univ[l].cells:
-                  raise Exception("Requested cell: ",i,"(",jTrue,") from universe: ",prev," was not found.")
+                    error = "ERROR: Requested cell " + str(i) +"(" + str(jTrue) + ") from universe ",str(prev)," was not found."
+                    exit(error)
                 # Get key index
                 prev = i
                 prevtype = 'C'
@@ -232,15 +244,17 @@ class Geometry_Data(object):
                 # Check if the previous cell was a normal cell
                 # Throw Exception if it was, there's no deeper cells
                 for c in self.cell:
-                  if (prev == c.userID && c.filltype == "['normal']").any():
-                    raise Exception("Cell ",c.userID," is normal cell, cannot contain any lower levels.")
+                  if (prev == c.userID and c.filltype == "['normal']").any():
+                    error = "ERROR: Cell " + str(c.userID)  + " is normal cell, cannot contain any lower levels."
+                    exit(error)
                 # Else check if fill or lattice
                 # If fill, just go to that universe
                 for c in self.cell:
                   if prev == c.userID:
                     if c.filltype == "['fill_cell']":
                       if c.fill != i[0]:
-                        raise Exception("Fill Cell ", c.userID, " does not contain universe ",i[0],".")
+                        error = "ERROR: Fill Cell " + str(c.userID) + " does not contain universe " + str(i[0])  + "."
+                        exit(error)
                       prevtype = 'U'
                       prev = i[0]      
                       offset += c.offset[filter_offset-1]                      
@@ -251,11 +265,14 @@ class Geometry_Data(object):
                 # Last construct was a lattice 
                 # Double check that this universe is contained by that lattice
                 for j in self.lat:
-                  if (j.ID == prev and j.fill != i).any():
-                    raise Exception("Lattice: ",prev," does not contain universe ",i,".")
+                  if j.ID == prev:
+                    if not (j.fill == i).any():
+                      error = "ERROR: Lattice " + str(prev) + " does not contain universe " + str(i) + "."
+                      exit(error)
                 # Found a lattice that matched and contains this universe
                 prevtype = 'U'
-                prev = i   
+                prev = i  
+        print "calculated offset:",offset 
         return offset
 
 class Universe(object):

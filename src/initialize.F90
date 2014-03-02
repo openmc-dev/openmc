@@ -13,7 +13,7 @@ module initialize
                               cells_in_univ_dict, read_plots_xml
   use output,           only: title, header, write_summary, print_version,     &
                               print_usage, write_xs_summary, print_plot,       &
-                              write_message, find_offset
+                              write_message
   use output_interface
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source

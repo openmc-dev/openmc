@@ -343,11 +343,6 @@ contains
 
           end select
 
-              !print *,'t % id:', t%id
-              !print *,'score:', score
-              !print *,'p%id:',p%id
-              !print *,'p%last_xyz:',p%last_xyz
-              !print *,'p%coord0%xyz:',p%coord0%xyz
           ! Add score to tally
 !$omp critical
           t % results(score_index, filter_index) % value = &
@@ -1040,11 +1035,6 @@ contains
               
             ! Add score to tally
 !$omp critical
-            if (p % id == 22) then
-              print *,"Score on tally:",t%id, "| ", score
-              print *,"p%last_xyz:",p%last_xyz
-              print *,"p%track_xyz:",p%track_xyz
-            endif
             t % results(score_index, filter_index) % value = &
                  t % results(score_index, filter_index) % value + score
 !$omp end critical
@@ -1668,7 +1658,6 @@ contains
       case (FILTER_CELL)
         ! determine next cell bin
         coord => p % coord0
-        print *,"p%coord0:",p%coord0 % xyz
         do while(associated(coord))
           position(FILTER_CELL) = 0
           matching_bins(i) = get_next_bin(FILTER_CELL, &
@@ -1697,18 +1686,12 @@ contains
           call p_fake % initialize()
           p_fake % coord % xyz = p % track_xyz 
           p_fake % coord % uvw = p % coord % uvw    
-        end if 
-        print *,"p_fake % coord % xyz:",p_fake % coord % xyz
-        print *,"p % coord0 % xyz:",p % coord0 % xyz
+        end if         
         offset = 0
         found = .false.
         matching_bins(i) = NO_BIN_FOUND
         call distribcell_offset(p_fake, t % filters(i) % int_bins(1), t % filters(i) % offset, found, offset)
-        if (p % id == 22) then
-          print *,"found:",found
-        end if
         if (found) then
-          print *,"offset:",offset+1
           matching_bins(i) = offset + 1
         end if
         

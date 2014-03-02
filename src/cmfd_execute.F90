@@ -82,8 +82,8 @@ contains
 
   subroutine cmfd_init_batch()
 
-    use global,            only: cmfd_begin, cmfd_on, cmfd_tally_on,         &
-                                 cmfd_inact_flush, cmfd_act_flush, cmfd_run, &
+    use global,            only: cmfd_begin, cmfd_on, cmfd_tally_on, &
+                                 cmfd_reset, cmfd_run,               &
                                  current_batch, cmfd_hold_weights
 
     ! Check to activate CMFD diffusion and possible feedback
@@ -97,21 +97,9 @@ contains
     ! If this is a restart run and we are just replaying batches leave
     if (restart_run .and. current_batch <= restart_batch) return
 
-    ! Check to flush cmfd tallies for active batches, no more inactive flush
-    if (cmfd_run .and. cmfd_act_flush == current_batch) then
+    ! Check to reset tallies
+    if (cmfd_run .and. cmfd_reset % contains(current_batch)) then
       call cmfd_tally_reset()
-      cmfd_tally_on = .true.
-      cmfd_inact_flush(2) = -1
-    end if
-
-    ! Check to flush cmfd tallies during inactive batches (>= on number of
-    ! flushes important as the code will flush on the first batch which we
-    ! dont want to count)
-    if (cmfd_run .and. mod(current_batch,cmfd_inact_flush(1))   &
-       == 0 .and. cmfd_inact_flush(2) > 0 .and. cmfd_begin < current_batch) then
-        cmfd_hold_weights = .true.
-        call cmfd_tally_reset()
-        cmfd_inact_flush(2) = cmfd_inact_flush(2) - 1
     end if
 
   end subroutine cmfd_init_batch

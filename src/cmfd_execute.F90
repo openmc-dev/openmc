@@ -69,7 +69,7 @@ contains
     call calc_fission_source()
 
     ! calculate weight factors
-    if (cmfd_feedback) call cmfd_reweight(.true.)
+    call cmfd_reweight(.true.)
 
     ! stop cmfd timer
     if (master) call time_cmfd % stop()
@@ -132,6 +132,7 @@ contains
 
     use constants,  only: CMFD_NOACCEL, ZERO, TWO
     use global,     only: cmfd, cmfd_coremap, master, entropy_on, current_batch
+    use string,     only: to_str 
 
 #ifdef MPI
     use global,     only: mpi_err
@@ -238,6 +239,15 @@ contains
       cmfd % src_cmp(current_batch) = sqrt(ONE/cmfd % norm * &
              sum((cmfd % cmfd_src - cmfd % openmc_src)**2))
 
+#ifdef CMFD_DEBUG
+      open(file='cmfd_src_' // trim(to_str(current_batch)) // '.dat', unit=100)
+      do i = 1, nx
+        do j = 1,ny
+          write(100,*) cmfd % sourcecounts(1,i,j,1)
+        end do
+      end do
+      close(100) 
+#endif
     end if
 
 #ifdef MPI
@@ -260,6 +270,7 @@ contains
     use mesh_header, only: StructuredMesh
     use mesh,        only: count_bank_sites, get_mesh_indices
     use search,      only: binary_search
+    use string,      only: to_str
 
 #ifdef MPI
     use global,      only: mpi_err
@@ -273,6 +284,7 @@ contains
     integer :: nz       ! maximum number of cells in z direction
     integer :: ng       ! maximum number of energy groups
     integer :: i        ! iteration counter
+    integer :: j        ! iteration counter
     integer :: ijk(3)   ! spatial bin location
     integer :: e_bin    ! energy bin of source particle
     integer :: n_groups ! number of energy groups
@@ -327,7 +339,18 @@ contains
           cmfd % weightfactors = cmfd % cmfd_src/sum(cmfd % cmfd_src)* &
                                sum(cmfd % sourcecounts) / cmfd % sourcecounts
         end where
+#ifdef CMFD_DEBUG
+        open(file='source_bank_' // trim(to_str(current_batch)) // '.dat', unit=101)
+        do i = 1, nx
+          do j = 1,ny
+            write(101,*) cmfd % sourcecounts(1,i,j,1)
+          end do
+        end do
+        close(101) 
+#endif
       end if
+
+if (.not. cmfd_feedback) return
 
       ! Broadcast weight factors to all procs
 #ifdef MPI

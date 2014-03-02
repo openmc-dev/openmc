@@ -26,6 +26,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(verbose  "Create verbose Makefiles"                       OFF)
 option(coverage "Compile with flags"                             OFF)
+option(cmfd_debug "Compile with cmfd debug flags"                OFF)
 
 if (verbose)
   set(CMAKE_VERBOSE_MAKEFILE on)
@@ -214,6 +215,15 @@ if(GIT_SHA1_SUCCESS EQUAL 0)
   add_definitions(-DGIT_SHA1="${GIT_SHA1}")
 endif()
 
+#===============================================================================
+# CMFD debug flags
+#===============================================================================
+
+if (cmfd_debug)
+  message("-- CMFD Debug flags on")
+  add_definitions(-DCMFD_DEBUG)
+endif()
+  
 #===============================================================================
 # FoX Fortran XML Library
 #===============================================================================

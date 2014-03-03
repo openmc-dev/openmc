@@ -243,7 +243,7 @@ contains
       open(file='cmfd_src_' // trim(to_str(current_batch)) // '.dat', unit=100)
       do i = 1, nx
         do j = 1,ny
-          write(100,*) cmfd % sourcecounts(1,i,j,1)
+          write(100,*) cmfd % cmfd_src(1,i,j,1)
         end do
       end do
       close(100) 

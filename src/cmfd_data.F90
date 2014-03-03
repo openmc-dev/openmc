@@ -10,8 +10,6 @@ module cmfd_data
   private
   public :: set_up_cmfd, neutron_balance
 
-  logical :: dhat_reset = .false.
-
 contains
 
 !==============================================================================
@@ -709,7 +707,8 @@ contains
   subroutine compute_dhat()
 
     use constants,  only: CMFD_NOACCEL, ZERO
-    use global,     only: cmfd, cmfd_coremap
+    use global,     only: cmfd, cmfd_coremap, message, dhat_reset
+    use output,     only: write_message
 
     integer :: nx             ! maximum number of cells in x direction
     integer :: ny             ! maximum number of cells in y direction
@@ -829,7 +828,9 @@ contains
               cmfd%dhat(l,g,i,j,k) = dhat
 
               ! check for dhat reset
-              if (dhat_reset) cmfd%dhat(l,g,i,j,k) = ZERO
+              if (dhat_reset) then
+                cmfd%dhat(l,g,i,j,k) = ZERO
+              end if
 
             end do LEAK
 
@@ -840,6 +841,12 @@ contains
       end do YLOOP
 
     end do ZLOOP
+
+    ! write that dhats are zero
+    if (dhat_reset) then
+      message = 'Dhats reset to zero.'
+      call write_message(1)
+    end if
 
   end subroutine compute_dhat
 
@@ -927,7 +934,7 @@ contains
     real(8) :: det        ! determinant of balance matrix
 
     message = 'Correcting neutron balance'
-    call write_message()
+    call write_message(1)
 
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)

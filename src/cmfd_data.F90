@@ -305,8 +305,6 @@ contains
     if (associated(m)) nullify(m)
 
 #ifdef CMFD_DEBUG
-    open(file='cmfd_src_' // trim(to_str(current_batch)) // '.dat', unit=100)
-    open(file='source_bank_' // trim(to_str(current_batch)) // '.dat', unit=101)
     open(file='openmc_src_' // trim(to_str(current_batch)) // '.dat', unit=102)
     open(file='totalxs1_' // trim(to_str(current_batch)) // '.dat', unit=103)
     open(file='totalxs2_' // trim(to_str(current_batch)) // '.dat', unit=104)
@@ -343,8 +341,6 @@ contains
                ((cmfd % current(4*l-2,2,i,j,1) - &
                cmfd % current(4*l-3,2,i,j,1)))
         end do
-        write(100,*) cmfd % cmfd_src(1,i,j,1)
-        write(101,*) cmfd % sourcecounts(1,i,j,1)
         write(102,*) cmfd % openmc_src(1,i,j,1)
         write(103,*) cmfd % totalxs(1,i,j,1)
         write(104,*) cmfd % totalxs(2,i,j,1)
@@ -366,8 +362,6 @@ contains
         write(120,*) leak2
       end do
     end do
-    close(100) 
-    close(101) 
     close(102) 
     close(103) 
     close(104) 

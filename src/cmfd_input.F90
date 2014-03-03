@@ -165,6 +165,14 @@ contains
         cmfd_downscatter = .true.
     end if
 
+    ! Run an adjoint calc
+    if (check_for_node(doc, "dhat_reset")) then
+      call get_node_value(doc, "dhat_reset", temp_str)
+      call lower_case(temp_str)
+      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
+        dhat_reset = .true.
+    end if
+
     ! Set the solver type
     if (check_for_node(doc, "solver")) &
       call get_node_value(doc, "solver", cmfd_solver_type)

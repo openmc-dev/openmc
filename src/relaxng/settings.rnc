@@ -101,7 +101,7 @@ element settings {
         attribute batches { list { xsd:positiveInteger+ } }) |
       (element interval { xsd:positiveInteger } | 
         attribute interval { xsd:positiveInteger })
-    ) &
+    )? &
     (element separate { xsd:boolean } | 
       attribute separate { xsd:boolean })? &
     (element write { xsd:boolean } | 

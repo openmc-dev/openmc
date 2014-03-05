@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # This simple script ensures that all binary
 # output files have been deleted in all the
 # folders. This can occur if a previous error

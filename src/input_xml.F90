@@ -625,25 +625,90 @@ contains
         n_state_points = 1
         call statepoint_batch % add(n_batches)
       end if
-
-      ! Check if the user has specified to write binary source file
-      if (check_for_node(node_sp, "source_separate")) then
-        call get_node_value(node_sp, "source_separate", temp_str)
-        call lower_case(temp_str)
-        if (trim(temp_str) == 'true' .or. &
-             trim(temp_str) == '1') source_separate = .true.
-      end if
-      if (check_for_node(node_sp, "source_write")) then
-        call get_node_value(node_sp, "source_write", temp_str)
-        call lower_case(temp_str)
-        if (trim(temp_str) == 'false' .or. &
-             trim(temp_str) == '0') source_write = .false.
-      end if
     else
       ! If no <state_point> tag was present, by default write state point at
       ! last batch only
       n_state_points = 1
       call statepoint_batch % add(n_batches)
+    end if
+
+    ! Check if the user has specified to write source points
+    if (check_for_node(doc, "source_point")) then
+
+      ! Get pointer to source_point node
+      call get_node_ptr(doc, "source_point", node_sp)
+
+      ! Determine number of batches at which to store source points
+      if (check_for_node(node_sp, "batches")) then
+        n_source_points = get_arraysize_integer(node_sp, "batches") 
+      else
+        n_source_points = 0
+      end if
+
+      if (n_source_points > 0) then
+        ! User gave specific batches to write source points
+        allocate(temp_int_array(n_source_points))
+        call get_node_array(node_sp, "batches", temp_int_array)
+        do i = 1, n_source_points
+          call sourcepoint_batch % add(temp_int_array(i))
+        end do
+        deallocate(temp_int_array)
+      elseif (check_for_node(node_sp, "interval")) then
+        ! User gave an interval for writing source points
+        call get_node_value(node_sp, "interval", temp_int)
+        n_source_points = n_batches / temp_int
+        do i = 1, n_source_points
+          call sourcepoint_batch % add(temp_int * i)
+        end do
+      else
+        ! If neither were specified, write source points with state points
+        n_source_points = n_state_points
+        do i = 1, n_state_points
+          call sourcepoint_batch % add(statepoint_batch % get_item(i))
+        end do
+      end if
+
+      ! Check if the user has specified to write binary source file
+      if (check_for_node(node_sp, "separate")) then
+        call get_node_value(node_sp, "separate", temp_str)
+        call lower_case(temp_str)
+        if (trim(temp_str) == 'true' .or. &
+             trim(temp_str) == '1') source_separate = .true.
+      end if
+      if (check_for_node(node_sp, "write")) then
+        call get_node_value(node_sp, "write", temp_str)
+        call lower_case(temp_str)
+        if (trim(temp_str) == 'false' .or. &
+             trim(temp_str) == '0') source_write = .false.
+      end if
+      if (check_for_node(node_sp, "overwrite_latest")) then
+        call get_node_value(node_sp, "overwrite_latest", temp_str)
+        call lower_case(temp_str)
+        if (trim(temp_str) == 'true' .or. &
+             trim(temp_str) == '1') source_latest = .true.
+      end if
+    else
+      ! If no <source_point> tag was present, by default we keep source bank in
+      ! statepoint file and write it out at statepoints intervals 
+      source_separate = .false.
+      n_source_points = n_state_points
+      do i = 1, n_state_points
+        call sourcepoint_batch % add(statepoint_batch % get_item(i))
+      end do
+    end if
+
+    ! If source is not seperate and is to be written out in the statepoint file,
+    ! make sure that the sourcepoint batch numbers are contained in the
+    ! statepoint list
+    if (.not. source_separate) then
+      do i = 1, n_source_points
+        if (.not. statepoint_batch % contains(sourcepoint_batch % &
+            get_item(i))) then
+          message = 'Sourcepoint batches are not a subset&
+                    & of statepoint batches.'
+          call fatal_error()
+        end if
+      end do
     end if
 
     ! Check if the user has specified to not reduce tallies at the end of every

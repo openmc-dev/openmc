@@ -232,6 +232,13 @@ contains
 
     end if
 
+    ! Indicate where source bank is stored in statepoint
+    if (source_separate) then
+      call sp % write_data(0, "source_present")
+    else
+      call sp % write_data(1, "source_present")
+    end if
+
     ! Check for the no-tally-reduction method
     if (.not. reduce_tallies) then
       ! If using the no-tally-reduction method, we need to collect tally
@@ -518,6 +525,7 @@ contains
     integer                 :: length(4)
     integer                 :: int_array(3)
     integer, allocatable    :: temp_array(:)
+    logical                 :: source_present
     real(8)                 :: real_array(3) 
     type(TallyObject), pointer :: t => null()
 
@@ -722,6 +730,20 @@ contains
 
     end do TALLY_METADATA
 
+    ! Check for source in statepoint if needed
+    call sp % read_data(int_array(1), "source_present")
+    if (int_array(1) == 1) then
+      source_present = .true.
+    else
+      source_present = .false.
+    end if
+
+    ! Check to make sure source bank is present
+    if (path_source_point == path_state_point .and. .not. source_present) then
+      message = "Source bank must be contained in statepoint restart file"
+      call fatal_error()
+    end if 
+
     ! Read tallies to master
     if (master) then
 
@@ -762,26 +784,17 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
 
       ! Check if source was written out separately
-      if (source_separate) then
+      if (.not. source_present) then
 
         ! Close statepoint file 
         call sp % file_close()
-
-        ! Set filename for source
-        filename = trim(path_output) // 'source.' // &
-                   trim(to_str(restart_batch))
-#ifdef HDF5
-        filename = trim(filename) // '.h5'
-#else
-        filename = trim(filename) // '.binary'
-#endif
 
         ! Write message
         message = "Loading source file " // trim(filename) // "..."
         call write_message(1)
 
         ! Open source file 
-        call sp % file_open(filename, 'r', serial = .false.)
+        call sp % file_open(path_source_point, 'r', serial = .false.)
 
         ! Read file type
         call sp % read_data(int_array(1), "filetype")

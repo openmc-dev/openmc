@@ -301,9 +301,9 @@ class StatePoint(object):
         # Source bank present
         source_present = self._get_int(path='source_present')[0]
         if source_present == 1:
-          self.source_present = True       
+            self.source_present = True       
         else:
-          self.source_present = False
+            self.source_present = False
 
         # Set flag indicating metadata has already been read
         self._metadata = True

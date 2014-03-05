@@ -48,7 +48,12 @@ following commands in a terminal:
     sudo make install
 
 This will build an executable named ``openmc`` and install it (by default in
-/usr/local/bin).
+/usr/local/bin). If you do not have administrator privileges, the last command
+can be replaced with a local install, e.g.
+
+.. code-block:: sh
+
+    make install -e prefix=$HOME/.local
 
 .. _GitHub: https://github.com/mit-crpg/openmc
 .. _git: http://git-scm.com

@@ -51,8 +51,7 @@ def setup():
 
 def test_run1():
     openmc_path = pwd + '/../../src/openmc'
-#   if int(NoseMPI.mpi_np) > 0:
-    if False:
+    if int(NoseMPI.mpi_np) > 0:
         proc = Popen([NoseMPI.mpi_exec, '-np', NoseMPI.mpi_np, openmc_path],
                stderr=STDOUT, stdout=PIPE)
     else:

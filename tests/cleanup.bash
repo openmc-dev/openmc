@@ -5,10 +5,4 @@
 # deleting left over binary files. This will
 # cause an assertion error in some of the 
 # tests.
-for i in ./*; do
-  if [ -d "$i" ]; then
-    cd $i
-    rm -f *.binary *.h5
-    cd ..
-  fi
-done
+find . \( -name "*.binary" -o -name "*.h5" \) -exec rm -f {} \;

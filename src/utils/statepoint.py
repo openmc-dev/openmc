@@ -298,6 +298,13 @@ class StatePoint(object):
                 f.stride = stride
                 stride *= f.length
 
+        # Source bank present
+        source_present = self._get_int(path='source_present')[0]
+        if source_present == 1:
+          self.source_present = True       
+        else:
+          self.source_present = False
+
         # Set flag indicating metadata has already been read
         self._metadata = True
 
@@ -342,10 +349,9 @@ class StatePoint(object):
         if not self._results:
             self.read_results()
 
-        # Source bank present
-        source_present = self._get_int(path='source_present')[0]
-        if source_present != 1:
-            print('Source bank not present.')
+        # Check if source bank is in statepoint
+        if not self.source_present:
+            print('Source not in statepoint file.')
             return
 
         # For HDF5 state points, copy entire bank

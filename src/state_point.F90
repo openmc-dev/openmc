@@ -232,6 +232,13 @@ contains
 
     end if
 
+    ! Indicate where source bank is stored in statepoint
+    if (source_separate) then
+      call sp % write_data(0, "source_present")
+    else
+      call sp % write_data(1, "source_present")
+    end if
+
     ! Check for the no-tally-reduction method
     if (.not. reduce_tallies) then
       ! If using the no-tally-reduction method, we need to collect tally
@@ -273,13 +280,6 @@ contains
         ! Indicate tallies are off
         call sp % write_data(0, "tallies_present", group="tallies")
 
-      end if
-
-      ! Indicate where source bank is stored in statepoint
-      if (source_separate) then
-        call sp % write_data(0, "source_present")
-      else
-        call sp % write_data(1, "source_present")
       end if
 
       ! Close the file for serial writing
@@ -730,6 +730,20 @@ contains
 
     end do TALLY_METADATA
 
+    ! Check for source in statepoint if needed
+    call sp % read_data(int_array(1), "source_present")
+    if (int_array(1) == 1) then
+      source_present = .true.
+    else
+      source_present = .false.
+    end if
+
+    ! Check to make sure source bank is present
+    if (path_source_point == path_state_point .and. .not. source_present) then
+      message = "Source bank must be contained in statepoint restart file"
+      call fatal_error()
+    end if 
+
     ! Read tallies to master
     if (master) then
 
@@ -765,20 +779,6 @@ contains
         end do TALLY_RESULTS
       end if
     end if
-
-    ! Check for source in statepoint if needed
-    call sp % read_data(int_array(1), "source_present")
-    if (int_array(1) == 1) then
-      source_present = .true.
-    else
-      source_present = .false.
-    end if
-
-    ! Check to make sure source bank is present
-    if (path_source_point == path_state_point .and. .not. source_present) then
-      message = "Source bank must be contained in statepoint restart file"
-      call fatal_error()
-    end if 
 
     ! Read source if in eigenvalue mode 
     if (run_mode == MODE_EIGENVALUE) then

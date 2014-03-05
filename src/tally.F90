@@ -2459,7 +2459,7 @@ contains
         i_grid = 1
         f = ZERO
       else if (Ein >= ndpp_scatt_Ein(size(ndpp_scatt_Ein))) then
-        i_grid = size(ndpp_scatt_Ein)
+        i_grid = size(ndpp_scatt_Ein) - 1
         f = ONE
       !else if (i_grid + ndpp_groups + 1 <= size(ndpp_scatt_Ein)) then
       !  !i_grid = binary_search(ndpp_scatt_Ein(i_grid: &

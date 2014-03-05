@@ -58,7 +58,6 @@ contains
     integer(8) :: temp_long
     integer :: n_tracks
     logical :: file_exists
-    logical :: check
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
@@ -702,10 +701,9 @@ contains
     ! make sure that the sourcepoint batch numbers are contained in the
     ! statepoint list
     if (.not. source_separate) then
-      check = .true.
       do i = 1, n_source_points
-        check = statepoint_batch % contains(sourcepoint_batch % get_item(i))
-        if (.not. check) then
+        if (.not. statepoint_batch % contains(sourcepoint_batch % &
+            get_item(i))) then
           message = 'Sourcepoint batches are not a subset&
                     & of statepoint batches.'
           call fatal_error()

@@ -1089,7 +1089,7 @@ sub-elements:
               the PNG format can often times reduce the file size by orders of
               magnitude without any loss of image quality. Likewise,
               high-resolution voxel files produced by OpenMC can be quite large,
-              but the equivalent SILO files will by significantly smaller.
+              but the equivalent SILO files will be significantly smaller.
 
     *Default*: "slice"
 

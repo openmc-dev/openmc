@@ -3,7 +3,7 @@
 import os
 from subprocess import Popen, STDOUT, PIPE, call
 import filecmp
-#from nose_mpi import NoseMPI
+from nose_mpi import NoseMPI
 import glob
 
 pwd = os.path.dirname(__file__)

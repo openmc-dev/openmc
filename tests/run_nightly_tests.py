@@ -31,7 +31,7 @@ set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --show-r
 ctest_start("Nightly")
 ctest_configure()
 ctest_build()
-ctest_test()
+ctest_test(INCLUDE test_basic)
 ctest_submit()"""
 
 # Define test data structure

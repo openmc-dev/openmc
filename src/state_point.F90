@@ -922,6 +922,10 @@ contains
         call sp % read_data(t % filters(j) % type, "type", &
              group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
 
+          ! Write offset for this filter
+          call sp % read_data(t % filters(j) % offset, "offset", &
+               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+
         ! Read number of bins for this filter
         call sp % read_data(t % filters(j) % n_bins, "n_bins", &
              group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
@@ -950,6 +954,10 @@ contains
            group="tallies/tally" // to_str(i), length=t % n_nuclide_bins)
       NUCLIDE_LOOP: do j = 1, t % n_nuclide_bins
         if (temp_array(j) > 0) then
+          print *,j
+          print *,size(t % nuclide_bins)
+          print *,temp_array(j)
+          print *,t % nuclide_bins(j)
           nuclides(t % nuclide_bins(j)) % zaid = temp_array(j)
         else
           t % nuclide_bins(j) = temp_array(j)

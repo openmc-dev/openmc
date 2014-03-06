@@ -17,6 +17,7 @@ option(petsc    "Enable PETSC for use in CMFD acceleration"      OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(verbose  "Create verbose Makefiles"                       OFF)
+option(coverage "Compile with flags"                             OFF)
 
 if (verbose)
   set(CMAKE_VERBOSE_MAKEFILE on)
@@ -61,6 +62,10 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   if(openmp)
     set(f90flags  "-fopenmp ${f90flags}")
     set(ldflags   "-fopenmp ${ldflags}")
+  endif()
+  if(coverage)
+    set(f90flags "-coverage ${f90flags}")
+    set(ldflags  "-coverage ${ldflags}")
   endif()
 
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
@@ -241,7 +246,7 @@ foreach(test ${TESTS})
   get_filename_component(TEST_NAME ${test} NAME)
   get_filename_component(TEST_PATH ${test} PATH) 
 
-  if(NOT $ENV{MEM_CHECK})
+  if(NOT $ENV{MEM_CHECK} AND NOT $ENV{COVERAGE})
 
     # Check serial/parallel
     if (${MPI_ENABLED})
@@ -261,13 +266,13 @@ foreach(test ${TESTS})
 
     endif(${MPI_ENABLED})
 
-  else(NOT $ENV{MEM_CHECK})
+  else(NOT $ENV{MEM_CHECK} AND NOT $ENV{COVERAGE})
 
     # Perform serial valgrind test
     add_test(NAME ${TEST_NAME}
       WORKING_DIRECTORY ${TEST_PATH}
       COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
 
-  endif(NOT $ENV{MEM_CHECK})
+  endif(NOT $ENV{MEM_CHECK} AND NOT $ENV{COVERAGE})
 
 endforeach(test)

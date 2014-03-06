@@ -27,17 +27,23 @@ set (CTEST_BUILD_OPTIONS "{build_opts}")
 set(CTEST_CONFIGURE_COMMAND "${{CMAKE_COMMAND}} -H${{CTEST_SOURCE_DIRECTORY}} -B${{CTEST_BINARY_DIRECTORY}} ${{CTEST_BUILD_OPTIONS}}")
 set(CTEST_MEMORYCHECK_COMMAND "/usr/bin/valgrind")
 set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes")
-
 set(MEM_CHECK {mem_check})
 set(ENV{{MEM_CHECK}} ${{MEM_CHECK}})
+
+set(CTEST_COVERAGE_COMMAND "/usr/bin/gcov")
+set(COVERAGE {coverage})
+set(ENV{{COVERAGE}} ${{COVERAGE}})
 
 ctest_start("Nightly")
 ctest_configure()
 ctest_build()
-ctest_test(INCLUDE test_basic)
+ctest_test()
 if(MEM_CHECK)
 ctest_memcheck(INCLUDE test_basic)
 endif(MEM_CHECK)
+if(COVERAGE)
+ctest_coverage()
+endif(COVERAGE)
 ctest_submit()"""
 
 # Define test data structure
@@ -45,7 +51,7 @@ tests = OrderedDict()
 
 class Test(object):
     def __init__(self, name, debug=False, optimize=False, mpi=False, openmp=False,
-                 hdf5=False, petsc=False, valgrind=False):
+                 hdf5=False, petsc=False, valgrind=False, coverage=False):
         self.name = name
         self.debug = debug
         self.optimize = optimize
@@ -54,6 +60,7 @@ class Test(object):
         self.hdf5 = hdf5
         self.petsc = petsc
         self.valgrind = valgrind
+        self.coverage = coverage
 
     def get_build_name(self):
         self.build_name = self.name
@@ -69,6 +76,8 @@ class Test(object):
             build_str += "-Dopenmp=ON "
         if self.petsc:
             build_str += "-Dpetsc=ON "
+        if self.coverage:
+            build_str += "-Dcoverage=ON "
         self.build_opts = build_str
         return self.build_opts
 
@@ -80,11 +89,11 @@ class Test(object):
         call(['ctest', '-S', 'ctestscript.run','-V'])
 
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
-             hdf5=False, petsc=False, valgrind=False):
-    tests.update({name:Test(name, debug, optimize, mpi, openmp, hdf5, petsc, valgrind)})
+             hdf5=False, petsc=False, valgrind=False, coverage=False):
+    tests.update({name:Test(name, debug, optimize, mpi, openmp, hdf5, petsc, valgrind, coverage)})
 
 # List of tests
-add_test('basic-normal')
+#add_test('basic-normal')
 #add_test('basic-debug', debug=True)
 #add_test('basic-optimize', optimize=True)
 #add_test('omp-normal', openmp=True)
@@ -117,7 +126,8 @@ add_test('basic-normal')
 #add_test('omp-phdf5-petsc-normal', openmp=True, mpi=True, hdf5=True, petsc=True)
 #add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, debug=True)
 #add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
-add_test('basic-debug_valgrind', debug=True, valgrind=True)
+#add_test('basic-debug_valgrind', debug=True, valgrind=True)
+add_test('basic-normal_coverage', coverage=True)
 
 # Setup CTest vars
 pwd = os.environ['PWD']
@@ -136,6 +146,7 @@ for key in iter(tests):
     ctest_vars.update({'build_name' : test.get_build_name()})
     ctest_vars.update({'build_opts' : test.get_build_opts()})
     ctest_vars.update({'mem_check'  : test.valgrind})
+    ctest_vars.update({'coverage'  : test.coverage})
 
     # Create ctest script
     test.create_ctest_script(ctest_vars)
@@ -144,4 +155,4 @@ for key in iter(tests):
     test.run_ctest()
 
     # Clear build directory
-    call(['rm', '-rf', 'build'])
+#   call(['rm', '-rf', 'build'])

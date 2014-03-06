@@ -29,6 +29,8 @@ New Features
 - plot_mesh_tally.py utility converted to use Tkinter rather than PyQt
 - Script added to download ACE data from NNDC
 - Mixed ASCII/binary cross_sections.xml now allowed
+- Expanded options for writing source bank
+- Re-enabled ability to use source file as starting source
 
 ---------
 Bug Fixes

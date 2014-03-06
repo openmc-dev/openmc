@@ -65,9 +65,9 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
 
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
   # Intel Fortran compiler options
-  set(f90flags  "-fpp -warn -assume byterecl -traceback")
+  set(f90flags  "-fpp -std08 -assume byterecl -traceback")
   if(debug)
-    set(f90flags "-g -ftrapuv -fp-stack-check -check all -fpe0 ${f90flags}")
+    set(f90flags "-g -warn -ftrapuv -fp-stack-check -check all -fpe0 ${f90flags}")
     set(ldflags  "-g")
   endif()
   if(profile)
@@ -161,9 +161,7 @@ endif()
 # git SHA1 hash
 #===============================================================================
 
-execute_process(COMMAND git log -1
-                COMMAND head -n 1
-                COMMAND cut -c8-
+execute_process(COMMAND git rev-parse -q HEAD
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 RESULT_VARIABLE GIT_SHA1_SUCCESS
                 OUTPUT_VARIABLE GIT_SHA1

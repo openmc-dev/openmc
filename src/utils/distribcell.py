@@ -40,7 +40,7 @@ showImg = False
 # Save to CSV for use in more advanced plotting programs like GNUPlot, MathGL
 savetoCSV = True
 
-usehdf5 = True
+usehdf5 = False
 ##################################### END USER OPTIONS
 
 ## Find if tallies.xml exists.
@@ -84,22 +84,23 @@ for i_batch in range(len(files)):
     # Create StatePoint object
     sp = StatePoint(batch_filename)
 
+    #sp.geom._print_all()
+
     sp.read_results()
     
     # Read the same value for our cell and distribcell tally
     # This distribcell tally only has one entry
-    print sp.get_value(0,[('cell',0)],0)
-    print sp.get_value(1,[('distribcell',0)],0)
+    print sp.get_value(0,[('cell',0)],0)[0]
+    print sp.get_value(1,[('distribcell',0)],0)[0]
     print ''
 
     # Check that the sum of the distribcell tally 
     # is equal to that of the cell tally single entry
-    print sp.get_value(2,[('cell',0)],0)
-    sum = [0,0,0]
+    print sp.get_value(2,[('cell',0)],0)[0]
+    sum = 0
     for i in range(241):
       #print i
-      sum[0] += sp.get_value(3,[('distribcell',i)],0)[0]
-      sum[1] += sp.get_value(3,[('distribcell',i)],0)[1]
+      sum += sp.get_value(3,[('distribcell',i)],0)[0]
     print sum
     print ''
 

@@ -144,6 +144,7 @@ class Geometry_Data(object):
         for i in self.univ:
           print 'Universe:',i.ID
           print '--Contains Cells:',i.cells
+
         for i in self.cell:
           print 'Cell:',i.ID
           print '--UserID:',i.userID
@@ -151,6 +152,7 @@ class Geometry_Data(object):
           print '--Fill:',i.fill
           print '--Offset:',i.offset
           print '--Material:',i.material
+
         for i in self.lat:
           print 'Lattice:',i.ID
           print '--Fill:',i.fill
@@ -206,6 +208,7 @@ class Geometry_Data(object):
                     error = "Bad lattice index specified for lattice "+str(i[0])+"."
                     exit(error)
                   offset += j.offset[i[3]-1,i[2]-1,i[1]-1,filter_offset-1]
+#                  offset += j.offset[filter_offset-1,i[1]-1,i[2]-1,i[3]-1]
                   prev = i[0]
                   prevtype = 'L'
                   break
@@ -229,7 +232,8 @@ class Geometry_Data(object):
                   l += 1
                 #print "This universe contains:",self.univ[l].cells
                 if jTrue not in self.univ[l].cells:
-                    error = "ERROR: Requested cell " + str(i) +"(" + str(jTrue) + ") from universe ",str(prev)," was not found."
+                    print self.univ[l].cells
+                    error = "ERROR: Requested cell " + str(i) + " from universe ",str(prev)," was not found."
                     exit(error)
                 # Get key index
                 prev = i
@@ -239,21 +243,21 @@ class Geometry_Data(object):
                 # Check if the previous cell was a normal cell
                 # Throw Exception if it was, there's no deeper cells
                 for c in self.cell:
-                  if (prev == c.userID and c.filltype == "['normal']").any():
+                  if (prev == c.userID and c.filltype == "normal").any():
                     error = "ERROR: Cell " + str(c.userID)  + " is normal cell, cannot contain any lower levels."
                     exit(error)
                 # Else check if fill or lattice
                 # If fill, just go to that universe
                 for c in self.cell:
                   if prev == c.userID:
-                    if c.filltype == "['fill_cell']":
+                    if c.filltype == "fill_cell":
                       if c.fill != i[0]:
                         error = "ERROR: Fill Cell " + str(c.userID) + " does not contain universe " + str(i[0])  + "."
                         exit(error)
                       prevtype = 'U'
                       prev = i[0]      
                       offset += c.offset[filter_offset-1]                   
-                    elif c.filltype == "['lattice']":
+                    elif c.filltype == "lattice":
                       prev = i[0]
                       prevtype = 'L'    
               elif prevtype == 'L':
@@ -397,56 +401,70 @@ class StatePoint(object):
 
         # Read geometry information
         self.geom.n_cells = self._get_int(path='geometry/n_cells')[0]
-        self.geom.n_lattices = self._get_int(path='geometry/n_lattices')[0]
         self.geom.n_universes = self._get_int(path='geometry/n_universes')[0]
+        self.geom.n_lattices = self._get_int(path='geometry/n_lattices')[0]
 
-        univList = self._get_int(path='geometry/universe_ids')
-        latticeList = self._get_int(path='geometry/lattice_ids')
-        # OpenMC IDs
-        self.geom.cellList = self._get_int(path='geometry/cell_ids')
+        latticeList = self._get_int(self.geom.n_lattices,path='geometry/lattice_ids')
+
+        univList = self._get_int(self.geom.n_universes,path='geometry/universe_ids')
+
         # User Inputs  
-        self.geom.cellKeys = self._get_int(path='geometry/cell_keys')
-
-        # Build list of universes
-        base = 'geometry/universes/universe '
-        for i in range(self.geom.n_universes):
-          self.geom.univ.append(Universe(univList[i],self._get_int(path=base + str(univList[i])+'/cells')))
-
-        # Build list of lattices
-        base = 'geometry/lattices/lattice '
-        for i in range(self.geom.n_lattices):
-          dim = self._get_int(path=base + str(latticeList[i])+'/dimension')
-          path = base + str(latticeList[i])+'/offset'
-          data = self._f[path].value
-          offset = data    
-          path = base + str(latticeList[i])+'/universes'
-          data = self._f[path].value
-          fill = data
-          self.geom.lat.append(Lattice(latticeList[i],fill, offset, dim))
-
-        #print(self.geom.lat[0].ID)
-        #print(self.geom.lat[0].fill)
-        #print(self.geom.lat[0].offset)
-        #print(self.geom.lat[0].dim)
+        self.geom.cellKeys = self._get_int(self.geom.n_cells,path='geometry/cell_keys')
+        # OpenMC IDs
+        self.geom.cellList = self._get_int(self.geom.n_cells,path='geometry/cell_ids')
 
         # Build list of cells
         base = 'geometry/cells/cell '
         for i in range(self.geom.n_cells):
-          filltype = self._get_string(path=base + str(self.geom.cellKeys[i])+'/fill_type')
+          filltypeInt = self._get_int(path=base + str(self.geom.cellKeys[i])+'/fill_type')[0]
+          if filltypeInt == 1:
+            filltype = "normal"
+          elif filltypeInt == 2:
+            filltype = "fill cell"
+          else:
+            filltype = "lattice"
           self.geom.cell.append(Cell(self.geom.cellList[i],self.geom.cellKeys[i],filltype))
-          if filltype == "['normal']":
+          if filltype == "normal":
             material = self._get_int(path=base + str(self.geom.cellKeys[i])+'/material')[0]
             self.geom.cell[-1]._set_material(material)
           else:
-            if filltype == "['lattice']":
+            if filltype == "lattice":
               fill = self._get_int(path=base + str(self.geom.cellKeys[i])+'/lattice')[0]
-            elif filltype == "['fill_cell']":
-              print("found fill cell.")
+            elif filltype == "fill cell":
               fill = self._get_int(path=base + str(self.geom.cellKeys[i])+'/fill')[0]
-              offset = self._get_int(path=base + str(self.geom.cellKeys[i])+'/offset')
+              maps = self._get_int(path=base + str(self.geom.cellKeys[i])+'/maps')[0]
+              offset = self._get_int(path=base + str(maps,self.geom.cellKeys[i])+'/offset')
               self.geom.cell[-1]._set_offset(offset)
             self.geom.cell[-1]._set_fill(fill)
 
+        # Build list of universes
+        base = 'geometry/universes/universe '
+        for i in range(self.geom.n_universes):
+          n = self._get_int(path=base + str(univList[i])+'/cells')[0]
+          if n != 0:
+            self.geom.univ.append(Universe(univList[i],self._get_int(n, path=base + str(univList[i])+'/cells')))
+
+        # Build list of lattices
+        base = 'geometry/lattices/lattice '
+        for i in range(self.geom.n_lattices):
+          struct = self._get_int(path=base + str(latticeList[i])+'/type')
+          dim = self._get_int(3,path=base + str(latticeList[i])+'/dimension')
+          maps = self._get_int(path=base + str(latticeList[i])+'/maps')[0]
+          if self._hdf5:
+            path = base + str(latticeList[i])+'/offset'
+            data = self._f[path].value
+            offset = data    
+            path = base + str(latticeList[i])+'/universes'
+            data = self._f[path].value
+            fill = data
+          else:
+            offset = np.array(self._get_int(dim[0]*dim[1]*dim[2]*maps))
+            offset.shape = (dim[2], dim[1], dim[0],maps)     
+            fill = np.array(self._get_int(dim[0]*dim[1]*dim[2]))
+            fill.shape = (dim[0], dim[1], dim[2]) 
+          self.geom.lat.append(Lattice(latticeList[i],fill, offset, dim))
+
+       
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]
 
@@ -471,7 +489,6 @@ class StatePoint(object):
 
         # Read number of tallies
         n_tallies = self._get_int(path='tallies/n_tallies')[0]
-
         for i in range(n_tallies):
             # Create Tally object and add to list of tallies
             t = Tally()
@@ -481,6 +498,7 @@ class StatePoint(object):
 
             # Read id and number of realizations
             t.id = self._get_int(path=base+'id')[0]
+#            print 'tally:',t.id
             t.n_realizations = self._get_int(path=base+'n_realizations')[0]
 
             # Read sizes of tallies
@@ -489,7 +507,7 @@ class StatePoint(object):
 
             # Read number of filters
             n_filters = self._get_int(path=base+'n_filters')[0]
-
+#            print n_filters
             for j in range(n_filters):
                 # Create Filter object
                 f = Filter()
@@ -498,23 +516,27 @@ class StatePoint(object):
 
                 # Get type of filter
                 f.type = filter_types[self._get_int(path=base+'type')[0]]
-
+#                print 'ftype:',f.type
                 # Get offset of filter
                 f.offset = self._get_int(path=base+'offset')[0]
+#                print 'f.offset:',t.id
 
                 # Add to filter dictionary
                 t.filters[f.type] = f
 
                 # Determine how many bins are in this filter
                 f.length = self._get_int(path=base+'n_bins')[0]
+#                print 'int_bins:',f.length
                 assert f.length > 0
                 if f.type == 'energyin' or f.type == 'energyout':
                     f.bins = self._get_double(f.length + 1, path=base+'bins')
                 elif f.type == 'mesh':
                     f.bins = self._get_int(path=base+'bins')
                 else:
-                    f.bins = self._get_int(f.length, path=base+'bins')
-            
+                    #f.bins = self._get_int(f.length, path=base+'bins')
+######################################################################################
+                    f.bins = self._get_int(1, path=base+'bins')[0]
+                #print 'f.bins',f.bins
             base = 'tallies/tally' + str(i+1) + '/'
 
             # Read nuclide bins

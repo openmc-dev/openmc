@@ -134,6 +134,173 @@ contains
         end if
       end if
 
+      ! Begin writing geometry information
+      call sp % write_data(n_cells, "n_cells", group="geometry")
+      call sp % write_data(n_universes, "n_universes", group="geometry")
+      call sp % write_data(n_lattices, "n_lattices", group="geometry")
+
+      ! Print list of lattice IDs
+      allocate(temp_array(n_lattices))
+      do i = 1, n_lattices        
+        lat => lattices(i)
+        temp_array(i) = lat % id
+      end do
+      call sp % write_data(temp_array, "lattice_ids", &
+           group="geometry", length=n_lattices)
+      deallocate(temp_array)
+
+      ! Print list of universe IDs
+      allocate(temp_array(n_universes))
+      do i = 1, n_universes        
+        u => universes(i)
+        temp_array(i) = u % id
+      end do
+      call sp % write_data(temp_array, "universe_ids", &
+           group="geometry", length=n_universes)
+      deallocate(temp_array)
+
+      ! Print list of cell keys-> IDs
+      current  => cell_dict % keys()
+      i = 1
+      allocate(temp_array(n_cells))
+      allocate(temp_array2(n_cells))
+      do while (associated(current))
+        temp_array(i) = current % key
+        temp_array2(i) = current % value
+        ! Move to next universe
+        next => current % next
+        deallocate(current)
+        current => next
+        i = i + 1
+      end do
+      call sp % write_data(temp_array, "cell_keys", &
+           group="geometry", length=n_cells)
+      call sp % write_data(temp_array2, "cell_ids", &
+           group="geometry", length=n_cells)
+      deallocate(temp_array)
+      deallocate(temp_array2)
+
+      ! ==========================================================================
+      ! WRITE INFORMATION ON CELLS
+
+      ! Create a cell group (nothing directly written in this group) then close
+      call sp % open_group("geometry/cells")
+      call sp % close_group()
+
+      ! Write information on each cell
+      CELL_LOOP: do i = 1, n_cells
+        c => cells(i)    
+        ! Write information on what fills this cell
+        call sp % write_data(c % type, "fill_type", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        select case (c % type)
+        case (CELL_NORMAL)          
+          if (c % material == MATERIAL_VOID) then
+            call sp % write_data(-1, "material", &
+                 group="geometry/cells/cell " // trim(to_str(c % id)))
+          else
+            call sp % write_data(materials(c % material) % id, "material", &
+                 group="geometry/cells/cell " // trim(to_str(c % id)))
+          end if
+        case (CELL_FILL)
+          call sp % write_data(universes(c % fill) % id, "fill", &
+               group="geometry/cells/cell " // trim(to_str(c % id))) 
+          call sp % write_data(size(c % offset), "maps", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+          call sp % write_data(c % offset, "offset", length= size(c%offset), &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        case (CELL_LATTICE)
+          call sp % write_data(lattices(c % fill) % id, "lattice", &
+               group="geometry/cells/cell " // trim(to_str(c % id))) 
+        end select
+
+      end do CELL_LOOP
+
+      ! ==========================================================================
+      ! WRITE INFORMATION ON UNIVERSES
+
+      ! Create universes group (nothing directly written here) then close
+      call sp % open_group("geometry/universes")
+      call sp % close_group()
+
+      ! Write information on each universe
+      UNIVERSE_LOOP: do i = 1, n_universes
+        u => universes(i)
+        call sp % write_data(u % n_cells, "n_cells", &
+             group="geometry/universes/universe " // trim(to_str(u % id)))
+
+        ! Write list of cells in this universe
+        if (u % n_cells > 0) then
+          call sp % write_data(u % cells, "cells", length=u % n_cells, &
+               group="geometry/universes/universe " // trim(to_str(u % id)))
+        end if
+
+      end do UNIVERSE_LOOP
+
+      ! ==========================================================================
+      ! WRITE INFORMATION ON LATTICES
+
+      ! Create lattices group (nothing directly written here) then close
+      call sp % open_group("geometry/lattices")
+      call sp % close_group()
+
+      ! Write information on each lattice
+      LATTICE_LOOP: do i = 1, n_lattices
+        lat => lattices(i)
+
+        ! Write lattice type
+        select case(lat % type)
+        case (LATTICE_RECT)
+          call sp % write_data(0, "type", &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        case (LATTICE_HEX)
+          call sp % write_data(1, "type", &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end select
+
+        ! Write lattice dimensions, number of offset maps, and offsets
+        if (lat % n_dimension == 2) then
+          call sp % write_data((/lat % dimension(1),lat % dimension(2),1/), "dimension", &
+               length=3, &
+               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        else          
+         call sp % write_data(lat % dimension, "dimension", &
+              length=3, &
+              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
+
+        call sp % write_data(size(lat % offset,1), "maps", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+        call sp % write_data(lat % offset, "offset", &
+             length=shape(lat % offset), &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+        ! Determine dimensions of lattice
+        n_x = lat % dimension(1)
+        n_y = lat % dimension(2)
+        if (lat % n_dimension == 3) then
+          n_z = lat % dimension(3)
+        else
+          n_z = 1
+        end if
+          
+        ! Write lattice universes
+        allocate(lattice_universes(n_x, n_y, n_z))
+        do j = 1, n_x
+          do k = 1, n_y
+            do m = 1, n_z
+              lattice_universes(j,k,m) = universes(lat % universes(j,k,m)) % id
+            end do
+          end do
+        end do
+        call sp % write_data(lattice_universes, "universes", &
+             length=(/n_x, n_y, n_z/), &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        deallocate(lattice_universes)
+
+      end do LATTICE_LOOP
+
       ! Write number of meshes
       call sp % write_data(n_meshes, "n_meshes", group="tallies")
 
@@ -190,6 +357,9 @@ contains
           ! Write type of filter
           call sp % write_data(t % filters(j) % type, "type", &
                group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
+          ! Write offset for this filter
+          call sp % write_data(t % filters(j) % offset, "offset", &
+               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
 
           ! Write number of bins for this filter
           call sp % write_data(t % filters(j) % n_bins, "n_bins", &
@@ -205,10 +375,6 @@ contains
             call sp % write_data(t % filters(j) % int_bins, "bins", &
                  group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j), &
                  length=size(t % filters(j) % int_bins))
-
-          ! Write offset for this filter
-          call sp % write_data(t % filters(j) % offset, "offset", &
-               group="tallies/tally" // trim(to_str(i)) // "/filter" // to_str(j))
           end if
 
         end do FILTER_LOOP
@@ -242,174 +408,7 @@ contains
         call sp % write_data(t % n_user_score_bins, "n_user_score_bins", &
              group="tallies/tally" // to_str(i))
 
-      end do TALLY_METADATA
-
-      ! Use H5LT interface to write number of geometry objects
-      call sp % write_data(n_cells, "n_cells", group="geometry")
-      call sp % write_data(n_universes, "n_universes", group="geometry")
-      call sp % write_data(n_lattices, "n_lattices", group="geometry")
-
-      ! Print list of lattice IDs
-      allocate(temp_array(n_lattices))
-      do i = 1, n_lattices        
-        lat => lattices(i)
-        temp_array(i) = lat % id
-      end do
-      call sp % write_data(temp_array, "lattice_ids", &
-           group="geometry", length=n_lattices)
-      deallocate(temp_array)
-
-      ! Print list of universe IDs
-      allocate(temp_array(n_universes))
-      do i = 1, n_universes        
-        u => universes(i)
-        temp_array(i) = u % id
-      end do
-      call sp % write_data(temp_array, "universe_ids", &
-           group="geometry", length=n_universes)
-      deallocate(temp_array)
-
-      ! Print list of cell keys-> IDs
-      current  => cell_dict % keys()
-      i = 1
-      allocate(temp_array(n_cells))
-      allocate(temp_array2(n_cells))
-      do while (associated(current))
-        temp_array(i) = current % key
-        temp_array2(i) = current % value
-        ! Move to next universe
-        next => current % next
-        deallocate(current)
-        current => next
-        i = i + 1
-      end do
-      call sp % write_data(temp_array, "cell_keys", &
-           group="geometry", length=n_cells)
-      call sp % write_data(temp_array2, "cell_ids", &
-           group="geometry", length=n_cells)
-      deallocate(temp_array)
-      deallocate(temp_array2)
-
-      ! ==========================================================================
-      ! WRITE INFORMATION ON CELLS
-
-      ! Create a cell group (nothing directly written in this group) then close
-      call sp % open_group("geometry/cells")
-      call sp % close_group()
-
-      ! Write information on each cell
-      CELL_LOOP: do i = 1, n_cells
-        c => cells(i)
-        ! Write universe for this cell
-        call sp % write_data(universes(c % universe) % id, "universe", &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
-        call sp % write_data(c % offset, "offset", length= size(c%offset), &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
-
-        ! Write information on what fills this cell
-        select case (c % type)
-        case (CELL_NORMAL)
-          call sp % write_data("normal", "fill_type", &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
-          if (c % material == MATERIAL_VOID) then
-            call sp % write_data(-1, "material", &
-                 group="geometry/cells/cell " // trim(to_str(c % id)))
-          else
-            call sp % write_data(materials(c % material) % id, "material", &
-                 group="geometry/cells/cell " // trim(to_str(c % id)))
-          end if
-        case (CELL_FILL)
-          call sp % write_data("universe", "fill_type", &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
-          call sp % write_data(universes(c % fill) % id, "material", &
-               group="geometry/cells/cell " // trim(to_str(c % id))) 
-        case (CELL_LATTICE)
-          call sp % write_data("lattice", "fill_type", &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
-          call sp % write_data(lattices(c % fill) % id, "lattice", &
-               group="geometry/cells/cell " // trim(to_str(c % id))) 
-        end select
-
-      end do CELL_LOOP
-
-      ! ==========================================================================
-      ! WRITE INFORMATION ON UNIVERSES
-
-      ! Create universes group (nothing directly written here) then close
-      call sp % open_group("geometry/universes")
-      call sp % close_group()
-
-      ! Write information on each universe
-      UNIVERSE_LOOP: do i = 1, n_universes
-        u => universes(i)
-
-        ! Write list of cells in this universe
-        if (u % n_cells > 0) then
-          call sp % write_data(u % cells, "cells", length=u % n_cells, &
-               group="geometry/universes/universe " // trim(to_str(u % id)))
-        end if
-
-      end do UNIVERSE_LOOP
-
-      ! ==========================================================================
-      ! WRITE INFORMATION ON LATTICES
-
-      ! Create lattices group (nothing directly written here) then close
-      call sp % open_group("geometry/lattices")
-      call sp % close_group()
-
-      ! Write information on each lattice
-      LATTICE_LOOP: do i = 1, n_lattices
-        lat => lattices(i)
-
-        ! Write lattice type
-        select case(lat % type)
-        case (LATTICE_RECT)
-          call sp % write_data("rectangular", "type", &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        case (LATTICE_HEX)
-          call sp % write_data("hexagonal", "type", &
-               group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        end select
-
-        ! Write lattice dimensions, lower left corner, and width of element
-        call sp % write_data(lat % dimension, "dimension", &
-             length=lat % n_dimension, &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call sp % write_data(lat % lower_left, "lower_left", &
-             length=lat % n_dimension, &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call sp % write_data(lat % width, "width", &
-             length=lat % n_dimension, &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        call sp % write_data(lat % offset, "offset", &
-             length=shape(lat % offset), &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-
-        ! Determine dimensions of lattice
-        n_x = lat % dimension(1)
-        n_y = lat % dimension(2)
-        if (lat % n_dimension == 3) then
-          n_z = lat % dimension(3)
-        else
-          n_z = 1
-        end if
-          
-        ! Write lattice universes
-        allocate(lattice_universes(n_x, n_y, n_z))
-        do j = 1, n_x
-          do k = 1, n_y
-            do m = 1, n_z
-              lattice_universes(j,k,m) = universes(lat % universes(j,k,m)) % id
-            end do
-          end do
-        end do
-        call sp % write_data(lattice_universes, "universes", &
-             length=(/n_x, n_y, n_z/), &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-        deallocate(lattice_universes)
-
-      end do LATTICE_LOOP
+      end do TALLY_METADATA      
 
     end if
 
@@ -647,6 +646,8 @@ contains
     integer                 :: j
     integer                 :: int_array(3)
     integer, allocatable    :: temp_array(:)
+    integer, allocatable    :: temp_array3D(:,:,:)
+    integer, allocatable    :: temp_array4D(:,:,:,:)
     real(8)                 :: real_array(3) 
     type(TallyObject), pointer :: t => null()
 
@@ -737,6 +738,129 @@ contains
              length = restart_batch, group="cmfd")
       end if
     end if
+
+    ! Begin reading geometry information
+    ! Set all values to temp variables. We already reread the geometry
+    call sp % read_data(i, "n_cells", group="geometry")
+    call sp % read_data(i, "n_universes", group="geometry")
+    call sp % read_data(i, "n_lattices", group="geometry")
+
+    ! Read list of lattice IDs
+    allocate(temp_array(n_lattices))
+    call sp % read_data(temp_array, "lattice_ids", &
+         group="geometry", length=n_lattices)
+    deallocate(temp_array)
+
+    ! Read list of universe IDs
+    allocate(temp_array(n_universes))
+    call sp % read_data(temp_array, "universe_ids", &
+         group="geometry", length=n_universes)
+    deallocate(temp_array)
+
+    ! Read list of cell keys-> IDs
+    allocate(temp_array(n_cells))
+    call sp % read_data(temp_array, "cell_keys", &
+         group="geometry", length=n_cells)
+    call sp % read_data(temp_array, "cell_ids", &
+         group="geometry", length=n_cells)
+    deallocate(temp_array)
+
+    ! ==========================================================================
+    ! READ INFORMATION ON CELLS
+
+    ! Read information on each cell
+    CELL_LOOP: do i = 1, n_cells 
+      ! Write information on what fills this cell
+      call sp % read_data(c % type, "fill_type", &
+             group="geometry/cells/cell " // trim(to_str(c % id)))
+      select case (c % type)
+      case (CELL_NORMAL)          
+        if (c % material == MATERIAL_VOID) then
+          call sp % read_data(j, "material", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        else
+          call sp % write_data(j, "material", &
+               group="geometry/cells/cell " // trim(to_str(c % id)))
+        end if
+      case (CELL_FILL)
+        call sp % read_data(j, "fill", &
+             group="geometry/cells/cell " // trim(to_str(c % id))) 
+        call sp % read_data(j, "maps", &
+             group="geometry/cells/cell " // trim(to_str(c % id)))
+        allocate(temp_array(j))
+        call sp % read_data(temp_array, "offset", length= size(c%offset), &
+             group="geometry/cells/cell " // trim(to_str(c % id)))
+        deallocate(temp_array)
+      case (CELL_LATTICE)
+        call sp % read_data(j, "lattice", &
+             group="geometry/cells/cell " // trim(to_str(c % id))) 
+      end select
+
+    end do CELL_LOOP
+
+    ! ==========================================================================
+    ! Read INFORMATION ON UNIVERSES
+
+    ! Read information on each universe
+    UNIVERSE_LOOP: do i = 1, n_universes
+      u => universes(i)
+      call sp % read_data(j, "n_cells", &
+           group="geometry/universes/universe " // trim(to_str(u % id)))
+
+      ! Read list of cells in this universe
+      allocate(temp_array(j))
+      if (u % n_cells > 0) then
+        call sp % read_data(u % cells, "cells", length=u % n_cells, &
+             group="geometry/universes/universe " // trim(to_str(u % id)))
+      end if
+      deallocate(temp_array)
+
+    end do UNIVERSE_LOOP
+
+    ! ==========================================================================
+    ! READ INFORMATION ON LATTICES
+
+
+    ! Read information on each lattice
+    LATTICE_LOOP: do i = 1, n_lattices
+      lat => lattices(i)
+
+      ! Read lattice type
+      select case(lat % type)
+      case (LATTICE_RECT)
+        call sp % read_data(j, "type", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+      case (LATTICE_HEX)
+        call sp % read_data(j, "type", &
+             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+      end select
+
+      ! Read lattice dimensions, number of offset maps, and offsets
+      
+      call sp % read_data(int_array, "dimension", &
+           length=3, &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+      call sp % read_data(j, "maps", &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+
+      allocate(temp_array4D(j,int_array(1), int_array(2), int_array(3))
+      call sp % read_data(temp_array, "offset", &
+           length=j*int_array(1)*int_array(2)*int_array(3), &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+      deallocate(temp_array4D)
+
+      ! Determine dimensions of lattice
+        
+      ! Read lattice universes
+      allocate(temp_array3D(int_array(1), int_array(2), int_array(3)))
+      call sp % read_data(lattice_universes, "universes", &
+           length=int_array(1)*int_array(2)*int_array(3), &
+           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+      deallocate(temp_array3D)
+
+    end do LATTICE_LOOP
+
 
     ! Read number of meshes
     call sp % read_data(n_meshes, "n_meshes", group="tallies")

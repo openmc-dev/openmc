@@ -62,6 +62,17 @@ class Test(object):
         self.valgrind = valgrind
         self.coverage = coverage
 
+        # Check for MPI/HDF5
+        if self.mpi and not self.hdf5:
+            self.fc = MPI_DIR+'/bin/mpif90'
+        elif not self.mpi and self.hdf5:
+            self.fc = HDF5_DIR+'/bin/h5fc'
+        elif self.mpi and self.hdf5:
+            self.fc = PHDF5_DIR+'/bin/h5pfc'
+        else:
+            self.fc = FC_DEFAULT
+        os.environ['FC'] = self.fc
+
     def get_build_name(self):
         self.build_name = self.name
         return self.build_name

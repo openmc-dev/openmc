@@ -220,8 +220,8 @@ endif()
 # Regression tests
 #===============================================================================
 
-# This allows mpi test to work
-enable_testing()
+# This allows for dashboard configuration
+include(CTest)
 
 # Get a list of all the tests to run
 file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_*.py)

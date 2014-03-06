@@ -75,9 +75,6 @@ uncert = [None for x in range(len(files))]
 scoreType = [None for x in range(len(files))]
 active_batches = [None for x in range(len(files))]
 
-
-print "Found the following files:",files
-
 for i_batch in range(len(files)):
     
      
@@ -89,56 +86,30 @@ for i_batch in range(len(files)):
 
     sp.read_results()
     
+    # Read the same value for our cell and distribcell tally
+    # This distribcell tally only has one entry
     print sp.get_value(0,[('cell',0)],0)
     print sp.get_value(1,[('distribcell',0)],0)
     print ''
-    print ''
+
+    # Check that the sum of the distribcell tally 
+    # is equal to that of the cell tally single entry
     print sp.get_value(2,[('cell',0)],0)
     sum = [0,0,0]
     for i in range(241):
       #print i
       sum[0] += sp.get_value(3,[('distribcell',i)],0)[0]
       sum[1] += sp.get_value(3,[('distribcell',i)],0)[1]
-      #print sp.get_value(3,[('distribcell',i)],0)[0]
-      #print sp.get_value(3,[('distribcell',i)],0)[1]
     print sum
-    print ''
     print ''
 
-    # Example path
-    path1 = [0,1,(200,4,6,1),6,60]
 
-    # How do we know which offset map a given tally is using?
-    offset_map = sp.tallies[3].filters['distribcell'].offset
-    print offset_map
-    # Lets get a specific value
-    print sp.get_value(3,[('distribcell',path1)],0)
-    print ''
-    print ''
-    print sp.get_value(4,[('cell',0)],0)
-    sum = [0,0]
-    for i in range(63624):
-      #print i
-      sum[0] += sp.get_value(5,[('distribcell',i)],0)[0]
-      sum[1] += sp.get_value(5,[('distribcell',i)],0)[1]
-      #print sp.get_value(5,[('distribcell',i)],0)[0]
-      #print sp.get_value(5,[('distribcell',i)],0)[1]
-    print sum
-    print ''
-    print ''
-    print sp.get_value(6,[('cell',0)],0)
-    sum = [0,0]
-    for i in range(241):
-      #print i
-      sum[0] += sp.get_value(7,[('distribcell',i)],0)[0]
-      sum[1] += sp.get_value(7,[('distribcell',i)],0)[1]
-    print sum
-    print ''
-    print ''
-    print sp.get_value(8,[('cell',0)],0)
-    sum = [0,0]
-    for i in range(63624):
-      #print i
-      sum[0] += sp.get_value(9,[('distribcell',i)],0)[0]
-      sum[1] += sp.get_value(9,[('distribcell',i)],0)[1]
-    print sum
+    # What if we don't know the index in the array?
+    # Well, we know how to get there. Explained:
+    # Universe 0 -> Cell 1 -> Lattice 200 (x,y,z = 4,6,1) -> Universe 6 -> Cell 60
+    path = [0,1,(200,4,6,1),6,60]
+
+    # So we have the path to our cell now.
+    # Lets get that specific value
+    print sp.get_value(3,[('distribcell',path)],0)
+

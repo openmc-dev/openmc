@@ -190,7 +190,6 @@ class Geometry_Data(object):
 
           else:
             if isinstance(i,tuple):
-              print "Found tuple:",i
               if len(i) != 4:
                 error = "ERROR: Tuple " + str(i) + " does not have exactly 4 elements."
                 exit(error)
@@ -206,10 +205,7 @@ class Geometry_Data(object):
                       i[3] > j.dim[2] or i[3] < 1):
                     error = "Bad lattice index specified for lattice "+str(i[0])+"."
                     exit(error)
-#                  offset += j.offset[filter_offset-1,i[1]-1,i[2]-1,i[3]-1]
                   offset += j.offset[i[3]-1,i[2]-1,i[1]-1,filter_offset-1]
-                  print j.offset[i[3]-1,i[2]-1,i[1]-1]
-                  print "offset at lattice is:",offset
                   prev = i[0]
                   prevtype = 'L'
                   break
@@ -219,7 +215,6 @@ class Geometry_Data(object):
                     exit(error)             
             
             else:
-              print "Found non-tuple:",i
               # Expect universe or cell or lattice (as final target)
               if prevtype == 'U':
                 # Last construct was a universe
@@ -257,7 +252,7 @@ class Geometry_Data(object):
                         exit(error)
                       prevtype = 'U'
                       prev = i[0]      
-                      offset += c.offset[filter_offset-1]                      
+                      offset += c.offset[filter_offset-1]                   
                     elif c.filltype == "['lattice']":
                       prev = i[0]
                       prevtype = 'L'    
@@ -272,7 +267,6 @@ class Geometry_Data(object):
                 # Found a lattice that matched and contains this universe
                 prevtype = 'U'
                 prev = i  
-        print "calculated offset:",offset 
         return offset
 
 class Universe(object):
@@ -703,7 +697,7 @@ class StatePoint(object):
                 filter_index += value*t.filters[f_type].stride
             elif f_type == 'distribcell':
                 if type(f_index) != int:
-                    filter_offset = t.filters['distribcell'].offset-1
+                    filter_offset = t.filters['distribcell'].offset
                     value = self.geom._get_offset(f_index, filter_offset)
                     filter_index += value*t.filters[f_type].stride          
                 else:

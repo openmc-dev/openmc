@@ -2065,8 +2065,9 @@ contains
     integer :: temp_offset          ! looped sum of offsets
     real(8) :: xyz(3)               ! temporary location
     real(8) :: upper_right(3)       ! lattice upper_right
-    logical :: found = .false.      ! in a target cell
+    logical :: found = .false.      ! in a target cell?
     logical :: this_cell = .false.  ! advance in this cell?
+    logical :: later_cell = .false. ! non-normal cells after this one?
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
@@ -2079,8 +2080,6 @@ contains
     else
       path = trim(path) // "->" // to_str(univ%id)
     end if
-    !print *,"Path:",path
-    !print *,"In universe ",univ%id
     ! Look through all cells in this universe
     ! Just check if the final target is right here
     do i = 1, n
@@ -2093,8 +2092,6 @@ contains
       if (cell_dict % get_key(c % id) == goal .AND. offset == final) then
         ! write to the geometry stack
         path = trim(path) // "->" // to_str(c%id)
-        !print *,"Path:",path
-        !print *,'Return at target'
         return
       end if
       
@@ -2104,20 +2101,13 @@ contains
     ! Find the fill cell or lattice cell that we need to enter
     do i = 1, n
 
-      !print *,"i:",i
-    
+      later_cell = .false.
+
       ! get cell index
       index_cell = univ % cells(i)        
       ! get pointer to cell
       c => cells(index_cell)
-      !print *,"c:",c%id
-      !print *,"c%type:",c%type
-      
-      !print *,"c%type:",c%type
-      if (c % type == CELL_NORMAL) then
-        cycle
-      end if
-      
+
       this_cell = .false.  
       ! If we got here, we still think the target is in this universe
       ! or further down, but it's not this exact cell. 
@@ -2125,7 +2115,6 @@ contains
       if (i /= n) then
 
         do j = i+1, n
-          !print *,"j:",j
           ! get cell index to NEXT cell
           index_cell = univ % cells(j)        
           ! get pointer to cell
@@ -2138,41 +2127,35 @@ contains
           exit   
         end do
         ! lets make sure we didn't just end the loop by iteration
-        if (c % type == CELL_NORMAL) then
-          cycle
-        end if
-        ! Two cases, lattice or fill cell
-        if (c % type == CELL_FILL) then
-          temp_offset = c % offset(ind)
-        else
-          lat => lattices(c % fill)  
-          n_x = lat % dimension(1)
-          n_y = lat % dimension(2)
-          if (lat % n_dimension == 3) then
-            n_z = lat % dimension(3)
+        !print *,'got here'
+        if (c % type /= CELL_NORMAL) then
+          ! There are more cells in this universe that it could be in
+          later_cell = .true.
+          ! Two cases, lattice or fill cell
+          if (c % type == CELL_FILL) then
+            temp_offset = c % offset(ind)
           else
-            n_z = 1
-          end if
-          ! Get the offset of the last lattice location
-          temp_offset = lat % offset(ind,n_x,n_y,n_z)
-        end if   
-        ! If the final offset is in the range of offset - temp_offset+offset
-        ! then the goal is in this cell         
-        if (final < temp_offset + offset) then
-          !print *,'this cell:',c%id
-          this_cell = .true.
-        end if  
+            lat => lattices(c % fill)            
+            ! Get the offset of the first lattice location
+            temp_offset = lat % offset(ind,1,1,1)
+          end if   
+          ! If the final offset is in the range of offset - temp_offset+offset
+          ! then the goal is in this cell         
+          if (final < temp_offset + offset) then
+            this_cell = .true.
+          end if  
+        end if
       end if
       if (n == 1 .and. c % type /= 1) then
         this_cell = .true.
       end if
+      if (.not. later_cell) this_cell = .true.
       if (this_cell) then
         ! get pointer to THIS cell because we
         ! know that the target is in this cell
         index_cell = univ % cells(i)
         c => cells(index_cell)
         path = trim(path) // "->" // to_str(c%id)
-        !print *,"Path:",path
         
         if (c % type == CELL_NORMAL) then      
           ! ====================================================================
@@ -2201,10 +2184,8 @@ contains
           ! Set current lattice
           lat => lattices(c % fill)
           
-          !print *, 'Lat:' ,lat%id
           ! write to the geometry stack
           path = trim(path) // "->" // to_str(lat%id)
-          !print *,"Path:",path
     
           n_x = lat % dimension(1)
           n_y = lat % dimension(2)
@@ -2245,7 +2226,6 @@ contains
                 
                 univ_next => universes(lat % universes(i_x,i_y,i_z))  
                 path = trim(path) // "(" // trim(to_str(i_x)) // "," // trim(to_str(i_y)) // "," // trim(to_str(i_z)) // ")"
-                !print *,"Path:",path
 
                 call find_offset(ind, goal, univ_next, final, offset, path)
                 

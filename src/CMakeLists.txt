@@ -241,22 +241,33 @@ foreach(test ${TESTS})
   get_filename_component(TEST_NAME ${test} NAME)
   get_filename_component(TEST_PATH ${test} PATH) 
 
-  # Check serial/parallel
-  if (${MPI_ENABLED})
+  if(NOT $ENV{MEM_CHECK})
 
-    # Preform a parallel test
-    add_test(NAME ${TEST_NAME} 
-      WORKING_DIRECTORY ${TEST_PATH} 
-      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
-      --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
+    # Check serial/parallel
+    if (${MPI_ENABLED})
 
-  else(${MPI_ENABLED})
+      # Preform a parallel test
+      add_test(NAME ${TEST_NAME} 
+        WORKING_DIRECTORY ${TEST_PATH} 
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
+        --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
 
-    # Perform a serial test
-    add_test(NAME ${TEST_NAME} 
+    else(${MPI_ENABLED})
+
+      # Perform a serial test
+      add_test(NAME ${TEST_NAME} 
+        WORKING_DIRECTORY ${TEST_PATH}
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
+
+    endif(${MPI_ENABLED})
+
+  else(NOT $ENV{MEM_CHECK})
+
+    # Perform serial valgrind test
+    add_test(NAME ${TEST_NAME}
       WORKING_DIRECTORY ${TEST_PATH}
-      COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
+      COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
 
-  endif(${MPI_ENABLED})
+  endif(NOT $ENV{MEM_CHECK})
 
 endforeach(test)

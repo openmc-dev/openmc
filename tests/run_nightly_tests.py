@@ -66,9 +66,12 @@ class Test(object):
         self.build_opts = build_str
         return self.build_opts
 
-    def run_ctest(self, ctest_vars):
+    def create_ctest_script(self, ctest_vars):
         with open('ctestscript.run', 'w') as fh:
             fh.write(ctest_str.format(**ctest_vars))
+
+    def run_ctest(self):
+        call(['ctest', '-S', 'ctestscript.run','-V'])
 
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
              hdf5=False, petsc=False, valgrind=False):
@@ -126,8 +129,11 @@ for key in iter(tests):
     ctest_vars.update({'build_name' : test.get_build_name()})
     ctest_vars.update({'build_opts' : test.get_build_opts()})
 
+    # Create ctest script
+    test.create_ctest_script(ctest_vars)
+
     # Run test
-    test.run_ctest(ctest_vars)
+    test.run_ctest()
 
     # Clear build directory
     call(['rm', '-rf', 'build'])

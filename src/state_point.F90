@@ -644,6 +644,10 @@ contains
     character(19)           :: current_time
     integer                 :: i
     integer                 :: j
+    integer                 :: k
+    integer                 :: n_univ
+    integer                 :: n_cell
+    integer                 :: n_lat
     integer                 :: int_array(3)
     integer, allocatable    :: temp_array(:)
     integer, allocatable    :: temp_array3D(:,:,:)
@@ -739,11 +743,14 @@ contains
       end if
     end if
 
+#ifdef HDF5
+        ! Do not bother reading geometry
+#else
     ! Begin reading geometry information
     ! Set all values to temp variables. We already reread the geometry
-    call sp % read_data(i, "n_cells", group="geometry")
-    call sp % read_data(i, "n_universes", group="geometry")
-    call sp % read_data(i, "n_lattices", group="geometry")
+    call sp % read_data(n_cell, "n_cells", group="geometry")
+    call sp % read_data(n_univ, "n_universes", group="geometry")
+    call sp % read_data(n_lat, "n_lattices", group="geometry")
 
     ! Read list of lattice IDs
     allocate(temp_array(n_lattices))
@@ -769,31 +776,26 @@ contains
     ! READ INFORMATION ON CELLS
 
     ! Read information on each cell
-    CELL_LOOP: do i = 1, n_cells 
+    CELL_LOOP: do i = 1, n_cell 
       ! Write information on what fills this cell
-      call sp % read_data(c % type, "fill_type", &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
-      select case (c % type)
+      call sp % read_data(j, "fill_type", &
+             group="geometry/cells/cell ")
+      select case (j)
       case (CELL_NORMAL)          
-        if (c % material == MATERIAL_VOID) then
-          call sp % read_data(j, "material", &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
-        else
-          call sp % write_data(j, "material", &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
-        end if
+          call sp % read_data(k, "material", &
+               group="geometry/cells/cell ")
       case (CELL_FILL)
-        call sp % read_data(j, "fill", &
-             group="geometry/cells/cell " // trim(to_str(c % id))) 
-        call sp % read_data(j, "maps", &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
-        allocate(temp_array(j))
-        call sp % read_data(temp_array, "offset", length= size(c%offset), &
-             group="geometry/cells/cell " // trim(to_str(c % id)))
+        call sp % read_data(k, "fill", &
+             group="geometry/cells/cell ") 
+        call sp % read_data(k, "maps", &
+             group="geometry/cells/cell ")
+        allocate(temp_array(k))
+        call sp % read_data(temp_array, "offset", length=k, &
+             group="geometry/cells/cell ")
         deallocate(temp_array)
       case (CELL_LATTICE)
         call sp % read_data(j, "lattice", &
-             group="geometry/cells/cell " // trim(to_str(c % id))) 
+             group="geometry/cells/cell ") 
       end select
 
     end do CELL_LOOP
@@ -802,18 +804,18 @@ contains
     ! Read INFORMATION ON UNIVERSES
 
     ! Read information on each universe
-    UNIVERSE_LOOP: do i = 1, n_universes
-      u => universes(i)
+    UNIVERSE_LOOP: do i = 1, n_univ
       call sp % read_data(j, "n_cells", &
-           group="geometry/universes/universe " // trim(to_str(u % id)))
+           group="geometry/universes/universe ")
 
       ! Read list of cells in this universe
-      allocate(temp_array(j))
-      if (u % n_cells > 0) then
-        call sp % read_data(u % cells, "cells", length=u % n_cells, &
-             group="geometry/universes/universe " // trim(to_str(u % id)))
+      if (j > 0) then
+        allocate(temp_array(j))
+        call sp % read_data(temp_array, "cells", length=j, &
+             group="geometry/universes/universe ")
+        deallocate(temp_array)
       end if
-      deallocate(temp_array)
+  
 
     end do UNIVERSE_LOOP
 
@@ -822,45 +824,38 @@ contains
 
 
     ! Read information on each lattice
-    LATTICE_LOOP: do i = 1, n_lattices
-      lat => lattices(i)
+    LATTICE_LOOP: do i = 1, n_lat
 
       ! Read lattice type
-      select case(lat % type)
-      case (LATTICE_RECT)
-        call sp % read_data(j, "type", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      case (LATTICE_HEX)
-        call sp % read_data(j, "type", &
-             group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-      end select
-
+      call sp % read_data(j, "type", &
+           group="geometry/lattices/lattice ")
+      
       ! Read lattice dimensions, number of offset maps, and offsets
       
       call sp % read_data(int_array, "dimension", &
            length=3, &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+           group="geometry/lattices/lattice ")
 
       call sp % read_data(j, "maps", &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+           group="geometry/lattices/lattice ")
 
-      allocate(temp_array4D(j,int_array(1), int_array(2), int_array(3))
-      call sp % read_data(temp_array, "offset", &
-           length=j*int_array(1)*int_array(2)*int_array(3), &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+      allocate(temp_array4D(j,int_array(1), int_array(2), int_array(3)))
+      call sp % read_data(temp_array4D, "offset", &
+           length=(/j,int_array(1),int_array(2),int_array(3)/), &
+           group="geometry/lattices/lattice ")
       deallocate(temp_array4D)
 
       ! Determine dimensions of lattice
         
       ! Read lattice universes
       allocate(temp_array3D(int_array(1), int_array(2), int_array(3)))
-      call sp % read_data(lattice_universes, "universes", &
-           length=int_array(1)*int_array(2)*int_array(3), &
-           group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+      call sp % read_data(temp_array3D, "universes", &
+           length=(/int_array(1),int_array(2),int_array(3)/), &
+           group="geometry/lattices/lattice ")
       deallocate(temp_array3D)
 
     end do LATTICE_LOOP
-
+#endif
 
     ! Read number of meshes
     call sp % read_data(n_meshes, "n_meshes", group="tallies")

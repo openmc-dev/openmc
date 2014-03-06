@@ -28,10 +28,16 @@ set(CTEST_CONFIGURE_COMMAND "${{CMAKE_COMMAND}} -H${{CTEST_SOURCE_DIRECTORY}} -B
 set(CTEST_MEMORYCHECK_COMMAND "/usr/bin/valgrind")
 set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes --track-origins=yes")
 
+set(MEM_CHECK {mem_check})
+set(ENV{{MEM_CHECK}} ${{MEM_CHECK}})
+
 ctest_start("Nightly")
 ctest_configure()
 ctest_build()
 ctest_test(INCLUDE test_basic)
+if(MEM_CHECK)
+ctest_memcheck(INCLUDE test_basic)
+endif(MEM_CHECK)
 ctest_submit()"""
 
 # Define test data structure
@@ -78,8 +84,8 @@ def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
     tests.update({name:Test(name, debug, optimize, mpi, openmp, hdf5, petsc, valgrind)})
 
 # List of tests
-#add_test('basic-normal')
-add_test('basic-debug', debug=True)
+add_test('basic-normal')
+#add_test('basic-debug', debug=True)
 #add_test('basic-optimize', optimize=True)
 #add_test('omp-normal', openmp=True)
 #add_test('omp-debug', openmp=True, debug=True)
@@ -111,6 +117,7 @@ add_test('basic-debug', debug=True)
 #add_test('omp-phdf5-petsc-normal', openmp=True, mpi=True, hdf5=True, petsc=True)
 #add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, debug=True)
 #add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
+add_test('basic-debug_valgrind', debug=True, valgrind=True)
 
 # Setup CTest vars
 pwd = os.environ['PWD']
@@ -128,6 +135,7 @@ for key in iter(tests):
     # Set test specific CTest vars
     ctest_vars.update({'build_name' : test.get_build_name()})
     ctest_vars.update({'build_opts' : test.get_build_opts()})
+    ctest_vars.update({'mem_check'  : test.valgrind})
 
     # Create ctest script
     test.create_ctest_script(ctest_vars)

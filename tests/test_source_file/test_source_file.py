@@ -12,7 +12,7 @@ settings1="""<?xml version="1.0"?>
 <settings>
 
   <state_point batches="10" />
-  <source_point source_separate="true" />
+  <source_point separate="true" />
 
   <eigenvalue>
     <batches>10</batches>

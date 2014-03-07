@@ -527,7 +527,10 @@ class StatePoint(object):
                 elif f.type == 'mesh':
                     f.bins = self._get_int(path=base+'bins')
                 else:
-                    f.bins = self._get_int(f.length, path=base+'bins')
+                    # The original line of code, below, does not appear to work
+                    #f.bins = self._get_int(f.length, path=base+'bins')
+                    # For the moment, it has been replaced with this, which does.
+                    f.bins = self._get_int(1, path=base+'bins')[0]
 
             base = 'tallies/tally' + str(i+1) + '/'
 

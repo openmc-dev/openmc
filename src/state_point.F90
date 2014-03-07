@@ -272,9 +272,13 @@ contains
         call sp % write_data(size(lat % offset,1), "maps", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
 
-        call sp % write_data(lat % offset, "offset", &
-             length=shape(lat % offset), &
+        call sp % write_data(size(lat % offset), "offset_size", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        if (size(lat % offset) > 0) then
+            call sp % write_data(lat % offset, "offset", &
+                 length=shape(lat % offset), &
+                 group="geometry/lattices/lattice " // trim(to_str(lat % id)))
+        end if
 
         ! Determine dimensions of lattice
         n_x = lat % dimension(1)
@@ -898,11 +902,15 @@ contains
       call sp % read_data(j, "maps", &
            group="geometry/lattices/lattice ")
 
-      allocate(temp_array4D(j,int_array(1), int_array(2), int_array(3)))
-      call sp % read_data(temp_array4D, "offset", &
-           length=(/j,int_array(1),int_array(2),int_array(3)/), &
+      call sp % read_data(j, "offset_size", &
            group="geometry/lattices/lattice ")
-      deallocate(temp_array4D)
+      if (j > 0) then
+          allocate(temp_array4D(j,int_array(1), int_array(2), int_array(3)))
+          call sp % read_data(temp_array4D, "offset", &
+               length=(/j,int_array(1),int_array(2),int_array(3)/), &
+               group="geometry/lattices/lattice ")
+          deallocate(temp_array4D)
+      end if
 
       ! Determine dimensions of lattice
         

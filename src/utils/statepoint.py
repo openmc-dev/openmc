@@ -449,18 +449,29 @@ class StatePoint(object):
           struct = self._get_int(path=base + str(latticeList[i])+'/type')
           dim = self._get_int(3,path=base + str(latticeList[i])+'/dimension')
           maps = self._get_int(path=base + str(latticeList[i])+'/maps')[0]
-          if self._hdf5:
-            path = base + str(latticeList[i])+'/offset'
-            data = self._f[path].value
-            offset = data    
-            path = base + str(latticeList[i])+'/universes'
-            data = self._f[path].value
-            fill = data
+          offset_size = self._get_int(path=base + str(latticeList[i])+'/offset_size')[0]
+          offset = 0
+          if offset_size > 0:
+            if self._hdf5:
+              path = base + str(latticeList[i])+'/offset'
+              data = self._f[path].value
+              offset = data    
+              path = base + str(latticeList[i])+'/universes'
+              data = self._f[path].value
+              fill = data
+            else:
+              offset = np.array(self._get_int(dim[0]*dim[1]*dim[2]*maps))
+              offset.shape = (dim[2], dim[1], dim[0],maps)     
+              fill = np.array(self._get_int(dim[0]*dim[1]*dim[2]))
+              fill.shape = (dim[0], dim[1], dim[2]) 
           else:
-            offset = np.array(self._get_int(dim[0]*dim[1]*dim[2]*maps))
-            offset.shape = (dim[2], dim[1], dim[0],maps)     
-            fill = np.array(self._get_int(dim[0]*dim[1]*dim[2]))
-            fill.shape = (dim[0], dim[1], dim[2]) 
+            if self._hdf5:    
+              path = base + str(latticeList[i])+'/universes'
+              data = self._f[path].value
+              fill = data
+            else:
+              fill = np.array(self._get_int(dim[0]*dim[1]*dim[2]))
+              fill.shape = (dim[0], dim[1], dim[2]) 
           self.geom.lat.append(Lattice(latticeList[i],fill, offset, dim))
 
        
@@ -515,7 +526,6 @@ class StatePoint(object):
                 f.type = filter_types[self._get_int(path=base+'type')[0]]
                 # Get offset of filter
                 f.offset = self._get_int(path=base+'offset')[0]
-
                 # Add to filter dictionary
                 t.filters[f.type] = f
 

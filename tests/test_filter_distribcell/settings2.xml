@@ -1,19 +1,16 @@
 <?xml version="1.0"?>
 <settings>
 
-  <!-- Parameters for k-eigenvalue calculation -->
   <eigenvalue>
-    <batches>2</batches>
+    <batches>1</batches>
     <inactive>0</inactive>
-    <particles>5000</particles>
+    <particles>1000</particles>
   </eigenvalue>
 
-  <!-- Starting source -->
   <source>
     <space type="box">
       <parameters>-1 -1 -1  1  1  1</parameters>
     </space>
   </source>
 
-  <cross_sections>cross_sections.xml</cross_sections>
 </settings>

@@ -4,12 +4,12 @@
   <eigenvalue>
     <batches>1</batches>
     <inactive>0</inactive>
-    <particles>10000</particles>
+    <particles>1000</particles>
   </eigenvalue>
 
   <source>
     <space type="box">
-      <parameters>-4 -4 -4  4  4  4</parameters>
+      <parameters>-1 -1 -1  1  1  1</parameters>
     </space>
   </source>
 

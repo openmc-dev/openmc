@@ -16,4 +16,6 @@
     </space>
   </source>
 
+  <output tallies="false" />
+
 </settings>

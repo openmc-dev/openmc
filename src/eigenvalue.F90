@@ -17,7 +17,7 @@ module eigenvalue
   use random_lcg,   only: prn, set_particle_seed, prn_skip
   use search,       only: binary_search
   use source,       only: get_source_particle
-  use state_point,  only: write_state_point
+  use state_point,  only: write_state_point, write_source_point
   use string,       only: to_str
   use tally,        only: synchronize_tallies, setup_active_usertallies, &
                           reset_result
@@ -166,7 +166,7 @@ contains
 
   subroutine finalize_generation()
 
-#ifdef OPENMP
+#ifdef _OPENMP
     ! Join the fission bank from each thread into one global fission bank
     call join_bank_from_threads()
 #endif
@@ -220,6 +220,12 @@ contains
 
       ! Create state point file
       call write_state_point()
+    end if
+
+    ! Write out source point if it's been specified for this batch
+    if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
+        source_write) then
+      call write_source_point()
     end if
 
     if (master .and. current_batch == n_batches) then
@@ -821,7 +827,7 @@ contains
 
   end subroutine replay_batch_history
 
-#ifdef OPENMP
+#ifdef _OPENMP
 !===============================================================================
 ! JOIN_BANK_FROM_THREADS
 !===============================================================================

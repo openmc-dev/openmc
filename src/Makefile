@@ -3,10 +3,7 @@ prefix = /usr/local
 
 source = $(wildcard *.F90)
 objects = $(source:.F90=.o)
-templates = $(wildcard templates/*.o)
-xml_fort = xml-fortran/xmlparse.o \
-           xml-fortran/read_xml_primitives.o \
-           xml-fortran/write_xml_primitives.o
+xml_lib = -Lxml/lib -lxml
 
 #===============================================================================
 # User Options
@@ -184,17 +181,17 @@ endif
 
 ifeq ($(OPENMP),yes)
   ifeq ($(COMPILER),intel)
-    F90FLAGS += -openmp -DOPENMP
+    F90FLAGS += -openmp
     LDFLAGS += -openmp
   endif
 
   ifeq ($(COMPILER),gnu)
-    F90FLAGS += -fopenmp -DOPENMP
+    F90FLAGS += -fopenmp
     LDFLAGS += -fopenmp
   endif
 
   ifeq ($(COMPILER),ibm)
-    F90FLAGS += -qsmp=omp -WF,-DOPENMP
+    F90FLAGS += -qsmp=omp
     LDFLAGS += -qsmp=omp
   endif
 endif
@@ -221,7 +218,7 @@ endif
 
 ifeq ($(MACHINE),bluegene)
   F90 = /bgsys/drivers/ppcfloor/comm/xl/bin/mpixlf2003
-  F90FLAGS = -WF,-DNO_F2008,-DMPI -O3
+  F90FLAGS = -WF,-DNO_F2008,-DMPI,-DRESTRICTED_ASSOCIATED_BUG -O3
   LDFLAGS = -lmpich.cnkf90
 endif
 
@@ -236,19 +233,18 @@ endif
 
 ifeq ($(MACHINE),bluegeneq)
   F90 = mpixlf2003
-  F90FLAGS = -WF,-DNO_F2008,-DMPI -O5
+  F90FLAGS = -WF,-DNO_F2008,-DMPI,-DRESTRICTED_ASSOCIATED_BUG -O5
 endif
 
 #===============================================================================
 # Targets
 #===============================================================================
 
-all: xml-fortran $(program)
-xml-fortran:
-	cd xml-fortran; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)" LDFLAGS="$(LDFLAGS)"
-	cd templates; make F90=$(F90) F90FLAGS="$(F90FLAGS)" LDFLAGS="$(LDFLAGS)"
+all: xml $(program)
+xml:
+	cd xml; make MACHINE=$(MACHINE) F90=$(F90) F90FLAGS="$(F90FLAGS)" LDFLAGS="$(LDFLAGS)"
 $(program): $(objects)
-	$(F90) $(objects) $(templates) $(xml_fort) $(LDFLAGS) -o $@
+	$(F90) $(objects) $(xml_lib) $(LDFLAGS) -o $@
 install:
 	@install -D $(program) $(DESTDIR)$(prefix)/bin/$(program)
 	@install -D utils/statepoint_cmp.py $(DESTDIR)$(prefix)/bin/statepoint_cmp
@@ -264,8 +260,7 @@ uninstall:
 	@rm $(DESTDIR)$(prefix)/share/man/man1/openmc.1
 	@rm $(DESTDIR)$(prefix)/share/doc/$(program)/copyright
 distclean: clean
-	cd xml-fortran; make clean
-	cd templates; make clean
+	cd xml; make clean
 clean:
 	@rm -f *.o *.mod $(program)
 neat:
@@ -275,10 +270,11 @@ neat:
 # Rules
 #===============================================================================
 
-.PHONY: all xml-fortran install uninstall clean neat distclean 
+.SUFFIXES: .F90 .o
+.PHONY: all xml install uninstall clean neat distclean 
 
 %.o: %.F90
-	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml-fortran -Itemplates -c $<
+	$(F90) $(F90FLAGS) -DGIT_SHA1="\"$(GIT_SHA1)\"" -Ixml/include -c $<
 
 #===============================================================================
 # Dependencies

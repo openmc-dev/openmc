@@ -29,9 +29,9 @@ def test_run():
     returncode = proc.returncode
     assert returncode == 0
     if os.path.isfile("./statepoint.1.binary"):
-        copyfile("./statepoint.1.binary","./statepoint.10.binary")
+        os.rename("./statepoint.1.binary","./statepoint.10.binary")
     else:
-        copyfile("./statepoint.1.h5","./statepoint.10.h5")
+        os.rename("./statepoint.1.h5","./statepoint.10.h5")
     # Call 2
     copyfile("./materials2.xml","./materials.xml")
     copyfile("./geometry2.xml","./geometry.xml")
@@ -46,13 +46,11 @@ def test_run():
     returncode = proc.returncode
     assert returncode == 0
     if os.path.isfile("./statepoint.1.binary"):
-        copyfile("./statepoint.1.binary","./statepoint.2.binary")
-        copyfile("./statepoint.10.binary","./statepoint.1.binary")
-        os.remove("./statepoint.10.binary")
+        os.rename("./statepoint.1.binary","./statepoint.2.binary")
+        os.rename("./statepoint.10.binary","./statepoint.1.binary")
     else:
-        copyfile("./statepoint.1.h5","./statepoint.2.h5")
-        copyfile("./statepoint.10.h5","./statepoint.1.h5")
-        os.remove("./statepoint.10.h5")
+        os.rename("./statepoint.1.h5","./statepoint.2.h5")
+        os.rename("./statepoint.10.h5","./statepoint.1.h5")
 
     # Call 3
     copyfile("./materials3.xml","./materials.xml")
@@ -101,5 +99,5 @@ def teardown():
     print output
     for f in output:
         print f
-    #    if os.path.exists(str(f)):
-    #        os.remove(str(f))
+        if os.path.exists(str(f)):
+            os.remove(str(f))

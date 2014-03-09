@@ -138,16 +138,18 @@ contains
       call sp % write_data(n_cells, "n_cells", group="geometry")
       call sp % write_data(n_universes, "n_universes", group="geometry")
       call sp % write_data(n_lattices, "n_lattices", group="geometry")
-
-      ! Print list of lattice IDs
-      allocate(temp_array(n_lattices))
-      do i = 1, n_lattices        
-        lat => lattices(i)
-        temp_array(i) = lat % id
-      end do
-      call sp % write_data(temp_array, "lattice_ids", &
-           group="geometry", length=n_lattices)
-      deallocate(temp_array)
+      
+      if (n_lattices > 0) then
+        ! Print list of lattice IDs
+        allocate(temp_array(n_lattices))
+        do i = 1, n_lattices        
+          lat => lattices(i)
+          temp_array(i) = lat % id
+        end do
+        call sp % write_data(temp_array, "lattice_ids", &
+             group="geometry", length=n_lattices)
+        deallocate(temp_array)
+      end if
 
       ! Print list of universe IDs
       allocate(temp_array(n_universes))
@@ -207,8 +209,10 @@ contains
                group="geometry/cells/cell " // trim(to_str(c % id))) 
           call sp % write_data(size(c % offset), "maps", &
                group="geometry/cells/cell " // trim(to_str(c % id)))
-          call sp % write_data(c % offset, "offset", length= size(c%offset), &
-               group="geometry/cells/cell " // trim(to_str(c % id)))
+          if (size(c % offset) > 0) then
+            call sp % write_data(c % offset, "offset", length= size(c%offset), &
+                 group="geometry/cells/cell " // trim(to_str(c % id)))
+          end if
         case (CELL_LATTICE)
           call sp % write_data(lattices(c % fill) % id, "lattice", &
                group="geometry/cells/cell " // trim(to_str(c % id))) 
@@ -271,7 +275,6 @@ contains
 
         call sp % write_data(size(lat % offset,1), "maps", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
-
         call sp % write_data(size(lat % offset), "offset_size", &
              group="geometry/lattices/lattice " // trim(to_str(lat % id)))
         if (size(lat % offset) > 0) then
@@ -815,11 +818,13 @@ contains
     call sp % read_data(n_univ, "n_universes", group="geometry")
     call sp % read_data(n_lat, "n_lattices", group="geometry")
 
-    ! Read list of lattice IDs
-    allocate(temp_array(n_lattices))
-    call sp % read_data(temp_array, "lattice_ids", &
-         group="geometry", length=n_lattices)
-    deallocate(temp_array)
+    if (n_lat > 0) then
+      ! Read list of lattice IDs
+      allocate(temp_array(n_lattices))
+      call sp % read_data(temp_array, "lattice_ids", &
+           group="geometry", length=n_lattices)
+      deallocate(temp_array)
+    end if
 
     ! Read list of universe IDs
     allocate(temp_array(n_universes))
@@ -852,10 +857,12 @@ contains
              group="geometry/cells/cell ") 
         call sp % read_data(k, "maps", &
              group="geometry/cells/cell ")
-        allocate(temp_array(k))
-        call sp % read_data(temp_array, "offset", length=k, &
-             group="geometry/cells/cell ")
-        deallocate(temp_array)
+        if (k > 0) then
+          allocate(temp_array(k))
+          call sp % read_data(temp_array, "offset", length=k, &
+               group="geometry/cells/cell ")
+          deallocate(temp_array)
+        end if
       case (CELL_LATTICE)
         call sp % read_data(j, "lattice", &
              group="geometry/cells/cell ") 

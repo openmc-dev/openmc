@@ -148,14 +148,18 @@ class Geometry_Data(object):
           print 'Cell:',i.ID
           print '--UserID:',i.userID
           print '--Filltype:',i.filltype
-          print '--Fill:',i.fill
+          print '--Fill:'
+          print i.fill
           print '--Offset:',i.offset
           print '--Material:',i.material
 
         for i in self.lat:
           print 'Lattice:',i.ID
           print '--Fill:',i.fill
-          print '--Offset Dimensions:',i.offset.shape
+          if type(i.offset) == int:
+            pass
+          else:
+            print '--Offset Dimensions:',i.offset.shape
           print '--Offset:',np.squeeze(i.offset)
           print '--Dimenisions:',i.dim
 
@@ -403,7 +407,8 @@ class StatePoint(object):
         self.geom.n_universes = self._get_int(path='geometry/n_universes')[0]
         self.geom.n_lattices = self._get_int(path='geometry/n_lattices')[0]
 
-        latticeList = self._get_int(self.geom.n_lattices,path='geometry/lattice_ids')
+        if self.geom.n_lattices > 0:
+          latticeList = self._get_int(self.geom.n_lattices,path='geometry/lattice_ids')
 
         univList = self._get_int(self.geom.n_universes,path='geometry/universe_ids')
 
@@ -432,8 +437,9 @@ class StatePoint(object):
             elif filltype == "fill cell":
               fill = self._get_int(path=base + str(self.geom.cellKeys[i])+'/fill')[0]
               maps = self._get_int(path=base + str(self.geom.cellKeys[i])+'/maps')[0]
-              offset = self._get_int(path=base + str(maps,self.geom.cellKeys[i])+'/offset')
-              self.geom.cell[-1]._set_offset(offset)
+              if maps > 0:
+                offset = self._get_int(path=base + str(self.geom.cellKeys[i])+'/offset')
+                self.geom.cell[-1]._set_offset(offset)
             self.geom.cell[-1]._set_fill(fill)
 
         # Build list of universes
@@ -474,7 +480,6 @@ class StatePoint(object):
               fill.shape = (dim[0], dim[1], dim[2]) 
           self.geom.lat.append(Lattice(latticeList[i],fill, offset, dim))
 
-       
         # Read number of meshes
         n_meshes = self._get_int(path='tallies/n_meshes')[0]
 
@@ -534,14 +539,10 @@ class StatePoint(object):
                 assert f.length > 0
                 if f.type == 'energyin' or f.type == 'energyout':
                     f.bins = self._get_double(f.length + 1, path=base+'bins')
-                elif f.type == 'mesh':
+                elif f.type == 'mesh' or f.type == 'distribcell':
                     f.bins = self._get_int(path=base+'bins')
                 else:
-                    # The original line of code, below, does not appear to work
-                    #f.bins = self._get_int(f.length, path=base+'bins')
-                    # For the moment, it has been replaced with this, which does.
-                    f.bins = self._get_int(1, path=base+'bins')[0]
-
+                    f.bins = self._get_int(f.length, path=base+'bins')
             base = 'tallies/tally' + str(i+1) + '/'
 
             # Read nuclide bins

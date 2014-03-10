@@ -39,7 +39,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'OpenMC'
-copyright = u'2011-2013, Massachusetts Institute of Technology'
+copyright = u'2011-2014, Massachusetts Institute of Technology'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -121,7 +121,7 @@ html_title = "OpenMC Documentation"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '../img/openmc.png'
+html_logo = '_images/openmc.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -187,6 +187,8 @@ latex_documents = [
   ('index', 'openmc.tex', u'OpenMC Documentation',
    u'Massachusetts Institute of Technology', 'manual'),
 ]
+
+latex_elements = {'preamble': '\\usepackage{enumitem}\\setlistdepth{9}'}
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.

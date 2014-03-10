@@ -349,6 +349,7 @@ module m_dom_dom
   public :: createEntityReference
   public :: createEmptyEntityReference
   public :: getElementsByTagName
+  public :: getChildrenByTagName
   public :: importNode
   public :: createElementNS
   public :: createAttributeNS
@@ -6907,6 +6908,166 @@ endif
 
 
   end function getElementsByTagName
+
+  function getChildrenByTagName(doc, tagName, name, ex)result(list) 
+    type(DOMException), intent(out), optional :: ex
+    type(Node), pointer :: doc
+    character(len=*), intent(in), optional :: tagName, name
+    type(NodeList), pointer :: list
+
+    type(NodeListPtr), pointer :: nll(:), temp_nll(:)
+    type(Node), pointer :: arg, this, treeroot
+    logical :: doneChildren, doneAttributes, allElements
+    integer :: i, i_tree
+
+    if (.not.associated(doc)) then
+      if (getFoX_checks().or.FoX_NODE_IS_NULL<200) then
+  call throw_exception(FoX_NODE_IS_NULL, "getElementsByTagName", ex)
+  if (present(ex)) then
+    if (inException(ex)) then
+       return
+    endif
+  endif
+endif
+
+    endif
+
+    if (doc%nodeType==DOCUMENT_NODE) then
+      if (present(name).or..not.present(tagName)) then
+        if (getFoX_checks().or.FoX_INVALID_NODE<200) then
+  call throw_exception(FoX_INVALID_NODE, "getElementsByTagName", ex)
+  if (present(ex)) then
+    if (inException(ex)) then
+       return
+    endif
+  endif
+endif
+
+      endif
+    elseif (doc%nodeType==ELEMENT_NODE) then
+      if (present(name).or..not.present(tagName)) then
+        if (getFoX_checks().or.FoX_INVALID_NODE<200) then
+  call throw_exception(FoX_INVALID_NODE, "getElementsByTagName", ex)
+  if (present(ex)) then
+    if (inException(ex)) then
+       return
+    endif
+  endif
+endif
+
+      endif
+    else      
+      if (getFoX_checks().or.FoX_INVALID_NODE<200) then
+  call throw_exception(FoX_INVALID_NODE, "getElementsByTagName", ex)
+  if (present(ex)) then
+    if (inException(ex)) then
+       return
+    endif
+  endif
+endif
+
+    endif
+
+    if (doc%nodeType==DOCUMENT_NODE) then
+      arg => getDocumentElement(doc)
+    else
+      arg => doc
+    endif
+
+    allocate(list)
+    allocate(list%nodes(0))
+    list%element => doc
+    if (present(name)) list%nodeName => vs_str_alloc(name)
+    if (present(tagName)) list%nodeName => vs_str_alloc(tagName)
+
+    allElements = (str_vs(list%nodeName)=="*")
+
+    if (doc%nodeType==DOCUMENT_NODE) then
+      nll => doc%docExtras%nodelists
+    elseif (doc%nodeType==ELEMENT_NODE) then
+      nll => doc%ownerDocument%docExtras%nodelists
+    endif
+    allocate(temp_nll(size(nll)+1))
+    do i = 1, size(nll)
+      temp_nll(i)%this => nll(i)%this
+    enddo
+    temp_nll(i)%this => list
+    deallocate(nll)
+    if (doc%nodeType==DOCUMENT_NODE) then
+      doc%docExtras%nodelists => temp_nll
+    elseif (doc%nodeType==ELEMENT_NODE) then
+      doc%ownerDocument%docExtras%nodelists => temp_nll
+    endif
+
+    treeroot => arg
+
+    i_tree = 0
+    doneChildren = .false.
+    doneAttributes = .false.
+    this => treeroot
+    do
+      if (.not.doneChildren.and..not.(getNodeType(this)==ELEMENT_NODE.and.doneAttributes)) then
+        if (this%nodeType==ELEMENT_NODE) then
+          if ((allElements .or. str_vs(this%nodeName)==tagName) &
+            .and..not.(getNodeType(doc)==ELEMENT_NODE.and.associated(this, arg))) &
+            call append(list, this)
+          doneAttributes = .true.
+        endif
+
+      else
+        if (getNodeType(this)==ELEMENT_NODE.and..not.doneChildren) then
+          doneAttributes = .true.
+        else
+
+        endif
+      endif
+
+
+      if (.not.doneChildren) then
+        if (getNodeType(this)==ELEMENT_NODE.and..not.doneAttributes) then
+          if (getLength(getAttributes(this))>0) then
+            this => item(getAttributes(this), 0)
+          else
+            doneAttributes = .true.
+          endif
+        elseif (hasChildNodes(this) .and. .not. associated(getParentNode(this), treeroot)) then
+          this => getFirstChild(this)
+          doneChildren = .false.
+          doneAttributes = .false.
+        else
+          doneChildren = .true.
+          doneAttributes = .false.
+        endif
+
+      else ! if doneChildren
+
+        if (associated(this, treeroot)) exit
+        if (getNodeType(this)==ATTRIBUTE_NODE) then
+          if (i_tree<getLength(getAttributes(getOwnerElement(this)))-1) then
+            i_tree= i_tree+ 1
+            this => item(getAttributes(getOwnerElement(this)), i_tree)
+            doneChildren = .false.
+          else
+            i_tree= 0
+            this => getOwnerElement(this)
+            doneAttributes = .true.
+            doneChildren = .false.
+          endif
+        elseif (associated(getNextSibling(this))) then
+
+          this => getNextSibling(this)
+          doneChildren = .false.
+          doneAttributes = .false.
+        else
+          this => getParentNode(this)
+        endif
+      endif
+
+    enddo
+
+
+
+  end function getChildrenByTagName
 
   function importNode(doc , arg, deep , ex)result(np) 
     type(DOMException), intent(out), optional :: ex

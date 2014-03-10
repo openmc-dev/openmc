@@ -400,6 +400,8 @@ contains
     integer :: NE ! number of energy points for total and elastic cross sections
     integer :: i  ! index in 0K elastic xs array for this nuclide
 
+    real(8) :: xs_cdf_sum = ZERO ! xs cdf value
+
     ! determine number of energy points
     NE = NXS(3)
 
@@ -410,7 +412,9 @@ contains
       nuc % n_grid_0K = NE
       allocate(nuc % energy_0K(NE))
       allocate(nuc % elastic_0K(NE))
+      allocate(nuc % xs_cdf(NE))
       nuc % elastic_0K = ZERO
+      nuc % xs_cdf = ZERO
       XSS_index = 1
       nuc % energy_0K = get_real(NE)
 
@@ -420,10 +424,17 @@ contains
       ! Continue reading elastic scattering and heating
       nuc % elastic_0K = get_real(NE)
 
-      ! Negative cross sections result in a CDF that is not monotonically
-      ! increasing. Set all negative xs values to ZERO.
-      do i = 1, nuc % n_grid_0K
+      do i = 1, nuc % n_grid_0K - 1
+
+        ! Negative cross sections result in a CDF that is not monotonically
+        ! increasing. Set all negative xs values to ZERO.
         if (nuc % elastic_0K(i) < ZERO) nuc % elastic_0K(i) = ZERO
+
+        ! build xs cdf
+        xs_cdf_sum = xs_cdf_sum + (sqrt(nuc % energy_0K(i)) * nuc % elastic_0K(i) &
+          & + sqrt(nuc % energy_0K(i+1)) * nuc % elastic_0K(i+1)) / TWO &
+          & * (nuc % energy_0K(i+1) - nuc % energy_0K(i))
+        nuc % xs_cdf(i) = xs_cdf_sum
       end do
 
     else ! read in non-0K data

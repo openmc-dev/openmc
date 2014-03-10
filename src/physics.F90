@@ -745,25 +745,36 @@ contains
     real(8), intent(in)    :: uvw(3)      ! direction cosines
     real(8), intent(inout) :: wgt         ! particle weight
 
-    real(8) :: awr    ! target/neutron mass ratio
-    real(8) :: kT     ! equilibrium temperature of target in MeV
-    real(8) :: E_rel  ! trial relative energy
-    real(8) :: xs_0K  ! 0K xs at E_rel
-    real(8) :: xs_eff ! effective elastic xs at temperature T
-    real(8) :: wcf    ! weight correction factor
-    real(8) :: E_red  ! reduced energy (same as used by Cullen in SIGMA1)
-    real(8) :: E_low  ! lowest practical relative energy
-    real(8) :: E_up   ! highest practical relative energy
-    real(8) :: xs_max ! max 0K xs over practical relative energies
-    real(8) :: xs_low ! 0K xs at lowest practical relative energy
-    real(8) :: xs_up  ! 0K xs at highest practical relative energy
-    real(8) :: m      ! slope for interpolation
-    real(8) :: R_dbrc ! DBRC rejection criterion
+    real(8) :: awr     ! target/neutron mass ratio
+    real(8) :: kT      ! equilibrium temperature of target in MeV
+    real(8) :: E_rel   ! trial relative energy
+    real(8) :: xs_0K   ! 0K xs at E_rel
+    real(8) :: xs_eff  ! effective elastic xs at temperature T
+    real(8) :: wcf     ! weight correction factor
+    real(8) :: E_red   ! reduced energy (same as used by Cullen in SIGMA1)
+    real(8) :: E_low   ! lowest practical relative energy
+    real(8) :: E_up    ! highest practical relative energy
+    real(8) :: E_mode  ! most probable Maxwellian energy
+    real(8) :: E_t_max ! highest practical target energy
+    real(8) :: E_t     ! trial target energy
+    real(8) :: xs_max  ! max 0K xs over practical relative energies
+    real(8) :: xs_low  ! 0K xs at lowest practical relative energy
+    real(8) :: xs_up   ! 0K xs at highest practical relative energy
+    real(8) :: m       ! slope for interpolation
+    real(8) :: R_dbrc  ! DBRC rejection criterion
+    real(8) :: R_speed ! target speed rejection criterion
+    real(8) :: cdf_low ! xs cdf at lowest practical relative energy
+    real(8) :: cdf_up  ! xs cdf at highest practical relative energy
+    real(8) :: cdf_rel ! trial xs cdf value
+    real(8) :: p_mode  ! probability at most probable energy
+    real(8) :: p_t     ! probability at trial target energy
+    real(8) :: mu      ! cosine between neutron and target velocities
 
     integer :: i_E_low ! 0K index to lowest practical relative energy
     integer :: i_E_up  ! 0K index to highest practical relative energy
+    integer :: i_E_rel ! index to trial relative energy
 
-    logical :: reject ! resample if true
+    logical :: reject  ! resample if true
 
     character(80) :: sampling_scheme ! method of target velocity sampling
 
@@ -856,6 +867,70 @@ contains
         xs_0K = calculate_0K_elastic_xs(E_rel, nuc)
         R_dbrc = xs_0K / xs_max
         if (prn() < R_dbrc) reject = .false.
+        if (.not. reject) exit
+      end do
+
+    case ('arts')
+      E_red = sqrt((awr * E) / kT)
+      E_low = (((E_red - 4.0_8)**2) * kT) / awr
+      E_up  = (((E_red + 4.0_8)**2) * kT) / awr
+
+      ! find lower and upper energy bound indices
+      call find_energy_index(E_low)
+      i_E_low = nuc % grid_index_0K(union_grid_index)
+      call find_energy_index(E_up)
+      i_E_up = nuc % grid_index_0K(union_grid_index)
+
+      ! interpolate xs CDF since we're not exactly at the energy indices
+      m = (nuc % xs_cdf(i_E_low) - nuc % xs_cdf(i_E_low - 1)) &
+        & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+      cdf_low = nuc % xs_cdf(i_E_low - 1) + m * (E_low - nuc % energy_0K(i_E_low))
+      m = (nuc % xs_cdf(i_E_up) - nuc % xs_cdf(i_E_up - 1)) &
+        & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
+      cdf_up = nuc % xs_cdf(i_E_up - 1) + m * (E_up - nuc % energy_0K(i_E_up))
+
+      ! values used to sample the Maxwellian
+      E_mode = kT
+      p_mode = TWO * sqrt(E_mode / pi) * sqrt((ONE / kT)**3) &
+        & * exp(-E_mode / kT)
+      E_t_max = 16.0_8 * E_mode
+
+      reject = .true.
+
+      do
+
+        ! perform Maxwellian rejection sampling
+        E_t = E_t_max * prn()**2
+        p_t = TWO * sqrt(E_t / pi) * sqrt((ONE / kT)**3) &
+          & * exp(-E_t / kT)
+        R_speed = p_t / p_mode
+
+        if (prn() < R_speed) then
+
+          ! sample a relative energy using the xs cdf
+          cdf_rel = cdf_low + prn() * (cdf_up - cdf_low)
+          i_E_rel = binary_search(nuc % xs_cdf(i_E_low-1:i_E_up), &
+            & i_E_up - i_E_low + 2, cdf_rel)
+          E_rel = nuc % energy_0K(i_E_low + i_E_rel - 1)
+          m = (nuc % xs_cdf(i_E_low + i_E_rel - 1) &
+            & - nuc % xs_cdf(i_E_low + i_E_rel - 2)) &
+            & / (nuc % energy_0K(i_E_low + i_E_rel) &
+            & -  nuc % energy_0K(i_E_low + i_E_rel - 1))
+          E_rel = E_rel + (cdf_rel - nuc % xs_cdf(i_E_low + i_E_rel - 2)) / m
+
+          ! perform rejection sampling on cosine between
+          ! neutron and target velocities
+          mu = (E_t + awr * (E - E_rel)) / (TWO * sqrt(awr * E * E_t))
+
+          if (abs(mu) < ONE) then
+
+            ! set and accept target velocity
+            E_t = E_t / awr
+            v_target = sqrt(E_t) * rotate_angle(uvw, mu)
+            reject = .false.
+          end if
+        end if
+
         if (.not. reject) exit
       end do
 

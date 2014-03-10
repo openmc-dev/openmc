@@ -942,6 +942,7 @@ contains
     integer :: NEa   ! number of energies for Watt 'a'
     integer :: NRb   ! number of interpolation regions for Watt 'b'
     integer :: NEb   ! number of energies for Watt 'b'
+    real(8), allocatable :: L(:)  ! locations of distributions for each Ein
 
     ! initialize length
     length = 0
@@ -966,6 +967,22 @@ contains
       ! Continuous tabular distribution
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      ! Before progressing, check to see if data set uses L(I) values
+      ! in a way inconsistent with the current form of the ACE Format Guide
+      ! (MCNP5 Manual, Vol 3)
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      do i = 1,NE
+        ! Now check to see if L(i) is equal to any other entries
+        ! If so, then we must exit
+        if (count(L == L(i)) > 1) then
+          message = "Invalid usage of L(I) in ACE data; &
+                    &Consider using more recent data set."
+          call fatal_error()
+        end if
+      end do
+      deallocate(L)
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
         ! determine length
@@ -1008,6 +1025,22 @@ contains
       ! Kalbach-Mann correlated scattering
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      ! Before progressing, check to see if data set uses L(I) values
+      ! in a way inconsistent with the current form of the ACE Format Guide
+      ! (MCNP5 Manual, Vol 3)
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      do i = 1,NE
+        ! Now check to see if L(i) is equal to any other entries
+        ! If so, then we must exit
+        if (count(L == L(i)) > 1) then
+          message = "Invalid usage of L(I) in ACE data; &
+                    &Consider using more recent data set."
+          call fatal_error()
+        end if
+      end do
+      deallocate(L)
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
         NP = int(XSS(lc + length + 2))
@@ -1022,6 +1055,22 @@ contains
       ! Correlated energy and angle distribution
       NR = int(XSS(lc + 1))
       NE = int(XSS(lc + 2 + 2*NR))
+      ! Before progressing, check to see if data set uses L(I) values
+      ! in a way inconsistent with the current form of the ACE Format Guide
+      ! (MCNP5 Manual, Vol 3)
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      do i = 1,NE
+        ! Now check to see if L(i) is equal to any other entries
+        ! If so, then we must exit
+        if (count(L == L(i)) > 1) then
+          message = "Invalid usage of L(I) in ACE data; &
+                    &Consider using more recent data set."
+          call fatal_error()
+        end if
+      end do
+      deallocate(L)
+      ! Continue with finding data length
       length = length + 2 + 2*NR + 2*NE
       do i = 1,NE
         ! outgoing energy distribution
@@ -1054,6 +1103,22 @@ contains
       ! Laboratory energy-angle law
       NR  = int(XSS(lc + 1))
       NE  = int(XSS(lc + 2 + 2*NR))
+      ! Before progressing, check to see if data set uses L(I) values
+      ! in a way inconsistent with the current form of the ACE Format Guide
+      ! (MCNP5 Manual, Vol 3)
+      allocate(L(NE))
+      L = int(XSS(lc + 3 + 2*NR + NE: lc + 3 + 2*NR + 2*NE - 1))
+      do i = 1,NE
+        ! Now check to see if L(i) is equal to any other entries
+        ! If so, then we must exit
+        if (count(L == L(i)) > 1) then
+          message = "Invalid usage of L(I) in ACE data; &
+                    &Consider using more recent data set."
+          call fatal_error()
+        end if
+      end do
+      deallocate(L)
+      ! Continue with finding data length
       NMU = int(XSS(lc + 4 + 2*NR + 2*NE))
       length = 4 + 2*(NR + NE + NMU)
 

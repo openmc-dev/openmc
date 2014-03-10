@@ -26,7 +26,7 @@ module initialize
   use mpi
 #endif
 
-#ifdef OPENMP
+#ifdef _OPENMP
   use omp_lib
 #endif
 
@@ -363,7 +363,49 @@ contains
           case (FILETYPE_PARTICLE_RESTART)
             path_particle_restart = argv(i)
             particle_restart_run = .true.
+          case default
+            message = "Unrecognized file after restart flag."
+            call fatal_error()
           end select
+
+          ! If its a restart run check for additional source file
+          if (restart_run .and. i + 1 <= argc) then
+
+            ! Increment arg
+            i = i + 1
+
+            ! Check if it has extension we can read
+            if ((ends_with(argv(i), '.binary') .or. &
+                 ends_with(argv(i), '.h5'))) then
+
+              ! Check file type is a source file
+              call sp % file_open(argv(i), 'r', serial = .false.)
+              call sp % read_data(filetype, 'filetype')
+              call sp % file_close()
+              if (filetype /= FILETYPE_SOURCE) then
+                message = "Second file after restart flag must be a source file"
+                call fatal_error()
+              end if
+
+              ! It is a source file
+              path_source_point = argv(i)
+
+            else ! Different option is specified not a source file
+
+              ! Source is in statepoint file
+              path_source_point = path_state_point
+
+              ! Set argument back
+              i = i - 1
+
+            end if
+
+          else ! No command line arg after statepoint
+
+            ! Source is assumed to be in statepoint file
+            path_source_point = path_state_point
+
+          end if
 
         case ('-g', '-geometry-debug', '--geometry-debug')
           check_overlaps = .true.
@@ -372,7 +414,7 @@ contains
           ! Read number of threads
           i = i + 1
 
-#ifdef OPENMP          
+#ifdef _OPENMP          
           ! Read and set number of OpenMP threads
           n_threads = str_to_int(argv(i))
           if (n_threads < 1) then
@@ -830,14 +872,15 @@ contains
       call fatal_error()
     end if
 
-#ifdef OPENMP
+#ifdef _OPENMP
     ! If OpenMP is being used, each thread needs its own private fission
     ! bank. Since the private fission banks need to be combined at the end of a
     ! generation, there is also a 'master_fission_bank' that is used to collect
     ! the sites from each thread.
 
+    n_threads = omp_get_max_threads()
+
 !$omp parallel
-    n_threads = omp_get_num_threads()
     thread_id = omp_get_thread_num()
 
     if (thread_id == 0) then

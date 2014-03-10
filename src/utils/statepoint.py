@@ -195,7 +195,7 @@ class StatePoint(object):
             # Read CMFD information
             cmfd_present = self._get_int(path='cmfd_on')[0]
             if cmfd_present == 1:
-                self.cmfd_indices = self._get_int(4, path='cmfd/indicies')
+                self.cmfd_indices = self._get_int(4, path='cmfd/indices')
                 self.k_cmfd = self._get_double(self.current_batch,
                               path='cmfd/k_cmfd')
                 self.cmfd_src = self._get_double_array(np.product(self.cmfd_indices),

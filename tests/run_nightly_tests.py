@@ -171,6 +171,8 @@ ctest_vars = {
 
 # Begin testing
 call(['rm', '-rf', 'build'])
+call(['rm', '-rf', 'ctestscript.run'])
+call(['./cleanup'])
 for key in iter(tests):
     test = tests[key]
 
@@ -188,3 +190,5 @@ for key in iter(tests):
 
     # Clear build directory
     call(['rm', '-rf', 'build'])
+    call(['rm', '-rf', 'ctestscript.run'])
+    call(['./cleanup'])

@@ -5,7 +5,7 @@
 ##   ENABLE_TESTING()
 ##   INCLUDE(CTest)
 set(CTEST_PROJECT_NAME "OpenMC")
-set(CTEST_NIGHTLY_START_TIME "05:00:00 UTC")
+set(CTEST_NIGHTLY_START_TIME "03:00:00 UTC")
 
 set(CTEST_DROP_METHOD "http")
 set(CTEST_DROP_SITE "neutronbalance.mit.edu")

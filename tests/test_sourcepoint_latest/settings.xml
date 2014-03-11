@@ -1,8 +1,7 @@
 <?xml version="1.0"?>
 <settings>
 
-  <state_point batches="10" />
-  <source_point separate="true" />
+  <source_point batches="0" separate="true" overwrite_latest="true"/>
 
   <eigenvalue>
     <batches>10</batches>

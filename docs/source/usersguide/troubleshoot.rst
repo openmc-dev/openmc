@@ -79,6 +79,14 @@ with the :envvar:`CROSS_SECTIONS` environment variable. It is recommended to add
 a line in your ``.profile`` or ``.bash_profile`` setting the
 :envvar:`CROSS_SECTIONS` environment variable.
 
+ERROR: Invalid usage of L(I) in ACE data; Consider using more recent data set.
+******************************************************************************
+
+The cross-sections requested in ``materials.xml`` do not conform to the current
+standard format.  This typically happens with fissionable nuclides in a ``.6*c``
+library as distributed with MCNP.  Please try a newer library such as any from
+the ``.7*c`` set.
+
 Geometry Debugging
 ******************
 
@@ -107,8 +115,8 @@ have many particles travelling through them there will not be many locations
 where overlaps are checked for in that region.  The user should refer to the
 output after a geometry debug run to see how many checks were performed in each
 cell, and then adjust the number of starting particles or starting source
-distributions accordingly to achieve good coverage. 
- 
+distributions accordingly to achieve good coverage.
+
 ERROR: After particle __ crossed surface __ it could not be located in any cell and it did not leak.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

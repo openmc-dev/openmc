@@ -11,13 +11,14 @@ module constants
   integer, parameter :: VERSION_RELEASE = 3
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 10
+  integer, parameter :: REVISION_STATEPOINT       = 11
   integer, parameter :: REVISION_PARTICLE_RESTART = 1
 
   ! Binary file types
   integer, parameter :: &
        FILETYPE_STATEPOINT       = -1, &
-       FILETYPE_PARTICLE_RESTART = -2
+       FILETYPE_PARTICLE_RESTART = -2, &
+       FILETYPE_SOURCE           = -3
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS

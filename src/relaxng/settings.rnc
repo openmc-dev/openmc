@@ -92,11 +92,22 @@ element settings {
         attribute batches { list { xsd:positiveInteger+ } }) |
       (element interval { xsd:positiveInteger } | 
         attribute interval { xsd:positiveInteger })
-    ) &
-    (element source_separate { xsd:boolean } | 
-      attribute source_separate { xsd:boolean })? &
-    (element source_write { xsd:boolean } | 
-      attribute source_write { xsd:boolean })?
+    )
+  }? &
+
+  element source_point {
+    (
+      (element batches { list { xsd:positiveInteger+ } } |
+        attribute batches { list { xsd:positiveInteger+ } }) |
+      (element interval { xsd:positiveInteger } | 
+        attribute interval { xsd:positiveInteger })
+    )? &
+    (element separate { xsd:boolean } | 
+      attribute separate { xsd:boolean })? &
+    (element write { xsd:boolean } | 
+      attribute write { xsd:boolean })? &
+    (element overwrite_latest { xsd:boolean} |
+      attribute overwrite_latest {xsd:boolean})?
   }? &
 
   element survival_biasing { xsd:boolean }? &

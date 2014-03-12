@@ -33,6 +33,8 @@ set (CTEST_BUILD_NAME "{build_name}")
 set (CTEST_CMAKE_GENERATOR "Unix Makefiles")
 set (CTEST_BUILD_OPTIONS "{build_opts}")
 
+set(CTEST_UPDATE_COMMAND "git")
+
 set(CTEST_CONFIGURE_COMMAND "${{CMAKE_COMMAND}} -H${{CTEST_SOURCE_DIRECTORY}} -B${{CTEST_BINARY_DIRECTORY}} ${{CTEST_BUILD_OPTIONS}}")
 set(CTEST_MEMORYCHECK_COMMAND "/usr/bin/valgrind")
 set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes")
@@ -45,6 +47,7 @@ set(ENV{{COVERAGE}} ${{COVERAGE}})
 
 ctest_start("{dashboard}")
 ctest_configure()
+ctest_update()
 ctest_build()
 if(MEM_CHECK)
 ctest_test(START 1 END 67 STRIDE 5 PARALLEL_LEVEL 4)

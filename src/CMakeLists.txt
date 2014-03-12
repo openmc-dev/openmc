@@ -172,10 +172,7 @@ execute_process(COMMAND git rev-parse -q HEAD
                 OUTPUT_VARIABLE GIT_SHA1
                 ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 if(GIT_SHA1_SUCCESS EQUAL 0)
-  file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/git_sha1.h
-    "#define GIT_SHA1 \"${GIT_SHA1}\"")
-else()
-  file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/git_sha1.h "")
+  add_definitions(-DGIT_SHA1="${GIT_SHA1}")
 endif()
   
 #===============================================================================

@@ -4,7 +4,6 @@
 *.mod
 *.log
 *.out
-git_sha1.h
 
 # Compiler python objects
 *.pyc

@@ -138,6 +138,7 @@ if len(sys.argv) > 1:
                     try:
                         tests__.index(j)
                     except ValueError:
+                        tests__.append(j)
 
         # Test name specified on command line
         else:

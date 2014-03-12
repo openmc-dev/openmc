@@ -236,6 +236,18 @@ if (NOT ${PETSC_ENABLED})
   endforeach(cmfd_test)
 endif(NOT ${PETSC_ENABLED})
 
+# Check for MEM_CHECK and COVERAGE variables
+if (DEFINED $ENV{MEM_CHECK})
+  set(MEM_CHECK $ENV{MEM_CHECK})
+else(DEFINED $ENV{MEM_CHECK})
+  set(MEM_CHECK FALSE)
+endif(DEFINED $ENV{MEM_CHECK})
+if (DEFINED $ENV{COVERAGE})
+  set(COVERAGE $ENV{COVERAGE})
+else(DEFINED $ENV{COVERAGE})
+  set(COVERAGE FALSE)
+endif(DEFINED $ENV{COVERAGE})
+
 # Loop through all the tests
 foreach(test ${TESTS})
 
@@ -243,7 +255,7 @@ foreach(test ${TESTS})
   get_filename_component(TEST_NAME ${test} NAME)
   get_filename_component(TEST_PATH ${test} PATH) 
 
-  if(NOT $ENV{MEM_CHECK} AND NOT $ENV{COVERAGE})
+  if(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
 
     # Check serial/parallel
     if (${MPI_ENABLED})
@@ -263,13 +275,13 @@ foreach(test ${TESTS})
 
     endif(${MPI_ENABLED})
 
-  else(NOT $ENV{MEM_CHECK} AND NOT $ENV{COVERAGE})
+  else(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
 
     # Perform serial valgrind test
     add_test(NAME ${TEST_NAME}
       WORKING_DIRECTORY ${TEST_PATH}
       COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
 
-  endif(NOT $ENV{MEM_CHECK} AND NOT $ENV{COVERAGE})
+  endif(NOT ${MEM_CHECK} AND NOT ${COVERAGE})
 
 endforeach(test)

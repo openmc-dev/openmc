@@ -55,7 +55,6 @@ contains
          '     License:        http://mit-crpg.github.io/openmc/license.html'
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Version:",8X,I1,".",I1,".",I1)') &
          VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
-#include "git_sha1.h"
 #ifdef GIT_SHA1
     write(UNIT=OUTPUT_UNIT, FMT='(6X,"Git SHA1:",7X,A)') GIT_SHA1
 #endif

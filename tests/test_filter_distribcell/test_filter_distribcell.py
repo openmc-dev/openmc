@@ -92,9 +92,7 @@ def test_results():
     assert compare
 
 def teardown():
-    output = glob.glob(pwd + '/statepoint.1.*')
-    output.append(glob.glob(pwd + '/statepoint.2.*'))
-    output.append(glob.glob(pwd + '/statepoint.3.*'))
+    output = glob.glob(pwd + '/statepoint.*')
     output.append(pwd + '/results_test.dat')
     print output
     for f in output:

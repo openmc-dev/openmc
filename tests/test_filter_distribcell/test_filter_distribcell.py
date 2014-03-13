@@ -93,6 +93,10 @@ def test_results():
 
 def teardown():
     output = glob.glob(pwd + '/statepoint.*')
+    output.append(pwd + '/geometry.xml')
+    output.append(pwd + '/materials.xml')
+    output.append(pwd + '/settings.xml')
+    output.append(pwd + '/tallies.xml')
     output.append(pwd + '/results_test.dat')
     print output
     for f in output:

@@ -1319,6 +1319,7 @@ contains
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ => null() ! universe to search in
+!$omp threadprivate(c, lat, univ)
 
     ! Remove coordinates for any lower levels
     call deallocate_coord(p % coord % next)
@@ -1536,6 +1537,7 @@ contains
     type(Cell),     pointer :: c => null()    ! pointer to cell
     type(Lattice),  pointer :: lat => null()  ! pointer to lattice
     type(Universe), pointer :: univ_next => null() ! next universe to loop through
+!$omp threadprivate(c, lat, univ_next)
 
     n = univ % n_cells
     tempoffset = 0
@@ -1634,6 +1636,7 @@ contains
     type(Cell),     pointer, save :: c_next => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+!$omp threadprivate(c_next, lat, univ_next)
 
     
     if (c % type == CELL_NORMAL) then
@@ -1740,6 +1743,7 @@ contains
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+!$omp threadprivate(c, lat, univ_next)
 
     n = univ % n_cells
       
@@ -1834,6 +1838,7 @@ contains
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+!$omp threadprivate(c, lat, univ_next)
 
     n = univ % n_cells
       

@@ -2107,6 +2107,7 @@ contains
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+!$omp threadprivate(c, lat, univ_next)
 
     n = univ % n_cells
     

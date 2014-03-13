@@ -159,7 +159,7 @@ add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, 
 add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
 add_test('basic-debug_valgrind', debug=True, valgrind=True)
 add_test('hdf5-debug_valgrind', hdf5=True, debug=True, valgrind=True)
-add_test('petsc-debug_valgrind', petsc=True, debug=True, valgrind=True)
+add_test('petsc-debug_valgrind', petsc=True, mpi=True, debug=True, valgrind=True)
 add_test('basic-normal_coverage', coverage=True)
 add_test('hdf5-normal_coverage', hdf5=True, coverage=True)
 add_test('mpi-normal_coverage', mpi=True, coverage=True)

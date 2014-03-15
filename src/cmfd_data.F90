@@ -31,6 +31,9 @@ contains
     ! Compute effective downscatter cross section
     if (cmfd_downscatter) call compute_effective_downscatter()
 
+    ! Compute perfect balance
+    if (cmfd_fix_balance) call fix_neutron_balance()
+
     ! Check neutron balance
     call neutron_balance()
 
@@ -103,6 +106,8 @@ contains
     cmfd % hxyz(1,:,:,:) = m % width(1) ! set x width
     cmfd % hxyz(2,:,:,:) = m % width(2) ! set y width
     cmfd % hxyz(3,:,:,:) = m % width(3) ! set z width
+
+    cmfd % keff_bal = ZERO
 
    ! Begin loop around tallies
    TAL: do ital = 1, n_cmfd_tallies
@@ -212,6 +217,7 @@ contains
                   ! Bank source
                   cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) + &
                        t % results(2,score_index) % sum
+                  cmfd % keff_bal = cmfd % keff_bal + t % results(2,score_index) % sum / dble(t % n_realizations)
 
                 end do INGROUP
 
@@ -703,8 +709,9 @@ contains
   subroutine compute_dhat()
 
     use constants,  only: CMFD_NOACCEL, ZERO
-    use global,     only: cmfd, cmfd_coremap, message, dhat_reset
+    use global,     only: cmfd, cmfd_coremap, message, dhat_reset, current_batch
     use output,     only: write_message
+    use string,     only: to_str
 
     integer :: nx             ! maximum number of cells in x direction
     integer :: ny             ! maximum number of cells in y direction
@@ -738,6 +745,9 @@ contains
     nxyz(1,:) = (/1,nx/)
     nxyz(2,:) = (/1,ny/)
     nxyz(3,:) = (/1,nz/)
+#ifdef CMFD_DEBUG
+    open(file='cmfd_dhat_' // trim(to_str(current_batch)) // '.dat', unit=125)
+#endif
 
     ! Geting loop over group and spatial indices
     ZLOOP:  do k = 1,nz
@@ -828,6 +838,9 @@ contains
                 cmfd%dhat(l,g,i,j,k) = ZERO
               end if
 
+#ifdef CMFD_DEBUG
+              write(125,*) dhat
+#endif
             end do LEAK
 
           end do GROUP
@@ -843,6 +856,10 @@ contains
       message = 'Dhats reset to zero.'
       call write_message(1)
     end if
+
+#ifdef CMFD_DEBUG
+    close(unit=125)
+#endif
 
   end subroutine compute_dhat
 
@@ -889,12 +906,12 @@ contains
 !===============================================================================
 ! FIX_NEUTRON_BALANCE is a method to adjust parameters to have perfect balance
 !===============================================================================
-#ifdef DEVELOPMENTAL 
+
   subroutine fix_neutron_balance()
 
     use constants,  only: ONE, ZERO, CMFD_NOACCEL
-    use global,     only: cmfd, keff
-    use, intrinsic :: ISO_FORTRAN_ENV
+    use global,     only: cmfd, message
+    use output,     only: write_message 
 
     integer :: nx         ! number of mesh cells in x direction
     integer :: ny         ! number of mesh cells in y direction
@@ -928,6 +945,7 @@ contains
     real(8) :: r1         ! right hand side element 1
     real(8) :: r2         ! right hand side element 2
     real(8) :: det        ! determinant of balance matrix
+    real(8) :: keff_bal   ! keffective for balance eq.
 
     message = 'Correcting neutron balance'
     call write_message(1)
@@ -937,6 +955,10 @@ contains
     ny = cmfd % indices(2)
     nz = cmfd % indices(3)
     ng = cmfd % indices(4)
+
+    keff_bal = cmfd % keff_bal
+
+    print *, 'KEFF BALANCE is:', keff_bal
 
     ! Return if not two groups
     if (ng /= 2) return
@@ -995,14 +1017,16 @@ contains
           siga1 = sigt1 - sigs11 - sigs12
           siga2 = sigt2 - sigs22 - sigs21
 
-          ! Compute effective downscatter xs
-          sigs12_eff = (ONE/keff*nsigf11*flux1 - leak1 - siga1*flux1 &
-               - ONE/keff*nsigf21/siga2*leak2 ) / ( flux1*(ONE &
-               - ONE/keff*nsigf21/siga2))
-
-          ! Redefine flux 2
-          flux2 = (sigs12_eff*flux1 - leak2)/siga2
-          cmfd % flux(2,i,j,k) = flux2
+          ! Create matrix and solve for effective downscatter and thermal flux
+          a = flux1
+          b = -ONE/keff_bal*nsigf21
+          c = flux1
+          d = -siga2 + ONE/keff_bal*nsigf22
+          det = a*d - b*c
+          r1 = ONE/keff_bal*nsigf11*flux1 - siga1*flux1 - leak1
+          r2 = leak2 - ONE/keff_bal*nsigf12*flux1
+          sigs12_eff = ONE/det*(d*r1 - b*r2)
+          flux2 = ONE/det*(a*r2 - c*r1)
  
           ! Recompute total cross sections (use effective and no upscattering)
           sigt1 = siga1 + sigs11 + sigs12_eff
@@ -1018,6 +1042,9 @@ contains
           ! Zero out upscatter cross section
           cmfd % scattxs(2,1,i,j,k) = ZERO 
 
+          ! Record thermal flux
+          cmfd % flux(2,i,j,k) = flux2
+
         end do XLOOP
 
       end do YLOOP
@@ -1025,7 +1052,6 @@ contains
     end do ZLOOP
 
   end subroutine fix_neutron_balance
-#endif
 
 !===============================================================================
 ! COMPUTE_EFFECTIVE_DOWNSCATTER changes downscatter rate for zero upscatter

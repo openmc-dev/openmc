@@ -83,6 +83,9 @@ module cmfd_header
     ! List of CMFD k
     real(8), allocatable :: k_cmfd(:)
 
+    ! Balance keff
+    real(8) :: keff_bal
+
   end type cmfd_type
 
 contains

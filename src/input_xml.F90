@@ -58,7 +58,6 @@ contains
     integer(8) :: temp_long
     integer :: n_tracks
     logical :: file_exists
-    logical :: check
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
@@ -681,14 +680,14 @@ contains
       end if
 
       ! Check if the user has specified to write binary source file
-      if (check_for_node(node_sp, "source_separate")) then
-        call get_node_value(node_sp, "source_separate", temp_str)
+      if (check_for_node(node_sp, "separate")) then
+        call get_node_value(node_sp, "separate", temp_str)
         call lower_case(temp_str)
         if (trim(temp_str) == 'true' .or. &
              trim(temp_str) == '1') source_separate = .true.
       end if
-      if (check_for_node(node_sp, "source_write")) then
-        call get_node_value(node_sp, "source_write", temp_str)
+      if (check_for_node(node_sp, "write")) then
+        call get_node_value(node_sp, "write", temp_str)
         call lower_case(temp_str)
         if (trim(temp_str) == 'false' .or. &
              trim(temp_str) == '0') source_write = .false.
@@ -713,10 +712,9 @@ contains
     ! make sure that the sourcepoint batch numbers are contained in the
     ! statepoint list
     if (.not. source_separate) then
-      check = .true.
       do i = 1, n_source_points
-        check = statepoint_batch % contains(sourcepoint_batch % get_item(i))
-        if (.not. check) then
+        if (.not. statepoint_batch % contains(sourcepoint_batch % &
+            get_item(i))) then
           message = 'Sourcepoint batches are not a subset&
                     & of statepoint batches.'
           call fatal_error()

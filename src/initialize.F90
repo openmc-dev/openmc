@@ -394,7 +394,7 @@ contains
               ! It is a source file
               path_source_point = argv(i)
 
-            else
+            else ! Different option is specified not a source file
 
               ! Source is in statepoint file
               path_source_point = path_state_point
@@ -403,6 +403,12 @@ contains
               i = i - 1
 
             end if
+
+          else ! No command line arg after statepoint
+
+            ! Source is assumed to be in statepoint file
+            path_source_point = path_state_point
+
           end if
 
         case ('-g', '-geometry-debug', '--geometry-debug')

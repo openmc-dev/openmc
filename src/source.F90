@@ -50,6 +50,12 @@ contains
       ! Read the file type
       call sp % read_data(itmp, "filetype")
 
+      ! Check to make sure this is a source file
+      if (itmp /= FILETYPE_SOURCE) then
+        message = "Specified starting source file not a source file type."
+        call fatal_error()
+      end if
+
       ! Read in the source bank
       call sp % read_source_bank()
 

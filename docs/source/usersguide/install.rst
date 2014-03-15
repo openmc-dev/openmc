@@ -244,7 +244,15 @@ the root directory of the source code:
     sudo make install
 
 This will build an executable named ``openmc`` and install it (by default in
-/usr/local/bin).
+/usr/local/bin). If you do not have administrative privileges, you can install
+OpenMC locally by replacing the last command with:
+
+.. code-block:: sh
+
+    make install -e prefix=$HOME/.local
+
+The ``prefix`` variable can be changed to any path for which you have
+write-access.
 
 Compiling on Windows
 --------------------

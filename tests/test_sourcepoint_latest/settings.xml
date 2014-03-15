@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <settings>
 
-  <source_point batches="0" source_separate="true" overwrite_latest="true"/>
+  <source_point batches="0" separate="true" overwrite_latest="true"/>
 
   <eigenvalue>
     <batches>10</batches>

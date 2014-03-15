@@ -3,7 +3,7 @@
 import os
 from subprocess import Popen, STDOUT, PIPE, call
 import filecmp
-#from nose_mpi import NoseMPI
+from nose_mpi import NoseMPI
 import glob
 
 pwd = os.path.dirname(__file__)
@@ -12,7 +12,7 @@ settings1="""<?xml version="1.0"?>
 <settings>
 
   <state_point batches="10" />
-  <source_point source_separate="true" />
+  <source_point separate="true" />
 
   <eigenvalue>
     <batches>10</batches>
@@ -51,8 +51,7 @@ def setup():
 
 def test_run1():
     openmc_path = pwd + '/../../src/openmc'
-#   if int(NoseMPI.mpi_np) > 0:
-    if False:
+    if int(NoseMPI.mpi_np) > 0:
         proc = Popen([NoseMPI.mpi_exec, '-np', NoseMPI.mpi_np, openmc_path],
                stderr=STDOUT, stdout=PIPE)
     else:
@@ -74,8 +73,7 @@ def test_run2():
     source = glob.glob(pwd + '/source.10.*')
     with open('settings.xml','w') as fh:
         fh.write(settings2.format(source[0].split('.')[2]))
-#   if int(NoseMPI.mpi_np) > 0:
-    if False:
+    if int(NoseMPI.mpi_np) > 0:
         proc = Popen([NoseMPI.mpi_exec, '-np', NoseMPI.mpi_np, openmc_path],
                stderr=STDOUT, stdout=PIPE)
     else:

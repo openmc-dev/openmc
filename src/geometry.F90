@@ -1506,11 +1506,8 @@ contains
     integer :: i_x, i_y, i_z            ! indices in lattice
     integer :: n_x, n_y, n_z            ! size of lattice
     integer :: n                        ! number of cells to search
-    integer :: tempoffset,prevoffset    ! total offset for a given cell
+    integer :: tempoffset               ! total offset for a given cell
     integer :: index_cell               ! index in cells array
-    integer :: index_univ               ! index to next universe in universes array
-    real(8) :: xyz(3)                   ! temporary location
-    real(8) :: upper_right(3)           ! lattice upper_right
     type(Cell),     pointer :: c => null()    ! pointer to cell
     type(Lattice),  pointer :: lat => null()  ! pointer to lattice
     type(Universe), pointer :: univ_next => null() ! next universe to loop through
@@ -1607,9 +1604,6 @@ contains
     integer :: n_x, n_y, n_z        ! size of lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
-    integer :: index_univ           ! index to next universe in universes array
-    real(8) :: xyz(3)               ! temporary location
-    real(8) :: upper_right(3)       ! lattice upper_right
     type(Cell),     pointer, save :: c_next => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
@@ -1714,9 +1708,6 @@ contains
     integer :: n_x, n_y, n_z        ! size of lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
-    integer :: index_univ           ! index to next universe in universes array
-    real(8) :: xyz(3)               ! temporary location
-    real(8) :: upper_right(3)       ! lattice upper_right
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
@@ -1807,9 +1798,6 @@ contains
     integer :: n_x, n_y, n_z        ! size of lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
-    integer :: index_univ           ! index to next universe in universes array
-    real(8) :: xyz(3)               ! temporary location
-    real(8) :: upper_right(3)       ! lattice upper_right
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through

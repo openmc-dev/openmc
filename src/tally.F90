@@ -785,7 +785,6 @@ contains
     type(TallyObject), pointer, save :: t => null()
     type(Material),    pointer, save :: mat => null()
     type(Reaction),    pointer, save :: rxn => null()
-    type(Cell), pointer ,save :: c => null()
     
 !$omp threadprivate(t, mat, rxn)
 
@@ -1620,7 +1619,6 @@ contains
     logical, optional, intent(in) :: analog
 
     integer :: i ! loop index for filters
-    integer :: j ! secondary loop index
     integer :: n ! number of bins for single filter
     logical :: found ! found a matching bin for distribcell
     integer :: offset ! offset for distribcell

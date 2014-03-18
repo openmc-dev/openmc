@@ -2030,7 +2030,6 @@ contains
     integer :: i      ! index in cells/surfaces/etc array
     integer :: bin
     integer :: offset
-    integer, allocatable :: i_vec(:) ! cell indices to use for find_offset
     integer, allocatable :: ijk(:) ! indices in mesh
     real(8)              :: E0     ! lower bound for energy bin
     real(8)              :: E1     ! upper bound for energy bin
@@ -2095,12 +2094,8 @@ contains
     integer :: n_x, n_y, n_z        ! size of lattice
     integer :: n                    ! number of cells to search
     integer :: index_cell           ! index in cells array
-    integer :: index_univ           ! index to next universe in universes array
     integer :: latoffset            ! offset from lattice
     integer :: temp_offset          ! looped sum of offsets
-    real(8) :: xyz(3)               ! temporary location
-    real(8) :: upper_right(3)       ! lattice upper_right
-    logical :: found = .false.      ! in a target cell?
     logical :: this_cell = .false.  ! advance in this cell?
     logical :: later_cell = .false. ! non-normal cells after this one?
     type(Cell),     pointer, save :: c => null()    ! pointer to cell

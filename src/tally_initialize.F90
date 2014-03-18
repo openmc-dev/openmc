@@ -61,11 +61,6 @@ contains
 
       ! Allocate results array
       allocate(t % results(t % total_score_bins, t % total_filter_bins))
-      !do j = 1, t % total_filter_bins
-      !  do n = 1, t % total_score_bins
-      !  print *,'t%results(n,j):',t%results(n,j)      
-      !  end do
-      !end do
     end do TALLY_LOOP
 
     ! Allocate array for matching filter bins

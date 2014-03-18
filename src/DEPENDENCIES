@@ -47,7 +47,6 @@ cmfd_input.o: tally_header.o
 cmfd_input.o: tally_initialize.o
 cmfd_input.o: xml_interface.o
 
-cmfd_jacobian_operator.o: cmfd_loss_operator.o
 cmfd_jacobian_operator.o: cmfd_prod_operator.o
 cmfd_jacobian_operator.o: constants.o
 cmfd_jacobian_operator.o: global.o

@@ -961,7 +961,8 @@ contains
       
       if (extra > 0) then
         
-        message = "At least one Distribcell filter was specified with multiple bins. This feature is not yet supported."
+        message = "At least one Distribcell filter was specified with& 
+                   &multiple bins. This feature is not yet supported."
         call fatal_error()
         ! Allocate space for new filters      
         allocate(filters(extra + t % n_filters))

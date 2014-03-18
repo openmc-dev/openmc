@@ -517,7 +517,6 @@ contains
 
   subroutine load_state_point()
 
-    character(MAX_FILE_LEN) :: filename
     character(MAX_FILE_LEN) :: path_temp
     character(19)           :: current_time
     integer                 :: i
@@ -790,7 +789,7 @@ contains
         call sp % file_close()
 
         ! Write message
-        message = "Loading source file " // trim(filename) // "..."
+        message = "Loading source file " // trim(path_source_point) // "..."
         call write_message(1)
 
         ! Open source file 

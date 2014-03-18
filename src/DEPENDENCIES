@@ -47,10 +47,6 @@ cmfd_input.o: tally_header.o
 cmfd_input.o: tally_initialize.o
 cmfd_input.o: xml_interface.o
 
-cmfd_jacobian_operator.o: cmfd_prod_operator.o
-cmfd_jacobian_operator.o: constants.o
-cmfd_jacobian_operator.o: global.o
-
 cmfd_jfnk_solver.o: cmfd_loss_operator.o
 cmfd_jfnk_solver.o: cmfd_power_solver.o
 cmfd_jfnk_solver.o: cmfd_prod_operator.o
@@ -63,14 +59,6 @@ cmfd_jfnk_solver.o: vector_header.o
 cmfd_loss_operator.o: constants.o
 cmfd_loss_operator.o: global.o
 cmfd_loss_operator.o: matrix_header.o
-
-cmfd_message_passing.o: cmfd_header.o
-cmfd_message_passing.o: global.o
-
-cmfd_output.o: cmfd_data.o
-cmfd_output.o: cmfd_header.o
-cmfd_output.o: constants.o
-cmfd_output.o: global.o
 
 cmfd_power_solver.o: cmfd_loss_operator.o
 cmfd_power_solver.o: cmfd_prod_operator.o
@@ -88,14 +76,6 @@ cmfd_slepc_solver.o: cmfd_loss_operator.o
 cmfd_slepc_solver.o: cmfd_prod_operator.o
 cmfd_slepc_solver.o: constants.o
 cmfd_slepc_solver.o: global.o
-
-cmfd_snes_solver.o: cmfd_jacobian_operator.o
-cmfd_snes_solver.o: cmfd_loss_operator.o
-cmfd_snes_solver.o: cmfd_power_solver.o
-cmfd_snes_solver.o: cmfd_prod_operator.o
-cmfd_snes_solver.o: constants.o
-cmfd_snes_solver.o: global.o
-cmfd_snes_solver.o: string.o
 
 cross_section.o: ace_header.o
 cross_section.o: constants.o

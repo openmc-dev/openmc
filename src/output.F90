@@ -5,7 +5,7 @@ module output
   use ace_header,      only: Nuclide, Reaction, UrrData
   use constants
   use endf,            only: reaction_name
-  use error,           only: warning
+  use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Universe, Surface, BASE_UNIVERSE
   use global
   use math,            only: t_percentile
@@ -13,7 +13,7 @@ module output
   use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
   use particle_header, only: LocalCoord, Particle
   use plot_header
-  use string,          only: upper_case, to_str, int4_to_str
+  use string,          only: upper_case, to_str
   use tally_header,    only: TallyObject
 
   implicit none
@@ -2196,9 +2196,8 @@ contains
           ! ====================================================================
           ! AT LOWEST UNIVERSE, TERMINATE SEARCH
           ! NOTE: THIS SHOULD NOT HAPPEN
-          print *,'Unexpected end of search with normal cell:',c%id
-          return
-          
+          message = "Unexpected end of search with normal cell."
+          call fatal_error()          
           
         elseif (c % type == CELL_FILL) then
           ! ====================================================================

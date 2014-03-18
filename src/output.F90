@@ -2053,7 +2053,6 @@ contains
       label = ''
       univ => universes(BASE_UNIVERSE)
       offset = 0
-      !print *,"target offset:",(bin-1)
       call find_offset(t % filters(i_filter) % offset, t % filters(i_filter) % int_bins(1), &
               univ, bin-1, offset,label)
     case (FILTER_SURFACE)
@@ -2164,7 +2163,6 @@ contains
           exit   
         end do
         ! lets make sure we didn't just end the loop by iteration
-        !print *,'got here'
         if (c % type /= CELL_NORMAL) then
           ! There are more cells in this universe that it could be in
           later_cell = .true.

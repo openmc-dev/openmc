@@ -171,11 +171,6 @@ contains
 
       ! get pointer to cell
       c => cells(index_cell)
-        !if (p%id == 140) then
-        !print *,'FIND_CELL c%id:',c%id
-        !print *,'p%coord0%xyz:',p%coord0%xyz
-        !print *,'p%coord%xyz:',p%coord%xyz
-        !end if
       if (simple_cell_contains(c, p)) then
         ! Set cell on this level
         p % coord % cell = index_cell
@@ -507,9 +502,6 @@ contains
     type(LocalCoord), pointer, save :: coord => null()
     type(LocalCoord), pointer, save :: final_coord => null()
 !$omp threadprivate(cl, surf, lat, coord, final_coord)
-    !if (p%id == 140) then
-    !print *,'Entered'
-    !end if
     ! inialize distance to infinity (huge)
     dist = INFINITY
     lattice_crossed = NONE

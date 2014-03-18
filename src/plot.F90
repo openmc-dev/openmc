@@ -2,8 +2,8 @@ module plot
 
   use constants
   use error,           only: fatal_error
-  use geometry
-  use geometry_header
+  use geometry,        only: find_cell, check_cell_overlap
+  use geometry_header, only: Cell, BASE_UNIVERSE
   use global
   use output,          only: write_message
   use particle_header, only: deallocate_coord, Particle
@@ -109,15 +109,8 @@ contains
     real(8) :: in_pixel
     real(8) :: out_pixel
     real(8) :: xyz(3)
-    logical :: found_cell
-    integer :: cellid
     type(Image) :: img
     type(Particle) :: p
-    type(Universe), pointer :: univ => null()
-
-
-    cellid = -1
-
 
     ! Initialize and allocate space for image
     call init_image(img)
@@ -155,8 +148,6 @@ contains
     p % coord % uvw = (/ 0.5, 0.5, 0.5 /)
     p % coord % universe = BASE_UNIVERSE
 
-    univ => universes(BASE_UNIVERSE)
-    call deallocate_coord(p % coord % next)
     do y = 1, img % height
       do x = 1, img % width
 
@@ -292,5 +283,5 @@ contains
     close(UNIT_PLOT)
 
   end subroutine create_3d_dump
-  
+
 end module plot

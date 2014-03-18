@@ -896,7 +896,7 @@ The ``<tally>`` element accepts the following sub-elements:
           The ``id`` of a structured mesh to be tallied over.
 
         :distribcell:
-          The single cell which should be tallies uniquely for all instances.
+          The single cell which should be tallied uniquely for all instances.
 
           .. note::
               The distribcell filter will take a single cell ID and will tally

@@ -1418,22 +1418,7 @@ contains
               end if
             end if
             
-            if (lattice_edge) then
-              
-              ! In this case the neutron is leaving the lattice, so we move it
-              ! out, remove all lower coordinate levels and then search from
-              ! universe 0.
-            
-              p % coord => p % coord0
-              call deallocate_coord(p % coord % next)
-
-              ! Reset surface and advance particle a tiny bit
-              p % surface = NONE
-              p % coord % xyz = xyz
-              print *,'UNEXPECTED CALL FOR LATTICE_EDGE'
-              !call distribcell_offset(p, search_cells, found, offset)
-
-            else
+            if (.not. lattice_edge) then      
 
               ! We're outside the lattice, so treat this as a normal cell with
               ! the material specified for the outside
@@ -1755,10 +1740,8 @@ contains
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
         univ_next => universes(c % fill)
-        print *,"univ % id:",univ_next%id
         if (univ_next % id == goal) then
           ! Found the target
-          print *,"target found!"
           kount = kount + 1
           ! Target cannot contain itself, no point looking deeper
           return

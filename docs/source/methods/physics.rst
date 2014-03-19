@@ -997,9 +997,14 @@ Carlo code, it must be done in such a way that preserves the thermally-averaged
 reaction rate as per equation :eq:`doppler-broaden`.
 
 The method by which most Monte Carlo codes sample the target velocity for use in
-elastic scattering kinematics is outlined in detail by [Gelbard]_. The
-derivation here largely follows that of Gelbard. Let us first write the reaction
-rate as a function of the velocity of the target nucleus:
+elastic scattering kinematics is outlined in detail by [Gelbard]_. This is the
+default method for sampling target velocities in OpenMC.  Alternate methods for 
+treating thermal target motion which reproduce the exact elastic scattering kernel
+have been implemented in OpenMC and are described by [Walsh]_.
+
+Here, the derivation of the default method largely follows that of Gelbard. Let
+us first write the reaction rate as a function of the velocity of the target 
+nucleus:
 
 .. math::
     :label: reaction-rate
@@ -1559,6 +1564,10 @@ References
 
 .. [Gelbard] Ely M. Gelbard, "Epithermal Scattering in VIM," FRA-TM-123, Argonne
    National Laboratory (1979).
+   
+.. [Walsh] Jonathan A. Walsh, Benoit Forget, and Kord S. Smith, "Accelerated 
+   sampling of the free gas resonance elastic scattering kernel," *Ann. Nucl. 
+   Energy*, **69**, 116-124 (2014). http://dx.doi.org/10.1016/j.anucene.2014.01.017
 
 .. [Levitt] Leo B. Levitt, "The Probability Table Method for Treating Unresolved
    Neutron Resonances in Monte Carlo Calculations," *Nucl. Sci. Eng.*, **49**,

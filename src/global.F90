@@ -371,6 +371,10 @@ module global
   real(8) :: cmfd_atoli = 1.e-10_8
   real(8) :: cmfd_rtoli = 1.e-5_8
 
+  ! Number of batches to save for in CMFD
+  integer :: cmfd_n_save = 1
+  logical :: cmfd_flush_every = .false.
+
   ! Information about state points to be written
   integer :: n_state_points = 0
   type(SetInt) :: statepoint_batch

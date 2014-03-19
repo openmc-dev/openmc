@@ -97,8 +97,13 @@ contains
     ! If this is a restart run and we are just replaying batches leave
     if (restart_run .and. current_batch <= restart_batch) return
 
-    ! Check to reset tallies
-    if (cmfd_run .and. cmfd_reset % contains(current_batch)) then
+    ! Check to reset tallies with flusher
+    if (cmfd_run .and. (cmfd_reset % contains(current_batch))) then
+      call cmfd_tally_reset()
+    end if
+
+    ! Check to reset tallies during CMFD with window
+    if (cmfd_run .and. cmfd_flush_every .and. current_batch > cmfd_begin) then
       call cmfd_tally_reset()
     end if
 

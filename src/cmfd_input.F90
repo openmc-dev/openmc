@@ -54,7 +54,7 @@ contains
     call time_cmfdsolve % reset()
 
     ! Allocate cmfd object
-    call allocate_cmfd(cmfd, n_batches)
+    call allocate_cmfd(cmfd, n_batches, cmfd_n_save)
 
   end subroutine configure_cmfd
 
@@ -293,6 +293,12 @@ contains
         message = "Invalid estimator for CMFD: " // trim(temp_str)
         call fatal_error()
        end select
+    end if
+
+    ! Check for saving batches
+    if (check_for_node(doc, "n_save")) then
+      call get_node_value(doc, "n_save", cmfd_n_save)
+      cmfd_flush_every = .true.
     end if
 
     ! Create tally objects

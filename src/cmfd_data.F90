@@ -21,10 +21,17 @@ contains
     use cmfd_header,         only: allocate_cmfd
     use constants,           only: CMFD_NOACCEL
     use global,              only: cmfd, cmfd_coremap, cmfd_downscatter, &
-                                   cmfd_fix_balance
+                                   cmfd_fix_balance, message
+    use output,              only: write_message
+
+    message = 'Extracting CMFD data...'
+    call write_message(1)
 
     ! Check for core map and set it up
     if ((cmfd_coremap) .and. (cmfd%mat_dim == CMFD_NOACCEL)) call set_coremap()
+
+    ! Extract tallies to put in cmfd data object
+    call extract_tallies()
 
     ! Calculate all cross sections based on reaction rates from last batch
     call compute_xs()
@@ -47,10 +54,10 @@ contains
   end subroutine set_up_cmfd 
 
 !===============================================================================
-! COMPUTE_XS takes tallies and computes macroscopic cross sections
+! EXTRACT_TALLIES
 !===============================================================================
 
-  subroutine compute_xs()
+  subroutine extract_tallies()
 
     use constants,    only: FILTER_MESH, FILTER_ENERGYIN, FILTER_ENERGYOUT,     &
                             FILTER_SURFACE, IN_RIGHT, OUT_RIGHT, IN_FRONT,      &
@@ -58,7 +65,7 @@ contains
                             ONE, TINY_BIT
     use error,        only: fatal_error
     use global,       only: cmfd, message, n_cmfd_tallies, cmfd_tallies, meshes,&
-                            matching_bins, current_batch
+                            matching_bins, current_batch, cmfd_n_save
     use mesh,         only: mesh_indices_to_bin
     use mesh_header,  only: StructuredMesh
     use string,       only: to_str
@@ -73,7 +80,7 @@ contains
     integer :: k             ! iteration counter for z
     integer :: g             ! iteration counter for g
     integer :: h             ! iteration counter for outgoing groups
-    integer :: l             ! iteration counter for leakage debug
+    integer :: b             ! current batch index in moving window
     integer :: ital          ! tally object index
     integer :: ijk(3)        ! indices for mesh cell
     integer :: score_index   ! index to pull from tally object
@@ -82,12 +89,9 @@ contains
     integer :: i_filter_ein  ! index for incoming energy filter
     integer :: i_filter_eout ! index for outgoing energy filter
     integer :: i_filter_surf ! index for surface filter
-    real(8) :: flux          ! temp variable for flux
-    real(8) :: leak1         ! group 1 leakage 
-    real(8) :: leak2         ! group 2 leakage
     type(TallyObject),    pointer :: t => null() ! pointer for tally object
     type(StructuredMesh), pointer :: m => null() ! pointer for mesh object
-
+print *, 'CMFD INDEX:', cmfd % idx
     ! Extract spatial and energy indices from object
     nx = cmfd % indices(1)
     ny = cmfd % indices(2)
@@ -108,6 +112,10 @@ contains
     cmfd % hxyz(2,:,:,:) = m % width(2) ! set y width
     cmfd % hxyz(3,:,:,:) = m % width(3) ! set z width
 
+    ! Set batch index for moving window
+    b = cmfd % idx
+
+    ! Set balance keff to zero
     cmfd % keff_bal = ZERO
 
    ! Begin loop around tallies
@@ -161,11 +169,10 @@ contains
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t%stride) + 1
 
                 ! Get flux
-                flux = t % results(1,score_index) % sum
-                cmfd % flux(h,i,j,k) = flux
+                cmfd % flux_rate(h,i,j,k,b) = t % results(1,score_index) % sum
 
                 ! Detect zero flux, abort if located
-                if ((flux - ZERO) < TINY_BIT) then
+                if ((cmfd % flux_rate(h,i,j,k,b) - ZERO) < TINY_BIT) then
                   message = 'Detected zero flux without coremap overlay at: (' &
                           // to_str(i) // ',' // to_str(j) // ',' // to_str(k) &
                           // ') in group ' // to_str(h)
@@ -173,14 +180,10 @@ contains
                 end if
 
                 ! Get total rr and convert to total xs
-                cmfd % totalxs(h,i,j,k) = t % results(2,score_index) % sum / flux
+                cmfd % total_rate(h,i,j,k,b) = t % results(2,score_index) % sum
 
                 ! Get p1 scatter rr and convert to p1 scatter xs
-                cmfd % p1scattxs(h,i,j,k) = t % results(3,score_index) % sum / flux
-
-                ! Calculate diffusion coefficient
-                cmfd % diffcof(h,i,j,k) = ONE/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
-                     cmfd % p1scattxs(h,i,j,k)))
+                cmfd % p1scatt_rate(h,i,j,k,b) = t % results(3,score_index) % sum
 
               else if (ital == 2) then
 
@@ -208,12 +211,10 @@ contains
                   score_index = sum((matching_bins(1:t%n_filters) - 1) * t%stride) + 1
 
                   ! Get scattering
-                  cmfd % scattxs(h,g,i,j,k) = t % results(1,score_index) % sum /&
-                       cmfd % flux(h,i,j,k)
+                  cmfd % scatt_rate(h,g,i,j,k,b) = t % results(1,score_index) % sum
 
                   ! Get nu-fission
-                  cmfd % nfissxs(h,g,i,j,k) = t % results(2,score_index) % sum /&
-                       cmfd % flux(h,i,j,k)
+                  cmfd % nfiss_rate(h,g,i,j,k,b) = t % results(2,score_index) % sum
 
                   ! Bank source
                   cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) + &
@@ -235,60 +236,60 @@ contains
                      (/ i-1, j, k /) + 1, .true.)
                 matching_bins(i_filter_surf) = IN_RIGHT
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(1,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(1,h,i,j,k,b) = t % results(1,score_index) % sum
                 matching_bins(i_filter_surf) = OUT_RIGHT
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
-                cmfd % current(2,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(2,h,i,j,k,b) = t % results(1,score_index) % sum
 
                 ! Right surface
                 matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k /) + 1, .true.)
                 matching_bins(i_filter_surf) = IN_RIGHT
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
-                cmfd % current(3,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(3,h,i,j,k,b) = t % results(1,score_index) % sum
                 matching_bins(i_filter_surf) = OUT_RIGHT
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(4,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(4,h,i,j,k,b) = t % results(1,score_index) % sum
 
                 ! Back surface
                 matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j-1, k /) + 1, .true.)
                 matching_bins(i_filter_surf) = IN_FRONT
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(5,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(5,h,i,j,k,b) = t % results(1,score_index) % sum
                 matching_bins(i_filter_surf) = OUT_FRONT
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
-                cmfd % current(6,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(6,h,i,j,k,b) = t % results(1,score_index) % sum
 
                 ! Front surface
                 matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k /) + 1, .true.)
                 matching_bins(i_filter_surf) = IN_FRONT
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
-                cmfd % current(7,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(7,h,i,j,k,b) = t % results(1,score_index) % sum
                 matching_bins(i_filter_surf) = OUT_FRONT
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(8,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(8,h,i,j,k,b) = t % results(1,score_index) % sum
 
                 ! Bottom surface
                 matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k-1 /) + 1, .true.)
                 matching_bins(i_filter_surf) = IN_TOP
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(9,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(9,h,i,j,k,b) = t % results(1,score_index) % sum
                 matching_bins(i_filter_surf) = OUT_TOP
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
-                cmfd % current(10,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(10,h,i,j,k,b) = t % results(1,score_index) % sum
 
                 ! Top surface
                 matching_bins(i_filter_mesh) = mesh_indices_to_bin(m, &
                      (/ i, j, k /) + 1, .true.)
                 matching_bins(i_filter_surf) = IN_TOP
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! incoming
-                cmfd % current(11,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(11,h,i,j,k,b) = t % results(1,score_index) % sum
                 matching_bins(i_filter_surf) = OUT_TOP
                 score_index = sum((matching_bins(1:t%n_filters) - 1) * t % stride) + 1 ! outgoing
-                cmfd % current(12,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current_rate(12,h,i,j,k,b) = t % results(1,score_index) % sum
 
               end if TALLY
 
@@ -308,6 +309,109 @@ contains
     ! Nullify all pointers
     if (associated(t)) nullify(t)
     if (associated(m)) nullify(m)
+
+    ! Move batch index
+    cmfd % idx = cmfd % idx + 1
+    if (cmfd % idx > cmfd_n_save) then
+      cmfd % idx = 1
+    end if
+
+  end subroutine extract_tallies
+
+!===============================================================================
+! COMPUTE_XS takes tallies and computes macroscopic cross sections
+!===============================================================================
+
+  subroutine compute_xs()
+
+    use constants,  only: CMFD_NOACCEL, ONE, ZERO
+    use global,     only: cmfd, current_batch
+    use string,     only: to_str
+
+    integer :: nx            ! number of mesh cells in x direction
+    integer :: ny            ! number of mesh cells in y direction
+    integer :: nz            ! number of mesh cells in z direction
+    integer :: ng            ! number of energy groups
+    integer :: i             ! iteration counter for x
+    integer :: j             ! iteration counter for y
+    integer :: k             ! iteration counter for z
+    integer :: g             ! iteration counter for g
+    integer :: h             ! iteration counter for outgoing groups
+    integer :: l             ! iteration counter for leakage
+    real(8) :: flux          ! temp variable for flux
+    real(8) :: leak1         ! group 1 leakage 
+    real(8) :: leak2         ! group 2 leakage
+
+    ! Extract spatial and energy indices from object
+    nx = cmfd % indices(1)
+    ny = cmfd % indices(2)
+    nz = cmfd % indices(3)
+    ng = cmfd % indices(4)
+
+    ! Begin loop around space
+    ZLOOP: do k = 1,nz
+
+      YLOOP: do j = 1,ny
+
+        XLOOP: do i = 1,nx
+ 
+          ! Check for active mesh cell
+          if (allocated(cmfd%coremap)) then
+            if (cmfd%coremap(i,j,k) == CMFD_NOACCEL) then
+              cycle
+            end if
+          end if
+
+          ! Loop around energy groups
+          OUTGROUP: do h = 1,ng
+
+            ! Get flux
+            flux = sum(cmfd % flux_rate(h,i,j,k,:))
+            cmfd % flux(h,i,j,k) = flux
+
+            ! Get total rr and convert to total xs
+            cmfd % totalxs(h,i,j,k) = sum(cmfd % total_rate(h,i,j,k,:)) / flux
+
+            ! Get p1 scatter rr and convert to p1 scatter xs
+            cmfd % p1scattxs(h,i,j,k) = sum(cmfd % p1scatt_rate(h,i,j,k,:)) / flux
+
+            ! Calculate diffusion coefficient
+            cmfd % diffcof(h,i,j,k) = ONE/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
+                     cmfd % p1scattxs(h,i,j,k)))
+
+            ! Begin loop to get energy out tallies
+            INGROUP: do g = 1, ng
+
+              ! Get scattering
+              cmfd % scattxs(h,g,i,j,k) = sum(cmfd % scatt_rate(h,g,i,j,k,:)) / flux
+                   
+
+              ! Get nu-fission
+              cmfd % nfissxs(h,g,i,j,k) = sum(cmfd % nfiss_rate(h,g,i,j,k,:)) / flux
+
+            end do INGROUP
+
+            ! Surface currents 
+            cmfd % current(1,h,i,j,k) = sum(cmfd % current_rate(1,h,i,j,k,:))
+            cmfd % current(2,h,i,j,k) = sum(cmfd % current_rate(2,h,i,j,k,:))
+            cmfd % current(3,h,i,j,k) = sum(cmfd % current_rate(3,h,i,j,k,:))
+            cmfd % current(4,h,i,j,k) = sum(cmfd % current_rate(4,h,i,j,k,:))
+            cmfd % current(5,h,i,j,k) = sum(cmfd % current_rate(5,h,i,j,k,:))
+            cmfd % current(6,h,i,j,k) = sum(cmfd % current_rate(6,h,i,j,k,:))
+            cmfd % current(7,h,i,j,k) = sum(cmfd % current_rate(7,h,i,j,k,:))
+            cmfd % current(8,h,i,j,k) = sum(cmfd % current_rate(8,h,i,j,k,:))
+            cmfd % current(9,h,i,j,k) = sum(cmfd % current_rate(9,h,i,j,k,:))
+            cmfd % current(10,h,i,j,k) = sum(cmfd % current_rate(10,h,i,j,k,:))
+            cmfd % current(11,h,i,j,k) = sum(cmfd % current_rate(11,h,i,j,k,:))
+            cmfd % current(12,h,i,j,k) = sum(cmfd % current_rate(12,h,i,j,k,:))
+
+          end do OUTGROUP
+
+        end do XLOOP
+
+      end do YLOOP
+
+    end do ZLOOP
 
 #ifdef CMFD_DEBUG
     open(file='openmc_src_' // trim(to_str(current_batch)) // '.dat', unit=102)

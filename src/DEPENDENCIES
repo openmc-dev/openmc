@@ -285,6 +285,7 @@ particle_restart_write.o: string.o
 
 physics.o: ace_header.o
 physics.o: constants.o
+physics.o: cross_section.o
 physics.o: endf.o
 physics.o: error.o
 physics.o: fission.o

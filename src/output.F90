@@ -2077,12 +2077,14 @@ contains
   end function get_label
   
 !===============================================================================
-! FIND_OFFSET will locate a path to a cell with a given offset.
+! FIND_OFFSET uses a given map number, a target cell ID, and a target offset 
+! to build a string which is the path from the base universe to the target cell
+! with the given offset
 !===============================================================================
 
-  recursive subroutine find_offset(ind, goal, univ, final, offset, path)
+  recursive subroutine find_offset(map, goal, univ, final, offset, path)
 
-    integer, intent(in) :: ind                    ! index of the filter in the offset vector
+    integer, intent(in) :: map                    ! index of the filter in the offset vector
     integer, intent(in) :: goal                   ! The target cell ID
     type(Universe), pointer, intent(in) :: univ   ! universe to begin searching from
     integer, intent(in) :: final                  ! target offset
@@ -2163,11 +2165,11 @@ contains
           later_cell = .true.
           ! Two cases, lattice or fill cell
           if (c % type == CELL_FILL) then
-            temp_offset = c % offset(ind)
+            temp_offset = c % offset(map)
           else
             lat => lattices(c % fill)            
             ! Get the offset of the first lattice location
-            temp_offset = lat % offset(ind,1,1,1)
+            temp_offset = lat % offset(map,1,1,1)
           end if   
           ! If the final offset is in the range of offset - temp_offset+offset
           ! then the goal is in this cell         
@@ -2200,10 +2202,10 @@ contains
 
           ! if we got here, we are going into this cell
           ! update the current offset
-          offset = c % offset(ind) + offset
+          offset = c % offset(map) + offset
           
           univ_next => universes(c % fill)
-          call find_offset(ind, goal, univ, final, offset, path)
+          call find_offset(map, goal, univ, final, offset, path)
           return
           
         elseif (c % type == CELL_LATTICE) then
@@ -2231,13 +2233,13 @@ contains
                   univ_next => universes(lat % universes(i_x,i_y,i_z))                          
                 else
                   if (i_z + 1 <= n_z) then
-                    latoffset = lat % offset(ind,i_x,i_y,i_z+1)
+                    latoffset = lat % offset(map,i_x,i_y,i_z+1)
 
                   elseif (i_y + 1 <= n_y) then
-                    latoffset = lat % offset(ind,i_x,i_y+1,1)
+                    latoffset = lat % offset(map,i_x,i_y+1,1)
 
                   elseif (i_x + 1 <= n_x) then
-                    latoffset = lat % offset(ind,i_x+1,1,1)
+                    latoffset = lat % offset(map,i_x+1,1,1)
 
                   end if
                   if (final >= latoffset + offset) then
@@ -2250,13 +2252,13 @@ contains
                 end if
                 
                 ! target is at this lattice position
-                latoffset = lat % offset(ind,i_x,i_y,i_z)
+                latoffset = lat % offset(map,i_x,i_y,i_z)
                 offset = offset + latoffset
                 
                 univ_next => universes(lat % universes(i_x,i_y,i_z))  
                 path = trim(path) // "(" // trim(to_str(i_x)) // "," // trim(to_str(i_y)) // "," // trim(to_str(i_z)) // ")"
 
-                call find_offset(ind, goal, univ_next, final, offset, path)
+                call find_offset(map, goal, univ_next, final, offset, path)
                 
                 return
                 

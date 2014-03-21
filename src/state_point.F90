@@ -45,7 +45,6 @@ contains
     integer, allocatable       :: temp_array2(:)
     integer, allocatable       :: lattice_universes(:,:,:)
     type(Cell),     pointer    :: c => null()
-    type(Surface),  pointer    :: s => null()
     type(Universe), pointer    :: u => null()
     type(Lattice),  pointer    :: lat => null()
     type(TallyObject), pointer :: t => null()

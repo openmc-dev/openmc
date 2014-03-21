@@ -1536,7 +1536,7 @@ contains
         ! Set offset
         c % offset(map) = tempoffset
         ! Count contents of this cell
-        call count_target_cell(c,goal,tempoffset)
+        tempoffset = tempoffset + count_target_cell(c,goal)
         
         ! Move into the next universe
         univ_next => universes(c % fill)
@@ -1572,7 +1572,7 @@ contains
                 tempoffset = tempoffset + 1
               end if   
               
-              call count_target_univ(univ_next,goal,tempoffset)
+              tempoffset = tempoffset + count_target_univ(univ_next,goal)
               
               call calc_offsets(goal,map,univ_next)
               c => cells(index_cell)
@@ -1594,11 +1594,11 @@ contains
 ! universe ID beginning with the cell given. 
 !===============================================================================
 
-  recursive subroutine count_target_cell(c, goal, kount)
+  recursive function count_target_cell(c, goal) result(kount)
 
     type(Cell), intent(in) :: c     ! cell to search through
     integer, intent(in) :: goal     ! target universe ID
-    integer, intent(inout) :: kount ! number of times the target was found
+    integer             :: kount    ! number of times the target was found
 
     integer :: i                    ! index over cells
     integer :: i_x, i_y, i_z        ! indices in lattice
@@ -1610,7 +1610,8 @@ contains
     type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
 !$omp threadprivate(c_next, lat, univ_next)
 
-    
+    kount = 0
+
     if (c % type == CELL_NORMAL) then
       ! ====================================================================
       ! AT LOWEST UNIVERSE, TERMINATE SEARCH
@@ -1637,7 +1638,7 @@ contains
         ! get pointer to cell
         c_next => cells(index_cell)
         
-        call count_target_cell(c_next, goal, kount)
+        kount = kount + count_target_cell(c_next, goal)
         univ_next => universes(c % fill)
         
       end do
@@ -1679,7 +1680,7 @@ contains
               ! get pointer to cell
               c_next => cells(index_cell)
               
-              call count_target_cell(c_next, goal, kount)
+              kount = kount +  count_target_cell(c_next, goal)
               lat => lattices(c % fill)
               univ_next => universes(lat % universes(i_x,i_y,i_z))
             end do
@@ -1690,30 +1691,31 @@ contains
       end do
 
     end if
-    
-  end subroutine count_target_cell
+
+  end function count_target_cell
 
 !===============================================================================
 ! COUNT_TARGET_UNIV recursively totals the numbers of occurances of a given
 ! universe ID beginning with the universe given.
 !===============================================================================
 
-  recursive subroutine count_target_univ(univ, goal, kount)
+  recursive function count_target_univ(univ, goal) result(kount)
 
     type(Universe), intent(in) :: univ  ! universe to search through
     integer, intent(in) :: goal         ! target universe ID
-    integer, intent(inout) :: kount     ! number of times target located
+    integer             :: kount        ! number of times target located
 
-    integer :: i                    ! index over cells
-    integer :: i_x, i_y, i_z        ! indices in lattice
-    integer :: n_x, n_y, n_z        ! size of lattice
-    integer :: n                    ! number of cells to search
-    integer :: index_cell           ! index in cells array
+    integer :: i                        ! index over cells
+    integer :: i_x, i_y, i_z            ! indices in lattice
+    integer :: n_x, n_y, n_z            ! size of lattice
+    integer :: n                        ! number of cells to search
+    integer :: index_cell               ! index in cells array
     type(Cell),     pointer, save :: c => null()    ! pointer to cell
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
-    type(Universe), pointer, save :: univ_next => null() ! next universe to loop through
+    type(Universe), pointer, save :: univ_next => null() ! next univ to loop through
 !$omp threadprivate(c, lat, univ_next)
 
+    kount = 0
     n = univ % n_cells
       
     do i = 1, n
@@ -1739,7 +1741,7 @@ contains
           return
         end if
         
-        call count_target_univ(univ_next,goal,kount)
+        kount = kount + count_target_univ(univ_next,goal)
         c => cells(index_cell)
 
       elseif (c % type == CELL_LATTICE) then
@@ -1770,7 +1772,7 @@ contains
                 cycle
               end if
               
-              call count_target_univ(univ_next,goal,kount)
+              kount = kount + count_target_univ(univ_next,goal)
               c => cells(index_cell)
               lat => lattices(c % fill)
               
@@ -1781,7 +1783,7 @@ contains
       end if
     end do
              
-  end subroutine count_target_univ
+  end function count_target_univ
   
 !===============================================================================
 ! COUNT_INSTANCE recursively totals the numbers of occurances of a given cell id

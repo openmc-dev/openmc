@@ -2206,7 +2206,7 @@ contains
           offset = c % offset(map) + offset
           
           univ_next => universes(c % fill)
-          call find_offset(map, goal, univ, final, offset, path)
+          call find_offset(map, goal, univ_next, final, offset, path)
           return
           
         elseif (c % type == CELL_LATTICE) then

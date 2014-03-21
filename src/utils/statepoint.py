@@ -162,18 +162,24 @@ class Geometry_Data(object):
             print '--Offset Dimensions:',i.offset.shape
           print '--Offset:',np.squeeze(i.offset)
           print '--Dimenisions:',i.dim
-
-    """ This method will take a path from the base universe to some final target 
-     and will return the corresponding location in the results array.
-     Arguments:
-     path -> A list of IDs that form the path to the target. It should begin with 0
-     for the base universe, and should cover every universe, cell, and lattice passed through.
-     For the case of the lattice, a tuple should be provided to indicate which coordinates
-     in the lattice should be entered. This should be in the form: (lat_id, i_x, i_y, i_z)
-     filter_offset -> An integer that specifies which offset map the filter is using
-    """
+    
     def _get_offset(self, path, filter_offset):
-        
+        """ 
+        Returns the corresponding location in the results array for a given
+        path and filter number.
+
+        Parameters
+        ----------
+        path : list 
+            A list of IDs that form the path to the target. It should begin with 0
+            for the base universe, and should cover every universe, cell, and lattice passed through.
+            For the case of the lattice, a tuple should be provided to indicate which coordinates
+            in the lattice should be entered. This should be in the form: (lat_id, i_x, i_y, i_z)
+
+        filter_offset : int
+            An integer that specifies which offset map the filter is using
+
+        """
         prev = -1
         prevtype = ''
         # The variable returned at completion
@@ -704,7 +710,7 @@ class StatePoint(object):
             tuple with three integers specifying the mesh indices.
 
             Example: [('cell', 1), ('mesh', (14,17,20)), ('energyin', 2)]
-            Example: [('distribcell', path)] or 
+            Example: [('distribcell', path)] or [('distribcell', 3)]
 
         score_index : int
             Index corresponding to score for tally, i.e. the second index in

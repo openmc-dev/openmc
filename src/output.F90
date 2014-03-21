@@ -2084,12 +2084,13 @@ contains
 
   recursive subroutine find_offset(map, goal, univ, final, offset, path)
 
-    integer, intent(in) :: map                    ! index of the filter in the offset vector
-    integer, intent(in) :: goal                   ! The target cell ID
-    type(Universe), pointer, intent(in) :: univ   ! universe to begin searching from
-    integer, intent(in) :: final                  ! target offset
-    integer, intent(inout) :: offset              ! current offset, should start at 0
-    character(100) :: path                        ! path to offset
+    integer, intent(in) :: map                   ! index of the map in the
+                                                 ! vector of maps
+    integer, intent(in) :: goal                  ! The target cell ID
+    type(Universe), pointer, intent(in) :: univ  ! universe to begin searching
+    integer, intent(in) :: final                 ! target offset
+    integer, intent(inout) :: offset             ! current offset, starts at 0
+    character(100) :: path                       ! path to offset
     
     integer :: i,j                  ! index over cells
     integer :: i_x, i_y, i_z        ! indices in lattice

@@ -1493,13 +1493,14 @@ contains
   end subroutine distribcell_offset
   
 !===============================================================================
-! CALC_OFFSETS calculates and stores the offsets in all cells
+! CALC_OFFSETS calculates and stores the offsets in all fill cells. This
+! routine is called once upon initialization.
 !===============================================================================
 
-  recursive subroutine calc_offsets(goal, ind, univ)
+  recursive subroutine calc_offsets(goal, map, univ)
 
     integer, intent(in) :: goal         ! target universe ID
-    integer, intent(in) :: ind          ! index in offset array
+    integer, intent(in) :: map          ! map index in vector of maps
     type(Universe), intent(in) :: univ  ! universe searching in
 
     integer :: i                        ! index over cells
@@ -1510,7 +1511,7 @@ contains
     integer :: index_cell               ! index in cells array
     type(Cell),     pointer :: c => null()    ! pointer to cell
     type(Lattice),  pointer :: lat => null()  ! pointer to lattice
-    type(Universe), pointer :: univ_next => null() ! next universe to loop through
+    type(Universe), pointer :: univ_next => null() ! next univ to loop through
 !$omp threadprivate(c, lat, univ_next)
 
     n = univ % n_cells
@@ -1533,13 +1534,13 @@ contains
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
         ! Set offset
-        c % offset(ind) = tempoffset
+        c % offset(map) = tempoffset
         ! Count contents of this cell
         call count_target_cell(c,goal,tempoffset)
         
         ! Move into the next universe
         univ_next => universes(c % fill)
-        call calc_offsets(goal,ind,univ_next)
+        call calc_offsets(goal,map,univ_next)
         c => cells(index_cell)
 
       elseif (c % type == CELL_LATTICE) then
@@ -1564,7 +1565,7 @@ contains
         do i_x = 1, n_x
           do i_y = 1, n_y
             do i_z = 1, n_z
-              lat % offset(ind,i_x,i_y,i_z) = tempoffset
+              lat % offset(map,i_x,i_y,i_z) = tempoffset
               
               univ_next => universes(lat % universes(i_x,i_y,i_z))
               if (univ_next % id == goal) then
@@ -1573,7 +1574,7 @@ contains
               
               call count_target_univ(univ_next,goal,tempoffset)
               
-              call calc_offsets(goal,ind,univ_next)
+              call calc_offsets(goal,map,univ_next)
               c => cells(index_cell)
               lat => lattices(c % fill)
               

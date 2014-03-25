@@ -131,6 +131,7 @@ contains
     integer,        optional      :: search_cells(:)
 
     integer :: i                    ! index over cells
+    integer :: j                    ! index over maps
     integer :: i_x, i_y, i_z        ! indices in lattice
     integer :: n_x, n_y, n_z        ! size of lattice
     integer :: n                    ! number of cells to search
@@ -144,7 +145,6 @@ contains
     type(Lattice),  pointer, save :: lat => null()  ! pointer to lattice
     type(Universe), pointer, save :: univ => null() ! universe to search in
 !$omp threadprivate(c, lat, univ)
-
     ! Remove coordinates for any lower levels
     call deallocate_coord(p % coord % next)
 
@@ -192,6 +192,14 @@ contains
         elseif (c % type == CELL_FILL) then
           ! ====================================================================
           ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+        
+          ! Determine all offsets for this cell level
+          if (.not. allocated(p % coord % mapping)) then
+            allocate(p % coord % mapping(n_maps))
+          end if
+          do j = 1, n_maps
+            p % coord % mapping(j) = c % offset(j)
+          end do
 
           ! Create new level of coordinates
           allocate(p % coord % next)
@@ -336,6 +344,15 @@ contains
           end if
 
           if (.not. outside_lattice) then
+
+            ! Determine all offsets for this cell level
+            if (.not. allocated(p % coord % mapping)) then
+              allocate(p % coord % mapping(n_maps))
+            end if
+            do j = 1, n_maps
+              p % coord % mapping(j) = lat % offset(j,i_x,i_y,i_z)
+            end do
+
             call find_cell(p, found)
             if (.not. found) exit
           end if
@@ -1343,7 +1360,6 @@ contains
         
           ! add offset
           offset = offset + c % offset(ind)
-          
           ! ====================================================================
           ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
@@ -1497,7 +1513,7 @@ contains
 ! routine is called once upon initialization.
 !===============================================================================
 
-  recursive subroutine calc_offsets(goal, map, univ)
+  subroutine calc_offsets(goal, map, univ)
 
     integer, intent(in) :: goal         ! target universe ID
     integer, intent(in) :: map          ! map index in vector of maps
@@ -1532,7 +1548,6 @@ contains
       elseif (c % type == CELL_FILL) then
         ! ====================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-
         ! Set offset
         c % offset(map) = tempoffset
         ! Count contents of this cell
@@ -1540,9 +1555,7 @@ contains
         
         ! Move into the next universe
         univ_next => universes(c % fill)
-        call calc_offsets(goal,map,univ_next)
         c => cells(index_cell)
-
       elseif (c % type == CELL_LATTICE) then
         ! ====================================================================
         ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
@@ -1557,10 +1570,9 @@ contains
           n_z = lat % dimension(3)
         
         else
-          n_z = 1
-        
+          n_z = 1        
         end if
-        
+
         ! Loop over lattice coordinates
         do i_x = 1, n_x
           do i_y = 1, n_y
@@ -1574,7 +1586,6 @@ contains
               
               tempoffset = tempoffset + count_target_univ(univ_next,goal)
               
-              call calc_offsets(goal,map,univ_next)
               c => cells(index_cell)
               lat => lattices(c % fill)
               

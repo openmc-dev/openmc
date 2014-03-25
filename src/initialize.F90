@@ -1024,16 +1024,14 @@ contains
       end do
       
     end do
-    
-  ! Set up the base mapping scheme    
-  univ => universes(BASE_UNIVERSE)
   
   call allocate_offsets(univ_list)
   
-  do i = 1, size(univ_list)
-
-    call calc_offsets(univ_list(i),i,univ)
-
+  do i = 1, n_maps
+    do j = 1, n_universes  
+      univ => universes(j)
+      call calc_offsets(univ_list(i),i,univ)
+    end do
   end do
   
 end subroutine prepare_distribcell
@@ -1167,7 +1165,10 @@ end subroutine prepare_distribcell
       end if
     
     end do
-        
+    
+    ! Store the number of maps to global
+    n_maps = maps
+    
   end subroutine allocate_offsets
 
 end module initialize

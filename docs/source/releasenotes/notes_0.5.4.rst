@@ -39,6 +39,7 @@ Bug Fixes
 - b38af0_: Fix XML reading on multiple levels of input
 - d28750_: Fix bug in convert_xsdir.py
 - cf567c_: ENDF/B-VI data checked for compatibility
+- 6b9461_: Fix p_valid sampling inside of sample_energy
 
 .. _32c03c: https://github.com/mit-crpg/openmc/commit/32c03c
 .. _c71ef5: https://github.com/mit-crpg/openmc/commit/c71ef5
@@ -46,6 +47,7 @@ Bug Fixes
 .. _b38af0: https://github.com/mit-crpg/openmc/commit/b38af0
 .. _d28750: https://github.com/mit-crpg/openmc/commit/d28750
 .. _cf567c: https://github.com/mit-crpg/openmc/commit/cf567c
+.. _6b9461: https://github.com/mit-crpg/openmc/commit/6b9461
 
 ------------
 Contributors

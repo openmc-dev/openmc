@@ -230,13 +230,13 @@ contains
 
       end do TALLY_METADATA
 
-    end if
+      ! Indicate where source bank is stored in statepoint
+      if (source_separate) then
+        call sp % write_data(0, "source_present")
+      else
+        call sp % write_data(1, "source_present")
+      end if
 
-    ! Indicate where source bank is stored in statepoint
-    if (source_separate) then
-      call sp % write_data(0, "source_present")
-    else
-      call sp % write_data(1, "source_present")
     end if
 
     ! Check for the no-tally-reduction method

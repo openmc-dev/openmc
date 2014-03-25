@@ -1,16 +1,17 @@
 module source
 
-  use bank_header,     only: Bank
+  use bank_header,      only: Bank
   use constants
-  use error,           only: fatal_error
-  use geometry,        only: find_cell
-  use geometry_header, only: BASE_UNIVERSE
+  use error,            only: fatal_error
+  use geometry,         only: find_cell
+  use geometry_header,  only: BASE_UNIVERSE
   use global
-  use math,            only: maxwell_spectrum, watt_spectrum
-  use output,          only: write_message
-  use particle_header, only: Particle
-  use random_lcg,      only: prn, set_particle_seed
-  use string,          only: to_str
+  use math,             only: maxwell_spectrum, watt_spectrum
+  use output,           only: write_message
+  use output_interface, only: BinaryOutput
+  use particle_header,  only: Particle
+  use random_lcg,       only: prn, set_particle_seed
+  use string,           only: to_str
 
 #ifdef MPI
   use mpi
@@ -28,8 +29,9 @@ contains
 
     integer(8) :: i          ! loop index over bank sites
     integer(8) :: id         ! particle id
-
+    integer(4) :: itmp       ! temporary integer
     type(Bank), pointer :: src => null() ! source bank site
+    type(BinaryOutput) :: sp ! statepoint/source binary file
 
     message = "Initializing source particles..."
     call write_message(6)
@@ -38,8 +40,26 @@ contains
       ! Read the source from a binary file instead of sampling from some
       ! assumed source distribution
 
-      message = 'This feature is currently disabled and will be added back in.'
-      call fatal_error()
+      message = 'Reading source file from ' // trim(path_source) // '...'
+      call write_message(6)
+
+      ! Open the binary file
+      call sp % file_open(path_source, 'r', serial = .false.)
+
+      ! Read the file type
+      call sp % read_data(itmp, "filetype")
+
+      ! Check to make sure this is a source file
+      if (itmp /= FILETYPE_SOURCE) then
+        message = "Specified starting source file not a source file type."
+        call fatal_error()
+      end if
+
+      ! Read in the source bank
+      call sp % read_source_bank()
+
+      ! Close file
+      call sp % file_close()
 
     else
       ! Generation source sites from specified distribution in user input
@@ -110,6 +130,7 @@ contains
           end if
         end if
       end do
+      call p % clear()
 
     case (SRC_SPACE_POINT)
       ! Point source

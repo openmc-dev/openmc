@@ -21,6 +21,12 @@ src/openmc
 docs/build
 docs/source/_images/*.pdf
 
+# Source build
+src/build
+
+# build from src/utils/setup.py
+src/utils/build
+
 # xml-fortran reader
 src/xml-fortran/xmlreader
 
@@ -29,3 +35,6 @@ src/templates/*.f90
 
 # Test results error file
 results_error.dat
+
+# HDF5 files
+*.h5

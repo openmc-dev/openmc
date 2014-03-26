@@ -1543,19 +1543,17 @@ contains
     ! SAMPLE ENERGY DISTRIBUTION IF THERE ARE MULTIPLE
 
     if (associated(edist % next)) then
-      if (edist % p_valid % n_regions > 0) then
-        p_valid = interpolate_tab1(edist % p_valid, E_in)
+      p_valid = interpolate_tab1(edist % p_valid, E_in)
 
-        if (prn() > p_valid) then
-          if (edist % law == 44 .or. edist % law == 61) then
-            call sample_energy(edist%next, E_in, E_out, mu_out)
-          elseif (edist % law == 66) then
-            call sample_energy(edist%next, E_in, E_out, A=A, Q=Q)
-          else
-            call sample_energy(edist%next, E_in, E_out)
-          end if
-          return
+      if (prn() > p_valid) then
+        if (edist % law == 44 .or. edist % law == 61) then
+          call sample_energy(edist%next, E_in, E_out, mu_out)
+        elseif (edist % law == 66) then
+          call sample_energy(edist%next, E_in, E_out, A=A, Q=Q)
+        else
+          call sample_energy(edist%next, E_in, E_out)
         end if
+        return
       end if
     end if
 

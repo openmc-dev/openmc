@@ -470,6 +470,8 @@ attributes/sub-elements:
     source bank will be available. It should be noted that a user can set both 
     this element to "true" and specify batches to write a permanent source bank.
 
+    *Default*: false
+
 ``<survival_biasing>`` Element
 ------------------------------
 
